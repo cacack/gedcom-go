@@ -1,0 +1,15 @@
+0 HEAD
+1 SOUR TestSystem
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Jane /Smith/
+2 GIVN Jane
+2 SURN Smith
+1 SEX F
+1 BIRT
+2 DATE 15 MAR 1975
+2 PLAC London, England
+1 EMAIL jane@example.com
+0 TRLR
