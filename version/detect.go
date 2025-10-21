@@ -48,43 +48,63 @@ func detectFromHeader(lines []*parser.Line) gedcom.Version {
 	inGedc := false
 
 	for _, line := range lines {
-		// Look for HEAD tag at level 0
-		if line.Level == 0 && line.Tag == "HEAD" {
-			inHead = true
-			continue
-		}
-
-		// Stop when we hit the next level 0 tag
-		if line.Level == 0 && line.Tag != "HEAD" {
-			inHead = false
-		}
-
-		// Look for GEDC tag at level 1 within HEAD
-		if inHead && line.Level == 1 && line.Tag == "GEDC" {
-			inGedc = true
-			continue
-		}
-
-		// Look for VERS tag at level 2 within GEDC
-		if inHead && inGedc && line.Level == 2 && line.Tag == "VERS" {
-			version := strings.TrimSpace(line.Value)
-			switch version {
-			case "5.5":
-				return gedcom.Version55
-			case "5.5.1":
-				return gedcom.Version551
-			case "7.0", "7.0.0":
-				return gedcom.Version70
-			}
-		}
-
-		// Reset inGedc if we go back to level 1 with different tag
-		if inHead && line.Level == 1 && line.Tag != "GEDC" {
-			inGedc = false
+		if version := processHeaderLine(line, &inHead, &inGedc); version != "" {
+			return version
 		}
 	}
 
 	return ""
+}
+
+func processHeaderLine(line *parser.Line, inHead, inGedc *bool) gedcom.Version {
+	// Handle level 0 tags
+	if line.Level == 0 {
+		return handleLevel0(line, inHead)
+	}
+
+	// Handle level 1 tags within HEAD
+	if *inHead && line.Level == 1 {
+		return handleLevel1(line, inGedc)
+	}
+
+	// Handle level 2 VERS tag within GEDC
+	if *inHead && *inGedc && line.Level == 2 && line.Tag == "VERS" {
+		return parseVersionString(line.Value)
+	}
+
+	return ""
+}
+
+func handleLevel0(line *parser.Line, inHead *bool) gedcom.Version {
+	if line.Tag == "HEAD" {
+		*inHead = true
+	} else {
+		*inHead = false
+	}
+	return ""
+}
+
+func handleLevel1(line *parser.Line, inGedc *bool) gedcom.Version {
+	if line.Tag == "GEDC" {
+		*inGedc = true
+	} else {
+		*inGedc = false
+	}
+	return ""
+}
+
+func parseVersionString(value string) gedcom.Version {
+	version := strings.TrimSpace(value)
+	switch version {
+	case "5.5":
+		return gedcom.Version55
+	case "5.5.1":
+		return gedcom.Version551
+	case "7.0", "7.0.0":
+		return gedcom.Version70
+	default:
+		return ""
+	}
 }
 
 // detectFromTags uses tag-based heuristics to guess the GEDCOM version.

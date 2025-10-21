@@ -221,7 +221,7 @@ func TestNewReader_BufferedReads(t *testing.T) {
 		}
 	}
 
-	if string(result) != string(input) {
+	if !bytes.Equal(result, input) {
 		t.Errorf("Got %q, want %q", result, input)
 	}
 }

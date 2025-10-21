@@ -28,6 +28,9 @@ linters-settings:
       - diagnostic
       - style
       - performance
+  misspell:
+    ignore-words:
+      - RELA  # Valid GEDCOM tag for Relationship
   revive:
     severity: warning
     rules:
@@ -54,6 +57,7 @@ issues:
   max-same-issues: 0
 
 output:
-  format: colored-line-number
+  formats:
+    - format: colored-line-number
   print-issued-lines: true
   print-linter-name: true
