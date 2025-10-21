@@ -37,6 +37,7 @@ func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, erro
 	p := parser.NewParser()
 	lines, err := p.Parse(validatedReader)
 	if err != nil {
+		// Preserve charset errors in the error message
 		return nil, err
 	}
 
