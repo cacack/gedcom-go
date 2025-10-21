@@ -29,7 +29,8 @@ jobs:
       run: go mod verify
 
     - name: Run tests
-      run: go test -v -race -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v /examples/)
+      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
+      shell: bash
 
     - name: Check test coverage
       run: |
@@ -41,6 +42,7 @@ jobs:
           exit 1
         fi
         echo "✓ Test coverage meets requirement (≥85%)"
+      shell: bash
 
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.go == '1.23'
