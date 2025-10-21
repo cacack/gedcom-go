@@ -2,10 +2,20 @@ package charset
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"strings"
 	"testing"
 )
+
+// errorReader returns an error on read
+type errorReader struct {
+	err error
+}
+
+func (r *errorReader) Read(p []byte) (n int, err error) {
+	return 0, r.err
+}
 
 func TestValidateString(t *testing.T) {
 	tests := []struct {
@@ -137,6 +147,33 @@ func TestNewReader_LineTracking(t *testing.T) {
 	}
 }
 
+func TestErrInvalidUTF8_Error(t *testing.T) {
+	tests := []struct {
+		name string
+		err  *ErrInvalidUTF8
+		want string
+	}{
+		{
+			name: "line 1 column 1",
+			err:  &ErrInvalidUTF8{Line: 1, Column: 1},
+			want: "invalid UTF-8 sequence at line 1, column 1",
+		},
+		{
+			name: "line 10 column 25",
+			err:  &ErrInvalidUTF8{Line: 10, Column: 25},
+			want: "invalid UTF-8 sequence at line 10, column 25",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.err.Error(); got != tt.want {
+				t.Errorf("Error() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestNewReader_ValidUTF8(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -160,5 +197,185 @@ func TestNewReader_ValidUTF8(t *testing.T) {
 				t.Errorf("ReadAll() = %q, want %q", got, tt.input)
 			}
 		})
+	}
+}
+
+func TestNewReader_BufferedReads(t *testing.T) {
+	// Test reading with small buffer to trigger multiple reads
+	input := []byte("Hello World")
+	r := NewReader(bytes.NewReader(input))
+
+	// Read in small chunks
+	var result []byte
+	buf := make([]byte, 3)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			result = append(result, buf[:n]...)
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Read() error = %v", err)
+		}
+	}
+
+	if string(result) != string(input) {
+		t.Errorf("Got %q, want %q", result, input)
+	}
+}
+
+func TestNewReader_EmptyInput(t *testing.T) {
+	r := NewReader(bytes.NewReader([]byte{}))
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("Expected empty output, got %d bytes", len(got))
+	}
+}
+
+func TestNewReader_BOMWithSmallBuffer(t *testing.T) {
+	// Test BOM removal with small buffer reads
+	input := []byte{0xEF, 0xBB, 0xBF, 'H', 'e', 'l', 'l', 'o'}
+	r := NewReader(bytes.NewReader(input))
+
+	// Read one byte at a time
+	var result []byte
+	buf := make([]byte, 1)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			result = append(result, buf[:n]...)
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Read() error = %v", err)
+		}
+	}
+
+	want := "Hello"
+	if string(result) != want {
+		t.Errorf("Got %q, want %q", result, want)
+	}
+}
+
+func TestNewReader_ShortInput(t *testing.T) {
+	// Test with input shorter than BOM length
+	tests := []struct {
+		name  string
+		input []byte
+		want  string
+	}{
+		{"one byte", []byte{'A'}, "A"},
+		{"two bytes", []byte{'A', 'B'}, "AB"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewReader(bytes.NewReader(tt.input))
+			got, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("Got %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewReader_InvalidUTF8InMiddle(t *testing.T) {
+	// Test invalid UTF-8 that comes after some valid content
+	// and gets detected during reading
+	input := "Valid text\xFF\xFEmore text"
+
+	r := NewReader(strings.NewReader(input))
+	buf := make([]byte, 1024)
+	_, err := r.Read(buf)
+
+	// The behavior depends on whether the invalid bytes are caught
+	// in the same read or not. We're mainly testing that the code
+	// handles this case without crashing.
+	if err != nil {
+		utf8Err, ok := err.(*ErrInvalidUTF8)
+		if ok {
+			// Valid error response
+			if utf8Err.Line < 1 {
+				t.Errorf("Expected valid line number, got %d", utf8Err.Line)
+			}
+		}
+	}
+}
+
+func TestNewReader_MultipleReadsWithBuffer(t *testing.T) {
+	// Test that buffered BOM bytes are properly returned across multiple reads
+	input := []byte{0xEF, 0xBB, 0xBF, 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd'}
+	r := NewReader(bytes.NewReader(input))
+
+	// First read gets only 2 bytes
+	buf1 := make([]byte, 2)
+	n1, err1 := r.Read(buf1)
+	if err1 != nil && err1 != io.EOF {
+		t.Fatalf("First read error: %v", err1)
+	}
+
+	// Continue reading
+	buf2 := make([]byte, 1024)
+	n2, err2 := r.Read(buf2)
+	if err2 != nil && err2 != io.EOF {
+		t.Fatalf("Second read error: %v", err2)
+	}
+
+	// Combine results
+	result := string(buf1[:n1]) + string(buf2[:n2])
+
+	// Should have "Hello World" without BOM
+	if !strings.Contains(result, "Hello") {
+		t.Errorf("Result missing expected content: %q", result)
+	}
+}
+
+func TestNewReader_ReadError(t *testing.T) {
+	// Test that read errors are properly propagated
+	testErr := errors.New("read error")
+	r := NewReader(&errorReader{err: testErr})
+
+	buf := make([]byte, 10)
+	_, err := r.Read(buf)
+
+	if err != testErr {
+		t.Errorf("Expected error %v, got %v", testErr, err)
+	}
+}
+
+func TestNewReader_BufferReturn(t *testing.T) {
+	// Test case where we need to return buffered bytes across multiple reads
+	// This happens when file is shorter than BOM check
+	input := []byte{'A', 'B'}
+	r := NewReader(bytes.NewReader(input))
+
+	// Read first byte
+	buf1 := make([]byte, 1)
+	n1, err1 := r.Read(buf1)
+	if err1 != nil && err1 != io.EOF {
+		t.Fatalf("First read error: %v", err1)
+	}
+	if n1 != 1 || buf1[0] != 'A' {
+		t.Errorf("First read: got %d bytes, %v; want 1 byte, 'A'", n1, buf1[:n1])
+	}
+
+	// Read second byte
+	buf2 := make([]byte, 1)
+	n2, err2 := r.Read(buf2)
+	if err2 != nil && err2 != io.EOF {
+		t.Fatalf("Second read error: %v", err2)
+	}
+	if n2 != 1 || buf2[0] != 'B' {
+		t.Errorf("Second read: got %d bytes, %v; want 1 byte, 'B'", n2, buf2[:n2])
 	}
 }

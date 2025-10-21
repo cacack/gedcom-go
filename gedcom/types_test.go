@@ -69,6 +69,28 @@ func TestEncoding(t *testing.T) {
 	}
 }
 
+func TestEncodingString(t *testing.T) {
+	tests := []struct {
+		encoding Encoding
+		want     string
+	}{
+		{EncodingUTF8, "UTF-8"},
+		{EncodingANSEL, "ANSEL"},
+		{EncodingASCII, "ASCII"},
+		{EncodingLATIN1, "LATIN1"},
+		{EncodingUNICODE, "UNICODE"},
+		{Encoding("CUSTOM"), "CUSTOM"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			if got := tt.encoding.String(); got != tt.want {
+				t.Errorf("Encoding.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestTag(t *testing.T) {
 	t.Run("HasValue", func(t *testing.T) {
 		tag := &Tag{Level: 1, Tag: "NAME", Value: "John /Doe/"}
@@ -144,23 +166,72 @@ func TestRecord(t *testing.T) {
 			t.Error("Should not get individual from family record")
 		}
 	})
+
+	t.Run("GetFamily", func(t *testing.T) {
+		fam := &Family{XRef: "@F1@"}
+		record := &Record{
+			Type:   RecordTypeFamily,
+			Entity: fam,
+		}
+
+		got, ok := record.GetFamily()
+		if !ok {
+			t.Error("Should get family")
+		}
+		if got != fam {
+			t.Error("Should return same family")
+		}
+
+		// Wrong type
+		indRecord := &Record{Type: RecordTypeIndividual}
+		_, ok = indRecord.GetFamily()
+		if ok {
+			t.Error("Should not get family from individual record")
+		}
+	})
+
+	t.Run("GetSource", func(t *testing.T) {
+		src := &Source{XRef: "@S1@"}
+		record := &Record{
+			Type:   RecordTypeSource,
+			Entity: src,
+		}
+
+		got, ok := record.GetSource()
+		if !ok {
+			t.Error("Should get source")
+		}
+		if got != src {
+			t.Error("Should return same source")
+		}
+
+		// Wrong type
+		indRecord := &Record{Type: RecordTypeIndividual}
+		_, ok = indRecord.GetSource()
+		if ok {
+			t.Error("Should not get source from individual record")
+		}
+	})
 }
 
 func TestDocument(t *testing.T) {
 	ind1 := &Individual{XRef: "@I1@"}
 	ind2 := &Individual{XRef: "@I2@"}
 	fam1 := &Family{XRef: "@F1@"}
+	src1 := &Source{XRef: "@S1@"}
 
 	doc := &Document{
 		Records: []*Record{
 			{XRef: "@I1@", Type: RecordTypeIndividual, Entity: ind1},
 			{XRef: "@I2@", Type: RecordTypeIndividual, Entity: ind2},
 			{XRef: "@F1@", Type: RecordTypeFamily, Entity: fam1},
+			{XRef: "@S1@", Type: RecordTypeSource, Entity: src1},
 		},
 		XRefMap: map[string]*Record{
 			"@I1@": {XRef: "@I1@", Type: RecordTypeIndividual, Entity: ind1},
 			"@I2@": {XRef: "@I2@", Type: RecordTypeIndividual, Entity: ind2},
 			"@F1@": {XRef: "@F1@", Type: RecordTypeFamily, Entity: fam1},
+			"@S1@": {XRef: "@S1@", Type: RecordTypeSource, Entity: src1},
 		},
 	}
 
@@ -179,6 +250,14 @@ func TestDocument(t *testing.T) {
 		}
 	})
 
+	t.Run("GetRecord with nil XRefMap", func(t *testing.T) {
+		emptyDoc := &Document{}
+		record := emptyDoc.GetRecord("@I1@")
+		if record != nil {
+			t.Error("Should return nil when XRefMap is nil")
+		}
+	})
+
 	t.Run("GetIndividual", func(t *testing.T) {
 		ind := doc.GetIndividual("@I1@")
 		if ind == nil {
@@ -193,6 +272,56 @@ func TestDocument(t *testing.T) {
 		if wrongType != nil {
 			t.Error("Should not get individual from family XRef")
 		}
+
+		// Non-existent XRef
+		notFound := doc.GetIndividual("@I999@")
+		if notFound != nil {
+			t.Error("Should return nil for non-existent XRef")
+		}
+	})
+
+	t.Run("GetFamily", func(t *testing.T) {
+		fam := doc.GetFamily("@F1@")
+		if fam == nil {
+			t.Fatal("Should find family")
+		}
+		if fam.XRef != "@F1@" {
+			t.Errorf("Got XRef %s, want @F1@", fam.XRef)
+		}
+
+		// Try to get family from individual XRef
+		wrongType := doc.GetFamily("@I1@")
+		if wrongType != nil {
+			t.Error("Should not get family from individual XRef")
+		}
+
+		// Non-existent XRef
+		notFound := doc.GetFamily("@F999@")
+		if notFound != nil {
+			t.Error("Should return nil for non-existent XRef")
+		}
+	})
+
+	t.Run("GetSource", func(t *testing.T) {
+		src := doc.GetSource("@S1@")
+		if src == nil {
+			t.Fatal("Should find source")
+		}
+		if src.XRef != "@S1@" {
+			t.Errorf("Got XRef %s, want @S1@", src.XRef)
+		}
+
+		// Try to get source from individual XRef
+		wrongType := doc.GetSource("@I1@")
+		if wrongType != nil {
+			t.Error("Should not get source from individual XRef")
+		}
+
+		// Non-existent XRef
+		notFound := doc.GetSource("@S999@")
+		if notFound != nil {
+			t.Error("Should return nil for non-existent XRef")
+		}
 	})
 
 	t.Run("Individuals", func(t *testing.T) {
@@ -206,6 +335,13 @@ func TestDocument(t *testing.T) {
 		families := doc.Families()
 		if len(families) != 1 {
 			t.Errorf("Got %d families, want 1", len(families))
+		}
+	})
+
+	t.Run("Sources", func(t *testing.T) {
+		sources := doc.Sources()
+		if len(sources) != 1 {
+			t.Errorf("Got %d sources, want 1", len(sources))
 		}
 	})
 }
