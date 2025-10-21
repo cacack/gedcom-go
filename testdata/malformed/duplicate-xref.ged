@@ -1,0 +1,18 @@
+0 HEAD
+1 GEDC
+2 VERS 5.5
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME First Person
+1 SEX M
+0 @I1@ INDI
+1 NAME Second Person With Same XRef
+1 SEX F
+0 @I1@ INDI
+1 NAME Third Person With Same XRef
+1 SEX M
+0 @F1@ FAM
+1 HUSB @I1@
+0 @F1@ FAM
+1 WIFE @I1@
+0 TRLR

@@ -1,0 +1,78 @@
+0 HEAD
+1 GEDC
+2 VERS 5.5
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @N1@ NOTE This note tests CONT (continuation) which adds a newline.
+1 CONT This is the second line after a CONT.
+1 CONT This is the third line after another CONT.
+1 CONT
+1 CONT This line follows a blank CONT line.
+0 @N2@ NOTE This note tests CONC (concatenation) which does NOT add a newline. This
+1 CONC  text should be concatenated directly to the previous line without a line break.
+1 CONC  Additional concatenated text.
+0 @N3@ NOTE Mixed CONT and CONC test. This line has CONC text
+1 CONC  concatenated immediately after it.
+1 CONT This line starts on a new line due to CONT.
+1 CONC  But this text is concatenated to the CONT line above.
+1 CONT Another new line.
+1 CONC  With more concatenated text.
+0 @N4@ NOTE Testing very long lines that exceed the GEDCOM recommended
+1 CONC  255 character limit. According to the GEDCOM specification, lines
+1 CONC  longer than 255 characters should be split using CONC tags. This
+1 CONC  ensures compatibility with older systems that have line length
+1 CONC  limitations. Here we test that the parser correctly reconstructs
+1 CONC  the original text by concatenating all these fragments together
+1 CONC  without introducing unwanted line breaks or spaces. The final
+1 CONC  result should be one long continuous string of text.
+0 @N5@ NOTE Edge case: CONC with empty value
+1 CONC
+1 CONT Should be on new line
+0 @N6@ NOTE Edge case: Multiple CONCs in a row
+1 CONC  first
+1 CONC  second
+1 CONC  third
+1 CONC  fourth
+0 @N7@ NOTE Edge case: Multiple CONTs in a row
+1 CONT Line 2
+1 CONT Line 3
+1 CONT Line 4
+1 CONT Line 5
+1 CONT Line 6
+0 @N8@ NOTE Testing spaces and punctuation at line boundaries.Test
+1 CONC  that there's a space before "that".
+1 CONT New sentence on new line.
+1 CONC  Continues without line break.
+0 @I1@ INDI
+1 NAME John /Smith/
+1 NOTE This individual has a long biographical note that spans multiple
+1 CONC  lines using CONC tags for concatenation and CONT tags for actual
+1 CONT line breaks.
+1 CONT
+1 CONT He was born in a small town and grew up to become a notable figure
+1 CONC  in his community.
+1 CONT
+1 CONT His achievements include:
+1 CONT - First achievement that spans multiple lines because it's quite
+1 CONC   lengthy and detailed
+1 CONT - Second achievement
+1 CONT - Third achievement
+0 @I2@ INDI
+1 NAME María /García/
+1 NOTE Testing Unicode with CONT/CONC: François était un généalogiste qui
+1 CONC  travaillait avec des caractères spéciaux comme àéèêëïôùû et des
+1 CONT symboles cyrilliques: Алексей Иванов.
+1 CONT Japanese: 田中太郎
+1 CONC  中文
+0 @ADDR1@ NOTE Testing ADDRESS structure with CONT:
+1 CONT 123 Main Street
+1 CONT Apartment 4B
+1 CONT Springfield, MA 01103
+1 CONT USA
+0 @TEXT1@ NOTE Testing embedded quotes and special characters:
+1 CONT "This is a quoted string"
+1 CONT She said, "Hello"
+1 CONC  and he replied, "Hi"
+1 CONT Special chars: @#$%^&*()_+-=[]{}|;':",./<>?
+1 CONT Escaped at sign: @@
+0 TRLR

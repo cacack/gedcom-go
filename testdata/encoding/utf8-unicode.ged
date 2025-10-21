@@ -1,0 +1,118 @@
+0 HEAD
+1 SOUR Unicode Test
+1 GEDC
+2 VERS 5.5
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME François /Müller/
+2 GIVN François
+2 SURN Müller
+1 SEX M
+1 BIRT
+2 DATE 1950
+2 PLAC Paris, Île-de-France, France
+1 NOTE François était un célèbre généalogiste français.
+0 @I2@ INDI
+1 NAME José /García/
+2 GIVN José
+2 SURN García
+1 SEX M
+1 BIRT
+2 DATE 1955
+2 PLAC Madrid, España
+1 NOTE José trabajó en la preservación de registros históricos.
+0 @I3@ INDI
+1 NAME Søren /Nielsen/
+2 GIVN Søren
+2 SURN Nielsen
+1 SEX M
+1 BIRT
+2 DATE 1960
+2 PLAC København, Danmark
+1 NOTE Søren var en dansk historiker.
+0 @I4@ INDI
+1 NAME Алексей /Иванов/
+2 GIVN Алексей
+2 SURN Иванов
+1 SEX M
+1 BIRT
+2 DATE 1965
+2 PLAC Москва, Россия
+1 NOTE Алексей был русским генеалогом.
+0 @I5@ INDI
+1 NAME 田中 /太郎/
+2 GIVN 太郎
+2 SURN 田中
+1 SEX M
+1 BIRT
+2 DATE 1970
+2 PLAC 東京, 日本
+1 NOTE 田中太郎は日本の家系図研究者でした。
+0 @I6@ INDI
+1 NAME محمد /أحمد/
+2 GIVN محمد
+2 SURN أحمد
+1 SEX M
+1 BIRT
+2 DATE 1975
+2 PLAC القاهرة, مصر
+1 NOTE محمد كان باحثًا في علم الأنساب.
+0 @I7@ INDI
+1 NAME Ελένη /Παπαδόπουλος/
+2 GIVN Ελένη
+2 SURN Παπαδόπουλος
+1 SEX F
+1 BIRT
+2 DATE 1980
+2 PLAC Αθήνα, Ελλάδα
+1 NOTE Η Ελένη ήταν ιστορικός και γενεαλόγος.
+0 @I8@ INDI
+1 NAME Łukasz /Kowalski/
+2 GIVN Łukasz
+2 SURN Kowalski
+1 SEX M
+1 BIRT
+2 DATE 1985
+2 PLAC Warszawa, Polska
+1 NOTE Łukasz badał polskie archiwum rodzinne.
+0 @I9@ INDI
+1 NAME Björk /Guðmundsdóttir/
+2 GIVN Björk
+2 SURN Guðmundsdóttir
+1 SEX F
+1 BIRT
+2 DATE 1990
+2 PLAC Reykjavík, Ísland
+1 NOTE Björk var íslensk sagnfræðingur.
+0 @I10@ INDI
+1 NAME Niño /José/
+2 GIVN Niño
+2 SURN José
+1 SEX M
+1 BIRT
+2 DATE 1995
+2 PLAC São Paulo, Brasil
+1 NOTE Testing special characters: ñ á é í ó ú ü ¿ ¡ ç
+1 NOTE Symbols: © ® ™ € £ ¥ § ¶ † ‡
+1 NOTE Math: ± × ÷ ≈ ≠ ≤ ≥
+1 NOTE Arrows: ← → ↑ ↓ ↔ ⇐ ⇒
+1 NOTE Hearts: ♥ ♡ 💕 💖 💗
+0 @N1@ NOTE This file tests UTF-8 encoding with various Unicode characters:
+1 CONT - Latin-1 Supplement: àáâãäåæçèéêëìíîï
+1 CONT - Latin Extended-A: ĀāĂăĄąĆćĈĉĊċČčĎď
+1 CONT - Cyrillic: АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя
+1 CONT - Greek: ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρστυφχψω
+1 CONT - Arabic: أبتثجحخدذرزسشصضطظعغفقكلمنهوي
+1 CONT - CJK (Chinese/Japanese): 中文漢字日本語ひらがなカタカナ한글
+1 CONT - Hebrew: אבגדהוזחטיכלמנסעפצקרשת
+1 CONT - Thai: กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ
+1 CONT - Emoji and symbols: ☺☻♠♣♥♦★☆♪♫✓✗✘
+1 CONT
+1 CONT This tests that the parser correctly handles:
+1 CONT 1. Multi-byte UTF-8 sequences
+1 CONT 2. Right-to-left text (Arabic, Hebrew)
+1 CONT 3. Complex scripts (Thai, Devanagari)
+1 CONT 4. East Asian width characters
+1 CONT 5. Combining diacritical marks
+0 TRLR
