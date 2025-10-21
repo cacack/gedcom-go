@@ -333,3 +333,61 @@ func TestDecodeContextCancellationStages(t *testing.T) {
 		}
 	})
 }
+
+// Test buildHeader edge cases
+func TestDecodeHeaderEdgeCases(t *testing.T) {
+	t.Run("header without CHAR tag", func(t *testing.T) {
+		input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+1 SOUR TestApp
+0 TRLR`
+
+		doc, err := Decode(strings.NewReader(input))
+		if err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+
+		// Should still decode successfully
+		if doc.Header.Version != "5.5" {
+			t.Errorf("Header.Version = %q, want %q", doc.Header.Version, "5.5")
+		}
+		if doc.Header.SourceSystem != "TestApp" {
+			t.Errorf("Header.SourceSystem = %q, want %q", doc.Header.SourceSystem, "TestApp")
+		}
+	})
+
+	t.Run("header with LANG only", func(t *testing.T) {
+		input := `0 HEAD
+1 LANG Spanish
+0 TRLR`
+
+		doc, err := Decode(strings.NewReader(input))
+		if err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+
+		if doc.Header.Language != "Spanish" {
+			t.Errorf("Header.Language = %q, want %q", doc.Header.Language, "Spanish")
+		}
+	})
+
+	t.Run("nested tags within header", func(t *testing.T) {
+		input := `0 HEAD
+1 SOUR TestApp
+2 VERS 1.0
+2 NAME Test Application
+1 CHAR UTF-8
+0 TRLR`
+
+		doc, err := Decode(strings.NewReader(input))
+		if err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+
+		// Level 1 SOUR should be captured
+		if doc.Header.SourceSystem != "TestApp" {
+			t.Errorf("Header.SourceSystem = %q, want %q", doc.Header.SourceSystem, "TestApp")
+		}
+	})
+}

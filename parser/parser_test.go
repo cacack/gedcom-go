@@ -370,3 +370,55 @@ func TestParseLineValueSpacing(t *testing.T) {
 		})
 	}
 }
+
+// Test edge cases in value extraction
+func TestParseLineValueExtraction(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantValue string
+		wantTag   string
+	}{
+		{
+			name:      "tag at exact end of line",
+			input:     "0 HEAD",
+			wantValue: "",
+			wantTag:   "HEAD",
+		},
+		{
+			name:      "single word becomes tag only",
+			input:     "1 NAMEJOHN",
+			wantValue: "",
+			wantTag:   "NAMEJOHN",
+		},
+		{
+			name:      "xref with value",
+			input:     "0 @I1@ INDI",
+			wantValue: "",
+			wantTag:   "INDI",
+		},
+		{
+			name:      "xref with tag and value",
+			input:     "0 @I1@ NOTE This is a note",
+			wantValue: "This is a note",
+			wantTag:   "NOTE",
+		},
+	}
+
+	p := NewParser()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p.Reset()
+			line, err := p.ParseLine(tt.input)
+			if err != nil {
+				t.Fatalf("ParseLine() error = %v", err)
+			}
+			if line.Value != tt.wantValue {
+				t.Errorf("Value = %q, want %q", line.Value, tt.wantValue)
+			}
+			if line.Tag != tt.wantTag {
+				t.Errorf("Tag = %q, want %q", line.Tag, tt.wantTag)
+			}
+		})
+	}
+}

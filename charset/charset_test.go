@@ -435,3 +435,46 @@ func TestNewReader_InvalidUTF8WithNewlineInBuffer(t *testing.T) {
 		t.Errorf("Expected column >= 1, got column %d", utf8Err.Column)
 	}
 }
+
+func TestNewReader_MultiByteUTF8Tracking(t *testing.T) {
+	// Test that multi-byte UTF-8 characters are tracked correctly
+	// This exercises the column += size path in findInvalidUTF8
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "2-byte UTF-8 characters (accented)",
+			input: "Café",
+		},
+		{
+			name:  "3-byte UTF-8 characters (emoji)",
+			input: "Hello 👋 World",
+		},
+		{
+			name:  "4-byte UTF-8 characters (rare emoji)",
+			input: "Test 𝕳𝖊𝖑𝖑𝖔",
+		},
+		{
+			name:  "Mixed ASCII and multi-byte",
+			input: "ASCII then 日本語 then ASCII",
+		},
+		{
+			name:  "Multi-byte across multiple lines",
+			input: "Line1: Café\nLine2: 你好\nLine3: Test",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewReader(strings.NewReader(tt.input))
+			got, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+			if string(got) != tt.input {
+				t.Errorf("ReadAll() = %q, want %q", got, tt.input)
+			}
+		})
+	}
+}
