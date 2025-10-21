@@ -33,6 +33,8 @@ go get github.com/cacack/gedcom-go
 
 ## Quick Start
 
+### Basic Parsing
+
 ```go
 package main
 
@@ -45,30 +47,101 @@ import (
 )
 
 func main() {
-    // Open GEDCOM file
+    // Open and parse GEDCOM file
     f, err := os.Open("family.ged")
     if err != nil {
         log.Fatal(err)
     }
     defer f.Close()
 
-    // Parse the file
     doc, err := decoder.Decode(f)
     if err != nil {
         log.Fatal(err)
     }
 
-    // Access parsed data
+    // Print summary
     fmt.Printf("GEDCOM Version: %s\n", doc.Header.Version)
-    fmt.Printf("Total Records: %d\n", len(doc.Records))
+    fmt.Printf("Individuals: %d\n", len(doc.Individuals()))
+    fmt.Printf("Families: %d\n", len(doc.Families()))
 }
+```
+
+### Working with Individuals
+
+```go
+// Find and display individuals
+for _, individual := range doc.Individuals() {
+    if len(individual.Names) > 0 {
+        fmt.Printf("Name: %s\n", individual.Names[0].Full)
+    }
+
+    // Access events
+    for _, event := range individual.Events {
+        fmt.Printf("  %s: %s\n", event.Tag, event.Date)
+    }
+}
+```
+
+### Validating GEDCOM Files
+
+```go
+import "github.com/cacack/gedcom-go/validator"
+
+// Validate the document
+v := validator.New(doc)
+errors := v.Validate()
+
+if len(errors) > 0 {
+    fmt.Printf("Found %d validation errors:\n", len(errors))
+    for _, err := range errors {
+        fmt.Printf("  Line %d: %s\n", err.Line, err.Message)
+    }
+}
+```
+
+### Creating GEDCOM Files
+
+```go
+import "github.com/cacack/gedcom-go/encoder"
+
+// Create a new document
+doc := &gedcom.Document{
+    Header: &gedcom.Header{
+        Version:  "5.5",
+        Encoding: "UTF-8",
+    },
+    Records: []*gedcom.Record{
+        // Add your records here
+    },
+}
+
+// Write to file
+f, _ := os.Create("output.ged")
+defer f.Close()
+
+encoder.Encode(f, doc)
 ```
 
 ## Documentation
 
-Full documentation and examples will be available at:
-- Package documentation: [pkg.go.dev](https://pkg.go.dev/github.com/cacack/gedcom-go)
-- Examples: See the `examples/` directory
+- **Package Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go](https://pkg.go.dev/github.com/cacack/gedcom-go)
+- **Getting Started Guide**: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)
+- **Examples**: See the [`examples/`](examples/) directory:
+  - [`examples/parse`](examples/parse) - Basic parsing and information display
+  - [`examples/encode`](examples/encode) - Creating GEDCOM files programmatically
+  - [`examples/query`](examples/query) - Navigating and querying genealogy data
+  - [`examples/validate`](examples/validate) - Validating GEDCOM files
+- **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
+
+## Packages
+
+- **`charset`** - Character encoding utilities with UTF-8 validation
+- **`decoder`** - High-level GEDCOM decoding with automatic version detection
+- **`encoder`** - GEDCOM document writing with configurable line endings
+- **`gedcom`** - Core data types (Document, Individual, Family, Source, etc.)
+- **`parser`** - Low-level line parsing with detailed error reporting
+- **`validator`** - Document validation with error categorization
+- **`version`** - GEDCOM version detection (header and heuristic-based)
 
 ## Development
 
