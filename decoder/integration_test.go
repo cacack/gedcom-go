@@ -380,6 +380,7 @@ func TestMalformedFilesIntegration(t *testing.T) {
 		})
 	}
 }
+
 // Test GEDCOM 5.5.1 comprehensive features (EMAIL, FAX, WWW tags)
 func TestGEDCOM551Comprehensive(t *testing.T) {
 	t.Run("comprehensive.ged", func(t *testing.T) {

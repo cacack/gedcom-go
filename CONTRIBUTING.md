@@ -40,15 +40,23 @@ This project adheres to a simple code of conduct:
 2. **Install dependencies**
    ```bash
    go mod download
+   # Or use the Makefile
+   make download
    ```
 
 3. **Verify everything works**
    ```bash
    go test ./...
+   # Or use the Makefile
+   make test
    ```
 
 4. **Install recommended development tools** (optional but recommended)
    ```bash
+   # Using the Makefile (recommended)
+   make install-tools
+
+   # Or install manually
    go install golang.org/x/tools/cmd/gopls@latest
    go install honnef.co/go/tools/cmd/staticcheck@latest
    go install golang.org/x/tools/cmd/goimports@latest
@@ -77,6 +85,24 @@ git checkout -b docs/improve-examples
 
 ### 3. Test Your Changes
 
+**Using Makefile (recommended):**
+
+```bash
+# Run all tests
+make test
+
+# Check test coverage (requires 85%+)
+make test-coverage
+
+# Run tests with race detector
+make test-verbose
+
+# Run benchmarks
+make bench
+```
+
+**Using Go commands directly:**
+
 ```bash
 # Run all tests
 go test ./...
@@ -92,6 +118,24 @@ go test -race ./...
 ```
 
 ### 4. Format and Lint
+
+**Using Makefile (recommended):**
+
+```bash
+# Format code
+make fmt
+
+# Run vet
+make vet
+
+# Run staticcheck linter
+make lint
+
+# Run all checks (fmt, vet, test)
+make check
+```
+
+**Using Go commands directly:**
 
 ```bash
 # Format code

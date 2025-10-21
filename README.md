@@ -145,7 +145,46 @@ encoder.Encode(f, doc)
 
 ## Development
 
-### Running Tests
+### Quick Start with Makefile
+
+The project includes a Makefile for common development tasks:
+
+```bash
+# Show all available commands
+make help
+
+# Run all checks and build
+make all
+
+# Run tests
+make test
+
+# Run tests with coverage (96.7% coverage)
+make test-coverage
+
+# Generate HTML coverage report
+make coverage-html
+
+# Run benchmarks
+make bench
+
+# Format code
+make fmt
+
+# Run linters
+make vet
+make lint
+
+# Run pre-commit checks
+make pre-commit
+
+# Clean build artifacts
+make clean
+```
+
+### Manual Commands
+
+You can also use Go commands directly:
 
 ```bash
 # Run all tests
@@ -156,11 +195,7 @@ go test -cover ./...
 
 # Run benchmarks
 go test -bench=. ./...
-```
 
-### Building
-
-```bash
 # Download dependencies
 go mod download
 
