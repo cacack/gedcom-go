@@ -14,7 +14,7 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 ## Installation
 
 ```bash
-go get github.com/elliotchance/go-gedcom
+go get github.com/cacack/gedcom-go
 ```
 
 ## Requirements
@@ -31,7 +31,7 @@ import (
     "log"
     "os"
 
-    "github.com/elliotchance/go-gedcom/decoder"
+    "github.com/cacack/gedcom-go/decoder"
 )
 
 func main() {
@@ -57,7 +57,7 @@ func main() {
 ## Documentation
 
 Full documentation and examples will be available at:
-- Package documentation: [pkg.go.dev](https://pkg.go.dev/github.com/elliotchance/go-gedcom)
+- Package documentation: [pkg.go.dev](https://pkg.go.dev/github.com/cacack/gedcom-go)
 - Examples: See the `examples/` directory
 
 ## Development

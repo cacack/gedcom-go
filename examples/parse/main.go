@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/elliotchance/go-gedcom/decoder"
-	"github.com/elliotchance/go-gedcom/validator"
+	"github.com/cacack/gedcom-go/decoder"
+	"github.com/cacack/gedcom-go/validator"
 )
 
 func main() {

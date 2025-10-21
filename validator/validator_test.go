@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/elliotchance/go-gedcom/decoder"
+	"github.com/cacack/gedcom-go/decoder"
 )
 
 func TestValidateBrokenXRef(t *testing.T) {

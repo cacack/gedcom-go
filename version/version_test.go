@@ -3,8 +3,8 @@ package version
 import (
 	"testing"
 
-	"github.com/elliotchance/go-gedcom/gedcom"
-	"github.com/elliotchance/go-gedcom/parser"
+	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/parser"
 )
 
 // T030: Write tests for version detection (header-based and tag-based fallback)
