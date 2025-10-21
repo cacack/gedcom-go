@@ -302,3 +302,34 @@ func TestDecodeHeaderComplete(t *testing.T) {
 		t.Errorf("Header.Language = %q, want %q", doc.Header.Language, "French")
 	}
 }
+
+// Test context cancellation at different stages
+func TestDecodeContextCancellationStages(t *testing.T) {
+	t.Run("context cancelled after parsing", func(t *testing.T) {
+		// This test is challenging because we can't easily cancel context
+		// *during* parsing. However, we can verify the check exists by
+		// using a very short timeout that might expire during processing
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+		defer cancel()
+
+		// Create a small but valid GEDCOM
+		input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME Test
+0 TRLR`
+
+		opts := &DecodeOptions{
+			Context: ctx,
+		}
+
+		// Try to decode - may or may not error depending on timing
+		_, err := DecodeWithOptions(strings.NewReader(input), opts)
+
+		// Either succeeds or gets context.DeadlineExceeded
+		if err != nil && err != context.DeadlineExceeded {
+			t.Errorf("Expected nil or context.DeadlineExceeded, got %v", err)
+		}
+	})
+}

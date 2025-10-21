@@ -172,3 +172,116 @@ func TestValidationErrorImplementsError(t *testing.T) {
 		t.Error("Error() should contain error message")
 	}
 }
+
+// TestValidateFamilyEdgeCases tests edge cases in family validation
+func TestValidateFamilyEdgeCases(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expectError bool
+		errorCode   string
+	}{
+		{
+			name: "empty family (no members)",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @F1@ FAM
+0 TRLR`,
+			expectError: true,
+			errorCode:   "EMPTY_FAMILY",
+		},
+		{
+			name: "family with only children",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME Child /One/
+0 @F1@ FAM
+1 CHIL @I1@
+0 TRLR`,
+			expectError: false,
+		},
+		{
+			name: "family with only wife",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME Jane /Doe/
+0 @F1@ FAM
+1 WIFE @I1@
+0 TRLR`,
+			expectError: false,
+		},
+		{
+			name: "family with only husband",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME John /Doe/
+0 @F1@ FAM
+1 HUSB @I1@
+0 TRLR`,
+			expectError: false,
+		},
+		{
+			name: "family with all members",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME John /Doe/
+0 @I2@ INDI
+1 NAME Jane /Doe/
+0 @I3@ INDI
+1 NAME Child /Doe/
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+0 TRLR`,
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := decoder.Decode(strings.NewReader(tt.input))
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+
+			v := New()
+			errors := v.Validate(doc)
+
+			if tt.expectError {
+				if len(errors) == 0 {
+					t.Fatal("Expected validation error but got none")
+				}
+
+				found := false
+				for _, err := range errors {
+					if strings.Contains(err.Error(), tt.errorCode) {
+						found = true
+						t.Logf("Found expected error: %v", err)
+						break
+					}
+				}
+
+				if !found {
+					t.Errorf("Expected error code %q, got errors: %v", tt.errorCode, errors)
+				}
+			} else {
+				if len(errors) != 0 {
+					t.Errorf("Expected no validation errors, got %d errors:", len(errors))
+					for _, err := range errors {
+						t.Logf("  - %v", err)
+					}
+				}
+			}
+		})
+	}
+}

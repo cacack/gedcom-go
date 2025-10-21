@@ -545,3 +545,96 @@ func TestEncodeComplexDocument(t *testing.T) {
 		t.Errorf("Record count mismatch after roundtrip: got %d, want %d", len(doc2.Records), len(doc.Records))
 	}
 }
+
+// TestEncodeEdgeCases tests edge cases in encoding
+func TestEncodeEdgeCases(t *testing.T) {
+	t.Run("record with nil tags slice", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{Version: "5.5"},
+			Records: []*gedcom.Record{
+				{
+					XRef: "@I1@",
+					Type: gedcom.RecordTypeIndividual,
+					Tags: nil, // nil slice
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		output := buf.String()
+		if !strings.Contains(output, "0 @I1@ INDI") {
+			t.Error("Output should contain INDI record")
+		}
+	})
+
+	t.Run("tag with empty string value", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{Version: "5.5"},
+			Records: []*gedcom.Record{
+				{
+					Type: gedcom.RecordTypeNote,
+					Tags: []*gedcom.Tag{
+						{Level: 1, Tag: "NOTE", Value: ""}, // Empty value
+					},
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		output := buf.String()
+		if !strings.Contains(output, "1 NOTE\n") {
+			t.Error("Output should contain NOTE tag without value")
+		}
+	})
+
+	t.Run("mixed tags with and without values", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{Version: "5.5"},
+			Records: []*gedcom.Record{
+				{
+					XRef: "@I1@",
+					Type: gedcom.RecordTypeIndividual,
+					Tags: []*gedcom.Tag{
+						{Level: 1, Tag: "NAME", Value: "Test Name"},
+						{Level: 1, Tag: "BIRT", Value: ""},
+						{Level: 2, Tag: "DATE", Value: "1 JAN 2000"},
+						{Level: 2, Tag: "PLAC", Value: ""},
+						{Level: 1, Tag: "SEX", Value: "M"},
+					},
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		output := buf.String()
+		// Verify tags with values
+		if !strings.Contains(output, "1 NAME Test Name") {
+			t.Error("Output should contain NAME with value")
+		}
+		if !strings.Contains(output, "2 DATE 1 JAN 2000") {
+			t.Error("Output should contain DATE with value")
+		}
+		if !strings.Contains(output, "1 SEX M") {
+			t.Error("Output should contain SEX with value")
+		}
+		// Verify tags without values
+		if !strings.Contains(output, "1 BIRT\n") {
+			t.Error("Output should contain BIRT without value")
+		}
+		if !strings.Contains(output, "2 PLAC\n") {
+			t.Error("Output should contain PLAC without value")
+		}
+	})
+}
