@@ -234,3 +234,71 @@ func TestDecodeStrictMode(t *testing.T) {
 		t.Fatalf("DecodeWithOptions() error = %v", err)
 	}
 }
+
+// Test header with SOUR at different levels
+func TestDecodeHeaderSOURLevels(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+1 SOUR MyApp
+2 SOUR NestedSource
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	// Only level 1 SOUR should be captured as SourceSystem
+	if doc.Header.SourceSystem != "MyApp" {
+		t.Errorf("Header.SourceSystem = %q, want %q", doc.Header.SourceSystem, "MyApp")
+	}
+}
+
+// Test header with version already set in GEDC tag
+func TestDecodeHeaderVersionFromGEDC(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 CHAR UTF-8
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	// Version should be set from GEDC/VERS tag
+	if doc.Header.Version != "7.0" {
+		t.Errorf("Header.Version = %q, want %q", doc.Header.Version, "7.0")
+	}
+}
+
+// Test header with all optional fields
+func TestDecodeHeaderComplete(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 CHAR ANSEL
+1 SOUR FamilyTreeMaker
+1 LANG French
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	if doc.Header.Version != "5.5.1" {
+		t.Errorf("Header.Version = %q, want %q", doc.Header.Version, "5.5.1")
+	}
+	if string(doc.Header.Encoding) != "ANSEL" {
+		t.Errorf("Header.Encoding = %q, want %q", doc.Header.Encoding, "ANSEL")
+	}
+	if doc.Header.SourceSystem != "FamilyTreeMaker" {
+		t.Errorf("Header.SourceSystem = %q, want %q", doc.Header.SourceSystem, "FamilyTreeMaker")
+	}
+	if doc.Header.Language != "French" {
+		t.Errorf("Header.Language = %q, want %q", doc.Header.Language, "French")
+	}
+}

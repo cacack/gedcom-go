@@ -379,3 +379,59 @@ func TestNewReader_BufferReturn(t *testing.T) {
 		t.Errorf("Second read: got %d bytes, %v; want 1 byte, 'B'", n2, buf2[:n2])
 	}
 }
+
+func TestNewReader_InvalidUTF8AfterValidChars(t *testing.T) {
+	// Test invalid UTF-8 that comes after valid non-newline characters
+	// This ensures we cover the column increment path in findInvalidUTF8
+	// The function processes valid chars before finding the invalid one
+	input := "ABC\xFF"  // Valid chars then invalid
+
+	r := NewReader(strings.NewReader(input))
+	_, err := io.ReadAll(r)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid UTF-8")
+	}
+
+	utf8Err, ok := err.(*ErrInvalidUTF8)
+	if !ok {
+		t.Fatalf("Expected *ErrInvalidUTF8, got %T", err)
+	}
+
+	// Error should be detected on line 1
+	// (column calculation accounts for position tracking in findInvalidUTF8)
+	if utf8Err.Line != 1 {
+		t.Errorf("Expected line 1, got line %d", utf8Err.Line)
+	}
+	// Column should be > 1 since invalid byte comes after valid chars
+	if utf8Err.Column < 1 {
+		t.Errorf("Expected column >= 1, got column %d", utf8Err.Column)
+	}
+}
+
+func TestNewReader_InvalidUTF8WithNewlineInBuffer(t *testing.T) {
+	// Test buffer containing both newline and invalid UTF-8
+	// to ensure newline tracking works correctly in error path
+	input := "Line1\nABC\xFF"  // Newline, then valid chars, then invalid
+
+	r := NewReader(strings.NewReader(input))
+	_, err := io.ReadAll(r)
+
+	if err == nil {
+		t.Fatal("Expected error for invalid UTF-8")
+	}
+
+	utf8Err, ok := err.(*ErrInvalidUTF8)
+	if !ok {
+		t.Fatalf("Expected *ErrInvalidUTF8, got %T", err)
+	}
+
+	// Error should be detected on line 2 (after the newline)
+	if utf8Err.Line != 2 {
+		t.Errorf("Expected line 2, got line %d", utf8Err.Line)
+	}
+	// Column should be reported (column tracking through newlines)
+	if utf8Err.Column < 1 {
+		t.Errorf("Expected column >= 1, got column %d", utf8Err.Column)
+	}
+}

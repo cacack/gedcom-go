@@ -1,8 +1,10 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 	"testing"
+	"testing/iotest"
 )
 
 // T026: Write table-driven tests for line parsing (valid lines, edge cases, line endings)
@@ -282,4 +284,89 @@ func TestMaxNestingDepth(t *testing.T) {
 
 	// We expect this to eventually fail when depth checking is implemented
 	_ = err // For now, just parse it
+}
+
+// Test ParseLine with tag at end of line (no value)
+func TestParseLineTagAtEnd(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"level and tag only", "0 HEAD"},
+		{"with xref, tag at end", "0 @I1@ INDI"},
+		{"level 1 tag only", "1 BIRT"},
+	}
+
+	p := NewParser()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p.Reset()
+			line, err := p.ParseLine(tt.input)
+			if err != nil {
+				t.Fatalf("ParseLine() error = %v", err)
+			}
+			if line.Value != "" {
+				t.Errorf("Expected empty value, got %q", line.Value)
+			}
+		})
+	}
+}
+
+// Test Parse with scanner error
+func TestParseScannerError(t *testing.T) {
+	// Use a reader that always returns an error
+	testErr := fmt.Errorf("simulated read error")
+	reader := iotest.ErrReader(testErr)
+
+	p := NewParser()
+	_, err := p.Parse(reader)
+
+	// Should get an error from the scanner
+	if err == nil {
+		t.Error("Expected error from Parse with failing reader")
+	}
+}
+
+// Test ParseLine value preservation
+func TestParseLineValueSpacing(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "single space before value",
+			input: "1 NAME John",
+			want:  "John",
+		},
+		{
+			name:  "multiple spaces before value",
+			input: "1 NAME    John",
+			want:  "John",
+		},
+		{
+			name:  "value with internal spaces",
+			input: "1 NAME John  Smith",
+			want:  "John  Smith",
+		},
+		{
+			name:  "value with trailing spaces preserved",
+			input: "1 NAME John  ",
+			want:  "John  ",
+		},
+	}
+
+	p := NewParser()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p.Reset()
+			line, err := p.ParseLine(tt.input)
+			if err != nil {
+				t.Fatalf("ParseLine() error = %v", err)
+			}
+			if line.Value != tt.want {
+				t.Errorf("Value = %q, want %q", line.Value, tt.want)
+			}
+		})
+	}
 }
