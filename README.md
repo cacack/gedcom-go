@@ -124,13 +124,13 @@ encoder.Encode(f, doc)
 
 ## Documentation
 
-- **Package Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go](https://pkg.go.dev/github.com/cacack/gedcom-go)
-- **Getting Started Guide**: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)
-- **Examples**: See the [`examples/`](examples/) directory:
+- **Usage Guide**: [USAGE.md](USAGE.md) - Comprehensive guide covering basic concepts, examples, and best practices
+- **Examples**: See the [`examples/`](examples/) directory ([README](examples/README.md)):
   - [`examples/parse`](examples/parse) - Basic parsing and information display
   - [`examples/encode`](examples/encode) - Creating GEDCOM files programmatically
   - [`examples/query`](examples/query) - Navigating and querying genealogy data
   - [`examples/validate`](examples/validate) - Validating GEDCOM files
+- **API Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go](https://pkg.go.dev/github.com/cacack/gedcom-go)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Packages
