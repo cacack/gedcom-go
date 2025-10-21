@@ -25,9 +25,10 @@ func DetectVersion(lines []*parser.Line) (gedcom.Version, error) {
 
 // detectFromHeader looks for the version in the GEDCOM header.
 // Header structure:
-//   0 HEAD
-//   1 GEDC
-//   2 VERS 5.5 (or 5.5.1, or 7.0)
+//
+//	0 HEAD
+//	1 GEDC
+//	2 VERS 5.5 (or 5.5.1, or 7.0)
 func detectFromHeader(lines []*parser.Line) gedcom.Version {
 	inHead := false
 	inGedc := false

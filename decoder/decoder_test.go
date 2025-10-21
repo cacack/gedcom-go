@@ -96,8 +96,8 @@ func TestDecodeEmptyFile(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "empty file",
-			input: ``,
+			name:    "empty file",
+			input:   ``,
 			wantErr: false,
 		},
 		{

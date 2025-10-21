@@ -33,10 +33,11 @@ func (p *Parser) Reset() {
 // ParseLine parses a single GEDCOM line.
 // GEDCOM line format: LEVEL [XREF] TAG [VALUE]
 // Examples:
-//   0 HEAD
-//   0 @I1@ INDI
-//   1 NAME John /Smith/
-//   2 GIVN John
+//
+//	0 HEAD
+//	0 @I1@ INDI
+//	1 NAME John /Smith/
+//	2 GIVN John
 func (p *Parser) ParseLine(input string) (*Line, error) {
 	p.lineNumber++
 

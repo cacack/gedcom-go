@@ -91,8 +91,8 @@ func TestDecoderErrorMessages(t *testing.T) {
 		errSubstring string
 	}{
 		{
-			name: "invalid UTF-8",
-			input: "0 HEAD\n1 NAME \xFF\xFE Invalid UTF-8\n0 TRLR",
+			name:         "invalid UTF-8",
+			input:        "0 HEAD\n1 NAME \xFF\xFE Invalid UTF-8\n0 TRLR",
 			wantErr:      true,
 			errSubstring: "error",
 		},

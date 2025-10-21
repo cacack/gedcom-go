@@ -5,16 +5,16 @@ type EventType string
 
 const (
 	// Individual events
-	EventBirth      EventType = "BIRT" // Birth
-	EventDeath      EventType = "DEAT" // Death
-	EventBaptism    EventType = "BAPM" // Baptism
-	EventBurial     EventType = "BURI" // Burial
-	EventCensus     EventType = "CENS" // Census
+	EventBirth       EventType = "BIRT" // Birth
+	EventDeath       EventType = "DEAT" // Death
+	EventBaptism     EventType = "BAPM" // Baptism
+	EventBurial      EventType = "BURI" // Burial
+	EventCensus      EventType = "CENS" // Census
 	EventChristening EventType = "CHR"  // Christening
-	EventOccupation EventType = "OCCU" // Occupation
-	EventResidence  EventType = "RESI" // Residence
+	EventOccupation  EventType = "OCCU" // Occupation
+	EventResidence   EventType = "RESI" // Residence
 	EventImmigration EventType = "IMMI" // Immigration
-	EventEmigration EventType = "EMIG" // Emigration
+	EventEmigration  EventType = "EMIG" // Emigration
 
 	// Family events
 	EventMarriage   EventType = "MARR" // Marriage
