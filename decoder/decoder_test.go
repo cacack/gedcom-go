@@ -193,6 +193,11 @@ func TestDecodeWithContext(t *testing.T) {
 		if err == nil {
 			t.Error("DecodeWithOptions() expected error for cancelled context")
 		}
+
+		// Verify the error is context.Canceled
+		if err != context.Canceled {
+			t.Errorf("Expected context.Canceled error, got %v", err)
+		}
 	})
 }
 

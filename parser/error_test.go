@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -317,4 +319,44 @@ func TestErrorMessageQuality(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test ParseError.Unwrap() method for error unwrapping
+func TestParseErrorUnwrap(t *testing.T) {
+	t.Run("unwrap wrapped error", func(t *testing.T) {
+		baseErr := fmt.Errorf("base error")
+		parseErr := wrapParseError(1, "wrapped message", "context", baseErr)
+
+		unwrapped := parseErr.(*ParseError).Unwrap()
+		if unwrapped != baseErr {
+			t.Errorf("Unwrap() = %v, want %v", unwrapped, baseErr)
+		}
+
+		// Test with errors.Is
+		if !errors.Is(parseErr, baseErr) {
+			t.Error("errors.Is() should find base error through Unwrap()")
+		}
+	})
+
+	t.Run("unwrap error without underlying error", func(t *testing.T) {
+		parseErr := newParseError(1, "simple error", "context")
+
+		unwrapped := parseErr.(*ParseError).Unwrap()
+		if unwrapped != nil {
+			t.Errorf("Unwrap() = %v, want nil", unwrapped)
+		}
+	})
+
+	t.Run("errors.As with wrapped error", func(t *testing.T) {
+		baseErr := &ParseError{Line: 99, Message: "original"}
+		wrappedErr := wrapParseError(1, "wrapped", "ctx", baseErr)
+
+		var target *ParseError
+		if !errors.As(wrappedErr, &target) {
+			t.Error("errors.As() should find ParseError through Unwrap()")
+		}
+		if target.Line != 1 {
+			t.Errorf("errors.As() found wrong error, Line = %d, want 1", target.Line)
+		}
+	})
 }
