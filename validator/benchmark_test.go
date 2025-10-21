@@ -152,7 +152,7 @@ func generateInvalidDocument(numIndividuals int) *gedcom.Document {
 			XRef: xref,
 			Type: gedcom.RecordTypeFamily,
 			Tags: []*gedcom.Tag{
-				{Level: 1, Tag: "HUSB", Value: "@NONEXISTENT@"}, // Broken reference
+				{Level: 1, Tag: "HUSB", Value: "@NONEXISTENT@"},  // Broken reference
 				{Level: 1, Tag: "WIFE", Value: "@ALSO_MISSING@"}, // Broken reference
 			},
 			Entity: &gedcom.Family{

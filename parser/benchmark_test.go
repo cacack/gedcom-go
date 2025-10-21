@@ -49,11 +49,11 @@ func BenchmarkParse(b *testing.B) {
 0 TRLR`,
 		},
 		{
-			name: "file with 100 individuals",
+			name:    "file with 100 individuals",
 			content: generateLargeGEDCOM(100),
 		},
 		{
-			name: "file with 1000 individuals",
+			name:    "file with 1000 individuals",
 			content: generateLargeGEDCOM(1000),
 		},
 	}
