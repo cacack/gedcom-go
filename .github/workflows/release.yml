@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Run tests
+      run: go test -v ./...
+
+    - name: Check coverage
+      run: |
+        go test -coverprofile=coverage.out ./...
+        go tool cover -func=coverage.out
+
+    - name: Extract tag name
+      id: tag
+      run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Extract changelog for this version
+      id: changelog
+      run: |
+        VERSION=${{ steps.tag.outputs.tag }}
+        # Extract the relevant section from CHANGELOG.md
+        if [ -f CHANGELOG.md ]; then
+          awk "/^## \[$VERSION\]/,/^## \[/" CHANGELOG.md | sed '$d' > release_notes.md
+          if [ ! -s release_notes.md ]; then
+            echo "Release $VERSION" > release_notes.md
+            echo "" >> release_notes.md
+            echo "See [CHANGELOG.md](CHANGELOG.md) for details." >> release_notes.md
+          fi
+        else
+          echo "Release $VERSION" > release_notes.md
+        fi
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        body_path: release_notes.md
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-docs:
+    name: Trigger pkg.go.dev
+    runs-on: ubuntu-latest
+    needs: release
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Extract tag name
+      id: tag
+      run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Trigger pkg.go.dev indexing
+      run: |
+        VERSION=${{ steps.tag.outputs.tag }}
+        echo "Triggering pkg.go.dev for version $VERSION..."
+        # Request the module to trigger indexing
+        curl -f "https://proxy.golang.org/github.com/cacack/gedcom-go/@v/$VERSION.info" || true
+        curl -f "https://sum.golang.org/lookup/github.com/cacack/gedcom-go@$VERSION" || true
+        echo "Indexing request sent to pkg.go.dev"
+        echo "Documentation will be available at: https://pkg.go.dev/github.com/cacack/gedcom-go@$VERSION"

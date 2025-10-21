@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go: ['1.21', '1.22', '1.23']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ matrix.go }}-
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Verify dependencies
+      run: go mod verify
+
+    - name: Run tests
+      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+    - name: Check test coverage
+      run: |
+        echo "Checking test coverage..."
+        go tool cover -func=coverage.out | tail -1 | awk '{print "Total coverage: " $3}'
+        COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')
+        if (( $(echo "$COVERAGE < 85.0" | bc -l) )); then
+          echo "Error: Test coverage ($COVERAGE%) is below 85%"
+          exit 1
+        fi
+        echo "✓ Test coverage meets requirement (≥85%)"
+
+    - name: Upload coverage to Codecov
+      if: matrix.os == 'ubuntu-latest' && matrix.go == '1.23'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v4
+      with:
+        version: latest
+        args: --timeout=5m
+
+  format:
+    name: Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Check formatting
+      run: |
+        if [ -n "$(gofmt -l .)" ]; then
+          echo "Go files must be formatted with gofmt. Please run:"
+          echo "  gofmt -w ."
+          gofmt -l .
+          exit 1
+        fi
+
+    - name: Run go vet
+      run: go vet ./...
+
+  build-examples:
+    name: Build Examples
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    - name: Build parse example
+      run: go build -o /tmp/example-parse ./examples/parse
+
+    - name: Build encode example
+      run: go build -o /tmp/example-encode ./examples/encode
+
+    - name: Build query example
+      run: go build -o /tmp/example-query ./examples/query
+
+    - name: Build validate example
+      run: go build -o /tmp/example-validate ./examples/validate
+
+    - name: Run parse example
+      run: |
+        if [ -f testdata/gedcom-5.5/minimal.ged ]; then
+          /tmp/example-parse testdata/gedcom-5.5/minimal.ged
+        fi
