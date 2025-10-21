@@ -66,6 +66,122 @@ func TestDetectVersion(t *testing.T) {
 			wantErr:  false,
 			fallback: true,
 		},
+		{
+			name: "detect 7.0.0 from header (alternative format)",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "VERS", Value: "7.0.0"},
+			},
+			want:     gedcom.Version70,
+			wantErr:  false,
+			fallback: false,
+		},
+		{
+			name: "detect with extra whitespace in version",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "VERS", Value: "  5.5.1  "},
+			},
+			want:     gedcom.Version551,
+			wantErr:  false,
+			fallback: false,
+		},
+		{
+			name: "unknown version falls back to 5.5",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "VERS", Value: "6.0"},
+			},
+			want:     gedcom.Version55,
+			wantErr:  false,
+			fallback: true,
+		},
+		{
+			name: "GEDC without VERS falls back",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "GEDC"},
+				{Level: 1, Tag: "CHAR", Value: "UTF-8"},
+			},
+			want:     gedcom.Version55,
+			wantErr:  false,
+			fallback: true,
+		},
+		{
+			name: "detect 7.0 from tags (EXID)",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 0, Tag: "INDI"},
+				{Level: 1, Tag: "EXID", Value: "123"},
+			},
+			want:     gedcom.Version70,
+			wantErr:  false,
+			fallback: true,
+		},
+		{
+			name: "detect 7.0 from tags (PHRASE)",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "PHRASE", Value: "test"},
+			},
+			want:     gedcom.Version70,
+			wantErr:  false,
+			fallback: true,
+		},
+		{
+			name: "detect 7.0 from tags (SNOTE)",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "SNOTE", Value: "@N1@"},
+			},
+			want:     gedcom.Version70,
+			wantErr:  false,
+			fallback: true,
+		},
+		{
+			name: "detect 5.5.1 from tags (MAP)",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "MAP"},
+				{Level: 2, Tag: "LATI", Value: "N123"},
+			},
+			want:     gedcom.Version551,
+			wantErr:  false,
+			fallback: true,
+		},
+		{
+			name: "detect 5.5.1 from tags (EMAIL)",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "EMAIL", Value: "test@example.com"},
+			},
+			want:     gedcom.Version551,
+			wantErr:  false,
+			fallback: true,
+		},
+		{
+			name: "detect 5.5.1 from tags (WWW)",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "WWW", Value: "http://example.com"},
+			},
+			want:     gedcom.Version551,
+			wantErr:  false,
+			fallback: true,
+		},
+		{
+			name: "detect 5.5.1 from tags (FACT)",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "FACT", Value: "something"},
+			},
+			want:     gedcom.Version551,
+			wantErr:  false,
+			fallback: true,
+		},
 	}
 
 	for _, tt := range tests {
