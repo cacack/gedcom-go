@@ -422,3 +422,35 @@ func TestParseLineValueExtraction(t *testing.T) {
 		})
 	}
 }
+
+// Test XRef without tag error
+func TestParseLineXRefWithoutTag(t *testing.T) {
+	p := NewParser()
+
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "xref only",
+			input: "0 @I1@",
+		},
+		{
+			name:  "xref with newline",
+			input: "0 @I1@\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p.Reset()
+			_, err := p.ParseLine(tt.input)
+			if err == nil {
+				t.Error("Expected error for xref without tag")
+			}
+			if !strings.Contains(err.Error(), "xref must have a tag") {
+				t.Errorf("Expected 'xref must have a tag' error, got: %v", err)
+			}
+		})
+	}
+}

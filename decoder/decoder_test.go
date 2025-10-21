@@ -391,3 +391,25 @@ func TestDecodeHeaderEdgeCases(t *testing.T) {
 		}
 	})
 }
+
+// Test DecodeWithOptions with nil opts
+func TestDecodeWithOptionsNil(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 TRLR`
+
+	// Pass nil options - should use defaults
+	doc, err := DecodeWithOptions(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithOptions() error = %v", err)
+	}
+
+	if doc == nil {
+		t.Fatal("DecodeWithOptions() returned nil document")
+	}
+
+	if doc.Header.Version != "5.5" {
+		t.Errorf("Header.Version = %q, want %q", doc.Header.Version, "5.5")
+	}
+}
