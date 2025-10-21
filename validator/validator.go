@@ -1,12 +1,28 @@
+// Package validator provides GEDCOM document validation functionality.
+//
+// This package validates GEDCOM documents against specification rules for
+// different GEDCOM versions (5.5, 5.5.1, 7.0). It checks for structural
+// correctness, required fields, and valid cross-references.
+//
+// Example usage:
+//
+//	doc, _ := decoder.Decode(reader)
+//	v := validator.New(doc)
+//	errors := v.Validate()
+//	if len(errors) > 0 {
+//	    for _, err := range errors {
+//	        fmt.Printf("[%s] %s (line %d)\n", err.Code, err.Message, err.Line)
+//	    }
+//	}
 package validator
 
 import (
 	"fmt"
 
-	"github.com/elliotchance/go-gedcom/gedcom"
+	"github.com/cacack/gedcom-go/gedcom"
 )
 
-// ValidationError represents a validation error.
+// ValidationError represents a validation error with error code, message, line number, and optional cross-reference.
 type ValidationError struct {
 	Code    string
 	Message string
