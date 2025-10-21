@@ -1,8 +1,10 @@
 # gedcom-go
 
 [![CI](https://github.com/cacack/gedcom-go/actions/workflows/ci.yml/badge.svg)](https://github.com/cacack/gedcom-go/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-96.5%25-brightgreen)](https://github.com/cacack/gedcom-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cacack/gedcom-go)](https://goreportcard.com/report/github.com/cacack/gedcom-go)
 [![GoDoc](https://pkg.go.dev/badge/github.com/cacack/gedcom-go.svg)](https://pkg.go.dev/github.com/cacack/gedcom-go)
+[![Release](https://img.shields.io/github/v/release/cacack/gedcom-go)](https://github.com/cacack/gedcom-go/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/cacack/gedcom-go)](https://github.com/cacack/gedcom-go)
 
@@ -13,9 +15,11 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 - **Multi-version Support**: Parse GEDCOM 5.5, 5.5.1, and 7.0 files with automatic version detection
 - **Stream-based Parsing**: Efficient memory usage for large genealogy files
 - **Comprehensive Validation**: Validate GEDCOM data against specification rules
+- **Character Encoding**: Support for UTF-8, ANSEL, ASCII, LATIN1, and UNICODE encodings
 - **Clear Error Reporting**: All errors include line numbers and context
 - **Zero Dependencies**: Uses only the Go standard library
-- **Well-tested**: >85% test coverage with table-driven tests
+- **Well-tested**: 96.5% test coverage across all packages
+- **Production Ready**: Full CI/CD pipeline with automated testing on multiple platforms
 
 ## Installation
 
@@ -99,7 +103,7 @@ go vet ./...
 
 ## License
 
-To be determined - see LICENSE file.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
