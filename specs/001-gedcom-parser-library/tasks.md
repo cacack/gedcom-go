@@ -24,13 +24,13 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Initialize Go module with `go mod init github.com/user/go-gedcom` (adjust org/repo as needed)
-- [ ] T002 [P] Create directory structure: `charset/`, `gedcom/`, `parser/`, `version/`, `decoder/`, `validator/`, `encoder/`, `examples/`, `testdata/`
-- [ ] T003 [P] Create README.md with project description and installation instructions
-- [ ] T004 [P] Create CHANGELOG.md for tracking version changes
-- [ ] T005 [P] Create LICENSE file (choose appropriate open source license)
-- [ ] T006 [P] Setup `.gitignore` for Go projects (exclude binaries, coverage files, IDE files)
-- [ ] T007 [P] Collect test data: Download sample GEDCOM files for `testdata/gedcom-5.5/`, `testdata/gedcom-5.5.1/`, `testdata/gedcom-7.0/`, `testdata/malformed/`
+- [X] T001 Initialize Go module with `go mod init github.com/user/go-gedcom` (adjust org/repo as needed)
+- [X] T002 [P] Create directory structure: `charset/`, `gedcom/`, `parser/`, `version/`, `decoder/`, `validator/`, `encoder/`, `examples/`, `testdata/`
+- [X] T003 [P] Create README.md with project description and installation instructions
+- [X] T004 [P] Create CHANGELOG.md for tracking version changes
+- [X] T005 [P] Create LICENSE file (choose appropriate open source license)
+- [X] T006 [P] Setup `.gitignore` for Go projects (exclude binaries, coverage files, IDE files)
+- [X] T007 [P] Collect test data: Download sample GEDCOM files for `testdata/gedcom-5.5/`, `testdata/gedcom-5.5.1/`, `testdata/gedcom-7.0/`, `testdata/malformed/`
 
 ---
 
@@ -42,27 +42,27 @@
 
 ### Core Types (Layer 1)
 
-- [ ] T008 [P] Define Version enum (V5_5, V5_5_1, V7_0) in `gedcom/version.go`
-- [ ] T009 [P] Define Encoding enum (UTF8, ANSEL, ASCII, LATIN1) in `gedcom/encoding.go`
-- [ ] T010 [P] Create Header struct in `gedcom/header.go` with Version, Encoding, SourceSystem, Date, Language fields
-- [ ] T011 [P] Create Trailer struct in `gedcom/trailer.go`
-- [ ] T012 [P] Create Tag struct in `gedcom/tag.go` with Level, Tag, Value, XRef, LineNumber fields
-- [ ] T013 [P] Create Record struct in `gedcom/record.go` with XRef, Type, Tags fields
-- [ ] T014 [P] Create Individual struct in `gedcom/individual.go` with Names, Events, Attributes, Families
-- [ ] T015 [P] Create Family struct in `gedcom/family.go` with Spouses, Children, MarriageEvents
-- [ ] T016 [P] Create Source struct in `gedcom/source.go` with Title, Author, Publication fields
-- [ ] T017 [P] Create Repository struct in `gedcom/repository.go` with Name, Address fields
-- [ ] T018 [P] Create Event struct in `gedcom/event.go` with Type, Date, Place, Sources
-- [ ] T019 [P] Create Note struct in `gedcom/note.go` with Text, Continuation fields
-- [ ] T020 [P] Create MediaObject struct in `gedcom/media.go` with FileRef, Format, Title
-- [ ] T021 Create Document struct in `gedcom/document.go` with Header, Records, Trailer, Version, XRefMap
-- [ ] T022 [P] Write unit tests for all gedcom types in `gedcom/types_test.go`
+- [X] T008 [P] Define Version enum (V5_5, V5_5_1, V7_0) in `gedcom/version.go`
+- [X] T009 [P] Define Encoding enum (UTF8, ANSEL, ASCII, LATIN1) in `gedcom/encoding.go`
+- [X] T010 [P] Create Header struct in `gedcom/header.go` with Version, Encoding, SourceSystem, Date, Language fields
+- [X] T011 [P] Create Trailer struct in `gedcom/trailer.go`
+- [X] T012 [P] Create Tag struct in `gedcom/tag.go` with Level, Tag, Value, XRef, LineNumber fields
+- [X] T013 [P] Create Record struct in `gedcom/record.go` with XRef, Type, Tags fields
+- [X] T014 [P] Create Individual struct in `gedcom/individual.go` with Names, Events, Attributes, Families
+- [X] T015 [P] Create Family struct in `gedcom/family.go` with Spouses, Children, MarriageEvents
+- [X] T016 [P] Create Source struct in `gedcom/source.go` with Title, Author, Publication fields
+- [X] T017 [P] Create Repository struct in `gedcom/repository.go` with Name, Address fields
+- [X] T018 [P] Create Event struct in `gedcom/event.go` with Type, Date, Place, Sources
+- [X] T019 [P] Create Note struct in `gedcom/note.go` with Text, Continuation fields
+- [X] T020 [P] Create MediaObject struct in `gedcom/media.go` with FileRef, Format, Title
+- [X] T021 Create Document struct in `gedcom/document.go` with Header, Records, Trailer, Version, XRefMap
+- [X] T022 [P] Write unit tests for all gedcom types in `gedcom/types_test.go`
 
 ### Character Encoding (Layer 1)
 
-- [ ] T023 Create charset package with UTF-8 detection/validation in `charset/charset.go`
-- [ ] T024 Implement NewReader() function that wraps io.Reader with UTF-8 validation in `charset/charset.go`
-- [ ] T025 [P] Write table-driven tests for UTF-8 validation (valid sequences, invalid sequences, BOM handling) in `charset/charset_test.go`
+- [X] T023 Create charset package with UTF-8 detection/validation in `charset/charset.go`
+- [X] T024 Implement NewReader() function that wraps io.Reader with UTF-8 validation in `charset/charset.go`
+- [X] T025 [P] Write table-driven tests for UTF-8 validation (valid sequences, invalid sequences, BOM handling) in `charset/charset_test.go`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -78,44 +78,44 @@
 
 **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T026 [P] [US1] Write table-driven tests for line parsing (valid lines, edge cases, line endings) in `parser/parser_test.go`
-- [ ] T027 [P] [US1] Write tests for GEDCOM 5.5 parsing with sample file from `testdata/gedcom-5.5/` in `parser/parser_test.go`
-- [ ] T028 [P] [US1] Write tests for GEDCOM 5.5.1 parsing with sample file from `testdata/gedcom-5.5.1/` in `parser/parser_test.go`
-- [ ] T029 [P] [US1] Write tests for GEDCOM 7.0 parsing with sample file from `testdata/gedcom-7.0/` in `parser/parser_test.go`
-- [ ] T030 [P] [US1] Write tests for version detection (header-based and tag-based fallback) in `version/version_test.go`
-- [ ] T031 [P] [US1] Write integration tests for full document parsing in `decoder/decoder_test.go`
-- [ ] T032 [P] [US1] Write tests for XRefMap resolution (all XRefs indexed, valid lookups) in `decoder/decoder_test.go`
+- [X] T026 [P] [US1] Write table-driven tests for line parsing (valid lines, edge cases, line endings) in `parser/parser_test.go`
+- [X] T027 [P] [US1] Write tests for GEDCOM 5.5 parsing with sample file from `testdata/gedcom-5.5/` in `parser/parser_test.go`
+- [X] T028 [P] [US1] Write tests for GEDCOM 5.5.1 parsing with sample file from `testdata/gedcom-5.5.1/` in `parser/parser_test.go`
+- [X] T029 [P] [US1] Write tests for GEDCOM 7.0 parsing with sample file from `testdata/gedcom-7.0/` in `parser/parser_test.go`
+- [X] T030 [P] [US1] Write tests for version detection (header-based and tag-based fallback) in `version/version_test.go`
+- [X] T031 [P] [US1] Write integration tests for full document parsing in `decoder/decoder_test.go`
+- [X] T032 [P] [US1] Write tests for XRefMap resolution (all XRefs indexed, valid lookups) in `decoder/decoder_test.go`
 - [ ] T033 [P] [US1] Write benchmark tests for 10MB file parsing (must complete <2s) in `decoder/decoder_test.go`
 - [ ] T034 [P] [US1] Write benchmark tests for 100MB file memory usage (must be <200MB) in `decoder/decoder_test.go`
 
 ### Implementation for User Story 1 (Parser - Layer 2)
 
-- [ ] T035 [US1] Create Line struct in `parser/line.go` with Level, Tag, Value, XRef, LineNumber fields
-- [ ] T036 [US1] Implement Lexer in `parser/lexer.go` for tokenizing GEDCOM lines (handle CRLF, LF, CR line endings per FR-018)
-- [ ] T037 [US1] Implement Parser interface in `parser/parser.go` with ParseLine() and Reset() methods
-- [ ] T038 [US1] Add line number tracking to parser in `parser/parser.go` (for error reporting per FR-017)
-- [ ] T039 [US1] Add inline depth checking (max 100 levels) to parser in `parser/parser.go`
-- [ ] T040 [US1] Create ParseError type with line number and context in `parser/errors.go` (per FR-006, FR-015)
-- [ ] T041 [US1] Implement error wrapping with context in `parser/parser.go` (use Go 1.13+ errors.Wrap)
+- [X] T035 [US1] Create Line struct in `parser/line.go` with Level, Tag, Value, XRef, LineNumber fields
+- [X] T036 [US1] Implement Lexer in `parser/lexer.go` for tokenizing GEDCOM lines (handle CRLF, LF, CR line endings per FR-018)
+- [X] T037 [US1] Implement Parser interface in `parser/parser.go` with ParseLine() and Reset() methods
+- [X] T038 [US1] Add line number tracking to parser in `parser/parser.go` (for error reporting per FR-017)
+- [X] T039 [US1] Add inline depth checking (max 100 levels) to parser in `parser/parser.go`
+- [X] T040 [US1] Create ParseError type with line number and context in `parser/errors.go` (per FR-006, FR-015)
+- [X] T041 [US1] Implement error wrapping with context in `parser/parser.go` (use Go 1.13+ errors.Wrap)
 
 ### Implementation for User Story 1 (Version Detection - Layer 2)
 
-- [ ] T042 [P] [US1] Define GEDCOM 5.5 tag list in `version/v55.go`
-- [ ] T043 [P] [US1] Define GEDCOM 5.5.1 tag list in `version/v551.go`
-- [ ] T044 [P] [US1] Define GEDCOM 7.0 tag list in `version/v70.go`
-- [ ] T045 [US1] Implement version detection from header in `version/detect.go` (per FR-002)
-- [ ] T046 [US1] Implement tag-based version fallback heuristics in `version/detect.go`
+- [X] T042 [P] [US1] Define GEDCOM 5.5 tag list in `version/v55.go`
+- [X] T043 [P] [US1] Define GEDCOM 5.5.1 tag list in `version/v551.go`
+- [X] T044 [P] [US1] Define GEDCOM 7.0 tag list in `version/v70.go`
+- [X] T045 [US1] Implement version detection from header in `version/detect.go` (per FR-002)
+- [X] T046 [US1] Implement tag-based version fallback heuristics in `version/detect.go`
 
 ### Implementation for User Story 1 (Decoder - Layer 3)
 
-- [ ] T047 [US1] Create DecodeOptions struct in `decoder/options.go` with Context, MaxNestingDepth, StrictMode
-- [ ] T048 [US1] Implement Decoder interface with Decode() method in `decoder/decoder.go`
-- [ ] T049 [US1] Implement DecodeWithOptions() method in `decoder/decoder.go` (uses context for timeout)
-- [ ] T050 [US1] Build Document from line stream in `decoder/decoder.go` (parse lines → build records)
-- [ ] T051 [US1] Build XRefMap during decoding in `decoder/decoder.go` (index all cross-references per FR-005)
-- [ ] T052 [US1] Implement streaming mode for large files in `decoder/decoder.go` (use io.Reader, constant memory per FR-016)
-- [ ] T053 [US1] Handle empty/header-only files in `decoder/decoder.go` (return empty Records per FR-019)
-- [ ] T054 [US1] Add timeout support via context.Context in `decoder/decoder.go`
+- [X] T047 [US1] Create DecodeOptions struct in `decoder/options.go` with Context, MaxNestingDepth, StrictMode
+- [X] T048 [US1] Implement Decoder interface with Decode() method in `decoder/decoder.go`
+- [X] T049 [US1] Implement DecodeWithOptions() method in `decoder/decoder.go` (uses context for timeout)
+- [X] T050 [US1] Build Document from line stream in `decoder/decoder.go` (parse lines → build records)
+- [X] T051 [US1] Build XRefMap during decoding in `decoder/decoder.go` (index all cross-references per FR-005)
+- [X] T052 [US1] Implement streaming mode for large files in `decoder/decoder.go` (use io.Reader, constant memory per FR-016)
+- [X] T053 [US1] Handle empty/header-only files in `decoder/decoder.go` (return empty Records per FR-019)
+- [X] T054 [US1] Add timeout support via context.Context in `decoder/decoder.go`
 
 ### Verification for User Story 1
 

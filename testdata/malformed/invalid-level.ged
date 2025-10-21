@@ -1,0 +1,7 @@
+0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME John Smith
+99 INVALID Deep nesting beyond reasonable limit
+0 TRLR

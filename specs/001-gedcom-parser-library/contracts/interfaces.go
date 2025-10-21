@@ -241,12 +241,12 @@ const (
 type ValidationCode string
 
 const (
-	CodeMissingRequired    ValidationCode = "MISSING_REQUIRED"
-	CodeInvalidFormat      ValidationCode = "INVALID_FORMAT"
-	CodeBrokenReference    ValidationCode = "BROKEN_REFERENCE"
-	CodeCircularReference  ValidationCode = "CIRCULAR_REFERENCE"
-	CodeNonStandardFormat  ValidationCode = "NON_STANDARD_FORMAT"
-	CodeDeprecatedTag      ValidationCode = "DEPRECATED_TAG"
+	CodeMissingRequired   ValidationCode = "MISSING_REQUIRED"
+	CodeInvalidFormat     ValidationCode = "INVALID_FORMAT"
+	CodeBrokenReference   ValidationCode = "BROKEN_REFERENCE"
+	CodeCircularReference ValidationCode = "CIRCULAR_REFERENCE"
+	CodeNonStandardFormat ValidationCode = "NON_STANDARD_FORMAT"
+	CodeDeprecatedTag     ValidationCode = "DEPRECATED_TAG"
 )
 
 // ErrorLocation identifies where a problem occurred in the input.
