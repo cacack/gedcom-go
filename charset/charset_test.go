@@ -384,7 +384,7 @@ func TestNewReader_InvalidUTF8AfterValidChars(t *testing.T) {
 	// Test invalid UTF-8 that comes after valid non-newline characters
 	// This ensures we cover the column increment path in findInvalidUTF8
 	// The function processes valid chars before finding the invalid one
-	input := "ABC\xFF"  // Valid chars then invalid
+	input := "ABC\xFF" // Valid chars then invalid
 
 	r := NewReader(strings.NewReader(input))
 	_, err := io.ReadAll(r)
@@ -412,7 +412,7 @@ func TestNewReader_InvalidUTF8AfterValidChars(t *testing.T) {
 func TestNewReader_InvalidUTF8WithNewlineInBuffer(t *testing.T) {
 	// Test buffer containing both newline and invalid UTF-8
 	// to ensure newline tracking works correctly in error path
-	input := "Line1\nABC\xFF"  // Newline, then valid chars, then invalid
+	input := "Line1\nABC\xFF" // Newline, then valid chars, then invalid
 
 	r := NewReader(strings.NewReader(input))
 	_, err := io.ReadAll(r)

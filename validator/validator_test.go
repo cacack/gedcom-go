@@ -274,12 +274,10 @@ func TestValidateFamilyEdgeCases(t *testing.T) {
 				if !found {
 					t.Errorf("Expected error code %q, got errors: %v", tt.errorCode, errors)
 				}
-			} else {
-				if len(errors) != 0 {
-					t.Errorf("Expected no validation errors, got %d errors:", len(errors))
-					for _, err := range errors {
-						t.Logf("  - %v", err)
-					}
+			} else if len(errors) != 0 {
+				t.Errorf("Expected no validation errors, got %d errors:", len(errors))
+				for _, err := range errors {
+					t.Logf("  - %v", err)
 				}
 			}
 		})
