@@ -13,6 +13,11 @@
 coverage.out
 coverage.html
 
+# Performance regression testing files
+perf-baseline.txt
+perf-current.txt
+perf-regression-report.txt
+
 # Profile files
 *.prof
 *.pprof
