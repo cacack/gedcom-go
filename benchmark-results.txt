@@ -1,0 +1,55 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/cacack/gedcom-go/parser
+cpu: Apple M2
+BenchmarkParseLine/simple_tag-8         	16141497	        66.43 ns/op	      96 B/op	       2 allocs/op
+BenchmarkParseLine/tag_with_value-8     	15142162	        81.84 ns/op	     128 B/op	       2 allocs/op
+BenchmarkParseLine/tag_with_xref-8      	18521769	        68.74 ns/op	     112 B/op	       2 allocs/op
+BenchmarkParseLine/nested_tag-8         	13482230	        87.60 ns/op	     144 B/op	       2 allocs/op
+BenchmarkParseLine/long_value-8         	 4715296	       253.5 ns/op	     448 B/op	       2 allocs/op
+BenchmarkParse/minimal_file-8           	 1000000	      1189 ns/op	    5184 B/op	      29 allocs/op
+BenchmarkParse/file_with_100_individuals-8         	   17913	     67294 ns/op	   97993 B/op	    1826 allocs/op
+BenchmarkParse/file_with_1000_individuals-8        	    1711	    696986 ns/op	  999414 B/op	   18032 allocs/op
+BenchmarkParseLineTypes/level_0_no_xref-8          	21384782	        61.81 ns/op	      96 B/op	       2 allocs/op
+BenchmarkParseLineTypes/level_0_with_xref-8        	18208336	        68.52 ns/op	     112 B/op	       2 allocs/op
+BenchmarkParseLineTypes/level_1_simple-8           	14576742	        77.03 ns/op	     128 B/op	       2 allocs/op
+BenchmarkParseLineTypes/level_2_nested-8           	14135670	        90.26 ns/op	     144 B/op	       2 allocs/op
+BenchmarkParseLineTypes/level_3_deeply_nested-8    	15669597	        73.55 ns/op	     112 B/op	       2 allocs/op
+BenchmarkParseLineTypes/tag_with_pointer-8         	17327757	        73.72 ns/op	     112 B/op	       2 allocs/op
+BenchmarkParseLineTypes/long_tag_value-8           	 3859596	       309.8 ns/op	     112 B/op	       2 allocs/op
+PASS
+ok  	github.com/cacack/gedcom-go/parser	20.723s
+goos: darwin
+goarch: arm64
+pkg: github.com/cacack/gedcom-go/decoder
+cpu: Apple M2
+BenchmarkDecodeMinimal-8   	  448701	      2626 ns/op	    7384 B/op	      69 allocs/op
+BenchmarkDecodeSmall-8     	    8190	    149542 ns/op	  214402 B/op	    3530 allocs/op
+BenchmarkDecodeMedium-8    	     160	   7443936 ns/op	 8496393 B/op	  139193 allocs/op
+BenchmarkDecodeLarge-8     	      90	  13041842 ns/op	14302906 B/op	  214666 allocs/op
+PASS
+ok  	github.com/cacack/gedcom-go/decoder	5.935s
+goos: darwin
+goarch: arm64
+pkg: github.com/cacack/gedcom-go/encoder
+cpu: Apple M2
+BenchmarkEncodeMinimal-8       	 2014215	       587.9 ns/op	     208 B/op	      13 allocs/op
+BenchmarkEncodeSmall-8         	  104456	     11493 ns/op	    4145 B/op	     259 allocs/op
+BenchmarkEncodeMedium-8        	   10000	    111355 ns/op	   40160 B/op	    2509 allocs/op
+BenchmarkEncodeLarge-8         	    1058	   1151515 ns/op	  400370 B/op	   25009 allocs/op
+BenchmarkEncodeWithBuffer-8    	    8716	    120161 ns/op	   72924 B/op	    2519 allocs/op
+BenchmarkEncodeLineEndings/LF_(Unix)-8         	   10000	    112128 ns/op	   40160 B/op	    2509 allocs/op
+BenchmarkEncodeLineEndings/CRLF_(Windows)-8    	    9613	    113074 ns/op	   40159 B/op	    2509 allocs/op
+PASS
+ok  	github.com/cacack/gedcom-go/encoder	9.159s
+goos: darwin
+goarch: arm64
+pkg: github.com/cacack/gedcom-go/validator
+cpu: Apple M2
+BenchmarkValidateMinimal-8      	74882798	        14.61 ns/op	       0 B/op	       0 allocs/op
+BenchmarkValidateSmall-8        	28898514	        43.19 ns/op	       0 B/op	       0 allocs/op
+BenchmarkValidateMedium-8       	 3268132	       371.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkValidateLarge-8        	  197083	      5910 ns/op	       0 B/op	       0 allocs/op
+BenchmarkValidateWithErrors-8   	  403504	      3149 ns/op	    3569 B/op	      66 allocs/op
+PASS
+ok  	github.com/cacack/gedcom-go/validator	6.823s

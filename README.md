@@ -1,7 +1,7 @@
 # gedcom-go
 
 [![CI](https://github.com/cacack/gedcom-go/actions/workflows/ci.yml/badge.svg)](https://github.com/cacack/gedcom-go/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-96.5%25-brightgreen)](https://github.com/cacack/gedcom-go)
+[![Coverage](https://img.shields.io/badge/coverage-98.4%25-brightgreen)](https://github.com/cacack/gedcom-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cacack/gedcom-go)](https://goreportcard.com/report/github.com/cacack/gedcom-go)
 [![GoDoc](https://pkg.go.dev/badge/github.com/cacack/gedcom-go.svg)](https://pkg.go.dev/github.com/cacack/gedcom-go)
 [![Release](https://img.shields.io/github/v/release/cacack/gedcom-go)](https://github.com/cacack/gedcom-go/releases)
@@ -18,7 +18,7 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 - **Character Encoding**: Support for UTF-8, ANSEL, ASCII, LATIN1, and UNICODE encodings
 - **Clear Error Reporting**: All errors include line numbers and context
 - **Zero Dependencies**: Uses only the Go standard library
-- **Well-tested**: 96.5% test coverage across all packages
+- **Well-tested**: 98.4% test coverage across all packages
 - **Production Ready**: Full CI/CD pipeline with automated testing on multiple platforms
 
 ## Installation
@@ -159,7 +159,7 @@ make all
 # Run tests
 make test
 
-# Run tests with coverage (96.7% coverage)
+# Run tests with coverage (98.4% coverage)
 make test-coverage
 
 # Generate HTML coverage report
@@ -208,6 +208,44 @@ go fmt ./...
 # Run static analysis
 go vet ./...
 ```
+
+## Performance
+
+The library is designed for high performance with efficient memory usage:
+
+- **Parser**: 66ns/op for simple lines, ~700μs for 1000 individuals
+- **Decoder**: 13ms for 1000 individuals with full document structure
+- **Encoder**: 1.15ms for 1000 individuals
+- **Validator**: 5.91μs for 1000 individuals, **zero allocations** for valid documents
+
+### Benchmarking
+
+```bash
+# Run all benchmarks
+make bench
+
+# Run specific package benchmarks
+make bench-parse
+make bench-decode
+make bench-encode
+
+# Save baseline for comparison
+make bench-save
+
+# Compare current performance with baseline
+make bench-compare
+```
+
+### Performance Regression Testing
+
+Automated regression detection with 10% threshold:
+
+```bash
+# Run regression tests
+make perf-regression
+```
+
+For detailed performance metrics, profiling guides, and optimization opportunities, see [PERFORMANCE.md](PERFORMANCE.md).
 
 ## License
 

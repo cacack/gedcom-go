@@ -1,7 +1,7 @@
 # Makefile for gedcom-go
 # Go genealogy library for parsing and validating GEDCOM files
 
-.PHONY: help test test-verbose test-coverage test-short bench fmt vet lint clean coverage-html install-tools build tidy check all
+.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint clean coverage-html install-tools build tidy check all
 
 # Default target
 .DEFAULT_GOAL := help
@@ -84,6 +84,22 @@ bench-decode: ## Run decoder benchmarks only
 bench-encode: ## Run encoder benchmarks only
 	@echo "Running encoder benchmarks..."
 	$(GOTEST) -bench=. -benchmem ./encoder
+
+bench-save: ## Save current benchmarks as baseline
+	@echo "Saving benchmark baseline..."
+	$(GOTEST) -bench=. -benchmem -count=5 ./parser ./decoder ./encoder ./validator > perf-baseline.txt
+	@echo "✓ Baseline saved to perf-baseline.txt"
+
+bench-compare: ## Compare current benchmarks with baseline
+	@echo "Running current benchmarks..."
+	$(GOTEST) -bench=. -benchmem -count=5 ./parser ./decoder ./encoder ./validator > perf-current.txt
+	@echo ""
+	@echo "Comparing with baseline..."
+	benchstat perf-baseline.txt perf-current.txt || echo "⚠  Install benchstat: go install golang.org/x/perf/cmd/benchstat@latest"
+
+perf-regression: ## Run performance regression tests
+	@echo "Running performance regression tests..."
+	@./scripts/perf-regression-test.sh
 
 fmt: ## Format Go code
 	@echo "Formatting code..."
