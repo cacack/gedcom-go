@@ -80,6 +80,9 @@ func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, erro
 	// Build document from lines
 	doc := buildDocument(lines, detectedVersion)
 
+	// Convert raw tags to proper entity types
+	populateEntities(doc)
+
 	return doc, nil
 }
 
