@@ -351,3 +351,13 @@ Follow standard Go project layout:
 - `internal/`: private implementation details
 - `examples/`: example usage code
 - `testdata/`: sample GEDCOM files for testing
+
+## Downstream Consumer
+
+This library is used by `github.com/cacack/my-family` (at `/Users/chris/devel/home/my-family`) via a `replace` directive during development. When adding features:
+
+1. **Driven by real usage**: Features should be added when my-family needs them, not speculatively
+2. **Self-contained commits**: Each enhancement should be a complete, testable unit with its own tests
+3. **Run consumer tests**: After changes, verify my-family still works: `cd /Users/chris/devel/home/my-family && go test ./...`
+4. **API stability**: Consider how changes affect the public API; prefer additive changes over breaking ones
+5. **Document in commit**: Note which my-family feature drove the change (e.g., "feat(decoder): add entity parsing for GEDCOM import")
