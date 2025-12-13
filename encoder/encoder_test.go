@@ -460,6 +460,7 @@ func TestDefaultOptions(t *testing.T) {
 	opts := DefaultOptions()
 	if opts == nil {
 		t.Fatal("DefaultOptions() returned nil")
+		return // unreachable, but satisfies staticcheck
 	}
 	if opts.LineEnding != "\n" {
 		t.Errorf("DefaultOptions().LineEnding = %q, want %q", opts.LineEnding, "\n")

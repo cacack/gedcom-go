@@ -57,9 +57,40 @@ Final status:
 - [x] Update README with correct installation instructions
 - [x] Add release badges to README
 
+### 4. PEDI (Pedigree Linkage) Support
+**Goal**: Capture child relationship types (biological, adopted, foster, etc.)
+
+**Problem**: Currently `Individual.ChildInFamilies` is `[]string` (XRefs only), losing the PEDI subordinate tag that indicates relationship type:
+
+```gedcom
+0 @I13@ INDI
+1 FAMC @F2@
+2 PEDI adopted   <-- Currently not captured
+```
+
+**Impact**: Applications using gedcom-go (e.g., my-family) cannot distinguish adopted from biological children.
+
+**Tasks**:
+- [ ] Create `FamilyLink` struct to replace `[]string`:
+  ```go
+  type FamilyLink struct {
+      FamilyXRef string
+      Pedigree   string // "birth", "adopted", "foster", "sealing"
+  }
+  ```
+- [ ] Update `Individual.ChildInFamilies` to `[]FamilyLink`
+- [ ] Update decoder to parse PEDI tags under FAMC
+- [ ] Add `EventAdoption` constant (`ADOP`) to EventType
+- [ ] Add tests with comprehensive GEDCOM containing PEDI tags
+- [ ] Update documentation
+
+**Reference**: GEDCOM 5.5.1 spec section on INDIVIDUAL_EVENT_STRUCTURE
+
+---
+
 ## Medium Priority
 
-### 4. Performance Benchmarking & Optimization
+### 5. Performance Benchmarking & Optimization
 **Goal**: Ensure library performs well with large GEDCOM files
 
 **Tasks**:
@@ -73,7 +104,7 @@ Final status:
 - [ ] Consider Profile-Guided Optimization (PGO) for Go 1.21+
 - [ ] Document performance characteristics in README
 
-### 5. Enhanced Features
+### 6. Enhanced Features
 **Goal**: Add useful functionality beyond basic parsing
 
 **Possible features**:
@@ -97,7 +128,7 @@ Final status:
 
 ## Low Priority
 
-### 6. Developer Experience
+### 7. Developer Experience
 **Goal**: Make contributing and maintenance easier
 
 **Tasks**:
@@ -122,7 +153,7 @@ Final status:
   - Feature request template
   - Question template
 
-### 7. Additional Tooling
+### 8. Additional Tooling
 **Goal**: Provide useful command-line tools
 
 **Possible tools**:
