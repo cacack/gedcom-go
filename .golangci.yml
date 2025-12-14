@@ -31,6 +31,7 @@ linters-settings:
   misspell:
     ignore-words:
       - RELA  # Valid GEDCOM tag for Relationship
+      - WITN  # Valid GEDCOM role code for Witness
   revive:
     severity: warning
     rules:

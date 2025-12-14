@@ -322,3 +322,463 @@ func TestParsePedigreeLinks(t *testing.T) {
 		t.Errorf("ChildInFamilies[1].Pedigree = %s, want ADOPTED (uppercase preserved)", child2.ChildInFamilies[1].Pedigree)
 	}
 }
+
+// === Feature Gap Tests ===
+// These tests demonstrate missing GEDCOM features identified in docs/FEATURE-GAPS.md
+// They are skipped until implementation is complete.
+
+// TestEventSubordinateTags_NotImplemented tests parsing of event subordinate tags.
+// Gap: Event struct only captures DATE, PLAC, Description - missing TYPE, CAUS, AGE, AGNC.
+// Priority: P1 (Critical)
+// Ref: FEATURE-GAPS.md Section 3.1
+func TestEventSubordinateTags_NotImplemented(t *testing.T) {
+	t.Skip("Not yet implemented: Event subordinate tags (TYPE, CAUS, AGE, AGNC)")
+
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 DEAT Y
+2 DATE 20 MAR 1920
+2 PLAC Springfield, IL
+2 TYPE Natural death
+2 CAUS Heart failure
+2 AGE 70y
+2 AGNC County Coroner
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.Events) != 1 {
+		t.Fatalf("len(Events) = %d, want 1", len(indi.Events))
+	}
+
+	death := indi.Events[0]
+	// These fields don't exist yet - will fail compilation when uncommented
+	// if death.Type != "Natural death" {
+	// 	t.Errorf("Event.Type = %s, want 'Natural death'", death.Type)
+	// }
+	// if death.Cause != "Heart failure" {
+	// 	t.Errorf("Event.Cause = %s, want 'Heart failure'", death.Cause)
+	// }
+	// if death.Age != "70y" {
+	// 	t.Errorf("Event.Age = %s, want '70y'", death.Age)
+	// }
+	// if death.Agency != "County Coroner" {
+	// 	t.Errorf("Event.Agency = %s, want 'County Coroner'", death.Agency)
+	// }
+	_ = death // Suppress unused variable warning
+}
+
+// TestSourceCitationStructure_NotImplemented tests parsing of source citation details.
+// Gap: Sources only captured as XRef strings - missing PAGE, QUAY, DATA subordinates.
+// Priority: P1 (Critical)
+// Ref: FEATURE-GAPS.md Section 6.1
+func TestSourceCitationStructure_NotImplemented(t *testing.T) {
+	t.Skip("Not yet implemented: Source citation structure with PAGE, QUAY, DATA")
+
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 BIRT
+2 DATE 15 JAN 1850
+2 SOUR @S1@
+3 PAGE Page 42, Entry 103
+3 QUAY 2
+3 DATA
+4 DATE 15 JAN 1850
+4 TEXT Birth record shows...
+0 @S1@ SOUR
+1 TITL County Birth Records
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.Events) != 1 {
+		t.Fatalf("len(Events) = %d, want 1", len(indi.Events))
+	}
+
+	birth := indi.Events[0]
+	// Source citations should be SourceCitation structs, not just strings
+	// These will fail compilation when uncommented
+	// if len(birth.SourceCitations) != 1 {
+	// 	t.Fatalf("len(SourceCitations) = %d, want 1", len(birth.SourceCitations))
+	// }
+	// cite := birth.SourceCitations[0]
+	// if cite.SourceXRef != "@S1@" {
+	// 	t.Errorf("SourceXRef = %s, want @S1@", cite.SourceXRef)
+	// }
+	// if cite.Page != "Page 42, Entry 103" {
+	// 	t.Errorf("Page = %s, want 'Page 42, Entry 103'", cite.Page)
+	// }
+	// if cite.Quality != 2 {
+	// 	t.Errorf("Quality = %d, want 2", cite.Quality)
+	// }
+	_ = birth // Suppress unused variable warning
+}
+
+// TestIndividualAttributes_NotImplemented tests parsing of individual attributes.
+// Gap: Only OCCU is parsed - missing CAST, DSCR, EDUC, IDNO, NATI, SSN, TITL, RELI.
+// Priority: P2 (Important)
+// Ref: FEATURE-GAPS.md Section 2
+func TestIndividualAttributes_NotImplemented(t *testing.T) {
+	t.Skip("Not yet implemented: Individual attributes (CAST, DSCR, EDUC, IDNO, NATI, SSN, TITL, RELI)")
+
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Smith/
+1 CAST Brahmin
+1 DSCR Tall, brown hair
+1 EDUC PhD Computer Science
+2 DATE 1972
+2 PLAC MIT, Cambridge, MA
+1 IDNO 12345678
+1 NATI American
+1 SSN 123-45-6789
+1 TITL Dr.
+1 RELI Methodist
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	// Attributes should be parsed, but currently only OCCU is handled
+	// Expected: len(Attributes) = 8
+	// Actual: len(Attributes) = 0 (none of these are parsed)
+	expectedAttrs := map[string]string{
+		"CAST": "Brahmin",
+		"DSCR": "Tall, brown hair",
+		"EDUC": "PhD Computer Science",
+		"IDNO": "12345678",
+		"NATI": "American",
+		"SSN":  "123-45-6789",
+		"TITL": "Dr.",
+		"RELI": "Methodist",
+	}
+
+	if len(indi.Attributes) != len(expectedAttrs) {
+		t.Errorf("len(Attributes) = %d, want %d", len(indi.Attributes), len(expectedAttrs))
+	}
+
+	// Check each attribute type and value
+	attrMap := make(map[string]string)
+	for _, attr := range indi.Attributes {
+		attrMap[attr.Type] = attr.Value
+	}
+
+	for attrType, expectedValue := range expectedAttrs {
+		if value, found := attrMap[attrType]; !found {
+			t.Errorf("Attribute %s not found", attrType)
+		} else if value != expectedValue {
+			t.Errorf("Attribute %s = %s, want %s", attrType, value, expectedValue)
+		}
+	}
+}
+
+// TestReligiousEvents_NotImplemented tests parsing of religious event types.
+// Gap: BARM, BASM, BLES, CONF, FCOM, CHRA not parsed.
+// Priority: P2 (Important)
+// Ref: FEATURE-GAPS.md Section 1.1
+func TestReligiousEvents_NotImplemented(t *testing.T) {
+	t.Skip("Not yet implemented: Religious events (BARM, BASM, BLES, CONF, FCOM, CHRA)")
+
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Jacob /Cohen/
+1 BARM
+2 DATE 15 MAR 1963
+2 PLAC Temple Beth Israel
+0 @I2@ INDI
+1 NAME Sarah /Cohen/
+1 BASM
+2 DATE 20 APR 1964
+2 PLAC Temple Beth Israel
+0 @I3@ INDI
+1 NAME John /Smith/
+1 BLES
+2 DATE 1 JAN 1950
+1 CONF
+2 DATE 1 JUN 1962
+1 FCOM
+2 DATE 1 MAY 1961
+1 CHRA
+2 DATE 15 AUG 1975
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test BARM (Bar Mitzvah)
+	jacob := doc.GetIndividual("@I1@")
+	if jacob == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+	if len(jacob.Events) != 1 {
+		t.Errorf("@I1@ len(Events) = %d, want 1", len(jacob.Events))
+	} else if string(jacob.Events[0].Type) != "BARM" {
+		t.Errorf("@I1@ Event.Type = %s, want BARM", jacob.Events[0].Type)
+	}
+
+	// Test BASM (Bas Mitzvah)
+	sarah := doc.GetIndividual("@I2@")
+	if sarah == nil {
+		t.Fatal("Individual @I2@ not found")
+	}
+	if len(sarah.Events) != 1 {
+		t.Errorf("@I2@ len(Events) = %d, want 1", len(sarah.Events))
+	} else if string(sarah.Events[0].Type) != "BASM" {
+		t.Errorf("@I2@ Event.Type = %s, want BASM", sarah.Events[0].Type)
+	}
+
+	// Test BLES, CONF, FCOM, CHRA
+	john := doc.GetIndividual("@I3@")
+	if john == nil {
+		t.Fatal("Individual @I3@ not found")
+	}
+	if len(john.Events) != 4 {
+		t.Errorf("@I3@ len(Events) = %d, want 4", len(john.Events))
+	} else {
+		expectedTypes := []string{"BLES", "CONF", "FCOM", "CHRA"}
+		for i, expected := range expectedTypes {
+			if string(john.Events[i].Type) != expected {
+				t.Errorf("@I3@ Event[%d].Type = %s, want %s", i, john.Events[i].Type, expected)
+			}
+		}
+	}
+}
+
+// TestLifeEvents_NotImplemented tests parsing of life status events.
+// Gap: GRAD, RETI, NATU, ORDN, PROB, WILL, CREM not parsed.
+// Priority: P2 (Important)
+// Ref: FEATURE-GAPS.md Sections 1.2, 1.3, 1.4, 1.5
+func TestLifeEvents_NotImplemented(t *testing.T) {
+	t.Skip("Not yet implemented: Life events (GRAD, RETI, NATU, ORDN, PROB, WILL, CREM)")
+
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 GRAD
+2 DATE 1972
+2 PLAC MIT, Cambridge, MA
+1 NATU
+2 DATE 4 JUL 1980
+2 PLAC Boston, MA
+1 ORDN
+2 DATE 15 JUN 1985
+1 RETI
+2 DATE 1 JAN 2015
+1 WILL
+2 DATE 5 MAR 2018
+1 PROB
+2 DATE 20 JUN 2020
+1 CREM
+2 DATE 25 JUN 2020
+2 PLAC Forest Lawn Cemetery
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	expectedEvents := []string{"GRAD", "NATU", "ORDN", "RETI", "WILL", "PROB", "CREM"}
+	if len(indi.Events) != len(expectedEvents) {
+		t.Errorf("len(Events) = %d, want %d", len(indi.Events), len(expectedEvents))
+	}
+
+	for i, expected := range expectedEvents {
+		if i >= len(indi.Events) {
+			t.Errorf("Event[%d] missing, want %s", i, expected)
+			continue
+		}
+		if string(indi.Events[i].Type) != expected {
+			t.Errorf("Event[%d].Type = %s, want %s", i, indi.Events[i].Type, expected)
+		}
+	}
+}
+
+// TestLDSOrdinances_NotImplemented tests parsing of LDS ordinance structures.
+// Gap: BAPL, CONL, ENDL, SLGC, SLGS not parsed at all.
+// Priority: P2 (Critical for LDS users)
+// Ref: FEATURE-GAPS.md Section 5
+func TestLDSOrdinances_NotImplemented(t *testing.T) {
+	t.Skip("Not yet implemented: LDS ordinances (BAPL, CONL, ENDL, SLGC, SLGS)")
+
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 BAPL
+2 DATE 1 JAN 1950
+2 TEMP SLAKE
+2 STAT COMPLETED
+3 DATE 1 JAN 1950
+1 CONL
+2 DATE 1 FEB 1950
+2 TEMP SLAKE
+2 STAT COMPLETED
+3 DATE 1 FEB 1950
+1 ENDL
+2 DATE 1 MAR 1970
+2 TEMP LOGAN
+1 SLGC
+2 DATE 15 APR 1951
+2 TEMP SLAKE
+2 FAMC @F1@
+0 @F1@ FAM
+1 SLGS
+2 DATE 10 JUN 1949
+2 TEMP SLAKE
+2 STAT COMPLETED
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	// LDS ordinances should be in a separate field, not Events
+	// These fields don't exist yet - will fail compilation when uncommented
+	// if len(indi.LDSOrdinances) != 4 {
+	// 	t.Errorf("len(LDSOrdinances) = %d, want 4", len(indi.LDSOrdinances))
+	// }
+	//
+	// expectedOrds := []string{"BAPL", "CONL", "ENDL", "SLGC"}
+	// for i, expected := range expectedOrds {
+	// 	if indi.LDSOrdinances[i].Type != expected {
+	// 		t.Errorf("LDSOrdinance[%d].Type = %s, want %s", i, indi.LDSOrdinances[i].Type, expected)
+	// 	}
+	// 	if indi.LDSOrdinances[i].Temple == "" {
+	// 		t.Errorf("LDSOrdinance[%d].Temple is empty", i)
+	// 	}
+	// }
+
+	// Family ordinance
+	fam := doc.GetFamily("@F1@")
+	if fam == nil {
+		t.Fatal("Family not found")
+	}
+	// TODO: When implemented, assert fam.LDSOrdinances has 1 entry of type SLGS
+	_, _ = indi, fam
+}
+
+// TestNameExtensions_NotImplemented tests parsing of extended name components.
+// Gap: NICK, SPFX not parsed (TRAN also missing but lower priority).
+// Priority: P2 (Important for international genealogy)
+// Ref: FEATURE-GAPS.md Section 7.1
+func TestNameExtensions_NotImplemented(t *testing.T) {
+	t.Skip("Not yet implemented: Name extensions (NICK, SPFX, TRAN)")
+
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Johannes Ludwig /von Beethoven/
+2 GIVN Johannes Ludwig
+2 SURN Beethoven
+2 SPFX von
+2 NICK Ludwig
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.Names) != 1 {
+		t.Fatalf("len(Names) = %d, want 1", len(indi.Names))
+	}
+
+	name := indi.Names[0]
+	// TODO: When implemented, assert name.SurnamePrefix == "von" and name.Nickname == "Ludwig"
+	_ = name
+}
+
+// TestIndividualAssociations_NotImplemented tests parsing of ASSO tag.
+// Gap: ASSO tag with ROLE subordinate not parsed.
+// Priority: P2 (Important for relationship context)
+// Ref: FEATURE-GAPS.md Section 8.1
+func TestIndividualAssociations_NotImplemented(t *testing.T) {
+	t.Skip("Not yet implemented: Individual associations (ASSO with ROLE)")
+
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 ASSO @I2@
+2 ROLE GODP
+1 ASSO @I3@
+2 ROLE WITN
+0 @I2@ INDI
+1 NAME Jane /Smith/
+0 @I3@ INDI
+1 NAME Bob /Johnson/
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	// TODO: When implemented, assert:
+	// - indi.Associations has 2 entries
+	// - Associations[0]: XRef=@I2@, Role=GODP (Godparent)
+	// - Associations[1]: XRef=@I3@, Role=WITN (Witness)
+	_ = indi
+}
