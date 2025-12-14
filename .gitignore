@@ -50,3 +50,6 @@ Thumbs.db
 *.tmp
 *.bak
 *.log
+
+# Claude Code prompts
+prompts/
