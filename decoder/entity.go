@@ -17,11 +17,19 @@ func populateEntities(doc *gedcom.Document) {
 			record.Entity = parseFamily(record)
 		case gedcom.RecordTypeSource:
 			record.Entity = parseSource(record)
+		case gedcom.RecordTypeSubmitter:
+			record.Entity = parseSubmitter(record)
+		case gedcom.RecordTypeRepository:
+			record.Entity = parseRepository(record)
+		case gedcom.RecordTypeNote:
+			record.Entity = parseNote(record)
 		}
 	}
 }
 
 // parseIndividual converts record tags to an Individual entity.
+//
+//nolint:gocyclo // GEDCOM parsing inherently requires handling many tag types
 func parseIndividual(record *gedcom.Record) *gedcom.Individual {
 	indi := &gedcom.Individual{
 		XRef: record.XRef,
@@ -52,7 +60,7 @@ func parseIndividual(record *gedcom.Record) *gedcom.Individual {
 			ord := parseLDSOrdinance(record.Tags, i, ldsOrdinanceType(tag.Tag))
 			indi.LDSOrdinances = append(indi.LDSOrdinances, ord)
 
-		case "OCCU", "CAST", "DSCR", "EDUC", "IDNO", "NATI", "SSN", "TITL", "RELI":
+		case "OCCU", "CAST", "DSCR", "EDUC", "IDNO", "NATI", "SSN", "TITL", "RELI", "NCHI", "NMR", "PROP":
 			attr := parseAttribute(record.Tags, i, tag.Tag)
 			indi.Attributes = append(indi.Attributes, attr)
 
@@ -76,6 +84,18 @@ func parseIndividual(record *gedcom.Record) *gedcom.Individual {
 
 		case "OBJE":
 			indi.MediaRefs = append(indi.MediaRefs, tag.Value)
+
+		case "CHAN":
+			indi.ChangeDate = parseChangeDate(record.Tags, i)
+
+		case "CREA":
+			indi.CreationDate = parseChangeDate(record.Tags, i)
+
+		case "REFN":
+			indi.RefNumber = tag.Value
+
+		case "UID":
+			indi.UID = tag.Value
 		}
 	}
 
@@ -232,18 +252,22 @@ func parseSourceCitationData(tags []*gedcom.Tag, dataIdx, baseLevel int) *gedcom
 }
 
 // parseEvent extracts an event from tags starting at eventIdx.
+//
+//nolint:gocyclo // GEDCOM parsing inherently requires handling many tag types
 func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string) *gedcom.Event {
 	event := &gedcom.Event{
 		Type: gedcom.EventType(eventTag),
 	}
 
-	// Look for subordinate tags (level 2)
+	baseLevel := tags[eventIdx].Level
+
+	// Look for subordinate tags at baseLevel+1
 	for i := eventIdx + 1; i < len(tags); i++ {
 		tag := tags[i]
-		if tag.Level <= 1 {
+		if tag.Level <= baseLevel {
 			break
 		}
-		if tag.Level == 2 {
+		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "DATE":
 				event.Date = tag.Value
@@ -258,6 +282,22 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string) *gedcom.Event
 				event.Age = tag.Value
 			case "AGNC":
 				event.Agency = tag.Value
+			case "ADDR":
+				event.Address = parseEventAddress(tags, i, tag.Level)
+			case "PHON":
+				event.Phone = append(event.Phone, tag.Value)
+			case "EMAIL":
+				event.Email = append(event.Email, tag.Value)
+			case "FAX":
+				event.Fax = append(event.Fax, tag.Value)
+			case "WWW":
+				event.Website = append(event.Website, tag.Value)
+			case "RESN":
+				event.Restriction = tag.Value
+			case "UID":
+				event.UID = tag.Value
+			case "SDATE":
+				event.SortDate = tag.Value
 			case "NOTE":
 				event.Notes = append(event.Notes, tag.Value)
 			case "SOUR":
@@ -268,6 +308,51 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string) *gedcom.Event
 	}
 
 	return event
+}
+
+// parseEventAddress extracts an address structure from tags starting at addrIdx.
+func parseEventAddress(tags []*gedcom.Tag, addrIdx, baseLevel int) *gedcom.Address {
+	addr := &gedcom.Address{
+		Line1: tags[addrIdx].Value,
+	}
+
+	// Look for subordinate tags at baseLevel+1
+	for i := addrIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 {
+			switch tag.Tag {
+			case "ADR1":
+				addr.Line1 = tag.Value
+			case "ADR2":
+				addr.Line2 = tag.Value
+			case "ADR3":
+				addr.Line3 = tag.Value
+			case "CITY":
+				addr.City = tag.Value
+			case "STAE":
+				addr.State = tag.Value
+			case "POST":
+				addr.PostalCode = tag.Value
+			case "CTRY":
+				addr.Country = tag.Value
+			case "CONT":
+				// Continue address on next line
+				if addr.Line1 != "" {
+					addr.Line1 += "\n" + tag.Value
+				} else {
+					addr.Line1 = tag.Value
+				}
+			case "CONC":
+				// Concatenate to address
+				addr.Line1 += tag.Value
+			}
+		}
+	}
+
+	return addr
 }
 
 // parsePlaceDetail extracts a place structure with optional coordinates from tags starting at placIdx.
@@ -399,6 +484,8 @@ func parseLDSOrdinance(tags []*gedcom.Tag, ordIdx int, ordType gedcom.LDSOrdinan
 }
 
 // parseFamily converts record tags to a Family entity.
+//
+//nolint:gocyclo // GEDCOM parsing inherently requires handling many tag types
 func parseFamily(record *gedcom.Record) *gedcom.Family {
 	fam := &gedcom.Family{
 		XRef: record.XRef,
@@ -421,6 +508,9 @@ func parseFamily(record *gedcom.Record) *gedcom.Family {
 		case "CHIL":
 			fam.Children = append(fam.Children, tag.Value)
 
+		case "NCHI":
+			fam.NumberOfChildren = tag.Value
+
 		case "MARR", "DIV", "ENGA", "ANUL", "MARB", "MARC", "MARL", "MARS", "DIVF":
 			event := parseEvent(record.Tags, i, tag.Tag)
 			fam.Events = append(fam.Events, event)
@@ -438,6 +528,18 @@ func parseFamily(record *gedcom.Record) *gedcom.Family {
 
 		case "OBJE":
 			fam.MediaRefs = append(fam.MediaRefs, tag.Value)
+
+		case "CHAN":
+			fam.ChangeDate = parseChangeDate(record.Tags, i)
+
+		case "CREA":
+			fam.CreationDate = parseChangeDate(record.Tags, i)
+
+		case "REFN":
+			fam.RefNumber = tag.Value
+
+		case "UID":
+			fam.UID = tag.Value
 		}
 	}
 
@@ -451,7 +553,8 @@ func parseSource(record *gedcom.Record) *gedcom.Source {
 		Tags: record.Tags,
 	}
 
-	for _, tag := range record.Tags {
+	for i := 0; i < len(record.Tags); i++ {
+		tag := record.Tags[i]
 		if tag.Level != 1 {
 			continue
 		}
@@ -471,8 +574,169 @@ func parseSource(record *gedcom.Record) *gedcom.Source {
 			src.Notes = append(src.Notes, tag.Value)
 		case "OBJE":
 			src.MediaRefs = append(src.MediaRefs, tag.Value)
+		case "CHAN":
+			src.ChangeDate = parseChangeDate(record.Tags, i)
+		case "CREA":
+			src.CreationDate = parseChangeDate(record.Tags, i)
+		case "REFN":
+			src.RefNumber = tag.Value
+		case "UID":
+			src.UID = tag.Value
 		}
 	}
 
 	return src
+}
+
+// parseChangeDate extracts a change date structure from tags starting at chanIdx.
+// Used for both CHAN (change date) and CREA (creation date) tags.
+func parseChangeDate(tags []*gedcom.Tag, chanIdx int) *gedcom.ChangeDate {
+	cd := &gedcom.ChangeDate{}
+
+	baseLevel := tags[chanIdx].Level
+
+	// Look for subordinate tags at baseLevel+1
+	for i := chanIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 && tag.Tag == "DATE" {
+			cd.Date = tag.Value
+			// Look for TIME subordinate at baseLevel+2
+			for j := i + 1; j < len(tags); j++ {
+				timeTag := tags[j]
+				if timeTag.Level <= baseLevel+1 {
+					break
+				}
+				if timeTag.Level == baseLevel+2 && timeTag.Tag == "TIME" {
+					cd.Time = timeTag.Value
+					break
+				}
+			}
+		}
+	}
+
+	return cd
+}
+
+// parseSubmitter converts record tags to a Submitter entity.
+func parseSubmitter(record *gedcom.Record) *gedcom.Submitter {
+	subm := &gedcom.Submitter{
+		XRef: record.XRef,
+		Tags: record.Tags,
+	}
+
+	for i := 0; i < len(record.Tags); i++ {
+		tag := record.Tags[i]
+		if tag.Level != 1 {
+			continue
+		}
+
+		switch tag.Tag {
+		case "NAME":
+			subm.Name = tag.Value
+
+		case "ADDR":
+			subm.Address = parseEventAddress(record.Tags, i, tag.Level)
+
+		case "PHON":
+			subm.Phone = append(subm.Phone, tag.Value)
+
+		case "EMAIL":
+			subm.Email = append(subm.Email, tag.Value)
+
+		case "LANG":
+			subm.Language = append(subm.Language, tag.Value)
+
+		case "NOTE":
+			subm.Notes = append(subm.Notes, tag.Value)
+		}
+	}
+
+	return subm
+}
+
+// parseRepository converts record tags to a Repository entity.
+func parseRepository(record *gedcom.Record) *gedcom.Repository {
+	repo := &gedcom.Repository{
+		XRef: record.XRef,
+		Tags: record.Tags,
+	}
+
+	for i := 0; i < len(record.Tags); i++ {
+		tag := record.Tags[i]
+		if tag.Level != 1 {
+			continue
+		}
+
+		switch tag.Tag {
+		case "NAME":
+			repo.Name = tag.Value
+
+		case "ADDR":
+			repo.Address = parseEventAddress(record.Tags, i, tag.Level)
+
+		case "PHON":
+			if repo.Address == nil {
+				repo.Address = &gedcom.Address{}
+			}
+			repo.Address.Phone = tag.Value
+
+		case "EMAIL":
+			if repo.Address == nil {
+				repo.Address = &gedcom.Address{}
+			}
+			repo.Address.Email = tag.Value
+
+		case "FAX":
+			// FAX is not in Address struct, skip for now
+
+		case "WWW":
+			if repo.Address == nil {
+				repo.Address = &gedcom.Address{}
+			}
+			repo.Address.Website = tag.Value
+
+		case "NOTE":
+			repo.Notes = append(repo.Notes, tag.Value)
+		}
+	}
+
+	return repo
+}
+
+// parseNote converts record tags to a Note entity.
+func parseNote(record *gedcom.Record) *gedcom.Note {
+	note := &gedcom.Note{
+		XRef: record.XRef,
+		Tags: record.Tags,
+		Text: record.Value, // The note text is in the value of the level 0 NOTE tag
+	}
+
+	// Process continuation lines
+	for i := 0; i < len(record.Tags); i++ {
+		tag := record.Tags[i]
+		if tag.Level != 1 {
+			continue
+		}
+
+		switch tag.Tag {
+		case "CONT":
+			// Continue with newline
+			note.Continuation = append(note.Continuation, tag.Value)
+
+		case "CONC":
+			// Concatenate without newline to the last piece of text
+			if len(note.Continuation) > 0 {
+				// Append to last continuation
+				note.Continuation[len(note.Continuation)-1] += tag.Value
+			} else {
+				// Append to main text
+				note.Text += tag.Value
+			}
+		}
+	}
+
+	return note
 }

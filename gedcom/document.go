@@ -121,3 +121,75 @@ func (d *Document) Sources() []*Source {
 	}
 	return sources
 }
+
+// GetSubmitter returns the submitter record with the given XRef.
+// Returns nil if not found or if the record is not a submitter.
+func (d *Document) GetSubmitter(xref string) *Submitter {
+	record := d.GetRecord(xref)
+	if record == nil {
+		return nil
+	}
+	if subm, ok := record.GetSubmitter(); ok {
+		return subm
+	}
+	return nil
+}
+
+// Submitters returns all submitter records in the document.
+func (d *Document) Submitters() []*Submitter {
+	var submitters []*Submitter
+	for _, record := range d.Records {
+		if subm, ok := record.GetSubmitter(); ok {
+			submitters = append(submitters, subm)
+		}
+	}
+	return submitters
+}
+
+// GetRepository returns the repository record with the given XRef.
+// Returns nil if not found or if the record is not a repository.
+func (d *Document) GetRepository(xref string) *Repository {
+	record := d.GetRecord(xref)
+	if record == nil {
+		return nil
+	}
+	if repo, ok := record.GetRepository(); ok {
+		return repo
+	}
+	return nil
+}
+
+// Repositories returns all repository records in the document.
+func (d *Document) Repositories() []*Repository {
+	var repositories []*Repository
+	for _, record := range d.Records {
+		if repo, ok := record.GetRepository(); ok {
+			repositories = append(repositories, repo)
+		}
+	}
+	return repositories
+}
+
+// GetNote returns the note record with the given XRef.
+// Returns nil if not found or if the record is not a note.
+func (d *Document) GetNote(xref string) *Note {
+	record := d.GetRecord(xref)
+	if record == nil {
+		return nil
+	}
+	if note, ok := record.GetNote(); ok {
+		return note
+	}
+	return nil
+}
+
+// Notes returns all note records in the document.
+func (d *Document) Notes() []*Note {
+	var notes []*Note
+	for _, record := range d.Records {
+		if note, ok := record.GetNote(); ok {
+			notes = append(notes, note)
+		}
+	}
+	return notes
+}

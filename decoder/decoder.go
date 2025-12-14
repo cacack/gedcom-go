@@ -169,6 +169,7 @@ func buildRecords(doc *gedcom.Document, lines []*parser.Line) {
 			currentRecord = &gedcom.Record{
 				XRef:       line.XRef,
 				Type:       gedcom.RecordType(line.Tag),
+				Value:      line.Value,
 				LineNumber: line.LineNumber,
 			}
 

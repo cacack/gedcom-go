@@ -26,6 +26,18 @@ type Source struct {
 	// Notes are references to note records
 	Notes []string
 
+	// ChangeDate is when the record was last modified (CHAN tag)
+	ChangeDate *ChangeDate
+
+	// CreationDate is when the record was created (CREA tag, GEDCOM 7.0)
+	CreationDate *ChangeDate
+
+	// RefNumber is the user reference number (REFN tag)
+	RefNumber string
+
+	// UID is the unique identifier (UID tag)
+	UID string
+
 	// Tags contains all raw tags for this source (for unknown/custom tags)
 	Tags []*Tag
 }

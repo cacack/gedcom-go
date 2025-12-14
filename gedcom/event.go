@@ -98,6 +98,32 @@ type Event struct {
 	// Agency is the responsible agency (AGNC subordinate)
 	Agency string
 
+	// Address is the event address structure (ADDR subordinate)
+	Address *Address
+
+	// Phone numbers associated with the event (PHON subordinate, can repeat)
+	Phone []string
+
+	// Email addresses associated with the event (EMAIL subordinate, can repeat)
+	Email []string
+
+	// Fax numbers associated with the event (FAX subordinate, can repeat)
+	Fax []string
+
+	// Websites associated with the event (WWW subordinate, can repeat)
+	Website []string
+
+	// Restriction notice for privacy controls (RESN subordinate)
+	// Common values: "confidential", "locked", "privacy" (or combinations)
+	Restriction string
+
+	// UID is a unique identifier for the event (UID subordinate)
+	UID string
+
+	// SortDate is the date used for sorting events (SDATE subordinate, GEDCOM 7.0)
+	// Typically in ISO 8601 format (e.g., "1900-01-01")
+	SortDate string
+
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation
 
