@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -1056,5 +1057,616 @@ func TestFamilyEvents(t *testing.T) {
 		if fam.Events[i].Place != expected.place {
 			t.Errorf("Event[%d].Place = %s, want %s", i, fam.Events[i].Place, expected.place)
 		}
+	}
+}
+
+// === Integration Tests ===
+// These tests validate parsing against real-world GEDCOM 7.0 test data.
+
+// TestMaximal70Individual tests parsing of maximal70.ged individual @I1@.
+// Validates comprehensive GEDCOM 7.0 features from the official test file.
+func TestMaximal70Individual(t *testing.T) {
+	f, err := os.Open("../testdata/gedcom-7.0/maximal70.ged")
+	if err != nil {
+		t.Fatalf("Failed to open test file: %v", err)
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+
+	// Test name with extensions (NICK, SPFX)
+	if len(indi.Names) < 1 {
+		t.Fatal("No names found")
+	}
+	name := indi.Names[0]
+	if name.Nickname != "John" {
+		t.Errorf("Name.Nickname = %s, want John", name.Nickname)
+	}
+	if name.SurnamePrefix != "de" {
+		t.Errorf("Name.SurnamePrefix = %s, want de", name.SurnamePrefix)
+	}
+	if name.Given != "Joseph" {
+		t.Errorf("Name.Given = %s, want Joseph", name.Given)
+	}
+	if name.Surname != "Allen" {
+		t.Errorf("Name.Surname = %s, want Allen", name.Surname)
+	}
+	if name.Prefix != "Lt. Cmndr." {
+		t.Errorf("Name.Prefix = %s, want 'Lt. Cmndr.'", name.Prefix)
+	}
+	if name.Suffix != "jr." {
+		t.Errorf("Name.Suffix = %s, want jr.", name.Suffix)
+	}
+
+	// Test attributes (RESI is parsed as an event, not attribute)
+	attrTypes := make(map[string]bool)
+	for _, attr := range indi.Attributes {
+		attrTypes[attr.Type] = true
+	}
+	expectedAttrs := []string{"CAST", "DSCR", "EDUC", "IDNO", "NATI", "OCCU", "RELI", "SSN", "TITL"}
+	for _, exp := range expectedAttrs {
+		if !attrTypes[exp] {
+			t.Errorf("Attribute %s not found", exp)
+		}
+	}
+
+	// Test associations
+	if len(indi.Associations) < 1 {
+		t.Error("No associations found")
+	} else {
+		// Check that various roles are parsed
+		roleFound := make(map[string]bool)
+		for _, assoc := range indi.Associations {
+			roleFound[assoc.Role] = true
+		}
+		expectedRoles := []string{"FRIEND", "NGHBR", "GODP"}
+		for _, role := range expectedRoles {
+			if !roleFound[role] {
+				t.Errorf("Association role %s not found", role)
+			}
+		}
+	}
+
+	// Test LDS ordinances
+	if len(indi.LDSOrdinances) < 4 {
+		t.Errorf("len(LDSOrdinances) = %d, want at least 4", len(indi.LDSOrdinances))
+	} else {
+		ordTypes := make(map[string]bool)
+		for _, ord := range indi.LDSOrdinances {
+			ordTypes[string(ord.Type)] = true
+		}
+		expectedOrds := []string{"BAPL", "CONL", "ENDL", "SLGC"}
+		for _, exp := range expectedOrds {
+			if !ordTypes[exp] {
+				t.Errorf("LDS ordinance %s not found", exp)
+			}
+		}
+	}
+
+	// Test pedigree links
+	if len(indi.ChildInFamilies) < 1 {
+		t.Error("No FAMC links found")
+	} else {
+		pediFound := make(map[string]bool)
+		for _, link := range indi.ChildInFamilies {
+			if link.Pedigree != "" {
+				pediFound[link.Pedigree] = true
+			}
+		}
+		expectedPedi := []string{"FOSTER", "ADOPTED", "BIRTH"}
+		for _, exp := range expectedPedi {
+			if !pediFound[exp] {
+				t.Errorf("Pedigree %s not found", exp)
+			}
+		}
+	}
+}
+
+// TestMaximal70Family tests parsing of maximal70.ged family @F1@.
+func TestMaximal70Family(t *testing.T) {
+	f, err := os.Open("../testdata/gedcom-7.0/maximal70.ged")
+	if err != nil {
+		t.Fatalf("Failed to open test file: %v", err)
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	fam := doc.GetFamily("@F1@")
+	if fam == nil {
+		t.Fatal("Family @F1@ not found")
+	}
+
+	// Test family events (CENS is not currently parsed as a family event)
+	eventTypes := make(map[string]bool)
+	for _, event := range fam.Events {
+		eventTypes[string(event.Type)] = true
+	}
+	expectedEvents := []string{"ANUL", "DIV", "DIVF", "ENGA", "MARB", "MARC", "MARL", "MARS", "MARR"}
+	for _, exp := range expectedEvents {
+		if !eventTypes[exp] {
+			t.Errorf("Family event %s not found", exp)
+		}
+	}
+
+	// Test marriage event details
+	for _, event := range fam.Events {
+		if event.Type == "MARR" {
+			if event.Agency != "Agency" {
+				t.Errorf("MARR.Agency = %s, want Agency", event.Agency)
+			}
+			if event.Cause != "Cause" {
+				t.Errorf("MARR.Cause = %s, want Cause", event.Cause)
+			}
+			if event.Date != "27 MAR 2022" {
+				t.Errorf("MARR.Date = %s, want '27 MAR 2022'", event.Date)
+			}
+			break
+		}
+	}
+
+	// Test family LDS ordinances
+	if len(fam.LDSOrdinances) < 1 {
+		t.Error("No family LDS ordinances found")
+	} else {
+		hasSlgs := false
+		for _, ord := range fam.LDSOrdinances {
+			if ord.Type == "SLGS" {
+				hasSlgs = true
+				if ord.Temple != "LOGAN" {
+					t.Errorf("SLGS.Temple = %s, want LOGAN", ord.Temple)
+				}
+				break
+			}
+		}
+		if !hasSlgs {
+			t.Error("SLGS ordinance not found")
+		}
+	}
+
+	// Test source citations with PAGE and QUAY
+	if len(fam.SourceCitations) < 1 {
+		t.Error("No source citations found")
+	} else {
+		for _, cite := range fam.SourceCitations {
+			if cite.SourceXRef == "@S1@" && cite.Page == "1" {
+				if cite.Quality != 1 {
+					t.Errorf("Citation QUAY = %d, want 1", cite.Quality)
+				}
+				break
+			}
+		}
+	}
+}
+
+// TestMaximal70Source tests parsing of source with coordinates in DATA.
+func TestMaximal70Source(t *testing.T) {
+	f, err := os.Open("../testdata/gedcom-7.0/maximal70.ged")
+	if err != nil {
+		t.Fatalf("Failed to open test file: %v", err)
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	src := doc.GetSource("@S1@")
+	if src == nil {
+		t.Fatal("Source @S1@ not found")
+	}
+
+	if src.Title != "Title" {
+		t.Errorf("Source.Title = %s, want Title", src.Title)
+	}
+	if src.Author != "Author" {
+		t.Errorf("Source.Author = %s, want Author", src.Author)
+	}
+	if src.Publication != "Publication info" {
+		t.Errorf("Source.Publication = %s, want 'Publication info'", src.Publication)
+	}
+}
+
+// === Edge Case Tests ===
+// These tests validate handling of empty, nil, and missing values.
+
+// TestEmptyEventSubordinates tests events without subordinate tags.
+func TestEmptyEventSubordinates(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 BIRT
+1 DEAT Y
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.Events) != 2 {
+		t.Fatalf("len(Events) = %d, want 2", len(indi.Events))
+	}
+
+	// Birth with no subordinates
+	birth := indi.Events[0]
+	if birth.Date != "" {
+		t.Errorf("BIRT.Date = %s, want empty", birth.Date)
+	}
+	if birth.Place != "" {
+		t.Errorf("BIRT.Place = %s, want empty", birth.Place)
+	}
+	if birth.PlaceDetail != nil {
+		t.Errorf("BIRT.PlaceDetail = %v, want nil", birth.PlaceDetail)
+	}
+
+	// Death with just Y value
+	death := indi.Events[1]
+	if death.Date != "" {
+		t.Errorf("DEAT.Date = %s, want empty", death.Date)
+	}
+}
+
+// TestEmptyAttributeSubordinates tests attributes without subordinate tags.
+func TestEmptyAttributeSubordinates(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 OCCU Farmer
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.Attributes) != 1 {
+		t.Fatalf("len(Attributes) = %d, want 1", len(indi.Attributes))
+	}
+
+	attr := indi.Attributes[0]
+	if attr.Value != "Farmer" {
+		t.Errorf("Attribute.Value = %s, want Farmer", attr.Value)
+	}
+	if attr.Date != "" {
+		t.Errorf("Attribute.Date = %s, want empty", attr.Date)
+	}
+	if attr.Place != "" {
+		t.Errorf("Attribute.Place = %s, want empty", attr.Place)
+	}
+	if len(attr.SourceCitations) != 0 {
+		t.Errorf("len(SourceCitations) = %d, want 0", len(attr.SourceCitations))
+	}
+}
+
+// TestEmptyLDSOrdinance tests LDS ordinances with minimal data.
+func TestEmptyLDSOrdinance(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 BAPL
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.LDSOrdinances) != 1 {
+		t.Fatalf("len(LDSOrdinances) = %d, want 1", len(indi.LDSOrdinances))
+	}
+
+	ord := indi.LDSOrdinances[0]
+	if ord.Type != "BAPL" {
+		t.Errorf("Type = %s, want BAPL", ord.Type)
+	}
+	if ord.Date != "" {
+		t.Errorf("Date = %s, want empty", ord.Date)
+	}
+	if ord.Temple != "" {
+		t.Errorf("Temple = %s, want empty", ord.Temple)
+	}
+	if ord.Status != "" {
+		t.Errorf("Status = %s, want empty", ord.Status)
+	}
+}
+
+// TestEmptyAssociation tests associations with minimal data.
+func TestEmptyAssociation(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 ASSO @I2@
+0 @I2@ INDI
+1 NAME Jane /Smith/
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.Associations) != 1 {
+		t.Fatalf("len(Associations) = %d, want 1", len(indi.Associations))
+	}
+
+	assoc := indi.Associations[0]
+	if assoc.IndividualXRef != "@I2@" {
+		t.Errorf("IndividualXRef = %s, want @I2@", assoc.IndividualXRef)
+	}
+	if assoc.Role != "" {
+		t.Errorf("Role = %s, want empty", assoc.Role)
+	}
+	if len(assoc.Notes) != 0 {
+		t.Errorf("len(Notes) = %d, want 0", len(assoc.Notes))
+	}
+}
+
+// TestEmptySourceCitation tests source citations with minimal data.
+func TestEmptySourceCitation(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 SOUR @S1@
+0 @S1@ SOUR
+1 TITL Test Source
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.SourceCitations) != 1 {
+		t.Fatalf("len(SourceCitations) = %d, want 1", len(indi.SourceCitations))
+	}
+
+	cite := indi.SourceCitations[0]
+	if cite.SourceXRef != "@S1@" {
+		t.Errorf("SourceXRef = %s, want @S1@", cite.SourceXRef)
+	}
+	if cite.Page != "" {
+		t.Errorf("Page = %s, want empty", cite.Page)
+	}
+	if cite.Quality != 0 {
+		t.Errorf("Quality = %d, want 0", cite.Quality)
+	}
+	if cite.Data != nil {
+		t.Errorf("Data = %v, want nil", cite.Data)
+	}
+}
+
+// TestEmptyNameComponents tests name parsing with empty components.
+func TestEmptyNameComponents(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME //
+0 @I2@ INDI
+1 NAME Unknown//
+0 @I3@ INDI
+1 NAME  /Smith/
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Empty name
+	indi1 := doc.GetIndividual("@I1@")
+	if indi1 == nil {
+		t.Fatal("@I1@ not found")
+	}
+	if len(indi1.Names) != 1 {
+		t.Fatalf("@I1@ len(Names) = %d, want 1", len(indi1.Names))
+	}
+	if indi1.Names[0].Given != "" {
+		t.Errorf("@I1@ Given = %s, want empty", indi1.Names[0].Given)
+	}
+	if indi1.Names[0].Surname != "" {
+		t.Errorf("@I1@ Surname = %s, want empty", indi1.Names[0].Surname)
+	}
+
+	// Given only, no surname
+	indi2 := doc.GetIndividual("@I2@")
+	if indi2 == nil {
+		t.Fatal("@I2@ not found")
+	}
+	if indi2.Names[0].Given != "Unknown" {
+		t.Errorf("@I2@ Given = %s, want Unknown", indi2.Names[0].Given)
+	}
+	if indi2.Names[0].Surname != "" {
+		t.Errorf("@I2@ Surname = %s, want empty", indi2.Names[0].Surname)
+	}
+
+	// Surname only, no given
+	indi3 := doc.GetIndividual("@I3@")
+	if indi3 == nil {
+		t.Fatal("@I3@ not found")
+	}
+	if indi3.Names[0].Surname != "Smith" {
+		t.Errorf("@I3@ Surname = %s, want Smith", indi3.Names[0].Surname)
+	}
+}
+
+// TestPlaceWithoutCoordinates tests place parsing without MAP subordinates.
+func TestPlaceWithoutCoordinates(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 BIRT
+2 PLAC Boston, MA
+3 FORM City, State
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.Events) != 1 {
+		t.Fatalf("len(Events) = %d, want 1", len(indi.Events))
+	}
+
+	birth := indi.Events[0]
+	if birth.PlaceDetail == nil {
+		t.Fatal("PlaceDetail is nil")
+	}
+	if birth.PlaceDetail.Name != "Boston, MA" {
+		t.Errorf("PlaceDetail.Name = %s, want 'Boston, MA'", birth.PlaceDetail.Name)
+	}
+	if birth.PlaceDetail.Form != "City, State" {
+		t.Errorf("PlaceDetail.Form = %s, want 'City, State'", birth.PlaceDetail.Form)
+	}
+	if birth.PlaceDetail.Coordinates != nil {
+		t.Errorf("PlaceDetail.Coordinates = %v, want nil", birth.PlaceDetail.Coordinates)
+	}
+}
+
+// TestSourceCitationInvalidQuay tests source citation with non-numeric QUAY.
+func TestSourceCitationInvalidQuay(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 SOUR @S1@
+2 QUAY invalid
+0 @S1@ SOUR
+1 TITL Test
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.SourceCitations) != 1 {
+		t.Fatalf("len(SourceCitations) = %d, want 1", len(indi.SourceCitations))
+	}
+
+	// Invalid QUAY should result in 0 (default)
+	if indi.SourceCitations[0].Quality != 0 {
+		t.Errorf("Quality = %d, want 0 (invalid value ignored)", indi.SourceCitations[0].Quality)
+	}
+}
+
+// TestMultipleSourceCitationsOnEvent tests multiple source citations on same event.
+func TestMultipleSourceCitationsOnEvent(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 BIRT
+2 DATE 1850
+2 SOUR @S1@
+3 PAGE p. 10
+2 SOUR @S2@
+3 PAGE p. 20
+3 QUAY 3
+0 @S1@ SOUR
+1 TITL Source 1
+0 @S2@ SOUR
+1 TITL Source 2
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.Events) != 1 {
+		t.Fatalf("len(Events) = %d, want 1", len(indi.Events))
+	}
+
+	birth := indi.Events[0]
+	if len(birth.SourceCitations) != 2 {
+		t.Fatalf("len(SourceCitations) = %d, want 2", len(birth.SourceCitations))
+	}
+
+	// First citation
+	if birth.SourceCitations[0].SourceXRef != "@S1@" {
+		t.Errorf("Citation[0].SourceXRef = %s, want @S1@", birth.SourceCitations[0].SourceXRef)
+	}
+	if birth.SourceCitations[0].Page != "p. 10" {
+		t.Errorf("Citation[0].Page = %s, want 'p. 10'", birth.SourceCitations[0].Page)
+	}
+
+	// Second citation
+	if birth.SourceCitations[1].SourceXRef != "@S2@" {
+		t.Errorf("Citation[1].SourceXRef = %s, want @S2@", birth.SourceCitations[1].SourceXRef)
+	}
+	if birth.SourceCitations[1].Page != "p. 20" {
+		t.Errorf("Citation[1].Page = %s, want 'p. 20'", birth.SourceCitations[1].Page)
+	}
+	if birth.SourceCitations[1].Quality != 3 {
+		t.Errorf("Citation[1].Quality = %d, want 3", birth.SourceCitations[1].Quality)
 	}
 }
