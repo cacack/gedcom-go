@@ -35,6 +35,9 @@ type Record struct {
 	// Type is the record type (INDI, FAM, SOUR, etc.)
 	Type RecordType
 
+	// Value is the value from the level 0 line (used for NOTE records, etc.)
+	Value string
+
 	// Tags contains all the tags that make up this record
 	Tags []*Tag
 
@@ -81,6 +84,30 @@ func (r *Record) GetFamily() (*Family, bool) {
 func (r *Record) GetSource() (*Source, bool) {
 	if src, ok := r.Entity.(*Source); ok {
 		return src, true
+	}
+	return nil, false
+}
+
+// GetSubmitter returns the record as a Submitter if it's the correct type.
+func (r *Record) GetSubmitter() (*Submitter, bool) {
+	if subm, ok := r.Entity.(*Submitter); ok {
+		return subm, true
+	}
+	return nil, false
+}
+
+// GetRepository returns the record as a Repository if it's the correct type.
+func (r *Record) GetRepository() (*Repository, bool) {
+	if repo, ok := r.Entity.(*Repository); ok {
+		return repo, true
+	}
+	return nil, false
+}
+
+// GetNote returns the record as a Note if it's the correct type.
+func (r *Record) GetNote() (*Note, bool) {
+	if note, ok := r.Entity.(*Note); ok {
+		return note, true
 	}
 	return nil, false
 }
