@@ -1,7 +1,7 @@
 # gedcom-go
 
 [![CI](https://github.com/cacack/gedcom-go/actions/workflows/ci.yml/badge.svg)](https://github.com/cacack/gedcom-go/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-98.4%25-brightgreen)](https://github.com/cacack/gedcom-go)
+[![Coverage](https://img.shields.io/badge/coverage-93%25-brightgreen)](https://github.com/cacack/gedcom-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cacack/gedcom-go)](https://goreportcard.com/report/github.com/cacack/gedcom-go)
 [![GoDoc](https://pkg.go.dev/badge/github.com/cacack/gedcom-go.svg)](https://pkg.go.dev/github.com/cacack/gedcom-go)
 [![Release](https://img.shields.io/github/v/release/cacack/gedcom-go)](https://github.com/cacack/gedcom-go/releases)
@@ -18,8 +18,12 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 - **Character Encoding**: Support for UTF-8, ANSEL, ASCII, LATIN1, and UNICODE encodings
 - **Clear Error Reporting**: All errors include line numbers and context
 - **Zero Dependencies**: Uses only the Go standard library
-- **Well-tested**: 98.4% test coverage across all packages
+- **Well-tested**: 93% test coverage across core packages
 - **Production Ready**: Full CI/CD pipeline with automated testing on multiple platforms
+- **Rich Entity Parsing**: Individuals, Families, Sources, Submitters, Repositories, Notes
+- **Full Event Support**: 23+ event types including religious, life, legal, and LDS ordinances
+- **Source Citations**: PAGE, QUAY (quality), and DATA subordinates for citations
+- **Associations**: ASSO tag support with roles (godparents, witnesses, etc.)
 
 ## Installation
 
@@ -159,7 +163,7 @@ make all
 # Run tests
 make test
 
-# Run tests with coverage (98.4% coverage)
+# Run tests with coverage (93% coverage)
 make test-coverage
 
 # Generate HTML coverage report

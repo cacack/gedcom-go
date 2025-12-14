@@ -57,52 +57,34 @@ Final status:
 - [x] Update README with correct installation instructions
 - [x] Add release badges to README
 
-### 4. PEDI (Pedigree Linkage) Support
+### 4. ✅ PEDI (Pedigree Linkage) Support - COMPLETED
 **Goal**: Capture child relationship types (biological, adopted, foster, etc.)
 
-**Problem**: Currently `Individual.ChildInFamilies` is `[]string` (XRefs only), losing the PEDI subordinate tag that indicates relationship type:
+**Status**: Fully implemented with `FamilyLink` struct containing `FamilyXRef` and `Pedigree` fields.
 
-```gedcom
-0 @I13@ INDI
-1 FAMC @F2@
-2 PEDI adopted   <-- Currently not captured
-```
-
-**Impact**: Applications using gedcom-go (e.g., my-family) cannot distinguish adopted from biological children.
-
-**Tasks**:
-- [ ] Create `FamilyLink` struct to replace `[]string`:
-  ```go
-  type FamilyLink struct {
-      FamilyXRef string
-      Pedigree   string // "birth", "adopted", "foster", "sealing"
-  }
-  ```
-- [ ] Update `Individual.ChildInFamilies` to `[]FamilyLink`
-- [ ] Update decoder to parse PEDI tags under FAMC
-- [ ] Add `EventAdoption` constant (`ADOP`) to EventType
-- [ ] Add tests with comprehensive GEDCOM containing PEDI tags
-- [ ] Update documentation
-
-**Reference**: GEDCOM 5.5.1 spec section on INDIVIDUAL_EVENT_STRUCTURE
+**Completed Tasks**:
+- [x] Created `FamilyLink` struct in `gedcom/individual.go`
+- [x] Updated `Individual.ChildInFamilies` to `[]FamilyLink`
+- [x] Updated decoder to parse PEDI tags under FAMC
+- [x] Added `ADOP` event type support
+- [x] Added comprehensive tests
+- [x] Updated documentation
 
 ---
 
 ## Medium Priority
 
-### 5. Performance Benchmarking & Optimization
+### 5. ✅ Performance Benchmarking & Optimization - COMPLETED
 **Goal**: Ensure library performs well with large GEDCOM files
 
-**Tasks**:
-- [ ] Add comprehensive benchmarks:
-  - Small files (< 1KB)
-  - Medium files (100KB - 1MB)
-  - Large files (10MB+)
-  - Memory allocation benchmarks
-- [ ] Profile hot paths using pprof
-- [ ] Optimize identified bottlenecks
-- [ ] Consider Profile-Guided Optimization (PGO) for Go 1.21+
-- [ ] Document performance characteristics in README
+**Status**: Comprehensive benchmarks added with regression testing.
+
+**Completed Tasks**:
+- [x] Added comprehensive benchmarks for all packages
+- [x] Added memory allocation benchmarks
+- [x] Documented performance in README and PERFORMANCE.md
+- [x] Added `make bench`, `make perf-regression` commands
+- [x] Zero-allocation validator for valid documents
 
 ### 6. Enhanced Features
 **Goal**: Add useful functionality beyond basic parsing
@@ -182,3 +164,19 @@ Final status:
 - ✓ Encoder implementation
 - ✓ Basic examples
 - ✓ Initial documentation (README, CLAUDE.md)
+- ✓ PEDI (pedigree linkage) support with FamilyLink struct
+- ✓ Source citation structure (PAGE, QUAY, DATA)
+- ✓ Full event subordinate parsing (TYPE, CAUS, AGE, AGNC)
+- ✓ Religious events (BARM, BASM, BLES, CHRA, CONF, FCOM)
+- ✓ Life events (GRAD, RETI, NATU, ORDN, PROB, WILL, CREM)
+- ✓ Individual attributes (CAST, DSCR, EDUC, IDNO, NATI, SSN, TITL, RELI, NCHI, NMR, PROP)
+- ✓ LDS ordinances (BAPL, CONL, ENDL, SLGC, SLGS)
+- ✓ Name extensions (NICK, SPFX, TYPE)
+- ✓ Associations (ASSO with ROLE)
+- ✓ Place structure with MAP coordinates
+- ✓ Family events (MARB, MARC, MARL, MARS, DIVF)
+- ✓ Event address structure
+- ✓ Metadata tags (CHAN, CREA, REFN, UID)
+- ✓ Entity parsing for Submitter, Repository, Note records
+- ✓ Performance benchmarking and regression testing
+- ✓ 93% test coverage across core packages

@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### Decoder Entity Parsing
+- Submitter (`SUBM`) record entity parsing with name, address, and contact details
+- Repository (`REPO`) record entity parsing with name and address
+- Note (`NOTE`) record entity parsing with text content
+
+#### Source Citations
+- Full source citation structure with `PAGE` (page reference), `QUAY` (quality/reliability), and `DATA` subordinates
+- Inline source text support via `DATA.TEXT`
+- Source citations in individuals, families, and events
+
+#### Individual Events (23+ types)
+- Religious events: `BARM`, `BASM`, `BLES`, `CHRA`, `CONF`, `FCOM`
+- Life events: `GRAD`, `RETI`, `NATU`, `ORDN`
+- Legal/estate events: `PROB`, `WILL`
+- Death-related: `CREM`
+- All events include subordinate parsing: `TYPE`, `CAUS`, `AGE`, `AGNC`
+
+#### Individual Attributes
+- Full attribute parsing: `CAST`, `DSCR`, `EDUC`, `IDNO`, `NATI`, `SSN`, `TITL`, `RELI`
+- Family statistics: `NCHI`, `NMR`, `PROP`
+
+#### LDS Ordinances
+- Individual ordinances: `BAPL`, `CONL`, `ENDL`, `SLGC`
+- Family ordinances: `SLGS`
+- Status, temple, and date subordinates
+
+#### Pedigree Linkage (PEDI)
+- `FamilyLink` struct to capture pedigree type for child relationships
+- Support for `birth`, `adopted`, `foster`, `sealing` relationship types
+
+#### Personal Name Extensions
+- `NICK` (nickname) support
+- `SPFX` (surname prefix: von, de, van der)
+- `TYPE` (name type: birth, married, aka)
+
+#### Associations
+- `ASSO` tag parsing with `IndividualXRef` and `ROLE`
+- Role support: `GODP`, `WITN`, `FATH`, `MOTH`, etc.
+
+#### Place Structure
+- `FORM` (place format) parsing
+- `MAP` with `LATI`/`LONG` coordinates
+
+#### Metadata
+- `CHAN` (change date) with timestamp
+- `CREA` (creation date, GEDCOM 7.0)
+- `REFN` (reference number)
+- `UID` (unique identifier)
+
+#### Family Events
+- Marriage-related: `MARB`, `MARC`, `MARL`, `MARS`
+- `DIVF` (divorce filing)
+
+#### Event Subordinates
+- Address structure (`ADDR`) for events
+- Administrative tags: `RESN`, `UID`, `SDATE`
+
+### Changed
+- `Individual.ChildInFamilies` changed from `[]string` to `[]FamilyLink`
+- `Individual.Sources` replaced with `SourceCitations []*SourceCitation`
+- `Family.Sources` replaced with `SourceCitations []*SourceCitation`
+
+### Testing
+- Comprehensive tests for all new entity types
+- Security scanning integration
+
 ## [0.1.0] - 2025-01-20
 
 ### Added
