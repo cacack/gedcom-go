@@ -41,12 +41,13 @@ func parseIndividual(record *gedcom.Record) *gedcom.Individual {
 		case "SEX":
 			indi.Sex = tag.Value
 
-		case "BIRT", "DEAT", "BAPM", "BURI", "CENS", "CHR", "OCCU", "RESI", "IMMI", "EMIG":
+		case "BIRT", "DEAT", "BAPM", "BURI", "CENS", "CHR", "ADOP", "OCCU", "RESI", "IMMI", "EMIG":
 			event := parseEvent(record.Tags, i, tag.Tag)
 			indi.Events = append(indi.Events, event)
 
 		case "FAMC":
-			indi.ChildInFamilies = append(indi.ChildInFamilies, tag.Value)
+			famLink := parseFamilyLink(record.Tags, i)
+			indi.ChildInFamilies = append(indi.ChildInFamilies, famLink)
 
 		case "FAMS":
 			indi.SpouseInFamilies = append(indi.SpouseInFamilies, tag.Value)
@@ -109,6 +110,26 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int) *gedcom.PersonalName {
 	}
 
 	return name
+}
+
+// parseFamilyLink extracts a family link from tags starting at famcIdx.
+func parseFamilyLink(tags []*gedcom.Tag, famcIdx int) gedcom.FamilyLink {
+	famLink := gedcom.FamilyLink{
+		FamilyXRef: tags[famcIdx].Value,
+	}
+
+	// Look for subordinate tags (level 2)
+	for i := famcIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= 1 {
+			break
+		}
+		if tag.Level == 2 && tag.Tag == "PEDI" {
+			famLink.Pedigree = tag.Value
+		}
+	}
+
+	return famLink
 }
 
 // parseEvent extracts an event from tags starting at eventIdx.

@@ -49,6 +49,9 @@ issues:
         - gocyclo
         - errcheck
         - gosec
+    # SA5011 false positive: staticcheck doesn't understand t.Fatal() stops execution
+    - path: _test\.go
+      text: "SA5011"
     # Ignore long lines in examples
     - path: examples/
       linters:

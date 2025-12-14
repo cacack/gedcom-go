@@ -116,8 +116,11 @@ func TestPopulateEntities(t *testing.T) {
 	}
 
 	// Check family references
-	if len(john.ChildInFamilies) != 1 || john.ChildInFamilies[0] != "@F1@" {
-		t.Errorf("john.ChildInFamilies = %v, want [@F1@]", john.ChildInFamilies)
+	if len(john.ChildInFamilies) != 1 || john.ChildInFamilies[0].FamilyXRef != "@F1@" {
+		t.Errorf("john.ChildInFamilies[0].FamilyXRef = %v, want @F1@", john.ChildInFamilies)
+	}
+	if john.ChildInFamilies[0].Pedigree != "" {
+		t.Errorf("john.ChildInFamilies[0].Pedigree = %s, want empty", john.ChildInFamilies[0].Pedigree)
 	}
 
 	jane := doc.GetIndividual("@I2@")
@@ -232,5 +235,90 @@ func TestParseNoSurname(t *testing.T) {
 	}
 	if indi.Names[0].Surname != "" {
 		t.Errorf("Surname = %s, want empty", indi.Names[0].Surname)
+	}
+}
+
+func TestParsePedigreeLinks(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Child /One/
+1 FAMC @F1@
+2 PEDI birth
+1 FAMC @F2@
+2 PEDI adopted
+1 FAMC @F3@
+2 PEDI foster
+1 FAMC @F4@
+2 PEDI sealing
+1 FAMC @F5@
+0 @I2@ INDI
+1 NAME Child /Two/
+1 FAMC @F6@
+2 PEDI BIRTH
+1 FAMC @F7@
+2 PEDI ADOPTED
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test GEDCOM 5.5.1 lowercase values
+	child1 := doc.GetIndividual("@I1@")
+	if child1 == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+
+	if len(child1.ChildInFamilies) != 5 {
+		t.Fatalf("len(child1.ChildInFamilies) = %d, want 5", len(child1.ChildInFamilies))
+	}
+
+	tests := []struct {
+		idx      int
+		familyXR string
+		pedigree string
+	}{
+		{0, "@F1@", "birth"},
+		{1, "@F2@", "adopted"},
+		{2, "@F3@", "foster"},
+		{3, "@F4@", "sealing"},
+		{4, "@F5@", ""}, // No PEDI tag
+	}
+
+	for _, tt := range tests {
+		link := child1.ChildInFamilies[tt.idx]
+		if link.FamilyXRef != tt.familyXR {
+			t.Errorf("ChildInFamilies[%d].FamilyXRef = %s, want %s", tt.idx, link.FamilyXRef, tt.familyXR)
+		}
+		if link.Pedigree != tt.pedigree {
+			t.Errorf("ChildInFamilies[%d].Pedigree = %s, want %s", tt.idx, link.Pedigree, tt.pedigree)
+		}
+	}
+
+	// Test GEDCOM 7.0 uppercase values (preserving original casing)
+	child2 := doc.GetIndividual("@I2@")
+	if child2 == nil {
+		t.Fatal("Individual @I2@ not found")
+	}
+
+	if len(child2.ChildInFamilies) != 2 {
+		t.Fatalf("len(child2.ChildInFamilies) = %d, want 2", len(child2.ChildInFamilies))
+	}
+
+	if child2.ChildInFamilies[0].FamilyXRef != "@F6@" {
+		t.Errorf("ChildInFamilies[0].FamilyXRef = %s, want @F6@", child2.ChildInFamilies[0].FamilyXRef)
+	}
+	if child2.ChildInFamilies[0].Pedigree != "BIRTH" {
+		t.Errorf("ChildInFamilies[0].Pedigree = %s, want BIRTH (uppercase preserved)", child2.ChildInFamilies[0].Pedigree)
+	}
+
+	if child2.ChildInFamilies[1].FamilyXRef != "@F7@" {
+		t.Errorf("ChildInFamilies[1].FamilyXRef = %s, want @F7@", child2.ChildInFamilies[1].FamilyXRef)
+	}
+	if child2.ChildInFamilies[1].Pedigree != "ADOPTED" {
+		t.Errorf("ChildInFamilies[1].Pedigree = %s, want ADOPTED (uppercase preserved)", child2.ChildInFamilies[1].Pedigree)
 	}
 }

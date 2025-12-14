@@ -18,7 +18,7 @@ type Individual struct {
 	Attributes []*Attribute
 
 	// ChildInFamilies are references to families where this person is a child
-	ChildInFamilies []string // XRef to Family records
+	ChildInFamilies []FamilyLink
 
 	// SpouseInFamilies are references to families where this person is a spouse
 	SpouseInFamilies []string // XRef to Family records
@@ -55,6 +55,16 @@ type PersonalName struct {
 
 	// Type is the name type (e.g., "birth", "married", "aka")
 	Type string
+}
+
+// FamilyLink represents a link to a family with optional pedigree type.
+type FamilyLink struct {
+	// FamilyXRef is the cross-reference to the family record
+	FamilyXRef string
+
+	// Pedigree is the pedigree linkage type (e.g., "birth", "adopted", "foster", "sealing")
+	// Empty string if not specified. Preserves original casing from GEDCOM.
+	Pedigree string
 }
 
 // Attribute represents a personal attribute.

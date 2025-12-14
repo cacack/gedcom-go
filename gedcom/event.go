@@ -11,6 +11,7 @@ const (
 	EventBurial      EventType = "BURI" // Burial
 	EventCensus      EventType = "CENS" // Census
 	EventChristening EventType = "CHR"  // Christening
+	EventAdoption    EventType = "ADOP" // Adoption
 	EventOccupation  EventType = "OCCU" // Occupation
 	EventResidence   EventType = "RESI" // Residence
 	EventImmigration EventType = "IMMI" // Immigration
