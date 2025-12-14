@@ -23,8 +23,8 @@ type Individual struct {
 	// SpouseInFamilies are references to families where this person is a spouse
 	SpouseInFamilies []string // XRef to Family records
 
-	// Sources are references to source citations
-	Sources []string // XRef to Source records
+	// SourceCitations are source citations with page/quality details
+	SourceCitations []*SourceCitation
 
 	// Notes are references to note records
 	Notes []string // XRef to Note records
@@ -81,6 +81,6 @@ type Attribute struct {
 	// Place where the attribute was applicable (optional)
 	Place string
 
-	// Sources are references to source citations
-	Sources []string
+	// SourceCitations are source citations with page/quality details
+	SourceCitations []*SourceCitation
 }

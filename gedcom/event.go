@@ -38,8 +38,8 @@ type Event struct {
 	// Description provides additional details
 	Description string
 
-	// Sources are references to source citations
-	Sources []string
+	// SourceCitations are source citations with page/quality details
+	SourceCitations []*SourceCitation
 
 	// Notes are references to note records
 	Notes []string

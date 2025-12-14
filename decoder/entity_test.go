@@ -379,13 +379,9 @@ func TestEventSubordinateTags_NotImplemented(t *testing.T) {
 	_ = death // Suppress unused variable warning
 }
 
-// TestSourceCitationStructure_NotImplemented tests parsing of source citation details.
-// Gap: Sources only captured as XRef strings - missing PAGE, QUAY, DATA subordinates.
-// Priority: P1 (Critical)
-// Ref: FEATURE-GAPS.md Section 6.1
-func TestSourceCitationStructure_NotImplemented(t *testing.T) {
-	t.Skip("Not yet implemented: Source citation structure with PAGE, QUAY, DATA")
-
+// TestSourceCitationStructure tests parsing of source citation details.
+// Validates support for PAGE, QUAY, and DATA subordinates in source citations.
+func TestSourceCitationStructure(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
@@ -418,22 +414,28 @@ func TestSourceCitationStructure_NotImplemented(t *testing.T) {
 	}
 
 	birth := indi.Events[0]
-	// Source citations should be SourceCitation structs, not just strings
-	// These will fail compilation when uncommented
-	// if len(birth.SourceCitations) != 1 {
-	// 	t.Fatalf("len(SourceCitations) = %d, want 1", len(birth.SourceCitations))
-	// }
-	// cite := birth.SourceCitations[0]
-	// if cite.SourceXRef != "@S1@" {
-	// 	t.Errorf("SourceXRef = %s, want @S1@", cite.SourceXRef)
-	// }
-	// if cite.Page != "Page 42, Entry 103" {
-	// 	t.Errorf("Page = %s, want 'Page 42, Entry 103'", cite.Page)
-	// }
-	// if cite.Quality != 2 {
-	// 	t.Errorf("Quality = %d, want 2", cite.Quality)
-	// }
-	_ = birth // Suppress unused variable warning
+	if len(birth.SourceCitations) != 1 {
+		t.Fatalf("len(SourceCitations) = %d, want 1", len(birth.SourceCitations))
+	}
+	cite := birth.SourceCitations[0]
+	if cite.SourceXRef != "@S1@" {
+		t.Errorf("SourceXRef = %s, want @S1@", cite.SourceXRef)
+	}
+	if cite.Page != "Page 42, Entry 103" {
+		t.Errorf("Page = %s, want 'Page 42, Entry 103'", cite.Page)
+	}
+	if cite.Quality != 2 {
+		t.Errorf("Quality = %d, want 2", cite.Quality)
+	}
+	if cite.Data == nil {
+		t.Fatal("Data is nil, want non-nil")
+	}
+	if cite.Data.Date != "15 JAN 1850" {
+		t.Errorf("Data.Date = %s, want '15 JAN 1850'", cite.Data.Date)
+	}
+	if cite.Data.Text != "Birth record shows..." {
+		t.Errorf("Data.Text = %s, want 'Birth record shows...'", cite.Data.Text)
+	}
 }
 
 // TestIndividualAttributes_NotImplemented tests parsing of individual attributes.
