@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/cacack/gedcom-go/gedcom"
@@ -53,7 +54,8 @@ func parseIndividual(record *gedcom.Record) *gedcom.Individual {
 			indi.SpouseInFamilies = append(indi.SpouseInFamilies, tag.Value)
 
 		case "SOUR":
-			indi.Sources = append(indi.Sources, tag.Value)
+			cite := parseSourceCitation(record.Tags, i, tag.Level)
+			indi.SourceCitations = append(indi.SourceCitations, cite)
 
 		case "NOTE":
 			indi.Notes = append(indi.Notes, tag.Value)
@@ -132,6 +134,60 @@ func parseFamilyLink(tags []*gedcom.Tag, famcIdx int) gedcom.FamilyLink {
 	return famLink
 }
 
+// parseSourceCitation extracts a source citation from tags starting at sourIdx.
+func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int) *gedcom.SourceCitation {
+	cite := &gedcom.SourceCitation{
+		SourceXRef: tags[sourIdx].Value,
+	}
+
+	// Look for subordinate tags at baseLevel+1
+	for i := sourIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 {
+			switch tag.Tag {
+			case "PAGE":
+				cite.Page = tag.Value
+			case "QUAY":
+				// Parse quality as integer (0-3)
+				if q, err := strconv.Atoi(tag.Value); err == nil {
+					cite.Quality = q
+				}
+			case "DATA":
+				// Parse DATA subordinates at baseLevel+2
+				cite.Data = parseSourceCitationData(tags, i, baseLevel+1)
+			}
+		}
+	}
+
+	return cite
+}
+
+// parseSourceCitationData extracts source citation data from tags starting at dataIdx.
+func parseSourceCitationData(tags []*gedcom.Tag, dataIdx, baseLevel int) *gedcom.SourceCitationData {
+	data := &gedcom.SourceCitationData{}
+
+	// Look for subordinate tags at baseLevel+1
+	for i := dataIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 {
+			switch tag.Tag {
+			case "DATE":
+				data.Date = tag.Value
+			case "TEXT":
+				data.Text = tag.Value
+			}
+		}
+	}
+
+	return data
+}
+
 // parseEvent extracts an event from tags starting at eventIdx.
 func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string) *gedcom.Event {
 	event := &gedcom.Event{
@@ -153,7 +209,8 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string) *gedcom.Event
 			case "NOTE":
 				event.Notes = append(event.Notes, tag.Value)
 			case "SOUR":
-				event.Sources = append(event.Sources, tag.Value)
+				cite := parseSourceCitation(tags, i, tag.Level)
+				event.SourceCitations = append(event.SourceCitations, cite)
 			}
 		}
 	}
@@ -189,7 +246,8 @@ func parseFamily(record *gedcom.Record) *gedcom.Family {
 			fam.Events = append(fam.Events, event)
 
 		case "SOUR":
-			fam.Sources = append(fam.Sources, tag.Value)
+			cite := parseSourceCitation(record.Tags, i, tag.Level)
+			fam.SourceCitations = append(fam.SourceCitations, cite)
 
 		case "NOTE":
 			fam.Notes = append(fam.Notes, tag.Value)
