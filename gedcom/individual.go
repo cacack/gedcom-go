@@ -23,6 +23,9 @@ type Individual struct {
 	// SpouseInFamilies are references to families where this person is a spouse
 	SpouseInFamilies []string // XRef to Family records
 
+	// Associations are links to associated individuals (godparents, witnesses, etc.)
+	Associations []*Association
+
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation
 
@@ -31,6 +34,9 @@ type Individual struct {
 
 	// MediaRefs are references to media objects
 	MediaRefs []string // XRef to MediaObject records
+
+	// LDSOrdinances are LDS (Latter-Day Saints) ordinances (BAPL, CONL, ENDL, SLGC)
+	LDSOrdinances []*LDSOrdinance
 
 	// Tags contains all raw tags for this individual (for unknown/custom tags)
 	Tags []*Tag
@@ -53,6 +59,12 @@ type PersonalName struct {
 	// Suffix is the name suffix (e.g., "Jr.", "III")
 	Suffix string
 
+	// Nickname is the person's nickname (e.g., "Bill" for William)
+	Nickname string
+
+	// SurnamePrefix is the surname prefix (e.g., "von", "de", "van der")
+	SurnamePrefix string
+
 	// Type is the name type (e.g., "birth", "married", "aka")
 	Type string
 }
@@ -65,6 +77,20 @@ type FamilyLink struct {
 	// Pedigree is the pedigree linkage type (e.g., "birth", "adopted", "foster", "sealing")
 	// Empty string if not specified. Preserves original casing from GEDCOM.
 	Pedigree string
+}
+
+// Association represents a link to an associated individual with a role.
+// Used for relationships like godparents (GODP), witnesses (WITN), etc.
+type Association struct {
+	// IndividualXRef is the cross-reference to the associated individual
+	IndividualXRef string
+
+	// Role is the relationship role (e.g., "GODP" for godparent, "WITN" for witness)
+	// In GEDCOM 5.5.1 this comes from RELA tag, in GEDCOM 7.0 from ROLE tag
+	Role string
+
+	// Notes are note references for this association
+	Notes []string
 }
 
 // Attribute represents a personal attribute.

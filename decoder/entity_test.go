@@ -327,13 +327,11 @@ func TestParsePedigreeLinks(t *testing.T) {
 // These tests demonstrate missing GEDCOM features identified in docs/FEATURE-GAPS.md
 // They are skipped until implementation is complete.
 
-// TestEventSubordinateTags_NotImplemented tests parsing of event subordinate tags.
-// Gap: Event struct only captures DATE, PLAC, Description - missing TYPE, CAUS, AGE, AGNC.
+// TestEventSubordinateTags tests parsing of event subordinate tags.
+// Tests Event struct support for TYPE, CAUS, AGE, AGNC subordinates.
 // Priority: P1 (Critical)
 // Ref: FEATURE-GAPS.md Section 3.1
-func TestEventSubordinateTags_NotImplemented(t *testing.T) {
-	t.Skip("Not yet implemented: Event subordinate tags (TYPE, CAUS, AGE, AGNC)")
-
+func TestEventSubordinateTags(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
@@ -363,20 +361,18 @@ func TestEventSubordinateTags_NotImplemented(t *testing.T) {
 	}
 
 	death := indi.Events[0]
-	// These fields don't exist yet - will fail compilation when uncommented
-	// if death.Type != "Natural death" {
-	// 	t.Errorf("Event.Type = %s, want 'Natural death'", death.Type)
-	// }
-	// if death.Cause != "Heart failure" {
-	// 	t.Errorf("Event.Cause = %s, want 'Heart failure'", death.Cause)
-	// }
-	// if death.Age != "70y" {
-	// 	t.Errorf("Event.Age = %s, want '70y'", death.Age)
-	// }
-	// if death.Agency != "County Coroner" {
-	// 	t.Errorf("Event.Agency = %s, want 'County Coroner'", death.Agency)
-	// }
-	_ = death // Suppress unused variable warning
+	if death.EventTypeDetail != "Natural death" {
+		t.Errorf("Event.EventTypeDetail = %s, want 'Natural death'", death.EventTypeDetail)
+	}
+	if death.Cause != "Heart failure" {
+		t.Errorf("Event.Cause = %s, want 'Heart failure'", death.Cause)
+	}
+	if death.Age != "70y" {
+		t.Errorf("Event.Age = %s, want '70y'", death.Age)
+	}
+	if death.Agency != "County Coroner" {
+		t.Errorf("Event.Agency = %s, want 'County Coroner'", death.Agency)
+	}
 }
 
 // TestSourceCitationStructure tests parsing of source citation details.
@@ -438,12 +434,11 @@ func TestSourceCitationStructure(t *testing.T) {
 	}
 }
 
-// TestIndividualAttributes_NotImplemented tests parsing of individual attributes.
-// Gap: Only OCCU is parsed - missing CAST, DSCR, EDUC, IDNO, NATI, SSN, TITL, RELI.
+// TestIndividualAttributes tests parsing of individual attributes.
+// Tests parsing of CAST, DSCR, EDUC, IDNO, NATI, SSN, TITL, RELI attributes.
 // Priority: P2 (Important)
 // Ref: FEATURE-GAPS.md Section 2
-func TestIndividualAttributes_NotImplemented(t *testing.T) {
-	t.Skip("Not yet implemented: Individual attributes (CAST, DSCR, EDUC, IDNO, NATI, SSN, TITL, RELI)")
+func TestIndividualAttributes(t *testing.T) {
 
 	gedcom := `0 HEAD
 1 GEDC
@@ -503,15 +498,77 @@ func TestIndividualAttributes_NotImplemented(t *testing.T) {
 			t.Errorf("Attribute %s = %s, want %s", attrType, value, expectedValue)
 		}
 	}
+
+	// Test EDUC with DATE, PLAC subordinates
+	for _, attr := range indi.Attributes {
+		if attr.Type == "EDUC" {
+			if attr.Date != "1972" {
+				t.Errorf("EDUC Date = %s, want 1972", attr.Date)
+			}
+			if attr.Place != "MIT, Cambridge, MA" {
+				t.Errorf("EDUC Place = %s, want 'MIT, Cambridge, MA'", attr.Place)
+			}
+		}
+	}
 }
 
-// TestReligiousEvents_NotImplemented tests parsing of religious event types.
-// Gap: BARM, BASM, BLES, CONF, FCOM, CHRA not parsed.
+// TestAttributeSubordinates tests parsing of attribute subordinate tags.
+// Validates that attributes can have DATE, PLAC, SOUR, NOTE subordinates.
+func TestAttributeSubordinates(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 OCCU Software Engineer
+2 DATE 2000
+2 PLAC Silicon Valley, CA
+2 SOUR @S1@
+3 PAGE Employment Records
+0 @S1@ SOUR
+1 TITL Company HR Records
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.Attributes) != 1 {
+		t.Fatalf("len(Attributes) = %d, want 1", len(indi.Attributes))
+	}
+
+	occu := indi.Attributes[0]
+	if occu.Type != "OCCU" {
+		t.Errorf("Attribute.Type = %s, want OCCU", occu.Type)
+	}
+	if occu.Value != "Software Engineer" {
+		t.Errorf("Attribute.Value = %s, want 'Software Engineer'", occu.Value)
+	}
+	if occu.Date != "2000" {
+		t.Errorf("Attribute.Date = %s, want 2000", occu.Date)
+	}
+	if occu.Place != "Silicon Valley, CA" {
+		t.Errorf("Attribute.Place = %s, want 'Silicon Valley, CA'", occu.Place)
+	}
+	if len(occu.SourceCitations) != 1 {
+		t.Fatalf("len(SourceCitations) = %d, want 1", len(occu.SourceCitations))
+	}
+	if occu.SourceCitations[0].Page != "Employment Records" {
+		t.Errorf("SourceCitation.Page = %s, want 'Employment Records'", occu.SourceCitations[0].Page)
+	}
+}
+
+// TestReligiousEvents tests parsing of religious event types.
+// Validates support for BARM, BASM, BLES, CONF, FCOM, CHRA event types.
 // Priority: P2 (Important)
 // Ref: FEATURE-GAPS.md Section 1.1
-func TestReligiousEvents_NotImplemented(t *testing.T) {
-	t.Skip("Not yet implemented: Religious events (BARM, BASM, BLES, CONF, FCOM, CHRA)")
-
+func TestReligiousEvents(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
@@ -581,13 +638,11 @@ func TestReligiousEvents_NotImplemented(t *testing.T) {
 	}
 }
 
-// TestLifeEvents_NotImplemented tests parsing of life status events.
-// Gap: GRAD, RETI, NATU, ORDN, PROB, WILL, CREM not parsed.
+// TestLifeEvents tests parsing of life status events.
+// Validates support for GRAD, RETI, NATU, ORDN, PROB, WILL, CREM event types.
 // Priority: P2 (Important)
 // Ref: FEATURE-GAPS.md Sections 1.2, 1.3, 1.4, 1.5
-func TestLifeEvents_NotImplemented(t *testing.T) {
-	t.Skip("Not yet implemented: Life events (GRAD, RETI, NATU, ORDN, PROB, WILL, CREM)")
-
+func TestLifeEvents(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
@@ -638,13 +693,10 @@ func TestLifeEvents_NotImplemented(t *testing.T) {
 	}
 }
 
-// TestLDSOrdinances_NotImplemented tests parsing of LDS ordinance structures.
-// Gap: BAPL, CONL, ENDL, SLGC, SLGS not parsed at all.
+// TestLDSOrdinances tests parsing of LDS ordinance structures.
 // Priority: P2 (Critical for LDS users)
 // Ref: FEATURE-GAPS.md Section 5
-func TestLDSOrdinances_NotImplemented(t *testing.T) {
-	t.Skip("Not yet implemented: LDS ordinances (BAPL, CONL, ENDL, SLGC, SLGS)")
-
+func TestLDSOrdinances(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
@@ -685,37 +737,76 @@ func TestLDSOrdinances_NotImplemented(t *testing.T) {
 	}
 
 	// LDS ordinances should be in a separate field, not Events
-	// These fields don't exist yet - will fail compilation when uncommented
-	// if len(indi.LDSOrdinances) != 4 {
-	// 	t.Errorf("len(LDSOrdinances) = %d, want 4", len(indi.LDSOrdinances))
-	// }
-	//
-	// expectedOrds := []string{"BAPL", "CONL", "ENDL", "SLGC"}
-	// for i, expected := range expectedOrds {
-	// 	if indi.LDSOrdinances[i].Type != expected {
-	// 		t.Errorf("LDSOrdinance[%d].Type = %s, want %s", i, indi.LDSOrdinances[i].Type, expected)
-	// 	}
-	// 	if indi.LDSOrdinances[i].Temple == "" {
-	// 		t.Errorf("LDSOrdinance[%d].Temple is empty", i)
-	// 	}
-	// }
+	if len(indi.LDSOrdinances) != 4 {
+		t.Errorf("len(LDSOrdinances) = %d, want 4", len(indi.LDSOrdinances))
+	}
+
+	expectedOrds := []struct {
+		ordType string
+		date    string
+		temple  string
+		status  string
+		famc    string
+	}{
+		{"BAPL", "1 JAN 1950", "SLAKE", "COMPLETED", ""},
+		{"CONL", "1 FEB 1950", "SLAKE", "COMPLETED", ""},
+		{"ENDL", "1 MAR 1970", "LOGAN", "", ""},
+		{"SLGC", "15 APR 1951", "SLAKE", "", "@F1@"},
+	}
+
+	for i, expected := range expectedOrds {
+		if i >= len(indi.LDSOrdinances) {
+			t.Errorf("LDSOrdinance[%d] missing", i)
+			continue
+		}
+		ord := indi.LDSOrdinances[i]
+		if string(ord.Type) != expected.ordType {
+			t.Errorf("LDSOrdinance[%d].Type = %s, want %s", i, ord.Type, expected.ordType)
+		}
+		if ord.Date != expected.date {
+			t.Errorf("LDSOrdinance[%d].Date = %s, want %s", i, ord.Date, expected.date)
+		}
+		if ord.Temple != expected.temple {
+			t.Errorf("LDSOrdinance[%d].Temple = %s, want %s", i, ord.Temple, expected.temple)
+		}
+		if ord.Status != expected.status {
+			t.Errorf("LDSOrdinance[%d].Status = %s, want %s", i, ord.Status, expected.status)
+		}
+		if ord.FamilyXRef != expected.famc {
+			t.Errorf("LDSOrdinance[%d].FamilyXRef = %s, want %s", i, ord.FamilyXRef, expected.famc)
+		}
+	}
 
 	// Family ordinance
 	fam := doc.GetFamily("@F1@")
 	if fam == nil {
 		t.Fatal("Family not found")
 	}
-	// TODO: When implemented, assert fam.LDSOrdinances has 1 entry of type SLGS
-	_, _ = indi, fam
+
+	if len(fam.LDSOrdinances) != 1 {
+		t.Errorf("len(fam.LDSOrdinances) = %d, want 1", len(fam.LDSOrdinances))
+	} else {
+		slgs := fam.LDSOrdinances[0]
+		if slgs.Type != "SLGS" {
+			t.Errorf("fam.LDSOrdinances[0].Type = %s, want SLGS", slgs.Type)
+		}
+		if slgs.Date != "10 JUN 1949" {
+			t.Errorf("fam.LDSOrdinances[0].Date = %s, want '10 JUN 1949'", slgs.Date)
+		}
+		if slgs.Temple != "SLAKE" {
+			t.Errorf("fam.LDSOrdinances[0].Temple = %s, want SLAKE", slgs.Temple)
+		}
+		if slgs.Status != "COMPLETED" {
+			t.Errorf("fam.LDSOrdinances[0].Status = %s, want COMPLETED", slgs.Status)
+		}
+	}
 }
 
-// TestNameExtensions_NotImplemented tests parsing of extended name components.
-// Gap: NICK, SPFX not parsed (TRAN also missing but lower priority).
+// TestNameExtensions tests parsing of extended name components.
+// Validates support for NICK (nickname) and SPFX (surname prefix).
 // Priority: P2 (Important for international genealogy)
 // Ref: FEATURE-GAPS.md Section 7.1
-func TestNameExtensions_NotImplemented(t *testing.T) {
-	t.Skip("Not yet implemented: Name extensions (NICK, SPFX, TRAN)")
-
+func TestNameExtensions(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
@@ -742,17 +833,19 @@ func TestNameExtensions_NotImplemented(t *testing.T) {
 	}
 
 	name := indi.Names[0]
-	// TODO: When implemented, assert name.SurnamePrefix == "von" and name.Nickname == "Ludwig"
-	_ = name
+	if name.SurnamePrefix != "von" {
+		t.Errorf("name.SurnamePrefix = %s, want von", name.SurnamePrefix)
+	}
+	if name.Nickname != "Ludwig" {
+		t.Errorf("name.Nickname = %s, want Ludwig", name.Nickname)
+	}
 }
 
-// TestIndividualAssociations_NotImplemented tests parsing of ASSO tag.
-// Gap: ASSO tag with ROLE subordinate not parsed.
+// TestIndividualAssociations tests parsing of ASSO tag.
+// Tests ASSO tag with ROLE/RELA subordinate.
 // Priority: P2 (Important for relationship context)
 // Ref: FEATURE-GAPS.md Section 8.1
-func TestIndividualAssociations_NotImplemented(t *testing.T) {
-	t.Skip("Not yet implemented: Individual associations (ASSO with ROLE)")
-
+func TestIndividualAssociations(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
@@ -778,9 +871,190 @@ func TestIndividualAssociations_NotImplemented(t *testing.T) {
 		t.Fatal("Individual not found")
 	}
 
-	// TODO: When implemented, assert:
-	// - indi.Associations has 2 entries
-	// - Associations[0]: XRef=@I2@, Role=GODP (Godparent)
-	// - Associations[1]: XRef=@I3@, Role=WITN (Witness)
-	_ = indi
+	// Assert: indi.Associations has 2 entries
+	if len(indi.Associations) != 2 {
+		t.Fatalf("len(Associations) = %d, want 2", len(indi.Associations))
+	}
+
+	// Associations[0]: IndividualXRef=@I2@, Role=GODP (Godparent)
+	if indi.Associations[0].IndividualXRef != "@I2@" {
+		t.Errorf("Associations[0].IndividualXRef = %s, want @I2@", indi.Associations[0].IndividualXRef)
+	}
+	if indi.Associations[0].Role != "GODP" {
+		t.Errorf("Associations[0].Role = %s, want GODP", indi.Associations[0].Role)
+	}
+
+	// Associations[1]: IndividualXRef=@I3@, Role=WITN (Witness)
+	if indi.Associations[1].IndividualXRef != "@I3@" {
+		t.Errorf("Associations[1].IndividualXRef = %s, want @I3@", indi.Associations[1].IndividualXRef)
+	}
+	if indi.Associations[1].Role != "WITN" {
+		t.Errorf("Associations[1].Role = %s, want WITN", indi.Associations[1].Role)
+	}
+}
+
+// TestPlaceStructure tests parsing of place structure with coordinates.
+// Tests PLAC with FORM and MAP/LATI/LONG subordinates.
+// Priority: P2 (Medium - Geographic coordinates enable mapping)
+// Ref: Issue #11
+func TestPlaceStructure(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 BIRT
+2 DATE 15 JAN 1850
+2 PLAC Boston, Suffolk, Massachusetts, USA
+3 FORM City, County, State, Country
+3 MAP
+4 LATI N42.3601
+4 LONG W71.0589
+1 DEAT
+2 DATE 20 MAR 1920
+2 PLAC Springfield, IL
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	if len(indi.Events) != 2 {
+		t.Fatalf("len(Events) = %d, want 2", len(indi.Events))
+	}
+
+	// Test birth event with full place structure
+	birth := indi.Events[0]
+	if birth.Type != "BIRT" {
+		t.Errorf("birth.Type = %s, want BIRT", birth.Type)
+	}
+
+	// Backward compatibility: Event.Place should still be populated
+	if birth.Place != "Boston, Suffolk, Massachusetts, USA" {
+		t.Errorf("birth.Place = %s, want 'Boston, Suffolk, Massachusetts, USA'", birth.Place)
+	}
+
+	// Test PlaceDetail structure
+	if birth.PlaceDetail == nil {
+		t.Fatal("birth.PlaceDetail is nil, want non-nil")
+	}
+	if birth.PlaceDetail.Name != "Boston, Suffolk, Massachusetts, USA" {
+		t.Errorf("birth.PlaceDetail.Name = %s, want 'Boston, Suffolk, Massachusetts, USA'", birth.PlaceDetail.Name)
+	}
+	if birth.PlaceDetail.Form != "City, County, State, Country" {
+		t.Errorf("birth.PlaceDetail.Form = %s, want 'City, County, State, Country'", birth.PlaceDetail.Form)
+	}
+
+	// Test coordinates
+	if birth.PlaceDetail.Coordinates == nil {
+		t.Fatal("birth.PlaceDetail.Coordinates is nil, want non-nil")
+	}
+	if birth.PlaceDetail.Coordinates.Latitude != "N42.3601" {
+		t.Errorf("Coordinates.Latitude = %s, want 'N42.3601'", birth.PlaceDetail.Coordinates.Latitude)
+	}
+	if birth.PlaceDetail.Coordinates.Longitude != "W71.0589" {
+		t.Errorf("Coordinates.Longitude = %s, want 'W71.0589'", birth.PlaceDetail.Coordinates.Longitude)
+	}
+
+	// Test death event without coordinates (backward compatibility)
+	death := indi.Events[1]
+	if death.Type != "DEAT" {
+		t.Errorf("death.Type = %s, want DEAT", death.Type)
+	}
+	if death.Place != "Springfield, IL" {
+		t.Errorf("death.Place = %s, want 'Springfield, IL'", death.Place)
+	}
+	if death.PlaceDetail == nil {
+		t.Fatal("death.PlaceDetail is nil, want non-nil")
+	}
+	if death.PlaceDetail.Name != "Springfield, IL" {
+		t.Errorf("death.PlaceDetail.Name = %s, want 'Springfield, IL'", death.PlaceDetail.Name)
+	}
+	// Death place has no coordinates
+	if death.PlaceDetail.Coordinates != nil {
+		t.Errorf("death.PlaceDetail.Coordinates = %v, want nil (no coordinates)", death.PlaceDetail.Coordinates)
+	}
+}
+
+// TestFamilyEvents tests parsing of family event types.
+// Validates support for extended marriage-related legal events.
+func TestFamilyEvents(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 MARB
+2 DATE 1 JAN 1875
+2 PLAC Boston, MA
+1 MARC
+2 DATE 5 JAN 1875
+1 MARL
+2 DATE 8 JAN 1875
+1 MARS
+2 DATE 10 JAN 1875
+1 MARR
+2 DATE 15 JAN 1875
+2 PLAC Boston, MA
+1 DIVF
+2 DATE 1 JUN 1900
+1 DIV
+2 DATE 1 JUL 1900
+0 @I1@ INDI
+1 NAME John /Doe/
+0 @I2@ INDI
+1 NAME Jane /Smith/
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fam := doc.GetFamily("@F1@")
+	if fam == nil {
+		t.Fatal("Family not found")
+	}
+
+	// Should have 7 events: MARB, MARC, MARL, MARS, MARR, DIVF, DIV
+	if len(fam.Events) != 7 {
+		t.Errorf("len(fam.Events) = %d, want 7", len(fam.Events))
+	}
+
+	expectedEvents := []struct {
+		eventType string
+		date      string
+		place     string
+	}{
+		{"MARB", "1 JAN 1875", "Boston, MA"},
+		{"MARC", "5 JAN 1875", ""},
+		{"MARL", "8 JAN 1875", ""},
+		{"MARS", "10 JAN 1875", ""},
+		{"MARR", "15 JAN 1875", "Boston, MA"},
+		{"DIVF", "1 JUN 1900", ""},
+		{"DIV", "1 JUL 1900", ""},
+	}
+
+	for i, expected := range expectedEvents {
+		if i >= len(fam.Events) {
+			t.Errorf("Event[%d] missing, want %s", i, expected.eventType)
+			continue
+		}
+		if string(fam.Events[i].Type) != expected.eventType {
+			t.Errorf("Event[%d].Type = %s, want %s", i, fam.Events[i].Type, expected.eventType)
+		}
+		if fam.Events[i].Date != expected.date {
+			t.Errorf("Event[%d].Date = %s, want %s", i, fam.Events[i].Date, expected.date)
+		}
+		if fam.Events[i].Place != expected.place {
+			t.Errorf("Event[%d].Place = %s, want %s", i, fam.Events[i].Place, expected.place)
+		}
+	}
 }
