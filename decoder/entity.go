@@ -42,9 +42,19 @@ func parseIndividual(record *gedcom.Record) *gedcom.Individual {
 		case "SEX":
 			indi.Sex = tag.Value
 
-		case "BIRT", "DEAT", "BAPM", "BURI", "CENS", "CHR", "ADOP", "OCCU", "RESI", "IMMI", "EMIG":
+		case "BIRT", "DEAT", "BAPM", "BURI", "CENS", "CHR", "ADOP", "RESI", "IMMI", "EMIG",
+			"BARM", "BASM", "BLES", "CHRA", "CONF", "FCOM",
+			"GRAD", "RETI", "NATU", "ORDN", "PROB", "WILL", "CREM":
 			event := parseEvent(record.Tags, i, tag.Tag)
 			indi.Events = append(indi.Events, event)
+
+		case "BAPL", "CONL", "ENDL", "SLGC":
+			ord := parseLDSOrdinance(record.Tags, i, ldsOrdinanceType(tag.Tag))
+			indi.LDSOrdinances = append(indi.LDSOrdinances, ord)
+
+		case "OCCU", "CAST", "DSCR", "EDUC", "IDNO", "NATI", "SSN", "TITL", "RELI":
+			attr := parseAttribute(record.Tags, i, tag.Tag)
+			indi.Attributes = append(indi.Attributes, attr)
 
 		case "FAMC":
 			famLink := parseFamilyLink(record.Tags, i)
@@ -52,6 +62,10 @@ func parseIndividual(record *gedcom.Record) *gedcom.Individual {
 
 		case "FAMS":
 			indi.SpouseInFamilies = append(indi.SpouseInFamilies, tag.Value)
+
+		case "ASSO":
+			assoc := parseAssociation(record.Tags, i)
+			indi.Associations = append(indi.Associations, assoc)
 
 		case "SOUR":
 			cite := parseSourceCitation(record.Tags, i, tag.Level)
@@ -105,6 +119,10 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int) *gedcom.PersonalName {
 				name.Prefix = tag.Value
 			case "NSFX":
 				name.Suffix = tag.Value
+			case "NICK":
+				name.Nickname = tag.Value
+			case "SPFX":
+				name.SurnamePrefix = tag.Value
 			case "TYPE":
 				name.Type = tag.Value
 			}
@@ -132,6 +150,31 @@ func parseFamilyLink(tags []*gedcom.Tag, famcIdx int) gedcom.FamilyLink {
 	}
 
 	return famLink
+}
+
+// parseAssociation extracts an association from tags starting at assoIdx.
+func parseAssociation(tags []*gedcom.Tag, assoIdx int) *gedcom.Association {
+	assoc := &gedcom.Association{
+		IndividualXRef: tags[assoIdx].Value,
+	}
+
+	// Look for subordinate tags (level 2)
+	for i := assoIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= 1 {
+			break
+		}
+		if tag.Level == 2 {
+			switch tag.Tag {
+			case "RELA", "ROLE": // RELA in 5.5.1, ROLE in 7.0
+				assoc.Role = tag.Value
+			case "NOTE":
+				assoc.Notes = append(assoc.Notes, tag.Value)
+			}
+		}
+	}
+
+	return assoc
 }
 
 // parseSourceCitation extracts a source citation from tags starting at sourIdx.
@@ -206,6 +249,15 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string) *gedcom.Event
 				event.Date = tag.Value
 			case "PLAC":
 				event.Place = tag.Value
+				event.PlaceDetail = parsePlaceDetail(tags, i, tag.Level)
+			case "TYPE":
+				event.EventTypeDetail = tag.Value
+			case "CAUS":
+				event.Cause = tag.Value
+			case "AGE":
+				event.Age = tag.Value
+			case "AGNC":
+				event.Agency = tag.Value
 			case "NOTE":
 				event.Notes = append(event.Notes, tag.Value)
 			case "SOUR":
@@ -216,6 +268,134 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string) *gedcom.Event
 	}
 
 	return event
+}
+
+// parsePlaceDetail extracts a place structure with optional coordinates from tags starting at placIdx.
+func parsePlaceDetail(tags []*gedcom.Tag, placIdx, baseLevel int) *gedcom.PlaceDetail {
+	place := &gedcom.PlaceDetail{
+		Name: tags[placIdx].Value,
+	}
+
+	// Look for subordinate tags at baseLevel+1
+	for i := placIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 {
+			switch tag.Tag {
+			case "FORM":
+				place.Form = tag.Value
+			case "MAP":
+				place.Coordinates = parseCoordinates(tags, i, tag.Level)
+			}
+		}
+	}
+
+	return place
+}
+
+// parseCoordinates extracts geographic coordinates from tags starting at mapIdx.
+func parseCoordinates(tags []*gedcom.Tag, mapIdx, baseLevel int) *gedcom.Coordinates {
+	coords := &gedcom.Coordinates{}
+
+	// Look for subordinate tags at baseLevel+1
+	for i := mapIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 {
+			switch tag.Tag {
+			case "LATI":
+				coords.Latitude = tag.Value
+			case "LONG":
+				coords.Longitude = tag.Value
+			}
+		}
+	}
+
+	return coords
+}
+
+// parseAttribute extracts an attribute from tags starting at attrIdx.
+func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string) *gedcom.Attribute {
+	attr := &gedcom.Attribute{
+		Type:  attrTag,
+		Value: tags[attrIdx].Value,
+	}
+
+	// Look for subordinate tags (level 2)
+	for i := attrIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= 1 {
+			break
+		}
+		if tag.Level == 2 {
+			switch tag.Tag {
+			case "DATE":
+				attr.Date = tag.Value
+			case "PLAC":
+				attr.Place = tag.Value
+			case "SOUR":
+				cite := parseSourceCitation(tags, i, tag.Level)
+				attr.SourceCitations = append(attr.SourceCitations, cite)
+			}
+		}
+	}
+
+	return attr
+}
+
+// ldsOrdinanceType maps a GEDCOM tag to its LDSOrdinanceType.
+func ldsOrdinanceType(tag string) gedcom.LDSOrdinanceType {
+	switch tag {
+	case "BAPL":
+		return gedcom.LDSBaptism
+	case "CONL":
+		return gedcom.LDSConfirmation
+	case "ENDL":
+		return gedcom.LDSEndowment
+	case "SLGC":
+		return gedcom.LDSSealingChild
+	case "SLGS":
+		return gedcom.LDSSealingSpouse
+	default:
+		return gedcom.LDSOrdinanceType(tag)
+	}
+}
+
+// parseLDSOrdinance extracts an LDS ordinance from tags starting at ordIdx.
+func parseLDSOrdinance(tags []*gedcom.Tag, ordIdx int, ordType gedcom.LDSOrdinanceType) *gedcom.LDSOrdinance {
+	ord := &gedcom.LDSOrdinance{
+		Type: ordType,
+	}
+
+	baseLevel := tags[ordIdx].Level
+
+	// Look for subordinate tags at baseLevel+1
+	for i := ordIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 {
+			switch tag.Tag {
+			case "DATE":
+				ord.Date = tag.Value
+			case "TEMP":
+				ord.Temple = tag.Value
+			case "PLAC":
+				ord.Place = tag.Value
+			case "STAT":
+				ord.Status = tag.Value
+			case "FAMC":
+				ord.FamilyXRef = tag.Value
+			}
+		}
+	}
+
+	return ord
 }
 
 // parseFamily converts record tags to a Family entity.
@@ -241,9 +421,13 @@ func parseFamily(record *gedcom.Record) *gedcom.Family {
 		case "CHIL":
 			fam.Children = append(fam.Children, tag.Value)
 
-		case "MARR", "DIV", "ENGA", "ANUL":
+		case "MARR", "DIV", "ENGA", "ANUL", "MARB", "MARC", "MARL", "MARS", "DIVF":
 			event := parseEvent(record.Tags, i, tag.Tag)
 			fam.Events = append(fam.Events, event)
+
+		case "SLGS":
+			ord := parseLDSOrdinance(record.Tags, i, ldsOrdinanceType(tag.Tag))
+			fam.LDSOrdinances = append(fam.LDSOrdinances, ord)
 
 		case "SOUR":
 			cite := parseSourceCitation(record.Tags, i, tag.Level)

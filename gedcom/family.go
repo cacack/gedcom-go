@@ -26,6 +26,9 @@ type Family struct {
 	// MediaRefs are references to media objects
 	MediaRefs []string
 
+	// LDSOrdinances are LDS (Latter-Day Saints) ordinances (SLGS - spouse sealing)
+	LDSOrdinances []*LDSOrdinance
+
 	// Tags contains all raw tags for this family (for unknown/custom tags)
 	Tags []*Tag
 }
