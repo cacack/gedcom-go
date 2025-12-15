@@ -193,3 +193,27 @@ func (d *Document) Notes() []*Note {
 	}
 	return notes
 }
+
+// GetMediaObject returns the media object with the given XRef.
+// Returns nil if not found or if the record is not a media object.
+func (d *Document) GetMediaObject(xref string) *MediaObject {
+	record := d.GetRecord(xref)
+	if record == nil {
+		return nil
+	}
+	if media, ok := record.GetMediaObject(); ok {
+		return media
+	}
+	return nil
+}
+
+// MediaObjects returns all media object records in the document.
+func (d *Document) MediaObjects() []*MediaObject {
+	var objects []*MediaObject
+	for _, record := range d.Records {
+		if media, ok := record.GetMediaObject(); ok {
+			objects = append(objects, media)
+		}
+	}
+	return objects
+}

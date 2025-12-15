@@ -111,3 +111,11 @@ func (r *Record) GetNote() (*Note, bool) {
 	}
 	return nil, false
 }
+
+// GetMediaObject returns the record as a MediaObject if it's the correct type.
+func (r *Record) GetMediaObject() (*MediaObject, bool) {
+	if media, ok := r.Entity.(*MediaObject); ok {
+		return media, true
+	}
+	return nil, false
+}

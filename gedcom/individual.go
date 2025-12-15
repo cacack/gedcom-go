@@ -32,8 +32,8 @@ type Individual struct {
 	// Notes are references to note records
 	Notes []string // XRef to Note records
 
-	// MediaRefs are references to media objects
-	MediaRefs []string // XRef to MediaObject records
+	// Media are references to media objects with optional crop/title
+	Media []*MediaLink
 
 	// LDSOrdinances are LDS (Latter-Day Saints) ordinances (BAPL, CONL, ENDL, SLGC)
 	LDSOrdinances []*LDSOrdinance

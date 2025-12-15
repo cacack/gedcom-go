@@ -20,8 +20,8 @@ type Source struct {
 	// RepositoryRef is the XRef to the repository where this source is stored
 	RepositoryRef string
 
-	// MediaRefs are references to media objects
-	MediaRefs []string
+	// Media are references to media objects with optional crop/title
+	Media []*MediaLink
 
 	// Notes are references to note records
 	Notes []string
