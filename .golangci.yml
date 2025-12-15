@@ -1,67 +1,76 @@
+version: "2"
 run:
-  timeout: 5m
-  tests: true
   modules-download-mode: readonly
-
+  tests: true
+output:
+  formats:
+    text:
+      path: stdout
+      print-linter-name: true
+      print-issued-lines: true
 linters:
   enable:
-    - gofmt
-    - govet
-    - staticcheck
-    - ineffassign
-    - unused
-    - errcheck
-    - gosimple
     - gocritic
     - gocyclo
+    - gosec
     - misspell
     - revive
     - unconvert
     - unparam
-    - gosec
-
-linters-settings:
-  gocyclo:
-    min-complexity: 15
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - style
-      - performance
-  misspell:
-    ignore-words:
-      - RELA  # Valid GEDCOM tag for Relationship
-      - WITN  # Valid GEDCOM role code for Witness
-  revive:
-    severity: warning
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+    gocyclo:
+      min-complexity: 15
+    misspell:
+      ignore-rules:
+        - RELA
+        - WITN
+    revive:
+      severity: warning
+      rules:
+        - name: exported
+          arguments:
+            - checkPrivateReceivers
+            - sayRepetitiveInsteadOfStutters
+          severity: warning
+          disabled: false
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: exported
-        severity: warning
-        disabled: false
-        arguments:
-          - "checkPrivateReceivers"
-          - "sayRepetitiveInsteadOfStutters"
-
+      - linters:
+          - errcheck
+          - gocyclo
+          - gosec
+        path: _test\.go
+      - path: _test\.go
+        text: SA5011
+      - linters:
+          - lll
+          - gocritic
+          - gocyclo
+        path: examples/
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
-        - gosec
-    # SA5011 false positive: staticcheck doesn't understand t.Fatal() stops execution
-    - path: _test\.go
-      text: "SA5011"
-    # Ignore long lines in examples
-    - path: examples/
-      linters:
-        - lll
   max-issues-per-linter: 0
   max-same-issues: 0
-
-output:
-  formats:
-    - format: colored-line-number
-  print-issued-lines: true
-  print-linter-name: true
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
