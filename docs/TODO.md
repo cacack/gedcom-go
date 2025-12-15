@@ -74,7 +74,18 @@ Final status:
 
 ## Medium Priority
 
-### 5. ✅ Performance Benchmarking & Optimization - COMPLETED
+### 5. Character Encoding Support
+**Goal**: Support additional character encodings for legacy GEDCOM files
+
+**Planned Features**:
+- [ ] UTF-16 LE/BE support
+  - 2 test files ready (utf16le.ged, utf16be.ged)
+  - See `ENCODING_IMPLEMENTATION_PLAN.md` for details
+- [ ] ANSEL character encoding support
+  - 4 torture test files ready (TGC551*.ged)
+  - Complex: requires character mapping tables and combining diacritical handling
+
+### 6. ✅ Performance Benchmarking & Optimization - COMPLETED
 **Goal**: Ensure library performs well with large GEDCOM files
 
 **Status**: Comprehensive benchmarks added with regression testing.
@@ -86,7 +97,44 @@ Final status:
 - [x] Added `make bench`, `make perf-regression` commands
 - [x] Zero-allocation validator for valid documents
 
-### 6. Enhanced Features
+### 7. Date Parsing
+**Goal**: Parse GEDCOM dates into structured types for sorting, comparison, and calculation
+
+Currently dates are stored as raw strings. A proper date parsing system is critical for genealogy applications that need to sort events, calculate ages, and validate logical consistency.
+
+See `GEDCOM_DATE_FORMATS_RESEARCH.md` for comprehensive research.
+
+**Phase 1: Core Gregorian Support**
+- [ ] Create `Date` struct with parsed components (day, month, year)
+- [ ] Parse standard dates: `25 DEC 2020`, `JAN 1900`, `1850`
+- [ ] Parse modifiers: ABT, CAL, EST, BEF, AFT
+- [ ] Parse ranges: `BET 1850 AND 1860`
+- [ ] Parse periods: `FROM 1880 TO 1920`
+- [ ] Handle partial dates (year only, month-year)
+- [ ] Implement `Compare()` for sorting
+- [ ] Implement `ToTime()` for conversion to Go `time.Time`
+
+**Phase 2: Validation & Edge Cases**
+- [ ] Validate day ranges per month (1-28/29/30/31)
+- [ ] Leap year handling (Gregorian rules)
+- [ ] Dual dating support: `21 FEB 1750/51`
+- [ ] B.C. dates
+- [ ] Date phrases: `(unknown)`, `(about 1850)`
+
+**Phase 3: Additional Calendars**
+- [ ] Julian calendar with `@#DJULIAN@` escape
+- [ ] Hebrew calendar with `@#DHEBREW@` escape
+- [ ] French Republican calendar with `@#DFRENCH R@` escape
+- [ ] Julian Day Number (JDN) as intermediate for conversion
+- [ ] Calendar-to-calendar conversion
+
+**Phase 4: Integration**
+- [ ] Update `Event.Date` to use parsed `Date` type (or add `ParsedDate` field)
+- [ ] Update `Attribute.Date`, `LDSOrdinance.Date`, etc.
+- [ ] Add helper methods: `AgeAt(event)`, `YearsBetween()`
+- [ ] Add validation: death after birth, children born after parents
+
+### 8. Enhanced Features
 **Goal**: Add useful functionality beyond basic parsing
 
 **Possible features**:
@@ -110,7 +158,7 @@ Final status:
 
 ## Low Priority
 
-### 7. Developer Experience
+### 9. Developer Experience
 **Goal**: Make contributing and maintenance easier
 
 **Tasks**:
@@ -135,7 +183,7 @@ Final status:
   - Feature request template
   - Question template
 
-### 8. Additional Tooling
+### 10. Additional Tooling
 **Goal**: Provide useful command-line tools
 
 **Possible tools**:
