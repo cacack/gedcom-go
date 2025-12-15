@@ -23,6 +23,8 @@ func populateEntities(doc *gedcom.Document) {
 			record.Entity = parseRepository(record)
 		case gedcom.RecordTypeNote:
 			record.Entity = parseNote(record)
+		case gedcom.RecordTypeMedia:
+			record.Entity = parseMediaObject(record)
 		}
 	}
 }
@@ -83,7 +85,8 @@ func parseIndividual(record *gedcom.Record) *gedcom.Individual {
 			indi.Notes = append(indi.Notes, tag.Value)
 
 		case "OBJE":
-			indi.MediaRefs = append(indi.MediaRefs, tag.Value)
+			link := parseMediaLink(record.Tags, i, tag.Level)
+			indi.Media = append(indi.Media, link)
 
 		case "CHAN":
 			indi.ChangeDate = parseChangeDate(record.Tags, i)
@@ -303,6 +306,9 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string) *gedcom.Event
 			case "SOUR":
 				cite := parseSourceCitation(tags, i, tag.Level)
 				event.SourceCitations = append(event.SourceCitations, cite)
+			case "OBJE":
+				link := parseMediaLink(tags, i, tag.Level)
+				event.Media = append(event.Media, link)
 			}
 		}
 	}
@@ -527,7 +533,8 @@ func parseFamily(record *gedcom.Record) *gedcom.Family {
 			fam.Notes = append(fam.Notes, tag.Value)
 
 		case "OBJE":
-			fam.MediaRefs = append(fam.MediaRefs, tag.Value)
+			link := parseMediaLink(record.Tags, i, tag.Level)
+			fam.Media = append(fam.Media, link)
 
 		case "CHAN":
 			fam.ChangeDate = parseChangeDate(record.Tags, i)
@@ -573,7 +580,8 @@ func parseSource(record *gedcom.Record) *gedcom.Source {
 		case "NOTE":
 			src.Notes = append(src.Notes, tag.Value)
 		case "OBJE":
-			src.MediaRefs = append(src.MediaRefs, tag.Value)
+			link := parseMediaLink(record.Tags, i, tag.Level)
+			src.Media = append(src.Media, link)
 		case "CHAN":
 			src.ChangeDate = parseChangeDate(record.Tags, i)
 		case "CREA":
@@ -739,4 +747,160 @@ func parseNote(record *gedcom.Record) *gedcom.Note {
 	}
 
 	return note
+}
+
+// parseMediaObject converts record tags to a MediaObject entity.
+//
+//nolint:gocyclo // GEDCOM parsing inherently requires handling many tag types
+func parseMediaObject(record *gedcom.Record) *gedcom.MediaObject {
+	media := &gedcom.MediaObject{
+		XRef: record.XRef,
+		Tags: record.Tags,
+	}
+
+	for i := 0; i < len(record.Tags); i++ {
+		tag := record.Tags[i]
+		if tag.Level != 1 {
+			continue
+		}
+
+		switch tag.Tag {
+		case "FILE":
+			file := parseMediaFile(record.Tags, i, tag.Level)
+			media.Files = append(media.Files, file)
+		case "NOTE":
+			media.Notes = append(media.Notes, tag.Value)
+		case "SOUR":
+			cite := parseSourceCitation(record.Tags, i, tag.Level)
+			media.SourceCitations = append(media.SourceCitations, cite)
+		case "CHAN":
+			media.ChangeDate = parseChangeDate(record.Tags, i)
+		case "CREA":
+			media.CreationDate = parseChangeDate(record.Tags, i)
+		case "REFN":
+			media.RefNumbers = append(media.RefNumbers, tag.Value)
+		case "UID":
+			media.UIDs = append(media.UIDs, tag.Value)
+		case "RESN":
+			media.Restriction = tag.Value
+		}
+	}
+
+	return media
+}
+
+// parseMediaFile extracts a MediaFile from FILE tag and its subordinates.
+func parseMediaFile(tags []*gedcom.Tag, fileIdx, baseLevel int) *gedcom.MediaFile {
+	file := &gedcom.MediaFile{
+		FileRef: tags[fileIdx].Value,
+	}
+
+	for i := fileIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 {
+			switch tag.Tag {
+			case "FORM":
+				file.Form = tag.Value
+				// Look for MEDI at baseLevel+2
+				for j := i + 1; j < len(tags); j++ {
+					mediTag := tags[j]
+					if mediTag.Level <= baseLevel+1 {
+						break
+					}
+					if mediTag.Level == baseLevel+2 && mediTag.Tag == "MEDI" {
+						file.MediaType = mediTag.Value
+						break
+					}
+				}
+			case "TITL":
+				file.Title = tag.Value
+			case "TRAN":
+				tran := parseMediaTranslation(tags, i, tag.Level)
+				file.Translations = append(file.Translations, tran)
+			}
+		}
+	}
+
+	return file
+}
+
+// parseMediaTranslation extracts a MediaTranslation from TRAN tag and its subordinates.
+func parseMediaTranslation(tags []*gedcom.Tag, tranIdx, baseLevel int) *gedcom.MediaTranslation {
+	tran := &gedcom.MediaTranslation{
+		FileRef: tags[tranIdx].Value,
+	}
+
+	for i := tranIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 && tag.Tag == "FORM" {
+			tran.Form = tag.Value
+			break
+		}
+	}
+
+	return tran
+}
+
+// parseMediaLink extracts a MediaLink from OBJE reference tag and its subordinates.
+func parseMediaLink(tags []*gedcom.Tag, objeIdx, baseLevel int) *gedcom.MediaLink {
+	link := &gedcom.MediaLink{
+		MediaXRef: tags[objeIdx].Value,
+	}
+
+	for i := objeIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 {
+			switch tag.Tag {
+			case "CROP":
+				link.Crop = parseCropRegion(tags, i, tag.Level)
+			case "TITL":
+				link.Title = tag.Value
+			}
+		}
+	}
+
+	return link
+}
+
+// parseCropRegion extracts a CropRegion from CROP tag and its subordinates.
+func parseCropRegion(tags []*gedcom.Tag, cropIdx, baseLevel int) *gedcom.CropRegion {
+	crop := &gedcom.CropRegion{}
+
+	for i := cropIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 {
+			switch tag.Tag {
+			case "TOP":
+				if v, err := strconv.Atoi(tag.Value); err == nil {
+					crop.Top = v
+				}
+			case "LEFT":
+				if v, err := strconv.Atoi(tag.Value); err == nil {
+					crop.Left = v
+				}
+			case "HEIGHT":
+				if v, err := strconv.Atoi(tag.Value); err == nil {
+					crop.Height = v
+				}
+			case "WIDTH":
+				if v, err := strconv.Atoi(tag.Value); err == nil {
+					crop.Width = v
+				}
+			}
+		}
+	}
+
+	return crop
 }

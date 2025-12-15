@@ -479,6 +479,81 @@ for _, note := range notes {
 }
 ```
 
+### Working with Multimedia
+
+The library provides full GEDCOM 7.0 multimedia support including multiple files per object, crop regions, and MIME types.
+
+```go
+// Get all media objects
+mediaObjects := doc.MediaObjects()
+fmt.Printf("Total media objects: %d\n", len(mediaObjects))
+
+for _, media := range mediaObjects {
+    fmt.Printf("Media: %s\n", media.XRef)
+
+    // Each media object can have multiple files
+    for _, file := range media.Files {
+        fmt.Printf("  File: %s\n", file.FileRef)
+        fmt.Printf("    MIME Type: %s\n", file.Form)      // e.g., "image/jpeg"
+        fmt.Printf("    Media Type: %s\n", file.MediaType) // e.g., "PHOTO", "VIDEO"
+
+        if file.Title != "" {
+            fmt.Printf("    Title: %s\n", file.Title)
+        }
+
+        // File translations (thumbnails, transcripts, alternate formats)
+        for _, tran := range file.Translations {
+            fmt.Printf("    Translation: %s (%s)\n", tran.FileRef, tran.Form)
+        }
+    }
+
+    // Metadata
+    if media.Restriction != "" {
+        fmt.Printf("  Restriction: %s\n", media.Restriction) // CONFIDENTIAL, LOCKED, etc.
+    }
+}
+
+// Look up specific media object
+media := doc.GetMediaObject("@O1@")
+if media != nil {
+    fmt.Printf("Found media with %d files\n", len(media.Files))
+}
+```
+
+#### Media Links with Crop Regions
+
+When entities reference media objects, they use `MediaLink` which can include crop regions and title overrides:
+
+```go
+// Access media linked to an individual
+person := doc.GetIndividual("@I1@")
+if person != nil {
+    for _, mediaLink := range person.Media {
+        fmt.Printf("Media ref: %s\n", mediaLink.MediaXRef)
+
+        // Optional title override (overrides the file's TITL)
+        if mediaLink.Title != "" {
+            fmt.Printf("  Title: %s\n", mediaLink.Title)
+        }
+
+        // Optional crop region (for showing a portion of an image)
+        if mediaLink.Crop != nil {
+            fmt.Printf("  Crop: top=%d, left=%d, %dx%d\n",
+                mediaLink.Crop.Top,
+                mediaLink.Crop.Left,
+                mediaLink.Crop.Width,
+                mediaLink.Crop.Height)
+        }
+
+        // Resolve to full media object
+        mediaObj := doc.GetMediaObject(mediaLink.MediaXRef)
+        if mediaObj != nil && len(mediaObj.Files) > 0 {
+            fmt.Printf("  Actual file: %s\n", mediaObj.Files[0].FileRef)
+        }
+    }
+}
+```
+
 ## Validation
 
 ### Basic Validation

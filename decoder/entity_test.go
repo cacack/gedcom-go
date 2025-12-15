@@ -2745,3 +2745,485 @@ func TestNoteParsing(t *testing.T) {
 		t.Error("GetNote(@N999@) should return nil")
 	}
 }
+
+// TestParseMediaObject_SingleFile tests basic OBJE record with one FILE
+func TestParseMediaObject_SingleFile(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @O1@ OBJE
+1 FILE example.jpg
+2 FORM image/jpeg
+3 MEDI PHOTO
+2 TITL Example Photo
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	media := doc.GetMediaObject("@O1@")
+	if media == nil {
+		t.Fatal("GetMediaObject(@O1@) returned nil")
+	}
+
+	if media.XRef != "@O1@" {
+		t.Errorf("media.XRef = %s, want @O1@", media.XRef)
+	}
+
+	if len(media.Files) != 1 {
+		t.Fatalf("len(media.Files) = %d, want 1", len(media.Files))
+	}
+
+	file := media.Files[0]
+	if file.FileRef != "example.jpg" {
+		t.Errorf("file.FileRef = %s, want example.jpg", file.FileRef)
+	}
+	if file.Form != "image/jpeg" {
+		t.Errorf("file.Form = %s, want image/jpeg", file.Form)
+	}
+	if file.MediaType != "PHOTO" {
+		t.Errorf("file.MediaType = %s, want PHOTO", file.MediaType)
+	}
+	if file.Title != "Example Photo" {
+		t.Errorf("file.Title = %s, want 'Example Photo'", file.Title)
+	}
+}
+
+// TestParseMediaObject_MultipleFiles tests OBJE with multiple FILE entries
+func TestParseMediaObject_MultipleFiles(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @1@ OBJE
+1 FILE example.jpg
+2 FORM image/jpeg
+3 MEDI PHOTO
+2 TITL Example Image File
+1 FILE example.mp3
+2 FORM application/x-mp3
+2 TITL Sound Clip
+1 NOTE note in OBJE record
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	media := doc.GetMediaObject("@1@")
+	if media == nil {
+		t.Fatal("GetMediaObject(@1@) returned nil")
+	}
+
+	if len(media.Files) != 2 {
+		t.Fatalf("len(media.Files) = %d, want 2", len(media.Files))
+	}
+
+	// Verify first file (JPEG)
+	file1 := media.Files[0]
+	if file1.FileRef != "example.jpg" {
+		t.Errorf("file1.FileRef = %s, want example.jpg", file1.FileRef)
+	}
+	if file1.Form != "image/jpeg" {
+		t.Errorf("file1.Form = %s, want image/jpeg", file1.Form)
+	}
+	if file1.MediaType != "PHOTO" {
+		t.Errorf("file1.MediaType = %s, want PHOTO", file1.MediaType)
+	}
+	if file1.Title != "Example Image File" {
+		t.Errorf("file1.Title = %s, want 'Example Image File'", file1.Title)
+	}
+
+	// Verify second file (MP3)
+	file2 := media.Files[1]
+	if file2.FileRef != "example.mp3" {
+		t.Errorf("file2.FileRef = %s, want example.mp3", file2.FileRef)
+	}
+	if file2.Form != "application/x-mp3" {
+		t.Errorf("file2.Form = %s, want application/x-mp3", file2.Form)
+	}
+	if file2.Title != "Sound Clip" {
+		t.Errorf("file2.Title = %s, want 'Sound Clip'", file2.Title)
+	}
+}
+
+// TestParseMediaObject_WithTranslations tests FILE with TRAN substructures
+func TestParseMediaObject_WithTranslations(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @O1@ OBJE
+1 FILE media/original.mp3
+2 FORM audio/mp3
+3 MEDI AUDIO
+2 TITL Object title
+2 TRAN media/derived.oga
+3 FORM audio/ogg
+2 TRAN media/transcript.vtt
+3 FORM text/vtt
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	media := doc.GetMediaObject("@O1@")
+	if media == nil {
+		t.Fatal("GetMediaObject(@O1@) returned nil")
+	}
+
+	if len(media.Files) != 1 {
+		t.Fatalf("len(media.Files) = %d, want 1", len(media.Files))
+	}
+
+	file := media.Files[0]
+	if file.FileRef != "media/original.mp3" {
+		t.Errorf("file.FileRef = %s, want media/original.mp3", file.FileRef)
+	}
+	if file.Form != "audio/mp3" {
+		t.Errorf("file.Form = %s, want audio/mp3", file.Form)
+	}
+	if file.MediaType != "AUDIO" {
+		t.Errorf("file.MediaType = %s, want AUDIO", file.MediaType)
+	}
+
+	if len(file.Translations) != 2 {
+		t.Fatalf("len(file.Translations) = %d, want 2", len(file.Translations))
+	}
+
+	// Verify first translation (OGA)
+	trans1 := file.Translations[0]
+	if trans1.FileRef != "media/derived.oga" {
+		t.Errorf("trans1.FileRef = %s, want media/derived.oga", trans1.FileRef)
+	}
+	if trans1.Form != "audio/ogg" {
+		t.Errorf("trans1.Form = %s, want audio/ogg", trans1.Form)
+	}
+
+	// Verify second translation (VTT transcript)
+	trans2 := file.Translations[1]
+	if trans2.FileRef != "media/transcript.vtt" {
+		t.Errorf("trans2.FileRef = %s, want media/transcript.vtt", trans2.FileRef)
+	}
+	if trans2.Form != "text/vtt" {
+		t.Errorf("trans2.Form = %s, want text/vtt", trans2.Form)
+	}
+}
+
+// TestParseMediaObject_FullMetadata tests OBJE with all metadata
+func TestParseMediaObject_FullMetadata(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @O1@ OBJE
+1 RESN CONFIDENTIAL, LOCKED
+1 FILE media/photo.jpg
+2 FORM image/jpeg
+3 MEDI PHOTO
+1 REFN 1
+2 TYPE User-generated identifier
+1 REFN 10
+1 UID 69ebdd0e-c78c-4b81-873f-dc8ac30a48b9
+1 NOTE Test note
+1 SNOTE @N1@
+1 SOUR @S1@
+2 PAGE 1
+1 CHAN
+2 DATE 27 MAR 2022
+3 TIME 08:56
+1 CREA
+2 DATE 27 MAR 2022
+3 TIME 08:55
+0 @N1@ SNOTE Shared note
+0 @S1@ SOUR
+1 TITL Test Source
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	media := doc.GetMediaObject("@O1@")
+	if media == nil {
+		t.Fatal("GetMediaObject(@O1@) returned nil")
+	}
+
+	if media.Restriction != "CONFIDENTIAL, LOCKED" {
+		t.Errorf("media.Restriction = %s, want 'CONFIDENTIAL, LOCKED'", media.Restriction)
+	}
+
+	if len(media.RefNumbers) != 2 {
+		t.Errorf("len(media.RefNumbers) = %d, want 2", len(media.RefNumbers))
+	}
+
+	if len(media.UIDs) != 1 {
+		t.Errorf("len(media.UIDs) = %d, want 1", len(media.UIDs))
+	}
+	if media.UIDs[0] != "69ebdd0e-c78c-4b81-873f-dc8ac30a48b9" {
+		t.Errorf("media.UIDs[0] = %s, want '69ebdd0e-c78c-4b81-873f-dc8ac30a48b9'", media.UIDs[0])
+	}
+
+	// Only inline NOTE is captured, SNOTE references are not currently parsed
+	// TODO: Add SNOTE handling to parseMediaObject
+	if len(media.Notes) != 1 {
+		t.Errorf("len(media.Notes) = %d, want 1", len(media.Notes))
+	}
+
+	if len(media.SourceCitations) != 1 {
+		t.Errorf("len(media.SourceCitations) = %d, want 1", len(media.SourceCitations))
+	}
+
+	if media.ChangeDate == nil {
+		t.Error("media.ChangeDate is nil")
+	}
+
+	if media.CreationDate == nil {
+		t.Error("media.CreationDate is nil")
+	}
+}
+
+// TestParseMediaLink_Basic tests simple OBJE reference without CROP or TITL
+func TestParseMediaLink_Basic(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @O1@ OBJE
+1 FILE example.jpg
+2 FORM image/jpeg
+0 @I1@ INDI
+1 NAME John /Doe/
+1 OBJE @O1@
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	individual := doc.GetIndividual("@I1@")
+	if individual == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+
+	if len(individual.Media) != 1 {
+		t.Fatalf("len(individual.Media) = %d, want 1", len(individual.Media))
+	}
+
+	link := individual.Media[0]
+	if link.MediaXRef != "@O1@" {
+		t.Errorf("link.MediaXRef = %s, want @O1@", link.MediaXRef)
+	}
+	if link.Crop != nil {
+		t.Error("link.Crop should be nil")
+	}
+	if link.Title != "" {
+		t.Errorf("link.Title = %s, want empty string", link.Title)
+	}
+}
+
+// TestParseMediaLink_WithCrop tests OBJE reference with complete CROP structure
+func TestParseMediaLink_WithCrop(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @O1@ OBJE
+1 FILE example.jpg
+2 FORM image/jpeg
+0 @I1@ INDI
+1 NAME John /Doe/
+1 OBJE @O1@
+2 CROP
+3 TOP 0
+3 LEFT 0
+3 HEIGHT 100
+3 WIDTH 100
+2 TITL Title
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	individual := doc.GetIndividual("@I1@")
+	if individual == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+
+	if len(individual.Media) != 1 {
+		t.Fatalf("len(individual.Media) = %d, want 1", len(individual.Media))
+	}
+
+	link := individual.Media[0]
+	if link.Crop == nil {
+		t.Fatal("link.Crop is nil")
+	}
+
+	if link.Crop.Top != 0 {
+		t.Errorf("link.Crop.Top = %d, want 0", link.Crop.Top)
+	}
+	if link.Crop.Left != 0 {
+		t.Errorf("link.Crop.Left = %d, want 0", link.Crop.Left)
+	}
+	if link.Crop.Height != 100 {
+		t.Errorf("link.Crop.Height = %d, want 100", link.Crop.Height)
+	}
+	if link.Crop.Width != 100 {
+		t.Errorf("link.Crop.Width = %d, want 100", link.Crop.Width)
+	}
+}
+
+// TestParseMediaLink_WithPartialCrop tests CROP with only some values specified
+func TestParseMediaLink_WithPartialCrop(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @O1@ OBJE
+1 FILE example.jpg
+2 FORM image/jpeg
+0 @I1@ INDI
+1 NAME John /Doe/
+1 OBJE @O1@
+2 CROP
+3 TOP 100
+3 LEFT 100
+2 TITL Title
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	individual := doc.GetIndividual("@I1@")
+	if individual == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+
+	if len(individual.Media) != 1 {
+		t.Fatalf("len(individual.Media) = %d, want 1", len(individual.Media))
+	}
+
+	link := individual.Media[0]
+	if link.Crop == nil {
+		t.Fatal("link.Crop is nil")
+	}
+
+	if link.Crop.Top != 100 {
+		t.Errorf("link.Crop.Top = %d, want 100", link.Crop.Top)
+	}
+	if link.Crop.Left != 100 {
+		t.Errorf("link.Crop.Left = %d, want 100", link.Crop.Left)
+	}
+	// Missing values should default to 0
+	if link.Crop.Height != 0 {
+		t.Errorf("link.Crop.Height = %d, want 0", link.Crop.Height)
+	}
+	if link.Crop.Width != 0 {
+		t.Errorf("link.Crop.Width = %d, want 0", link.Crop.Width)
+	}
+}
+
+// TestParseMediaLink_WithTitleOverride tests OBJE reference with TITL override
+func TestParseMediaLink_WithTitleOverride(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @X1@ OBJE
+1 FILE gifts.webm
+2 FORM application/x-other
+3 MEDI VIDEO
+1 FILE cake.webm
+2 FORM application/x-other
+3 MEDI VIDEO
+1 NOTE note in OBJE link
+0 @2@ INDI
+1 NAME John /Doe/
+1 OBJE @X1@
+2 TITL fifth birthday party
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	individual := doc.GetIndividual("@2@")
+	if individual == nil {
+		t.Fatal("GetIndividual(@2@) returned nil")
+	}
+
+	if len(individual.Media) != 1 {
+		t.Fatalf("len(individual.Media) = %d, want 1", len(individual.Media))
+	}
+
+	link := individual.Media[0]
+	if link.MediaXRef != "@X1@" {
+		t.Errorf("link.MediaXRef = %s, want @X1@", link.MediaXRef)
+	}
+	if link.Title != "fifth birthday party" {
+		t.Errorf("link.Title = %s, want 'fifth birthday party'", link.Title)
+	}
+}
+
+// TestParseMediaLink_Full tests OBJE reference with both CROP and TITL
+func TestParseMediaLink_Full(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @O1@ OBJE
+1 FILE example.jpg
+2 FORM image/jpeg
+0 @I1@ INDI
+1 NAME John /Doe/
+1 OBJE @O1@
+2 CROP
+3 TOP 50
+3 LEFT 25
+3 HEIGHT 200
+3 WIDTH 150
+2 TITL Cropped Portrait
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	individual := doc.GetIndividual("@I1@")
+	if individual == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+
+	if len(individual.Media) != 1 {
+		t.Fatalf("len(individual.Media) = %d, want 1", len(individual.Media))
+	}
+
+	link := individual.Media[0]
+	if link.MediaXRef != "@O1@" {
+		t.Errorf("link.MediaXRef = %s, want @O1@", link.MediaXRef)
+	}
+	if link.Title != "Cropped Portrait" {
+		t.Errorf("link.Title = %s, want 'Cropped Portrait'", link.Title)
+	}
+
+	if link.Crop == nil {
+		t.Fatal("link.Crop is nil")
+	}
+	if link.Crop.Top != 50 {
+		t.Errorf("link.Crop.Top = %d, want 50", link.Crop.Top)
+	}
+	if link.Crop.Left != 25 {
+		t.Errorf("link.Crop.Left = %d, want 25", link.Crop.Left)
+	}
+	if link.Crop.Height != 200 {
+		t.Errorf("link.Crop.Height = %d, want 200", link.Crop.Height)
+	}
+	if link.Crop.Width != 150 {
+		t.Errorf("link.Crop.Width = %d, want 150", link.Crop.Width)
+	}
+}

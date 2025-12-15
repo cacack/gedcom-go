@@ -53,10 +53,10 @@ The following features are not yet implemented but are low priority:
 - PHRASE subordinate
 - Enhanced place structure
 
-### Multimedia Enhancements
-- Multiple file references (different resolutions)
-- Crop/region information
-- GEDCOM 7.0 MIME type support
+### ~~Multimedia Enhancements~~ ✅ IMPLEMENTED
+- ~~Multiple file references (different resolutions)~~ ✅
+- ~~Crop/region information~~ ✅
+- ~~GEDCOM 7.0 MIME type support~~ ✅
 
 ### Advanced Validation
 - Custom schema rules
@@ -460,18 +460,24 @@ The following features are not yet implemented but are low priority:
 
 **GEDCOM 7.0 Enhancement**: Enhanced place structure with additional fields
 
-### 11. Multimedia (Priority: P3)
+### 11. ✅ Multimedia (Priority: P3) - IMPLEMENTED
 
-#### 11.1 Multimedia Links (P3 - Low Impact)
+#### 11.1 Multimedia Links (P3 - Low Impact) ✅ IMPLEMENTED
 
-**Current Limitation**: MediaObject struct exists but lacks:
-- Multiple file references (different resolutions)
-- Crop/region information
-- GEDCOM 7.0 MIME type support
+**Status**: Fully implemented with GEDCOM 7.0 spec compliance.
 
-**Impact**: Low - basic media reference works
-**Complexity**: Medium
-**Priority**: P3
+**Implemented Features**:
+- ✅ Multiple file references per media object (MediaFile with FileRef, Form, MediaType, Title)
+- ✅ File translations (MediaTranslation for thumbnails, transcripts, alternate formats)
+- ✅ Crop/region information (CropRegion with Top, Left, Height, Width)
+- ✅ GEDCOM 7.0 MIME type support (FORM tag parsing)
+- ✅ MediaLink structure for embedded OBJE references with CROP and TITL override
+- ✅ Full metadata support (RESN, REFN, UID, NOTE, SOUR, CHAN, CREA)
+
+**API**:
+- `doc.MediaObjects()` - Get all media objects
+- `doc.GetMediaObject(xref)` - Get media object by XRef
+- Individual/Family/Source/Event now use `[]*MediaLink` instead of `[]string`
 
 ### 12. Change/Creation Metadata (Priority: P3)
 
@@ -529,7 +535,7 @@ The following features are not yet implemented but are low priority:
 | Repository/Note entity parsing | ✅ Implemented |
 | Change/creation metadata (CHAN, CREA) | ✅ Implemented |
 | Event administrative tags (RESN, UID) | ✅ Implemented |
-| Enhanced multimedia | ⏳ Remaining |
+| Enhanced multimedia | ✅ Implemented |
 | TRAN (transliteration) | ⏳ Remaining |
 | SDATE (GEDCOM 7.0) | ⏳ Remaining |
 
@@ -582,7 +588,8 @@ For the `my-family` consumer application:
    - Event details (cause of death) → Event.Cause field
    - Pedigree linkage → FamilyLink with Pedigree
 2. ✅ **Now Available**: LDS ordinances, educational history (EDUC attribute)
-3. ⏳ **Remaining Nice-to-Have**: Enhanced multimedia, TRAN transliteration
+3. ✅ **Enhanced multimedia**: Full GEDCOM 7.0 multimedia support with multiple files, CROP, MIME types
+4. ⏳ **Remaining Nice-to-Have**: TRAN transliteration for names
 
 ## Conclusion
 
@@ -599,8 +606,8 @@ For the `my-family` consumer application:
 - ✅ Place structure with coordinates
 - ✅ Metadata (CHAN, CREA, REFN, UID)
 - ✅ Entity parsing for all record types
+- ✅ Enhanced multimedia (multiple files, CROP, MIME types, translations)
 
 **Remaining (Low Priority)**:
 - TRAN (transliteration) for non-Latin scripts
 - GEDCOM 7.0-specific enhancements (SDATE, PHRASE)
-- Enhanced multimedia features

@@ -130,8 +130,8 @@ type Event struct {
 	// Notes are references to note records
 	Notes []string
 
-	// MediaRefs are references to media objects
-	MediaRefs []string
+	// Media are references to media objects with optional crop/title
+	Media []*MediaLink
 
 	// Tags contains all raw tags for this event (for unknown/custom fields)
 	Tags []*Tag

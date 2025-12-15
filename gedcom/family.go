@@ -26,8 +26,8 @@ type Family struct {
 	// Notes are references to note records
 	Notes []string
 
-	// MediaRefs are references to media objects
-	MediaRefs []string
+	// Media are references to media objects with optional crop/title
+	Media []*MediaLink
 
 	// LDSOrdinances are LDS (Latter-Day Saints) ordinances (SLGS - spouse sealing)
 	LDSOrdinances []*LDSOrdinance
