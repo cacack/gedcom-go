@@ -123,7 +123,7 @@ jobs:
 
     - name: Run gosec
       run: |
-        go install github.com/securego/gosec/v2/cmd/gosec@latest
+        go install github.com/securego/gosec/v2/cmd/gosec@v2.21.4
         gosec -fmt sarif -out gosec-results.sarif ./...
 
     - name: Upload gosec results to GitHub Security
