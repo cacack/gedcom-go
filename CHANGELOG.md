@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/cacack/gedcom-go/compare/v0.2.0...v0.3.0) (2025-12-16)
+
+
+### Features
+
+* **decoder:** add Submitter, Repository, and Note entity parsing ([3acc118](https://github.com/cacack/gedcom-go/commit/3acc11839f6386b0b1bacf27f8db8692a9015523))
+* **decoder:** expand GEDCOM tag support for events, attributes, and structures ([dfc2030](https://github.com/cacack/gedcom-go/commit/dfc20305d24a13ebf2bde49bb438dbf7ebda623c))
+* **decoder:** expand GEDCOM tag support for events, attributes, and structures ([3f69ad4](https://github.com/cacack/gedcom-go/commit/3f69ad4da533a60e17328de485ff563480567ceb))
+* expand GEDCOM tag support and add entity parsing ([0ddb1ab](https://github.com/cacack/gedcom-go/commit/0ddb1aba84016ff1526b28a694781080bcfd36dc))
+* **media:** add GEDCOM 7.0 multimedia support with CROP regions ([689b9e8](https://github.com/cacack/gedcom-go/commit/689b9e89d6f5f7d822c62dd0a6c5024d8748b7cc))
+* **media:** add GEDCOM 7.0 multimedia support with CROP regions ([fb32acd](https://github.com/cacack/gedcom-go/commit/fb32acd6f1da98a7ee295e175c4496253f7d7964))
+
+
+### Bug Fixes
+
+* **ci:** pin gosec to v2.21.4 for Go 1.23 compatibility ([6e901f3](https://github.com/cacack/gedcom-go/commit/6e901f3a6f5eed3eb5a94c99a2dfc505cfdbdc55))
+* **ci:** use direct install for security tools ([5599f6d](https://github.com/cacack/gedcom-go/commit/5599f6df113ea534f6a610c9f8b03052faafcbd6))
+* **security:** suppress gosec G304 false positives in examples ([0a54a6e](https://github.com/cacack/gedcom-go/commit/0a54a6ec5912d682016d9e56c40c351db2686f2e))
+* set go.mod to 1.21 (minimum supported version) ([d8970c3](https://github.com/cacack/gedcom-go/commit/d8970c3432c4dfec22f5f04c90923413e74c8ffe))
+
 ## [Unreleased]
 
 ### Added
