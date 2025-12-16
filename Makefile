@@ -133,7 +133,7 @@ tidy: ## Tidy go.mod and go.sum
 clean: ## Clean build artifacts and coverage files
 	@echo "Cleaning..."
 	$(GOCLEAN)
-	rm -f $(COVERAGE_FILE) $(COVERAGE_HTML)
+	rm -f $(COVERAGE_FILE) $(COVERAGE_HTML) benchmark-results.txt
 	@echo "✓ Cleaned"
 
 install-tools: install-staticcheck ## Install development tools

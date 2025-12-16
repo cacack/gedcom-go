@@ -10,6 +10,15 @@ All benchmarks were run on:
 - **Go Version**: 1.23
 - **Test Files**: Real-world GEDCOM files from `testdata/`
 
+## Performance Summary
+
+| Operation | Target | Current | Status |
+|-----------|--------|---------|--------|
+| Parse 1000 individuals | < 1ms | 697 µs | Pass |
+| Decode 1000 individuals | < 15ms | 13.0 ms | Pass |
+| Encode 1000 individuals | < 2ms | 1.15 ms | Pass |
+| Validate 1000 individuals | < 10µs | 5.91 µs | Pass |
+
 ## Decoder Performance
 
 ### Throughput Benchmarks
@@ -29,27 +38,9 @@ All benchmarks were run on:
 
 From profiling the decoder with large files:
 
-1. **Parser Operations (48%)**: Time split between:
-   - Line parsing: 31%
-   - String splitting (`strings.Fields`): 13%
-
+1. **Parser Operations (48%)**: Line parsing (31%), string splitting (13%)
 2. **Garbage Collection (30%)**: Expected with 214K allocations per MB
-
-3. **Record Building (34% of memory allocations)**: Creating gedcom.Record structures
-
-### Optimization Opportunities
-
-Based on profiling, potential optimizations (if needed):
-
-1. **strings.Fields** accounts for 20% of memory allocations
-   - Could be replaced with manual parsing for better performance
-   - Trade-off: code complexity vs. speed
-
-2. **Record building** allocations could be reduced with object pooling
-   - Would help for processing many files consecutively
-
-3. **Current performance (32 MB/s)** is already good for most use cases
-   - Parsing a 100MB genealogy file takes ~3 seconds
+3. **Record Building (22%)**: Creating gedcom.Record structures
 
 ## Parser Performance
 
@@ -77,31 +68,18 @@ Based on profiling, potential optimizations (if needed):
 
 ## Encoder Performance
 
-### Encoding Benchmarks
-
-| Document Size | Time/Op | Memory | Allocations | Throughput |
-|---------------|---------|--------|-------------|------------|
-| 1 individual | 1.0 µs | 208 B | 13 | - |
-| 10 individuals | 18 µs | 4.1 KB | 259 | ~0.5 MB/s |
-| 100 individuals | 176 µs | 40 KB | 2.5K | ~0.5 MB/s |
-| 1000 individuals | 1.7 ms | 400 KB | 25K | ~0.5 MB/s |
-
-**Average Throughput**: ~0.5 MB/s
+| Document Size | Time/Op | Memory | Allocations |
+|---------------|---------|--------|-------------|
+| 1 individual | 1.0 µs | 208 B | 13 |
+| 10 individuals | 18 µs | 4.1 KB | 259 |
+| 100 individuals | 176 µs | 40 KB | 2.5K |
+| 1000 individuals | 1.7 ms | 400 KB | 25K |
 
 **Scaling**: Linear with document size (~25 allocs per individual)
 
-### Line Ending Performance
-
-| Format | Time/Op (100 individuals) | Overhead |
-|--------|---------------------------|----------|
-| LF (Unix) | 182 µs | Baseline |
-| CRLF (Windows) | 187 µs | +2.7% |
-
-**Recommendation**: Use default LF unless Windows compatibility required
+Line ending format has negligible impact (<1% overhead for CRLF vs LF).
 
 ## Validator Performance
-
-### Validation Benchmarks (Valid Documents)
 
 | Document Size | Time/Op | Memory | Allocations |
 |---------------|---------|--------|-------------|
@@ -111,16 +89,6 @@ Based on profiling, potential optimizations (if needed):
 | 1000 individuals | 6.6 µs | 0 B | 0 |
 
 **Key Insight**: Zero allocations when no errors found!
-
-### Validation with Errors
-
-| Document | Time/Op | Memory | Allocations |
-|----------|---------|--------|-------------|
-| 100 individuals, 10 broken refs | 3.1 µs | 3.6 KB | 66 |
-
-**Impact**: Only allocates when creating error objects
-
-**Scaling**: ~66 allocations per 10 errors
 
 ## Performance Recommendations
 
@@ -137,11 +105,9 @@ Based on profiling, potential optimizations (if needed):
    doc, _ := decoder.Decode(bytes.NewReader(data))
    ```
 
-2. **Memory**: Budget ~1.2x file size for parsing
-   - 100MB file → ~120MB RAM during parsing
+2. **Memory**: Budget ~1.2x file size for parsing (100MB file -> ~120MB RAM)
 
-3. **Processing Time**: Budget ~30ms per MB
-   - 100MB file → ~3 seconds parsing time
+3. **Processing Time**: Budget ~30ms per MB (100MB file -> ~3 seconds)
 
 ### For Batch Processing
 
@@ -150,168 +116,70 @@ Based on profiling, potential optimizations (if needed):
    v := validator.New()
    for _, doc := range documents {
        errors := v.Validate(doc)
-       // Process errors
    }
    ```
 
-2. **Consider Concurrent Processing** for multiple files:
-   ```go
-   // Process files in parallel
-   var wg sync.WaitGroup
-   sem := make(chan struct{}, runtime.NumCPU())
-
-   for _, file := range files {
-       wg.Add(1)
-       go func(f string) {
-           defer wg.Done()
-           sem <- struct{}{}        // Limit concurrency
-           defer func() { <-sem }()
-
-           // Parse file
-           fd, _ := os.Open(f)
-           doc, _ := decoder.Decode(fd)
-           fd.Close()
-       }(file)
-   }
-   wg.Wait()
-   ```
+2. **Consider Concurrent Processing** for multiple files using goroutines with semaphore limiting.
 
 ### For Web Services
 
-1. **Set Timeouts**: Use `context` for long-running operations:
-   ```go
-   ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-   defer cancel()
+1. **Set Timeouts**: Use `context` for long-running operations
+2. **Limit File Sizes**: Prevent DoS attacks with `io.LimitReader`
+3. **Memory Profiling**: Monitor for memory leaks
 
-   doc, err := decoder.DecodeWithOptions(f, &decoder.Options{
-       MaxNestingDepth: 100,
-       StrictMode:      true,
-   })
-   ```
-
-2. **Limit File Sizes**: Prevent DoS attacks:
-   ```go
-   maxSize := 100 * 1024 * 1024 // 100 MB limit
-   lr := io.LimitReader(request.Body, maxSize)
-   doc, err := decoder.Decode(lr)
-   ```
-
-3. **Memory Profiling**: Monitor for memory leaks:
-   ```bash
-   go test -bench=. -memprofile=mem.prof
-   go tool pprof -alloc_space mem.prof
-   ```
-
-## Benchmark Commands
-
-To run all benchmarks:
+## Running Benchmarks
 
 ```bash
 # All packages
+make bench
+
+# Or manually
 go test -bench=. -benchmem ./...
 
-# Specific package
-go test -bench=. -benchmem ./decoder
-
 # With profiling
-go test -bench=BenchmarkDecodeLarge -cpuprofile=cpu.prof -memprofile=mem.prof -benchtime=5s ./decoder
-
-# Analyze profiles
-go tool pprof -top -cum cpu.prof
-go tool pprof -top -alloc_space mem.prof
-
-# Generate HTML report
+go test -bench=BenchmarkDecodeLarge -cpuprofile=cpu.prof -memprofile=mem.prof ./decoder
 go tool pprof -http=:8080 cpu.prof
 ```
 
-## Profiling Results Summary
+## Regression Testing
 
-### CPU Hotspots (Decoder)
+```bash
+# Save baseline
+make bench-save
 
-1. **Parser operations**: 48% of CPU time
-   - Most time spent in string parsing (unavoidable)
+# Compare after changes
+make bench-compare
 
-2. **Garbage collection**: 30% of CPU time
-   - Normal for allocation-heavy operations
-   - Memory usage is already efficient (1.2x file size)
+# Run regression tests
+make perf-regression
+```
 
-3. **Record building**: 22% of CPU time
-   - Building the document structure
+## Troubleshooting
 
-### Memory Hotspots (Decoder)
+### Slow Parsing
+- **Symptoms**: ParseLine > 200ns/op, allocations > 500B/op
+- **Diagnosis**: `go test -bench=BenchmarkParseLine -cpuprofile=cpu.prof ./parser`
+- **Common causes**: String allocation in hot path, regex compilation per line
 
-1. **buildRecords**: 34% of allocations
-   - Creating Record objects
-
-2. **ParseLine**: 22% of allocations
-   - Includes strings.Fields (13%)
-
-3. **strings.Fields**: 20% of allocations
-   - Single biggest allocation hotspot
-   - Could be optimized with manual parsing if needed
-
-## Comparison with Other Libraries
-
-The gedcom-go library prioritizes:
-
-1. **Correctness**: Full GEDCOM 5.5, 5.5.1, and 7.0 support
-2. **Safety**: Comprehensive validation and error reporting
-3. **Simplicity**: Zero dependencies, clean API
-4. **Reasonable Performance**: 32 MB/s is fast enough for most use cases
-
-For ultra-high-performance requirements, consider:
-- Streaming processing without full document parsing
-- Using Profile-Guided Optimization (PGO) in Go 1.21+
-- Custom optimizations for specific GEDCOM dialects
+### High Memory Usage
+- **Symptoms**: Decode using > 20MB for 1000 individuals
+- **Diagnosis**: `go test -bench=BenchmarkDecodeLarge -memprofile=mem.prof ./decoder`
+- **Common causes**: Duplicate string storage, unnecessary slice growth
 
 ## Future Optimization Opportunities
 
 If performance becomes critical:
 
-1. **Parser Optimization**:
-   - Replace `strings.Fields` with custom parser (-20% allocations)
-   - Use buffer pooling for line parsing
+1. **Parser Optimization**: Replace `strings.Fields` with custom parser (-20% allocations)
+2. **Object Pooling**: Pool Record and Tag objects for batch processing
+3. **Profile-Guided Optimization (PGO)**: Collect profiles, let Go compiler optimize hot paths (10-20% improvement)
 
-2. **Object Pooling**:
-   - Pool Record and Tag objects for batch processing
-   - Reduce GC pressure
+## Library Design Priorities
 
-3. **Profile-Guided Optimization (PGO)**:
-   - Collect profiles from real workloads
-   - Let Go compiler optimize hot paths
-   - Typically 10-20% improvement
-
-4. **Parallel Parsing**:
-   - For very large files, parse sections in parallel
-   - Complex due to GEDCOM's hierarchical nature
-
-## Contributing Performance Improvements
-
-If you have performance improvements:
-
-1. **Run benchmarks before and after**:
-   ```bash
-   # Before
-   go test -bench=. -benchmem ./... > old.txt
-
-   # Make changes
-
-   # After
-   go test -bench=. -benchmem ./... > new.txt
-
-   # Compare
-   benchstat old.txt new.txt
-   ```
-
-2. **Profile to verify**:
-   - Ensure improvement is real
-   - Check for unexpected allocations
-
-3. **Consider trade-offs**:
-   - Code complexity vs. performance
-   - Maintainability vs. speed
-
-4. **Submit PR** with benchmark results
+1. **Correctness**: Full GEDCOM 5.5, 5.5.1, and 7.0 support
+2. **Safety**: Comprehensive validation and error reporting
+3. **Simplicity**: Zero dependencies, clean API
+4. **Reasonable Performance**: 32 MB/s is fast enough for most use cases
 
 ## Questions?
 

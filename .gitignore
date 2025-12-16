@@ -17,6 +17,7 @@ coverage.html
 perf-baseline.txt
 perf-current.txt
 perf-regression-report.txt
+benchmark-results.txt
 
 # Profile files
 *.prof
