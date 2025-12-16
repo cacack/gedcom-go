@@ -20,7 +20,7 @@ func main() {
 	filename := os.Args[1]
 
 	// Open and parse GEDCOM file
-	f, err := os.Open(filename)
+	f, err := os.Open(filename) // #nosec G304 -- CLI tool accepts user-provided paths
 	if err != nil {
 		log.Fatalf("Failed to open file: %v", err)
 	}

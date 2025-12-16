@@ -93,7 +93,7 @@ func main() {
 
 	if len(os.Args) > 1 {
 		filename := os.Args[1]
-		out, err = os.Create(filename)
+		out, err = os.Create(filename) // #nosec G304 -- CLI tool accepts user-provided paths
 		if err != nil {
 			log.Fatalf("Failed to create file: %v", err)
 		}
