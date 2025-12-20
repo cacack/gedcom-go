@@ -12,18 +12,13 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 
 ## Features
 
-- **Multi-version Support**: Parse GEDCOM 5.5, 5.5.1, and 7.0 files with automatic version detection
-- **Stream-based Parsing**: Efficient memory usage for large genealogy files
-- **Comprehensive Validation**: Validate GEDCOM data against specification rules
-- **Character Encoding**: Support for UTF-8, ANSEL, ASCII, LATIN1, and UNICODE encodings
-- **Clear Error Reporting**: All errors include line numbers and context
+- **Multi-version Support**: Parse GEDCOM 5.5, 5.5.1, and 7.0 files
+- **Stream-based Parsing**: Efficient memory usage for large files
+- **Comprehensive Validation**: Version-aware validation with clear error messages
 - **Zero Dependencies**: Uses only the Go standard library
-- **Well-tested**: 93% test coverage across core packages
-- **Production Ready**: Full CI/CD pipeline with automated testing on multiple platforms
-- **Rich Entity Parsing**: Individuals, Families, Sources, Submitters, Repositories, Notes
-- **Full Event Support**: 23+ event types including religious, life, legal, and LDS ordinances
-- **Source Citations**: PAGE, QUAY (quality), and DATA subordinates for citations
-- **Associations**: ASSO tag support with roles (godparents, witnesses, etc.)
+- **Well-tested**: 93% test coverage with multi-platform CI
+
+See [FEATURES.md](FEATURES.md) for the complete feature list including all supported record types, events, attributes, and encoding details.
 
 ## Installation
 

@@ -352,6 +352,28 @@ Follow standard Go project layout:
 - `examples/`: example usage code
 - `testdata/`: sample GEDCOM files for testing
 
+## Documentation Structure
+
+- **README.md**: Project overview, quick start, installation
+- **FEATURES.md**: Exhaustive list of implemented features
+- **IDEAS.md**: Unvetted ideas and rough concepts (create when needed)
+- **GitHub Issues**: Single source of truth for planned work
+- **docs/**: Implementation reference material
+  - `ENCODING_IMPLEMENTATION_PLAN.md` - UTF-16/ANSEL implementation guide
+  - `GEDCOM_DATE_FORMATS_RESEARCH.md` - Date format specification research
+  - `PERFORMANCE.md` - Benchmarks and optimization notes
+
+### Workflow for New Ideas
+
+1. **Quick idea**: Add to `IDEAS.md` for later consideration
+2. **Vetted feature**: Create GitHub issue with appropriate labels
+3. **Implementation reference**: Add detailed docs in `docs/` folder
+
+### Issue Labels
+
+Priority: `priority:high`, `priority:medium`, `priority:low`, `priority:future`
+Area: `area:encoding`, `area:parsing`, `area:validation`, `area:api`, `area:tooling`, `area:dx`
+
 ## Downstream Consumer
 
 This library is used by `github.com/cacack/my-family` (at `/Users/chris/devel/home/my-family`) via a `replace` directive during development. When adding features:
