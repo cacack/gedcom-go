@@ -32,7 +32,7 @@ For planned features, see [GitHub Issues](https://github.com/cacack/gedcom-go/is
 
 - Cross-reference ID (`@I1@`)
 - Names with components (given, surname, prefix, suffix, nickname)
-- Name transliterations and types
+- Name types (birth, married, aka)
 - Sex (M/F/U)
 - Events (see Events section)
 - Attributes (see Attributes section)
@@ -205,7 +205,7 @@ Each includes: DATE, PLAC, TEMP (temple), STAT (status)
 
 - Link individuals with roles
 - Supported roles: GODP (godparent), WITN (witness), custom roles
-- With source citations
+- Notes on associations
 
 ## Metadata
 
@@ -237,12 +237,10 @@ Each includes: DATE, PLAC, TEMP (temple), STAT (status)
 - Write valid GEDCOM files
 - Configurable line endings (LF, CRLF)
 - GEDCOM 5.5, 5.5.1, 7.0 output
-- Proper line length handling (CONC/CONT)
-- UTF-8 output with optional BOM
+- UTF-8 output
 
 ## Performance
 
-- Stream-based parsing (memory efficient)
 - Zero-allocation validator for valid documents
 - Benchmarked performance:
   - Parser: 66ns/op for simple lines

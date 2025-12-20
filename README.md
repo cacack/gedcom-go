@@ -13,7 +13,7 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 ## Features
 
 - **Multi-version Support**: Parse GEDCOM 5.5, 5.5.1, and 7.0 files
-- **Stream-based Parsing**: Efficient memory usage for large files
+- **Read and Write**: Full decoder and encoder for round-trip processing
 - **Comprehensive Validation**: Version-aware validation with clear error messages
 - **Zero Dependencies**: Uses only the Go standard library
 - **Well-tested**: 93% test coverage with multi-platform CI
