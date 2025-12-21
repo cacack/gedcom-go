@@ -139,7 +139,7 @@ PR titles must **NOT** use conventional commit format. Use plain descriptive tit
 ### Branch Strategy
 - Rebase feature branches on `main` before merging
 - Use merge commits (not squash) to preserve commit history
-- CI enforces PR title format via `.github/workflows/pr-title.yml`
+- CI enforces PR title format (release-please PRs are exempt)
 
 ## Downstream Consumer
 

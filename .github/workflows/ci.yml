@@ -202,6 +202,13 @@ jobs:
       - name: Check PR title is not conventional commit format
         run: |
           TITLE="${{ github.event.pull_request.title }}"
+
+          # Exempt release-please PRs (they use chore(main): release X.Y.Z)
+          if echo "$TITLE" | grep -qE "^chore\(main\): release [0-9]"; then
+            echo "✅ Release-please PR exempt from title check"
+            exit 0
+          fi
+
           PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?:"
           if echo "$TITLE" | grep -qE "$PATTERN"; then
             echo "::error::PR title should NOT use conventional commit format."
