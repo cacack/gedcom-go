@@ -124,17 +124,18 @@ Area: `area:encoding`, `area:parsing`, `area:validation`, `area:api`, `area:tool
 ## Git Conventions
 
 ### Commit Messages
-Use [conventional commits](https://www.conventionalcommits.org/): `type(scope): description`
-- `feat(parser): add GEDCOM 7.0 header parsing`
-- `fix(decoder): handle empty CONC values`
-- `docs: update API examples`
+Use conventional commits with defined types. See [CONTRIBUTING.md](CONTRIBUTING.md#5-commit-your-changes) for the full list.
 
-### PR Titles (IMPORTANT)
-PR titles must **NOT** use conventional commit format. Use plain descriptive titles:
+Key distinction: `feat`/`fix` are for **library changes** (what users consume), not development tooling.
+- `feat(parser): add GEDCOM 7.0 date support` — library feature
+- `ci: add PR title validation` — development tooling (not `feat`)
+
+### PR Titles
+PR titles must **NOT** use conventional commit format:
 - **Good**: `Add GEDCOM 7.0 header parsing`
 - **Bad**: `feat(parser): add GEDCOM 7.0 header parsing`
 
-**Why?** We use merge commits (not squash) for semi-linear history. Release-please picks up both PR titles and commit messages. If both use conventional format, changelog entries are duplicated.
+This prevents duplicate changelog entries (release-please picks up both PR titles and commits).
 
 ### Branch Strategy
 - Rebase feature branches on `main` before merging
