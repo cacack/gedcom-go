@@ -345,12 +345,29 @@ The library should be organized around:
 - Preserve original line numbers for error reporting
 - Handle malformed GEDCOM files gracefully with clear error messages
 
+### Implementation Philosophy
+
+Before implementing, ask:
+1. Does Go stdlib solve this? (`time`, `strings`, `encoding/json`, etc.)
+2. Is there a well-maintained library? (Check pkg.go.dev)
+3. What is truly domain-specific requiring custom code?
+
+Only build custom implementations for domain-specific logic (GEDCOM parsing, genealogy concepts). Detailed specs describe *what* is needed, not *how* to build it—leverage existing solutions for common problems.
+
 ### Standard Go Library Structure
 Follow standard Go project layout:
 - Root: library code (parser, types, decoder, encoder)
 - `internal/`: private implementation details
 - `examples/`: example usage code
 - `testdata/`: sample GEDCOM files for testing
+
+## Project Constitution
+
+@.specify/memory/constitution.md
+
+The constitution defines core principles (the WHAT). This CLAUDE.md defines operational guidance (the HOW). When in doubt, constitution principles take precedence.
+
+Key principles: Library-First Design, API Clarity, Test Coverage (≥85%), Version Support, Error Transparency, **Lossless Representation**.
 
 ## Documentation Structure
 
@@ -359,6 +376,7 @@ Follow standard Go project layout:
 - **IDEAS.md**: Unvetted ideas and rough concepts (create when needed)
 - **GitHub Issues**: Single source of truth for planned work
 - **docs/**: Implementation reference material
+  - `adr/` - Architecture Decision Records
   - `ENCODING_IMPLEMENTATION_PLAN.md` - UTF-16/ANSEL implementation guide
   - `GEDCOM_DATE_FORMATS_RESEARCH.md` - Date format specification research
   - `PERFORMANCE.md` - Benchmarks and optimization notes
