@@ -774,3 +774,336 @@ func TestParseDate_CalendarWithWhitespaceOnly(t *testing.T) {
 		t.Fatal("ParseDate('@#DGREGORIAN@   ') expected error for calendar with whitespace only, got nil")
 	}
 }
+
+// TestDate_Validate tests date validation
+func TestDate_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+		errMsg  string
+	}{
+		// Valid dates
+		{"valid complete date", "25 DEC 2020", false, ""},
+		{"valid leap year", "29 FEB 2000", false, ""},
+		{"valid leap year 2", "29 FEB 2020", false, ""},
+		{"valid Jan 31", "31 JAN 2020", false, ""},
+		{"valid Mar 31", "31 MAR 2020", false, ""},
+		{"valid May 31", "31 MAY 2020", false, ""},
+		{"valid Jul 31", "31 JUL 2020", false, ""},
+		{"valid Aug 31", "31 AUG 2020", false, ""},
+		{"valid Oct 31", "31 OCT 2020", false, ""},
+		{"valid Dec 31", "31 DEC 2020", false, ""},
+
+		// Partial dates (should not error)
+		{"partial year only", "1850", false, ""},
+		{"partial month year", "JAN 1900", false, ""},
+
+		// Invalid dates - day overflow
+		{"invalid Feb 30", "30 FEB 2023", true, "February has 28 days"},
+		{"invalid Feb 29 non-leap", "29 FEB 1900", true, "February has 28 days"},
+		{"invalid Jun 31", "31 JUN 2020", true, "June has 30 days"},
+		{"invalid Apr 31", "31 APR 2020", true, "April has 30 days"},
+		{"invalid Sep 31", "31 SEP 2020", true, "September has 30 days"},
+		{"invalid Nov 31", "31 NOV 2020", true, "November has 30 days"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			err = date.Validate()
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("Validate() expected error, got nil")
+				} else if tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
+					t.Errorf("Validate() error = %q, want substring %q", err.Error(), tt.errMsg)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Validate() unexpected error = %v", err)
+				}
+			}
+		})
+	}
+}
+
+// TestParseDate_DualDating tests dual year format parsing
+func TestParseDate_DualDating(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantYear     int
+		wantDualYear int
+		wantMonth    int
+		wantDay      int
+	}{
+		{"dual year 2-digit", "21 FEB 1750/51", 1750, 1751, 2, 21},
+		{"dual year 4-digit", "21 FEB 1750/1751", 1750, 1751, 2, 21},
+		{"dual year month only", "FEB 1750/51", 1750, 1751, 2, 0},
+		{"dual year only", "1750/51", 1750, 1751, 0, 0},
+		{"dual year 2-digit 1600s", "15 MAR 1640/41", 1640, 1641, 3, 15},
+		{"dual year 4-digit 1600s", "15 MAR 1640/1641", 1640, 1641, 3, 15},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			if date.Year != tt.wantYear {
+				t.Errorf("Year = %d, want %d", date.Year, tt.wantYear)
+			}
+			if date.DualYear != tt.wantDualYear {
+				t.Errorf("DualYear = %d, want %d", date.DualYear, tt.wantDualYear)
+			}
+			if date.Month != tt.wantMonth {
+				t.Errorf("Month = %d, want %d", date.Month, tt.wantMonth)
+			}
+			if date.Day != tt.wantDay {
+				t.Errorf("Day = %d, want %d", date.Day, tt.wantDay)
+			}
+		})
+	}
+}
+
+// TestParseDate_BCDates tests B.C./BCE date parsing
+func TestParseDate_BCDates(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantYear  int
+		wantMonth int
+		wantDay   int
+		wantIsBC  bool
+	}{
+		{"BC uppercase", "44 BC", 44, 0, 0, true},
+		{"BC with periods", "44 B.C.", 44, 0, 0, true},
+		{"BCE uppercase", "44 BCE", 44, 0, 0, true},
+		{"BCE with periods", "44 B.C.E.", 44, 0, 0, true},
+		{"BC lowercase", "44 bc", 44, 0, 0, true},
+		{"BC mixed case", "44 Bc", 44, 0, 0, true},
+		{"BC with month", "JAN 100 BC", 100, 1, 0, true},
+		{"BC with day and month", "15 MAR 44 BC", 44, 3, 15, true},
+		{"BCE with month", "JAN 500 BCE", 500, 1, 0, true},
+		{"regular AD date", "2020", 2020, 0, 0, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			if date.Year != tt.wantYear {
+				t.Errorf("Year = %d, want %d", date.Year, tt.wantYear)
+			}
+			if date.Month != tt.wantMonth {
+				t.Errorf("Month = %d, want %d", date.Month, tt.wantMonth)
+			}
+			if date.Day != tt.wantDay {
+				t.Errorf("Day = %d, want %d", date.Day, tt.wantDay)
+			}
+			if date.IsBC != tt.wantIsBC {
+				t.Errorf("IsBC = %v, want %v", date.IsBC, tt.wantIsBC)
+			}
+		})
+	}
+}
+
+// TestDate_Compare_BCDates tests comparison of B.C. dates
+func TestDate_Compare_BCDates(t *testing.T) {
+	tests := []struct {
+		date1   string
+		date2   string
+		wantCmp int
+	}{
+		// BC vs AD
+		{"100 BC", "2020", -1},
+		{"2020", "100 BC", 1},
+
+		// BC vs BC (remember: 100 BC > 200 BC in time)
+		{"100 BC", "100 BC", 0},
+		{"100 BC", "200 BC", 1},  // 100 BC is later (closer to present)
+		{"200 BC", "100 BC", -1}, // 200 BC is earlier
+		{"44 BC", "100 BC", 1},   // 44 BC is later
+		{"500 BC", "44 BC", -1},  // 500 BC is earlier
+
+		// BC dates with months
+		{"JAN 100 BC", "FEB 100 BC", -1},
+		{"FEB 100 BC", "JAN 100 BC", 1},
+
+		// BC dates with days
+		{"15 MAR 44 BC", "15 MAR 44 BC", 0},
+		{"14 MAR 44 BC", "15 MAR 44 BC", -1},
+		{"16 MAR 44 BC", "15 MAR 44 BC", 1},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.date1+" vs "+tt.date2, func(t *testing.T) {
+			d1, err := ParseDate(tt.date1)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.date1, err)
+			}
+			d2, err := ParseDate(tt.date2)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.date2, err)
+			}
+
+			got := d1.Compare(d2)
+			if got != tt.wantCmp {
+				t.Errorf("Compare() = %d, want %d", got, tt.wantCmp)
+			}
+		})
+	}
+}
+
+// TestParseDate_Phrases tests date phrase parsing
+func TestParseDate_Phrases(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantPhrase   string
+		wantIsPhrase bool
+	}{
+		{"simple phrase", "(unknown)", "unknown", true},
+		{"phrase with spaces", "(about 1850)", "about 1850", true},
+		{"phrase with text", "(before the war)", "before the war", true},
+		{"phrase empty", "()", "", true},
+		{"phrase with punctuation", "(c. 1850)", "c. 1850", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			if date.IsPhrase != tt.wantIsPhrase {
+				t.Errorf("IsPhrase = %v, want %v", date.IsPhrase, tt.wantIsPhrase)
+			}
+			if date.Phrase != tt.wantPhrase {
+				t.Errorf("Phrase = %q, want %q", date.Phrase, tt.wantPhrase)
+			}
+			// Phrase dates should have no date components
+			if date.Year != 0 || date.Month != 0 || date.Day != 0 {
+				t.Errorf("Phrase date has non-zero date components: Year=%d, Month=%d, Day=%d",
+					date.Year, date.Month, date.Day)
+			}
+		})
+	}
+}
+
+// TestParseDate_PhraseNotParsed tests that phrase content is not parsed
+func TestParseDate_PhraseNotParsed(t *testing.T) {
+	// A phrase that looks like a date should not be parsed as a date
+	date, err := ParseDate("(25 DEC 2020)")
+	if err != nil {
+		t.Fatalf("ParseDate error = %v", err)
+	}
+
+	if !date.IsPhrase {
+		t.Error("IsPhrase = false, want true")
+	}
+	if date.Phrase != "25 DEC 2020" {
+		t.Errorf("Phrase = %q, want %q", date.Phrase, "25 DEC 2020")
+	}
+	// Should not have parsed the date inside
+	if date.Year != 0 || date.Month != 0 || date.Day != 0 {
+		t.Errorf("Phrase should not be parsed: Year=%d, Month=%d, Day=%d",
+			date.Year, date.Month, date.Day)
+	}
+}
+
+// TestParseDate_InvalidDualYear tests invalid dual year formats
+func TestParseDate_InvalidDualYear(t *testing.T) {
+	tests := []string{
+		"1750/51/52", // Too many parts
+		"1750/ABC",   // Invalid secondary year
+		"ABC/51",     // Invalid primary year
+	}
+
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			_, err := ParseDate(input)
+			if err == nil {
+				t.Errorf("ParseDate(%q) expected error, got nil", input)
+			}
+		})
+	}
+}
+
+// TestParseDate_BCWithModifier tests B.C. dates with modifiers
+func TestParseDate_BCWithModifier(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantModifier DateModifier
+		wantYear     int
+		wantIsBC     bool
+	}{
+		{"ABT with BC", "ABT 100 BC", ModifierAbout, 100, true},
+		{"BEF with BC", "BEF 44 BC", ModifierBefore, 44, true},
+		{"AFT with BCE", "AFT 500 BCE", ModifierAfter, 500, true},
+		{"CAL with BC", "CAL 200 B.C.", ModifierCalculated, 200, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			if date.Modifier != tt.wantModifier {
+				t.Errorf("Modifier = %v, want %v", date.Modifier, tt.wantModifier)
+			}
+			if date.Year != tt.wantYear {
+				t.Errorf("Year = %d, want %d", date.Year, tt.wantYear)
+			}
+			if date.IsBC != tt.wantIsBC {
+				t.Errorf("IsBC = %v, want %v", date.IsBC, tt.wantIsBC)
+			}
+		})
+	}
+}
+
+// TestParseDate_DualYearWithBC tests dual dating with B.C. dates
+func TestParseDate_DualYearWithBC(t *testing.T) {
+	date, err := ParseDate("21 FEB 45/44 BC")
+	if err != nil {
+		t.Fatalf("ParseDate error = %v", err)
+	}
+
+	if date.Year != 45 {
+		t.Errorf("Year = %d, want 45", date.Year)
+	}
+	if date.DualYear != 44 {
+		t.Errorf("DualYear = %d, want 44", date.DualYear)
+	}
+	if !date.IsBC {
+		t.Error("IsBC = false, want true")
+	}
+}
+
+// TestDate_Validate_NonGregorian tests that non-Gregorian calendars skip validation
+func TestDate_Validate_NonGregorian(t *testing.T) {
+	date := &Date{
+		Day:      32,
+		Month:    13,
+		Year:     2020,
+		Calendar: CalendarJulian,
+	}
+
+	err := date.Validate()
+	if err != nil {
+		t.Errorf("Validate() for non-Gregorian should return nil, got %v", err)
+	}
+}

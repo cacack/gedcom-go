@@ -226,12 +226,35 @@ Structured date parsing for GEDCOM date strings with full support for:
 | Range | `BET 1850 AND 1860` | Between two dates |
 | Period | `FROM 1880 TO 1920` | Duration/interval |
 
+### Edge Cases
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| B.C. dates | `44 BC`, `753 B.C.E.` | IsBC flag set |
+| Dual dating | `21 FEB 1750/51` | Both years accessible |
+| Date phrases | `(unknown)` | GEDCOM 5.5 format |
+
+### Validation
+
+```go
+// Validate complete dates using stdlib
+err := date.Validate()
+// Returns nil for valid dates
+// Returns clear error for invalid: "invalid date: February has 28 days in 2023"
+```
+
+- Uses `time.Date()` normalization (no reimplemented calendar math)
+- Skips validation for partial dates (lossless representation)
+- Detects invalid day/month combinations (Feb 30, Jun 31)
+- Handles leap years correctly (Feb 29 2000 valid, 1900 invalid)
+
 ### Features
 
 - Case-insensitive month parsing (`Jan`, `JAN`, `jan`)
 - Whitespace tolerance (leading, trailing, multiple spaces)
 - Original string preserved for round-trip fidelity
 - Calendar escape recognition (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`)
+- B.C. date comparison (100 BC > 200 BC chronologically)
 
 ### API
 
@@ -244,6 +267,15 @@ date.Day      // 25
 date.Month    // 12
 date.Year     // 2020
 date.Modifier // ModifierNone
+
+// Edge case fields
+date.IsBC     // true for B.C. dates
+date.DualYear // second year from "1750/51" format
+date.Phrase   // text from "(unknown)" format
+date.IsPhrase // true for date phrases
+
+// Validate complete dates
+err := date.Validate()  // nil if valid
 
 // Compare dates for sorting
 result := date1.Compare(date2)  // -1, 0, or 1
