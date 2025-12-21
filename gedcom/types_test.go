@@ -212,6 +212,98 @@ func TestRecord(t *testing.T) {
 			t.Error("Should not get source from individual record")
 		}
 	})
+
+	t.Run("GetSubmitter", func(t *testing.T) {
+		subm := &Submitter{XRef: "@U1@"}
+		record := &Record{
+			Type:   RecordTypeSubmitter,
+			Entity: subm,
+		}
+
+		got, ok := record.GetSubmitter()
+		if !ok {
+			t.Error("Should get submitter")
+		}
+		if got != subm {
+			t.Error("Should return same submitter")
+		}
+
+		// Wrong type
+		indRecord := &Record{Type: RecordTypeIndividual}
+		_, ok = indRecord.GetSubmitter()
+		if ok {
+			t.Error("Should not get submitter from individual record")
+		}
+	})
+
+	t.Run("GetRepository", func(t *testing.T) {
+		repo := &Repository{XRef: "@R1@"}
+		record := &Record{
+			Type:   RecordTypeRepository,
+			Entity: repo,
+		}
+
+		got, ok := record.GetRepository()
+		if !ok {
+			t.Error("Should get repository")
+		}
+		if got != repo {
+			t.Error("Should return same repository")
+		}
+
+		// Wrong type
+		indRecord := &Record{Type: RecordTypeIndividual}
+		_, ok = indRecord.GetRepository()
+		if ok {
+			t.Error("Should not get repository from individual record")
+		}
+	})
+
+	t.Run("GetNote", func(t *testing.T) {
+		note := &Note{XRef: "@N1@", Text: "Test note"}
+		record := &Record{
+			Type:   RecordTypeNote,
+			Entity: note,
+		}
+
+		got, ok := record.GetNote()
+		if !ok {
+			t.Error("Should get note")
+		}
+		if got != note {
+			t.Error("Should return same note")
+		}
+
+		// Wrong type
+		indRecord := &Record{Type: RecordTypeIndividual}
+		_, ok = indRecord.GetNote()
+		if ok {
+			t.Error("Should not get note from individual record")
+		}
+	})
+
+	t.Run("GetMediaObject", func(t *testing.T) {
+		media := &MediaObject{XRef: "@M1@"}
+		record := &Record{
+			Type:   RecordTypeMedia,
+			Entity: media,
+		}
+
+		got, ok := record.GetMediaObject()
+		if !ok {
+			t.Error("Should get media object")
+		}
+		if got != media {
+			t.Error("Should return same media object")
+		}
+
+		// Wrong type
+		indRecord := &Record{Type: RecordTypeIndividual}
+		_, ok = indRecord.GetMediaObject()
+		if ok {
+			t.Error("Should not get media object from individual record")
+		}
+	})
 }
 
 func TestDocument(t *testing.T) {
@@ -219,6 +311,10 @@ func TestDocument(t *testing.T) {
 	ind2 := &Individual{XRef: "@I2@"}
 	fam1 := &Family{XRef: "@F1@"}
 	src1 := &Source{XRef: "@S1@"}
+	subm1 := &Submitter{XRef: "@U1@"}
+	repo1 := &Repository{XRef: "@R1@"}
+	note1 := &Note{XRef: "@N1@", Text: "Test note"}
+	media1 := &MediaObject{XRef: "@M1@"}
 
 	doc := &Document{
 		Records: []*Record{
@@ -226,12 +322,20 @@ func TestDocument(t *testing.T) {
 			{XRef: "@I2@", Type: RecordTypeIndividual, Entity: ind2},
 			{XRef: "@F1@", Type: RecordTypeFamily, Entity: fam1},
 			{XRef: "@S1@", Type: RecordTypeSource, Entity: src1},
+			{XRef: "@U1@", Type: RecordTypeSubmitter, Entity: subm1},
+			{XRef: "@R1@", Type: RecordTypeRepository, Entity: repo1},
+			{XRef: "@N1@", Type: RecordTypeNote, Entity: note1},
+			{XRef: "@M1@", Type: RecordTypeMedia, Entity: media1},
 		},
 		XRefMap: map[string]*Record{
 			"@I1@": {XRef: "@I1@", Type: RecordTypeIndividual, Entity: ind1},
 			"@I2@": {XRef: "@I2@", Type: RecordTypeIndividual, Entity: ind2},
 			"@F1@": {XRef: "@F1@", Type: RecordTypeFamily, Entity: fam1},
 			"@S1@": {XRef: "@S1@", Type: RecordTypeSource, Entity: src1},
+			"@U1@": {XRef: "@U1@", Type: RecordTypeSubmitter, Entity: subm1},
+			"@R1@": {XRef: "@R1@", Type: RecordTypeRepository, Entity: repo1},
+			"@N1@": {XRef: "@N1@", Type: RecordTypeNote, Entity: note1},
+			"@M1@": {XRef: "@M1@", Type: RecordTypeMedia, Entity: media1},
 		},
 	}
 
@@ -342,6 +446,122 @@ func TestDocument(t *testing.T) {
 		sources := doc.Sources()
 		if len(sources) != 1 {
 			t.Errorf("Got %d sources, want 1", len(sources))
+		}
+	})
+
+	t.Run("GetSubmitter", func(t *testing.T) {
+		subm := doc.GetSubmitter("@U1@")
+		if subm == nil {
+			t.Fatal("Should find submitter")
+		}
+		if subm.XRef != "@U1@" {
+			t.Errorf("Got XRef %s, want @U1@", subm.XRef)
+		}
+
+		// Try to get submitter from individual XRef
+		wrongType := doc.GetSubmitter("@I1@")
+		if wrongType != nil {
+			t.Error("Should not get submitter from individual XRef")
+		}
+
+		// Non-existent XRef
+		notFound := doc.GetSubmitter("@U999@")
+		if notFound != nil {
+			t.Error("Should return nil for non-existent XRef")
+		}
+	})
+
+	t.Run("Submitters", func(t *testing.T) {
+		submitters := doc.Submitters()
+		if len(submitters) != 1 {
+			t.Errorf("Got %d submitters, want 1", len(submitters))
+		}
+	})
+
+	t.Run("GetRepository", func(t *testing.T) {
+		repo := doc.GetRepository("@R1@")
+		if repo == nil {
+			t.Fatal("Should find repository")
+		}
+		if repo.XRef != "@R1@" {
+			t.Errorf("Got XRef %s, want @R1@", repo.XRef)
+		}
+
+		// Try to get repository from individual XRef
+		wrongType := doc.GetRepository("@I1@")
+		if wrongType != nil {
+			t.Error("Should not get repository from individual XRef")
+		}
+
+		// Non-existent XRef
+		notFound := doc.GetRepository("@R999@")
+		if notFound != nil {
+			t.Error("Should return nil for non-existent XRef")
+		}
+	})
+
+	t.Run("Repositories", func(t *testing.T) {
+		repositories := doc.Repositories()
+		if len(repositories) != 1 {
+			t.Errorf("Got %d repositories, want 1", len(repositories))
+		}
+	})
+
+	t.Run("GetNote", func(t *testing.T) {
+		note := doc.GetNote("@N1@")
+		if note == nil {
+			t.Fatal("Should find note")
+		}
+		if note.XRef != "@N1@" {
+			t.Errorf("Got XRef %s, want @N1@", note.XRef)
+		}
+
+		// Try to get note from individual XRef
+		wrongType := doc.GetNote("@I1@")
+		if wrongType != nil {
+			t.Error("Should not get note from individual XRef")
+		}
+
+		// Non-existent XRef
+		notFound := doc.GetNote("@N999@")
+		if notFound != nil {
+			t.Error("Should return nil for non-existent XRef")
+		}
+	})
+
+	t.Run("Notes", func(t *testing.T) {
+		notes := doc.Notes()
+		if len(notes) != 1 {
+			t.Errorf("Got %d notes, want 1", len(notes))
+		}
+	})
+
+	t.Run("GetMediaObject", func(t *testing.T) {
+		media := doc.GetMediaObject("@M1@")
+		if media == nil {
+			t.Fatal("Should find media object")
+		}
+		if media.XRef != "@M1@" {
+			t.Errorf("Got XRef %s, want @M1@", media.XRef)
+		}
+
+		// Try to get media object from individual XRef
+		wrongType := doc.GetMediaObject("@I1@")
+		if wrongType != nil {
+			t.Error("Should not get media object from individual XRef")
+		}
+
+		// Non-existent XRef
+		notFound := doc.GetMediaObject("@M999@")
+		if notFound != nil {
+			t.Error("Should return nil for non-existent XRef")
+		}
+	})
+
+	t.Run("MediaObjects", func(t *testing.T) {
+		objects := doc.MediaObjects()
+		if len(objects) != 1 {
+			t.Errorf("Got %d media objects, want 1", len(objects))
 		}
 	})
 }
