@@ -194,15 +194,33 @@ jobs:
           /tmp/example-parse testdata/gedcom-5.5/minimal.ged
         fi
 
+  pr-title:
+    name: PR Title Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Check PR title is not conventional commit format
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?:"
+          if echo "$TITLE" | grep -qE "$PATTERN"; then
+            echo "::error::PR title should NOT use conventional commit format."
+            echo "Use descriptive titles (e.g., 'Add date parsing') not 'feat(date): ...'"
+            echo "Conventional commits are for commit messages only."
+            exit 1
+          fi
+          echo "✅ PR title valid: $TITLE"
+
   # Gate job for branch protection - only require this one check
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
-    needs: [test, coverage, lint, format, security, build-examples]
+    needs: [test, coverage, lint, format, security, build-examples, pr-title]
     if: always()
     steps:
       - name: Check all jobs passed
         run: |
+          # pr-title is skipped on push events, which is expected
           if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
             echo "❌ Some jobs failed"
             exit 1

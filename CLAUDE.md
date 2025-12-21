@@ -121,6 +121,26 @@ Key principles: Library-First Design, API Clarity, Test Coverage (≥85%), Versi
 Priority: `priority:high`, `priority:medium`, `priority:low`, `priority:future`
 Area: `area:encoding`, `area:parsing`, `area:validation`, `area:api`, `area:tooling`, `area:dx`
 
+## Git Conventions
+
+### Commit Messages
+Use [conventional commits](https://www.conventionalcommits.org/): `type(scope): description`
+- `feat(parser): add GEDCOM 7.0 header parsing`
+- `fix(decoder): handle empty CONC values`
+- `docs: update API examples`
+
+### PR Titles (IMPORTANT)
+PR titles must **NOT** use conventional commit format. Use plain descriptive titles:
+- **Good**: `Add GEDCOM 7.0 header parsing`
+- **Bad**: `feat(parser): add GEDCOM 7.0 header parsing`
+
+**Why?** We use merge commits (not squash) for semi-linear history. Release-please picks up both PR titles and commit messages. If both use conventional format, changelog entries are duplicated.
+
+### Branch Strategy
+- Rebase feature branches on `main` before merging
+- Use merge commits (not squash) to preserve commit history
+- CI enforces PR title format via `.github/workflows/pr-title.yml`
+
 ## Downstream Consumer
 
 This library is used by `github.com/cacack/my-family` (at `/Users/chris/devel/home/my-family`) via a `replace` directive during development. When adding features:
