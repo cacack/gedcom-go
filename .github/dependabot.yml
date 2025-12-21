@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Go modules
+  # Go modules (library dependencies)
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:

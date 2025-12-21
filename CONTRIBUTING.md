@@ -33,36 +33,43 @@ This project adheres to a simple code of conduct:
 
 1. **Fork and clone the repository**
    ```bash
-   git fork https://github.com/cacack/gedcom-go
+   git clone https://github.com/YOUR_USERNAME/gedcom-go
    cd gedcom-go
    ```
 
-2. **Install dependencies**
+2. **Run the setup command**
    ```bash
-   go mod download
-   # Or use the Makefile
-   make download
+   make setup-dev-env
    ```
 
-3. **Verify everything works**
-   ```bash
-   go test ./...
-   # Or use the Makefile
-   make test
+   This single command will:
+   - Download Go dependencies
+   - Install development tools (staticcheck, golangci-lint)
+   - Install git hooks (pre-commit checks)
+   - Verify everything works by running tests
+
+   You'll see output like:
+   ```
+   ═══════════════════════════════════════════════
+     Development environment ready!
+   ═══════════════════════════════════════════════
+
+     Pre-commit hooks are installed and will run:
+       • gofmt check
+       • go vet
+       • golangci-lint
+       • tests with per-package coverage ≥85%
    ```
 
-4. **Install recommended development tools** (optional but recommended)
-   ```bash
-   # Using the Makefile (recommended)
-   make install-tools
+**Individual setup commands** (if you prefer manual setup):
+```bash
+make download        # Download dependencies
+make install-tools   # Install dev tools
+make setup-hooks     # Install git hooks
+make test            # Verify tests pass
+```
 
-   # Or install manually
-   go install golang.org/x/tools/cmd/gopls@latest
-   go install honnef.co/go/tools/cmd/staticcheck@latest
-   go install golang.org/x/tools/cmd/goimports@latest
-   ```
-
-For detailed setup instructions, see [CLAUDE.md](CLAUDE.md).
+For detailed environment information, see [CLAUDE.md](CLAUDE.md).
 
 ## Development Workflow
 
@@ -229,14 +236,24 @@ Follow the official [Go Code Review Comments](https://github.com/golang/go/wiki/
 
 ### Coverage Requirements
 
-- **Minimum**: 85% coverage for all packages
+| Level | Threshold | Enforcement |
+|-------|-----------|-------------|
+| Per-package | ≥85% | Pre-commit hook, CI |
+| Total | ≥85% | CI |
+| Critical paths | 100% | Code review |
+
 - **Target**: 90%+ coverage for core packages (parser, decoder, validator)
 - **Examples**: 0% is acceptable (examples are for demonstration)
 
+The pre-commit hook will block commits if any package falls below 85% coverage.
+
 Check coverage:
 ```bash
-go test -cover ./...
+make test-coverage   # Shows per-package coverage with threshold check
+go test -cover ./... # Quick coverage summary
 ```
+
+For details on critical paths and testing patterns, see [docs/TESTING.md](docs/TESTING.md).
 
 ### Test Guidelines
 
