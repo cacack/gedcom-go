@@ -157,13 +157,28 @@ staticcheck ./...
 
 ### 5. Commit Your Changes
 
-Write clear, descriptive commit messages:
+We use [Conventional Commits](https://www.conventionalcommits.org/) with specific types:
+
+| Type | Use for | In changelog? |
+|------|---------|---------------|
+| `feat` | New library capabilities (GEDCOM parsing, validation, etc.) | Yes |
+| `fix` | Bug fixes in the library | Yes |
+| `perf` | Performance improvements | Yes |
+| `refactor` | Code restructuring without behavior change | No |
+| `test` | Test-only changes (new tests, test infrastructure) | No |
+| `docs` | Documentation changes | No |
+| `ci` | Development infrastructure (pipelines, deps, tooling, hooks) | No |
+| `chore` | Miscellaneous maintenance | No |
+
+**Important**: `feat` and `fix` are reserved for changes to the GEDCOM library itself—what users consume. Use `ci` for development tooling, `refactor` for internal restructuring.
+
+Format: `type(scope): description`
 
 ```bash
-git add .
-git commit -m "feat: add support for GEDCOM 7.0 dates"
-git commit -m "fix: handle invalid UTF-8 sequences correctly"
-git commit -m "docs: add example for parsing large files"
+git commit -m "feat(parser): add GEDCOM 7.0 date support"
+git commit -m "fix(decoder): handle invalid UTF-8 sequences"
+git commit -m "ci: add PR title validation workflow"
+git commit -m "refactor(gedcom): extract date parsing to separate file"
 ```
 
 Commit message guidelines:
