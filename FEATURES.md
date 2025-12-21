@@ -207,6 +207,54 @@ Each includes: DATE, PLAC, TEMP (temple), STAT (status)
 - Supported roles: GODP (godparent), WITN (witness), custom roles
 - Notes on associations
 
+## Date Parsing
+
+Structured date parsing for GEDCOM date strings with full support for:
+
+### Date Formats
+
+| Format | Example | Notes |
+|--------|---------|-------|
+| Exact | `25 DEC 2020` | Full day, month, year |
+| Month-Year | `JAN 1900` | Partial date |
+| Year only | `1850` | Partial date |
+| About | `ABT 1850` | Approximate |
+| Calculated | `CAL 1875` | Mathematically derived |
+| Estimated | `EST 1820` | Algorithm-based estimate |
+| Before | `BEF 1900` | Upper bound |
+| After | `AFT 1850` | Lower bound |
+| Range | `BET 1850 AND 1860` | Between two dates |
+| Period | `FROM 1880 TO 1920` | Duration/interval |
+
+### Features
+
+- Case-insensitive month parsing (`Jan`, `JAN`, `jan`)
+- Whitespace tolerance (leading, trailing, multiple spaces)
+- Original string preserved for round-trip fidelity
+- Calendar escape recognition (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`)
+
+### API
+
+```go
+// Parse a GEDCOM date string
+date, err := gedcom.ParseDate("25 DEC 2020")
+
+// Access parsed components
+date.Day      // 25
+date.Month    // 12
+date.Year     // 2020
+date.Modifier // ModifierNone
+
+// Compare dates for sorting
+result := date1.Compare(date2)  // -1, 0, or 1
+
+// Convert to time.Time (complete dates only)
+t, err := date.ToTime()
+
+// Get original string
+s := date.String()  // "25 DEC 2020"
+```
+
 ## Metadata
 
 - REFN - Reference numbers with TYPE
