@@ -24,11 +24,18 @@ go vet ./...
 
 # Run linter (assumes golangci-lint is installed via make install-tools)
 echo "→ Running golangci-lint..."
-if ! command -v golangci-lint &> /dev/null; then
+# Check common locations for golangci-lint
+if command -v golangci-lint &> /dev/null; then
+  GOLANGCI_LINT="golangci-lint"
+elif [ -x "$HOME/go/bin/golangci-lint" ]; then
+  GOLANGCI_LINT="$HOME/go/bin/golangci-lint"
+elif [ -x "$(go env GOPATH)/bin/golangci-lint" ]; then
+  GOLANGCI_LINT="$(go env GOPATH)/bin/golangci-lint"
+else
   echo "Error: golangci-lint not found. Run 'make install-tools' first."
   exit 1
 fi
-golangci-lint run --timeout=5m
+$GOLANGCI_LINT run --timeout=5m
 
 # Run tests (same packages as CI)
 echo "→ Running tests..."
