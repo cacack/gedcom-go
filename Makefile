@@ -1,7 +1,7 @@
 # Makefile for gedcom-go
 # Go genealogy library for parsing and validating GEDCOM files
 
-.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint clean coverage-html install-tools build tidy check all
+.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint clean coverage-html install-tools build tidy check all setup-hooks setup-dev-env
 
 # Default target
 .DEFAULT_GOAL := help
@@ -136,13 +136,51 @@ clean: ## Clean build artifacts and coverage files
 	rm -f $(COVERAGE_FILE) $(COVERAGE_HTML) benchmark-results.txt
 	@echo "✓ Cleaned"
 
-install-tools: install-staticcheck ## Install development tools
-	@echo "✓ All tools installed"
+# Dev tool versions - update these when upgrading
+GOLANGCI_LINT_VERSION := v2.7.2
+STATICCHECK_VERSION := 2025.1
+GOSEC_VERSION := v2.22.10
+GOVULNCHECK_VERSION := latest
 
-install-staticcheck: ## Install staticcheck linter
-	@echo "Installing staticcheck..."
-	@which staticcheck > /dev/null || $(GOCMD) install honnef.co/go/tools/cmd/staticcheck@latest
-	@echo "✓ staticcheck installed"
+install-tools: ## Install development tools (pinned versions)
+	@echo "Installing development tools..."
+	$(GOCMD) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	$(GOCMD) install honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION)
+	$(GOCMD) install github.com/securego/gosec/v2/cmd/gosec@$(GOSEC_VERSION)
+	$(GOCMD) install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+	@echo "✓ Tools installed:"
+	@echo "  golangci-lint $(GOLANGCI_LINT_VERSION)"
+	@echo "  staticcheck $(STATICCHECK_VERSION)"
+	@echo "  gosec $(GOSEC_VERSION)"
+	@echo "  govulncheck $(GOVULNCHECK_VERSION)"
+
+setup-hooks: ## Install git hooks for development
+	@echo "Installing git hooks..."
+	@cp scripts/pre-commit .git/hooks/pre-commit
+	@chmod +x .git/hooks/pre-commit
+	@echo "✓ Pre-commit hook installed"
+
+setup-dev-env: download install-tools setup-hooks ## Set up complete dev environment
+	@echo ""
+	@echo "Verifying setup..."
+	@$(GOTEST) -short ./... > /dev/null && echo "✓ Tests pass"
+	@echo ""
+	@echo "═══════════════════════════════════════════════"
+	@echo "  Development environment ready!"
+	@echo "═══════════════════════════════════════════════"
+	@echo ""
+	@echo "  Pre-commit hooks are installed and will run:"
+	@echo "    • gofmt check"
+	@echo "    • go vet"
+	@echo "    • golangci-lint"
+	@echo "    • tests with per-package coverage ≥85%"
+	@echo ""
+	@echo "  Useful commands:"
+	@echo "    make test          Run all tests"
+	@echo "    make test-coverage Run tests with coverage report"
+	@echo "    make lint          Run staticcheck linter"
+	@echo "    make fmt           Format code"
+	@echo ""
 
 examples: ## Run all examples
 	@echo "Running parse example..."

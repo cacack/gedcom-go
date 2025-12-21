@@ -1,14 +1,13 @@
 <!--
 Sync Impact Report
 ==================
-Version Change: N/A → 1.0.0 (Initial constitution)
-Modified Principles: N/A (new constitution)
+Version Change: 1.0.0 → 1.1.0
+Modified Principles: None
 Added Sections:
-  - Core Principles (5 principles: Library-First Design, API Clarity, Test Coverage,
-    Version Support, Error Transparency)
-  - Quality Standards
-  - Development Workflow
-  - Governance
+  - Core Principles VI: Lossless Representation
+
+Previous versions:
+- 1.0.0 (2025-10-16): Initial constitution with 5 principles
 
 Templates Status:
   ✅ plan-template.md - reviewed, Constitution Check section compatible
@@ -94,6 +93,25 @@ Error handling requirements:
 **Rationale**: GEDCOM files often contain errors from legacy software. Users need
 precise diagnostics to fix data issues. Panics are unacceptable in a library.
 
+### VI. Lossless Representation (NON-NEGOTIABLE)
+
+Source GEDCOM data MUST be preserved without information loss.
+
+Lossless requirements:
+- Original values MUST be retained and recoverable
+- Partial/incomplete data MUST be representable (year-only dates, missing fields)
+- GEDCOM-specific semantics MUST NOT be flattened into lossy formats
+- Calendar-specific dates MUST preserve their calendar system
+- Modifiers, ranges, and uncertainty MUST be captured
+- Conversion to external formats MUST be opt-in, not automatic
+
+**Rationale**: GEDCOM represents genealogical data spanning centuries with varying
+precision and calendar systems. Normalizing to modern precise formats destroys
+historical nuance. A date recorded as "about 1850" is fundamentally different
+from "January 1, 1850" - both must be representable.
+
+See project ADRs for implementation-specific decisions that fulfill this principle.
+
 ## Quality Standards
 
 ### Code Standards
@@ -169,4 +187,4 @@ Development guidance for AI assistants and developers is in:
 
 The constitution defines WHAT; CLAUDE.md defines HOW.
 
-**Version**: 1.0.0 | **Ratified**: 2025-10-16 | **Last Amended**: 2025-10-16
+**Version**: 1.1.0 | **Ratified**: 2025-10-16 | **Last Amended**: 2025-12-21

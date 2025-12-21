@@ -1,0 +1,77 @@
+#!/bin/bash
+# Pre-commit hook for go-gedcom
+# Install: make setup-hooks
+# Prerequisites: make install-tools
+
+set -e
+
+echo "Running pre-commit checks..."
+
+# Format code
+echo "→ Running gofmt check..."
+UNFORMATTED=$(gofmt -l .)
+if [ -n "$UNFORMATTED" ]; then
+  echo "Error: The following files are not formatted:"
+  echo "$UNFORMATTED"
+  echo ""
+  echo "Please run: gofmt -w ."
+  exit 1
+fi
+
+# Run vet
+echo "→ Running go vet..."
+go vet ./...
+
+# Run linter (assumes golangci-lint is installed via make install-tools)
+echo "→ Running golangci-lint..."
+if ! command -v golangci-lint &> /dev/null; then
+  echo "Error: golangci-lint not found. Run 'make install-tools' first."
+  exit 1
+fi
+golangci-lint run --timeout=5m
+
+# Run tests (same packages as CI)
+echo "→ Running tests..."
+PACKAGES="./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version"
+go test $PACKAGES
+
+# Check per-package coverage (each package must meet minimum)
+echo "→ Checking per-package test coverage..."
+MIN_COVERAGE=85.0
+FAILED=0
+
+for pkg in $PACKAGES; do
+  # Get coverage for this package
+  COVERAGE_OUTPUT=$(go test -cover "$pkg" 2>&1)
+
+  # Extract coverage percentage (handles "coverage: 83.7% of statements" format)
+  COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -oE 'coverage: [0-9]+\.[0-9]+%' | grep -oE '[0-9]+\.[0-9]+' || echo "0")
+
+  # Handle packages with no test files (shows "no test files")
+  if echo "$COVERAGE_OUTPUT" | grep -q "no test files"; then
+    echo "  $pkg: no test files (skipped)"
+    continue
+  fi
+
+  # Handle packages with 0% coverage
+  if [ -z "$COVERAGE" ] || [ "$COVERAGE" = "0" ]; then
+    COVERAGE="0.0"
+  fi
+
+  # Check against minimum
+  if (( $(echo "$COVERAGE < $MIN_COVERAGE" | bc -l) )); then
+    echo "  ✗ $pkg: ${COVERAGE}% (below ${MIN_COVERAGE}%)"
+    FAILED=1
+  else
+    echo "  ✓ $pkg: ${COVERAGE}%"
+  fi
+done
+
+if [ $FAILED -eq 1 ]; then
+  echo ""
+  echo "Error: One or more packages have coverage below ${MIN_COVERAGE}%"
+  echo "See docs/TESTING.md for guidance on critical test paths"
+  exit 1
+fi
+
+echo "✓ Pre-commit checks passed"

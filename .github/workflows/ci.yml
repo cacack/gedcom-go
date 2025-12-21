@@ -32,18 +32,6 @@ jobs:
       run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
       shell: bash
 
-    - name: Check test coverage
-      run: |
-        echo "Checking test coverage..."
-        go tool cover -func=coverage.out | tail -1 | awk '{print "Total coverage: " $3}'
-        COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')
-        if (( $(echo "$COVERAGE < 85.0" | bc -l) )); then
-          echo "Error: Test coverage ($COVERAGE%) is below 85%"
-          exit 1
-        fi
-        echo "✓ Test coverage meets requirement (≥85%)"
-      shell: bash
-
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.go == '1.23'
       uses: codecov/codecov-action@v5
@@ -52,6 +40,50 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+
+  coverage:
+    name: Coverage Check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: '1.23'
+        cache: true
+
+    - name: Generate coverage
+      run: go test -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
+
+    - name: Check coverage thresholds
+      uses: vladopajic/go-test-coverage@v2
+      with:
+        profile: coverage.out
+        local-prefix: github.com/cacack/gedcom-go
+        threshold-file: 0
+        threshold-package: 85
+        threshold-total: 85
+
+    - name: Per-package coverage report
+      run: |
+        echo "## Per-Package Coverage Report"
+        echo ""
+        echo "| Package | Coverage | Status |"
+        echo "|---------|----------|--------|"
+        for pkg in charset decoder encoder gedcom parser validator version; do
+          COV=$(go tool cover -func=coverage.out | grep "github.com/cacack/gedcom-go/$pkg" | tail -1 | awk '{print $3}')
+          PCT=$(echo "$COV" | sed 's/%//')
+          if (( $(echo "$PCT >= 85.0" | bc -l) )); then
+            echo "| $pkg | $COV | ✅ |"
+          else
+            echo "| $pkg | $COV | ❌ |"
+          fi
+        done
+        echo ""
+        TOTAL=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}')
+        echo "**Total: $TOTAL**"
 
   lint:
     name: Lint
@@ -67,10 +99,9 @@ jobs:
         go-version: '1.23'
 
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v9
+      uses: golangci/golangci-lint-action@v7
       with:
-        version: latest
-        args: --timeout=5m
+        version: v2.7.2
 
   format:
     name: Format Check

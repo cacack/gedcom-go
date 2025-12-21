@@ -1,13 +1,11 @@
+# golangci-lint v2 config
+# IMPORTANT: v2 config is NOT compatible with v1
+# Version pinned in go.mod via tools/tools.go (single source of truth)
+# Dependabot will create PRs when new versions are available
 version: "2"
 run:
   modules-download-mode: readonly
   tests: true
-output:
-  formats:
-    text:
-      path: stdout
-      print-linter-name: true
-      print-issued-lines: true
 linters:
   enable:
     - gocritic
