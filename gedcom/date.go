@@ -800,3 +800,76 @@ func (d *Date) ToGregorian() (*Date, error) {
 
 	return result, nil
 }
+
+// IsAfter returns true if d is after other.
+// Returns false if either date is nil.
+func (d *Date) IsAfter(other *Date) bool {
+	if d == nil || other == nil {
+		return false
+	}
+	return d.Compare(other) > 0
+}
+
+// IsBefore returns true if d is before other.
+// Returns false if either date is nil.
+func (d *Date) IsBefore(other *Date) bool {
+	if d == nil || other == nil {
+		return false
+	}
+	return d.Compare(other) < 0
+}
+
+// IsEqual returns true if d is equal to other.
+// Returns true if both dates are nil, false if only one is nil.
+func (d *Date) IsEqual(other *Date) bool {
+	if d == nil && other == nil {
+		return true
+	}
+	if d == nil || other == nil {
+		return false
+	}
+	return d.Compare(other) == 0
+}
+
+// YearsBetween calculates the number of years between two dates.
+// For complete Gregorian dates, uses exact calculation via time.Time.
+// For partial dates or non-Gregorian calendars, uses simple year subtraction.
+// Returns error if both dates don't have years (insufficient data).
+// Always returns absolute value (no negative years).
+func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
+	// Check both dates exist and have years
+	if d1 == nil || d2 == nil || d1.Year == 0 || d2.Year == 0 {
+		return 0, false, fmt.Errorf("insufficient date information")
+	}
+
+	// Try exact calculation for complete Gregorian dates
+	t1, err1 := d1.ToTime()
+	t2, err2 := d2.ToTime()
+	if err1 == nil && err2 == nil {
+		// Use time.Time for exact calculation
+		// Calculate the difference in years, accounting for birthdays not yet reached
+		var earlier, later time.Time
+		if t1.Before(t2) {
+			earlier = t1
+			later = t2
+		} else {
+			earlier = t2
+			later = t1
+		}
+
+		years = later.Year() - earlier.Year()
+		// Adjust if birthday hasn't occurred yet this year
+		if later.Month() < earlier.Month() ||
+			(later.Month() == earlier.Month() && later.Day() < earlier.Day()) {
+			years--
+		}
+		return years, true, nil
+	}
+
+	// Fall back to year subtraction for partial dates or non-Gregorian calendars
+	yearDiff := d1.Year - d2.Year
+	if yearDiff < 0 {
+		yearDiff = -yearDiff
+	}
+	return yearDiff, false, nil
+}

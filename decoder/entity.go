@@ -274,6 +274,9 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string) *gedcom.Event
 			switch tag.Tag {
 			case "DATE":
 				event.Date = tag.Value
+				if parsed, err := gedcom.ParseDate(tag.Value); err == nil {
+					event.ParsedDate = parsed
+				}
 			case "PLAC":
 				event.Place = tag.Value
 				event.PlaceDetail = parsePlaceDetail(tags, i, tag.Level)
@@ -426,6 +429,9 @@ func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string) *gedcom.Att
 			switch tag.Tag {
 			case "DATE":
 				attr.Date = tag.Value
+				if parsed, err := gedcom.ParseDate(tag.Value); err == nil {
+					attr.ParsedDate = parsed
+				}
 			case "PLAC":
 				attr.Place = tag.Value
 			case "SOUR":
@@ -474,6 +480,9 @@ func parseLDSOrdinance(tags []*gedcom.Tag, ordIdx int, ordType gedcom.LDSOrdinan
 			switch tag.Tag {
 			case "DATE":
 				ord.Date = tag.Value
+				if parsed, err := gedcom.ParseDate(tag.Value); err == nil {
+					ord.ParsedDate = parsed
+				}
 			case "TEMP":
 				ord.Temple = tag.Value
 			case "PLAC":

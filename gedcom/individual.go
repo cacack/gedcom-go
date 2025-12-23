@@ -116,9 +116,53 @@ type Attribute struct {
 	// Date when the attribute was applicable (optional)
 	Date string
 
+	// ParsedDate is the parsed representation of Date.
+	// This is nil if the date string could not be parsed.
+	ParsedDate *Date
+
 	// Place where the attribute was applicable (optional)
 	Place string
 
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation
+}
+
+// BirthEvent returns the first birth event for this individual, or nil if none found.
+func (i *Individual) BirthEvent() *Event {
+	for _, event := range i.Events {
+		if event.Type == EventBirth {
+			return event
+		}
+	}
+	return nil
+}
+
+// DeathEvent returns the first death event for this individual, or nil if none found.
+func (i *Individual) DeathEvent() *Event {
+	for _, event := range i.Events {
+		if event.Type == EventDeath {
+			return event
+		}
+	}
+	return nil
+}
+
+// BirthDate returns the parsed birth date for this individual, or nil if no birth event
+// or no parsed date is available.
+func (i *Individual) BirthDate() *Date {
+	event := i.BirthEvent()
+	if event == nil {
+		return nil
+	}
+	return event.ParsedDate
+}
+
+// DeathDate returns the parsed death date for this individual, or nil if no death event
+// or no parsed date is available.
+func (i *Individual) DeathDate() *Date {
+	event := i.DeathEvent()
+	if event == nil {
+		return nil
+	}
+	return event.ParsedDate
 }

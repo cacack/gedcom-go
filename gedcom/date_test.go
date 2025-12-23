@@ -1936,6 +1936,446 @@ func TestDate_Compare_CrossCalendar(t *testing.T) {
 	}
 }
 
+// TestDate_IsAfter tests the IsAfter convenience method
+func TestDate_IsAfter(t *testing.T) {
+	tests := []struct {
+		name  string
+		date1 string
+		date2 string
+		want  bool
+	}{
+		// Complete dates
+		{"same date", "25 DEC 2020", "25 DEC 2020", false},
+		{"later date", "26 DEC 2020", "25 DEC 2020", true},
+		{"earlier date", "25 DEC 2020", "26 DEC 2020", false},
+		{"later year", "1 JAN 2021", "31 DEC 2020", true},
+		{"earlier year", "31 DEC 2019", "1 JAN 2020", false},
+
+		// Partial dates
+		{"partial year after", "1851", "1850", true},
+		{"partial year before", "1850", "1851", false},
+		{"partial year same", "1850", "1850", false},
+
+		// Mix of complete and partial
+		{"year vs complete (same)", "1920", "1 JAN 1920", false},
+		{"year vs complete (after)", "1920", "31 DEC 1919", true},
+
+		// BC dates
+		{"BC later than BC", "44 BC", "100 BC", true},
+		{"BC earlier than BC", "100 BC", "44 BC", false},
+		{"AD after BC", "100", "100 BC", true},
+		{"BC before AD", "100 BC", "100", false},
+
+		// Cross-calendar
+		{"Julian after Gregorian", "@#DJULIAN@ 15 JAN 1700", "1 JAN 1700", true},
+		{"Julian before Gregorian", "@#DJULIAN@ 1 JAN 1700", "12 JAN 1700", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d1, err := ParseDate(tt.date1)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.date1, err)
+			}
+			d2, err := ParseDate(tt.date2)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.date2, err)
+			}
+
+			got := d1.IsAfter(d2)
+			if got != tt.want {
+				t.Errorf("IsAfter() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestDate_IsAfter_Nil tests nil handling for IsAfter
+func TestDate_IsAfter_Nil(t *testing.T) {
+	d1, _ := ParseDate("25 DEC 2020")
+
+	tests := []struct {
+		name string
+		d1   *Date
+		d2   *Date
+		want bool
+	}{
+		{"both nil", nil, nil, false},
+		{"first nil", nil, d1, false},
+		{"second nil", d1, nil, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.d1.IsAfter(tt.d2)
+			if got != tt.want {
+				t.Errorf("IsAfter() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestDate_IsBefore tests the IsBefore convenience method
+func TestDate_IsBefore(t *testing.T) {
+	tests := []struct {
+		name  string
+		date1 string
+		date2 string
+		want  bool
+	}{
+		// Complete dates
+		{"same date", "25 DEC 2020", "25 DEC 2020", false},
+		{"later date", "26 DEC 2020", "25 DEC 2020", false},
+		{"earlier date", "25 DEC 2020", "26 DEC 2020", true},
+		{"later year", "1 JAN 2021", "31 DEC 2020", false},
+		{"earlier year", "31 DEC 2019", "1 JAN 2020", true},
+
+		// Partial dates
+		{"partial year after", "1851", "1850", false},
+		{"partial year before", "1850", "1851", true},
+		{"partial year same", "1850", "1850", false},
+
+		// Mix of complete and partial
+		{"year vs complete (same)", "1920", "1 JAN 1920", false},
+		{"year vs complete (before)", "1919", "1 JAN 1920", true},
+
+		// BC dates
+		{"BC later than BC", "44 BC", "100 BC", false},
+		{"BC earlier than BC", "100 BC", "44 BC", true},
+		{"AD after BC", "100", "100 BC", false},
+		{"BC before AD", "100 BC", "100", true},
+
+		// Cross-calendar
+		{"Julian after Gregorian", "@#DJULIAN@ 15 JAN 1700", "1 JAN 1700", false},
+		{"Julian before Gregorian", "@#DJULIAN@ 1 JAN 1700", "12 JAN 1700", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d1, err := ParseDate(tt.date1)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.date1, err)
+			}
+			d2, err := ParseDate(tt.date2)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.date2, err)
+			}
+
+			got := d1.IsBefore(d2)
+			if got != tt.want {
+				t.Errorf("IsBefore() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestDate_IsBefore_Nil tests nil handling for IsBefore
+func TestDate_IsBefore_Nil(t *testing.T) {
+	d1, _ := ParseDate("25 DEC 2020")
+
+	tests := []struct {
+		name string
+		d1   *Date
+		d2   *Date
+		want bool
+	}{
+		{"both nil", nil, nil, false},
+		{"first nil", nil, d1, false},
+		{"second nil", d1, nil, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.d1.IsBefore(tt.d2)
+			if got != tt.want {
+				t.Errorf("IsBefore() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestDate_IsEqual tests the IsEqual convenience method
+func TestDate_IsEqual(t *testing.T) {
+	tests := []struct {
+		name  string
+		date1 string
+		date2 string
+		want  bool
+	}{
+		// Complete dates
+		{"same date", "25 DEC 2020", "25 DEC 2020", true},
+		{"different day", "25 DEC 2020", "26 DEC 2020", false},
+		{"different month", "25 DEC 2020", "25 NOV 2020", false},
+		{"different year", "25 DEC 2020", "25 DEC 2019", false},
+
+		// Partial dates
+		{"partial year equal", "1850", "1850", true},
+		{"partial year different", "1850", "1851", false},
+		{"partial month-year equal", "JAN 1920", "JAN 1920", true},
+		{"partial month-year different month", "JAN 1920", "FEB 1920", false},
+
+		// Mix of complete and partial
+		{"year vs complete (same)", "1920", "1 JAN 1920", true},
+		{"year vs complete (different)", "1920", "2 JAN 1920", false},
+		{"month-year vs complete (same)", "JAN 1920", "1 JAN 1920", true},
+
+		// BC dates
+		{"BC equal", "44 BC", "44 BC", true},
+		{"BC different", "44 BC", "100 BC", false},
+		{"BC vs AD", "100 BC", "100", false},
+
+		// Cross-calendar - same JDN
+		{"Julian equals Gregorian (same JDN)", "@#DJULIAN@ 4 OCT 1582", "14 OCT 1582", true},
+		{"Hebrew equals Gregorian (same JDN)", "@#DHEBREW@ 1 TSH 5785", "3 OCT 2024", true},
+		{"French equals Gregorian (same JDN)", "@#DFRENCH R@ 1 VEND 1", "22 SEP 1792", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d1, err := ParseDate(tt.date1)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.date1, err)
+			}
+			d2, err := ParseDate(tt.date2)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.date2, err)
+			}
+
+			got := d1.IsEqual(d2)
+			if got != tt.want {
+				t.Errorf("IsEqual() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestDate_IsEqual_Nil tests nil handling for IsEqual
+func TestDate_IsEqual_Nil(t *testing.T) {
+	d1, _ := ParseDate("25 DEC 2020")
+
+	tests := []struct {
+		name string
+		d1   *Date
+		d2   *Date
+		want bool
+	}{
+		{"both nil", nil, nil, true},
+		{"first nil", nil, d1, false},
+		{"second nil", d1, nil, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.d1.IsEqual(tt.d2)
+			if got != tt.want {
+				t.Errorf("IsEqual() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestYearsBetween tests the YearsBetween function
+func TestYearsBetween(t *testing.T) {
+	tests := []struct {
+		name      string
+		date1     string
+		date2     string
+		wantYears int
+		wantExact bool
+		wantErr   bool
+	}{
+		// Complete Gregorian dates - exact calculation
+		{
+			name:      "same date",
+			date1:     "25 DEC 2020",
+			date2:     "25 DEC 2020",
+			wantYears: 0,
+			wantExact: true,
+		},
+		{
+			name:      "exactly 10 years",
+			date1:     "1 JAN 2010",
+			date2:     "1 JAN 2020",
+			wantYears: 10,
+			wantExact: true,
+		},
+		{
+			name:      "birthday not yet occurred",
+			date1:     "25 DEC 2020",
+			date2:     "24 DEC 2030",
+			wantYears: 9,
+			wantExact: true,
+		},
+		{
+			name:      "birthday just occurred",
+			date1:     "25 DEC 2020",
+			date2:     "25 DEC 2030",
+			wantYears: 10,
+			wantExact: true,
+		},
+		{
+			name:      "birthday passed",
+			date1:     "25 DEC 2020",
+			date2:     "26 DEC 2030",
+			wantYears: 10,
+			wantExact: true,
+		},
+		{
+			name:      "leap year consideration",
+			date1:     "29 FEB 2000",
+			date2:     "28 FEB 2004",
+			wantYears: 3,
+			wantExact: true,
+		},
+		{
+			name:      "reverse order (absolute value)",
+			date1:     "1 JAN 2020",
+			date2:     "1 JAN 2010",
+			wantYears: 10,
+			wantExact: true,
+		},
+
+		// Partial dates - year subtraction
+		{
+			name:      "year only - same",
+			date1:     "1850",
+			date2:     "1850",
+			wantYears: 0,
+			wantExact: false,
+		},
+		{
+			name:      "year only - different",
+			date1:     "1850",
+			date2:     "1900",
+			wantYears: 50,
+			wantExact: false,
+		},
+		{
+			name:      "month-year only",
+			date1:     "JAN 1920",
+			date2:     "DEC 1930",
+			wantYears: 10,
+			wantExact: false,
+		},
+		{
+			name:      "mix complete and partial",
+			date1:     "25 DEC 2020",
+			date2:     "1900",
+			wantYears: 120,
+			wantExact: false,
+		},
+
+		// Non-Gregorian calendars - year subtraction
+		{
+			name:      "Julian calendar",
+			date1:     "@#DJULIAN@ 25 DEC 1700",
+			date2:     "@#DJULIAN@ 25 DEC 1750",
+			wantYears: 50,
+			wantExact: false,
+		},
+		{
+			name:      "Hebrew calendar",
+			date1:     "@#DHEBREW@ 1 TSH 5785",
+			date2:     "@#DHEBREW@ 1 TSH 5795",
+			wantYears: 10,
+			wantExact: false,
+		},
+		{
+			name:      "French Republican calendar",
+			date1:     "@#DFRENCH R@ 1 VEND 1",
+			date2:     "@#DFRENCH R@ 1 VEND 10",
+			wantYears: 9,
+			wantExact: false,
+		},
+
+		// Cross-calendar - year subtraction (can't use ToTime)
+		{
+			name:      "Julian vs Gregorian",
+			date1:     "@#DJULIAN@ 25 DEC 1700",
+			date2:     "25 DEC 1750",
+			wantYears: 50,
+			wantExact: false,
+		},
+
+		// BC dates
+		{
+			name:      "BC dates",
+			date1:     "100 BC",
+			date2:     "44 BC",
+			wantYears: 56,
+			wantExact: false,
+		},
+
+		// Error cases
+		{
+			name:    "missing year in first date",
+			date1:   "(unknown)",
+			date2:   "2020",
+			wantErr: true,
+		},
+		{
+			name:    "missing year in second date",
+			date1:   "2020",
+			date2:   "(unknown)",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d1, err := ParseDate(tt.date1)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.date1, err)
+			}
+			d2, err := ParseDate(tt.date2)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.date2, err)
+			}
+
+			years, exact, err := YearsBetween(d1, d2)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("YearsBetween() expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("YearsBetween() error = %v", err)
+			}
+			if years != tt.wantYears {
+				t.Errorf("YearsBetween() years = %d, want %d", years, tt.wantYears)
+			}
+			if exact != tt.wantExact {
+				t.Errorf("YearsBetween() exact = %v, want %v", exact, tt.wantExact)
+			}
+		})
+	}
+}
+
+// TestYearsBetween_Nil tests nil handling for YearsBetween
+func TestYearsBetween_Nil(t *testing.T) {
+	d1, _ := ParseDate("25 DEC 2020")
+
+	tests := []struct {
+		name string
+		d1   *Date
+		d2   *Date
+	}{
+		{"both nil", nil, nil},
+		{"first nil", nil, d1},
+		{"second nil", d1, nil},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := YearsBetween(tt.d1, tt.d2)
+			if err == nil {
+				t.Errorf("YearsBetween() expected error for nil dates, got nil")
+			}
+		})
+	}
+}
+
 // TestDate_toJDN tests the internal JDN conversion helper
 func TestDate_toJDN(t *testing.T) {
 	tests := []struct {
