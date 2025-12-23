@@ -20,6 +20,7 @@ jobs:
         id: release
         with:
           release-type: go
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
   # Trigger pkg.go.dev indexing after release
   publish-docs:
