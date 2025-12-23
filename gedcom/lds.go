@@ -29,6 +29,10 @@ type LDSOrdinance struct {
 	// Date is when the ordinance was performed (DATE subordinate)
 	Date string
 
+	// ParsedDate is the parsed representation of Date.
+	// This is nil if the date string could not be parsed.
+	ParsedDate *Date
+
 	// Temple is the temple code where the ordinance was performed (TEMP subordinate)
 	Temple string
 

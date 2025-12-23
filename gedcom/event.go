@@ -77,6 +77,10 @@ type Event struct {
 	// Date is when the event occurred (in GEDCOM date format)
 	Date string
 
+	// ParsedDate is the parsed representation of Date.
+	// This is nil if the date string could not be parsed.
+	ParsedDate *Date
+
 	// Place is where the event occurred (kept for backward compatibility)
 	Place string
 
