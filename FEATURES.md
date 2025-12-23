@@ -248,12 +248,36 @@ err := date.Validate()
 - Detects invalid day/month combinations (Feb 30, Jun 31)
 - Handles leap years correctly (Feb 29 2000 valid, 1900 invalid)
 
+### Calendar Systems
+
+Full parsing support for historical calendars used in genealogical records:
+
+| Calendar | Escape Sequence | Month Codes |
+|----------|-----------------|-------------|
+| Gregorian | `@#DGREGORIAN@` (default) | JAN, FEB, MAR, APR, MAY, JUN, JUL, AUG, SEP, OCT, NOV, DEC |
+| Julian | `@#DJULIAN@` | JAN, FEB, MAR, APR, MAY, JUN, JUL, AUG, SEP, OCT, NOV, DEC |
+| Hebrew | `@#DHEBREW@` | TSH, CSH, KSL, TVT, SHV, ADR, ADS, NSN, IYR, SVN, TMZ, AAV, ELL |
+| French Republican | `@#DFRENCH R@` | VEND, BRUM, FRIM, NIVO, PLUV, VENT, GERM, FLOR, PRAI, MESS, THER, FRUC, COMP |
+
+```go
+// Parse a Hebrew calendar date
+date, _ := gedcom.ParseDate("@#DHEBREW@ 15 NSN 5785")
+date.Calendar  // CalendarHebrew
+date.Month     // 8 (Nisan)
+date.Year      // 5785
+
+// Parse a French Republican date
+date, _ := gedcom.ParseDate("@#DFRENCH R@ 1 VEND 1")
+date.Calendar  // CalendarFrenchRepublican
+date.Month     // 1 (Vendémiaire)
+date.Year      // 1 (Year I of the Republic)
+```
+
 ### Features
 
-- Case-insensitive month parsing (`Jan`, `JAN`, `jan`)
+- Case-insensitive month parsing (`Jan`, `JAN`, `jan`) for all calendars
 - Whitespace tolerance (leading, trailing, multiple spaces)
 - Original string preserved for round-trip fidelity
-- Calendar escape recognition (`@#DJULIAN@`, `@#DHEBREW@`, `@#DFRENCH R@`)
 - B.C. date comparison (100 BC > 200 BC chronologically)
 
 ### API

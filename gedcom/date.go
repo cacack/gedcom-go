@@ -136,6 +136,44 @@ var monthNames = map[string]int{
 	"SEP": 9, "OCT": 10, "NOV": 11, "DEC": 12,
 }
 
+// hebrewMonthNames maps Hebrew month codes to month numbers.
+// The Hebrew calendar has 13 months (Adar II only in leap years).
+var hebrewMonthNames = map[string]int{
+	"TSH": 1,  // Tishrei
+	"CSH": 2,  // Cheshvan
+	"KSL": 3,  // Kislev
+	"TVT": 4,  // Tevet
+	"SHV": 5,  // Shevat
+	"ADR": 6,  // Adar
+	"ADS": 7,  // Adar II (leap years only)
+	"NSN": 8,  // Nisan
+	"IYR": 9,  // Iyar
+	"SVN": 10, // Sivan
+	"TMZ": 11, // Tammuz
+	"AAV": 12, // Av
+	"ELL": 13, // Elul
+}
+
+// frenchMonthNames maps French Republican month codes to month numbers.
+// The French Republican calendar has 12 months of 30 days plus complementary days.
+//
+//nolint:misspell // THER is the GEDCOM code for Thermidor, not a misspelling of "there"
+var frenchMonthNames = map[string]int{
+	"VEND": 1,  // Vendémiaire
+	"BRUM": 2,  // Brumaire
+	"FRIM": 3,  // Frimaire
+	"NIVO": 4,  // Nivôse
+	"PLUV": 5,  // Pluviôse
+	"VENT": 6,  // Ventôse
+	"GERM": 7,  // Germinal
+	"FLOR": 8,  // Floréal
+	"PRAI": 9,  // Prairial
+	"MESS": 10, // Messidor
+	"THER": 11, // Thermidor
+	"FRUC": 12, // Fructidor
+	"COMP": 13, // Complementary days (Sans-culottides)
+}
+
 // ParseDate parses a GEDCOM date string into a Date struct.
 // Supports exact dates, partial dates, modifiers, ranges, periods, dual dating,
 // B.C. dates, and date phrases.
@@ -180,11 +218,6 @@ func ParseDate(s string) (*Date, error) {
 	if found {
 		date.Calendar = calendar
 		s = rest
-
-		// Phase 1: Only support Gregorian calendar
-		if calendar != CalendarGregorian {
-			return nil, fmt.Errorf("calendar %s not supported in Phase 1 (only Gregorian supported)", calendar)
-		}
 	}
 
 	// Check for date modifier
@@ -306,9 +339,9 @@ func parseDateRange(s, original string) (*Date, error) {
 		return nil, fmt.Errorf("invalid start date in range: %w", err)
 	}
 
-	// Parse the second date
+	// Parse the second date (inherits calendar from first date)
 	date2Str := strings.TrimSpace(s[andIndex+5:]) // Skip " AND "
-	date2 := &Date{Original: "", Calendar: CalendarGregorian}
+	date2 := &Date{Original: "", Calendar: date1.Calendar}
 	if err := parseDateComponents(date2Str, date2); err != nil {
 		return nil, fmt.Errorf("invalid end date in range: %w", err)
 	}
@@ -330,8 +363,9 @@ func parseDatePeriod(s, original string, modifier DateModifier) (*Date, error) {
 			return nil, fmt.Errorf("invalid start date in period: %w", err)
 		}
 
+		// Parse the second date (inherits calendar from first date)
 		date2Str := strings.TrimSpace(s[toIndex+4:]) // Skip " TO "
-		date2 := &Date{Original: "", Calendar: CalendarGregorian}
+		date2 := &Date{Original: "", Calendar: date1.Calendar}
 		if err := parseDateComponents(date2Str, date2); err != nil {
 			return nil, fmt.Errorf("invalid end date in period: %w", err)
 		}
@@ -400,7 +434,7 @@ func parseYearOnly(yearStr string, date *Date) error {
 
 // parseMonthYear parses a month-year date (no day).
 func parseMonthYear(fields []string, date *Date) error {
-	month, err := parseMonth(fields[0])
+	month, err := parseMonthForCalendar(fields[0], date.Calendar)
 	if err != nil {
 		return err
 	}
@@ -420,7 +454,7 @@ func parseDayMonthYear(fields []string, date *Date) error {
 	if err != nil {
 		return fmt.Errorf("invalid day: %s", fields[0])
 	}
-	month, err := parseMonth(fields[1])
+	month, err := parseMonthForCalendar(fields[1], date.Calendar)
 	if err != nil {
 		return err
 	}
@@ -435,11 +469,27 @@ func parseDayMonthYear(fields []string, date *Date) error {
 	return nil
 }
 
-// parseMonth parses a three-letter month abbreviation (case-insensitive).
-func parseMonth(s string) (int, error) {
-	month, ok := monthNames[strings.ToUpper(s)]
+// parseMonthForCalendar parses a month code for a specific calendar system.
+// Returns the month number (1-13 depending on calendar) or an error if invalid.
+// Month codes are case-insensitive.
+func parseMonthForCalendar(s string, calendar Calendar) (int, error) {
+	upperMonth := strings.ToUpper(s)
+
+	var monthMap map[string]int
+	switch calendar {
+	case CalendarGregorian, CalendarJulian:
+		monthMap = monthNames
+	case CalendarHebrew:
+		monthMap = hebrewMonthNames
+	case CalendarFrenchRepublican:
+		monthMap = frenchMonthNames
+	default:
+		return 0, fmt.Errorf("unsupported calendar type: %s", calendar)
+	}
+
+	month, ok := monthMap[upperMonth]
 	if !ok {
-		return 0, fmt.Errorf("invalid month abbreviation: %s", s)
+		return 0, fmt.Errorf("invalid month code '%s' for %s calendar", s, calendar)
 	}
 	return month, nil
 }

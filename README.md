@@ -13,6 +13,7 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 ## Features
 
 - **Multi-version Support**: Parse GEDCOM 5.5, 5.5.1, and 7.0 files
+- **Historical Calendar Support**: Parse dates in Julian, Hebrew, and French Republican calendars
 - **Read and Write**: Full decoder and encoder for round-trip processing
 - **Comprehensive Validation**: Version-aware validation with clear error messages
 - **Zero Dependencies**: Uses only the Go standard library

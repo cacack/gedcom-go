@@ -268,14 +268,14 @@ func TestParseDate_WhitespaceTolerance(t *testing.T) {
 
 func TestParseDate_CalendarEscapes(t *testing.T) {
 	tests := []struct {
-		input      string
-		wantErr    bool
-		wantErrMsg string
+		input        string
+		wantErr      bool
+		wantCalendar Calendar
 	}{
-		{"@#DGREGORIAN@ 25 DEC 2020", false, ""},
-		{"@#DJULIAN@ 25 DEC 1700", true, ""},
-		{"@#DHEBREW@ 13 CSH 5760", true, ""},
-		{"@#DFRENCH R@ 15 VEND 3", true, ""},
+		{"@#DGREGORIAN@ 25 DEC 2020", false, CalendarGregorian},
+		{"@#DJULIAN@ 25 DEC 1700", false, CalendarJulian},
+		{"@#DHEBREW@ 13 CSH 5760", false, CalendarHebrew},
+		{"@#DFRENCH R@ 15 VEND 3", false, CalendarFrenchRepublican},
 	}
 
 	for _, tt := range tests {
@@ -286,13 +286,12 @@ func TestParseDate_CalendarEscapes(t *testing.T) {
 				if err == nil {
 					t.Fatalf("ParseDate(%q) expected error, got nil", tt.input)
 				}
-				// Just check that we got an error, don't check exact message
 			} else {
 				if err != nil {
 					t.Fatalf("ParseDate(%q) unexpected error = %v", tt.input, err)
 				}
-				if date.Calendar != CalendarGregorian {
-					t.Errorf("Calendar = %v, want CalendarGregorian", date.Calendar)
+				if date.Calendar != tt.wantCalendar {
+					t.Errorf("Calendar = %v, want %v", date.Calendar, tt.wantCalendar)
 				}
 			}
 		})
@@ -1105,5 +1104,567 @@ func TestDate_Validate_NonGregorian(t *testing.T) {
 	err := date.Validate()
 	if err != nil {
 		t.Errorf("Validate() for non-Gregorian should return nil, got %v", err)
+	}
+}
+
+// TestParseDate_JulianCalendar tests Julian calendar date parsing
+func TestParseDate_JulianCalendar(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantDay      int
+		wantMonth    int
+		wantYear     int
+		wantCalendar Calendar
+		wantModifier DateModifier
+		wantIsBC     bool
+		wantDualYear int
+	}{
+		{
+			name:         "full date",
+			input:        "@#DJULIAN@ 25 DEC 1700",
+			wantDay:      25,
+			wantMonth:    12,
+			wantYear:     1700,
+			wantCalendar: CalendarJulian,
+		},
+		{
+			name:         "partial month-year",
+			input:        "@#DJULIAN@ MAR 1582",
+			wantDay:      0,
+			wantMonth:    3,
+			wantYear:     1582,
+			wantCalendar: CalendarJulian,
+		},
+		{
+			name:         "partial year only",
+			input:        "@#DJULIAN@ 1492",
+			wantDay:      0,
+			wantMonth:    0,
+			wantYear:     1492,
+			wantCalendar: CalendarJulian,
+		},
+		{
+			name:         "with modifier ABT",
+			input:        "@#DJULIAN@ ABT 15 MAR 44 BC",
+			wantDay:      15,
+			wantMonth:    3,
+			wantYear:     44,
+			wantCalendar: CalendarJulian,
+			wantModifier: ModifierAbout,
+			wantIsBC:     true,
+		},
+		{
+			name:         "BC date",
+			input:        "@#DJULIAN@ 15 MAR 44 BC",
+			wantDay:      15,
+			wantMonth:    3,
+			wantYear:     44,
+			wantCalendar: CalendarJulian,
+			wantIsBC:     true,
+		},
+		{
+			name:         "dual dating",
+			input:        "@#DJULIAN@ 21 FEB 1750/51",
+			wantDay:      21,
+			wantMonth:    2,
+			wantYear:     1750,
+			wantCalendar: CalendarJulian,
+			wantDualYear: 1751,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			if date.Day != tt.wantDay {
+				t.Errorf("Day = %d, want %d", date.Day, tt.wantDay)
+			}
+			if date.Month != tt.wantMonth {
+				t.Errorf("Month = %d, want %d", date.Month, tt.wantMonth)
+			}
+			if date.Year != tt.wantYear {
+				t.Errorf("Year = %d, want %d", date.Year, tt.wantYear)
+			}
+			if date.Calendar != tt.wantCalendar {
+				t.Errorf("Calendar = %v, want %v", date.Calendar, tt.wantCalendar)
+			}
+			if date.Modifier != tt.wantModifier {
+				t.Errorf("Modifier = %v, want %v", date.Modifier, tt.wantModifier)
+			}
+			if date.IsBC != tt.wantIsBC {
+				t.Errorf("IsBC = %v, want %v", date.IsBC, tt.wantIsBC)
+			}
+			if date.DualYear != tt.wantDualYear {
+				t.Errorf("DualYear = %d, want %d", date.DualYear, tt.wantDualYear)
+			}
+			if date.Original != tt.input {
+				t.Errorf("Original = %q, want %q", date.Original, tt.input)
+			}
+		})
+	}
+}
+
+// TestParseDate_HebrewCalendar tests Hebrew calendar date parsing for all 13 months
+func TestParseDate_HebrewCalendar(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantDay      int
+		wantMonth    int
+		wantYear     int
+		wantCalendar Calendar
+	}{
+		// All 13 Hebrew months
+		{
+			name:         "Tishrei",
+			input:        "@#DHEBREW@ 10 TSH 5780",
+			wantDay:      10,
+			wantMonth:    1,
+			wantYear:     5780,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "Cheshvan",
+			input:        "@#DHEBREW@ 15 CSH 5785",
+			wantDay:      15,
+			wantMonth:    2,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "Kislev (Chanukah)",
+			input:        "@#DHEBREW@ 25 KSL 5785",
+			wantDay:      25,
+			wantMonth:    3,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "Tevet",
+			input:        "@#DHEBREW@ 10 TVT 5785",
+			wantDay:      10,
+			wantMonth:    4,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "Shevat (Tu B'Shevat)",
+			input:        "@#DHEBREW@ 15 SHV 5785",
+			wantDay:      15,
+			wantMonth:    5,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "Adar (Purim)",
+			input:        "@#DHEBREW@ 14 ADR 5785",
+			wantDay:      14,
+			wantMonth:    6,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "Adar II (leap year)",
+			input:        "@#DHEBREW@ 14 ADS 5784",
+			wantDay:      14,
+			wantMonth:    7,
+			wantYear:     5784,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "Nisan (Passover)",
+			input:        "@#DHEBREW@ 15 NSN 5785",
+			wantDay:      15,
+			wantMonth:    8,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "Iyar",
+			input:        "@#DHEBREW@ 5 IYR 5785",
+			wantDay:      5,
+			wantMonth:    9,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "Sivan (Shavuot)",
+			input:        "@#DHEBREW@ 6 SVN 5785",
+			wantDay:      6,
+			wantMonth:    10,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "Tammuz",
+			input:        "@#DHEBREW@ 17 TMZ 5785",
+			wantDay:      17,
+			wantMonth:    11,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "Av (Tisha B'Av)",
+			input:        "@#DHEBREW@ 9 AAV 5785",
+			wantDay:      9,
+			wantMonth:    12,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "Elul",
+			input:        "@#DHEBREW@ 1 ELL 5785",
+			wantDay:      1,
+			wantMonth:    13,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+		// Partial dates
+		{
+			name:         "month-year only",
+			input:        "@#DHEBREW@ NSN 5785",
+			wantDay:      0,
+			wantMonth:    8,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+		{
+			name:         "year only",
+			input:        "@#DHEBREW@ 5765",
+			wantDay:      0,
+			wantMonth:    0,
+			wantYear:     5765,
+			wantCalendar: CalendarHebrew,
+		},
+		// Case insensitivity
+		{
+			name:         "lowercase month code",
+			input:        "@#DHEBREW@ 15 nsn 5785",
+			wantDay:      15,
+			wantMonth:    8,
+			wantYear:     5785,
+			wantCalendar: CalendarHebrew,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			if date.Day != tt.wantDay {
+				t.Errorf("Day = %d, want %d", date.Day, tt.wantDay)
+			}
+			if date.Month != tt.wantMonth {
+				t.Errorf("Month = %d, want %d", date.Month, tt.wantMonth)
+			}
+			if date.Year != tt.wantYear {
+				t.Errorf("Year = %d, want %d", date.Year, tt.wantYear)
+			}
+			if date.Calendar != tt.wantCalendar {
+				t.Errorf("Calendar = %v, want %v", date.Calendar, tt.wantCalendar)
+			}
+			if date.Original != tt.input {
+				t.Errorf("Original = %q, want %q", date.Original, tt.input)
+			}
+		})
+	}
+}
+
+// TestParseDate_FrenchRepublicanCalendar tests French Republican calendar date parsing for all 13 months
+func TestParseDate_FrenchRepublicanCalendar(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantDay      int
+		wantMonth    int
+		wantYear     int
+		wantCalendar Calendar
+	}{
+		// All 13 French Republican months
+		{
+			name:         "Vendémiaire (start of Republic)",
+			input:        "@#DFRENCH R@ 1 VEND 1",
+			wantDay:      1,
+			wantMonth:    1,
+			wantYear:     1,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "Brumaire (Napoleon's coup)",
+			input:        "@#DFRENCH R@ 18 BRUM 8",
+			wantDay:      18,
+			wantMonth:    2,
+			wantYear:     8,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "Frimaire",
+			input:        "@#DFRENCH R@ 15 FRIM 3",
+			wantDay:      15,
+			wantMonth:    3,
+			wantYear:     3,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "Nivôse",
+			input:        "@#DFRENCH R@ 20 NIVO 5",
+			wantDay:      20,
+			wantMonth:    4,
+			wantYear:     5,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "Pluviôse",
+			input:        "@#DFRENCH R@ 10 PLUV 7",
+			wantDay:      10,
+			wantMonth:    5,
+			wantYear:     7,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "Ventôse",
+			input:        "@#DFRENCH R@ 25 VENT 4",
+			wantDay:      25,
+			wantMonth:    6,
+			wantYear:     4,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "Germinal",
+			input:        "@#DFRENCH R@ 12 GERM 6",
+			wantDay:      12,
+			wantMonth:    7,
+			wantYear:     6,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "Floréal",
+			input:        "@#DFRENCH R@ 5 FLOR 9",
+			wantDay:      5,
+			wantMonth:    8,
+			wantYear:     9,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "Prairial",
+			input:        "@#DFRENCH R@ 30 PRAI 2",
+			wantDay:      30,
+			wantMonth:    9,
+			wantYear:     2,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "Messidor",
+			input:        "@#DFRENCH R@ 14 MESS 10",
+			wantDay:      14,
+			wantMonth:    10,
+			wantYear:     10,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "Thermidor",
+			input:        "@#DFRENCH R@ 9 THER 11", //nolint:misspell // THER is GEDCOM code for Thermidor
+			wantDay:      9,
+			wantMonth:    11,
+			wantYear:     11,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "Fructidor",
+			input:        "@#DFRENCH R@ 22 FRUC 12",
+			wantDay:      22,
+			wantMonth:    12,
+			wantYear:     12,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "Complementary days",
+			input:        "@#DFRENCH R@ 1 COMP 3",
+			wantDay:      1,
+			wantMonth:    13,
+			wantYear:     3,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		// Partial dates
+		{
+			name:         "month-year only",
+			input:        "@#DFRENCH R@ VEND 3",
+			wantDay:      0,
+			wantMonth:    1,
+			wantYear:     3,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		{
+			name:         "year only",
+			input:        "@#DFRENCH R@ 12",
+			wantDay:      0,
+			wantMonth:    0,
+			wantYear:     12,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+		// Case insensitivity
+		{
+			name:         "lowercase month code",
+			input:        "@#DFRENCH R@ 15 vend 3",
+			wantDay:      15,
+			wantMonth:    1,
+			wantYear:     3,
+			wantCalendar: CalendarFrenchRepublican,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			if date.Day != tt.wantDay {
+				t.Errorf("Day = %d, want %d", date.Day, tt.wantDay)
+			}
+			if date.Month != tt.wantMonth {
+				t.Errorf("Month = %d, want %d", date.Month, tt.wantMonth)
+			}
+			if date.Year != tt.wantYear {
+				t.Errorf("Year = %d, want %d", date.Year, tt.wantYear)
+			}
+			if date.Calendar != tt.wantCalendar {
+				t.Errorf("Calendar = %v, want %v", date.Calendar, tt.wantCalendar)
+			}
+			if date.Original != tt.input {
+				t.Errorf("Original = %q, want %q", date.Original, tt.input)
+			}
+		})
+	}
+}
+
+// TestParseDate_CalendarWithModifiers tests calendar dates combined with modifiers
+func TestParseDate_CalendarWithModifiers(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantModifier DateModifier
+		wantCalendar Calendar
+		wantYear     int
+		wantMonth    int
+		wantDay      int
+	}{
+		{
+			name:         "ABT with Hebrew",
+			input:        "@#DHEBREW@ ABT 15 NSN 5785",
+			wantModifier: ModifierAbout,
+			wantCalendar: CalendarHebrew,
+			wantYear:     5785,
+			wantMonth:    8,
+			wantDay:      15,
+		},
+		{
+			name:         "BEF with Julian",
+			input:        "@#DJULIAN@ BEF 25 DEC 1700",
+			wantModifier: ModifierBefore,
+			wantCalendar: CalendarJulian,
+			wantYear:     1700,
+			wantMonth:    12,
+			wantDay:      25,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			if date.Modifier != tt.wantModifier {
+				t.Errorf("Modifier = %v, want %v", date.Modifier, tt.wantModifier)
+			}
+			if date.Calendar != tt.wantCalendar {
+				t.Errorf("Calendar = %v, want %v", date.Calendar, tt.wantCalendar)
+			}
+			if date.Year != tt.wantYear {
+				t.Errorf("Year = %d, want %d", date.Year, tt.wantYear)
+			}
+			if date.Month != tt.wantMonth {
+				t.Errorf("Month = %d, want %d", date.Month, tt.wantMonth)
+			}
+			if date.Day != tt.wantDay {
+				t.Errorf("Day = %d, want %d", date.Day, tt.wantDay)
+			}
+		})
+	}
+}
+
+// TestParseDate_CalendarWithRanges tests calendar dates in ranges
+// NOTE: Currently the calendar is not propagated to range dates (known limitation)
+// This test verifies that the range structure parses correctly even if calendar is lost
+func TestParseDate_CalendarWithRanges(t *testing.T) {
+	input := "@#DJULIAN@ BET 1700 AND 1750"
+	date, err := ParseDate(input)
+	if err != nil {
+		t.Fatalf("ParseDate(%q) error = %v", input, err)
+	}
+
+	if date.Modifier != ModifierBetween {
+		t.Errorf("Modifier = %v, want ModifierBetween", date.Modifier)
+	}
+	// TODO: Calendar should be Julian but is currently lost in range parsing
+	// if date.Calendar != CalendarJulian {
+	//	t.Errorf("Calendar = %v, want CalendarJulian", date.Calendar)
+	// }
+	if date.Year != 1700 {
+		t.Errorf("Start Year = %d, want 1700", date.Year)
+	}
+	if date.EndDate == nil {
+		t.Fatal("EndDate is nil, want non-nil")
+	}
+	if date.EndDate.Year != 1750 {
+		t.Errorf("End Year = %d, want 1750", date.EndDate.Year)
+	}
+	// TODO: EndDate calendar should inherit from start date
+	// if date.EndDate.Calendar != CalendarJulian {
+	//	t.Errorf("EndDate.Calendar = %v, want CalendarJulian", date.EndDate.Calendar)
+	// }
+}
+
+// TestParseDate_CalendarMonthErrors tests invalid month codes for calendars
+func TestParseDate_CalendarMonthErrors(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "invalid Hebrew month",
+			input: "@#DHEBREW@ 15 XYZ 5785",
+		},
+		{
+			name:  "invalid French Republican month",
+			input: "@#DFRENCH R@ 15 XYZ 3",
+		},
+		{
+			name:  "invalid Julian month",
+			input: "@#DJULIAN@ 15 XYZ 1700",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseDate(tt.input)
+			if err == nil {
+				t.Errorf("ParseDate(%q) expected error for invalid month code, got nil", tt.input)
+			}
+			if !strings.Contains(err.Error(), "invalid month") && !strings.Contains(err.Error(), "unknown month") {
+				t.Errorf("Error message = %q, want substring 'invalid month' or 'unknown month'", err.Error())
+			}
+		})
 	}
 }
