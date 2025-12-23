@@ -359,6 +359,35 @@ s := date.String()  // "25 DEC 2020"
 - Example code for common use cases
 - Zero external dependencies (standard library only)
 
+### Record Lookup
+
+O(1) lookup by cross-reference ID for all record types:
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `GetRecord(xref)` | `*Record` | Generic record lookup |
+| `GetIndividual(xref)` | `*Individual` | Individual lookup |
+| `GetFamily(xref)` | `*Family` | Family lookup |
+| `GetSource(xref)` | `*Source` | Source lookup |
+| `GetRepository(xref)` | `*Repository` | Repository lookup |
+| `GetSubmitter(xref)` | `*Submitter` | Submitter lookup |
+| `GetNote(xref)` | `*Note` | Note lookup |
+| `GetMediaObject(xref)` | `*MediaObject` | Media object lookup |
+
+All methods return `nil` if the record is not found (consistent with Go map behavior).
+
+### Collection Accessors
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `Individuals()` | `[]*Individual` | All individuals |
+| `Families()` | `[]*Family` | All families |
+| `Sources()` | `[]*Source` | All sources |
+| `Repositories()` | `[]*Repository` | All repositories |
+| `Submitters()` | `[]*Submitter` | All submitters |
+| `Notes()` | `[]*Note` | All notes |
+| `MediaObjects()` | `[]*MediaObject` | All media objects |
+
 ## Testing
 
 - 93% test coverage across core packages
