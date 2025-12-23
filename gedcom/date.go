@@ -613,6 +613,9 @@ func defaultToOne(val int) int {
 // For partial dates, missing components are treated as the earliest possible value
 // (day=1, month=1). B.C. dates sort before all A.D. dates, and among B.C. dates,
 // higher year numbers are earlier (100 BC < 200 BC).
+//
+// When comparing dates with different calendars, both dates are converted to JDN
+// (Julian Day Number) for accurate cross-calendar comparison.
 func (d *Date) Compare(other *Date) int {
 	if d == nil && other == nil {
 		return 0
@@ -623,6 +626,24 @@ func (d *Date) Compare(other *Date) int {
 	if other == nil {
 		return 1
 	}
+
+	// If calendars differ, convert both to JDN for comparison
+	if d.Calendar != other.Calendar {
+		// Try to convert both to JDN
+		jdn1, err1 := d.toJDN()
+		jdn2, err2 := other.toJDN()
+
+		// If both conversions succeed, compare JDN values
+		if err1 == nil && err2 == nil {
+			return compareInts(jdn1, jdn2)
+		}
+
+		// If conversion fails for one or both dates, fall back to same-calendar logic
+		// This happens for dates with year=0 (too incomplete)
+		// Fall through to the original comparison logic
+	}
+
+	// Same calendar (or cross-calendar conversion failed) - use original logic
 
 	// Handle BC vs AD comparison
 	if d.IsBC != other.IsBC {
@@ -678,4 +699,104 @@ func (d *Date) ToTime() (time.Time, error) {
 // String returns the original GEDCOM date string.
 func (d *Date) String() string {
 	return d.Original
+}
+
+// toJDN converts a Date to Julian Day Number.
+// Returns error if date is too incomplete (year=0).
+// For partial dates, uses day=1 and month=1 as defaults.
+func (d *Date) toJDN() (int, error) {
+	if d.Year == 0 {
+		return 0, fmt.Errorf("cannot convert date to JDN: year is missing")
+	}
+
+	// Use defaults for partial dates
+	day := d.Day
+	if day == 0 {
+		day = 1
+	}
+	month := d.Month
+	if month == 0 {
+		month = 1
+	}
+
+	// Convert GEDCOM year to astronomical year for BC dates
+	astroYear := AstronomicalYear(d.Year, d.IsBC)
+
+	// Convert based on calendar system
+	var jdn int
+	switch d.Calendar {
+	case CalendarGregorian:
+		jdn = GregorianToJDN(astroYear, month, day)
+	case CalendarJulian:
+		jdn = JulianToJDN(astroYear, month, day)
+	case CalendarHebrew:
+		// For Hebrew calendar, need to handle GEDCOM month numbering
+		// GEDCOM uses Tishrei=1, but we need to convert the month correctly
+		jdn = HebrewToJDN(d.Year, month, day)
+	case CalendarFrenchRepublican:
+		jdn = FrenchToJDN(d.Year, month, day)
+	default:
+		return 0, fmt.Errorf("unsupported calendar: %s", d.Calendar)
+	}
+
+	return jdn, nil
+}
+
+// ToGregorian converts the date to the Gregorian calendar.
+// Returns a new Date with Calendar set to CalendarGregorian.
+//
+// For dates already in Gregorian calendar, returns a copy of self.
+// For partial dates (missing day or month), converts available components.
+// Returns error if year is 0 (date too incomplete to convert).
+//
+// The Original field is preserved from the source date.
+func (d *Date) ToGregorian() (*Date, error) {
+	// If already Gregorian, return a copy
+	if d.Calendar == CalendarGregorian {
+		result := *d
+		return &result, nil
+	}
+
+	// Need at least a year to convert
+	if d.Year == 0 {
+		return nil, fmt.Errorf("cannot convert date to Gregorian: year is missing")
+	}
+
+	// Convert to JDN first
+	jdn, err := d.toJDN()
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert JDN to Gregorian
+	astroYear, month, day := JDNToGregorian(jdn)
+
+	// Convert astronomical year back to GEDCOM format
+	year, isBC := FromAstronomicalYear(astroYear)
+
+	// Create new date with Gregorian calendar
+	result := &Date{
+		Original: d.Original, // Preserve original for lossless representation
+		Year:     year,
+		Calendar: CalendarGregorian,
+		IsBC:     isBC,
+	}
+
+	// For partial dates, preserve the precision level
+	switch {
+	case d.Month == 0:
+		// Year-only: don't set month or day
+		result.Month = 0
+		result.Day = 0
+	case d.Day == 0:
+		// Month+Year: set month but not day
+		result.Month = month
+		result.Day = 0
+	default:
+		// Complete date: set both month and day
+		result.Month = month
+		result.Day = day
+	}
+
+	return result, nil
 }
