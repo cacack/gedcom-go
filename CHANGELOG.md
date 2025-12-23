@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0](https://github.com/cacack/gedcom-go/compare/v0.3.0...v0.4.0) (2025-12-23)
+
+
+### Features
+
+* **date:** add calendar conversion with ToGregorian and cross-calendar Compare ([d0b2314](https://github.com/cacack/gedcom-go/commit/d0b23142a7601966d8bc793117b79cfe6c46cde7))
+* **date:** add core Gregorian date parsing ([4ee5cc2](https://github.com/cacack/gedcom-go/commit/4ee5cc2eca0827b5ed95f40da4cd96df1143ff15))
+* **date:** add core Gregorian date parsing ([39d3115](https://github.com/cacack/gedcom-go/commit/39d31155a9ef8779b5d036f1e04a72bc5991da7a))
+* **date:** add Julian, Hebrew, and French Republican calendar parsing ([8e2bb33](https://github.com/cacack/gedcom-go/commit/8e2bb33bd9c8fcdb4654da18d27970f17873eec8))
+* **date:** add validation and edge cases (Phase 2) ([6318f5a](https://github.com/cacack/gedcom-go/commit/6318f5a72df5a250f09cea48ef7bbfbc6d684c71))
+* **date:** add validation and edge cases (Phase 2) ([692d726](https://github.com/cacack/gedcom-go/commit/692d7267b924de875a2538b1870a0802c7f9d3fc))
+* **date:** integrate parsed dates with record types ([4b1e5b4](https://github.com/cacack/gedcom-go/commit/4b1e5b49c632cdbba63409fc8cd854abad8e174f))
+* enforce per-package 85% test coverage ([aaf6cf0](https://github.com/cacack/gedcom-go/commit/aaf6cf0d070ef877c63607f8855f483f200704fb))
+
+
+### Bug Fixes
+
+* **ci:** exempt release-please PRs from title check ([6ca331e](https://github.com/cacack/gedcom-go/commit/6ca331ea088386e265e7d73358df22c95f2d034b))
+
 ## [0.3.0](https://github.com/cacack/gedcom-go/compare/v0.2.0...v0.3.0) (2025-12-16)
 
 
