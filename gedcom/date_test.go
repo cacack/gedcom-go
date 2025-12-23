@@ -1668,3 +1668,380 @@ func TestParseDate_CalendarMonthErrors(t *testing.T) {
 		})
 	}
 }
+
+// TestDate_ToGregorian tests calendar conversion to Gregorian
+func TestDate_ToGregorian(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantDay      int
+		wantMonth    int
+		wantYear     int
+		wantIsBC     bool
+		wantOriginal string
+		wantErr      bool
+	}{
+		// Julian to Gregorian
+		{
+			name:         "Julian to Gregorian complete date",
+			input:        "@#DJULIAN@ 4 OCT 1582",
+			wantDay:      14,
+			wantMonth:    10,
+			wantYear:     1582,
+			wantIsBC:     false,
+			wantOriginal: "@#DJULIAN@ 4 OCT 1582",
+		},
+		{
+			name:         "Julian to Gregorian BC date",
+			input:        "@#DJULIAN@ 15 MAR 44 BC",
+			wantDay:      13,
+			wantMonth:    3,
+			wantYear:     44,
+			wantIsBC:     true,
+			wantOriginal: "@#DJULIAN@ 15 MAR 44 BC",
+		},
+		{
+			name:         "Julian year only",
+			input:        "@#DJULIAN@ 1700",
+			wantDay:      0,
+			wantMonth:    0,
+			wantYear:     1700,
+			wantIsBC:     false,
+			wantOriginal: "@#DJULIAN@ 1700",
+		},
+		{
+			name:         "Julian month+year",
+			input:        "@#DJULIAN@ MAR 1582",
+			wantDay:      0,
+			wantMonth:    3,
+			wantYear:     1582,
+			wantIsBC:     false,
+			wantOriginal: "@#DJULIAN@ MAR 1582",
+		},
+
+		// Hebrew to Gregorian
+		{
+			name:         "Hebrew to Gregorian complete date",
+			input:        "@#DHEBREW@ 15 NSN 5785",
+			wantDay:      13,
+			wantMonth:    4,
+			wantYear:     2025,
+			wantIsBC:     false,
+			wantOriginal: "@#DHEBREW@ 15 NSN 5785",
+		},
+		{
+			name:         "Hebrew Rosh Hashanah",
+			input:        "@#DHEBREW@ 1 TSH 5785",
+			wantDay:      3,
+			wantMonth:    10,
+			wantYear:     2024,
+			wantIsBC:     false,
+			wantOriginal: "@#DHEBREW@ 1 TSH 5785",
+		},
+		{
+			name:         "Hebrew year only",
+			input:        "@#DHEBREW@ 5785",
+			wantDay:      0,
+			wantMonth:    0,
+			wantYear:     2024,
+			wantIsBC:     false,
+			wantOriginal: "@#DHEBREW@ 5785",
+		},
+		{
+			name:         "Hebrew month+year",
+			input:        "@#DHEBREW@ NSN 5785",
+			wantDay:      0,
+			wantMonth:    3,
+			wantYear:     2025,
+			wantIsBC:     false,
+			wantOriginal: "@#DHEBREW@ NSN 5785",
+		},
+
+		// French Republican to Gregorian
+		{
+			name:         "French to Gregorian complete date",
+			input:        "@#DFRENCH R@ 1 VEND 1",
+			wantDay:      22,
+			wantMonth:    9,
+			wantYear:     1792,
+			wantIsBC:     false,
+			wantOriginal: "@#DFRENCH R@ 1 VEND 1",
+		},
+		{
+			name:         "French year only",
+			input:        "@#DFRENCH R@ 8",
+			wantDay:      0,
+			wantMonth:    0,
+			wantYear:     1799,
+			wantIsBC:     false,
+			wantOriginal: "@#DFRENCH R@ 8",
+		},
+
+		// Already Gregorian - should return copy of self
+		{
+			name:         "Gregorian to Gregorian (copy)",
+			input:        "25 DEC 2020",
+			wantDay:      25,
+			wantMonth:    12,
+			wantYear:     2020,
+			wantIsBC:     false,
+			wantOriginal: "25 DEC 2020",
+		},
+		{
+			name:         "Gregorian year only (copy)",
+			input:        "1850",
+			wantDay:      0,
+			wantMonth:    0,
+			wantYear:     1850,
+			wantIsBC:     false,
+			wantOriginal: "1850",
+		},
+
+		// Error cases - phrases can't be converted
+		// Note: Phrases have year=0, so ToGregorian should fail
+		// This is actually handled correctly by the implementation
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			greg, err := date.ToGregorian()
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("ToGregorian() expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("ToGregorian() error = %v", err)
+			}
+
+			if greg.Day != tt.wantDay {
+				t.Errorf("ToGregorian().Day = %d, want %d", greg.Day, tt.wantDay)
+			}
+			if greg.Month != tt.wantMonth {
+				t.Errorf("ToGregorian().Month = %d, want %d", greg.Month, tt.wantMonth)
+			}
+			if greg.Year != tt.wantYear {
+				t.Errorf("ToGregorian().Year = %d, want %d", greg.Year, tt.wantYear)
+			}
+			if greg.IsBC != tt.wantIsBC {
+				t.Errorf("ToGregorian().IsBC = %v, want %v", greg.IsBC, tt.wantIsBC)
+			}
+			if greg.Calendar != CalendarGregorian {
+				t.Errorf("ToGregorian().Calendar = %v, want CalendarGregorian", greg.Calendar)
+			}
+			if greg.Original != tt.wantOriginal {
+				t.Errorf("ToGregorian().Original = %q, want %q", greg.Original, tt.wantOriginal)
+			}
+		})
+	}
+}
+
+// TestDate_Compare_CrossCalendar tests cross-calendar comparison
+func TestDate_Compare_CrossCalendar(t *testing.T) {
+	tests := []struct {
+		name    string
+		date1   string
+		date2   string
+		wantCmp int
+	}{
+		// Same date in different calendars should compare equal (same JDN)
+		{
+			name:    "Julian Oct 4, 1582 vs Gregorian Oct 14, 1582 (same JDN)",
+			date1:   "@#DJULIAN@ 4 OCT 1582",
+			date2:   "14 OCT 1582",
+			wantCmp: 0, // Julian Oct 4 = Gregorian Oct 14 (both JDN 2299160)
+		},
+		{
+			name:    "Julian Oct 5, 1582 vs Gregorian Oct 15, 1582 (same JDN)",
+			date1:   "@#DJULIAN@ 5 OCT 1582",
+			date2:   "15 OCT 1582",
+			wantCmp: 0, // Same JDN (2299161)
+		},
+		{
+			name:    "Hebrew Rosh Hashanah 5785 vs Gregorian Oct 3, 2024",
+			date1:   "@#DHEBREW@ 1 TSH 5785",
+			date2:   "3 OCT 2024",
+			wantCmp: 0, // Same day
+		},
+		{
+			name:    "French Republican epoch vs Gregorian Sept 22, 1792",
+			date1:   "@#DFRENCH R@ 1 VEND 1",
+			date2:   "22 SEP 1792",
+			wantCmp: 0, // Same day
+		},
+
+		// Different dates across calendars
+		{
+			name:    "Hebrew date before Gregorian date",
+			date1:   "@#DHEBREW@ 1 TSH 5785",
+			date2:   "4 OCT 2024",
+			wantCmp: -1,
+		},
+		{
+			name:    "Hebrew date after Gregorian date",
+			date1:   "@#DHEBREW@ 2 TSH 5785",
+			date2:   "3 OCT 2024",
+			wantCmp: 1,
+		},
+		{
+			name:    "Julian before Gregorian",
+			date1:   "@#DJULIAN@ 1 JAN 1700",
+			date2:   "12 JAN 1700",
+			wantCmp: -1,
+		},
+		{
+			name:    "Julian after Gregorian",
+			date1:   "@#DJULIAN@ 15 JAN 1700",
+			date2:   "1 JAN 1700",
+			wantCmp: 1,
+		},
+
+		// Partial dates across calendars
+		{
+			name:    "Julian year only vs Gregorian year only (different JDN)",
+			date1:   "@#DJULIAN@ 1700",
+			date2:   "1700",
+			wantCmp: 1, // Julian 1/1/1700 is 10 days after Gregorian 1/1/1700 (JDN 2341983 vs 2341973)
+		},
+		{
+			name:    "Hebrew year only vs Gregorian date",
+			date1:   "@#DHEBREW@ 5785",
+			date2:   "1 JAN 2025",
+			wantCmp: -1, // Hebrew 1 TSH 5785 (Oct 3, 2024) is before Jan 1, 2025
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d1, err := ParseDate(tt.date1)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.date1, err)
+			}
+			d2, err := ParseDate(tt.date2)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.date2, err)
+			}
+
+			got := d1.Compare(d2)
+			if got != tt.wantCmp {
+				t.Errorf("Compare() = %d, want %d", got, tt.wantCmp)
+			}
+		})
+	}
+}
+
+// TestDate_toJDN tests the internal JDN conversion helper
+func TestDate_toJDN(t *testing.T) {
+	tests := []struct {
+		name    string
+		date    *Date
+		wantJDN int
+		wantErr bool
+	}{
+		{
+			name: "Gregorian date",
+			date: &Date{
+				Year:     2000,
+				Month:    1,
+				Day:      1,
+				Calendar: CalendarGregorian,
+			},
+			wantJDN: 2451545,
+		},
+		{
+			name: "Gregorian BC date",
+			date: &Date{
+				Year:     44,
+				Month:    3,
+				Day:      15,
+				IsBC:     true,
+				Calendar: CalendarGregorian,
+			},
+			wantJDN: 1705428,
+		},
+		{
+			name: "Julian date",
+			date: &Date{
+				Year:     1582,
+				Month:    10,
+				Day:      4,
+				Calendar: CalendarJulian,
+			},
+			wantJDN: 2299160,
+		},
+		{
+			name: "Hebrew date",
+			date: &Date{
+				Year:     5785,
+				Month:    1,
+				Day:      1,
+				Calendar: CalendarHebrew,
+			},
+			wantJDN: 2460587,
+		},
+		{
+			name: "French Republican date",
+			date: &Date{
+				Year:     1,
+				Month:    1,
+				Day:      1,
+				Calendar: CalendarFrenchRepublican,
+			},
+			wantJDN: 2375840,
+		},
+		{
+			name: "Partial date (year only)",
+			date: &Date{
+				Year:     2000,
+				Month:    0,
+				Day:      0,
+				Calendar: CalendarGregorian,
+			},
+			wantJDN: 2451545, // Defaults to Jan 1
+		},
+		{
+			name: "Partial date (month+year)",
+			date: &Date{
+				Year:     2000,
+				Month:    6,
+				Day:      0,
+				Calendar: CalendarGregorian,
+			},
+			wantJDN: 2451697, // June 1, 2000
+		},
+		{
+			name: "Missing year",
+			date: &Date{
+				Year:     0,
+				Month:    1,
+				Day:      1,
+				Calendar: CalendarGregorian,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			jdn, err := tt.date.toJDN()
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("toJDN() expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("toJDN() error = %v", err)
+			}
+			if jdn != tt.wantJDN {
+				t.Errorf("toJDN() = %d, want %d", jdn, tt.wantJDN)
+			}
+		})
+	}
+}
