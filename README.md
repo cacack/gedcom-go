@@ -82,6 +82,27 @@ for _, individual := range doc.Individuals() {
 }
 ```
 
+### Lookup by Cross-Reference ID
+
+```go
+// O(1) lookup by cross-reference ID
+person := doc.GetIndividual("@I1@")
+if person != nil {
+    fmt.Printf("Found: %s\n", person.Names[0].Full)
+}
+
+// Lookup works for all record types
+family := doc.GetFamily("@F1@")
+source := doc.GetSource("@S1@")
+repo := doc.GetRepository("@R1@")
+
+// Navigate family relationships
+if family != nil {
+    husband := doc.GetIndividual(family.Husband)
+    wife := doc.GetIndividual(family.Wife)
+}
+```
+
 ### Validating GEDCOM Files
 
 ```go
