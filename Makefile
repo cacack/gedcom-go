@@ -1,7 +1,7 @@
 # Makefile for gedcom-go
 # Go genealogy library for parsing and validating GEDCOM files
 
-.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint clean coverage-html install-tools build tidy check all setup-hooks setup-dev-env
+.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint clean coverage-html install-tools build tidy check check-coverage all setup-hooks setup-dev-env
 
 # Default target
 .DEFAULT_GOAL := help
@@ -120,6 +120,21 @@ lint: install-staticcheck ## Run staticcheck linter
 check: fmt vet test ## Run all checks (format, vet, test)
 	@echo "✓ All checks passed"
 
+check-coverage: ## Check coverage thresholds (same as CI)
+	@echo "Running tests with coverage..."
+	$(GOTEST) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
+	@echo ""
+	@echo "Checking coverage thresholds (85% per-package, 85% total)..."
+	@GO_TEST_COVERAGE=$$(command -v go-test-coverage || echo "$$HOME/go/bin/go-test-coverage"); \
+	if [ ! -x "$$GO_TEST_COVERAGE" ]; then \
+		GO_TEST_COVERAGE="$$(go env GOPATH)/bin/go-test-coverage"; \
+	fi; \
+	if [ ! -x "$$GO_TEST_COVERAGE" ]; then \
+		echo "Error: go-test-coverage not found. Run 'make install-tools'"; \
+		exit 1; \
+	fi; \
+	$$GO_TEST_COVERAGE --config=.testcoverage.yml --profile=$(COVERAGE_FILE)
+
 build: ## Build all packages
 	@echo "Building packages..."
 	$(GOBUILD) ./...
@@ -141,6 +156,7 @@ GOLANGCI_LINT_VERSION := v2.7.2
 STATICCHECK_VERSION := 2025.1
 GOSEC_VERSION := v2.22.10
 GOVULNCHECK_VERSION := latest
+GO_TEST_COVERAGE_VERSION := latest
 
 install-tools: ## Install development tools (pinned versions)
 	@echo "Installing development tools..."
@@ -148,17 +164,21 @@ install-tools: ## Install development tools (pinned versions)
 	$(GOCMD) install honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION)
 	$(GOCMD) install github.com/securego/gosec/v2/cmd/gosec@$(GOSEC_VERSION)
 	$(GOCMD) install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+	$(GOCMD) install github.com/vladopajic/go-test-coverage/v2@$(GO_TEST_COVERAGE_VERSION)
 	@echo "✓ Tools installed:"
 	@echo "  golangci-lint $(GOLANGCI_LINT_VERSION)"
 	@echo "  staticcheck $(STATICCHECK_VERSION)"
 	@echo "  gosec $(GOSEC_VERSION)"
 	@echo "  govulncheck $(GOVULNCHECK_VERSION)"
+	@echo "  go-test-coverage $(GO_TEST_COVERAGE_VERSION)"
 
 setup-hooks: ## Install git hooks for development
 	@echo "Installing git hooks..."
 	@cp scripts/pre-commit .git/hooks/pre-commit
 	@chmod +x .git/hooks/pre-commit
-	@echo "✓ Pre-commit hook installed"
+	@cp scripts/pre-push .git/hooks/pre-push
+	@chmod +x .git/hooks/pre-push
+	@echo "✓ Git hooks installed (pre-commit, pre-push)"
 
 setup-dev-env: download install-tools setup-hooks ## Set up complete dev environment
 	@echo ""
@@ -169,17 +189,15 @@ setup-dev-env: download install-tools setup-hooks ## Set up complete dev environ
 	@echo "  Development environment ready!"
 	@echo "═══════════════════════════════════════════════"
 	@echo ""
-	@echo "  Pre-commit hooks are installed and will run:"
-	@echo "    • gofmt check"
-	@echo "    • go vet"
-	@echo "    • golangci-lint"
-	@echo "    • tests with per-package coverage ≥85%"
+	@echo "  Git hooks installed:"
+	@echo "    pre-commit: gofmt, go vet, golangci-lint, tests"
+	@echo "    pre-push:   coverage threshold checks (85%)"
 	@echo ""
 	@echo "  Useful commands:"
-	@echo "    make test          Run all tests"
-	@echo "    make test-coverage Run tests with coverage report"
-	@echo "    make lint          Run staticcheck linter"
-	@echo "    make fmt           Format code"
+	@echo "    make test           Run all tests"
+	@echo "    make check-coverage Check coverage thresholds"
+	@echo "    make lint           Run staticcheck linter"
+	@echo "    make fmt            Format code"
 	@echo ""
 
 examples: ## Run all examples

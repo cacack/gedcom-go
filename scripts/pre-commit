@@ -1,7 +1,9 @@
 #!/bin/bash
-# Pre-commit hook for go-gedcom
+# Pre-commit hook for gedcom-go
 # Install: make setup-hooks
 # Prerequisites: make install-tools
+#
+# This hook runs fast checks on commit. Coverage checks run on pre-push.
 
 set -e
 
@@ -39,46 +41,8 @@ $GOLANGCI_LINT run --timeout=5m
 
 # Run tests (same packages as CI)
 echo "→ Running tests..."
-PACKAGES="./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version"
-go test $PACKAGES
+go test ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
 
-# Check per-package coverage (each package must meet minimum)
-echo "→ Checking per-package test coverage..."
-MIN_COVERAGE=85.0
-FAILED=0
-
-for pkg in $PACKAGES; do
-  # Get coverage for this package
-  COVERAGE_OUTPUT=$(go test -cover "$pkg" 2>&1)
-
-  # Extract coverage percentage (handles "coverage: 83.7% of statements" format)
-  COVERAGE=$(echo "$COVERAGE_OUTPUT" | grep -oE 'coverage: [0-9]+\.[0-9]+%' | grep -oE '[0-9]+\.[0-9]+' || echo "0")
-
-  # Handle packages with no test files (shows "no test files")
-  if echo "$COVERAGE_OUTPUT" | grep -q "no test files"; then
-    echo "  $pkg: no test files (skipped)"
-    continue
-  fi
-
-  # Handle packages with 0% coverage
-  if [ -z "$COVERAGE" ] || [ "$COVERAGE" = "0" ]; then
-    COVERAGE="0.0"
-  fi
-
-  # Check against minimum
-  if (( $(echo "$COVERAGE < $MIN_COVERAGE" | bc -l) )); then
-    echo "  ✗ $pkg: ${COVERAGE}% (below ${MIN_COVERAGE}%)"
-    FAILED=1
-  else
-    echo "  ✓ $pkg: ${COVERAGE}%"
-  fi
-done
-
-if [ $FAILED -eq 1 ]; then
-  echo ""
-  echo "Error: One or more packages have coverage below ${MIN_COVERAGE}%"
-  echo "See docs/TESTING.md for guidance on critical test paths"
-  exit 1
-fi
-
+echo ""
 echo "✓ Pre-commit checks passed"
+echo "  (coverage thresholds checked on push)"
