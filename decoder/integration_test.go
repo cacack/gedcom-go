@@ -677,13 +677,11 @@ func TestCharacterEncodings(t *testing.T) {
 			path:        "../testdata/encoding/utf16le.ged",
 			description: "UTF-16 Little Endian with BOM",
 			encoding:    gedcom.EncodingUNICODE,
-			skipReason:  "UTF-16 decoding not yet implemented",
 		},
 		{
 			path:        "../testdata/encoding/utf16be.ged",
 			description: "UTF-16 Big Endian with BOM",
 			encoding:    gedcom.EncodingUNICODE,
-			skipReason:  "UTF-16 decoding not yet implemented",
 		},
 	}
 
@@ -709,11 +707,9 @@ func TestCharacterEncodings(t *testing.T) {
 				t.Fatal("Decode() returned nil document")
 			}
 
-			// Verify encoding if not UTF-16 (which we skip)
-			if tt.encoding == gedcom.EncodingUTF8 {
-				if doc.Header.Encoding != gedcom.EncodingUTF8 {
-					t.Errorf("Expected UTF-8 encoding, got %v", doc.Header.Encoding)
-				}
+			// Verify encoding matches expectation
+			if doc.Header.Encoding != tt.encoding {
+				t.Errorf("Expected %v encoding, got %v", tt.encoding, doc.Header.Encoding)
 			}
 
 			t.Logf("Successfully parsed %s: %d records", tt.description, len(doc.Records))

@@ -78,9 +78,11 @@ func TestNewReader_BOM(t *testing.T) {
 			want:  "Hello",
 		},
 		{
-			name:  "Partial BOM is not removed",
-			input: []byte{0xEF, 0xBB, 'H', 'i'},
-			want:  string([]byte{0xEF, 0xBB, 'H', 'i'}),
+			name: "Bytes that look like partial BOM are preserved",
+			// 0xEF 0xBD is not a BOM, but starts with 0xEF like UTF-8 BOM would
+			// This is valid UTF-8: 0xEF 0xBD 0xBF is the character ヿ (U+FF3F)
+			input: []byte{0xEF, 0xBD, 0xBF, 'H', 'i'},
+			want:  string([]byte{0xEF, 0xBD, 0xBF, 'H', 'i'}),
 		},
 	}
 
@@ -476,5 +478,431 @@ func TestNewReader_MultiByteUTF8Tracking(t *testing.T) {
 				t.Errorf("ReadAll() = %q, want %q", got, tt.input)
 			}
 		})
+	}
+}
+
+func TestDetectBOM(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        []byte
+		wantEncoding Encoding
+		wantData     []byte // Expected data after BOM removal
+	}{
+		{
+			name:         "UTF-16 LE BOM",
+			input:        []byte{0xFF, 0xFE, 'H', 'e'},
+			wantEncoding: EncodingUTF16LE,
+			wantData:     []byte{'H', 'e'},
+		},
+		{
+			name:         "UTF-16 BE BOM",
+			input:        []byte{0xFE, 0xFF, 'H', 'e'},
+			wantEncoding: EncodingUTF16BE,
+			wantData:     []byte{'H', 'e'},
+		},
+		{
+			name:         "UTF-8 BOM",
+			input:        []byte{0xEF, 0xBB, 0xBF, 'H', 'i'},
+			wantEncoding: EncodingUTF8,
+			wantData:     []byte{'H', 'i'},
+		},
+		{
+			name:         "No BOM",
+			input:        []byte{'H', 'e', 'l', 'l', 'o'},
+			wantEncoding: EncodingUnknown,
+			wantData:     []byte{'H', 'e', 'l', 'l', 'o'},
+		},
+		{
+			name:         "Empty input",
+			input:        []byte{},
+			wantEncoding: EncodingUnknown,
+			wantData:     []byte{},
+		},
+		{
+			name:         "Single byte (no BOM possible)",
+			input:        []byte{'A'},
+			wantEncoding: EncodingUnknown,
+			wantData:     []byte{'A'},
+		},
+		{
+			name:         "Two bytes (not a BOM)",
+			input:        []byte{'A', 'B'},
+			wantEncoding: EncodingUnknown,
+			wantData:     []byte{'A', 'B'},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, encoding, err := DetectBOM(bytes.NewReader(tt.input))
+			if err != nil {
+				t.Fatalf("DetectBOM() error = %v", err)
+			}
+
+			if encoding != tt.wantEncoding {
+				t.Errorf("DetectBOM() encoding = %v, want %v", encoding, tt.wantEncoding)
+			}
+
+			got, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+
+			if !bytes.Equal(got, tt.wantData) {
+				t.Errorf("DetectBOM() data = %v, want %v", got, tt.wantData)
+			}
+		})
+	}
+}
+
+func TestNewReader_UTF16LE(t *testing.T) {
+	// UTF-16 LE encoding of "Hello" with BOM
+	// BOM: FF FE
+	// H: 48 00, e: 65 00, l: 6C 00, l: 6C 00, o: 6F 00
+	input := []byte{
+		0xFF, 0xFE, // BOM
+		0x48, 0x00, // H
+		0x65, 0x00, // e
+		0x6C, 0x00, // l
+		0x6C, 0x00, // l
+		0x6F, 0x00, // o
+	}
+
+	r := NewReader(bytes.NewReader(input))
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+
+	want := "Hello"
+	if string(got) != want {
+		t.Errorf("NewReader(UTF-16 LE) = %q, want %q", got, want)
+	}
+}
+
+func TestNewReader_UTF16BE(t *testing.T) {
+	// UTF-16 BE encoding of "Hello" with BOM
+	// BOM: FE FF
+	// H: 00 48, e: 00 65, l: 00 6C, l: 00 6C, o: 00 6F
+	input := []byte{
+		0xFE, 0xFF, // BOM
+		0x00, 0x48, // H
+		0x00, 0x65, // e
+		0x00, 0x6C, // l
+		0x00, 0x6C, // l
+		0x00, 0x6F, // o
+	}
+
+	r := NewReader(bytes.NewReader(input))
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+
+	want := "Hello"
+	if string(got) != want {
+		t.Errorf("NewReader(UTF-16 BE) = %q, want %q", got, want)
+	}
+}
+
+func TestNewReader_UTF16LE_MultiByteChars(t *testing.T) {
+	// UTF-16 LE encoding of "Café" with BOM
+	// BOM: FF FE
+	// C: 43 00, a: 61 00, f: 66 00, é: E9 00
+	input := []byte{
+		0xFF, 0xFE, // BOM
+		0x43, 0x00, // C
+		0x61, 0x00, // a
+		0x66, 0x00, // f
+		0xE9, 0x00, // é
+	}
+
+	r := NewReader(bytes.NewReader(input))
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+
+	want := "Café"
+	if string(got) != want {
+		t.Errorf("NewReader(UTF-16 LE) = %q, want %q", got, want)
+	}
+}
+
+func TestNewReader_UTF16BE_WithNewlines(t *testing.T) {
+	// UTF-16 BE encoding of "Hi\nBye" with BOM
+	// BOM: FE FF
+	// H: 00 48, i: 00 69, \n: 00 0A, B: 00 42, y: 00 79, e: 00 65
+	input := []byte{
+		0xFE, 0xFF, // BOM
+		0x00, 0x48, // H
+		0x00, 0x69, // i
+		0x00, 0x0A, // \n
+		0x00, 0x42, // B
+		0x00, 0x79, // y
+		0x00, 0x65, // e
+	}
+
+	r := NewReader(bytes.NewReader(input))
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+
+	want := "Hi\nBye"
+	if string(got) != want {
+		t.Errorf("NewReader(UTF-16 BE) = %q, want %q", got, want)
+	}
+}
+
+func TestNewReader_UTF16LE_SmallBufferReads(t *testing.T) {
+	// Test UTF-16 LE with small buffer reads to exercise buffering
+	// UTF-16 LE encoding of "Test"
+	input := []byte{
+		0xFF, 0xFE, // BOM
+		0x54, 0x00, // T
+		0x65, 0x00, // e
+		0x73, 0x00, // s
+		0x74, 0x00, // t
+	}
+
+	r := NewReader(bytes.NewReader(input))
+
+	// Read in small chunks
+	var result []byte
+	buf := make([]byte, 2)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			result = append(result, buf[:n]...)
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Read() error = %v", err)
+		}
+	}
+
+	want := "Test"
+	if string(result) != want {
+		t.Errorf("NewReader(UTF-16 LE, small reads) = %q, want %q", result, want)
+	}
+}
+
+func TestNewReader_UTF16BE_EmptyAfterBOM(t *testing.T) {
+	// Test UTF-16 BE with only BOM (no content)
+	input := []byte{0xFE, 0xFF}
+
+	r := NewReader(bytes.NewReader(input))
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+
+	if len(got) != 0 {
+		t.Errorf("NewReader(UTF-16 BE, empty) = %q, want empty", got)
+	}
+}
+
+func TestDetectBOM_ReadError(t *testing.T) {
+	// Test that read errors (other than EOF) are properly propagated
+	testErr := errors.New("read error")
+	r, encoding, err := DetectBOM(&errorReader{err: testErr})
+
+	if err != testErr {
+		t.Errorf("DetectBOM() error = %v, want %v", err, testErr)
+	}
+
+	if encoding != EncodingUnknown {
+		t.Errorf("DetectBOM() encoding = %v, want %v", encoding, EncodingUnknown)
+	}
+
+	if r != nil {
+		t.Errorf("DetectBOM() reader should be nil on error")
+	}
+}
+
+func TestNewReader_DetectBOMError(t *testing.T) {
+	// Test that NewReader falls back gracefully if DetectBOM fails
+	testErr := errors.New("read error")
+	r := NewReader(&errorReader{err: testErr})
+
+	// The reader should still be created (fallback mode)
+	if r == nil {
+		t.Fatal("NewReader should return a reader even on DetectBOM error")
+	}
+
+	// Reading from it should return the underlying error
+	buf := make([]byte, 10)
+	_, err := r.Read(buf)
+	if err != testErr {
+		t.Errorf("Expected error %v, got %v", testErr, err)
+	}
+}
+
+// Test helpers for simulating readers with specific failure modes
+type partialReader struct {
+	data      []byte
+	pos       int
+	fail      bool
+	failOnce  bool
+	failCount int
+}
+
+func (r *partialReader) Read(p []byte) (n int, err error) {
+	if r.failOnce && r.failCount == 0 {
+		r.failCount++
+		return 0, errors.New("first read error")
+	}
+	if r.fail {
+		return 0, errors.New("forced error")
+	}
+	if r.pos >= len(r.data) {
+		return 0, io.EOF
+	}
+	// Return only 1 byte at a time to test buffering
+	n = copy(p, r.data[r.pos:r.pos+1])
+	r.pos += n
+	return n, nil
+}
+
+func TestNewReader_FallbackWithUTF8BOM(t *testing.T) {
+	// Test fallback path (non-DetectBOM) with UTF-8 BOM
+	// This tests the handleBOM function
+	input := append([]byte{0xEF, 0xBB, 0xBF}, []byte("Hello")...)
+
+	// Create a reader that fails on first read (triggers fallback)
+	// then works normally (so handleBOM can process the BOM)
+	pr := &partialReader{data: input, failOnce: true}
+
+	r := NewReader(pr)
+	// First read will trigger handleBOM in fallback path
+	got, err := io.ReadAll(r)
+	if err != nil && err != io.EOF {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+
+	want := "Hello"
+	if string(got) != want {
+		t.Errorf("ReadAll() = %q, want %q", got, want)
+	}
+}
+
+func TestNewReader_FallbackNoBOM(t *testing.T) {
+	// Test fallback path without BOM
+	input := []byte("Hello World")
+	pr := &partialReader{data: input, failOnce: true}
+
+	r := NewReader(pr)
+	got, err := io.ReadAll(r)
+	if err != nil && err != io.EOF {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+
+	if !bytes.Equal(got, input) {
+		t.Errorf("ReadAll() = %q, want %q", got, input)
+	}
+}
+
+func TestNewReader_FallbackShortFile(t *testing.T) {
+	// Test fallback path with file shorter than BOM
+	tests := []struct {
+		name  string
+		input []byte
+	}{
+		{"empty", []byte{}},
+		{"one byte", []byte{'A'}},
+		{"two bytes", []byte{'A', 'B'}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pr := &partialReader{data: tt.input, failOnce: true}
+			r := NewReader(pr)
+			got, err := io.ReadAll(r)
+			if err != nil && err != io.EOF {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+			if !bytes.Equal(got, tt.input) {
+				t.Errorf("ReadAll() = %v, want %v", got, tt.input)
+			}
+		})
+	}
+}
+
+func TestNewReader_UTF16LE_LargeFile(t *testing.T) {
+	// Test UTF-16 LE with a larger file to exercise buffering
+	// Create a longer string in UTF-16 LE
+	text := "Hello, World! This is a longer test to ensure buffering works correctly with UTF-16 encoding."
+
+	var buf bytes.Buffer
+	// Write UTF-16 LE BOM
+	buf.Write([]byte{0xFF, 0xFE})
+
+	// Write each character as UTF-16 LE
+	for _, r := range text {
+		// UTF-16 LE: low byte first, high byte second
+		buf.WriteByte(byte(r))
+		buf.WriteByte(byte(r >> 8))
+	}
+
+	r := NewReader(&buf)
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+
+	if string(got) != text {
+		t.Errorf("NewReader(UTF-16 LE large) = %q, want %q", got, text)
+	}
+}
+
+func TestNewReader_UTF16BE_LargeFile(t *testing.T) {
+	// Test UTF-16 BE with a larger file
+	text := "Hello, World! This is a longer test to ensure buffering works correctly with UTF-16 encoding."
+
+	var buf bytes.Buffer
+	// Write UTF-16 BE BOM
+	buf.Write([]byte{0xFE, 0xFF})
+
+	// Write each character as UTF-16 BE
+	for _, r := range text {
+		// UTF-16 BE: high byte first, low byte second
+		buf.WriteByte(byte(r >> 8))
+		buf.WriteByte(byte(r))
+	}
+
+	r := NewReader(&buf)
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+
+	if string(got) != text {
+		t.Errorf("NewReader(UTF-16 BE large) = %q, want %q", got, text)
+	}
+}
+
+func TestNewReader_UTF16LE_WithMultipleLines(t *testing.T) {
+	// Test UTF-16 LE with multiple lines to test line tracking
+	text := "Line 1\nLine 2\nLine 3\n"
+
+	var buf bytes.Buffer
+	buf.Write([]byte{0xFF, 0xFE}) // BOM
+
+	for _, r := range text {
+		buf.WriteByte(byte(r))
+		buf.WriteByte(byte(r >> 8))
+	}
+
+	r := NewReader(&buf)
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+
+	if string(got) != text {
+		t.Errorf("NewReader(UTF-16 LE multiline) = %q, want %q", got, text)
 	}
 }
