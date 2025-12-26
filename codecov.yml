@@ -1,0 +1,21 @@
+# Codecov configuration
+# https://docs.codecov.com/docs/codecov-yaml
+
+coverage:
+  status:
+    # Project coverage - overall coverage of the codebase
+    project:
+      default:
+        target: auto  # Use the coverage of the base commit as the target
+        threshold: 1% # Allow 1% decrease from base
+    # Patch coverage - coverage of new/changed lines
+    patch:
+      default:
+        target: 80%   # New code should have at least 80% coverage
+        threshold: 5% # Allow 5% tolerance
+
+# Ignore example files and test files from coverage
+ignore:
+  - "examples/**/*"
+  - "specs/**/*"
+  - "testdata/**/*"
