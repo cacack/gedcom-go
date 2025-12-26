@@ -3,6 +3,7 @@ package encoder
 import (
 	"bytes"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 
@@ -956,4 +957,497 @@ func TestEncodeEdgeCases(t *testing.T) {
 			t.Error("Output should contain PLAC without value")
 		}
 	})
+}
+
+// TestRoundtripMinimalFile tests round-trip encoding with the minimal.ged test file
+func TestRoundtripMinimalFile(t *testing.T) {
+	// Read original file
+	f, err := os.Open("../testdata/gedcom-5.5.1/minimal.ged")
+	if err != nil {
+		t.Fatalf("Failed to open test file: %v", err)
+	}
+	defer f.Close()
+
+	// Decode original
+	doc1, err := decoder.Decode(f)
+	if err != nil {
+		t.Fatalf("Failed to decode original file: %v", err)
+	}
+
+	// Encode to buffer
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc1); err != nil {
+		t.Fatalf("Failed to encode: %v", err)
+	}
+
+	// Decode again
+	doc2, err := decoder.Decode(strings.NewReader(buf.String()))
+	if err != nil {
+		t.Fatalf("Failed to decode encoded output: %v", err)
+	}
+
+	// Compare record counts
+	if len(doc1.Records) != len(doc2.Records) {
+		t.Errorf("Record count mismatch: got %d, want %d", len(doc2.Records), len(doc1.Records))
+	}
+
+	// Compare header
+	if doc1.Header.Version != doc2.Header.Version {
+		t.Errorf("Header version mismatch: got %q, want %q", doc2.Header.Version, doc1.Header.Version)
+	}
+
+	// Compare individual @I1@
+	indi1 := doc1.GetIndividual("@I1@")
+	indi2 := doc2.GetIndividual("@I1@")
+
+	if indi1 == nil || indi2 == nil {
+		t.Fatal("Individual @I1@ not found in one or both documents")
+	}
+
+	// Compare key fields
+	if len(indi1.Names) != len(indi2.Names) {
+		t.Errorf("Name count mismatch: got %d, want %d", len(indi2.Names), len(indi1.Names))
+	}
+	if indi1.Sex != indi2.Sex {
+		t.Errorf("Sex mismatch: got %q, want %q", indi2.Sex, indi1.Sex)
+	}
+	if len(indi1.Events) != len(indi2.Events) {
+		t.Errorf("Event count mismatch: got %d, want %d", len(indi2.Events), len(indi1.Events))
+	}
+}
+
+// TestRoundtripEntityEncoding tests that entities without tags are properly encoded
+func TestRoundtripEntityEncoding(t *testing.T) {
+	// Create a document with entities but no tags
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{
+			Version:  "5.5.1",
+			Encoding: "UTF-8",
+		},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@I1@",
+				Type: gedcom.RecordTypeIndividual,
+				Tags: nil, // No tags - should use entity
+				Entity: &gedcom.Individual{
+					XRef: "@I1@",
+					Names: []*gedcom.PersonalName{
+						{Full: "John /Smith/", Given: "John", Surname: "Smith"},
+					},
+					Sex: "M",
+					Events: []*gedcom.Event{
+						{
+							Type:  gedcom.EventBirth,
+							Date:  "1 JAN 1950",
+							Place: "Boston, MA",
+						},
+					},
+				},
+			},
+			{
+				XRef: "@F1@",
+				Type: gedcom.RecordTypeFamily,
+				Tags: nil,
+				Entity: &gedcom.Family{
+					Husband:  "@I1@",
+					Wife:     "@I2@",
+					Children: []string{"@I3@"},
+					Events: []*gedcom.Event{
+						{Type: gedcom.EventMarriage, Date: "15 JUN 1975"},
+					},
+				},
+			},
+			{
+				XRef: "@S1@",
+				Type: gedcom.RecordTypeSource,
+				Tags: nil,
+				Entity: &gedcom.Source{
+					Title:  "Birth Records",
+					Author: "County Archives",
+				},
+			},
+			{
+				XRef: "@SUBM1@",
+				Type: gedcom.RecordTypeSubmitter,
+				Tags: nil,
+				Entity: &gedcom.Submitter{
+					Name:     "Test User",
+					Email:    []string{"test@example.com"},
+					Language: []string{"English"},
+				},
+			},
+			{
+				XRef: "@R1@",
+				Type: gedcom.RecordTypeRepository,
+				Tags: nil,
+				Entity: &gedcom.Repository{
+					Name: "City Archives",
+					Address: &gedcom.Address{
+						City:    "Boston",
+						State:   "MA",
+						Country: "USA",
+					},
+				},
+			},
+			{
+				XRef: "@N1@",
+				Type: gedcom.RecordTypeNote,
+				Tags: nil,
+				Entity: &gedcom.Note{
+					Text:         "This is a note",
+					Continuation: []string{"with continuation"},
+				},
+			},
+			{
+				XRef: "@O1@",
+				Type: gedcom.RecordTypeMedia,
+				Tags: nil,
+				Entity: &gedcom.MediaObject{
+					Files: []*gedcom.MediaFile{
+						{FileRef: "photo.jpg", Form: "image/jpeg", Title: "Family Photo"},
+					},
+				},
+			},
+		},
+		XRefMap: make(map[string]*gedcom.Record),
+	}
+
+	// Build XRefMap
+	for _, r := range doc.Records {
+		doc.XRefMap[r.XRef] = r
+	}
+
+	// Encode
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+
+	output := buf.String()
+
+	// Verify entity data was encoded
+	expectedPatterns := []string{
+		"0 @I1@ INDI",
+		"1 NAME John /Smith/",
+		"2 GIVN John",
+		"2 SURN Smith",
+		"1 SEX M",
+		"1 BIRT",
+		"2 DATE 1 JAN 1950",
+		"2 PLAC Boston, MA",
+		"0 @F1@ FAM",
+		"1 HUSB @I1@",
+		"1 WIFE @I2@",
+		"1 CHIL @I3@",
+		"1 MARR",
+		"0 @S1@ SOUR",
+		"1 TITL Birth Records",
+		"1 AUTH County Archives",
+		"0 @SUBM1@ SUBM",
+		"1 NAME Test User",
+		"1 EMAIL test@example.com",
+		"1 LANG English",
+		"0 @R1@ REPO",
+		"1 NAME City Archives",
+		"1 ADDR",
+		"0 @N1@ NOTE",
+		"1 CONT with continuation",
+		"0 @O1@ OBJE",
+		"1 FILE photo.jpg",
+		"2 FORM image/jpeg",
+	}
+
+	for _, pattern := range expectedPatterns {
+		if !strings.Contains(output, pattern) {
+			t.Errorf("Output missing expected pattern: %q\nGot:\n%s", pattern, output)
+		}
+	}
+
+	// Verify round-trip
+	doc2, err := decoder.Decode(strings.NewReader(output))
+	if err != nil {
+		t.Fatalf("Failed to decode encoded output: %v", err)
+	}
+
+	if len(doc2.Records) != len(doc.Records) {
+		t.Errorf("Record count mismatch: got %d, want %d", len(doc2.Records), len(doc.Records))
+	}
+
+	// Verify individual was decoded correctly
+	indi := doc2.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found after round-trip")
+	}
+	if indi.Sex != "M" {
+		t.Errorf("Individual sex = %q, want %q", indi.Sex, "M")
+	}
+	if len(indi.Names) != 1 || indi.Names[0].Given != "John" {
+		t.Error("Individual name not preserved after round-trip")
+	}
+
+	// Verify family was decoded correctly
+	fam := doc2.GetFamily("@F1@")
+	if fam == nil {
+		t.Fatal("Family @F1@ not found after round-trip")
+	}
+	if fam.Husband != "@I1@" {
+		t.Errorf("Family husband = %q, want %q", fam.Husband, "@I1@")
+	}
+
+	// Verify source was decoded correctly
+	src := doc2.GetSource("@S1@")
+	if src == nil {
+		t.Fatal("Source @S1@ not found after round-trip")
+	}
+	if src.Title != "Birth Records" {
+		t.Errorf("Source title = %q, want %q", src.Title, "Birth Records")
+	}
+
+	// Verify submitter was decoded correctly
+	subm := doc2.GetSubmitter("@SUBM1@")
+	if subm == nil {
+		t.Fatal("Submitter @SUBM1@ not found after round-trip")
+	}
+	if subm.Name != "Test User" {
+		t.Errorf("Submitter name = %q, want %q", subm.Name, "Test User")
+	}
+
+	// Verify repository was decoded correctly
+	repo := doc2.GetRepository("@R1@")
+	if repo == nil {
+		t.Fatal("Repository @R1@ not found after round-trip")
+	}
+	if repo.Name != "City Archives" {
+		t.Errorf("Repository name = %q, want %q", repo.Name, "City Archives")
+	}
+}
+
+// TestRoundtripTagsPreserved tests that when Tags are present, they are used instead of Entity
+func TestRoundtripTagsPreserved(t *testing.T) {
+	// Create a document with both tags and entity - tags should be used
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: "5.5"},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@I1@",
+				Type: gedcom.RecordTypeIndividual,
+				Tags: []*gedcom.Tag{
+					{Level: 1, Tag: "NAME", Value: "Tags /Used/"},
+				},
+				Entity: &gedcom.Individual{
+					Names: []*gedcom.PersonalName{
+						{Full: "Entity /Ignored/"},
+					},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+
+	output := buf.String()
+
+	// Tags should be used
+	if !strings.Contains(output, "Tags /Used/") {
+		t.Error("Tags should be used when present")
+	}
+	if strings.Contains(output, "Entity /Ignored/") {
+		t.Error("Entity should be ignored when tags are present")
+	}
+}
+
+// TestRoundtripComplexIndividual tests round-trip of an individual with all fields
+func TestRoundtripComplexIndividual(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{
+			Version:  "5.5.1",
+			Encoding: "UTF-8",
+		},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@I1@",
+				Type: gedcom.RecordTypeIndividual,
+				Tags: nil,
+				Entity: &gedcom.Individual{
+					XRef: "@I1@",
+					Names: []*gedcom.PersonalName{
+						{
+							Full:          "Dr. Johann Ludwig /von Beethoven/ III",
+							Given:         "Johann Ludwig",
+							Surname:       "Beethoven",
+							Prefix:        "Dr.",
+							Suffix:        "III",
+							Nickname:      "Ludwig",
+							SurnamePrefix: "von",
+							Type:          "birth",
+						},
+					},
+					Sex: "M",
+					Events: []*gedcom.Event{
+						{
+							Type:  gedcom.EventBirth,
+							Date:  "17 DEC 1770",
+							Place: "Bonn, Germany",
+							PlaceDetail: &gedcom.PlaceDetail{
+								Form: "City, Country",
+								Coordinates: &gedcom.Coordinates{
+									Latitude:  "N50.7339",
+									Longitude: "E7.0998",
+								},
+							},
+							EventTypeDetail: "Home birth",
+							Cause:           "Natural",
+							Age:             "0y",
+							Agency:          "Family records",
+							Notes:           []string{"Birth note"},
+							SourceCitations: []*gedcom.SourceCitation{
+								{
+									SourceXRef: "@S1@",
+									Page:       "p. 42",
+									Quality:    3,
+									Data: &gedcom.SourceCitationData{
+										Date: "17 DEC 1770",
+										Text: "Birth entry",
+									},
+								},
+							},
+						},
+						{Type: gedcom.EventDeath, Date: "26 MAR 1827", Cause: "Liver disease"},
+					},
+					Attributes: []*gedcom.Attribute{
+						{Type: "OCCU", Value: "Composer", Date: "1792", Place: "Vienna"},
+					},
+					ChildInFamilies:  []gedcom.FamilyLink{{FamilyXRef: "@F1@", Pedigree: "birth"}},
+					SpouseInFamilies: []string{"@F2@"},
+					Associations: []*gedcom.Association{
+						{IndividualXRef: "@I2@", Role: "GODP", Notes: []string{"Godfather"}},
+					},
+					LDSOrdinances: []*gedcom.LDSOrdinance{
+						{Type: "BAPL", Date: "1 JAN 1900", Temple: "SLAKE", Status: "COMPLETED"},
+					},
+					SourceCitations: []*gedcom.SourceCitation{
+						{SourceXRef: "@S1@", Page: "Entire file"},
+					},
+					Notes:        []string{"Famous composer"},
+					Media:        []*gedcom.MediaLink{{MediaXRef: "@O1@", Title: "Portrait"}},
+					ChangeDate:   &gedcom.ChangeDate{Date: "1 JAN 2024", Time: "12:00:00"},
+					CreationDate: &gedcom.ChangeDate{Date: "1 JAN 2020"},
+					RefNumber:    "REF001",
+					UID:          "UID-BEETHOVEN",
+				},
+			},
+		},
+	}
+
+	// Encode
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+
+	output := buf.String()
+
+	// Verify key elements are present
+	expectedPatterns := []string{
+		"1 NAME Dr. Johann Ludwig /von Beethoven/ III",
+		"2 GIVN Johann Ludwig",
+		"2 SURN Beethoven",
+		"2 NPFX Dr.",
+		"2 NSFX III",
+		"2 NICK Ludwig",
+		"2 SPFX von",
+		"2 TYPE birth",
+		"1 SEX M",
+		"1 BIRT",
+		"2 DATE 17 DEC 1770",
+		"2 PLAC Bonn, Germany",
+		"3 FORM City, Country",
+		"3 MAP",
+		"4 LATI N50.7339",
+		"4 LONG E7.0998",
+		"2 TYPE Home birth",
+		"2 CAUS Natural",
+		"2 AGE 0y",
+		"2 AGNC Family records",
+		"2 NOTE Birth note",
+		"2 SOUR @S1@",
+		"3 PAGE p. 42",
+		"3 QUAY 3",
+		"3 DATA",
+		"4 DATE 17 DEC 1770",
+		"4 TEXT Birth entry",
+		"1 DEAT",
+		"2 CAUS Liver disease",
+		"1 OCCU Composer",
+		"2 DATE 1792",
+		"2 PLAC Vienna",
+		"1 FAMC @F1@",
+		"2 PEDI birth",
+		"1 FAMS @F2@",
+		"1 ASSO @I2@",
+		"2 ROLE GODP",
+		"2 NOTE Godfather",
+		"1 BAPL",
+		"2 TEMP SLAKE",
+		"2 STAT COMPLETED",
+		"1 SOUR @S1@",
+		"2 PAGE Entire file",
+		"1 NOTE Famous composer",
+		"1 OBJE @O1@",
+		"2 TITL Portrait",
+		"1 CHAN",
+		"2 DATE 1 JAN 2024",
+		"3 TIME 12:00:00",
+		"1 CREA",
+		"1 REFN REF001",
+		"1 UID UID-BEETHOVEN",
+	}
+
+	for _, pattern := range expectedPatterns {
+		if !strings.Contains(output, pattern) {
+			t.Errorf("Output missing expected pattern: %q", pattern)
+		}
+	}
+
+	// Round-trip decode
+	doc2, err := decoder.Decode(strings.NewReader(output))
+	if err != nil {
+		t.Fatalf("Failed to decode: %v", err)
+	}
+
+	indi := doc2.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found after round-trip")
+	}
+
+	// Verify name components
+	if len(indi.Names) < 1 {
+		t.Fatal("Names not preserved")
+	}
+	name := indi.Names[0]
+	if name.Nickname != "Ludwig" {
+		t.Errorf("Nickname = %q, want %q", name.Nickname, "Ludwig")
+	}
+	if name.SurnamePrefix != "von" {
+		t.Errorf("SurnamePrefix = %q, want %q", name.SurnamePrefix, "von")
+	}
+
+	// Verify associations
+	if len(indi.Associations) < 1 {
+		t.Fatal("Associations not preserved")
+	}
+	if indi.Associations[0].Role != "GODP" {
+		t.Errorf("Association role = %q, want %q", indi.Associations[0].Role, "GODP")
+	}
+
+	// Verify LDS ordinances
+	if len(indi.LDSOrdinances) < 1 {
+		t.Fatal("LDS ordinances not preserved")
+	}
+	if indi.LDSOrdinances[0].Temple != "SLAKE" {
+		t.Errorf("LDS temple = %q, want %q", indi.LDSOrdinances[0].Temple, "SLAKE")
+	}
 }

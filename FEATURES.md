@@ -343,6 +343,27 @@ s := date.String()  // "25 DEC 2020"
 - GEDCOM 5.5, 5.5.1, 7.0 output
 - UTF-8 output
 
+### High-Level Type Encoding
+
+Full support for encoding typed entities back to GEDCOM format:
+
+| Entity Type | Supported Fields |
+|-------------|------------------|
+| Individual | Names, sex, events, attributes, family links, associations, LDS ordinances, citations, notes, media |
+| Family | Spouse/child refs, events, LDS ordinances, citations, notes, media |
+| Source | Title, author, publication, text, repository ref, notes, media |
+| Repository | Name, address, notes |
+| Submitter | Name, address, contact info, languages |
+| Note | Text with continuation lines |
+| MediaObject | Files, formats, translations, citations |
+
+### Round-Trip Encoding
+
+Decode → modify → encode workflow:
+- Lossless by default: original tags preserved when present
+- Entity conversion: generates tags from typed fields when tags are empty
+- All nested structures supported: events, names, citations, addresses, coordinates
+
 ## Performance
 
 - Zero-allocation validator for valid documents
