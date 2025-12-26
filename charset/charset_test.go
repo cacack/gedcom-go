@@ -906,3 +906,254 @@ func TestNewReader_UTF16LE_WithMultipleLines(t *testing.T) {
 		t.Errorf("NewReader(UTF-16 LE multiline) = %q, want %q", got, text)
 	}
 }
+
+func TestDetectEncodingFromHeader(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantEncoding Encoding
+	}{
+		{
+			name:         "ANSEL encoding",
+			input:        "0 HEAD\n1 CHAR ANSEL\n0 TRLR\n",
+			wantEncoding: EncodingANSEL,
+		},
+		{
+			name:         "ANSEL encoding (lowercase)",
+			input:        "0 HEAD\n1 char ansel\n0 TRLR\n",
+			wantEncoding: EncodingANSEL,
+		},
+		{
+			name:         "UTF-8 encoding",
+			input:        "0 HEAD\n1 CHAR UTF-8\n0 TRLR\n",
+			wantEncoding: EncodingUTF8,
+		},
+		{
+			name:         "UNICODE encoding (maps to UTF-8)",
+			input:        "0 HEAD\n1 CHAR UNICODE\n0 TRLR\n",
+			wantEncoding: EncodingUTF8,
+		},
+		{
+			name:         "ASCII encoding",
+			input:        "0 HEAD\n1 CHAR ASCII\n0 TRLR\n",
+			wantEncoding: EncodingASCII,
+		},
+		{
+			name:         "No CHAR tag",
+			input:        "0 HEAD\n1 SOUR Test\n0 TRLR\n",
+			wantEncoding: EncodingUnknown,
+		},
+		{
+			name:         "Empty input",
+			input:        "",
+			wantEncoding: EncodingUnknown,
+		},
+		{
+			name:         "CHAR with CR line ending",
+			input:        "0 HEAD\r1 CHAR ANSEL\r0 TRLR\r",
+			wantEncoding: EncodingANSEL,
+		},
+		{
+			name:         "CHAR with CRLF line ending",
+			input:        "0 HEAD\r\n1 CHAR ANSEL\r\n0 TRLR\r\n",
+			wantEncoding: EncodingANSEL,
+		},
+		{
+			name:         "CHAR with extra whitespace",
+			input:        "0 HEAD\n1  CHAR  ANSEL\n0 TRLR\n",
+			wantEncoding: EncodingANSEL,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, encoding, err := DetectEncodingFromHeader(strings.NewReader(tt.input))
+			if err != nil {
+				t.Fatalf("DetectEncodingFromHeader() error = %v", err)
+			}
+
+			if encoding != tt.wantEncoding {
+				t.Errorf("DetectEncodingFromHeader() encoding = %v, want %v", encoding, tt.wantEncoding)
+			}
+
+			// Verify all bytes are preserved
+			got, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+			if string(got) != tt.input {
+				t.Errorf("DetectEncodingFromHeader() data = %q, want %q", got, tt.input)
+			}
+		})
+	}
+}
+
+func TestDetectEncodingFromHeader_ReadError(t *testing.T) {
+	testErr := errors.New("read error")
+	r, encoding, err := DetectEncodingFromHeader(&errorReader{err: testErr})
+
+	if err != testErr {
+		t.Errorf("DetectEncodingFromHeader() error = %v, want %v", err, testErr)
+	}
+
+	if encoding != EncodingUnknown {
+		t.Errorf("DetectEncodingFromHeader() encoding = %v, want %v", encoding, EncodingUnknown)
+	}
+
+	if r != nil {
+		t.Errorf("DetectEncodingFromHeader() reader should be nil on error")
+	}
+}
+
+func TestNewReaderWithEncoding(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []byte
+		encoding Encoding
+		want     string
+	}{
+		{
+			name:     "UTF-8 passthrough",
+			input:    []byte("Hello World"),
+			encoding: EncodingUTF8,
+			want:     "Hello World",
+		},
+		{
+			name:     "ASCII passthrough",
+			input:    []byte("Hello World"),
+			encoding: EncodingASCII,
+			want:     "Hello World",
+		},
+		{
+			name:     "Unknown passthrough",
+			input:    []byte("Hello World"),
+			encoding: EncodingUnknown,
+			want:     "Hello World",
+		},
+		{
+			name: "ANSEL conversion - simple ASCII",
+			// Simple ASCII should pass through unchanged
+			input:    []byte("0 HEAD\n1 CHAR ANSEL\n"),
+			encoding: EncodingANSEL,
+			want:     "0 HEAD\n1 CHAR ANSEL\n",
+		},
+		{
+			name: "ANSEL conversion - extended Latin (Polish L)",
+			// 0xA1 in ANSEL is Uppercase Polish L with stroke (U+0141)
+			input:    []byte{0xA1},
+			encoding: EncodingANSEL,
+			want:     "\u0141", // Ł
+		},
+		{
+			name: "ANSEL conversion - combining diacritical",
+			// 0xE2 (acute accent) + 'e' should become 'e' + combining acute
+			input:    []byte{0xE2, 'e'},
+			encoding: EncodingANSEL,
+			want:     "e\u0301", // e + combining acute accent
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewReaderWithEncoding(bytes.NewReader(tt.input), tt.encoding)
+			got, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+
+			if string(got) != tt.want {
+				t.Errorf("NewReaderWithEncoding() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewReader_ANSEL_AutoDetection(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []byte
+		want  string
+	}{
+		{
+			name: "Simple ANSEL file",
+			// GEDCOM header declaring ANSEL, followed by ASCII content
+			input: []byte("0 HEAD\n1 CHAR ANSEL\n0 @I1@ INDI\n1 NAME John /Doe/\n0 TRLR\n"),
+			want:  "0 HEAD\n1 CHAR ANSEL\n0 @I1@ INDI\n1 NAME John /Doe/\n0 TRLR\n",
+		},
+		{
+			name: "ANSEL with extended Latin",
+			// GEDCOM header declaring ANSEL, with Polish L (0xA1 -> U+0141)
+			input: append(
+				[]byte("0 HEAD\n1 CHAR ANSEL\n0 @I1@ INDI\n1 NAME "),
+				append([]byte{0xA1}, []byte("ukasz /Kowalski/\n0 TRLR\n")...)...,
+			),
+			want: "0 HEAD\n1 CHAR ANSEL\n0 @I1@ INDI\n1 NAME \u0141ukasz /Kowalski/\n0 TRLR\n",
+		},
+		{
+			name: "ANSEL with combining diacritical",
+			// GEDCOM header declaring ANSEL, with acute accent + e (0xE2, 0x65)
+			input: append(
+				[]byte("0 HEAD\n1 CHAR ANSEL\n0 @I1@ INDI\n1 NAME Ren"),
+				append([]byte{0xE2, 0x65}, []byte(" /Dubois/\n0 TRLR\n")...)...,
+			),
+			want: "0 HEAD\n1 CHAR ANSEL\n0 @I1@ INDI\n1 NAME Rene\u0301 /Dubois/\n0 TRLR\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewReader(bytes.NewReader(tt.input))
+			got, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+
+			if string(got) != tt.want {
+				t.Errorf("NewReader(ANSEL) = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewReader_UTF16_BOM_Takes_Precedence(t *testing.T) {
+	// UTF-16 BOM should take precedence over CHAR tag
+	// This is UTF-16 LE encoded: "0 HEAD\n1 CHAR ANSEL\n0 TRLR\n"
+	// Even though it says CHAR ANSEL, the BOM indicates UTF-16 LE
+	text := "0 HEAD\n1 CHAR ANSEL\n0 TRLR\n"
+
+	var buf bytes.Buffer
+	buf.Write([]byte{0xFF, 0xFE}) // UTF-16 LE BOM
+
+	for _, r := range text {
+		buf.WriteByte(byte(r))
+		buf.WriteByte(byte(r >> 8))
+	}
+
+	r := NewReader(&buf)
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+
+	// Should decode as UTF-16 LE, ignoring the CHAR ANSEL tag
+	if string(got) != text {
+		t.Errorf("NewReader(UTF-16 with CHAR ANSEL) = %q, want %q", got, text)
+	}
+}
+
+func TestNewReader_HeaderDetectionError(t *testing.T) {
+	// Test that header detection errors are handled gracefully
+	// by using a reader that fails on first read but succeeds later
+	input := []byte("Hello World")
+	pr := &partialReader{data: input, failOnce: true}
+
+	r := NewReader(pr)
+	got, err := io.ReadAll(r)
+	if err != nil && err != io.EOF {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+
+	if !bytes.Equal(got, input) {
+		t.Errorf("NewReader() = %q, want %q", got, input)
+	}
+}

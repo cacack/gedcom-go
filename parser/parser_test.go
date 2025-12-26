@@ -423,6 +423,116 @@ func TestParseLineValueExtraction(t *testing.T) {
 	}
 }
 
+// TestParseCROnlyLineEndings tests parsing of files with CR-only line endings (old Mac style)
+func TestParseCROnlyLineEndings(t *testing.T) {
+	p := NewParser()
+
+	// CR-only line endings (old Macintosh style)
+	input := "0 HEAD\r1 SOUR Test\r1 GEDC\r2 VERS 5.5\r0 TRLR\r"
+	lines, err := p.Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	expected := []struct {
+		level int
+		tag   string
+	}{
+		{0, "HEAD"},
+		{1, "SOUR"},
+		{1, "GEDC"},
+		{2, "VERS"},
+		{0, "TRLR"},
+	}
+
+	if len(lines) != len(expected) {
+		t.Fatalf("Got %d lines, want %d", len(lines), len(expected))
+	}
+
+	for i, e := range expected {
+		if lines[i].Level != e.level {
+			t.Errorf("Line %d: Level = %d, want %d", i, lines[i].Level, e.level)
+		}
+		if lines[i].Tag != e.tag {
+			t.Errorf("Line %d: Tag = %q, want %q", i, lines[i].Tag, e.tag)
+		}
+	}
+}
+
+// TestParseMixedLineEndings tests parsing of files with mixed line ending styles
+func TestParseMixedLineEndings(t *testing.T) {
+	p := NewParser()
+
+	// Mixed: CRLF, LF, CR
+	input := "0 HEAD\r\n1 SOUR Test\n1 GEDC\r2 VERS 5.5\r\n0 TRLR\n"
+	lines, err := p.Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	if len(lines) != 5 {
+		t.Fatalf("Got %d lines, want 5", len(lines))
+	}
+
+	tags := []string{"HEAD", "SOUR", "GEDC", "VERS", "TRLR"}
+	for i, tag := range tags {
+		if lines[i].Tag != tag {
+			t.Errorf("Line %d: Tag = %q, want %q", i, lines[i].Tag, tag)
+		}
+	}
+}
+
+// TestParseCRAtEndNeedsMoreData tests the edge case where CR is at buffer boundary
+func TestParseCRAtEndNeedsMoreData(t *testing.T) {
+	p := NewParser()
+
+	// This tests the case where CR might be at the end of a read buffer
+	// and we need to determine if it's followed by LF
+	input := "0 HEAD\r\n1 NAME Test\r\n0 TRLR\r\n"
+	lines, err := p.Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	if len(lines) != 3 {
+		t.Fatalf("Got %d lines, want 3", len(lines))
+	}
+}
+
+// TestParseEmptyLines tests handling of empty input
+func TestParseEmptyLines(t *testing.T) {
+	p := NewParser()
+
+	lines, err := p.Parse(strings.NewReader(""))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	if len(lines) != 0 {
+		t.Errorf("Got %d lines for empty input, want 0", len(lines))
+	}
+}
+
+// TestParseFinalLineWithoutNewline tests file ending without newline
+func TestParseFinalLineWithoutNewline(t *testing.T) {
+	p := NewParser()
+
+	// No newline at end
+	input := "0 HEAD\n1 SOUR Test\n0 TRLR"
+	lines, err := p.Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+
+	if len(lines) != 3 {
+		t.Fatalf("Got %d lines, want 3", len(lines))
+	}
+
+	if lines[2].Tag != "TRLR" {
+		t.Errorf("Last line Tag = %q, want TRLR", lines[2].Tag)
+	}
+}
+
 // Test XRef without tag error
 func TestParseLineXRefWithoutTag(t *testing.T) {
 	p := NewParser()

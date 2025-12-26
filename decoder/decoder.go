@@ -135,6 +135,8 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 			}
 		case "LANG":
 			doc.Header.Language = line.Value
+		case "COPR":
+			doc.Header.Copyright = line.Value
 		}
 	}
 
