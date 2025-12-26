@@ -23,8 +23,8 @@ For planned features, see [GitHub Issues](https://github.com/cacack/gedcom-go/is
 | UTF-8 | Full | With BOM detection |
 | ASCII | Full | Subset of UTF-8 |
 | LATIN1 (ISO-8859-1) | Recognized | Declared but not converted |
-| UTF-16 LE/BE | Full | With BOM detection, [Issue #29](https://github.com/cacack/gedcom-go/issues/29) |
-| ANSEL | Planned | [Issue #30](https://github.com/cacack/gedcom-go/issues/30) |
+| UTF-16 LE/BE | Full | With BOM detection |
+| ANSEL | Full | With combining diacritical reordering |
 
 ## Record Types
 
