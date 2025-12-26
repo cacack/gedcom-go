@@ -131,10 +131,13 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 }
 
 // Parse reads a GEDCOM file from a reader and returns all parsed lines.
+// Supports all line ending styles: LF (Unix), CRLF (Windows), CR (old Macintosh).
 func (p *Parser) Parse(r io.Reader) ([]*Line, error) {
 	p.Reset()
 
 	scanner := bufio.NewScanner(r)
+	// Use custom split function that handles CR, LF, and CRLF line endings
+	scanner.Split(scanGEDCOMLines)
 	var lines []*Line
 
 	for scanner.Scan() {
@@ -151,4 +154,46 @@ func (p *Parser) Parse(r io.Reader) ([]*Line, error) {
 	}
 
 	return lines, nil
+}
+
+// scanGEDCOMLines is a split function for bufio.Scanner that handles
+// all GEDCOM line ending styles: LF, CRLF, and CR (old Macintosh).
+// This is based on bufio.ScanLines but adds CR-only support.
+func scanGEDCOMLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+
+	// Look for CR or LF
+	for i := 0; i < len(data); i++ {
+		if data[i] == '\n' {
+			// Found LF - this could be standalone or part of CRLF
+			return i + 1, data[0:i], nil
+		}
+		if data[i] == '\r' {
+			// Found CR - check if followed by LF (CRLF)
+			if i+1 < len(data) {
+				if data[i+1] == '\n' {
+					// CRLF - return line without either terminator
+					return i + 2, data[0:i], nil
+				}
+				// CR alone - return line
+				return i + 1, data[0:i], nil
+			}
+			// CR at end of data - need more data to determine if CRLF
+			if !atEOF {
+				return 0, nil, nil
+			}
+			// At EOF with CR - treat as line ending
+			return i + 1, data[0:i], nil
+		}
+	}
+
+	// If we're at EOF, return remaining data as final line
+	if atEOF {
+		return len(data), data, nil
+	}
+
+	// Request more data
+	return 0, nil, nil
 }

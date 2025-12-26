@@ -3,6 +3,7 @@ package decoder
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/cacack/gedcom-go/gedcom"
@@ -40,13 +41,8 @@ func TestParseRealGEDCOMFiles(t *testing.T) {
 }
 
 // Test GEDCOM 5.5 Torture Test Suite - comprehensive validation
-// NOTE: Currently skipped because these files use ISO-8859/ANSEL encoding
-// which requires character set conversion support not yet implemented.
-// TODO: Implement ANSEL-to-UTF-8 conversion in charset package
+// ANSEL encoding is now fully supported via the charset package.
 func TestTortureTestSuite(t *testing.T) {
-	t.Skip("Torture test files use ANSEL encoding which is not yet supported. " +
-		"These files use ISO-8859 character encoding with ANSEL special characters. " +
-		"Future work: implement charset conversion in the charset package.")
 
 	testFiles := []struct {
 		path        string
@@ -105,6 +101,16 @@ func TestTortureTestSuite(t *testing.T) {
 			// Verify ANSEL encoding is detected
 			if doc.Header.Encoding != gedcom.EncodingANSEL {
 				t.Logf("Warning: Expected ANSEL encoding, got %v", doc.Header.Encoding)
+			}
+
+			// Verify the copyright symbol (ANSEL 0xC3) decodes correctly to Unicode (U+00A9)
+			// The header contains: "(c) 1997 by H. Eichmann" where (c) is actually the copyright symbol
+			if doc.Header.Copyright != "" {
+				// The copyright sign in Unicode is (c) U+00A9
+				if !strings.Contains(doc.Header.Copyright, "\u00A9") {
+					t.Errorf("Copyright symbol not decoded correctly: got %q, want to contain U+00A9 (\u00A9)", doc.Header.Copyright)
+				}
+				t.Logf("Copyright field: %s", doc.Header.Copyright)
 			}
 
 			t.Logf("Successfully parsed %s: %d records, %d XRefs",
