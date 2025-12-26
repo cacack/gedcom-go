@@ -1157,3 +1157,244 @@ func TestNewReader_HeaderDetectionError(t *testing.T) {
 		t.Errorf("NewReader() = %q, want %q", got, input)
 	}
 }
+
+func TestDetectEncodingFromHeader_LATIN1(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantEncoding Encoding
+	}{
+		{
+			name:         "LATIN1 encoding",
+			input:        "0 HEAD\n1 CHAR LATIN1\n0 TRLR\n",
+			wantEncoding: EncodingLATIN1,
+		},
+		{
+			name:         "LATIN1 encoding (lowercase)",
+			input:        "0 HEAD\n1 char latin1\n0 TRLR\n",
+			wantEncoding: EncodingLATIN1,
+		},
+		{
+			name:         "LATIN1 encoding (mixed case)",
+			input:        "0 HEAD\n1 CHAR Latin1\n0 TRLR\n",
+			wantEncoding: EncodingLATIN1,
+		},
+		{
+			name:         "ISO-8859-1 encoding",
+			input:        "0 HEAD\n1 CHAR ISO-8859-1\n0 TRLR\n",
+			wantEncoding: EncodingLATIN1,
+		},
+		{
+			name:         "ISO-8859-1 encoding (lowercase)",
+			input:        "0 HEAD\n1 char iso-8859-1\n0 TRLR\n",
+			wantEncoding: EncodingLATIN1,
+		},
+		{
+			name:         "ANSI encoding",
+			input:        "0 HEAD\n1 CHAR ANSI\n0 TRLR\n",
+			wantEncoding: EncodingLATIN1,
+		},
+		{
+			name:         "ANSI encoding (lowercase)",
+			input:        "0 HEAD\n1 char ansi\n0 TRLR\n",
+			wantEncoding: EncodingLATIN1,
+		},
+		{
+			name:         "LATIN1 with CR line ending",
+			input:        "0 HEAD\r1 CHAR LATIN1\r0 TRLR\r",
+			wantEncoding: EncodingLATIN1,
+		},
+		{
+			name:         "LATIN1 with CRLF line ending",
+			input:        "0 HEAD\r\n1 CHAR LATIN1\r\n0 TRLR\r\n",
+			wantEncoding: EncodingLATIN1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, encoding, err := DetectEncodingFromHeader(strings.NewReader(tt.input))
+			if err != nil {
+				t.Fatalf("DetectEncodingFromHeader() error = %v", err)
+			}
+
+			if encoding != tt.wantEncoding {
+				t.Errorf("DetectEncodingFromHeader() encoding = %v, want %v", encoding, tt.wantEncoding)
+			}
+
+			// Verify all bytes are preserved
+			got, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+			if string(got) != tt.input {
+				t.Errorf("DetectEncodingFromHeader() data = %q, want %q", got, tt.input)
+			}
+		})
+	}
+}
+
+func TestNewReaderWithEncoding_LATIN1(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []byte
+		want  string
+	}{
+		{
+			name:  "ASCII passthrough",
+			input: []byte("Hello World"),
+			want:  "Hello World",
+		},
+		{
+			name: "LATIN1 high byte - e acute (0xE9)",
+			// 0xE9 in LATIN1 is 'é' (U+00E9)
+			// In UTF-8 this is: 0xC3 0xA9
+			input: []byte{0xE9},
+			want:  "é",
+		},
+		{
+			name: "LATIN1 high byte - u umlaut (0xFC)",
+			// 0xFC in LATIN1 is 'ü' (U+00FC)
+			// In UTF-8 this is: 0xC3 0xBC
+			input: []byte{0xFC},
+			want:  "ü",
+		},
+		{
+			name: "LATIN1 high byte - n tilde (0xF1)",
+			// 0xF1 in LATIN1 is 'ñ' (U+00F1)
+			// In UTF-8 this is: 0xC3 0xB1
+			input: []byte{0xF1},
+			want:  "ñ",
+		},
+		{
+			name: "LATIN1 copyright symbol (0xA9)",
+			// 0xA9 in LATIN1 is '©' (U+00A9)
+			input: []byte{0xA9},
+			want:  "©",
+		},
+		{
+			name: "LATIN1 pound sign (0xA3)",
+			// 0xA3 in LATIN1 is '£' (U+00A3)
+			input: []byte{0xA3},
+			want:  "£",
+		},
+		{
+			name: "LATIN1 degree symbol (0xB0)",
+			// 0xB0 in LATIN1 is '°' (U+00B0)
+			input: []byte{0xB0},
+			want:  "°",
+		},
+		{
+			name: "Mixed ASCII and LATIN1",
+			// "Café" in LATIN1: C(0x43) a(0x61) f(0x66) é(0xE9)
+			input: []byte{0x43, 0x61, 0x66, 0xE9},
+			want:  "Café",
+		},
+		{
+			name: "Multiple LATIN1 high bytes",
+			// "München" in LATIN1: M(0x4D) ü(0xFC) n(0x6E) c(0x63) h(0x68) e(0x65) n(0x6E)
+			input: []byte{0x4D, 0xFC, 0x6E, 0x63, 0x68, 0x65, 0x6E},
+			want:  "München",
+		},
+		{
+			name: "LATIN1 boundary byte (0x80)",
+			// 0x80 in LATIN1 is U+0080 (control character)
+			input: []byte{0x80},
+			want:  "\u0080",
+		},
+		{
+			name: "LATIN1 max byte (0xFF)",
+			// 0xFF in LATIN1 is 'ÿ' (U+00FF)
+			input: []byte{0xFF},
+			want:  "ÿ",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewReaderWithEncoding(bytes.NewReader(tt.input), EncodingLATIN1)
+			got, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+
+			if string(got) != tt.want {
+				t.Errorf("NewReaderWithEncoding(LATIN1) = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewReader_LATIN1_AutoDetection(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []byte
+		want  string
+	}{
+		{
+			name: "Simple LATIN1 file",
+			// GEDCOM header declaring LATIN1, followed by ASCII content
+			input: []byte("0 HEAD\n1 CHAR LATIN1\n0 @I1@ INDI\n1 NAME John /Doe/\n0 TRLR\n"),
+			want:  "0 HEAD\n1 CHAR LATIN1\n0 @I1@ INDI\n1 NAME John /Doe/\n0 TRLR\n",
+		},
+		{
+			name: "LATIN1 with accented name",
+			// GEDCOM header declaring LATIN1, with é (0xE9)
+			input: append(
+				[]byte("0 HEAD\n1 CHAR LATIN1\n0 @I1@ INDI\n1 NAME Ren"),
+				append([]byte{0xE9}, []byte(" /Dubois/\n0 TRLR\n")...)...,
+			),
+			want: "0 HEAD\n1 CHAR LATIN1\n0 @I1@ INDI\n1 NAME René /Dubois/\n0 TRLR\n",
+		},
+		{
+			name: "LATIN1 with German umlaut",
+			// GEDCOM header declaring LATIN1, with ü (0xFC)
+			input: append(
+				[]byte("0 HEAD\n1 CHAR LATIN1\n0 @I1@ INDI\n1 NAME J"),
+				append([]byte{0xFC, 0x72, 0x67, 0x65, 0x6E}, []byte(" /M\xFCller/\n0 TRLR\n")...)...,
+			),
+			want: "0 HEAD\n1 CHAR LATIN1\n0 @I1@ INDI\n1 NAME Jürgen /Müller/\n0 TRLR\n",
+		},
+		{
+			name: "LATIN1 with Spanish tilde",
+			// GEDCOM header declaring LATIN1, with ñ (0xF1)
+			input: append(
+				[]byte("0 HEAD\n1 CHAR LATIN1\n0 @I1@ INDI\n1 NAME Jose /Nu"),
+				append([]byte{0xF1, 0x65, 0x7A}, []byte("/\n0 TRLR\n")...)...,
+			),
+			want: "0 HEAD\n1 CHAR LATIN1\n0 @I1@ INDI\n1 NAME Jose /Nuñez/\n0 TRLR\n",
+		},
+		{
+			name: "ISO-8859-1 header variant",
+			// GEDCOM header declaring ISO-8859-1 (should work same as LATIN1)
+			input: append(
+				[]byte("0 HEAD\n1 CHAR ISO-8859-1\n0 @I1@ INDI\n1 NAME Caf"),
+				append([]byte{0xE9}, []byte(" /Test/\n0 TRLR\n")...)...,
+			),
+			want: "0 HEAD\n1 CHAR ISO-8859-1\n0 @I1@ INDI\n1 NAME Café /Test/\n0 TRLR\n",
+		},
+		{
+			name: "ANSI header variant",
+			// GEDCOM header declaring ANSI (should work same as LATIN1)
+			input: append(
+				[]byte("0 HEAD\n1 CHAR ANSI\n0 @I1@ INDI\n1 NAME Caf"),
+				append([]byte{0xE9}, []byte(" /Test/\n0 TRLR\n")...)...,
+			),
+			want: "0 HEAD\n1 CHAR ANSI\n0 @I1@ INDI\n1 NAME Café /Test/\n0 TRLR\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewReader(bytes.NewReader(tt.input))
+			got, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+
+			if string(got) != tt.want {
+				t.Errorf("NewReader(LATIN1) = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

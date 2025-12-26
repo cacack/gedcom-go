@@ -13,6 +13,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 )
@@ -33,6 +34,8 @@ const (
 	EncodingANSEL
 	// EncodingASCII indicates ASCII encoding.
 	EncodingASCII
+	// EncodingLATIN1 indicates ISO-8859-1 (Latin-1) encoding.
+	EncodingLATIN1
 )
 
 // ErrInvalidUTF8 is returned when invalid UTF-8 sequences are encountered.
@@ -334,6 +337,8 @@ func DetectEncodingFromHeader(r io.Reader) (io.Reader, Encoding, error) {
 			encoding = EncodingUTF16LE
 		case "UTF-16BE":
 			encoding = EncodingUTF16BE
+		case "LATIN1", "ISO-8859-1", "ANSI":
+			encoding = EncodingLATIN1
 		}
 	}
 
@@ -346,6 +351,7 @@ func DetectEncodingFromHeader(r io.Reader) (io.Reader, Encoding, error) {
 //
 // Supported encodings:
 //   - EncodingANSEL: ANSEL to UTF-8 conversion, then validation
+//   - EncodingLATIN1: ISO-8859-1 to UTF-8 conversion, then validation
 //   - EncodingUTF16LE: UTF-16 LE to UTF-8 conversion, then validation
 //   - EncodingUTF16BE: UTF-16 BE to UTF-8 conversion, then validation
 //   - EncodingUTF8, EncodingASCII, EncodingUnknown: UTF-8 validation only
@@ -356,6 +362,10 @@ func NewReaderWithEncoding(r io.Reader, enc Encoding) io.Reader {
 	case EncodingANSEL:
 		// ANSEL needs conversion to UTF-8
 		convertedReader = newAnselReader(r)
+	case EncodingLATIN1:
+		// LATIN1 (ISO-8859-1) needs conversion to UTF-8
+		decoder := charmap.ISO8859_1.NewDecoder()
+		convertedReader = transform.NewReader(r, decoder)
 	case EncodingUTF16LE:
 		// UTF-16 LE needs conversion to UTF-8
 		convertedReader = newUTF16Reader(r, false)
