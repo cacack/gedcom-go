@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/cacack/gedcom-go/compare/v0.4.0...v0.5.0) (2025-12-26)
+
+
+### Features
+
+* **charset:** add ANSEL character encoding support ([4264f8a](https://github.com/cacack/gedcom-go/commit/4264f8a6e955410ed2679c198674215a094ce7cd))
+* **charset:** add LATIN1 (ISO-8859-1) encoding support ([adf35a1](https://github.com/cacack/gedcom-go/commit/adf35a14589b82f222a42292cff00f607a181144))
+* **charset:** add UTF-16 LE/BE encoding support ([d321d51](https://github.com/cacack/gedcom-go/commit/d321d51c3331f490eb9534a5357f69d65f689f98))
+* **encoder:** support encoding high-level types ([4d42d94](https://github.com/cacack/gedcom-go/commit/4d42d944696e2be221f0b8b8f2d235eb40be8345))
+
+
+### Bug Fixes
+
+* **deps:** use golang.org/x/text v0.14.0 for Go 1.21 compatibility ([433e58c](https://github.com/cacack/gedcom-go/commit/433e58c4758f9211c54602a93031e75caba88662))
+
 ## [0.4.0](https://github.com/cacack/gedcom-go/compare/v0.3.0...v0.4.0) (2025-12-23)
 
 
