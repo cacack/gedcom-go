@@ -107,8 +107,16 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 		}
 	}
 
+	// Determine which tags to write:
+	// - If record.Tags has content, use those (preserves lossless behavior)
+	// - If record.Tags is empty/nil but Entity is set, convert entity to tags
+	tags := record.Tags
+	if len(tags) == 0 && record.Entity != nil {
+		tags = entityToTags(record)
+	}
+
 	// Write tags
-	for _, tag := range record.Tags {
+	for _, tag := range tags {
 		if err := writeTag(w, tag, opts); err != nil {
 			return err
 		}
