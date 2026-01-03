@@ -84,6 +84,43 @@ type PersonalName struct {
 
 	// Type is the name type (e.g., "birth", "married", "aka")
 	Type string
+
+	// Transliterations are alternative representations of the name in different
+	// writing systems or scripts (GEDCOM 7.0 TRAN tag). Used to store the same
+	// name in different languages, scripts, or romanization systems.
+	Transliterations []*Transliteration
+}
+
+// Transliteration represents an alternative representation of a name in a different
+// writing system, script, or language (GEDCOM 7.0 TRAN tag under NAME).
+// Each transliteration can include the full transliterated name value plus
+// individual name components in that writing system.
+type Transliteration struct {
+	// Value is the full transliterated name in GEDCOM format (e.g., "John /Doe/").
+	// This is the value from the TRAN tag itself.
+	Value string
+
+	// Language is the BCP 47 language tag indicating the language/script of this
+	// transliteration (GEDCOM 7.0 LANG tag). Examples: "en-GB", "ja-Latn", "zh-Hans".
+	Language string
+
+	// Given is the transliterated given (first) name (GIVN tag).
+	Given string
+
+	// Surname is the transliterated family name (SURN tag).
+	Surname string
+
+	// Prefix is the transliterated name prefix, e.g., "Dr.", "Sir" (NPFX tag).
+	Prefix string
+
+	// Suffix is the transliterated name suffix, e.g., "Jr.", "III" (NSFX tag).
+	Suffix string
+
+	// Nickname is the transliterated nickname (NICK tag).
+	Nickname string
+
+	// SurnamePrefix is the transliterated surname prefix, e.g., "von", "de" (SPFX tag).
+	SurnamePrefix string
 }
 
 // FamilyLink represents a link to a family with optional pedigree type.
@@ -105,6 +142,15 @@ type Association struct {
 	// Role is the relationship role (e.g., "GODP" for godparent, "WITN" for witness)
 	// In GEDCOM 5.5.1 this comes from RELA tag, in GEDCOM 7.0 from ROLE tag
 	Role string
+
+	// Phrase is a human-readable description of the association (GEDCOM 7.0 PHRASE tag).
+	// Used when the structured data cannot fully express the relationship.
+	// Example: "Mr Stockdale" as the associated person's name when @XREF@ is unavailable.
+	Phrase string
+
+	// SourceCitations are source citations documenting this association (GEDCOM 7.0).
+	// Allows citing sources for the association relationship itself.
+	SourceCitations []*SourceCitation
 
 	// Notes are note references for this association
 	Notes []string

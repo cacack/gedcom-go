@@ -253,6 +253,33 @@ All vendor extensions are preserved during encode/decode cycles. Custom tags not
 - NICK - Nickname
 - TYPE - Name type (birth, married, aka)
 
+### Transliterations (TRAN)
+
+Support for alternative name representations in different scripts/languages (GEDCOM 7.0):
+
+```go
+// Access name transliterations
+for _, name := range individual.Names {
+    for _, tran := range name.Transliterations {
+        fmt.Println(tran.Value)     // "Johann /Müller/"
+        fmt.Println(tran.Language)  // "de"
+        fmt.Println(tran.Given)     // "Johann"
+        fmt.Println(tran.Surname)   // "Müller"
+    }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| Value | Full transliterated name |
+| Language | BCP 47 language tag (e.g., "en-GB", "ja-Latn") |
+| Given | Transliterated given name |
+| Surname | Transliterated surname |
+| Prefix | Transliterated name prefix |
+| Suffix | Transliterated name suffix |
+| Nickname | Transliterated nickname |
+| SurnamePrefix | Transliterated surname prefix |
+
 ## Pedigree (PEDI) Support
 
 - FAMC with pedigree linkage type
@@ -274,7 +301,20 @@ Each includes: DATE, PLAC, TEMP (temple), STAT (status)
 
 - Link individuals with roles
 - Supported roles: GODP (godparent), WITN (witness), custom roles
+- PHRASE - Human-readable description (GEDCOM 7.0)
+- Source citations on associations (GEDCOM 7.0)
 - Notes on associations
+
+```go
+// Access GEDCOM 7.0 association features
+for _, assoc := range individual.Associations {
+    fmt.Println(assoc.Role)    // "GODP"
+    fmt.Println(assoc.Phrase)  // "Godparent at baptism"
+    for _, cite := range assoc.SourceCitations {
+        fmt.Println(cite.SourceXRef)  // "@S1@"
+    }
+}
+```
 
 ## Date Parsing
 
@@ -302,6 +342,7 @@ Structured date parsing for GEDCOM date strings with full support for:
 | B.C. dates | `44 BC`, `753 B.C.E.` | IsBC flag set |
 | Dual dating | `21 FEB 1750/51` | Both years accessible |
 | Date phrases | `(unknown)` | GEDCOM 5.5 format |
+| PHRASE subordinate | `3 PHRASE Afternoon` | GEDCOM 7.0 human-readable description |
 
 ### Validation
 

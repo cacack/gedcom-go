@@ -533,6 +533,44 @@ func nameToTags(name *gedcom.PersonalName, level int) []*gedcom.Tag {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: name.Type})
 	}
 
+	// Transliterations (GEDCOM 7.0 TRAN tag)
+	for _, tran := range name.Transliterations {
+		tags = append(tags, transliterationToTags(tran, level+1)...)
+	}
+
+	return tags
+}
+
+// transliterationToTags converts a Transliteration to GEDCOM tags at the specified level.
+func transliterationToTags(tran *gedcom.Transliteration, level int) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+
+	// TRAN tag with transliterated name value
+	tags = append(tags, &gedcom.Tag{Level: level, Tag: "TRAN", Value: tran.Value})
+
+	// Subordinate tags at level+1
+	if tran.Language != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "LANG", Value: tran.Language})
+	}
+	if tran.Given != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "GIVN", Value: tran.Given})
+	}
+	if tran.Surname != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SURN", Value: tran.Surname})
+	}
+	if tran.Prefix != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NPFX", Value: tran.Prefix})
+	}
+	if tran.Suffix != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NSFX", Value: tran.Suffix})
+	}
+	if tran.Nickname != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NICK", Value: tran.Nickname})
+	}
+	if tran.SurnamePrefix != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SPFX", Value: tran.SurnamePrefix})
+	}
+
 	return tags
 }
 
@@ -821,9 +859,19 @@ func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions
 	tags = append(tags, &gedcom.Tag{Level: level, Tag: "ASSO", Value: assoc.IndividualXRef})
 
 	// Subordinate tags at level+1
+	// PHRASE (GEDCOM 7.0) - human-readable description of the association
+	if assoc.Phrase != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PHRASE", Value: assoc.Phrase})
+	}
+
 	// Use ROLE for GEDCOM 7.0 compatibility (also compatible with 5.5.1 RELA)
 	if assoc.Role != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "ROLE", Value: assoc.Role})
+	}
+
+	// Source citations (GEDCOM 7.0)
+	for _, cite := range assoc.SourceCitations {
+		tags = append(tags, sourceCitationToTags(cite, level+1, opts)...)
 	}
 
 	// Notes (with CONT/CONC for multiline/long)
