@@ -18,6 +18,13 @@ type Repository struct {
 	Tags []*Tag
 }
 
+// InlineRepository represents an inline repository definition within a Source.
+// Used when a Source references a repository by name rather than by XRef.
+type InlineRepository struct {
+	// Name is the repository name
+	Name string
+}
+
 // Address represents a physical or digital address.
 type Address struct {
 	// Line1 is the first address line

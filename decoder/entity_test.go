@@ -3227,3 +3227,95 @@ func TestParseMediaLink_Full(t *testing.T) {
 		t.Errorf("link.Crop.Width = %d, want 150", link.Crop.Width)
 	}
 }
+
+// TestSourceInlineRepositoryDecoding tests decoding of inline repository definitions
+func TestSourceInlineRepositoryDecoding(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL Test Source
+1 REPO
+2 NAME State Archives
+0 @S2@ SOUR
+1 TITL Source with XRef
+1 REPO @R1@
+0 @S3@ SOUR
+1 TITL Source no repo
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test source with inline repository
+	src1 := doc.GetSource("@S1@")
+	if src1 == nil {
+		t.Fatal("Source @S1@ not found")
+	}
+	if src1.Title != "Test Source" {
+		t.Errorf("src1.Title = %s, want 'Test Source'", src1.Title)
+	}
+	if src1.RepositoryRef != "" {
+		t.Errorf("src1.RepositoryRef = %s, want empty", src1.RepositoryRef)
+	}
+	if src1.Repository == nil {
+		t.Fatal("src1.Repository is nil, want non-nil")
+	}
+	if src1.Repository.Name != "State Archives" {
+		t.Errorf("src1.Repository.Name = %s, want 'State Archives'", src1.Repository.Name)
+	}
+
+	// Test source with XRef repository
+	src2 := doc.GetSource("@S2@")
+	if src2 == nil {
+		t.Fatal("Source @S2@ not found")
+	}
+	if src2.RepositoryRef != "@R1@" {
+		t.Errorf("src2.RepositoryRef = %s, want '@R1@'", src2.RepositoryRef)
+	}
+	if src2.Repository != nil {
+		t.Errorf("src2.Repository should be nil when XRef is present")
+	}
+
+	// Test source with no repository
+	src3 := doc.GetSource("@S3@")
+	if src3 == nil {
+		t.Fatal("Source @S3@ not found")
+	}
+	if src3.RepositoryRef != "" {
+		t.Errorf("src3.RepositoryRef = %s, want empty", src3.RepositoryRef)
+	}
+	if src3.Repository != nil {
+		t.Errorf("src3.Repository should be nil")
+	}
+}
+
+// TestSourceInlineRepositoryRoundtrip tests decoding and re-encoding preserves inline repository
+func TestSourceInlineRepositoryRoundtrip(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL Census Records
+1 REPO
+2 NAME County Archives
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	src := doc.GetSource("@S1@")
+	if src == nil {
+		t.Fatal("Source not found")
+	}
+	if src.Repository == nil {
+		t.Fatal("Repository is nil after decode")
+	}
+	if src.Repository.Name != "County Archives" {
+		t.Errorf("Repository.Name = %s, want 'County Archives'", src.Repository.Name)
+	}
+}

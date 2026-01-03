@@ -585,7 +585,12 @@ func parseSource(record *gedcom.Record) *gedcom.Source {
 		case "TEXT":
 			src.Text = tag.Value
 		case "REPO":
-			src.RepositoryRef = tag.Value
+			if tag.Value != "" {
+				src.RepositoryRef = tag.Value
+			} else {
+				// Look for inline repository with NAME subordinate
+				src.Repository = parseInlineRepository(record.Tags, i)
+			}
 		case "NOTE":
 			src.Notes = append(src.Notes, tag.Value)
 		case "OBJE":
@@ -603,6 +608,28 @@ func parseSource(record *gedcom.Record) *gedcom.Source {
 	}
 
 	return src
+}
+
+// parseInlineRepository extracts an inline repository from tags starting at repoIdx.
+// An inline repository has no XRef value and contains subordinate tags like NAME.
+func parseInlineRepository(tags []*gedcom.Tag, repoIdx int) *gedcom.InlineRepository {
+	repo := &gedcom.InlineRepository{}
+
+	baseLevel := tags[repoIdx].Level
+
+	// Look for subordinate tags at baseLevel+1
+	for i := repoIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 && tag.Tag == "NAME" {
+			repo.Name = tag.Value
+			break
+		}
+	}
+
+	return repo
 }
 
 // parseChangeDate extracts a change date structure from tags starting at chanIdx.

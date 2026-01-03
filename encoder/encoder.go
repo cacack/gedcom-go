@@ -112,7 +112,7 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 	// - If record.Tags is empty/nil but Entity is set, convert entity to tags
 	tags := record.Tags
 	if len(tags) == 0 && record.Entity != nil {
-		tags = entityToTags(record)
+		tags = entityToTags(record, opts)
 	}
 
 	// Write tags

@@ -3,15 +3,120 @@ package encoder
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/cacack/gedcom-go/gedcom"
 )
+
+// textToTags converts a potentially multiline string value to GEDCOM tags.
+// The first line becomes the primary tag at the specified level, and subsequent
+// lines become CONT (continuation) tags at level+1.
+//
+// When opts is provided and DisableLineWrap is false, lines exceeding
+// MaxLineLength are automatically split using CONC tags at word boundaries.
+//
+// Examples:
+//   - "Single line" -> [TAG value="Single line"]
+//   - "Line1\nLine2" -> [TAG value="Line1", CONT value="Line2"]
+//   - "" -> [TAG value=""]
+//   - "Very long line..." -> [TAG value="Very long...", CONC value="line..."]
+func textToTags(value string, level int, tagName string, opts *EncodeOptions) []*gedcom.Tag {
+	// Handle empty value - return single tag with empty value
+	if value == "" {
+		return []*gedcom.Tag{{Level: level, Tag: tagName, Value: ""}}
+	}
+
+	// Split on newlines first
+	lines := strings.Split(value, "\n")
+
+	tags := make([]*gedcom.Tag, 0, len(lines))
+
+	// Process first line - it becomes the primary tag
+	firstLineSegments := splitLineForLength(lines[0], opts)
+	tags = append(tags, &gedcom.Tag{Level: level, Tag: tagName, Value: firstLineSegments[0]})
+
+	// Add CONC tags for remaining segments of first line
+	for i := 1; i < len(firstLineSegments); i++ {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONC", Value: firstLineSegments[i]})
+	}
+
+	// Process remaining lines (from newlines) - they become CONT tags
+	for i := 1; i < len(lines); i++ {
+		lineSegments := splitLineForLength(lines[i], opts)
+
+		// First segment becomes CONT
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONT", Value: lineSegments[0]})
+
+		// Remaining segments become CONC at level+1 (same as CONT)
+		for j := 1; j < len(lineSegments); j++ {
+			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONC", Value: lineSegments[j]})
+		}
+	}
+
+	return tags
+}
+
+// splitLineForLength splits a single line into segments that fit within MaxLineLength.
+// Returns a slice with at least one element (the original line if no splitting needed).
+// Attempts to split at word boundaries (spaces) when possible.
+func splitLineForLength(line string, opts *EncodeOptions) []string {
+	// If line wrapping is disabled or line is short enough, return as-is
+	if opts != nil && opts.DisableLineWrap {
+		return []string{line}
+	}
+
+	maxLen := DefaultMaxLineLength
+	if opts != nil {
+		maxLen = opts.effectiveMaxLineLength()
+	}
+
+	if len(line) <= maxLen {
+		return []string{line}
+	}
+
+	var segments []string
+	remaining := line
+
+	for len(remaining) > maxLen {
+		// Find the best split point - prefer word boundary (space)
+		splitAt := findWordBoundary(remaining, maxLen)
+
+		segments = append(segments, remaining[:splitAt])
+		remaining = remaining[splitAt:]
+	}
+
+	// Add the final segment
+	if remaining != "" {
+		segments = append(segments, remaining)
+	}
+
+	return segments
+}
+
+// findWordBoundary finds the best position to split a line at or before maxLen.
+// Prefers splitting at a space (word boundary) but falls back to maxLen if no space found.
+func findWordBoundary(line string, maxLen int) int {
+	if len(line) <= maxLen {
+		return len(line)
+	}
+
+	// Look for last space within the maxLen limit
+	lastSpace := strings.LastIndex(line[:maxLen], " ")
+
+	if lastSpace > 0 {
+		// Found a space - split after the space to keep space with first segment
+		return lastSpace + 1
+	}
+
+	// No word boundary found, split at maxLen exactly
+	return maxLen
+}
 
 // entityToTags converts an entity to tags based on record type.
 // Returns nil if no conversion is needed (entity is nil or type not supported).
 //
 //nolint:gocyclo // Type switch for all GEDCOM record types requires many cases
-func entityToTags(record *gedcom.Record) []*gedcom.Tag {
+func entityToTags(record *gedcom.Record, opts *EncodeOptions) []*gedcom.Tag {
 	if record.Entity == nil {
 		return nil
 	}
@@ -19,23 +124,23 @@ func entityToTags(record *gedcom.Record) []*gedcom.Tag {
 	switch record.Type {
 	case gedcom.RecordTypeIndividual:
 		if indi, ok := record.Entity.(*gedcom.Individual); ok {
-			return individualToTags(indi)
+			return individualToTags(indi, opts)
 		}
 	case gedcom.RecordTypeFamily:
 		if fam, ok := record.Entity.(*gedcom.Family); ok {
-			return familyToTags(fam)
+			return familyToTags(fam, opts)
 		}
 	case gedcom.RecordTypeSource:
 		if src, ok := record.Entity.(*gedcom.Source); ok {
-			return sourceToTags(src)
+			return sourceToTags(src, opts)
 		}
 	case gedcom.RecordTypeSubmitter:
 		if subm, ok := record.Entity.(*gedcom.Submitter); ok {
-			return submitterToTags(subm)
+			return submitterToTags(subm, opts)
 		}
 	case gedcom.RecordTypeRepository:
 		if repo, ok := record.Entity.(*gedcom.Repository); ok {
-			return repositoryToTags(repo)
+			return repositoryToTags(repo, opts)
 		}
 	case gedcom.RecordTypeNote:
 		if note, ok := record.Entity.(*gedcom.Note); ok {
@@ -43,7 +148,7 @@ func entityToTags(record *gedcom.Record) []*gedcom.Tag {
 		}
 	case gedcom.RecordTypeMedia:
 		if media, ok := record.Entity.(*gedcom.MediaObject); ok {
-			return mediaObjectToTags(media)
+			return mediaObjectToTags(media, opts)
 		}
 	}
 
@@ -53,7 +158,7 @@ func entityToTags(record *gedcom.Record) []*gedcom.Tag {
 // individualToTags converts an Individual entity to GEDCOM tags.
 //
 //nolint:gocyclo // Converting all individual fields requires handling many cases
-func individualToTags(indi *gedcom.Individual) []*gedcom.Tag {
+func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// Names (level 1)
@@ -68,12 +173,12 @@ func individualToTags(indi *gedcom.Individual) []*gedcom.Tag {
 
 	// Events (level 1) - BIRT, DEAT, etc.
 	for _, event := range indi.Events {
-		tags = append(tags, eventToTags(event, 1)...)
+		tags = append(tags, eventToTags(event, 1, opts)...)
 	}
 
 	// Attributes (level 1) - OCCU, EDUC, etc.
 	for _, attr := range indi.Attributes {
-		tags = append(tags, attributeToTags(attr, 1)...)
+		tags = append(tags, attributeToTags(attr, 1, opts)...)
 	}
 
 	// LDS Ordinances (level 1) - BAPL, CONL, ENDL, SLGC
@@ -93,17 +198,17 @@ func individualToTags(indi *gedcom.Individual) []*gedcom.Tag {
 
 	// Associations (level 1) - ASSO
 	for _, assoc := range indi.Associations {
-		tags = append(tags, associationToTags(assoc, 1)...)
+		tags = append(tags, associationToTags(assoc, 1, opts)...)
 	}
 
 	// Source citations (level 1) - SOUR
 	for _, cite := range indi.SourceCitations {
-		tags = append(tags, sourceCitationToTags(cite, 1)...)
+		tags = append(tags, sourceCitationToTags(cite, 1, opts)...)
 	}
 
-	// Notes (level 1) - NOTE
+	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
 	for _, note := range indi.Notes {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NOTE", Value: note})
+		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
 	// Media links (level 1) - OBJE
@@ -137,7 +242,7 @@ func individualToTags(indi *gedcom.Individual) []*gedcom.Tag {
 // familyToTags converts a Family entity to GEDCOM tags.
 //
 //nolint:gocyclo // Converting all family fields requires handling many cases
-func familyToTags(fam *gedcom.Family) []*gedcom.Tag {
+func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// Husband (level 1) - HUSB
@@ -162,7 +267,7 @@ func familyToTags(fam *gedcom.Family) []*gedcom.Tag {
 
 	// Events (level 1) - MARR, DIV, etc.
 	for _, event := range fam.Events {
-		tags = append(tags, eventToTags(event, 1)...)
+		tags = append(tags, eventToTags(event, 1, opts)...)
 	}
 
 	// LDS Ordinances (level 1) - SLGS
@@ -172,12 +277,12 @@ func familyToTags(fam *gedcom.Family) []*gedcom.Tag {
 
 	// Source citations (level 1) - SOUR
 	for _, cite := range fam.SourceCitations {
-		tags = append(tags, sourceCitationToTags(cite, 1)...)
+		tags = append(tags, sourceCitationToTags(cite, 1, opts)...)
 	}
 
-	// Notes (level 1) - NOTE
+	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
 	for _, note := range fam.Notes {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NOTE", Value: note})
+		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
 	// Media links (level 1) - OBJE
@@ -209,7 +314,7 @@ func familyToTags(fam *gedcom.Family) []*gedcom.Tag {
 }
 
 // sourceToTags converts a Source entity to GEDCOM tags.
-func sourceToTags(src *gedcom.Source) []*gedcom.Tag {
+func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// Title (level 1) - TITL
@@ -227,14 +332,19 @@ func sourceToTags(src *gedcom.Source) []*gedcom.Tag {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "PUBL", Value: src.Publication})
 	}
 
-	// Text (level 1) - TEXT
+	// Text (level 1) - TEXT (with CONT/CONC for multiline/long)
 	if src.Text != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "TEXT", Value: src.Text})
+		tags = append(tags, textToTags(src.Text, 1, "TEXT", opts)...)
 	}
 
-	// Repository reference (level 1) - REPO
+	// Repository reference or inline (level 1) - REPO
 	if src.RepositoryRef != "" {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REPO", Value: src.RepositoryRef})
+	} else if src.Repository != nil && src.Repository.Name != "" {
+		tags = append(tags,
+			&gedcom.Tag{Level: 1, Tag: "REPO"},
+			&gedcom.Tag{Level: 2, Tag: "NAME", Value: src.Repository.Name},
+		)
 	}
 
 	// Media links (level 1) - OBJE
@@ -242,9 +352,9 @@ func sourceToTags(src *gedcom.Source) []*gedcom.Tag {
 		tags = append(tags, mediaLinkToTags(media, 1)...)
 	}
 
-	// Notes (level 1) - NOTE
+	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
 	for _, note := range src.Notes {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NOTE", Value: note})
+		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
 	// Change date (level 1) - CHAN
@@ -271,7 +381,7 @@ func sourceToTags(src *gedcom.Source) []*gedcom.Tag {
 }
 
 // submitterToTags converts a Submitter entity to GEDCOM tags.
-func submitterToTags(subm *gedcom.Submitter) []*gedcom.Tag {
+func submitterToTags(subm *gedcom.Submitter, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// Name (level 1) - NAME
@@ -299,16 +409,16 @@ func submitterToTags(subm *gedcom.Submitter) []*gedcom.Tag {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "LANG", Value: lang})
 	}
 
-	// Notes (level 1) - NOTE
+	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
 	for _, note := range subm.Notes {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NOTE", Value: note})
+		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
 	return tags
 }
 
 // repositoryToTags converts a Repository entity to GEDCOM tags.
-func repositoryToTags(repo *gedcom.Repository) []*gedcom.Tag {
+func repositoryToTags(repo *gedcom.Repository, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// Name (level 1) - NAME
@@ -321,9 +431,9 @@ func repositoryToTags(repo *gedcom.Repository) []*gedcom.Tag {
 		tags = append(tags, addressToTags(repo.Address, 1)...)
 	}
 
-	// Notes (level 1) - NOTE
+	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
 	for _, note := range repo.Notes {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NOTE", Value: note})
+		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
 	return tags
@@ -342,7 +452,7 @@ func noteToTags(note *gedcom.Note) []*gedcom.Tag {
 }
 
 // mediaObjectToTags converts a MediaObject entity to GEDCOM tags.
-func mediaObjectToTags(media *gedcom.MediaObject) []*gedcom.Tag {
+func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// Files (level 1) - FILE
@@ -350,14 +460,14 @@ func mediaObjectToTags(media *gedcom.MediaObject) []*gedcom.Tag {
 		tags = append(tags, mediaFileToTags(file, 1)...)
 	}
 
-	// Notes (level 1) - NOTE
+	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
 	for _, note := range media.Notes {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NOTE", Value: note})
+		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
 	// Source citations (level 1) - SOUR
 	for _, cite := range media.SourceCitations {
-		tags = append(tags, sourceCitationToTags(cite, 1)...)
+		tags = append(tags, sourceCitationToTags(cite, 1, opts)...)
 	}
 
 	// Change date (level 1) - CHAN
@@ -424,7 +534,7 @@ func nameToTags(name *gedcom.PersonalName, level int) []*gedcom.Tag {
 // eventToTags converts an Event to GEDCOM tags at the specified level.
 //
 //nolint:gocyclo // Converting all event fields requires handling many cases
-func eventToTags(event *gedcom.Event, level int) []*gedcom.Tag {
+func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// Event tag (BIRT, DEAT, MARR, etc.)
@@ -487,14 +597,14 @@ func eventToTags(event *gedcom.Event, level int) []*gedcom.Tag {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SDATE", Value: event.SortDate})
 	}
 
-	// Notes
+	// Notes (with CONT/CONC for multiline/long)
 	for _, note := range event.Notes {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NOTE", Value: note})
+		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
 	// Source citations
 	for _, cite := range event.SourceCitations {
-		tags = append(tags, sourceCitationToTags(cite, level+1)...)
+		tags = append(tags, sourceCitationToTags(cite, level+1, opts)...)
 	}
 
 	// Media links
@@ -506,7 +616,7 @@ func eventToTags(event *gedcom.Event, level int) []*gedcom.Tag {
 }
 
 // attributeToTags converts an Attribute to GEDCOM tags at the specified level.
-func attributeToTags(attr *gedcom.Attribute, level int) []*gedcom.Tag {
+func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// Attribute tag (OCCU, EDUC, etc.) with value
@@ -523,14 +633,14 @@ func attributeToTags(attr *gedcom.Attribute, level int) []*gedcom.Tag {
 
 	// Source citations
 	for _, cite := range attr.SourceCitations {
-		tags = append(tags, sourceCitationToTags(cite, level+1)...)
+		tags = append(tags, sourceCitationToTags(cite, level+1, opts)...)
 	}
 
 	return tags
 }
 
 // sourceCitationToTags converts a SourceCitation to GEDCOM tags at the specified level.
-func sourceCitationToTags(cite *gedcom.SourceCitation, level int) []*gedcom.Tag {
+func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// SOUR tag with source XRef
@@ -547,14 +657,14 @@ func sourceCitationToTags(cite *gedcom.SourceCitation, level int) []*gedcom.Tag 
 
 	// DATA subordinate
 	if cite.Data != nil {
-		tags = append(tags, sourceCitationDataToTags(cite.Data, level+1)...)
+		tags = append(tags, sourceCitationDataToTags(cite.Data, level+1, opts)...)
 	}
 
 	return tags
 }
 
 // sourceCitationDataToTags converts SourceCitationData to GEDCOM tags at the specified level.
-func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int) []*gedcom.Tag {
+func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// DATA tag
@@ -565,8 +675,9 @@ func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int) []*ged
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: data.Date})
 	}
 
+	// Text (with CONT/CONC for multiline/long)
 	if data.Text != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TEXT", Value: data.Text})
+		tags = append(tags, textToTags(data.Text, level+1, "TEXT", opts)...)
 	}
 
 	return tags
@@ -693,7 +804,7 @@ func familyLinkToTags(link *gedcom.FamilyLink, level int) []*gedcom.Tag {
 }
 
 // associationToTags converts an Association to GEDCOM tags at the specified level.
-func associationToTags(assoc *gedcom.Association, level int) []*gedcom.Tag {
+func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// ASSO tag with individual XRef
@@ -705,9 +816,9 @@ func associationToTags(assoc *gedcom.Association, level int) []*gedcom.Tag {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "ROLE", Value: assoc.Role})
 	}
 
-	// Notes
+	// Notes (with CONT/CONC for multiline/long)
 	for _, note := range assoc.Notes {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NOTE", Value: note})
+		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
 	return tags

@@ -12,7 +12,7 @@ func TestEntityToTags_NilEntity(t *testing.T) {
 		Entity: nil,
 	}
 
-	tags := entityToTags(record)
+	tags := entityToTags(record, nil)
 	if tags != nil {
 		t.Errorf("entityToTags() with nil entity should return nil, got %v", tags)
 	}
@@ -25,7 +25,7 @@ func TestEntityToTags_UnsupportedType(t *testing.T) {
 		Entity: &gedcom.Individual{},
 	}
 
-	tags := entityToTags(record)
+	tags := entityToTags(record, nil)
 	if tags != nil {
 		t.Errorf("entityToTags() with unsupported type should return nil, got %v", tags)
 	}
@@ -38,7 +38,7 @@ func TestEntityToTags_TypeMismatch(t *testing.T) {
 		Entity: &gedcom.Family{}, // Wrong type
 	}
 
-	tags := entityToTags(record)
+	tags := entityToTags(record, nil)
 	if tags != nil {
 		t.Errorf("entityToTags() with type mismatch should return nil, got %v", tags)
 	}
@@ -167,7 +167,7 @@ func TestIndividualToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := individualToTags(tt.indi)
+			tags := individualToTags(tt.indi, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -251,7 +251,7 @@ func TestFamilyToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := familyToTags(tt.fam)
+			tags := familyToTags(tt.fam, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -308,17 +308,118 @@ func TestSourceToTags(t *testing.T) {
 			},
 			contains: []string{"TITL", "CHAN", "CREA", "REFN", "UID"},
 		},
+		{
+			name: "source with inline repository",
+			src: &gedcom.Source{
+				Title:      "Source with inline repo",
+				Repository: &gedcom.InlineRepository{Name: "State Archives"},
+			},
+			contains: []string{"TITL", "REPO", "NAME"},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := sourceToTags(tt.src)
+			tags := sourceToTags(tt.src, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
 				if !tagMap[expected] {
 					t.Errorf("sourceToTags() missing expected tag %q", expected)
 				}
+			}
+		})
+	}
+}
+
+// TestSourceInlineRepositoryEncoding tests inline repository encoding in detail
+func TestSourceInlineRepositoryEncoding(t *testing.T) {
+	tests := []struct {
+		name            string
+		src             *gedcom.Source
+		expectRepoTag   bool
+		expectRepoValue string
+		expectNameTag   bool
+		expectNameValue string
+	}{
+		{
+			name: "repository XRef takes precedence",
+			src: &gedcom.Source{
+				Title:         "Test Source",
+				RepositoryRef: "@R1@",
+				Repository:    &gedcom.InlineRepository{Name: "Should be ignored"},
+			},
+			expectRepoTag:   true,
+			expectRepoValue: "@R1@",
+			expectNameTag:   false,
+		},
+		{
+			name: "inline repository when no XRef",
+			src: &gedcom.Source{
+				Title:      "Test Source",
+				Repository: &gedcom.InlineRepository{Name: "State Archives"},
+			},
+			expectRepoTag:   true,
+			expectRepoValue: "",
+			expectNameTag:   true,
+			expectNameValue: "State Archives",
+		},
+		{
+			name: "no repository when both empty",
+			src: &gedcom.Source{
+				Title: "Test Source",
+			},
+			expectRepoTag: false,
+		},
+		{
+			name: "no repository when inline repo has empty name",
+			src: &gedcom.Source{
+				Title:      "Test Source",
+				Repository: &gedcom.InlineRepository{Name: ""},
+			},
+			expectRepoTag: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := sourceToTags(tt.src, nil)
+
+			// Find REPO tag
+			var repoTag, nameTag *gedcom.Tag
+			for i, tag := range tags {
+				if tag.Tag == "REPO" && tag.Level == 1 {
+					repoTag = tag
+					// Look for NAME at next position
+					if i+1 < len(tags) && tags[i+1].Tag == "NAME" && tags[i+1].Level == 2 {
+						nameTag = tags[i+1]
+					}
+					break
+				}
+			}
+
+			if tt.expectRepoTag {
+				if repoTag == nil {
+					t.Error("expected REPO tag but not found")
+					return
+				}
+				if repoTag.Value != tt.expectRepoValue {
+					t.Errorf("REPO value = %q, want %q", repoTag.Value, tt.expectRepoValue)
+				}
+			} else if repoTag != nil {
+				t.Errorf("expected no REPO tag but found one with value %q", repoTag.Value)
+			}
+
+			if tt.expectNameTag {
+				if nameTag == nil {
+					t.Error("expected NAME tag but not found")
+					return
+				}
+				if nameTag.Value != tt.expectNameValue {
+					t.Errorf("NAME value = %q, want %q", nameTag.Value, tt.expectNameValue)
+				}
+			} else if nameTag != nil {
+				t.Errorf("expected no NAME tag but found one with value %q", nameTag.Value)
 			}
 		})
 	}
@@ -373,7 +474,7 @@ func TestSubmitterToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := submitterToTags(tt.subm)
+			tags := submitterToTags(tt.subm, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -423,7 +524,7 @@ func TestRepositoryToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := repositoryToTags(tt.repo)
+			tags := repositoryToTags(tt.repo, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -554,7 +655,7 @@ func TestMediaObjectToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := mediaObjectToTags(tt.media)
+			tags := mediaObjectToTags(tt.media, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -729,7 +830,7 @@ func TestEventToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := eventToTags(tt.event, tt.level)
+			tags := eventToTags(tt.event, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -781,7 +882,7 @@ func TestAttributeToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := attributeToTags(tt.attr, tt.level)
+			tags := attributeToTags(tt.attr, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -842,7 +943,7 @@ func TestSourceCitationToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := sourceCitationToTags(tt.cite, tt.level)
+			tags := sourceCitationToTags(tt.cite, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -1023,7 +1124,7 @@ func TestAssociationToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := associationToTags(tt.assoc, tt.level)
+			tags := associationToTags(tt.assoc, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -1401,7 +1502,7 @@ func TestSourceCitationDataToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := sourceCitationDataToTags(tt.data, tt.level)
+			tags := sourceCitationDataToTags(tt.data, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -1482,7 +1583,7 @@ func TestEntityToTagsDispatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := entityToTags(tt.record)
+			tags := entityToTags(tt.record, nil)
 			if tt.expectTags && tags == nil {
 				t.Errorf("entityToTags() returned nil, expected tags")
 			}
@@ -1500,4 +1601,731 @@ func tagNamesToMap(tags []*gedcom.Tag) map[string]bool {
 		result[tag.Tag] = true
 	}
 	return result
+}
+
+// TestTextToTags tests the textToTags helper function for CONT continuation handling
+func TestTextToTags(t *testing.T) {
+	tests := []struct {
+		name          string
+		value         string
+		level         int
+		tagName       string
+		expectedTags  int
+		expectedFirst string // Value of first tag
+		expectedConts int    // Number of CONT tags expected
+	}{
+		{
+			name:          "empty value",
+			value:         "",
+			level:         1,
+			tagName:       "NOTE",
+			expectedTags:  1,
+			expectedFirst: "",
+			expectedConts: 0,
+		},
+		{
+			name:          "single line without newline",
+			value:         "This is a simple note",
+			level:         1,
+			tagName:       "NOTE",
+			expectedTags:  1,
+			expectedFirst: "This is a simple note",
+			expectedConts: 0,
+		},
+		{
+			name:          "two lines",
+			value:         "Line 1\nLine 2",
+			level:         1,
+			tagName:       "NOTE",
+			expectedTags:  2,
+			expectedFirst: "Line 1",
+			expectedConts: 1,
+		},
+		{
+			name:          "three lines",
+			value:         "Line 1\nLine 2\nLine 3",
+			level:         1,
+			tagName:       "NOTE",
+			expectedTags:  3,
+			expectedFirst: "Line 1",
+			expectedConts: 2,
+		},
+		{
+			name:          "trailing newline",
+			value:         "Line 1\nLine 2\n",
+			level:         1,
+			tagName:       "NOTE",
+			expectedTags:  3,
+			expectedFirst: "Line 1",
+			expectedConts: 2, // includes empty line from trailing newline
+		},
+		{
+			name:          "leading newline",
+			value:         "\nLine 2",
+			level:         1,
+			tagName:       "NOTE",
+			expectedTags:  2,
+			expectedFirst: "",
+			expectedConts: 1,
+		},
+		{
+			name:          "multiple empty lines",
+			value:         "Line 1\n\n\nLine 4",
+			level:         1,
+			tagName:       "NOTE",
+			expectedTags:  4,
+			expectedFirst: "Line 1",
+			expectedConts: 3,
+		},
+		{
+			name:          "TEXT tag at level 2",
+			value:         "Source text\nwith continuation",
+			level:         2,
+			tagName:       "TEXT",
+			expectedTags:  2,
+			expectedFirst: "Source text",
+			expectedConts: 1,
+		},
+		{
+			name:          "level 3 with multiple lines",
+			value:         "A\nB\nC",
+			level:         3,
+			tagName:       "NOTE",
+			expectedTags:  3,
+			expectedFirst: "A",
+			expectedConts: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := textToTags(tt.value, tt.level, tt.tagName, nil)
+
+			// Check total number of tags
+			if len(tags) != tt.expectedTags {
+				t.Errorf("textToTags() returned %d tags, want %d", len(tags), tt.expectedTags)
+			}
+
+			// Check first tag
+			if len(tags) > 0 {
+				if tags[0].Tag != tt.tagName {
+					t.Errorf("first tag = %q, want %q", tags[0].Tag, tt.tagName)
+				}
+				if tags[0].Level != tt.level {
+					t.Errorf("first tag level = %d, want %d", tags[0].Level, tt.level)
+				}
+				if tags[0].Value != tt.expectedFirst {
+					t.Errorf("first tag value = %q, want %q", tags[0].Value, tt.expectedFirst)
+				}
+			}
+
+			// Count CONT tags and verify their levels
+			contCount := 0
+			for i := 1; i < len(tags); i++ {
+				if tags[i].Tag == "CONT" {
+					contCount++
+					// CONT tags should be at level+1
+					if tags[i].Level != tt.level+1 {
+						t.Errorf("CONT tag at index %d has level %d, want %d", i, tags[i].Level, tt.level+1)
+					}
+				}
+			}
+			if contCount != tt.expectedConts {
+				t.Errorf("found %d CONT tags, want %d", contCount, tt.expectedConts)
+			}
+		})
+	}
+}
+
+// TestTextToTagsValues verifies the exact values of generated tags
+func TestTextToTagsValues(t *testing.T) {
+	tests := []struct {
+		name           string
+		value          string
+		expectedValues []string
+	}{
+		{
+			name:           "simple multiline",
+			value:          "First\nSecond\nThird",
+			expectedValues: []string{"First", "Second", "Third"},
+		},
+		{
+			name:           "with empty middle line",
+			value:          "Start\n\nEnd",
+			expectedValues: []string{"Start", "", "End"},
+		},
+		{
+			name:           "only newlines",
+			value:          "\n\n",
+			expectedValues: []string{"", "", ""},
+		},
+		{
+			name:           "unicode content",
+			value:          "日本語\n中文\nHello",
+			expectedValues: []string{"日本語", "中文", "Hello"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := textToTags(tt.value, 1, "NOTE", nil)
+
+			if len(tags) != len(tt.expectedValues) {
+				t.Fatalf("got %d tags, want %d", len(tags), len(tt.expectedValues))
+			}
+
+			for i, expectedValue := range tt.expectedValues {
+				if tags[i].Value != expectedValue {
+					t.Errorf("tag[%d].Value = %q, want %q", i, tags[i].Value, expectedValue)
+				}
+			}
+		})
+	}
+}
+
+// TestMultilineNoteEncoding tests that multiline notes are encoded correctly
+func TestMultilineNoteEncoding(t *testing.T) {
+	// Test with Individual
+	t.Run("individual with multiline note", func(t *testing.T) {
+		indi := &gedcom.Individual{
+			Notes: []string{"Line 1\nLine 2\nLine 3"},
+		}
+
+		tags := individualToTags(indi, nil)
+		tagMap := tagNamesToMap(tags)
+
+		if !tagMap["NOTE"] {
+			t.Error("missing NOTE tag")
+		}
+		if !tagMap["CONT"] {
+			t.Error("missing CONT tag for multiline note")
+		}
+
+		// Verify structure: NOTE at level 1, CONT at level 2
+		noteFound := false
+		contCount := 0
+		for _, tag := range tags {
+			if tag.Tag == "NOTE" && tag.Level == 1 {
+				noteFound = true
+			}
+			if tag.Tag == "CONT" && tag.Level == 2 {
+				contCount++
+			}
+		}
+		if !noteFound {
+			t.Error("NOTE tag not at level 1")
+		}
+		if contCount != 2 {
+			t.Errorf("expected 2 CONT tags at level 2, got %d", contCount)
+		}
+	})
+
+	// Test with Family
+	t.Run("family with multiline note", func(t *testing.T) {
+		fam := &gedcom.Family{
+			Notes: []string{"Family note\nwith continuation"},
+		}
+
+		tags := familyToTags(fam, nil)
+		tagMap := tagNamesToMap(tags)
+
+		if !tagMap["NOTE"] {
+			t.Error("missing NOTE tag")
+		}
+		if !tagMap["CONT"] {
+			t.Error("missing CONT tag for multiline note")
+		}
+	})
+
+	// Test with Source (TEXT field)
+	t.Run("source with multiline text", func(t *testing.T) {
+		src := &gedcom.Source{
+			Text: "Source text line 1\nSource text line 2",
+		}
+
+		tags := sourceToTags(src, nil)
+		tagMap := tagNamesToMap(tags)
+
+		if !tagMap["TEXT"] {
+			t.Error("missing TEXT tag")
+		}
+		if !tagMap["CONT"] {
+			t.Error("missing CONT tag for multiline text")
+		}
+	})
+
+	// Test with Event notes
+	t.Run("event with multiline note", func(t *testing.T) {
+		event := &gedcom.Event{
+			Type:  gedcom.EventBirth,
+			Notes: []string{"Event note\nwith details"},
+		}
+
+		tags := eventToTags(event, 1, nil)
+		tagMap := tagNamesToMap(tags)
+
+		if !tagMap["NOTE"] {
+			t.Error("missing NOTE tag")
+		}
+		if !tagMap["CONT"] {
+			t.Error("missing CONT tag for multiline event note")
+		}
+
+		// Verify NOTE at level 2 (event at level 1, note subordinate)
+		// and CONT at level 3
+		for _, tag := range tags {
+			if tag.Tag == "NOTE" && tag.Level != 2 {
+				t.Errorf("event NOTE should be at level 2, got %d", tag.Level)
+			}
+			if tag.Tag == "CONT" && tag.Level != 3 {
+				t.Errorf("event CONT should be at level 3, got %d", tag.Level)
+			}
+		}
+	})
+
+	// Test SourceCitationData TEXT
+	t.Run("source citation data with multiline text", func(t *testing.T) {
+		data := &gedcom.SourceCitationData{
+			Text: "Citation text\nwith more info",
+		}
+
+		tags := sourceCitationDataToTags(data, 3, nil)
+		tagMap := tagNamesToMap(tags)
+
+		if !tagMap["TEXT"] {
+			t.Error("missing TEXT tag")
+		}
+		if !tagMap["CONT"] {
+			t.Error("missing CONT tag for multiline citation text")
+		}
+
+		// TEXT at level 4, CONT at level 5
+		for _, tag := range tags {
+			if tag.Tag == "TEXT" && tag.Level != 4 {
+				t.Errorf("citation TEXT should be at level 4, got %d", tag.Level)
+			}
+			if tag.Tag == "CONT" && tag.Level != 5 {
+				t.Errorf("citation CONT should be at level 5, got %d", tag.Level)
+			}
+		}
+	})
+
+	// Test Association notes
+	t.Run("association with multiline note", func(t *testing.T) {
+		assoc := &gedcom.Association{
+			IndividualXRef: "@I2@",
+			Notes:          []string{"Association note\nwith continuation"},
+		}
+
+		tags := associationToTags(assoc, 1, nil)
+		tagMap := tagNamesToMap(tags)
+
+		if !tagMap["NOTE"] {
+			t.Error("missing NOTE tag")
+		}
+		if !tagMap["CONT"] {
+			t.Error("missing CONT tag for multiline association note")
+		}
+	})
+
+	// Test Submitter notes
+	t.Run("submitter with multiline note", func(t *testing.T) {
+		subm := &gedcom.Submitter{
+			Name:  "Test Submitter",
+			Notes: []string{"Submitter note\nwith continuation"},
+		}
+
+		tags := submitterToTags(subm, nil)
+		tagMap := tagNamesToMap(tags)
+
+		if !tagMap["NOTE"] {
+			t.Error("missing NOTE tag")
+		}
+		if !tagMap["CONT"] {
+			t.Error("missing CONT tag for multiline submitter note")
+		}
+	})
+
+	// Test Repository notes
+	t.Run("repository with multiline note", func(t *testing.T) {
+		repo := &gedcom.Repository{
+			Name:  "Test Repository",
+			Notes: []string{"Repository note\nwith continuation"},
+		}
+
+		tags := repositoryToTags(repo, nil)
+		tagMap := tagNamesToMap(tags)
+
+		if !tagMap["NOTE"] {
+			t.Error("missing NOTE tag")
+		}
+		if !tagMap["CONT"] {
+			t.Error("missing CONT tag for multiline repository note")
+		}
+	})
+
+	// Test MediaObject notes
+	t.Run("media object with multiline note", func(t *testing.T) {
+		media := &gedcom.MediaObject{
+			Files: []*gedcom.MediaFile{{FileRef: "test.jpg"}},
+			Notes: []string{"Media note\nwith continuation"},
+		}
+
+		tags := mediaObjectToTags(media, nil)
+		tagMap := tagNamesToMap(tags)
+
+		if !tagMap["NOTE"] {
+			t.Error("missing NOTE tag")
+		}
+		if !tagMap["CONT"] {
+			t.Error("missing CONT tag for multiline media note")
+		}
+	})
+}
+
+// TestSingleLineNoteNoConts verifies single line notes don't generate CONT tags
+func TestSingleLineNoteNoConts(t *testing.T) {
+	indi := &gedcom.Individual{
+		Notes: []string{"Single line note without newlines"},
+	}
+
+	tags := individualToTags(indi, nil)
+
+	for _, tag := range tags {
+		if tag.Tag == "CONT" {
+			t.Error("single line note should not generate CONT tags")
+		}
+	}
+}
+
+// TestSplitLineForLength tests the line splitting helper function
+func TestSplitLineForLength(t *testing.T) {
+	tests := []struct {
+		name          string
+		line          string
+		opts          *EncodeOptions
+		expectedCount int
+		expectedFirst string
+		expectedLast  string
+	}{
+		{
+			name:          "short line - no split",
+			line:          "Short line",
+			opts:          DefaultOptions(),
+			expectedCount: 1,
+			expectedFirst: "Short line",
+			expectedLast:  "Short line",
+		},
+		{
+			name:          "exactly at max length - no split",
+			line:          string(make([]byte, 248)),
+			opts:          DefaultOptions(),
+			expectedCount: 1,
+			expectedFirst: string(make([]byte, 248)),
+			expectedLast:  string(make([]byte, 248)),
+		},
+		{
+			name:          "nil opts uses default",
+			line:          "Short line",
+			opts:          nil,
+			expectedCount: 1,
+			expectedFirst: "Short line",
+			expectedLast:  "Short line",
+		},
+		{
+			name:          "disabled line wrap",
+			line:          "This is a very long line that exceeds the maximum length but should not be split because DisableLineWrap is true. " + string(make([]byte, 200)),
+			opts:          &EncodeOptions{DisableLineWrap: true},
+			expectedCount: 1,
+		},
+		{
+			name:          "custom max length",
+			line:          "This is a test line with more than 20 chars",
+			opts:          &EncodeOptions{MaxLineLength: 20},
+			expectedCount: 3, // 20, 20, rest
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			segments := splitLineForLength(tt.line, tt.opts)
+
+			if len(segments) != tt.expectedCount {
+				t.Errorf("splitLineForLength() returned %d segments, want %d", len(segments), tt.expectedCount)
+			}
+
+			if tt.expectedFirst != "" && len(segments) > 0 && segments[0] != tt.expectedFirst {
+				t.Errorf("first segment = %q, want %q", segments[0], tt.expectedFirst)
+			}
+
+			if tt.expectedLast != "" && len(segments) > 0 && segments[len(segments)-1] != tt.expectedLast {
+				t.Errorf("last segment = %q, want %q", segments[len(segments)-1], tt.expectedLast)
+			}
+		})
+	}
+}
+
+// TestFindWordBoundary tests the word boundary finding helper
+func TestFindWordBoundary(t *testing.T) {
+	tests := []struct {
+		name     string
+		line     string
+		maxLen   int
+		expected int
+	}{
+		{
+			name:     "line shorter than max",
+			line:     "Short",
+			maxLen:   10,
+			expected: 5,
+		},
+		{
+			name:     "split at space",
+			line:     "Hello world this is a test",
+			maxLen:   15,
+			expected: 12, // After "Hello world "
+		},
+		{
+			name:     "no space found - split at max",
+			line:     "Supercalifragilisticexpialidocious",
+			maxLen:   10,
+			expected: 10,
+		},
+		{
+			name:     "space exactly at max",
+			line:     "12345678 x",
+			maxLen:   9,
+			expected: 9, // After "12345678 "
+		},
+		{
+			name:     "multiple spaces - uses last one within limit",
+			line:     "one two three four",
+			maxLen:   14,
+			expected: 14, // After "one two three " (index 14 is right after the space)
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := findWordBoundary(tt.line, tt.maxLen)
+			if result != tt.expected {
+				t.Errorf("findWordBoundary() = %d, want %d", result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestTextToTagsWithCONC tests CONC tag generation for long lines
+func TestTextToTagsWithCONC(t *testing.T) {
+	// Create a line exactly 300 chars (well over default 248)
+	longLine := "This is a very long note that exceeds the recommended line length. "
+	for len(longLine) < 300 {
+		longLine += "More text here. "
+	}
+	longLine = longLine[:300] // Trim to exactly 300
+
+	t.Run("long line splits into CONC tags", func(t *testing.T) {
+		opts := DefaultOptions()
+		tags := textToTags(longLine, 1, "NOTE", opts)
+
+		// Should have primary tag + at least one CONC
+		if len(tags) < 2 {
+			t.Errorf("expected at least 2 tags for 300 char line, got %d", len(tags))
+		}
+
+		// First tag should be NOTE at level 1
+		if tags[0].Tag != "NOTE" || tags[0].Level != 1 {
+			t.Errorf("first tag should be NOTE at level 1, got %s at %d", tags[0].Tag, tags[0].Level)
+		}
+
+		// Remaining tags should be CONC at level 2
+		for i := 1; i < len(tags); i++ {
+			if tags[i].Tag != "CONC" {
+				t.Errorf("tag %d should be CONC, got %s", i, tags[i].Tag)
+			}
+			if tags[i].Level != 2 {
+				t.Errorf("tag %d level should be 2, got %d", i, tags[i].Level)
+			}
+		}
+
+		// Reconstruct and verify content matches
+		var reconstructed string
+		for _, tag := range tags {
+			reconstructed += tag.Value
+		}
+		if reconstructed != longLine {
+			t.Errorf("reconstructed content does not match original")
+		}
+	})
+
+	t.Run("disabled line wrap produces single tag", func(t *testing.T) {
+		opts := &EncodeOptions{DisableLineWrap: true}
+		tags := textToTags(longLine, 1, "NOTE", opts)
+
+		if len(tags) != 1 {
+			t.Errorf("with DisableLineWrap, expected 1 tag, got %d", len(tags))
+		}
+		if tags[0].Value != longLine {
+			t.Errorf("value should be unchanged when DisableLineWrap is true")
+		}
+	})
+
+	t.Run("custom max length", func(t *testing.T) {
+		opts := &EncodeOptions{MaxLineLength: 50}
+		tags := textToTags("This is a test line that exceeds fifty characters by quite a bit", 1, "NOTE", opts)
+
+		// Should split into multiple segments
+		if len(tags) < 2 {
+			t.Errorf("expected at least 2 tags with MaxLineLength=50, got %d", len(tags))
+		}
+
+		// First segment should be <= 50 chars
+		if len(tags[0].Value) > 50 {
+			t.Errorf("first segment length %d exceeds MaxLineLength 50", len(tags[0].Value))
+		}
+	})
+
+	t.Run("multiline with long line produces CONT and CONC", func(t *testing.T) {
+		// First line is short, second line is long
+		shortLine := "Short first line"
+		longSecondLine := longLine
+
+		opts := DefaultOptions()
+		tags := textToTags(shortLine+"\n"+longSecondLine, 1, "NOTE", opts)
+
+		// Should have: NOTE (short), CONT (first part of long), CONC (rest of long)
+		hasNote := false
+		hasCont := false
+		hasConc := false
+
+		for _, tag := range tags {
+			switch tag.Tag {
+			case "NOTE":
+				hasNote = true
+				if tag.Value != shortLine {
+					t.Errorf("NOTE value should be %q, got %q", shortLine, tag.Value)
+				}
+			case "CONT":
+				hasCont = true
+			case "CONC":
+				hasConc = true
+			}
+		}
+
+		if !hasNote {
+			t.Error("missing NOTE tag")
+		}
+		if !hasCont {
+			t.Error("missing CONT tag for newline")
+		}
+		if !hasConc {
+			t.Error("missing CONC tag for long line split")
+		}
+	})
+}
+
+// TestCONCPreservesContent verifies that CONC splitting preserves all content
+func TestCONCPreservesContent(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		maxLen  int
+	}{
+		{
+			name:    "simple long text",
+			content: "This is a very long text that needs to be split. It contains multiple words and should be split at word boundaries when possible. The reconstructed content should match exactly.",
+			maxLen:  50,
+		},
+		{
+			name:    "text without spaces",
+			content: "NoSpacesInThisTextSoItMustBeSplitAtExactMaxLengthPositionWithoutWordBoundarySupport",
+			maxLen:  20,
+		},
+		{
+			name:    "unicode content",
+			content: "日本語テスト文字列です。This text contains Japanese characters and should be handled correctly.",
+			maxLen:  30,
+		},
+		{
+			name:    "multiline with long lines",
+			content: "First line is short\nSecond line is much longer and will need to be split into multiple CONC segments for proper encoding.\nThird line",
+			maxLen:  40,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &EncodeOptions{MaxLineLength: tt.maxLen}
+			tags := textToTags(tt.content, 1, "NOTE", opts)
+
+			// Reconstruct content from tags
+			var reconstructed string
+			for i, tag := range tags {
+				if i > 0 && tag.Tag == "CONT" {
+					reconstructed += "\n"
+				}
+				reconstructed += tag.Value
+			}
+
+			if reconstructed != tt.content {
+				t.Errorf("content mismatch:\ngot:  %q\nwant: %q", reconstructed, tt.content)
+			}
+		})
+	}
+}
+
+// TestEncodeOptionsDefaults verifies default options are set correctly
+func TestEncodeOptionsDefaults(t *testing.T) {
+	opts := DefaultOptions()
+
+	if opts.MaxLineLength != DefaultMaxLineLength {
+		t.Errorf("MaxLineLength = %d, want %d", opts.MaxLineLength, DefaultMaxLineLength)
+	}
+
+	if opts.DisableLineWrap != false {
+		t.Error("DisableLineWrap should default to false")
+	}
+
+	if opts.LineEnding != "\n" {
+		t.Errorf("LineEnding = %q, want %q", opts.LineEnding, "\n")
+	}
+}
+
+// TestEffectiveMaxLineLength tests the helper method
+func TestEffectiveMaxLineLength(t *testing.T) {
+	tests := []struct {
+		name     string
+		opts     *EncodeOptions
+		expected int
+	}{
+		{
+			name:     "nil opts returns default",
+			opts:     nil,
+			expected: DefaultMaxLineLength,
+		},
+		{
+			name:     "zero MaxLineLength returns default",
+			opts:     &EncodeOptions{MaxLineLength: 0},
+			expected: DefaultMaxLineLength,
+		},
+		{
+			name:     "negative MaxLineLength returns default",
+			opts:     &EncodeOptions{MaxLineLength: -10},
+			expected: DefaultMaxLineLength,
+		},
+		{
+			name:     "positive MaxLineLength returns value",
+			opts:     &EncodeOptions{MaxLineLength: 100},
+			expected: 100,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.opts.effectiveMaxLineLength()
+			if result != tt.expected {
+				t.Errorf("effectiveMaxLineLength() = %d, want %d", result, tt.expected)
+			}
+		})
+	}
 }
