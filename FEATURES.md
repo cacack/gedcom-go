@@ -41,6 +41,50 @@ if doc.Vendor == gedcom.VendorAncestry {
 }
 ```
 
+## Vendor Extensions
+
+Structured parsing for vendor-specific GEDCOM extensions:
+
+### Ancestry.com Extensions
+
+| Tag | Location | Description |
+|-----|----------|-------------|
+| `_APID` | Source Citation | Ancestry Permanent ID linking to database record |
+| `_TREE` | Header | Ancestry tree reference |
+
+```go
+// Access Ancestry APID on source citations
+for _, cite := range individual.SourceCitations {
+    if cite.AncestryAPID != nil {
+        fmt.Println(cite.AncestryAPID.Database)  // "7602"
+        fmt.Println(cite.AncestryAPID.Record)    // "2771226"
+        fmt.Println(cite.AncestryAPID.URL())     // Full Ancestry URL
+    }
+}
+
+// Access tree ID from header
+fmt.Println(doc.Header.AncestryTreeID)  // "@T123@"
+```
+
+### FamilySearch Extensions
+
+| Tag | Location | Description |
+|-----|----------|-------------|
+| `_FSFTID` | Individual | FamilySearch Family Tree ID |
+
+```go
+// Access FamilySearch ID on individuals
+indi := doc.GetIndividual("@I1@")
+if indi.FamilySearchID != "" {
+    fmt.Println(indi.FamilySearchID)      // "KWCJ-QN7"
+    fmt.Println(indi.FamilySearchURL())   // "https://www.familysearch.org/tree/person/details/KWCJ-QN7"
+}
+```
+
+### Round-Trip Preservation
+
+All vendor extensions are preserved during encode/decode cycles. Custom tags not explicitly parsed are retained in the raw `Tags` field on each entity.
+
 ## Character Encoding
 
 | Encoding | Status | Notes |

@@ -733,6 +733,10 @@ func TestEdgeCases(t *testing.T) {
 			path:        "../testdata/edge-cases/cont-conc.ged",
 			description: "CONT/CONC line continuation tests",
 		},
+		{
+			path:        "../testdata/edge-cases/ancestry-extensions.ged",
+			description: "Ancestry.com vendor extensions (_APID, _TREE)",
+		},
 	}
 
 	for _, tt := range testFiles {
@@ -756,6 +760,110 @@ func TestEdgeCases(t *testing.T) {
 			t.Logf("Successfully parsed %s: %d records", tt.description, len(doc.Records))
 		})
 	}
+}
+
+// TestAncestryExtensions tests Ancestry.com specific extensions (_APID, _TREE)
+func TestAncestryExtensions(t *testing.T) {
+	f, err := os.Open("../testdata/edge-cases/ancestry-extensions.ged")
+	if err != nil {
+		t.Skipf("Test file not found: %s", "../testdata/edge-cases/ancestry-extensions.ged")
+		return
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	// Verify vendor detection
+	if doc.Vendor != gedcom.VendorAncestry {
+		t.Errorf("Expected VendorAncestry, got %v", doc.Vendor)
+	}
+
+	// Verify _TREE from header
+	if doc.Header.AncestryTreeID != "12345678" {
+		t.Errorf("Header.AncestryTreeID = %q, want %q", doc.Header.AncestryTreeID, "12345678")
+	}
+
+	// Verify source system
+	if doc.Header.SourceSystem != "Ancestry.com" {
+		t.Errorf("Header.SourceSystem = %q, want %q", doc.Header.SourceSystem, "Ancestry.com")
+	}
+
+	// Get individual @I1@ and check source citations
+	individual := doc.GetIndividual("@I1@")
+	if individual == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+
+	// Check birth event source citation
+	var birthEvent *gedcom.Event
+	for _, event := range individual.Events {
+		if event.Type == gedcom.EventBirth {
+			birthEvent = event
+			break
+		}
+	}
+
+	if birthEvent == nil {
+		t.Fatal("Could not find birth event for @I1@")
+	}
+
+	if len(birthEvent.SourceCitations) != 1 {
+		t.Fatalf("Birth event expected 1 source citation, got %d", len(birthEvent.SourceCitations))
+	}
+
+	cite := birthEvent.SourceCitations[0]
+	if cite.AncestryAPID == nil {
+		t.Fatal("Birth event source citation has nil AncestryAPID")
+	}
+
+	// Verify APID parsing
+	if cite.AncestryAPID.Raw != "1,7602::2771226" {
+		t.Errorf("AncestryAPID.Raw = %q, want %q", cite.AncestryAPID.Raw, "1,7602::2771226")
+	}
+	if cite.AncestryAPID.Database != "7602" {
+		t.Errorf("AncestryAPID.Database = %q, want %q", cite.AncestryAPID.Database, "7602")
+	}
+	if cite.AncestryAPID.Record != "2771226" {
+		t.Errorf("AncestryAPID.Record = %q, want %q", cite.AncestryAPID.Record, "2771226")
+	}
+
+	// Verify URL reconstruction
+	expectedURL := "https://www.ancestry.com/discoveryui-content/view/2771226:7602"
+	if cite.AncestryAPID.URL() != expectedURL {
+		t.Errorf("AncestryAPID.URL() = %q, want %q", cite.AncestryAPID.URL(), expectedURL)
+	}
+
+	// Check death event source citation
+	var deathEvent *gedcom.Event
+	for _, event := range individual.Events {
+		if event.Type == gedcom.EventDeath {
+			deathEvent = event
+			break
+		}
+	}
+
+	if deathEvent == nil {
+		t.Fatal("Could not find death event for @I1@")
+	}
+
+	if len(deathEvent.SourceCitations) != 1 {
+		t.Fatalf("Death event expected 1 source citation, got %d", len(deathEvent.SourceCitations))
+	}
+
+	cite2 := deathEvent.SourceCitations[0]
+	if cite2.AncestryAPID == nil {
+		t.Fatal("Death event source citation has nil AncestryAPID")
+	}
+
+	if cite2.AncestryAPID.Database != "9024" {
+		t.Errorf("Death AncestryAPID.Database = %q, want %q", cite2.AncestryAPID.Database, "9024")
+	}
+
+	t.Logf("Successfully verified Ancestry extensions: TreeID=%s, APID parsing and URL generation works",
+		doc.Header.AncestryTreeID)
 }
 
 // Test additional malformed file scenarios

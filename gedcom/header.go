@@ -25,6 +25,11 @@ type Header struct {
 	// Submitter reference (optional)
 	Submitter string
 
+	// AncestryTreeID is the Ancestry.com tree identifier from HEAD.SOUR._TREE.
+	// This is an Ancestry.com vendor extension that identifies the family tree
+	// this GEDCOM was exported from.
+	AncestryTreeID string
+
 	// Raw tags from the header for preserving unknown/custom tags
 	Tags []*Tag
 }

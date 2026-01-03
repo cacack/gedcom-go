@@ -71,4 +71,10 @@ type SourceCitation struct {
 
 	// Data contains optional extracted text and date from the source
 	Data *SourceCitationData
+
+	// AncestryAPID is the Ancestry Permanent Identifier from the _APID tag.
+	// This is an Ancestry.com vendor extension that links the citation to a
+	// specific record in an Ancestry database. Use AncestryAPID.URL() to
+	// reconstruct the original Ancestry.com record URL.
+	AncestryAPID *AncestryAPID
 }
