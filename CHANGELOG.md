@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0](https://github.com/cacack/gedcom-go/compare/v0.5.0...v0.6.0) (2026-01-03)
+
+
+### Features
+
+* **encoder:** add CONT/CONC line handling and inline Repository support ([89336e7](https://github.com/cacack/gedcom-go/commit/89336e7266aa042b55015dad5a18eea75a61c327))
+* **gedcom:** add Ancestry and FamilySearch GEDCOM extensions ([b9bfe29](https://github.com/cacack/gedcom-go/commit/b9bfe29825978af082fbd75fdc5acfe6b02fd0ab))
+* **gedcom:** add GEDCOM 7.0 ASSO/PHRASE and NAME TRAN support ([9b95beb](https://github.com/cacack/gedcom-go/commit/9b95beb6cd6e5eee37494d163dcdbf13e92670b9))
+* **gedcom:** add vendor detection from GEDCOM header ([b49ee3c](https://github.com/cacack/gedcom-go/commit/b49ee3c27ce7a384190f1e09f69cbfcaf9e2e129))
+
 ## [0.5.0](https://github.com/cacack/gedcom-go/compare/v0.4.0...v0.5.0) (2025-12-26)
 
 
