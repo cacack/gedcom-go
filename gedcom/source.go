@@ -20,6 +20,9 @@ type Source struct {
 	// RepositoryRef is the XRef to the repository where this source is stored
 	RepositoryRef string
 
+	// Repository is an inline repository definition (alternative to RepositoryRef)
+	Repository *InlineRepository
+
 	// Media are references to media objects with optional crop/title
 	Media []*MediaLink
 
