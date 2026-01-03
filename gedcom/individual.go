@@ -50,6 +50,11 @@ type Individual struct {
 	// UID is the unique identifier (UID tag)
 	UID string
 
+	// FamilySearchID is the FamilySearch Family Tree ID (_FSFTID tag).
+	// This is a vendor extension from FamilySearch.org that uniquely identifies
+	// an individual in their Family Tree database. Format: alphanumeric like "KWCJ-QN7".
+	FamilySearchID string
+
 	// Tags contains all raw tags for this individual (for unknown/custom tags)
 	Tags []*Tag
 }
@@ -165,4 +170,13 @@ func (i *Individual) DeathDate() *Date {
 		return nil
 	}
 	return event.ParsedDate
+}
+
+// FamilySearchURL returns the FamilySearch.org URL for this individual's record.
+// Returns an empty string if FamilySearchID is not set.
+func (i *Individual) FamilySearchURL() string {
+	if i.FamilySearchID == "" {
+		return ""
+	}
+	return "https://www.familysearch.org/tree/person/details/" + i.FamilySearchID
 }

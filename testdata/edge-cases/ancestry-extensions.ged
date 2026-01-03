@@ -1,0 +1,30 @@
+0 HEAD
+1 SOUR Ancestry.com
+2 VERS 1.0
+2 NAME Ancestry.com Family Trees
+2 _TREE 12345678
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+2 DATE 15 MAR 1850
+2 PLAC Springfield, Illinois, USA
+2 SOUR @S1@
+3 PAGE Page 42
+3 _APID 1,7602::2771226
+1 DEAT
+2 DATE 10 JUN 1920
+2 PLAC Chicago, Cook, Illinois, USA
+2 SOUR @S2@
+3 PAGE Entry 103
+3 _APID 1,9024::12345678
+0 @S1@ SOUR
+1 TITL Illinois, Deaths and Stillbirths Index, 1916-1947
+1 AUTH Ancestry.com
+0 @S2@ SOUR
+1 TITL 1920 United States Federal Census
+1 AUTH Ancestry.com
+0 TRLR

@@ -3319,3 +3319,76 @@ func TestSourceInlineRepositoryRoundtrip(t *testing.T) {
 		t.Errorf("Repository.Name = %s, want 'County Archives'", src.Repository.Name)
 	}
 }
+
+// TestFamilySearchIDParsing tests parsing of the _FSFTID tag (FamilySearch Family Tree ID).
+// This is a vendor extension from FamilySearch.org.
+// Ref: Issue #80
+func TestFamilySearchIDParsing(t *testing.T) {
+	gedcom := `0 HEAD
+1 SOUR FamilySearch
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 _FSFTID KWCJ-QN7
+0 @I2@ INDI
+1 NAME Jane /Smith/
+1 _FSFTID ABCD-123
+0 @I3@ INDI
+1 NAME Bob /Jones/
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test individual with _FSFTID
+	indi1 := doc.GetIndividual("@I1@")
+	if indi1 == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+	if indi1.FamilySearchID != "KWCJ-QN7" {
+		t.Errorf("indi1.FamilySearchID = %s, want 'KWCJ-QN7'", indi1.FamilySearchID)
+	}
+
+	// Test another individual with different _FSFTID
+	indi2 := doc.GetIndividual("@I2@")
+	if indi2 == nil {
+		t.Fatal("Individual @I2@ not found")
+	}
+	if indi2.FamilySearchID != "ABCD-123" {
+		t.Errorf("indi2.FamilySearchID = %s, want 'ABCD-123'", indi2.FamilySearchID)
+	}
+
+	// Test individual without _FSFTID
+	indi3 := doc.GetIndividual("@I3@")
+	if indi3 == nil {
+		t.Fatal("Individual @I3@ not found")
+	}
+	if indi3.FamilySearchID != "" {
+		t.Errorf("indi3.FamilySearchID = %s, want empty", indi3.FamilySearchID)
+	}
+}
+
+// TestFamilySearchIDWithFile tests parsing _FSFTID from a GEDCOM file.
+func TestFamilySearchIDWithFile(t *testing.T) {
+	f, err := os.Open("../testdata/edge-cases/familysearch-extensions.ged")
+	if err != nil {
+		t.Skip("Test file not available: ", err)
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+	if indi.FamilySearchID != "KWCJ-QN7" {
+		t.Errorf("FamilySearchID = %s, want 'KWCJ-QN7'", indi.FamilySearchID)
+	}
+}

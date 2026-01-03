@@ -273,3 +273,41 @@ func TestIndividual_DeathDate(t *testing.T) {
 		})
 	}
 }
+
+// TestIndividual_FamilySearchURL tests the FamilySearchURL helper method.
+// This returns the FamilySearch.org URL for the individual's record.
+// Ref: Issue #80
+func TestIndividual_FamilySearchURL(t *testing.T) {
+	tests := []struct {
+		name           string
+		familySearchID string
+		want           string
+	}{
+		{
+			name:           "typical ID",
+			familySearchID: "KWCJ-QN7",
+			want:           "https://www.familysearch.org/tree/person/details/KWCJ-QN7",
+		},
+		{
+			name:           "another ID",
+			familySearchID: "ABCD-123",
+			want:           "https://www.familysearch.org/tree/person/details/ABCD-123",
+		},
+		{
+			name:           "empty ID returns empty string",
+			familySearchID: "",
+			want:           "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			i := &Individual{FamilySearchID: tt.familySearchID}
+			got := i.FamilySearchURL()
+
+			if got != tt.want {
+				t.Errorf("FamilySearchURL() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

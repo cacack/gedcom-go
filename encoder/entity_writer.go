@@ -236,6 +236,11 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "UID", Value: indi.UID})
 	}
 
+	// FamilySearch Family Tree ID (level 1) - _FSFTID
+	if indi.FamilySearchID != "" {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "_FSFTID", Value: indi.FamilySearchID})
+	}
+
 	return tags
 }
 
@@ -658,6 +663,11 @@ func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOp
 	// DATA subordinate
 	if cite.Data != nil {
 		tags = append(tags, sourceCitationDataToTags(cite.Data, level+1, opts)...)
+	}
+
+	// Ancestry APID (vendor extension)
+	if cite.AncestryAPID != nil {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "_APID", Value: cite.AncestryAPID.Raw})
 	}
 
 	return tags

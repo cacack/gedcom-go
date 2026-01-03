@@ -108,8 +108,11 @@ func buildDocument(lines []*parser.Line, ver gedcom.Version) *gedcom.Document {
 }
 
 // buildHeader extracts header information from lines.
+//
+//nolint:gocyclo // Header parsing requires handling many tag types
 func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version) {
 	inHead := false
+	inSour := false
 
 	for _, line := range lines {
 		if line.Level == 0 && line.Tag == "HEAD" {
@@ -119,24 +122,38 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 
 		if line.Level == 0 {
 			inHead = false
+			inSour = false
 		}
 
 		if !inHead {
 			continue
 		}
 
+		// Track when we're inside SOUR structure
+		if line.Level == 1 && line.Tag == "SOUR" {
+			inSour = true
+			doc.Header.SourceSystem = line.Value
+			continue
+		}
+
+		// Exit SOUR when we see another level 1 tag
+		if line.Level == 1 && inSour {
+			inSour = false
+		}
+
 		// Extract header fields
 		switch line.Tag {
 		case "CHAR":
 			doc.Header.Encoding = gedcom.Encoding(line.Value)
-		case "SOUR":
-			if line.Level == 1 {
-				doc.Header.SourceSystem = line.Value
-			}
 		case "LANG":
 			doc.Header.Language = line.Value
 		case "COPR":
 			doc.Header.Copyright = line.Value
+		case "_TREE":
+			// Ancestry.com tree identifier (subordinate of SOUR)
+			if inSour && line.Level == 2 {
+				doc.Header.AncestryTreeID = line.Value
+			}
 		}
 	}
 

@@ -1451,3 +1451,80 @@ func TestRoundtripComplexIndividual(t *testing.T) {
 		t.Errorf("LDS temple = %q, want %q", indi.LDSOrdinances[0].Temple, "SLAKE")
 	}
 }
+
+// TestRoundtripFamilySearchID tests round-trip encoding of _FSFTID tag.
+// Ref: Issue #80
+func TestRoundtripFamilySearchID(t *testing.T) {
+	input := `0 HEAD
+1 SOUR FamilySearch
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 _FSFTID KWCJ-QN7
+0 @I2@ INDI
+1 NAME Jane /Smith/
+0 TRLR
+`
+
+	// Decode
+	doc1, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Initial Decode() error = %v", err)
+	}
+
+	// Verify initial decode
+	indi1 := doc1.GetIndividual("@I1@")
+	if indi1 == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+	if indi1.FamilySearchID != "KWCJ-QN7" {
+		t.Errorf("Initial FamilySearchID = %q, want %q", indi1.FamilySearchID, "KWCJ-QN7")
+	}
+
+	// Encode
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc1); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+
+	output := buf.String()
+
+	// Verify _FSFTID tag is in output
+	if !strings.Contains(output, "1 _FSFTID KWCJ-QN7") {
+		t.Errorf("Output missing _FSFTID tag. Got:\n%s", output)
+	}
+
+	// Decode again to verify round-trip
+	doc2, err := decoder.Decode(strings.NewReader(output))
+	if err != nil {
+		t.Fatalf("Second Decode() error = %v", err)
+	}
+
+	// Verify FamilySearchID preserved after round-trip
+	indi2 := doc2.GetIndividual("@I1@")
+	if indi2 == nil {
+		t.Fatal("Individual @I1@ not found after round-trip")
+	}
+	if indi2.FamilySearchID != "KWCJ-QN7" {
+		t.Errorf("Round-trip FamilySearchID = %q, want %q", indi2.FamilySearchID, "KWCJ-QN7")
+	}
+
+	// Verify FamilySearchURL works
+	expectedURL := "https://www.familysearch.org/tree/person/details/KWCJ-QN7"
+	if indi2.FamilySearchURL() != expectedURL {
+		t.Errorf("FamilySearchURL() = %q, want %q", indi2.FamilySearchURL(), expectedURL)
+	}
+
+	// Verify individual without FamilySearchID still has empty value
+	indi3 := doc2.GetIndividual("@I2@")
+	if indi3 == nil {
+		t.Fatal("Individual @I2@ not found")
+	}
+	if indi3.FamilySearchID != "" {
+		t.Errorf("@I2@ FamilySearchID = %q, want empty", indi3.FamilySearchID)
+	}
+	if indi3.FamilySearchURL() != "" {
+		t.Errorf("@I2@ FamilySearchURL() = %q, want empty", indi3.FamilySearchURL())
+	}
+}

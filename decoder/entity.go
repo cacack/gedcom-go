@@ -99,6 +99,9 @@ func parseIndividual(record *gedcom.Record) *gedcom.Individual {
 
 		case "UID":
 			indi.UID = tag.Value
+
+		case "_FSFTID":
+			indi.FamilySearchID = tag.Value
 		}
 	}
 
@@ -224,6 +227,9 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int) *gedcom.Sou
 			case "DATA":
 				// Parse DATA subordinates at baseLevel+2
 				cite.Data = parseSourceCitationData(tags, i, baseLevel+1)
+			case "_APID":
+				// Parse Ancestry Permanent Identifier (vendor extension)
+				cite.AncestryAPID = gedcom.ParseAPID(tag.Value)
 			}
 		}
 	}

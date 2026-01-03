@@ -939,6 +939,19 @@ func TestSourceCitationToTags(t *testing.T) {
 			level:    2,
 			contains: []string{"SOUR", "DATA", "DATE", "TEXT"},
 		},
+		{
+			name: "citation with Ancestry APID",
+			cite: &gedcom.SourceCitation{
+				SourceXRef: "@S1@",
+				AncestryAPID: &gedcom.AncestryAPID{
+					Raw:      "1,7602::2771226",
+					Database: "7602",
+					Record:   "2771226",
+				},
+			},
+			level:    2,
+			contains: []string{"SOUR", "_APID"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -950,6 +963,75 @@ func TestSourceCitationToTags(t *testing.T) {
 				if !tagMap[expected] {
 					t.Errorf("sourceCitationToTags() missing expected tag %q", expected)
 				}
+			}
+		})
+	}
+}
+
+// TestAncestryAPIDEncoding tests that Ancestry APID is correctly encoded
+func TestAncestryAPIDEncoding(t *testing.T) {
+	tests := []struct {
+		name          string
+		cite          *gedcom.SourceCitation
+		expectAPID    bool
+		expectedValue string
+	}{
+		{
+			name: "citation with APID",
+			cite: &gedcom.SourceCitation{
+				SourceXRef: "@S1@",
+				AncestryAPID: &gedcom.AncestryAPID{
+					Raw:      "1,7602::2771226",
+					Database: "7602",
+					Record:   "2771226",
+				},
+			},
+			expectAPID:    true,
+			expectedValue: "1,7602::2771226",
+		},
+		{
+			name: "citation without APID",
+			cite: &gedcom.SourceCitation{
+				SourceXRef: "@S1@",
+			},
+			expectAPID: false,
+		},
+		{
+			name: "citation with nil APID",
+			cite: &gedcom.SourceCitation{
+				SourceXRef:   "@S1@",
+				AncestryAPID: nil,
+			},
+			expectAPID: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := sourceCitationToTags(tt.cite, 2, nil)
+
+			// Find _APID tag
+			var apidTag *gedcom.Tag
+			for _, tag := range tags {
+				if tag.Tag == "_APID" {
+					apidTag = tag
+					break
+				}
+			}
+
+			if tt.expectAPID {
+				if apidTag == nil {
+					t.Error("expected _APID tag but not found")
+					return
+				}
+				if apidTag.Value != tt.expectedValue {
+					t.Errorf("_APID value = %q, want %q", apidTag.Value, tt.expectedValue)
+				}
+				if apidTag.Level != 3 { // level 2 (SOUR) + 1
+					t.Errorf("_APID level = %d, want 3", apidTag.Level)
+				}
+			} else if apidTag != nil {
+				t.Errorf("expected no _APID tag but found one with value %q", apidTag.Value)
 			}
 		})
 	}
@@ -2325,6 +2407,73 @@ func TestEffectiveMaxLineLength(t *testing.T) {
 			result := tt.opts.effectiveMaxLineLength()
 			if result != tt.expected {
 				t.Errorf("effectiveMaxLineLength() = %d, want %d", result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestFamilySearchIDEncoding tests encoding of the _FSFTID tag (FamilySearch Family Tree ID).
+// This is a vendor extension from FamilySearch.org.
+// Ref: Issue #80
+func TestFamilySearchIDEncoding(t *testing.T) {
+	tests := []struct {
+		name          string
+		indi          *gedcom.Individual
+		expectFSFTID  bool
+		expectedValue string
+	}{
+		{
+			name: "individual with FamilySearchID",
+			indi: &gedcom.Individual{
+				XRef:           "@I1@",
+				FamilySearchID: "KWCJ-QN7",
+			},
+			expectFSFTID:  true,
+			expectedValue: "KWCJ-QN7",
+		},
+		{
+			name: "individual without FamilySearchID",
+			indi: &gedcom.Individual{
+				XRef: "@I2@",
+			},
+			expectFSFTID: false,
+		},
+		{
+			name: "individual with empty FamilySearchID",
+			indi: &gedcom.Individual{
+				XRef:           "@I3@",
+				FamilySearchID: "",
+			},
+			expectFSFTID: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := individualToTags(tt.indi, nil)
+
+			// Find _FSFTID tag
+			var fsftidTag *gedcom.Tag
+			for _, tag := range tags {
+				if tag.Tag == "_FSFTID" {
+					fsftidTag = tag
+					break
+				}
+			}
+
+			if tt.expectFSFTID {
+				if fsftidTag == nil {
+					t.Error("expected _FSFTID tag but not found")
+					return
+				}
+				if fsftidTag.Value != tt.expectedValue {
+					t.Errorf("_FSFTID value = %q, want %q", fsftidTag.Value, tt.expectedValue)
+				}
+				if fsftidTag.Level != 1 {
+					t.Errorf("_FSFTID level = %d, want 1", fsftidTag.Level)
+				}
+			} else if fsftidTag != nil {
+				t.Errorf("expected no _FSFTID tag but found one with value %q", fsftidTag.Value)
 			}
 		})
 	}
