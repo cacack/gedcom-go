@@ -16,6 +16,31 @@ For planned features, see [GitHub Issues](https://github.com/cacack/gedcom-go/is
 - Heuristic-based detection for malformed headers
 - Version-aware validation rules
 
+## Vendor Detection
+
+Automatic detection of the originating software from `HEAD.SOUR`:
+
+| Vendor | Detection Patterns |
+|--------|-------------------|
+| Ancestry | ancestry, familytreemaker |
+| FamilySearch | familysearch |
+| RootsMagic | rootsmagic |
+| Legacy | legacy |
+| Gramps | gramps |
+| MyHeritage | myheritage |
+
+- Case-insensitive substring matching
+- Exposed via `Document.Vendor` field
+- Helper methods: `Vendor.String()`, `Vendor.IsKnown()`
+- Unknown sources return `VendorUnknown` (never errors)
+
+```go
+doc, _ := decoder.Decode(reader)
+if doc.Vendor == gedcom.VendorAncestry {
+    // Handle Ancestry-specific extensions
+}
+```
+
 ## Character Encoding
 
 | Encoding | Status | Notes |
