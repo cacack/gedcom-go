@@ -151,11 +151,52 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int) *gedcom.PersonalName {
 				name.SurnamePrefix = tag.Value
 			case "TYPE":
 				name.Type = tag.Value
+			case "TRAN":
+				tran := parseNameTransliteration(tags, i)
+				name.Transliterations = append(name.Transliterations, tran)
 			}
 		}
 	}
 
 	return name
+}
+
+// parseNameTransliteration extracts a transliteration from tags starting at tranIdx.
+// TRAN tags under NAME contain the transliterated name value and optional component tags.
+func parseNameTransliteration(tags []*gedcom.Tag, tranIdx int) *gedcom.Transliteration {
+	baseLevel := tags[tranIdx].Level
+
+	tran := &gedcom.Transliteration{
+		Value: tags[tranIdx].Value,
+	}
+
+	// Look for subordinate tags at baseLevel+1 (level 3 for NAME.TRAN)
+	for i := tranIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 {
+			switch tag.Tag {
+			case "LANG":
+				tran.Language = tag.Value
+			case "GIVN":
+				tran.Given = tag.Value
+			case "SURN":
+				tran.Surname = tag.Value
+			case "NPFX":
+				tran.Prefix = tag.Value
+			case "NSFX":
+				tran.Suffix = tag.Value
+			case "NICK":
+				tran.Nickname = tag.Value
+			case "SPFX":
+				tran.SurnamePrefix = tag.Value
+			}
+		}
+	}
+
+	return tran
 }
 
 // parseFamilyLink extracts a family link from tags starting at famcIdx.
@@ -180,22 +221,29 @@ func parseFamilyLink(tags []*gedcom.Tag, famcIdx int) gedcom.FamilyLink {
 
 // parseAssociation extracts an association from tags starting at assoIdx.
 func parseAssociation(tags []*gedcom.Tag, assoIdx int) *gedcom.Association {
+	baseLevel := tags[assoIdx].Level
+
 	assoc := &gedcom.Association{
 		IndividualXRef: tags[assoIdx].Value,
 	}
 
-	// Look for subordinate tags (level 2)
+	// Look for subordinate tags at baseLevel+1
 	for i := assoIdx + 1; i < len(tags); i++ {
 		tag := tags[i]
-		if tag.Level <= 1 {
+		if tag.Level <= baseLevel {
 			break
 		}
-		if tag.Level == 2 {
+		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "RELA", "ROLE": // RELA in 5.5.1, ROLE in 7.0
 				assoc.Role = tag.Value
+			case "PHRASE":
+				assoc.Phrase = tag.Value
 			case "NOTE":
 				assoc.Notes = append(assoc.Notes, tag.Value)
+			case "SOUR":
+				cite := parseSourceCitation(tags, i, tag.Level)
+				assoc.SourceCitations = append(assoc.SourceCitations, cite)
 			}
 		}
 	}
@@ -282,6 +330,19 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string) *gedcom.Event
 				event.Date = tag.Value
 				if parsed, err := gedcom.ParseDate(tag.Value); err == nil {
 					event.ParsedDate = parsed
+				}
+				// Look for PHRASE subordinate at baseLevel+2
+				for j := i + 1; j < len(tags); j++ {
+					phraseTag := tags[j]
+					if phraseTag.Level <= baseLevel+1 {
+						break
+					}
+					if phraseTag.Level == baseLevel+2 && phraseTag.Tag == "PHRASE" {
+						if event.ParsedDate != nil {
+							event.ParsedDate.Phrase = phraseTag.Value
+						}
+						break
+					}
 				}
 			case "PLAC":
 				event.Place = tag.Value

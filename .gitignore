@@ -54,3 +54,4 @@ Thumbs.db
 
 # Claude Code prompts
 prompts/
+.prompts/

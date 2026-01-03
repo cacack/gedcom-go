@@ -3392,3 +3392,448 @@ func TestFamilySearchIDWithFile(t *testing.T) {
 		t.Errorf("FamilySearchID = %s, want 'KWCJ-QN7'", indi.FamilySearchID)
 	}
 }
+
+// === GEDCOM 7.0 ASSO/PHRASE Tests ===
+// These tests validate parsing of GEDCOM 7.0 association features including
+// PHRASE subordinates for human-readable descriptions and SOUR citations.
+// Ref: Issues #40, #39
+
+// TestParseAssociationWithPhrase tests parsing ASSO with PHRASE subordinate.
+func TestParseAssociationWithPhrase(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+1 ASSO @I2@
+2 PHRASE Godparent at baptism
+2 ROLE GODP
+0 @I2@ INDI
+1 NAME Jane /Smith/
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+
+	if len(indi.Associations) != 1 {
+		t.Fatalf("len(Associations) = %d, want 1", len(indi.Associations))
+	}
+
+	assoc := indi.Associations[0]
+	if assoc.IndividualXRef != "@I2@" {
+		t.Errorf("IndividualXRef = %s, want @I2@", assoc.IndividualXRef)
+	}
+	if assoc.Phrase != "Godparent at baptism" {
+		t.Errorf("Phrase = %s, want 'Godparent at baptism'", assoc.Phrase)
+	}
+	if assoc.Role != "GODP" {
+		t.Errorf("Role = %s, want GODP", assoc.Role)
+	}
+}
+
+// TestParseAssociationWithSourceCitation tests parsing ASSO with SOUR subordinate.
+func TestParseAssociationWithSourceCitation(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+1 ASSO @I2@
+2 ROLE WITN
+2 SOUR @S1@
+3 PAGE Page 123
+0 @I2@ INDI
+1 NAME Bob /Witness/
+0 @S1@ SOUR
+1 TITL Baptism Registry
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+
+	if len(indi.Associations) != 1 {
+		t.Fatalf("len(Associations) = %d, want 1", len(indi.Associations))
+	}
+
+	assoc := indi.Associations[0]
+	if assoc.IndividualXRef != "@I2@" {
+		t.Errorf("IndividualXRef = %s, want @I2@", assoc.IndividualXRef)
+	}
+	if assoc.Role != "WITN" {
+		t.Errorf("Role = %s, want WITN", assoc.Role)
+	}
+	if len(assoc.SourceCitations) != 1 {
+		t.Fatalf("len(SourceCitations) = %d, want 1", len(assoc.SourceCitations))
+	}
+	cite := assoc.SourceCitations[0]
+	if cite.SourceXRef != "@S1@" {
+		t.Errorf("SourceXRef = %s, want @S1@", cite.SourceXRef)
+	}
+	if cite.Page != "Page 123" {
+		t.Errorf("Page = %s, want 'Page 123'", cite.Page)
+	}
+}
+
+// TestParseAssociationWithPhraseAndSource tests ASSO with both PHRASE and SOUR.
+func TestParseAssociationWithPhraseAndSource(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+1 ASSO @I3@
+2 PHRASE Association text
+2 ROLE OTHER
+2 NOTE Note text
+2 SOUR @S1@
+3 PAGE 1
+2 SOUR @S2@
+3 PAGE 2
+0 @I3@ INDI
+1 NAME Associated /Person/
+0 @S1@ SOUR
+1 TITL Source 1
+0 @S2@ SOUR
+1 TITL Source 2
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+
+	if len(indi.Associations) != 1 {
+		t.Fatalf("len(Associations) = %d, want 1", len(indi.Associations))
+	}
+
+	assoc := indi.Associations[0]
+	if assoc.IndividualXRef != "@I3@" {
+		t.Errorf("IndividualXRef = %s, want @I3@", assoc.IndividualXRef)
+	}
+	if assoc.Phrase != "Association text" {
+		t.Errorf("Phrase = %s, want 'Association text'", assoc.Phrase)
+	}
+	if assoc.Role != "OTHER" {
+		t.Errorf("Role = %s, want OTHER", assoc.Role)
+	}
+	if len(assoc.Notes) != 1 || assoc.Notes[0] != "Note text" {
+		t.Errorf("Notes = %v, want ['Note text']", assoc.Notes)
+	}
+	if len(assoc.SourceCitations) != 2 {
+		t.Fatalf("len(SourceCitations) = %d, want 2", len(assoc.SourceCitations))
+	}
+	if assoc.SourceCitations[0].SourceXRef != "@S1@" {
+		t.Errorf("SourceCitations[0].SourceXRef = %s, want @S1@", assoc.SourceCitations[0].SourceXRef)
+	}
+	if assoc.SourceCitations[0].Page != "1" {
+		t.Errorf("SourceCitations[0].Page = %s, want 1", assoc.SourceCitations[0].Page)
+	}
+	if assoc.SourceCitations[1].SourceXRef != "@S2@" {
+		t.Errorf("SourceCitations[1].SourceXRef = %s, want @S2@", assoc.SourceCitations[1].SourceXRef)
+	}
+}
+
+// TestParseAssociationBackwardCompatibility tests ASSO without PHRASE (GEDCOM 5.5.1 style).
+func TestParseAssociationBackwardCompatibility(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 ASSO @I2@
+2 RELA GODP
+0 @I2@ INDI
+1 NAME Old /Style/
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+
+	if len(indi.Associations) != 1 {
+		t.Fatalf("len(Associations) = %d, want 1", len(indi.Associations))
+	}
+
+	assoc := indi.Associations[0]
+	if assoc.IndividualXRef != "@I2@" {
+		t.Errorf("IndividualXRef = %s, want @I2@", assoc.IndividualXRef)
+	}
+	if assoc.Role != "GODP" {
+		t.Errorf("Role = %s, want GODP (from RELA tag)", assoc.Role)
+	}
+	if assoc.Phrase != "" {
+		t.Errorf("Phrase = %s, want empty (5.5.1 style)", assoc.Phrase)
+	}
+}
+
+// === GEDCOM 7.0 NAME TRAN (Transliteration) Tests ===
+// These tests validate parsing of GEDCOM 7.0 name transliteration features.
+// Ref: Issue #39
+
+// TestParsePersonalNameWithSingleTran tests NAME with a single TRAN subordinate.
+func TestParsePersonalNameWithSingleTran(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+2 GIVN John
+2 SURN Doe
+2 TRAN John /Doe/
+3 LANG en-GB
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+
+	if len(indi.Names) != 1 {
+		t.Fatalf("len(Names) = %d, want 1", len(indi.Names))
+	}
+
+	name := indi.Names[0]
+	if len(name.Transliterations) != 1 {
+		t.Fatalf("len(Transliterations) = %d, want 1", len(name.Transliterations))
+	}
+
+	tran := name.Transliterations[0]
+	if tran.Value != "John /Doe/" {
+		t.Errorf("Transliteration.Value = %s, want 'John /Doe/'", tran.Value)
+	}
+	if tran.Language != "en-GB" {
+		t.Errorf("Transliteration.Language = %s, want 'en-GB'", tran.Language)
+	}
+}
+
+// TestParsePersonalNameWithMultipleTran tests NAME with multiple TRAN subordinates.
+func TestParsePersonalNameWithMultipleTran(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME Lt. Cmndr. Joseph "John" /de Allen/ jr.
+2 NPFX Lt. Cmndr.
+2 GIVN Joseph
+2 NICK John
+2 SPFX de
+2 SURN Allen
+2 NSFX jr.
+2 TRAN npfx John /spfx Doe/ nsfx
+3 LANG en-GB
+3 NPFX npfx
+3 GIVN John
+3 NICK John
+3 SPFX spfx
+3 SURN Doe
+3 NSFX nsfx
+2 TRAN John /Doe/
+3 LANG en-CA
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+
+	if len(indi.Names) != 1 {
+		t.Fatalf("len(Names) = %d, want 1", len(indi.Names))
+	}
+
+	name := indi.Names[0]
+	if len(name.Transliterations) != 2 {
+		t.Fatalf("len(Transliterations) = %d, want 2", len(name.Transliterations))
+	}
+
+	// First transliteration with all components
+	tran1 := name.Transliterations[0]
+	if tran1.Value != "npfx John /spfx Doe/ nsfx" {
+		t.Errorf("Transliteration[0].Value = %s, want 'npfx John /spfx Doe/ nsfx'", tran1.Value)
+	}
+	if tran1.Language != "en-GB" {
+		t.Errorf("Transliteration[0].Language = %s, want 'en-GB'", tran1.Language)
+	}
+	if tran1.Prefix != "npfx" {
+		t.Errorf("Transliteration[0].Prefix = %s, want 'npfx'", tran1.Prefix)
+	}
+	if tran1.Given != "John" {
+		t.Errorf("Transliteration[0].Given = %s, want 'John'", tran1.Given)
+	}
+	if tran1.Nickname != "John" {
+		t.Errorf("Transliteration[0].Nickname = %s, want 'John'", tran1.Nickname)
+	}
+	if tran1.SurnamePrefix != "spfx" {
+		t.Errorf("Transliteration[0].SurnamePrefix = %s, want 'spfx'", tran1.SurnamePrefix)
+	}
+	if tran1.Surname != "Doe" {
+		t.Errorf("Transliteration[0].Surname = %s, want 'Doe'", tran1.Surname)
+	}
+	if tran1.Suffix != "nsfx" {
+		t.Errorf("Transliteration[0].Suffix = %s, want 'nsfx'", tran1.Suffix)
+	}
+
+	// Second transliteration with minimal components
+	tran2 := name.Transliterations[1]
+	if tran2.Value != "John /Doe/" {
+		t.Errorf("Transliteration[1].Value = %s, want 'John /Doe/'", tran2.Value)
+	}
+	if tran2.Language != "en-CA" {
+		t.Errorf("Transliteration[1].Language = %s, want 'en-CA'", tran2.Language)
+	}
+}
+
+// TestParsePersonalNameWithTranFromMaximal70 tests NAME TRAN parsing from maximal70.ged.
+func TestParsePersonalNameWithTranFromMaximal70(t *testing.T) {
+	f, err := os.Open("../testdata/gedcom-7.0/maximal70.ged")
+	if err != nil {
+		t.Fatalf("Failed to open test file: %v", err)
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+
+	if len(indi.Names) < 1 {
+		t.Fatal("No names found")
+	}
+
+	name := indi.Names[0]
+	if len(name.Transliterations) != 2 {
+		t.Fatalf("len(Transliterations) = %d, want 2", len(name.Transliterations))
+	}
+
+	// First TRAN: en-GB with all components
+	tran1 := name.Transliterations[0]
+	if tran1.Language != "en-GB" {
+		t.Errorf("Transliteration[0].Language = %s, want 'en-GB'", tran1.Language)
+	}
+	if tran1.Given != "John" {
+		t.Errorf("Transliteration[0].Given = %s, want 'John'", tran1.Given)
+	}
+	if tran1.Surname != "Doe" {
+		t.Errorf("Transliteration[0].Surname = %s, want 'Doe'", tran1.Surname)
+	}
+
+	// Second TRAN: en-CA
+	tran2 := name.Transliterations[1]
+	if tran2.Language != "en-CA" {
+		t.Errorf("Transliteration[1].Language = %s, want 'en-CA'", tran2.Language)
+	}
+}
+
+// TestParseNameWithoutTran tests NAME parsing backward compatibility (no TRAN).
+func TestParseNameWithoutTran(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+2 GIVN John
+2 SURN Doe
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+
+	if len(indi.Names) != 1 {
+		t.Fatalf("len(Names) = %d, want 1", len(indi.Names))
+	}
+
+	name := indi.Names[0]
+	if len(name.Transliterations) != 0 {
+		t.Errorf("len(Transliterations) = %d, want 0 (no TRAN in 5.5.1)", len(name.Transliterations))
+	}
+	if name.Given != "John" {
+		t.Errorf("Given = %s, want 'John'", name.Given)
+	}
+	if name.Surname != "Doe" {
+		t.Errorf("Surname = %s, want 'Doe'", name.Surname)
+	}
+}
+
+// TestMaximal70AssociationsFromFile tests parsing associations from maximal70.ged.
+func TestMaximal70AssociationsFromFile(t *testing.T) {
+	f, err := os.Open("../testdata/gedcom-7.0/maximal70.ged")
+	if err != nil {
+		t.Fatalf("Failed to open test file: %v", err)
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	// Check individual @I1@ associations (has PHRASE in maximal70.ged)
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+
+	// Find association with PHRASE
+	foundPhraseAssoc := false
+	for _, assoc := range indi.Associations {
+		if assoc.Phrase != "" {
+			foundPhraseAssoc = true
+			if assoc.Phrase != "Mr Stockdale" {
+				t.Errorf("Phrase = %s, want 'Mr Stockdale'", assoc.Phrase)
+			}
+			break
+		}
+	}
+	if !foundPhraseAssoc {
+		t.Error("No association with PHRASE found in @I1@")
+	}
+
+	// Note: Family associations are not currently implemented in the Family type.
+	// This test only checks Individual associations.
+}

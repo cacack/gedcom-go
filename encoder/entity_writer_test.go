@@ -1,8 +1,11 @@
 package encoder
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/decoder"
 	"github.com/cacack/gedcom-go/gedcom"
 )
 
@@ -2476,5 +2479,474 @@ func TestFamilySearchIDEncoding(t *testing.T) {
 				t.Errorf("expected no _FSFTID tag but found one with value %q", fsftidTag.Value)
 			}
 		})
+	}
+}
+
+// === GEDCOM 7.0 ASSO/PHRASE Encoder Tests ===
+// These tests validate encoding of GEDCOM 7.0 association features including
+// PHRASE subordinates for human-readable descriptions and SOUR citations.
+// Ref: Issues #40, #39
+
+// TestAssociationToTagsWithPhrase tests encoding ASSO with PHRASE subordinate.
+func TestAssociationToTagsWithPhrase(t *testing.T) {
+	tests := []struct {
+		name     string
+		assoc    *gedcom.Association
+		level    int
+		contains []string
+	}{
+		{
+			name: "association with phrase only",
+			assoc: &gedcom.Association{
+				IndividualXRef: "@I2@",
+				Phrase:         "Godparent at baptism",
+			},
+			level:    1,
+			contains: []string{"ASSO", "PHRASE"},
+		},
+		{
+			name: "association with phrase and role",
+			assoc: &gedcom.Association{
+				IndividualXRef: "@I2@",
+				Phrase:         "Godparent at baptism",
+				Role:           "GODP",
+			},
+			level:    1,
+			contains: []string{"ASSO", "PHRASE", "ROLE"},
+		},
+		{
+			name: "association with source citations",
+			assoc: &gedcom.Association{
+				IndividualXRef: "@I2@",
+				Role:           "WITN",
+				SourceCitations: []*gedcom.SourceCitation{
+					{SourceXRef: "@S1@", Page: "Page 123"},
+				},
+			},
+			level:    1,
+			contains: []string{"ASSO", "ROLE", "SOUR", "PAGE"},
+		},
+		{
+			name: "association with phrase, source and notes",
+			assoc: &gedcom.Association{
+				IndividualXRef: "@I3@",
+				Phrase:         "Association text",
+				Role:           "OTHER",
+				Notes:          []string{"Note text"},
+				SourceCitations: []*gedcom.SourceCitation{
+					{SourceXRef: "@S1@", Page: "1"},
+					{SourceXRef: "@S2@", Page: "2"},
+				},
+			},
+			level:    1,
+			contains: []string{"ASSO", "PHRASE", "ROLE", "NOTE", "SOUR", "PAGE"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := associationToTags(tt.assoc, tt.level, nil)
+			tagMap := tagNamesToMap(tags)
+
+			for _, expected := range tt.contains {
+				if !tagMap[expected] {
+					t.Errorf("associationToTags() missing expected tag %q", expected)
+				}
+			}
+
+			// Verify ASSO tag has correct level and value
+			if len(tags) > 0 {
+				if tags[0].Tag != "ASSO" {
+					t.Errorf("First tag = %s, want ASSO", tags[0].Tag)
+				}
+				if tags[0].Level != tt.level {
+					t.Errorf("ASSO level = %d, want %d", tags[0].Level, tt.level)
+				}
+				if tags[0].Value != tt.assoc.IndividualXRef {
+					t.Errorf("ASSO value = %s, want %s", tags[0].Value, tt.assoc.IndividualXRef)
+				}
+			}
+
+			// Verify PHRASE tag value if present
+			if tt.assoc.Phrase != "" {
+				var phraseTag *gedcom.Tag
+				for _, tag := range tags {
+					if tag.Tag == "PHRASE" {
+						phraseTag = tag
+						break
+					}
+				}
+				if phraseTag == nil {
+					t.Error("expected PHRASE tag but not found")
+				} else if phraseTag.Value != tt.assoc.Phrase {
+					t.Errorf("PHRASE value = %q, want %q", phraseTag.Value, tt.assoc.Phrase)
+				}
+			}
+		})
+	}
+}
+
+// TestAssociationToTagsSourceCitationCount tests correct encoding of multiple source citations.
+func TestAssociationToTagsSourceCitationCount(t *testing.T) {
+	assoc := &gedcom.Association{
+		IndividualXRef: "@I2@",
+		Role:           "GODP",
+		SourceCitations: []*gedcom.SourceCitation{
+			{SourceXRef: "@S1@", Page: "1"},
+			{SourceXRef: "@S2@", Page: "2"},
+			{SourceXRef: "@S3@", Page: "3"},
+		},
+	}
+
+	tags := associationToTags(assoc, 1, nil)
+
+	// Count SOUR tags
+	sourCount := 0
+	for _, tag := range tags {
+		if tag.Tag == "SOUR" {
+			sourCount++
+		}
+	}
+
+	if sourCount != 3 {
+		t.Errorf("Expected 3 SOUR tags, got %d", sourCount)
+	}
+}
+
+// === GEDCOM 7.0 NAME TRAN (Transliteration) Encoder Tests ===
+// These tests validate encoding of GEDCOM 7.0 name transliteration features.
+// Ref: Issue #39
+
+// TestNameToTagsWithTransliterations tests encoding NAME with TRAN subordinates.
+func TestNameToTagsWithTransliterations(t *testing.T) {
+	tests := []struct {
+		name     string
+		pname    *gedcom.PersonalName
+		level    int
+		contains []string
+	}{
+		{
+			name: "name with single transliteration",
+			pname: &gedcom.PersonalName{
+				Full:    "John /Doe/",
+				Given:   "John",
+				Surname: "Doe",
+				Transliterations: []*gedcom.Transliteration{
+					{
+						Value:    "John /Doe/",
+						Language: "en-GB",
+					},
+				},
+			},
+			level:    1,
+			contains: []string{"NAME", "GIVN", "SURN", "TRAN", "LANG"},
+		},
+		{
+			name: "name with multiple transliterations",
+			pname: &gedcom.PersonalName{
+				Full:    "John /Doe/",
+				Given:   "John",
+				Surname: "Doe",
+				Transliterations: []*gedcom.Transliteration{
+					{
+						Value:    "John /Doe/",
+						Language: "en-GB",
+					},
+					{
+						Value:    "John /Doe/",
+						Language: "en-CA",
+					},
+				},
+			},
+			level:    1,
+			contains: []string{"NAME", "GIVN", "SURN", "TRAN", "LANG"},
+		},
+		{
+			name: "name with transliteration and all components",
+			pname: &gedcom.PersonalName{
+				Full:          "Lt. Cmndr. Joseph /Allen/ jr.",
+				Given:         "Joseph",
+				Surname:       "Allen",
+				Prefix:        "Lt. Cmndr.",
+				Suffix:        "jr.",
+				SurnamePrefix: "de",
+				Transliterations: []*gedcom.Transliteration{
+					{
+						Value:         "npfx John /spfx Doe/ nsfx",
+						Language:      "en-GB",
+						Prefix:        "npfx",
+						Given:         "John",
+						Surname:       "Doe",
+						Suffix:        "nsfx",
+						SurnamePrefix: "spfx",
+						Nickname:      "Johnny",
+					},
+				},
+			},
+			level:    1,
+			contains: []string{"NAME", "GIVN", "SURN", "NPFX", "NSFX", "SPFX", "TRAN", "LANG"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := nameToTags(tt.pname, tt.level)
+			tagMap := tagNamesToMap(tags)
+
+			for _, expected := range tt.contains {
+				if !tagMap[expected] {
+					t.Errorf("nameToTags() missing expected tag %q", expected)
+				}
+			}
+		})
+	}
+}
+
+// TestTransliterationToTags tests encoding of individual transliteration records.
+func TestTransliterationToTags(t *testing.T) {
+	tests := []struct {
+		name     string
+		tran     *gedcom.Transliteration
+		level    int
+		contains []string
+	}{
+		{
+			name: "minimal transliteration",
+			tran: &gedcom.Transliteration{
+				Value: "John /Doe/",
+			},
+			level:    2,
+			contains: []string{"TRAN"},
+		},
+		{
+			name: "transliteration with language",
+			tran: &gedcom.Transliteration{
+				Value:    "John /Doe/",
+				Language: "en-GB",
+			},
+			level:    2,
+			contains: []string{"TRAN", "LANG"},
+		},
+		{
+			name: "transliteration with all components",
+			tran: &gedcom.Transliteration{
+				Value:         "npfx John /spfx Doe/ nsfx",
+				Language:      "en-GB",
+				Prefix:        "npfx",
+				Given:         "John",
+				Surname:       "Doe",
+				Suffix:        "nsfx",
+				SurnamePrefix: "spfx",
+				Nickname:      "Johnny",
+			},
+			level:    2,
+			contains: []string{"TRAN", "LANG", "NPFX", "GIVN", "SURN", "NSFX", "SPFX", "NICK"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := transliterationToTags(tt.tran, tt.level)
+			tagMap := tagNamesToMap(tags)
+
+			for _, expected := range tt.contains {
+				if !tagMap[expected] {
+					t.Errorf("transliterationToTags() missing expected tag %q", expected)
+				}
+			}
+
+			// Verify TRAN tag has correct level and value
+			if len(tags) > 0 {
+				if tags[0].Tag != "TRAN" {
+					t.Errorf("First tag = %s, want TRAN", tags[0].Tag)
+				}
+				if tags[0].Level != tt.level {
+					t.Errorf("TRAN level = %d, want %d", tags[0].Level, tt.level)
+				}
+				if tags[0].Value != tt.tran.Value {
+					t.Errorf("TRAN value = %q, want %q", tags[0].Value, tt.tran.Value)
+				}
+			}
+		})
+	}
+}
+
+// TestTransliterationToTagsSubordinateLevels tests that subordinate tags have correct levels.
+func TestTransliterationToTagsSubordinateLevels(t *testing.T) {
+	tran := &gedcom.Transliteration{
+		Value:    "John /Doe/",
+		Language: "en-GB",
+		Given:    "John",
+		Surname:  "Doe",
+	}
+
+	tags := transliterationToTags(tran, 2)
+
+	// TRAN should be at level 2
+	if tags[0].Level != 2 {
+		t.Errorf("TRAN level = %d, want 2", tags[0].Level)
+	}
+
+	// All subordinates should be at level 3
+	for _, tag := range tags[1:] {
+		if tag.Level != 3 {
+			t.Errorf("%s level = %d, want 3", tag.Tag, tag.Level)
+		}
+	}
+}
+
+// TestNameToTagsTransliterationCount tests correct encoding of multiple transliterations.
+func TestNameToTagsTransliterationCount(t *testing.T) {
+	pname := &gedcom.PersonalName{
+		Full:    "John /Doe/",
+		Given:   "John",
+		Surname: "Doe",
+		Transliterations: []*gedcom.Transliteration{
+			{Value: "John /Doe/", Language: "en-GB"},
+			{Value: "John /Doe/", Language: "en-CA"},
+			{Value: "John /Doe/", Language: "en-AU"},
+		},
+	}
+
+	tags := nameToTags(pname, 1)
+
+	// Count TRAN tags
+	tranCount := 0
+	for _, tag := range tags {
+		if tag.Tag == "TRAN" {
+			tranCount++
+		}
+	}
+
+	if tranCount != 3 {
+		t.Errorf("Expected 3 TRAN tags, got %d", tranCount)
+	}
+}
+
+// TestRoundTripAssociationWithPhrase tests decode -> encode consistency for ASSO with PHRASE.
+func TestRoundTripAssociationWithPhrase(t *testing.T) {
+	original := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+1 ASSO @I2@
+2 PHRASE Godparent at baptism
+2 ROLE GODP
+2 SOUR @S1@
+3 PAGE Page 123
+0 @I2@ INDI
+1 NAME Jane /Smith/
+0 @S1@ SOUR
+1 TITL Baptism Registry
+0 TRLR
+`
+	doc, err := decoder.Decode(strings.NewReader(original))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	// Re-encode the document
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode failed: %v", err)
+	}
+
+	// Re-decode the encoded document
+	doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatalf("Re-decode failed: %v", err)
+	}
+
+	// Verify the association is preserved
+	indi := doc2.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found after round-trip")
+	}
+
+	if len(indi.Associations) != 1 {
+		t.Fatalf("len(Associations) = %d, want 1", len(indi.Associations))
+	}
+
+	assoc := indi.Associations[0]
+	if assoc.IndividualXRef != "@I2@" {
+		t.Errorf("IndividualXRef = %s, want @I2@", assoc.IndividualXRef)
+	}
+	if assoc.Phrase != "Godparent at baptism" {
+		t.Errorf("Phrase = %s, want 'Godparent at baptism'", assoc.Phrase)
+	}
+	if assoc.Role != "GODP" {
+		t.Errorf("Role = %s, want GODP", assoc.Role)
+	}
+	if len(assoc.SourceCitations) != 1 {
+		t.Fatalf("len(SourceCitations) = %d, want 1", len(assoc.SourceCitations))
+	}
+}
+
+// TestRoundTripNameWithTransliteration tests decode -> encode consistency for NAME with TRAN.
+func TestRoundTripNameWithTransliteration(t *testing.T) {
+	original := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+2 GIVN John
+2 SURN Doe
+2 TRAN John /Doe/
+3 LANG en-GB
+3 GIVN John
+3 SURN Doe
+2 TRAN John /Doe/
+3 LANG en-CA
+0 TRLR
+`
+	doc, err := decoder.Decode(strings.NewReader(original))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	// Re-encode the document
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode failed: %v", err)
+	}
+
+	// Re-decode the encoded document
+	doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatalf("Re-decode failed: %v", err)
+	}
+
+	// Verify the transliterations are preserved
+	indi := doc2.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found after round-trip")
+	}
+
+	if len(indi.Names) != 1 {
+		t.Fatalf("len(Names) = %d, want 1", len(indi.Names))
+	}
+
+	name := indi.Names[0]
+	if len(name.Transliterations) != 2 {
+		t.Fatalf("len(Transliterations) = %d, want 2", len(name.Transliterations))
+	}
+
+	// Verify first transliteration
+	tran1 := name.Transliterations[0]
+	if tran1.Language != "en-GB" {
+		t.Errorf("Transliteration[0].Language = %s, want 'en-GB'", tran1.Language)
+	}
+	if tran1.Given != "John" {
+		t.Errorf("Transliteration[0].Given = %s, want 'John'", tran1.Given)
+	}
+	if tran1.Surname != "Doe" {
+		t.Errorf("Transliteration[0].Surname = %s, want 'Doe'", tran1.Surname)
+	}
+
+	// Verify second transliteration
+	tran2 := name.Transliterations[1]
+	if tran2.Language != "en-CA" {
+		t.Errorf("Transliteration[1].Language = %s, want 'en-CA'", tran2.Language)
 	}
 }
