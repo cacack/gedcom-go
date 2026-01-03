@@ -351,7 +351,7 @@ Full support for encoding typed entities back to GEDCOM format:
 |-------------|------------------|
 | Individual | Names, sex, events, attributes, family links, associations, LDS ordinances, citations, notes, media |
 | Family | Spouse/child refs, events, LDS ordinances, citations, notes, media |
-| Source | Title, author, publication, text, repository ref, notes, media |
+| Source | Title, author, publication, text, repository ref/inline, notes, media |
 | Repository | Name, address, notes |
 | Submitter | Name, address, contact info, languages |
 | Note | Text with continuation lines |
@@ -363,6 +363,53 @@ Decode → modify → encode workflow:
 - Lossless by default: original tags preserved when present
 - Entity conversion: generates tags from typed fields when tags are empty
 - All nested structures supported: events, names, citations, addresses, coordinates
+
+### Line Continuation (CONT/CONC)
+
+Automatic handling of multiline and long text per GEDCOM specification:
+
+- **CONT (continuation)**: Multiline text automatically split on `\n` into CONT tags
+- **CONC (concatenation)**: Long lines (>248 chars) automatically split at word boundaries
+
+```go
+// Multiline text becomes CONT continuation
+note := "Line one\nLine two\nLine three"
+// Encodes as:
+// 1 NOTE Line one
+// 2 CONT Line two
+// 2 CONT Line three
+
+// Long lines become CONC concatenation (split at word boundaries)
+longText := "Very long text exceeding 248 characters..."
+// Encodes as:
+// 1 NOTE Very long text exceeding...
+// 2 CONC the 248 character limit...
+```
+
+Configurable via `EncodeOptions`:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `MaxLineLength` | 248 | Maximum line length before CONC split |
+| `DisableLineWrap` | false | Disable automatic CONC splitting |
+
+### Inline Repository Support
+
+Sources support both XRef references and inline repository definitions:
+
+```go
+// XRef reference to separate repository record
+source.RepositoryRef = "@R1@"
+// Encodes as: 1 REPO @R1@
+
+// Inline repository definition (no separate record needed)
+source.Repository = &gedcom.InlineRepository{Name: "State Archives"}
+// Encodes as:
+// 1 REPO
+// 2 NAME State Archives
+```
+
+Useful for sources imported from GEDCOM files where repository names are stored inline rather than as separate records.
 
 ## Performance
 
