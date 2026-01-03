@@ -413,3 +413,106 @@ func TestDecodeWithOptionsNil(t *testing.T) {
 		t.Errorf("Header.Version = %q, want %q", doc.Header.Version, "5.5")
 	}
 }
+
+// Test vendor detection during decode
+func TestDecodeVendorDetection(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantVendor gedcom.Vendor
+	}{
+		{
+			name: "Ancestry vendor detected",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+1 SOUR Ancestry.com Family Trees
+0 TRLR`,
+			wantVendor: gedcom.VendorAncestry,
+		},
+		{
+			name: "FamilyTreeMaker vendor detected as Ancestry",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+1 SOUR FamilyTreeMaker
+0 TRLR`,
+			wantVendor: gedcom.VendorAncestry,
+		},
+		{
+			name: "FamilySearch vendor detected",
+			input: `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SOUR FamilySearch.org
+0 TRLR`,
+			wantVendor: gedcom.VendorFamilySearch,
+		},
+		{
+			name: "RootsMagic vendor detected",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 SOUR RootsMagic
+0 TRLR`,
+			wantVendor: gedcom.VendorRootsMagic,
+		},
+		{
+			name: "Legacy vendor detected",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+1 SOUR Legacy Family Tree
+0 TRLR`,
+			wantVendor: gedcom.VendorLegacy,
+		},
+		{
+			name: "Gramps vendor detected",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 SOUR Gramps
+0 TRLR`,
+			wantVendor: gedcom.VendorGramps,
+		},
+		{
+			name: "MyHeritage vendor detected",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+1 SOUR MyHeritage Family Tree Builder
+0 TRLR`,
+			wantVendor: gedcom.VendorMyHeritage,
+		},
+		{
+			name: "Unknown vendor for unrecognized source",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+1 SOUR GEDitCOM
+0 TRLR`,
+			wantVendor: gedcom.VendorUnknown,
+		},
+		{
+			name: "Unknown vendor when no SOUR tag",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 TRLR`,
+			wantVendor: gedcom.VendorUnknown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := Decode(strings.NewReader(tt.input))
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+
+			if doc.Vendor != tt.wantVendor {
+				t.Errorf("doc.Vendor = %v, want %v", doc.Vendor, tt.wantVendor)
+			}
+		})
+	}
+}

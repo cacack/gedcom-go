@@ -144,6 +144,9 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 	if doc.Header.Version == "" {
 		doc.Header.Version = ver
 	}
+
+	// Detect vendor from source system
+	doc.Vendor = gedcom.DetectVendor(doc.Header.SourceSystem)
 }
 
 // buildRecords extracts records from lines and builds the XRefMap.

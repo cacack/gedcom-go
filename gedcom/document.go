@@ -39,6 +39,10 @@ type Document struct {
 	// XRefMap provides fast lookup of records by cross-reference ID
 	// Map key is the XRef (e.g., "@I1@"), value is the Record
 	XRefMap map[string]*Record
+
+	// Vendor identifies the software that created this GEDCOM file.
+	// Detected from the HEAD.SOUR tag during decoding.
+	Vendor Vendor
 }
 
 // GetRecord returns the record with the given cross-reference ID.
