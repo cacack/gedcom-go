@@ -566,6 +566,54 @@ All methods return `nil` if the record is not found (consistent with Go map beha
 | `Notes()` | `[]*Note` | All notes |
 | `MediaObjects()` | `[]*MediaObject` | All media objects |
 
+### Relationship Traversal
+
+Navigate family relationships with convenience methods that eliminate manual cross-reference resolution:
+
+**Individual Methods:**
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `Parents(doc)` | `[]*Individual` | Parents from FAMC families |
+| `Spouses(doc)` | `[]*Individual` | Spouses from FAMS families (handles remarriage) |
+| `Children(doc)` | `[]*Individual` | Children from all FAMS families |
+| `ParentalFamilies(doc)` | `[]*Family` | Families where individual is a child |
+| `SpouseFamilies(doc)` | `[]*Family` | Families where individual is a spouse |
+
+**Family Methods:**
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `HusbandIndividual(doc)` | `*Individual` | Husband of the family |
+| `WifeIndividual(doc)` | `*Individual` | Wife of the family |
+| `ChildrenIndividuals(doc)` | `[]*Individual` | Children in GEDCOM order |
+| `AllMembers(doc)` | `[]*Individual` | Husband, wife, and children |
+
+All methods:
+- Take `*Document` for O(1) cross-reference lookup
+- Return `nil` or empty slice for missing/invalid references (never error)
+- Preserve order from GEDCOM file
+
+```go
+// Navigate from individual to relatives
+person := doc.GetIndividual("@I1@")
+for _, parent := range person.Parents(doc) {
+    fmt.Println(parent.Names[0].Full)
+}
+for _, spouse := range person.Spouses(doc) {
+    fmt.Println(spouse.Names[0].Full)
+}
+for _, child := range person.Children(doc) {
+    fmt.Println(child.Names[0].Full)
+}
+
+// Navigate from family to members
+family := doc.GetFamily("@F1@")
+husband := family.HusbandIndividual(doc)
+wife := family.WifeIndividual(doc)
+children := family.ChildrenIndividuals(doc)
+```
+
 ## Testing
 
 - 93% test coverage across core packages
