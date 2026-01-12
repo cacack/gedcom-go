@@ -446,6 +446,103 @@ s := date.String()  // "25 DEC 2020"
 - Error categorization (error, warning)
 - Clear error messages with context
 
+### Enhanced Data Validation
+
+Comprehensive data quality validation beyond structural correctness:
+
+**Date Logic Validation:**
+
+| Check | Severity | Description |
+|-------|----------|-------------|
+| Death before birth | Error | Death date precedes birth date |
+| Child before parent | Error | Child born before parent |
+| Marriage before birth | Error | Marriage date before spouse's birth |
+| Impossible age | Warning | Age exceeds configurable maximum (default: 120) |
+| Unreasonable parent age | Warning | Parent age at child's birth outside normal range |
+
+```go
+v := validator.New()
+issues := v.ValidateDateLogic(doc)
+for _, issue := range issues {
+    fmt.Printf("[%s] %s: %s\n", issue.Severity, issue.Code, issue.Message)
+}
+```
+
+**Orphaned Reference Detection:**
+
+Typed detection for all GEDCOM reference types:
+
+| Error Code | Reference Type | Description |
+|------------|----------------|-------------|
+| ORPHANED_FAMC | FAMC | Individual references non-existent family (as child) |
+| ORPHANED_FAMS | FAMS | Individual references non-existent family (as spouse) |
+| ORPHANED_HUSB | HUSB | Family references non-existent husband |
+| ORPHANED_WIFE | WIFE | Family references non-existent wife |
+| ORPHANED_CHIL | CHIL | Family references non-existent child |
+| ORPHANED_SOUR | SOUR | Citation references non-existent source |
+
+```go
+issues := v.FindOrphanedReferences(doc)
+```
+
+**Duplicate Detection:**
+
+Configurable matching based on name similarity and date proximity:
+
+```go
+config := &validator.DuplicateConfig{
+    RequireExactSurname: true,
+    MinNameSimilarity:   0.8,
+    MaxBirthYearDiff:    2,
+    MinConfidence:       0.7,
+}
+v := validator.NewWithConfig(&validator.ValidatorConfig{Duplicates: config})
+pairs := v.FindPotentialDuplicates(doc)
+for _, pair := range pairs {
+    fmt.Printf("Potential duplicate: %s and %s (%.0f%% confidence)\n",
+        pair.Individual1.XRef, pair.Individual2.XRef, pair.Confidence*100)
+}
+```
+
+**Quality Report:**
+
+Comprehensive quality assessment with metrics and issue aggregation:
+
+```go
+report := v.QualityReport(doc)
+fmt.Println(report.String())
+// Output:
+// GEDCOM Quality Report
+// =====================
+// Records: 150 individuals, 45 families, 12 sources
+//
+// Data Completeness:
+// - Birth dates: 89% (134/150)
+// - Sources: 45% (68/150)
+//
+// Issues Found: 23 total
+// - Errors: 3
+// - Warnings: 8
+// - Info: 12
+```
+
+**Configurable Strictness:**
+
+Control which severity levels are reported:
+
+| Level | Reports |
+|-------|---------|
+| StrictnessRelaxed | Errors only |
+| StrictnessNormal | Errors + Warnings (default) |
+| StrictnessStrict | All issues including Info |
+
+```go
+v := validator.NewWithConfig(&validator.ValidatorConfig{
+    Strictness: validator.StrictnessStrict,
+})
+issues := v.ValidateAll(doc)  // Returns all severity levels
+```
+
 ## Encoder
 
 - Write valid GEDCOM files

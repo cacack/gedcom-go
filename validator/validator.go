@@ -4,16 +4,63 @@
 // different GEDCOM versions (5.5, 5.5.1, 7.0). It checks for structural
 // correctness, required fields, and valid cross-references.
 //
-// Example usage:
+// The validator provides two APIs:
+//
+//   - Validate() - Original API returning []error for backward compatibility
+//   - ValidateAll() - Enhanced API returning []Issue with severity levels
+//
+// # Basic Usage
+//
+// For simple validation returning errors:
 //
 //	doc, _ := decoder.Decode(reader)
-//	v := validator.New(doc)
-//	errors := v.Validate()
+//	v := validator.New()
+//	errors := v.Validate(doc)
 //	if len(errors) > 0 {
 //	    for _, err := range errors {
-//	        fmt.Printf("[%s] %s (line %d)\n", err.Code, err.Message, err.Line)
+//	        fmt.Printf("%v\n", err)
 //	    }
 //	}
+//
+// # Enhanced Validation
+//
+// For detailed validation with severity levels:
+//
+//	v := validator.New()
+//	issues := v.ValidateAll(doc)
+//	for _, issue := range issues {
+//	    fmt.Printf("[%s] %s: %s\n", issue.Severity, issue.Code, issue.Message)
+//	}
+//
+// # Individual Validators
+//
+// You can run specific validators independently:
+//
+//	v := validator.New()
+//	dateIssues := v.ValidateDateLogic(doc)      // Check date logic
+//	refIssues := v.FindOrphanedReferences(doc)  // Find broken references
+//	duplicates := v.FindPotentialDuplicates(doc) // Find potential duplicates
+//
+// # Quality Reports
+//
+// Generate comprehensive data quality reports:
+//
+//	v := validator.New()
+//	report := v.QualityReport(doc)
+//	fmt.Printf("Errors: %d, Warnings: %d\n", report.ErrorCount, report.WarningCount)
+//	fmt.Printf("Birth date coverage: %.0f%%\n", report.BirthDateCoverage*100)
+//
+// # Configuration
+//
+// Customize validation behavior:
+//
+//	config := &validator.ValidatorConfig{
+//	    Strictness: validator.StrictnessStrict,
+//	    DateLogic: &validator.DateLogicConfig{
+//	        MaxReasonableAge: 110,
+//	    },
+//	}
+//	v := validator.NewWithConfig(config)
 package validator
 
 import (
@@ -40,16 +87,111 @@ func (e *ValidationError) Error() string {
 	return fmt.Sprintf("[%s] %s", e.Code, e.Message)
 }
 
-// Validator validates GEDCOM documents against specification rules.
-type Validator struct {
-	errors []error
+// Strictness defines the level of validation strictness.
+type Strictness int
+
+const (
+	// StrictnessRelaxed reports only errors.
+	StrictnessRelaxed Strictness = iota
+	// StrictnessNormal reports errors and warnings (default).
+	StrictnessNormal
+	// StrictnessStrict reports all issues including info.
+	StrictnessStrict
+)
+
+// ValidatorConfig contains configuration options for the Validator.
+//
+//nolint:revive // Name kept for API clarity despite repetition
+type ValidatorConfig struct {
+	// DateLogic configures date logic validation thresholds.
+	// If nil, default values are used.
+	DateLogic *DateLogicConfig
+
+	// Duplicates configures duplicate detection thresholds.
+	// If nil, default values are used.
+	Duplicates *DuplicateConfig
+
+	// Strictness controls which severity levels are included in results.
+	// Default: StrictnessNormal (errors and warnings).
+	Strictness Strictness
 }
 
-// New creates a new Validator.
+// Validator validates GEDCOM documents against specification rules.
+type Validator struct {
+	errors     []error
+	config     *ValidatorConfig
+	dateLogic  *DateLogicValidator
+	references *ReferenceValidator
+	duplicates *DuplicateDetector
+	quality    *QualityAnalyzer
+}
+
+// New creates a new Validator with default configuration.
 func New() *Validator {
+	return NewWithConfig(nil)
+}
+
+// NewWithConfig creates a new Validator with the given configuration.
+// If config is nil, default configuration is used.
+func NewWithConfig(config *ValidatorConfig) *Validator {
+	if config == nil {
+		config = &ValidatorConfig{
+			Strictness: StrictnessNormal,
+		}
+	}
 	return &Validator{
 		errors: make([]error, 0),
+		config: config,
 	}
+}
+
+// getDateLogicValidator returns the date logic validator, creating it lazily if needed.
+func (v *Validator) getDateLogicValidator() *DateLogicValidator {
+	if v.dateLogic == nil {
+		var config *DateLogicConfig
+		if v.config != nil {
+			config = v.config.DateLogic
+		}
+		v.dateLogic = NewDateLogicValidator(config)
+	}
+	return v.dateLogic
+}
+
+// getReferenceValidator returns the reference validator, creating it lazily if needed.
+func (v *Validator) getReferenceValidator() *ReferenceValidator {
+	if v.references == nil {
+		v.references = NewReferenceValidator()
+	}
+	return v.references
+}
+
+// getDuplicateDetector returns the duplicate detector, creating it lazily if needed.
+func (v *Validator) getDuplicateDetector() *DuplicateDetector {
+	if v.duplicates == nil {
+		var config *DuplicateConfig
+		if v.config != nil {
+			config = v.config.Duplicates
+		}
+		v.duplicates = NewDuplicateDetector(config)
+	}
+	return v.duplicates
+}
+
+// getQualityAnalyzer returns the quality analyzer, creating it lazily if needed.
+func (v *Validator) getQualityAnalyzer() *QualityAnalyzer {
+	if v.quality == nil {
+		var opts []QualityOption
+		if v.config != nil {
+			if v.config.DateLogic != nil {
+				opts = append(opts, WithDateLogicConfig(v.config.DateLogic))
+			}
+			if v.config.Duplicates != nil {
+				opts = append(opts, WithDuplicateConfig(v.config.Duplicates))
+			}
+		}
+		v.quality = NewQualityAnalyzer(opts...)
+	}
+	return v.quality
 }
 
 // Validate validates a GEDCOM document and returns any validation errors.
@@ -140,5 +282,115 @@ func (v *Validator) validateFamily(record *gedcom.Record) {
 			Message: "Family record has no members (no HUSB, WIFE, or CHIL tags)",
 			XRef:    record.XRef,
 		})
+	}
+}
+
+// ValidateAll returns comprehensive validation as Issues with severity levels.
+// This is the enhanced API that provides more detail than Validate().
+// Issues are filtered based on the configured Strictness level.
+func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
+	if doc == nil {
+		return nil
+	}
+
+	var allIssues []Issue
+
+	// Run date logic validation
+	allIssues = append(allIssues, v.getDateLogicValidator().Validate(doc)...)
+
+	// Run reference validation
+	allIssues = append(allIssues, v.getReferenceValidator().Validate(doc)...)
+
+	// Run duplicate detection and convert to issues
+	for _, pair := range v.getDuplicateDetector().FindDuplicates(doc) {
+		allIssues = append(allIssues, pair.ToIssue())
+	}
+
+	// Filter by strictness
+	return v.filterByStrictness(allIssues)
+}
+
+// ValidateDateLogic runs date logic validation and returns any issues found.
+// This checks for chronological impossibilities like death before birth,
+// children born before parents, and unreasonable ages.
+func (v *Validator) ValidateDateLogic(doc *gedcom.Document) []Issue {
+	if doc == nil {
+		return nil
+	}
+	issues := v.getDateLogicValidator().Validate(doc)
+	return v.filterByStrictness(issues)
+}
+
+// FindOrphanedReferences checks for cross-references that point to non-existent records.
+// This includes FAMC, FAMS, HUSB, WIFE, CHIL, and SOUR references.
+func (v *Validator) FindOrphanedReferences(doc *gedcom.Document) []Issue {
+	if doc == nil {
+		return nil
+	}
+	issues := v.getReferenceValidator().Validate(doc)
+	return v.filterByStrictness(issues)
+}
+
+// FindPotentialDuplicates detects potential duplicate individuals based on
+// name similarity and birth date proximity.
+func (v *Validator) FindPotentialDuplicates(doc *gedcom.Document) []DuplicatePair {
+	if doc == nil {
+		return nil
+	}
+	return v.getDuplicateDetector().FindDuplicates(doc)
+}
+
+// QualityReport generates a comprehensive data quality report for the document.
+// The report includes all validation results and data completeness statistics.
+func (v *Validator) QualityReport(doc *gedcom.Document) *QualityReport {
+	if doc == nil {
+		return &QualityReport{
+			Errors:             []Issue{},
+			Warnings:           []Issue{},
+			Info:               []Issue{},
+			DateLogicIssues:    []Issue{},
+			ReferenceIssues:    []Issue{},
+			DuplicateIssues:    []Issue{},
+			CompletenessIssues: []Issue{},
+		}
+	}
+	return v.getQualityAnalyzer().Analyze(doc)
+}
+
+// filterByStrictness filters issues based on the configured strictness level.
+func (v *Validator) filterByStrictness(issues []Issue) []Issue {
+	if len(issues) == 0 {
+		return issues
+	}
+
+	strictness := StrictnessNormal
+	if v.config != nil {
+		strictness = v.config.Strictness
+	}
+
+	switch strictness {
+	case StrictnessRelaxed:
+		// Only errors
+		var result []Issue
+		for _, issue := range issues {
+			if issue.Severity == SeverityError {
+				result = append(result, issue)
+			}
+		}
+		return result
+	case StrictnessNormal:
+		// Errors and warnings
+		var result []Issue
+		for _, issue := range issues {
+			if issue.Severity == SeverityError || issue.Severity == SeverityWarning {
+				result = append(result, issue)
+			}
+		}
+		return result
+	case StrictnessStrict:
+		// All issues
+		return issues
+	default:
+		return issues
 	}
 }
