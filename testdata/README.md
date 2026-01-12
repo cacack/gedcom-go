@@ -20,7 +20,7 @@ testdata/
 
 ## Test File Summary
 
-**Total Test Files**: 42 GEDCOM files (as of 2025-10-21)
+**Total Test Files**: 53 GEDCOM files (as of 2025-01-12)
 
 ### GEDCOM 5.5 Files
 
@@ -101,6 +101,23 @@ Testing various character encodings and special characters:
   - Symbols and emoji: ☺☻♠♣♥♦★☆♪♫✓✗✘
   - Tests multi-byte UTF-8, RTL text, complex scripts, combining marks
 
+#### Gramps Encoding Tests
+Source: https://github.com/gramps-project/gramps/tree/master/data/tests
+License: GPL-2.0 (data files used as test inputs)
+
+- **ansel-lf.ged** (10K) - ANSEL character encoding with LF line endings
+  - Comprehensive ANSEL character set test
+  - All combining/diacritical characters in ANSEL
+  - Tests special characters (british pound, copyright, etc.)
+  - 35 individuals testing different character combinations
+  - Unix-style LF line endings (fills gap in line ending coverage)
+
+- **utf8-nobom-lf.ged** (8.5K) - UTF-8 without BOM, LF line endings
+  - Same character tests as ANSEL version but in UTF-8
+  - No Byte Order Mark (tests BOM-less detection)
+  - Unix-style LF line endings
+  - Tests UTF-8 encoding of ANSEL special characters
+
 ### Edge Cases (`edge-cases/`)
 
 Testing parser robustness with edge cases:
@@ -114,6 +131,87 @@ Testing parser robustness with edge cases:
   - Unicode characters with CONT/CONC
   - Special characters and quotes in continued text
   - Tests that parser correctly reconstructs original text
+
+#### Vendor-Specific Test Files
+Source: https://github.com/frizbog/gedcom4j (sample/ directory)
+License: MIT
+
+These files test vendor-specific custom tags and extensions from various genealogy software:
+
+- **vendor-legacy.ged** (7.6K) - Legacy Family Tree 8.0 export
+  - Custom tags: `_TODO`, `_UID`, `_PRIV`, `_EVENT_DEFN`, `_PLAC_DEFN`, `_TAG`
+  - Source with inline citation data
+  - Privacy markers on events and addresses
+  - Custom event definitions with sentence templates
+  - Tests: 5 individuals, 3 families, notes, sources, repositories
+
+- **vendor-ftm.ged** (3.4K) - Family Tree Maker 22.2.5 for Mac
+  - Custom tags: `_MISN`, `_DNA`, `_FUN`, `_ORDI`, `_MILTID`, `_EMPLOY`, `_WEIG`, `_INIT`, `_DEST`, `_NAMS`, `_MDCL`, `_ELEC`, `_HEIG`, `_CIRC`, `_ORIG`, `_MILT`, `_EXCM`, `_DCAUSE`, `_PHOTO`, `_FREL`, `_MREL`, `_SEPR`
+  - Non-standard relationship types (Step, Guardian)
+  - Source citation with justification and link
+  - Tests: 3 individuals, 2 families, 1 source, 1 media object
+
+- **vendor-familyhistorian.ged** (5.8K) - Family Historian 6.2.2
+  - Custom tags: `_ATTR`, `_USED`, `_SHAN`, `_SHAR`, `_FLGS`, `_PLAC`, `_EMAIL`, `_WEB`, `_ROOT`, `_UID`, `_PEDI`
+  - Shared event participants (witnesses)
+  - Custom place records at root level
+  - Census flag markers
+  - Named list structures
+  - Tests: 3 individuals, 1 family, 11 place records, 1 source, 1 media object
+
+- **vendor-customtags-torture.ged** (11K) - Custom tags stress test
+  - Deeply nested vendor extensions at every GEDCOM structure level
+  - Custom tags under: header, submitter, submission, individual, family, source, repository, media
+  - Multi-level custom tag hierarchies (up to 6 levels deep)
+  - Custom tags with CONC line continuation
+  - Root-level custom records (`_ROOT`, `_ROOT2`)
+  - MIT License embedded in COPR tag
+  - Tests: 3 individuals, 2 families, 1 source, 1 repository, 1 media object, 1 submission
+
+- **relationships-complex.ged** (9.5K) - Complex family relationships
+  - Step-parent and guardian relationships
+  - Single-parent families (father only, mother only)
+  - Remarriage scenarios (same person multiple FAMS)
+  - Children with multiple FAMC (step-family membership)
+  - Unknown sex individuals (`SEX U`)
+  - ALIA tags for relationship annotations
+  - Tests: 45 individuals, 18 families spanning multiple generations
+
+- **vendor-myheritage.ged** (1.8K) - MyHeritage Family Tree Builder export (synthetic)
+  - Custom tags: `_MHID`, `_MHTAG`, `_MHPID`, `_MHSID`, `_UID`, `_MARNM`, `_PHOTO`, `_PHOTO_RIN`, `_MYHERITAGE_ID`
+  - Hebrew names with transliteration (`_MARNM` for married/Hebrew name)
+  - Israeli locations (Tel Aviv, Jerusalem, Haifa)
+  - Event-level MyHeritage IDs for tracking
+  - Media objects with MyHeritage-specific tags
+  - Tests: 3 individuals, 1 family, 1 source, 1 media object
+
+- **vendor-gramps.ged** (2.5K) - Gramps 5.1.6 export (synthetic)
+  - Custom tags: `_GRAMPS_ID`, `_GRAMPS_PLACE_ID`, `_GRAMPS_ATTR`
+  - Swedish genealogical data with proper character encoding (å, ä, ö)
+  - Place references linked to Gramps place database
+  - Custom attributes with nested DATA tags
+  - Multiple name types (Birth Name, Also Known As)
+  - Date modifiers: ABT, BEF, AFT, CAL (approximate dates)
+  - Repository with WWW tag
+  - Tests: 5 individuals, 2 families, 1 source, 1 repository, 1 note
+
+#### Additional Vendor Files from Gramps Test Suite
+Source: https://github.com/gramps-project/gramps/tree/master/data/tests
+License: GPL-2.0 (data files used as test inputs)
+
+- **vendor-rootsmagic.ged** (526B) - RootsMagic 7.0.2.2 export
+  - Tests mixed inline and XREF notes in same record
+  - Inline NOTE vs NOTE @N0@ reference patterns
+  - Inline SOUR vs SOUR @S1@ reference patterns
+  - Tests: 2 individuals, 2 sources, 1 note record
+
+- **vendor-heredis.ged** (6K) - HEREDIS 14 PC export (French software)
+  - French genealogy software with Paris arrondissement data
+  - Non-standard PLAC FORM with 6 components
+  - EVEN with multiple TYPE subtags
+  - ORDN (ordination) events for church records
+  - French place names and accented characters (Églises, Île-de-France)
+  - Tests: 22 individuals, 1 family
 
 ### GEDCOM 7.0 Files
 
@@ -229,6 +327,15 @@ When adding new test files:
 - **Public GEDCOM Collections**: https://github.com/arbre-app/public-gedcoms
   - royal92.ged by Denis R. Reid (1992)
   - pres2020.ged by Paul E. Stobbe (2020)
+- **gedcom4j Project**: https://github.com/frizbog/gedcom4j
+  - License: MIT
+  - Author: Matthew R. Harrah
+  - Files in `edge-cases/vendor-*.ged` and `edge-cases/relationships-complex.ged`
+  - Tests vendor-specific extensions from Legacy, Family Tree Maker, Family Historian
+- **Gramps Project**: https://github.com/gramps-project/gramps
+  - License: GPL-2.0 (test data files used as inputs, not derivative works)
+  - Files: `encoding/ansel-lf.ged`, `encoding/utf8-nobom-lf.ged`, `edge-cases/vendor-rootsmagic.ged`, `edge-cases/vendor-heredis.ged`
+  - Comprehensive ANSEL character tests, LF line endings, RootsMagic/HEREDIS exports
 - **Synthetic Test Files**: Created specifically for this project
   - `gedcom-5.5.1/comprehensive.ged` - GEDCOM 5.5.1 features
   - `encoding/utf8-unicode.ged` - International character testing
@@ -239,9 +346,11 @@ When adding new test files:
 ## License Notes
 
 - Most files are provided for non-commercial testing purposes
-- GEDCOM specification: © The Church of Jesus Christ of Latter-Day Saints
+- GEDCOM specification: (c) The Church of Jesus Christ of Latter-Day Saints
 - Individual files may have their own copyright notices (see file headers)
 - TestGED suite: Free for non-commercial use per included README
+- gedcom4j files: MIT License (Copyright 2009-2016 Matthew R. Harrah)
+- Gramps files: GPL-2.0 (used as test data inputs; GPL copyleft does not apply to data file consumers)
 
 ## Testing Best Practices
 
