@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`go-gedcom` is a pure Go library for processing GEDCOM files. GEDCOM (GEnealogical Data COMmunication) is a standard file format for exchanging genealogical data between different genealogy software.
+`gedcom-go` is a pure Go library for processing GEDCOM files. GEDCOM (GEnealogical Data COMmunication) is a standard file format for exchanging genealogical data between different genealogy software.
 
 ## Quick Start
 
@@ -31,6 +31,51 @@ This installs pre-commit hooks that enforce:
 | `make lint` | Run staticcheck |
 | `make bench` | Run benchmarks |
 
+**Running a single test:**
+```bash
+go test ./parser -run TestParseLine -v       # Run specific test
+go test ./decoder -run TestDecode -v         # Another example
+go test ./gedcom -run TestDate -v -count=1   # Skip cache
+```
+
+## Architecture
+
+### Package Structure
+
+```
+gedcom/     # Core data types (Document, Individual, Family, Source, etc.)
+decoder/    # High-level GEDCOM decoding with automatic version detection
+encoder/    # GEDCOM document writing with configurable line endings
+parser/     # Low-level line parsing with detailed error reporting
+validator/  # Document validation with error categorization
+charset/    # Character encoding (UTF-8, ANSEL) with BOM detection
+version/    # GEDCOM version detection (5.5, 5.5.1, 7.0)
+```
+
+### Data Flow
+
+```
+GEDCOM file → charset.NewReader() → parser.Parse() → decoder.buildDocument() → gedcom.Document
+                  ↓                      ↓                    ↓
+            UTF-8 validation      []*parser.Line      Typed entities (Individual, Family, etc.)
+```
+
+### Key Types
+
+- **`gedcom.Document`**: Root container with `Header`, `Records`, `XRefMap` for O(1) lookup
+- **`gedcom.Record`**: Wrapper holding typed data (`Individual`, `Family`, `Source`, etc.)
+- **`gedcom.Individual`**: Person with `Names`, `Events`, `Attributes`, `FamilyChild`, `FamilySpouse`
+- **`gedcom.Family`**: Family unit with `Husband`, `Wife`, `Children` (as XRef strings)
+- **`parser.Line`**: Raw parsed line with `Level`, `XRef`, `Tag`, `Value`, `LineNumber`
+
+### Cross-Reference Resolution
+
+Records link via XRef strings (e.g., `"@I1@"`). Use `Document.GetIndividual(xref)` for typed lookup:
+```go
+family := doc.GetFamily("@F1@")
+husband := doc.GetIndividual(family.Husband)  // family.Husband is "@I1@"
+```
+
 ## Test Data
 
 ```
@@ -49,46 +94,6 @@ testdata/
 | Critical paths | 100% | Code review |
 
 See `docs/TESTING.md` for critical paths that require 100% coverage.
-
-## Architecture Guidelines
-
-### GEDCOM Format Basics
-- GEDCOM files use a line-based format with hierarchical levels (0, 1, 2, etc.)
-- Each line format: `LEVEL TAG [VALUE] [XREF]`
-- Main record types: Individual (INDI), Family (FAM), Source (SOUR), Repository (REPO), etc.
-- Records are linked via cross-references (e.g., `@I1@`)
-
-### Expected Code Structure
-The library should be organized around:
-
-1. **Parser/Lexer**: Low-level tokenization and parsing of GEDCOM line format
-2. **Data Model**: Go structs representing GEDCOM records (Individual, Family, Event, etc.)
-3. **Decoder**: High-level API to decode GEDCOM files into Go data structures
-4. **Encoder**: Convert Go data structures back to GEDCOM format
-5. **Validator**: Validate GEDCOM data against specification versions (5.5, 5.5.1, 7.0)
-
-### Key Design Considerations
-- Handle large GEDCOM files efficiently (streaming where possible)
-- Support multiple GEDCOM versions (5.5, 5.5.1, 7.0)
-- Character encoding handling (GEDCOM supports ANSEL, ASCII, UNICODE, etc.)
-- Preserve original line numbers for error reporting
-- Handle malformed GEDCOM files gracefully with clear error messages
-
-### Implementation Philosophy
-
-Before implementing, ask:
-1. Does Go stdlib solve this? (`time`, `strings`, `encoding/json`, etc.)
-2. Is there a well-maintained library? (Check pkg.go.dev)
-3. What is truly domain-specific requiring custom code?
-
-Only build custom implementations for domain-specific logic (GEDCOM parsing, genealogy concepts). Detailed specs describe *what* is needed, not *how* to build it—leverage existing solutions for common problems.
-
-### Standard Go Library Structure
-Follow standard Go project layout:
-- Root: library code (parser, types, decoder, encoder)
-- `internal/`: private implementation details
-- `examples/`: example usage code
-- `testdata/`: sample GEDCOM files for testing
 
 ## Project Constitution
 
@@ -118,7 +123,8 @@ Key principles: Library-First Design, API Clarity, Test Coverage (≥85%), Versi
 
 ### Issue Labels
 
-Priority: `priority:high`, `priority:medium`, `priority:low`, `priority:future`
+Effort: `effort:low`, `effort:medium`, `effort:high`
+Value: `value:low`, `value:medium`, `value:high`
 Area: `area:encoding`, `area:parsing`, `area:validation`, `area:api`, `area:tooling`, `area:dx`
 
 ## Git Conventions
