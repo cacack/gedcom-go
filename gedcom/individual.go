@@ -226,3 +226,145 @@ func (i *Individual) FamilySearchURL() string {
 	}
 	return "https://www.familysearch.org/tree/person/details/" + i.FamilySearchID
 }
+
+// Parents returns all parents (biological) of this individual by looking up
+// the families where this individual is a child and collecting the husband
+// and wife from each family.
+//
+// The doc parameter is required for O(1) cross-reference lookups.
+// Returns an empty slice if doc is nil, no parents are found, or if
+// family/individual xrefs are invalid. Invalid xrefs are silently skipped.
+// Order is preserved from the GEDCOM file.
+func (i *Individual) Parents(doc *Document) []*Individual {
+	if doc == nil {
+		return nil
+	}
+
+	var parents []*Individual
+	for _, link := range i.ChildInFamilies {
+		fam := doc.GetFamily(link.FamilyXRef)
+		if fam == nil {
+			continue
+		}
+		if fam.Husband != "" {
+			if husband := doc.GetIndividual(fam.Husband); husband != nil {
+				parents = append(parents, husband)
+			}
+		}
+		if fam.Wife != "" {
+			if wife := doc.GetIndividual(fam.Wife); wife != nil {
+				parents = append(parents, wife)
+			}
+		}
+	}
+	return parents
+}
+
+// Spouses returns all spouses of this individual by looking up the families
+// where this individual is a spouse and returning the other spouse from each
+// family.
+//
+// The doc parameter is required for O(1) cross-reference lookups.
+// Returns an empty slice if doc is nil, no spouses are found, or if
+// family/individual xrefs are invalid. Invalid xrefs are silently skipped.
+// Handles multiple marriages (multiple FAMS entries).
+// Order is preserved from the GEDCOM file.
+func (i *Individual) Spouses(doc *Document) []*Individual {
+	if doc == nil {
+		return nil
+	}
+
+	var spouses []*Individual
+	for _, famXRef := range i.SpouseInFamilies {
+		fam := doc.GetFamily(famXRef)
+		if fam == nil {
+			continue
+		}
+		// Determine which spouse is "the other one"
+		if fam.Husband == i.XRef {
+			// This individual is the husband, spouse is wife
+			if fam.Wife != "" {
+				if wife := doc.GetIndividual(fam.Wife); wife != nil {
+					spouses = append(spouses, wife)
+				}
+			}
+		} else {
+			// This individual is the wife, spouse is husband
+			if fam.Husband != "" {
+				if husband := doc.GetIndividual(fam.Husband); husband != nil {
+					spouses = append(spouses, husband)
+				}
+			}
+		}
+	}
+	return spouses
+}
+
+// Children returns all children of this individual by looking up the families
+// where this individual is a spouse and collecting all children from each family.
+//
+// The doc parameter is required for O(1) cross-reference lookups.
+// Returns an empty slice if doc is nil, no children are found, or if
+// family/individual xrefs are invalid. Invalid xrefs are silently skipped.
+// Order is preserved from the GEDCOM file.
+func (i *Individual) Children(doc *Document) []*Individual {
+	if doc == nil {
+		return nil
+	}
+
+	var children []*Individual
+	for _, famXRef := range i.SpouseInFamilies {
+		fam := doc.GetFamily(famXRef)
+		if fam == nil {
+			continue
+		}
+		for _, childXRef := range fam.Children {
+			if child := doc.GetIndividual(childXRef); child != nil {
+				children = append(children, child)
+			}
+		}
+	}
+	return children
+}
+
+// ParentalFamilies returns all families where this individual is a child.
+// These are the family records containing this individual's parents.
+//
+// The doc parameter is required for O(1) cross-reference lookups.
+// Returns an empty slice if doc is nil, no parental families are found, or if
+// family xrefs are invalid. Invalid xrefs are silently skipped.
+// Order is preserved from the GEDCOM file.
+func (i *Individual) ParentalFamilies(doc *Document) []*Family {
+	if doc == nil {
+		return nil
+	}
+
+	var families []*Family
+	for _, link := range i.ChildInFamilies {
+		if fam := doc.GetFamily(link.FamilyXRef); fam != nil {
+			families = append(families, fam)
+		}
+	}
+	return families
+}
+
+// SpouseFamilies returns all families where this individual is a spouse.
+// These are the family records where this individual is either the husband or wife.
+//
+// The doc parameter is required for O(1) cross-reference lookups.
+// Returns an empty slice if doc is nil, no spouse families are found, or if
+// family xrefs are invalid. Invalid xrefs are silently skipped.
+// Order is preserved from the GEDCOM file.
+func (i *Individual) SpouseFamilies(doc *Document) []*Family {
+	if doc == nil {
+		return nil
+	}
+
+	var families []*Family
+	for _, famXRef := range i.SpouseInFamilies {
+		if fam := doc.GetFamily(famXRef); fam != nil {
+			families = append(families, fam)
+		}
+	}
+	return families
+}

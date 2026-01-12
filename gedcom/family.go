@@ -47,3 +47,57 @@ type Family struct {
 	// Tags contains all raw tags for this family (for unknown/custom tags)
 	Tags []*Tag
 }
+
+// HusbandIndividual returns the Individual record for the husband.
+// Returns nil if the document is nil, Husband xref is empty, or the individual is not found.
+func (f *Family) HusbandIndividual(doc *Document) *Individual {
+	if doc == nil || f.Husband == "" {
+		return nil
+	}
+	return doc.GetIndividual(f.Husband)
+}
+
+// WifeIndividual returns the Individual record for the wife.
+// Returns nil if the document is nil, Wife xref is empty, or the individual is not found.
+func (f *Family) WifeIndividual(doc *Document) *Individual {
+	if doc == nil || f.Wife == "" {
+		return nil
+	}
+	return doc.GetIndividual(f.Wife)
+}
+
+// ChildrenIndividuals returns Individual records for all children in this family.
+// Invalid xrefs are filtered out. Order is preserved from the GEDCOM file.
+// Returns an empty slice if the document is nil or there are no children.
+func (f *Family) ChildrenIndividuals(doc *Document) []*Individual {
+	if doc == nil {
+		return []*Individual{}
+	}
+	result := make([]*Individual, 0, len(f.Children))
+	for _, childXRef := range f.Children {
+		if child := doc.GetIndividual(childXRef); child != nil {
+			result = append(result, child)
+		}
+	}
+	return result
+}
+
+// AllMembers returns all Individual records for this family (husband, wife, children).
+// Order: husband first (if present), wife second (if present), then children.
+// Invalid xrefs are filtered out.
+// Returns an empty slice if the document is nil or no members are found.
+func (f *Family) AllMembers(doc *Document) []*Individual {
+	if doc == nil {
+		return []*Individual{}
+	}
+	result := make([]*Individual, 0, 2+len(f.Children))
+
+	if husband := f.HusbandIndividual(doc); husband != nil {
+		result = append(result, husband)
+	}
+	if wife := f.WifeIndividual(doc); wife != nil {
+		result = append(result, wife)
+	}
+	result = append(result, f.ChildrenIndividuals(doc)...)
+	return result
+}
