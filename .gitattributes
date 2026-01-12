@@ -4,6 +4,6 @@
 # LF-only test files must keep LF endings on all platforms
 testdata/encoding/*-lf.ged text eol=lf
 
-# All .ged files should be treated as text
-*.ged text
+# UTF-16 files are binary - Git must not modify them
+testdata/encoding/utf16*.ged binary
 
