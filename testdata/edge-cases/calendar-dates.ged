@@ -1,0 +1,244 @@
+0 HEAD
+1 SOUR gedcom-go
+2 VERS 1.0.0
+2 NAME gedcom-go test suite
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE Calendar date test file for non-Gregorian calendar systems.
+2 CONT Tests Hebrew, Julian, and French Republican calendar date parsing.
+2 CONT Created for gedcom-go test suite - issue #88.
+0 @I1@ INDI
+1 NAME Julius /Caesar/
+1 SEX M
+1 NOTE Julian calendar dates (used before Gregorian adoption in 1582)
+1 BIRT
+2 DATE @#DJULIAN@ 12 JUL 100 BC
+2 PLAC Rome, Roman Republic
+1 DEAT
+2 DATE @#DJULIAN@ 15 MAR 44 BC
+2 PLAC Rome, Roman Republic
+2 NOTE The Ides of March - famously assassinated
+0 @I2@ INDI
+1 NAME Augustus /Caesar/
+1 SEX M
+1 NOTE Julian calendar - Roman emperor
+1 BIRT
+2 DATE @#DJULIAN@ 23 SEP 63 BC
+2 PLAC Rome, Roman Republic
+1 DEAT
+2 DATE @#DJULIAN@ 19 AUG 14
+2 PLAC Nola, Roman Empire
+0 @I3@ INDI
+1 NAME George /Washington/
+1 SEX M
+1 NOTE Birth in Julian calendar (Virginia used Julian until 1752)
+1 BIRT
+2 DATE @#DJULIAN@ 11 FEB 1731/32
+2 PLAC Westmoreland County, Virginia
+2 NOTE Dual dating: Old Style 11 Feb 1731, New Style 22 Feb 1732
+0 @I4@ INDI
+1 NAME Rashi /ben Isaac/
+2 GIVN Shlomo Yitzchaki
+1 SEX M
+1 NOTE Hebrew calendar dates - famous medieval rabbi
+1 BIRT
+2 DATE @#DHEBREW@ TSH 4800
+2 PLAC Troyes, France
+2 NOTE Tishrei 4800 (approximately 1040 CE)
+1 DEAT
+2 DATE @#DHEBREW@ 29 TMZ 4865
+2 PLAC Troyes, France
+2 NOTE 29 Tammuz 4865 (approximately July 1105 CE)
+0 @I5@ INDI
+1 NAME Moses /Maimonides/
+2 GIVN Moshe ben Maimon
+1 SEX M
+1 NOTE Hebrew calendar dates - philosopher and scholar
+1 BIRT
+2 DATE @#DHEBREW@ 14 NSN 4895
+2 PLAC Cordoba, Spain
+2 NOTE 14 Nisan 4895 - eve of Passover
+1 DEAT
+2 DATE @#DHEBREW@ 20 TVT 4965
+2 PLAC Fostat, Egypt
+2 NOTE 20 Tevet 4965
+0 @I6@ INDI
+1 NAME Test /HebrewMonths/
+1 SEX U
+1 NOTE Tests all Hebrew month codes
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 1 TSH 5784
+2 NOTE Tishrei - first month of civil year
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 15 CSH 5784
+2 NOTE Cheshvan - second month
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 25 KSL 5784
+2 NOTE Kislev - Hanukkah begins
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 10 TVT 5784
+2 NOTE Tevet - fourth month
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 15 SHV 5784
+2 NOTE Shevat - Tu B'Shevat
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 14 ADR 5784
+2 NOTE Adar - Purim (in non-leap year)
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 14 ADS 5784
+2 NOTE Adar II - Purim (in leap year only)
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 15 NSN 5784
+2 NOTE Nisan - Passover begins
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 5 IYR 5784
+2 NOTE Iyar - Yom HaAtzmaut
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 6 SVN 5784
+2 NOTE Sivan - Shavuot
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 17 TMZ 5784
+2 NOTE Tammuz - Fast of 17th Tammuz
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 9 AAV 5784
+2 NOTE Av - Tisha B'Av
+1 EVEN
+2 TYPE Hebrew Month Test
+2 DATE @#DHEBREW@ 29 ELL 5784
+2 NOTE Elul - last month before Rosh Hashanah
+0 @I7@ INDI
+1 NAME Napoleon /Bonaparte/
+1 SEX M
+1 NOTE French Republican calendar dates
+1 BIRT
+2 DATE 15 AUG 1769
+2 PLAC Ajaccio, Corsica
+2 NOTE Before French Republican calendar (1792-1805)
+1 EVEN
+2 TYPE Coronation as Emperor
+2 DATE @#DFRENCH R@ 11 FRIM 13
+2 PLAC Notre-Dame, Paris
+2 NOTE 11 Frimaire Year 13 = 2 December 1804
+0 @I8@ INDI
+1 NAME Test /FrenchMonths/
+1 SEX U
+1 NOTE Tests all French Republican month codes
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 1 VEND 1
+2 NOTE Vendemiaire - first month (grape harvest)
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 15 BRUM 1
+2 NOTE Brumaire - fog month
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 30 FRIM 1
+2 NOTE Frimaire - frost month
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 10 NIVO 1
+2 NOTE Nivose - snow month
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 20 PLUV 1
+2 NOTE Pluviose - rain month
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 5 VENT 1
+2 NOTE Ventose - wind month
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 15 GERM 1
+2 NOTE Germinal - germination month
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 25 FLOR 1
+2 NOTE Floreal - flower month
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 1 PRAI 1
+2 NOTE Prairial - meadow month
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 10 MESS 1
+2 NOTE Messidor - harvest month
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 9 THER 1
+2 NOTE Thermidor - heat month (9th = fall of Robespierre)
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 18 FRUC 1
+2 NOTE Fructidor - fruit month
+1 EVEN
+2 TYPE French Month Test
+2 DATE @#DFRENCH R@ 5 COMP 1
+2 NOTE Complementary days (Sans-culottides)
+0 @I9@ INDI
+1 NAME Test /DateModifiers/
+1 SEX U
+1 NOTE Tests calendar dates with modifiers
+1 EVEN
+2 TYPE Approximate Julian
+2 DATE ABT @#DJULIAN@ MAR 1066
+2 NOTE Battle of Hastings era
+1 EVEN
+2 TYPE Before Hebrew
+2 DATE BEF @#DHEBREW@ 1 TSH 5000
+2 NOTE Before a Hebrew date
+1 EVEN
+2 TYPE After French
+2 DATE AFT @#DFRENCH R@ 1 VEND 1
+2 NOTE After start of French Republican era
+1 EVEN
+2 TYPE Estimated Julian
+2 DATE EST @#DJULIAN@ 1200
+2 NOTE Estimated year only
+1 EVEN
+2 TYPE Between Hebrew
+2 DATE BET @#DHEBREW@ 1 NSN 5700 AND @#DHEBREW@ 30 ELL 5700
+2 NOTE Range within Hebrew calendar year
+0 @I10@ INDI
+1 NAME Test /PartialDates/
+1 SEX U
+1 NOTE Tests partial dates (year-only, month-year) in non-Gregorian calendars
+1 EVEN
+2 TYPE Julian Year Only
+2 DATE @#DJULIAN@ 1066
+2 NOTE Year only - Norman Conquest
+1 EVEN
+2 TYPE Hebrew Year Only
+2 DATE @#DHEBREW@ 5784
+2 NOTE Year only in Hebrew calendar
+1 EVEN
+2 TYPE French Year Only
+2 DATE @#DFRENCH R@ 7
+2 NOTE Year 7 of French Republic
+1 EVEN
+2 TYPE Julian Month-Year
+2 DATE @#DJULIAN@ OCT 1066
+2 NOTE Month and year only
+1 EVEN
+2 TYPE Hebrew Month-Year
+2 DATE @#DHEBREW@ NSN 5784
+2 NOTE Nisan month and year only
+1 EVEN
+2 TYPE French Month-Year
+2 DATE @#DFRENCH R@ THER 2
+2 NOTE Thermidor Year 2
+0 TRLR

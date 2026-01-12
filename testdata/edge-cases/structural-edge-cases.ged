@@ -1,0 +1,111 @@
+0 HEAD
+1 SOUR gedcom-go
+2 VERS 1.0.0
+2 NAME gedcom-go test suite
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE Structural edge case test file.
+2 CONT Tests long XRef identifiers, deep nesting, and unusual but valid structures.
+2 CONT Created for gedcom-go test suite - issue #88.
+2 CONT Note: Empty lines are NOT tested here because they are invalid per GEDCOM spec.
+0 @I1@ INDI
+1 NAME Simple /Test/
+1 SEX M
+0 @INDIVIDUAL_WITH_VERY_LONG_XREF_IDENTIFIER_12345678901234567890@ INDI
+1 NAME Long /XRefTest/
+1 SEX U
+1 NOTE Tests very long cross-reference identifiers
+2 CONT GEDCOM 5.5 allows up to 22 characters for XRef
+2 CONT Some software produces longer identifiers
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @INDIVIDUAL_WITH_VERY_LONG_XREF_IDENTIFIER_12345678901234567890@
+1 NOTE Family referencing record with long XRef
+0 @I2@ INDI
+1 NAME Deeply /Nested/
+1 SEX M
+1 NOTE Tests deeply nested structures (6+ levels)
+1 SOUR @S1@
+2 PAGE Vol 1, Page 23
+2 DATA
+3 DATE 15 JAN 1900
+3 TEXT Deeply nested source citation text
+4 CONT with continuation across multiple
+4 CONC lines testing deep nesting behavior
+4 CONT and proper level handling
+5 NOTE Even deeper nested note
+6 CONT with its own continuation
+0 @I3@ INDI
+1 NAME Tab	/Separated/
+1 SEX F
+1 NOTE Record with tabs in various places
+1 OCCU Farmer	(with tab)
+1 RESI
+2 ADDR 123	Main	Street
+3 CITY Test	City
+3 STAE Test	State
+0 @I4@ INDI
+1 NAME Multiple /Spaces/
+1 SEX M
+1 NOTE Tests handling of multiple consecutive spaces
+1 OCCU Test    Job    Title
+1 NOTE This    has    multiple    spaces
+0 @I5@ INDI
+1 NAME Empty /Values/
+1 SEX U
+1 NOTE Tests tags with empty or whitespace-only values
+1 OCCU
+1 RESI
+2 ADDR
+2 PLAC
+1 BIRT
+2 DATE
+2 PLAC
+1 NOTE Empty tags above should parse without error
+0 @I6@ INDI
+1 NAME Mixed /CaseXRef/
+1 SEX M
+1 FAMC @f2@
+1 NOTE Tests lowercase XRef (some software produces these)
+0 @f2@ FAM
+1 HUSB @I1@
+1 WIFE @I4@
+1 CHIL @I6@
+1 NOTE Lowercase XRef identifier
+0 @I7@ INDI
+1 NAME Numeric /XRef/
+1 SEX F
+1 FAMC @123@
+1 NOTE Tests purely numeric XRef
+0 @123@ FAM
+1 HUSB @I1@
+1 WIFE @I3@
+1 CHIL @I7@
+1 NOTE Purely numeric XRef identifier
+0 @I8@ INDI
+1 NAME Unicode /InValues/
+1 SEX M
+1 NOTE
+2 CONT Tests Unicode in various value positions
+1 BIRT
+2 DATE 1 JAN 2000
+2 PLAC Tokyo, Japan
+1 NAME Tanaka /Taro/
+2 ROMN Tanaka Taro
+2 FONE Tanaka Taro
+1 NOTE Names with various scripts should parse correctly
+0 @S1@ SOUR
+1 TITL Test Source for Deep Nesting
+1 AUTH Test Author
+0 @N1@ NOTE This is a root-level note record
+1 CONT with continuation lines
+1 CONC and concatenation as well.
+0 @I9@ INDI
+1 NAME Final /Record/
+1 SEX F
+1 NOTE @N1@
+1 NOTE Final record to ensure file closes properly after all edge cases
+0 TRLR

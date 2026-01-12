@@ -20,7 +20,7 @@ testdata/
 
 ## Test File Summary
 
-**Total Test Files**: 53 GEDCOM files (as of 2025-01-12)
+**Total Test Files**: 55 GEDCOM files (as of 2026-01-12)
 
 ### GEDCOM 5.5 Files
 
@@ -131,6 +131,27 @@ Testing parser robustness with edge cases:
   - Unicode characters with CONT/CONC
   - Special characters and quotes in continued text
   - Tests that parser correctly reconstructs original text
+
+- **calendar-dates.ged** (~5K) - Non-Gregorian calendar date tests
+  - Hebrew calendar dates (`@#DHEBREW@`) with all 13 month codes
+  - Julian calendar dates (`@#DJULIAN@`) including BC dates and dual dating
+  - French Republican calendar dates (`@#DFRENCH R@`) with all 13 month codes
+  - Date modifiers (ABT, BEF, AFT, EST, BET...AND) with non-Gregorian calendars
+  - Partial dates (year-only, month-year) in each calendar system
+  - Historical figures: Julius Caesar, Augustus, Washington, Rashi, Maimonides, Napoleon
+  - Tests: 10 individuals with various calendar date formats
+
+- **structural-edge-cases.ged** (~3K) - Parser structural stress tests
+  - Very long XRef identifiers (>22 characters)
+  - Lowercase XRef identifiers
+  - Purely numeric XRef identifiers
+  - Deeply nested structures (6+ levels)
+  - Tags with empty or whitespace-only values
+  - Multiple consecutive spaces in values
+  - Tab characters in values
+  - Root-level NOTE records
+  - Tests: 9 individuals, 3 families, 1 source, 1 note record
+  - Note: Empty lines are invalid per GEDCOM spec (tested in malformed/)
 
 #### Vendor-Specific Test Files
 Source: https://github.com/frizbog/gedcom4j (sample/ directory)
@@ -340,6 +361,8 @@ When adding new test files:
   - `gedcom-5.5.1/comprehensive.ged` - GEDCOM 5.5.1 features
   - `encoding/utf8-unicode.ged` - International character testing
   - `edge-cases/cont-conc.ged` - Line continuation testing
+  - `edge-cases/calendar-dates.ged` - Non-Gregorian calendar dates (Hebrew, Julian, French Republican)
+  - `edge-cases/structural-edge-cases.ged` - Parser structural stress tests
   - `malformed/circular-reference.ged` - Circular relationship loops
   - `malformed/duplicate-xref.ged` - Duplicate identifier testing
 
