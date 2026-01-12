@@ -1,0 +1,9 @@
+# GEDCOM test files - preserve original line endings
+# These files specifically test different line ending formats
+
+# LF-only test files must keep LF endings on all platforms
+testdata/encoding/*-lf.ged text eol=lf
+
+# All .ged files should be treated as text
+*.ged text
+
