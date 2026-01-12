@@ -689,6 +689,16 @@ func TestCharacterEncodings(t *testing.T) {
 			description: "UTF-16 Big Endian with BOM",
 			encoding:    gedcom.EncodingUNICODE,
 		},
+		{
+			path:        "../testdata/encoding/ansel-lf.ged",
+			description: "ANSEL encoding with LF line endings (Gramps test)",
+			encoding:    gedcom.EncodingANSEL,
+		},
+		{
+			path:        "../testdata/encoding/utf8-nobom-lf.ged",
+			description: "UTF-8 without BOM, LF line endings (Gramps test)",
+			encoding:    gedcom.EncodingUTF8,
+		},
 	}
 
 	for _, tt := range testFiles {
@@ -864,6 +874,102 @@ func TestAncestryExtensions(t *testing.T) {
 
 	t.Logf("Successfully verified Ancestry extensions: TreeID=%s, APID parsing and URL generation works",
 		doc.Header.AncestryTreeID)
+}
+
+// TestVendorSpecificFiles tests GEDCOM files from various genealogy software vendors.
+// These files were sourced from the gedcom4j project (MIT License) and test vendor-specific
+// custom tags and extensions.
+// Source: https://github.com/frizbog/gedcom4j (sample/ directory)
+func TestVendorSpecificFiles(t *testing.T) {
+	testFiles := []struct {
+		path        string
+		description string
+		minRecords  int
+	}{
+		{
+			path:        "../testdata/edge-cases/vendor-legacy.ged",
+			description: "Legacy Family Tree 8.0 - custom tags (_TODO, _UID, _PRIV, _EVENT_DEFN, _PLAC_DEFN)",
+			minRecords:  10,
+		},
+		{
+			path:        "../testdata/edge-cases/vendor-ftm.ged",
+			description: "Family Tree Maker 22.2.5 - custom tags (_MISN, _DNA, _FUN, _MILT, _EMPLOY, etc.)",
+			minRecords:  5,
+		},
+		{
+			path:        "../testdata/edge-cases/vendor-familyhistorian.ged",
+			description: "Family Historian 6.2.2 - custom tags (_ATTR, _USED, _SHAN, _SHAR, _FLGS, _PLAC)",
+			minRecords:  5,
+		},
+		{
+			path:        "../testdata/edge-cases/vendor-customtags-torture.ged",
+			description: "Custom tags torture test - deeply nested vendor extensions at every level",
+			minRecords:  10,
+		},
+		{
+			path:        "../testdata/edge-cases/relationships-complex.ged",
+			description: "Complex family relationships - step-parents, remarriage, single-parent families",
+			minRecords:  30, // 45 individuals, 18 families
+		},
+		{
+			path:        "../testdata/edge-cases/vendor-myheritage.ged",
+			description: "MyHeritage Family Tree Builder - custom tags (_MHID, _MHTAG, _MHPID, _UID)",
+			minRecords:  5,
+		},
+		{
+			path:        "../testdata/edge-cases/vendor-gramps.ged",
+			description: "Gramps 5.1.6 - custom tags (_GRAMPS_ID, _GRAMPS_PLACE_ID, _GRAMPS_ATTR)",
+			minRecords:  8,
+		},
+		{
+			path:        "../testdata/edge-cases/vendor-rootsmagic.ged",
+			description: "RootsMagic 7.0.2.2 - mixed inline/xref notes (Gramps test)",
+			minRecords:  3,
+		},
+		{
+			path:        "../testdata/edge-cases/vendor-heredis.ged",
+			description: "HEREDIS 14 PC - French genealogy software with Paris data (Gramps test)",
+			minRecords:  15,
+		},
+	}
+
+	for _, tt := range testFiles {
+		t.Run(filepath.Base(tt.path), func(t *testing.T) {
+			f, err := os.Open(tt.path)
+			if err != nil {
+				t.Fatalf("Test file not found: %s (expected from issue #42)", tt.path)
+			}
+			defer f.Close()
+
+			doc, err := Decode(f)
+			if err != nil {
+				t.Fatalf("Decode() error = %v for %s", err, tt.description)
+			}
+
+			if doc == nil {
+				t.Fatal("Decode() returned nil document")
+			}
+
+			if len(doc.Records) < tt.minRecords {
+				t.Errorf("Expected at least %d records, got %d", tt.minRecords, len(doc.Records))
+			}
+
+			// Count record types for logging
+			individuals := 0
+			families := 0
+			for _, rec := range doc.Records {
+				switch rec.Type {
+				case gedcom.RecordTypeIndividual:
+					individuals++
+				case gedcom.RecordTypeFamily:
+					families++
+				}
+			}
+
+			t.Logf("Successfully parsed %s: %d records (%d individuals, %d families), %d XRefs",
+				tt.description, len(doc.Records), individuals, families, len(doc.XRefMap))
+		})
+	}
 }
 
 // Test additional malformed file scenarios

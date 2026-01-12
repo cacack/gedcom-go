@@ -1,0 +1,141 @@
+0 HEAD
+1 SOUR Gramps
+2 VERS 5.1.6
+2 NAME Gramps
+1 DATE 15 JAN 2024
+2 TIME 14:30:00
+1 SUBM @SUBM1@
+1 FILE gramps-export.ged
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 LANG English
+0 @SUBM1@ SUBM
+1 NAME Gramps User
+0 @I0001@ INDI
+1 NAME Erik /Johansson/
+2 GIVN Erik
+2 SURN Johansson
+2 TYPE Birth Name
+1 SEX M
+1 BIRT
+2 DATE 12 MAY 1920
+2 PLAC Stockholm, Stockholms län, Sweden
+2 _GRAMPS_PLACE_ID P0001
+1 DEAT
+2 DATE 8 NOV 1995
+2 PLAC Göteborg, Västra Götalands län, Sweden
+2 _GRAMPS_PLACE_ID P0002
+2 CAUS Natural causes
+1 OCCU Carpenter
+2 DATE FROM 1945 TO 1985
+1 RESI
+2 DATE FROM 1950 TO 1995
+2 PLAC Göteborg, Sweden
+2 ADDR Kungsgatan 15
+1 _GRAMPS_ID I0001
+1 FAMC @F0001@
+1 FAMS @F0002@
+0 @I0002@ INDI
+1 NAME Anna /Lindqvist/
+2 GIVN Anna
+2 SURN Lindqvist
+2 TYPE Birth Name
+1 SEX F
+1 BIRT
+2 DATE 3 SEP 1925
+2 PLAC Malmö, Skåne län, Sweden
+2 _GRAMPS_PLACE_ID P0003
+1 DEAT
+2 DATE 15 FEB 2010
+2 PLAC Göteborg, Västra Götalands län, Sweden
+2 _GRAMPS_PLACE_ID P0002
+1 _GRAMPS_ID I0002
+1 FAMS @F0002@
+0 @I0003@ INDI
+1 NAME Lars /Johansson/
+2 GIVN Lars
+2 SURN Johansson
+2 TYPE Birth Name
+1 NAME Lars /Eriksson/
+2 GIVN Lars
+2 SURN Eriksson
+2 TYPE Also Known As
+1 SEX M
+1 BIRT
+2 DATE 18 JUL 1955
+2 PLAC Göteborg, Västra Götalands län, Sweden
+2 _GRAMPS_PLACE_ID P0002
+1 EDUC University of Gothenburg
+2 DATE FROM 1975 TO 1980
+2 NOTE Studied Computer Science
+1 OCCU Professor
+2 DATE FROM 1990
+2 PLAC Göteborg, Sweden
+1 _GRAMPS_ID I0003
+1 _GRAMPS_ATTR LivingStatus
+2 DATA Living
+1 FAMC @F0002@
+0 @I0004@ INDI
+1 NAME Gustaf /Johansson/
+2 GIVN Gustaf
+2 SURN Johansson
+1 SEX M
+1 BIRT
+2 DATE ABT 1890
+2 PLAC Uppsala, Uppsala län, Sweden
+1 DEAT
+2 DATE BEF 1970
+1 _GRAMPS_ID I0004
+1 FAMS @F0001@
+0 @I0005@ INDI
+1 NAME Ingrid /Karlsson/
+2 GIVN Ingrid
+2 SURN Karlsson
+1 SEX F
+1 BIRT
+2 DATE CAL 1895
+2 PLAC Norrköping, Östergötlands län, Sweden
+1 DEAT
+2 DATE AFT 1960
+1 _GRAMPS_ID I0005
+1 FAMS @F0001@
+0 @F0001@ FAM
+1 HUSB @I0004@
+1 WIFE @I0005@
+1 CHIL @I0001@
+1 MARR
+2 DATE 15 JUN 1918
+2 PLAC Stockholm, Sweden
+2 _GRAMPS_PLACE_ID P0001
+1 _GRAMPS_ID F0001
+0 @F0002@ FAM
+1 HUSB @I0001@
+1 WIFE @I0002@
+1 CHIL @I0003@
+1 MARR
+2 DATE 20 AUG 1950
+2 PLAC Göteborg, Sweden
+2 _GRAMPS_PLACE_ID P0002
+1 _GRAMPS_ID F0002
+0 @S0001@ SOUR
+1 TITL Swedish Church Records
+1 AUTH Church of Sweden
+1 PUBL Riksarkivet, Stockholm
+1 _GRAMPS_ID S0001
+0 @R0001@ REPO
+1 NAME Riksarkivet (National Archives of Sweden)
+1 ADDR Box 12541
+2 CONT 102 29 Stockholm
+2 CONT Sweden
+1 WWW https://riksarkivet.se
+1 _GRAMPS_ID R0001
+0 @N0001@ NOTE Gramps exports include several custom tags:
+1 CONT - _GRAMPS_ID: Internal Gramps identifier for records
+1 CONT - _GRAMPS_PLACE_ID: Links to Gramps place database
+1 CONT - _GRAMPS_ATTR: Custom attributes with subtags
+1 CONT
+1 CONT This synthetic file demonstrates typical Gramps GEDCOM output
+1 CONT including Swedish genealogical data with proper character encoding.
+0 TRLR
