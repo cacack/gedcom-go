@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0](https://github.com/cacack/gedcom-go/compare/v0.6.0...v0.7.0) (2026-01-12)
+
+
+### Features
+
+* **gedcom:** add relationship traversal API ([00c7a71](https://github.com/cacack/gedcom-go/commit/00c7a716e49eb8bd7f2f839c2f9cb2a3e8d1fc4d))
+* **validator:** add enhanced data validation helpers ([8865626](https://github.com/cacack/gedcom-go/commit/886562669e165e9c64566d15f378f4807170c86a)), closes [#38](https://github.com/cacack/gedcom-go/issues/38)
+
+
+### Bug Fixes
+
+* add .gitattributes to preserve LF line endings on Windows ([33c98c6](https://github.com/cacack/gedcom-go/commit/33c98c68e2efe9e1924d01bbca4c8dc433301a0e))
+* mark UTF-16 test files as binary in .gitattributes ([0271274](https://github.com/cacack/gedcom-go/commit/027127476afcf53467c10ee922a17f7d6e3332a9))
+
 ## [0.6.0](https://github.com/cacack/gedcom-go/compare/v0.5.0...v0.6.0) (2026-01-03)
 
 
