@@ -715,6 +715,6 @@ children := family.ChildrenIndividuals(doc)
 
 - 93% test coverage across core packages
 - Multi-platform CI (Linux, macOS, Windows)
-- Multi-version Go testing (1.21, 1.22, 1.23)
+- Multi-version Go testing (1.24, 1.25)
 - Benchmark regression testing
 - Real-world GEDCOM file testing
