@@ -154,6 +154,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v6
+      with:
+        fetch-depth: 0  # Full history for gitleaks
 
     - name: Set up Go
       uses: actions/setup-go@v6
@@ -191,12 +193,14 @@ jobs:
     # Secret detection
     - name: Detect secrets (gitleaks)
       uses: gitleaks/gitleaks-action@v2
+      continue-on-error: true  # Don't block other scans
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     # Trivy: Filesystem vulnerability and misconfiguration scanning
     - name: Trivy filesystem scan
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.32.0
+      continue-on-error: true  # Produce SARIF even on findings
       with:
         scan-type: 'fs'
         scan-ref: '.'
@@ -214,12 +218,13 @@ jobs:
     # Semgrep: Rule-based static analysis
     - name: Semgrep scan
       uses: semgrep/semgrep-action@v1
+      continue-on-error: true  # Produce SARIF even on findings
       with:
         config: >-
           p/security-audit
           p/secrets
           p/golang
-        generateSarif: true
+        generateSarif: "1"
 
     - name: Upload Semgrep results to GitHub Security
       uses: github/codeql-action/upload-sarif@v4
