@@ -908,3 +908,139 @@ func TestQualityAnalyzer_AllValidatorsInvoked_Integration(t *testing.T) {
 		t.Errorf("TotalIssues = %d, but sum of slices = %d", report.TotalIssues, totalFromSlices)
 	}
 }
+
+// TestWithTagRegistry tests the WithTagRegistry option for QualityAnalyzer
+func TestWithTagRegistry(t *testing.T) {
+	registry := NewTagRegistry()
+	_ = registry.Register("_MILT", TagDefinition{
+		Tag:            "_MILT",
+		AllowedParents: []string{"INDI"},
+		Description:    "Military service",
+	})
+
+	a := NewQualityAnalyzer(WithTagRegistry(registry))
+
+	// Create a document with a custom tag under invalid parent
+	ind := &gedcom.Individual{XRef: "@I1@"}
+	fam := &gedcom.Family{XRef: "@F1@"}
+
+	doc := &gedcom.Document{
+		Records: []*gedcom.Record{
+			{
+				XRef:   "@I1@",
+				Type:   gedcom.RecordTypeIndividual,
+				Entity: ind,
+			},
+			{
+				XRef:   "@F1@",
+				Type:   gedcom.RecordTypeFamily,
+				Entity: fam,
+				Tags: []*gedcom.Tag{
+					{Level: 1, Tag: "_MILT", Value: "Army"}, // Invalid: under FAM, not INDI
+				},
+			},
+		},
+		XRefMap: map[string]*gedcom.Record{
+			"@I1@": {XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind},
+			"@F1@": {XRef: "@F1@", Type: gedcom.RecordTypeFamily, Entity: fam},
+		},
+	}
+
+	report := a.Analyze(doc)
+
+	// Should have custom tag issues
+	if len(report.CustomTagIssues) == 0 {
+		t.Error("expected CustomTagIssues, got none")
+	}
+
+	// Verify the issue is for invalid parent
+	found := false
+	for _, issue := range report.CustomTagIssues {
+		if issue.Code == CodeInvalidTagParent {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected INVALID_TAG_PARENT issue in CustomTagIssues")
+	}
+}
+
+// TestQualityAnalyzerWithoutTagRegistry tests that tag validation is skipped when no registry configured
+func TestQualityAnalyzerWithoutTagRegistry(t *testing.T) {
+	a := NewQualityAnalyzer() // No tag registry
+
+	ind := &gedcom.Individual{XRef: "@I1@"}
+
+	doc := &gedcom.Document{
+		Records: []*gedcom.Record{
+			{
+				XRef:   "@I1@",
+				Type:   gedcom.RecordTypeIndividual,
+				Entity: ind,
+				Tags: []*gedcom.Tag{
+					{Level: 1, Tag: "_UNKNOWN_CUSTOM", Value: "value"},
+				},
+			},
+		},
+		XRefMap: map[string]*gedcom.Record{
+			"@I1@": {XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind},
+		},
+	}
+
+	report := a.Analyze(doc)
+
+	// Should have no custom tag issues (no registry configured)
+	if len(report.CustomTagIssues) != 0 {
+		t.Errorf("expected no CustomTagIssues without registry, got %d", len(report.CustomTagIssues))
+	}
+}
+
+// TestQualityReportIncludesCustomTagIssues tests that custom tag issues are included in aggregation
+func TestQualityReportIncludesCustomTagIssues(t *testing.T) {
+	registry := NewTagRegistry()
+	_ = registry.Register("_PRIM", TagDefinition{
+		Tag:          "_PRIM",
+		ValuePattern: YesNoPattern,
+		Description:  "Primary indicator",
+	})
+
+	a := NewQualityAnalyzer(WithTagRegistry(registry))
+
+	ind := &gedcom.Individual{XRef: "@I1@"}
+
+	doc := &gedcom.Document{
+		Records: []*gedcom.Record{
+			{
+				XRef:   "@I1@",
+				Type:   gedcom.RecordTypeIndividual,
+				Entity: ind,
+				Tags: []*gedcom.Tag{
+					{Level: 1, Tag: "_PRIM", Value: "INVALID"}, // Invalid value
+				},
+			},
+		},
+		XRefMap: map[string]*gedcom.Record{
+			"@I1@": {XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind},
+		},
+	}
+
+	report := a.Analyze(doc)
+
+	// Custom tag issue should be in CustomTagIssues
+	if len(report.CustomTagIssues) != 1 {
+		t.Errorf("expected 1 CustomTagIssue, got %d", len(report.CustomTagIssues))
+	}
+
+	// Should also be in the Errors slice (INVALID_TAG_VALUE is an error)
+	found := false
+	for _, issue := range report.Errors {
+		if issue.Code == CodeInvalidTagValue {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected INVALID_TAG_VALUE issue in Errors slice")
+	}
+}

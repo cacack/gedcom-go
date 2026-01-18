@@ -877,3 +877,130 @@ func TestValidateBackwardCompatibility(t *testing.T) {
 		_ = err.Error() // Should not panic
 	}
 }
+
+// Test ValidateCustomTags method
+func TestValidateCustomTags(t *testing.T) {
+	t.Run("returns nil when no registry configured", func(t *testing.T) {
+		v := New() // No registry configured
+		doc := &gedcom.Document{
+			Records: []*gedcom.Record{
+				{
+					XRef: "@I1@",
+					Type: gedcom.RecordTypeIndividual,
+					Tags: []*gedcom.Tag{
+						{Level: 1, Tag: "_CUSTOM", Value: "value"},
+					},
+				},
+			},
+		}
+
+		issues := v.ValidateCustomTags(doc)
+		if issues != nil {
+			t.Errorf("expected nil when no registry configured, got %d issues", len(issues))
+		}
+	})
+
+	t.Run("returns nil for nil document", func(t *testing.T) {
+		registry := NewTagRegistry()
+		v := NewWithConfig(&ValidatorConfig{
+			TagRegistry: registry,
+		})
+
+		issues := v.ValidateCustomTags(nil)
+		if issues != nil {
+			t.Errorf("expected nil for nil document, got %v", issues)
+		}
+	})
+
+	t.Run("validates custom tags with registry", func(t *testing.T) {
+		registry := NewTagRegistry()
+		_ = registry.Register("_MILT", TagDefinition{
+			Tag:            "_MILT",
+			AllowedParents: []string{"INDI"},
+		})
+
+		v := NewWithConfig(&ValidatorConfig{
+			TagRegistry:        registry,
+			ValidateCustomTags: true,
+		})
+
+		doc := &gedcom.Document{
+			Records: []*gedcom.Record{
+				{
+					XRef: "@F1@",
+					Type: gedcom.RecordTypeFamily,
+					Tags: []*gedcom.Tag{
+						{Level: 1, Tag: "_MILT", Value: "Army"}, // Invalid: FAM is not INDI
+					},
+				},
+			},
+		}
+
+		issues := v.ValidateCustomTags(doc)
+		if len(issues) != 1 {
+			t.Errorf("expected 1 issue, got %d", len(issues))
+		}
+		if len(issues) > 0 && issues[0].Code != CodeInvalidTagParent {
+			t.Errorf("expected code %s, got %s", CodeInvalidTagParent, issues[0].Code)
+		}
+	})
+}
+
+// Test ValidateAll includes custom tag validation
+func TestValidateAllWithCustomTags(t *testing.T) {
+	registry := NewTagRegistry()
+	_ = registry.Register("_MILT", TagDefinition{
+		Tag:            "_MILT",
+		AllowedParents: []string{"INDI"},
+	})
+
+	v := NewWithConfig(&ValidatorConfig{
+		TagRegistry:        registry,
+		ValidateCustomTags: true,
+		Strictness:         StrictnessStrict,
+	})
+
+	doc := &gedcom.Document{
+		Records: []*gedcom.Record{
+			{
+				XRef: "@F1@",
+				Type: gedcom.RecordTypeFamily,
+				Tags: []*gedcom.Tag{
+					{Level: 1, Tag: "_MILT", Value: "Army"}, // Invalid parent
+				},
+			},
+		},
+	}
+
+	issues := v.ValidateAll(doc)
+
+	// Should find the invalid parent issue
+	found := false
+	for _, issue := range issues {
+		if issue.Code == CodeInvalidTagParent {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("expected ValidateAll to include custom tag validation issues")
+	}
+}
+
+// Test ValidatorConfig with TagRegistry
+func TestValidatorConfigWithTagRegistry(t *testing.T) {
+	registry := NewTagRegistry()
+
+	config := &ValidatorConfig{
+		TagRegistry:        registry,
+		ValidateCustomTags: true,
+	}
+
+	v := NewWithConfig(config)
+	if v.config.TagRegistry != registry {
+		t.Error("expected TagRegistry to be set in config")
+	}
+	if !v.config.ValidateCustomTags {
+		t.Error("expected ValidateCustomTags to be true")
+	}
+}
