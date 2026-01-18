@@ -54,9 +54,19 @@ func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, erro
 	// Wrap reader with UTF-8 validation
 	validatedReader := charset.NewReader(r)
 
+	// Wrap with progress tracking if callback provided
+	finalReader := validatedReader
+	if opts.OnProgress != nil {
+		finalReader = &progressReader{
+			reader:    validatedReader,
+			totalSize: opts.TotalSize,
+			callback:  opts.OnProgress,
+		}
+	}
+
 	// Parse all lines
 	p := parser.NewParser()
-	lines, err := p.Parse(validatedReader)
+	lines, err := p.Parse(finalReader)
 	if err != nil {
 		// Preserve charset errors in the error message
 		return nil, err
