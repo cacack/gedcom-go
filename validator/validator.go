@@ -114,16 +114,26 @@ type ValidatorConfig struct {
 	// Strictness controls which severity levels are included in results.
 	// Default: StrictnessNormal (errors and warnings).
 	Strictness Strictness
+
+	// TagRegistry holds definitions for custom (underscore-prefixed) tags.
+	// If nil, custom tag validation is disabled.
+	TagRegistry *TagRegistry
+
+	// ValidateCustomTags enables validation of custom (underscore-prefixed) tags.
+	// When true and TagRegistry is set, custom tags are validated against the registry.
+	// Default: false (backward compatible).
+	ValidateCustomTags bool
 }
 
 // Validator validates GEDCOM documents against specification rules.
 type Validator struct {
-	errors     []error
-	config     *ValidatorConfig
-	dateLogic  *DateLogicValidator
-	references *ReferenceValidator
-	duplicates *DuplicateDetector
-	quality    *QualityAnalyzer
+	errors       []error
+	config       *ValidatorConfig
+	dateLogic    *DateLogicValidator
+	references   *ReferenceValidator
+	duplicates   *DuplicateDetector
+	quality      *QualityAnalyzer
+	tagValidator *TagValidator
 }
 
 // New creates a new Validator with default configuration.
@@ -188,10 +198,27 @@ func (v *Validator) getQualityAnalyzer() *QualityAnalyzer {
 			if v.config.Duplicates != nil {
 				opts = append(opts, WithDuplicateConfig(v.config.Duplicates))
 			}
+			if v.config.TagRegistry != nil {
+				opts = append(opts, WithTagRegistry(v.config.TagRegistry))
+			}
 		}
 		v.quality = NewQualityAnalyzer(opts...)
 	}
 	return v.quality
+}
+
+// getTagValidator returns the tag validator, creating it lazily if needed.
+func (v *Validator) getTagValidator() *TagValidator {
+	if v.tagValidator == nil {
+		var registry *TagRegistry
+		validateUnknown := false
+		if v.config != nil {
+			registry = v.config.TagRegistry
+			validateUnknown = v.config.ValidateCustomTags
+		}
+		v.tagValidator = NewTagValidator(registry, validateUnknown)
+	}
+	return v.tagValidator
 }
 
 // Validate validates a GEDCOM document and returns any validation errors.
@@ -306,6 +333,11 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 		allIssues = append(allIssues, pair.ToIssue())
 	}
 
+	// Run custom tag validation if a registry is configured
+	if v.config != nil && v.config.TagRegistry != nil {
+		allIssues = append(allIssues, v.getTagValidator().Validate(doc)...)
+	}
+
 	// Filter by strictness
 	return v.filterByStrictness(allIssues)
 }
@@ -328,6 +360,21 @@ func (v *Validator) FindOrphanedReferences(doc *gedcom.Document) []Issue {
 		return nil
 	}
 	issues := v.getReferenceValidator().Validate(doc)
+	return v.filterByStrictness(issues)
+}
+
+// ValidateCustomTags validates custom (underscore-prefixed) tags against the configured registry.
+// Returns issues for tags that violate parent or value constraints, and optionally for unknown tags.
+// This method requires a TagRegistry to be configured; if none is set, it returns nil.
+func (v *Validator) ValidateCustomTags(doc *gedcom.Document) []Issue {
+	if doc == nil {
+		return nil
+	}
+	// Skip if no registry configured
+	if v.config == nil || v.config.TagRegistry == nil {
+		return nil
+	}
+	issues := v.getTagValidator().Validate(doc)
 	return v.filterByStrictness(issues)
 }
 

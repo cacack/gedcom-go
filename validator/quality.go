@@ -43,6 +43,7 @@ type QualityReport struct {
 	ReferenceIssues    []Issue `json:"reference_issues"`
 	DuplicateIssues    []Issue `json:"duplicate_issues"`
 	CompletenessIssues []Issue `json:"completeness_issues"`
+	CustomTagIssues    []Issue `json:"custom_tag_issues"`
 
 	// Summary counts
 	TotalIssues  int `json:"total_issues"`
@@ -140,9 +141,10 @@ func (r *QualityReport) IssuesByCode(code string) []Issue {
 
 // QualityAnalyzer aggregates validation results from multiple validators.
 type QualityAnalyzer struct {
-	dateLogic  *DateLogicValidator
-	references *ReferenceValidator
-	duplicates *DuplicateDetector
+	dateLogic    *DateLogicValidator
+	references   *ReferenceValidator
+	duplicates   *DuplicateDetector
+	tagValidator *TagValidator
 }
 
 // QualityOption is a functional option for configuring QualityAnalyzer.
@@ -159,6 +161,15 @@ func WithDateLogicConfig(config *DateLogicConfig) QualityOption {
 func WithDuplicateConfig(config *DuplicateConfig) QualityOption {
 	return func(a *QualityAnalyzer) {
 		a.duplicates = NewDuplicateDetector(config)
+	}
+}
+
+// WithTagRegistry returns a QualityOption that enables custom tag validation.
+// When a registry is provided, custom tags are validated against registry definitions.
+// Unknown custom tags are reported as warnings.
+func WithTagRegistry(registry *TagRegistry) QualityOption {
+	return func(a *QualityAnalyzer) {
+		a.tagValidator = NewTagValidator(registry, true)
 	}
 }
 
@@ -188,6 +199,7 @@ func (a *QualityAnalyzer) Analyze(doc *gedcom.Document) *QualityReport {
 		ReferenceIssues:    []Issue{},
 		DuplicateIssues:    []Issue{},
 		CompletenessIssues: []Issue{},
+		CustomTagIssues:    []Issue{},
 	}
 
 	if doc == nil {
@@ -207,6 +219,7 @@ func (a *QualityAnalyzer) Analyze(doc *gedcom.Document) *QualityReport {
 	a.runDateLogicValidator(doc, report)
 	a.runReferenceValidator(doc, report)
 	a.runDuplicateDetector(doc, report)
+	a.runTagValidator(doc, report)
 
 	// Calculate completeness metrics and generate completeness issues
 	a.calculateCompleteness(individuals, report)
@@ -235,6 +248,15 @@ func (a *QualityAnalyzer) runDuplicateDetector(doc *gedcom.Document, report *Qua
 	for _, pair := range pairs {
 		report.DuplicateIssues = append(report.DuplicateIssues, pair.ToIssue())
 	}
+}
+
+// runTagValidator runs custom tag validation if a tag validator is configured.
+func (a *QualityAnalyzer) runTagValidator(doc *gedcom.Document, report *QualityReport) {
+	if a.tagValidator == nil {
+		return
+	}
+	issues := a.tagValidator.Validate(doc)
+	report.CustomTagIssues = issues
 }
 
 // calculateCompleteness calculates data completeness metrics and generates completeness issues.
@@ -316,6 +338,7 @@ func (a *QualityAnalyzer) aggregateIssues(report *QualityReport) {
 	allIssues = append(allIssues, report.ReferenceIssues...)
 	allIssues = append(allIssues, report.DuplicateIssues...)
 	allIssues = append(allIssues, report.CompletenessIssues...)
+	allIssues = append(allIssues, report.CustomTagIssues...)
 
 	// Sort by severity (Errors first, then Warnings, then Info)
 	sort.Slice(allIssues, func(i, j int) bool {

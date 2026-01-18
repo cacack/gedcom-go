@@ -543,6 +543,58 @@ v := validator.NewWithConfig(&validator.ValidatorConfig{
 issues := v.ValidateAll(doc)  // Returns all severity levels
 ```
 
+**Custom Tag Registry:**
+
+Register and validate vendor-specific custom tags (underscore-prefixed):
+
+| Function | Description |
+|----------|-------------|
+| `NewTagRegistry()` | Create empty registry for custom tag definitions |
+| `AncestryRegistry()` | Pre-built registry for Ancestry.com tags |
+| `FamilySearchRegistry()` | Pre-built registry for FamilySearch tags |
+| `RootsMagicRegistry()` | Pre-built registry for RootsMagic tags |
+| `MergeRegistries()` | Combine multiple registries |
+| `DefaultVendorRegistry()` | Merged registry with all vendor tags |
+| `RegistryForVendor()` | Get registry for detected vendor |
+
+```go
+// Register custom tags
+registry := validator.NewTagRegistry()
+registry.Register("_MILT", validator.TagDefinition{
+    AllowedParents: []string{"INDI"},
+    Description:    "Military service",
+})
+
+// Or use pre-built vendor registry
+registry := validator.AncestryRegistry()
+
+// Or use combined registry for all vendors
+registry := validator.DefaultVendorRegistry()
+
+// Configure validator
+v := validator.NewWithConfig(&validator.ValidatorConfig{
+    TagRegistry:        registry,
+    ValidateCustomTags: true,
+})
+issues := v.ValidateCustomTags(doc)
+```
+
+Custom tag validation error codes:
+
+| Error Code | Severity | Description |
+|------------|----------|-------------|
+| UNKNOWN_CUSTOM_TAG | Warning | Underscore-prefixed tag not in registry |
+| INVALID_TAG_PARENT | Error | Custom tag used under wrong parent |
+| INVALID_TAG_VALUE | Error | Custom tag value doesn't match pattern |
+
+Pre-built vendor registry tags:
+
+| Vendor | Tags |
+|--------|------|
+| Ancestry | `_APID`, `_TREE`, `_MILT`, `_DEST`, `_PRIM`, `_PHOTO` |
+| FamilySearch | `_FSFTID`, `_FSORD`, `_FSTAG` |
+| RootsMagic | `_PRIM`, `_SDATE`, `_TMPLT` |
+
 ## Progress Reporting
 
 Optional progress callbacks for monitoring large file processing:

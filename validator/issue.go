@@ -103,6 +103,18 @@ const (
 	CodeNoSources = "NO_SOURCES"
 )
 
+// Error codes for custom tag registry validation.
+const (
+	// CodeInvalidTagParent indicates a custom tag appears under an invalid parent tag.
+	CodeInvalidTagParent = "INVALID_TAG_PARENT"
+
+	// CodeInvalidTagValue indicates a custom tag's value does not match its expected pattern.
+	CodeInvalidTagValue = "INVALID_TAG_VALUE"
+
+	// CodeUnknownCustomTag indicates an underscore-prefixed tag not in the registry.
+	CodeUnknownCustomTag = "UNKNOWN_CUSTOM_TAG"
+)
+
 // Issue represents a validation finding with severity, context, and actionable information.
 type Issue struct {
 	// Severity indicates the importance level of this issue.
