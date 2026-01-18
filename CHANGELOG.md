@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0](https://github.com/cacack/gedcom-go/compare/v0.7.0...v0.8.0) (2026-01-18)
+
+
+### Features
+
+* add streaming APIs for memory-efficient large file processing ([dae7bf8](https://github.com/cacack/gedcom-go/commit/dae7bf8b957126182cb94bfd82e1eb0831dc50d7))
+* **converter:** add GEDCOM version converter (5.5 &lt;-&gt; 5.5.1 &lt;-&gt; 7.0) ([5b42cd5](https://github.com/cacack/gedcom-go/commit/5b42cd5a84f4b2d12a3e44e410e6a940018b658d))
+* **decoder:** add progress callbacks for large file processing ([a81a994](https://github.com/cacack/gedcom-go/commit/a81a9946bffaa24c40a8bc74aa7aa45576a34787))
+* **validator:** add custom tag registry for vendor extensions ([4eea4e8](https://github.com/cacack/gedcom-go/commit/4eea4e836087dfc9e9a930a5bb9b0e0625db60ae))
+
+
+### Bug Fixes
+
+* **ci:** replace deprecated semgrep-action with Docker ([6bce604](https://github.com/cacack/gedcom-go/commit/6bce60426da8c286b81be44212486e13fa737a8a))
+* **ci:** resolve security scan failures ([c87883b](https://github.com/cacack/gedcom-go/commit/c87883bdd2c36fd604499570406dd00d127b5023))
+* **converter:** address lint and format warnings ([f5c9bb2](https://github.com/cacack/gedcom-go/commit/f5c9bb2f28cf96408e185beda58eeea6d141397f))
+* **converter:** address remaining lint warnings ([d56daae](https://github.com/cacack/gedcom-go/commit/d56daaeb5aad3141e16f20a204348d7ba191827e))
+* **validator:** address lint issues in test files ([5c796ad](https://github.com/cacack/gedcom-go/commit/5c796adfcb570d313d3fcf2828b10eda772d2ac0))
+
 ## [0.7.0](https://github.com/cacack/gedcom-go/compare/v0.6.0...v0.7.0) (2026-01-12)
 
 
