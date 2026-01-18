@@ -373,4 +373,3 @@ func isXRef(value string) bool {
 	}
 	return value[0] == '@' && value[len(value)-1] == '@'
 }
-
