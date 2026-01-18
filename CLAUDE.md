@@ -95,13 +95,16 @@ testdata/
 
 See `docs/TESTING.md` for critical paths that require 100% coverage.
 
-## Project Constitution
+## Core Principles
 
-@.specify/memory/constitution.md
+This project follows six core principles that guide all development decisions:
 
-The constitution defines core principles (the WHAT). This CLAUDE.md defines operational guidance (the HOW). When in doubt, constitution principles take precedence.
-
-Key principles: Library-First Design, API Clarity, Test Coverage (≥85%), Version Support, Error Transparency, **Lossless Representation**.
+1. **Library-First Design**: Every feature as a well-defined, independently testable library component
+2. **API Clarity**: Public APIs prioritize simplicity with comprehensive godoc, io.Reader/Writer interfaces
+3. **Test Coverage (NON-NEGOTIABLE)**: Minimum 85% coverage, TDD approach, table-driven tests
+4. **Version Support**: Auto-detect and support GEDCOM 5.5, 5.5.1, and 7.0 with roundtrip fidelity
+5. **Error Transparency**: All errors include line numbers, context, and never panic
+6. **Lossless Representation (NON-NEGOTIABLE)**: Preserve original values, partial data, calendar-specific dates
 
 ## Documentation Structure
 
@@ -113,7 +116,9 @@ Key principles: Library-First Design, API Clarity, Test Coverage (≥85%), Versi
   - `adr/` - Architecture Decision Records
   - `ENCODING_IMPLEMENTATION_PLAN.md` - UTF-16/ANSEL implementation guide
   - `GEDCOM_DATE_FORMATS_RESEARCH.md` - Date format specification research
+  - `GEDCOM_VERSIONS.md` - GEDCOM version differences (5.5, 5.5.1, 7.0)
   - `PERFORMANCE.md` - Benchmarks and optimization notes
+  - `TESTING.md` - Test coverage requirements and critical paths
 
 ### Workflow for New Ideas
 
