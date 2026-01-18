@@ -108,6 +108,8 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 }
 
 // convert55To551 converts GEDCOM 5.5 to 5.5.1.
+//
+//nolint:unparam // error return kept for API consistency with other converters
 func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
 	transformHeader(doc, gedcom.Version551, report)
 	report.AddTransformation(gedcom.Transformation{
@@ -119,6 +121,8 @@ func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, _ *Co
 }
 
 // convert55To70 converts GEDCOM 5.5 to 7.0.
+//
+//nolint:unparam // error return kept for API consistency with other converters
 func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version70, report)
 	normalizeXRefsToUppercase(doc, report)
@@ -133,6 +137,8 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, _ *Con
 }
 
 // convert551To55 converts GEDCOM 5.5.1 to 5.5.
+//
+//nolint:unparam // error return kept for API consistency with other converters
 func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
 	transformHeader(doc, gedcom.Version55, report)
 	record551Tags(doc, report)
@@ -145,6 +151,8 @@ func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, _ *Co
 }
 
 // convert551To70 converts GEDCOM 5.5.1 to 7.0.
+//
+//nolint:unparam // error return kept for API consistency with other converters
 func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version70, report)
 	normalizeXRefsToUppercase(doc, report)
@@ -159,6 +167,8 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, _ *Co
 }
 
 // convert70To55 converts GEDCOM 7.0 to 5.5.
+//
+//nolint:unparam // error return kept for API consistency with other converters
 func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version55, report)
 	transformMediaTypes(doc, gedcom.Version55, report)
@@ -173,6 +183,8 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, _ *Con
 }
 
 // convert70To551 converts GEDCOM 7.0 to 5.5.1.
+//
+//nolint:unparam // error return kept for API consistency with other converters
 func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version551, report)
 	transformMediaTypes(doc, gedcom.Version551, report)

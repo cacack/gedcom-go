@@ -62,7 +62,7 @@ func consolidateCONCAndCONT(doc *gedcom.Document, report *gedcom.ConversionRepor
 // consolidateCONCAndCONTInTags processes a flat slice of tags, consolidating both
 // CONC and CONT tags into their parent values in a single pass.
 // Returns the new tag slice, CONC count, and CONT count.
-func consolidateCONCAndCONTInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, concCount int, contCount int) {
+func consolidateCONCAndCONTInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, concCount, contCount int) {
 	if len(tags) == 0 {
 		return tags, 0, 0
 	}

@@ -74,7 +74,7 @@ func downgradeHeaderFrom70(header *gedcom.Header, targetVersion gedcom.Version, 
 }
 
 // updateEncoding sets the appropriate encoding for the target version.
-func updateEncoding(header *gedcom.Header, targetVersion gedcom.Version, report *gedcom.ConversionReport) {
+func updateEncoding(header *gedcom.Header, targetVersion gedcom.Version, _ *gedcom.ConversionReport) {
 	switch targetVersion {
 	case gedcom.Version70:
 		// GEDCOM 7.0 is always UTF-8 (already handled in upgradeHeaderTo70)

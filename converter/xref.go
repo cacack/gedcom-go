@@ -374,9 +374,3 @@ func isXRef(value string) bool {
 	return value[0] == '@' && value[len(value)-1] == '@'
 }
 
-// Common XRef reference tags for reference (used for validation/documentation).
-var xrefTags = map[string]bool{
-	"FAMC": true, "FAMS": true, "HUSB": true, "WIFE": true, "CHIL": true,
-	"SOUR": true, "REPO": true, "SUBM": true, "NOTE": true, "OBJE": true,
-	"ASSO": true, "ALIA": true,
-}
