@@ -857,3 +857,383 @@ func createFullTestDocument() *gedcom.Document {
 
 	return doc
 }
+
+func TestDeepCopyTransliteration(t *testing.T) {
+	t.Run("nil transliteration", func(t *testing.T) {
+		result := deepCopyTransliteration(nil)
+		if result != nil {
+			t.Error("Expected nil for nil input")
+		}
+	})
+
+	t.Run("full transliteration", func(t *testing.T) {
+		original := &gedcom.Transliteration{
+			Value:         "John Doe",
+			Language:      "en",
+			Given:         "John",
+			Surname:       "Doe",
+			Prefix:        "Dr",
+			Suffix:        "Jr",
+			Nickname:      "Johnny",
+			SurnamePrefix: "van",
+		}
+
+		copied := deepCopyTransliteration(original)
+
+		if copied.Value != original.Value {
+			t.Errorf("Value = %v, want %v", copied.Value, original.Value)
+		}
+		if copied.Language != original.Language {
+			t.Errorf("Language = %v, want %v", copied.Language, original.Language)
+		}
+		if copied.Given != original.Given {
+			t.Errorf("Given = %v, want %v", copied.Given, original.Given)
+		}
+		if copied.Surname != original.Surname {
+			t.Errorf("Surname = %v, want %v", copied.Surname, original.Surname)
+		}
+		if copied.Prefix != original.Prefix {
+			t.Errorf("Prefix = %v, want %v", copied.Prefix, original.Prefix)
+		}
+		if copied.Suffix != original.Suffix {
+			t.Errorf("Suffix = %v, want %v", copied.Suffix, original.Suffix)
+		}
+		if copied.Nickname != original.Nickname {
+			t.Errorf("Nickname = %v, want %v", copied.Nickname, original.Nickname)
+		}
+		if copied.SurnamePrefix != original.SurnamePrefix {
+			t.Errorf("SurnamePrefix = %v, want %v", copied.SurnamePrefix, original.SurnamePrefix)
+		}
+
+		// Verify it's a copy, not the same pointer
+		if copied == original {
+			t.Error("Should be a copy, not the same pointer")
+		}
+	})
+}
+
+func TestDeepCopyAncestryAPID(t *testing.T) {
+	t.Run("nil apid", func(t *testing.T) {
+		result := deepCopyAncestryAPID(nil)
+		if result != nil {
+			t.Error("Expected nil for nil input")
+		}
+	})
+
+	t.Run("full apid", func(t *testing.T) {
+		original := &gedcom.AncestryAPID{
+			Raw:      "1234:5678:90",
+			Database: "1234",
+			Record:   "5678",
+		}
+
+		copied := deepCopyAncestryAPID(original)
+
+		if copied.Raw != original.Raw {
+			t.Errorf("Raw = %v, want %v", copied.Raw, original.Raw)
+		}
+		if copied.Database != original.Database {
+			t.Errorf("Database = %v, want %v", copied.Database, original.Database)
+		}
+		if copied.Record != original.Record {
+			t.Errorf("Record = %v, want %v", copied.Record, original.Record)
+		}
+
+		// Verify it's a copy
+		if copied == original {
+			t.Error("Should be a copy, not the same pointer")
+		}
+	})
+}
+
+func TestDeepCopyAssociationWithCitations(t *testing.T) {
+	t.Run("association with source citations", func(t *testing.T) {
+		original := &gedcom.Association{
+			IndividualXRef: "@I2@",
+			Role:           "Witness",
+			Phrase:         "witness to the event",
+			Notes:          []string{"Note 1", "Note 2"},
+			SourceCitations: []*gedcom.SourceCitation{
+				{SourceXRef: "@S1@", Page: "Page 10"},
+				{SourceXRef: "@S2@", Page: "Page 20"},
+			},
+		}
+
+		copied := deepCopyAssociation(original)
+
+		if copied.IndividualXRef != original.IndividualXRef {
+			t.Errorf("IndividualXRef = %v, want %v", copied.IndividualXRef, original.IndividualXRef)
+		}
+		if copied.Role != original.Role {
+			t.Errorf("Role = %v, want %v", copied.Role, original.Role)
+		}
+		if copied.Phrase != original.Phrase {
+			t.Errorf("Phrase = %v, want %v", copied.Phrase, original.Phrase)
+		}
+		if len(copied.Notes) != len(original.Notes) {
+			t.Errorf("Notes len = %d, want %d", len(copied.Notes), len(original.Notes))
+		}
+		if len(copied.SourceCitations) != len(original.SourceCitations) {
+			t.Errorf("SourceCitations len = %d, want %d", len(copied.SourceCitations), len(original.SourceCitations))
+		}
+
+		// Verify source citations are copied
+		if copied.SourceCitations[0].SourceXRef != original.SourceCitations[0].SourceXRef {
+			t.Errorf("SourceCitation[0].SourceXRef = %v, want %v", copied.SourceCitations[0].SourceXRef, original.SourceCitations[0].SourceXRef)
+		}
+
+		// Verify it's a deep copy
+		original.SourceCitations[0].Page = "Modified"
+		if copied.SourceCitations[0].Page == "Modified" {
+			t.Error("Should be a deep copy, modification affected copy")
+		}
+	})
+}
+
+func TestDeepCopyAttributeWithCitations(t *testing.T) {
+	t.Run("attribute with source citations", func(t *testing.T) {
+		original := &gedcom.Attribute{
+			Type:  "OCCU",
+			Value: "Farmer",
+			Date:  "1900",
+			Place: "Iowa",
+			ParsedDate: &gedcom.Date{
+				Original: "1900",
+				Year:     1900,
+			},
+			SourceCitations: []*gedcom.SourceCitation{
+				{SourceXRef: "@S1@", Page: "Page 5"},
+			},
+		}
+
+		copied := deepCopyAttribute(original)
+
+		if copied.Type != original.Type {
+			t.Errorf("Type = %v, want %v", copied.Type, original.Type)
+		}
+		if copied.Value != original.Value {
+			t.Errorf("Value = %v, want %v", copied.Value, original.Value)
+		}
+		if copied.Date != original.Date {
+			t.Errorf("Date = %v, want %v", copied.Date, original.Date)
+		}
+		if copied.Place != original.Place {
+			t.Errorf("Place = %v, want %v", copied.Place, original.Place)
+		}
+		if copied.ParsedDate == nil {
+			t.Error("ParsedDate should not be nil")
+		}
+		if len(copied.SourceCitations) != len(original.SourceCitations) {
+			t.Errorf("SourceCitations len = %d, want %d", len(copied.SourceCitations), len(original.SourceCitations))
+		}
+
+		// Verify deep copy
+		original.SourceCitations[0].Page = "Modified"
+		if copied.SourceCitations[0].Page == "Modified" {
+			t.Error("Should be a deep copy")
+		}
+	})
+}
+
+func TestDeepCopyPersonalNameFull(t *testing.T) {
+	t.Run("personal name with all fields", func(t *testing.T) {
+		original := &gedcom.PersonalName{
+			Full:          "Dr. John /van Doe/ Jr.",
+			Given:         "John",
+			Surname:       "Doe",
+			Prefix:        "Dr.",
+			Suffix:        "Jr.",
+			Nickname:      "Johnny",
+			SurnamePrefix: "van",
+			Type:          "birth",
+			Transliterations: []*gedcom.Transliteration{
+				{Value: "John Doe", Language: "en"},
+				{Value: "Jon Do", Language: "en-phonetic"},
+			},
+		}
+
+		copied := deepCopyPersonalName(original)
+
+		if copied.Full != original.Full {
+			t.Errorf("Full = %v, want %v", copied.Full, original.Full)
+		}
+		if copied.Given != original.Given {
+			t.Errorf("Given = %v, want %v", copied.Given, original.Given)
+		}
+		if copied.Surname != original.Surname {
+			t.Errorf("Surname = %v, want %v", copied.Surname, original.Surname)
+		}
+		if copied.Prefix != original.Prefix {
+			t.Errorf("Prefix = %v, want %v", copied.Prefix, original.Prefix)
+		}
+		if copied.Suffix != original.Suffix {
+			t.Errorf("Suffix = %v, want %v", copied.Suffix, original.Suffix)
+		}
+		if copied.Nickname != original.Nickname {
+			t.Errorf("Nickname = %v, want %v", copied.Nickname, original.Nickname)
+		}
+		if copied.SurnamePrefix != original.SurnamePrefix {
+			t.Errorf("SurnamePrefix = %v, want %v", copied.SurnamePrefix, original.SurnamePrefix)
+		}
+		if copied.Type != original.Type {
+			t.Errorf("Type = %v, want %v", copied.Type, original.Type)
+		}
+		if len(copied.Transliterations) != len(original.Transliterations) {
+			t.Errorf("Transliterations len = %d, want %d", len(copied.Transliterations), len(original.Transliterations))
+		}
+
+		// Verify deep copy
+		original.Transliterations[0].Value = "Modified"
+		if copied.Transliterations[0].Value == "Modified" {
+			t.Error("Should be a deep copy")
+		}
+	})
+}
+
+func TestDeepCopyMediaLinkWithCrop(t *testing.T) {
+	t.Run("media link with crop region", func(t *testing.T) {
+		original := &gedcom.MediaLink{
+			MediaXRef: "@M1@",
+			Title:     "Photo",
+			Crop: &gedcom.CropRegion{
+				Height: 100,
+				Left:   10,
+				Top:    20,
+				Width:  200,
+			},
+		}
+
+		copied := deepCopyMediaLink(original)
+
+		if copied.MediaXRef != original.MediaXRef {
+			t.Errorf("MediaXRef = %v, want %v", copied.MediaXRef, original.MediaXRef)
+		}
+		if copied.Title != original.Title {
+			t.Errorf("Title = %v, want %v", copied.Title, original.Title)
+		}
+		if copied.Crop == nil {
+			t.Fatal("Crop should not be nil")
+		}
+		if copied.Crop.Height != original.Crop.Height {
+			t.Errorf("Crop.Height = %v, want %v", copied.Crop.Height, original.Crop.Height)
+		}
+		if copied.Crop.Left != original.Crop.Left {
+			t.Errorf("Crop.Left = %v, want %v", copied.Crop.Left, original.Crop.Left)
+		}
+		if copied.Crop.Top != original.Crop.Top {
+			t.Errorf("Crop.Top = %v, want %v", copied.Crop.Top, original.Crop.Top)
+		}
+		if copied.Crop.Width != original.Crop.Width {
+			t.Errorf("Crop.Width = %v, want %v", copied.Crop.Width, original.Crop.Width)
+		}
+
+		// Verify deep copy
+		if copied.Crop == original.Crop {
+			t.Error("Crop should be a deep copy")
+		}
+	})
+}
+
+func TestDeepCopySourceCitationFull(t *testing.T) {
+	t.Run("source citation with all fields", func(t *testing.T) {
+		original := &gedcom.SourceCitation{
+			SourceXRef: "@S1@",
+			Page:       "Page 123",
+			Quality:    2,
+			AncestryAPID: &gedcom.AncestryAPID{
+				Raw:      "1:2:3",
+				Database: "1",
+				Record:   "2",
+			},
+		}
+
+		copied := deepCopySourceCitation(original)
+
+		if copied.SourceXRef != original.SourceXRef {
+			t.Errorf("SourceXRef = %v, want %v", copied.SourceXRef, original.SourceXRef)
+		}
+		if copied.Page != original.Page {
+			t.Errorf("Page = %v, want %v", copied.Page, original.Page)
+		}
+		if copied.Quality != original.Quality {
+			t.Errorf("Quality = %v, want %v", copied.Quality, original.Quality)
+		}
+		if copied.AncestryAPID == nil {
+			t.Fatal("AncestryAPID should not be nil")
+		}
+		if copied.AncestryAPID.Raw != original.AncestryAPID.Raw {
+			t.Errorf("AncestryAPID.Raw = %v, want %v", copied.AncestryAPID.Raw, original.AncestryAPID.Raw)
+		}
+
+		// Verify deep copy
+		if copied.AncestryAPID == original.AncestryAPID {
+			t.Error("AncestryAPID should be a deep copy")
+		}
+	})
+}
+
+func TestDeepCopyLDSOrdinanceFull(t *testing.T) {
+	t.Run("LDS ordinance with all fields", func(t *testing.T) {
+		original := &gedcom.LDSOrdinance{
+			Type:       "BAPL",
+			Date:       "1 JAN 2000",
+			Temple:     "SLAKE",
+			Place:      "Salt Lake City",
+			Status:     "COMPLETED",
+			FamilyXRef: "@F1@",
+		}
+
+		copied := deepCopyLDSOrdinance(original)
+
+		if string(copied.Type) != string(original.Type) {
+			t.Errorf("Type = %v, want %v", copied.Type, original.Type)
+		}
+		if copied.Date != original.Date {
+			t.Errorf("Date = %v, want %v", copied.Date, original.Date)
+		}
+		if copied.Temple != original.Temple {
+			t.Errorf("Temple = %v, want %v", copied.Temple, original.Temple)
+		}
+		if copied.Place != original.Place {
+			t.Errorf("Place = %v, want %v", copied.Place, original.Place)
+		}
+		if copied.Status != original.Status {
+			t.Errorf("Status = %v, want %v", copied.Status, original.Status)
+		}
+		if copied.FamilyXRef != original.FamilyXRef {
+			t.Errorf("FamilyXRef = %v, want %v", copied.FamilyXRef, original.FamilyXRef)
+		}
+	})
+}
+
+func TestDeepCopyMediaFileFull(t *testing.T) {
+	t.Run("media file with translations", func(t *testing.T) {
+		original := &gedcom.MediaFile{
+			FileRef:   "/path/to/file.jpg",
+			Form:      "image/jpeg",
+			MediaType: "photo",
+			Title:     "Family Photo",
+			Translations: []*gedcom.MediaTranslation{
+				{FileRef: "/path/to/file.png", Form: "image/png"},
+			},
+		}
+
+		copied := deepCopyMediaFile(original)
+
+		if copied.FileRef != original.FileRef {
+			t.Errorf("FileRef = %v, want %v", copied.FileRef, original.FileRef)
+		}
+		if copied.Form != original.Form {
+			t.Errorf("Form = %v, want %v", copied.Form, original.Form)
+		}
+		if copied.MediaType != original.MediaType {
+			t.Errorf("MediaType = %v, want %v", copied.MediaType, original.MediaType)
+		}
+		if copied.Title != original.Title {
+			t.Errorf("Title = %v, want %v", copied.Title, original.Title)
+		}
+		if len(copied.Translations) != len(original.Translations) {
+			t.Errorf("Translations len = %d, want %d", len(copied.Translations), len(original.Translations))
+		}
+	})
+}
