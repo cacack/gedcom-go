@@ -8,12 +8,12 @@ import (
 
 func TestTransformHeader(t *testing.T) {
 	tests := []struct {
-		name           string
-		doc            *gedcom.Document
-		targetVersion  gedcom.Version
-		wantEncoding   gedcom.Encoding
-		checkSCHMA     bool
-		wantSCHMAGone  bool
+		name          string
+		doc           *gedcom.Document
+		targetVersion gedcom.Version
+		wantEncoding  gedcom.Encoding
+		checkSCHMA    bool
+		wantSCHMAGone bool
 	}{
 		{
 			name: "nil header creates new header",
@@ -141,11 +141,11 @@ func TestTransformHeader(t *testing.T) {
 
 func TestUpgradeHeaderTo70(t *testing.T) {
 	tests := []struct {
-		name             string
-		header           *gedcom.Header
-		wantEncoding     gedcom.Encoding
-		wantTransform    bool
-		transformType    string
+		name          string
+		header        *gedcom.Header
+		wantEncoding  gedcom.Encoding
+		wantTransform bool
+		transformType string
 	}{
 		{
 			name: "ANSEL to UTF-8",
@@ -202,12 +202,12 @@ func TestUpgradeHeaderTo70(t *testing.T) {
 
 func TestDowngradeHeaderFrom70(t *testing.T) {
 	tests := []struct {
-		name            string
-		header          *gedcom.Header
-		targetVersion   gedcom.Version
-		wantSCHMAGone   bool
-		wantDataLoss    bool
-		wantTransform   bool
+		name          string
+		header        *gedcom.Header
+		targetVersion gedcom.Version
+		wantSCHMAGone bool
+		wantDataLoss  bool
+		wantTransform bool
 	}{
 		{
 			name: "removes SCHMA tag",

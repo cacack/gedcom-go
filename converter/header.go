@@ -41,12 +41,9 @@ func upgradeHeaderTo70(header *gedcom.Header, report *gedcom.ConversionReport) {
 		}
 	}
 
-	// Add SCHMA placeholder if not present and there are custom tags
-	if !hasSCHMA {
-		// SCHMA is only required if there are extension tags
-		// For now, we add an empty placeholder that can be populated
-		// by custom tag analysis in the full conversion
-	}
+	// Note: SCHMA is only required if there are extension tags.
+	// Future enhancement could analyze for custom tags and add SCHMA as needed.
+	_ = hasSCHMA // Used in potential future enhancements
 }
 
 // downgradeHeaderFrom70 prepares the header for GEDCOM 5.x from 7.0.

@@ -44,6 +44,8 @@ var ianaToLegacy = map[string]string{
 
 // transformMediaTypes updates media type formats in OBJE records based on target version.
 // GEDCOM 5.5/5.5.1 uses short formats (JPG, PNG), while GEDCOM 7.0 uses IANA media types.
+//
+//nolint:gocyclo // Processing media files and translations requires nested iteration
 func transformMediaTypes(doc *gedcom.Document, targetVersion gedcom.Version, report *gedcom.ConversionReport) {
 	var transformCount int
 	var details []string

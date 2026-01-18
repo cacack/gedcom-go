@@ -62,14 +62,10 @@ func consolidateCONCAndCONT(doc *gedcom.Document, report *gedcom.ConversionRepor
 // consolidateCONCAndCONTInTags processes a flat slice of tags, consolidating both
 // CONC and CONT tags into their parent values in a single pass.
 // Returns the new tag slice, CONC count, and CONT count.
-func consolidateCONCAndCONTInTags(tags []*gedcom.Tag) ([]*gedcom.Tag, int, int) {
+func consolidateCONCAndCONTInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, concCount int, contCount int) {
 	if len(tags) == 0 {
 		return tags, 0, 0
 	}
-
-	concCount := 0
-	contCount := 0
-	var result []*gedcom.Tag
 
 	i := 0
 	for i < len(tags) {
@@ -161,13 +157,10 @@ func consolidateCONC(doc *gedcom.Document, report *gedcom.ConversionReport) {
 
 // consolidateCONCOnlyInTags processes tags and consolidates only CONC tags.
 // CONT tags are preserved.
-func consolidateCONCOnlyInTags(tags []*gedcom.Tag) ([]*gedcom.Tag, int) {
+func consolidateCONCOnlyInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, concCount int) {
 	if len(tags) == 0 {
 		return tags, 0
 	}
-
-	concCount := 0
-	var result []*gedcom.Tag
 
 	i := 0
 	for i < len(tags) {
@@ -246,13 +239,10 @@ func convertCONTToNewlines(doc *gedcom.Document, report *gedcom.ConversionReport
 }
 
 // convertCONTOnlyInTags processes tags and converts only CONT tags to newlines.
-func convertCONTOnlyInTags(tags []*gedcom.Tag) ([]*gedcom.Tag, int) {
+func convertCONTOnlyInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, contCount int) {
 	if len(tags) == 0 {
 		return tags, 0
 	}
-
-	contCount := 0
-	var result []*gedcom.Tag
 
 	i := 0
 	for i < len(tags) {
@@ -330,13 +320,10 @@ func expandNewlinesToCONT(doc *gedcom.Document, report *gedcom.ConversionReport)
 
 // expandNewlinesInTags processes a flat slice of tags and expands newlines to CONT tags.
 // It returns the new tag slice and the count of created CONT tags.
-func expandNewlinesInTags(tags []*gedcom.Tag) ([]*gedcom.Tag, int) {
+func expandNewlinesInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, contCount int) {
 	if len(tags) == 0 {
 		return tags, 0
 	}
-
-	contCount := 0
-	var result []*gedcom.Tag
 
 	for _, tag := range tags {
 		// Check if this tag has embedded newlines

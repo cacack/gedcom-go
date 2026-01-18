@@ -15,44 +15,44 @@ func TestDeepCopyDocument(t *testing.T) {
 		}
 	})
 
-	t.Run("creates independent copy", func(t *testing.T) {
+	t.Run("creates independent copied", func(t *testing.T) {
 		original := createFullTestDocument()
-		copy := deepCopyDocument(original)
+		copied := deepCopyDocument(original)
 
-		if copy == nil {
+		if copied == nil {
 			t.Fatal("deepCopyDocument() returned nil")
 		}
 
 		// Verify different pointers
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer than original")
 		}
-		if copy.Header == original.Header {
+		if copied.Header == original.Header {
 			t.Error("Copy header should have different pointer")
 		}
-		if len(copy.Records) > 0 && len(original.Records) > 0 && copy.Records[0] == original.Records[0] {
+		if len(copied.Records) > 0 && len(original.Records) > 0 && copied.Records[0] == original.Records[0] {
 			t.Error("Copy records should have different pointers")
 		}
 
 		// Verify values are equal
-		if copy.Header.Version != original.Header.Version {
-			t.Errorf("Copy version = %v, want %v", copy.Header.Version, original.Header.Version)
+		if copied.Header.Version != original.Header.Version {
+			t.Errorf("Copy version = %v, want %v", copied.Header.Version, original.Header.Version)
 		}
-		if copy.Vendor != original.Vendor {
-			t.Errorf("Copy vendor = %v, want %v", copy.Vendor, original.Vendor)
+		if copied.Vendor != original.Vendor {
+			t.Errorf("Copy vendor = %v, want %v", copied.Vendor, original.Vendor)
 		}
 	})
 
-	t.Run("modifications to copy don't affect original", func(t *testing.T) {
+	t.Run("modifications to copied don't affect original", func(t *testing.T) {
 		original := createFullTestDocument()
 		originalVersion := original.Header.Version
 		originalXRef := original.Records[0].XRef
 
-		copy := deepCopyDocument(original)
+		copied := deepCopyDocument(original)
 
-		// Modify the copy
-		copy.Header.Version = gedcom.Version70
-		copy.Records[0].XRef = "@MODIFIED@"
+		// Modify the copied
+		copied.Header.Version = gedcom.Version70
+		copied.Records[0].XRef = "@MODIFIED@"
 
 		// Original should be unchanged
 		if original.Header.Version != originalVersion {
@@ -75,13 +75,13 @@ func TestDeepCopyDocument(t *testing.T) {
 		original.XRefMap["@I1@"] = original.Records[0]
 		original.XRefMap["@F1@"] = original.Records[1]
 
-		copy := deepCopyDocument(original)
+		copied := deepCopyDocument(original)
 
 		// XRefMap should point to the copied records, not originals
-		if copy.XRefMap["@I1@"] == original.XRefMap["@I1@"] {
+		if copied.XRefMap["@I1@"] == original.XRefMap["@I1@"] {
 			t.Error("XRefMap entries should point to copied records")
 		}
-		if copy.XRefMap["@I1@"] != copy.Records[0] {
+		if copied.XRefMap["@I1@"] != copied.Records[0] {
 			t.Error("XRefMap should point to the correct copied record")
 		}
 	})
@@ -110,24 +110,24 @@ func TestDeepCopyHeader(t *testing.T) {
 			},
 		}
 
-		copy := deepCopyHeader(original)
+		copied := deepCopyHeader(original)
 
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer")
 		}
-		if copy.Version != original.Version {
-			t.Errorf("Version = %v, want %v", copy.Version, original.Version)
+		if copied.Version != original.Version {
+			t.Errorf("Version = %v, want %v", copied.Version, original.Version)
 		}
-		if copy.Encoding != original.Encoding {
-			t.Errorf("Encoding = %v, want %v", copy.Encoding, original.Encoding)
+		if copied.Encoding != original.Encoding {
+			t.Errorf("Encoding = %v, want %v", copied.Encoding, original.Encoding)
 		}
-		if copy.SourceSystem != original.SourceSystem {
-			t.Errorf("SourceSystem = %v, want %v", copy.SourceSystem, original.SourceSystem)
+		if copied.SourceSystem != original.SourceSystem {
+			t.Errorf("SourceSystem = %v, want %v", copied.SourceSystem, original.SourceSystem)
 		}
-		if len(copy.Tags) != len(original.Tags) {
-			t.Errorf("Tags length = %d, want %d", len(copy.Tags), len(original.Tags))
+		if len(copied.Tags) != len(original.Tags) {
+			t.Errorf("Tags length = %d, want %d", len(copied.Tags), len(original.Tags))
 		}
-		if len(copy.Tags) > 0 && copy.Tags[0] == original.Tags[0] {
+		if len(copied.Tags) > 0 && copied.Tags[0] == original.Tags[0] {
 			t.Error("Tags should be deep copied")
 		}
 	})
@@ -143,13 +143,13 @@ func TestDeepCopyTrailer(t *testing.T) {
 
 	t.Run("copies trailer fields", func(t *testing.T) {
 		original := &gedcom.Trailer{LineNumber: 100}
-		copy := deepCopyTrailer(original)
+		copied := deepCopyTrailer(original)
 
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer")
 		}
-		if copy.LineNumber != original.LineNumber {
-			t.Errorf("LineNumber = %d, want %d", copy.LineNumber, original.LineNumber)
+		if copied.LineNumber != original.LineNumber {
+			t.Errorf("LineNumber = %d, want %d", copied.LineNumber, original.LineNumber)
 		}
 	})
 }
@@ -173,21 +173,21 @@ func TestDeepCopyRecord(t *testing.T) {
 			},
 		}
 
-		copy := deepCopyRecord(original)
+		copied := deepCopyRecord(original)
 
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer")
 		}
-		if copy.XRef != original.XRef {
-			t.Errorf("XRef = %v, want %v", copy.XRef, original.XRef)
+		if copied.XRef != original.XRef {
+			t.Errorf("XRef = %v, want %v", copied.XRef, original.XRef)
 		}
-		if copy.Type != original.Type {
-			t.Errorf("Type = %v, want %v", copy.Type, original.Type)
+		if copied.Type != original.Type {
+			t.Errorf("Type = %v, want %v", copied.Type, original.Type)
 		}
-		if copy.LineNumber != original.LineNumber {
-			t.Errorf("LineNumber = %d, want %d", copy.LineNumber, original.LineNumber)
+		if copied.LineNumber != original.LineNumber {
+			t.Errorf("LineNumber = %d, want %d", copied.LineNumber, original.LineNumber)
 		}
-		if len(copy.Tags) > 0 && copy.Tags[0] == original.Tags[0] {
+		if len(copied.Tags) > 0 && copied.Tags[0] == original.Tags[0] {
 			t.Error("Tags should be deep copied")
 		}
 	})
@@ -207,17 +207,17 @@ func TestDeepCopyTags(t *testing.T) {
 			{Level: 1, Tag: "NAME", Value: "John"},
 		}
 
-		copy := deepCopyTags(original)
+		copied := deepCopyTags(original)
 
-		if len(copy) != len(original) {
-			t.Errorf("Copy length = %d, want %d", len(copy), len(original))
+		if len(copied) != len(original) {
+			t.Errorf("Copy length = %d, want %d", len(copied), len(original))
 		}
-		for i := range copy {
-			if copy[i] == original[i] {
+		for i := range copied {
+			if copied[i] == original[i] {
 				t.Errorf("Tag[%d] should have different pointer", i)
 			}
-			if copy[i].Tag != original[i].Tag {
-				t.Errorf("Tag[%d].Tag = %v, want %v", i, copy[i].Tag, original[i].Tag)
+			if copied[i].Tag != original[i].Tag {
+				t.Errorf("Tag[%d].Tag = %v, want %v", i, copied[i].Tag, original[i].Tag)
 			}
 		}
 	})
@@ -240,25 +240,25 @@ func TestDeepCopyTag(t *testing.T) {
 			LineNumber: 42,
 		}
 
-		copy := deepCopyTag(original)
+		copied := deepCopyTag(original)
 
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer")
 		}
-		if copy.Level != original.Level {
-			t.Errorf("Level = %d, want %d", copy.Level, original.Level)
+		if copied.Level != original.Level {
+			t.Errorf("Level = %d, want %d", copied.Level, original.Level)
 		}
-		if copy.Tag != original.Tag {
-			t.Errorf("Tag = %v, want %v", copy.Tag, original.Tag)
+		if copied.Tag != original.Tag {
+			t.Errorf("Tag = %v, want %v", copied.Tag, original.Tag)
 		}
-		if copy.Value != original.Value {
-			t.Errorf("Value = %v, want %v", copy.Value, original.Value)
+		if copied.Value != original.Value {
+			t.Errorf("Value = %v, want %v", copied.Value, original.Value)
 		}
-		if copy.XRef != original.XRef {
-			t.Errorf("XRef = %v, want %v", copy.XRef, original.XRef)
+		if copied.XRef != original.XRef {
+			t.Errorf("XRef = %v, want %v", copied.XRef, original.XRef)
 		}
-		if copy.LineNumber != original.LineNumber {
-			t.Errorf("LineNumber = %d, want %d", copy.LineNumber, original.LineNumber)
+		if copied.LineNumber != original.LineNumber {
+			t.Errorf("LineNumber = %d, want %d", copied.LineNumber, original.LineNumber)
 		}
 	})
 }
@@ -281,19 +281,19 @@ func TestDeepCopyEntity(t *testing.T) {
 		}
 
 		result := deepCopyEntity(original)
-		copy, ok := result.(*gedcom.Individual)
+		copied, ok := result.(*gedcom.Individual)
 
 		if !ok {
 			t.Fatal("Result should be *Individual")
 		}
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer")
 		}
-		if copy.XRef != original.XRef {
-			t.Errorf("XRef = %v, want %v", copy.XRef, original.XRef)
+		if copied.XRef != original.XRef {
+			t.Errorf("XRef = %v, want %v", copied.XRef, original.XRef)
 		}
-		if len(copy.Names) != len(original.Names) {
-			t.Errorf("Names length = %d, want %d", len(copy.Names), len(original.Names))
+		if len(copied.Names) != len(original.Names) {
+			t.Errorf("Names length = %d, want %d", len(copied.Names), len(original.Names))
 		}
 	})
 
@@ -306,19 +306,19 @@ func TestDeepCopyEntity(t *testing.T) {
 		}
 
 		result := deepCopyEntity(original)
-		copy, ok := result.(*gedcom.Family)
+		copied, ok := result.(*gedcom.Family)
 
 		if !ok {
 			t.Fatal("Result should be *Family")
 		}
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer")
 		}
-		if copy.Husband != original.Husband {
-			t.Errorf("Husband = %v, want %v", copy.Husband, original.Husband)
+		if copied.Husband != original.Husband {
+			t.Errorf("Husband = %v, want %v", copied.Husband, original.Husband)
 		}
-		if len(copy.Children) != len(original.Children) {
-			t.Errorf("Children length = %d, want %d", len(copy.Children), len(original.Children))
+		if len(copied.Children) != len(original.Children) {
+			t.Errorf("Children length = %d, want %d", len(copied.Children), len(original.Children))
 		}
 	})
 
@@ -330,13 +330,13 @@ func TestDeepCopyEntity(t *testing.T) {
 		}
 
 		result := deepCopyEntity(original)
-		copy, ok := result.(*gedcom.Source)
+		copied, ok := result.(*gedcom.Source)
 
 		if !ok {
 			t.Fatal("Result should be *Source")
 		}
-		if copy.Title != original.Title {
-			t.Errorf("Title = %v, want %v", copy.Title, original.Title)
+		if copied.Title != original.Title {
+			t.Errorf("Title = %v, want %v", copied.Title, original.Title)
 		}
 	})
 
@@ -347,13 +347,13 @@ func TestDeepCopyEntity(t *testing.T) {
 		}
 
 		result := deepCopyEntity(original)
-		copy, ok := result.(*gedcom.Repository)
+		copied, ok := result.(*gedcom.Repository)
 
 		if !ok {
 			t.Fatal("Result should be *Repository")
 		}
-		if copy.Name != original.Name {
-			t.Errorf("Name = %v, want %v", copy.Name, original.Name)
+		if copied.Name != original.Name {
+			t.Errorf("Name = %v, want %v", copied.Name, original.Name)
 		}
 	})
 
@@ -364,13 +364,13 @@ func TestDeepCopyEntity(t *testing.T) {
 		}
 
 		result := deepCopyEntity(original)
-		copy, ok := result.(*gedcom.Note)
+		copied, ok := result.(*gedcom.Note)
 
 		if !ok {
 			t.Fatal("Result should be *Note")
 		}
-		if copy.Text != original.Text {
-			t.Errorf("Text = %v, want %v", copy.Text, original.Text)
+		if copied.Text != original.Text {
+			t.Errorf("Text = %v, want %v", copied.Text, original.Text)
 		}
 	})
 
@@ -383,13 +383,13 @@ func TestDeepCopyEntity(t *testing.T) {
 		}
 
 		result := deepCopyEntity(original)
-		copy, ok := result.(*gedcom.MediaObject)
+		copied, ok := result.(*gedcom.MediaObject)
 
 		if !ok {
 			t.Fatal("Result should be *MediaObject")
 		}
-		if len(copy.Files) != len(original.Files) {
-			t.Errorf("Files length = %d, want %d", len(copy.Files), len(original.Files))
+		if len(copied.Files) != len(original.Files) {
+			t.Errorf("Files length = %d, want %d", len(copied.Files), len(original.Files))
 		}
 	})
 
@@ -400,13 +400,13 @@ func TestDeepCopyEntity(t *testing.T) {
 		}
 
 		result := deepCopyEntity(original)
-		copy, ok := result.(*gedcom.Submitter)
+		copied, ok := result.(*gedcom.Submitter)
 
 		if !ok {
 			t.Fatal("Result should be *Submitter")
 		}
-		if copy.Name != original.Name {
-			t.Errorf("Name = %v, want %v", copy.Name, original.Name)
+		if copied.Name != original.Name {
+			t.Errorf("Name = %v, want %v", copied.Name, original.Name)
 		}
 	})
 
@@ -467,33 +467,33 @@ func TestDeepCopyIndividual(t *testing.T) {
 			},
 		}
 
-		copy := deepCopyIndividual(original)
+		copied := deepCopyIndividual(original)
 
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer")
 		}
-		if copy.XRef != original.XRef {
-			t.Errorf("XRef = %v, want %v", copy.XRef, original.XRef)
+		if copied.XRef != original.XRef {
+			t.Errorf("XRef = %v, want %v", copied.XRef, original.XRef)
 		}
-		if len(copy.Names) != len(original.Names) {
-			t.Errorf("Names length = %d, want %d", len(copy.Names), len(original.Names))
+		if len(copied.Names) != len(original.Names) {
+			t.Errorf("Names length = %d, want %d", len(copied.Names), len(original.Names))
 		}
-		if len(copy.ChildInFamilies) != len(original.ChildInFamilies) {
-			t.Errorf("ChildInFamilies length = %d, want %d", len(copy.ChildInFamilies), len(original.ChildInFamilies))
+		if len(copied.ChildInFamilies) != len(original.ChildInFamilies) {
+			t.Errorf("ChildInFamilies length = %d, want %d", len(copied.ChildInFamilies), len(original.ChildInFamilies))
 		}
-		if len(copy.Events) != len(original.Events) {
-			t.Errorf("Events length = %d, want %d", len(copy.Events), len(original.Events))
+		if len(copied.Events) != len(original.Events) {
+			t.Errorf("Events length = %d, want %d", len(copied.Events), len(original.Events))
 		}
-		if len(copy.Attributes) != len(original.Attributes) {
-			t.Errorf("Attributes length = %d, want %d", len(copy.Attributes), len(original.Attributes))
+		if len(copied.Attributes) != len(original.Attributes) {
+			t.Errorf("Attributes length = %d, want %d", len(copied.Attributes), len(original.Attributes))
 		}
-		if len(copy.Associations) != len(original.Associations) {
-			t.Errorf("Associations length = %d, want %d", len(copy.Associations), len(original.Associations))
+		if len(copied.Associations) != len(original.Associations) {
+			t.Errorf("Associations length = %d, want %d", len(copied.Associations), len(original.Associations))
 		}
-		if copy.ChangeDate == original.ChangeDate {
+		if copied.ChangeDate == original.ChangeDate {
 			t.Error("ChangeDate should have different pointer")
 		}
-		if copy.CreationDate == original.CreationDate {
+		if copied.CreationDate == original.CreationDate {
 			t.Error("CreationDate should have different pointer")
 		}
 	})
@@ -536,22 +536,22 @@ func TestDeepCopyFamily(t *testing.T) {
 			},
 		}
 
-		copy := deepCopyFamily(original)
+		copied := deepCopyFamily(original)
 
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer")
 		}
-		if copy.XRef != original.XRef {
-			t.Errorf("XRef = %v, want %v", copy.XRef, original.XRef)
+		if copied.XRef != original.XRef {
+			t.Errorf("XRef = %v, want %v", copied.XRef, original.XRef)
 		}
-		if copy.Husband != original.Husband {
-			t.Errorf("Husband = %v, want %v", copy.Husband, original.Husband)
+		if copied.Husband != original.Husband {
+			t.Errorf("Husband = %v, want %v", copied.Husband, original.Husband)
 		}
-		if len(copy.Children) != len(original.Children) {
-			t.Errorf("Children length = %d, want %d", len(copy.Children), len(original.Children))
+		if len(copied.Children) != len(original.Children) {
+			t.Errorf("Children length = %d, want %d", len(copied.Children), len(original.Children))
 		}
-		if len(copy.Events) != len(original.Events) {
-			t.Errorf("Events length = %d, want %d", len(copy.Events), len(original.Events))
+		if len(copied.Events) != len(original.Events) {
+			t.Errorf("Events length = %d, want %d", len(copied.Events), len(original.Events))
 		}
 	})
 }
@@ -588,19 +588,19 @@ func TestDeepCopySource(t *testing.T) {
 			},
 		}
 
-		copy := deepCopySource(original)
+		copied := deepCopySource(original)
 
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer")
 		}
-		if copy.Title != original.Title {
-			t.Errorf("Title = %v, want %v", copy.Title, original.Title)
+		if copied.Title != original.Title {
+			t.Errorf("Title = %v, want %v", copied.Title, original.Title)
 		}
-		if copy.Repository == original.Repository {
+		if copied.Repository == original.Repository {
 			t.Error("Repository should have different pointer")
 		}
-		if copy.Repository.Name != original.Repository.Name {
-			t.Errorf("Repository.Name = %v, want %v", copy.Repository.Name, original.Repository.Name)
+		if copied.Repository.Name != original.Repository.Name {
+			t.Errorf("Repository.Name = %v, want %v", copied.Repository.Name, original.Repository.Name)
 		}
 	})
 }
@@ -658,24 +658,24 @@ func TestDeepCopyEvent(t *testing.T) {
 			},
 		}
 
-		copy := deepCopyEvent(original)
+		copied := deepCopyEvent(original)
 
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer")
 		}
-		if copy.Type != original.Type {
-			t.Errorf("Type = %v, want %v", copy.Type, original.Type)
+		if copied.Type != original.Type {
+			t.Errorf("Type = %v, want %v", copied.Type, original.Type)
 		}
-		if copy.ParsedDate == original.ParsedDate {
+		if copied.ParsedDate == original.ParsedDate {
 			t.Error("ParsedDate should have different pointer")
 		}
-		if copy.PlaceDetail == original.PlaceDetail {
+		if copied.PlaceDetail == original.PlaceDetail {
 			t.Error("PlaceDetail should have different pointer")
 		}
-		if copy.PlaceDetail.Coordinates == original.PlaceDetail.Coordinates {
+		if copied.PlaceDetail.Coordinates == original.PlaceDetail.Coordinates {
 			t.Error("Coordinates should have different pointer")
 		}
-		if copy.Address == original.Address {
+		if copied.Address == original.Address {
 			t.Error("Address should have different pointer")
 		}
 	})
@@ -706,19 +706,19 @@ func TestDeepCopyDate(t *testing.T) {
 			},
 		}
 
-		copy := deepCopyDate(original)
+		copied := deepCopyDate(original)
 
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer")
 		}
-		if copy.EndDate == original.EndDate {
+		if copied.EndDate == original.EndDate {
 			t.Error("EndDate should have different pointer")
 		}
-		if copy.Year != original.Year {
-			t.Errorf("Year = %d, want %d", copy.Year, original.Year)
+		if copied.Year != original.Year {
+			t.Errorf("Year = %d, want %d", copied.Year, original.Year)
 		}
-		if copy.EndDate.Year != original.EndDate.Year {
-			t.Errorf("EndDate.Year = %d, want %d", copy.EndDate.Year, original.EndDate.Year)
+		if copied.EndDate.Year != original.EndDate.Year {
+			t.Errorf("EndDate.Year = %d, want %d", copied.EndDate.Year, original.EndDate.Year)
 		}
 	})
 }
@@ -759,19 +759,19 @@ func TestDeepCopyMediaObject(t *testing.T) {
 			},
 		}
 
-		copy := deepCopyMediaObject(original)
+		copied := deepCopyMediaObject(original)
 
-		if copy == original {
+		if copied == original {
 			t.Error("Copy should have different pointer")
 		}
-		if len(copy.Files) != len(original.Files) {
-			t.Errorf("Files length = %d, want %d", len(copy.Files), len(original.Files))
+		if len(copied.Files) != len(original.Files) {
+			t.Errorf("Files length = %d, want %d", len(copied.Files), len(original.Files))
 		}
-		if copy.Files[0] == original.Files[0] {
+		if copied.Files[0] == original.Files[0] {
 			t.Error("Files should have different pointers")
 		}
-		if len(copy.Files[0].Translations) != len(original.Files[0].Translations) {
-			t.Errorf("Translations length = %d, want %d", len(copy.Files[0].Translations), len(original.Files[0].Translations))
+		if len(copied.Files[0].Translations) != len(original.Files[0].Translations) {
+			t.Errorf("Translations length = %d, want %d", len(copied.Files[0].Translations), len(original.Files[0].Translations))
 		}
 	})
 }
@@ -786,14 +786,14 @@ func TestCopyStringSlice(t *testing.T) {
 
 	t.Run("copies slice independently", func(t *testing.T) {
 		original := []string{"a", "b", "c"}
-		copy := copyStringSlice(original)
+		copied := copyStringSlice(original)
 
-		if len(copy) != len(original) {
-			t.Errorf("Copy length = %d, want %d", len(copy), len(original))
+		if len(copied) != len(original) {
+			t.Errorf("Copy length = %d, want %d", len(copied), len(original))
 		}
 
-		// Modify copy
-		copy[0] = "modified"
+		// Modify copied
+		copied[0] = "modified"
 
 		// Original should be unchanged
 		if original[0] != "a" {

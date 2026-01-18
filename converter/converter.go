@@ -29,6 +29,8 @@ func Convert(doc *gedcom.Document, targetVersion gedcom.Version) (*gedcom.Docume
 }
 
 // ConvertWithOptions converts a GEDCOM document with custom options.
+//
+//nolint:gocyclo // Routing to 6 conversion paths requires this branching structure
 func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts *ConvertOptions) (*gedcom.Document, *gedcom.ConversionReport, error) {
 	if doc == nil {
 		return nil, nil, fmt.Errorf("document is nil")
@@ -98,7 +100,7 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 
 	// Validate if requested
 	if opts.Validate {
-		validateConverted(converted, report)
+		_ = validateConverted(converted, report)
 	}
 
 	report.Success = true
@@ -106,7 +108,7 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 }
 
 // convert55To551 converts GEDCOM 5.5 to 5.5.1.
-func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
 	transformHeader(doc, gedcom.Version551, report)
 	report.AddTransformation(gedcom.Transformation{
 		Type:        "VERSION_UPGRADE",
@@ -117,7 +119,7 @@ func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 }
 
 // convert55To70 converts GEDCOM 5.5 to 7.0.
-func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version70, report)
 	normalizeXRefsToUppercase(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
@@ -131,7 +133,7 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 }
 
 // convert551To55 converts GEDCOM 5.5.1 to 5.5.
-func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
 	transformHeader(doc, gedcom.Version55, report)
 	record551Tags(doc, report)
 	report.AddTransformation(gedcom.Transformation{
@@ -143,7 +145,7 @@ func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 }
 
 // convert551To70 converts GEDCOM 5.5.1 to 7.0.
-func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version70, report)
 	normalizeXRefsToUppercase(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
@@ -157,7 +159,7 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 }
 
 // convert70To55 converts GEDCOM 7.0 to 5.5.
-func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version55, report)
 	transformMediaTypes(doc, gedcom.Version55, report)
 	transformHeader(doc, gedcom.Version55, report)
@@ -171,7 +173,7 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 }
 
 // convert70To551 converts GEDCOM 7.0 to 5.5.1.
-func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version551, report)
 	transformMediaTypes(doc, gedcom.Version551, report)
 	transformHeader(doc, gedcom.Version551, report)

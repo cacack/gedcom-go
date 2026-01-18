@@ -8,10 +8,10 @@ import (
 
 func TestNormalizeXRefsToUppercase(t *testing.T) {
 	tests := []struct {
-		name        string
-		inputXRefs  []string
-		wantXRefs   []string
-		wantCount   int
+		name       string
+		inputXRefs []string
+		wantXRefs  []string
+		wantCount  int
 	}{
 		{
 			name:       "lowercase to uppercase",
@@ -162,43 +162,43 @@ func TestUpdateXRefDefinitions(t *testing.T) {
 
 func TestUpdateEntityXRef(t *testing.T) {
 	tests := []struct {
-		name   string
-		entity interface{}
+		name    string
+		entity  interface{}
 		newXRef string
 	}{
 		{
-			name:   "Individual",
-			entity: &gedcom.Individual{XRef: "@old@"},
+			name:    "Individual",
+			entity:  &gedcom.Individual{XRef: "@old@"},
 			newXRef: "@NEW@",
 		},
 		{
-			name:   "Family",
-			entity: &gedcom.Family{XRef: "@old@"},
+			name:    "Family",
+			entity:  &gedcom.Family{XRef: "@old@"},
 			newXRef: "@NEW@",
 		},
 		{
-			name:   "Source",
-			entity: &gedcom.Source{XRef: "@old@"},
+			name:    "Source",
+			entity:  &gedcom.Source{XRef: "@old@"},
 			newXRef: "@NEW@",
 		},
 		{
-			name:   "Repository",
-			entity: &gedcom.Repository{XRef: "@old@"},
+			name:    "Repository",
+			entity:  &gedcom.Repository{XRef: "@old@"},
 			newXRef: "@NEW@",
 		},
 		{
-			name:   "Note",
-			entity: &gedcom.Note{XRef: "@old@"},
+			name:    "Note",
+			entity:  &gedcom.Note{XRef: "@old@"},
 			newXRef: "@NEW@",
 		},
 		{
-			name:   "MediaObject",
-			entity: &gedcom.MediaObject{XRef: "@old@"},
+			name:    "MediaObject",
+			entity:  &gedcom.MediaObject{XRef: "@old@"},
 			newXRef: "@NEW@",
 		},
 		{
-			name:   "Submitter",
-			entity: &gedcom.Submitter{XRef: "@old@"},
+			name:    "Submitter",
+			entity:  &gedcom.Submitter{XRef: "@old@"},
 			newXRef: "@NEW@",
 		},
 	}
@@ -300,33 +300,33 @@ func TestUpdateXRefReferences(t *testing.T) {
 
 func TestUpdateXRefInTag(t *testing.T) {
 	tests := []struct {
-		name     string
-		tag      *gedcom.Tag
-		mapping  map[string]string
+		name      string
+		tag       *gedcom.Tag
+		mapping   map[string]string
 		wantValue string
 	}{
 		{
-			name:     "nil tag",
-			tag:      nil,
-			mapping:  map[string]string{"@i1@": "@I1@"},
+			name:      "nil tag",
+			tag:       nil,
+			mapping:   map[string]string{"@i1@": "@I1@"},
 			wantValue: "",
 		},
 		{
-			name:     "XRef value updated",
-			tag:      &gedcom.Tag{Value: "@i1@"},
-			mapping:  map[string]string{"@i1@": "@I1@"},
+			name:      "XRef value updated",
+			tag:       &gedcom.Tag{Value: "@i1@"},
+			mapping:   map[string]string{"@i1@": "@I1@"},
 			wantValue: "@I1@",
 		},
 		{
-			name:     "non-XRef value unchanged",
-			tag:      &gedcom.Tag{Value: "regular text"},
-			mapping:  map[string]string{"@i1@": "@I1@"},
+			name:      "non-XRef value unchanged",
+			tag:       &gedcom.Tag{Value: "regular text"},
+			mapping:   map[string]string{"@i1@": "@I1@"},
 			wantValue: "regular text",
 		},
 		{
-			name:     "XRef not in mapping unchanged",
-			tag:      &gedcom.Tag{Value: "@i2@"},
-			mapping:  map[string]string{"@i1@": "@I1@"},
+			name:      "XRef not in mapping unchanged",
+			tag:       &gedcom.Tag{Value: "@i2@"},
+			mapping:   map[string]string{"@i1@": "@I1@"},
 			wantValue: "@i2@",
 		},
 	}

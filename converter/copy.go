@@ -132,6 +132,7 @@ func deepCopyEntity(entity interface{}) interface{} {
 	}
 }
 
+//nolint:gocyclo // Individual has many optional fields requiring nil checks for safe deep copy
 func deepCopyIndividual(ind *gedcom.Individual) *gedcom.Individual {
 	if ind == nil {
 		return nil
