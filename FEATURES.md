@@ -543,6 +543,32 @@ v := validator.NewWithConfig(&validator.ValidatorConfig{
 issues := v.ValidateAll(doc)  // Returns all severity levels
 ```
 
+## Progress Reporting
+
+Optional progress callbacks for monitoring large file processing:
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `OnProgress` | `ProgressCallback` | Called periodically with bytes read |
+| `TotalSize` | `int64` | Expected file size (0 if unknown) |
+
+```go
+// Track decoding progress for large files
+opts := &decoder.DecodeOptions{
+    TotalSize: fileInfo.Size(),
+    OnProgress: func(bytesRead, totalBytes int64) {
+        if totalBytes > 0 {
+            fmt.Printf("\rProgress: %d%%", bytesRead*100/totalBytes)
+        }
+    },
+}
+doc, err := decoder.DecodeWithOptions(reader, opts)
+```
+
+- Zero overhead when `OnProgress` is nil (no wrapper created)
+- Reports `-1` for total size when unknown (streaming inputs)
+- Callback receives cumulative bytes read on each read operation
+
 ## Encoder
 
 - Write valid GEDCOM files
