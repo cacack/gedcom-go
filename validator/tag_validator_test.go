@@ -72,7 +72,7 @@ func TestTagValidator_Validate_NoCustomTags(t *testing.T) {
 
 func TestTagValidator_Validate_UnknownCustomTag(t *testing.T) {
 	registry := NewTagRegistry()
-	tv := NewTagValidator(registry, true) // validateUnknown = true
+	tv := NewTagValidator(registry, true)
 
 	doc := &gedcom.Document{
 		Records: []*gedcom.Record{
@@ -108,7 +108,7 @@ func TestTagValidator_Validate_UnknownCustomTag(t *testing.T) {
 
 func TestTagValidator_Validate_UnknownCustomTag_Disabled(t *testing.T) {
 	registry := NewTagRegistry()
-	tv := NewTagValidator(registry, false) // validateUnknown = false
+	tv := NewTagValidator(registry, false)
 
 	doc := &gedcom.Document{
 		Records: []*gedcom.Record{

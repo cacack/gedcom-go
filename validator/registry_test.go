@@ -552,10 +552,8 @@ func TestTagRegistry_ValidateTag_CombinedRestrictions(t *testing.T) {
 				if issue.Code != tt.wantCode {
 					t.Errorf("Code = %q, want %q", issue.Code, tt.wantCode)
 				}
-			} else {
-				if issue != nil {
-					t.Errorf("expected no issue, got %v", issue)
-				}
+			} else if issue != nil {
+				t.Errorf("expected no issue, got %v", issue)
 			}
 		})
 	}
