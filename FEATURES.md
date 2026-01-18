@@ -543,6 +543,38 @@ v := validator.NewWithConfig(&validator.ValidatorConfig{
 issues := v.ValidateAll(doc)  // Returns all severity levels
 ```
 
+### Streaming Validator
+
+Memory-efficient validation for very large files without loading the entire document into memory:
+
+| Method | Description |
+|--------|-------------|
+| `NewStreamingValidator(opts)` | Create validator with options |
+| `ValidateRecord(record)` | Validate single record, returns immediate issues |
+| `Finalize()` | Check cross-references, returns deferred issues |
+| `Reset()` | Reset for reuse with another file |
+
+```go
+// Validate records incrementally during parsing
+v := validator.NewStreamingValidator(validator.StreamingOptions{})
+
+for _, record := range records {
+    issues := v.ValidateRecord(record)  // Immediate issues (date logic, structure)
+    for _, issue := range issues {
+        fmt.Printf("[%s] %s\n", issue.Severity, issue.Message)
+    }
+}
+
+// Check cross-references after all records processed
+finalIssues := v.Finalize()  // Orphaned reference detection
+```
+
+**Two-Phase Validation**:
+- **Immediate**: Date logic errors, structural issues detected per-record
+- **Deferred**: Cross-reference validation (orphaned FAMC, FAMS, HUSB, WIFE, CHIL, SOUR) in `Finalize()`
+
+**Memory**: O(unique XRefs) not O(records) - tracks only cross-reference declarations and usages.
+
 **Custom Tag Registry:**
 
 Register and validate vendor-specific custom tags (underscore-prefixed):
@@ -684,6 +716,37 @@ See [docs/CONVERTER.md](docs/CONVERTER.md) for detailed documentation.
 - GEDCOM 5.5, 5.5.1, 7.0 output
 - UTF-8 output
 
+### Streaming Encoder
+
+Memory-efficient encoding for very large files (1M+ records) without loading the entire document into memory:
+
+| Method | Description |
+|--------|-------------|
+| `NewStreamEncoder(w)` | Create encoder with default options |
+| `NewStreamEncoderWithOptions(w, opts)` | Create encoder with custom options |
+| `WriteHeader(h)` | Write GEDCOM header (must be called first) |
+| `WriteRecord(r)` | Write individual record (can be called 0+ times) |
+| `WriteTrailer()` | Write GEDCOM trailer (completes the document) |
+| `Flush()` | Flush buffered data to writer |
+| `Close()` | Ensure trailer written and flush |
+
+```go
+// Stream records to file with constant memory usage
+f, _ := os.Create("large.ged")
+enc := encoder.NewStreamEncoder(f)
+
+enc.WriteHeader(header)
+for _, record := range records {
+    enc.WriteRecord(record)  // Memory stays constant
+}
+enc.WriteTrailer()
+enc.Close()
+```
+
+**State Machine**: Enforces valid GEDCOM structure (HEAD → records → TRLR). Invalid transitions return descriptive errors.
+
+**Memory**: O(1) regardless of record count - suitable for generating files with millions of records.
+
 ### High-Level Type Encoding
 
 Full support for encoding typed entities back to GEDCOM format:
@@ -751,6 +814,92 @@ source.Repository = &gedcom.InlineRepository{Name: "State Archives"}
 ```
 
 Useful for sources imported from GEDCOM files where repository names are stored inline rather than as separate records.
+
+## Incremental Parsing
+
+Memory-efficient parsing for very large files with on-demand record access:
+
+### Record Iterator
+
+Stream records one at a time without loading all into memory:
+
+```go
+// Iterate records with minimal memory
+it := parser.NewRecordIterator(reader)
+for it.Next() {
+    rec := it.Record()
+    fmt.Printf("Record: %s %s\n", rec.XRef, rec.Type)
+    // Process rec.Lines...
+}
+if err := it.Err(); err != nil {
+    log.Fatal(err)
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `RawRecord.XRef` | Cross-reference ID (e.g., "@I1@") |
+| `RawRecord.Type` | Record type tag (INDI, FAM, SOUR, etc.) |
+| `RawRecord.Lines` | All parsed lines for this record |
+| `RawRecord.ByteOffset` | Starting byte position in file |
+| `RawRecord.ByteLength` | Total bytes for this record |
+
+### Record Index
+
+Build an index for O(1) random access by cross-reference ID:
+
+```go
+// Build index (one-time O(n) scan)
+index, err := parser.BuildIndex(file)
+
+// O(1) lookup
+entry, found := index.Lookup("@I1@")
+if found {
+    fmt.Printf("Record at byte %d\n", entry.ByteOffset)
+}
+
+// Persist index for faster subsequent access
+index.Save(indexFile)
+
+// Load pre-built index (skip O(n) scan)
+index, _ = parser.LoadIndex(indexFile)
+```
+
+### Lazy Parser
+
+Combines iteration and indexed random access:
+
+```go
+// Create lazy parser
+lp := parser.NewLazyParser(file)  // file must be io.ReadSeeker
+
+// Build or load index
+lp.BuildIndex()  // Or: lp.LoadIndex(indexReader)
+
+// Random access by XRef - O(1) after indexing
+rec, err := lp.FindRecord("@I1@")
+
+// Access special records by type
+header, _ := lp.FindRecordByType("HEAD")
+trailer, _ := lp.FindRecordByType("TRLR")
+
+// Stream all records
+for it := lp.IterateAll(); it.Next(); {
+    rec := it.Record()
+    // Process...
+}
+
+// Save index for next time
+lp.SaveIndex(indexWriter)
+```
+
+**Use Cases**:
+- Quick validation of file structure without full parse
+- Finding specific individuals by ID in large files
+- Extracting metadata without loading entire document
+- Memory-constrained environments
+
+**Memory**: O(index entries) for indexed access, O(1) per record during iteration.
 
 ## Performance
 
