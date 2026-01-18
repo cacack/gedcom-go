@@ -621,6 +621,62 @@ doc, err := decoder.DecodeWithOptions(reader, opts)
 - Reports `-1` for total size when unknown (streaming inputs)
 - Callback receives cumulative bytes read on each read operation
 
+## Version Conversion
+
+Bidirectional conversion between GEDCOM versions with transformation tracking.
+
+### Supported Conversions
+
+| From | To | Type |
+|------|-----|------|
+| 5.5 | 5.5.1 | Upgrade (backward compatible) |
+| 5.5 | 7.0 | Upgrade |
+| 5.5.1 | 5.5 | Downgrade |
+| 5.5.1 | 7.0 | Upgrade |
+| 7.0 | 5.5 | Downgrade |
+| 7.0 | 5.5.1 | Downgrade |
+
+### Features
+
+- **Transformation tracking**: Every change recorded in `ConversionReport`
+- **Data loss reporting**: Identifies features lost during downgrades
+- **Post-conversion validation**: Optional validation of converted document
+- **Non-destructive**: Original document unchanged (deep copy)
+- **Strict mode**: Fail on any data loss with `StrictDataLoss` option
+
+### Automatic Transformations
+
+| Transformation | Direction | Description |
+|---------------|-----------|-------------|
+| CONC removal | Upgrade to 7.0 | Merges continuation tags into values |
+| CONT to newlines | Upgrade to 7.0 | Converts CONT tags to embedded newlines |
+| XRef uppercase | Upgrade to 7.0 | Normalizes cross-references |
+| Media types | Both | Maps between legacy (JPG) and IANA (image/jpeg) |
+| Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |
+
+### API
+
+```go
+// Simple conversion with defaults
+converted, report, err := converter.Convert(doc, gedcom.Version70)
+
+// With options
+opts := &converter.ConvertOptions{
+    Validate:       true,
+    StrictDataLoss: true,  // Fail on any data loss
+}
+converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version55, opts)
+
+// Check report
+if report.HasDataLoss() {
+    for _, item := range report.DataLoss {
+        fmt.Printf("Lost: %s - %s\n", item.Feature, item.Reason)
+    }
+}
+```
+
+See [docs/CONVERTER.md](docs/CONVERTER.md) for detailed documentation.
+
 ## Encoder
 
 - Write valid GEDCOM files
