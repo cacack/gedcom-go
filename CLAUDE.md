@@ -113,12 +113,28 @@ This project follows six core principles that guide all development decisions:
 - **IDEAS.md**: Unvetted ideas and rough concepts (create when needed)
 - **GitHub Issues**: Single source of truth for planned work
 - **docs/**: Implementation reference material
-  - `adr/` - Architecture Decision Records
+  - `API_STABILITY.md` - API compatibility guarantees and versioning policy
+  - `TESTING.md` - Test coverage requirements and critical paths
+  - `GEDCOM_VERSIONS.md` - GEDCOM version differences (5.5, 5.5.1, 7.0)
   - `ENCODING_IMPLEMENTATION_PLAN.md` - UTF-16/ANSEL implementation guide
   - `GEDCOM_DATE_FORMATS_RESEARCH.md` - Date format specification research
-  - `GEDCOM_VERSIONS.md` - GEDCOM version differences (5.5, 5.5.1, 7.0)
   - `PERFORMANCE.md` - Benchmarks and optimization notes
-  - `TESTING.md` - Test coverage requirements and critical paths
+  - `adr/` - Architecture Decision Records (see below)
+
+### Architecture Decision Records
+
+Key design decisions are documented in `docs/adr/`:
+
+| ADR | Decision |
+|-----|----------|
+| 001 | Custom Date struct for lossless GEDCOM dates |
+| 002 | XRef resolution via strings + O(1) map lookup |
+| 003 | Lossless dual storage (raw tags + typed entity) |
+| 004 | Encoding detection cascade (BOM → Header → UTF-8) |
+| 005 | Version detection (header-first with tag fallback) |
+| 006 | Line continuation handling (CONT/CONC) |
+| 007 | Error transparency (line numbers, context, never panic) |
+| 008 | Validator architecture (pluggable, configurable) |
 
 ### Workflow for New Ideas
 
@@ -160,5 +176,5 @@ This library is used by `github.com/cacack/my-family` (at `/Users/chris/devel/ho
 1. **Driven by real usage**: Features should be added when my-family needs them, not speculatively
 2. **Self-contained commits**: Each enhancement should be a complete, testable unit with its own tests
 3. **Run consumer tests**: After changes, verify my-family still works: `cd /Users/chris/devel/home/my-family && go test ./...`
-4. **API stability**: Consider how changes affect the public API; prefer additive changes over breaking ones
+4. **API stability**: Follow `docs/API_STABILITY.md`; prefer additive changes over breaking ones
 5. **Document in commit**: Note which my-family feature drove the change (e.g., "feat(decoder): add entity parsing for GEDCOM import")

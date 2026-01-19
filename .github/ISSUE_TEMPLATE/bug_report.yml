@@ -1,0 +1,97 @@
+name: Bug Report
+description: Report a bug in gedcom-go
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out the sections below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Clear description of what went wrong
+      placeholder: When parsing a GEDCOM file with Hebrew dates, the month is incorrectly parsed...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal code or steps to reproduce the issue
+      placeholder: |
+        ```go
+        doc, err := decoder.Decode(reader)
+        // err is nil but dates are wrong
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened?
+      placeholder: The Hebrew date should parse with month=8 (Nisan)
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: The month is parsed as 0 (unknown)
+    validations:
+      required: true
+
+  - type: textarea
+    id: gedcom
+    attributes:
+      label: GEDCOM Sample
+      description: If applicable, provide a minimal GEDCOM snippet that demonstrates the issue
+      render: text
+      placeholder: |
+        0 HEAD
+        1 GEDC
+        2 VERS 5.5.1
+        0 @I1@ INDI
+        1 BIRT
+        2 DATE @#DHEBREW@ 15 NSN 5785
+        0 TRLR
+
+  - type: input
+    id: version
+    attributes:
+      label: gedcom-go Version
+      description: Output of `go list -m github.com/cacack/gedcom-go`
+      placeholder: v1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: go-version
+    attributes:
+      label: Go Version
+      description: Output of `go version`
+      placeholder: go1.24.0 darwin/arm64
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Area
+      options:
+        - Parsing (parser/)
+        - Decoding (decoder/)
+        - Encoding (encoder/)
+        - Validation (validator/)
+        - Character Encoding (charset/)
+        - Version Detection (version/)
+        - Core Types (gedcom/)
+        - Other
+    validations:
+      required: true
