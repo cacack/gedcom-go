@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://pkg.go.dev/github.com/cacack/gedcom-go
+    about: Check the godoc for API documentation
+  - name: GEDCOM Specification
+    url: https://gedcom.io/specifications/FamilySearchGEDCOMv7.html
+    about: GEDCOM 7.0 specification for reference

@@ -1,0 +1,61 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please describe what you'd like to see.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      description: Clear description of the feature you'd like
+      placeholder: Add support for parsing GEDCOM-X format...
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Why do you need this feature? What problem does it solve?
+      placeholder: I need to import data from FamilySearch which exports GEDCOM-X...
+    validations:
+      required: true
+
+  - type: textarea
+    id: api
+    attributes:
+      label: Proposed API (Optional)
+      description: If you have ideas for how the API should look
+      placeholder: |
+        ```go
+        doc, err := decoder.DecodeGEDCOMX(reader)
+        ```
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Area
+      options:
+        - Parsing (parser/)
+        - Decoding (decoder/)
+        - Encoding (encoder/)
+        - Validation (validator/)
+        - Character Encoding (charset/)
+        - Version Detection (version/)
+        - Core Types (gedcom/)
+        - New Package
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I'd be willing to contribute this feature
