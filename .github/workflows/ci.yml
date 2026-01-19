@@ -282,6 +282,12 @@ jobs:
             exit 0
           fi
 
+          # Exempt Dependabot PRs (they use conventional commit format by default)
+          if [[ "${{ github.event.pull_request.user.login }}" == "dependabot[bot]" ]]; then
+            echo "✅ Dependabot PR exempt from title check"
+            exit 0
+          fi
+
           PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?:"
           if echo "$TITLE" | grep -qE "$PATTERN"; then
             echo "::error::PR title should NOT use conventional commit format."
