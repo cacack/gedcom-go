@@ -55,3 +55,6 @@ Thumbs.db
 # Claude Code prompts
 prompts/
 .prompts/
+
+# Downloaded specification PDFs (copyrighted, not for redistribution)
+docs/specs/*.pdf
