@@ -413,6 +413,13 @@ err := date.Validate()  // nil if valid
 
 // Compare dates for sorting
 result := date1.Compare(date2)  // -1, 0, or 1
+isAfter := date1.IsAfter(date2)
+isBefore := date1.IsBefore(date2)
+isEqual := date1.IsEqual(date2)
+
+// Calculate years between dates
+years, exact, err := gedcom.YearsBetween(birthDate, deathDate)
+// exact is true if both dates are complete (day/month/year)
 
 // Convert to time.Time (complete dates only)
 t, err := date.ToTime()
@@ -420,6 +427,18 @@ t, err := date.ToTime()
 // Get original string
 s := date.String()  // "25 DEC 2020"
 ```
+
+### Calendar Conversion
+
+Convert dates from any calendar to Gregorian:
+
+```go
+hebrewDate, _ := gedcom.ParseDate("@#DHEBREW@ 15 NSN 5785")
+gregorian, err := hebrewDate.ToGregorian()
+// gregorian.Year, gregorian.Month, gregorian.Day in Gregorian calendar
+```
+
+Supports conversion from Julian, Hebrew, and French Republican calendars to Gregorian.
 
 ## Metadata
 
@@ -526,6 +545,37 @@ fmt.Println(report.String())
 // - Info: 12
 ```
 
+Additional QualityReport methods:
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `JSON()` | `([]byte, error)` | Returns report in JSON format |
+| `IssuesForRecord(xref)` | `[]Issue` | Get all issues affecting a specific record |
+| `IssuesByCode(code)` | `[]Issue` | Get all issues with a specific error code |
+
+**Issue Filtering:**
+
+Utility functions for filtering validation issues:
+
+```go
+// Filter by severity
+errors := validator.FilterBySeverity(issues, validator.SeverityError)
+warnings := validator.FilterBySeverity(issues, validator.SeverityWarning)
+
+// Filter by error code
+orphaned := validator.FilterByCode(issues, "ORPHANED_FAMC")
+```
+
+**Fluent Issue Builder:**
+
+Create validation issues with a fluent API:
+
+```go
+issue := validator.NewIssue("CUSTOM_ERROR", "Custom error message").
+    WithRelatedXRef("@I1@").
+    WithDetail("field", "NAME")
+```
+
 **Configurable Strictness:**
 
 Control which severity levels are reported:
@@ -553,6 +603,8 @@ Memory-efficient validation for very large files without loading the entire docu
 | `ValidateRecord(record)` | Validate single record, returns immediate issues |
 | `Finalize()` | Check cross-references, returns deferred issues |
 | `Reset()` | Reset for reuse with another file |
+| `SeenXRefCount()` | Number of cross-reference declarations seen |
+| `UsedXRefCount()` | Number of cross-reference usages seen |
 
 ```go
 // Validate records incrementally during parsing
@@ -570,8 +622,10 @@ finalIssues := v.Finalize()  // Orphaned reference detection
 ```
 
 **Two-Phase Validation**:
-- **Immediate**: Date logic errors, structural issues detected per-record
+- **Immediate**: Date logic errors (death before birth), structural issues detected per-record
 - **Deferred**: Cross-reference validation (orphaned FAMC, FAMS, HUSB, WIFE, CHIL, SOUR) in `Finalize()`
+
+**Note**: Parent-child date logic checks (child born before parent) require a complete document and are not supported in streaming mode.
 
 **Memory**: O(unique XRefs) not O(records) - tracks only cross-reference declarations and usages.
 
@@ -627,14 +681,21 @@ Pre-built vendor registry tags:
 | FamilySearch | `_FSFTID`, `_FSORD`, `_FSTAG` |
 | RootsMagic | `_PRIM`, `_SDATE`, `_TMPLT` |
 
-## Progress Reporting
+## Decoder Configuration
 
-Optional progress callbacks for monitoring large file processing:
+Full control over decoding behavior with `DecodeOptions`:
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `OnProgress` | `ProgressCallback` | Called periodically with bytes read |
-| `TotalSize` | `int64` | Expected file size (0 if unknown) |
+| `Context` | `context.Context` | Cancellation and timeout control |
+| `MaxNestingDepth` | `int` | Maximum nesting depth (default: 100) |
+| `StrictMode` | `bool` | Reject non-standard extensions |
+| `OnProgress` | `ProgressCallback` | Progress reporting callback |
+| `TotalSize` | `int64` | Expected file size for progress percentage |
+
+### Progress Reporting
+
+Optional progress callbacks for monitoring large file processing:
 
 ```go
 // Track decoding progress for large files
@@ -652,6 +713,21 @@ doc, err := decoder.DecodeWithOptions(reader, opts)
 - Zero overhead when `OnProgress` is nil (no wrapper created)
 - Reports `-1` for total size when unknown (streaming inputs)
 - Callback receives cumulative bytes read on each read operation
+
+### Context Support
+
+Cancel long-running decodes with context:
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+opts := &decoder.DecodeOptions{Context: ctx}
+doc, err := decoder.DecodeWithOptions(reader, opts)
+if errors.Is(err, context.DeadlineExceeded) {
+    log.Println("Decode timed out")
+}
+```
 
 ## Version Conversion
 
@@ -694,8 +770,9 @@ converted, report, err := converter.Convert(doc, gedcom.Version70)
 
 // With options
 opts := &converter.ConvertOptions{
-    Validate:       true,
-    StrictDataLoss: true,  // Fail on any data loss
+    Validate:            true,
+    StrictDataLoss:      true,  // Fail on any data loss
+    PreserveUnknownTags: true,  // Keep vendor extensions (default: true)
 }
 converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version55, opts)
 
@@ -729,6 +806,8 @@ Memory-efficient encoding for very large files (1M+ records) without loading the
 | `WriteTrailer()` | Write GEDCOM trailer (completes the document) |
 | `Flush()` | Flush buffered data to writer |
 | `Close()` | Ensure trailer written and flush |
+| `State()` | Returns current encoder state for debugging |
+| `Err()` | Returns any sticky encoding error |
 
 ```go
 // Stream records to file with constant memory usage
@@ -746,6 +825,16 @@ enc.Close()
 **State Machine**: Enforces valid GEDCOM structure (HEAD → records → TRLR). Invalid transitions return descriptive errors.
 
 **Memory**: O(1) regardless of record count - suitable for generating files with millions of records.
+
+Convenience functions for streaming a complete document:
+
+```go
+// Stream an entire document with streaming encoder internally
+err := encoder.EncodeStreaming(writer, doc)
+
+// With options
+err := encoder.EncodeStreamingWithOptions(writer, doc, opts)
+```
 
 ### High-Level Type Encoding
 
@@ -893,6 +982,16 @@ for it := lp.IterateAll(); it.Next(); {
 lp.SaveIndex(indexWriter)
 ```
 
+Additional LazyParser methods:
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `HasIndex()` | `bool` | Returns true if index is loaded |
+| `Index()` | `*RecordIndex` | Returns the current RecordIndex |
+| `RecordCount()` | `int` | Total indexed records |
+| `XRefs()` | `[]string` | List of all indexed cross-references |
+| `IterateFrom(offset)` | `*RecordIterator` | Resume iteration from byte offset |
+
 **Use Cases**:
 - Quick validation of file structure without full parse
 - Finding specific individuals by ID in large files
@@ -992,6 +1091,55 @@ family := doc.GetFamily("@F1@")
 husband := family.HusbandIndividual(doc)
 wife := family.WifeIndividual(doc)
 children := family.ChildrenIndividuals(doc)
+```
+
+### Event and Date Access
+
+Convenience methods for accessing parsed events and dates on individuals:
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `BirthEvent()` | `*Event` | First birth event (nil if none) |
+| `DeathEvent()` | `*Event` | First death event (nil if none) |
+| `BirthDate()` | `*Date` | Parsed birth date (nil if no event or no date) |
+| `DeathDate()` | `*Date` | Parsed death date (nil if no event or no date) |
+
+```go
+// Access birth and death events directly
+person := doc.GetIndividual("@I1@")
+if birth := person.BirthEvent(); birth != nil {
+    fmt.Printf("Born: %s at %s\n", birth.Date, birth.Place)
+}
+if death := person.DeathEvent(); death != nil {
+    fmt.Printf("Died: %s\n", death.Date)
+}
+
+// Access parsed dates for calculations
+if birthDate := person.BirthDate(); birthDate != nil {
+    fmt.Printf("Birth year: %d\n", birthDate.Year)
+}
+```
+
+### Record Type Helpers
+
+Convenience methods on `Record` for type checking and casting:
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `IsIndividual()` | `bool` | True if record contains an Individual |
+| `IsFamily()` | `bool` | True if record contains a Family |
+| `IsSource()` | `bool` | True if record contains a Source |
+| `GetIndividual()` | `*Individual` | Type assertion (nil if wrong type) |
+| `GetFamily()` | `*Family` | Type assertion (nil if wrong type) |
+| `GetSource()` | `*Source` | Type assertion (nil if wrong type) |
+
+```go
+for _, record := range doc.Records {
+    if record.IsIndividual() {
+        indi := record.GetIndividual()
+        fmt.Printf("Individual: %s\n", indi.XRef)
+    }
+}
 ```
 
 ## Testing

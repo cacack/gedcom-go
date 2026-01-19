@@ -12,11 +12,12 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 
 ## Features
 
-- **Multi-version Support**: Parse GEDCOM 5.5, 5.5.1, and 7.0 files
-- **Historical Calendar Support**: Parse dates in Julian, Hebrew, and French Republican calendars
-- **Read and Write**: Full decoder and encoder for round-trip processing
-- **Streaming Support**: Memory-efficient APIs for very large files (1M+ records)
-- **Comprehensive Validation**: Version-aware validation with clear error messages
+- **Multi-version Support**: Parse and write GEDCOM 5.5, 5.5.1, and 7.0 with automatic version detection
+- **Version Conversion**: Bidirectional conversion between versions with transformation tracking
+- **Historical Calendar Support**: Parse dates in Julian, Hebrew, and French Republican calendars with conversion
+- **Streaming APIs**: Memory-efficient parsing and encoding for very large files (1M+ records)
+- **Comprehensive Validation**: Date logic, orphaned references, duplicates, and quality reports
+- **Vendor Extensions**: Parse Ancestry.com and FamilySearch custom tags
 - **Zero Dependencies**: Uses only the Go standard library
 - **Well-tested**: 93% test coverage with multi-platform CI
 
@@ -267,7 +268,7 @@ Automated regression detection with 10% threshold:
 make perf-regression
 ```
 
-For detailed performance metrics, profiling guides, and optimization opportunities, see [PERFORMANCE.md](PERFORMANCE.md).
+For detailed performance metrics, profiling guides, and optimization opportunities, see [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
 ## License
 
