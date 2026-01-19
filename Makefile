@@ -111,7 +111,7 @@ vet: ## Run go vet
 	$(GOVET) ./...
 	@echo "✓ No issues found"
 
-lint: install-staticcheck ## Run staticcheck linter
+lint: ## Run staticcheck linter
 	@echo "Running staticcheck..."
 	@which staticcheck > /dev/null || (echo "staticcheck not found. Run 'make install-tools'" && exit 1)
 	staticcheck ./...
