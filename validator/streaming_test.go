@@ -11,7 +11,7 @@ import (
 func TestNewStreamingValidator(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{})
 	if sv == nil {
-		t.Error("NewStreamingValidator() returned nil")
+		t.Fatal("NewStreamingValidator() returned nil")
 	}
 	if sv.seenXRefs == nil {
 		t.Error("seenXRefs map not initialized")
