@@ -201,7 +201,7 @@ jobs:
 
     # Trivy: Filesystem vulnerability and misconfiguration scanning
     - name: Trivy filesystem scan
-      uses: aquasecurity/trivy-action@0.32.0
+      uses: aquasecurity/trivy-action@0.33.1
       continue-on-error: true  # Produce SARIF even on findings
       with:
         scan-type: 'fs'
