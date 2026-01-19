@@ -57,9 +57,10 @@ func ExampleNew() {
 
 // ExampleValidator_ValidateAll shows enhanced validation with severity levels.
 func ExampleValidator_ValidateAll() {
+	// Using GEDCOM 7.0 where SUBM is optional
 	gedcomData := `0 HEAD
 1 GEDC
-2 VERS 5.5
+2 VERS 7.0
 0 @I1@ INDI
 1 NAME John /Smith/
 1 BIRT
@@ -95,9 +96,10 @@ func ExampleNewWithConfig() {
 
 	v := validator.NewWithConfig(config)
 
+	// Using GEDCOM 7.0 where SUBM is optional
 	gedcomData := `0 HEAD
 1 GEDC
-2 VERS 5.5
+2 VERS 7.0
 0 @I1@ INDI
 1 NAME John /Smith/
 0 TRLR`

@@ -465,6 +465,7 @@ func TestDateModifier_String(t *testing.T) {
 		{ModifierFrom, "FROM"},
 		{ModifierTo, "TO"},
 		{ModifierFromTo, "FROM TO"},
+		{ModifierInterpreted, "INT"},
 		{DateModifier(999), "Unknown"}, // Unknown modifier type
 	}
 
@@ -2481,6 +2482,252 @@ func TestDate_toJDN(t *testing.T) {
 			}
 			if jdn != tt.wantJDN {
 				t.Errorf("toJDN() = %d, want %d", jdn, tt.wantJDN)
+			}
+		})
+	}
+}
+
+// TestParseDate_Interpreted tests the INT (interpreted) date modifier parsing
+func TestParseDate_Interpreted(t *testing.T) {
+	tests := []struct {
+		name              string
+		input             string
+		wantYear          int
+		wantMonth         int
+		wantDay           int
+		wantModifier      DateModifier
+		wantIsInterpreted bool
+		wantInterpFrom    string
+		wantOriginal      string
+	}{
+		{
+			name:              "basic INT with phrase",
+			input:             "INT 1850 (about eighteen fifty)",
+			wantYear:          1850,
+			wantMonth:         0,
+			wantDay:           0,
+			wantModifier:      ModifierInterpreted,
+			wantIsInterpreted: true,
+			wantInterpFrom:    "about eighteen fifty",
+			wantOriginal:      "INT 1850 (about eighteen fifty)",
+		},
+		{
+			name:              "INT with full date and phrase",
+			input:             "INT 25 DEC 1850 (Christmas day)",
+			wantYear:          1850,
+			wantMonth:         12,
+			wantDay:           25,
+			wantModifier:      ModifierInterpreted,
+			wantIsInterpreted: true,
+			wantInterpFrom:    "Christmas day",
+			wantOriginal:      "INT 25 DEC 1850 (Christmas day)",
+		},
+		{
+			name:              "INT with month and year",
+			input:             "INT JAN 1900 (early in the new century)",
+			wantYear:          1900,
+			wantMonth:         1,
+			wantDay:           0,
+			wantModifier:      ModifierInterpreted,
+			wantIsInterpreted: true,
+			wantInterpFrom:    "early in the new century",
+			wantOriginal:      "INT JAN 1900 (early in the new century)",
+		},
+		{
+			name:              "INT without phrase (valid)",
+			input:             "INT 1850",
+			wantYear:          1850,
+			wantMonth:         0,
+			wantDay:           0,
+			wantModifier:      ModifierInterpreted,
+			wantIsInterpreted: true,
+			wantInterpFrom:    "",
+			wantOriginal:      "INT 1850",
+		},
+		{
+			name:              "INT with nested parentheses",
+			input:             "INT 1850 (he said (about) fifty)",
+			wantYear:          1850,
+			wantMonth:         0,
+			wantDay:           0,
+			wantModifier:      ModifierInterpreted,
+			wantIsInterpreted: true,
+			wantInterpFrom:    "he said (about) fifty",
+			wantOriginal:      "INT 1850 (he said (about) fifty)",
+		},
+		{
+			name:              "INT with empty phrase",
+			input:             "INT 1850 ()",
+			wantYear:          1850,
+			wantMonth:         0,
+			wantDay:           0,
+			wantModifier:      ModifierInterpreted,
+			wantIsInterpreted: true,
+			wantInterpFrom:    "",
+			wantOriginal:      "INT 1850 ()",
+		},
+		{
+			name:              "INT with missing closing paren",
+			input:             "INT 1850 (no closing",
+			wantYear:          1850,
+			wantMonth:         0,
+			wantDay:           0,
+			wantModifier:      ModifierInterpreted,
+			wantIsInterpreted: true,
+			wantInterpFrom:    "no closing",
+			wantOriginal:      "INT 1850 (no closing",
+		},
+		{
+			name:              "INT lowercase modifier",
+			input:             "int 1850 (lowercase)",
+			wantYear:          1850,
+			wantMonth:         0,
+			wantDay:           0,
+			wantModifier:      ModifierInterpreted,
+			wantIsInterpreted: true,
+			wantInterpFrom:    "lowercase",
+			wantOriginal:      "int 1850 (lowercase)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			if date.Year != tt.wantYear {
+				t.Errorf("Year = %d, want %d", date.Year, tt.wantYear)
+			}
+			if date.Month != tt.wantMonth {
+				t.Errorf("Month = %d, want %d", date.Month, tt.wantMonth)
+			}
+			if date.Day != tt.wantDay {
+				t.Errorf("Day = %d, want %d", date.Day, tt.wantDay)
+			}
+			if date.Modifier != tt.wantModifier {
+				t.Errorf("Modifier = %v, want %v", date.Modifier, tt.wantModifier)
+			}
+			if date.IsInterpreted != tt.wantIsInterpreted {
+				t.Errorf("IsInterpreted = %v, want %v", date.IsInterpreted, tt.wantIsInterpreted)
+			}
+			if date.InterpretedFrom != tt.wantInterpFrom {
+				t.Errorf("InterpretedFrom = %q, want %q", date.InterpretedFrom, tt.wantInterpFrom)
+			}
+			if date.Original != tt.wantOriginal {
+				t.Errorf("Original = %q, want %q", date.Original, tt.wantOriginal)
+			}
+		})
+	}
+}
+
+// TestParseDate_InterpretedRoundtrip tests that INT dates preserve their original string
+func TestParseDate_InterpretedRoundtrip(t *testing.T) {
+	tests := []string{
+		"INT 1850 (about eighteen fifty)",
+		"INT 25 DEC 1850 (Christmas day)",
+		"INT JAN 1900 (early in the new century)",
+		"INT 1850",
+	}
+
+	for _, input := range tests {
+		t.Run(input, func(t *testing.T) {
+			date, err := ParseDate(input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", input, err)
+			}
+
+			if date.String() != input {
+				t.Errorf("String() = %q, want %q", date.String(), input)
+			}
+		})
+	}
+}
+
+// TestParseDate_InterpretedErrors tests error cases for INT dates
+func TestParseDate_InterpretedErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr string
+	}{
+		{
+			name:    "INT with empty date",
+			input:   "INT (only phrase)",
+			wantErr: "empty date",
+		},
+		{
+			name:    "INT with invalid date",
+			input:   "INT INVALID (phrase)",
+			wantErr: "invalid",
+		},
+		{
+			name:    "INT with only modifier",
+			input:   "INT",
+			wantErr: "empty date",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseDate(tt.input)
+			if err == nil {
+				t.Fatalf("ParseDate(%q) expected error, got nil", tt.input)
+			}
+			if tt.wantErr != "" && !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("Error message = %q, want substring %q", err.Error(), tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestParseDate_InterpretedWithBC tests INT dates with B.C. suffix
+func TestParseDate_InterpretedWithBC(t *testing.T) {
+	tests := []struct {
+		name           string
+		input          string
+		wantYear       int
+		wantIsBC       bool
+		wantInterpFrom string
+	}{
+		{
+			name:           "INT with BC",
+			input:          "INT 44 BC (death of Caesar)",
+			wantYear:       44,
+			wantIsBC:       true,
+			wantInterpFrom: "death of Caesar",
+		},
+		{
+			name:           "INT with BCE",
+			input:          "INT 500 BCE (approximate)",
+			wantYear:       500,
+			wantIsBC:       true,
+			wantInterpFrom: "approximate",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			if date.Year != tt.wantYear {
+				t.Errorf("Year = %d, want %d", date.Year, tt.wantYear)
+			}
+			if date.IsBC != tt.wantIsBC {
+				t.Errorf("IsBC = %v, want %v", date.IsBC, tt.wantIsBC)
+			}
+			if date.InterpretedFrom != tt.wantInterpFrom {
+				t.Errorf("InterpretedFrom = %q, want %q", date.InterpretedFrom, tt.wantInterpFrom)
+			}
+			if date.Modifier != ModifierInterpreted {
+				t.Errorf("Modifier = %v, want ModifierInterpreted", date.Modifier)
+			}
+			if !date.IsInterpreted {
+				t.Error("IsInterpreted = false, want true")
 			}
 		})
 	}

@@ -71,6 +71,8 @@ type Validator struct {
 	duplicates   *DuplicateDetector
 	quality      *QualityAnalyzer
 	tagValidator *TagValidator
+	header       *HeaderValidator
+	xref         *XRefValidator
 }
 
 // New creates a new Validator with default configuration.
@@ -156,6 +158,22 @@ func (v *Validator) getTagValidator() *TagValidator {
 		v.tagValidator = NewTagValidator(registry, validateUnknown)
 	}
 	return v.tagValidator
+}
+
+// getHeaderValidator returns the header validator, creating it lazily if needed.
+func (v *Validator) getHeaderValidator() *HeaderValidator {
+	if v.header == nil {
+		v.header = NewHeaderValidator()
+	}
+	return v.header
+}
+
+// getXRefValidator returns the XRef validator, creating it lazily if needed.
+func (v *Validator) getXRefValidator() *XRefValidator {
+	if v.xref == nil {
+		v.xref = NewXRefValidator()
+	}
+	return v.xref
 }
 
 // Validate validates a GEDCOM document and returns any validation errors.
@@ -259,11 +277,17 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 
 	var allIssues []Issue
 
+	// Run header validation
+	allIssues = append(allIssues, v.getHeaderValidator().ValidateHeader(doc)...)
+
 	// Run date logic validation
 	allIssues = append(allIssues, v.getDateLogicValidator().Validate(doc)...)
 
 	// Run reference validation
 	allIssues = append(allIssues, v.getReferenceValidator().Validate(doc)...)
+
+	// Run XRef length validation
+	allIssues = append(allIssues, v.getXRefValidator().ValidateXRefs(doc)...)
 
 	// Run duplicate detection and convert to issues
 	for _, pair := range v.getDuplicateDetector().FindDuplicates(doc) {
