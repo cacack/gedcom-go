@@ -61,6 +61,9 @@ const (
 	ModifierTo
 	// ModifierFromTo indicates a period with start and end dates (FROM...TO)
 	ModifierFromTo
+	// ModifierInterpreted indicates an interpreted date where the user has clarified
+	// an ambiguous original phrase (INT). The original phrase is stored in InterpretedFrom.
+	ModifierInterpreted
 )
 
 // String returns the string representation of the date modifier.
@@ -86,6 +89,8 @@ func (m DateModifier) String() string {
 		return "TO"
 	case ModifierFromTo:
 		return "FROM TO"
+	case ModifierInterpreted:
+		return "INT"
 	default:
 		return "Unknown"
 	}
@@ -126,6 +131,15 @@ type Date struct {
 
 	// IsPhrase is true when the date is a phrase, not a parseable date
 	IsPhrase bool
+
+	// IsInterpreted is true when the date uses the INT modifier, indicating
+	// the user has interpreted an ambiguous original phrase
+	IsInterpreted bool
+
+	// InterpretedFrom contains the original phrase that was interpreted,
+	// without the surrounding parentheses (e.g., "about eighteen fifty" from
+	// "INT 1850 (about eighteen fifty)")
+	InterpretedFrom string
 }
 
 // monthNames maps three-letter month abbreviations to month numbers.
@@ -234,6 +248,9 @@ func ParseDate(s string) (*Date, error) {
 		case ModifierFrom, ModifierTo, ModifierFromTo:
 			// FROM date, TO date, or FROM date TO date
 			return parseDatePeriod(s, original, modifier)
+		case ModifierInterpreted:
+			// INT date (original phrase)
+			return parseInterpretedDate(s, original)
 		}
 	}
 
@@ -315,6 +332,9 @@ func parseModifier(s string) (DateModifier, string, bool) {
 	case "TO":
 		modifier = ModifierTo
 		found = true
+	case "INT":
+		modifier = ModifierInterpreted
+		found = true
 	default:
 		return ModifierNone, s, false
 	}
@@ -379,6 +399,55 @@ func parseDatePeriod(s, original string, modifier DateModifier) (*Date, error) {
 	if err := parseDateComponents(s, date); err != nil {
 		return nil, err
 	}
+	return date, nil
+}
+
+// parseInterpretedDate parses an interpreted date in the format "date (original phrase)".
+// The date portion is parsed normally, and the phrase is stored in InterpretedFrom.
+// Examples:
+//   - "1850 (about eighteen fifty)" -> Year=1850, InterpretedFrom="about eighteen fifty"
+//   - "25 DEC 1850 (Christmas day)" -> Day=25, Month=12, Year=1850, InterpretedFrom="Christmas day"
+//   - "1850" -> Year=1850, InterpretedFrom="" (no phrase is valid)
+func parseInterpretedDate(s, original string) (*Date, error) {
+	date := &Date{
+		Original:      original,
+		Calendar:      CalendarGregorian,
+		Modifier:      ModifierInterpreted,
+		IsInterpreted: true,
+	}
+
+	// Find the opening parenthesis to separate date from phrase
+	parenIndex := strings.Index(s, "(")
+	if parenIndex == -1 {
+		// No parenthetical phrase - just parse the date
+		if err := parseDateComponents(s, date); err != nil {
+			return nil, err
+		}
+		return date, nil
+	}
+
+	// Extract the date portion (before the opening paren)
+	dateStr := strings.TrimSpace(s[:parenIndex])
+	if dateStr == "" {
+		return nil, fmt.Errorf("empty date in interpreted date: '%s'", original)
+	}
+
+	// Parse the date portion
+	if err := parseDateComponents(dateStr, date); err != nil {
+		return nil, err
+	}
+
+	// Extract the phrase between parentheses
+	// Find the last closing paren to handle nested parens
+	phraseStart := parenIndex + 1
+	lastParen := strings.LastIndex(s, ")")
+	if lastParen == -1 {
+		// No closing paren - treat rest of string as phrase
+		date.InterpretedFrom = s[phraseStart:]
+	} else {
+		date.InterpretedFrom = s[phraseStart:lastParen]
+	}
+
 	return date, nil
 }
 

@@ -115,6 +115,21 @@ const (
 	CodeUnknownCustomTag = "UNKNOWN_CUSTOM_TAG"
 )
 
+// Error codes for header validation.
+const (
+	// CodeMissingSUBM indicates the header is missing a required SUBM (Submitter) reference.
+	// GEDCOM 5.5 and 5.5.1 require exactly one SUBM reference with cardinality {1:1}.
+	// GEDCOM 7.0 made SUBM optional.
+	CodeMissingSUBM = "MISSING_SUBM"
+)
+
+// Error codes for XRef validation.
+const (
+	// CodeXRefTooLong indicates an XRef identifier exceeds the 20-character limit
+	// specified by GEDCOM 5.5 and 5.5.1. This limit was removed in GEDCOM 7.0.
+	CodeXRefTooLong = "XREF_TOO_LONG"
+)
+
 // Issue represents a validation finding with severity, context, and actionable information.
 type Issue struct {
 	// Severity indicates the importance level of this issue.

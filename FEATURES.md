@@ -334,6 +334,7 @@ Structured date parsing for GEDCOM date strings with full support for:
 | After | `AFT 1850` | Lower bound |
 | Range | `BET 1850 AND 1860` | Between two dates |
 | Period | `FROM 1880 TO 1920` | Duration/interval |
+| Interpreted | `INT 1850 (about eighteen fifty)` | User-clarified ambiguous date |
 
 ### Edge Cases
 
@@ -459,6 +460,8 @@ Supports conversion from Julian, Hebrew, and French Republican calendars to Greg
 - Tag validity per GEDCOM version
 - Required subordinate tags
 - Deprecated tag warnings
+- XRef length validation (20-char limit for GEDCOM 5.5/5.5.1, unlimited for 7.0)
+- Header SUBM cardinality (required for 5.5/5.5.1, optional for 7.0)
 
 ### Error Reporting
 - Line numbers for all errors
