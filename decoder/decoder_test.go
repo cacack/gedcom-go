@@ -666,10 +666,8 @@ func TestDecodeSchemaDefinition(t *testing.T) {
 						t.Errorf("TagMappings[%q] = %q, want %q", tag, got, uri)
 					}
 				}
-			} else {
-				if doc.Schema != nil {
-					t.Errorf("Expected Schema to be nil, got %+v", doc.Schema)
-				}
+			} else if doc.Schema != nil {
+				t.Errorf("Expected Schema to be nil, got %+v", doc.Schema)
 			}
 		})
 	}

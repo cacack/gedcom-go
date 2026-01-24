@@ -996,9 +996,6 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 			}
 			repo.Address.Email = tag.Value
 
-		case "FAX":
-			// FAX is not in Address struct, skip for now
-
 		case "WWW":
 			if repo.Address == nil {
 				repo.Address = &gedcom.Address{}
@@ -1011,7 +1008,7 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "EXID":
 			repo.ExternalIDs = append(repo.ExternalIDs, parseExternalID(record.Tags, i))
 
-		case "CHAN", "REFN", "UID", "SNOTE":
+		case "CHAN", "REFN", "UID", "SNOTE", "FAX":
 			// Known tags not yet parsed into typed fields
 
 		default:
