@@ -18,6 +18,10 @@ type Document struct {
 	// Vendor identifies the software that created this GEDCOM file.
 	// Detected from the HEAD.SOUR tag during decoding.
 	Vendor Vendor
+
+	// Schema contains GEDCOM 7.0 schema definitions that map custom tags to URIs.
+	// Extracted from the HEAD.SCHMA structure during decoding.
+	Schema *SchemaDefinition
 }
 
 // GetRecord returns the record with the given cross-reference ID.

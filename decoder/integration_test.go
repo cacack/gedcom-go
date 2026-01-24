@@ -1019,3 +1019,79 @@ func TestAdditionalMalformedFiles(t *testing.T) {
 		})
 	}
 }
+
+// Test GEDCOM 7.0 SCHMA structure parsing with real file
+func TestIntegration_GEDCOM70_SCHMA(t *testing.T) {
+	f, err := os.Open("../testdata/gedcom-7.0/maximal70.ged")
+	if err != nil {
+		t.Skipf("Test file not found: %s", "../testdata/gedcom-7.0/maximal70.ged")
+		return
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	// Verify schema was parsed
+	if doc.Schema == nil {
+		t.Fatal("Expected Schema to be non-nil for GEDCOM 7.0 file with SCHMA")
+	}
+
+	if doc.Schema.TagMappings == nil {
+		t.Fatal("Expected TagMappings to be non-nil")
+	}
+
+	// The maximal70.ged file has these SCHMA entries:
+	// 2 TAG _SKYPEID http://xmlns.com/foaf/0.1/skypeID
+	// 2 TAG _JABBERID http://xmlns.com/foaf/0.1/jabberID
+	expectedMappings := map[string]string{
+		"_SKYPEID":  "http://xmlns.com/foaf/0.1/skypeID",
+		"_JABBERID": "http://xmlns.com/foaf/0.1/jabberID",
+	}
+
+	if len(doc.Schema.TagMappings) != len(expectedMappings) {
+		t.Errorf("TagMappings length = %d, want %d",
+			len(doc.Schema.TagMappings), len(expectedMappings))
+	}
+
+	for tag, expectedURI := range expectedMappings {
+		if got, ok := doc.Schema.TagMappings[tag]; !ok {
+			t.Errorf("TagMappings missing tag %q", tag)
+		} else if got != expectedURI {
+			t.Errorf("TagMappings[%q] = %q, want %q", tag, got, expectedURI)
+		}
+	}
+
+	t.Logf("Successfully parsed SCHMA from maximal70.ged: %d tag mappings", len(doc.Schema.TagMappings))
+}
+
+// Test that GEDCOM 5.5/5.5.1 files have nil Schema
+func TestIntegration_GEDCOM55_NoSchema(t *testing.T) {
+	testFiles := []string{
+		"../testdata/gedcom-5.5/minimal.ged",
+		"../testdata/gedcom-5.5.1/minimal.ged",
+	}
+
+	for _, path := range testFiles {
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			f, err := os.Open(path)
+			if err != nil {
+				t.Skipf("Test file not found: %s", path)
+				return
+			}
+			defer f.Close()
+
+			doc, err := Decode(f)
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+
+			if doc.Schema != nil {
+				t.Errorf("Expected Schema to be nil for %s, got %+v",
+					path, doc.Schema)
+			}
+		})
+	}
+}
