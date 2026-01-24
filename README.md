@@ -33,7 +33,7 @@ Tested with exports from common genealogy software:
 | Legacy Family Tree | ⚠️ Tested (older version) |
 | Family Tree Maker | ⚠️ Tested (older version) |
 | Gramps | 🧪 Synthetic test only |
-| Ancestry | ❓ Untested |
+| Ancestry | 🧪 Synthetic test only |
 
 Full compatibility matrix: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)
 

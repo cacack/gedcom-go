@@ -31,7 +31,7 @@ The following table shows which genealogy software exports have been tested with
 
 - **Export column intentionally omitted**: This library produces standard GEDCOM output, not vendor-specific formats. All encoding is spec-compliant.
 - **Older versions**: Test files for RootsMagic, Legacy, FTM, Family Historian, and HEREDIS are from 2015-2016 era software. Current versions may have different export patterns.
-- **FamilySearch "verified"**: Testing uses [official spec examples](https://gedcom.io/testfiles/gedcom70/) from FamilySearch, not real-world exports from the FamilySearch website.
+- **FamilySearch "verified"**: Testing uses [official spec examples](https://gedcom.io/tools/) from FamilySearch, not real-world exports from the FamilySearch website.
 
 ## GEDCOM Specification Support
 
@@ -92,7 +92,7 @@ Key sources include:
 
 | Source | Files | License |
 |--------|-------|---------|
-| [FamilySearch GEDCOM 7.0](https://gedcom.io/testfiles/gedcom70/) | `gedcom-7.0/familysearch-examples/` | Public domain |
+| [FamilySearch GEDCOM 7.0](https://gedcom.io/tools/) | `gedcom-7.0/familysearch-examples/` | Public domain |
 | [TestGED Torture Suite](https://www.geditcom.com/gedcom.html) | `gedcom-5.5/torture-test/` | Non-commercial |
 | [gedcom4j Project](https://github.com/frizbog/gedcom4j) | `edge-cases/vendor-*.ged` | MIT |
 | [Gramps Project](https://github.com/gramps-project/gramps) | `encoding/ansel-lf.ged`, `vendor-rootsmagic.ged`, `vendor-heredis.ged` | GPL-2.0 |
