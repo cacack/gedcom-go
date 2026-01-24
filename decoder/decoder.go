@@ -1,13 +1,27 @@
 package decoder
 
 import (
+	"errors"
 	"io"
+	"strings"
 
 	"github.com/cacack/gedcom-go/charset"
 	"github.com/cacack/gedcom-go/gedcom"
 	"github.com/cacack/gedcom-go/parser"
 	"github.com/cacack/gedcom-go/version"
 )
+
+// DecodeResult contains the result of decoding a GEDCOM file with diagnostics.
+// In lenient mode, Document may contain partial data even when diagnostics are present.
+type DecodeResult struct {
+	// Document is the parsed GEDCOM document.
+	// In lenient mode, this may be a partial document if some lines failed to parse.
+	Document *gedcom.Document
+
+	// Diagnostics contains all issues encountered during parsing.
+	// Empty if parsing was successful or StrictMode was enabled.
+	Diagnostics Diagnostics
+}
 
 // Decode parses a GEDCOM file from an io.Reader and returns a Document.
 // This is a convenience function that uses default options.
@@ -70,9 +84,197 @@ func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, erro
 	doc := buildDocument(lines, detectedVersion)
 
 	// Convert raw tags to proper entity types
-	populateEntities(doc)
+	// Pass nil collector for existing API (no diagnostics collection)
+	populateEntities(doc, nil)
 
 	return doc, nil
+}
+
+// DecodeWithDiagnostics parses a GEDCOM file and returns both the document and any diagnostics.
+// This function enables lenient parsing mode when StrictMode is false (the default).
+//
+// In lenient mode:
+//   - Parse errors are collected as diagnostics rather than stopping parsing
+//   - A partial document is returned if some valid data was parsed
+//   - An error is returned only if no valid records could be parsed
+//
+// In strict mode (StrictMode=true):
+//   - Parsing fails on the first error (current behavior)
+//   - Diagnostics will be empty on success
+//
+//nolint:gocyclo // Lenient mode handling requires additional branches
+func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, error) {
+	if opts == nil {
+		opts = DefaultOptions()
+	}
+
+	// Check context cancellation before starting
+	if opts.Context != nil {
+		select {
+		case <-opts.Context.Done():
+			return nil, opts.Context.Err()
+		default:
+		}
+	}
+
+	// Wrap reader with UTF-8 validation
+	validatedReader := charset.NewReader(r)
+
+	// Wrap with progress tracking if callback provided
+	finalReader := validatedReader
+	if opts.OnProgress != nil {
+		finalReader = &progressReader{
+			reader:    validatedReader,
+			totalSize: opts.TotalSize,
+			callback:  opts.OnProgress,
+		}
+	}
+
+	// Parse with appropriate mode
+	p := parser.NewParser()
+	var lines []*parser.Line
+	var diagnostics Diagnostics
+
+	if opts.StrictMode {
+		// Strict mode: use existing Parse behavior
+		parsedLines, err := p.Parse(finalReader)
+		if err != nil {
+			return nil, err
+		}
+		lines = parsedLines
+	} else {
+		// Lenient mode: collect errors and continue
+		parseOpts := &parser.ParseOptions{
+			Lenient:   true,
+			MaxErrors: 0, // Collect all errors
+		}
+		parsedLines, parseErrors, fatalErr := p.ParseWithOptions(finalReader, parseOpts)
+
+		// Convert parse errors to diagnostics
+		diagnostics = convertParseErrors(parseErrors)
+
+		// Fatal errors (I/O failures) are always returned
+		if fatalErr != nil {
+			// Still return partial results with diagnostics
+			if len(parsedLines) > 0 {
+				doc := buildDocumentWithVersion(parsedLines, opts)
+				return &DecodeResult{
+					Document:    doc,
+					Diagnostics: diagnostics,
+				}, fatalErr
+			}
+			return nil, fatalErr
+		}
+
+		lines = parsedLines
+	}
+
+	// Check context after parsing
+	if opts.Context != nil {
+		select {
+		case <-opts.Context.Done():
+			return nil, opts.Context.Err()
+		default:
+		}
+	}
+
+	// Check if we have any data to work with
+	if len(lines) == 0 {
+		// No valid lines parsed - return empty document with diagnostics
+		doc := &gedcom.Document{
+			XRefMap: make(map[string]*gedcom.Record),
+			Header:  &gedcom.Header{},
+			Trailer: &gedcom.Trailer{},
+		}
+		result := &DecodeResult{
+			Document:    doc,
+			Diagnostics: diagnostics,
+		}
+
+		// If we had diagnostics, return an error indicating parsing failed
+		if len(diagnostics) > 0 {
+			return result, errors.New("no valid GEDCOM lines could be parsed")
+		}
+
+		// Empty input is valid
+		return result, nil
+	}
+
+	// Detect GEDCOM version
+	detectedVersion, err := version.DetectVersion(lines)
+	if err != nil {
+		// Version detection failed - still try to build partial document
+		detectedVersion = ""
+	}
+
+	// Build document from lines
+	doc := buildDocument(lines, detectedVersion)
+
+	// Create a collector for entity-level diagnostics if in lenient mode
+	var collector *diagnosticCollector
+	if !opts.StrictMode {
+		collector = &diagnosticCollector{
+			lenient: true,
+		}
+	}
+
+	// Convert raw tags to proper entity types
+	populateEntities(doc, collector)
+
+	// Merge entity-level diagnostics with parser diagnostics
+	if collector != nil {
+		diagnostics = append(diagnostics, collector.diagnostics...)
+	}
+
+	return &DecodeResult{
+		Document:    doc,
+		Diagnostics: diagnostics,
+	}, nil
+}
+
+// buildDocumentWithVersion builds a document and detects the version.
+// This is a helper for DecodeWithDiagnostics when handling fatal errors.
+func buildDocumentWithVersion(lines []*parser.Line, _ *DecodeOptions) *gedcom.Document {
+	detectedVersion, err := version.DetectVersion(lines)
+	if err != nil {
+		detectedVersion = ""
+	}
+	doc := buildDocument(lines, detectedVersion)
+	// Pass nil collector for partial builds (diagnostics not collected)
+	populateEntities(doc, nil)
+	return doc
+}
+
+// convertParseErrors converts parser.ParseError instances to Diagnostics.
+func convertParseErrors(parseErrors []*parser.ParseError) Diagnostics {
+	if len(parseErrors) == 0 {
+		return nil
+	}
+
+	diagnostics := make(Diagnostics, 0, len(parseErrors))
+	for _, pe := range parseErrors {
+		code := classifyParseError(pe.Message)
+		diagnostics = append(diagnostics, NewParseError(pe.Line, code, pe.Message, pe.Context))
+	}
+	return diagnostics
+}
+
+// classifyParseError maps a parse error message to a diagnostic code.
+func classifyParseError(message string) string {
+	msg := strings.ToLower(message)
+
+	switch {
+	case strings.Contains(msg, "empty line"):
+		return CodeEmptyLine
+	case strings.Contains(msg, "invalid level") || strings.Contains(msg, "level cannot be negative"):
+		return CodeInvalidLevel
+	case strings.Contains(msg, "xref"):
+		return CodeInvalidXRef
+	case strings.Contains(msg, "nesting") || strings.Contains(msg, "jump"):
+		return CodeBadLevelJump
+	default:
+		return CodeSyntaxError
+	}
 }
 
 // buildDocument constructs a Document from parsed lines.

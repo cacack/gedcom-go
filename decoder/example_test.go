@@ -127,3 +127,104 @@ func ExampleDecodeWithOptions_progress() {
 	// Output:
 	// Decoded successfully: 1 individuals
 }
+
+// ExampleDecodeWithDiagnostics demonstrates lenient parsing mode with diagnostic collection.
+// This is useful when processing GEDCOM files that may contain errors but you still want
+// to extract as much valid data as possible.
+func ExampleDecodeWithDiagnostics() {
+	// This GEDCOM data contains an error: line 8 has a negative level number
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME John /Smith/
+1 SEX M
+0 @I2@ INDI
+-1 NAME Jane /Doe/
+1 NAME Jane /Doe/
+0 TRLR`
+
+	// Use DecodeWithDiagnostics for lenient parsing
+	opts := &decoder.DecodeOptions{
+		StrictMode: false, // This is the default, shown for clarity
+	}
+
+	result, err := decoder.DecodeWithDiagnostics(strings.NewReader(gedcomData), opts)
+	if err != nil {
+		fmt.Printf("Fatal error: %v\n", err)
+		return
+	}
+
+	// Check if there were any issues
+	if len(result.Diagnostics) > 0 {
+		fmt.Printf("Found %d diagnostic(s)\n", len(result.Diagnostics))
+
+		// Check specifically for errors vs warnings
+		if result.Diagnostics.HasErrors() {
+			fmt.Printf("  Errors: %d\n", len(result.Diagnostics.Errors()))
+		}
+	}
+
+	// The document still contains successfully parsed data
+	fmt.Printf("Parsed %d individuals despite errors\n", len(result.Document.Individuals()))
+
+	// Output:
+	// Found 1 diagnostic(s)
+	//   Errors: 1
+	// Parsed 2 individuals despite errors
+}
+
+// ExampleDecodeWithDiagnostics_filterBySeverity shows how to filter diagnostics by severity.
+func ExampleDecodeWithDiagnostics_filterBySeverity() {
+	// GEDCOM with an invalid line (missing level number)
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME Alice /Johnson/
+invalid line without level
+0 TRLR`
+
+	result, err := decoder.DecodeWithDiagnostics(strings.NewReader(gedcomData), nil)
+	if err != nil {
+		fmt.Printf("Fatal error: %v\n", err)
+		return
+	}
+
+	// Filter to get only errors (not warnings or info)
+	errors := result.Diagnostics.Errors()
+	for _, diag := range errors {
+		fmt.Printf("Line %d: %s\n", diag.Line, diag.Code)
+	}
+
+	// Output:
+	// Line 6: INVALID_LEVEL
+}
+
+// ExampleDecodeWithDiagnostics_inspectDetails shows how to inspect diagnostic details.
+func ExampleDecodeWithDiagnostics_inspectDetails() {
+	// GEDCOM with a negative level error
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+-1 NAME Bob /Wilson/
+0 TRLR`
+
+	result, _ := decoder.DecodeWithDiagnostics(strings.NewReader(gedcomData), nil)
+
+	// Inspect the first diagnostic's details
+	if len(result.Diagnostics) > 0 {
+		d := result.Diagnostics[0]
+		fmt.Printf("Severity: %s\n", d.Severity)
+		fmt.Printf("Code: %s\n", d.Code)
+		fmt.Printf("Line: %d\n", d.Line)
+		fmt.Printf("Message: %s\n", d.Message)
+	}
+
+	// Output:
+	// Severity: ERROR
+	// Code: INVALID_LEVEL
+	// Line: 5
+	// Message: level cannot be negative
+}

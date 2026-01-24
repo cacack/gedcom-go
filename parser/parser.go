@@ -16,6 +16,19 @@ type Parser struct {
 	lastLevel  int
 }
 
+// ParseOptions configures the behavior of ParseWithOptions.
+type ParseOptions struct {
+	// Lenient controls error handling behavior.
+	// If true, the parser collects errors and continues parsing.
+	// If false (default), the parser fails on the first error.
+	Lenient bool
+
+	// MaxErrors is the maximum number of errors to collect in lenient mode.
+	// When reached, parsing continues but errors are no longer collected.
+	// A value of 0 means unlimited errors will be collected.
+	MaxErrors int
+}
+
 // NewParser creates a new Parser instance.
 func NewParser() *Parser {
 	return &Parser{
@@ -134,6 +147,73 @@ func (p *Parser) Parse(r io.Reader) ([]*Line, error) {
 	}
 
 	return lines, nil
+}
+
+// ParseWithOptions reads a GEDCOM file with configurable error handling.
+// In lenient mode, it collects parse errors and continues parsing.
+// Returns:
+//   - lines: successfully parsed lines (may be partial in lenient mode)
+//   - parseErrors: syntax errors encountered (only populated in lenient mode)
+//   - fatalErr: unrecoverable errors like I/O failures
+func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
+	lines []*Line,
+	parseErrors []*ParseError,
+	fatalErr error,
+) {
+	p.Reset()
+
+	// Handle nil options - default to strict mode
+	if opts == nil {
+		opts = &ParseOptions{}
+	}
+	// Normalize negative MaxErrors to unlimited (0)
+	if opts.MaxErrors < 0 {
+		opts.MaxErrors = 0
+	}
+
+	scanner := bufio.NewScanner(r)
+	scanner.Split(scanGEDCOMLines)
+
+	for scanner.Scan() {
+		text := scanner.Text()
+		line, err := p.ParseLine(text)
+		if err != nil {
+			if !opts.Lenient {
+				// Strict mode: fail on first error
+				return nil, nil, err
+			}
+
+			// Lenient mode: collect the error and continue
+			var parseErr *ParseError
+			if pe, ok := err.(*ParseError); ok {
+				parseErr = pe
+			} else {
+				// Wrap non-ParseError errors
+				parseErr = &ParseError{
+					Line:    p.lineNumber,
+					Message: err.Error(),
+					Context: text,
+					Err:     err,
+				}
+			}
+
+			// Only collect if under MaxErrors limit (0 = unlimited)
+			if opts.MaxErrors == 0 || len(parseErrors) < opts.MaxErrors {
+				parseErrors = append(parseErrors, parseErr)
+			}
+			// Skip the problematic line and continue parsing
+			continue
+		}
+		lines = append(lines, line)
+	}
+
+	// Scanner errors are I/O errors - always fatal
+	if err := scanner.Err(); err != nil {
+		fatalErr = wrapParseError(p.lineNumber, "error reading input", "", err)
+		return lines, parseErrors, fatalErr
+	}
+
+	return lines, parseErrors, nil
 }
 
 // scanGEDCOMLines is a split function for bufio.Scanner that handles

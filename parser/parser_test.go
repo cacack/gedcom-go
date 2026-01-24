@@ -564,3 +564,365 @@ func TestParseLineXRefWithoutTag(t *testing.T) {
 		})
 	}
 }
+
+// --- ParseWithOptions Tests ---
+
+// TestParseWithOptions_StrictMode verifies that strict mode (Lenient=false) behaves like Parse()
+func TestParseWithOptions_StrictMode(t *testing.T) {
+	p := NewParser()
+
+	input := `0 HEAD
+INVALID LINE
+0 TRLR`
+
+	// With nil options (defaults to strict)
+	lines, parseErrors, fatalErr := p.ParseWithOptions(strings.NewReader(input), nil)
+	if fatalErr == nil {
+		t.Error("Expected fatal error in strict mode with nil options")
+	}
+	if len(lines) != 0 {
+		t.Errorf("Expected no lines in strict mode with error, got %d", len(lines))
+	}
+	if len(parseErrors) != 0 {
+		t.Errorf("Expected no parse errors slice in strict mode, got %d", len(parseErrors))
+	}
+
+	// With explicit Lenient=false
+	p.Reset()
+	opts := &ParseOptions{Lenient: false}
+	lines, parseErrors, fatalErr = p.ParseWithOptions(strings.NewReader(input), opts)
+	if fatalErr == nil {
+		t.Error("Expected fatal error in strict mode")
+	}
+	if len(lines) != 0 {
+		t.Errorf("Expected no lines in strict mode with error, got %d", len(lines))
+	}
+	if len(parseErrors) != 0 {
+		t.Errorf("Expected no parse errors in strict mode, got %d", len(parseErrors))
+	}
+}
+
+// TestParseWithOptions_LenientMode verifies that lenient mode collects errors and continues
+func TestParseWithOptions_LenientMode(t *testing.T) {
+	p := NewParser()
+
+	input := `0 HEAD
+1 SOUR Test
+INVALID LINE
+2 VERS 1.0
+another bad line
+0 TRLR`
+
+	opts := &ParseOptions{Lenient: true}
+	lines, parseErrors, fatalErr := p.ParseWithOptions(strings.NewReader(input), opts)
+
+	// No fatal error
+	if fatalErr != nil {
+		t.Fatalf("Unexpected fatal error: %v", fatalErr)
+	}
+
+	// Should have 4 valid lines (HEAD, SOUR, VERS, TRLR)
+	if len(lines) != 4 {
+		t.Errorf("Expected 4 valid lines, got %d", len(lines))
+	}
+
+	// Should have 2 parse errors
+	if len(parseErrors) != 2 {
+		t.Errorf("Expected 2 parse errors, got %d", len(parseErrors))
+	}
+
+	// Verify line numbers in errors
+	if len(parseErrors) >= 1 && parseErrors[0].Line != 3 {
+		t.Errorf("First error should be at line 3, got line %d", parseErrors[0].Line)
+	}
+	if len(parseErrors) >= 2 && parseErrors[1].Line != 5 {
+		t.Errorf("Second error should be at line 5, got line %d", parseErrors[1].Line)
+	}
+
+	// Verify the valid lines
+	expectedTags := []string{"HEAD", "SOUR", "VERS", "TRLR"}
+	for i, tag := range expectedTags {
+		if lines[i].Tag != tag {
+			t.Errorf("Line %d: expected tag %s, got %s", i, tag, lines[i].Tag)
+		}
+	}
+}
+
+// TestParseWithOptions_MaxErrors verifies that MaxErrors limit is respected
+func TestParseWithOptions_MaxErrors(t *testing.T) {
+	p := NewParser()
+
+	// Input with 5 invalid lines
+	input := `0 HEAD
+invalid1
+invalid2
+invalid3
+invalid4
+invalid5
+0 TRLR`
+
+	opts := &ParseOptions{
+		Lenient:   true,
+		MaxErrors: 2,
+	}
+	lines, parseErrors, fatalErr := p.ParseWithOptions(strings.NewReader(input), opts)
+
+	// No fatal error
+	if fatalErr != nil {
+		t.Fatalf("Unexpected fatal error: %v", fatalErr)
+	}
+
+	// Should only collect 2 errors (the limit)
+	if len(parseErrors) != 2 {
+		t.Errorf("Expected 2 parse errors (MaxErrors limit), got %d", len(parseErrors))
+	}
+
+	// Should still parse valid lines (HEAD and TRLR)
+	if len(lines) != 2 {
+		t.Errorf("Expected 2 valid lines, got %d", len(lines))
+	}
+}
+
+// TestParseWithOptions_MaxErrorsZero verifies that MaxErrors=0 means unlimited
+func TestParseWithOptions_MaxErrorsZero(t *testing.T) {
+	p := NewParser()
+
+	// Input with many invalid lines
+	input := `0 HEAD
+err1
+err2
+err3
+err4
+err5
+err6
+err7
+err8
+err9
+err10
+0 TRLR`
+
+	opts := &ParseOptions{
+		Lenient:   true,
+		MaxErrors: 0, // Unlimited
+	}
+	lines, parseErrors, fatalErr := p.ParseWithOptions(strings.NewReader(input), opts)
+
+	if fatalErr != nil {
+		t.Fatalf("Unexpected fatal error: %v", fatalErr)
+	}
+
+	// Should collect all 10 errors
+	if len(parseErrors) != 10 {
+		t.Errorf("Expected 10 parse errors with unlimited, got %d", len(parseErrors))
+	}
+
+	// Should still parse valid lines
+	if len(lines) != 2 {
+		t.Errorf("Expected 2 valid lines, got %d", len(lines))
+	}
+}
+
+// TestParseWithOptions_NegativeMaxErrors verifies that negative MaxErrors is treated as unlimited
+func TestParseWithOptions_NegativeMaxErrors(t *testing.T) {
+	p := NewParser()
+
+	// Input with multiple invalid lines
+	input := `0 HEAD
+err1
+err2
+err3
+0 TRLR`
+
+	opts := &ParseOptions{
+		Lenient:   true,
+		MaxErrors: -5, // Negative should be normalized to unlimited
+	}
+	lines, parseErrors, fatalErr := p.ParseWithOptions(strings.NewReader(input), opts)
+
+	if fatalErr != nil {
+		t.Fatalf("Unexpected fatal error: %v", fatalErr)
+	}
+
+	// Should collect all 3 errors (negative treated as unlimited)
+	if len(parseErrors) != 3 {
+		t.Errorf("Expected 3 parse errors with negative MaxErrors (treated as unlimited), got %d", len(parseErrors))
+	}
+
+	// Should still parse valid lines
+	if len(lines) != 2 {
+		t.Errorf("Expected 2 valid lines, got %d", len(lines))
+	}
+}
+
+// TestParseWithOptions_IOError verifies that I/O errors are returned as fatalErr
+func TestParseWithOptions_IOError(t *testing.T) {
+	p := NewParser()
+
+	// Use a reader that always returns an error
+	testErr := fmt.Errorf("simulated read error")
+	reader := iotest.ErrReader(testErr)
+
+	opts := &ParseOptions{Lenient: true}
+	_, _, fatalErr := p.ParseWithOptions(reader, opts)
+
+	// Should return fatal error for I/O issues
+	if fatalErr == nil {
+		t.Error("Expected fatal error for I/O failure")
+	}
+}
+
+// TestParseWithOptions_ValidInput verifies behavior with completely valid input
+func TestParseWithOptions_ValidInput(t *testing.T) {
+	p := NewParser()
+
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME John /Smith/
+0 TRLR`
+
+	opts := &ParseOptions{Lenient: true}
+	lines, parseErrors, fatalErr := p.ParseWithOptions(strings.NewReader(input), opts)
+
+	if fatalErr != nil {
+		t.Fatalf("Unexpected fatal error: %v", fatalErr)
+	}
+
+	if len(parseErrors) != 0 {
+		t.Errorf("Expected no parse errors with valid input, got %d", len(parseErrors))
+	}
+
+	if len(lines) != 6 {
+		t.Errorf("Expected 6 lines, got %d", len(lines))
+	}
+}
+
+// TestParseWithOptions_EmptyInput verifies behavior with empty input
+func TestParseWithOptions_EmptyInput(t *testing.T) {
+	p := NewParser()
+
+	opts := &ParseOptions{Lenient: true}
+	lines, parseErrors, fatalErr := p.ParseWithOptions(strings.NewReader(""), opts)
+
+	if fatalErr != nil {
+		t.Fatalf("Unexpected fatal error: %v", fatalErr)
+	}
+
+	if len(parseErrors) != 0 {
+		t.Errorf("Expected no parse errors with empty input, got %d", len(parseErrors))
+	}
+
+	if len(lines) != 0 {
+		t.Errorf("Expected 0 lines, got %d", len(lines))
+	}
+}
+
+// TestParseWithOptions_AllErrorTypes verifies all error types are collected
+func TestParseWithOptions_AllErrorTypes(t *testing.T) {
+	p := NewParser()
+
+	// Each line triggers a different error type
+	input := `0 HEAD
+
+X INVALID_LEVEL
+0
+
+0 @I1@
+0 TRLR`
+
+	opts := &ParseOptions{Lenient: true}
+	lines, parseErrors, fatalErr := p.ParseWithOptions(strings.NewReader(input), opts)
+
+	if fatalErr != nil {
+		t.Fatalf("Unexpected fatal error: %v", fatalErr)
+	}
+
+	// Should collect errors for:
+	// 1. Empty line (line 2)
+	// 2. Invalid level "X" (line 3)
+	// 3. Missing tag (line 4) - "0" alone
+	// 4. Whitespace only (line 5)
+	// 5. XRef without tag (line 6)
+	expectedErrors := 5
+	if len(parseErrors) != expectedErrors {
+		t.Errorf("Expected %d parse errors, got %d", expectedErrors, len(parseErrors))
+		for i, e := range parseErrors {
+			t.Logf("Error %d: line %d: %s", i, e.Line, e.Message)
+		}
+	}
+
+	// Should still parse valid lines (HEAD and TRLR)
+	if len(lines) != 2 {
+		t.Errorf("Expected 2 valid lines, got %d", len(lines))
+	}
+}
+
+// TestParseWithOptions_ErrorDetails verifies that parse errors have correct details
+func TestParseWithOptions_ErrorDetails(t *testing.T) {
+	p := NewParser()
+
+	input := `0 HEAD
+BAD_LINE_HERE
+0 TRLR`
+
+	opts := &ParseOptions{Lenient: true}
+	_, parseErrors, _ := p.ParseWithOptions(strings.NewReader(input), opts)
+
+	if len(parseErrors) != 1 {
+		t.Fatalf("Expected 1 parse error, got %d", len(parseErrors))
+	}
+
+	err := parseErrors[0]
+	if err.Line != 2 {
+		t.Errorf("Error line = %d, want 2", err.Line)
+	}
+	if err.Context != "BAD_LINE_HERE" {
+		t.Errorf("Error context = %q, want %q", err.Context, "BAD_LINE_HERE")
+	}
+	if err.Message == "" {
+		t.Error("Error message should not be empty")
+	}
+}
+
+// TestParseWithOptions_MatchesParseBehavior verifies that strict mode matches Parse()
+func TestParseWithOptions_MatchesParseBehavior(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 TRLR`
+
+	// Parse with regular Parse()
+	p1 := NewParser()
+	lines1, err1 := p1.Parse(strings.NewReader(input))
+
+	// Parse with ParseWithOptions (strict mode)
+	p2 := NewParser()
+	lines2, parseErrors2, fatalErr2 := p2.ParseWithOptions(strings.NewReader(input), &ParseOptions{Lenient: false})
+
+	// Both should succeed
+	if err1 != nil {
+		t.Fatalf("Parse() error: %v", err1)
+	}
+	if fatalErr2 != nil {
+		t.Fatalf("ParseWithOptions() fatal error: %v", fatalErr2)
+	}
+	if len(parseErrors2) != 0 {
+		t.Errorf("ParseWithOptions() should have no parse errors in strict mode")
+	}
+
+	// Should have same number of lines
+	if len(lines1) != len(lines2) {
+		t.Errorf("Parse() returned %d lines, ParseWithOptions() returned %d", len(lines1), len(lines2))
+	}
+
+	// Lines should match
+	for i := range lines1 {
+		if lines1[i].Level != lines2[i].Level ||
+			lines1[i].Tag != lines2[i].Tag ||
+			lines1[i].Value != lines2[i].Value ||
+			lines1[i].XRef != lines2[i].XRef {
+			t.Errorf("Line %d mismatch", i)
+		}
+	}
+}

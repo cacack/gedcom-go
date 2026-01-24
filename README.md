@@ -122,6 +122,31 @@ if len(errors) > 0 {
 }
 ```
 
+### Lenient Parsing
+
+Process GEDCOM files with errors while extracting as much valid data as possible:
+
+```go
+result, err := decoder.DecodeWithDiagnostics(f, nil)
+if err != nil {
+    log.Fatal(err) // Fatal I/O error
+}
+
+// Check for parse issues
+if result.Diagnostics.HasErrors() {
+    fmt.Printf("Found %d errors\n", len(result.Diagnostics.Errors()))
+    for _, d := range result.Diagnostics {
+        fmt.Printf("  Line %d: %s\n", d.Line, d.Message)
+    }
+}
+
+// Use the partial document
+doc := result.Document
+fmt.Printf("Parsed %d individuals\n", len(doc.Individuals()))
+```
+
+See [godoc](https://pkg.go.dev/github.com/cacack/gedcom-go/decoder#DecodeWithDiagnostics) for details.
+
 ### Creating GEDCOM Files
 
 ```go
