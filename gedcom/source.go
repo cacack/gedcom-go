@@ -41,6 +41,10 @@ type Source struct {
 	// UID is the unique identifier (UID tag)
 	UID string
 
+	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
+	// Links this record to external systems like FamilySearch, Ancestry, etc.
+	ExternalIDs []*ExternalID
+
 	// Tags contains all raw tags for this source (for unknown/custom tags)
 	Tags []*Tag
 }

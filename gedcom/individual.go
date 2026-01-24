@@ -50,6 +50,10 @@ type Individual struct {
 	// UID is the unique identifier (UID tag)
 	UID string
 
+	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
+	// Links this record to external systems like FamilySearch, Ancestry, etc.
+	ExternalIDs []*ExternalID
+
 	// FamilySearchID is the FamilySearch Family Tree ID (_FSFTID tag).
 	// This is a vendor extension from FamilySearch.org that uniquely identifies
 	// an individual in their Family Tree database. Format: alphanumeric like "KWCJ-QN7".

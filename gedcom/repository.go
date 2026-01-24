@@ -14,6 +14,10 @@ type Repository struct {
 	// Notes are references to note records
 	Notes []string
 
+	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
+	// Links this record to external systems like FamilySearch, Ancestry, etc.
+	ExternalIDs []*ExternalID
+
 	// Tags contains all raw tags for this repository (for unknown/custom tags)
 	Tags []*Tag
 }

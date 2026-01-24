@@ -78,6 +78,10 @@ type MediaObject struct {
 	// UIDs are unique identifiers (UID tag, can have multiple in GEDCOM 7.0)
 	UIDs []string
 
+	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
+	// Links this record to external systems like FamilySearch, Ancestry, etc.
+	ExternalIDs []*ExternalID
+
 	// XRef is the cross-reference identifier for this media object
 	XRef string
 }

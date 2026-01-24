@@ -516,3 +516,161 @@ func TestDecodeVendorDetection(t *testing.T) {
 		})
 	}
 }
+
+// Test GEDCOM 7.0 SCHMA structure parsing
+func TestDecodeSchemaDefinition(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		wantSchema   bool
+		wantMappings map[string]string
+	}{
+		{
+			name: "SCHMA with valid TAG subordinates",
+			input: `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+2 TAG _SKYPEID http://xmlns.com/foaf/0.1/skypeID
+2 TAG _JABBERID http://xmlns.com/foaf/0.1/jabberID
+0 TRLR`,
+			wantSchema: true,
+			wantMappings: map[string]string{
+				"_SKYPEID":  "http://xmlns.com/foaf/0.1/skypeID",
+				"_JABBERID": "http://xmlns.com/foaf/0.1/jabberID",
+			},
+		},
+		{
+			name: "SCHMA with single TAG",
+			input: `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+2 TAG _CUSTOM https://example.com/custom
+0 TRLR`,
+			wantSchema: true,
+			wantMappings: map[string]string{
+				"_CUSTOM": "https://example.com/custom",
+			},
+		},
+		{
+			name: "SCHMA with no TAG subordinates",
+			input: `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+1 SOUR TestApp
+0 TRLR`,
+			wantSchema:   true,
+			wantMappings: map[string]string{},
+		},
+		{
+			name: "SCHMA with malformed TAG (missing URI)",
+			input: `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+2 TAG _MALFORMED
+2 TAG _VALID http://example.com/valid
+0 TRLR`,
+			wantSchema: true,
+			wantMappings: map[string]string{
+				"_VALID": "http://example.com/valid",
+			},
+		},
+		{
+			name: "GEDCOM 5.5 file without SCHMA",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+1 CHAR UTF-8
+0 TRLR`,
+			wantSchema:   false,
+			wantMappings: nil,
+		},
+		{
+			name: "GEDCOM 5.5.1 file without SCHMA",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 SOUR FamilyTreeMaker
+0 TRLR`,
+			wantSchema:   false,
+			wantMappings: nil,
+		},
+		{
+			name: "SCHMA followed by SOUR (tag ordering)",
+			input: `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+2 TAG _EXT http://example.com/ext
+1 SOUR TestApp
+0 TRLR`,
+			wantSchema: true,
+			wantMappings: map[string]string{
+				"_EXT": "http://example.com/ext",
+			},
+		},
+		{
+			name: "SOUR followed by SCHMA (tag ordering)",
+			input: `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SOUR TestApp
+1 SCHMA
+2 TAG _EXT http://example.com/ext
+0 TRLR`,
+			wantSchema: true,
+			wantMappings: map[string]string{
+				"_EXT": "http://example.com/ext",
+			},
+		},
+		{
+			name: "TAG with URI containing spaces",
+			input: `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+2 TAG _COMPLEX http://example.com/path with spaces
+0 TRLR`,
+			wantSchema: true,
+			wantMappings: map[string]string{
+				"_COMPLEX": "http://example.com/path with spaces",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := Decode(strings.NewReader(tt.input))
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+
+			if tt.wantSchema {
+				if doc.Schema == nil {
+					t.Fatal("Expected Schema to be non-nil, got nil")
+				}
+				if doc.Schema.TagMappings == nil {
+					t.Fatal("Expected TagMappings to be non-nil, got nil")
+				}
+				if len(doc.Schema.TagMappings) != len(tt.wantMappings) {
+					t.Errorf("TagMappings length = %d, want %d",
+						len(doc.Schema.TagMappings), len(tt.wantMappings))
+				}
+				for tag, uri := range tt.wantMappings {
+					if got, ok := doc.Schema.TagMappings[tag]; !ok {
+						t.Errorf("TagMappings missing tag %q", tag)
+					} else if got != uri {
+						t.Errorf("TagMappings[%q] = %q, want %q", tag, got, uri)
+					}
+				}
+			} else {
+				if doc.Schema != nil {
+					t.Errorf("Expected Schema to be nil, got %+v", doc.Schema)
+				}
+			}
+		})
+	}
+}

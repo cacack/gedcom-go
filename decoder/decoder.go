@@ -305,7 +305,7 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 	inHead := false
 	inSour := false
 
-	for _, line := range lines {
+	for i, line := range lines {
 		if line.Level == 0 && line.Tag == "HEAD" {
 			inHead = true
 			continue
@@ -327,8 +327,20 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 			continue
 		}
 
+		// Parse SCHMA structure (GEDCOM 7.0)
+		if line.Level == 1 && line.Tag == "SCHMA" {
+			inSour = false
+			// Initialize schema with empty TagMappings
+			doc.Schema = &gedcom.SchemaDefinition{
+				TagMappings: make(map[string]string),
+			}
+			// Parse TAG subordinates
+			parseSchemaTag(doc, lines, i)
+			continue
+		}
+
 		// Exit SOUR when we see another level 1 tag
-		if line.Level == 1 && inSour {
+		if line.Level == 1 {
 			inSour = false
 		}
 
@@ -355,6 +367,32 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 
 	// Detect vendor from source system
 	doc.Vendor = gedcom.DetectVendor(doc.Header.SourceSystem)
+}
+
+// parseSchemaTag parses TAG subordinates within a SCHMA structure.
+// TAG value format: "[tagname] [uri]" (space-separated)
+func parseSchemaTag(doc *gedcom.Document, lines []*parser.Line, schmaIndex int) {
+	schmaLevel := lines[schmaIndex].Level
+
+	for j := schmaIndex + 1; j < len(lines); j++ {
+		subLine := lines[j]
+
+		// Stop when we reach the same or lower level (exiting SCHMA)
+		if subLine.Level <= schmaLevel {
+			break
+		}
+
+		// Parse TAG at level schmaLevel+1
+		if subLine.Level == schmaLevel+1 && subLine.Tag == "TAG" {
+			parts := strings.SplitN(subLine.Value, " ", 2)
+			if len(parts) == 2 {
+				tagName := parts[0]
+				uri := parts[1]
+				doc.Schema.TagMappings[tagName] = uri
+			}
+			// Malformed TAG values (missing URI) are silently skipped
+		}
+	}
 }
 
 // buildRecords extracts records from lines and builds the XRefMap.

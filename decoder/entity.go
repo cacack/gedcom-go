@@ -145,6 +145,9 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "_FSFTID":
 			indi.FamilySearchID = tag.Value
 
+		case "EXID":
+			indi.ExternalIDs = append(indi.ExternalIDs, parseExternalID(record.Tags, i))
+
 		default:
 			// Unknown tag - record diagnostic but continue processing
 			// Tags starting with _ are vendor extensions and expected
@@ -322,6 +325,27 @@ func parseAssociation(tags []*gedcom.Tag, assoIdx int, collector *diagnosticColl
 	}
 
 	return assoc
+}
+
+// parseExternalID parses an EXID tag with optional TYPE subordinate.
+func parseExternalID(tags []*gedcom.Tag, exidIdx int) *gedcom.ExternalID {
+	baseLevel := tags[exidIdx].Level
+	exid := &gedcom.ExternalID{
+		Value: tags[exidIdx].Value,
+	}
+
+	// Look for TYPE subordinate at baseLevel+1
+	for i := exidIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 && tag.Tag == "TYPE" {
+			exid.Type = tag.Value
+			break
+		}
+	}
+	return exid
 }
 
 // parseSourceCitation extracts a source citation from tags starting at sourIdx.
@@ -749,7 +773,10 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "UID":
 			fam.UID = tag.Value
 
-		case "RESN", "SUBM", "EXID", "ASSO", "SNOTE":
+		case "EXID":
+			fam.ExternalIDs = append(fam.ExternalIDs, parseExternalID(record.Tags, i))
+
+		case "RESN", "SUBM", "ASSO", "SNOTE":
 			// Known tags not yet parsed into typed fields
 
 		default:
@@ -804,7 +831,9 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			src.RefNumber = tag.Value
 		case "UID":
 			src.UID = tag.Value
-		case "DATA", "ABBR", "SNOTE", "EXID":
+		case "EXID":
+			src.ExternalIDs = append(src.ExternalIDs, parseExternalID(record.Tags, i))
+		case "DATA", "ABBR", "SNOTE":
 			// Known tags not yet parsed into typed fields
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
@@ -919,7 +948,10 @@ func parseSubmitter(record *gedcom.Record, collector *diagnosticCollector) *gedc
 		case "NOTE":
 			subm.Notes = append(subm.Notes, tag.Value)
 
-		case "CHAN", "FAX", "WWW", "OBJE", "RIN", "UID", "SNOTE", "EXID":
+		case "EXID":
+			subm.ExternalIDs = append(subm.ExternalIDs, parseExternalID(record.Tags, i))
+
+		case "CHAN", "FAX", "WWW", "OBJE", "RIN", "UID", "SNOTE":
 			// Known tags not yet parsed into typed fields
 
 		default:
@@ -976,7 +1008,10 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "NOTE":
 			repo.Notes = append(repo.Notes, tag.Value)
 
-		case "CHAN", "REFN", "UID", "SNOTE", "EXID":
+		case "EXID":
+			repo.ExternalIDs = append(repo.ExternalIDs, parseExternalID(record.Tags, i))
+
+		case "CHAN", "REFN", "UID", "SNOTE":
 			// Known tags not yet parsed into typed fields
 
 		default:
@@ -1019,7 +1054,10 @@ func parseNote(record *gedcom.Record, collector *diagnosticCollector) *gedcom.No
 				note.Text += tag.Value
 			}
 
-		case "MIME", "LANG", "TRAN", "SOUR", "REFN", "UID", "CHAN", "EXID":
+		case "EXID":
+			note.ExternalIDs = append(note.ExternalIDs, parseExternalID(record.Tags, i))
+
+		case "MIME", "LANG", "TRAN", "SOUR", "REFN", "UID", "CHAN":
 			// Known tags not yet parsed into typed fields
 
 		default:
@@ -1066,7 +1104,9 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 			media.UIDs = append(media.UIDs, tag.Value)
 		case "RESN":
 			media.Restriction = tag.Value
-		case "EXID", "SNOTE":
+		case "EXID":
+			media.ExternalIDs = append(media.ExternalIDs, parseExternalID(record.Tags, i))
+		case "SNOTE":
 			// Known tags not yet parsed into typed fields
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {

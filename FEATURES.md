@@ -85,6 +85,47 @@ if indi.FamilySearchID != "" {
 
 All vendor extensions are preserved during encode/decode cycles. Custom tags not explicitly parsed are retained in the raw `Tags` field on each entity.
 
+## GEDCOM 7.0 Features
+
+### External Identifiers (EXID)
+
+GEDCOM 7.0 external identifiers link records to external systems like FamilySearch, Ancestry, FindAGrave, etc.
+
+```go
+// Access external identifiers on any entity
+for _, exid := range individual.ExternalIDs {
+    fmt.Println(exid.Value)  // "123"
+    fmt.Println(exid.Type)   // "http://example.com" (URI identifying the system)
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| Value | The external identifier string |
+| Type | URI identifying the external system |
+
+Supported on: Individual, Family, Source, Repository, Submitter, Note, MediaObject
+
+### Schema Definition (SCHMA)
+
+GEDCOM 7.0 schema definitions map extension tags to their URI identifiers, enabling interoperability with custom tags from other applications.
+
+```go
+// Access schema mappings from header
+if doc.Schema != nil {
+    for tag, uri := range doc.Schema.TagMappings {
+        fmt.Printf("%s -> %s\n", tag, uri)
+        // _SKYPEID -> http://xmlns.com/foaf/0.1/skypeID
+    }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| TagMappings | Map of tag names to URIs (e.g., `_SKYPEID` → `http://xmlns.com/foaf/0.1/skypeID`) |
+
+The schema is parsed from the GEDCOM 7.0 header's SCHMA structure and stored in `Document.Schema`. For GEDCOM 5.5/5.5.1 files, `Document.Schema` is nil.
+
 ## Character Encoding
 
 | Encoding | Status | Notes |
