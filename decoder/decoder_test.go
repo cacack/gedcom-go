@@ -599,6 +599,17 @@ func TestDecodeSchemaDefinition(t *testing.T) {
 			wantMappings: nil,
 		},
 		{
+			name: "SCHMA in non-7.0 file is ignored",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 SCHMA
+2 TAG _CUSTOM http://example.com
+0 TRLR`,
+			wantSchema:   false,
+			wantMappings: nil,
+		},
+		{
 			name: "SCHMA followed by SOUR (tag ordering)",
 			input: `0 HEAD
 1 GEDC

@@ -327,15 +327,16 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 			continue
 		}
 
-		// Parse SCHMA structure (GEDCOM 7.0)
+		// Parse SCHMA structure (GEDCOM 7.0 only)
 		if line.Level == 1 && line.Tag == "SCHMA" {
 			inSour = false
-			// Initialize schema with empty TagMappings
-			doc.Schema = &gedcom.SchemaDefinition{
-				TagMappings: make(map[string]string),
+			// Only parse SCHMA for GEDCOM 7.0; leave Schema nil for 5.5/5.5.1
+			if ver == gedcom.Version70 {
+				doc.Schema = &gedcom.SchemaDefinition{
+					TagMappings: make(map[string]string),
+				}
+				parseSchemaTag(doc, lines, i)
 			}
-			// Parse TAG subordinates
-			parseSchemaTag(doc, lines, i)
 			continue
 		}
 
@@ -384,10 +385,11 @@ func parseSchemaTag(doc *gedcom.Document, lines []*parser.Line, schmaIndex int) 
 
 		// Parse TAG at level schmaLevel+1
 		if subLine.Level == schmaLevel+1 && subLine.Tag == "TAG" {
+			// Split on first space, then trim to handle multiple spaces/tabs
 			parts := strings.SplitN(subLine.Value, " ", 2)
 			if len(parts) == 2 {
-				tagName := parts[0]
-				uri := parts[1]
+				tagName := strings.TrimSpace(parts[0])
+				uri := strings.TrimSpace(parts[1])
 				doc.Schema.TagMappings[tagName] = uri
 			}
 			// Malformed TAG values (missing URI) are silently skipped
