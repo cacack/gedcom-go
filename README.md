@@ -25,7 +25,7 @@ See [FEATURES.md](FEATURES.md) for the complete feature list including all suppo
 
 ## Compatibility
 
-Tested with exports from common genealogy software:
+Support status for common genealogy software:
 
 | Software | Status |
 |----------|--------|
