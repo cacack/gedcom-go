@@ -23,6 +23,22 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 
 See [FEATURES.md](FEATURES.md) for the complete feature list including all supported record types, events, attributes, and encoding details.
 
+## Compatibility
+
+Tested with exports from common genealogy software:
+
+| Software | Status |
+|----------|--------|
+| RootsMagic | ⚠️ Tested (older version) |
+| Legacy Family Tree | ⚠️ Tested (older version) |
+| Family Tree Maker | ⚠️ Tested (older version) |
+| Gramps | 🧪 Synthetic test only |
+| Ancestry | ❓ Untested |
+
+Full compatibility matrix: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)
+
+**GEDCOM Specification**: Full support for 5.5, 5.5.1, and 7.0
+
 ## Installation
 
 ```bash
