@@ -342,7 +342,7 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 				cite.Page = tag.Value
 			case "QUAY":
 				// Parse quality as integer (0-3)
-				if q, err := strconv.Atoi(tag.Value); err == nil {
+				if q, err := strconv.Atoi(tag.Value); err == nil && q >= 0 && q <= 3 {
 					cite.Quality = q
 				} else {
 					collector.addInvalidValue(tag.LineNumber, "QUAY", tag.Value, "expected integer 0-3")

@@ -166,6 +166,10 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 	if opts == nil {
 		opts = &ParseOptions{}
 	}
+	// Normalize negative MaxErrors to unlimited (0)
+	if opts.MaxErrors < 0 {
+		opts.MaxErrors = 0
+	}
 
 	scanner := bufio.NewScanner(r)
 	scanner.Split(scanGEDCOMLines)

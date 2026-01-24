@@ -722,6 +722,38 @@ err10
 	}
 }
 
+// TestParseWithOptions_NegativeMaxErrors verifies that negative MaxErrors is treated as unlimited
+func TestParseWithOptions_NegativeMaxErrors(t *testing.T) {
+	p := NewParser()
+
+	// Input with multiple invalid lines
+	input := `0 HEAD
+err1
+err2
+err3
+0 TRLR`
+
+	opts := &ParseOptions{
+		Lenient:   true,
+		MaxErrors: -5, // Negative should be normalized to unlimited
+	}
+	lines, parseErrors, fatalErr := p.ParseWithOptions(strings.NewReader(input), opts)
+
+	if fatalErr != nil {
+		t.Fatalf("Unexpected fatal error: %v", fatalErr)
+	}
+
+	// Should collect all 3 errors (negative treated as unlimited)
+	if len(parseErrors) != 3 {
+		t.Errorf("Expected 3 parse errors with negative MaxErrors (treated as unlimited), got %d", len(parseErrors))
+	}
+
+	// Should still parse valid lines
+	if len(lines) != 2 {
+		t.Errorf("Expected 2 valid lines, got %d", len(lines))
+	}
+}
+
 // TestParseWithOptions_IOError verifies that I/O errors are returned as fatalErr
 func TestParseWithOptions_IOError(t *testing.T) {
 	p := NewParser()
