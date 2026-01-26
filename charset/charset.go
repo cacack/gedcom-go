@@ -92,6 +92,7 @@ type utf8Reader struct {
 	bomSkipped bool
 	buffer     []byte // Buffer for BOM bytes that need to be returned
 	bufPos     int    // Current position in buffer
+	pending    []byte // Incomplete UTF-8 sequence from previous read
 }
 
 func (u *utf8Reader) Read(p []byte) (n int, err error) {
@@ -107,11 +108,38 @@ func (u *utf8Reader) Read(p []byte) (n int, err error) {
 		}
 	}
 
-	n, err = u.reader.Read(p)
-	if n > 0 {
-		if err := u.validateAndTrack(p[:n]); err != nil {
-			return 0, err
+	pendingLen := len(u.pending)
+	if pendingLen > 0 {
+		copied := copy(p, u.pending)
+		if copied < pendingLen {
+			u.pending = u.pending[copied:]
+			return copied, nil
 		}
+		u.pending = nil
+		if copied == len(p) {
+			return copied, nil
+		}
+	}
+
+	n, err = u.reader.Read(p[pendingLen:])
+	n += pendingLen
+
+	if n > 0 {
+		completeLen := findLastCompleteUTF8(p[:n])
+		if completeLen < n {
+			u.pending = make([]byte, n-completeLen)
+			copy(u.pending, p[completeLen:n])
+			n = completeLen
+		}
+		if n > 0 {
+			if err := u.validateAndTrack(p[:n]); err != nil {
+				return 0, err
+			}
+		}
+	}
+
+	if err == io.EOF && len(u.pending) > 0 {
+		return 0, &ErrInvalidUTF8{Line: u.line, Column: u.column}
 	}
 
 	return n, err
@@ -192,6 +220,38 @@ func (u *utf8Reader) updatePosition(p []byte) {
 			u.column++
 		}
 	}
+}
+
+func findLastCompleteUTF8(p []byte) int {
+	n := len(p)
+	if n == 0 {
+		return 0
+	}
+
+	for i := 1; i <= 3 && i <= n; i++ {
+		b := p[n-i]
+
+		if b&0x80 == 0 {
+			return n
+		} else if b&0xC0 == 0xC0 {
+			var seqLen int
+			if b&0xE0 == 0xC0 {
+				seqLen = 2
+			} else if b&0xF0 == 0xE0 {
+				seqLen = 3
+			} else if b&0xF8 == 0xF0 {
+				seqLen = 4
+			} else {
+				return n
+			}
+			if i >= seqLen {
+				return n
+			}
+			return n - i
+		}
+	}
+
+	return n
 }
 
 // ValidateString checks if a string is valid UTF-8.
