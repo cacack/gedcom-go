@@ -93,11 +93,23 @@ type utf8Reader struct {
 	buffer     []byte // Buffer for BOM bytes that need to be returned
 	bufPos     int    // Current position in buffer
 	pending    []byte // Incomplete UTF-8 sequence from previous read
+	complete   []byte // Complete UTF-8 bytes ready to return
 }
 
 func (u *utf8Reader) Read(p []byte) (n int, err error) {
 	// Return buffered BOM bytes first if any
 	if n, ok := u.readBuffered(p); ok {
+		return n, nil
+	}
+
+	// Return any complete bytes first
+	if len(u.complete) > 0 {
+		n = copy(p, u.complete)
+		if n < len(u.complete) {
+			u.complete = u.complete[n:]
+		} else {
+			u.complete = nil
+		}
 		return n, nil
 	}
 
@@ -108,32 +120,34 @@ func (u *utf8Reader) Read(p []byte) (n int, err error) {
 		}
 	}
 
-	pendingLen := len(u.pending)
-	if pendingLen > 0 {
-		copied := copy(p, u.pending)
-		if copied < pendingLen {
-			u.pending = u.pending[copied:]
-			return copied, nil
-		}
-		u.pending = nil
-		if copied == len(p) {
-			return copied, nil
-		}
+	// Use internal buffer large enough for pending + new data
+	bufSize := len(u.pending) + len(p)
+	if bufSize < 8 {
+		bufSize = 8
 	}
+	workBuf := make([]byte, bufSize)
 
-	n, err = u.reader.Read(p[pendingLen:])
-	n += pendingLen
+	workN := copy(workBuf, u.pending)
+	u.pending = nil
 
-	if n > 0 {
-		completeLen := findLastCompleteUTF8(p[:n])
-		if completeLen < n {
-			u.pending = make([]byte, n-completeLen)
-			copy(u.pending, p[completeLen:n])
-			n = completeLen
+	readN, err := u.reader.Read(workBuf[workN:])
+	workN += readN
+
+	if workN > 0 {
+		completeLen := findLastCompleteUTF8(workBuf[:workN])
+		if completeLen < workN {
+			u.pending = make([]byte, workN-completeLen)
+			copy(u.pending, workBuf[completeLen:workN])
+			workN = completeLen
 		}
-		if n > 0 {
-			if err := u.validateAndTrack(p[:n]); err != nil {
-				return 0, err
+		if workN > 0 {
+			if verr := u.validateAndTrack(workBuf[:workN]); verr != nil {
+				return 0, verr
+			}
+			n = copy(p, workBuf[:workN])
+			if n < workN {
+				u.complete = make([]byte, workN-n)
+				copy(u.complete, workBuf[n:workN])
 			}
 		}
 	}
@@ -235,13 +249,14 @@ func findLastCompleteUTF8(p []byte) int {
 			return n
 		} else if b&0xC0 == 0xC0 {
 			var seqLen int
-			if b&0xE0 == 0xC0 {
+			switch {
+			case b&0xE0 == 0xC0:
 				seqLen = 2
-			} else if b&0xF0 == 0xE0 {
+			case b&0xF0 == 0xE0:
 				seqLen = 3
-			} else if b&0xF8 == 0xF0 {
+			case b&0xF8 == 0xF0:
 				seqLen = 4
-			} else {
+			default:
 				return n
 			}
 			if i >= seqLen {

@@ -1418,6 +1418,54 @@ func TestNewReader_UTF8BufferBoundary_SmallOutputBuffer(t *testing.T) {
 	}
 }
 
+func TestNewReader_UTF8BufferBoundary_TinyOutputBuffer(t *testing.T) {
+	input := "A😀B"
+	r := NewReader(&smallChunkReader{data: []byte(input), chunkSize: 1})
+
+	var result []byte
+	buf := make([]byte, 1)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			result = append(result, buf[:n]...)
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Read() error = %v", err)
+		}
+	}
+
+	if string(result) != input {
+		t.Errorf("got %q, want %q", string(result), input)
+	}
+}
+
+func TestNewReader_UTF8BufferBoundary_PendingExactFit(t *testing.T) {
+	input := "AB😀CD"
+	r := NewReader(&smallChunkReader{data: []byte(input), chunkSize: 1})
+
+	var result []byte
+	buf := make([]byte, 3)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			result = append(result, buf[:n]...)
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Read() error = %v", err)
+		}
+	}
+
+	if string(result) != input {
+		t.Errorf("got %q, want %q", string(result), input)
+	}
+}
+
 func TestNewReader_UTF8IncompleteAtEOF(t *testing.T) {
 	tests := []struct {
 		name  string
