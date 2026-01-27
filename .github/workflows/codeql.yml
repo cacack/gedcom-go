@@ -20,24 +20,24 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
     - name: Set up Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
       with:
         go-version: '1.24'
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v4
+      uses: github/codeql-action/init@ab28d5ce09b08e4700b2296d39d684a7ac71d1e7 # v4
       with:
         languages: go
         # Use queries for security and quality
         queries: security-and-quality
 
     - name: Autobuild
-      uses: github/codeql-action/autobuild@v4
+      uses: github/codeql-action/autobuild@ab28d5ce09b08e4700b2296d39d684a7ac71d1e7 # v4
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v4
+      uses: github/codeql-action/analyze@ab28d5ce09b08e4700b2296d39d684a7ac71d1e7 # v4
       with:
         category: "/language:go"

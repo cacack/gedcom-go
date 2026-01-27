@@ -6,21 +6,37 @@ on:
   pull_request:
     branches: [ main ]
 
+# Restrict default GITHUB_TOKEN permissions (principle of least privilege)
+permissions:
+  contents: read
+
+# Prevent resource abuse from multiple concurrent runs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Test
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         go: ['1.24', '1.25']
 
     steps:
+    - name: Harden Runner
+      if: matrix.os == 'ubuntu-latest'
+      uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+      with:
+        egress-policy: audit
+
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
     - name: Set up Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
       with:
         go-version: ${{ matrix.go }}
         cache: true
@@ -34,7 +50,7 @@ jobs:
 
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.go == '1.25'
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.out
@@ -45,12 +61,13 @@ jobs:
   coverage:
     name: Coverage Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
     - name: Set up Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
       with:
         go-version: '1.25'
         cache: true
@@ -59,7 +76,7 @@ jobs:
       run: go test -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
 
     - name: Check coverage thresholds
-      uses: vladopajic/go-test-coverage@v2
+      uses: vladopajic/go-test-coverage@679e6807f68f2440a4c43d386442a1d0041838a9 # v2
       with:
         profile: coverage.out
         local-prefix: github.com/cacack/gedcom-go
@@ -89,31 +106,31 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
     - name: Set up Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
       with:
         go-version: '1.25'
 
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v9
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9
       with:
         version: v2.7.2
 
   format:
     name: Format Check
     runs-on: ubuntu-latest
-
+    timeout-minutes: 5
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
     - name: Set up Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
       with:
         go-version: '1.25'
 
@@ -133,13 +150,14 @@ jobs:
   dependency-review:
     name: Dependency Review
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: github.event_name == 'pull_request'
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
     - name: Dependency Review
-      uses: actions/dependency-review-action@v4
+      uses: actions/dependency-review-action@46a3c492319c890177366b6ef46d6b4f89743ed4 # v4
       with:
         fail-on-severity: high
         allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0, 0BSD, CC0-1.0, Unlicense
@@ -149,18 +167,23 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       security-events: write
-
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+      with:
+        egress-policy: audit
+
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
       with:
         fetch-depth: 0  # Full history for gitleaks
 
     - name: Set up Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
       with:
         go-version: '1.25'
 
@@ -174,7 +197,7 @@ jobs:
         govulncheck ./...
 
     - name: Upload govulncheck results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v4
+      uses: github/codeql-action/upload-sarif@ab28d5ce09b08e4700b2296d39d684a7ac71d1e7 # v4
       if: success() || failure()
       with:
         sarif_file: govulncheck-results.sarif
@@ -186,7 +209,7 @@ jobs:
         gosec -fmt sarif -out gosec-results.sarif ./...
 
     - name: Upload gosec results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v4
+      uses: github/codeql-action/upload-sarif@ab28d5ce09b08e4700b2296d39d684a7ac71d1e7 # v4
       if: success() || failure()
       with:
         sarif_file: gosec-results.sarif
@@ -194,14 +217,14 @@ jobs:
 
     # Secret detection
     - name: Detect secrets (gitleaks)
-      uses: gitleaks/gitleaks-action@v2
+      uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
       continue-on-error: true  # Don't block other scans
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     # Trivy: Filesystem vulnerability and misconfiguration scanning
     - name: Trivy filesystem scan
-      uses: aquasecurity/trivy-action@0.33.1
+      uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
       continue-on-error: true  # Produce SARIF even on findings
       with:
         scan-type: 'fs'
@@ -211,7 +234,7 @@ jobs:
         severity: 'CRITICAL,HIGH,MEDIUM'
 
     - name: Upload Trivy results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v4
+      uses: github/codeql-action/upload-sarif@ab28d5ce09b08e4700b2296d39d684a7ac71d1e7 # v4
       if: success() || failure()
       with:
         sarif_file: trivy-results.sarif
@@ -230,7 +253,7 @@ jobs:
           /src
 
     - name: Upload Semgrep results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v4
+      uses: github/codeql-action/upload-sarif@ab28d5ce09b08e4700b2296d39d684a7ac71d1e7 # v4
       if: success() || failure()
       with:
         sarif_file: semgrep.sarif
@@ -239,13 +262,18 @@ jobs:
   build-examples:
     name: Build Examples
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
     steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
+      with:
+        egress-policy: audit
+
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
     - name: Set up Go
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
       with:
         go-version: '1.25'
 
@@ -270,6 +298,7 @@ jobs:
   pr-title:
     name: PR Title Check
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: github.event_name == 'pull_request'
     steps:
       - name: Check PR title is not conventional commit format
@@ -301,6 +330,7 @@ jobs:
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs: [test, coverage, lint, format, dependency-review, security, build-examples, pr-title]
     if: always()
     steps:
