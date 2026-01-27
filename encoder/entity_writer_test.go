@@ -3612,3 +3612,412 @@ func TestSharedNoteEncoderEdgeCases(t *testing.T) {
 		}
 	})
 }
+
+// TestEventToTagsNegative tests that IsNegative=true produces NO tag.
+// Ref: Issue #121
+func TestEventToTagsNegative(t *testing.T) {
+	tests := []struct {
+		name       string
+		event      *gedcom.Event
+		wantTag    string
+		wantValue  string
+		isNegative bool
+	}{
+		{
+			name: "normal marriage event",
+			event: &gedcom.Event{
+				Type:       gedcom.EventMarriage,
+				Date:       "15 JUN 1875",
+				IsNegative: false,
+			},
+			wantTag:    "MARR",
+			wantValue:  "",
+			isNegative: false,
+		},
+		{
+			name: "negative marriage assertion",
+			event: &gedcom.Event{
+				Type:       gedcom.EventMarriage,
+				Date:       "FROM 1800 TO 1850",
+				IsNegative: true,
+			},
+			wantTag:    "NO",
+			wantValue:  "MARR",
+			isNegative: true,
+		},
+		{
+			name: "negative death assertion",
+			event: &gedcom.Event{
+				Type:       gedcom.EventDeath,
+				IsNegative: true,
+			},
+			wantTag:    "NO",
+			wantValue:  "DEAT",
+			isNegative: true,
+		},
+		{
+			name: "negative divorce assertion",
+			event: &gedcom.Event{
+				Type:       gedcom.EventDivorce,
+				Date:       "FROM 1700 TO 1800",
+				IsNegative: true,
+			},
+			wantTag:    "NO",
+			wantValue:  "DIV",
+			isNegative: true,
+		},
+		{
+			name: "negative naturalization assertion",
+			event: &gedcom.Event{
+				Type:       gedcom.EventNaturalization,
+				IsNegative: true,
+			},
+			wantTag:    "NO",
+			wantValue:  "NATU",
+			isNegative: true,
+		},
+		{
+			name: "negative emigration assertion",
+			event: &gedcom.Event{
+				Type:       gedcom.EventEmigration,
+				IsNegative: true,
+			},
+			wantTag:    "NO",
+			wantValue:  "EMIG",
+			isNegative: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := eventToTags(tt.event, 1, nil)
+			if len(tags) == 0 {
+				t.Fatal("eventToTags() returned empty slice")
+			}
+
+			// First tag should be the event tag (or NO tag for negative)
+			firstTag := tags[0]
+			if firstTag.Tag != tt.wantTag {
+				t.Errorf("first tag = %q, want %q", firstTag.Tag, tt.wantTag)
+			}
+			if firstTag.Value != tt.wantValue {
+				t.Errorf("first tag value = %q, want %q", firstTag.Value, tt.wantValue)
+			}
+		})
+	}
+}
+
+// TestEventToTagsNegativeWithSubordinates tests NO tag with DATE, SOUR encodes correctly.
+// Ref: Issue #121
+func TestEventToTagsNegativeWithSubordinates(t *testing.T) {
+	event := &gedcom.Event{
+		Type:       gedcom.EventMarriage,
+		Date:       "FROM 1800 TO 1850",
+		IsNegative: true,
+		Notes:      []string{"No marriage record found in parish registers"},
+		SourceCitations: []*gedcom.SourceCitation{
+			{SourceXRef: "@S1@", Page: "p. 42"},
+		},
+	}
+
+	tags := eventToTags(event, 1, nil)
+
+	// Build map of tag names for checking
+	tagMap := tagNamesToMap(tags)
+
+	// Should have NO tag
+	if !tagMap["NO"] {
+		t.Error("missing NO tag")
+	}
+	// Should have DATE tag
+	if !tagMap["DATE"] {
+		t.Error("missing DATE tag")
+	}
+	// Should have NOTE tag
+	if !tagMap["NOTE"] {
+		t.Error("missing NOTE tag")
+	}
+	// Should have SOUR tag
+	if !tagMap["SOUR"] {
+		t.Error("missing SOUR tag")
+	}
+	// Should have PAGE tag
+	if !tagMap["PAGE"] {
+		t.Error("missing PAGE tag")
+	}
+
+	// Verify first tag is NO with value MARR
+	if tags[0].Tag != "NO" {
+		t.Errorf("first tag = %q, want 'NO'", tags[0].Tag)
+	}
+	if tags[0].Value != "MARR" {
+		t.Errorf("first tag value = %q, want 'MARR'", tags[0].Value)
+	}
+
+	// Verify DATE is at level 2 (subordinate to NO)
+	for _, tag := range tags {
+		if tag.Tag == "DATE" {
+			if tag.Level != 2 {
+				t.Errorf("DATE tag level = %d, want 2", tag.Level)
+			}
+			if tag.Value != "FROM 1800 TO 1850" {
+				t.Errorf("DATE value = %q, want 'FROM 1800 TO 1850'", tag.Value)
+			}
+		}
+	}
+}
+
+// TestRoundTripNegativeAssertion tests decode NO -> encode -> verify output.
+// Ref: Issue #121
+func TestRoundTripNegativeAssertion(t *testing.T) {
+	t.Run("individual with NO MARR", func(t *testing.T) {
+		original := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+1 NO MARR
+2 DATE FROM 1800 TO 1850
+1 NO DEAT
+0 TRLR
+`
+		doc, err := decoder.Decode(strings.NewReader(original))
+		if err != nil {
+			t.Fatalf("Decode failed: %v", err)
+		}
+
+		// Verify decode
+		indi := doc.GetIndividual("@I1@")
+		if indi == nil {
+			t.Fatal("Individual @I1@ not found")
+		}
+		if len(indi.Events) != 2 {
+			t.Fatalf("len(Events) = %d, want 2", len(indi.Events))
+		}
+		if !indi.Events[0].IsNegative {
+			t.Error("First event should be negative")
+		}
+
+		// Encode
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode failed: %v", err)
+		}
+
+		encoded := buf.String()
+
+		// Verify output contains NO tags
+		if !strings.Contains(encoded, "NO MARR") {
+			t.Errorf("Encoded output missing 'NO MARR': %s", encoded)
+		}
+		if !strings.Contains(encoded, "NO DEAT") {
+			t.Errorf("Encoded output missing 'NO DEAT': %s", encoded)
+		}
+		if !strings.Contains(encoded, "DATE FROM 1800 TO 1850") {
+			t.Errorf("Encoded output missing date: %s", encoded)
+		}
+
+		// Re-decode and verify
+		doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("Re-decode failed: %v", err)
+		}
+
+		indi2 := doc2.GetIndividual("@I1@")
+		if indi2 == nil {
+			t.Fatal("Individual @I1@ not found after round-trip")
+		}
+		if len(indi2.Events) != 2 {
+			t.Fatalf("After round-trip: len(Events) = %d, want 2", len(indi2.Events))
+		}
+		if !indi2.Events[0].IsNegative {
+			t.Error("After round-trip: first event should be negative")
+		}
+		if indi2.Events[0].Type != "MARR" {
+			t.Errorf("After round-trip: Events[0].Type = %s, want MARR", indi2.Events[0].Type)
+		}
+		if indi2.Events[0].Date != "FROM 1800 TO 1850" {
+			t.Errorf("After round-trip: Events[0].Date = %q, want 'FROM 1800 TO 1850'", indi2.Events[0].Date)
+		}
+	})
+
+	t.Run("family with NO DIV and subordinates", func(t *testing.T) {
+		original := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 NO DIV
+2 DATE FROM 1700 TO 1800
+2 NOTE Note text about divorce research
+2 SOUR @S1@
+3 PAGE p. 42
+1 NO ANUL
+0 @I1@ INDI
+1 NAME John /Doe/
+0 @I2@ INDI
+1 NAME Jane /Smith/
+0 @S1@ SOUR
+1 TITL Test Source
+0 TRLR
+`
+		doc, err := decoder.Decode(strings.NewReader(original))
+		if err != nil {
+			t.Fatalf("Decode failed: %v", err)
+		}
+
+		// Encode
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode failed: %v", err)
+		}
+
+		encoded := buf.String()
+
+		// Verify output contains NO tags
+		if !strings.Contains(encoded, "NO DIV") {
+			t.Errorf("Encoded output missing 'NO DIV': %s", encoded)
+		}
+		if !strings.Contains(encoded, "NO ANUL") {
+			t.Errorf("Encoded output missing 'NO ANUL': %s", encoded)
+		}
+
+		// Re-decode and verify
+		doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("Re-decode failed: %v", err)
+		}
+
+		fam := doc2.GetFamily("@F1@")
+		if fam == nil {
+			t.Fatal("Family @F1@ not found after round-trip")
+		}
+		if len(fam.Events) != 2 {
+			t.Fatalf("After round-trip: len(Events) = %d, want 2", len(fam.Events))
+		}
+
+		divEvent := fam.Events[0]
+		if !divEvent.IsNegative {
+			t.Error("After round-trip: DIV event should be negative")
+		}
+		if divEvent.Type != "DIV" {
+			t.Errorf("After round-trip: Events[0].Type = %s, want DIV", divEvent.Type)
+		}
+		if divEvent.Date != "FROM 1700 TO 1800" {
+			t.Errorf("After round-trip: Events[0].Date = %q, want 'FROM 1700 TO 1800'", divEvent.Date)
+		}
+		if len(divEvent.Notes) != 1 {
+			t.Fatalf("After round-trip: len(Notes) = %d, want 1", len(divEvent.Notes))
+		}
+		if len(divEvent.SourceCitations) != 1 {
+			t.Fatalf("After round-trip: len(SourceCitations) = %d, want 1", len(divEvent.SourceCitations))
+		}
+
+		anulEvent := fam.Events[1]
+		if !anulEvent.IsNegative {
+			t.Error("After round-trip: ANUL event should be negative")
+		}
+		if anulEvent.Type != "ANUL" {
+			t.Errorf("After round-trip: Events[1].Type = %s, want ANUL", anulEvent.Type)
+		}
+	})
+
+	t.Run("encode programmatically created negative assertions", func(t *testing.T) {
+		// Create document programmatically with negative assertions
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{
+				Version:  gedcom.Version70,
+				Encoding: gedcom.EncodingUTF8,
+			},
+			Records: []*gedcom.Record{
+				{
+					XRef: "@I1@",
+					Type: gedcom.RecordTypeIndividual,
+					Entity: &gedcom.Individual{
+						XRef: "@I1@",
+						Names: []*gedcom.PersonalName{
+							{Full: "John /Doe/", Given: "John", Surname: "Doe"},
+						},
+						Events: []*gedcom.Event{
+							{
+								Type:       gedcom.EventBirth,
+								Date:       "1 JAN 1800",
+								IsNegative: false,
+							},
+							{
+								Type:       gedcom.EventMarriage,
+								Date:       "FROM 1820 TO 1900",
+								IsNegative: true,
+								Notes:      []string{"Confirmed bachelor per parish records"},
+							},
+							{
+								Type:       gedcom.EventDeath,
+								IsNegative: true,
+							},
+						},
+					},
+				},
+			},
+		}
+
+		// Encode
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode failed: %v", err)
+		}
+
+		encoded := buf.String()
+
+		// Should have normal BIRT
+		if !strings.Contains(encoded, "BIRT") {
+			t.Errorf("Encoded output missing 'BIRT': %s", encoded)
+		}
+		// Should have NO MARR (not MARR)
+		if !strings.Contains(encoded, "NO MARR") {
+			t.Errorf("Encoded output missing 'NO MARR': %s", encoded)
+		}
+		// Should have NO DEAT (not DEAT)
+		if !strings.Contains(encoded, "NO DEAT") {
+			t.Errorf("Encoded output missing 'NO DEAT': %s", encoded)
+		}
+
+		// Re-decode and verify
+		doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("Re-decode failed: %v", err)
+		}
+
+		indi := doc2.GetIndividual("@I1@")
+		if indi == nil {
+			t.Fatal("Individual @I1@ not found after round-trip")
+		}
+		if len(indi.Events) != 3 {
+			t.Fatalf("After round-trip: len(Events) = %d, want 3", len(indi.Events))
+		}
+
+		// First event: normal birth
+		if indi.Events[0].IsNegative {
+			t.Error("After round-trip: BIRT event should NOT be negative")
+		}
+		if indi.Events[0].Type != "BIRT" {
+			t.Errorf("After round-trip: Events[0].Type = %s, want BIRT", indi.Events[0].Type)
+		}
+
+		// Second event: negative marriage
+		if !indi.Events[1].IsNegative {
+			t.Error("After round-trip: MARR event should be negative")
+		}
+		if indi.Events[1].Type != "MARR" {
+			t.Errorf("After round-trip: Events[1].Type = %s, want MARR", indi.Events[1].Type)
+		}
+
+		// Third event: negative death
+		if !indi.Events[2].IsNegative {
+			t.Error("After round-trip: DEAT event should be negative")
+		}
+		if indi.Events[2].Type != "DEAT" {
+			t.Errorf("After round-trip: Events[2].Type = %s, want DEAT", indi.Events[2].Type)
+		}
+	})
+}

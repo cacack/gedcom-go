@@ -4302,3 +4302,292 @@ func TestSharedNoteEdgeCases(t *testing.T) {
 		}
 	})
 }
+
+// TestNOTagIndividual tests parsing of NO (negative assertion) tags on individuals.
+// GEDCOM 7.0 NO tag indicates an event did NOT occur.
+// Ref: Issue #121
+func TestNOTagIndividual(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+1 NO MARR
+2 DATE FROM 1800 TO 1850
+1 NO DEAT
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+	if len(indi.Events) != 2 {
+		t.Fatalf("len(Events) = %d, want 2", len(indi.Events))
+	}
+
+	// First NO assertion: never married
+	marrEvent := indi.Events[0]
+	if marrEvent.Type != "MARR" {
+		t.Errorf("Events[0].Type = %s, want MARR", marrEvent.Type)
+	}
+	if !marrEvent.IsNegative {
+		t.Error("Events[0].IsNegative should be true")
+	}
+	if marrEvent.Date != "FROM 1800 TO 1850" {
+		t.Errorf("Events[0].Date = %q, want 'FROM 1800 TO 1850'", marrEvent.Date)
+	}
+
+	// Second NO assertion: no death record
+	deatEvent := indi.Events[1]
+	if deatEvent.Type != "DEAT" {
+		t.Errorf("Events[1].Type = %s, want DEAT", deatEvent.Type)
+	}
+	if !deatEvent.IsNegative {
+		t.Error("Events[1].IsNegative should be true")
+	}
+}
+
+// TestNOTagFamily tests parsing of NO (negative assertion) tags on families.
+// Ref: Issue #121
+func TestNOTagFamily(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 NO DIV
+1 NO ANUL
+0 @I1@ INDI
+1 NAME John /Doe/
+0 @I2@ INDI
+1 NAME Jane /Smith/
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	fam := doc.GetFamily("@F1@")
+	if fam == nil {
+		t.Fatal("GetFamily(@F1@) returned nil")
+	}
+	if len(fam.Events) != 2 {
+		t.Fatalf("len(Events) = %d, want 2", len(fam.Events))
+	}
+
+	// First NO assertion: no divorce
+	divEvent := fam.Events[0]
+	if divEvent.Type != "DIV" {
+		t.Errorf("Events[0].Type = %s, want DIV", divEvent.Type)
+	}
+	if !divEvent.IsNegative {
+		t.Error("Events[0].IsNegative should be true")
+	}
+
+	// Second NO assertion: no annulment
+	anulEvent := fam.Events[1]
+	if anulEvent.Type != "ANUL" {
+		t.Errorf("Events[1].Type = %s, want ANUL", anulEvent.Type)
+	}
+	if !anulEvent.IsNegative {
+		t.Error("Events[1].IsNegative should be true")
+	}
+}
+
+// TestNOTagWithSubordinates tests parsing of NO tags with subordinate structures.
+// Ref: Issue #121
+func TestNOTagWithSubordinates(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+1 NO NATU
+2 DATE FROM 1700 TO 1800
+3 PHRASE No date phrase
+2 NOTE Note text about naturalization
+2 SOUR @S1@
+3 PAGE p. 42
+0 @S1@ SOUR
+1 TITL Test Source
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+	if len(indi.Events) != 1 {
+		t.Fatalf("len(Events) = %d, want 1", len(indi.Events))
+	}
+
+	event := indi.Events[0]
+	if event.Type != "NATU" {
+		t.Errorf("Event.Type = %s, want NATU", event.Type)
+	}
+	if !event.IsNegative {
+		t.Error("Event.IsNegative should be true")
+	}
+	if event.Date != "FROM 1700 TO 1800" {
+		t.Errorf("Event.Date = %q, want 'FROM 1700 TO 1800'", event.Date)
+	}
+
+	// Check subordinates
+	if len(event.Notes) != 1 {
+		t.Fatalf("len(Notes) = %d, want 1", len(event.Notes))
+	}
+	if event.Notes[0] != "Note text about naturalization" {
+		t.Errorf("Notes[0] = %q, want 'Note text about naturalization'", event.Notes[0])
+	}
+
+	if len(event.SourceCitations) != 1 {
+		t.Fatalf("len(SourceCitations) = %d, want 1", len(event.SourceCitations))
+	}
+	if event.SourceCitations[0].SourceXRef != "@S1@" {
+		t.Errorf("SourceCitations[0].SourceXRef = %q, want '@S1@'", event.SourceCitations[0].SourceXRef)
+	}
+	if event.SourceCitations[0].Page != "p. 42" {
+		t.Errorf("SourceCitations[0].Page = %q, want 'p. 42'", event.SourceCitations[0].Page)
+	}
+}
+
+// TestNOTagMultiple tests multiple NO assertions on the same record.
+// Ref: Issue #121
+func TestNOTagMultiple(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+1 BIRT
+2 DATE 1 JAN 1800
+1 NO MARR
+1 NO DEAT
+1 NO EMIG
+1 NO NATU
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+
+	// Should have 5 events: 1 BIRT + 4 NO assertions
+	if len(indi.Events) != 5 {
+		t.Fatalf("len(Events) = %d, want 5", len(indi.Events))
+	}
+
+	// First event is normal birth
+	if indi.Events[0].Type != "BIRT" {
+		t.Errorf("Events[0].Type = %s, want BIRT", indi.Events[0].Type)
+	}
+	if indi.Events[0].IsNegative {
+		t.Error("Events[0].IsNegative should be false for BIRT")
+	}
+
+	// Remaining events are NO assertions
+	expectedTypes := []string{"MARR", "DEAT", "EMIG", "NATU"}
+	for i, expectedType := range expectedTypes {
+		event := indi.Events[i+1]
+		if string(event.Type) != expectedType {
+			t.Errorf("Events[%d].Type = %s, want %s", i+1, event.Type, expectedType)
+		}
+		if !event.IsNegative {
+			t.Errorf("Events[%d].IsNegative should be true for %s", i+1, expectedType)
+		}
+	}
+}
+
+// TestNOTagFamilyWithSubordinates tests NO tags on family with full subordinate structures.
+// Based on maximal70.ged test data.
+// Ref: Issue #121
+func TestNOTagFamilyWithSubordinates(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 NO DIV
+2 DATE FROM 1700 TO 1800
+3 PHRASE No date phrase
+2 NOTE Note text
+2 SNOTE @N2@
+2 SOUR @S1@
+3 PAGE 1
+2 SOUR @S1@
+3 PAGE 2
+1 NO ANUL
+0 @I1@ INDI
+1 NAME John /Doe/
+0 @I2@ INDI
+1 NAME Jane /Smith/
+0 @S1@ SOUR
+1 TITL Source One
+0 @N2@ SNOTE Shared note two
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	fam := doc.GetFamily("@F1@")
+	if fam == nil {
+		t.Fatal("GetFamily(@F1@) returned nil")
+	}
+	if len(fam.Events) != 2 {
+		t.Fatalf("len(Events) = %d, want 2", len(fam.Events))
+	}
+
+	// First NO assertion: no divorce, with subordinates
+	divEvent := fam.Events[0]
+	if divEvent.Type != "DIV" {
+		t.Errorf("Events[0].Type = %s, want DIV", divEvent.Type)
+	}
+	if !divEvent.IsNegative {
+		t.Error("Events[0].IsNegative should be true")
+	}
+	if divEvent.Date != "FROM 1700 TO 1800" {
+		t.Errorf("Events[0].Date = %q, want 'FROM 1700 TO 1800'", divEvent.Date)
+	}
+
+	// Check subordinates on NO DIV
+	if len(divEvent.Notes) != 1 {
+		t.Fatalf("len(Notes) = %d, want 1", len(divEvent.Notes))
+	}
+	if len(divEvent.SourceCitations) != 2 {
+		t.Fatalf("len(SourceCitations) = %d, want 2", len(divEvent.SourceCitations))
+	}
+	if divEvent.SourceCitations[0].Page != "1" {
+		t.Errorf("SourceCitations[0].Page = %q, want '1'", divEvent.SourceCitations[0].Page)
+	}
+	if divEvent.SourceCitations[1].Page != "2" {
+		t.Errorf("SourceCitations[1].Page = %q, want '2'", divEvent.SourceCitations[1].Page)
+	}
+
+	// Second NO assertion: no annulment (minimal)
+	anulEvent := fam.Events[1]
+	if anulEvent.Type != "ANUL" {
+		t.Errorf("Events[1].Type = %s, want ANUL", anulEvent.Type)
+	}
+	if !anulEvent.IsNegative {
+		t.Error("Events[1].IsNegative should be true")
+	}
+}
