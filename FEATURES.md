@@ -4,6 +4,36 @@ This document provides a comprehensive list of all features implemented in gedco
 
 For planned features, see [GitHub Issues](https://github.com/cacack/gedcom-go/issues).
 
+## Convenience API
+
+Single-import facade for common GEDCOM operations:
+
+```go
+import gedcomgo "github.com/cacack/gedcom-go"
+
+doc, err := gedcomgo.Decode(file)           // Parse GEDCOM
+err = gedcomgo.Encode(writer, doc)          // Write GEDCOM
+errors := gedcomgo.Validate(doc)            // Basic validation
+issues := gedcomgo.ValidateAll(doc)         // Comprehensive validation
+converted, report, err := gedcomgo.Convert(doc, gedcomgo.Version70)  // Version conversion
+```
+
+| Function | Description |
+|----------|-------------|
+| `Decode(r)` | Parse GEDCOM file with default options |
+| `DecodeWithDiagnostics(r)` | Parse with error collection for lenient mode |
+| `Encode(w, doc)` | Write GEDCOM file with default options |
+| `Validate(doc)` | Basic structural validation (returns `[]error`) |
+| `ValidateAll(doc)` | Comprehensive validation with severity levels (returns `[]Issue`) |
+| `Convert(doc, version)` | Convert between GEDCOM versions |
+
+Re-exported types for single-import convenience:
+- `Document`, `Individual`, `Family` - Core data types
+- `Version`, `Version55`, `Version551`, `Version70` - Version constants
+- `DecodeResult`, `Issue`, `ConversionReport` - Result types
+
+For advanced use cases (custom options, progress callbacks, streaming), import the underlying packages directly. See README.md for examples.
+
 ## Multi-Version Support
 
 | Version | Status | Notes |
