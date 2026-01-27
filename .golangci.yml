@@ -10,12 +10,17 @@ linters:
   enable:
     - gocritic
     - gocyclo
+    - godoclint
     - gosec
     - misspell
     - revive
     - unconvert
     - unparam
   settings:
+    godoclint:
+      require-doc: true
+      require-pkg-doc: true
+      check-start-with-name: true
     gocritic:
       enabled-tags:
         - diagnostic

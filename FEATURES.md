@@ -193,6 +193,27 @@ snote := doc.GetSharedNote("@N1@")
 
 Supported on: Document (as top-level records accessible via `SharedNotes()` and `GetSharedNote()`)
 
+### Encoding Validation
+
+GEDCOM 7.0 encoding compliance validation:
+
+- **UTF-8 Enforcement**: Validates that GEDCOM 7.0 files use UTF-8 encoding exclusively. ANSEL and UTF-16 encodings are rejected for 7.0 files (they remain valid for 5.5/5.5.1).
+- **Control Character Validation**: Detects banned C0 control characters (U+0000-U+001F) in 7.0 files, except for allowed whitespace: TAB (U+0009), LF (U+000A), and CR (U+000D).
+
+```go
+// Run encoding validation
+validator := validator.New()
+issues := validator.ValidateEncoding(doc)
+
+// Or as part of full validation
+allIssues := validator.ValidateAll(doc)
+```
+
+| Error Code | Severity | Description |
+|------------|----------|-------------|
+| INVALID_ENCODING_FOR_VERSION | Error | Non-UTF-8 encoding in GEDCOM 7.0 file |
+| BANNED_CONTROL_CHARACTER | Error | Banned C0 control character found in 7.0 file |
+
 ## Character Encoding
 
 | Encoding | Status | Notes |

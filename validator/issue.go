@@ -130,6 +130,17 @@ const (
 	CodeXRefTooLong = "XREF_TOO_LONG"
 )
 
+// Error codes for encoding validation.
+const (
+	// CodeInvalidEncodingForVersion indicates the file's encoding is not supported
+	// by the detected GEDCOM version. GEDCOM 7.0 requires UTF-8 exclusively.
+	CodeInvalidEncodingForVersion = "INVALID_ENCODING_FOR_VERSION"
+
+	// CodeBannedControlCharacter indicates a banned C0 control character was found.
+	// GEDCOM 7.0 bans U+0000-U+001F except TAB (U+0009), LF (U+000A), CR (U+000D).
+	CodeBannedControlCharacter = "BANNED_CONTROL_CHARACTER"
+)
+
 // Issue represents a validation finding with severity, context, and actionable information.
 type Issue struct {
 	// Severity indicates the importance level of this issue.

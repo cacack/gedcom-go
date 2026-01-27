@@ -1,4 +1,3 @@
-// Package encoder provides functionality to write GEDCOM documents to files.
 package encoder
 
 import (

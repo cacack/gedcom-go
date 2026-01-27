@@ -60,6 +60,11 @@ type ValidatorConfig struct {
 	// When true and TagRegistry is set, custom tags are validated against the registry.
 	// Default: false (backward compatible).
 	ValidateCustomTags bool
+
+	// SkipEncodingValidation disables GEDCOM 7.0 encoding validation.
+	// When true, UTF-8 enforcement and control character checks are skipped.
+	// Default: false (encoding validation enabled).
+	SkipEncodingValidation bool
 }
 
 // Validator validates GEDCOM documents against specification rules.
@@ -73,6 +78,7 @@ type Validator struct {
 	tagValidator *TagValidator
 	header       *HeaderValidator
 	xref         *XRefValidator
+	encoding     *EncodingValidator
 }
 
 // New creates a new Validator with default configuration.
@@ -174,6 +180,14 @@ func (v *Validator) getXRefValidator() *XRefValidator {
 		v.xref = NewXRefValidator()
 	}
 	return v.xref
+}
+
+// getEncodingValidator returns the encoding validator, creating it lazily if needed.
+func (v *Validator) getEncodingValidator() *EncodingValidator {
+	if v.encoding == nil {
+		v.encoding = NewEncodingValidator()
+	}
+	return v.encoding
 }
 
 // Validate validates a GEDCOM document and returns any validation errors.
@@ -299,6 +313,11 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 		allIssues = append(allIssues, v.getTagValidator().Validate(doc)...)
 	}
 
+	// Run encoding validation (GEDCOM 7.0 specific)
+	if v.config == nil || !v.config.SkipEncodingValidation {
+		allIssues = append(allIssues, v.getEncodingValidator().Validate(doc)...)
+	}
+
 	// Filter by strictness
 	return v.filterByStrictness(allIssues)
 }
@@ -346,6 +365,18 @@ func (v *Validator) FindPotentialDuplicates(doc *gedcom.Document) []DuplicatePai
 		return nil
 	}
 	return v.getDuplicateDetector().FindDuplicates(doc)
+}
+
+// ValidateEncoding validates GEDCOM 7.0 encoding requirements.
+// This checks that GEDCOM 7.0 files use UTF-8 encoding and do not contain
+// banned C0 control characters.
+// For GEDCOM 5.5 and 5.5.1, no encoding restrictions are enforced.
+func (v *Validator) ValidateEncoding(doc *gedcom.Document) []Issue {
+	if doc == nil {
+		return nil
+	}
+	issues := v.getEncodingValidator().Validate(doc)
+	return v.filterByStrictness(issues)
 }
 
 // QualityReport generates a comprehensive data quality report for the document.

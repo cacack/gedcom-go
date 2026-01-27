@@ -4,48 +4,76 @@ package gedcom
 type EventType string
 
 const (
-	// Individual events
-	EventBirth       EventType = "BIRT" // Birth
-	EventDeath       EventType = "DEAT" // Death
-	EventBaptism     EventType = "BAPM" // Baptism
-	EventBurial      EventType = "BURI" // Burial
-	EventCensus      EventType = "CENS" // Census
-	EventChristening EventType = "CHR"  // Christening
-	EventAdoption    EventType = "ADOP" // Adoption
-	EventOccupation  EventType = "OCCU" // Occupation
-	EventResidence   EventType = "RESI" // Residence
-	EventImmigration EventType = "IMMI" // Immigration
-	EventEmigration  EventType = "EMIG" // Emigration
+	// EventBirth represents a birth event.
+	EventBirth EventType = "BIRT"
+	// EventDeath represents a death event.
+	EventDeath EventType = "DEAT"
+	// EventBaptism represents a baptism event.
+	EventBaptism EventType = "BAPM"
+	// EventBurial represents a burial event.
+	EventBurial EventType = "BURI"
+	// EventCensus represents a census event.
+	EventCensus EventType = "CENS"
+	// EventChristening represents a christening event.
+	EventChristening EventType = "CHR"
+	// EventAdoption represents an adoption event.
+	EventAdoption EventType = "ADOP"
+	// EventOccupation represents an occupation event.
+	EventOccupation EventType = "OCCU"
+	// EventResidence represents a residence event.
+	EventResidence EventType = "RESI"
+	// EventImmigration represents an immigration event.
+	EventImmigration EventType = "IMMI"
+	// EventEmigration represents an emigration event.
+	EventEmigration EventType = "EMIG"
 
-	// Religious events
-	EventBarMitzvah       EventType = "BARM" // Bar Mitzvah
-	EventBasMitzvah       EventType = "BASM" // Bas Mitzvah (also Bat Mitzvah)
-	EventBlessing         EventType = "BLES" // Blessing
-	EventAdultChristening EventType = "CHRA" // Adult Christening
-	EventConfirmation     EventType = "CONF" // Confirmation
-	EventFirstCommunion   EventType = "FCOM" // First Communion
+	// EventBarMitzvah represents a Bar Mitzvah event.
+	EventBarMitzvah EventType = "BARM"
+	// EventBasMitzvah represents a Bas Mitzvah (also Bat Mitzvah) event.
+	EventBasMitzvah EventType = "BASM"
+	// EventBlessing represents a blessing event.
+	EventBlessing EventType = "BLES"
+	// EventAdultChristening represents an adult christening event.
+	EventAdultChristening EventType = "CHRA"
+	// EventConfirmation represents a confirmation event.
+	EventConfirmation EventType = "CONF"
+	// EventFirstCommunion represents a first communion event.
+	EventFirstCommunion EventType = "FCOM"
 
-	// Life events
-	EventGraduation     EventType = "GRAD" // Graduation
-	EventRetirement     EventType = "RETI" // Retirement
-	EventNaturalization EventType = "NATU" // Naturalization
-	EventOrdination     EventType = "ORDN" // Ordination
-	EventProbate        EventType = "PROB" // Probate
-	EventWill           EventType = "WILL" // Will
-	EventCremation      EventType = "CREM" // Cremation
+	// EventGraduation represents a graduation event.
+	EventGraduation EventType = "GRAD"
+	// EventRetirement represents a retirement event.
+	EventRetirement EventType = "RETI"
+	// EventNaturalization represents a naturalization event.
+	EventNaturalization EventType = "NATU"
+	// EventOrdination represents an ordination event.
+	EventOrdination EventType = "ORDN"
+	// EventProbate represents a probate event.
+	EventProbate EventType = "PROB"
+	// EventWill represents a will event.
+	EventWill EventType = "WILL"
+	// EventCremation represents a cremation event.
+	EventCremation EventType = "CREM"
 
-	// Family events
-	EventMarriage   EventType = "MARR" // Marriage
-	EventDivorce    EventType = "DIV"  // Divorce
-	EventEngagement EventType = "ENGA" // Engagement
-	EventAnnulment  EventType = "ANUL" // Annulment
+	// EventMarriage represents a marriage event.
+	EventMarriage EventType = "MARR"
+	// EventDivorce represents a divorce event.
+	EventDivorce EventType = "DIV"
+	// EventEngagement represents an engagement event.
+	EventEngagement EventType = "ENGA"
+	// EventAnnulment represents an annulment event.
+	EventAnnulment EventType = "ANUL"
 
-	// Family events - extended
-	EventMarriageBann       EventType = "MARB" // Marriage Bann
-	EventMarriageContract   EventType = "MARC" // Marriage Contract
-	EventMarriageLicense    EventType = "MARL" // Marriage License
-	EventMarriageSettlement EventType = "MARS" // Marriage Settlement
-	EventDivorceFiling      EventType = "DIVF" // Divorce Filing
+	// EventMarriageBann represents a marriage bann event.
+	EventMarriageBann EventType = "MARB"
+	// EventMarriageContract represents a marriage contract event.
+	EventMarriageContract EventType = "MARC"
+	// EventMarriageLicense represents a marriage license event.
+	EventMarriageLicense EventType = "MARL"
+	// EventMarriageSettlement represents a marriage settlement event.
+	EventMarriageSettlement EventType = "MARS"
+	// EventDivorceFiling represents a divorce filing event.
+	EventDivorceFiling EventType = "DIVF"
 )
 
 // Coordinates represents geographic coordinates for a place.
