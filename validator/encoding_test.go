@@ -563,6 +563,48 @@ func TestValidator_ValidateAll_IncludesEncoding(t *testing.T) {
 	}
 }
 
+func TestValidator_ValidateAll_SkipEncodingValidation(t *testing.T) {
+	// Test that SkipEncodingValidation config flag disables encoding checks
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{
+			Version:  gedcom.Version70,
+			Encoding: gedcom.EncodingANSEL, // Would normally fail
+		},
+		Records: []*gedcom.Record{},
+		XRefMap: make(map[string]*gedcom.Record),
+	}
+
+	// Without skip flag - should find encoding issue
+	v1 := New()
+	issues1 := v1.ValidateAll(doc)
+	foundWithoutSkip := false
+	for _, issue := range issues1 {
+		if issue.Code == CodeInvalidEncodingForVersion {
+			foundWithoutSkip = true
+			break
+		}
+	}
+	if !foundWithoutSkip {
+		t.Error("Expected encoding issue without SkipEncodingValidation")
+	}
+
+	// With skip flag - should not find encoding issue
+	v2 := NewWithConfig(&ValidatorConfig{
+		SkipEncodingValidation: true,
+	})
+	issues2 := v2.ValidateAll(doc)
+	foundWithSkip := false
+	for _, issue := range issues2 {
+		if issue.Code == CodeInvalidEncodingForVersion || issue.Code == CodeBannedControlCharacter {
+			foundWithSkip = true
+			break
+		}
+	}
+	if foundWithSkip {
+		t.Error("Expected no encoding issues with SkipEncodingValidation=true")
+	}
+}
+
 func TestEncodingValidator_IsBannedControlChar(t *testing.T) {
 	v := NewEncodingValidator()
 

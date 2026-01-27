@@ -60,6 +60,11 @@ type ValidatorConfig struct {
 	// When true and TagRegistry is set, custom tags are validated against the registry.
 	// Default: false (backward compatible).
 	ValidateCustomTags bool
+
+	// SkipEncodingValidation disables GEDCOM 7.0 encoding validation.
+	// When true, UTF-8 enforcement and control character checks are skipped.
+	// Default: false (encoding validation enabled).
+	SkipEncodingValidation bool
 }
 
 // Validator validates GEDCOM documents against specification rules.
@@ -309,7 +314,9 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	}
 
 	// Run encoding validation (GEDCOM 7.0 specific)
-	allIssues = append(allIssues, v.getEncodingValidator().Validate(doc)...)
+	if v.config == nil || !v.config.SkipEncodingValidation {
+		allIssues = append(allIssues, v.getEncodingValidator().Validate(doc)...)
+	}
 
 	// Filter by strictness
 	return v.filterByStrictness(allIssues)
