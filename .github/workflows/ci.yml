@@ -330,6 +330,10 @@ jobs:
           git worktree add "$OLD_DIR" "$LATEST_TAG" --quiet
           trap "git worktree remove '$OLD_DIR' --force 2>/dev/null || true" EXIT
 
+          # Download dependencies for both versions (required by apidiff)
+          (cd "$OLD_DIR" && go mod download)
+          go mod download
+
           # Run apidiff comparing old version against current
           # -m flag compares all packages in the module
           # Use set +e to prevent immediate exit on non-zero return
