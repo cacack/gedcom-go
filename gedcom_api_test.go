@@ -639,7 +639,7 @@ func TestConversionReportType(t *testing.T) {
 	doc, _ := Decode(strings.NewReader(testGedcomMinimal))
 	_, report, _ := Convert(doc, gedcom.Version70)
 
-	var cr *ConversionReport = report
+	cr := report
 	if cr == nil {
 		t.Fatal("ConversionReport type alias failed")
 	}
@@ -668,7 +668,7 @@ func TestValidateEmptyDocument(t *testing.T) {
 // TestValidateAllNilDocument verifies ValidateAll behavior with nil document.
 func TestValidateAllNilDocument(t *testing.T) {
 	issues := ValidateAll(nil)
-	if issues != nil && len(issues) > 0 {
+	if len(issues) > 0 {
 		t.Errorf("ValidateAll(nil) should return nil or empty, got %v", issues)
 	}
 }

@@ -153,6 +153,6 @@ func ValidateAll(doc *Document) []Issue {
 //
 // For custom options (strict data loss mode, validation), use the
 // converter package directly: converter.ConvertWithOptions().
-func Convert(doc *Document, targetVersion Version) (*Document, *ConversionReport, error) {
+func Convert(doc *Document, targetVersion Version) (converted *Document, report *ConversionReport, err error) {
 	return converter.Convert(doc, targetVersion)
 }
