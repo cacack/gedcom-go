@@ -265,6 +265,37 @@ For fine-grained control, these packages are available:
 - **`validator`** - Document validation with error categorization
 - **`version`** - GEDCOM version detection (header and heuristic-based)
 
+## API Stability
+
+This library follows [Semantic Versioning](https://semver.org/). We do not break exported types in v1+ without a major version bump.
+
+### Stable Packages
+
+| Package | Key APIs |
+|---------|----------|
+| `gedcom` | Document, Individual, Family, Event, Date |
+| `decoder` | Decode(), DecodeWithOptions() |
+| `encoder` | Encode(), EncodeWithOptions() |
+| `converter` | Convert(), ConvertWithOptions() |
+| `parser` | Parse(), ParseLine() |
+| `validator` | Validate(), ValidateAll() |
+| `charset` | NewReader() |
+| `version` | Detect() |
+
+### What May Change
+
+- **Experimental features** (streaming APIs, duplicate detection) may evolve in minor versions
+
+### GEDCOM Spec Evolution
+
+As GEDCOM 7.x evolves, we add support additively. New tags and structures are added without breaking existing code.
+
+### Vendor Extensions
+
+Vendor extensions (Ancestry, FamilySearch) are best-effort and not covered by stability guarantees.
+
+For the complete policy including deprecation process, see [docs/API_STABILITY.md](docs/API_STABILITY.md).
+
 ## Development
 
 ### Quick Start with Makefile

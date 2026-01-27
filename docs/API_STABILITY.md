@@ -10,6 +10,10 @@ gedcom-go follows [Semantic Versioning](https://semver.org/):
 - **MINOR** (1.0.x → 1.1.0): New features, backward compatible
 - **PATCH** (1.0.0 → 1.0.1): Bug fixes, backward compatible
 
+### Automated Enforcement
+
+CI automatically detects breaking API changes using [apidiff](https://pkg.go.dev/golang.org/x/exp/cmd/apidiff). PRs with breaking changes must declare them via conventional commits (`feat!:`, `fix!:`, or `BREAKING CHANGE:` footer). This ensures release-please correctly bumps the major version.
+
 ## What Constitutes a Breaking Change
 
 ### Breaking (Requires Major Version Bump)
@@ -47,6 +51,7 @@ These packages/APIs are stable and follow semver strictly:
 | `gedcom` | Stable | Core types: Document, Individual, Family, etc. |
 | `decoder` | Stable | `Decode()`, `DecodeWithOptions()` |
 | `encoder` | Stable | `Encode()`, `EncodeWithOptions()` |
+| `converter` | Stable | `Convert()`, `ConvertWithOptions()` |
 | `parser` | Stable | `Parse()`, `ParseLine()` |
 | `validator` | Stable | `Validate()`, `ValidateAll()` |
 | `charset` | Stable | `NewReader()` |
@@ -86,9 +91,9 @@ func (d *Document) FindIndividual(xref string) *Individual {
 }
 ```
 
-## Pre-1.0 Note
+## Stability Note
 
-While at version 0.x, minor versions may contain breaking changes. The API is stabilizing but not yet frozen. Version 1.0.0 will mark the first stable release with full compatibility guarantees.
+Version 1.0.0 marked the first stable release with full compatibility guarantees. All packages listed as "Stable" above follow strict semver.
 
 ## Reporting Compatibility Issues
 

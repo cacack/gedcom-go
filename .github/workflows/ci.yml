@@ -295,6 +295,98 @@ jobs:
           /tmp/example-parse testdata/gedcom-5.5/minimal.ged
         fi
 
+  api-compatibility:
+    name: API Compatibility Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        with:
+          fetch-depth: 0  # Full history for tags and commits
+
+      - name: Set up Go
+        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+        with:
+          go-version: '1.25'
+
+      - name: Install apidiff
+        run: go install golang.org/x/exp/cmd/apidiff@latest
+
+      - name: Check API compatibility
+        run: |
+          # Get latest release tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "✅ No release tags found, skipping API compatibility check"
+            exit 0
+          fi
+
+          echo "Comparing API against $LATEST_TAG"
+
+          # Clone old version to temp directory (worktrees have issues with apidiff)
+          OLD_DIR=$(mktemp -d)
+          git clone --depth 1 --branch "$LATEST_TAG" "https://github.com/${{ github.repository }}.git" "$OLD_DIR" --quiet
+          trap "rm -rf '$OLD_DIR'" EXIT
+
+          # Export old API to file, then compare against current
+          # This is more reliable than comparing directories directly
+          API_FILE=$(mktemp)
+          (cd "$OLD_DIR" && go mod download && apidiff -m -w "$API_FILE" .)
+          go mod download
+
+          # Run apidiff comparing exported API against current
+          # Use set +e to prevent immediate exit on non-zero return
+          set +e
+          APIDIFF_OUT=$(apidiff -m "$API_FILE" . 2>&1)
+          APIDIFF_STATUS=$?
+          set -e
+
+          # Fail if apidiff itself errored (not just found incompatibilities)
+          if [ $APIDIFF_STATUS -ne 0 ] && ! echo "$APIDIFF_OUT" | grep -q "Incompatible changes:"; then
+            echo "::error::apidiff failed to run:"
+            echo "$APIDIFF_OUT"
+            exit 1
+          fi
+
+          # Check for incompatible (breaking) changes
+          if echo "$APIDIFF_OUT" | grep -q "Incompatible changes:"; then
+            echo "⚠️  Breaking API changes detected:"
+            echo "$APIDIFF_OUT"
+            echo ""
+
+            # Check if commits declare breaking change via conventional commits
+            # Look for: feat!:, fix!:, refactor!:, or BREAKING CHANGE: in commit body
+            COMMITS=$(git log --format="%s%n%b" origin/main..HEAD)
+
+            if echo "$COMMITS" | grep -qE '^(feat|fix|refactor|perf|docs|style|test|build|ci|chore)!:|BREAKING CHANGE:'; then
+              echo "✅ Breaking change properly declared in commit message"
+              echo "   Release-please will bump major version"
+              exit 0
+            else
+              echo ""
+              echo "::error::Breaking API changes detected but not declared in commits!"
+              echo ""
+              echo "To fix, use one of these conventional commit formats:"
+              echo "  feat!: description of breaking change"
+              echo "  fix!: description of breaking change"
+              echo "  feat: description"
+              echo ""
+              echo "  BREAKING CHANGE: explanation of what breaks"
+              echo ""
+              echo "This ensures release-please creates a major version bump."
+              exit 1
+            fi
+          else
+            echo "✅ No breaking API changes detected"
+            if [ -n "$APIDIFF_OUT" ]; then
+              echo ""
+              echo "Compatible changes:"
+              echo "$APIDIFF_OUT"
+            fi
+          fi
+
   pr-title:
     name: PR Title Check
     runs-on: ubuntu-latest
@@ -331,7 +423,7 @@ jobs:
     name: CI Success
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [test, coverage, lint, format, dependency-review, security, build-examples, pr-title]
+    needs: [test, coverage, lint, format, dependency-review, security, build-examples, api-compatibility, pr-title]
     if: always()
     steps:
       - name: Check all jobs passed
