@@ -332,7 +332,15 @@ jobs:
 
           # Run apidiff comparing old version against current
           # -m flag compares all packages in the module
-          APIDIFF_OUT=$(apidiff -m "$OLD_DIR" . 2>&1) || true
+          APIDIFF_OUT=$(apidiff -m "$OLD_DIR" . 2>&1)
+          APIDIFF_STATUS=$?
+
+          # Fail if apidiff itself errored (not just found incompatibilities)
+          if [ $APIDIFF_STATUS -ne 0 ] && ! echo "$APIDIFF_OUT" | grep -q "Incompatible changes:"; then
+            echo "::error::apidiff failed to run:"
+            echo "$APIDIFF_OUT"
+            exit 1
+          fi
 
           # Check for incompatible (breaking) changes
           if echo "$APIDIFF_OUT" | grep -q "Incompatible changes:"; then
