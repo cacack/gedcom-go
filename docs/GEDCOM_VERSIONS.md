@@ -147,6 +147,39 @@ This document summarizes the key differences between GEDCOM versions 5.5, 5.5.1,
 
 GEDCOM 7.0 is NOT backward compatible with 5.5.1. Files must be converted.
 
+### Encoding Validation
+
+GEDCOM 7.0 has strict encoding requirements enforced by the validator:
+
+**UTF-8 Enforcement**
+- GEDCOM 7.0 requires UTF-8 encoding exclusively
+- ANSEL, UTF-16, and LATIN1 encodings are rejected for 7.0 files
+- These encodings remain valid for GEDCOM 5.5 and 5.5.1
+
+**Banned Control Characters**
+- C0 control characters (U+0000–U+001F) are banned in 7.0
+- Exceptions: TAB (U+0009), LF (U+000A), and CR (U+000D) are allowed
+- Control characters are not restricted in GEDCOM 5.5/5.5.1
+
+**Validation Error Codes**
+
+| Code | Description |
+|------|-------------|
+| `INVALID_ENCODING_FOR_VERSION` | Non-UTF-8 encoding used with GEDCOM 7.0 |
+| `BANNED_CONTROL_CHARACTER` | Prohibited C0 control character detected |
+
+**Validator API**
+
+```go
+v := validator.New()
+
+// Full validation including encoding checks
+issues := v.ValidateAll(doc)
+
+// Encoding validation only
+issues := v.ValidateEncoding(doc)
+```
+
 ## ANSEL Character Encoding
 
 ANSEL (ANSI Z39.47) is a character encoding used in legacy GEDCOM 5.5 files, particularly for representing characters with diacritical marks common in genealogical records.
