@@ -75,9 +75,16 @@ func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error 
 
 func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error {
 	// Write record line
+	// Some records (NOTE, SNOTE) have a value on the level 0 line
 	if record.XRef != "" {
-		if _, err := fmt.Fprintf(w, "0 %s %s%s", record.XRef, record.Type, opts.LineEnding); err != nil {
-			return err
+		if record.Value != "" {
+			if _, err := fmt.Fprintf(w, "0 %s %s %s%s", record.XRef, record.Type, record.Value, opts.LineEnding); err != nil {
+				return err
+			}
+		} else {
+			if _, err := fmt.Fprintf(w, "0 %s %s%s", record.XRef, record.Type, opts.LineEnding); err != nil {
+				return err
+			}
 		}
 	} else {
 		if _, err := fmt.Fprintf(w, "0 %s%s", record.Type, opts.LineEnding); err != nil {

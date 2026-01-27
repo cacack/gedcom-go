@@ -156,6 +156,43 @@ if doc.Schema != nil {
 
 The schema is parsed from the GEDCOM 7.0 header's SCHMA structure and stored in `Document.Schema`. For GEDCOM 5.5/5.5.1 files, `Document.Schema` is nil.
 
+### Shared Notes (SNOTE)
+
+GEDCOM 7.0 shared notes are distinct from inline NOTE tags, supporting MIME types, language tags, and translations for multi-language note content.
+
+```go
+// Access shared notes
+for _, snote := range doc.SharedNotes() {
+    fmt.Println(snote.XRef)      // "@N1@"
+    fmt.Println(snote.Text)      // "Note content"
+    fmt.Println(snote.MIME)      // "text/html"
+    fmt.Println(snote.Language)  // "en"
+
+    // Access translations
+    for _, tran := range snote.Translations {
+        fmt.Println(tran.Value)     // "Translated content"
+        fmt.Println(tran.Language)  // "es"
+        fmt.Println(tran.MIME)      // "text/plain"
+    }
+}
+
+// Lookup by XRef
+snote := doc.GetSharedNote("@N1@")
+```
+
+| Field | Description |
+|-------|-------------|
+| XRef | Cross-reference identifier |
+| Text | Note content |
+| MIME | Media type (text/plain, text/html) |
+| Language | BCP 47 language tag |
+| Translations | Translated versions with their own MIME/Language |
+| SourceCitations | Source citations on the note |
+| ExternalIDs | External identifiers (EXID) |
+| ChangeDate | Last modification date |
+
+Supported on: Document (as top-level records accessible via `SharedNotes()` and `GetSharedNote()`)
+
 ## Character Encoding
 
 | Encoding | Status | Notes |

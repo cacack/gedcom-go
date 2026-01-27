@@ -200,3 +200,27 @@ func (d *Document) MediaObjects() []*MediaObject {
 	}
 	return objects
 }
+
+// GetSharedNote returns the shared note record with the given XRef.
+// Returns nil if not found or if the record is not a shared note.
+func (d *Document) GetSharedNote(xref string) *SharedNote {
+	record := d.GetRecord(xref)
+	if record == nil {
+		return nil
+	}
+	if snote, ok := record.GetSharedNote(); ok {
+		return snote
+	}
+	return nil
+}
+
+// SharedNotes returns all shared note records in the document (GEDCOM 7.0).
+func (d *Document) SharedNotes() []*SharedNote {
+	var notes []*SharedNote
+	for _, record := range d.Records {
+		if snote, ok := record.GetSharedNote(); ok {
+			notes = append(notes, snote)
+		}
+	}
+	return notes
+}

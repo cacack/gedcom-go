@@ -3837,3 +3837,468 @@ func TestMaximal70AssociationsFromFile(t *testing.T) {
 	// Note: Family associations are not currently implemented in the Family type.
 	// This test only checks Individual associations.
 }
+
+// TestSharedNoteParsing tests parsing of GEDCOM 7.0 SNOTE records.
+func TestSharedNoteParsing(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @SN1@ SNOTE A simple shared note
+0 @SN2@ SNOTE A shared note with metadata
+1 MIME text/plain
+1 LANG en
+0 @SN3@ SNOTE A shared note with translation
+1 LANG en
+1 TRAN Eine geteilte Notiz
+2 LANG de
+2 MIME text/plain
+0 @SN4@ SNOTE A shared note with source
+1 SOUR @S1@
+2 PAGE Page 42
+1 CHAN
+2 DATE 25 MAY 2021
+0 @SN5@ SNOTE A shared note with external ID
+1 EXID ABC123
+2 TYPE https://example.org/id-type
+0 @S1@ SOUR Test Source
+1 TITL A Test Source
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test SharedNotes() method
+	notes := doc.SharedNotes()
+	if len(notes) != 5 {
+		t.Fatalf("len(SharedNotes()) = %d, want 5", len(notes))
+	}
+
+	// Test simple note
+	sn1 := doc.GetSharedNote("@SN1@")
+	if sn1 == nil {
+		t.Fatal("GetSharedNote(@SN1@) returned nil")
+	}
+	if sn1.XRef != "@SN1@" {
+		t.Errorf("sn1.XRef = %s, want @SN1@", sn1.XRef)
+	}
+	if sn1.Text != "A simple shared note" {
+		t.Errorf("sn1.Text = %s, want 'A simple shared note'", sn1.Text)
+	}
+
+	// Test note with metadata
+	sn2 := doc.GetSharedNote("@SN2@")
+	if sn2 == nil {
+		t.Fatal("GetSharedNote(@SN2@) returned nil")
+	}
+	if sn2.MIME != "text/plain" {
+		t.Errorf("sn2.MIME = %s, want 'text/plain'", sn2.MIME)
+	}
+	if sn2.Language != "en" {
+		t.Errorf("sn2.Language = %s, want 'en'", sn2.Language)
+	}
+
+	// Test note with translation
+	sn3 := doc.GetSharedNote("@SN3@")
+	if sn3 == nil {
+		t.Fatal("GetSharedNote(@SN3@) returned nil")
+	}
+	if len(sn3.Translations) != 1 {
+		t.Fatalf("len(sn3.Translations) = %d, want 1", len(sn3.Translations))
+	}
+	tran := sn3.Translations[0]
+	if tran.Value != "Eine geteilte Notiz" {
+		t.Errorf("tran.Value = %s, want 'Eine geteilte Notiz'", tran.Value)
+	}
+	if tran.Language != "de" {
+		t.Errorf("tran.Language = %s, want 'de'", tran.Language)
+	}
+	if tran.MIME != "text/plain" {
+		t.Errorf("tran.MIME = %s, want 'text/plain'", tran.MIME)
+	}
+
+	// Test note with source citation and change date
+	sn4 := doc.GetSharedNote("@SN4@")
+	if sn4 == nil {
+		t.Fatal("GetSharedNote(@SN4@) returned nil")
+	}
+	if len(sn4.SourceCitations) != 1 {
+		t.Fatalf("len(sn4.SourceCitations) = %d, want 1", len(sn4.SourceCitations))
+	}
+	if sn4.SourceCitations[0].SourceXRef != "@S1@" {
+		t.Errorf("SourceCitation.SourceXRef = %s, want '@S1@'", sn4.SourceCitations[0].SourceXRef)
+	}
+	if sn4.SourceCitations[0].Page != "Page 42" {
+		t.Errorf("SourceCitation.Page = %s, want 'Page 42'", sn4.SourceCitations[0].Page)
+	}
+	if sn4.ChangeDate == nil {
+		t.Fatal("sn4.ChangeDate is nil")
+	}
+	if sn4.ChangeDate.Date != "25 MAY 2021" {
+		t.Errorf("sn4.ChangeDate.Date = %s, want '25 MAY 2021'", sn4.ChangeDate.Date)
+	}
+
+	// Test note with external ID
+	sn5 := doc.GetSharedNote("@SN5@")
+	if sn5 == nil {
+		t.Fatal("GetSharedNote(@SN5@) returned nil")
+	}
+	if len(sn5.ExternalIDs) != 1 {
+		t.Fatalf("len(sn5.ExternalIDs) = %d, want 1", len(sn5.ExternalIDs))
+	}
+	if sn5.ExternalIDs[0].Value != "ABC123" {
+		t.Errorf("ExternalID.Value = %s, want 'ABC123'", sn5.ExternalIDs[0].Value)
+	}
+	if sn5.ExternalIDs[0].Type != "https://example.org/id-type" {
+		t.Errorf("ExternalID.Type = %s, want 'https://example.org/id-type'", sn5.ExternalIDs[0].Type)
+	}
+}
+
+// TestSharedNoteParsingFromFile tests parsing SNOTE records from notes-1.ged.
+func TestSharedNoteParsingFromFile(t *testing.T) {
+	f, err := os.Open("../testdata/gedcom-7.0/familysearch-examples/notes-1.ged")
+	if err != nil {
+		t.Skipf("Test file not found: %s", "../testdata/gedcom-7.0/familysearch-examples/notes-1.ged")
+		return
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The file has 3 SNOTE records: @3@, @4@, @5@
+	notes := doc.SharedNotes()
+	if len(notes) != 3 {
+		t.Fatalf("len(SharedNotes()) = %d, want 3", len(notes))
+	}
+
+	// Test @3@ - single-use note with CHAN
+	sn3 := doc.GetSharedNote("@3@")
+	if sn3 == nil {
+		t.Fatal("GetSharedNote(@3@) returned nil")
+	}
+	if sn3.Text != "A single-use note record" {
+		t.Errorf("@3@ Text = %q, want 'A single-use note record'", sn3.Text)
+	}
+	if sn3.ChangeDate == nil {
+		t.Error("@3@ ChangeDate is nil")
+	} else if sn3.ChangeDate.Date != "25 MAY 2021" {
+		t.Errorf("@3@ ChangeDate.Date = %s, want '25 MAY 2021'", sn3.ChangeDate.Date)
+	}
+
+	// Test @4@ - dual-use note with CHAN
+	sn4 := doc.GetSharedNote("@4@")
+	if sn4 == nil {
+		t.Fatal("GetSharedNote(@4@) returned nil")
+	}
+	if sn4.Text != "A dual-use note record" {
+		t.Errorf("@4@ Text = %q, want 'A dual-use note record'", sn4.Text)
+	}
+
+	// Test @5@ - cyclic note with SOUR reference
+	sn5 := doc.GetSharedNote("@5@")
+	if sn5 == nil {
+		t.Fatal("GetSharedNote(@5@) returned nil")
+	}
+	if sn5.Text != "A cyclic note record" {
+		t.Errorf("@5@ Text = %q, want 'A cyclic note record'", sn5.Text)
+	}
+	if len(sn5.SourceCitations) != 1 {
+		t.Errorf("len(@5@ SourceCitations) = %d, want 1", len(sn5.SourceCitations))
+	} else if sn5.SourceCitations[0].SourceXRef != "@2@" {
+		t.Errorf("@5@ SourceCitation.SourceXRef = %s, want '@2@'", sn5.SourceCitations[0].SourceXRef)
+	}
+}
+
+// TestSharedNoteEdgeCases tests edge cases for SharedNote parsing.
+func TestSharedNoteEdgeCases(t *testing.T) {
+	t.Run("empty SNOTE text", func(t *testing.T) {
+		gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @SN1@ SNOTE
+1 LANG en
+0 TRLR
+`
+		doc, err := Decode(strings.NewReader(gedcom))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		sn := doc.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("GetSharedNote(@SN1@) returned nil")
+		}
+		if sn.Text != "" {
+			t.Errorf("sn.Text = %q, want empty string", sn.Text)
+		}
+		if sn.Language != "en" {
+			t.Errorf("sn.Language = %q, want 'en'", sn.Language)
+		}
+	})
+
+	t.Run("multiple translations", func(t *testing.T) {
+		gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @SN1@ SNOTE Hello World
+1 LANG en
+1 TRAN Hola Mundo
+2 LANG es
+1 TRAN Bonjour le Monde
+2 LANG fr
+1 TRAN Hallo Welt
+2 LANG de
+2 MIME text/plain
+0 TRLR
+`
+		doc, err := Decode(strings.NewReader(gedcom))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		sn := doc.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("GetSharedNote(@SN1@) returned nil")
+		}
+		if len(sn.Translations) != 3 {
+			t.Fatalf("len(Translations) = %d, want 3", len(sn.Translations))
+		}
+
+		// Check Spanish translation
+		if sn.Translations[0].Value != "Hola Mundo" {
+			t.Errorf("Translation[0].Value = %q, want 'Hola Mundo'", sn.Translations[0].Value)
+		}
+		if sn.Translations[0].Language != "es" {
+			t.Errorf("Translation[0].Language = %q, want 'es'", sn.Translations[0].Language)
+		}
+
+		// Check French translation
+		if sn.Translations[1].Value != "Bonjour le Monde" {
+			t.Errorf("Translation[1].Value = %q, want 'Bonjour le Monde'", sn.Translations[1].Value)
+		}
+		if sn.Translations[1].Language != "fr" {
+			t.Errorf("Translation[1].Language = %q, want 'fr'", sn.Translations[1].Language)
+		}
+
+		// Check German translation with MIME
+		if sn.Translations[2].Value != "Hallo Welt" {
+			t.Errorf("Translation[2].Value = %q, want 'Hallo Welt'", sn.Translations[2].Value)
+		}
+		if sn.Translations[2].Language != "de" {
+			t.Errorf("Translation[2].Language = %q, want 'de'", sn.Translations[2].Language)
+		}
+		if sn.Translations[2].MIME != "text/plain" {
+			t.Errorf("Translation[2].MIME = %q, want 'text/plain'", sn.Translations[2].MIME)
+		}
+	})
+
+	t.Run("custom tags preserved", func(t *testing.T) {
+		gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @SN1@ SNOTE A note with custom data
+1 _CUSTOM custom value
+1 _PRIORITY high
+0 TRLR
+`
+		doc, err := Decode(strings.NewReader(gedcom))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		sn := doc.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("GetSharedNote(@SN1@) returned nil")
+		}
+		if sn.Text != "A note with custom data" {
+			t.Errorf("sn.Text = %q, want 'A note with custom data'", sn.Text)
+		}
+		// Custom tags should be preserved in Tags slice
+		if len(sn.Tags) < 2 {
+			t.Errorf("len(sn.Tags) = %d, want at least 2 (for custom tags)", len(sn.Tags))
+		}
+	})
+
+	t.Run("GetSharedNote returns nil for non-existent XRef", func(t *testing.T) {
+		gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @SN1@ SNOTE Test note
+0 TRLR
+`
+		doc, err := Decode(strings.NewReader(gedcom))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		sn := doc.GetSharedNote("@NONEXISTENT@")
+		if sn != nil {
+			t.Errorf("GetSharedNote(@NONEXISTENT@) = %v, want nil", sn)
+		}
+	})
+
+	t.Run("GetSharedNote returns nil for wrong record type", func(t *testing.T) {
+		gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Smith/
+0 TRLR
+`
+		doc, err := Decode(strings.NewReader(gedcom))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// @I1@ is an INDI, not an SNOTE
+		sn := doc.GetSharedNote("@I1@")
+		if sn != nil {
+			t.Errorf("GetSharedNote(@I1@) = %v, want nil for INDI record", sn)
+		}
+	})
+
+	t.Run("SharedNotes returns empty slice when none exist", func(t *testing.T) {
+		gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Smith/
+0 TRLR
+`
+		doc, err := Decode(strings.NewReader(gedcom))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		notes := doc.SharedNotes()
+		if len(notes) != 0 {
+			t.Errorf("len(SharedNotes()) = %d, want 0", len(notes))
+		}
+	})
+
+	t.Run("SNOTE with text/html MIME type", func(t *testing.T) {
+		gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @SN1@ SNOTE <p>This is <b>HTML</b> content</p>
+1 MIME text/html
+1 LANG en
+0 TRLR
+`
+		doc, err := Decode(strings.NewReader(gedcom))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		sn := doc.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("GetSharedNote(@SN1@) returned nil")
+		}
+		if sn.MIME != "text/html" {
+			t.Errorf("sn.MIME = %q, want 'text/html'", sn.MIME)
+		}
+		if sn.Text != "<p>This is <b>HTML</b> content</p>" {
+			t.Errorf("sn.Text = %q, want '<p>This is <b>HTML</b> content</p>'", sn.Text)
+		}
+	})
+
+	t.Run("SNOTE with BCP 47 language tag", func(t *testing.T) {
+		gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @SN1@ SNOTE Chinese simplified text
+1 LANG zh-Hans
+0 @SN2@ SNOTE Chinese traditional text
+1 LANG zh-Hant
+0 TRLR
+`
+		doc, err := Decode(strings.NewReader(gedcom))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		sn1 := doc.GetSharedNote("@SN1@")
+		if sn1 == nil {
+			t.Fatal("GetSharedNote(@SN1@) returned nil")
+		}
+		if sn1.Language != "zh-Hans" {
+			t.Errorf("sn1.Language = %q, want 'zh-Hans'", sn1.Language)
+		}
+
+		sn2 := doc.GetSharedNote("@SN2@")
+		if sn2 == nil {
+			t.Fatal("GetSharedNote(@SN2@) returned nil")
+		}
+		if sn2.Language != "zh-Hant" {
+			t.Errorf("sn2.Language = %q, want 'zh-Hant'", sn2.Language)
+		}
+	})
+
+	t.Run("SNOTE with multiple external IDs", func(t *testing.T) {
+		gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @SN1@ SNOTE Note with multiple IDs
+1 EXID FS-123
+2 TYPE http://www.familysearch.org/ark
+1 EXID ANC-456
+2 TYPE http://www.ancestry.com/id
+0 TRLR
+`
+		doc, err := Decode(strings.NewReader(gedcom))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		sn := doc.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("GetSharedNote(@SN1@) returned nil")
+		}
+		if len(sn.ExternalIDs) != 2 {
+			t.Fatalf("len(ExternalIDs) = %d, want 2", len(sn.ExternalIDs))
+		}
+		if sn.ExternalIDs[0].Value != "FS-123" {
+			t.Errorf("ExternalIDs[0].Value = %q, want 'FS-123'", sn.ExternalIDs[0].Value)
+		}
+		if sn.ExternalIDs[1].Value != "ANC-456" {
+			t.Errorf("ExternalIDs[1].Value = %q, want 'ANC-456'", sn.ExternalIDs[1].Value)
+		}
+	})
+
+	t.Run("SNOTE with multiple source citations", func(t *testing.T) {
+		gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @SN1@ SNOTE Note with multiple sources
+1 SOUR @S1@
+2 PAGE p. 10
+1 SOUR @S2@
+2 PAGE p. 20
+0 @S1@ SOUR First Source
+0 @S2@ SOUR Second Source
+0 TRLR
+`
+		doc, err := Decode(strings.NewReader(gedcom))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		sn := doc.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("GetSharedNote(@SN1@) returned nil")
+		}
+		if len(sn.SourceCitations) != 2 {
+			t.Fatalf("len(SourceCitations) = %d, want 2", len(sn.SourceCitations))
+		}
+		if sn.SourceCitations[0].SourceXRef != "@S1@" {
+			t.Errorf("SourceCitations[0].SourceXRef = %q, want '@S1@'", sn.SourceCitations[0].SourceXRef)
+		}
+		if sn.SourceCitations[1].SourceXRef != "@S2@" {
+			t.Errorf("SourceCitations[1].SourceXRef = %q, want '@S2@'", sn.SourceCitations[1].SourceXRef)
+		}
+	})
+}
