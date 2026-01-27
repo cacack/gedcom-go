@@ -51,6 +51,7 @@ These packages/APIs are stable and follow semver strictly:
 | `gedcom` | Stable | Core types: Document, Individual, Family, etc. |
 | `decoder` | Stable | `Decode()`, `DecodeWithOptions()` |
 | `encoder` | Stable | `Encode()`, `EncodeWithOptions()` |
+| `converter` | Stable | `Convert()`, `ConvertWithOptions()` |
 | `parser` | Stable | `Parse()`, `ParseLine()` |
 | `validator` | Stable | `Validate()`, `ValidateAll()` |
 | `charset` | Stable | `NewReader()` |

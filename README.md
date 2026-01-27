@@ -276,6 +276,7 @@ This library follows [Semantic Versioning](https://semver.org/). We do not break
 | `gedcom` | Document, Individual, Family, Event, Date |
 | `decoder` | Decode(), DecodeWithOptions() |
 | `encoder` | Encode(), EncodeWithOptions() |
+| `converter` | Convert(), ConvertWithOptions() |
 | `parser` | Parse(), ParseLine() |
 | `validator` | Validate() |
 | `charset` | NewReader() |
