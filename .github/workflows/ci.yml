@@ -325,8 +325,14 @@ jobs:
 
           echo "Comparing API against $LATEST_TAG"
 
-          # Run apidiff and capture output
-          APIDIFF_OUT=$(apidiff -m github.com/cacack/gedcom-go "$LATEST_TAG" . 2>&1) || true
+          # Checkout old version to temp directory for comparison
+          OLD_DIR=$(mktemp -d)
+          git worktree add "$OLD_DIR" "$LATEST_TAG" --quiet
+          trap "git worktree remove '$OLD_DIR' --force 2>/dev/null || true" EXIT
+
+          # Run apidiff comparing old version against current
+          # -m flag compares all packages in the module
+          APIDIFF_OUT=$(apidiff -m "$OLD_DIR" . 2>&1) || true
 
           # Check for incompatible (breaking) changes
           if echo "$APIDIFF_OUT" | grep -q "Incompatible changes:"; then
