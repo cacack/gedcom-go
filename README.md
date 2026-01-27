@@ -278,7 +278,7 @@ This library follows [Semantic Versioning](https://semver.org/). We do not break
 | `encoder` | Encode(), EncodeWithOptions() |
 | `converter` | Convert(), ConvertWithOptions() |
 | `parser` | Parse(), ParseLine() |
-| `validator` | Validate() |
+| `validator` | Validate(), ValidateAll() |
 | `charset` | NewReader() |
 | `version` | Detect() |
 
