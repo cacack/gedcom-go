@@ -51,7 +51,13 @@ go get github.com/cacack/gedcom-go
 
 ## Quick Start
 
-### Basic Parsing
+The library provides a simple, single-import API for common operations. Import with an alias for cleaner code:
+
+```go
+import gedcomgo "github.com/cacack/gedcom-go"
+```
+
+### Parse a GEDCOM File
 
 ```go
 package main
@@ -61,30 +67,62 @@ import (
     "log"
     "os"
 
-    "github.com/cacack/gedcom-go/decoder"
+    gedcomgo "github.com/cacack/gedcom-go"
 )
 
 func main() {
-    // Open and parse GEDCOM file
     f, err := os.Open("family.ged")
     if err != nil {
         log.Fatal(err)
     }
     defer f.Close()
 
-    doc, err := decoder.Decode(f)
+    doc, err := gedcomgo.Decode(f)
     if err != nil {
         log.Fatal(err)
     }
 
-    // Print summary
     fmt.Printf("GEDCOM Version: %s\n", doc.Header.Version)
     fmt.Printf("Individuals: %d\n", len(doc.Individuals()))
     fmt.Printf("Families: %d\n", len(doc.Families()))
 }
 ```
 
-### Working with Individuals
+### Validate a Document
+
+```go
+// Basic validation (returns []error)
+errors := gedcomgo.Validate(doc)
+
+// Comprehensive validation with severity levels (returns []Issue)
+issues := gedcomgo.ValidateAll(doc)
+for _, issue := range issues {
+    fmt.Printf("[%s] %s\n", issue.Severity, issue.Message)
+}
+```
+
+### Write a GEDCOM File
+
+```go
+f, _ := os.Create("output.ged")
+defer f.Close()
+
+err := gedcomgo.Encode(f, doc)
+```
+
+### Convert Between Versions
+
+```go
+// Convert to GEDCOM 7.0
+converted, report, err := gedcomgo.Convert(doc, gedcomgo.Version70)
+if report.HasDataLoss() {
+    for _, item := range report.DataLoss {
+        fmt.Printf("Lost: %s - %s\n", item.Feature, item.Reason)
+    }
+}
+```
+
+### Working with Records
 
 ```go
 // Find and display individuals
@@ -98,52 +136,27 @@ for _, individual := range doc.Individuals() {
         fmt.Printf("  %s: %s\n", event.Tag, event.Date)
     }
 }
-```
 
-### Lookup by Cross-Reference ID
-
-```go
 // O(1) lookup by cross-reference ID
 person := doc.GetIndividual("@I1@")
 if person != nil {
     fmt.Printf("Found: %s\n", person.Names[0].Full)
 }
 
-// Lookup works for all record types
-family := doc.GetFamily("@F1@")
-source := doc.GetSource("@S1@")
-repo := doc.GetRepository("@R1@")
-
 // Navigate family relationships
+family := doc.GetFamily("@F1@")
 if family != nil {
     husband := doc.GetIndividual(family.Husband)
     wife := doc.GetIndividual(family.Wife)
 }
 ```
 
-### Validating GEDCOM Files
-
-```go
-import "github.com/cacack/gedcom-go/validator"
-
-// Validate the document
-v := validator.New(doc)
-errors := v.Validate()
-
-if len(errors) > 0 {
-    fmt.Printf("Found %d validation errors:\n", len(errors))
-    for _, err := range errors {
-        fmt.Printf("  Line %d: %s\n", err.Line, err.Message)
-    }
-}
-```
-
-### Lenient Parsing
+### Parse with Diagnostics
 
 Process GEDCOM files with errors while extracting as much valid data as possible:
 
 ```go
-result, err := decoder.DecodeWithDiagnostics(f, nil)
+result, err := gedcomgo.DecodeWithDiagnostics(f)
 if err != nil {
     log.Fatal(err) // Fatal I/O error
 }
@@ -161,31 +174,6 @@ doc := result.Document
 fmt.Printf("Parsed %d individuals\n", len(doc.Individuals()))
 ```
 
-See [godoc](https://pkg.go.dev/github.com/cacack/gedcom-go/decoder#DecodeWithDiagnostics) for details.
-
-### Creating GEDCOM Files
-
-```go
-import "github.com/cacack/gedcom-go/encoder"
-
-// Create a new document
-doc := &gedcom.Document{
-    Header: &gedcom.Header{
-        Version:  "5.5",
-        Encoding: "UTF-8",
-    },
-    Records: []*gedcom.Record{
-        // Add your records here
-    },
-}
-
-// Write to file
-f, _ := os.Create("output.ged")
-defer f.Close()
-
-encoder.Encode(f, doc)
-```
-
 ## Documentation
 
 - **Usage Guide**: [USAGE.md](USAGE.md) - Comprehensive guide covering basic concepts, examples, and best practices
@@ -197,9 +185,79 @@ encoder.Encode(f, doc)
 - **API Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go](https://pkg.go.dev/github.com/cacack/gedcom-go)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 
+## Advanced Usage
+
+For advanced use cases requiring custom options, import the underlying packages directly:
+
+```go
+import (
+    "github.com/cacack/gedcom-go/decoder"
+    "github.com/cacack/gedcom-go/encoder"
+    "github.com/cacack/gedcom-go/validator"
+    "github.com/cacack/gedcom-go/converter"
+)
+```
+
+### Custom Decode Options
+
+```go
+// Decode with progress reporting and timeout
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
+opts := &decoder.DecodeOptions{
+    Context:   ctx,
+    TotalSize: fileInfo.Size(),
+    OnProgress: func(bytesRead, totalBytes int64) {
+        fmt.Printf("\rProgress: %d%%", bytesRead*100/totalBytes)
+    },
+}
+doc, err := decoder.DecodeWithOptions(reader, opts)
+```
+
+### Custom Validation Configuration
+
+```go
+// Configure validation strictness and duplicate detection
+config := &validator.ValidatorConfig{
+    Strictness: validator.StrictnessStrict,
+    Duplicates: &validator.DuplicateConfig{
+        RequireExactSurname: true,
+        MinNameSimilarity:   0.8,
+    },
+}
+v := validator.NewWithConfig(config)
+issues := v.ValidateAll(doc)
+```
+
+### Custom Encoder Options
+
+```go
+// Encode with custom line endings and line length
+opts := &encoder.EncodeOptions{
+    LineEnding:    encoder.LineEndingLF,
+    MaxLineLength: 255,
+}
+err := encoder.EncodeWithOptions(writer, doc, opts)
+```
+
+### Custom Conversion Options
+
+```go
+// Convert with strict data loss checking
+opts := &converter.ConvertOptions{
+    Validate:       true,
+    StrictDataLoss: true,  // Fail on any data loss
+}
+converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version55, opts)
+```
+
 ## Packages
 
+For fine-grained control, these packages are available:
+
 - **`charset`** - Character encoding utilities with UTF-8 validation
+- **`converter`** - Version conversion with transformation tracking
 - **`decoder`** - High-level GEDCOM decoding with automatic version detection
 - **`encoder`** - GEDCOM document writing with configurable line endings
 - **`gedcom`** - Core data types (Document, Individual, Family, Source, etc.)
