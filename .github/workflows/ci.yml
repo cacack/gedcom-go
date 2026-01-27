@@ -325,20 +325,21 @@ jobs:
 
           echo "Comparing API against $LATEST_TAG"
 
-          # Checkout old version to temp directory for comparison
+          # Clone old version to temp directory (worktrees have issues with apidiff)
           OLD_DIR=$(mktemp -d)
-          git worktree add "$OLD_DIR" "$LATEST_TAG" --quiet
-          trap "git worktree remove '$OLD_DIR' --force 2>/dev/null || true" EXIT
+          git clone --depth 1 --branch "$LATEST_TAG" "https://github.com/${{ github.repository }}.git" "$OLD_DIR" --quiet
+          trap "rm -rf '$OLD_DIR'" EXIT
 
-          # Download dependencies for both versions (required by apidiff)
-          (cd "$OLD_DIR" && go mod download)
+          # Export old API to file, then compare against current
+          # This is more reliable than comparing directories directly
+          API_FILE=$(mktemp)
+          (cd "$OLD_DIR" && go mod download && apidiff -m -w "$API_FILE" .)
           go mod download
 
-          # Run apidiff comparing old version against current
-          # -m flag compares all packages in the module
+          # Run apidiff comparing exported API against current
           # Use set +e to prevent immediate exit on non-zero return
           set +e
-          APIDIFF_OUT=$(apidiff -m "$OLD_DIR" . 2>&1)
+          APIDIFF_OUT=$(apidiff -m "$API_FILE" . 2>&1)
           APIDIFF_STATUS=$?
           set -e
 
