@@ -4591,3 +4591,89 @@ func TestNOTagFamilyWithSubordinates(t *testing.T) {
 		t.Error("Events[1].IsNegative should be true")
 	}
 }
+
+// TestNOTagMissingEventTypeIndividual tests that NO tag without event type is rejected.
+// Ref: Issue #121
+func TestNOTagMissingEventTypeIndividual(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Smith/
+1 NO
+0 TRLR`
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(gedcom), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+
+	indi := result.Document.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+
+	// NO tag without event type should not create an event
+	if len(indi.Events) != 0 {
+		t.Errorf("Expected 0 events, got %d", len(indi.Events))
+	}
+
+	// Should have diagnostic about missing event type
+	if len(result.Diagnostics) == 0 {
+		t.Error("Expected diagnostic for missing event type")
+	} else {
+		found := false
+		for _, d := range result.Diagnostics {
+			if strings.Contains(d.Message, "missing event type") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("Expected diagnostic message to contain 'missing event type'")
+		}
+	}
+}
+
+// TestNOTagMissingEventTypeFamily tests that NO tag without event type is rejected on families.
+// Ref: Issue #121
+func TestNOTagMissingEventTypeFamily(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @F1@ FAM
+1 HUSB @I1@
+1 NO
+0 TRLR`
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(gedcom), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+
+	fam := result.Document.GetFamily("@F1@")
+	if fam == nil {
+		t.Fatal("Family @F1@ not found")
+	}
+
+	// NO tag without event type should not create an event
+	if len(fam.Events) != 0 {
+		t.Errorf("Expected 0 events, got %d", len(fam.Events))
+	}
+
+	// Should have diagnostic about missing event type
+	if len(result.Diagnostics) == 0 {
+		t.Error("Expected diagnostic for missing event type")
+	} else {
+		found := false
+		for _, d := range result.Diagnostics {
+			if strings.Contains(d.Message, "missing event type") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("Expected diagnostic message to contain 'missing event type'")
+		}
+	}
+}
