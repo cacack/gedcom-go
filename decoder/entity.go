@@ -67,6 +67,8 @@ func populateEntities(doc *gedcom.Document, collector *diagnosticCollector) {
 			record.Entity = parseNote(record, collector)
 		case gedcom.RecordTypeMedia:
 			record.Entity = parseMediaObject(record, collector)
+		case gedcom.RecordTypeSharedNote:
+			record.Entity = parseSharedNote(record, collector)
 		}
 	}
 }
@@ -1065,6 +1067,84 @@ func parseNote(record *gedcom.Record, collector *diagnosticCollector) *gedcom.No
 	}
 
 	return note
+}
+
+// parseSharedNote converts record tags to a SharedNote entity (GEDCOM 7.0).
+// SharedNote records are distinct from NOTE records and support MIME types,
+// language tags, and translations for internationalization.
+func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *gedcom.SharedNote {
+	note := &gedcom.SharedNote{
+		XRef: record.XRef,
+		Tags: record.Tags,
+		Text: record.Value, // The note text is in the value of the level 0 SNOTE tag
+	}
+
+	for i := 0; i < len(record.Tags); i++ {
+		tag := record.Tags[i]
+		if tag.Level != 1 {
+			continue
+		}
+
+		switch tag.Tag {
+		case "MIME":
+			note.MIME = tag.Value
+
+		case "LANG":
+			note.Language = tag.Value
+
+		case "TRAN":
+			tran := parseSharedNoteTranslation(record.Tags, i)
+			note.Translations = append(note.Translations, tran)
+
+		case "SOUR":
+			cite := parseSourceCitation(record.Tags, i, tag.Level, collector)
+			note.SourceCitations = append(note.SourceCitations, cite)
+
+		case "EXID":
+			note.ExternalIDs = append(note.ExternalIDs, parseExternalID(record.Tags, i))
+
+		case "CHAN":
+			note.ChangeDate = parseChangeDate(record.Tags, i, collector)
+
+		case "CONT", "CONC":
+			// Continuation lines are handled at the parser level and already merged into Value
+			// These are known tags that should not generate unknown tag warnings
+
+		default:
+			if !strings.HasPrefix(tag.Tag, "_") {
+				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+			}
+		}
+	}
+
+	return note
+}
+
+// parseSharedNoteTranslation extracts a translation from TRAN tag in a SharedNote.
+func parseSharedNoteTranslation(tags []*gedcom.Tag, tranIdx int) *gedcom.SharedNoteTranslation {
+	baseLevel := tags[tranIdx].Level
+
+	tran := &gedcom.SharedNoteTranslation{
+		Value: tags[tranIdx].Value,
+	}
+
+	// Look for subordinate tags at baseLevel+1
+	for i := tranIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 {
+			switch tag.Tag {
+			case "MIME":
+				tran.MIME = tag.Value
+			case "LANG":
+				tran.Language = tag.Value
+			}
+		}
+	}
+
+	return tran
 }
 
 // parseMediaObject converts record tags to a MediaObject entity.

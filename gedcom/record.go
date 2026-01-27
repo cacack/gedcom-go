@@ -24,6 +24,9 @@ const (
 
 	// RecordTypeSubmitter represents a submitter (SUBM)
 	RecordTypeSubmitter RecordType = "SUBM"
+
+	// RecordTypeSharedNote represents a shared note (SNOTE, GEDCOM 7.0)
+	RecordTypeSharedNote RecordType = "SNOTE"
 )
 
 // Record represents a top-level GEDCOM record with a cross-reference identifier.
@@ -116,6 +119,19 @@ func (r *Record) GetNote() (*Note, bool) {
 func (r *Record) GetMediaObject() (*MediaObject, bool) {
 	if media, ok := r.Entity.(*MediaObject); ok {
 		return media, true
+	}
+	return nil, false
+}
+
+// IsSharedNote returns true if this record is a shared note record (GEDCOM 7.0).
+func (r *Record) IsSharedNote() bool {
+	return r.Type == RecordTypeSharedNote
+}
+
+// GetSharedNote returns the record as a SharedNote if it's the correct type.
+func (r *Record) GetSharedNote() (*SharedNote, bool) {
+	if snote, ok := r.Entity.(*SharedNote); ok {
+		return snote, true
 	}
 	return nil, false
 }

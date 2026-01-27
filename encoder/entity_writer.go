@@ -150,6 +150,10 @@ func entityToTags(record *gedcom.Record, opts *EncodeOptions) []*gedcom.Tag {
 		if media, ok := record.Entity.(*gedcom.MediaObject); ok {
 			return mediaObjectToTags(media, opts)
 		}
+	case gedcom.RecordTypeSharedNote:
+		if snote, ok := record.Entity.(*gedcom.SharedNote); ok {
+			return sharedNoteToTags(snote, opts)
+		}
 	}
 
 	return nil
@@ -985,6 +989,82 @@ func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int) []*gedcom.
 	// FORM subordinate at level+1
 	if tran.Form != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FORM", Value: tran.Form})
+	}
+
+	return tags
+}
+
+// sharedNoteToTags converts a SharedNote entity to GEDCOM tags.
+// GEDCOM 7.0 SNOTE records include MIME types, language tags, and translations.
+func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+
+	// MIME (level 1)
+	if note.MIME != "" {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "MIME", Value: note.MIME})
+	}
+
+	// LANG (level 1)
+	if note.Language != "" {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "LANG", Value: note.Language})
+	}
+
+	// Translations (level 1) - TRAN with nested MIME/LANG at level 2
+	for _, tran := range note.Translations {
+		tags = append(tags, sharedNoteTranslationToTags(tran, 1)...)
+	}
+
+	// Source citations (level 1) - SOUR
+	for _, cite := range note.SourceCitations {
+		tags = append(tags, sourceCitationToTags(cite, 1, opts)...)
+	}
+
+	// External IDs (level 1) - EXID
+	tags = append(tags, externalIDsToTags(note.ExternalIDs, 1)...)
+
+	// Change date (level 1) - CHAN
+	if note.ChangeDate != nil {
+		tags = append(tags, changeDateToTags(note.ChangeDate, 1, "CHAN")...)
+	}
+
+	// Preserved unknown tags
+	tags = append(tags, note.Tags...)
+
+	return tags
+}
+
+// sharedNoteTranslationToTags converts a SharedNoteTranslation to GEDCOM tags at the specified level.
+func sharedNoteTranslationToTags(tran *gedcom.SharedNoteTranslation, level int) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+
+	// TRAN tag with translated text
+	tags = append(tags, &gedcom.Tag{Level: level, Tag: "TRAN", Value: tran.Value})
+
+	// MIME subordinate at level+1
+	if tran.MIME != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "MIME", Value: tran.MIME})
+	}
+
+	// LANG subordinate at level+1
+	if tran.Language != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "LANG", Value: tran.Language})
+	}
+
+	return tags
+}
+
+// externalIDsToTags converts a slice of ExternalIDs to GEDCOM tags at the specified level.
+func externalIDsToTags(externalIDs []*gedcom.ExternalID, level int) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+
+	for _, exid := range externalIDs {
+		// EXID tag with external identifier value
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "EXID", Value: exid.Value})
+
+		// TYPE subordinate at level+1
+		if exid.Type != "" {
+			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: exid.Type})
+		}
 	}
 
 	return tags

@@ -2950,3 +2950,665 @@ func TestRoundTripNameWithTransliteration(t *testing.T) {
 		t.Errorf("Transliteration[1].Language = %s, want 'en-CA'", tran2.Language)
 	}
 }
+
+func TestSharedNoteToTags(t *testing.T) {
+	tests := []struct {
+		name     string
+		note     *gedcom.SharedNote
+		contains []string
+	}{
+		{
+			name: "minimal shared note",
+			note: &gedcom.SharedNote{
+				XRef: "@SN1@",
+				Text: "Simple note text",
+			},
+			contains: []string{}, // No subordinate tags for minimal note
+		},
+		{
+			name: "shared note with MIME and LANG",
+			note: &gedcom.SharedNote{
+				XRef:     "@SN2@",
+				Text:     "Formatted note content",
+				MIME:     "text/html",
+				Language: "en",
+			},
+			contains: []string{"MIME", "LANG"},
+		},
+		{
+			name: "shared note with translations",
+			note: &gedcom.SharedNote{
+				XRef:     "@SN3@",
+				Text:     "English text",
+				Language: "en",
+				Translations: []*gedcom.SharedNoteTranslation{
+					{Value: "Texto en español", Language: "es", MIME: "text/plain"},
+					{Value: "Deutscher Text", Language: "de"},
+				},
+			},
+			contains: []string{"LANG", "TRAN"},
+		},
+		{
+			name: "shared note with source citations",
+			note: &gedcom.SharedNote{
+				XRef: "@SN4@",
+				Text: "Note with sources",
+				SourceCitations: []*gedcom.SourceCitation{
+					{SourceXRef: "@S1@", Page: "p. 100"},
+				},
+			},
+			contains: []string{"SOUR", "PAGE"},
+		},
+		{
+			name: "shared note with external IDs",
+			note: &gedcom.SharedNote{
+				XRef: "@SN5@",
+				Text: "Note with external ID",
+				ExternalIDs: []*gedcom.ExternalID{
+					{Value: "12345", Type: "http://www.familysearch.org/ark"},
+				},
+			},
+			contains: []string{"EXID", "TYPE"},
+		},
+		{
+			name: "shared note with change date",
+			note: &gedcom.SharedNote{
+				XRef: "@SN6@",
+				Text: "Updated note",
+				ChangeDate: &gedcom.ChangeDate{
+					Date: "1 JAN 2024",
+					Time: "12:00:00",
+				},
+			},
+			contains: []string{"CHAN", "DATE", "TIME"},
+		},
+		{
+			name: "fully populated shared note",
+			note: &gedcom.SharedNote{
+				XRef:     "@SN7@",
+				Text:     "Comprehensive note content",
+				MIME:     "text/html",
+				Language: "en",
+				Translations: []*gedcom.SharedNoteTranslation{
+					{Value: "Spanish translation", Language: "es", MIME: "text/plain"},
+				},
+				SourceCitations: []*gedcom.SourceCitation{
+					{SourceXRef: "@S1@"},
+				},
+				ExternalIDs: []*gedcom.ExternalID{
+					{Value: "ABC123", Type: "http://example.org/id"},
+				},
+				ChangeDate: &gedcom.ChangeDate{Date: "15 MAR 2024"},
+			},
+			contains: []string{"MIME", "LANG", "TRAN", "SOUR", "EXID", "TYPE", "CHAN", "DATE"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := sharedNoteToTags(tt.note, nil)
+			tagMap := tagNamesToMap(tags)
+
+			for _, expected := range tt.contains {
+				if !tagMap[expected] {
+					t.Errorf("sharedNoteToTags() missing expected tag %q", expected)
+				}
+			}
+		})
+	}
+}
+
+func TestSharedNoteTranslationToTags(t *testing.T) {
+	tests := []struct {
+		name     string
+		tran     *gedcom.SharedNoteTranslation
+		level    int
+		contains []string
+	}{
+		{
+			name:     "minimal translation",
+			tran:     &gedcom.SharedNoteTranslation{Value: "Translated text"},
+			level:    1,
+			contains: []string{"TRAN"},
+		},
+		{
+			name: "translation with MIME and LANG",
+			tran: &gedcom.SharedNoteTranslation{
+				Value:    "Translated text",
+				MIME:     "text/plain",
+				Language: "fr",
+			},
+			level:    1,
+			contains: []string{"TRAN", "MIME", "LANG"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := sharedNoteTranslationToTags(tt.tran, tt.level)
+			tagMap := tagNamesToMap(tags)
+
+			for _, expected := range tt.contains {
+				if !tagMap[expected] {
+					t.Errorf("sharedNoteTranslationToTags() missing expected tag %q", expected)
+				}
+			}
+
+			// Verify level is correct for TRAN tag
+			if len(tags) > 0 && tags[0].Level != tt.level {
+				t.Errorf("sharedNoteTranslationToTags() TRAN tag level = %d, want %d", tags[0].Level, tt.level)
+			}
+		})
+	}
+}
+
+func TestExternalIDsToTags(t *testing.T) {
+	tests := []struct {
+		name     string
+		exids    []*gedcom.ExternalID
+		level    int
+		contains []string
+		count    int
+	}{
+		{
+			name:     "empty external IDs",
+			exids:    []*gedcom.ExternalID{},
+			level:    1,
+			contains: []string{},
+			count:    0,
+		},
+		{
+			name: "single external ID without type",
+			exids: []*gedcom.ExternalID{
+				{Value: "12345"},
+			},
+			level:    1,
+			contains: []string{"EXID"},
+			count:    1,
+		},
+		{
+			name: "single external ID with type",
+			exids: []*gedcom.ExternalID{
+				{Value: "12345", Type: "http://familysearch.org/ark"},
+			},
+			level:    1,
+			contains: []string{"EXID", "TYPE"},
+			count:    2,
+		},
+		{
+			name: "multiple external IDs",
+			exids: []*gedcom.ExternalID{
+				{Value: "ABC", Type: "http://type1.org"},
+				{Value: "DEF"},
+				{Value: "GHI", Type: "http://type2.org"},
+			},
+			level:    1,
+			contains: []string{"EXID", "TYPE"},
+			count:    5, // 3 EXID + 2 TYPE
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := externalIDsToTags(tt.exids, tt.level)
+
+			if len(tags) != tt.count {
+				t.Errorf("externalIDsToTags() returned %d tags, want %d", len(tags), tt.count)
+			}
+
+			tagMap := tagNamesToMap(tags)
+			for _, expected := range tt.contains {
+				if !tagMap[expected] {
+					t.Errorf("externalIDsToTags() missing expected tag %q", expected)
+				}
+			}
+		})
+	}
+}
+
+func TestEntityToTags_SharedNote(t *testing.T) {
+	record := &gedcom.Record{
+		XRef: "@SN1@",
+		Type: gedcom.RecordTypeSharedNote,
+		Entity: &gedcom.SharedNote{
+			XRef:     "@SN1@",
+			Text:     "Test shared note",
+			MIME:     "text/plain",
+			Language: "en",
+		},
+	}
+
+	tags := entityToTags(record, nil)
+	if tags == nil {
+		t.Fatal("entityToTags() returned nil for SharedNote")
+	}
+
+	tagMap := tagNamesToMap(tags)
+	if !tagMap["MIME"] {
+		t.Error("entityToTags() missing MIME tag")
+	}
+	if !tagMap["LANG"] {
+		t.Error("entityToTags() missing LANG tag")
+	}
+}
+
+func TestRoundTripSharedNote(t *testing.T) {
+	original := `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 CHAR UTF-8
+0 @SN1@ SNOTE This is a shared note with formatting
+1 MIME text/html
+1 LANG en
+1 TRAN Esta es una nota compartida
+2 MIME text/plain
+2 LANG es
+1 TRAN Ceci est une note partagée
+2 LANG fr
+1 SOUR @S1@
+2 PAGE p. 42
+1 EXID FamilySearch-12345
+2 TYPE http://www.familysearch.org/ark
+1 CHAN
+2 DATE 15 JAN 2024
+3 TIME 10:30:00
+0 @S1@ SOUR
+1 TITL Test Source
+0 TRLR
+`
+	doc, err := decoder.Decode(strings.NewReader(original))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+
+	// Re-encode the document
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode failed: %v", err)
+	}
+
+	// Re-decode the encoded document
+	doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatalf("Re-decode failed: %v", err)
+	}
+
+	// Verify the SharedNote is preserved
+	snote := doc2.GetSharedNote("@SN1@")
+	if snote == nil {
+		t.Fatal("SharedNote @SN1@ not found after round-trip")
+	}
+
+	if snote.Text != "This is a shared note with formatting" {
+		t.Errorf("Text = %q, want 'This is a shared note with formatting'", snote.Text)
+	}
+
+	if snote.MIME != "text/html" {
+		t.Errorf("MIME = %q, want 'text/html'", snote.MIME)
+	}
+
+	if snote.Language != "en" {
+		t.Errorf("Language = %q, want 'en'", snote.Language)
+	}
+
+	if len(snote.Translations) != 2 {
+		t.Fatalf("len(Translations) = %d, want 2", len(snote.Translations))
+	}
+
+	// Verify first translation (Spanish)
+	tran1 := snote.Translations[0]
+	if tran1.Value != "Esta es una nota compartida" {
+		t.Errorf("Translation[0].Value = %q, want 'Esta es una nota compartida'", tran1.Value)
+	}
+	if tran1.MIME != "text/plain" {
+		t.Errorf("Translation[0].MIME = %q, want 'text/plain'", tran1.MIME)
+	}
+	if tran1.Language != "es" {
+		t.Errorf("Translation[0].Language = %q, want 'es'", tran1.Language)
+	}
+
+	// Verify second translation (French)
+	tran2 := snote.Translations[1]
+	if tran2.Language != "fr" {
+		t.Errorf("Translation[1].Language = %q, want 'fr'", tran2.Language)
+	}
+
+	// Verify source citations
+	if len(snote.SourceCitations) != 1 {
+		t.Fatalf("len(SourceCitations) = %d, want 1", len(snote.SourceCitations))
+	}
+	if snote.SourceCitations[0].SourceXRef != "@S1@" {
+		t.Errorf("SourceCitations[0].SourceXRef = %q, want '@S1@'", snote.SourceCitations[0].SourceXRef)
+	}
+	if snote.SourceCitations[0].Page != "p. 42" {
+		t.Errorf("SourceCitations[0].Page = %q, want 'p. 42'", snote.SourceCitations[0].Page)
+	}
+
+	// Verify external IDs
+	if len(snote.ExternalIDs) != 1 {
+		t.Fatalf("len(ExternalIDs) = %d, want 1", len(snote.ExternalIDs))
+	}
+	if snote.ExternalIDs[0].Value != "FamilySearch-12345" {
+		t.Errorf("ExternalIDs[0].Value = %q, want 'FamilySearch-12345'", snote.ExternalIDs[0].Value)
+	}
+	if snote.ExternalIDs[0].Type != "http://www.familysearch.org/ark" {
+		t.Errorf("ExternalIDs[0].Type = %q, want 'http://www.familysearch.org/ark'", snote.ExternalIDs[0].Type)
+	}
+
+	// Verify change date
+	if snote.ChangeDate == nil {
+		t.Fatal("ChangeDate is nil")
+	}
+	if snote.ChangeDate.Date != "15 JAN 2024" {
+		t.Errorf("ChangeDate.Date = %q, want '15 JAN 2024'", snote.ChangeDate.Date)
+	}
+	if snote.ChangeDate.Time != "10:30:00" {
+		t.Errorf("ChangeDate.Time = %q, want '10:30:00'", snote.ChangeDate.Time)
+	}
+}
+
+// TestSharedNoteEdgeCases tests encoder edge cases for SharedNote.
+func TestSharedNoteEncoderEdgeCases(t *testing.T) {
+	t.Run("encode empty SNOTE text", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{
+				Version:  gedcom.Version70,
+				Encoding: gedcom.EncodingUTF8,
+			},
+			Records: []*gedcom.Record{
+				{
+					XRef: "@SN1@",
+					Type: gedcom.RecordTypeSharedNote,
+					Entity: &gedcom.SharedNote{
+						XRef:     "@SN1@",
+						Text:     "", // Empty text
+						Language: "en",
+					},
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode failed: %v", err)
+		}
+
+		// Re-decode to verify
+		doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("Re-decode failed: %v", err)
+		}
+
+		sn := doc2.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("SharedNote @SN1@ not found after round-trip")
+		}
+		if sn.Text != "" {
+			t.Errorf("Text = %q, want empty string", sn.Text)
+		}
+		if sn.Language != "en" {
+			t.Errorf("Language = %q, want 'en'", sn.Language)
+		}
+	})
+
+	t.Run("encode SNOTE with text/html MIME", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{
+				Version:  gedcom.Version70,
+				Encoding: gedcom.EncodingUTF8,
+			},
+			Records: []*gedcom.Record{
+				{
+					XRef: "@SN1@",
+					Type: gedcom.RecordTypeSharedNote,
+					Entity: &gedcom.SharedNote{
+						XRef:     "@SN1@",
+						Text:     "<p>HTML content</p>",
+						MIME:     "text/html",
+						Language: "en",
+					},
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode failed: %v", err)
+		}
+
+		encoded := buf.String()
+		if !strings.Contains(encoded, "MIME text/html") {
+			t.Errorf("Encoded output missing 'MIME text/html': %s", encoded)
+		}
+
+		// Re-decode to verify
+		doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("Re-decode failed: %v", err)
+		}
+
+		sn := doc2.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("SharedNote @SN1@ not found after round-trip")
+		}
+		if sn.MIME != "text/html" {
+			t.Errorf("MIME = %q, want 'text/html'", sn.MIME)
+		}
+	})
+
+	t.Run("encode multiple translations", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{
+				Version:  gedcom.Version70,
+				Encoding: gedcom.EncodingUTF8,
+			},
+			Records: []*gedcom.Record{
+				{
+					XRef: "@SN1@",
+					Type: gedcom.RecordTypeSharedNote,
+					Entity: &gedcom.SharedNote{
+						XRef:     "@SN1@",
+						Text:     "Hello World",
+						Language: "en",
+						Translations: []*gedcom.SharedNoteTranslation{
+							{Value: "Hola Mundo", Language: "es"},
+							{Value: "Bonjour le Monde", Language: "fr", MIME: "text/plain"},
+							{Value: "Hallo Welt", Language: "de"},
+						},
+					},
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode failed: %v", err)
+		}
+
+		// Re-decode to verify
+		doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("Re-decode failed: %v", err)
+		}
+
+		sn := doc2.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("SharedNote @SN1@ not found after round-trip")
+		}
+		if len(sn.Translations) != 3 {
+			t.Fatalf("len(Translations) = %d, want 3", len(sn.Translations))
+		}
+
+		// Verify Spanish
+		if sn.Translations[0].Value != "Hola Mundo" {
+			t.Errorf("Translation[0].Value = %q, want 'Hola Mundo'", sn.Translations[0].Value)
+		}
+		// Verify French with MIME
+		if sn.Translations[1].Value != "Bonjour le Monde" {
+			t.Errorf("Translation[1].Value = %q, want 'Bonjour le Monde'", sn.Translations[1].Value)
+		}
+		if sn.Translations[1].MIME != "text/plain" {
+			t.Errorf("Translation[1].MIME = %q, want 'text/plain'", sn.Translations[1].MIME)
+		}
+		// Verify German
+		if sn.Translations[2].Value != "Hallo Welt" {
+			t.Errorf("Translation[2].Value = %q, want 'Hallo Welt'", sn.Translations[2].Value)
+		}
+	})
+
+	t.Run("encode multiple external IDs", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{
+				Version:  gedcom.Version70,
+				Encoding: gedcom.EncodingUTF8,
+			},
+			Records: []*gedcom.Record{
+				{
+					XRef: "@SN1@",
+					Type: gedcom.RecordTypeSharedNote,
+					Entity: &gedcom.SharedNote{
+						XRef: "@SN1@",
+						Text: "Note with multiple IDs",
+						ExternalIDs: []*gedcom.ExternalID{
+							{Value: "FS-123", Type: "http://familysearch.org/ark"},
+							{Value: "ANC-456", Type: "http://ancestry.com/id"},
+						},
+					},
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode failed: %v", err)
+		}
+
+		// Re-decode to verify
+		doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("Re-decode failed: %v", err)
+		}
+
+		sn := doc2.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("SharedNote @SN1@ not found after round-trip")
+		}
+		if len(sn.ExternalIDs) != 2 {
+			t.Fatalf("len(ExternalIDs) = %d, want 2", len(sn.ExternalIDs))
+		}
+		if sn.ExternalIDs[0].Value != "FS-123" {
+			t.Errorf("ExternalIDs[0].Value = %q, want 'FS-123'", sn.ExternalIDs[0].Value)
+		}
+		if sn.ExternalIDs[1].Value != "ANC-456" {
+			t.Errorf("ExternalIDs[1].Value = %q, want 'ANC-456'", sn.ExternalIDs[1].Value)
+		}
+	})
+
+	t.Run("encode multiple source citations", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{
+				Version:  gedcom.Version70,
+				Encoding: gedcom.EncodingUTF8,
+			},
+			Records: []*gedcom.Record{
+				{
+					XRef: "@SN1@",
+					Type: gedcom.RecordTypeSharedNote,
+					Entity: &gedcom.SharedNote{
+						XRef: "@SN1@",
+						Text: "Note with multiple sources",
+						SourceCitations: []*gedcom.SourceCitation{
+							{SourceXRef: "@S1@", Page: "p. 10"},
+							{SourceXRef: "@S2@", Page: "p. 20"},
+						},
+					},
+				},
+				{
+					XRef: "@S1@",
+					Type: gedcom.RecordTypeSource,
+					Entity: &gedcom.Source{
+						XRef:  "@S1@",
+						Title: "First Source",
+					},
+				},
+				{
+					XRef: "@S2@",
+					Type: gedcom.RecordTypeSource,
+					Entity: &gedcom.Source{
+						XRef:  "@S2@",
+						Title: "Second Source",
+					},
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode failed: %v", err)
+		}
+
+		// Re-decode to verify
+		doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("Re-decode failed: %v", err)
+		}
+
+		sn := doc2.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("SharedNote @SN1@ not found after round-trip")
+		}
+		if len(sn.SourceCitations) != 2 {
+			t.Fatalf("len(SourceCitations) = %d, want 2", len(sn.SourceCitations))
+		}
+		if sn.SourceCitations[0].SourceXRef != "@S1@" {
+			t.Errorf("SourceCitations[0].SourceXRef = %q, want '@S1@'", sn.SourceCitations[0].SourceXRef)
+		}
+		if sn.SourceCitations[1].SourceXRef != "@S2@" {
+			t.Errorf("SourceCitations[1].SourceXRef = %q, want '@S2@'", sn.SourceCitations[1].SourceXRef)
+		}
+	})
+
+	t.Run("encode BCP 47 language tags", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{
+				Version:  gedcom.Version70,
+				Encoding: gedcom.EncodingUTF8,
+			},
+			Records: []*gedcom.Record{
+				{
+					XRef: "@SN1@",
+					Type: gedcom.RecordTypeSharedNote,
+					Entity: &gedcom.SharedNote{
+						XRef:     "@SN1@",
+						Text:     "Chinese simplified text",
+						Language: "zh-Hans",
+					},
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode failed: %v", err)
+		}
+
+		encoded := buf.String()
+		if !strings.Contains(encoded, "LANG zh-Hans") {
+			t.Errorf("Encoded output missing 'LANG zh-Hans': %s", encoded)
+		}
+
+		// Re-decode to verify
+		doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("Re-decode failed: %v", err)
+		}
+
+		sn := doc2.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("SharedNote @SN1@ not found after round-trip")
+		}
+		if sn.Language != "zh-Hans" {
+			t.Errorf("Language = %q, want 'zh-Hans'", sn.Language)
+		}
+	})
+}
