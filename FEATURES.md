@@ -214,6 +214,32 @@ allIssues := validator.ValidateAll(doc)
 | INVALID_ENCODING_FOR_VERSION | Error | Non-UTF-8 encoding in GEDCOM 7.0 file |
 | BANNED_CONTROL_CHARACTER | Error | Banned C0 control character found in 7.0 file |
 
+### Negative Assertions (NO)
+
+GEDCOM 7.0 negative assertions record that an event did NOT occur - explicit statements like "never married" or "no death record found." This is different from simply having no information about an event.
+
+```go
+// Check for negative assertions
+for _, event := range individual.Events {
+    if event.IsNegative {
+        fmt.Printf("NO %s", event.Type)  // "NO MARR"
+        if event.Date != "" {
+            fmt.Printf(" during %s", event.Date)
+        }
+    }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| IsNegative | True if this is a NO assertion (event did not occur) |
+| Type | The event type that did not occur (MARR, DEAT, DIV, etc.) |
+| Date | Optional date range when non-event was known |
+| SourceCitations | Evidence supporting the negative assertion |
+| Notes | Notes explaining the negative assertion |
+
+Supported on: Individual events (NO MARR, NO DEAT, NO NATU, NO EMIG, etc.) and Family events (NO DIV, NO ANUL)
+
 ## Character Encoding
 
 | Encoding | Status | Notes |

@@ -156,6 +156,12 @@ type Event struct {
 	// Typically in ISO 8601 format (e.g., "1900-01-01")
 	SortDate string
 
+	// IsNegative indicates this is a GEDCOM 7.0 negative assertion.
+	// When true, it means the event did NOT occur (e.g., NO MARR = never married).
+	// The NO tag is used to record explicit conclusions from research that an event
+	// did not happen, which is different from simply having no information.
+	IsNegative bool
+
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation
 

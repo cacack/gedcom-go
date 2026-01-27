@@ -583,8 +583,12 @@ func transliterationToTags(tran *gedcom.Transliteration, level int) []*gedcom.Ta
 func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
-	// Event tag (BIRT, DEAT, MARR, etc.)
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: string(event.Type)})
+	// Event tag - for negative assertions (GEDCOM 7.0), use NO tag with event type as value
+	if event.IsNegative {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "NO", Value: string(event.Type)})
+	} else {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: string(event.Type)})
+	}
 
 	// Subordinate tags at level+1
 	if event.Date != "" {

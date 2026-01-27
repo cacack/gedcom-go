@@ -102,6 +102,17 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			event := parseEvent(record.Tags, i, tag.Tag, collector)
 			indi.Events = append(indi.Events, event)
 
+		case "NO":
+			// GEDCOM 7.0: NO tag indicates event did not occur
+			// tag.Value contains the event type (e.g., "MARR", "DEAT")
+			if strings.TrimSpace(tag.Value) == "" {
+				collector.addInvalidValue(tag.LineNumber, "NO", tag.Value, "missing event type")
+				continue
+			}
+			event := parseEvent(record.Tags, i, tag.Value, collector)
+			event.IsNegative = true
+			indi.Events = append(indi.Events, event)
+
 		case "BAPL", "CONL", "ENDL", "SLGC":
 			ord := parseLDSOrdinance(record.Tags, i, ldsOrdinanceType(tag.Tag), collector)
 			indi.LDSOrdinances = append(indi.LDSOrdinances, ord)
@@ -746,6 +757,17 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 
 		case "MARR", "DIV", "ENGA", "ANUL", "MARB", "MARC", "MARL", "MARS", "DIVF", "EVEN":
 			event := parseEvent(record.Tags, i, tag.Tag, collector)
+			fam.Events = append(fam.Events, event)
+
+		case "NO":
+			// GEDCOM 7.0: NO tag indicates event did not occur
+			// tag.Value contains the event type (e.g., "MARR", "DIV")
+			if strings.TrimSpace(tag.Value) == "" {
+				collector.addInvalidValue(tag.LineNumber, "NO", tag.Value, "missing event type")
+				continue
+			}
+			event := parseEvent(record.Tags, i, tag.Value, collector)
+			event.IsNegative = true
 			fam.Events = append(fam.Events, event)
 
 		case "SLGS":
