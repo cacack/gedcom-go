@@ -691,3 +691,128 @@ func TestEncodingValidator_EmptyTagValue(t *testing.T) {
 		t.Errorf("Expected 0 issues for empty value, got %d", len(issues))
 	}
 }
+
+func TestEncodingValidator_ValidateControlCharacters_HeaderStringFields(t *testing.T) {
+	tests := []struct {
+		name       string
+		header     *gedcom.Header
+		wantIssues int
+		wantField  string
+	}{
+		{
+			name: "SourceSystem with control char",
+			header: &gedcom.Header{
+				Version:      gedcom.Version70,
+				SourceSystem: "Software\x01Name",
+			},
+			wantIssues: 1,
+			wantField:  "SOUR",
+		},
+		{
+			name: "Language with control char",
+			header: &gedcom.Header{
+				Version:  gedcom.Version70,
+				Language: "English\x02",
+			},
+			wantIssues: 1,
+			wantField:  "LANG",
+		},
+		{
+			name: "Copyright with control char",
+			header: &gedcom.Header{
+				Version:   gedcom.Version70,
+				Copyright: "Copyright\x03 2026",
+			},
+			wantIssues: 1,
+			wantField:  "COPR",
+		},
+		{
+			name: "Submitter with control char",
+			header: &gedcom.Header{
+				Version:   gedcom.Version70,
+				Submitter: "@S1@\x04",
+			},
+			wantIssues: 1,
+			wantField:  "SUBM",
+		},
+		{
+			name: "AncestryTreeID with control char",
+			header: &gedcom.Header{
+				Version:        gedcom.Version70,
+				AncestryTreeID: "12345\x05",
+			},
+			wantIssues: 1,
+			wantField:  "_TREE",
+		},
+		{
+			name: "Multiple header fields with control chars",
+			header: &gedcom.Header{
+				Version:      gedcom.Version70,
+				SourceSystem: "Soft\x01ware",
+				Language:     "Eng\x02lish",
+			},
+			wantIssues: 2,
+			wantField:  "", // Don't check specific field
+		},
+		{
+			name: "Clean header fields - no issues",
+			header: &gedcom.Header{
+				Version:        gedcom.Version70,
+				SourceSystem:   "GenealogyPro",
+				Language:       "English",
+				Copyright:      "Copyright 2026",
+				Submitter:      "@S1@",
+				AncestryTreeID: "12345",
+			},
+			wantIssues: 0,
+			wantField:  "",
+		},
+		{
+			name: "Empty header fields - no issues",
+			header: &gedcom.Header{
+				Version: gedcom.Version70,
+			},
+			wantIssues: 0,
+			wantField:  "",
+		},
+		{
+			name: "GEDCOM 5.5 ignores header field control chars",
+			header: &gedcom.Header{
+				Version:      gedcom.Version55,
+				SourceSystem: "Software\x01Name",
+			},
+			wantIssues: 0,
+			wantField:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := NewEncodingValidator()
+			doc := &gedcom.Document{
+				Header:  tt.header,
+				Records: []*gedcom.Record{},
+				XRefMap: make(map[string]*gedcom.Record),
+			}
+
+			issues := v.ValidateControlCharacters(doc)
+
+			if len(issues) != tt.wantIssues {
+				t.Errorf("ValidateControlCharacters() returned %d issues, want %d", len(issues), tt.wantIssues)
+				for _, issue := range issues {
+					t.Logf("  Issue: %s", issue.String())
+				}
+				return
+			}
+
+			if tt.wantIssues == 1 && tt.wantField != "" {
+				if issues[0].Details["field"] != tt.wantField {
+					t.Errorf("issue.Details[\"field\"] = %q, want %q", issues[0].Details["field"], tt.wantField)
+				}
+				if issues[0].Code != CodeBannedControlCharacter {
+					t.Errorf("issue.Code = %q, want %q", issues[0].Code, CodeBannedControlCharacter)
+				}
+			}
+		})
+	}
+}

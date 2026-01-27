@@ -106,6 +106,25 @@ func (e *EncodingValidator) ValidateControlCharacters(doc *gedcom.Document) []Is
 
 	var issues []Issue
 
+	// Scan header string fields
+	headerFields := []struct {
+		value string
+		field string
+	}{
+		{doc.Header.SourceSystem, "SOUR"},
+		{doc.Header.Language, "LANG"},
+		{doc.Header.Copyright, "COPR"},
+		{doc.Header.Submitter, "SUBM"},
+		{doc.Header.AncestryTreeID, "_TREE"},
+	}
+	for _, hf := range headerFields {
+		if hf.value != "" {
+			if issue := e.checkControlChars(hf.value, "", hf.field); issue != nil {
+				issues = append(issues, *issue)
+			}
+		}
+	}
+
 	// Scan header tags
 	if doc.Header.Tags != nil {
 		e.scanTagsForControlChars(doc.Header.Tags, "", &issues)
