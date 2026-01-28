@@ -8,9 +8,9 @@ import (
 
 // compareDocuments compares two documents and returns differences.
 // It compares headers, record counts, and all record tags.
-func compareDocuments(before, after *gedcom.Document, report *RoundTripReport) {
+func compareDocuments(before, after *gedcom.Document, report *RoundTripReport, cfg *roundTripConfig) {
 	// Compare headers
-	compareHeaders(before.Header, after.Header, report)
+	compareHeaders(before.Header, after.Header, report, cfg)
 
 	// Compare record counts
 	if len(before.Records) != len(after.Records) {
@@ -60,7 +60,7 @@ func compareDocuments(before, after *gedcom.Document, report *RoundTripReport) {
 }
 
 // compareHeaders compares two header structs.
-func compareHeaders(before, after *gedcom.Header, report *RoundTripReport) {
+func compareHeaders(before, after *gedcom.Header, report *RoundTripReport, cfg *roundTripConfig) {
 	// Handle nil headers
 	if before == nil && after == nil {
 		return
@@ -108,6 +108,13 @@ func compareHeaders(before, after *gedcom.Header, report *RoundTripReport) {
 			before.Language,
 			after.Language,
 		)
+	}
+
+	// Compare Header.Tags if enabled
+	// By default, header tags are not compared because the encoder
+	// reconstructs the header from Header fields.
+	if cfg != nil && cfg.compareHeaderTags {
+		compareTags(before.Tags, after.Tags, "Header.Tags", report)
 	}
 }
 

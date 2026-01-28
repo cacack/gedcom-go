@@ -235,7 +235,7 @@ func TestCompareDocuments_DifferentRecordCounts(t *testing.T) {
 	}
 
 	report := &RoundTripReport{Equal: true}
-	compareDocuments(before, after, report)
+	compareDocuments(before, after, report, defaultConfig())
 
 	if report.Equal {
 		t.Error("expected Equal=false for different record counts")
@@ -332,7 +332,7 @@ func TestCompareHeaders(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			report := &RoundTripReport{Equal: true}
-			compareHeaders(tt.before, tt.after, report)
+			compareHeaders(tt.before, tt.after, report, defaultConfig())
 
 			if len(report.Differences) != tt.expectDiffs {
 				t.Errorf("expected %d differences, got %d: %v",
@@ -614,6 +614,55 @@ func TestOptions(t *testing.T) {
 	})
 }
 
+// TestWithHeaderTagComparison_AffectsComparison verifies the option changes behavior.
+func TestWithHeaderTagComparison_AffectsComparison(t *testing.T) {
+	before := &gedcom.Header{
+		Version: "5.5.1",
+		Tags: []*gedcom.Tag{
+			{Tag: "CHAR", Value: "UTF-8"},
+		},
+	}
+	after := &gedcom.Header{
+		Version: "5.5.1",
+		Tags: []*gedcom.Tag{
+			{Tag: "CHAR", Value: "ANSEL"},
+		},
+	}
+
+	t.Run("without option - tags not compared", func(t *testing.T) {
+		report := &RoundTripReport{Equal: true}
+		compareHeaders(before, after, report, defaultConfig())
+
+		if !report.Equal {
+			t.Error("expected Equal=true when header tags comparison is disabled")
+		}
+	})
+
+	t.Run("with option - tags are compared", func(t *testing.T) {
+		cfg := applyOptions(WithHeaderTagComparison())
+		report := &RoundTripReport{Equal: true}
+		compareHeaders(before, after, report, cfg)
+
+		if report.Equal {
+			t.Error("expected Equal=false when header tags differ and comparison is enabled")
+		}
+
+		// Should have tag value difference
+		found := false
+		for _, diff := range report.Differences {
+			if diff.Path == "Header.Tags[0].Value" {
+				found = true
+				if diff.Before != "UTF-8" || diff.After != "ANSEL" {
+					t.Errorf("unexpected diff values: %+v", diff)
+				}
+			}
+		}
+		if !found {
+			t.Errorf("expected Header.Tags[0].Value difference, got: %v", report.Differences)
+		}
+	})
+}
+
 // TestCheckRoundTrip_WithRealFiles tests with actual GEDCOM files.
 func TestCheckRoundTrip_WithRealFiles(t *testing.T) {
 	tests := []struct {
@@ -683,7 +732,7 @@ func TestCompareDocuments_ExtraRecordsInAfter(t *testing.T) {
 	}
 
 	report := &RoundTripReport{Equal: true}
-	compareDocuments(before, after, report)
+	compareDocuments(before, after, report, defaultConfig())
 
 	if report.Equal {
 		t.Error("expected Equal=false for different record counts")
