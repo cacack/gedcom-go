@@ -103,13 +103,7 @@ func (u *utf8Reader) Read(p []byte) (n int, err error) {
 	}
 
 	// Return any complete bytes first
-	if len(u.complete) > 0 {
-		n = copy(p, u.complete)
-		if n < len(u.complete) {
-			u.complete = u.complete[n:]
-		} else {
-			u.complete = nil
-		}
+	if n, ok := u.drainComplete(p); ok {
 		return n, nil
 	}
 
@@ -120,7 +114,34 @@ func (u *utf8Reader) Read(p []byte) (n int, err error) {
 		}
 	}
 
-	// Use internal buffer large enough for pending + new data
+	n, err = u.readAndProcess(p)
+
+	if err == io.EOF && len(u.pending) > 0 {
+		if n > 0 || len(u.complete) > 0 {
+			// Return valid bytes first; error will surface on next read
+			// when pending bytes are re-evaluated
+			return n, nil
+		}
+		return 0, &ErrInvalidUTF8{Line: u.line, Column: u.column}
+	}
+
+	return n, err
+}
+
+func (u *utf8Reader) drainComplete(p []byte) (int, bool) {
+	if len(u.complete) == 0 {
+		return 0, false
+	}
+	n := copy(p, u.complete)
+	if n < len(u.complete) {
+		u.complete = u.complete[n:]
+	} else {
+		u.complete = nil
+	}
+	return n, true
+}
+
+func (u *utf8Reader) readAndProcess(p []byte) (int, error) {
 	bufSize := len(u.pending) + len(p)
 	if bufSize < 8 {
 		bufSize = 8
@@ -133,35 +154,41 @@ func (u *utf8Reader) Read(p []byte) (n int, err error) {
 	readN, err := u.reader.Read(workBuf[workN:])
 	workN += readN
 
-	if workN > 0 {
-		completeLen := findLastCompleteUTF8(workBuf[:workN])
-		if completeLen < workN {
-			u.pending = make([]byte, workN-completeLen)
-			copy(u.pending, workBuf[completeLen:workN])
-			workN = completeLen
-		}
-		if workN > 0 {
-			if verr := u.validateAndTrack(workBuf[:workN]); verr != nil {
-				return 0, verr
-			}
-			n = copy(p, workBuf[:workN])
-			if n < workN {
-				u.complete = make([]byte, workN-n)
-				copy(u.complete, workBuf[n:workN])
-			}
-		}
-	}
-
-	if err == io.EOF && len(u.pending) > 0 {
-		if n > 0 || len(u.complete) > 0 {
-			// Return valid bytes first; error will surface on next read
-			// when pending bytes are re-evaluated
-			return n, nil
-		}
-		return 0, &ErrInvalidUTF8{Line: u.line, Column: u.column}
+	n, verr := u.processWorkBuffer(p, workBuf, workN)
+	if verr != nil {
+		return 0, verr
 	}
 
 	return n, err
+}
+
+func (u *utf8Reader) processWorkBuffer(p, workBuf []byte, workN int) (int, error) {
+	if workN == 0 {
+		return 0, nil
+	}
+
+	completeLen := findLastCompleteUTF8(workBuf[:workN])
+	if completeLen < workN {
+		u.pending = make([]byte, workN-completeLen)
+		copy(u.pending, workBuf[completeLen:workN])
+		workN = completeLen
+	}
+
+	if workN == 0 {
+		return 0, nil
+	}
+
+	if verr := u.validateAndTrack(workBuf[:workN]); verr != nil {
+		return 0, verr
+	}
+
+	n := copy(p, workBuf[:workN])
+	if n < workN {
+		u.complete = make([]byte, workN-n)
+		copy(u.complete, workBuf[n:workN])
+	}
+
+	return n, nil
 }
 
 func (u *utf8Reader) readBuffered(p []byte) (int, bool) {
