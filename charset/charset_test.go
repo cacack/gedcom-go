@@ -1489,6 +1489,88 @@ func TestNewReader_UTF8IncompleteAtEOF(t *testing.T) {
 	}
 }
 
+type eofWithDataReader struct {
+	data []byte
+	read bool
+}
+
+func (r *eofWithDataReader) Read(p []byte) (int, error) {
+	if r.read {
+		return 0, io.EOF
+	}
+	r.read = true
+	n := copy(p, r.data)
+	return n, io.EOF
+}
+
+func TestNewReader_UTF8IncompleteAtEOF_ValidBytesReturned(t *testing.T) {
+	input := append([]byte("Hello"), 0xC3)
+
+	ur := &utf8Reader{
+		reader:     &eofWithDataReader{data: input},
+		line:       1,
+		column:     1,
+		bomSkipped: true,
+	}
+
+	buf := make([]byte, 100)
+	n, err := ur.Read(buf)
+
+	if n != 5 || err != nil {
+		t.Errorf("First read: got n=%d, err=%v; want n=5, err=nil", n, err)
+	}
+	if string(buf[:n]) != "Hello" {
+		t.Errorf("First read data: got %q, want %q", buf[:n], "Hello")
+	}
+
+	n2, err2 := ur.Read(buf)
+	if n2 != 0 {
+		t.Errorf("Second read: got n=%d, want n=0", n2)
+	}
+	if _, ok := err2.(*ErrInvalidUTF8); !ok {
+		t.Errorf("Second read: got err=%T, want *ErrInvalidUTF8", err2)
+	}
+}
+
+func TestNewReader_UTF8IncompleteAtEOF_ZeroLengthBuffer(t *testing.T) {
+	input := append([]byte("Hello"), 0xC3)
+
+	ur := &utf8Reader{
+		reader:     &eofWithDataReader{data: input},
+		line:       1,
+		column:     1,
+		bomSkipped: true,
+	}
+
+	buf := make([]byte, 0)
+	n, err := ur.Read(buf)
+
+	if n != 0 || err != nil {
+		t.Errorf("Zero-length buffer read: got n=%d, err=%v; want n=0, err=nil", n, err)
+	}
+	if len(ur.complete) != 5 {
+		t.Errorf("Expected 5 bytes in complete buffer, got %d", len(ur.complete))
+	}
+
+	buf2 := make([]byte, 100)
+	n2, err2 := ur.Read(buf2)
+
+	if n2 != 5 || err2 != nil {
+		t.Errorf("Second read: got n=%d, err=%v; want n=5, err=nil", n2, err2)
+	}
+	if string(buf2[:n2]) != "Hello" {
+		t.Errorf("Second read data: got %q, want %q", buf2[:n2], "Hello")
+	}
+
+	n3, err3 := ur.Read(buf2)
+	if n3 != 0 {
+		t.Errorf("Third read: got n=%d, want n=0", n3)
+	}
+	if _, ok := err3.(*ErrInvalidUTF8); !ok {
+		t.Errorf("Third read: got err=%T, want *ErrInvalidUTF8", err3)
+	}
+}
+
 func TestNewReader_LATIN1_AutoDetection(t *testing.T) {
 	tests := []struct {
 		name  string

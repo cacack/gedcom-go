@@ -153,6 +153,11 @@ func (u *utf8Reader) Read(p []byte) (n int, err error) {
 	}
 
 	if err == io.EOF && len(u.pending) > 0 {
+		if n > 0 || len(u.complete) > 0 {
+			// Return valid bytes first; error will surface on next read
+			// when pending bytes are re-evaluated
+			return n, nil
+		}
 		return 0, &ErrInvalidUTF8{Line: u.line, Column: u.column}
 	}
 
