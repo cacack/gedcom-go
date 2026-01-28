@@ -12,6 +12,9 @@ updates:
     labels:
       - "dependencies"
       - "go"
+    ignore:
+      - dependency-name: "golang.org/x/text"
+        versions: [">= 0.29.0"]  # v0.29.0+ requires Go 1.24+
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
