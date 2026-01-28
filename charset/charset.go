@@ -92,11 +92,22 @@ type utf8Reader struct {
 	bomSkipped bool
 	buffer     []byte // Buffer for BOM bytes that need to be returned
 	bufPos     int    // Current position in buffer
+	pending    []byte // Incomplete UTF-8 sequence from previous read
+	complete   []byte // Complete UTF-8 bytes ready to return
 }
 
 func (u *utf8Reader) Read(p []byte) (n int, err error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+
 	// Return buffered BOM bytes first if any
 	if n, ok := u.readBuffered(p); ok {
+		return n, nil
+	}
+
+	// Return any complete bytes first
+	if n, ok := u.drainComplete(p); ok {
 		return n, nil
 	}
 
@@ -107,14 +118,81 @@ func (u *utf8Reader) Read(p []byte) (n int, err error) {
 		}
 	}
 
-	n, err = u.reader.Read(p)
-	if n > 0 {
-		if err := u.validateAndTrack(p[:n]); err != nil {
-			return 0, err
+	n, err = u.readAndProcess(p)
+
+	if err == io.EOF && len(u.pending) > 0 {
+		if n > 0 || len(u.complete) > 0 {
+			// Return valid bytes first; error will surface on next read
+			// when pending bytes are re-evaluated
+			return n, nil
 		}
+		return 0, &ErrInvalidUTF8{Line: u.line, Column: u.column}
 	}
 
 	return n, err
+}
+
+func (u *utf8Reader) drainComplete(p []byte) (int, bool) {
+	if len(u.complete) == 0 {
+		return 0, false
+	}
+	n := copy(p, u.complete)
+	if n < len(u.complete) {
+		u.complete = u.complete[n:]
+	} else {
+		u.complete = nil
+	}
+	return n, true
+}
+
+func (u *utf8Reader) readAndProcess(p []byte) (int, error) {
+	bufSize := len(u.pending) + len(p)
+	if bufSize < 8 {
+		bufSize = 8
+	}
+	workBuf := make([]byte, bufSize)
+
+	workN := copy(workBuf, u.pending)
+	u.pending = nil
+
+	readN, err := u.reader.Read(workBuf[workN:])
+	workN += readN
+
+	n, verr := u.processWorkBuffer(p, workBuf, workN)
+	if verr != nil {
+		return 0, verr
+	}
+
+	return n, err
+}
+
+func (u *utf8Reader) processWorkBuffer(p, workBuf []byte, workN int) (int, error) {
+	if workN == 0 {
+		return 0, nil
+	}
+
+	completeLen := findLastCompleteUTF8(workBuf[:workN])
+	if completeLen < workN {
+		u.pending = make([]byte, workN-completeLen)
+		copy(u.pending, workBuf[completeLen:workN])
+		workN = completeLen
+	}
+
+	if workN == 0 {
+		return 0, nil
+	}
+
+	if verr := u.validateAndTrack(workBuf[:workN]); verr != nil {
+		return 0, verr
+	}
+
+	n := copy(p, workBuf[:workN])
+	if n < workN {
+		u.complete = make([]byte, workN-n)
+		copy(u.complete, workBuf[n:workN])
+	}
+
+	return n, nil
 }
 
 func (u *utf8Reader) readBuffered(p []byte) (int, bool) {
@@ -192,6 +270,39 @@ func (u *utf8Reader) updatePosition(p []byte) {
 			u.column++
 		}
 	}
+}
+
+func findLastCompleteUTF8(p []byte) int {
+	n := len(p)
+	if n == 0 {
+		return 0
+	}
+
+	for i := 1; i <= 3 && i <= n; i++ {
+		b := p[n-i]
+
+		if b&0x80 == 0 {
+			return n
+		} else if b&0xC0 == 0xC0 {
+			var seqLen int
+			switch {
+			case b&0xE0 == 0xC0:
+				seqLen = 2
+			case b&0xF0 == 0xE0:
+				seqLen = 3
+			case b&0xF8 == 0xF0:
+				seqLen = 4
+			default:
+				return n
+			}
+			if i >= seqLen {
+				return n
+			}
+			return n - i
+		}
+	}
+
+	return n
 }
 
 // ValidateString checks if a string is valid UTF-8.

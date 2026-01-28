@@ -1325,6 +1325,282 @@ func TestNewReaderWithEncoding_LATIN1(t *testing.T) {
 	}
 }
 
+type smallChunkReader struct {
+	data      []byte
+	pos       int
+	chunkSize int
+}
+
+func (r *smallChunkReader) Read(p []byte) (n int, err error) {
+	if r.pos >= len(r.data) {
+		return 0, io.EOF
+	}
+	end := r.pos + r.chunkSize
+	if end > len(r.data) {
+		end = len(r.data)
+	}
+	n = copy(p, r.data[r.pos:end])
+	r.pos += n
+	return n, nil
+}
+
+func TestFindLastCompleteUTF8(t *testing.T) {
+	tests := []struct {
+		name string
+		data []byte
+		want int
+	}{
+		{"empty", []byte{}, 0},
+		{"ASCII", []byte("Hello"), 5},
+		{"complete 2-byte", []byte("Caf\xC3\xA9"), 5},
+		{"incomplete 2-byte", []byte("Caf\xC3"), 3},
+		{"complete 3-byte", []byte("\xE4\xB8\xAD"), 3},
+		{"incomplete 3-byte", []byte("Hi\xE4\xB8"), 2},
+		{"complete 4-byte", []byte("\xF0\x9F\x98\x80"), 4},
+		{"incomplete 4-byte", []byte("Hi\xF0\x9F\x98"), 2},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := findLastCompleteUTF8(tt.data); got != tt.want {
+				t.Errorf("findLastCompleteUTF8(%v) = %d, want %d", tt.data, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewReader_UTF8BufferBoundary(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		chunkSize int
+	}{
+		{"2-byte UTF-8", "Viele Grüße", 1},
+		{"3-byte UTF-8", "你好世界", 2},
+		{"4-byte UTF-8", "Hello 😀🎉", 3},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewReader(&smallChunkReader{data: []byte(tt.input), chunkSize: tt.chunkSize})
+			got, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+			if string(got) != tt.input {
+				t.Errorf("got %q, want %q", got, tt.input)
+			}
+		})
+	}
+}
+
+func TestNewReader_UTF8BufferBoundary_SmallOutputBuffer(t *testing.T) {
+	input := "Aé中😀B"
+	r := NewReader(&smallChunkReader{data: []byte(input), chunkSize: 1})
+
+	var result []byte
+	buf := make([]byte, 4)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			result = append(result, buf[:n]...)
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Read() error = %v", err)
+		}
+	}
+
+	if string(result) != input {
+		t.Errorf("got %q, want %q", string(result), input)
+	}
+}
+
+func TestNewReader_UTF8BufferBoundary_TinyOutputBuffer(t *testing.T) {
+	input := "A😀B"
+	r := NewReader(&smallChunkReader{data: []byte(input), chunkSize: 1})
+
+	var result []byte
+	buf := make([]byte, 1)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			result = append(result, buf[:n]...)
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Read() error = %v", err)
+		}
+	}
+
+	if string(result) != input {
+		t.Errorf("got %q, want %q", string(result), input)
+	}
+}
+
+func TestNewReader_UTF8BufferBoundary_PendingExactFit(t *testing.T) {
+	input := "AB😀CD"
+	r := NewReader(&smallChunkReader{data: []byte(input), chunkSize: 1})
+
+	var result []byte
+	buf := make([]byte, 3)
+	for {
+		n, err := r.Read(buf)
+		if n > 0 {
+			result = append(result, buf[:n]...)
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Read() error = %v", err)
+		}
+	}
+
+	if string(result) != input {
+		t.Errorf("got %q, want %q", string(result), input)
+	}
+}
+
+func TestNewReader_UTF8IncompleteAtEOF(t *testing.T) {
+	tests := []struct {
+		name  string
+		input []byte
+	}{
+		{"incomplete 2-byte", []byte("Hello\xC3")},
+		{"incomplete 4-byte", []byte("Hello\xF0\x9F")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := NewReader(bytes.NewReader(tt.input))
+			_, err := io.ReadAll(r)
+			if err == nil {
+				t.Fatal("expected error for incomplete UTF-8 at EOF")
+			}
+			if _, ok := err.(*ErrInvalidUTF8); !ok {
+				t.Errorf("expected *ErrInvalidUTF8, got %T", err)
+			}
+		})
+	}
+}
+
+type eofWithDataReader struct {
+	data []byte
+	read bool
+}
+
+func (r *eofWithDataReader) Read(p []byte) (int, error) {
+	if r.read {
+		return 0, io.EOF
+	}
+	r.read = true
+	n := copy(p, r.data)
+	return n, io.EOF
+}
+
+func TestNewReader_UTF8IncompleteAtEOF_ValidBytesReturned(t *testing.T) {
+	input := append([]byte("Hello"), 0xC3)
+
+	ur := &utf8Reader{
+		reader:     &eofWithDataReader{data: input},
+		line:       1,
+		column:     1,
+		bomSkipped: true,
+	}
+
+	buf := make([]byte, 100)
+	n, err := ur.Read(buf)
+
+	if n != 5 || err != nil {
+		t.Errorf("First read: got n=%d, err=%v; want n=5, err=nil", n, err)
+	}
+	if string(buf[:n]) != "Hello" {
+		t.Errorf("First read data: got %q, want %q", buf[:n], "Hello")
+	}
+
+	n2, err2 := ur.Read(buf)
+	if n2 != 0 {
+		t.Errorf("Second read: got n=%d, want n=0", n2)
+	}
+	if _, ok := err2.(*ErrInvalidUTF8); !ok {
+		t.Errorf("Second read: got err=%T, want *ErrInvalidUTF8", err2)
+	}
+}
+
+func TestNewReader_UTF8IncompleteAtEOF_ZeroLengthBuffer(t *testing.T) {
+	input := append([]byte("Hello"), 0xC3)
+
+	ur := &utf8Reader{
+		reader:     &eofWithDataReader{data: input},
+		line:       1,
+		column:     1,
+		bomSkipped: true,
+	}
+
+	buf := make([]byte, 0)
+	n, err := ur.Read(buf)
+
+	if n != 0 || err != nil {
+		t.Errorf("Zero-length buffer: got n=%d, err=%v; want n=0, err=nil", n, err)
+	}
+	if len(ur.complete) != 0 {
+		t.Errorf("Zero-length buffer should not trigger read, got %d bytes in complete", len(ur.complete))
+	}
+}
+
+func TestNewReader_UTF8IncompleteAtEOF_SmallOutputBuffer(t *testing.T) {
+	input := append([]byte("Hello"), 0xC3)
+
+	ur := &utf8Reader{
+		reader:     &eofWithDataReader{data: input},
+		line:       1,
+		column:     1,
+		bomSkipped: true,
+	}
+
+	buf := make([]byte, 2)
+	n, err := ur.Read(buf)
+
+	if n != 2 || err != nil {
+		t.Errorf("First read: got n=%d, err=%v; want n=2, err=nil", n, err)
+	}
+	if string(buf[:n]) != "He" {
+		t.Errorf("First read data: got %q, want %q", buf[:n], "He")
+	}
+	if len(ur.complete) != 3 {
+		t.Errorf("Expected 3 bytes in complete buffer, got %d", len(ur.complete))
+	}
+
+	n2, err2 := ur.Read(buf)
+	if n2 != 2 || err2 != nil {
+		t.Errorf("Second read: got n=%d, err=%v; want n=2, err=nil", n2, err2)
+	}
+	if string(buf[:n2]) != "ll" {
+		t.Errorf("Second read data: got %q, want %q", buf[:n2], "ll")
+	}
+
+	n3, err3 := ur.Read(buf)
+	if n3 != 1 || err3 != nil {
+		t.Errorf("Third read: got n=%d, err=%v; want n=1, err=nil", n3, err3)
+	}
+	if string(buf[:n3]) != "o" {
+		t.Errorf("Third read data: got %q, want %q", buf[:n3], "o")
+	}
+
+	n4, err4 := ur.Read(buf)
+	if n4 != 0 {
+		t.Errorf("Fourth read: got n=%d, want n=0", n4)
+	}
+	if _, ok := err4.(*ErrInvalidUTF8); !ok {
+		t.Errorf("Fourth read: got err=%T, want *ErrInvalidUTF8", err4)
+	}
+}
+
 func TestNewReader_LATIN1_AutoDetection(t *testing.T) {
 	tests := []struct {
 		name  string
