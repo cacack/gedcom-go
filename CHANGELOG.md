@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0](https://github.com/cacack/gedcom-go/compare/v1.0.0...v1.1.0) (2026-01-28)
+
+
+### Features
+
+* **api:** add top-level convenience API facade ([00029ed](https://github.com/cacack/gedcom-go/commit/00029ed16ae4855b80fff9474a17957bf2414654))
+* **decoder:** add GEDCOM 7.0 EXID and SCHMA parsing ([5bdce94](https://github.com/cacack/gedcom-go/commit/5bdce945f422b3f44ccaddae7d78ab0a9018a3bc))
+* **decoder:** add lenient parsing mode with diagnostic collection ([390e467](https://github.com/cacack/gedcom-go/commit/390e467a810dd282f4b1a4ba417c7c4649b237e0))
+* **gedcom:** implement NO tag for negative assertions (GEDCOM 7.0) ([3081665](https://github.com/cacack/gedcom-go/commit/3081665ef028ccb815f2286c10c7c7de57fc26a5))
+* **gedcom:** implement SNOTE (Shared Note) for GEDCOM 7.0 ([acbe0f8](https://github.com/cacack/gedcom-go/commit/acbe0f804739a4741d621187a65fd5bec1282b08))
+* **parser,validator:** add INT date modifier and version-aware validation ([94955de](https://github.com/cacack/gedcom-go/commit/94955de7b7f9511335b124e9adc76aa38532e4d8))
+* **testing:** add round-trip test helper package ([1784a38](https://github.com/cacack/gedcom-go/commit/1784a38327b3e0b0c09dd9aa7325ac0c9ad5b85e))
+* **validator:** add GEDCOM 7.0 encoding validation ([29e4a30](https://github.com/cacack/gedcom-go/commit/29e4a30c7a84c6f1a1f058e9b4c81b66ae034f65))
+* **validator:** add SkipEncodingValidation config option ([006069f](https://github.com/cacack/gedcom-go/commit/006069f3b304faeededef9024e70636d094cc48c))
+
+
+### Bug Fixes
+
+* address CodeRabbit review comments ([bab005c](https://github.com/cacack/gedcom-go/commit/bab005c454d29b6cfcef53e0ff34c2b926aa76b0))
+* address CodeRabbit review feedback ([41c92f5](https://github.com/cacack/gedcom-go/commit/41c92f5d42abd2b0df96bfcab1b1947a2994972d))
+* **api:** address lint issues in facade implementation ([f1a3f22](https://github.com/cacack/gedcom-go/commit/f1a3f229c6298ba4b1badbe7dfebd8ca7d6b52e4))
+* **charset:** handle tiny output buffers in UTF-8 reader ([41f20ec](https://github.com/cacack/gedcom-go/commit/41f20ec5c55ce9e0d3c807e5c290a6a6bf0a71ad))
+* **charset:** handle UTF-8 buffer boundary correctly ([0bf149d](https://github.com/cacack/gedcom-go/commit/0bf149d6f6b66db6b410668b6959daf85008c3ea))
+* **charset:** return immediately for zero-length read buffer ([5794e37](https://github.com/cacack/gedcom-go/commit/5794e3769465e5f9993ab7bf01a5f059838723bc))
+* **charset:** return valid bytes before error on EOF with incomplete UTF-8 ([f2bb667](https://github.com/cacack/gedcom-go/commit/f2bb667ea15c0e4e64a74c4f831004f257187f95))
+* **ci:** capture apidiff exit status with set +e ([f46a873](https://github.com/cacack/gedcom-go/commit/f46a873bebdcd37043359c5e9cc20a9ed54174af))
+* **ci:** correct apidiff command syntax for module comparison ([e9e26ae](https://github.com/cacack/gedcom-go/commit/e9e26ae3f4623c13bd5774afaf9e92b6012d149b))
+* **ci:** download dependencies before running apidiff ([436c67b](https://github.com/cacack/gedcom-go/commit/436c67bdd17183703748e244d085c281055e12ca))
+* **ci:** fail when apidiff itself errors ([b6bc0b2](https://github.com/cacack/gedcom-go/commit/b6bc0b27af4c1f374eee9ae677db73ff478e0882))
+* **ci:** use clone and API export for apidiff comparison ([0de3072](https://github.com/cacack/gedcom-go/commit/0de3072a25caacee6a03c9816bc5703b9f225f88))
+* **decoder:** address CodeRabbit review feedback ([6e7a3f6](https://github.com/cacack/gedcom-go/commit/6e7a3f6d44448508deeee204497998bc3a1f1a2e))
+* **decoder:** address lint issues in SCHMA/EXID implementation ([5f27cb9](https://github.com/cacack/gedcom-go/commit/5f27cb9eacb1bb2ae4d5a6f927b46aa11c6b416b))
+* **decoder:** validate NO tag has event type before parsing ([f6b3d45](https://github.com/cacack/gedcom-go/commit/f6b3d455529107d158620eed4478eb0797be928c))
+* **docs:** address CodeRabbit review feedback ([cb51c53](https://github.com/cacack/gedcom-go/commit/cb51c53f1b3b807fd8094bb2b4e3eacd797a1f05))
+* **docs:** clarify compatibility intro text ([e421f12](https://github.com/cacack/gedcom-go/commit/e421f12255c7a23f976d29dfdb7260ce14941e4b))
+* **parser,decoder:** address CodeRabbit review feedback ([b6f46fa](https://github.com/cacack/gedcom-go/commit/b6f46faf31bb04b7b8717b8207e91ad394ca2e47))
+* **testing:** wire up functional options in round-trip comparison ([0af8183](https://github.com/cacack/gedcom-go/commit/0af81831ce9e9e5b1ebd4a7445bc89ce37d18341))
+* **validator:** validate control chars in header string fields ([bb2dbef](https://github.com/cacack/gedcom-go/commit/bb2dbef0ab89aa1cca3e02674fe0a1a991180da5))
+
 ## [1.0.0](https://github.com/cacack/gedcom-go/compare/v0.8.1...v1.0.0) (2026-01-19)
 
 
