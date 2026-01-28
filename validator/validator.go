@@ -65,6 +65,18 @@ type ValidatorConfig struct {
 	// When true, UTF-8 enforcement and control character checks are skipped.
 	// Default: false (encoding validation enabled).
 	SkipEncodingValidation bool
+
+	// MaxErrors limits the number of issues collected during validation.
+	// When set to a positive value, validation stops after this many issues.
+	// Default: 0 (unlimited - collect all issues).
+	// This is useful for large files where early termination is desired.
+	MaxErrors int
+
+	// SkipRules specifies issue codes to exclude from validation results.
+	// Issues with codes matching any entry in this slice are filtered out.
+	// Example: []string{"W001", "I002"} to skip warning W001 and info I002.
+	// Default: nil (no rules skipped).
+	SkipRules []string
 }
 
 // Validator validates GEDCOM documents against specification rules.
@@ -407,29 +419,67 @@ func (v *Validator) filterByStrictness(issues []Issue) []Issue {
 		strictness = v.config.Strictness
 	}
 
+	var result []Issue
 	switch strictness {
 	case StrictnessRelaxed:
 		// Only errors
-		var result []Issue
 		for _, issue := range issues {
 			if issue.Severity == SeverityError {
 				result = append(result, issue)
 			}
 		}
-		return result
 	case StrictnessNormal:
 		// Errors and warnings
-		var result []Issue
 		for _, issue := range issues {
 			if issue.Severity == SeverityError || issue.Severity == SeverityWarning {
 				result = append(result, issue)
 			}
 		}
-		return result
 	case StrictnessStrict:
 		// All issues
-		return issues
+		result = issues
 	default:
+		result = issues
+	}
+
+	// Apply SkipRules filter
+	result = v.filterBySkipRules(result)
+
+	// Apply MaxErrors limit
+	result = v.applyMaxErrors(result)
+
+	return result
+}
+
+// filterBySkipRules removes issues whose code matches any entry in SkipRules.
+func (v *Validator) filterBySkipRules(issues []Issue) []Issue {
+	if v.config == nil || len(v.config.SkipRules) == 0 {
 		return issues
 	}
+
+	// Build a set for O(1) lookup
+	skipSet := make(map[string]bool, len(v.config.SkipRules))
+	for _, code := range v.config.SkipRules {
+		skipSet[code] = true
+	}
+
+	var result []Issue
+	for _, issue := range issues {
+		if !skipSet[issue.Code] {
+			result = append(result, issue)
+		}
+	}
+	return result
+}
+
+// applyMaxErrors limits the number of issues returned if MaxErrors is set.
+func (v *Validator) applyMaxErrors(issues []Issue) []Issue {
+	if v.config == nil || v.config.MaxErrors <= 0 {
+		return issues
+	}
+
+	if len(issues) > v.config.MaxErrors {
+		return issues[:v.config.MaxErrors]
+	}
+	return issues
 }
