@@ -1307,3 +1307,36 @@ for _, record := range doc.Records {
 - Multi-version Go testing (1.24, 1.25)
 - Benchmark regression testing
 - Real-world GEDCOM file testing
+
+### Round-Trip Test Helper
+
+The `gedcom/testing` package provides helpers to verify encode/decode cycles preserve data:
+
+```go
+import gedcomtesting "github.com/cacack/gedcom-go/gedcom/testing"
+
+func TestMyGEDCOM(t *testing.T) {
+    data, _ := os.ReadFile("family.ged")
+    gedcomtesting.AssertRoundTrip(t, data)
+}
+```
+
+For programmatic use:
+
+```go
+report, err := gedcomtesting.CheckRoundTrip(file)
+if !report.Equal {
+    fmt.Println(report.String())
+}
+```
+
+**Fidelity Contract** - what is preserved:
+- All tags, values, and hierarchical structure
+- Unknown/vendor tags
+- XRef identifiers
+- Record and tag order
+
+**What may change** (not compared):
+- Line numbers
+- Formatting (line endings, whitespace)
+- CONC/CONT reorganization
