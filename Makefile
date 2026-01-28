@@ -1,7 +1,7 @@
 # Makefile for gedcom-go
 # Go genealogy library for parsing and validating GEDCOM files
 
-.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint clean coverage-html install-tools build tidy check check-coverage all setup-hooks setup-dev-env
+.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint security clean coverage-html install-tools build build-examples tidy check check-coverage all setup-hooks setup preflight api-check
 
 # Default target
 .DEFAULT_GOAL := help
@@ -36,9 +36,9 @@ help: ## Display this help message
 
 all: clean fmt vet test build ## Run all checks and build
 
-test: ## Run all tests
+test: ## Run all tests (with race detector)
 	@echo "Running tests..."
-	$(GOTEST) -v ./...
+	$(GOTEST) -v -race ./...
 
 test-verbose: ## Run tests with verbose output
 	@echo "Running tests (verbose)..."
@@ -117,6 +117,23 @@ lint: ## Run staticcheck linter
 	staticcheck ./...
 	@echo "✓ No issues found"
 
+security: ## Run security scanners (gosec, govulncheck)
+	@echo "Running security scanners..."
+	@echo ""
+	@echo "→ Running gosec..."
+	@GOSEC=$$(command -v gosec || echo "$$HOME/go/bin/gosec"); \
+	if [ ! -x "$$GOSEC" ]; then GOSEC="$$(go env GOPATH)/bin/gosec"; fi; \
+	if [ ! -x "$$GOSEC" ]; then echo "gosec not found. Run 'make install-tools'" && exit 1; fi; \
+	$$GOSEC -quiet ./...
+	@echo ""
+	@echo "→ Running govulncheck..."
+	@GOVULNCHECK=$$(command -v govulncheck || echo "$$HOME/go/bin/govulncheck"); \
+	if [ ! -x "$$GOVULNCHECK" ]; then GOVULNCHECK="$$(go env GOPATH)/bin/govulncheck"; fi; \
+	if [ ! -x "$$GOVULNCHECK" ]; then echo "govulncheck not found. Run 'make install-tools'" && exit 1; fi; \
+	$$GOVULNCHECK ./...
+	@echo ""
+	@echo "✓ Security scans passed"
+
 check: fmt vet test ## Run all checks (format, vet, test)
 	@echo "✓ All checks passed"
 
@@ -157,6 +174,7 @@ STATICCHECK_VERSION := 2025.1
 GOSEC_VERSION := v2.22.10
 GOVULNCHECK_VERSION := latest
 GO_TEST_COVERAGE_VERSION := latest
+APIDIFF_VERSION := latest
 
 install-tools: ## Install development tools (pinned versions)
 	@echo "Installing development tools..."
@@ -165,12 +183,14 @@ install-tools: ## Install development tools (pinned versions)
 	$(GOCMD) install github.com/securego/gosec/v2/cmd/gosec@$(GOSEC_VERSION)
 	$(GOCMD) install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
 	$(GOCMD) install github.com/vladopajic/go-test-coverage/v2@$(GO_TEST_COVERAGE_VERSION)
+	$(GOCMD) install golang.org/x/exp/cmd/apidiff@$(APIDIFF_VERSION)
 	@echo "✓ Tools installed:"
 	@echo "  golangci-lint $(GOLANGCI_LINT_VERSION)"
 	@echo "  staticcheck $(STATICCHECK_VERSION)"
 	@echo "  gosec $(GOSEC_VERSION)"
 	@echo "  govulncheck $(GOVULNCHECK_VERSION)"
 	@echo "  go-test-coverage $(GO_TEST_COVERAGE_VERSION)"
+	@echo "  apidiff $(APIDIFF_VERSION)"
 
 setup-hooks: ## Install git hooks for development
 	@echo "Installing git hooks..."
@@ -180,7 +200,7 @@ setup-hooks: ## Install git hooks for development
 	@chmod +x .git/hooks/pre-push
 	@echo "✓ Git hooks installed (pre-commit, pre-push)"
 
-setup-dev-env: download install-tools setup-hooks ## Set up complete dev environment
+setup: download install-tools setup-hooks ## Set up complete dev environment
 	@echo ""
 	@echo "Verifying setup..."
 	@$(GOTEST) -short ./... > /dev/null && echo "✓ Tests pass"
@@ -209,6 +229,14 @@ examples: ## Run all examples
 	@echo ""
 	@echo "Running query example..."
 	@cd examples/query && $(GOCMD) run main.go ../../testdata/gedcom-5.5/minimal.ged
+
+build-examples: ## Build all examples (without running)
+	@echo "Building examples..."
+	$(GOBUILD) -o /dev/null ./examples/parse
+	$(GOBUILD) -o /dev/null ./examples/encode
+	$(GOBUILD) -o /dev/null ./examples/query
+	$(GOBUILD) -o /dev/null ./examples/validate
+	@echo "✓ All examples build successfully"
 
 verify: ## Verify dependencies
 	@echo "Verifying dependencies..."
@@ -239,6 +267,98 @@ watch-test: ## Watch for changes and run tests (requires entr)
 	@which entr > /dev/null || (echo "entr not found. Install with: brew install entr" && exit 1)
 	@echo "Watching for changes..."
 	@find . -name "*.go" | entr -c make test
+
+api-check: ## Check for breaking API changes against latest release
+	@echo "Checking API compatibility..."
+	@APIDIFF=$$(command -v apidiff || echo "$$HOME/go/bin/apidiff"); \
+	if [ ! -x "$$APIDIFF" ]; then APIDIFF="$$(go env GOPATH)/bin/apidiff"; fi; \
+	if [ ! -x "$$APIDIFF" ]; then echo "apidiff not found. Run 'make install-tools'" && exit 1; fi; \
+	LATEST_TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo ""); \
+	if [ -z "$$LATEST_TAG" ]; then \
+		echo "✓ No release tags found, skipping API compatibility check"; \
+		exit 0; \
+	fi; \
+	echo "Comparing against $$LATEST_TAG..."; \
+	OLD_DIR=$$(mktemp -d); \
+	trap "rm -rf '$$OLD_DIR'" EXIT; \
+	git clone --depth 1 --branch "$$LATEST_TAG" . "$$OLD_DIR" --quiet 2>/dev/null; \
+	API_FILE=$$(mktemp); \
+	(cd "$$OLD_DIR" && go mod download -x 2>/dev/null && $$APIDIFF -m -w "$$API_FILE" .) 2>/dev/null; \
+	RESULT=$$($$APIDIFF -m "$$API_FILE" . 2>&1) || true; \
+	rm -f "$$API_FILE"; \
+	if echo "$$RESULT" | grep -q "Incompatible changes:"; then \
+		echo "⚠️  Breaking API changes detected:"; \
+		echo "$$RESULT"; \
+		exit 1; \
+	else \
+		echo "✓ No breaking API changes"; \
+		if [ -n "$$RESULT" ]; then echo ""; echo "Compatible changes:"; echo "$$RESULT"; fi; \
+	fi
+
+preflight: ## Run all CI checks locally before pushing
+	@echo "═══════════════════════════════════════════════"
+	@echo "  Running preflight checks (mirrors CI)"
+	@echo "═══════════════════════════════════════════════"
+	@echo ""
+	@echo "→ [1/8] Tidying go.mod..."
+	@$(GOMOD) tidy
+	@if [ -n "$$(git status --porcelain go.mod go.sum)" ]; then \
+		echo "✗ go.mod/go.sum changed after tidy"; \
+		exit 1; \
+	fi
+	@echo "✓ go.mod is tidy"
+	@echo ""
+	@echo "→ [2/8] Checking formatting..."
+	@UNFORMATTED=$$(gofmt -l .); \
+	if [ -n "$$UNFORMATTED" ]; then \
+		echo "✗ Files not formatted:"; \
+		echo "$$UNFORMATTED"; \
+		exit 1; \
+	fi
+	@echo "✓ Code is formatted"
+	@echo ""
+	@echo "→ [3/8] Running go vet..."
+	@$(GOVET) ./...
+	@echo "✓ No vet issues"
+	@echo ""
+	@echo "→ [4/8] Running golangci-lint..."
+	@GOLANGCI_LINT=$$(command -v golangci-lint || echo "$$HOME/go/bin/golangci-lint"); \
+	if [ ! -x "$$GOLANGCI_LINT" ]; then GOLANGCI_LINT="$$(go env GOPATH)/bin/golangci-lint"; fi; \
+	if [ ! -x "$$GOLANGCI_LINT" ]; then echo "golangci-lint not found. Run 'make install-tools'" && exit 1; fi; \
+	$$GOLANGCI_LINT run --timeout=5m
+	@echo "✓ Lint passed"
+	@echo ""
+	@echo "→ [5/8] Running tests with race detector..."
+	@$(GOTEST) -race ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
+	@echo "✓ Tests passed"
+	@echo ""
+	@echo "→ [6/8] Checking coverage thresholds..."
+	@$(GOTEST) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version > /dev/null
+	@GO_TEST_COVERAGE=$$(command -v go-test-coverage || echo "$$HOME/go/bin/go-test-coverage"); \
+	if [ ! -x "$$GO_TEST_COVERAGE" ]; then GO_TEST_COVERAGE="$$(go env GOPATH)/bin/go-test-coverage"; fi; \
+	if [ ! -x "$$GO_TEST_COVERAGE" ]; then echo "go-test-coverage not found. Run 'make install-tools'" && exit 1; fi; \
+	$$GO_TEST_COVERAGE --config=.testcoverage.yml --profile=$(COVERAGE_FILE)
+	@echo "✓ Coverage thresholds met"
+	@echo ""
+	@echo "→ [7/8] Building examples..."
+	@$(GOBUILD) -o /dev/null ./examples/parse
+	@$(GOBUILD) -o /dev/null ./examples/encode
+	@$(GOBUILD) -o /dev/null ./examples/query
+	@$(GOBUILD) -o /dev/null ./examples/validate
+	@echo "✓ Examples build"
+	@echo ""
+	@echo "→ [8/8] Running security scans..."
+	@GOSEC=$$(command -v gosec || echo "$$HOME/go/bin/gosec"); \
+	if [ ! -x "$$GOSEC" ]; then GOSEC="$$(go env GOPATH)/bin/gosec"; fi; \
+	$$GOSEC -quiet ./... 2>/dev/null
+	@GOVULNCHECK=$$(command -v govulncheck || echo "$$HOME/go/bin/govulncheck"); \
+	if [ ! -x "$$GOVULNCHECK" ]; then GOVULNCHECK="$$(go env GOPATH)/bin/govulncheck"; fi; \
+	$$GOVULNCHECK ./... 2>&1 | grep -v "^Scanning" | grep -v "^$$" || true
+	@echo "✓ Security scans passed"
+	@echo ""
+	@echo "═══════════════════════════════════════════════"
+	@echo "  ✓ All preflight checks passed!"
+	@echo "═══════════════════════════════════════════════"
 
 # Report generation
 report: test-coverage ## Generate coverage report and display statistics
