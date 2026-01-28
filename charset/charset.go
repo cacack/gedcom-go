@@ -97,6 +97,10 @@ type utf8Reader struct {
 }
 
 func (u *utf8Reader) Read(p []byte) (n int, err error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+
 	// Return buffered BOM bytes first if any
 	if n, ok := u.readBuffered(p); ok {
 		return n, nil

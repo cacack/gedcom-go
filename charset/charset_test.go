@@ -1546,28 +1546,58 @@ func TestNewReader_UTF8IncompleteAtEOF_ZeroLengthBuffer(t *testing.T) {
 	n, err := ur.Read(buf)
 
 	if n != 0 || err != nil {
-		t.Errorf("Zero-length buffer read: got n=%d, err=%v; want n=0, err=nil", n, err)
+		t.Errorf("Zero-length buffer: got n=%d, err=%v; want n=0, err=nil", n, err)
 	}
-	if len(ur.complete) != 5 {
-		t.Errorf("Expected 5 bytes in complete buffer, got %d", len(ur.complete))
+	if len(ur.complete) != 0 {
+		t.Errorf("Zero-length buffer should not trigger read, got %d bytes in complete", len(ur.complete))
+	}
+}
+
+func TestNewReader_UTF8IncompleteAtEOF_SmallOutputBuffer(t *testing.T) {
+	input := append([]byte("Hello"), 0xC3)
+
+	ur := &utf8Reader{
+		reader:     &eofWithDataReader{data: input},
+		line:       1,
+		column:     1,
+		bomSkipped: true,
 	}
 
-	buf2 := make([]byte, 100)
-	n2, err2 := ur.Read(buf2)
+	buf := make([]byte, 2)
+	n, err := ur.Read(buf)
 
-	if n2 != 5 || err2 != nil {
-		t.Errorf("Second read: got n=%d, err=%v; want n=5, err=nil", n2, err2)
+	if n != 2 || err != nil {
+		t.Errorf("First read: got n=%d, err=%v; want n=2, err=nil", n, err)
 	}
-	if string(buf2[:n2]) != "Hello" {
-		t.Errorf("Second read data: got %q, want %q", buf2[:n2], "Hello")
+	if string(buf[:n]) != "He" {
+		t.Errorf("First read data: got %q, want %q", buf[:n], "He")
+	}
+	if len(ur.complete) != 3 {
+		t.Errorf("Expected 3 bytes in complete buffer, got %d", len(ur.complete))
 	}
 
-	n3, err3 := ur.Read(buf2)
-	if n3 != 0 {
-		t.Errorf("Third read: got n=%d, want n=0", n3)
+	n2, err2 := ur.Read(buf)
+	if n2 != 2 || err2 != nil {
+		t.Errorf("Second read: got n=%d, err=%v; want n=2, err=nil", n2, err2)
 	}
-	if _, ok := err3.(*ErrInvalidUTF8); !ok {
-		t.Errorf("Third read: got err=%T, want *ErrInvalidUTF8", err3)
+	if string(buf[:n2]) != "ll" {
+		t.Errorf("Second read data: got %q, want %q", buf[:n2], "ll")
+	}
+
+	n3, err3 := ur.Read(buf)
+	if n3 != 1 || err3 != nil {
+		t.Errorf("Third read: got n=%d, err=%v; want n=1, err=nil", n3, err3)
+	}
+	if string(buf[:n3]) != "o" {
+		t.Errorf("Third read data: got %q, want %q", buf[:n3], "o")
+	}
+
+	n4, err4 := ur.Read(buf)
+	if n4 != 0 {
+		t.Errorf("Fourth read: got n=%d, want n=0", n4)
+	}
+	if _, ok := err4.(*ErrInvalidUTF8); !ok {
+		t.Errorf("Fourth read: got err=%T, want *ErrInvalidUTF8", err4)
 	}
 }
 
