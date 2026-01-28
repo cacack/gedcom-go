@@ -47,7 +47,7 @@ go get github.com/cacack/gedcom-go
 
 ## Requirements
 
-- Go 1.24 or later
+- Go 1.23 or later (uses `iter.Seq` for streaming APIs, `unique` for XRef interning)
 
 ## Quick Start
 
