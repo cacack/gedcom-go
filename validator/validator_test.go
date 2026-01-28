@@ -1008,3 +1008,307 @@ func TestValidatorConfigWithTagRegistry(t *testing.T) {
 		t.Error("expected ValidateCustomTags to be true")
 	}
 }
+
+// TestMaxErrors tests the MaxErrors configuration option.
+func TestMaxErrors(t *testing.T) {
+	// Create document with multiple issues (orphaned references)
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Smith/
+1 FAMS @F999@
+1 FAMC @F998@
+0 @I2@ INDI
+1 NAME Jane /Doe/
+1 FAMS @F997@
+1 FAMC @F996@
+0 @I3@ INDI
+1 NAME Bob /Brown/
+1 FAMS @F995@
+0 TRLR`
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	t.Run("unlimited errors (default)", func(t *testing.T) {
+		v := New() // MaxErrors = 0 (unlimited)
+		issues := v.ValidateAll(doc)
+
+		// Should have all orphaned reference issues
+		if len(issues) < 5 {
+			t.Errorf("Expected at least 5 issues with unlimited, got %d", len(issues))
+		}
+	})
+
+	t.Run("limit to 2 errors", func(t *testing.T) {
+		v := NewWithConfig(&ValidatorConfig{
+			MaxErrors: 2,
+		})
+		issues := v.ValidateAll(doc)
+
+		if len(issues) != 2 {
+			t.Errorf("Expected exactly 2 issues with MaxErrors=2, got %d", len(issues))
+		}
+	})
+
+	t.Run("limit to 1 error", func(t *testing.T) {
+		v := NewWithConfig(&ValidatorConfig{
+			MaxErrors: 1,
+		})
+		issues := v.ValidateAll(doc)
+
+		if len(issues) != 1 {
+			t.Errorf("Expected exactly 1 issue with MaxErrors=1, got %d", len(issues))
+		}
+	})
+
+	t.Run("limit higher than actual issues", func(t *testing.T) {
+		v := NewWithConfig(&ValidatorConfig{
+			MaxErrors: 100,
+		})
+		issues := v.ValidateAll(doc)
+
+		// Should return all issues since limit is higher
+		if len(issues) < 5 {
+			t.Errorf("Expected at least 5 issues, got %d", len(issues))
+		}
+	})
+}
+
+// TestSkipRules tests the SkipRules configuration option.
+func TestSkipRules(t *testing.T) {
+	// Create document with orphaned references and date logic issues
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Smith/
+1 FAMS @F999@
+1 BIRT
+2 DATE 1950
+1 DEAT
+2 DATE 1940
+0 @I2@ INDI
+1 NAME Jane /Doe/
+1 FAMC @F998@
+0 TRLR`
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	t.Run("no rules skipped (default)", func(t *testing.T) {
+		v := New()
+		issues := v.ValidateAll(doc)
+
+		// Should have both types of issues
+		hasOrphaned := false
+		hasDateLogic := false
+		for _, issue := range issues {
+			if issue.Code == CodeOrphanedFAMS || issue.Code == CodeOrphanedFAMC {
+				hasOrphaned = true
+			}
+			if issue.Code == CodeDeathBeforeBirth {
+				hasDateLogic = true
+			}
+		}
+
+		if !hasOrphaned {
+			t.Error("Expected orphaned reference issues")
+		}
+		if !hasDateLogic {
+			t.Error("Expected death before birth issue")
+		}
+	})
+
+	t.Run("skip ORPHANED_FAMS", func(t *testing.T) {
+		v := NewWithConfig(&ValidatorConfig{
+			SkipRules: []string{CodeOrphanedFAMS},
+		})
+		issues := v.ValidateAll(doc)
+
+		for _, issue := range issues {
+			if issue.Code == CodeOrphanedFAMS {
+				t.Error("Expected ORPHANED_FAMS to be skipped")
+			}
+		}
+
+		// Other issues should still be present
+		hasOther := false
+		for _, issue := range issues {
+			if issue.Code != CodeOrphanedFAMS {
+				hasOther = true
+				break
+			}
+		}
+		if !hasOther {
+			t.Error("Expected other issues to remain")
+		}
+	})
+
+	t.Run("skip multiple rules", func(t *testing.T) {
+		v := NewWithConfig(&ValidatorConfig{
+			SkipRules: []string{CodeOrphanedFAMS, CodeOrphanedFAMC, CodeDeathBeforeBirth},
+		})
+		issues := v.ValidateAll(doc)
+
+		for _, issue := range issues {
+			if issue.Code == CodeOrphanedFAMS || issue.Code == CodeOrphanedFAMC || issue.Code == CodeDeathBeforeBirth {
+				t.Errorf("Expected %s to be skipped", issue.Code)
+			}
+		}
+	})
+
+	t.Run("skip nonexistent rule has no effect", func(t *testing.T) {
+		v := NewWithConfig(&ValidatorConfig{
+			SkipRules: []string{"NONEXISTENT_RULE"},
+		})
+		issues := v.ValidateAll(doc)
+
+		// Should still have all actual issues
+		if len(issues) == 0 {
+			t.Error("Expected issues to remain when skipping nonexistent rule")
+		}
+	})
+}
+
+// TestSkipRulesAndMaxErrorsCombined tests that both options work together.
+func TestSkipRulesAndMaxErrorsCombined(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Smith/
+1 FAMS @F999@
+1 FAMC @F998@
+1 BIRT
+2 DATE 1950
+1 DEAT
+2 DATE 1940
+0 @I2@ INDI
+1 NAME Jane /Doe/
+1 FAMS @F997@
+0 TRLR`
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	v := NewWithConfig(&ValidatorConfig{
+		SkipRules: []string{CodeDeathBeforeBirth}, // Skip date logic
+		MaxErrors: 2,                              // Limit to 2
+	})
+	issues := v.ValidateAll(doc)
+
+	// Should have exactly 2 issues
+	if len(issues) != 2 {
+		t.Errorf("Expected 2 issues, got %d", len(issues))
+	}
+
+	// None should be DEATH_BEFORE_BIRTH
+	for _, issue := range issues {
+		if issue.Code == CodeDeathBeforeBirth {
+			t.Error("Expected DEATH_BEFORE_BIRTH to be skipped")
+		}
+	}
+}
+
+// TestFilterBySkipRulesHelper tests the filterBySkipRules helper function.
+func TestFilterBySkipRulesHelper(t *testing.T) {
+	issues := []Issue{
+		{Code: "A001", Message: "Issue A1"},
+		{Code: "B001", Message: "Issue B1"},
+		{Code: "A001", Message: "Issue A2"},
+		{Code: "C001", Message: "Issue C1"},
+	}
+
+	t.Run("nil config returns all issues", func(t *testing.T) {
+		v := &Validator{config: nil}
+		result := v.filterBySkipRules(issues)
+		if len(result) != len(issues) {
+			t.Errorf("Expected %d issues, got %d", len(issues), len(result))
+		}
+	})
+
+	t.Run("empty SkipRules returns all issues", func(t *testing.T) {
+		v := &Validator{config: &ValidatorConfig{SkipRules: []string{}}}
+		result := v.filterBySkipRules(issues)
+		if len(result) != len(issues) {
+			t.Errorf("Expected %d issues, got %d", len(issues), len(result))
+		}
+	})
+
+	t.Run("filters matching codes", func(t *testing.T) {
+		v := &Validator{config: &ValidatorConfig{SkipRules: []string{"A001"}}}
+		result := v.filterBySkipRules(issues)
+
+		// Should have 2 issues (B001 and C001)
+		if len(result) != 2 {
+			t.Errorf("Expected 2 issues, got %d", len(result))
+		}
+		for _, issue := range result {
+			if issue.Code == "A001" {
+				t.Error("A001 should have been filtered")
+			}
+		}
+	})
+}
+
+// TestApplyMaxErrorsHelper tests the applyMaxErrors helper function.
+func TestApplyMaxErrorsHelper(t *testing.T) {
+	issues := []Issue{
+		{Code: "A001", Message: "Issue 1"},
+		{Code: "A002", Message: "Issue 2"},
+		{Code: "A003", Message: "Issue 3"},
+		{Code: "A004", Message: "Issue 4"},
+	}
+
+	t.Run("nil config returns all issues", func(t *testing.T) {
+		v := &Validator{config: nil}
+		result := v.applyMaxErrors(issues)
+		if len(result) != len(issues) {
+			t.Errorf("Expected %d issues, got %d", len(issues), len(result))
+		}
+	})
+
+	t.Run("zero MaxErrors returns all issues", func(t *testing.T) {
+		v := &Validator{config: &ValidatorConfig{MaxErrors: 0}}
+		result := v.applyMaxErrors(issues)
+		if len(result) != len(issues) {
+			t.Errorf("Expected %d issues, got %d", len(issues), len(result))
+		}
+	})
+
+	t.Run("negative MaxErrors returns all issues", func(t *testing.T) {
+		v := &Validator{config: &ValidatorConfig{MaxErrors: -1}}
+		result := v.applyMaxErrors(issues)
+		if len(result) != len(issues) {
+			t.Errorf("Expected %d issues, got %d", len(issues), len(result))
+		}
+	})
+
+	t.Run("MaxErrors limits results", func(t *testing.T) {
+		v := &Validator{config: &ValidatorConfig{MaxErrors: 2}}
+		result := v.applyMaxErrors(issues)
+		if len(result) != 2 {
+			t.Errorf("Expected 2 issues, got %d", len(result))
+		}
+		// First 2 issues should be preserved
+		if result[0].Code != "A001" || result[1].Code != "A002" {
+			t.Error("First 2 issues should be preserved")
+		}
+	})
+
+	t.Run("MaxErrors higher than count returns all", func(t *testing.T) {
+		v := &Validator{config: &ValidatorConfig{MaxErrors: 100}}
+		result := v.applyMaxErrors(issues)
+		if len(result) != len(issues) {
+			t.Errorf("Expected %d issues, got %d", len(issues), len(result))
+		}
+	})
+}

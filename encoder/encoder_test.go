@@ -1528,3 +1528,281 @@ func TestRoundtripFamilySearchID(t *testing.T) {
 		t.Errorf("@I2@ FamilySearchURL() = %q, want empty", indi3.FamilySearchURL())
 	}
 }
+
+// TestEncodeTargetVersion tests that TargetVersion option overrides header version.
+func TestEncodeTargetVersion(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{
+			Version:  gedcom.Version55, // Original version
+			Encoding: "UTF-8",
+		},
+		Records: []*gedcom.Record{},
+	}
+
+	t.Run("target version overrides header", func(t *testing.T) {
+		opts := &EncodeOptions{
+			LineEnding:          "\n",
+			TargetVersion:       gedcom.Version70,
+			PreserveUnknownTags: true,
+		}
+
+		var buf bytes.Buffer
+		if err := EncodeWithOptions(&buf, doc, opts); err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		output := buf.String()
+		if !strings.Contains(output, "2 VERS 7.0") {
+			t.Errorf("Output should contain target version 7.0, got:\n%s", output)
+		}
+		if strings.Contains(output, "2 VERS 5.5\n") {
+			t.Error("Output should not contain original version 5.5")
+		}
+	})
+
+	t.Run("empty target version uses header", func(t *testing.T) {
+		opts := &EncodeOptions{
+			LineEnding:          "\n",
+			TargetVersion:       "", // Empty - should use header
+			PreserveUnknownTags: true,
+		}
+
+		var buf bytes.Buffer
+		if err := EncodeWithOptions(&buf, doc, opts); err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		output := buf.String()
+		if !strings.Contains(output, "2 VERS 5.5") {
+			t.Errorf("Output should contain header version 5.5, got:\n%s", output)
+		}
+	})
+
+	t.Run("target version with empty header", func(t *testing.T) {
+		docNoVersion := &gedcom.Document{
+			Header:  &gedcom.Header{Encoding: "UTF-8"},
+			Records: []*gedcom.Record{},
+		}
+
+		opts := &EncodeOptions{
+			LineEnding:          "\n",
+			TargetVersion:       gedcom.Version551,
+			PreserveUnknownTags: true,
+		}
+
+		var buf bytes.Buffer
+		if err := EncodeWithOptions(&buf, docNoVersion, opts); err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		output := buf.String()
+		if !strings.Contains(output, "2 VERS 5.5.1") {
+			t.Errorf("Output should contain target version 5.5.1, got:\n%s", output)
+		}
+	})
+}
+
+// TestEncodePreserveUnknownTags tests the PreserveUnknownTags option.
+func TestEncodePreserveUnknownTags(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{
+			Version:  gedcom.Version551,
+			Encoding: "UTF-8",
+		},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@I1@",
+				Type: gedcom.RecordTypeIndividual,
+				Tags: []*gedcom.Tag{
+					{Level: 1, Tag: "NAME", Value: "John /Doe/"},
+					{Level: 1, Tag: "_CUSTOM", Value: "custom value"},
+					{Level: 2, Tag: "_NESTED", Value: "nested under custom"},
+					{Level: 1, Tag: "SEX", Value: "M"},
+					{Level: 1, Tag: "_ANOTHER", Value: "another custom"},
+					{Level: 1, Tag: "BIRT"},
+					{Level: 2, Tag: "DATE", Value: "1 JAN 1900"},
+				},
+			},
+		},
+	}
+
+	t.Run("preserve unknown tags (default)", func(t *testing.T) {
+		opts := DefaultOptions()
+
+		var buf bytes.Buffer
+		if err := EncodeWithOptions(&buf, doc, opts); err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		output := buf.String()
+		// All tags should be present
+		if !strings.Contains(output, "1 _CUSTOM custom value") {
+			t.Error("Output should contain _CUSTOM tag when PreserveUnknownTags is true")
+		}
+		if !strings.Contains(output, "2 _NESTED nested under custom") {
+			t.Error("Output should contain _NESTED tag when PreserveUnknownTags is true")
+		}
+		if !strings.Contains(output, "1 _ANOTHER another custom") {
+			t.Error("Output should contain _ANOTHER tag when PreserveUnknownTags is true")
+		}
+	})
+
+	t.Run("filter unknown tags", func(t *testing.T) {
+		opts := &EncodeOptions{
+			LineEnding:          "\n",
+			PreserveUnknownTags: false,
+		}
+
+		var buf bytes.Buffer
+		if err := EncodeWithOptions(&buf, doc, opts); err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		output := buf.String()
+
+		// Custom tags should be filtered
+		if strings.Contains(output, "_CUSTOM") {
+			t.Error("Output should not contain _CUSTOM tag when PreserveUnknownTags is false")
+		}
+		if strings.Contains(output, "_NESTED") {
+			t.Error("Output should not contain _NESTED tag (child of custom) when PreserveUnknownTags is false")
+		}
+		if strings.Contains(output, "_ANOTHER") {
+			t.Error("Output should not contain _ANOTHER tag when PreserveUnknownTags is false")
+		}
+
+		// Standard tags should still be present
+		if !strings.Contains(output, "1 NAME John /Doe/") {
+			t.Error("Output should contain NAME tag")
+		}
+		if !strings.Contains(output, "1 SEX M") {
+			t.Error("Output should contain SEX tag")
+		}
+		if !strings.Contains(output, "1 BIRT") {
+			t.Error("Output should contain BIRT tag")
+		}
+		if !strings.Contains(output, "2 DATE 1 JAN 1900") {
+			t.Error("Output should contain DATE tag")
+		}
+	})
+
+	t.Run("filter preserves nested standard tags", func(t *testing.T) {
+		docWithNesting := &gedcom.Document{
+			Header: &gedcom.Header{Version: gedcom.Version55},
+			Records: []*gedcom.Record{
+				{
+					XRef: "@I1@",
+					Type: gedcom.RecordTypeIndividual,
+					Tags: []*gedcom.Tag{
+						{Level: 1, Tag: "NAME", Value: "Jane /Smith/"},
+						{Level: 2, Tag: "GIVN", Value: "Jane"},
+						{Level: 2, Tag: "_CUSTOM_NAME", Value: "custom name data"},
+						{Level: 3, Tag: "_DEEP", Value: "deep custom"},
+						{Level: 2, Tag: "SURN", Value: "Smith"},
+					},
+				},
+			},
+		}
+
+		opts := &EncodeOptions{
+			LineEnding:          "\n",
+			PreserveUnknownTags: false,
+		}
+
+		var buf bytes.Buffer
+		if err := EncodeWithOptions(&buf, docWithNesting, opts); err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		output := buf.String()
+
+		// Standard nested tags should be preserved
+		if !strings.Contains(output, "2 GIVN Jane") {
+			t.Error("Output should contain GIVN tag")
+		}
+		if !strings.Contains(output, "2 SURN Smith") {
+			t.Error("Output should contain SURN tag")
+		}
+
+		// Custom tags and their children should be filtered
+		if strings.Contains(output, "_CUSTOM_NAME") {
+			t.Error("Output should not contain _CUSTOM_NAME")
+		}
+		if strings.Contains(output, "_DEEP") {
+			t.Error("Output should not contain _DEEP (child of custom)")
+		}
+	})
+}
+
+// TestDefaultOptionsPreserveUnknownTags verifies default value for PreserveUnknownTags.
+func TestDefaultOptionsPreserveUnknownTags(t *testing.T) {
+	opts := DefaultOptions()
+	if !opts.PreserveUnknownTags {
+		t.Error("DefaultOptions().PreserveUnknownTags should be true")
+	}
+}
+
+// TestFilterTagsHelper tests the filterTags helper function directly.
+func TestFilterTagsHelper(t *testing.T) {
+	tags := []*gedcom.Tag{
+		{Level: 1, Tag: "NAME", Value: "Test"},
+		{Level: 1, Tag: "_CUSTOM", Value: "custom"},
+		{Level: 2, Tag: "CHILD", Value: "child of custom"},
+		{Level: 3, Tag: "_DEEP", Value: "deep custom"},
+		{Level: 4, Tag: "DEEPER", Value: "even deeper"},
+		{Level: 1, Tag: "NEXT", Value: "back to level 1"},
+		{Level: 2, Tag: "SUB", Value: "sub of next"},
+	}
+
+	t.Run("preserve all", func(t *testing.T) {
+		result := filterTags(tags, true)
+		if len(result) != len(tags) {
+			t.Errorf("filterTags(true) = %d tags, want %d", len(result), len(tags))
+		}
+	})
+
+	t.Run("filter custom", func(t *testing.T) {
+		result := filterTags(tags, false)
+
+		// Should have: NAME, NEXT, SUB (filtered: _CUSTOM and all children until NEXT)
+		// _CUSTOM at level 1 -> skip until we see level 1 or lower
+		// CHILD at level 2 -> skipped (higher than 1)
+		// _DEEP at level 3 -> skipped (higher than 1)
+		// DEEPER at level 4 -> skipped (higher than 1)
+		// NEXT at level 1 -> not skipped (back to level 1)
+		// SUB at level 2 -> not skipped (no active skip)
+		expected := []string{"NAME", "NEXT", "SUB"}
+		if len(result) != len(expected) {
+			var got []string
+			for _, t := range result {
+				got = append(got, t.Tag)
+			}
+			t.Errorf("filterTags(false) = %v, want %v", got, expected)
+		}
+	})
+}
+
+// TestIsCustomTag tests the isCustomTag helper function.
+func TestIsCustomTag(t *testing.T) {
+	tests := []struct {
+		tag    string
+		custom bool
+	}{
+		{"NAME", false},
+		{"_CUSTOM", true},
+		{"_", true},
+		{"BIRT", false},
+		{"_FSFTID", true},
+		{"__DOUBLE", true},
+		{"INDI", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.tag, func(t *testing.T) {
+			if got := isCustomTag(tt.tag); got != tt.custom {
+				t.Errorf("isCustomTag(%q) = %v, want %v", tt.tag, got, tt.custom)
+			}
+		})
+	}
+}
