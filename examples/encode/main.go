@@ -1,4 +1,4 @@
-// Example: Create and encode a GEDCOM document
+// Package main demonstrates creating GEDCOM documents programmatically and encoding them to standard GEDCOM format.
 package main
 
 import (

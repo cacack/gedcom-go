@@ -144,6 +144,136 @@ Ancestry exports include `_APID` tags that reference their database records. We 
 - Testing uses specification examples, which are intentionally minimal
 - Real exports from familysearch.org may have additional complexity
 
+## How We Test Compatibility
+
+This section explains how compatibility claims in this document are verified, enabling you to audit our process or reproduce tests locally.
+
+### Where Sample GEDCOMs Live
+
+Test files are organized under `testdata/` by GEDCOM version and purpose:
+
+```
+testdata/
+├── gedcom-5.5/          # GEDCOM 5.5 samples
+│   └── torture-test/    # Comprehensive TGC55* validation suite
+├── gedcom-5.5.1/        # GEDCOM 5.5.1 samples (EMAIL/FAX/WWW tags)
+├── gedcom-7.0/          # GEDCOM 7.0 samples
+│   └── familysearch-examples/  # Official FamilySearch edge cases
+├── encoding/            # Character encoding tests (UTF-8, UTF-16, ANSEL)
+├── edge-cases/          # Structural edge cases, vendor-specific exports
+│   └── vendor-*.ged     # Vendor-specific custom tag tests
+└── malformed/           # Invalid files for error handling tests
+```
+
+See [`testdata/README.md`](../testdata/README.md) for complete attribution, licensing, and descriptions of each file.
+
+### What "Synthetic" Means
+
+Files marked with 🧪 (synthetic) in the compatibility matrix are:
+
+- **Created by this project** specifically to test parsing patterns
+- **Not exports from actual software** - they simulate expected patterns based on documentation
+- **Privacy-safe** - contain only fictional test data
+- **License-clear** - created under this project's Apache-2.0 license
+
+Why synthetic files? Real exports may contain sensitive personal information, and obtaining properly-licensed samples from every vendor version is impractical. Synthetic files let us test known patterns without these constraints.
+
+**Important**: Synthetic tests verify that we *can* parse documented patterns, not that we *have* parsed real-world exports. When the compatibility matrix shows 🧪, treat it as "expected to work based on documentation" rather than "verified with production files."
+
+### What "Round-Trip Fidelity" Means
+
+Round-trip testing verifies: **decode -> encode -> decode produces semantically equivalent documents**.
+
+**What IS preserved** (semantic equivalence):
+- Record hierarchy and nesting structure
+- Cross-references (XRefs) and their resolution
+- Tag values and data content
+- Custom/vendor-specific tags
+- All typed entities (individuals, families, sources, etc.)
+
+**Tolerated differences** (not considered failures):
+- Line ending normalization (CR/LF/CRLF)
+- Whitespace in certain contexts
+- Encoding declaration changes (e.g., input ANSEL -> output UTF-8)
+- Tag ordering within a record (when spec allows)
+
+**How round-trip is tested**:
+
+```go
+// Simplified from actual test code
+doc1, _ := decoder.Decode(input)       // Original decode
+var buf bytes.Buffer
+encoder.Encode(&buf, doc1)             // Re-encode
+doc2, _ := decoder.Decode(&buf)        // Decode the output
+
+// Compare semantic content
+assertEqual(t, len(doc1.Individuals()), len(doc2.Individuals()))
+assertEqual(t, len(doc1.Families()), len(doc2.Families()))
+// ... and all other record types, values, references
+```
+
+Round-trip tests exist throughout the codebase:
+- `encoder/encoder_test.go` - `TestEncodeRoundtrip`
+- `gedcom_api_test.go` - `TestRoundTrip`
+- `encoder/entity_writer_test.go` - Various `TestRoundTrip*` tests
+- `encoder/streaming_test.go` - `TestStreamEncoder_RoundTrip`
+
+### How to Reproduce Tests Locally
+
+**Run the full test suite** (includes round-trip tests):
+
+```bash
+make test
+```
+
+**Run round-trip tests specifically**:
+
+```bash
+go test ./... -run TestRoundTrip -v
+```
+
+**Run tests against a specific GEDCOM version**:
+
+```bash
+# GEDCOM 5.5 torture test suite
+go test ./decoder -run TestTortureTestSuite -v
+
+# GEDCOM 7.0 tests
+go test ./decoder -run "70|Gedcom7" -v
+```
+
+**Run with coverage** to see what code paths are exercised:
+
+```bash
+make test-coverage
+```
+
+### Adding New Vendor Test Files
+
+To contribute a test file from your genealogy software:
+
+1. **Export a GEDCOM** from your software
+2. **Review for sensitive data** - remove or anonymize personal information
+3. **Place in appropriate directory**:
+   - `testdata/edge-cases/vendor-<software>.ged` for vendor-specific tests
+   - `testdata/gedcom-<version>/` for version-specific tests
+4. **Update `testdata/README.md`** with:
+   - Filename and size
+   - Source software name and version
+   - What the file tests (custom tags, specific features)
+   - License/attribution information
+5. **Add tests** that exercise the new file:
+   ```go
+   func TestParseVendorNewSoftware(t *testing.T) {
+       f, _ := os.Open("testdata/edge-cases/vendor-newsoftware.ged")
+       doc, err := decoder.Decode(f)
+       require.NoError(t, err)
+       // Verify expected custom tags, structure, etc.
+   }
+   ```
+
+See the "Contributing Test Files" section above for what vendor exports are most needed.
+
 ## Related Documentation
 
 - [GEDCOM Version Differences](GEDCOM_VERSIONS.md) - Detailed spec differences

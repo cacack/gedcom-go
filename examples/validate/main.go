@@ -1,4 +1,4 @@
-// Example: Validate GEDCOM files for correctness
+// Package main demonstrates GEDCOM file validation with error categorization, grouping, and detailed reporting.
 package main
 
 import (
