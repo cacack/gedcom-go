@@ -1,3 +1,4 @@
+// Package main demonstrates parsing GEDCOM date values including modifiers, ranges, periods, and date comparison.
 package main
 
 import (

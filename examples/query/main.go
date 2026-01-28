@@ -1,4 +1,4 @@
-// Example: Query and navigate GEDCOM data
+// Package main demonstrates querying GEDCOM data including individual lookups, family traversal, and relationship navigation.
 package main
 
 import (

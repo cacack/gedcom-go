@@ -1,4 +1,4 @@
-// Example: Parse a GEDCOM file and display basic information
+// Package main demonstrates basic GEDCOM file parsing with summary statistics, record counting, and validation.
 package main
 
 import (
