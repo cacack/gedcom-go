@@ -876,6 +876,77 @@ func TestAncestryExtensions(t *testing.T) {
 		doc.Header.AncestryTreeID)
 }
 
+// TestAncestryRealExport tests a real Ancestry.com 2025 export (not synthetic)
+// This verifies actual export behavior including XRef format, vendor detection, and tree ID extraction.
+func TestAncestryRealExport(t *testing.T) {
+	f, err := os.Open("../testdata/edge-cases/ancestry-2025-export.ged")
+	if err != nil {
+		t.Skipf("Test file not found: %s", "../testdata/edge-cases/ancestry-2025-export.ged")
+		return
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	// Verify vendor detection
+	if doc.Vendor != gedcom.VendorAncestry {
+		t.Errorf("Expected VendorAncestry, got %v", doc.Vendor)
+	}
+
+	// Verify source system
+	if doc.Header.SourceSystem != "Ancestry.com Family Trees" {
+		t.Errorf("Header.SourceSystem = %q, want %q", doc.Header.SourceSystem, "Ancestry.com Family Trees")
+	}
+
+	// Verify _TREE extraction
+	if doc.Header.AncestryTreeID != "seed-for-import" {
+		t.Errorf("Header.AncestryTreeID = %q, want %q", doc.Header.AncestryTreeID, "seed-for-import")
+	}
+
+	// Verify GEDCOM version
+	if doc.Header.Version != gedcom.Version551 {
+		t.Errorf("Expected GEDCOM 5.5.1, got %v", doc.Header.Version)
+	}
+
+	// Verify record counts
+	individuals := 0
+	families := 0
+	for _, rec := range doc.Records {
+		switch rec.Type {
+		case gedcom.RecordTypeIndividual:
+			individuals++
+		case gedcom.RecordTypeFamily:
+			families++
+		}
+	}
+
+	if individuals != 14 {
+		t.Errorf("Expected 14 individuals, got %d", individuals)
+	}
+	if families != 5 {
+		t.Errorf("Expected 5 families, got %d", families)
+	}
+
+	// Verify long numeric XRef format (Ancestry-specific)
+	// Ancestry uses XRefs like @I152733931767@ instead of @I1@
+	found := false
+	for xref := range doc.XRefMap {
+		if len(xref) > 10 && strings.HasPrefix(xref, "@I") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected long numeric XRef IDs (Ancestry format), but none found")
+	}
+
+	t.Logf("Successfully verified Ancestry 2025 real export: %d individuals, %d families, TreeID=%s",
+		individuals, families, doc.Header.AncestryTreeID)
+}
+
 // TestVendorSpecificFiles tests GEDCOM files from various genealogy software vendors.
 // These files were sourced from the gedcom4j project (MIT License) and test vendor-specific
 // custom tags and extensions.
@@ -930,6 +1001,26 @@ func TestVendorSpecificFiles(t *testing.T) {
 			path:        "../testdata/edge-cases/vendor-heredis.ged",
 			description: "HEREDIS 14 PC - French genealogy software with Paris data (Gramps test)",
 			minRecords:  15,
+		},
+		{
+			path:        "../testdata/edge-cases/ancestry-2025-export.ged",
+			description: "Ancestry.com 2025.08 - real export with _TREE, long XRefs, nickname handling",
+			minRecords:  20,
+		},
+		{
+			path:        "../testdata/edge-cases/familysearch-2025-export.ged",
+			description: "FamilySearch 2025 - real export with _HASH/_LHASH tags, standardizer note",
+			minRecords:  20,
+		},
+		{
+			path:        "../testdata/edge-cases/myheritage-2025-export.ged",
+			description: "MyHeritage 2025 - real export with _UID, RIN, HTML notes, QUAY tags",
+			minRecords:  18,
+		},
+		{
+			path:        "../testdata/edge-cases/gramps-2025-export.ged",
+			description: "Gramps 6.0.6 - real export with CHAN records, TYPE birth, note references",
+			minRecords:  25,
 		},
 	}
 

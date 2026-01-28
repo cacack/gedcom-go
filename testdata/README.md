@@ -234,6 +234,17 @@ License: GPL-2.0 (data files used as test inputs)
   - French place names and accented characters (Églises, Île-de-France)
   - Tests: 22 individuals, 1 family
 
+#### Real Vendor Exports (2025+)
+
+Real exports from current software versions. See [docs/COMPATIBILITY.md](../docs/COMPATIBILITY.md) for detailed quirks.
+
+| File | Source | Version | Records |
+|------|--------|---------|---------|
+| ancestry-2025-export.ged | Ancestry.com | 2025.08 | 14 indi, 5 fam |
+| familysearch-2025-export.ged | FamilySearch.org | 2025 | 14 indi, 5 fam |
+| gramps-2025-export.ged | Gramps | 6.0.6 | 14 indi, 5 fam |
+| myheritage-2025-export.ged | MyHeritage.com | 5.5.1 | 14 indi, 5 fam |
+
 ### GEDCOM 7.0 Files
 
 #### Standard Samples

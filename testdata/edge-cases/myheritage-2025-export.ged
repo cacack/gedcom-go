@@ -1,0 +1,285 @@
+﻿0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 LANG English
+1 SOUR MYHERITAGE
+2 NAME MyHeritage Family Tree Builder
+2 VERS 5.5.1
+2 _RTLSAVE RTL
+2 CORP MyHeritage.com
+1 DEST MYHERITAGE
+1 DATE 27 JAN 2026
+1 FILE Exported by MyHeritage.com from seed-for-import in Clonch Web Site on Tue, 27 Jan 2026
+1 _PROJECT_GUID 6979663476525359A02F0C1A0BC7912B
+1 _EXPORTED_FROM_SITE_ID 1729941170
+0 @I1@ INDI
+1 NAME John William /Smith/
+2 GIVN John William
+2 NICK Jack
+2 SURN Smith
+1 SEX M
+1 BIRT
+2 DATE 15 MAR 1920
+2 PLAC Springfield, Illinois, USA
+2 SOUR @S1@
+3 PAGE p. 42
+3 QUAY 0
+1 DEAT Y
+2 DATE 22 NOV 1995
+2 PLAC Chicago, Cook County, Illinois, USA
+2 AGE 75
+1 OCCU Carpenter
+2 DATE FROM 1945 TO 1985
+1 RESI
+2 DATE FROM 1950 TO 1995
+2 ADDR
+3 ADR1 123 Oak Street, Chicago, Illinois, USA
+1 FAMS @F1@
+1 NOTE <p>This fictional family tree was created to test GEDCOM compatibility</p><p><p>across different genealogy software platforms. It includes:</p></p><p><p></p></p><p><p>- 14 individuals across 4 generat
+2 CONC ions</p></p><p><p>- 5 families with various relationship types</p></p><p><p>- A remarriage scenario (Patricia Williams)</p></p><p><p>- A stillborn child (to test edge cases)</p></p><p><p>- Various dat
+2 CONC e formats (exact, approximate, ranges)</p></p><p><p>- Multiple event types (birth, death, marriage, divorce, burial, occupation, education)</p></p><p><p>- Source citations with repository</p></p><p><p
+2 CONC >- Notes with line continuation (CONT)</p></p><p><p></p></p><p>All data is entirely fictional.</p>
+1 RIN MH:I1
+1 _UID 69796634749D0357E02F0C1A0BC7912B
+0 @I2@ INDI
+1 NAME Mary Elizabeth /Johnson/
+2 GIVN Mary Elizabeth
+2 SURN Johnson
+1 SEX F
+1 BIRT
+2 DATE 8 JUN 1922
+2 PLAC Milwaukee, Wisconsin, USA
+1 DEAT Y
+2 DATE 3 FEB 2010
+2 PLAC Chicago, Cook County, Illinois, USA
+2 AGE 87
+1 OCCU Teacher
+2 DATE FROM 1944 TO 1980
+2 PLAC Lincoln Elementary School, Chicago
+1 FAMS @F1@
+1 RIN MH:I2
+1 _UID 6979663474ABE357F02F0C1A0BC7912B
+0 @I3@ INDI
+1 NAME Robert James /Smith/
+2 GIVN Robert James
+2 NICK Bob
+2 SURN Smith
+1 SEX M
+1 BIRT
+2 DATE 12 APR 1945
+2 PLAC Chicago, Cook County, Illinois, USA
+1 OCCU Engineer
+1 EDUC Bachelor of Science, Engineering
+2 DATE 1967
+2 PLAC University of Illinois, Urbana-Champaign
+2 AGE 21-22
+1 FAMS @F2@
+1 FAMC @F1@
+1 RIN MH:I3
+1 _UID 6979663474B33358002F0C1A0BC7912B
+0 @I4@ INDI
+1 NAME Susan Marie /Smith/
+2 GIVN Susan Marie
+2 SURN Smith
+1 SEX F
+1 BIRT
+2 DATE 30 SEP 1948
+2 PLAC Chicago, Cook County, Illinois, USA
+1 FAMS @F3@
+1 FAMC @F1@
+1 RIN MH:I4
+1 _UID 6979663474B77358102F0C1A0BC7912B
+0 @I5@ INDI
+1 NAME Patricia Ann /Williams/
+2 GIVN Patricia Ann
+2 SURN Williams
+1 SEX F
+1 BIRT
+2 DATE ABT 1947
+2 PLAC Detroit, Michigan, USA
+1 FAMS @F2@
+1 FAMS @F4@
+1 NOTE Patricia remarried after divorcing Robert in 1985.
+1 RIN MH:I5
+1 _UID 6979663474BC6358302F0C1A0BC7912B
+0 @I6@ INDI
+1 NAME Michael David /Smith/
+2 GIVN Michael David
+2 SURN Smith
+1 SEX M
+1 BIRT
+2 DATE 18 JUL 1970
+2 PLAC Evanston, Cook County, Illinois, USA
+1 BAPM
+2 DATE 15 AUG 1970
+2 PLAC St. Mary's Church, Evanston, Illinois
+2 AGE 0
+1 GRAD
+2 DATE MAY 1992
+2 PLAC Northwestern University, Evanston, Illinois
+2 AGE 21
+1 FAMS @F5@
+1 FAMC @F2@
+1 RIN MH:I6
+1 _UID 6979663474C56358402F0C1A0BC7912B
+0 @I7@ INDI
+1 NAME Jennifer Lynn /Smith/
+2 GIVN Jennifer Lynn
+2 SURN Smith
+1 SEX F
+1 BIRT
+2 DATE 3 DEC 1972
+2 PLAC Evanston, Cook County, Illinois, USA
+1 FAMC @F2@
+1 RIN MH:I7
+1 _UID 6979663474C94358502F0C1A0BC7912B
+0 @I8@ INDI
+1 NAME Thomas Edward /Brown/
+2 GIVN Thomas Edward
+2 SURN Brown
+1 SEX M
+1 BIRT
+2 DATE BEF 1945
+2 PLAC Boston, Massachusetts, USA
+1 DEAT Y
+2 DATE AFT 2000
+2 AGE About 54-55
+1 FAMS @F3@
+1 RIN MH:I8
+1 _UID 6979663474CFC358602F0C1A0BC7912B
+0 @I9@ INDI
+1 NAME Emily Rose /Brown/
+2 GIVN Emily Rose
+2 SURN Brown
+1 SEX F
+1 BIRT
+2 DATE 14 FEB 1975
+2 PLAC Naperville, DuPage County, Illinois, USA
+1 FAMC @F3@
+1 RIN MH:I9
+1 _UID 6979663474D3B358702F0C1A0BC7912B
+0 @I10@ INDI
+1 NAME Sarah Jane /Miller/
+2 GIVN Sarah Jane
+2 SURN Miller
+1 SEX F
+1 BIRT
+2 DATE 25 DEC 1972
+2 PLAC Madison, Wisconsin, USA
+1 FAMS @F5@
+1 RIN MH:I10
+1 _UID 6979663474D78358802F0C1A0BC7912B
+0 @I11@ INDI
+1 NAME William John /Smith/
+2 GIVN William John
+2 SURN Smith
+1 SEX M
+1 BIRT
+2 DATE 9 OCT 2000
+2 PLAC Chicago, Cook County, Illinois, USA
+1 FAMC @F5@
+1 RIN MH:I11
+1 _UID 6979663474DB6358902F0C1A0BC7912B
+0 @I12@ INDI
+1 NAME Emma Grace /Smith/
+2 GIVN Emma Grace
+2 SURN Smith
+1 SEX F
+1 BIRT
+2 DATE 17 MAR 2003
+2 PLAC Chicago, Cook County, Illinois, USA
+1 FAMC @F5@
+1 RIN MH:I12
+1 _UID 6979663474DF2358A02F0C1A0BC7912B
+0 @I13@ INDI
+1 NAME Richard Allen /Thompson/
+2 GIVN Richard Allen
+2 SURN Thompson
+1 SEX M
+1 BIRT
+2 DATE 1955
+2 PLAC San Francisco, California, USA
+1 FAMS @F4@
+1 RIN MH:I13
+1 _UID 6979663474E32358B02F0C1A0BC7912B
+0 @I14@ INDI
+1 NAME Baby /Smith/
+2 GIVN Baby
+2 SURN Smith
+1 SEX U
+1 BIRT
+2 DATE 1 JAN 1950
+2 PLAC Chicago, Cook County, Illinois, USA
+1 DEAT Y
+2 DATE 1 JAN 1950
+2 PLAC Chicago, Cook County, Illinois, USA
+2 AGE 0
+2 CAUS Stillbirth
+1 FAMC @F1@
+1 NOTE This child was stillborn.
+1 RIN MH:I14
+1 _UID 6979663474EAB358D02F0C1A0BC7912B
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+1 CHIL @I4@
+1 CHIL @I14@
+1 RIN MH:F1
+1 _UID 6979663474F2D358F02F0C1A0BC7912B
+1 MARR
+2 DATE 10 JUN 1944
+2 PLAC Chicago, Cook County, Illinois, USA
+2 SOUR @S1@
+3 PAGE Marriage certificate #12345
+3 QUAY 0
+1 NOTE John and Mary met at a church social in 1943.
+0 @F2@ FAM
+1 HUSB @I3@
+1 WIFE @I5@
+1 CHIL @I6@
+1 CHIL @I7@
+1 RIN MH:F2
+1 _UID 6979663474F81359002F0C1A0BC7912B
+1 MARR
+2 DATE 5 SEP 1969
+2 PLAC Evanston, Cook County, Illinois, USA
+1 DIV Y
+2 DATE 1985
+0 @F3@ FAM
+1 HUSB @I8@
+1 WIFE @I4@
+1 CHIL @I9@
+1 RIN MH:F3
+1 _UID 6979663474FBB359102F0C1A0BC7912B
+1 MARR
+2 DATE 22 AUG 1970
+2 PLAC Naperville, DuPage County, Illinois, USA
+0 @F4@ FAM
+1 HUSB @I13@
+1 WIFE @I5@
+1 RIN MH:F4
+1 _UID 6979663474FFB359302F0C1A0BC7912B
+1 MARR
+2 DATE 12 MAY 1990
+2 PLAC San Francisco, California, USA
+1 NOTE Patricia's second marriage after her divorce from Robert.
+0 @F5@ FAM
+1 HUSB @I6@
+1 WIFE @I10@
+1 CHIL @I11@
+1 CHIL @I12@
+1 RIN MH:F5
+1 _UID 697966347502F359402F0C1A0BC7912B
+1 MARR
+2 DATE 18 JUN 1998
+2 PLAC Madison, Wisconsin, USA
+0 @S1@ SOUR
+1 AUTH Illinois State Archives
+1 TITL Illinois Vital Records Collection
+1 PUBL Springfield, Illinois: State of Illinois, 1850-2000
+1 RIN MH:S1
+1 NOTE <p>This source contains birth, death, and marriage records</p><p>for the state of Illinois from 1850 to 2000.</p>
+0 TRLR

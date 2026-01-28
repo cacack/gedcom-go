@@ -13,10 +13,10 @@ The following table shows which genealogy software exports have been tested with
 | Family Tree Maker | 22.2.5 (2016) | ⚠️ | Older version; Ancestry format with custom tags |
 | Family Historian | 6.2.2 | ⚠️ | Custom tags preserved (`_ATTR`, `_USED`, `_SHAN`, `_SHAR`) |
 | HEREDIS | 14 PC | ⚠️ | French locales work; non-standard PLAC FORM handled |
-| Gramps | 5.1.6 | 🧪 | Synthetic test file; custom tags preserved |
-| MyHeritage | - | 🧪 | Synthetic test file; custom tags preserved |
-| Ancestry.com | - | 🧪 | Synthetic test file; `_APID` and `_TREE` extensions parsed |
-| FamilySearch | GEDCOM 7.0 | ✅ | Spec examples only (not real exports) |
+| Gramps | 6.0.6 (2025) | ✅ | Real export tested; `CHAN` records, `TYPE birth`, note refs |
+| MyHeritage | 5.5.1 (2025) | ✅ | Real export tested; `_UID`, `RIN`, HTML notes, `QUAY` tags |
+| Ancestry.com | 2025.08 | ✅ | Real export tested; `_TREE` parsed, long XRefs, nickname handling |
+| FamilySearch | 2025 | ✅ | Real export tested; `_HASH`/`_LHASH` tags, standardizer note |
 
 ### Legend
 
@@ -127,22 +127,64 @@ Even failure reports are valuable - they help us understand what needs to be fix
 
 ## Known Limitations
 
-### Ancestry.com (`_APID` Tags)
+### Ancestry.com
 
-Ancestry exports include `_APID` tags that reference their database records. We parse these and can reconstruct URLs, but:
+Tested with real export from Ancestry.com Member Trees (version 2025.08).
 
-- Testing is with a synthetic file, not a real Ancestry export
-- Real exports may have additional patterns not covered
+**Observed behaviors:**
+- `_TREE` tag in header with tree name, RIN, and `_ENV prd` (production environment)
+- Long numeric XRef IDs (e.g., `@I152733931767@`) instead of sequential `@I1@`
+- Nicknames stored as separate NAME records: `1 NAME Jack //`
+- HTML entities in notes: `&apos;` for apostrophe
+- XML-like `<line>` tags within ADDR values
+- Repository WWW URLs converted to NOTE records
+- Source citations may be duplicated at individual level
+
+**`_APID` tags**: Ancestry exports include `_APID` tags that reference their database records when you attach Ancestry hints/records. We parse these and can reconstruct URLs. Note: `_APID` tags only appear when records are attached to individuals, not in basic tree exports.
 
 ### MyHeritage
 
-- Testing is with a synthetic file
-- Real exports may have different custom tag patterns
+Tested with real export from MyHeritage.com (2025).
 
-### FamilySearch GEDCOM 7.0
+**Observed behaviors:**
+- UTF-8 with BOM encoding
+- `_RTLSAVE RTL` header tag (right-to-left language support indicator)
+- `_PROJECT_GUID` and `_EXPORTED_FROM_SITE_ID` header tags
+- `DEAT Y` explicit death marker with calculated `AGE` field
+- `QUAY 0` quality assessment tags on source citations
+- HTML `<p>` tags embedded in notes
+- `RIN MH:I1` record identification numbers with MH prefix
+- `_UID` tags on individuals for tracking
+- Plain text addresses converted to `ADDR/ADR1` structure
+- Removes REPO (repository) records from export
 
-- Testing uses specification examples, which are intentionally minimal
-- Real exports from familysearch.org may have additional complexity
+### Gramps
+
+Tested with real export from Gramps 6.0.6 (2025).
+
+**Observed behaviors:**
+- `COPR` copyright tag in header
+- Padded sequential XRef IDs: `@I0001@`, `@F0001@`, `@S0001@`
+- `NAME` records with `TYPE birth` subrecord
+- `CHAN` (change) records on each INDI/FAM with date and time
+- Notes stored as references (`NOTE @N0000@`) to root-level NOTE records
+- `SUBM` (submitter) record with empty NAME
+- Standard-compliant output with minimal custom tags
+
+### FamilySearch
+
+Tested with real export from FamilySearch.org (2025).
+
+**Observed behaviors:**
+- Adds `_HASH` and `_LHASH` tags to each INDI and FAM record (MD5 checksums for change detection)
+- Adds header note: `NOTE Unified System GEDCOM Standardizer 1.0`
+- Reorders records: REPO, SOUR placed before INDI/FAM records
+- Preserves original source header (doesn't claim authorship)
+- Removes root-level NOTE records
+- Removes SUBM (submitter) records
+- Nicknames preserved as NICK subrecord (standard-compliant)
+
+**Note**: FamilySearch exports GEDCOM 5.5.1, not GEDCOM 7.0, despite being the GEDCOM 7.0 spec maintainer. The GEDCOM 7.0 spec examples in our test suite are from gedcom.io documentation, not real FamilySearch exports.
 
 ## How We Test Compatibility
 
