@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Required**: Go 1.23+
 
 ```bash
-make setup-dev-env    # Downloads deps, installs tools, sets up hooks
+make setup            # Downloads deps, installs tools, sets up hooks
 ```
 
 This installs pre-commit hooks that enforce:
@@ -24,12 +24,16 @@ This installs pre-commit hooks that enforce:
 
 | Command | Description |
 |---------|-------------|
-| `make test` | Run all tests |
+| `make test` | Run all tests (with race detector) |
+| `make preflight` | Run all CI checks locally before pushing |
 | `make test-coverage` | Run tests with per-package coverage report |
 | `make fmt` | Format code |
 | `make vet` | Run go vet |
 | `make lint` | Run staticcheck |
+| `make security` | Run gosec + govulncheck |
+| `make api-check` | Check for breaking API changes vs latest release |
 | `make bench` | Run benchmarks |
+| `make watch-test` | Watch for changes and re-run tests (requires `entr`) |
 
 **Running a single test:**
 ```bash

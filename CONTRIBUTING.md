@@ -25,7 +25,7 @@ This project adheres to a simple code of conduct:
 
 ### Prerequisites
 
-- Go 1.24 or later
+- Go 1.23 or later
 - Git
 - Familiarity with the GEDCOM specification (helpful but not required)
 
@@ -39,26 +39,32 @@ This project adheres to a simple code of conduct:
 
 2. **Run the setup command**
    ```bash
-   make setup-dev-env
+   make setup
    ```
 
    This single command will:
    - Download Go dependencies
-   - Install development tools (staticcheck, golangci-lint)
-   - Install git hooks (pre-commit checks)
+   - Install development tools (golangci-lint, staticcheck, gosec, govulncheck, apidiff)
+   - Install git hooks for faster feedback (catch CI failures locally)
    - Verify everything works by running tests
 
+   **Git hooks installed:**
+
+   | Hook | Checks | Purpose |
+   |------|--------|---------|
+   | pre-commit | gofmt, go mod tidy, go vet, golangci-lint, tests | Fast feedback on every commit |
+   | pre-push | Coverage thresholds (85% per-package) | Catch coverage issues before CI |
+
    You'll see output like:
-   ```
+
+   ```text
    ═══════════════════════════════════════════════
      Development environment ready!
    ═══════════════════════════════════════════════
 
-     Pre-commit hooks are installed and will run:
-       • gofmt check
-       • go vet
-       • golangci-lint
-       • tests with per-package coverage ≥85%
+     Git hooks installed:
+       pre-commit: gofmt, go vet, golangci-lint, tests
+       pre-push:   coverage threshold checks (85%)
    ```
 
 **Individual setup commands** (if you prefer manual setup):
@@ -95,14 +101,14 @@ git checkout -b docs/improve-examples
 **Using Makefile (recommended):**
 
 ```bash
-# Run all tests
+# Run all tests (includes race detector)
 make test
 
 # Check test coverage (requires 85%+)
 make test-coverage
 
-# Run tests with race detector
-make test-verbose
+# Run all CI checks locally before pushing
+make preflight
 
 # Run benchmarks
 make bench
@@ -124,6 +130,15 @@ go test ./parser -v
 go test -race ./...
 ```
 
+**Continuous testing while developing:**
+
+```bash
+# Watch for file changes and re-run tests (requires entr)
+make watch-test
+
+# Install entr: brew install entr (macOS) or apt install entr (Linux)
+```
+
 ### 4. Format and Lint
 
 **Using Makefile (recommended):**
@@ -137,6 +152,12 @@ make vet
 
 # Run staticcheck linter
 make lint
+
+# Run security scanners (gosec, govulncheck)
+make security
+
+# Check for breaking API changes vs latest release
+make api-check
 
 # Run all checks (fmt, vet, test)
 make check
@@ -329,10 +350,15 @@ For details on critical paths and testing patterns, see [docs/TESTING.md](docs/T
 ### Pull Request Process
 
 1. **Before Submitting**
-   - Ensure all tests pass: `go test ./...`
-   - Check code coverage meets requirements
-   - Format code: `go fmt ./...`
-   - Run linters: `go vet ./...`
+
+   Run the preflight checks to mirror CI locally:
+   ```bash
+   make preflight
+   ```
+
+   This runs all 8 CI checks: tidy, format, vet, lint, tests (with race detector), coverage thresholds, example builds, and security scans.
+
+   Additionally:
    - Update documentation if needed
    - Add/update tests for your changes
 

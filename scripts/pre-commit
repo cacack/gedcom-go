@@ -1,6 +1,6 @@
 #!/bin/bash
 # Pre-commit hook for gedcom-go
-# Install: make setup-hooks
+# Install: make setup
 # Prerequisites: make install-tools
 #
 # This hook runs fast checks on commit. Coverage checks run on pre-push.
@@ -19,6 +19,19 @@ if [ -n "$UNFORMATTED" ]; then
   echo "Please run: gofmt -w ."
   exit 1
 fi
+
+# Check go.mod is tidy
+echo "→ Checking go.mod..."
+cp go.mod go.mod.bak
+cp go.sum go.sum.bak 2>/dev/null || true
+go mod tidy
+if ! diff -q go.mod go.mod.bak > /dev/null 2>&1 || ! diff -q go.sum go.sum.bak > /dev/null 2>&1; then
+  echo "Error: go.mod/go.sum not tidy. Changes have been applied."
+  echo "Please stage the updated go.mod and go.sum files."
+  rm -f go.mod.bak go.sum.bak
+  exit 1
+fi
+rm -f go.mod.bak go.sum.bak
 
 # Run vet
 echo "→ Running go vet..."
