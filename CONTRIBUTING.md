@@ -49,13 +49,15 @@ This project adheres to a simple code of conduct:
    - Verify everything works by running tests
 
    **Git hooks installed:**
+
    | Hook | Checks | Purpose |
    |------|--------|---------|
    | pre-commit | gofmt, go mod tidy, go vet, golangci-lint, tests | Fast feedback on every commit |
    | pre-push | Coverage thresholds (85% per-package) | Catch coverage issues before CI |
 
    You'll see output like:
-   ```
+
+   ```text
    ═══════════════════════════════════════════════
      Development environment ready!
    ═══════════════════════════════════════════════

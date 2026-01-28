@@ -350,10 +350,12 @@ preflight: ## Run all CI checks locally before pushing
 	@echo "→ [8/8] Running security scans..."
 	@GOSEC=$$(command -v gosec || echo "$$HOME/go/bin/gosec"); \
 	if [ ! -x "$$GOSEC" ]; then GOSEC="$$(go env GOPATH)/bin/gosec"; fi; \
-	$$GOSEC -quiet ./... 2>/dev/null
+	if [ ! -x "$$GOSEC" ]; then echo "gosec not found. Run 'make install-tools'" && exit 1; fi; \
+	$$GOSEC -quiet ./...
 	@GOVULNCHECK=$$(command -v govulncheck || echo "$$HOME/go/bin/govulncheck"); \
 	if [ ! -x "$$GOVULNCHECK" ]; then GOVULNCHECK="$$(go env GOPATH)/bin/govulncheck"; fi; \
-	$$GOVULNCHECK ./... 2>&1 | grep -v "^Scanning" | grep -v "^$$" || true
+	if [ ! -x "$$GOVULNCHECK" ]; then echo "govulncheck not found. Run 'make install-tools'" && exit 1; fi; \
+	$$GOVULNCHECK ./...
 	@echo "✓ Security scans passed"
 	@echo ""
 	@echo "═══════════════════════════════════════════════"
