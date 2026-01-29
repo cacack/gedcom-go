@@ -15,6 +15,19 @@ func normalizeXRefsToUppercase(doc *gedcom.Document, report *gedcom.ConversionRe
 		return
 	}
 
+	// Add per-item notes for each XRef change
+	for _, record := range doc.Records {
+		if newXRef, ok := mapping[record.XRef]; ok {
+			path := BuildRecordPath(string(record.Type), record.XRef)
+			report.AddNormalized(gedcom.ConversionNote{
+				Path:     path,
+				Original: record.XRef,
+				Result:   newXRef,
+				Reason:   "GEDCOM 7.0 requires XRefs to be uppercase only (@[A-Z0-9_]+@)",
+			})
+		}
+	}
+
 	updateXRefDefinitions(doc, mapping)
 	updateXRefReferences(doc, mapping)
 	updateXRefMap(doc, mapping)

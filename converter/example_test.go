@@ -149,3 +149,53 @@ func ExampleConvert_report() {
 	// Transformations: 2
 	// Data loss: false
 }
+
+// ExampleBuildRecordPath shows how to create a path for a GEDCOM record.
+func ExampleBuildRecordPath() {
+	// Path for an individual record
+	path := converter.BuildRecordPath("INDI", "@I1@")
+	fmt.Println(path)
+
+	// Path for header (no XRef)
+	headerPath := converter.BuildRecordPath("HEAD", "")
+	fmt.Println(headerPath)
+
+	// Output:
+	// Individual @I1@
+	// Header
+}
+
+// ExampleAppendToPath shows how to extend a path with additional segments.
+func ExampleAppendToPath() {
+	// Start with a record path
+	path := converter.BuildRecordPath("INDI", "@I1@")
+	fmt.Println(path)
+
+	// Append birth event
+	path = converter.AppendToPath(path, "BIRT")
+	fmt.Println(path)
+
+	// Append date
+	path = converter.AppendToPath(path, "DATE")
+	fmt.Println(path)
+
+	// Output:
+	// Individual @I1@
+	// Individual @I1@ > BIRT
+	// Individual @I1@ > BIRT > DATE
+}
+
+// ExampleBuildNestedPath shows how to create a complete nested path in one call.
+func ExampleBuildNestedPath() {
+	// Create a deeply nested path for a date within a birth event
+	path := converter.BuildNestedPath("INDI", "@I1@", "BIRT", "DATE")
+	fmt.Println(path)
+
+	// Header path with character encoding
+	headerPath := converter.BuildNestedPath("HEAD", "", "CHAR")
+	fmt.Println(headerPath)
+
+	// Output:
+	// Individual @I1@ > BIRT > DATE
+	// Header > CHAR
+}

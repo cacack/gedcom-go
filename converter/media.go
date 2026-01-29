@@ -61,7 +61,7 @@ func transformMediaTypes(doc *gedcom.Document, targetVersion gedcom.Version, rep
 		}
 
 		// Transform Form field in each MediaFile
-		for _, file := range media.Files {
+		for fileIdx, file := range media.Files {
 			if file == nil || file.Form == "" {
 				continue
 			}
@@ -80,15 +80,30 @@ func transformMediaTypes(doc *gedcom.Document, targetVersion gedcom.Version, rep
 				file.Form = newValue
 				transformCount++
 				details = append(details, oldValue+" -> "+newValue)
+
+				// Add per-item approximated note
+				path := BuildNestedPath("OBJE", record.XRef, formatFileIndex(fileIdx), "FORM")
+				var reason string
+				if targetVersion == gedcom.Version70 {
+					reason = "GEDCOM 7.0 uses IANA media types instead of legacy format identifiers"
+				} else {
+					reason = "GEDCOM 5.x uses legacy format identifiers instead of IANA media types"
+				}
+				report.AddApproximated(gedcom.ConversionNote{
+					Path:     path,
+					Original: oldValue,
+					Result:   newValue,
+					Reason:   reason,
+				})
 			}
 		}
 
 		// Also transform Form in MediaFile Translations
-		for _, file := range media.Files {
+		for fileIdx, file := range media.Files {
 			if file == nil {
 				continue
 			}
-			for _, trans := range file.Translations {
+			for transIdx, trans := range file.Translations {
 				if trans == nil || trans.Form == "" {
 					continue
 				}
@@ -107,6 +122,21 @@ func transformMediaTypes(doc *gedcom.Document, targetVersion gedcom.Version, rep
 					trans.Form = newValue
 					transformCount++
 					details = append(details, oldValue+" -> "+newValue)
+
+					// Add per-item approximated note
+					path := BuildNestedPath("OBJE", record.XRef, formatFileIndex(fileIdx), formatTransIndex(transIdx), "FORM")
+					var reason string
+					if targetVersion == gedcom.Version70 {
+						reason = "GEDCOM 7.0 uses IANA media types instead of legacy format identifiers"
+					} else {
+						reason = "GEDCOM 5.x uses legacy format identifiers instead of IANA media types"
+					}
+					report.AddApproximated(gedcom.ConversionNote{
+						Path:     path,
+						Original: oldValue,
+						Result:   newValue,
+						Reason:   reason,
+					})
 				}
 			}
 		}
@@ -120,6 +150,29 @@ func transformMediaTypes(doc *gedcom.Document, targetVersion gedcom.Version, rep
 			Details:     details,
 		})
 	}
+}
+
+// formatFileIndex formats a file index for path display.
+func formatFileIndex(idx int) string {
+	return "FILE[" + itoa(idx) + "]"
+}
+
+// formatTransIndex formats a translation index for path display.
+func formatTransIndex(idx int) string {
+	return "TRAN[" + itoa(idx) + "]"
+}
+
+// itoa converts an int to a string without importing strconv.
+func itoa(i int) string {
+	if i == 0 {
+		return "0"
+	}
+	var digits []byte
+	for i > 0 {
+		digits = append([]byte{byte('0' + i%10)}, digits...)
+		i /= 10
+	}
+	return string(digits)
 }
 
 // toIANAMediaType converts a legacy media type to IANA format.

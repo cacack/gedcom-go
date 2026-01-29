@@ -93,8 +93,11 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 // convert55To551 converts GEDCOM 5.5 to 5.5.1.
 //
 //nolint:unparam // error return kept for API consistency with other converters
-func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
+func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformHeader(doc, gedcom.Version551, report)
+	if opts.PreserveUnknownTags {
+		recordPreservedUnknownTags(doc, report)
+	}
 	report.AddTransformation(gedcom.Transformation{
 		Type:        "VERSION_UPGRADE",
 		Description: "Upgraded from GEDCOM 5.5 to 5.5.1 (backward compatible)",
@@ -106,11 +109,14 @@ func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, _ *Co
 // convert55To70 converts GEDCOM 5.5 to 7.0.
 //
 //nolint:unparam // error return kept for API consistency with other converters
-func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
+func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version70, report)
 	normalizeXRefsToUppercase(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
+	if opts.PreserveUnknownTags {
+		recordPreservedUnknownTags(doc, report)
+	}
 	report.AddTransformation(gedcom.Transformation{
 		Type:        "VERSION_UPGRADE",
 		Description: "Upgraded from GEDCOM 5.5 to 7.0",
@@ -122,9 +128,12 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, _ *Con
 // convert551To55 converts GEDCOM 5.5.1 to 5.5.
 //
 //nolint:unparam // error return kept for API consistency with other converters
-func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
+func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformHeader(doc, gedcom.Version55, report)
 	record551Tags(doc, report)
+	if opts.PreserveUnknownTags {
+		recordPreservedUnknownTags(doc, report)
+	}
 	report.AddTransformation(gedcom.Transformation{
 		Type:        "VERSION_DOWNGRADE",
 		Description: "Downgraded from GEDCOM 5.5.1 to 5.5",
@@ -136,11 +145,14 @@ func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, _ *Co
 // convert551To70 converts GEDCOM 5.5.1 to 7.0.
 //
 //nolint:unparam // error return kept for API consistency with other converters
-func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
+func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version70, report)
 	normalizeXRefsToUppercase(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
+	if opts.PreserveUnknownTags {
+		recordPreservedUnknownTags(doc, report)
+	}
 	report.AddTransformation(gedcom.Transformation{
 		Type:        "VERSION_UPGRADE",
 		Description: "Upgraded from GEDCOM 5.5.1 to 7.0",
@@ -152,11 +164,14 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, _ *Co
 // convert70To55 converts GEDCOM 7.0 to 5.5.
 //
 //nolint:unparam // error return kept for API consistency with other converters
-func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
+func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version55, report)
 	transformMediaTypes(doc, gedcom.Version55, report)
 	transformHeader(doc, gedcom.Version55, report)
 	record70DataLoss(doc, report, gedcom.Version55)
+	if opts.PreserveUnknownTags {
+		recordPreservedUnknownTags(doc, report)
+	}
 	report.AddTransformation(gedcom.Transformation{
 		Type:        "VERSION_DOWNGRADE",
 		Description: "Downgraded from GEDCOM 7.0 to 5.5",
@@ -168,11 +183,14 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, _ *Con
 // convert70To551 converts GEDCOM 7.0 to 5.5.1.
 //
 //nolint:unparam // error return kept for API consistency with other converters
-func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, _ *ConvertOptions) error {
+func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version551, report)
 	transformMediaTypes(doc, gedcom.Version551, report)
 	transformHeader(doc, gedcom.Version551, report)
 	record70DataLoss(doc, report, gedcom.Version551)
+	if opts.PreserveUnknownTags {
+		recordPreservedUnknownTags(doc, report)
+	}
 	report.AddTransformation(gedcom.Transformation{
 		Type:        "VERSION_DOWNGRADE",
 		Description: "Downgraded from GEDCOM 7.0 to 5.5.1",
@@ -185,9 +203,21 @@ func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, _ *Co
 func record551Tags(doc *gedcom.Document, report *gedcom.ConversionReport) {
 	tags551 := []string{"EMAIL", "FAX", "WWW", "FACT", "MAP", "LATI", "LONG"}
 	found := make(map[string]int)
+	// Track per-record occurrences for granular notes
+	perRecord := make(map[string]map[string]bool) // tag -> xref -> true
 
 	for _, record := range doc.Records {
-		countTagsInRecord(record.Tags, tags551, found)
+		for _, tag := range record.Tags {
+			for _, target := range tags551 {
+				if tag.Tag == target {
+					found[target]++
+					if perRecord[target] == nil {
+						perRecord[target] = make(map[string]bool)
+					}
+					perRecord[target][record.XRef] = true
+				}
+			}
+		}
 	}
 
 	for tag, count := range found {
@@ -196,6 +226,18 @@ func record551Tags(doc *gedcom.Document, report *gedcom.ConversionReport) {
 				Feature: tag + " tags",
 				Reason:  "Tag introduced in GEDCOM 5.5.1, may not be recognized by strict 5.5 parsers",
 			})
+
+			// Add per-item dropped notes
+			for xref := range perRecord[tag] {
+				recordType := getRecordTypeByXRef(doc, xref)
+				path := BuildNestedPath(recordType, xref, tag)
+				report.AddDropped(gedcom.ConversionNote{
+					Path:     path,
+					Original: tag,
+					Result:   "",
+					Reason:   "Tag introduced in GEDCOM 5.5.1, may not be recognized by strict 5.5 parsers",
+				})
+			}
 		}
 	}
 }
@@ -219,6 +261,18 @@ func record70DataLoss(doc *gedcom.Document, report *gedcom.ConversionReport, tar
 				Reason:          "Tag not supported in GEDCOM " + targetVersion.String(),
 				AffectedRecords: xrefs,
 			})
+
+			// Add per-item dropped notes
+			for _, xref := range xrefs {
+				recordType := getRecordTypeByXRef(doc, xref)
+				path := BuildNestedPath(recordType, xref, tag)
+				report.AddDropped(gedcom.ConversionNote{
+					Path:     path,
+					Original: tag,
+					Result:   "",
+					Reason:   "Tag not supported in GEDCOM " + targetVersion.String(),
+				})
+			}
 		}
 	}
 }
@@ -250,4 +304,48 @@ func findTagsInRecord(tags []*gedcom.Tag, targetTags []string) []string {
 		result = append(result, tag)
 	}
 	return result
+}
+
+// getRecordTypeByXRef returns the record type string for a given XRef.
+func getRecordTypeByXRef(doc *gedcom.Document, xref string) string {
+	if record, ok := doc.XRefMap[xref]; ok {
+		return string(record.Type)
+	}
+	return "UNKNOWN"
+}
+
+// recordPreservedUnknownTags identifies and records unknown/vendor tags that are preserved through conversion.
+// Unknown tags are those starting with underscore (_) which represent vendor extensions.
+func recordPreservedUnknownTags(doc *gedcom.Document, report *gedcom.ConversionReport) {
+	// Process header tags
+	if doc.Header != nil {
+		for _, tag := range doc.Header.Tags {
+			recordPreservedTagsRecursive(tag, "HEAD", "", report)
+		}
+	}
+
+	// Process all record tags
+	for _, record := range doc.Records {
+		for _, tag := range record.Tags {
+			recordPreservedTagsRecursive(tag, string(record.Type), record.XRef, report)
+		}
+	}
+}
+
+// recordPreservedTagsRecursive recursively checks tags for vendor extensions (starting with _).
+func recordPreservedTagsRecursive(tag *gedcom.Tag, recordType, xref string, report *gedcom.ConversionReport) {
+	if tag == nil {
+		return
+	}
+
+	// Vendor extensions start with underscore
+	if tag.Tag != "" && tag.Tag[0] == '_' {
+		path := BuildNestedPath(recordType, xref, tag.Tag)
+		report.AddPreserved(gedcom.ConversionNote{
+			Path:     path,
+			Original: tag.Tag,
+			Result:   tag.Tag,
+			Reason:   "Vendor extension preserved through conversion",
+		})
+	}
 }
