@@ -158,11 +158,22 @@ The streaming APIs provide memory-efficient alternatives for very large files.
    }
    finalIssues := v.Finalize()
 
-   // Incremental parse - O(1) memory per record
+   // Incremental parse with range-over-func (Go 1.23+) - O(1) memory per record
+   for record, err := range parser.Records(reader) {
+       if err != nil {
+           return err
+       }
+       // Process one record at a time
+   }
+
+   // Or with classic iterator API (pre-Go 1.23)
    it := parser.NewRecordIterator(reader)
    for it.Next() {
        record := it.Record()
        // Process one record at a time
+   }
+   if err := it.Err(); err != nil {
+       return err
    }
    ```
 

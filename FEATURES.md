@@ -1064,9 +1064,58 @@ Useful for sources imported from GEDCOM files where repository names are stored 
 
 ## Incremental Parsing
 
-Memory-efficient parsing for very large files with on-demand record access:
+Memory-efficient parsing for very large files with on-demand record access.
 
-### Record Iterator
+### Go 1.23+ Range-Over-Func Iterators
+
+Modern Go 1.23 range-over-func support for idiomatic streaming:
+
+```go
+// Range-over-func pattern (Go 1.23+)
+for record, err := range parser.Records(reader) {
+    if err != nil {
+        return fmt.Errorf("parse error: %w", err)
+    }
+    fmt.Printf("Record: %s %s\n", record.Type, record.XRef)
+}
+
+// With byte offset tracking for indexing
+for record, err := range parser.RecordsWithOffset(reader) {
+    if err != nil {
+        return err
+    }
+    fmt.Printf("Record %s at byte %d, length %d\n",
+        record.Type, record.ByteOffset, record.ByteLength)
+}
+
+// LazyParser also supports range-over-func
+lp := parser.NewLazyParser(file)
+for record, err := range lp.AllRecords() {
+    if err != nil {
+        return err
+    }
+    // process record
+}
+```
+
+| Function | Description |
+|----------|-------------|
+| `Records(r)` | Iterate records from reader using range-over-func |
+| `RecordsWithOffset(r)` | Iterate with accurate byte offsets for indexing |
+| `LazyParser.Records()` | Iterate from current position |
+| `LazyParser.AllRecords()` | Iterate all records from beginning |
+| `LazyParser.RecordsFrom(offset)` | Iterate from specific byte offset |
+
+**Benefits**:
+- Clean, idiomatic Go 1.23 syntax
+- Early termination with `break` stops iteration
+- Error handling via second return value
+- Zero overhead compared to classic iterator
+
+The classic iterator API (`RecordIterator.Next()/Record()/Err()`) remains available
+for backward compatibility and pre-Go 1.23 codebases.
+
+### Record Iterator (Classic API)
 
 Stream records one at a time without loading all into memory:
 

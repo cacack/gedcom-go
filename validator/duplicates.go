@@ -391,7 +391,7 @@ func stringSimilarity(s1, s2 string) float64 {
 	}
 
 	distance := levenshteinDistance(s1, s2)
-	maxLen := maxOfTwo(len(s1), len(s2))
+	maxLen := max(len(s1), len(s2))
 
 	// Similarity is 1 - (distance / maxLen)
 	return 1.0 - float64(distance)/float64(maxLen)
@@ -437,7 +437,7 @@ func levenshteinDistance(s1, s2 string) int {
 			}
 
 			// Minimum of insert, delete, or substitute
-			curr[j] = minOfThree(
+			curr[j] = min(
 				prev[j]+1,      // deletion
 				curr[j-1]+1,    // insertion
 				prev[j-1]+cost, // substitution
@@ -457,23 +457,4 @@ func absInt(n int) int {
 		return -n
 	}
 	return n
-}
-
-// minOfThree returns the minimum of three integers.
-func minOfThree(a, b, c int) int {
-	if a <= b && a <= c {
-		return a
-	}
-	if b <= c {
-		return b
-	}
-	return c
-}
-
-// maxOfTwo returns the maximum of two integers.
-func maxOfTwo(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
