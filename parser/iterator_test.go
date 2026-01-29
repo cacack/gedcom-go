@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -516,5 +517,257 @@ func TestRecordIterator_RecordWithoutXRef(t *testing.T) {
 	rec = it.Record()
 	if rec.XRef != "" {
 		t.Errorf("TRLR XRef = %q, want empty", rec.XRef)
+	}
+}
+
+// ============================================================================
+// Tests for iter.Seq2 API: Records() and RecordsWithOffset()
+// ============================================================================
+
+func TestRecords_BasicIteration(t *testing.T) {
+	input := `0 HEAD
+1 SOUR TestSystem
+0 @I1@ INDI
+1 NAME John /Doe/
+0 TRLR`
+
+	var records []*RawRecord
+	for rec, err := range Records(strings.NewReader(input)) {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		records = append(records, rec)
+	}
+
+	if len(records) != 3 {
+		t.Errorf("got %d records, want 3", len(records))
+	}
+	if records[0].Type != "HEAD" {
+		t.Errorf("first record type = %q, want HEAD", records[0].Type)
+	}
+	if records[1].Type != "INDI" {
+		t.Errorf("second record type = %q, want INDI", records[1].Type)
+	}
+	if records[1].XRef != "@I1@" {
+		t.Errorf("second record XRef = %q, want @I1@", records[1].XRef)
+	}
+	if records[2].Type != "TRLR" {
+		t.Errorf("third record type = %q, want TRLR", records[2].Type)
+	}
+}
+
+func TestRecords_EmptyInput(t *testing.T) {
+	var records []*RawRecord
+	var gotError error
+	for rec, err := range Records(strings.NewReader("")) {
+		if err != nil {
+			gotError = err
+			break
+		}
+		records = append(records, rec)
+	}
+
+	if gotError != nil {
+		t.Errorf("unexpected error for empty input: %v", gotError)
+	}
+	if len(records) != 0 {
+		t.Errorf("got %d records, want 0", len(records))
+	}
+}
+
+func TestRecords_ParseError(t *testing.T) {
+	// Invalid level number in subordinate line
+	input := "0 HEAD\nX INVALID\n0 TRLR"
+
+	var gotError error
+	for _, err := range Records(strings.NewReader(input)) {
+		if err != nil {
+			gotError = err
+			break
+		}
+	}
+
+	if gotError == nil {
+		t.Error("expected error from invalid level, got nil")
+	}
+
+	// Verify error contains useful context
+	errStr := gotError.Error()
+	if !strings.Contains(errStr, "level") && !strings.Contains(errStr, "parse") {
+		t.Errorf("error should contain useful context, got: %v", gotError)
+	}
+}
+
+func TestRecords_EarlyTermination(t *testing.T) {
+	// Generate input with many records
+	var sb strings.Builder
+	sb.WriteString("0 HEAD\n1 SOUR Test\n")
+	for i := 1; i <= 100; i++ {
+		sb.WriteString(fmt.Sprintf("0 @I%d@ INDI\n1 NAME Person%d\n", i, i))
+	}
+	sb.WriteString("0 TRLR\n")
+	input := sb.String()
+
+	count := 0
+	for _, err := range Records(strings.NewReader(input)) {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		count++
+		if count >= 5 {
+			break // early termination
+		}
+	}
+
+	if count != 5 {
+		t.Errorf("got %d records before break, want 5", count)
+	}
+}
+
+func TestRecordsWithOffset_ByteOffsets(t *testing.T) {
+	// "0 HEAD\n" = 7 bytes
+	// "1 SOUR Test\n" = 12 bytes
+	// HEAD record = 19 bytes total
+	// "0 TRLR\n" = 7 bytes
+	input := "0 HEAD\n1 SOUR Test\n0 TRLR\n"
+
+	var records []*RawRecord
+	for rec, err := range RecordsWithOffset(strings.NewReader(input)) {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		records = append(records, rec)
+	}
+
+	if len(records) != 2 {
+		t.Fatalf("got %d records, want 2", len(records))
+	}
+
+	// First record: HEAD
+	if records[0].ByteOffset != 0 {
+		t.Errorf("HEAD ByteOffset = %d, want 0", records[0].ByteOffset)
+	}
+	if records[0].ByteLength != 19 {
+		t.Errorf("HEAD ByteLength = %d, want 19", records[0].ByteLength)
+	}
+
+	// Second record: TRLR
+	if records[1].ByteOffset != 19 {
+		t.Errorf("TRLR ByteOffset = %d, want 19", records[1].ByteOffset)
+	}
+	if records[1].ByteLength != 7 {
+		t.Errorf("TRLR ByteLength = %d, want 7", records[1].ByteLength)
+	}
+}
+
+func TestRecordsWithOffset_EmptyInput(t *testing.T) {
+	var records []*RawRecord
+	var gotError error
+	for rec, err := range RecordsWithOffset(strings.NewReader("")) {
+		if err != nil {
+			gotError = err
+			break
+		}
+		records = append(records, rec)
+	}
+
+	if gotError != nil {
+		t.Errorf("unexpected error for empty input: %v", gotError)
+	}
+	if len(records) != 0 {
+		t.Errorf("got %d records, want 0", len(records))
+	}
+}
+
+func TestRecordsWithOffset_ParseError(t *testing.T) {
+	// Invalid line
+	input := "0 HEAD\nINVALID LINE\n0 TRLR\n"
+
+	var gotError error
+	for _, err := range RecordsWithOffset(strings.NewReader(input)) {
+		if err != nil {
+			gotError = err
+			break
+		}
+	}
+
+	if gotError == nil {
+		t.Error("expected parse error")
+	}
+}
+
+func TestRecordsWithOffset_EarlyTermination(t *testing.T) {
+	var sb strings.Builder
+	sb.WriteString("0 HEAD\n1 SOUR Test\n")
+	for i := 1; i <= 50; i++ {
+		sb.WriteString(fmt.Sprintf("0 @I%d@ INDI\n1 NAME Person%d\n", i, i))
+	}
+	sb.WriteString("0 TRLR\n")
+	input := sb.String()
+
+	count := 0
+	for _, err := range RecordsWithOffset(strings.NewReader(input)) {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		count++
+		if count >= 3 {
+			break
+		}
+	}
+
+	if count != 3 {
+		t.Errorf("got %d records before break, want 3", count)
+	}
+}
+
+func TestRecords_MatchesRecordIterator(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME John /Smith/
+2 GIVN John
+2 SURN Smith
+1 SEX M
+0 @F1@ FAM
+1 HUSB @I1@
+0 TRLR`
+
+	// Use RecordIterator
+	it := NewRecordIterator(strings.NewReader(input))
+	var iterRecords []*RawRecord
+	for it.Next() {
+		rec := it.Record()
+		iterRecords = append(iterRecords, &RawRecord{
+			XRef: rec.XRef,
+			Type: rec.Type,
+		})
+	}
+	if it.Err() != nil {
+		t.Fatalf("RecordIterator error: %v", it.Err())
+	}
+
+	// Use Records() iter.Seq2
+	var seqRecords []*RawRecord
+	for rec, err := range Records(strings.NewReader(input)) {
+		if err != nil {
+			t.Fatalf("Records error: %v", err)
+		}
+		seqRecords = append(seqRecords, rec)
+	}
+
+	// Compare
+	if len(seqRecords) != len(iterRecords) {
+		t.Fatalf("Records got %d, RecordIterator got %d", len(seqRecords), len(iterRecords))
+	}
+
+	for i := range iterRecords {
+		if seqRecords[i].XRef != iterRecords[i].XRef {
+			t.Errorf("Record %d: XRef = %q, want %q", i, seqRecords[i].XRef, iterRecords[i].XRef)
+		}
+		if seqRecords[i].Type != iterRecords[i].Type {
+			t.Errorf("Record %d: Type = %q, want %q", i, seqRecords[i].Type, iterRecords[i].Type)
+		}
 	}
 }

@@ -3,6 +3,7 @@ package parser
 import (
 	"bufio"
 	"io"
+	"iter"
 )
 
 // RawRecord represents a complete GEDCOM record with all its subordinate lines.
@@ -323,4 +324,76 @@ func (it *RecordIteratorWithOffset) Record() *RawRecord {
 // Err returns any error encountered during iteration.
 func (it *RecordIteratorWithOffset) Err() error {
 	return it.err
+}
+
+// Records returns an iterator over GEDCOM records using Go 1.23 range-over-func.
+// It yields (*RawRecord, nil) for each successfully parsed record.
+// On parse error, it yields (nil, error) and stops iteration.
+//
+// This function provides a modern, idiomatic alternative to [RecordIterator]
+// for streaming GEDCOM record processing. The reader should already be wrapped
+// with charset.NewReader() for encoding normalization.
+//
+// Usage:
+//
+//	for record, err := range parser.Records(reader) {
+//	    if err != nil {
+//	        return err
+//	    }
+//	    // process record
+//	}
+//
+// Early termination is supported - breaking from the loop will stop iteration:
+//
+//	for record, err := range parser.Records(reader) {
+//	    if err != nil {
+//	        return err
+//	    }
+//	    if record.Type == "TRLR" {
+//	        break // stop at trailer
+//	    }
+//	}
+func Records(r io.Reader) iter.Seq2[*RawRecord, error] {
+	return func(yield func(*RawRecord, error) bool) {
+		it := NewRecordIterator(r)
+		for it.Next() {
+			if !yield(it.Record(), nil) {
+				return // consumer broke out of loop
+			}
+		}
+		if err := it.Err(); err != nil {
+			yield(nil, err)
+		}
+	}
+}
+
+// RecordsWithOffset returns an iterator over GEDCOM records with accurate byte offset tracking.
+// It yields (*RawRecord, nil) for each successfully parsed record.
+// On parse error, it yields (nil, error) and stops iteration.
+//
+// This is the range-over-func equivalent of [RecordIteratorWithOffset], providing
+// precise ByteOffset and ByteLength values suitable for building file indexes.
+// The reader should already be wrapped with charset.NewReader() for encoding normalization.
+//
+// Usage:
+//
+//	for record, err := range parser.RecordsWithOffset(reader) {
+//	    if err != nil {
+//	        return err
+//	    }
+//	    fmt.Printf("Record %s at offset %d, length %d\n",
+//	        record.Type, record.ByteOffset, record.ByteLength)
+//	}
+func RecordsWithOffset(r io.Reader) iter.Seq2[*RawRecord, error] {
+	return func(yield func(*RawRecord, error) bool) {
+		it := NewRecordIteratorWithOffset(r)
+		for it.Next() {
+			if !yield(it.Record(), nil) {
+				return // consumer broke out of loop
+			}
+		}
+		if err := it.Err(); err != nil {
+			yield(nil, err)
+		}
+	}
 }

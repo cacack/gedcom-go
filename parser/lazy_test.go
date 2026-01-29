@@ -636,3 +636,271 @@ func TestLazyParser_MixedLineEndings(t *testing.T) {
 		t.Errorf("Record XRef = %q, want @I1@", rec.XRef)
 	}
 }
+
+// ============================================================================
+// Tests for iter.Seq2 API: Records(), RecordsFrom(), AllRecords()
+// ============================================================================
+
+func TestLazyParser_Records(t *testing.T) {
+	input := `0 HEAD
+1 SOUR Test
+0 @I1@ INDI
+1 NAME John
+0 TRLR`
+
+	rs := newStringReadSeeker(input)
+	lp := NewLazyParser(rs)
+
+	var records []*RawRecord
+	for rec, err := range lp.Records() {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		records = append(records, rec)
+	}
+
+	if len(records) != 3 {
+		t.Errorf("got %d records, want 3", len(records))
+	}
+	if records[0].Type != "HEAD" {
+		t.Errorf("first record type = %q, want HEAD", records[0].Type)
+	}
+	if records[1].XRef != "@I1@" {
+		t.Errorf("second record XRef = %q, want @I1@", records[1].XRef)
+	}
+}
+
+func TestLazyParser_RecordsFrom(t *testing.T) {
+	// "0 HEAD\n" = 7 bytes
+	// "1 SOUR Test\n" = 12 bytes
+	// HEAD record ends at offset 19
+	// "0 @I1@ INDI\n" starts at 19
+	input := "0 HEAD\n1 SOUR Test\n0 @I1@ INDI\n1 NAME John\n0 TRLR\n"
+
+	rs := newStringReadSeeker(input)
+	lp := NewLazyParser(rs)
+
+	// Build index to get offsets
+	if err := lp.BuildIndex(); err != nil {
+		t.Fatalf("BuildIndex error: %v", err)
+	}
+
+	entry, _ := lp.Index().Lookup("@I1@")
+
+	// Iterate from @I1@ using iter.Seq2
+	var records []*RawRecord
+	for rec, err := range lp.RecordsFrom(entry.ByteOffset) {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		records = append(records, rec)
+	}
+
+	if len(records) < 1 {
+		t.Fatal("expected at least one record")
+	}
+
+	if records[0].XRef != "@I1@" {
+		t.Errorf("first record XRef = %q, want @I1@", records[0].XRef)
+	}
+
+	// Should have @I1@ and TRLR
+	if len(records) != 2 {
+		t.Errorf("got %d records from offset, want 2", len(records))
+	}
+}
+
+func TestLazyParser_AllRecords(t *testing.T) {
+	input := `0 HEAD
+0 @I1@ INDI
+0 TRLR`
+
+	rs := newStringReadSeeker(input)
+	lp := NewLazyParser(rs)
+
+	// Read some data first to move position
+	buf := make([]byte, 10)
+	_, _ = rs.Read(buf)
+
+	// AllRecords should seek to beginning
+	var records []*RawRecord
+	for rec, err := range lp.AllRecords() {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		records = append(records, rec)
+	}
+
+	if len(records) != 3 {
+		t.Errorf("got %d records, want 3", len(records))
+	}
+
+	// Verify we got all records from the beginning
+	if records[0].Type != "HEAD" {
+		t.Errorf("first record type = %q, want HEAD", records[0].Type)
+	}
+}
+
+func TestLazyParser_RecordsFrom_SeekError(t *testing.T) {
+	es := &errorSeeker{Reader: strings.NewReader("0 HEAD\n0 TRLR\n")}
+	lp := NewLazyParser(es)
+
+	var gotError error
+	for _, err := range lp.RecordsFrom(10) {
+		if err != nil {
+			gotError = err
+			break
+		}
+	}
+
+	if gotError == nil {
+		t.Error("expected error from seek failure")
+	}
+
+	// Verify error contains "seek" context
+	if !strings.Contains(gotError.Error(), "seek") {
+		t.Errorf("error should mention seek, got: %v", gotError)
+	}
+}
+
+func TestLazyParser_Records_EmptyFile(t *testing.T) {
+	rs := newStringReadSeeker("")
+	lp := NewLazyParser(rs)
+
+	var count int
+	for _, err := range lp.Records() {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		count++
+	}
+
+	if count != 0 {
+		t.Errorf("got %d records, want 0", count)
+	}
+}
+
+func TestLazyParser_Records_EarlyTermination(t *testing.T) {
+	input := `0 HEAD
+0 @I1@ INDI
+0 @I2@ INDI
+0 @I3@ INDI
+0 @I4@ INDI
+0 @I5@ INDI
+0 TRLR`
+
+	rs := newStringReadSeeker(input)
+	lp := NewLazyParser(rs)
+
+	count := 0
+	for _, err := range lp.Records() {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		count++
+		if count >= 3 {
+			break
+		}
+	}
+
+	if count != 3 {
+		t.Errorf("got %d records before break, want 3", count)
+	}
+}
+
+func TestLazyParser_RecordsFrom_EarlyTermination(t *testing.T) {
+	input := `0 HEAD
+0 @I1@ INDI
+0 @I2@ INDI
+0 @I3@ INDI
+0 @I4@ INDI
+0 @I5@ INDI
+0 TRLR`
+
+	rs := newStringReadSeeker(input)
+	lp := NewLazyParser(rs)
+
+	count := 0
+	for _, err := range lp.RecordsFrom(0) {
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		count++
+		if count >= 2 {
+			break // early termination
+		}
+	}
+
+	if count != 2 {
+		t.Errorf("got %d records before break, want 2", count)
+	}
+}
+
+func TestLazyParser_RecordsFrom_ParseError(t *testing.T) {
+	// Parse error occurs during iteration
+	input := "0 HEAD\n0 @I1@ INDI\nINVALID LINE\n0 TRLR\n"
+
+	rs := newStringReadSeeker(input)
+	lp := NewLazyParser(rs)
+
+	var gotError error
+	for _, err := range lp.RecordsFrom(0) {
+		if err != nil {
+			gotError = err
+			break
+		}
+	}
+
+	if gotError == nil {
+		t.Error("expected parse error")
+	}
+}
+
+func TestLazyParser_AllRecords_MatchesIterateAll(t *testing.T) {
+	input := `0 HEAD
+1 SOUR Test
+0 @I1@ INDI
+1 NAME John
+0 @I2@ INDI
+1 NAME Jane
+0 TRLR`
+
+	// Use IterateAll
+	rs1 := newStringReadSeeker(input)
+	lp1 := NewLazyParser(rs1)
+	it, err := lp1.IterateAll()
+	if err != nil {
+		t.Fatalf("IterateAll error: %v", err)
+	}
+
+	var iterRecords []string
+	for it.Next() {
+		iterRecords = append(iterRecords, it.Record().Type)
+	}
+	if it.Err() != nil {
+		t.Fatalf("Iterator error: %v", it.Err())
+	}
+
+	// Use AllRecords iter.Seq2
+	rs2 := newStringReadSeeker(input)
+	lp2 := NewLazyParser(rs2)
+
+	var seqRecords []string
+	for rec, err := range lp2.AllRecords() {
+		if err != nil {
+			t.Fatalf("AllRecords error: %v", err)
+		}
+		seqRecords = append(seqRecords, rec.Type)
+	}
+
+	// Compare
+	if len(seqRecords) != len(iterRecords) {
+		t.Fatalf("AllRecords got %d, IterateAll got %d", len(seqRecords), len(iterRecords))
+	}
+
+	for i := range iterRecords {
+		if seqRecords[i] != iterRecords[i] {
+			t.Errorf("Record %d: Type = %q, want %q", i, seqRecords[i], iterRecords[i])
+		}
+	}
+}

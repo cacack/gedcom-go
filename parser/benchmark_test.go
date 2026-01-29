@@ -99,6 +99,126 @@ func BenchmarkParseLineTypes(b *testing.B) {
 	}
 }
 
+// BenchmarkRecordIterator benchmarks the RecordIterator with various file sizes
+func BenchmarkRecordIterator(b *testing.B) {
+	tests := []struct {
+		name string
+		size int
+	}{
+		{"10 records", 10},
+		{"100 records", 100},
+		{"1000 records", 1000},
+	}
+
+	for _, tt := range tests {
+		content := generateLargeGEDCOM(tt.size)
+		b.Run(tt.name, func(b *testing.B) {
+			reader := strings.NewReader(content)
+			b.ResetTimer()
+			b.ReportAllocs()
+
+			for i := 0; i < b.N; i++ {
+				reader.Reset(content)
+				it := NewRecordIterator(reader)
+				for it.Next() {
+					_ = it.Record()
+				}
+			}
+		})
+	}
+}
+
+// BenchmarkRecordIteratorWithOffset benchmarks the offset-tracking variant
+func BenchmarkRecordIteratorWithOffset(b *testing.B) {
+	tests := []struct {
+		name string
+		size int
+	}{
+		{"10 records", 10},
+		{"100 records", 100},
+		{"1000 records", 1000},
+	}
+
+	for _, tt := range tests {
+		content := generateLargeGEDCOM(tt.size)
+		b.Run(tt.name, func(b *testing.B) {
+			reader := strings.NewReader(content)
+			b.ResetTimer()
+			b.ReportAllocs()
+
+			for i := 0; i < b.N; i++ {
+				reader.Reset(content)
+				it := NewRecordIteratorWithOffset(reader)
+				for it.Next() {
+					_ = it.Record()
+				}
+			}
+		})
+	}
+}
+
+// BenchmarkRecordsRangeFunc benchmarks the Go 1.23 range-over-func iterator
+func BenchmarkRecordsRangeFunc(b *testing.B) {
+	tests := []struct {
+		name string
+		size int
+	}{
+		{"10 records", 10},
+		{"100 records", 100},
+		{"1000 records", 1000},
+	}
+
+	for _, tt := range tests {
+		content := generateLargeGEDCOM(tt.size)
+		b.Run(tt.name, func(b *testing.B) {
+			reader := strings.NewReader(content)
+			b.ResetTimer()
+			b.ReportAllocs()
+
+			for i := 0; i < b.N; i++ {
+				reader.Reset(content)
+				for record, err := range Records(reader) {
+					if err != nil {
+						b.Fatal(err)
+					}
+					_ = record
+				}
+			}
+		})
+	}
+}
+
+// BenchmarkRecordsWithOffsetRangeFunc benchmarks the offset-tracking range-over-func iterator
+func BenchmarkRecordsWithOffsetRangeFunc(b *testing.B) {
+	tests := []struct {
+		name string
+		size int
+	}{
+		{"10 records", 10},
+		{"100 records", 100},
+		{"1000 records", 1000},
+	}
+
+	for _, tt := range tests {
+		content := generateLargeGEDCOM(tt.size)
+		b.Run(tt.name, func(b *testing.B) {
+			reader := strings.NewReader(content)
+			b.ResetTimer()
+			b.ReportAllocs()
+
+			for i := 0; i < b.N; i++ {
+				reader.Reset(content)
+				for record, err := range RecordsWithOffset(reader) {
+					if err != nil {
+						b.Fatal(err)
+					}
+					_ = record
+				}
+			}
+		})
+	}
+}
+
 // Helper function to generate a large GEDCOM file for benchmarking
 func generateLargeGEDCOM(numIndividuals int) string {
 	var sb strings.Builder

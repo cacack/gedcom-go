@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 )
 
 // ErrNoIndex is returned when attempting to use indexed operations without an index.
@@ -180,6 +181,68 @@ func (p *LazyParser) IterateFrom(offset int64) (*RecordIterator, error) {
 // IterateAll seeks to the beginning and returns an iterator for all records.
 func (p *LazyParser) IterateAll() (*RecordIterator, error) {
 	return p.IterateFrom(0)
+}
+
+// Records returns an iterator over records from the current position using
+// Go 1.23 range-over-func. This is the range-over-func equivalent of [Iterate].
+//
+// Usage:
+//
+//	for record, err := range lp.Records() {
+//	    if err != nil {
+//	        return err
+//	    }
+//	    // process record
+//	}
+func (p *LazyParser) Records() iter.Seq2[*RawRecord, error] {
+	return Records(p.rs)
+}
+
+// RecordsFrom seeks to the given byte offset and returns an iterator over
+// records using Go 1.23 range-over-func. This is the range-over-func
+// equivalent of [IterateFrom].
+//
+// If seeking fails, the error is yielded as the first iteration result.
+//
+// Usage:
+//
+//	for record, err := range lp.RecordsFrom(offset) {
+//	    if err != nil {
+//	        return err
+//	    }
+//	    // process record
+//	}
+func (p *LazyParser) RecordsFrom(offset int64) iter.Seq2[*RawRecord, error] {
+	return func(yield func(*RawRecord, error) bool) {
+		if _, err := p.rs.Seek(offset, io.SeekStart); err != nil {
+			yield(nil, fmt.Errorf("seeking to offset: %w", err))
+			return
+		}
+		for record, err := range Records(p.rs) {
+			if !yield(record, err) {
+				return
+			}
+			if err != nil {
+				return
+			}
+		}
+	}
+}
+
+// AllRecords seeks to the beginning and returns an iterator over all records
+// using Go 1.23 range-over-func. This is the range-over-func equivalent
+// of [IterateAll].
+//
+// Usage:
+//
+//	for record, err := range lp.AllRecords() {
+//	    if err != nil {
+//	        return err
+//	    }
+//	    // process record
+//	}
+func (p *LazyParser) AllRecords() iter.Seq2[*RawRecord, error] {
+	return p.RecordsFrom(0)
 }
 
 // XRefs returns all XRefs in the index.
