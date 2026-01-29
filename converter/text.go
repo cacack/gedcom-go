@@ -29,17 +29,39 @@ func consolidateCONCAndCONT(doc *gedcom.Document, report *gedcom.ConversionRepor
 	// Process header tags
 	if doc.Header != nil {
 		var c1, c2 int
-		doc.Header.Tags, c1, c2 = consolidateCONCAndCONTInTags(doc.Header.Tags)
+		var notes []consolidationNote
+		doc.Header.Tags, c1, c2, notes = consolidateCONCAndCONTInTagsWithNotes(doc.Header.Tags)
 		concCount += c1
 		contCount += c2
+		// Add per-item notes for header
+		for _, n := range notes {
+			path := BuildNestedPath("HEAD", "", n.parentTag)
+			report.AddNormalized(gedcom.ConversionNote{
+				Path:     path,
+				Original: n.original,
+				Result:   n.result,
+				Reason:   n.reason,
+			})
+		}
 	}
 
 	// Process all record tags
 	for _, record := range doc.Records {
 		var c1, c2 int
-		record.Tags, c1, c2 = consolidateCONCAndCONTInTags(record.Tags)
+		var notes []consolidationNote
+		record.Tags, c1, c2, notes = consolidateCONCAndCONTInTagsWithNotes(record.Tags)
 		concCount += c1
 		contCount += c2
+		// Add per-item notes for this record
+		for _, n := range notes {
+			path := BuildNestedPath(string(record.Type), record.XRef, n.parentTag)
+			report.AddNormalized(gedcom.ConversionNote{
+				Path:     path,
+				Original: n.original,
+				Result:   n.result,
+				Reason:   n.reason,
+			})
+		}
 	}
 
 	if concCount > 0 {
@@ -59,24 +81,43 @@ func consolidateCONCAndCONT(doc *gedcom.Document, report *gedcom.ConversionRepor
 	}
 }
 
+// consolidationNote captures details about a single CONC/CONT consolidation for per-item tracking.
+type consolidationNote struct {
+	parentTag string
+	original  string
+	result    string
+	reason    string
+}
+
 // consolidateCONCAndCONTInTags processes a flat slice of tags, consolidating both
 // CONC and CONT tags into their parent values in a single pass.
 // Returns the new tag slice, CONC count, and CONT count.
 func consolidateCONCAndCONTInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, concCount, contCount int) {
+	result, concCount, contCount, _ = consolidateCONCAndCONTInTagsWithNotes(tags)
+	return result, concCount, contCount
+}
+
+// consolidateCONCAndCONTInTagsWithNotes processes a flat slice of tags, consolidating both
+// CONC and CONT tags into their parent values in a single pass.
+// Returns the new tag slice, CONC count, CONT count, and per-item notes.
+func consolidateCONCAndCONTInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom.Tag, concCount, contCount int, notes []consolidationNote) {
 	if len(tags) == 0 {
-		return tags, 0, 0
+		return tags, 0, 0, nil
 	}
 
 	i := 0
 	for i < len(tags) {
 		tag := tags[i]
 		baseLevel := tag.Level
+		originalValue := tag.Value
 
 		// Look ahead for CONC/CONT children at baseLevel+1
 		var valueBuilder strings.Builder
 		valueBuilder.WriteString(tag.Value)
 		j := i + 1
 		foundContinuation := false
+		localConcCount := 0
+		localContCount := 0
 
 		// Collect non-continuation children to preserve
 		var otherChildren []*gedcom.Tag
@@ -93,6 +134,7 @@ func consolidateCONCAndCONTInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, con
 				case "CONC":
 					valueBuilder.WriteString(nextTag.Value)
 					concCount++
+					localConcCount++
 					foundContinuation = true
 					j++
 					continue
@@ -100,6 +142,7 @@ func consolidateCONCAndCONTInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, con
 					valueBuilder.WriteString("\n")
 					valueBuilder.WriteString(nextTag.Value)
 					contCount++
+					localContCount++
 					foundContinuation = true
 					j++
 					continue
@@ -113,6 +156,23 @@ func consolidateCONCAndCONTInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, con
 		// Update tag value if we found continuation tags
 		if foundContinuation {
 			tag.Value = valueBuilder.String()
+
+			// Create a note for this consolidation
+			var reason string
+			switch {
+			case localConcCount > 0 && localContCount > 0:
+				reason = "GEDCOM 7.0 removes CONC tags and uses embedded newlines instead of CONT tags"
+			case localConcCount > 0:
+				reason = "GEDCOM 7.0 removes CONC tags; text concatenated into parent value"
+			default:
+				reason = "GEDCOM 7.0 uses embedded newlines instead of CONT tags"
+			}
+			notes = append(notes, consolidationNote{
+				parentTag: tag.Tag,
+				original:  originalValue,
+				result:    tag.Value,
+				reason:    reason,
+			})
 		}
 
 		result = append(result, tag)
@@ -124,7 +184,7 @@ func consolidateCONCAndCONTInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, con
 		i = j
 	}
 
-	return result, concCount, contCount
+	return result, concCount, contCount, notes
 }
 
 // consolidateCONC is provided for explicit CONC-only consolidation.
@@ -292,6 +352,13 @@ func convertCONTOnlyInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, contCount 
 	return result, contCount
 }
 
+// expansionNote captures details about a single newline-to-CONT expansion for per-item tracking.
+type expansionNote struct {
+	tag      string
+	original string
+	result   string
+}
+
 // expandNewlinesToCONT converts embedded newlines back to CONT tags.
 // This is used when downgrading from GEDCOM 7.0 to 5.x.
 func expandNewlinesToCONT(doc *gedcom.Document, report *gedcom.ConversionReport) {
@@ -299,14 +366,36 @@ func expandNewlinesToCONT(doc *gedcom.Document, report *gedcom.ConversionReport)
 
 	// Process header tags
 	if doc.Header != nil {
-		doc.Header.Tags, contCount = expandNewlinesInTags(doc.Header.Tags)
+		var notes []expansionNote
+		doc.Header.Tags, contCount, notes = expandNewlinesInTagsWithNotes(doc.Header.Tags)
+		// Add per-item notes for header
+		for _, n := range notes {
+			path := BuildNestedPath("HEAD", "", n.tag)
+			report.AddNormalized(gedcom.ConversionNote{
+				Path:     path,
+				Original: n.original,
+				Result:   n.result,
+				Reason:   "GEDCOM 5.x uses CONT tags for line continuation instead of embedded newlines",
+			})
+		}
 	}
 
 	// Process all record tags
 	for _, record := range doc.Records {
-		c := 0
-		record.Tags, c = expandNewlinesInTags(record.Tags)
+		var c int
+		var notes []expansionNote
+		record.Tags, c, notes = expandNewlinesInTagsWithNotes(record.Tags)
 		contCount += c
+		// Add per-item notes for this record
+		for _, n := range notes {
+			path := BuildNestedPath(string(record.Type), record.XRef, n.tag)
+			report.AddNormalized(gedcom.ConversionNote{
+				Path:     path,
+				Original: n.original,
+				Result:   n.result,
+				Reason:   "GEDCOM 5.x uses CONT tags for line continuation instead of embedded newlines",
+			})
+		}
 	}
 
 	if contCount > 0 {
@@ -321,13 +410,21 @@ func expandNewlinesToCONT(doc *gedcom.Document, report *gedcom.ConversionReport)
 // expandNewlinesInTags processes a flat slice of tags and expands newlines to CONT tags.
 // It returns the new tag slice and the count of created CONT tags.
 func expandNewlinesInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, contCount int) {
+	result, contCount, _ = expandNewlinesInTagsWithNotes(tags)
+	return result, contCount
+}
+
+// expandNewlinesInTagsWithNotes processes a flat slice of tags and expands newlines to CONT tags.
+// It returns the new tag slice, the count of created CONT tags, and per-item notes.
+func expandNewlinesInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom.Tag, contCount int, notes []expansionNote) {
 	if len(tags) == 0 {
-		return tags, 0
+		return tags, 0, nil
 	}
 
 	for _, tag := range tags {
 		// Check if this tag has embedded newlines
 		if strings.Contains(tag.Value, "\n") {
+			originalValue := tag.Value
 			lines := strings.Split(tag.Value, "\n")
 			tag.Value = lines[0]
 			result = append(result, tag)
@@ -341,10 +438,17 @@ func expandNewlinesInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, contCount i
 				})
 				contCount++
 			}
+
+			// Record the expansion
+			notes = append(notes, expansionNote{
+				tag:      tag.Tag,
+				original: originalValue,
+				result:   lines[0], // The first line (remaining text now in CONT tags)
+			})
 		} else {
 			result = append(result, tag)
 		}
 	}
 
-	return result, contCount
+	return result, contCount, notes
 }

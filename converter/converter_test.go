@@ -489,3 +489,512 @@ func findSubstring(s, substr string) bool {
 	}
 	return false
 }
+
+// Integration tests for ConversionNote population
+
+func TestConversionNotes_CONCConsolidation(t *testing.T) {
+	tests := []struct {
+		name              string
+		sourceVersion     gedcom.Version
+		targetVersion     gedcom.Version
+		tags              []*gedcom.Tag
+		wantNormalizedLen int
+		wantReason        string
+	}{
+		{
+			name:          "CONC consolidation to 7.0 produces normalized note",
+			sourceVersion: gedcom.Version55,
+			targetVersion: gedcom.Version70,
+			// NOTE at level 1 with CONC child at level 2
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "NOTE", Value: "This is the first part"},
+				{Level: 2, Tag: "CONC", Value: " and this is concatenated"},
+			},
+			wantNormalizedLen: 1,
+			wantReason:        "GEDCOM 7.0 removes CONC tags",
+		},
+		{
+			name:          "CONT conversion to 7.0 produces normalized note",
+			sourceVersion: gedcom.Version55,
+			targetVersion: gedcom.Version70,
+			// NOTE at level 1 with CONT child at level 2
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "NOTE", Value: "Line one"},
+				{Level: 2, Tag: "CONT", Value: "Line two"},
+			},
+			wantNormalizedLen: 1,
+			wantReason:        "GEDCOM 7.0 uses embedded newlines",
+		},
+		{
+			name:          "mixed CONC and CONT to 7.0",
+			sourceVersion: gedcom.Version55,
+			targetVersion: gedcom.Version70,
+			// NOTE with interleaved CONC and CONT
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "NOTE", Value: "Start"},
+				{Level: 2, Tag: "CONC", Value: " continued"},
+				{Level: 2, Tag: "CONT", Value: "New line"},
+			},
+			wantNormalizedLen: 1,
+			wantReason:        "GEDCOM 7.0 removes CONC tags",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc := &gedcom.Document{
+				Header: &gedcom.Header{Version: tt.sourceVersion},
+				Records: []*gedcom.Record{
+					{
+						XRef: "@I1@",
+						Type: gedcom.RecordTypeIndividual,
+						Tags: tt.tags,
+					},
+				},
+				XRefMap: map[string]*gedcom.Record{},
+			}
+			doc.XRefMap["@I1@"] = doc.Records[0]
+
+			_, report, err := Convert(doc, tt.targetVersion)
+			if err != nil {
+				t.Fatalf("Convert() error = %v", err)
+			}
+
+			if len(report.Normalized) < tt.wantNormalizedLen {
+				t.Errorf("got %d normalized notes, want at least %d", len(report.Normalized), tt.wantNormalizedLen)
+			}
+
+			// Verify reason contains expected text
+			foundReason := false
+			for _, note := range report.Normalized {
+				if contains(note.Reason, tt.wantReason) {
+					foundReason = true
+					break
+				}
+			}
+			if !foundReason && tt.wantNormalizedLen > 0 {
+				t.Errorf("no normalized note contains reason %q", tt.wantReason)
+			}
+		})
+	}
+}
+
+func TestConversionNotes_XRefUppercase(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version55},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@i1@", // lowercase
+				Type: gedcom.RecordTypeIndividual,
+				Tags: []*gedcom.Tag{
+					{Level: 0, Tag: "INDI", XRef: "@i1@"},
+					{Level: 1, Tag: "NAME", Value: "John /Doe/"},
+				},
+			},
+			{
+				XRef: "@f1@", // lowercase
+				Type: gedcom.RecordTypeFamily,
+				Tags: []*gedcom.Tag{
+					{Level: 0, Tag: "FAM", XRef: "@f1@"},
+					{Level: 1, Tag: "HUSB", Value: "@i1@"},
+				},
+			},
+		},
+		XRefMap: map[string]*gedcom.Record{},
+	}
+	doc.XRefMap["@i1@"] = doc.Records[0]
+	doc.XRefMap["@f1@"] = doc.Records[1]
+
+	_, report, err := Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	// Should have normalized notes for XRef changes
+	if len(report.Normalized) < 2 {
+		t.Errorf("got %d normalized notes, want at least 2 for XRef uppercase", len(report.Normalized))
+	}
+
+	// Check for specific XRef normalized notes
+	foundI1 := false
+	foundF1 := false
+	for _, note := range report.Normalized {
+		if note.Original == "@i1@" && note.Result == "@I1@" {
+			foundI1 = true
+		}
+		if note.Original == "@f1@" && note.Result == "@F1@" {
+			foundF1 = true
+		}
+	}
+
+	if !foundI1 {
+		t.Error("missing normalized note for @i1@ -> @I1@")
+	}
+	if !foundF1 {
+		t.Error("missing normalized note for @f1@ -> @F1@")
+	}
+
+	// Verify reason mentions GEDCOM 7.0
+	for _, note := range report.Normalized {
+		if note.Original == "@i1@" || note.Original == "@f1@" {
+			if !contains(note.Reason, "GEDCOM 7.0") && !contains(note.Reason, "uppercase") {
+				t.Errorf("XRef normalized note reason should mention GEDCOM 7.0 or uppercase: %q", note.Reason)
+			}
+		}
+	}
+}
+
+func TestConversionNotes_MediaTypeMapping(t *testing.T) {
+	tests := []struct {
+		name           string
+		sourceVersion  gedcom.Version
+		targetVersion  gedcom.Version
+		inputForm      string
+		wantForm       string
+		wantApproxNote bool
+	}{
+		{
+			name:           "JPG to IANA media type",
+			sourceVersion:  gedcom.Version55,
+			targetVersion:  gedcom.Version70,
+			inputForm:      "JPG",
+			wantForm:       "image/jpeg",
+			wantApproxNote: true,
+		},
+		{
+			name:           "PNG to IANA media type",
+			sourceVersion:  gedcom.Version551,
+			targetVersion:  gedcom.Version70,
+			inputForm:      "PNG",
+			wantForm:       "image/png",
+			wantApproxNote: true,
+		},
+		{
+			name:           "IANA to legacy media type",
+			sourceVersion:  gedcom.Version70,
+			targetVersion:  gedcom.Version55,
+			inputForm:      "image/jpeg",
+			wantForm:       "JPG",
+			wantApproxNote: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc := &gedcom.Document{
+				Header: &gedcom.Header{Version: tt.sourceVersion},
+				Records: []*gedcom.Record{
+					{
+						XRef: "@M1@",
+						Type: gedcom.RecordTypeMedia,
+						Tags: []*gedcom.Tag{
+							{Level: 0, Tag: "OBJE", XRef: "@M1@"},
+							{Level: 1, Tag: "FILE", Value: "photo.jpg"},
+							{Level: 2, Tag: "FORM", Value: tt.inputForm},
+						},
+						Entity: &gedcom.MediaObject{
+							XRef: "@M1@",
+							Files: []*gedcom.MediaFile{
+								{FileRef: "photo.jpg", Form: tt.inputForm},
+							},
+						},
+					},
+				},
+				XRefMap: map[string]*gedcom.Record{},
+			}
+			doc.XRefMap["@M1@"] = doc.Records[0]
+
+			_, report, err := Convert(doc, tt.targetVersion)
+			if err != nil {
+				t.Fatalf("Convert() error = %v", err)
+			}
+
+			if tt.wantApproxNote {
+				if len(report.Approximated) == 0 {
+					t.Error("expected approximated notes for media type mapping")
+				}
+
+				// Find the specific note
+				found := false
+				for _, note := range report.Approximated {
+					if note.Original == tt.inputForm && note.Result == tt.wantForm {
+						found = true
+						// Verify path includes OBJE and FILE[0]
+						if !contains(note.Path, "MediaObject") && !contains(note.Path, "OBJE") {
+							t.Errorf("approximated note path should mention MediaObject or OBJE: %q", note.Path)
+						}
+						// Verify reason mentions IANA or media types
+						if !contains(note.Reason, "IANA") && !contains(note.Reason, "media type") {
+							t.Errorf("approximated note reason should mention IANA or media type: %q", note.Reason)
+						}
+						break
+					}
+				}
+				if !found {
+					t.Errorf("missing approximated note for %q -> %q", tt.inputForm, tt.wantForm)
+				}
+			}
+		})
+	}
+}
+
+func TestConversionNotes_DroppedTags(t *testing.T) {
+	tests := []struct {
+		name          string
+		sourceVersion gedcom.Version
+		targetVersion gedcom.Version
+		tagToAdd      string
+		wantDropped   bool
+	}{
+		{
+			name:          "EXID dropped in 7.0 to 5.5 conversion",
+			sourceVersion: gedcom.Version70,
+			targetVersion: gedcom.Version55,
+			tagToAdd:      "EXID",
+			wantDropped:   true,
+		},
+		{
+			name:          "UID dropped in 7.0 to 5.5 conversion",
+			sourceVersion: gedcom.Version70,
+			targetVersion: gedcom.Version55,
+			tagToAdd:      "UID",
+			wantDropped:   true,
+		},
+		{
+			name:          "CREA dropped in 7.0 to 5.5.1 conversion",
+			sourceVersion: gedcom.Version70,
+			targetVersion: gedcom.Version551,
+			tagToAdd:      "CREA",
+			wantDropped:   true,
+		},
+		{
+			name:          "EMAIL dropped in 5.5.1 to 5.5 conversion",
+			sourceVersion: gedcom.Version551,
+			targetVersion: gedcom.Version55,
+			tagToAdd:      "EMAIL",
+			wantDropped:   true,
+		},
+		{
+			name:          "WWW dropped in 5.5.1 to 5.5 conversion",
+			sourceVersion: gedcom.Version551,
+			targetVersion: gedcom.Version55,
+			tagToAdd:      "WWW",
+			wantDropped:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc := &gedcom.Document{
+				Header: &gedcom.Header{Version: tt.sourceVersion},
+				Records: []*gedcom.Record{
+					{
+						XRef: "@I1@",
+						Type: gedcom.RecordTypeIndividual,
+						Tags: []*gedcom.Tag{
+							{Level: 0, Tag: "INDI", XRef: "@I1@"},
+							{Level: 1, Tag: tt.tagToAdd, Value: "test-value"},
+						},
+					},
+				},
+				XRefMap: map[string]*gedcom.Record{},
+			}
+			doc.XRefMap["@I1@"] = doc.Records[0]
+
+			_, report, err := Convert(doc, tt.targetVersion)
+			if err != nil {
+				t.Fatalf("Convert() error = %v", err)
+			}
+
+			if tt.wantDropped {
+				if len(report.Dropped) == 0 {
+					t.Errorf("expected dropped notes for %s tag", tt.tagToAdd)
+					return
+				}
+
+				// Find the specific dropped note
+				found := false
+				for _, note := range report.Dropped {
+					if note.Original == tt.tagToAdd || contains(note.Path, tt.tagToAdd) {
+						found = true
+						// Verify reason mentions target version
+						if !contains(note.Reason, tt.targetVersion.String()) && !contains(note.Reason, "not supported") {
+							t.Errorf("dropped note reason should mention version: %q", note.Reason)
+						}
+						break
+					}
+				}
+				if !found {
+					t.Errorf("missing dropped note for %s tag", tt.tagToAdd)
+				}
+			}
+		})
+	}
+}
+
+func TestConversionNotes_PreservedUnknownTags(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{
+			Version: gedcom.Version55,
+			Tags: []*gedcom.Tag{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "_ROOTSMAGIC", Value: "custom header data"},
+			},
+		},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@I1@",
+				Type: gedcom.RecordTypeIndividual,
+				Tags: []*gedcom.Tag{
+					{Level: 0, Tag: "INDI", XRef: "@I1@"},
+					{Level: 1, Tag: "_CUSTOM", Value: "custom value"},
+					{Level: 1, Tag: "_FTDATA", Value: "family tree data"},
+				},
+			},
+		},
+		XRefMap: map[string]*gedcom.Record{},
+	}
+	doc.XRefMap["@I1@"] = doc.Records[0]
+
+	opts := &ConvertOptions{
+		PreserveUnknownTags: true,
+	}
+	_, report, err := ConvertWithOptions(doc, gedcom.Version70, opts)
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	// Should have preserved notes for vendor extensions
+	if len(report.Preserved) == 0 {
+		t.Error("expected preserved notes for vendor extension tags")
+		return
+	}
+
+	// Check for specific preserved tags
+	foundCustom := false
+	foundFTData := false
+	foundRootsMagic := false
+	for _, note := range report.Preserved {
+		if note.Original == "_CUSTOM" {
+			foundCustom = true
+		}
+		if note.Original == "_FTDATA" {
+			foundFTData = true
+		}
+		if note.Original == "_ROOTSMAGIC" {
+			foundRootsMagic = true
+		}
+	}
+
+	if !foundCustom {
+		t.Error("missing preserved note for _CUSTOM tag")
+	}
+	if !foundFTData {
+		t.Error("missing preserved note for _FTDATA tag")
+	}
+	if !foundRootsMagic {
+		t.Error("missing preserved note for _ROOTSMAGIC header tag")
+	}
+
+	// Verify preserved notes mention "vendor extension" or "preserved"
+	for _, note := range report.Preserved {
+		if !contains(note.Reason, "Vendor extension") && !contains(note.Reason, "preserved") {
+			t.Errorf("preserved note reason should mention vendor extension: %q", note.Reason)
+		}
+	}
+}
+
+func TestConversionNotes_BackwardCompatibility(t *testing.T) {
+	// Verify that Transformations[] is still populated alongside ConversionNotes
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version55},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@i1@", // lowercase for XRef transformation
+				Type: gedcom.RecordTypeIndividual,
+				Tags: []*gedcom.Tag{
+					// NOTE with CONC child for text transformation
+					{Level: 1, Tag: "NOTE", Value: "Part 1"},
+					{Level: 2, Tag: "CONC", Value: " Part 2"},
+				},
+			},
+		},
+		XRefMap: map[string]*gedcom.Record{},
+	}
+	doc.XRefMap["@i1@"] = doc.Records[0]
+
+	_, report, err := Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	// Transformations should still be populated
+	if len(report.Transformations) == 0 {
+		t.Error("Transformations[] should be populated for backward compatibility")
+	}
+
+	// Both old and new reporting should work together
+	foundXRefTransform := false
+	foundCONCTransform := false
+	for _, tr := range report.Transformations {
+		if tr.Type == "XREF_UPPERCASE" {
+			foundXRefTransform = true
+		}
+		if tr.Type == "CONC_REMOVED" {
+			foundCONCTransform = true
+		}
+	}
+
+	if !foundXRefTransform {
+		t.Error("missing XREF_UPPERCASE transformation")
+	}
+	if !foundCONCTransform {
+		t.Error("missing CONC_REMOVED transformation")
+	}
+
+	// ConversionNotes should also be populated
+	if len(report.Normalized) == 0 {
+		t.Error("Normalized notes should be populated")
+	}
+}
+
+func TestConversionNotes_NewlinesToCONT(t *testing.T) {
+	// Test downgrade from 7.0 where embedded newlines become CONT tags
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version70},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@I1@",
+				Type: gedcom.RecordTypeIndividual,
+				Tags: []*gedcom.Tag{
+					{Level: 0, Tag: "INDI", XRef: "@I1@"},
+					{Level: 1, Tag: "NOTE", Value: "Line 1\nLine 2\nLine 3"},
+				},
+			},
+		},
+		XRefMap: map[string]*gedcom.Record{},
+	}
+	doc.XRefMap["@I1@"] = doc.Records[0]
+
+	_, report, err := Convert(doc, gedcom.Version55)
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+
+	// Should have normalized notes for newline expansion
+	foundExpansion := false
+	for _, note := range report.Normalized {
+		if contains(note.Reason, "CONT") || contains(note.Reason, "newline") {
+			foundExpansion = true
+			// Original should have newlines
+			if !contains(note.Original, "\n") {
+				t.Errorf("newline expansion note original should contain newline: %q", note.Original)
+			}
+			break
+		}
+	}
+
+	if !foundExpansion {
+		t.Error("expected normalized note for newline-to-CONT expansion")
+	}
+}
