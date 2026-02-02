@@ -244,7 +244,7 @@ Real exports from current software versions. See [docs/COMPATIBILITY.md](../docs
 | familysearch-2025-export.ged | FamilySearch.org | 2025 | 14 indi, 5 fam |
 | gramps-2025-export.ged | Gramps | 6.0.6 | 14 indi, 5 fam |
 | myheritage-2025-export.ged | MyHeritage.com | 5.5.1 | 14 indi, 5 fam |
-| rootsmagic-2026-export.ged | RootsMagic | 11 Essentials | 14 indi, 5 fam, 2 sour, 1 repo |
+| rootsmagic-2026-export.ged | RootsMagic | 11 Essentials (2026) | 14 indi, 5 fam, 2 sour, 1 repo |
 
 **RootsMagic 11 Essentials Export Details:**
 - GEDCOM 5.5.1, UTF-8 with BOM
