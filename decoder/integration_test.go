@@ -947,6 +947,102 @@ func TestAncestryRealExport(t *testing.T) {
 		individuals, families, doc.Header.AncestryTreeID)
 }
 
+// TestRootsMagicRealExport tests a real RootsMagic 11 Essentials export
+// This verifies actual export behavior including _UID tags, _TMPLT source templates,
+// _EVDEF event definitions, and complex address structures.
+func TestRootsMagicRealExport(t *testing.T) {
+	f, err := os.Open("../testdata/edge-cases/rootsmagic-2026-export.ged")
+	if err != nil {
+		t.Skipf("Test file not found: %s", "../testdata/edge-cases/rootsmagic-2026-export.ged")
+		return
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	// Verify GEDCOM version
+	if doc.Header.Version != gedcom.Version551 {
+		t.Errorf("Expected GEDCOM 5.5.1, got %v", doc.Header.Version)
+	}
+
+	// Verify encoding
+	if doc.Header.Encoding != gedcom.EncodingUTF8 {
+		t.Errorf("Expected UTF-8 encoding, got %v", doc.Header.Encoding)
+	}
+
+	// Verify source system
+	if doc.Header.SourceSystem != "RootsMagic" {
+		t.Errorf("Header.SourceSystem = %q, want %q", doc.Header.SourceSystem, "RootsMagic")
+	}
+
+	// Verify record counts
+	individuals := len(doc.Individuals())
+	families := len(doc.Families())
+	sources := len(doc.Sources())
+	repos := len(doc.Repositories())
+
+	if individuals != 14 {
+		t.Errorf("Expected 14 individuals, got %d", individuals)
+	}
+	if families != 5 {
+		t.Errorf("Expected 5 families, got %d", families)
+	}
+	if sources != 2 {
+		t.Errorf("Expected 2 sources, got %d", sources)
+	}
+	if repos != 1 {
+		t.Errorf("Expected 1 repository, got %d", repos)
+	}
+
+	// Verify individual @I1@ has expected data
+	individual := doc.GetIndividual("@I1@")
+	if individual == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+
+	// Check primary name
+	if len(individual.Names) == 0 {
+		t.Fatal("Individual @I1@ has no names")
+	}
+	name := individual.Names[0]
+	if name.Surname != "Smith" {
+		t.Errorf("Name.Surname = %q, want %q", name.Surname, "Smith")
+	}
+	if name.Given != "John William" {
+		t.Errorf("Name.Given = %q, want %q", name.Given, "John William")
+	}
+	if name.Nickname != "Jack" {
+		t.Errorf("Name.Nickname = %q, want %q", name.Nickname, "Jack")
+	}
+
+	// Verify source @S2@ has repository link
+	source := doc.GetSource("@S2@")
+	if source == nil {
+		t.Fatal("GetSource(@S2@) returned nil")
+	}
+	if source.Title == "" {
+		t.Error("Source @S2@ has empty title")
+	}
+	if source.RepositoryRef == "" {
+		t.Error("Source @S2@ has no repository reference")
+	}
+
+	// Verify repository @R1@
+	repo := doc.GetRepository("@R1@")
+	if repo == nil {
+		t.Fatal("GetRepository(@R1@) returned nil")
+	}
+	if repo.Name != "Illinois State Archives" {
+		t.Errorf("Repository.Name = %q, want %q", repo.Name, "Illinois State Archives")
+	}
+
+	t.Logf("Successfully verified RootsMagic 11 Essentials real export: %d individuals, %d families, %d sources, %d repositories",
+		individuals, families, sources, repos)
+}
+
 // TestVendorSpecificFiles tests GEDCOM files from various genealogy software vendors.
 // These files were sourced from the gedcom4j project (MIT License) and test vendor-specific
 // custom tags and extensions.
@@ -1021,6 +1117,11 @@ func TestVendorSpecificFiles(t *testing.T) {
 			path:        "../testdata/edge-cases/gramps-2025-export.ged",
 			description: "Gramps 6.0.6 - real export with CHAN records, TYPE birth, note references",
 			minRecords:  25,
+		},
+		{
+			path:        "../testdata/edge-cases/rootsmagic-2026-export.ged",
+			description: "RootsMagic 11 Essentials - real export with _UID, _TMPLT, _EVDEF, nested source templates",
+			minRecords:  20,
 		},
 	}
 
