@@ -172,6 +172,16 @@ These files test vendor-specific custom tags and extensions from various genealo
   - Source citation with justification and link
   - Tests: 3 individuals, 2 families, 1 source, 1 media object
 
+#### FTM Edge Case Tests (Gramps Project)
+Source: https://github.com/gramps-project/gramps/tree/master/data/tests
+License: GPL-2.0 (data files used as test inputs)
+
+- **ftm-general.ged** (1.8K) - Family Tree Maker 22.2.5 general export
+- **ftm-link-test.ged** (1.4K) - FTM link handling patterns
+- **ftm-occu-bug.ged** (781B) - FTM occupation field bug test
+- **ftm-photo-test.ged** (1.3K) - FTM photo/media handling
+- **ftm-conc-test.ged** (1.1K) - FTM CONC line continuation
+
 - **vendor-familyhistorian.ged** (5.8K) - Family Historian 6.2.2
   - Custom tags: `_ATTR`, `_USED`, `_SHAN`, `_SHAR`, `_FLGS`, `_PLAC`, `_EMAIL`, `_WEB`, `_ROOT`, `_UID`, `_PEDI`
   - Shared event participants (witnesses)
