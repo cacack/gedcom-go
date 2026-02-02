@@ -244,6 +244,18 @@ Real exports from current software versions. See [docs/COMPATIBILITY.md](../docs
 | familysearch-2025-export.ged | FamilySearch.org | 2025 | 14 indi, 5 fam |
 | gramps-2025-export.ged | Gramps | 6.0.6 | 14 indi, 5 fam |
 | myheritage-2025-export.ged | MyHeritage.com | 5.5.1 | 14 indi, 5 fam |
+| rootsmagic-2026-export.ged | RootsMagic | 11 Essentials (2026) | 14 indi, 5 fam, 2 sour, 1 repo |
+
+**RootsMagic 11 Essentials Export Details:**
+- GEDCOM 5.5.1, UTF-8 with BOM
+- Custom tags: `_UID` (unique identifiers), `_TMPLT` (source templates with nested FIELD/NAME/VALUE), `_SUBQ` (short footnote), `_BIBL` (bibliography)
+- `_EVDEF` root-level event definitions with sentence templates and role definitions
+- Complex ADDR structures with both CONT continuation and specific subfields (ADR1, ADR2, CITY, STAE, POST, CTRY)
+- Multi-generational family with 4 generations (1920-2003)
+- Various date formats: exact, ABT, BEF, AFT, FROM...TO, year-only
+- Source citations with PAGE references and template fields
+- Death with CAUS (cause of death)
+- Stillbirth scenario
 
 ### GEDCOM 7.0 Files
 

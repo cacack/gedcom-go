@@ -8,6 +8,7 @@ The following table shows which genealogy software exports have been tested with
 
 | Software | Version Tested | Import | Notes |
 |----------|---------------|--------|-------|
+| RootsMagic | 11 Essentials (2026) | ✅ | Real export tested; `_UID`, `_TMPLT` source templates, `_EVDEF` event defs |
 | RootsMagic | 7.0.2.2 (2015) | ⚠️ | Older version; inline/xref note patterns work |
 | Legacy Family Tree | 8.0 (2016) | ⚠️ | Older version; custom tags preserved (`_TODO`, `_UID`, `_PRIV`) |
 | Family Tree Maker | 22.2.5 (2016) | ⚠️ | Older version; Ancestry format with custom tags |
@@ -30,7 +31,7 @@ The following table shows which genealogy software exports have been tested with
 ### Important Notes
 
 - **Export column intentionally omitted**: This library produces standard GEDCOM output, not vendor-specific formats. All encoding is spec-compliant.
-- **Older versions**: Test files for RootsMagic, Legacy, FTM, Family Historian, and HEREDIS are from 2015-2016 era software. Current versions may have different export patterns.
+- **Older versions**: Test files for Legacy, FTM, Family Historian, and HEREDIS are from 2015-2016 era software. Current versions may have different export patterns.
 - **FamilySearch "verified"**: Testing uses [official spec examples](https://gedcom.io/tools/) from FamilySearch, not real-world exports from the FamilySearch website.
 
 ## GEDCOM Specification Support

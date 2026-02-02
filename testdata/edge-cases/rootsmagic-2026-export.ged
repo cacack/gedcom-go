@@ -1,0 +1,1224 @@
+﻿0 HEAD
+1 SOUR RootsMagic
+2 NAME RootsMagic
+2 CORP RootsMagic, Inc.
+3 ADDR PO Box 495
+4 CONT Springville, UT 84663
+4 CONT USA
+3 PHON 1-800-ROOTSMAGIC
+3 WWW www.RootsMagic.com
+1 DEST RootsMagic
+1 DATE 2 FEB 2026
+1 FILE rootsmagic-seed-for-import.ged
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John William /Smith/
+2 GIVN John William
+2 SURN Smith
+2 NICK Jack
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX M
+1 _UID F08626283300F111AC39EE3E4291474468A3
+1 CHAN
+2 DATE 2 FEB 2026
+1 NOTE John was known for his woodworking skills and built furniture
+2 CONT for many families in the Chicago area. He served in the Army
+2 CONT during World War II from 1942 to 1945.
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE 15 MAR 1920
+2 PLAC Springfield, Illinois, USA
+2 SOUR @S2@
+3 PAGE p. 42
+3 _TMPLT
+4 FIELD
+5 NAME Page
+5 VALUE p. 42
+3 NAME p. 42
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 OCCU Carpenter
+2 DATE FROM 1945 TO 1985
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 RESI
+2 DATE FROM 1950 TO 1995
+2 PLAC 123 Oak Street, Chicago, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 DEAT
+2 DATE 22 NOV 1995
+2 PLAC Chicago, Cook County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary Elizabeth /Johnson/
+2 GIVN Mary Elizabeth
+2 SURN Johnson
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX F
+1 _UID D09C26283300F111AC39EE3E429147445EED
+1 CHAN
+2 DATE 2 FEB 2026
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE 8 JUN 1922
+2 PLAC Milwaukee, Wisconsin, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 OCCU Teacher
+2 DATE FROM 1944 TO 1980
+2 PLAC Lincoln Elementary School, Chicago
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 DEAT
+2 DATE 3 FEB 2010
+2 PLAC Chicago, Cook County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Robert James /Smith/
+2 GIVN Robert James
+2 SURN Smith
+2 NICK Bob
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX M
+1 _UID CC292A283300F111AC39EE3E42914744EB28
+1 CHAN
+2 DATE 2 FEB 2026
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE 12 APR 1945
+2 PLAC Chicago, Cook County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 EDUC Bachelor of Science, Engineering
+2 DATE 1967
+2 PLAC University of Illinois, Urbana-Champaign
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 OCCU Engineer
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMS @F2@
+1 FAMC @F1@
+0 @I4@ INDI
+1 NAME Susan Marie /Smith/
+2 GIVN Susan Marie
+2 SURN Smith
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX F
+1 _UID 9C312A283300F111AC39EE3E42914744C3A0
+1 CHAN
+2 DATE 2 FEB 2026
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE 30 SEP 1948
+2 PLAC Chicago, Cook County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMS @F3@
+1 FAMC @F1@
+0 @I5@ INDI
+1 NAME Patricia Ann /Williams/
+2 GIVN Patricia Ann
+2 SURN Williams
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX F
+1 _UID 62392A283300F111AC39EE3E429147449178
+1 CHAN
+2 DATE 2 FEB 2026
+1 NOTE Patricia remarried after divorcing Robert in 1985.
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE ABT 1947
+2 PLAC Detroit, Michigan, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMS @F2@
+1 FAMS @F4@
+0 @I6@ INDI
+1 NAME Michael David /Smith/
+2 GIVN Michael David
+2 SURN Smith
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX M
+1 _UID CC4C2A283300F111AC39EE3E429147440E35
+1 CHAN
+2 DATE 2 FEB 2026
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE 18 JUL 1970
+2 PLAC Evanston, Cook County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 BAPM
+2 DATE 15 AUG 1970
+2 PLAC St. Mary's Church, Evanston, Illinois
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 GRAD
+2 DATE MAY 1992
+2 PLAC Northwestern University, Evanston, Illinois
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMS @F5@
+1 FAMC @F2@
+0 @I7@ INDI
+1 NAME Jennifer Lynn /Smith/
+2 GIVN Jennifer Lynn
+2 SURN Smith
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX F
+1 _UID 5C532A283300F111AC39EE3E42914744A59E
+1 CHAN
+2 DATE 2 FEB 2026
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE 3 DEC 1972
+2 PLAC Evanston, Cook County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMC @F2@
+0 @I8@ INDI
+1 NAME Thomas Edward /Brown/
+2 GIVN Thomas Edward
+2 SURN Brown
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX M
+1 _UID FE5B2A283300F111AC39EE3E429147444F36
+1 CHAN
+2 DATE 2 FEB 2026
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE BEF 1945
+2 PLAC Boston, Massachusetts, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 DEAT
+2 DATE AFT 2000
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMS @F3@
+0 @I9@ INDI
+1 NAME Emily Rose /Brown/
+2 GIVN Emily Rose
+2 SURN Brown
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX F
+1 _UID 78642A283300F111AC39EE3E42914744D25D
+1 CHAN
+2 DATE 2 FEB 2026
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE 14 FEB 1975
+2 PLAC Naperville, DuPage County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMC @F3@
+0 @I10@ INDI
+1 NAME Sarah Jane /Miller/
+2 GIVN Sarah Jane
+2 SURN Miller
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX F
+1 _UID F2E92A283300F111AC39EE3E42914744D1C8
+1 CHAN
+2 DATE 2 FEB 2026
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE 25 DEC 1972
+2 PLAC Madison, Wisconsin, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMS @F5@
+0 @I11@ INDI
+1 NAME William John /Smith/
+2 GIVN William John
+2 SURN Smith
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX M
+1 _UID FAF02A283300F111AC39EE3E42914744E0B1
+1 CHAN
+2 DATE 2 FEB 2026
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE 9 OCT 2000
+2 PLAC Chicago, Cook County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMC @F5@
+0 @I12@ INDI
+1 NAME Emma Grace /Smith/
+2 GIVN Emma Grace
+2 SURN Smith
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX F
+1 _UID 70F82A283300F111AC39EE3E429147445E89
+1 CHAN
+2 DATE 2 FEB 2026
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE 17 MAR 2003
+2 PLAC Chicago, Cook County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMC @F5@
+0 @I13@ INDI
+1 NAME Richard Allen /Thompson/
+2 GIVN Richard Allen
+2 SURN Thompson
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 SEX M
+1 _UID 5AFF2A283300F111AC39EE3E429147444F92
+1 CHAN
+2 DATE 2 FEB 2026
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE 1955
+2 PLAC San Francisco, California, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMS @F4@
+0 @I14@ INDI
+1 NAME Baby /Smith/
+2 GIVN Baby
+2 SURN Smith
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 _UID 0A092B283300F111AC39EE3E429147440A36
+1 CHAN
+2 DATE 2 FEB 2026
+1 NOTE This child was stillborn.
+1 SOUR @S1@
+2 _TMPLT
+2 NAME GEDCOM file imported on 2 February 2026
+1 BIRT
+2 DATE 1 JAN 1950
+2 PLAC Chicago, Cook County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 DEAT
+2 CAUS Stillbirth
+2 DATE 1 JAN 1950
+2 PLAC Chicago, Cook County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 FAMC @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+1 CHIL @I4@
+1 CHIL @I14@
+1 NOTE John and Mary met at a church social in 1943.
+1 MARR
+2 DATE 10 JUN 1944
+2 PLAC Chicago, Cook County, Illinois, USA
+2 SOUR @S2@
+3 PAGE Marriage certificate #12345
+3 _TMPLT
+4 FIELD
+5 NAME Page
+5 VALUE Marriage certificate #12345
+3 NAME Marriage certificate #12345
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+0 @F2@ FAM
+1 HUSB @I3@
+1 WIFE @I5@
+1 CHIL @I6@
+1 CHIL @I7@
+1 MARR
+2 DATE 5 SEP 1969
+2 PLAC Evanston, Cook County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+1 DIV
+2 DATE 1985
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+0 @F3@ FAM
+1 HUSB @I8@
+1 WIFE @I4@
+1 CHIL @I9@
+1 MARR
+2 DATE 22 AUG 1970
+2 PLAC Naperville, DuPage County, Illinois, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+0 @F4@ FAM
+1 HUSB @I13@
+1 WIFE @I5@
+1 NOTE Patricia's second marriage after her divorce from Robert.
+1 MARR
+2 DATE 12 MAY 1990
+2 PLAC San Francisco, California, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+0 @F5@ FAM
+1 HUSB @I6@
+1 WIFE @I10@
+1 CHIL @I11@
+1 CHIL @I12@
+1 MARR
+2 DATE 18 JUN 1998
+2 PLAC Madison, Wisconsin, USA
+2 SOUR @S1@
+3 _TMPLT
+3 NAME GEDCOM file imported on 2 February 2026
+0 @S1@ SOUR
+1 ABBR GEDCOM file imported on 2 February 2026
+1 TITL GEDCOM file submitted by Jane Doe, janedoe@example.com. Imported on 2 F
+2 CONC ebruary 2026.
+1 _SUBQ GEDCOM file submitted by Jane Doe, janedoe@example.com. Imported on 2 F
+2 CONC ebruary 2026.
+1 _BIBL GEDCOM file, Jane Doe.
+1 _TMPLT
+2 TID 0
+2 FIELD
+3 NAME Footnote
+3 VALUE GEDCOM file submitted by Jane Doe, janedoe@example.com. Imported on 2 F
+4 CONC ebruary 2026.
+2 FIELD
+3 NAME ShortFootnote
+3 VALUE GEDCOM file submitted by Jane Doe, janedoe@example.com. Imported on 2 F
+4 CONC ebruary 2026.
+2 FIELD
+3 NAME Bibliography
+3 VALUE GEDCOM file, Jane Doe.
+0 @S2@ SOUR
+1 ABBR Illinois Vital Records Collection
+1 TITL Illinois State Archives, Illinois Vital Records Collection (Springfield
+2 CONC , Illinois: State of Illinois, 1850-2000)
+1 _SUBQ Illinois State Archives, Illinois Vital Records Collection
+1 _BIBL Illinois State Archives. Illinois Vital Records Collection. Springfield
+2 CONC , Illinois: State of Illinois, 1850-2000.
+1 NOTE This source contains birth, death, and marriage records
+2 CONT for the state of Illinois from 1850 to 2000.
+1 _TMPLT
+2 TID 0
+2 FIELD
+3 NAME Footnote
+3 VALUE Illinois State Archives, Illinois Vital Records Collection (Springfield
+4 CONC , Illinois: State of Illinois, 1850-2000)
+2 FIELD
+3 NAME ShortFootnote
+3 VALUE Illinois State Archives, Illinois Vital Records Collection
+2 FIELD
+3 NAME Bibliography
+3 VALUE Illinois State Archives. Illinois Vital Records Collection. Springfield
+4 CONC , Illinois: State of Illinois, 1850-2000.
+1 REPO @R1@
+0 @R1@ REPO
+1 NAME Illinois State Archives
+1 ADDR Margaret Cross Norton Building
+2 CONT Capitol Complex
+2 CONT Springfield, Illinois 62756
+2 CONT USA
+2 ADR1 Margaret Cross Norton Building
+2 ADR2 Capitol Complex
+2 CITY Springfield
+2 STAE Illinois
+2 POST 62756
+2 CTRY USA
+1 PHON (217) 782-4682
+1 WWW https://www.ilsos.gov/isavital/
+0 _EVDEF BIRT
+1 TYPE P
+1 TITL Birth
+1 ABBR Birth
+1 SENT [person] was born< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the birth of [person]< [Date]>< [PlaceDetails]>< [
+3 CONC Place]>.
+1 ROLE Doctor
+2 SENT [ThisPerson] delivered [person]< [Date]>< [PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF DEAT
+1 TYPE P
+1 TITL Death
+1 ABBR Death
+1 SENT [person] died< [Desc]>< [Date]>< [person:Age]>< [PlaceDetails]>< [Place
+2 CONC ]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the death of [person]< [Date]>< [PlaceDetails]>< [
+3 CONC Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF CHR
+1 TYPE P
+1 TITL Christen
+1 ABBR Chr
+1 SENT [person] was christened< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the christening of [person]< [Date]>< [PlaceDeta
+3 CONC ils]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF BURI
+1 TYPE P
+1 TITL Burial
+1 ABBR Burial
+1 SENT [person] was buried< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the burial of [person]< [Date]>< [PlaceDetails]>
+3 CONC < [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF CREM
+1 TYPE P
+1 TITL Cremation
+1 ABBR Cremation
+1 SENT [person] was cremated< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the cremation of [person]< [Date]>< [PlaceDetail
+3 CONC s]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF ADOP
+1 TYPE P
+1 TITL Adoption
+1 ABBR Adoption
+1 SENT [person] was adopted< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the adoption of [person]< [Date]>< [PlaceDetails
+3 CONC ]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF BAPM
+1 TYPE P
+1 TITL Baptism
+1 ABBR Baptism
+1 SENT [person] was baptized< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the baptism of [person]< [Date]>< [PlaceDetails]
+3 CONC >< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF BARM
+1 TYPE P
+1 TITL Bar Mitzvah
+1 ABBR Bar Mitzvah
+1 SENT [person] celebrated his bar mitzvah< [Date]>< [PlaceDetails]>< [Place]>
+2 CONC .
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the bar mitzvah of [person]< [Date]>< [PlaceDeta
+3 CONC ils]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF BASM
+1 TYPE P
+1 TITL Bas Mitzvah
+1 ABBR Bas Mitzvah
+1 SENT [person] celebrated her bas mitzvah< [Date]>< [PlaceDetails]>< [Place]>
+2 CONC .
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the bas mitzvah of [person]< [Date]>< [PlaceDeta
+3 CONC ils]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF BLES
+1 TYPE P
+1 TITL Blessing
+1 ABBR Blessing
+1 SENT [person] was blessed< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the blessing of [person]< [Date]>< [PlaceDetails
+3 CONC ]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF CHRA
+1 TYPE P
+1 TITL Christen (adult)
+1 ABBR Chr (adult)
+1 SENT [person] was christened< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the christening of [person]< [Date]>< [PlaceDeta
+3 CONC ils]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF CONF
+1 TYPE P
+1 TITL Confirmation
+1 ABBR Confirmation
+1 SENT [person] was confirmed< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the confirmation of [person]< [Date]>< [PlaceDet
+3 CONC ails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF FCOM
+1 TYPE P
+1 TITL First communion
+1 ABBR First comm
+1 SENT [person] received first communion< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the first communion of [person]< [Date]>< [Place
+3 CONC Details]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF ORDN
+1 TYPE P
+1 TITL Ordination
+1 ABBR Ordination
+1 SENT [person] was ordained< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the ordination of [person]< [Date]>< [PlaceDetai
+3 CONC ls]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF NATU
+1 TYPE P
+1 TITL Naturalization
+1 ABBR Naturalization
+1 SENT [person] was naturalized< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the naturalization of [person]< [Date]>< [PlaceD
+3 CONC etails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF EMIG
+1 TYPE P
+1 TITL Emigration
+1 ABBR Emigration
+1 SENT [person] emigrated< [Date]>< from [Place:plain]>< [PlaceDetails]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the emigration of [person]< [Date]>< [PlaceDetai
+3 CONC ls]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF IMMI
+1 TYPE P
+1 TITL Immigration
+1 ABBR Immigration
+1 SENT [person] immigrated< [Date]>< to [Place:plain]>< [PlaceDetails]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the immigration of [person]< [Date]>< [PlaceDeta
+3 CONC ils]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF CENS
+1 TYPE P
+1 TITL Census
+1 ABBR Census
+1 SENT [person] appeared in the census< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] appeared in the household of [person] in the census< [Date
+3 CONC ]>< [PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF PROB
+1 TYPE P
+1 TITL Probate
+1 ABBR Probate
+1 SENT [person] had [person:hisher] estate probated< [Date]>< [PlaceDetails]>< [
+2 CONC Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the probate of [person]< [Date]>< [PlaceDetails]
+3 CONC >< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF WILL
+1 TYPE P
+1 TITL Will
+1 ABBR Will
+1 SENT [person] signed a will< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the will of [person]< [Date]>< [PlaceDetails]>< [
+3 CONC Place]>.
+1 ROLE Heir
+2 SENT [ThisPerson] was named an heir in the will of [person]< [Date]>< [Place
+3 CONC Details]>< [Place]>.
+1 ROLE Executor
+2 SENT [ThisPerson] was named an executor for the will of [person]< [Date]>< [
+3 CONC PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF GRAD
+1 TYPE P
+1 TITL Graduation
+1 ABBR Graduation
+1 SENT [person] graduated< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the graduation of [person]< [Date]>< [PlaceDetai
+3 CONC ls]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF RETI
+1 TYPE P
+1 TITL Retirement
+1 ABBR Retirement
+1 SENT [person] retired< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the retirement of [person]< [Date]>< [PlaceDetai
+3 CONC ls]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF DSCR
+1 TYPE P
+1 TITL Description
+1 ABBR Description
+1 SENT [person] was described as [Desc]< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the appearance of [person] as [Desc]< [Date]>< [
+3 CONC PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF EDUC
+1 TYPE P
+1 TITL Education
+1 ABBR Education
+1 SENT [person] was educated < [Desc]>< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the education of [person]< [Date]>< [PlaceDetail
+3 CONC s]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF NATI
+1 TYPE P
+1 TITL Nationality
+1 ABBR Nationality
+1 SENT [person] was [Desc]< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the nationality of [person] as [Desc]< [Date]>< [
+3 CONC PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF OCCU
+1 TYPE P
+1 TITL Occupation
+1 ABBR Occupation
+1 SENT [date] [person] was [Desc:A]< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the occupation of [person]< [Date]> as [Desc:A]< [
+3 CONC PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF PROP
+1 TYPE P
+1 TITL Property
+1 ABBR Property
+1 SENT [person] owned [Desc]< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the property of [person] as [Desc:A]< [Date]>< [
+3 CONC PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF RELI
+1 TYPE P
+1 TITL Religion
+1 ABBR Religion
+1 SENT [person] was [Desc]< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the religion of [person] as [Desc:A]< [Date]>< [
+3 CONC PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF RESI
+1 TYPE P
+1 TITL Residence
+1 ABBR Residence
+1 SENT [person] lived< [Desc]>< [PlaceDetails]>< [Place]>< [Date]>.
+1 ROLE Witness
+2 SENT [ThisPerson] lived in the residence of [person] < [PlaceDetails]>< [Pla
+3 CONC ce]>< [Date]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF SSN
+1 TYPE P
+1 TITL Soc Sec No
+1 ABBR SSN
+1 SENT [person] had Social Security Number [Desc].
+1 PLAC N
+1 DATE N
+1 DESC Y
+0 _EVDEF BAPL
+1 TYPE P
+1 TITL LDS Baptism
+1 ABBR LDS Bapt
+1 SENT [person] was baptized into the LDS Church< [Date]>< [PlaceDetails]>< [P
+2 CONC lace]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the baptism of [person] into the LDS Church< [Da
+3 CONC te]>< [PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF ENDL
+1 TYPE P
+1 TITL LDS Endowment
+1 ABBR LDS Endow
+1 SENT [person] was endowed< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the endowment of [person]< [Date]>< [PlaceDetail
+3 CONC s]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF SLGC
+1 TYPE P
+1 TITL LDS Seal to parents
+1 ABBR LDS SealPar
+1 SENT [person] was sealed to [person:hisher] parents< [Date]>< [PlaceDetails]
+2 CONC >< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the sealed to parents of [person]< [Date]>< [Pla
+3 CONC ceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF AFN
+1 TYPE P
+1 TITL Ancestral File Number
+1 ABBR AFN
+1 SENT [person] has Ancestral File Number [Desc].
+1 PLAC N
+1 DATE N
+1 DESC Y
+0 _EVDEF REFN
+1 TYPE P
+1 TITL Reference No
+1 ABBR Ref #
+1 SENT [person] has reference number [Desc].
+1 PLAC N
+1 DATE N
+1 DESC Y
+0 _EVDEF CAST
+1 TYPE P
+1 TITL Caste
+1 ABBR Caste
+1 SENT [person] was associated with [Desc]< [Date]>< [PlaceDetails]>< [Place]>
+2 CONC .
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the associated with [Desc] of [person]< [Date]>< [
+3 CONC PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF TITL
+1 TYPE P
+1 TITL Title (Nobility)
+1 ABBR Title
+1 SENT [person] held the title of [Desc]< [Date]>< [PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF CONL
+1 TYPE P
+1 TITL LDS Confirmation
+1 ABBR LDS Conf
+1 SENT [person] was confirmed a member of the LDS Church< [Date]>< [PlaceDetai
+2 CONC ls]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the confirmation of [person] as a member of the L
+3 CONC DS Church< [Date]>< [PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF WAC
+1 TYPE P
+1 TITL LDS Initiatory
+1 ABBR LDS Init
+1 SENT [person] received LDS initiatory< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the LDS initiatory of [person]< [Date]>< [PlaceD
+3 CONC etails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF MARR
+1 TYPE F
+1 TITL Marriage
+1 ABBR Marriage
+1 SENT [couple] <#Couple#was|were> married< [Date]>< [PlaceDetails]>< [Place]>
+2 CONC .
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the marriage of [couple]< [Date]>< [PlaceDetails
+3 CONC ]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF ANUL
+1 TYPE F
+1 TITL Annulment
+1 ABBR Annulment
+1 SENT [couple] had their marriage annulled< [Date]>< [PlaceDetails]>< [Place]
+2 CONC >.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the annulment of the marriage of [couple]< [Date
+3 CONC ]>< [PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF DIV
+1 TYPE F
+1 TITL Divorce
+1 ABBR Divorce
+1 SENT [couple] <#Couple#was|were> divorced< [Date]>< [PlaceDetails]>< [Place]
+2 CONC >.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the divorce of [couple]< [Date]>< [PlaceDetails]
+3 CONC >< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF DIVF
+1 TYPE F
+1 TITL Divorce filed
+1 ABBR Div. filed
+1 SENT [couple] filed for divorce< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the divorce filing of [couple]< [Date]>< [PlaceD
+3 CONC etails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF ENGA
+1 TYPE F
+1 TITL Engagement
+1 ABBR Engagement
+1 SENT [couple] <#Couple#was|were> engaged< [Date]>< [PlaceDetails]>< [Place]>
+2 CONC .
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the engagement of [couple]< [Date]>< [PlaceDetai
+3 CONC ls]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF MARB
+1 TYPE F
+1 TITL Marriage Bann
+1 ABBR Marr Bann
+1 SENT [couple] had marriage banns published< [Date]>< [PlaceDetails]>< [Place
+2 CONC ]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the publishing of the marriage banns of [couple]
+3 CONC <[Date]>< [PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF MARC
+1 TYPE F
+1 TITL Marriage Contract
+1 ABBR Marr Contract
+1 SENT [couple] signed a marriage contract< [Date]>< [PlaceDetails]>< [Place]>
+2 CONC .
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the marriage contract of [couple]< [Date]>< [Pla
+3 CONC ceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF MARL
+1 TYPE F
+1 TITL Marriage License
+1 ABBR Marr Lic
+1 SENT [couple] obtained a marriage license< [Date]>< [PlaceDetails]>< [Place]
+2 CONC >.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the obtaining of the marriage license by [couple
+3 CONC ]< [Date]>< [PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF MARS
+1 TYPE F
+1 TITL Marriage Settlement
+1 ABBR Marr Settlement
+1 SENT [couple] obtained a marriage settlement< [Date]>< [PlaceDetails]>< [Pla
+2 CONC ce]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the marriage settlement of [couple]< [Date]>< [P
+3 CONC laceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF SLGS
+1 TYPE F
+1 TITL LDS Seal to spouse
+1 ABBR LDS SealSp
+1 SENT [couple] were sealed together< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the sealing of [couple]< [Date]>< [PlaceDetails]
+3 CONC >< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF RESI
+1 TYPE F
+1 TITL Residence (family)
+1 ABBR Residence (fam)
+1 SENT [couple] lived < [Desc]>< [PlaceDetails]>< [Place]>< [Date]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF CENS
+1 TYPE F
+1 TITL Census (family)
+1 ABBR Census (fam)
+1 SENT [couple] appeared in the census< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] appeared in the census in the household of [couple]< [Date
+3 CONC ]>< [PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF Degree
+1 TYPE P
+1 TITL Degree
+1 ABBR Degree
+1 SENT [person] received a< [desc]> degree< [Date]>< [PlaceDetails]>< [Place]>
+2 CONC .
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the degree of [person]< [Date]>< [PlaceDetails]>
+3 CONC < [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF Military
+1 TYPE P
+1 TITL Military
+1 ABBR Military
+1 SENT [person] served in the military< [Desc]>< [Date]>< [PlaceDetails]>< [Pl
+2 CONC ace]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the military service of [person]< [Date]>< [Plac
+3 CONC eDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF Mission
+1 TYPE P
+1 TITL Mission
+1 ABBR Mission
+1 SENT [person] served a mission< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the mission of [person]< [Date]>< [PlaceDetails]
+3 CONC >< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF Stillborn
+1 TYPE P
+1 TITL Stillborn
+1 ABBR Stillborn
+1 SENT [person] was stillborn< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the stillbirth of [person]< [Date]>< [PlaceDetai
+3 CONC ls]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF Illness
+1 TYPE P
+1 TITL Illness
+1 ABBR Illness
+1 SENT [person] was ill< with [Desc]>< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the illness of [person] with [Desc]< [Date]>< [P
+3 CONC laceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF Living
+1 TYPE P
+1 TITL Living
+1 ABBR Living
+1 SENT [person] was living< [Date]>< [PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF Elected
+1 TYPE P
+1 TITL Election
+1 ABBR Elected
+1 SENT [person] was elected< as [Desc]>< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the election of [person] as [Desc]< [Date]>< [Pl
+3 CONC aceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF Excomm
+1 TYPE P
+1 TITL Excommunication
+1 ABBR Excomm
+1 SENT [person] was excommunicated< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the excommunication of [person]< [Date]>< [Place
+3 CONC Details]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF Namesake
+1 TYPE P
+1 TITL Namesake
+1 ABBR Namesake
+1 SENT [person] was named after [Desc]< [Date]>< [PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF Separation
+1 TYPE F
+1 TITL Separation
+1 ABBR Separation
+1 SENT [couple] were separated< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [ThisPerson] witnessed the separation of [couple]< [Date]>< [PlaceDetai
+3 CONC ls]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC N
+0 _EVDEF Alt. Name
+1 TYPE P
+1 TITL Alternate name
+1 ABBR Alt. Name
+1 SENT [person] was also known as [Desc]< [Date]>.
+1 PLAC N
+1 DATE Y
+1 DESC N
+0 _EVDEF _DNA
+1 TYPE P
+1 TITL DNA test
+1 ABBR DNA
+1 SENT [person] had a DNA test performed< [Date]>.
+1 PLAC N
+1 DATE Y
+1 DESC N
+0 _EVDEF Association
+1 TYPE P
+1 TITL Association
+1 ABBR Association
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 _EVDEF Misc
+1 TYPE P
+1 TITL Miscellaneous
+1 ABBR Misc
+1 SENT [person]< [Desc]>< [Date]>< [PlaceDetails]>< [Place]>.
+1 ROLE Witness
+2 SENT [person]< [Desc]>< [Date]>< [PlaceDetails]>< [Place]>.
+1 PLAC Y
+1 DATE Y
+1 DESC Y
+0 TRLR
