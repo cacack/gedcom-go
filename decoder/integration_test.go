@@ -1064,6 +1064,31 @@ func TestVendorSpecificFiles(t *testing.T) {
 			minRecords:  5,
 		},
 		{
+			path:        "../testdata/edge-cases/ftm-general.ged",
+			description: "Family Tree Maker 22.2.5 - general export (Gramps test)",
+			minRecords:  5,
+		},
+		{
+			path:        "../testdata/edge-cases/ftm-link-test.ged",
+			description: "Family Tree Maker 22.2.5 - link handling (Gramps test)",
+			minRecords:  3,
+		},
+		{
+			path:        "../testdata/edge-cases/ftm-occu-bug.ged",
+			description: "Family Tree Maker 22.2.5 - occupation bug (Gramps test)",
+			minRecords:  1,
+		},
+		{
+			path:        "../testdata/edge-cases/ftm-photo-test.ged",
+			description: "Family Tree Maker 22.2.5 - photo/media handling (Gramps test)",
+			minRecords:  5,
+		},
+		{
+			path:        "../testdata/edge-cases/ftm-conc-test.ged",
+			description: "Family Tree Maker 22.2.5 - CONC continuation (Gramps test)",
+			minRecords:  2,
+		},
+		{
 			path:        "../testdata/edge-cases/vendor-familyhistorian.ged",
 			description: "Family Historian 6.2.2 - custom tags (_ATTR, _USED, _SHAN, _SHAR, _FLGS, _PLAC)",
 			minRecords:  5,
