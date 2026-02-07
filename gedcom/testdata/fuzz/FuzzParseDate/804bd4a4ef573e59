@@ -1,0 +1,2 @@
+go test fuzz v1
+string("FROM \xdf\xd6\xcd TO 0")

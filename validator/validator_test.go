@@ -2,6 +2,7 @@ package validator
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -24,17 +25,18 @@ func TestValidateBrokenXRef(t *testing.T) {
 	}
 
 	v := New()
-	errors := v.Validate(doc)
+	errs := v.Validate(doc)
 
-	if len(errors) == 0 {
+	if len(errs) == 0 {
 		t.Fatal("Expected validation errors for broken XRef")
 	}
 
 	found := false
-	for _, err := range errors {
-		if strings.Contains(err.Error(), "BROKEN_XREF") {
+	for _, e := range errs {
+		var valErr *ValidationError
+		if errors.As(e, &valErr) && valErr.Code == "BROKEN_XREF" {
 			found = true
-			t.Logf("Found expected error: %v", err)
+			t.Logf("Found expected error: %v", e)
 		}
 	}
 
@@ -57,17 +59,18 @@ func TestValidateMissingName(t *testing.T) {
 	}
 
 	v := New()
-	errors := v.Validate(doc)
+	errs := v.Validate(doc)
 
-	if len(errors) == 0 {
+	if len(errs) == 0 {
 		t.Fatal("Expected validation errors for missing NAME")
 	}
 
 	found := false
-	for _, err := range errors {
-		if strings.Contains(err.Error(), "MISSING_REQUIRED_FIELD") {
+	for _, e := range errs {
+		var valErr *ValidationError
+		if errors.As(e, &valErr) && valErr.Code == "MISSING_REQUIRED_FIELD" {
 			found = true
-			t.Logf("Found expected error: %v", err)
+			t.Logf("Found expected error: %v", e)
 		}
 	}
 
@@ -92,11 +95,11 @@ func TestValidateValidFile(t *testing.T) {
 	}
 
 	v := New()
-	errors := v.Validate(doc)
+	errs := v.Validate(doc)
 
-	if len(errors) != 0 {
-		t.Errorf("Expected no validation errors for valid file, got %d errors:", len(errors))
-		for _, err := range errors {
+	if len(errs) != 0 {
+		t.Errorf("Expected no validation errors for valid file, got %d errors:", len(errs))
+		for _, err := range errs {
 			t.Logf("  - %v", err)
 		}
 	}
@@ -257,29 +260,30 @@ func TestValidateFamilyEdgeCases(t *testing.T) {
 			}
 
 			v := New()
-			errors := v.Validate(doc)
+			errs := v.Validate(doc)
 
 			if tt.expectError {
-				if len(errors) == 0 {
+				if len(errs) == 0 {
 					t.Fatal("Expected validation error but got none")
 				}
 
 				found := false
-				for _, err := range errors {
-					if strings.Contains(err.Error(), tt.errorCode) {
+				for _, e := range errs {
+					var valErr *ValidationError
+					if errors.As(e, &valErr) && valErr.Code == tt.errorCode {
 						found = true
-						t.Logf("Found expected error: %v", err)
+						t.Logf("Found expected error: %v", e)
 						break
 					}
 				}
 
 				if !found {
-					t.Errorf("Expected error code %q, got errors: %v", tt.errorCode, errors)
+					t.Errorf("Expected error code %q, got errors: %v", tt.errorCode, errs)
 				}
-			} else if len(errors) != 0 {
-				t.Errorf("Expected no validation errors, got %d errors:", len(errors))
-				for _, err := range errors {
-					t.Logf("  - %v", err)
+			} else if len(errs) != 0 {
+				t.Errorf("Expected no validation errors, got %d errors:", len(errs))
+				for _, e := range errs {
+					t.Logf("  - %v", e)
 				}
 			}
 		})
@@ -865,15 +869,15 @@ func TestValidateBackwardCompatibility(t *testing.T) {
 	}
 
 	v := New()
-	errors := v.Validate(doc)
+	errs := v.Validate(doc)
 
 	// This should still return []error, not []Issue
-	if len(errors) != 0 {
-		t.Errorf("Expected no errors for valid file, got %d", len(errors))
+	if len(errs) != 0 {
+		t.Errorf("Expected no errors for valid file, got %d", len(errs))
 	}
 
 	// Test that returned errors implement error interface
-	for _, err := range errors {
+	for _, err := range errs {
 		_ = err.Error() // Should not panic
 	}
 }

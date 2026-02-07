@@ -668,6 +668,7 @@ func TestCheckRoundTrip_WithRealFiles(t *testing.T) {
 	tests := []struct {
 		name string
 		file string
+		skip string // if non-empty, skip with this reason
 	}{
 		{
 			name: "GEDCOM 5.5.1 minimal",
@@ -693,10 +694,225 @@ func TestCheckRoundTrip_WithRealFiles(t *testing.T) {
 			name: "vendor tags (Gramps)",
 			file: "../../testdata/edge-cases/vendor-gramps.ged",
 		},
+
+		// GEDCOM 5.5 complex structures
+		{
+			name: "GEDCOM 5.5 555 sample",
+			file: "../../testdata/gedcom-5.5/555SAMPLE.GED",
+		},
+		{
+			name: "GEDCOM 5.5 US Presidents",
+			file: "../../testdata/gedcom-5.5/pres2020.ged",
+		},
+		{
+			name: "GEDCOM 5.5 royal92",
+			file: "../../testdata/gedcom-5.5/royal92.ged",
+		},
+		{
+			name: "GEDCOM 5.5 torture test LF",
+			file: "../../testdata/gedcom-5.5/torture-test/TGC55CLF.ged",
+			skip: "ANSEL/ISO-8859 encoding not supported for round-trip",
+		},
+		{
+			name: "GEDCOM 5.5.1 torture test LF",
+			file: "../../testdata/gedcom-5.5/torture-test/TGC551LF.ged",
+			skip: "ANSEL/ISO-8859 encoding not supported for round-trip",
+		},
+
+		// GEDCOM 7.0
+		{
+			name: "GEDCOM 7.0 minimal",
+			file: "../../testdata/gedcom-7.0/minimal70.ged",
+		},
+		{
+			name: "GEDCOM 7.0 minimal v2",
+			file: "../../testdata/gedcom-7.0/minimal.ged",
+		},
+		{
+			name: "GEDCOM 7.0 maximal",
+			file: "../../testdata/gedcom-7.0/maximal70.ged",
+		},
+		{
+			name: "GEDCOM 7.0 remarriage",
+			file: "../../testdata/gedcom-7.0/remarriage1.ged",
+		},
+
+		// GEDCOM 7.0 FamilySearch examples
+		{
+			name: "GEDCOM 7.0 ages",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/age.ged",
+		},
+		{
+			name: "GEDCOM 7.0 escapes",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/escapes.ged",
+		},
+		{
+			name: "GEDCOM 7.0 extension record",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/extension-record.ged",
+		},
+		{
+			name: "GEDCOM 7.0 extensions (SCHMA)",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/extensions.ged",
+		},
+		{
+			name: "GEDCOM 7.0 filename",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/filename-1.ged",
+		},
+		{
+			name: "GEDCOM 7.0 lang",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/lang.ged",
+		},
+		{
+			name: "GEDCOM 7.0 long URL",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/long-url.ged",
+		},
+		{
+			name: "GEDCOM 7.0 maximal LDS",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/maximal70-lds.ged",
+		},
+		{
+			name: "GEDCOM 7.0 maximal memories 1",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/maximal70-memories1.ged",
+		},
+		{
+			name: "GEDCOM 7.0 maximal memories 2",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/maximal70-memories2.ged",
+		},
+		{
+			name: "GEDCOM 7.0 maximal tree 1",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/maximal70-tree1.ged",
+		},
+		{
+			name: "GEDCOM 7.0 maximal tree 2",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/maximal70-tree2.ged",
+		},
+		{
+			name: "GEDCOM 7.0 notes (SNOTE)",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/notes-1.ged",
+		},
+		{
+			name: "GEDCOM 7.0 media objects (OBJE)",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/obje-1.ged",
+		},
+		{
+			name: "GEDCOM 7.0 remarriage 2",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/remarriage2.ged",
+		},
+		{
+			name: "GEDCOM 7.0 same-sex marriage",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/same-sex-marriage.ged",
+		},
+		{
+			name: "GEDCOM 7.0 void pointers",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/voidptr.ged",
+		},
+		{
+			name: "GEDCOM 7.0 cross-references",
+			file: "../../testdata/gedcom-7.0/familysearch-examples/xref.ged",
+		},
+
+		// Complex relationships and edge cases
+		{
+			name: "complex relationships",
+			file: "../../testdata/edge-cases/relationships-complex.ged",
+		},
+		{
+			name: "CONT/CONC continuations",
+			file: "../../testdata/edge-cases/cont-conc.ged",
+		},
+		{
+			name: "calendar dates",
+			file: "../../testdata/edge-cases/calendar-dates.ged",
+		},
+		{
+			name: "structural edge cases",
+			file: "../../testdata/edge-cases/structural-edge-cases.ged",
+		},
+		{
+			name: "vendor custom tags torture",
+			file: "../../testdata/edge-cases/vendor-customtags-torture.ged",
+			skip: "encoder loses values on custom extension root records (_ROOT)",
+		},
+
+		// Real vendor exports (2025/2026)
+		{
+			name: "Ancestry 2025 export",
+			file: "../../testdata/edge-cases/ancestry-2025-export.ged",
+		},
+		{
+			name: "Gramps 2025 export",
+			file: "../../testdata/edge-cases/gramps-2025-export.ged",
+		},
+		{
+			name: "FamilySearch 2025 export",
+			file: "../../testdata/edge-cases/familysearch-2025-export.ged",
+		},
+		{
+			name: "MyHeritage 2025 export",
+			file: "../../testdata/edge-cases/myheritage-2025-export.ged",
+		},
+		{
+			name: "RootsMagic 2026 export",
+			file: "../../testdata/edge-cases/rootsmagic-2026-export.ged",
+			skip: "encoder loses values on custom extension root records (_EVDEF)",
+		},
+
+		// Vendor-specific files
+		{
+			name: "vendor Family Historian",
+			file: "../../testdata/edge-cases/vendor-familyhistorian.ged",
+		},
+		{
+			name: "vendor FTM",
+			file: "../../testdata/edge-cases/vendor-ftm.ged",
+		},
+		{
+			name: "vendor Heredis",
+			file: "../../testdata/edge-cases/vendor-heredis.ged",
+		},
+		{
+			name: "vendor Legacy",
+			file: "../../testdata/edge-cases/vendor-legacy.ged",
+			skip: "encoder loses values on custom extension root records (_EVENT_DEFN)",
+		},
+		{
+			name: "vendor MyHeritage",
+			file: "../../testdata/edge-cases/vendor-myheritage.ged",
+		},
+		{
+			name: "vendor RootsMagic",
+			file: "../../testdata/edge-cases/vendor-rootsmagic.ged",
+		},
+
+		// FTM-specific edge cases
+		{
+			name: "FTM CONC test",
+			file: "../../testdata/edge-cases/ftm-conc-test.ged",
+		},
+		{
+			name: "FTM general",
+			file: "../../testdata/edge-cases/ftm-general.ged",
+		},
+		{
+			name: "FTM link test",
+			file: "../../testdata/edge-cases/ftm-link-test.ged",
+		},
+		{
+			name: "FTM OCCU bug",
+			file: "../../testdata/edge-cases/ftm-occu-bug.ged",
+		},
+		{
+			name: "FTM photo test",
+			file: "../../testdata/edge-cases/ftm-photo-test.ged",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.skip != "" {
+				t.Skipf("known limitation: %s", tt.skip)
+			}
+
 			input, err := os.ReadFile(tt.file)
 			if err != nil {
 				t.Skipf("test file not available: %v", err)
@@ -748,5 +964,161 @@ func TestCompareDocuments_ExtraRecordsInAfter(t *testing.T) {
 
 	if !foundExtraRecord {
 		t.Error("expected extra @I2@ record difference")
+	}
+}
+
+// TestCheckRoundTrip_ComplexStructures tests round-trip with synthetic GEDCOM
+// strings covering complex structures: multi-generation families, source
+// citations, and note continuations.
+func TestCheckRoundTrip_ComplexStructures(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name: "three-generation family with cross-references",
+			input: `0 HEAD
+1 SOUR TestSystem
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+2 GIVN John
+2 SURN Smith
+1 SEX M
+1 BIRT
+2 DATE 1 JAN 1920
+2 PLAC Boston, MA
+1 DEAT
+2 DATE 15 MAR 1995
+2 PLAC Boston, MA
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+2 GIVN Mary
+2 SURN Jones
+1 SEX F
+1 BIRT
+2 DATE 5 JUN 1922
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Robert /Smith/
+2 GIVN Robert
+2 SURN Smith
+1 SEX M
+1 BIRT
+2 DATE 12 OCT 1945
+1 FAMS @F2@
+1 FAMC @F1@
+0 @I4@ INDI
+1 NAME Susan /Brown/
+2 GIVN Susan
+2 SURN Brown
+1 SEX F
+1 BIRT
+2 DATE 3 APR 1948
+1 FAMS @F2@
+0 @I5@ INDI
+1 NAME David /Smith/
+2 GIVN David
+2 SURN Smith
+1 SEX M
+1 BIRT
+2 DATE 22 JUL 1970
+1 FAMC @F2@
+0 @I6@ INDI
+1 NAME Emily /Smith/
+2 GIVN Emily
+2 SURN Smith
+1 SEX F
+1 BIRT
+2 DATE 30 DEC 1972
+1 FAMC @F2@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+1 MARR
+2 DATE 10 SEP 1944
+2 PLAC New York, NY
+0 @F2@ FAM
+1 HUSB @I3@
+1 WIFE @I4@
+1 CHIL @I5@
+1 CHIL @I6@
+1 MARR
+2 DATE 20 JUN 1968
+2 PLAC Chicago, IL
+0 TRLR
+`,
+		},
+		{
+			name: "individual with source citations",
+			input: `0 HEAD
+1 SOUR TestSystem
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME James /Wilson/
+1 SEX M
+1 BIRT
+2 DATE 5 MAR 1885
+2 PLAC London, England
+2 SOUR @S1@
+3 PAGE Vol 3, Page 42
+3 DATA
+4 DATE 5 MAR 1885
+4 TEXT Birth registered in London district
+1 DEAT
+2 DATE 12 NOV 1960
+2 SOUR @S2@
+3 PAGE Entry 1234
+0 @S1@ SOUR
+1 TITL London Birth Records 1880-1890
+1 AUTH General Register Office
+1 PUBL London, England
+1 REPO @R1@
+2 CALN BMD-1885-Q1
+0 @S2@ SOUR
+1 TITL England Death Index 1950-1970
+1 AUTH National Archives
+0 @R1@ REPO
+1 NAME General Register Office
+1 ADDR Smedley Hydro, Trafalgar Road
+2 CITY Southport
+2 STAE Merseyside
+2 CTRY England
+0 TRLR
+`,
+		},
+		{
+			name: "note records with continuation lines",
+			input: `0 HEAD
+1 SOUR TestSystem
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @N1@ NOTE This is a multi-line note that tests CONT continuation.
+1 CONT Second line of the note.
+1 CONT Third line of the note.
+1 CONT
+1 CONT Fifth line after a blank continuation.
+0 @I1@ INDI
+1 NAME Test /Person/
+1 SEX M
+1 NOTE @N1@
+1 NOTE Inline note with CONT
+2 CONT for this individual.
+0 TRLR
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			AssertRoundTrip(t, []byte(tt.input))
+		})
 	}
 }

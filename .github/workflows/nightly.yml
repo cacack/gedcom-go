@@ -1,0 +1,150 @@
+name: Nightly
+
+on:
+  schedule:
+    # Run nightly at 03:00 UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: read
+  issues: write
+  security-events: write
+
+jobs:
+  fuzz:
+    name: Fuzz Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: ./parser
+            fuzz: FuzzParse
+            time: 2m
+          - package: ./parser
+            fuzz: FuzzParseLine
+            time: 2m
+          - package: ./gedcom
+            fuzz: FuzzParseDate
+            time: 2m
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+    - name: Set up Go
+      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+      with:
+        go-version: '1.25'
+        cache: true
+
+    - name: Run ${{ matrix.fuzz }}
+      run: go test ${{ matrix.package }} -fuzz=${{ matrix.fuzz }} -fuzztime=${{ matrix.time }}
+
+    - name: Upload crash artifacts
+      if: failure()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: fuzz-corpus-${{ matrix.fuzz }}
+        path: '**/testdata/fuzz/**'
+        retention-days: 30
+
+  security:
+    name: Security Scan (Nightly)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@e3f713f2d8f53843e71c69a996d56f51aa9adfb9 # v2.14.1
+      with:
+        egress-policy: audit
+
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
+      with:
+        go-version: '1.25'
+
+    - name: Run govulncheck
+      run: |
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+        govulncheck -format sarif ./... > govulncheck-results.sarif || true
+        govulncheck ./...
+
+    - name: Upload govulncheck results
+      uses: github/codeql-action/upload-sarif@6bc82e05fd0ea64601dd4b465378bbcf57de0314 # v4
+      if: success() || failure()
+      with:
+        sarif_file: govulncheck-results.sarif
+        category: govulncheck-nightly
+
+    - name: Run gosec
+      run: |
+        go install github.com/securego/gosec/v2/cmd/gosec@latest
+        gosec -fmt sarif -out gosec-results.sarif ./...
+
+    - name: Upload gosec results
+      uses: github/codeql-action/upload-sarif@6bc82e05fd0ea64601dd4b465378bbcf57de0314 # v4
+      if: success() || failure()
+      with:
+        sarif_file: gosec-results.sarif
+        category: gosec-nightly
+
+    - name: Trivy filesystem scan
+      uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
+      continue-on-error: true
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+
+    - name: Upload Trivy results
+      uses: github/codeql-action/upload-sarif@6bc82e05fd0ea64601dd4b465378bbcf57de0314 # v4
+      if: success() || failure()
+      with:
+        sarif_file: trivy-results.sarif
+        category: trivy-nightly
+
+  notify:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [fuzz, security]
+    if: failure() && github.event_name == 'schedule'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+    - name: Create issue on failure
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        # Check if an open nightly failure issue already exists
+        EXISTING=$(gh issue list --label "nightly-failure" --state open --json number --jq '.[0].number')
+        if [ -n "$EXISTING" ]; then
+          gh issue comment "$EXISTING" --body "Nightly workflow failed again on $(date -u +%Y-%m-%d).
+
+        [View run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          echo "Commented on existing issue #$EXISTING"
+          exit 0
+        fi
+
+        gh issue create \
+          --title "Nightly workflow failure ($(date -u +%Y-%m-%d))" \
+          --label "nightly-failure" \
+          --body "The nightly workflow failed on $(date -u +%Y-%m-%d).
+
+        **Fuzz testing**: ${{ needs.fuzz.result }}
+        **Security scan**: ${{ needs.security.result }}
+
+        [View full run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+        ---
+        This issue was created automatically. Close it once the failure is resolved."
