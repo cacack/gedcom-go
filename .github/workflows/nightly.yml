@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
   security-events: write
 
 jobs:
@@ -111,3 +112,39 @@ jobs:
       with:
         sarif_file: trivy-results.sarif
         category: trivy-nightly
+
+  notify:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [fuzz, security]
+    if: failure() && github.event_name == 'schedule'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+    - name: Create issue on failure
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        # Check if an open nightly failure issue already exists
+        EXISTING=$(gh issue list --label "nightly-failure" --state open --json number --jq '.[0].number')
+        if [ -n "$EXISTING" ]; then
+          gh issue comment "$EXISTING" --body "Nightly workflow failed again on $(date -u +%Y-%m-%d).
+
+        [View run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+          echo "Commented on existing issue #$EXISTING"
+          exit 0
+        fi
+
+        gh issue create \
+          --title "Nightly workflow failure ($(date -u +%Y-%m-%d))" \
+          --label "nightly-failure" \
+          --body "The nightly workflow failed on $(date -u +%Y-%m-%d).
+
+        **Fuzz testing**: ${{ needs.fuzz.result }}
+        **Security scan**: ${{ needs.security.result }}
+
+        [View full run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+        ---
+        This issue was created automatically. Close it once the failure is resolved."
