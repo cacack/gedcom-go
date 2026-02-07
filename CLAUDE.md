@@ -99,16 +99,12 @@ testdata/
 
 See `docs/TESTING.md` for critical paths that require 100% coverage.
 
-## Core Principles
+## Strategic Context
 
-This project follows six core principles that guide all development decisions:
+- **[docs/ETHOS.md](docs/ETHOS.md)** — Vision, core principles, differentiators, anti-patterns
+- **[docs/ROADMAP.md](docs/ROADMAP.md)** — Phased feature plan (Phase 1 is current priority)
 
-1. **Library-First Design**: Every feature as a well-defined, independently testable library component
-2. **API Clarity**: Public APIs prioritize simplicity with comprehensive godoc, io.Reader/Writer interfaces
-3. **Test Coverage (NON-NEGOTIABLE)**: Minimum 85% coverage, TDD approach, table-driven tests
-4. **Version Support**: Auto-detect and support GEDCOM 5.5, 5.5.1, and 7.0 with roundtrip fidelity
-5. **Error Transparency**: All errors include line numbers, context, and never panic
-6. **Lossless Representation (NON-NEGOTIABLE)**: Preserve original values, partial data, calendar-specific dates
+Two principles are **NON-NEGOTIABLE**: Test Coverage (≥85%) and Lossless Representation. See ETHOS.md for all six core principles.
 
 ## Documentation Structure
 
@@ -117,6 +113,8 @@ This project follows six core principles that guide all development decisions:
 - **IDEAS.md**: Unvetted ideas and rough concepts (create when needed)
 - **GitHub Issues**: Single source of truth for planned work
 - **docs/**: Implementation reference material
+  - `ETHOS.md` - Vision, core principles, differentiators, anti-patterns
+  - `ROADMAP.md` - Phased feature plan (Phase 1 is current priority)
   - `API_STABILITY.md` - API compatibility guarantees and versioning policy
   - `TESTING.md` - Test coverage requirements and critical paths
   - `GEDCOM_VERSIONS.md` - GEDCOM version differences (5.5, 5.5.1, 7.0)
