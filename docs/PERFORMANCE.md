@@ -7,7 +7,7 @@ This document provides detailed performance benchmarks and optimization guidance
 All benchmarks were run on:
 - **Platform**: Apple M2 (ARM64)
 - **OS**: macOS
-- **Go Version**: 1.23
+- **Go Version**: 1.24
 - **Test Files**: Real-world GEDCOM files from `testdata/`
 
 ## Performance Summary

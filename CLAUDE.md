@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Quick Start
 
-**Required**: Go 1.23+
+**Required**: Go 1.24+
 
 ```bash
 make setup            # Downloads deps, installs tools, sets up hooks

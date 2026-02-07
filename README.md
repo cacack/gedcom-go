@@ -47,7 +47,9 @@ go get github.com/cacack/gedcom-go
 
 ## Requirements
 
-- Go 1.23 or later (uses `iter.Seq` for streaming APIs, `unique` for XRef interning)
+- Go 1.24 or later
+
+This library tracks Go's [release policy](https://go.dev/doc/devel/release#policy), supporting the two most recent major versions. When a Go version reaches end-of-life and no longer receives security patches, we bump our minimum accordingly.
 
 ## Quick Start
 
