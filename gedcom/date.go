@@ -346,8 +346,8 @@ func parseModifier(s string) (DateModifier, string, bool) {
 
 // parseDateRange parses a date range in the format "date1 AND date2".
 func parseDateRange(s, original string) (*Date, error) {
-	// Find the AND keyword
-	andIndex := strings.Index(strings.ToUpper(s), " AND ")
+	// Find the AND keyword (case-insensitive, byte-safe)
+	andIndex := indexFoldASCII(s, " AND ")
 	if andIndex == -1 {
 		return nil, fmt.Errorf("invalid date range: missing AND keyword in '%s'", original)
 	}
@@ -372,8 +372,8 @@ func parseDateRange(s, original string) (*Date, error) {
 
 // parseDatePeriod parses a date period (FROM, TO, or FROM...TO).
 func parseDatePeriod(s, original string, modifier DateModifier) (*Date, error) {
-	// Check if there's a TO keyword for FROM...TO format
-	toIndex := strings.Index(strings.ToUpper(s), " TO ")
+	// Check if there's a TO keyword for FROM...TO format (case-insensitive, byte-safe)
+	toIndex := indexFoldASCII(s, " TO ")
 
 	if modifier == ModifierFrom && toIndex != -1 {
 		// FROM date1 TO date2
@@ -606,6 +606,27 @@ func parseYearWithDual(s string) (primaryYear, dualYear int, err error) {
 func normalizeWhitespace(s string) string {
 	fields := strings.Fields(s)
 	return strings.Join(fields, " ")
+}
+
+// indexFoldASCII returns the byte index of the first case-insensitive occurrence
+// of the ASCII substr in s, or -1 if not found.
+// Unlike strings.Index(strings.ToUpper(s), substr), this is safe for strings
+// containing non-ASCII or invalid UTF-8 bytes because it does not change the
+// byte length of s.
+func indexFoldASCII(s, substr string) int {
+	n := len(substr)
+	if n == 0 {
+		return 0
+	}
+	if n > len(s) {
+		return -1
+	}
+	for i := 0; i <= len(s)-n; i++ {
+		if strings.EqualFold(s[i:i+n], substr) {
+			return i
+		}
+	}
+	return -1
 }
 
 // Validate checks if the date is semantically valid (e.g., no day overflow like Feb 30).
