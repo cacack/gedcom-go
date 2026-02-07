@@ -2,6 +2,7 @@ package decoder
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -195,7 +196,7 @@ func TestDecodeWithContext(t *testing.T) {
 		}
 
 		// Verify the error is context.Canceled
-		if err != context.Canceled {
+		if !errors.Is(err, context.Canceled) {
 			t.Errorf("Expected context.Canceled error, got %v", err)
 		}
 	})
@@ -328,7 +329,7 @@ func TestDecodeContextCancellationStages(t *testing.T) {
 		_, err := DecodeWithOptions(strings.NewReader(input), opts)
 
 		// Either succeeds or gets context.DeadlineExceeded
-		if err != nil && err != context.DeadlineExceeded {
+		if err != nil && !errors.Is(err, context.DeadlineExceeded) {
 			t.Errorf("Expected nil or context.DeadlineExceeded, got %v", err)
 		}
 	})

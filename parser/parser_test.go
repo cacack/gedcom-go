@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -159,6 +160,10 @@ func TestParseLine(t *testing.T) {
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("ParseLine() expected error but got none")
+				}
+				var parseErr *ParseError
+				if !errors.As(err, &parseErr) {
+					t.Errorf("expected *ParseError, got %T", err)
 				}
 				return
 			}
@@ -323,7 +328,10 @@ func TestParseScannerError(t *testing.T) {
 
 	// Should get an error from the scanner
 	if err == nil {
-		t.Error("Expected error from Parse with failing reader")
+		t.Fatal("Expected error from Parse with failing reader")
+	}
+	if !errors.Is(err, testErr) {
+		t.Errorf("expected error to wrap simulated error, got %v", err)
 	}
 }
 
@@ -556,10 +564,14 @@ func TestParseLineXRefWithoutTag(t *testing.T) {
 			p.Reset()
 			_, err := p.ParseLine(tt.input)
 			if err == nil {
-				t.Error("Expected error for xref without tag")
+				t.Fatal("Expected error for xref without tag")
 			}
-			if !strings.Contains(err.Error(), "xref must have a tag") {
-				t.Errorf("Expected 'xref must have a tag' error, got: %v", err)
+			var parseErr *ParseError
+			if !errors.As(err, &parseErr) {
+				t.Fatalf("expected *ParseError, got %T", err)
+			}
+			if !strings.Contains(parseErr.Message, "xref must have a tag") {
+				t.Errorf("expected 'xref must have a tag' in Message, got: %q", parseErr.Message)
 			}
 		})
 	}

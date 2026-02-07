@@ -86,9 +86,11 @@ func TestHierarchyLevelErrors(t *testing.T) {
 			}
 
 			if err != nil {
-				parseErr, ok := err.(*ParseError)
-				if ok && parseErr.Line != tt.expectLine {
-					t.Errorf("Error at line %d, expected line %d", parseErr.Line, tt.expectLine)
+				var parseErr *ParseError
+				if errors.As(err, &parseErr) {
+					if parseErr.Line != tt.expectLine {
+						t.Errorf("Error at line %d, expected line %d", parseErr.Line, tt.expectLine)
+					}
 				}
 			}
 		})
@@ -215,8 +217,8 @@ INVALID LINE HERE
 		t.Error("Expected error for invalid line")
 	}
 
-	parseErr, ok := err.(*ParseError)
-	if ok {
+	var parseErr *ParseError
+	if errors.As(err, &parseErr) {
 		if parseErr.Line != 3 {
 			t.Errorf("Expected error at line 3, got line %d", parseErr.Line)
 		}
@@ -252,8 +254,8 @@ func TestErrorContext(t *testing.T) {
 				t.Fatal("Expected error but got none")
 			}
 
-			parseErr, ok := err.(*ParseError)
-			if !ok {
+			var parseErr *ParseError
+			if !errors.As(err, &parseErr) {
 				t.Fatalf("Expected *ParseError, got %T", err)
 			}
 
@@ -313,8 +315,8 @@ func TestErrorMessageQuality(t *testing.T) {
 				}
 			}
 
-			parseErr, ok := err.(*ParseError)
-			if ok && parseErr.Line != tt.wantLineNumber {
+			var parseErr *ParseError
+			if errors.As(err, &parseErr) && parseErr.Line != tt.wantLineNumber {
 				t.Errorf("Line number = %d, want %d", parseErr.Line, tt.wantLineNumber)
 			}
 		})
