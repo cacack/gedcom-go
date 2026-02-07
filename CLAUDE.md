@@ -84,6 +84,8 @@ husband := doc.GetIndividual(family.Husband)  // family.Husband is "@I1@"
 
 ```
 testdata/
+├── edge-cases/      # Boundary condition and unusual structure samples
+├── encoding/        # Character encoding test files (ANSEL, UTF-16, BOM)
 ├── gedcom-5.5/      # GEDCOM 5.5 samples
 ├── gedcom-5.5.1/    # GEDCOM 5.5.1 samples
 ├── gedcom-7.0/      # GEDCOM 7.0 samples
