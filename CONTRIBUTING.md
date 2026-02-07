@@ -25,7 +25,7 @@ This project adheres to a simple code of conduct:
 
 ### Prerequisites
 
-- Go 1.23 or later
+- Go 1.24 or later
 - Git
 - Familiarity with the GEDCOM specification (helpful but not required)
 
