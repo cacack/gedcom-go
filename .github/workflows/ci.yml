@@ -205,7 +205,7 @@ jobs:
 
     - name: Run gosec
       run: |
-        go install github.com/securego/gosec/v2/cmd/gosec@latest
+        go install github.com/securego/gosec/v2/cmd/gosec@424fc4cd9c82ea0fd6bee9cd49c2db2c3cc0c93f # v2.22.11
         gosec -fmt sarif -out gosec-results.sarif ./...
 
     - name: Upload gosec results to GitHub Security
