@@ -21,13 +21,13 @@ jobs:
       matrix:
         include:
           - package: ./parser
-            fuzz: FuzzParse
+            fuzz: ^FuzzParse$
             time: 2m
           - package: ./parser
-            fuzz: FuzzParseLine
+            fuzz: ^FuzzParseLine$
             time: 2m
           - package: ./gedcom
-            fuzz: FuzzParseDate
+            fuzz: ^FuzzParseDate$
             time: 2m
 
     steps:
@@ -82,11 +82,11 @@ jobs:
       if: success() || failure()
       with:
         sarif_file: govulncheck-results.sarif
-        category: govulncheck-nightly
+        category: govulncheck
 
     - name: Run gosec
       run: |
-        go install github.com/securego/gosec/v2/cmd/gosec@latest
+        go install github.com/securego/gosec/v2/cmd/gosec@424fc4cd9c82ea0fd6bee9cd49c2db2c3cc0c93f # v2.22.11
         gosec -fmt sarif -out gosec-results.sarif ./...
 
     - name: Upload gosec results
@@ -94,7 +94,7 @@ jobs:
       if: success() || failure()
       with:
         sarif_file: gosec-results.sarif
-        category: gosec-nightly
+        category: gosec
 
     - name: Trivy filesystem scan
       uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # 0.33.1
@@ -111,7 +111,7 @@ jobs:
       if: success() || failure()
       with:
         sarif_file: trivy-results.sarif
-        category: trivy-nightly
+        category: trivy
 
   notify:
     name: Notify on Failure
