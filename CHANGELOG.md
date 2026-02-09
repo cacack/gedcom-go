@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0](https://github.com/cacack/gedcom-go/compare/v1.1.0...v1.2.0) (2026-02-09)
+
+
+### Features
+
+* **converter:** add granular ConversionNote tracking for version transformations ([7366ac6](https://github.com/cacack/gedcom-go/commit/7366ac672d582c5c5ded6c0a84301eb5b43eb3f6))
+* **decoder:** add SNOTE handling to parseMediaObject ([91024d4](https://github.com/cacack/gedcom-go/commit/91024d453f688dcc3dbc11f92fdf59d89d3885da))
+* **parser:** add Go 1.23 range-over-func iterators ([2e64ac6](https://github.com/cacack/gedcom-go/commit/2e64ac660afac2a2671631636ba256f6783c6fe1))
+
 ## [1.1.0](https://github.com/cacack/gedcom-go/compare/v1.0.0...v1.1.0) (2026-01-28)
 
 
