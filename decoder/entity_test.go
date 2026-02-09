@@ -2967,8 +2967,12 @@ func TestParseMediaObject_FullMetadata(t *testing.T) {
 		t.Errorf("media.UIDs[0] = %s, want '69ebdd0e-c78c-4b81-873f-dc8ac30a48b9'", media.UIDs[0])
 	}
 
-	// Only inline NOTE is captured, SNOTE references are not currently parsed
-	// TODO: Add SNOTE handling to parseMediaObject
+	if len(media.SharedNoteXRefs) != 1 {
+		t.Errorf("len(media.SharedNoteXRefs) = %d, want 1", len(media.SharedNoteXRefs))
+	} else if media.SharedNoteXRefs[0] != "@N1@" {
+		t.Errorf("media.SharedNoteXRefs[0] = %s, want @N1@", media.SharedNoteXRefs[0])
+	}
+
 	if len(media.Notes) != 1 {
 		t.Errorf("len(media.Notes) = %d, want 1", len(media.Notes))
 	}

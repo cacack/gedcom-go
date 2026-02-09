@@ -1206,7 +1206,7 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 		case "EXID":
 			media.ExternalIDs = append(media.ExternalIDs, parseExternalID(record.Tags, i))
 		case "SNOTE":
-			// Known tags not yet parsed into typed fields
+			media.SharedNoteXRefs = append(media.SharedNoteXRefs, tag.Value)
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
 				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)

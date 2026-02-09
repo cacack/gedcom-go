@@ -191,7 +191,7 @@ snote := doc.GetSharedNote("@N1@")
 | ExternalIDs | External identifiers (EXID) |
 | ChangeDate | Last modification date |
 
-Supported on: Document (as top-level records accessible via `SharedNotes()` and `GetSharedNote()`)
+Supported on: Document (as top-level records accessible via `SharedNotes()` and `GetSharedNote()`), MediaObject (as `SharedNoteXRefs`)
 
 ### Encoding Validation
 
