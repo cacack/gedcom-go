@@ -3,6 +3,7 @@ package encoder
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/cacack/gedcom-go/gedcom"
 )
@@ -43,11 +44,17 @@ func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error 
 		return err
 	}
 
-	if header.Version != "" {
+	// Use TargetVersion if set, otherwise use header.Version
+	version := header.Version
+	if opts.TargetVersion != "" {
+		version = opts.TargetVersion
+	}
+
+	if version != "" {
 		if _, err := fmt.Fprintf(w, "1 GEDC%s", opts.LineEnding); err != nil {
 			return err
 		}
-		if _, err := fmt.Fprintf(w, "2 VERS %s%s", header.Version, opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "2 VERS %s%s", version, opts.LineEnding); err != nil {
 			return err
 		}
 	}
@@ -100,6 +107,9 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 		tags = entityToTags(record, opts)
 	}
 
+	// Filter out custom tags if PreserveUnknownTags is false
+	tags = filterTags(tags, opts.PreserveUnknownTags)
+
 	// Write tags
 	for _, tag := range tags {
 		if err := writeTag(w, tag, opts); err != nil {
@@ -126,4 +136,43 @@ func writeTag(w io.Writer, tag *gedcom.Tag, opts *EncodeOptions) error {
 func writeTrailer(w io.Writer, opts *EncodeOptions) error {
 	_, err := fmt.Fprintf(w, "0 TRLR%s", opts.LineEnding)
 	return err
+}
+
+// isCustomTag returns true if the tag name is a custom/extension tag.
+// Custom tags are underscore-prefixed by convention (e.g., _CUSTOM, _UID).
+func isCustomTag(tagName string) bool {
+	return strings.HasPrefix(tagName, "_")
+}
+
+// filterTags returns tags with custom tags filtered out if PreserveUnknownTags is false.
+// When a custom tag is filtered, its child tags (higher level) are also removed.
+func filterTags(tags []*gedcom.Tag, preserveUnknown bool) []*gedcom.Tag {
+	if preserveUnknown {
+		return tags
+	}
+
+	result := make([]*gedcom.Tag, 0, len(tags))
+	skipUntilLevel := -1 // -1 means not skipping
+
+	for _, tag := range tags {
+		// If we're skipping and encounter a tag at same or lower level, stop skipping
+		if skipUntilLevel >= 0 && tag.Level <= skipUntilLevel {
+			skipUntilLevel = -1
+		}
+
+		// If still skipping, continue
+		if skipUntilLevel >= 0 {
+			continue
+		}
+
+		// Check if this tag should be skipped
+		if isCustomTag(tag.Tag) {
+			skipUntilLevel = tag.Level
+			continue
+		}
+
+		result = append(result, tag)
+	}
+
+	return result
 }
