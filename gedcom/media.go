@@ -66,6 +66,9 @@ type MediaObject struct {
 	// RefNumbers are user reference numbers (REFN tag, can have multiple)
 	RefNumbers []string
 
+	// SharedNoteXRefs are cross-references to shared note records (SNOTE tags, GEDCOM 7.0)
+	SharedNoteXRefs []string
+
 	// Restriction is the access restriction level (RESN tag)
 	Restriction string
 
