@@ -198,7 +198,9 @@ setup-hooks: ## Install git hooks for development
 	@chmod +x .git/hooks/pre-commit
 	@cp scripts/pre-push .git/hooks/pre-push
 	@chmod +x .git/hooks/pre-push
-	@echo "✓ Git hooks installed (pre-commit, pre-push)"
+	@cp scripts/commit-msg .git/hooks/commit-msg
+	@chmod +x .git/hooks/commit-msg
+	@echo "✓ Git hooks installed (pre-commit, commit-msg, pre-push)"
 
 setup: download install-tools setup-hooks ## Set up complete dev environment
 	@echo ""
@@ -211,6 +213,7 @@ setup: download install-tools setup-hooks ## Set up complete dev environment
 	@echo ""
 	@echo "  Git hooks installed:"
 	@echo "    pre-commit: gofmt, go vet, golangci-lint, tests"
+	@echo "    commit-msg: feat/fix type must touch library code"
 	@echo "    pre-push:   coverage threshold checks (85%)"
 	@echo ""
 	@echo "  Useful commands:"
