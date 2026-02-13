@@ -358,7 +358,9 @@ jobs:
 
             # Check if commits declare breaking change via conventional commits
             # Look for: feat!:, fix!:, refactor!:, or BREAKING CHANGE: in commit body
-            COMMITS=$(git log --format="%s%n%b" origin/main..HEAD)
+            # Check both branch-specific commits AND commits on main since the last release,
+            # since a breaking change may already be merged to main but not yet released.
+            COMMITS=$(git log --format="%s%n%b" "$LATEST_TAG..HEAD")
 
             if echo "$COMMITS" | grep -qE '^(feat|fix|refactor|perf|docs|style|test|build|ci|chore)!:|BREAKING CHANGE:'; then
               echo "✅ Breaking change properly declared in commit message"
