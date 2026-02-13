@@ -420,12 +420,55 @@ jobs:
           fi
           echo "✅ PR title valid: $TITLE"
 
+  commit-type:
+    name: Commit Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Check feat/fix commits touch library code
+        run: |
+          # Library packages that constitute the public module
+          LIB_PATTERN='^(charset|converter|decoder|encoder|gedcom|parser|validator|version)/'
+
+          FAILED=0
+          for SHA in $(git log --format="%H" origin/main..HEAD); do
+            SUBJECT=$(git log -1 --format="%s" "$SHA")
+
+            # Only check feat: and fix: commits (including scoped variants)
+            if ! echo "$SUBJECT" | grep -qE '^(feat|fix)(\(.+\))?!?:'; then
+              continue
+            fi
+
+            # Check if at least one changed file is in a library package
+            FILES=$(git diff-tree --no-commit-id --name-only -r "$SHA")
+            if ! echo "$FILES" | grep -qE "$LIB_PATTERN"; then
+              echo "::error::Commit '$SUBJECT' uses feat/fix type but touches no library code."
+              echo "  feat/fix are reserved for library changes (what users consume)."
+              echo "  Use ci, build, docs, refactor, etc. for non-library changes."
+              echo "  Files changed:"
+              echo "$FILES" | sed 's/^/    /'
+              echo ""
+              FAILED=1
+            fi
+          done
+
+          if [ "$FAILED" -eq 1 ]; then
+            exit 1
+          fi
+          echo "✅ All feat/fix commits touch library code"
+
   # Gate job for branch protection - only require this one check
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: [test, coverage, lint, format, dependency-review, security, build-examples, api-compatibility, pr-title]
+    needs: [test, coverage, lint, format, dependency-review, security, build-examples, api-compatibility, pr-title, commit-type]
     if: always()
     steps:
       - name: Check all jobs passed
