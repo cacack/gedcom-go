@@ -7,8 +7,10 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    rebase-strategy: "auto"
     commit-message:
-      prefix: "deps"
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "go"
@@ -23,8 +25,10 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 5
+    rebase-strategy: "auto"
     commit-message:
-      prefix: "ci"
+      prefix: "chore"
+      include: "scope"
     labels:
       - "dependencies"
       - "ci"
