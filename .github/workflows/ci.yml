@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go: ['1.24', '1.25']
+        go: ['min', '1.25']
 
     steps:
     - name: Harden Runner
@@ -38,7 +38,8 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
       with:
-        go-version: ${{ matrix.go }}
+        go-version: ${{ matrix.go != 'min' && matrix.go || '' }}
+        go-version-file: 'go.mod'
         cache: true
 
     - name: Verify dependencies
