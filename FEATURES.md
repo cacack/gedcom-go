@@ -1353,7 +1353,7 @@ for _, record := range doc.Records {
 
 - 93% test coverage across core packages
 - Multi-platform CI (Linux, macOS, Windows)
-- Multi-version Go testing (1.24, 1.25)
+- Multi-version Go testing (1.25, 1.26)
 - Benchmark regression testing
 - Real-world GEDCOM file testing
 

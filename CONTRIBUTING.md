@@ -25,7 +25,7 @@ This project adheres to a simple code of conduct:
 
 ### Prerequisites
 
-- Go 1.24 or later
+- Go 1.25 or later
 - Git
 - Familiarity with the GEDCOM specification (helpful but not required)
 
@@ -434,7 +434,7 @@ Include the following information:
    What actually happened
 
    **Environment**
-   - Go version: 1.24.0
+   - Go version: 1.25.0
    - OS: macOS 14.0
    - go-gedcom version: v0.1.0
 
