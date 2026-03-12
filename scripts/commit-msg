@@ -8,6 +8,18 @@
 COMMIT_MSG_FILE="$1"
 SUBJECT=$(head -1 "$COMMIT_MSG_FILE")
 
+# Reject malformed conventional commits where ! appears before scope
+# e.g., "feat!(api):" should be "feat(api)!:" per the spec
+if echo "$SUBJECT" | grep -qE '^(feat|fix)!\('; then
+  echo ""
+  echo "Error: Malformed conventional commit — '!' must come after the scope, not before."
+  echo ""
+  echo "  Got:      $SUBJECT"
+  echo "  Expected: type(scope)!: description"
+  echo ""
+  exit 1
+fi
+
 # Only check feat: and fix: commits (including scoped and breaking variants)
 if ! echo "$SUBJECT" | grep -qE '^(feat|fix)(\(.+\))?!?:'; then
   exit 0
