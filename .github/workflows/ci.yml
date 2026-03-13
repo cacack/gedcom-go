@@ -363,7 +363,7 @@ jobs:
             # since a breaking change may already be merged to main but not yet released.
             COMMITS=$(git log --format="%s%n%b" "$LATEST_TAG..HEAD")
 
-            if echo "$COMMITS" | grep -qE '^(feat|fix|refactor|perf|docs|style|test|build|ci|chore)!:|BREAKING CHANGE:'; then
+            if echo "$COMMITS" | grep -qE '^(feat|fix|refactor|perf|docs|style|test|build|ci|chore)(\(.+\))?!:|BREAKING CHANGE:'; then
               echo "✅ Breaking change properly declared in commit message"
               echo "   Release-please will bump major version"
               exit 0
@@ -440,6 +440,14 @@ jobs:
           FAILED=0
           for SHA in $(git log --format="%H" origin/main..HEAD); do
             SUBJECT=$(git log -1 --format="%s" "$SHA")
+
+            # Reject malformed conventional commits where ! appears before scope
+            if echo "$SUBJECT" | grep -qE '^(feat|fix)!\('; then
+              echo "::error::Commit '$SUBJECT' has malformed format — '!' must come after the scope."
+              echo "  Expected: type(scope)!: description"
+              FAILED=1
+              continue
+            fi
 
             # Only check feat: and fix: commits (including scoped variants)
             if ! echo "$SUBJECT" | grep -qE '^(feat|fix)(\(.+\))?!?:'; then
