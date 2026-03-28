@@ -41,7 +41,7 @@ jobs:
         cache: true
 
     - name: Run ${{ matrix.fuzz }}
-      run: go test ${{ matrix.package }} -fuzz=${{ matrix.fuzz }} -fuzztime=${{ matrix.time }}
+      run: go test ${{ matrix.package }} -fuzz=${{ matrix.fuzz }} -fuzztime=${{ matrix.time }} -timeout=0
 
     - name: Upload crash artifacts
       if: failure()
