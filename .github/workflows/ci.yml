@@ -77,7 +77,7 @@ jobs:
       run: go test -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
 
     - name: Check coverage thresholds
-      uses: vladopajic/go-test-coverage@679e6807f68f2440a4c43d386442a1d0041838a9 # v2
+      uses: vladopajic/go-test-coverage@f190f667e23b4441202d0bab0f8c2e7bce8925b6 # v2
       with:
         profile: coverage.out
         local-prefix: github.com/cacack/gedcom-go
