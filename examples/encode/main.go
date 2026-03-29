@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/cacack/gedcom-go/encoder"
 	"github.com/cacack/gedcom-go/gedcom"
@@ -92,8 +93,8 @@ func main() {
 	var err error
 
 	if len(os.Args) > 1 {
-		filename := os.Args[1]
-		out, err = os.Create(filename) // #nosec G304 -- CLI tool accepts user-provided paths
+		filename := filepath.Clean(os.Args[1])
+		out, err = os.Create(filename)
 		if err != nil {
 			log.Fatalf("Failed to create file: %v", err)
 		}
