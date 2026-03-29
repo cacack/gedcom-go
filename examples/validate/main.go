@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/cacack/gedcom-go/decoder"
@@ -18,10 +19,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	filename := os.Args[1]
+	filename := filepath.Clean(os.Args[1])
 
 	// Open and parse GEDCOM file
-	f, err := os.Open(filename) // #nosec G304 -- CLI tool accepts user-provided paths
+	f, err := os.Open(filename)
 	if err != nil {
 		log.Fatalf("Failed to open file: %v", err)
 	}
