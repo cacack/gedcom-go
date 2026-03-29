@@ -193,10 +193,12 @@ jobs:
       run: go mod verify
 
     - name: Run govulncheck
-      run: |
-        go install golang.org/x/vuln/cmd/govulncheck@latest
-        govulncheck -format sarif ./... > govulncheck-results.sarif || true
-        govulncheck ./...
+      uses: golang/govulncheck-action@b625fbe08f3bccbe446d94fbf87fcc875a4f50ee # v1
+      with:
+        go-version-file: go.mod
+        repo-checkout: false
+        output-format: sarif
+        output-file: govulncheck-results.sarif
 
     - name: Upload govulncheck results to GitHub Security
       uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # v4
@@ -206,9 +208,9 @@ jobs:
         category: govulncheck
 
     - name: Run gosec
-      run: |
-        go install github.com/securego/gosec/v2/cmd/gosec@424fc4cd9c82ea0fd6bee9cd49c2db2c3cc0c93f # v2.22.11
-        gosec -fmt sarif -out gosec-results.sarif ./...
+      uses: securego/gosec@844b1703bf4fd59b110600317422f515cac6d603 # master (docker: 2.25.0)
+      with:
+        args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
 
     - name: Upload gosec results to GitHub Security
       uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # v4
