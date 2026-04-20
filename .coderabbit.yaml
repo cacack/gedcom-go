@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit review configuration.
+# Reference: https://docs.coderabbit.ai/guides/configure-coderabbit
+
+language: en-US
+early_access: false
+tone_instructions: >
+  Focus on correctness, security, GEDCOM spec compliance, and lossless data
+  handling. This is a pre-1.0 Go library; flag breaking API changes.
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  # Submit PR reviews (line-level comments + review submissions) on every new
+  # PR targeting main. This is what surfaces in GitHub's Reviews API and what
+  # OSSF Scorecard's Code-Review check reads.
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+
+  # Skip test fixtures, generated fuzz corpora, and go.sum — reviewing these
+  # wastes budget and rarely surfaces useful findings.
+  path_filters:
+    - "!testdata/**"
+    - "!**/testdata/fuzz/**"
+    - "!go.sum"
+
+chat:
+  auto_reply: true
