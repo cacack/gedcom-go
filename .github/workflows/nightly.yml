@@ -6,10 +6,10 @@ on:
     - cron: '0 3 * * *'
   workflow_dispatch: # Allow manual trigger
 
+# Restrict default GITHUB_TOKEN permissions (principle of least privilege).
+# Per-job permissions scope additional writes where they're needed.
 permissions:
   contents: read
-  issues: write
-  security-events: write
 
 jobs:
   fuzz:
@@ -55,6 +55,9 @@ jobs:
     name: Security Scan (Nightly)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
     steps:
     - name: Harden Runner
       uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
@@ -120,6 +123,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [fuzz, security]
     if: failure() && github.event_name == 'schedule'
+    permissions:
+      contents: read
+      issues: write
     steps:
     - name: Checkout code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6

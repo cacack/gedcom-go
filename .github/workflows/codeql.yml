@@ -9,6 +9,10 @@ on:
     # Run weekly on Sundays at 00:00 UTC
     - cron: '0 0 * * 0'
 
+# Restrict default GITHUB_TOKEN permissions (principle of least privilege)
+permissions:
+  contents: read
+
 jobs:
   analyze:
     name: Analyze

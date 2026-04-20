@@ -2,14 +2,18 @@ name: Dependabot Auto-Merge
 
 on: pull_request_target
 
+# Restrict default GITHUB_TOKEN permissions (principle of least privilege).
+# The automerge job requires write access to merge and approve PRs.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   automerge:
     runs-on: ubuntu-latest
     if: github.event.pull_request.user.login == 'dependabot[bot]'
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Fetch Dependabot metadata
         id: metadata

@@ -33,7 +33,7 @@ echo
 # Check if benchstat is installed
 if ! command -v benchstat &> /dev/null; then
     echo -e "${YELLOW}⚠${NC}  benchstat not found. Installing..."
-    go install golang.org/x/perf/cmd/benchstat@latest
+    go install golang.org/x/perf/cmd/benchstat@v0.0.0-20260409210113-8e83ce0f7b1c
 fi
 
 # Check if baseline exists

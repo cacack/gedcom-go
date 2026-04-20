@@ -5,13 +5,17 @@ on:
     branches:
       - main
 
+# Restrict default GITHUB_TOKEN permissions (principle of least privilege).
+# Release-please needs write access to create release PRs and tags.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
@@ -31,8 +35,9 @@ jobs:
 
     steps:
       - name: Trigger pkg.go.dev indexing
+        env:
+          VERSION: ${{ needs.release-please.outputs.tag_name }}
         run: |
-          VERSION=${{ needs.release-please.outputs.tag_name }}
           echo "Triggering pkg.go.dev for version $VERSION..."
           curl -f "https://proxy.golang.org/github.com/cacack/gedcom-go/@v/$VERSION.info" || true
           curl -f "https://sum.golang.org/lookup/github.com/cacack/gedcom-go@$VERSION" || true
