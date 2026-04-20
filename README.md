@@ -1,6 +1,7 @@
 # gedcom-go
 
 [![CI](https://github.com/cacack/gedcom-go/actions/workflows/ci.yml/badge.svg)](https://github.com/cacack/gedcom-go/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/cacack/gedcom-go/badge)](https://scorecard.dev/viewer/?uri=github.com/cacack/gedcom-go)
 [![codecov](https://codecov.io/gh/cacack/gedcom-go/graph/badge.svg)](https://codecov.io/gh/cacack/gedcom-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cacack/gedcom-go)](https://goreportcard.com/report/github.com/cacack/gedcom-go)
 [![GoDoc](https://pkg.go.dev/badge/github.com/cacack/gedcom-go.svg)](https://pkg.go.dev/github.com/cacack/gedcom-go)
