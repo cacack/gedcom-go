@@ -20,7 +20,7 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 - **Comprehensive Validation**: Date logic, orphaned references, duplicates, and quality reports
 - **Vendor Extensions**: Parse Ancestry.com and FamilySearch custom tags
 - **Zero Dependencies**: Uses only the Go standard library
-- **Well-tested**: 93% test coverage with multi-platform CI
+- **Well-tested**: 93-100% per-package test coverage with multi-platform CI
 
 See [FEATURES.md](FEATURES.md) for the complete feature list including all supported record types, events, attributes, and encoding details.
 
@@ -315,7 +315,7 @@ make all
 # Run tests
 make test
 
-# Run tests with coverage (93% coverage)
+# Run tests with coverage (93-100% per-package coverage)
 make test-coverage
 
 # Generate HTML coverage report
