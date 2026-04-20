@@ -315,7 +315,7 @@ jobs:
           go-version: '1.26'
 
       - name: Install apidiff
-        run: go install golang.org/x/exp/cmd/apidiff@latest
+        run: go install golang.org/x/exp/cmd/apidiff@v0.0.0-20260410095643-746e56fc9e2f
 
       - name: Check API compatibility
         run: |
@@ -400,9 +400,10 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Check PR title is not conventional commit format
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          PR_USER: ${{ github.event.pull_request.user.login }}
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
-
           # Exempt release-please PRs (they use chore(main): release X.Y.Z)
           if echo "$TITLE" | grep -qE "^chore\(main\): release [0-9]"; then
             echo "✅ Release-please PR exempt from title check"
@@ -410,7 +411,7 @@ jobs:
           fi
 
           # Exempt Dependabot PRs (they use conventional commit format by default)
-          if [[ "${{ github.event.pull_request.user.login }}" == "dependabot[bot]" ]]; then
+          if [[ "$PR_USER" == "dependabot[bot]" ]]; then
             echo "✅ Dependabot PR exempt from title check"
             exit 0
           fi
