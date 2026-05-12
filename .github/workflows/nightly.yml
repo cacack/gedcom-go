@@ -83,7 +83,7 @@ jobs:
         output-file: govulncheck-results.sarif
 
     - name: Upload govulncheck results
-      uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4
+      uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4
       if: success() || failure()
       with:
         sarif_file: govulncheck-results.sarif
@@ -95,7 +95,7 @@ jobs:
         args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
 
     - name: Upload gosec results
-      uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4
+      uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4
       if: success() || failure()
       with:
         sarif_file: gosec-results.sarif
@@ -112,7 +112,7 @@ jobs:
         severity: 'CRITICAL,HIGH,MEDIUM'
 
     - name: Upload Trivy results
-      uses: github/codeql-action/upload-sarif@e46ed2cbd01164d986452f91f178727624ae40d7 # v4
+      uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4
       if: (success() || failure()) && hashFiles('trivy-results.sarif') != ''
       with:
         sarif_file: trivy-results.sarif
