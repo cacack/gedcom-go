@@ -57,7 +57,10 @@ func TestValidateWithOptionsFacade(t *testing.T) {
 0 @F1@ FAM
 0 TRLR`
 
-	doc, _ := gedcomgo.Decode(strings.NewReader(data))
+	doc, err := gedcomgo.Decode(strings.NewReader(data))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
 
 	errs := gedcomgo.ValidateWithOptions(doc, gedcomgo.DefaultValidateOptions())
 	if len(errs) == 0 {
@@ -104,7 +107,11 @@ func ExampleValidateAllWithOptions() {
 2 DATE 1 JAN 1900
 0 TRLR`
 
-	doc, _ := gedcomgo.Decode(strings.NewReader(gedcomData))
+	doc, err := gedcomgo.Decode(strings.NewReader(gedcomData))
+	if err != nil {
+		fmt.Printf("Decode: %v\n", err)
+		return
+	}
 
 	opts := gedcomgo.DefaultValidateOptions()
 	opts.MaxErrors = 5
