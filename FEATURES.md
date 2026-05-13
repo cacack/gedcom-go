@@ -31,8 +31,21 @@ Re-exported types for single-import convenience:
 - `Document`, `Individual`, `Family` - Core data types
 - `Version`, `Version55`, `Version551`, `Version70` - Version constants
 - `DecodeResult`, `Issue`, `ConversionReport` - Result types
+- `DecodeOptions`, `EncodeOptions`, `ValidateOptions` - Options types
 
 For advanced use cases (custom options, progress callbacks, streaming), import the underlying packages directly. See README.md for examples.
+
+## Configurable Options
+
+Each core operation exposes a dedicated options struct with safe defaults and an explicit `*WithOptions` entry point:
+
+| Operation | Options type | Facade entry point | Common knobs |
+|-----------|--------------|--------------------|--------------|
+| Decode | `decoder.DecodeOptions` | `gedcomgo.DecodeWithOptions` | `Context`, `MaxNestingDepth`, `StrictMode`, `OnProgress`, `TotalSize` |
+| Encode | `encoder.EncodeOptions` | `gedcomgo.EncodeWithOptions` | `LineEnding`, `MaxLineLength`, `DisableLineWrap`, `TargetVersion`, `PreserveUnknownTags` |
+| Validate | `validator.ValidateOptions` | `gedcomgo.ValidateAllWithOptions` | `Strictness`, `MaxErrors`, `SkipRules`, `DateLogic`, `Duplicates`, `TagRegistry`, `ValidateCustomTags`, `SkipEncodingValidation` |
+
+`gedcomgo.DefaultDecodeOptions()`, `DefaultEncodeOptions()`, and `DefaultValidateOptions()` return populated defaults you can tweak. `validator.ValidateOptions` is an alias for the original `validator.ValidatorConfig`; both names work interchangeably.
 
 ## Multi-Version Support
 
