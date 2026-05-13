@@ -4,10 +4,70 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"testing"
 
 	gedcomgo "github.com/cacack/gedcom-go"
 	"github.com/cacack/gedcom-go/gedcom"
 )
+
+func TestDefaultOptionsHelpers(t *testing.T) {
+	t.Parallel()
+
+	if opts := gedcomgo.DefaultDecodeOptions(); opts == nil || opts.MaxNestingDepth == 0 {
+		t.Errorf("DefaultDecodeOptions returned unexpected value: %+v", opts)
+	}
+	if opts := gedcomgo.DefaultEncodeOptions(); opts == nil || opts.LineEnding == "" {
+		t.Errorf("DefaultEncodeOptions returned unexpected value: %+v", opts)
+	}
+	if opts := gedcomgo.DefaultValidateOptions(); opts == nil {
+		t.Error("DefaultValidateOptions returned nil")
+	}
+}
+
+func TestDecodeWithOptionsFacade(t *testing.T) {
+	t.Parallel()
+
+	data := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME Test /User/
+0 TRLR`
+
+	doc, err := gedcomgo.DecodeWithOptions(strings.NewReader(data), gedcomgo.DefaultDecodeOptions())
+	if err != nil {
+		t.Fatalf("DecodeWithOptions: %v", err)
+	}
+	if doc == nil || len(doc.Records) != 1 {
+		t.Errorf("expected 1 record, got %+v", doc)
+	}
+
+	doc, err = gedcomgo.DecodeWithOptions(strings.NewReader(data), nil)
+	if err != nil || doc == nil {
+		t.Errorf("DecodeWithOptions(nil opts) failed: %v", err)
+	}
+}
+
+func TestValidateWithOptionsFacade(t *testing.T) {
+	t.Parallel()
+
+	data := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @F1@ FAM
+0 TRLR`
+
+	doc, _ := gedcomgo.Decode(strings.NewReader(data))
+
+	errs := gedcomgo.ValidateWithOptions(doc, gedcomgo.DefaultValidateOptions())
+	if len(errs) == 0 {
+		t.Error("ValidateWithOptions: expected at least one error for empty family")
+	}
+
+	if errs := gedcomgo.ValidateWithOptions(doc, nil); len(errs) == 0 {
+		t.Error("ValidateWithOptions(nil opts): expected at least one error")
+	}
+}
 
 // ExampleEncodeWithOptions shows encoding via the facade with custom options.
 func ExampleEncodeWithOptions() {

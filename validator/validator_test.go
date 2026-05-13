@@ -348,6 +348,31 @@ func TestNewWithConfig(t *testing.T) {
 	}
 }
 
+func TestDefaultOptions(t *testing.T) {
+	opts := DefaultOptions()
+	if opts == nil {
+		t.Fatal("DefaultOptions() returned nil")
+	}
+	if opts.Strictness != StrictnessNormal {
+		t.Errorf("Strictness = %v, want StrictnessNormal", opts.Strictness)
+	}
+}
+
+func TestNewWithOptions(t *testing.T) {
+	opts := &ValidateOptions{Strictness: StrictnessStrict}
+	v := NewWithOptions(opts)
+	if v == nil {
+		t.Fatal("NewWithOptions() returned nil")
+	}
+	if v.config.Strictness != StrictnessStrict {
+		t.Errorf("Strictness = %v, want StrictnessStrict", v.config.Strictness)
+	}
+
+	if v := NewWithOptions(nil); v == nil {
+		t.Error("NewWithOptions(nil) returned nil")
+	}
+}
+
 // Test ValidateAll returns Issues
 func TestValidateAllReturnsIssues(t *testing.T) {
 	// Create document with date logic issue (death before birth)
