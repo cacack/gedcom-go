@@ -370,6 +370,8 @@ func TestNewWithOptions(t *testing.T) {
 
 	if v := NewWithOptions(nil); v == nil {
 		t.Error("NewWithOptions(nil) returned nil")
+	} else if v.config == nil || v.config.Strictness != StrictnessNormal {
+		t.Errorf("NewWithOptions(nil) strictness = %v, want %v", v.config.Strictness, StrictnessNormal)
 	}
 }
 
