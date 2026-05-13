@@ -191,7 +191,16 @@ fmt.Printf("Parsed %d individuals\n", len(doc.Individuals()))
 
 ## Advanced Usage
 
-For advanced use cases requiring custom options, import the underlying packages directly:
+The `gedcomgo` facade also exposes `*WithOptions` variants for the common operations:
+
+```go
+doc, err := gedcomgo.DecodeWithOptions(r, opts)
+err     = gedcomgo.EncodeWithOptions(w, doc, opts)
+errs   := gedcomgo.ValidateWithOptions(doc, opts)
+issues := gedcomgo.ValidateAllWithOptions(doc, opts)
+```
+
+Option types — `DecodeOptions`, `EncodeOptions`, `ValidateOptions` — are re-exported from the facade. For the full surface area (streaming, diagnostics, converter), import the underlying packages directly:
 
 ```go
 import (
@@ -209,40 +218,41 @@ import (
 ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 defer cancel()
 
-opts := &decoder.DecodeOptions{
+opts := &gedcomgo.DecodeOptions{
     Context:   ctx,
     TotalSize: fileInfo.Size(),
     OnProgress: func(bytesRead, totalBytes int64) {
         fmt.Printf("\rProgress: %d%%", bytesRead*100/totalBytes)
     },
 }
-doc, err := decoder.DecodeWithOptions(reader, opts)
+doc, err := gedcomgo.DecodeWithOptions(reader, opts)
 ```
 
-### Custom Validation Configuration
+### Custom Validation Options
 
 ```go
 // Configure validation strictness and duplicate detection
-config := &validator.ValidatorConfig{
+opts := &gedcomgo.ValidateOptions{
     Strictness: validator.StrictnessStrict,
+    MaxErrors:  100,
+    SkipRules:  []string{"W001"},
     Duplicates: &validator.DuplicateConfig{
         RequireExactSurname: true,
         MinNameSimilarity:   0.8,
     },
 }
-v := validator.NewWithConfig(config)
-issues := v.ValidateAll(doc)
+issues := gedcomgo.ValidateAllWithOptions(doc, opts)
 ```
 
 ### Custom Encoder Options
 
 ```go
 // Encode with custom line endings and line length
-opts := &encoder.EncodeOptions{
-    LineEnding:    encoder.LineEndingLF,
-    MaxLineLength: 255,
+opts := &gedcomgo.EncodeOptions{
+    LineEnding:    "\r\n", // CRLF
+    MaxLineLength: 248,
 }
-err := encoder.EncodeWithOptions(writer, doc, opts)
+err := gedcomgo.EncodeWithOptions(writer, doc, opts)
 ```
 
 ### Custom Conversion Options

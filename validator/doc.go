@@ -50,15 +50,28 @@
 //	fmt.Printf("Errors: %d, Warnings: %d\n", report.ErrorCount, report.WarningCount)
 //	fmt.Printf("Birth date coverage: %.0f%%\n", report.BirthDateCoverage*100)
 //
-// # Configuration
+// # Options
 //
-// Customize validation behavior:
+// Use [NewWithOptions] together with [ValidateOptions] to customize validation
+// behavior. [ValidatorConfig] is retained as a backward-compatible alias.
+// Call [DefaultOptions] for a populated starting point.
 //
-//	config := &validator.ValidatorConfig{
+//   - Strictness             — StrictnessRelaxed | StrictnessNormal (default) | StrictnessStrict
+//   - MaxErrors              — cap collected issues (0 = unlimited)
+//   - SkipRules              — issue codes to exclude (e.g. []string{"W001"})
+//   - DateLogic              — date-logic thresholds (e.g. MaxReasonableAge)
+//   - Duplicates             — duplicate-detection thresholds
+//   - TagRegistry            — definitions for custom (underscore) tags
+//   - ValidateCustomTags     — enable custom-tag validation against registry
+//   - SkipEncodingValidation — disable GEDCOM 7.0 encoding checks
+//
+// Example combining strictness with skip rules:
+//
+//	opts := &validator.ValidateOptions{
 //	    Strictness: validator.StrictnessStrict,
-//	    DateLogic: &validator.DateLogicConfig{
-//	        MaxReasonableAge: 110,
-//	    },
+//	    MaxErrors:  100,
+//	    SkipRules:  []string{"W001"},
+//	    DateLogic:  &validator.DateLogicConfig{MaxReasonableAge: 110},
 //	}
-//	v := validator.NewWithConfig(config)
+//	issues := validator.NewWithOptions(opts).ValidateAll(doc)
 package validator

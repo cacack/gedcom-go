@@ -113,6 +113,40 @@ func ExampleNewWithConfig() {
 	// Issues found: 0
 }
 
+// ExampleNewWithOptions demonstrates combining Strictness, SkipRules, and MaxErrors.
+func ExampleNewWithOptions() {
+	opts := &validator.ValidateOptions{
+		Strictness: validator.StrictnessStrict,
+		MaxErrors:  10,
+		SkipRules:  []string{"ENCODING_BANNED_C0"},
+	}
+
+	v := validator.NewWithOptions(opts)
+
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+2 DATE 1 JAN 2000
+1 DEAT
+2 DATE 1 JAN 1900
+0 TRLR`
+
+	doc, _ := decoder.Decode(strings.NewReader(gedcomData))
+
+	issues := v.ValidateAll(doc)
+	fmt.Printf("Issues found: %d\n", len(issues))
+	if len(issues) > 0 {
+		fmt.Printf("First: [%s] %s\n", issues[0].Severity, issues[0].Code)
+	}
+
+	// Output:
+	// Issues found: 1
+	// First: [ERROR] DEATH_BEFORE_BIRTH
+}
+
 // ExampleValidator_QualityReport shows generating a data quality report.
 func ExampleValidator_QualityReport() {
 	gedcomData := `0 HEAD

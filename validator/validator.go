@@ -38,6 +38,10 @@ const (
 
 // ValidatorConfig contains configuration options for the Validator.
 //
+// Deprecated: use [ValidateOptions] for consistency with the other option
+// types ([decoder.DecodeOptions], [encoder.EncodeOptions]). ValidatorConfig
+// remains a working alias and will not be removed.
+//
 //nolint:revive // Name kept for API clarity despite repetition
 type ValidatorConfig struct {
 	// DateLogic configures date logic validation thresholds.
@@ -77,6 +81,29 @@ type ValidatorConfig struct {
 	// Example: []string{"W001", "I002"} to skip warning W001 and info I002.
 	// Default: nil (no rules skipped).
 	SkipRules []string
+}
+
+// ValidateOptions configures validator behavior. It is the canonical options
+// type, aligned with [decoder.DecodeOptions] and [encoder.EncodeOptions].
+//
+// ValidateOptions is a type alias for [ValidatorConfig]; both names refer to
+// the same type and may be used interchangeably.
+type ValidateOptions = ValidatorConfig
+
+// DefaultOptions returns the default validator options.
+func DefaultOptions() *ValidateOptions {
+	return &ValidateOptions{
+		Strictness: StrictnessNormal,
+	}
+}
+
+// NewWithOptions creates a new Validator with the given options.
+// If opts is nil, default options are used.
+//
+// NewWithOptions is the canonical constructor; [NewWithConfig] is retained
+// as a backward-compatible alias.
+func NewWithOptions(opts *ValidateOptions) *Validator {
+	return NewWithConfig(opts)
 }
 
 // Validator validates GEDCOM documents against specification rules.

@@ -79,7 +79,31 @@ type (
 
 	// ConversionReport contains the results of a GEDCOM version conversion.
 	ConversionReport = gedcom.ConversionReport
+
+	// DecodeOptions configures GEDCOM decoding. See [decoder.DecodeOptions].
+	DecodeOptions = decoder.DecodeOptions
+
+	// EncodeOptions configures GEDCOM encoding. See [encoder.EncodeOptions].
+	EncodeOptions = encoder.EncodeOptions
+
+	// ValidateOptions configures GEDCOM validation. See [validator.ValidateOptions].
+	ValidateOptions = validator.ValidateOptions
 )
+
+// DefaultDecodeOptions returns the default decoding options.
+func DefaultDecodeOptions() *DecodeOptions {
+	return decoder.DefaultOptions()
+}
+
+// DefaultEncodeOptions returns the default encoding options.
+func DefaultEncodeOptions() *EncodeOptions {
+	return encoder.DefaultOptions()
+}
+
+// DefaultValidateOptions returns the default validation options.
+func DefaultValidateOptions() *ValidateOptions {
+	return validator.DefaultOptions()
+}
 
 // Version constants for convenience.
 const (
@@ -96,10 +120,16 @@ const (
 // Decode parses a GEDCOM file from an io.Reader and returns a Document.
 // This is the simplest way to parse a GEDCOM file using default options.
 //
-// For custom options (progress callbacks, context cancellation), use the
-// decoder package directly: decoder.DecodeWithOptions().
+// For custom options (progress callbacks, context cancellation), use
+// [DecodeWithOptions].
 func Decode(r io.Reader) (*Document, error) {
 	return decoder.Decode(r)
+}
+
+// DecodeWithOptions parses a GEDCOM file with the given options.
+// If opts is nil, default options are used.
+func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*Document, error) {
+	return decoder.DecodeWithOptions(r, opts)
 }
 
 // DecodeWithDiagnostics parses a GEDCOM file and returns both the document and any diagnostics.
@@ -113,33 +143,56 @@ func DecodeWithDiagnostics(r io.Reader) (*DecodeResult, error) {
 }
 
 // Encode writes a GEDCOM document to a writer using default options.
-// The output uses CRLF line endings as per the GEDCOM specification.
+// The output uses LF line endings; pass [EncodeOptions.LineEnding] = "\r\n"
+// to write CRLF.
 //
-// For custom options (line endings, encoding), use the
-// encoder package directly: encoder.EncodeWithOptions().
+// For custom options (line endings, target version, line wrapping, custom-tag
+// preservation), use [EncodeWithOptions].
 func Encode(w io.Writer, doc *Document) error {
 	return encoder.Encode(w, doc)
+}
+
+// EncodeWithOptions writes a GEDCOM document with the given options.
+// If opts is nil, default options are used.
+func EncodeWithOptions(w io.Writer, doc *Document, opts *EncodeOptions) error {
+	return encoder.EncodeWithOptions(w, doc, opts)
 }
 
 // Validate validates a GEDCOM document and returns any validation errors.
 // This performs basic structural validation including cross-reference checks
 // and required field validation.
 //
-// For comprehensive validation with severity levels, use ValidateAll().
-// For custom validation configuration, use the validator package directly.
+// For comprehensive validation with severity levels, use [ValidateAll].
+// For custom validation configuration (strictness, MaxErrors, SkipRules),
+// use [ValidateWithOptions] or [ValidateAllWithOptions].
 func Validate(doc *Document) []error {
 	return validator.New().Validate(doc)
 }
 
+// ValidateWithOptions validates a GEDCOM document with the given options
+// and returns any validation errors. If opts is nil, default options are used.
+//
+// Note: [ValidateOptions.MaxErrors] and [ValidateOptions.SkipRules] only
+// affect [ValidateAllWithOptions]; the legacy []error API ignores them.
+func ValidateWithOptions(doc *Document, opts *ValidateOptions) []error {
+	return validator.NewWithOptions(opts).Validate(doc)
+}
+
 // ValidateAll returns comprehensive validation as Issues with severity levels.
-// This is the enhanced API that provides more detail than Validate(), including
+// This is the enhanced API that provides more detail than [Validate], including
 // date logic validation, reference checking, and quality analysis.
 //
 // Issues are categorized by severity: Error, Warning, and Info.
-// For custom validation configuration (strictness, thresholds), use the
-// validator package directly: validator.NewWithConfig().
+// For custom validation configuration (strictness, thresholds, skip rules),
+// use [ValidateAllWithOptions].
 func ValidateAll(doc *Document) []Issue {
 	return validator.New().ValidateAll(doc)
+}
+
+// ValidateAllWithOptions runs comprehensive validation with the given options.
+// If opts is nil, default options are used.
+func ValidateAllWithOptions(doc *Document, opts *ValidateOptions) []Issue {
+	return validator.NewWithOptions(opts).ValidateAll(doc)
 }
 
 // Convert converts a GEDCOM document to the target version.
