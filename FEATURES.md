@@ -47,6 +47,21 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 
 `gedcomgo.DefaultDecodeOptions()`, `DefaultEncodeOptions()`, and `DefaultValidateOptions()` return populated defaults you can tweak. `validator.ValidateOptions` is an alias for the original `validator.ValidatorConfig`; both names work interchangeably.
 
+## Lenient Parsing & Diagnostics
+
+`DecodeWithDiagnostics` parses real-world GEDCOM exports that don't strictly conform to the spec, collecting issues as `Diagnostic`s rather than aborting on the first error. Recovered conditions include:
+
+| Code | Meaning | Recovery |
+|------|---------|----------|
+| `EMPTY_LINE` | Blank line in the data | Skipped |
+| `INVALID_LEVEL` | Unparseable level number | Line skipped |
+| `INVALID_XREF` | Malformed cross-reference | Line skipped |
+| `BAD_LEVEL_JUMP` | Indentation skips one or more levels (e.g., `1 BIRT` → `4 DATE`) | Level clamped to `prev + 1` so the subordinate attaches to its natural parent |
+| `UNKNOWN_TAG` | Unrecognized tag | Preserved in raw form |
+| `INVALID_VALUE` | Value doesn't match the expected format | Raw value preserved |
+
+Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns the first syntax error.
+
 ## Multi-Version Support
 
 | Version | Status | Notes |

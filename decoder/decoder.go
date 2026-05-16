@@ -207,9 +207,6 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 		detectedVersion = ""
 	}
 
-	// Build document from lines
-	doc := buildDocument(lines, detectedVersion)
-
 	// Create a collector for entity-level diagnostics if in lenient mode
 	var collector *diagnosticCollector
 	if !opts.StrictMode {
@@ -217,6 +214,15 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 			lenient: true,
 		}
 	}
+
+	// Lenient mode: recover from malformed indentation in real-world exports by
+	// clamping over-jumped levels to prevLevel+1 and emitting CodeBadLevelJump.
+	if !opts.StrictMode {
+		normalizeLevelJumps(lines, collector)
+	}
+
+	// Build document from lines
+	doc := buildDocument(lines, detectedVersion)
 
 	// Convert raw tags to proper entity types
 	populateEntities(doc, collector)
