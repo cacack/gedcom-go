@@ -41,7 +41,24 @@ jobs:
         cache: true
 
     - name: Run ${{ matrix.fuzz }}
-      run: go test ${{ matrix.package }} -fuzz=${{ matrix.fuzz }} -fuzztime=${{ matrix.time }} -timeout=0
+      # Retry once on the "context deadline exceeded" race, where Go's fuzz
+      # coordinator cancels an in-flight iteration right at the -fuzztime
+      # boundary on slow/contended runners. A real failing input (which writes
+      # to testdata/fuzz/...) still fails immediately on the first attempt.
+      run: |
+        set -o pipefail
+        run_fuzz() {
+          go test ${{ matrix.package }} -fuzz=${{ matrix.fuzz }} \
+            -fuzztime=${{ matrix.time }} -timeout=0 2>&1 | tee fuzz.out
+        }
+        if run_fuzz; then exit 0; fi
+        if grep -q "context deadline exceeded" fuzz.out \
+           && ! grep -q "Failing input written" fuzz.out; then
+          echo "::warning::Fuzztime-deadline race detected; retrying once."
+          run_fuzz
+        else
+          exit 1
+        fi
 
     - name: Upload crash artifacts
       if: failure()
