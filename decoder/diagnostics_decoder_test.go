@@ -339,33 +339,6 @@ func TestDecodeWithDiagnosticsContextCancellation(t *testing.T) {
 	}
 }
 
-// TestBuildDocumentWithVersion tests the helper function for partial results
-func TestBuildDocumentWithVersion(t *testing.T) {
-	// Create parser lines manually to test the helper
-	lines := []*parser.Line{
-		{Level: 0, Tag: "HEAD", LineNumber: 1},
-		{Level: 1, Tag: "GEDC", LineNumber: 2},
-		{Level: 2, Tag: "VERS", Value: "5.5", LineNumber: 3},
-		{Level: 0, Tag: "@I1@", Value: "", LineNumber: 4, XRef: "@I1@"},
-		{Level: 0, Tag: "TRLR", LineNumber: 5},
-	}
-
-	// Fix: the parser Line stores XRef separately from Tag
-	lines[3].Tag = "INDI"
-
-	opts := DefaultOptions()
-	doc := buildDocumentWithVersion(lines, opts)
-
-	if doc == nil {
-		t.Fatal("buildDocumentWithVersion() returned nil")
-	}
-
-	// Verify version was detected
-	if doc.Header.Version != "5.5" {
-		t.Errorf("Expected version 5.5, got %s", doc.Header.Version)
-	}
-}
-
 // TestConvertParseErrors tests the parse error conversion function
 func TestConvertParseErrors(t *testing.T) {
 	t.Run("nil input", func(t *testing.T) {

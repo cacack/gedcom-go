@@ -157,7 +157,7 @@ if family != nil {
 
 ### Parse with Diagnostics
 
-Process GEDCOM files with errors while extracting as much valid data as possible:
+Process GEDCOM files with errors while extracting as much valid data as possible. Lenient mode (the default for `DecodeWithDiagnostics`) recovers from common real-world quirks — empty lines, invalid level numbers, unknown tags, and **malformed indentation jumps** (e.g., `1 BIRT` directly followed by `4 DATE`, as seen in some Ancestry/MyHeritage exports). Recovered issues are reported as `Diagnostic`s with codes like `BAD_LEVEL_JUMP`, `UNKNOWN_TAG`, and `EMPTY_LINE` rather than failing the parse.
 
 ```go
 result, err := gedcomgo.DecodeWithDiagnostics(f)
@@ -169,7 +169,7 @@ if err != nil {
 if result.Diagnostics.HasErrors() {
     fmt.Printf("Found %d errors\n", len(result.Diagnostics.Errors()))
     for _, d := range result.Diagnostics {
-        fmt.Printf("  Line %d: %s\n", d.Line, d.Message)
+        fmt.Printf("  Line %d: [%s] %s\n", d.Line, d.Code, d.Message)
     }
 }
 
@@ -177,6 +177,8 @@ if result.Diagnostics.HasErrors() {
 doc := result.Document
 fmt.Printf("Parsed %d individuals\n", len(doc.Individuals()))
 ```
+
+To opt into strict parsing (fail on the first syntax error, no diagnostics collected), pass `&decoder.DecodeOptions{StrictMode: true}` — see [Custom Decode Options](#custom-decode-options).
 
 ## Documentation
 

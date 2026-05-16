@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/cacack/gedcom-go/gedcom"
 )
 
 // ============================================================================
@@ -23,12 +25,13 @@ func TestDecodeWithDiagnostics_MalformedFiles(t *testing.T) {
 		expectDiagnosticCode string // Expected diagnostic code (if any)
 	}{
 		{
-			name:              "invalid-level.ged",
-			path:              "../testdata/malformed/invalid-level.ged",
-			description:       "File with level 99 (should parse but may warn)",
-			expectDiagnostics: false, // Level 99 is valid (< MaxNestingDepth of 100)
-			expectError:       false,
-			minRecords:        1, // At least one INDI record
+			name:                 "invalid-level.ged",
+			path:                 "../testdata/malformed/invalid-level.ged",
+			description:          "File with a level-99 jump (level itself is < MaxNestingDepth, but the +98 jump is malformed indentation)",
+			expectDiagnostics:    true,
+			expectError:          false,
+			minRecords:           1, // At least one INDI record
+			expectDiagnosticCode: CodeBadLevelJump,
 		},
 		{
 			name:              "invalid-xref.ged",
@@ -69,6 +72,24 @@ func TestDecodeWithDiagnostics_MalformedFiles(t *testing.T) {
 			expectDiagnostics: false, // Duplicate XRefs are handled (last wins)
 			expectError:       false,
 			minRecords:        1, // At least one record
+		},
+		{
+			name:                 "level-jump-skip.ged",
+			path:                 "../testdata/malformed/level-jump-skip.ged",
+			description:          "File with level jump 1 -> 4 (real-world Ancestry-style export)",
+			expectDiagnostics:    true,
+			expectError:          false,
+			minRecords:           1,
+			expectDiagnosticCode: CodeBadLevelJump,
+		},
+		{
+			name:                 "level-jump-subordinate.ged",
+			path:                 "../testdata/malformed/level-jump-subordinate.ged",
+			description:          "File where a subordinate skips a level (PLAC jumps from 1 to 3)",
+			expectDiagnostics:    true,
+			expectError:          false,
+			minRecords:           1,
+			expectDiagnosticCode: CodeBadLevelJump,
 		},
 	}
 
@@ -489,4 +510,115 @@ INVALID LINE
 	}
 
 	t.Logf("Diagnostics output:\n%s", output)
+}
+
+// TestDecodeWithDiagnostics_LevelJumpRecovery_SingleSubordinateSkip verifies
+// that a single subordinate tag with a level jump (1 -> 4) is recovered: a
+// CodeBadLevelJump diagnostic is emitted and the DATE value lands on the BIRT
+// event rather than being silently dropped.
+func TestDecodeWithDiagnostics_LevelJumpRecovery_SingleSubordinateSkip(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+4 DATE 1 JAN 1900
+0 TRLR`
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+
+	// One BAD_LEVEL_JUMP for the 4 DATE line.
+	jumps := 0
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeBadLevelJump {
+			jumps++
+		}
+	}
+	if jumps != 1 {
+		t.Errorf("expected 1 BAD_LEVEL_JUMP diagnostic, got %d (all: %v)", jumps, result.Diagnostics)
+	}
+
+	indi := result.Document.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+	if len(indi.Events) != 1 {
+		t.Fatalf("expected 1 event, got %d", len(indi.Events))
+	}
+	birt := indi.Events[0]
+	if birt.Date != "1 JAN 1900" {
+		t.Errorf("BIRT.Date = %q, want %q (DATE was orphaned by level jump)", birt.Date, "1 JAN 1900")
+	}
+}
+
+// TestDecodeWithDiagnostics_LevelJumpRecovery_MidRecordSubordinateSkip verifies
+// the trickier case where a subordinate tag (PLAC) jumps from level 1 to 3
+// mid-record. The clamped PLAC must attach to the immediately preceding level-1
+// event (DEAT), not to the prior event (BIRT) or be silently dropped.
+func TestDecodeWithDiagnostics_LevelJumpRecovery_MidRecordSubordinateSkip(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Jane /Doe/
+1 BIRT
+2 DATE 1 JAN 1900
+1 DEAT
+3 PLAC London, England
+0 TRLR`
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+
+	jumps := 0
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeBadLevelJump {
+			jumps++
+		}
+	}
+	if jumps != 1 {
+		t.Errorf("expected 1 BAD_LEVEL_JUMP diagnostic, got %d (all: %v)", jumps, result.Diagnostics)
+	}
+
+	indi := result.Document.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+	if len(indi.Events) != 2 {
+		t.Fatalf("expected 2 events (BIRT + DEAT), got %d", len(indi.Events))
+	}
+
+	var birt, deat *gedcom.Event
+	for _, e := range indi.Events {
+		switch e.Type {
+		case gedcom.EventBirth:
+			birt = e
+		case gedcom.EventDeath:
+			deat = e
+		}
+	}
+	if birt == nil || deat == nil {
+		t.Fatalf("missing BIRT or DEAT event; got events: %+v", indi.Events)
+	}
+
+	// PLAC must attach to DEAT (its preceding level-1 sibling), not BIRT.
+	if deat.Place != "London, England" {
+		t.Errorf("DEAT.Place = %q, want %q (PLAC was attached to the wrong event after clamping)",
+			deat.Place, "London, England")
+	}
+	if birt.Place != "" {
+		t.Errorf("BIRT.Place = %q, expected empty (PLAC should not have leaked to BIRT)", birt.Place)
+	}
+	// BIRT.Date should still parse normally.
+	if birt.Date != "1 JAN 1900" {
+		t.Errorf("BIRT.Date = %q, want %q", birt.Date, "1 JAN 1900")
+	}
 }

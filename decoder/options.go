@@ -26,6 +26,9 @@ type DecodeOptions struct {
 	// When StrictMode is false (default):
 	//   - Parsing continues after encountering errors
 	//   - Malformed lines are skipped; valid lines are preserved
+	//   - Level-jump lines (e.g., `1 BIRT` then `4 DATE`) are clamped to
+	//     prevLevel+1 and preserved as recovery, not skipped; a
+	//     CodeBadLevelJump diagnostic is emitted (SeverityWarning)
 	//   - Diagnostics are collected for all issues encountered
 	//   - Use [DecodeWithDiagnostics] to access diagnostics
 	//   - A partial document is returned if any valid records exist
