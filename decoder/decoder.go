@@ -96,7 +96,13 @@ func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, erro
 // In lenient mode:
 //   - Parse errors are collected as diagnostics rather than stopping parsing
 //   - A partial document is returned if some valid data was parsed
-//   - An error is returned only if no valid records could be parsed
+//   - If a fatal I/O failure interrupts parsing after some lines were read, a
+//     non-nil *DecodeResult is returned together with the non-nil error so
+//     callers can still recover the partial document. Callers should inspect
+//     both the returned *DecodeResult and error rather than discarding the
+//     result on err != nil
+//   - An error is returned with a nil *DecodeResult only when no valid lines
+//     could be parsed at all
 //
 // In strict mode (StrictMode=true):
 //   - Parsing fails on the first error (current behavior)
