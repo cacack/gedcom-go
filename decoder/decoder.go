@@ -134,6 +134,11 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 	p := parser.NewParser()
 	var lines []*parser.Line
 	var diagnostics Diagnostics
+	// fatalErr is set when an I/O failure interrupts a lenient-mode parse but
+	// partial lines are still available. We fall through to the normal build
+	// path (so the partial document gets level-jump normalization and entity
+	// population) and surface fatalErr alongside the result at the end.
+	var fatalErr error
 
 	if opts.StrictMode {
 		// Strict mode: use existing Parse behavior
@@ -148,22 +153,19 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 			Lenient:   true,
 			MaxErrors: 0, // Collect all errors
 		}
-		parsedLines, parseErrors, fatalErr := p.ParseWithOptions(finalReader, parseOpts)
+		parsedLines, parseErrors, fe := p.ParseWithOptions(finalReader, parseOpts)
 
 		// Convert parse errors to diagnostics
 		diagnostics = convertParseErrors(parseErrors)
 
-		// Fatal errors (I/O failures) are always returned
-		if fatalErr != nil {
-			// Still return partial results with diagnostics
-			if len(parsedLines) > 0 {
-				doc := buildDocumentWithVersion(parsedLines, opts)
-				return &DecodeResult{
-					Document:    doc,
-					Diagnostics: diagnostics,
-				}, fatalErr
+		if fe != nil {
+			if len(parsedLines) == 0 {
+				// No partial data to recover; surface the I/O error directly.
+				return nil, fe
 			}
-			return nil, fatalErr
+			// Partial data — fall through to the normal build path and return
+			// fatalErr alongside the result.
+			fatalErr = fe
 		}
 
 		lines = parsedLines
@@ -235,20 +237,7 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 	return &DecodeResult{
 		Document:    doc,
 		Diagnostics: diagnostics,
-	}, nil
-}
-
-// buildDocumentWithVersion builds a document and detects the version.
-// This is a helper for DecodeWithDiagnostics when handling fatal errors.
-func buildDocumentWithVersion(lines []*parser.Line, _ *DecodeOptions) *gedcom.Document {
-	detectedVersion, err := version.DetectVersion(lines)
-	if err != nil {
-		detectedVersion = ""
-	}
-	doc := buildDocument(lines, detectedVersion)
-	// Pass nil collector for partial builds (diagnostics not collected)
-	populateEntities(doc, nil)
-	return doc
+	}, fatalErr
 }
 
 // convertParseErrors converts parser.ParseError instances to Diagnostics.

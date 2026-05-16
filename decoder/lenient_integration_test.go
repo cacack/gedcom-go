@@ -512,11 +512,11 @@ INVALID LINE
 	t.Logf("Diagnostics output:\n%s", output)
 }
 
-// TestDecodeWithDiagnostics_LevelJumpRecovery_PatternA verifies that a single
-// subordinate tag with a level jump (1 -> 4) is recovered: a CodeBadLevelJump
-// diagnostic is emitted and the DATE value lands on the BIRT event rather than
-// being silently dropped.
-func TestDecodeWithDiagnostics_LevelJumpRecovery_PatternA(t *testing.T) {
+// TestDecodeWithDiagnostics_LevelJumpRecovery_SingleSubordinateSkip verifies
+// that a single subordinate tag with a level jump (1 -> 4) is recovered: a
+// CodeBadLevelJump diagnostic is emitted and the DATE value lands on the BIRT
+// event rather than being silently dropped.
+func TestDecodeWithDiagnostics_LevelJumpRecovery_SingleSubordinateSkip(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
@@ -556,11 +556,11 @@ func TestDecodeWithDiagnostics_LevelJumpRecovery_PatternA(t *testing.T) {
 	}
 }
 
-// TestDecodeWithDiagnostics_LevelJumpRecovery_PatternB verifies the trickier
-// case where a subordinate tag (PLAC) jumps from level 1 to 3 mid-record. The
-// clamped PLAC must attach to the immediately preceding level-1 event (DEAT),
-// not to the prior event (BIRT) or be silently dropped.
-func TestDecodeWithDiagnostics_LevelJumpRecovery_PatternB(t *testing.T) {
+// TestDecodeWithDiagnostics_LevelJumpRecovery_MidRecordSubordinateSkip verifies
+// the trickier case where a subordinate tag (PLAC) jumps from level 1 to 3
+// mid-record. The clamped PLAC must attach to the immediately preceding level-1
+// event (DEAT), not to the prior event (BIRT) or be silently dropped.
+func TestDecodeWithDiagnostics_LevelJumpRecovery_MidRecordSubordinateSkip(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
 2 VERS 5.5.1

@@ -55,8 +55,8 @@ func TestNormalizeLevelJumps_PatternA_Skip(t *testing.T) {
 	if d.Line != 3 {
 		t.Errorf("Line = %d, want 3", d.Line)
 	}
-	if d.Severity != SeverityError {
-		t.Errorf("Severity = %v, want %v", d.Severity, SeverityError)
+	if d.Severity != SeverityWarning {
+		t.Errorf("Severity = %v, want %v (recovered condition; not an error)", d.Severity, SeverityWarning)
 	}
 }
 

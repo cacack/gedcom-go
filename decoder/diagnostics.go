@@ -53,7 +53,10 @@ const (
 	// CodeInvalidXRef indicates a malformed cross-reference identifier.
 	CodeInvalidXRef = "INVALID_XREF"
 
-	// CodeBadLevelJump indicates an invalid level increment (e.g., jumping from 0 to 2).
+	// CodeBadLevelJump indicates a level jump of more than one step (e.g.,
+	// `1 BIRT` directly followed by `4 DATE`, as seen in some real-world
+	// genealogy exports). In lenient mode the level is clamped to prevLevel+1
+	// and the document remains usable; emitted as SeverityWarning, not Error.
 	CodeBadLevelJump = "BAD_LEVEL_JUMP"
 
 	// CodeEmptyLine indicates an unexpected empty line in the GEDCOM data.
