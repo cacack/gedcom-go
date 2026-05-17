@@ -8,14 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.0](https://github.com/cacack/gedcom-go/compare/v1.2.0...v2.0.0) (2026-05-17)
 
 
+### ⚠ BREAKING CHANGES
+
+* **validator:** `ValidatorConfig` is no longer comparable with `==` due to the addition of the `SkipRules []string` field. Code that compares `ValidatorConfig` values directly will fail to compile — use field-by-field comparison or `reflect.DeepEqual` instead. ([98b3680](https://github.com/cacack/gedcom-go/commit/98b3680a9b6dc0dd44d5b43fd8795b579afcb935), closes [#156](https://github.com/cacack/gedcom-go/issues/156))
+
+
 ### Features
 
 * **api:** add WithOptions facade variants and ValidateOptions alias ([453e98a](https://github.com/cacack/gedcom-go/commit/453e98a633192f5b918448e34e5ad567342375cc))
 * **decoder:** recover from malformed indentation in lenient mode ([3d1e74f](https://github.com/cacack/gedcom-go/commit/3d1e74fecc7bd450c390723199b7fb7e264f8eee)), closes [#216](https://github.com/cacack/gedcom-go/issues/216)
+* **encoder:** add `TargetVersion` option to override output GEDCOM version in header ([98b3680](https://github.com/cacack/gedcom-go/commit/98b3680a9b6dc0dd44d5b43fd8795b579afcb935)), closes [#156](https://github.com/cacack/gedcom-go/issues/156)
+* **encoder:** add `PreserveUnknownTags` option to filter custom tags (default: `true`) ([98b3680](https://github.com/cacack/gedcom-go/commit/98b3680a9b6dc0dd44d5b43fd8795b579afcb935)), closes [#156](https://github.com/cacack/gedcom-go/issues/156)
 * **gedcom:** add graph traversal and subset primitives ([83a1959](https://github.com/cacack/gedcom-go/commit/83a1959ee90da17f2a2f2b50e6f8bafffb5cef4e))
 * **gedcom:** add Visit, Apply, IsPointerXRef walker primitives ([2d420dc](https://github.com/cacack/gedcom-go/commit/2d420dc3b47cbe43f5f787e7559cd1693e336f95)), closes [#276](https://github.com/cacack/gedcom-go/issues/276)
 * **merge:** add RemapXRefs and Combine primitives ([139913a](https://github.com/cacack/gedcom-go/commit/139913a1273066deccb2525f6db19aefb50fb6ea)), closes [#276](https://github.com/cacack/gedcom-go/issues/276)
 * **streaming:** stabilize streaming APIs and harden iterator contracts ([ec8214b](https://github.com/cacack/gedcom-go/commit/ec8214bd5e7d0bf310b71fb37ca12acc6873e701)), closes [#220](https://github.com/cacack/gedcom-go/issues/220)
+* **validator:** add `MaxErrors` option to limit number of issues returned (default: `0` = unlimited) ([98b3680](https://github.com/cacack/gedcom-go/commit/98b3680a9b6dc0dd44d5b43fd8795b579afcb935)), closes [#156](https://github.com/cacack/gedcom-go/issues/156)
+* **validator:** add `SkipRules` option to exclude specific validation rules by code ([98b3680](https://github.com/cacack/gedcom-go/commit/98b3680a9b6dc0dd44d5b43fd8795b579afcb935)), closes [#156](https://github.com/cacack/gedcom-go/issues/156)
 
 
 ### Bug Fixes
