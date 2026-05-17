@@ -244,6 +244,24 @@ jobs:
         sarif_file: trivy-results.sarif
         category: trivy
 
+    # osv-scanner: Full-lockfile OSV vulnerability scan (complements govulncheck's reachability analysis)
+    - name: Run osv-scanner
+      uses: google/osv-scanner-action/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+      continue-on-error: true  # Non-blocking initially; promote to blocking after evaluation period
+      with:
+        scan-args: |-
+          --recursive
+          --format=sarif
+          --output=osv-scanner-results.sarif
+          ./
+
+    - name: Upload osv-scanner results to GitHub Security
+      uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4
+      if: success() || failure()
+      with:
+        sarif_file: osv-scanner-results.sarif
+        category: osv-scanner
+
     # Semgrep: Rule-based static analysis
     - name: Semgrep scan
       continue-on-error: true  # Produce SARIF even on findings
