@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 )
 
 // IndexEntry represents a single record's location in a GEDCOM file.
@@ -99,21 +100,27 @@ func (idx *RecordIndex) LookupByType(recordType string) (IndexEntry, bool) {
 	return entry, ok
 }
 
-// XRefs returns all XRefs in the index.
+// XRefs returns all XRefs in the index, in sorted lexicographic order for
+// reproducibility. Each returned XRef is guaranteed resolvable via
+// [RecordIndex.Lookup] as long as the underlying file has not been modified
+// since the index was built (or loaded via [LazyParser.LoadIndex]).
 func (idx *RecordIndex) XRefs() []string {
 	xrefs := make([]string, 0, len(idx.entries))
 	for xref := range idx.entries {
 		xrefs = append(xrefs, xref)
 	}
+	sort.Strings(xrefs)
 	return xrefs
 }
 
-// Types returns all record types without XRefs in the index.
+// Types returns all record types without XRefs in the index, in sorted
+// lexicographic order.
 func (idx *RecordIndex) Types() []string {
 	types := make([]string, 0, len(idx.typeEntries))
 	for t := range idx.typeEntries {
 		types = append(types, t)
 	}
+	sort.Strings(types)
 	return types
 }
 

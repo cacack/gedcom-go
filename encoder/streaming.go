@@ -40,24 +40,41 @@ func (s encodeState) String() string {
 // enabling generation of very large GEDCOM files without loading the entire
 // document into memory first.
 //
-// The encoder enforces valid GEDCOM structure through a state machine:
-//   - WriteHeader must be called first (and only once)
-//   - WriteRecord can be called zero or more times
-//   - WriteTrailer must be called to complete the document
-//   - Close should be called to flush any buffered data
+// The encoder enforces valid GEDCOM structure through a state machine.
+// The canonical call sequence is:
 //
-// Example usage:
+//	WriteHeader → WriteRecord (zero or more times) → WriteTrailer → Close
 //
-//	f, _ := os.Create("output.ged")
-//	defer f.Close()
+// Each step is required (except WriteRecord, which may be skipped). Close
+// flushes any buffered data and verifies that WriteTrailer was called; if
+// the trailer is missing, Close returns [ErrTrailerNotWritten] and the
+// output file will be structurally invalid.
 //
-//	enc := encoder.NewStreamEncoder(f)
-//	enc.WriteHeader(header)
-//	for _, record := range records {
-//	    enc.WriteRecord(record)
+// Flush is optional and only useful for intermediate checkpointing (e.g.,
+// forcing partial output visible to a downstream consumer). Close calls
+// Flush internally, so an explicit Flush before Close is redundant.
+//
+// IMPORTANT: capture Close's error. Using `defer enc.Close()` silently
+// discards [ErrTrailerNotWritten] and any flush failure — both of which
+// indicate the output file is incomplete or corrupt. Prefer:
+//
+//	func writeStreamed(w io.Writer, records []*gedcom.Record) (err error) {
+//	    enc := encoder.NewStreamEncoder(w)
+//	    defer func() {
+//	        if cerr := enc.Close(); cerr != nil && err == nil {
+//	            err = cerr
+//	        }
+//	    }()
+//	    if err := enc.WriteHeader(header); err != nil {
+//	        return err
+//	    }
+//	    for _, rec := range records {
+//	        if err := enc.WriteRecord(rec); err != nil {
+//	            return err
+//	        }
+//	    }
+//	    return enc.WriteTrailer()
 //	}
-//	enc.WriteTrailer()
-//	enc.Close()
 type StreamEncoder struct {
 	writer  *bufio.Writer
 	options *EncodeOptions
@@ -192,8 +209,10 @@ func (e *StreamEncoder) Flush() error {
 }
 
 // Close flushes any buffered data and marks the encoder as complete.
-// If the trailer has not been written, it returns ErrTrailerNotWritten
-// but still flushes any buffered data.
+// If the trailer has not been written, it returns [ErrTrailerNotWritten]
+// but still flushes any buffered data (yielding a structurally invalid
+// file). Always check Close's return value rather than using a bare
+// `defer enc.Close()`, which silently drops the error.
 //
 // After Close is called, no further writes are allowed.
 func (e *StreamEncoder) Close() error {

@@ -94,6 +94,23 @@ func NewStreamingValidator(opts StreamingOptions) *StreamingValidator {
 //   - Validates record structure and entity-specific rules
 //   - Collects XRef references for deferred validation
 //   - Returns immediate issues (malformed dates, invalid structure, etc.)
+//
+// Per-record-type coverage:
+//
+//   - RecordTypeIndividual: full validation (date logic, structure)
+//   - RecordTypeFamily: full validation (date logic, structure)
+//   - RecordTypeSource: reference collection only (for orphan detection in
+//     Finalize); no source-content validation
+//   - RecordTypeRepository, RecordTypeNote, RecordTypeSubmitter,
+//     RecordTypeObject, others: not validated (the record is still
+//     registered for XRef tracking, but no rules are evaluated)
+//
+// Callers who need full validation coverage for all record types should use
+// the batch [Validator.Validate] / [Validator.ValidateAll] instead — they
+// trade memory for completeness.
+//
+// Parent-child date logic checks (child born before parent) require a
+// complete document and are not supported in streaming mode.
 func (sv *StreamingValidator) ValidateRecord(record *gedcom.Record) []Issue {
 	if record == nil {
 		return nil

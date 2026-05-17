@@ -114,6 +114,69 @@ defer f.Close()
 err := gedcomgo.Encode(f, doc)
 ```
 
+### Streaming for Large Files
+
+For files too large to materialize in memory (10k+ individuals, exports from major platforms), use the streaming APIs. The parser yields records one at a time; the encoder writes them one at a time. The full `Document` is never constructed, so the heap retained after the operation completes is a small constant rather than proportional to file size.
+
+```go
+import (
+    "github.com/cacack/gedcom-go/charset"
+    "github.com/cacack/gedcom-go/encoder"
+    "github.com/cacack/gedcom-go/parser"
+)
+
+// Streaming parse — iterate level-0 records without building a Document.
+func countRecords(path string) (map[string]int, error) {
+    f, err := os.Open(path)
+    if err != nil {
+        return nil, err
+    }
+    defer f.Close()
+
+    counts := make(map[string]int)
+    for rec, err := range parser.Records(charset.NewReader(f)) {
+        if err != nil {
+            return nil, err   // rec is nil here; always check err first
+        }
+        counts[rec.Type]++
+    }
+    return counts, nil
+}
+
+// Streaming encode — call sequence is WriteHeader → WriteRecord* → WriteTrailer → Close.
+// Capture Close's error so ErrTrailerNotWritten and flush failures aren't dropped.
+func writeStreamed(path string, records []*gedcom.Record) (err error) {
+    out, err := os.Create(path)
+    if err != nil {
+        return err
+    }
+    defer func() {
+        if cerr := out.Close(); cerr != nil && err == nil {
+            err = cerr
+        }
+    }()
+
+    enc := encoder.NewStreamEncoder(out)
+    defer func() {
+        if cerr := enc.Close(); cerr != nil && err == nil {
+            err = cerr
+        }
+    }()
+
+    if err := enc.WriteHeader(&gedcom.Header{Version: "5.5", Encoding: "UTF-8"}); err != nil {
+        return err
+    }
+    for _, rec := range records {
+        if err := enc.WriteRecord(rec); err != nil {
+            return err
+        }
+    }
+    return enc.WriteTrailer()
+}
+```
+
+On a 1.1MB / 2,322-individual file, streaming parse holds **~17%** of the heap that batch decode retains after the call returns (and ~54% of the cumulative allocations). See [`examples/stream`](examples/stream/main.go) for the full pattern and [docs/PERFORMANCE.md](docs/PERFORMANCE.md#streaming-apis-performance) for benchmark details.
+
 ### Convert Between Versions
 
 ```go
@@ -188,6 +251,7 @@ To opt into strict parsing (fail on the first syntax error, no diagnostics colle
   - [`examples/encode`](examples/encode) - Creating GEDCOM files programmatically
   - [`examples/query`](examples/query) - Navigating and querying genealogy data
   - [`examples/validate`](examples/validate) - Validating GEDCOM files
+  - [`examples/stream`](examples/stream) - Streaming parse and encode for very large files
 - **API Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go](https://pkg.go.dev/github.com/cacack/gedcom-go)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 
@@ -291,16 +355,16 @@ This library follows [Semantic Versioning](https://semver.org/). We do not break
 |---------|----------|
 | `gedcom` | Document, Individual, Family, Event, Date |
 | `decoder` | Decode(), DecodeWithOptions() |
-| `encoder` | Encode(), EncodeWithOptions() |
+| `encoder` | Encode(), EncodeWithOptions(), NewStreamEncoder(), NewStreamEncoderWithOptions(), EncodeStreaming(), EncodeStreamingWithOptions() |
 | `converter` | Convert(), ConvertWithOptions() |
-| `parser` | Parse(), ParseLine() |
-| `validator` | Validate(), ValidateAll() |
+| `parser` | Parse(), ParseLine(), NewRecordIterator(), NewRecordIteratorWithOffset(), Records(), RecordsWithOffset(), NewLazyParser() |
+| `validator` | Validate(), ValidateAll(), NewStreamingValidator() |
 | `charset` | NewReader() |
 | `version` | Detect() |
 
 ### What May Change
 
-- **Experimental features** (streaming APIs, duplicate detection) may evolve in minor versions
+- **Experimental features** (duplicate detection algorithms, quality report format) may evolve in minor versions
 
 ### GEDCOM Spec Evolution
 

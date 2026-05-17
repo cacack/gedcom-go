@@ -92,17 +92,52 @@ Line ending format has negligible impact (<1% overhead for CRLF vs LF).
 
 ## Streaming APIs Performance
 
-The streaming APIs provide memory-efficient alternatives for very large files.
+The streaming APIs provide memory-efficient alternatives for very large files. Two memory metrics matter:
+
+- **Cumulative allocated bytes** (`TotalAlloc` delta): total bytes ever allocated during the operation. Both streaming and batch do similar parsing/encoding work, so cumulative allocations are roughly similar.
+- **Retained heap after return** (`HeapAlloc` delta with `KeepAlive`): bytes still resident when the call completes. **This is the streaming win.** Batch holds the full `Document` afterwards; streaming holds essentially nothing.
+
+The retained-heap metric is what matters when the operation runs inside a longer-lived process and you care about steady-state memory.
+
+### Decoder (Batch) vs Streaming Parse — `pres2020.ged` (1.1MB, 2,322 individuals)
+
+| Metric | `decoder.Decode` (batch) | `parser.Records` (streaming) | Ratio |
+|---|---|---|---|
+| Time/op | 14.2 ms | 7.9 ms | 0.56x |
+| Cumulative bytes/op | 22 MB | 12 MB | 0.55x |
+| Allocs/op | 261,258 | 170,263 | 0.65x |
+| **Retained heap after** | **9,545 KB** | **1,611 KB** | **0.17x** |
+
+Streaming parse retains ~17% of batch decode's heap after the call returns. Reproduce with:
+
+```bash
+go test -bench='DecodeLarge|StreamingParseLarge' -benchmem ./decoder/
+go test -v -run TestMemory ./decoder/
+```
 
 ### Streaming Encoder
 
-| Document Size | Batch Encoder | Stream Encoder | Memory Difference |
-|---------------|---------------|----------------|-------------------|
-| 1K individuals | 1.7 ms / 400 KB | 1.8 ms / ~1 KB | 400x less memory |
-| 10K individuals | 17 ms / 4 MB | 18 ms / ~1 KB | 4000x less memory |
-| 100K individuals | 170 ms / 40 MB | 180 ms / ~1 KB | 40000x less memory |
+The throughput benchmarks below construct records inside the loop for the streaming path (matching how real streaming consumers produce records on the fly) and use a pre-built `Document` for the batch path (because batch *requires* the full Document to exist before it can run):
 
-**Key Insight**: Stream encoder maintains O(1) memory regardless of record count.
+| Metric (1,000 individuals) | `encoder.Encode` (batch, pre-built doc) | `encoder.StreamEncoder` (records produced in loop) |
+|---|---|---|
+| Time/op | 1.27 ms | 1.77 ms |
+| Bytes/op | 400 KB | 1.67 MB |
+| Allocs/op | 25,009 | 41,505 |
+
+Streaming throughput appears worse because the streaming benchmark includes record-construction cost while the batch benchmark excludes it (the cost is paid up front, before `b.ResetTimer`). For a memory comparison where both paths do the same total work, see the retained-heap test:
+
+| Metric (10,000 individuals) | Batch | Streaming | Ratio |
+|---|---|---|---|
+| Cumulative bytes | 16 MB | 16 MB | 0.99x |
+| **Retained heap after** | **14,813 KB** | **2,492 KB** | **0.17x** |
+
+Streaming encode retains ~17% of batch encode's heap because batch keeps the entire `Document` (all 10K records) live throughout, while streaming generates and discards each record as it writes.
+
+```bash
+go test -bench='EncodeLarge|StreamEncodeLarge' -benchmem ./encoder/
+go test -v -run TestMemory ./encoder/
+```
 
 ### Streaming Validator
 
@@ -112,7 +147,7 @@ The streaming APIs provide memory-efficient alternatives for very large files.
 | 10K individuals | 66 µs / 0 B | 72 µs | O(unique XRefs) |
 | 100K individuals | 660 µs / 0 B | 720 µs | O(unique XRefs) |
 
-**Key Insight**: Stream validator memory scales with unique cross-references, not record count.
+Stream validator memory scales with unique cross-references (needed for orphan-reference detection at `Finalize()`), not total record count. Note that streaming validation currently covers Individual and Family records fully and collects cross-references from Source records; Repository, Note, Multimedia Object, and Submitter records are not validated in streaming mode — use batch `validator.Validate()` if you need coverage for those types.
 
 ### Incremental Parser
 
