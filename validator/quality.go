@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // QualityReport contains aggregated validation results and data completeness statistics.

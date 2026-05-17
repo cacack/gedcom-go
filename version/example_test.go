@@ -3,9 +3,9 @@ package version_test
 import (
 	"fmt"
 
-	"github.com/cacack/gedcom-go/gedcom"
-	"github.com/cacack/gedcom-go/parser"
-	"github.com/cacack/gedcom-go/version"
+	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v2/parser"
+	"github.com/cacack/gedcom-go/v2/version"
 )
 
 // Example demonstrates basic GEDCOM version detection.

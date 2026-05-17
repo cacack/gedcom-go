@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // textToTags converts a potentially multiline string value to GEDCOM tags.

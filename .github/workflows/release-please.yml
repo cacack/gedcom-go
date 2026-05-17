@@ -44,12 +44,15 @@ jobs:
         with:
           egress-policy: audit
 
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
       - name: Trigger pkg.go.dev indexing
         env:
           VERSION: ${{ needs.release-please.outputs.tag_name }}
         run: |
-          echo "Triggering pkg.go.dev for version $VERSION..."
-          curl -f "https://proxy.golang.org/github.com/cacack/gedcom-go/@v/$VERSION.info" || true
-          curl -f "https://sum.golang.org/lookup/github.com/cacack/gedcom-go@$VERSION" || true
+          MODULE=$(awk '/^module / {print $2}' go.mod)
+          echo "Triggering pkg.go.dev for $MODULE@$VERSION..."
+          curl -f "https://proxy.golang.org/$MODULE/@v/$VERSION.info" || true
+          curl -f "https://sum.golang.org/lookup/$MODULE@$VERSION" || true
           echo "Indexing request sent to pkg.go.dev"
-          echo "Documentation will be available at: https://pkg.go.dev/github.com/cacack/gedcom-go@$VERSION"
+          echo "Documentation will be available at: https://pkg.go.dev/$MODULE@$VERSION"

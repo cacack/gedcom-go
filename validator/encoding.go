@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // EncodingValidator validates GEDCOM 7.0 encoding requirements.

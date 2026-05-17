@@ -10,7 +10,7 @@ package validator
 import (
 	"fmt"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // ReferenceType represents the type of cross-reference being validated.

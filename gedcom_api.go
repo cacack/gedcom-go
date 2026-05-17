@@ -38,20 +38,20 @@
 //
 // For advanced use cases requiring custom options, import the underlying packages directly:
 //
-//   - github.com/cacack/gedcom-go/decoder - Custom decode options, progress callbacks, diagnostics
-//   - github.com/cacack/gedcom-go/encoder - Custom line endings, encoding options
-//   - github.com/cacack/gedcom-go/validator - Configurable validation rules, quality reports
-//   - github.com/cacack/gedcom-go/converter - Custom conversion options, strict mode
+//   - github.com/cacack/gedcom-go/v2/decoder - Custom decode options, progress callbacks, diagnostics
+//   - github.com/cacack/gedcom-go/v2/encoder - Custom line endings, encoding options
+//   - github.com/cacack/gedcom-go/v2/validator - Configurable validation rules, quality reports
+//   - github.com/cacack/gedcom-go/v2/converter - Custom conversion options, strict mode
 package gedcomgo
 
 import (
 	"io"
 
-	"github.com/cacack/gedcom-go/converter"
-	"github.com/cacack/gedcom-go/decoder"
-	"github.com/cacack/gedcom-go/encoder"
-	"github.com/cacack/gedcom-go/gedcom"
-	"github.com/cacack/gedcom-go/validator"
+	"github.com/cacack/gedcom-go/v2/converter"
+	"github.com/cacack/gedcom-go/v2/decoder"
+	"github.com/cacack/gedcom-go/v2/encoder"
+	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v2/validator"
 )
 
 // Type re-exports for single-import convenience.

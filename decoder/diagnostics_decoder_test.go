@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/parser"
+	"github.com/cacack/gedcom-go/v2/parser"
 )
 
 // TestDecodeWithDiagnosticsBasic tests basic usage of DecodeWithDiagnostics

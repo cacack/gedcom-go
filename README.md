@@ -44,7 +44,7 @@ Full compatibility matrix: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)
 ## Installation
 
 ```bash
-go get github.com/cacack/gedcom-go
+go get github.com/cacack/gedcom-go/v2
 ```
 
 ## Requirements
@@ -58,7 +58,7 @@ This library tracks Go's [release policy](https://go.dev/doc/devel/release#polic
 The library provides a simple, single-import API for common operations. Import with an alias for cleaner code:
 
 ```go
-import gedcomgo "github.com/cacack/gedcom-go"
+import gedcomgo "github.com/cacack/gedcom-go/v2"
 ```
 
 ### Parse a GEDCOM File
@@ -71,7 +71,7 @@ import (
     "log"
     "os"
 
-    gedcomgo "github.com/cacack/gedcom-go"
+    gedcomgo "github.com/cacack/gedcom-go/v2"
 )
 
 func main() {
@@ -122,10 +122,10 @@ For files too large to materialize in memory (10k+ individuals, exports from maj
 import (
     "os"
 
-    "github.com/cacack/gedcom-go/charset"
-    "github.com/cacack/gedcom-go/encoder"
-    "github.com/cacack/gedcom-go/gedcom"
-    "github.com/cacack/gedcom-go/parser"
+    "github.com/cacack/gedcom-go/v2/charset"
+    "github.com/cacack/gedcom-go/v2/encoder"
+    "github.com/cacack/gedcom-go/v2/gedcom"
+    "github.com/cacack/gedcom-go/v2/parser"
 )
 
 // Streaming parse — iterate level-0 records without building a Document.
@@ -255,7 +255,7 @@ To opt into strict parsing (fail on the first syntax error, no diagnostics colle
   - [`examples/query`](examples/query) - Navigating and querying genealogy data
   - [`examples/validate`](examples/validate) - Validating GEDCOM files
   - [`examples/stream`](examples/stream) - Streaming parse and encode for very large files
-- **API Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go](https://pkg.go.dev/github.com/cacack/gedcom-go)
+- **API Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go/v2](https://pkg.go.dev/github.com/cacack/gedcom-go/v2)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Advanced Usage
@@ -273,10 +273,10 @@ Option types — `DecodeOptions`, `EncodeOptions`, `ValidateOptions` — are re-
 
 ```go
 import (
-    "github.com/cacack/gedcom-go/decoder"
-    "github.com/cacack/gedcom-go/encoder"
-    "github.com/cacack/gedcom-go/validator"
-    "github.com/cacack/gedcom-go/converter"
+    "github.com/cacack/gedcom-go/v2/decoder"
+    "github.com/cacack/gedcom-go/v2/encoder"
+    "github.com/cacack/gedcom-go/v2/validator"
+    "github.com/cacack/gedcom-go/v2/converter"
 )
 ```
 

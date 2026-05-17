@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cacack/gedcom-go/decoder"
+	"github.com/cacack/gedcom-go/v2/decoder"
 )
 
 // Example demonstrates basic GEDCOM file decoding.

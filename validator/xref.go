@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // MaxXRefLength is the maximum XRef content length (excluding @ delimiters)

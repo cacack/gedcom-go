@@ -85,7 +85,7 @@ jobs:
       uses: vladopajic/go-test-coverage@a93b868a4cbcbf18dc3781650fad241f0020e609 # v2
       with:
         profile: coverage.out
-        local-prefix: github.com/cacack/gedcom-go
+        local-prefix: github.com/cacack/gedcom-go/v2
         threshold-file: 0
         threshold-package: 85
         threshold-total: 85
@@ -97,7 +97,7 @@ jobs:
         echo "| Package | Coverage | Status |"
         echo "|---------|----------|--------|"
         for pkg in charset decoder encoder gedcom merge parser validator version; do
-          COV=$(go tool cover -func=coverage.out | grep "github.com/cacack/gedcom-go/$pkg" | tail -1 | awk '{print $3}')
+          COV=$(go tool cover -func=coverage.out | grep "github.com/cacack/gedcom-go/v2/$pkg" | tail -1 | awk '{print $3}')
           PCT=$(echo "$COV" | sed 's/%//')
           if (( $(echo "$PCT >= 85.0" | bc -l) )); then
             echo "| $pkg | $COV | ✅ |"
@@ -161,6 +161,11 @@ jobs:
 
     - name: Run go vet
       run: go vet ./...
+
+    - name: Check module path matches latest tag major
+      run: |
+        git fetch --tags --depth=1 origin
+        ./scripts/check-module-path.sh
 
   # Dependency review - blocks PRs introducing vulnerable dependencies
   dependency-review:

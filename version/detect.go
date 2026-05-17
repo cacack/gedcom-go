@@ -3,8 +3,8 @@ package version
 import (
 	"strings"
 
-	"github.com/cacack/gedcom-go/gedcom"
-	"github.com/cacack/gedcom-go/parser"
+	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v2/parser"
 )
 
 // DetectVersion detects the GEDCOM version from parsed lines.

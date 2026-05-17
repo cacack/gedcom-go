@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cacack/gedcom-go/parser"
+	"github.com/cacack/gedcom-go/v2/parser"
 )
 
 // Example demonstrates basic GEDCOM line parsing.

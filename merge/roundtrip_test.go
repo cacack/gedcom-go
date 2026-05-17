@@ -5,11 +5,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cacack/gedcom-go/decoder"
-	"github.com/cacack/gedcom-go/encoder"
-	"github.com/cacack/gedcom-go/gedcom"
-	"github.com/cacack/gedcom-go/merge"
-	"github.com/cacack/gedcom-go/validator"
+	"github.com/cacack/gedcom-go/v2/decoder"
+	"github.com/cacack/gedcom-go/v2/encoder"
+	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v2/merge"
+	"github.com/cacack/gedcom-go/v2/validator"
 )
 
 // TestCombine_Roundtrip_PrefixDoc2 exercises the end-to-end pipeline:

@@ -1,6 +1,6 @@
 package encoder
 
-import "github.com/cacack/gedcom-go/gedcom"
+import "github.com/cacack/gedcom-go/v2/gedcom"
 
 // DefaultMaxLineLength is the recommended maximum line length for GEDCOM files.
 // GEDCOM spec recommends lines not exceed 255 characters total.

@@ -5,8 +5,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/cacack/gedcom-go/decoder"
-	"github.com/cacack/gedcom-go/encoder"
+	"github.com/cacack/gedcom-go/v2/decoder"
+	"github.com/cacack/gedcom-go/v2/encoder"
 )
 
 // AssertRoundTrip decodes input, encodes it, decodes again, and asserts equality.

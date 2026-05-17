@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/converter"
-	"github.com/cacack/gedcom-go/decoder"
-	"github.com/cacack/gedcom-go/encoder"
-	"github.com/cacack/gedcom-go/gedcom"
-	"github.com/cacack/gedcom-go/validator"
+	"github.com/cacack/gedcom-go/v2/converter"
+	"github.com/cacack/gedcom-go/v2/decoder"
+	"github.com/cacack/gedcom-go/v2/encoder"
+	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v2/validator"
 )
 
 // Test GEDCOM content for basic tests.

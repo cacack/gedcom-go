@@ -3,7 +3,7 @@ package decoder
 import (
 	"testing"
 
-	"github.com/cacack/gedcom-go/parser"
+	"github.com/cacack/gedcom-go/v2/parser"
 )
 
 func TestNormalizeLevelJumps_NoJumps(t *testing.T) {

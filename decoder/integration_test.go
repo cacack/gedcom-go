@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // T058: Parse all sample files in testdata/ and verify success

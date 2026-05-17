@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // Helper to create a document with specific version and XRefs

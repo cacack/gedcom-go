@@ -3,7 +3,7 @@ package validator
 import (
 	"fmt"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // ValidationError represents a validation error with error code, message, line number, and optional cross-reference.

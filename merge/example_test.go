@@ -3,8 +3,8 @@ package merge_test
 import (
 	"fmt"
 
-	"github.com/cacack/gedcom-go/gedcom"
-	"github.com/cacack/gedcom-go/merge"
+	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v2/merge"
 )
 
 // Example_remapXRefs demonstrates the recommended transform pattern:
