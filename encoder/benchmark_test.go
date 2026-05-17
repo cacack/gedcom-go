@@ -2,7 +2,9 @@ package encoder
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"runtime"
 	"testing"
 
 	"github.com/cacack/gedcom-go/gedcom"
@@ -105,33 +107,159 @@ func BenchmarkEncodeLineEndings(b *testing.B) {
 	}
 }
 
+// BenchmarkStreamEncodeLarge benchmarks streaming encode of 1000 individuals
+// where records are generated *inside* the loop, mirroring how a real
+// streaming consumer produces records on the fly without materializing the
+// full document.
+//
+// The comparison with BenchmarkEncodeLarge is intentionally asymmetric:
+// batch encoding requires the full Document to exist before it can run, so
+// that allocation cost is part of the batch workload. Use
+// TestAllocDeltaBatchVsStreamingEncode for a more direct memory comparison.
+//
+//	go test -bench='EncodeLarge|StreamEncodeLarge' -benchmem ./encoder/
+func BenchmarkStreamEncodeLarge(b *testing.B) {
+	const n = 1000
+	header := &gedcom.Header{Version: "5.5", Encoding: "UTF-8", SourceSystem: "benchmark"}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		enc := NewStreamEncoder(io.Discard)
+		if err := enc.WriteHeader(header); err != nil {
+			b.Fatal(err)
+		}
+		for j := 0; j < n; j++ {
+			if err := enc.WriteRecord(newIndividual(j)); err != nil {
+				b.Fatal(err)
+			}
+		}
+		if err := enc.WriteTrailer(); err != nil {
+			b.Fatal(err)
+		}
+		if err := enc.Close(); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+// TestMemoryBatchVsStreamingEncode reports two complementary memory metrics
+// for batch encode vs streaming encode of 10,000 generated individuals:
+//
+//  1. Cumulative allocated bytes (TotalAlloc delta) — total work done.
+//  2. Retained heap after return (HeapAlloc delta with KeepAlive) — what's
+//     still resident when the call completes.
+//
+// The streaming win is in (2): the batch path constructs a full Document
+// (held alive during Encode and after, via KeepAlive), while streaming
+// generates records on the fly and discards them. Cumulative work in (1)
+// is similar because both paths construct the same records — they just
+// retain them differently.
+//
+//	go test -v -run TestMemory ./encoder/
+func TestMemoryBatchVsStreamingEncode(t *testing.T) {
+	const n = 10000
+
+	batchAllocs, batchRetained := measureMemory(t, func() {
+		doc := generateDocument(n)
+		if err := Encode(io.Discard, doc); err != nil {
+			t.Fatal(err)
+		}
+		runtime.KeepAlive(doc)
+	})
+
+	streamAllocs, streamRetained := measureMemory(t, func() {
+		header := &gedcom.Header{Version: "5.5", Encoding: "UTF-8", SourceSystem: "benchmark"}
+		enc := NewStreamEncoder(io.Discard)
+		if err := enc.WriteHeader(header); err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < n; i++ {
+			if err := enc.WriteRecord(newIndividual(i)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := enc.WriteTrailer(); err != nil {
+			t.Fatal(err)
+		}
+		if err := enc.Close(); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Logf("Individuals: %d", n)
+	t.Logf("Batch encode:    cumulative=%d KB retained=%d KB", batchAllocs/1024, batchRetained/1024)
+	t.Logf("Streaming encode: cumulative=%d KB retained=%d KB", streamAllocs/1024, streamRetained/1024)
+	if batchRetained > 0 {
+		t.Logf("Streaming retains ~%.1f%% of batch retained heap", 100*float64(streamRetained)/float64(batchRetained))
+	}
+}
+
+// newIndividual produces a representative individual record at index i with
+// a unique XRef. The shape mirrors generateDocument so a per-record streaming
+// loop produces semantically equivalent output to the batch path.
+func newIndividual(i int) *gedcom.Record {
+	xref := fmt.Sprintf("@I%d@", i)
+	name := fmt.Sprintf("Person %d /Surname/", i)
+	return &gedcom.Record{
+		XRef: xref,
+		Type: gedcom.RecordTypeIndividual,
+		Tags: []*gedcom.Tag{
+			{Level: 1, Tag: "NAME", Value: name},
+			{Level: 1, Tag: "SEX", Value: "M"},
+			{Level: 1, Tag: "BIRT"},
+			{Level: 2, Tag: "DATE", Value: "1 JAN 1980"},
+			{Level: 2, Tag: "PLAC", Value: "New York, NY"},
+			{Level: 1, Tag: "DEAT"},
+			{Level: 2, Tag: "DATE", Value: "1 JAN 2050"},
+			{Level: 2, Tag: "PLAC", Value: "Boston, MA"},
+		},
+		Entity: &gedcom.Individual{
+			XRef: xref,
+			Names: []*gedcom.PersonalName{
+				{Full: name},
+			},
+			Sex: "M",
+		},
+	}
+}
+
+// measureMemory runs fn and returns two values:
+//   - cumulative: bytes allocated during fn (TotalAlloc delta — monotonic,
+//     GC-immune; "total work done")
+//   - retained: heap-resident bytes after fn returns (HeapAlloc delta;
+//     "what's still in memory afterwards")
+//
+// Together they capture two distinct aspects of memory cost. Call sites
+// that want the post-call heap to include something specific must use
+// runtime.KeepAlive on it inside fn so the GC can't reclaim it before
+// the second ReadMemStats.
+//
+// This helper is intentionally duplicated in decoder/benchmark_test.go
+// (Go test helpers can't be shared across packages without an internal
+// package, and the duplication is small enough that adding one isn't
+// worth it). Keep the two copies in sync.
+func measureMemory(t *testing.T, fn func()) (cumulative, retained uint64) {
+	t.Helper()
+	runtime.GC()
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	fn()
+	runtime.ReadMemStats(&after)
+	cumulative = after.TotalAlloc - before.TotalAlloc
+	if after.HeapAlloc > before.HeapAlloc {
+		retained = after.HeapAlloc - before.HeapAlloc
+	}
+	return cumulative, retained
+}
+
 // Helper function to generate a document with N individuals
 func generateDocument(numIndividuals int) *gedcom.Document {
 	records := make([]*gedcom.Record, 0, numIndividuals)
 
 	for i := 0; i < numIndividuals; i++ {
-		xref := "@I" + string(rune('0'+i%10)) + "@"
-		records = append(records, &gedcom.Record{
-			XRef: xref,
-			Type: gedcom.RecordTypeIndividual,
-			Tags: []*gedcom.Tag{
-				{Level: 1, Tag: "NAME", Value: "Person " + string(rune('0'+i%10)) + " /Surname/"},
-				{Level: 1, Tag: "SEX", Value: "M"},
-				{Level: 1, Tag: "BIRT"},
-				{Level: 2, Tag: "DATE", Value: "1 JAN 1980"},
-				{Level: 2, Tag: "PLAC", Value: "New York, NY"},
-				{Level: 1, Tag: "DEAT"},
-				{Level: 2, Tag: "DATE", Value: "1 JAN 2050"},
-				{Level: 2, Tag: "PLAC", Value: "Boston, MA"},
-			},
-			Entity: &gedcom.Individual{
-				XRef: xref,
-				Names: []*gedcom.PersonalName{
-					{Full: "Person " + string(rune('0'+i%10)) + " /Surname/"},
-				},
-				Sex: "M",
-			},
-		})
+		records = append(records, newIndividual(i))
 	}
 
 	return &gedcom.Document{

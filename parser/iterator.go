@@ -2,9 +2,28 @@ package parser
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"iter"
 )
+
+// ErrLineTooLong is returned by [RecordIteratorWithOffset] / [RecordsWithOffset]
+// when a single line exceeds [MaxLineBytes]. The streaming [RecordIterator] /
+// [Records] surface the same condition via [bufio.ErrTooLong].
+var ErrLineTooLong = errors.New("gedcom-go/parser: line exceeds MaxLineBytes")
+
+// MaxLineBytes is the maximum length of a single GEDCOM line accepted by the
+// streaming iterators. The GEDCOM 5.5.1 spec recommends a 255-byte limit;
+// real-world files routinely exceed it (CONC/CONT chains, embedded BLOB
+// data), so we use a generous 1 MiB ceiling. A line longer than this aborts
+// the iterator with an error rather than allocating unboundedly — preventing
+// hostile or corrupt input from exhausting memory.
+const MaxLineBytes = 1 << 20 // 1 MiB
+
+// recordLinesInitialCap is a hint for the initial capacity of RawRecord.Lines.
+// Typical INDI records have 10-30 subordinate lines; this avoids 3-4 slice
+// reallocations per record without over-allocating for simple ones.
+const recordLinesInitialCap = 16
 
 // RawRecord represents a complete GEDCOM record with all its subordinate lines.
 // A record starts at level 0 and includes all following lines until the next level 0.
@@ -40,9 +59,16 @@ type RecordIterator struct {
 
 // NewRecordIterator creates a new RecordIterator that reads from the given reader.
 // The reader should already be wrapped with charset.NewReader() for encoding normalization.
+//
+// Lines longer than [MaxLineBytes] cause iteration to abort with an error
+// rather than allocating unboundedly. Spec-compliant GEDCOM lines never
+// approach this limit.
 func NewRecordIterator(r io.Reader) *RecordIterator {
 	scanner := bufio.NewScanner(r)
 	scanner.Split(scanGEDCOMLines)
+	// Explicit buffer with documented ceiling; default bufio.Scanner cap is
+	// 64 KiB which can be too small for files containing embedded BLOBs.
+	scanner.Buffer(make([]byte, 0, 4096), MaxLineBytes)
 
 	return &RecordIterator{
 		scanner:    scanner,
@@ -60,6 +86,7 @@ func (it *RecordIterator) Next() bool {
 
 	record := &RawRecord{
 		ByteOffset: it.byteOffset,
+		Lines:      make([]*Line, 0, recordLinesInitialCap),
 	}
 
 	// Use pending line from previous iteration if available
@@ -220,9 +247,12 @@ func trimLineEnding(b []byte) []byte {
 }
 
 // readGEDCOMLine reads bytes until a line terminator (CR, LF, or CRLF).
-// Returns the line including the terminator(s).
+// Returns the line including the terminator(s). Aborts with ErrLineTooLong
+// if the line exceeds [MaxLineBytes] before a terminator is reached.
 func readGEDCOMLine(r *bufio.Reader) ([]byte, error) {
-	var line []byte
+	// Pre-size to cover typical GEDCOM lines (255-byte spec recommendation)
+	// without intermediate reallocations.
+	line := make([]byte, 0, 256)
 
 	for {
 		b, err := r.ReadByte()
@@ -234,6 +264,9 @@ func readGEDCOMLine(r *bufio.Reader) ([]byte, error) {
 		}
 
 		line = append(line, b)
+		if len(line) > MaxLineBytes {
+			return nil, ErrLineTooLong
+		}
 
 		if b == '\n' {
 			return line, nil
@@ -256,7 +289,9 @@ func (it *RecordIteratorWithOffset) Next() bool {
 		return false
 	}
 
-	record := &RawRecord{}
+	record := &RawRecord{
+		Lines: make([]*Line, 0, recordLinesInitialCap),
+	}
 
 	// Use pending line from previous iteration
 	if it.pending != nil {
@@ -328,22 +363,24 @@ func (it *RecordIteratorWithOffset) Err() error {
 
 // Records returns an iterator over GEDCOM records using Go 1.23 range-over-func.
 // It yields (*RawRecord, nil) for each successfully parsed record.
-// On parse error, it yields (nil, error) and stops iteration.
+// On parse error, it yields (nil, error) — exactly once — and stops iteration.
 //
-// This function provides a modern, idiomatic alternative to [RecordIterator]
-// for streaming GEDCOM record processing. The reader should already be wrapped
-// with charset.NewReader() for encoding normalization.
-//
-// Usage:
+// IMPORTANT: when err is non-nil, record is nil. Always check err before
+// dereferencing record:
 //
 //	for record, err := range parser.Records(reader) {
 //	    if err != nil {
-//	        return err
+//	        return err  // record is nil here
 //	    }
-//	    // process record
+//	    // safe to use record
 //	}
 //
-// Early termination is supported - breaking from the loop will stop iteration:
+// This function provides a modern, idiomatic alternative to [RecordIterator]
+// for streaming GEDCOM record processing. The reader should already be wrapped
+// with charset.NewReader() for encoding normalization. Lines longer than
+// [MaxLineBytes] cause iteration to abort with [bufio.ErrTooLong].
+//
+// Early termination is supported — breaking from the loop will stop iteration:
 //
 //	for record, err := range parser.Records(reader) {
 //	    if err != nil {
@@ -369,11 +406,13 @@ func Records(r io.Reader) iter.Seq2[*RawRecord, error] {
 
 // RecordsWithOffset returns an iterator over GEDCOM records with accurate byte offset tracking.
 // It yields (*RawRecord, nil) for each successfully parsed record.
-// On parse error, it yields (nil, error) and stops iteration.
+// On parse error, it yields (nil, error) — exactly once — and stops iteration.
+// When err is non-nil, record is nil; always check err before dereferencing record.
 //
 // This is the range-over-func equivalent of [RecordIteratorWithOffset], providing
 // precise ByteOffset and ByteLength values suitable for building file indexes.
 // The reader should already be wrapped with charset.NewReader() for encoding normalization.
+// Lines longer than [MaxLineBytes] cause iteration to abort with [ErrLineTooLong].
 //
 // Usage:
 //

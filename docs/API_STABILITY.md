@@ -50,10 +50,10 @@ These packages/APIs are stable and follow semver strictly:
 |---------|--------|-------|
 | `gedcom` | Stable | Core types: Document, Individual, Family, etc. |
 | `decoder` | Stable | `Decode()`, `DecodeWithOptions()` |
-| `encoder` | Stable | `Encode()`, `EncodeWithOptions()` |
+| `encoder` | Stable | `Encode()`, `EncodeWithOptions()`, `NewStreamEncoder()`, `NewStreamEncoderWithOptions()`, `EncodeStreaming()`, `EncodeStreamingWithOptions()` |
 | `converter` | Stable | `Convert()`, `ConvertWithOptions()` |
-| `parser` | Stable | `Parse()`, `ParseLine()` |
-| `validator` | Stable | `Validate()`, `ValidateAll()` |
+| `parser` | Stable | `Parse()`, `ParseLine()`, `NewRecordIterator()`, `NewRecordIteratorWithOffset()`, `Records()`, `RecordsWithOffset()`, `NewLazyParser()` |
+| `validator` | Stable | `Validate()`, `ValidateAll()`, `NewStreamingValidator()` |
 | `charset` | Stable | `NewReader()` |
 | `version` | Stable | `Detect()`, version constants |
 
@@ -61,7 +61,6 @@ These packages/APIs are stable and follow semver strictly:
 
 Features marked experimental may change in minor versions:
 
-- Streaming encoder/decoder APIs
 - Duplicate detection algorithms
 - Quality report format
 

@@ -245,7 +245,10 @@ func (p *LazyParser) AllRecords() iter.Seq2[*RawRecord, error] {
 	return p.RecordsFrom(0)
 }
 
-// XRefs returns all XRefs in the index.
+// XRefs returns all XRefs in the index, in sorted lexicographic order for
+// reproducibility. Each returned XRef is guaranteed resolvable via
+// [LazyParser.FindRecord] as long as the underlying file has not been
+// modified since the index was built (or loaded via [LazyParser.LoadIndex]).
 // Returns nil if no index is available.
 func (p *LazyParser) XRefs() []string {
 	if p.index == nil {

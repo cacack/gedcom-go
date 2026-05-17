@@ -154,7 +154,56 @@ Error Types: 4
 
 ---
 
-### 4. Encode - Creating GEDCOM Files
+### 4. Stream - Memory-Efficient Streaming Parse and Encode
+
+**Location**: [`stream/main.go`](stream/main.go)
+
+**What it does**: Demonstrates the streaming APIs for handling very large GEDCOM files with constant memory usage. Shows two streaming halves:
+
+- **Streaming parse** with `parser.Records` — iterate level-0 records from any `io.Reader` without building a full `Document`
+- **Streaming encode** with `encoder.NewStreamEncoder` — write records one at a time without holding the document in memory
+
+**How to run**:
+```bash
+# Streaming parse only (skips encode demo)
+cd examples/stream
+go run main.go ../../testdata/gedcom-5.5/pres2020.ged
+
+# Streaming parse + streaming encode to file
+go run main.go ../../testdata/gedcom-5.5/pres2020.ged /tmp/out.ged
+```
+
+**Example output**:
+```text
+=== Streaming Parse ===
+Input: ../../testdata/gedcom-5.5/pres2020.ged
+Total lines processed: 49431
+Record counts by type:
+  HEAD: 1
+  INDI: 2322
+  FAM: 1115
+  SOUR: 91
+  NOTE: 141
+  OBJE: 171
+  REPO: 1
+  SUBM: 1
+  TRLR: 1
+[heap after streaming parse] HeapAlloc=3053KB Sys=12978KB
+
+=== Streaming Encode ===
+Wrote 1000 individuals to /tmp/out.ged using StreamEncoder.
+[heap after streaming encode] HeapAlloc=3382KB Sys=12978KB
+```
+
+**Use cases**:
+- Files larger than available RAM (10k+ individuals)
+- Extracting subsets without a full Document build
+- Generating GEDCOM exports from streaming data sources
+- Memory-constrained environments
+
+---
+
+### 5. Encode - Creating GEDCOM Files
 
 **Location**: [`encode/main.go`](encode/main.go)
 
@@ -231,6 +280,9 @@ cd query && go run main.go ../../testdata/gedcom-5.5/royal92.ged && cd ..
 
 # Run validate example
 cd validate && go run main.go ../../testdata/gedcom-5.5/minimal.ged && cd ..
+
+# Run stream example (streaming parse + streaming encode)
+cd stream && go run main.go ../../testdata/gedcom-5.5/pres2020.ged /tmp/streamed.ged && cd ..
 
 # Run encode example
 cd encode && go run main.go /tmp/output.ged && cd ..
