@@ -339,6 +339,36 @@ copy := doc.Clone()  // pure function; original unchanged
 `gedcom.CloneTags([]*Tag) []*Tag` is the slice complement to
 `Tag.Clone()`.
 
+### Merge Primitives
+
+The `merge` package provides mechanical building blocks for combining
+documents. It handles the bookkeeping (XRef remapping, header
+compatibility, collision resolution) without imposing record-level
+merge policy — that belongs in the consuming application.
+
+```go
+// Remap every XRef through a caller-supplied transform.
+remapped, mapping, err := merge.RemapXRefs(doc, func(old string) string {
+    return "@a_" + old[1:]  // prefix into a disjoint namespace
+})
+
+// Combine two documents with a chosen collision strategy.
+combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
+    CollisionStrategy: merge.PrefixDoc2,
+    Prefix:            "b_",
+})
+```
+
+| Function | Description |
+|----------|-------------|
+| `merge.RemapXRefs(doc, transform)` | Pure XRef rewrite preserving referential integrity; original document unchanged |
+| `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `RenumberDoc2`) |
+
+`Combine` returns a `CombineReport` describing the XRefs that were
+remapped on doc2 and any header fields where doc1's value was kept
+over a differing doc2 value. Both inputs are deep-copied; neither is
+mutated.
+
 ## Record Types
 
 ### Individuals (INDI)

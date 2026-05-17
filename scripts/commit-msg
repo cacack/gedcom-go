@@ -26,7 +26,7 @@ if ! echo "$SUBJECT" | grep -qE '^(feat|fix)(\(.+\))?!?:'; then
 fi
 
 # Library packages that constitute the public module
-LIB_PATTERN='^(charset|converter|decoder|encoder|gedcom|parser|validator|version)/'
+LIB_PATTERN='^(charset|converter|decoder|encoder|gedcom|merge|parser|validator|version)/'
 
 # Get staged files (what's actually being committed)
 FILES=$(git diff --cached --name-only)
@@ -39,7 +39,7 @@ if ! echo "$FILES" | grep -qE "$LIB_PATTERN"; then
   echo "  Use ci, build, docs, refactor, chore, etc. for non-library changes."
   echo ""
   echo "  Library packages: charset, converter, decoder, encoder, gedcom,"
-  echo "                    parser, validator, version"
+  echo "                    merge, parser, validator, version"
   echo ""
   echo "  Staged files:"
   echo "$FILES" | sed 's/^/    /'
