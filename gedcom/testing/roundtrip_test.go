@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // validMinimalGEDCOM is a minimal valid GEDCOM 5.5.1 file.

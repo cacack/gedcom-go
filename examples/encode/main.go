@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cacack/gedcom-go/encoder"
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/encoder"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 func main() {

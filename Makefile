@@ -303,7 +303,7 @@ preflight: ## Run all CI checks locally before pushing
 	@echo "  Running preflight checks (mirrors CI)"
 	@echo "═══════════════════════════════════════════════"
 	@echo ""
-	@echo "→ [1/8] Tidying go.mod..."
+	@echo "→ [1/9] Tidying go.mod..."
 	@$(GOMOD) tidy
 	@if [ -n "$$(git status --porcelain go.mod go.sum)" ]; then \
 		echo "✗ go.mod/go.sum changed after tidy"; \
@@ -311,7 +311,10 @@ preflight: ## Run all CI checks locally before pushing
 	fi
 	@echo "✓ go.mod is tidy"
 	@echo ""
-	@echo "→ [2/8] Checking formatting..."
+	@echo "→ [2/9] Checking module path matches latest tag major..."
+	@./scripts/check-module-path.sh
+	@echo ""
+	@echo "→ [3/9] Checking formatting..."
 	@UNFORMATTED=$$(gofmt -l .); \
 	if [ -n "$$UNFORMATTED" ]; then \
 		echo "✗ Files not formatted:"; \
@@ -320,22 +323,22 @@ preflight: ## Run all CI checks locally before pushing
 	fi
 	@echo "✓ Code is formatted"
 	@echo ""
-	@echo "→ [3/8] Running go vet..."
+	@echo "→ [4/9] Running go vet..."
 	@$(GOVET) ./...
 	@echo "✓ No vet issues"
 	@echo ""
-	@echo "→ [4/8] Running golangci-lint..."
+	@echo "→ [5/9] Running golangci-lint..."
 	@GOLANGCI_LINT=$$(command -v golangci-lint || echo "$$HOME/go/bin/golangci-lint"); \
 	if [ ! -x "$$GOLANGCI_LINT" ]; then GOLANGCI_LINT="$$(go env GOPATH)/bin/golangci-lint"; fi; \
 	if [ ! -x "$$GOLANGCI_LINT" ]; then echo "golangci-lint not found. Run 'make install-tools'" && exit 1; fi; \
 	$$GOLANGCI_LINT run --timeout=5m
 	@echo "✓ Lint passed"
 	@echo ""
-	@echo "→ [5/8] Running tests with race detector..."
+	@echo "→ [6/9] Running tests with race detector..."
 	@$(GOTEST) -race ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
 	@echo "✓ Tests passed"
 	@echo ""
-	@echo "→ [6/8] Checking coverage thresholds..."
+	@echo "→ [7/9] Checking coverage thresholds..."
 	@$(GOTEST) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version > /dev/null
 	@GO_TEST_COVERAGE=$$(command -v go-test-coverage || echo "$$HOME/go/bin/go-test-coverage"); \
 	if [ ! -x "$$GO_TEST_COVERAGE" ]; then GO_TEST_COVERAGE="$$(go env GOPATH)/bin/go-test-coverage"; fi; \
@@ -343,14 +346,14 @@ preflight: ## Run all CI checks locally before pushing
 	$$GO_TEST_COVERAGE --config=.testcoverage.yml --profile=$(COVERAGE_FILE)
 	@echo "✓ Coverage thresholds met"
 	@echo ""
-	@echo "→ [7/8] Building examples..."
+	@echo "→ [8/9] Building examples..."
 	@$(GOBUILD) -o /dev/null ./examples/parse
 	@$(GOBUILD) -o /dev/null ./examples/encode
 	@$(GOBUILD) -o /dev/null ./examples/query
 	@$(GOBUILD) -o /dev/null ./examples/validate
 	@echo "✓ Examples build"
 	@echo ""
-	@echo "→ [8/8] Running security scans..."
+	@echo "→ [9/9] Running security scans..."
 	@GOSEC=$$(command -v gosec || echo "$$HOME/go/bin/gosec"); \
 	if [ ! -x "$$GOSEC" ]; then GOSEC="$$(go env GOPATH)/bin/gosec"; fi; \
 	if [ ! -x "$$GOSEC" ]; then echo "gosec not found. Run 'make install-tools'" && exit 1; fi; \

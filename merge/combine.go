@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // CollisionStrategy chooses how to handle XRef collisions between

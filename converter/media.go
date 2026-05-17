@@ -3,7 +3,7 @@ package converter
 import (
 	"strings"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // legacyToIANA maps legacy GEDCOM 5.5/5.5.1 media types to IANA media types.

@@ -7,10 +7,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/decoder"
-	"github.com/cacack/gedcom-go/gedcom"
-	"github.com/cacack/gedcom-go/merge"
-	"github.com/cacack/gedcom-go/validator"
+	"github.com/cacack/gedcom-go/v2/decoder"
+	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v2/merge"
+	"github.com/cacack/gedcom-go/v2/validator"
 )
 
 // buildDoc constructs a small document with the given prefix on its

@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // BenchmarkEncodeMinimal benchmarks encoding a minimal GEDCOM document

@@ -3,7 +3,7 @@ package converter
 import (
 	"strings"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // transformTextForVersion handles CONC/CONT transformation based on target version.

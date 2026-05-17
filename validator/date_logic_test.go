@@ -3,7 +3,7 @@ package validator
 import (
 	"testing"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // Helper to create a parsed date from a simple year (for testing)

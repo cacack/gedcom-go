@@ -5,10 +5,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/cacack/gedcom-go/charset"
-	"github.com/cacack/gedcom-go/gedcom"
-	"github.com/cacack/gedcom-go/parser"
-	"github.com/cacack/gedcom-go/version"
+	"github.com/cacack/gedcom-go/v2/charset"
+	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v2/parser"
+	"github.com/cacack/gedcom-go/v2/version"
 )
 
 // DecodeResult contains the result of decoding a GEDCOM file with diagnostics.

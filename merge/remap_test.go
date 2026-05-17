@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/gedcom"
-	"github.com/cacack/gedcom-go/merge"
+	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v2/merge"
 )
 
 // buildRichFixture creates a small document with cross-references covering

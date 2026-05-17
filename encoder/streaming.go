@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // encodeState represents the current state of the streaming encoder.

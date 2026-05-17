@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // Encode writes a GEDCOM document to a writer.

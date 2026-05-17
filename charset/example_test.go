@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/cacack/gedcom-go/charset"
+	"github.com/cacack/gedcom-go/v2/charset"
 )
 
 // Example demonstrates basic usage of the charset package with UTF-8 data.

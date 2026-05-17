@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	gedcomgo "github.com/cacack/gedcom-go"
-	"github.com/cacack/gedcom-go/gedcom"
+	gedcomgo "github.com/cacack/gedcom-go/v2"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 func TestDefaultOptionsHelpers(t *testing.T) {

@@ -66,8 +66,8 @@ body:
     id: version
     attributes:
       label: gedcom-go Version
-      description: Output of `go list -m github.com/cacack/gedcom-go`
-      placeholder: v1.0.0
+      description: Output of `go list -m github.com/cacack/gedcom-go/v2`
+      placeholder: v2.0.1
     validations:
       required: true
 

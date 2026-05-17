@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 func TestNewStreamingValidator(t *testing.T) {

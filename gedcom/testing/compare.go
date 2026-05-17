@@ -3,7 +3,7 @@ package testing
 import (
 	"fmt"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // compareDocuments compares two documents and returns differences.

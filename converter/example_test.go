@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cacack/gedcom-go/converter"
-	"github.com/cacack/gedcom-go/decoder"
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/converter"
+	"github.com/cacack/gedcom-go/v2/decoder"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // Example demonstrates basic GEDCOM version conversion.

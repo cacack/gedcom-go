@@ -26,7 +26,7 @@ package validator
 import (
 	"fmt"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // StreamingOptions configures the StreamingValidator behavior.

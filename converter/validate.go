@@ -1,8 +1,8 @@
 package converter
 
 import (
-	"github.com/cacack/gedcom-go/gedcom"
-	"github.com/cacack/gedcom-go/validator"
+	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v2/validator"
 )
 
 // validateConverted runs validation on the converted document.

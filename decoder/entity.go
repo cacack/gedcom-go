@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cacack/gedcom-go/gedcom"
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // diagnosticCollector accumulates diagnostics during entity population.

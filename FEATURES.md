@@ -9,7 +9,7 @@ For planned features, see [GitHub Issues](https://github.com/cacack/gedcom-go/is
 Single-import facade for common GEDCOM operations:
 
 ```go
-import gedcomgo "github.com/cacack/gedcom-go"
+import gedcomgo "github.com/cacack/gedcom-go/v2"
 
 doc, err := gedcomgo.Decode(file)           // Parse GEDCOM
 err = gedcomgo.Encode(writer, doc)          // Write GEDCOM
@@ -1481,7 +1481,7 @@ for _, record := range doc.Records {
 The `gedcom/testing` package provides helpers to verify encode/decode cycles preserve data:
 
 ```go
-import gedcomtesting "github.com/cacack/gedcom-go/gedcom/testing"
+import gedcomtesting "github.com/cacack/gedcom-go/v2/gedcom/testing"
 
 func TestMyGEDCOM(t *testing.T) {
     data, _ := os.ReadFile("family.ged")
