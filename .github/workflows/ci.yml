@@ -252,7 +252,7 @@ jobs:
         scan-args: |-
           --recursive
           --format=sarif
-          --output=osv-scanner-results.sarif
+          --output-file=osv-scanner-results.sarif
           ./
 
     - name: Upload osv-scanner results to GitHub Security
