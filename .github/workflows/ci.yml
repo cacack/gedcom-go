@@ -382,6 +382,18 @@ jobs:
           git clone --depth 1 --branch "$LATEST_TAG" "https://github.com/${{ github.repository }}.git" "$OLD_DIR" --quiet
           trap "rm -rf '$OLD_DIR'" EXIT
 
+          # Skip apidiff when the module path itself changed (e.g., v1 -> v2 path bump).
+          # Different module paths are different modules per Go's Semantic Import Versioning,
+          # so apidiff would report every type as "changed" — not a meaningful comparison.
+          OLD_MODULE=$(awk '/^module / {print $2}' "$OLD_DIR/go.mod")
+          NEW_MODULE=$(awk '/^module / {print $2}' go.mod)
+          if [ "$OLD_MODULE" != "$NEW_MODULE" ]; then
+            echo "✅ Module path changed ($OLD_MODULE -> $NEW_MODULE); skipping apidiff."
+            echo "   The v$LATEST_TAG module and the current module are distinct under"
+            echo "   Go's Semantic Import Versioning rules and can coexist."
+            exit 0
+          fi
+
           # Export old API to file, then compare against current
           # This is more reliable than comparing directories directly
           API_FILE=$(mktemp)
