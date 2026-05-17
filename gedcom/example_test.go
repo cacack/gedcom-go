@@ -235,6 +235,166 @@ func ExampleYearsBetween() {
 	// Years: 65, Exact calculation: true
 }
 
+// ExampleDocument_Descendants shows walking the family graph forward.
+func ExampleDocument_Descendants() {
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME John /Smith/
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Jane /Smith/
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Junior /Smith/
+1 FAMC @F1@
+1 FAMS @F2@
+0 @I4@ INDI
+1 NAME Spouse /Smith/
+1 FAMS @F2@
+0 @I5@ INDI
+1 NAME Grandchild /Smith/
+1 FAMC @F2@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+0 @F2@ FAM
+1 HUSB @I3@
+1 WIFE @I4@
+1 CHIL @I5@
+0 TRLR`
+
+	doc, _ := decoder.Decode(strings.NewReader(gedcomData))
+
+	for _, xref := range doc.Descendants("@I1@") {
+		ind := doc.GetIndividual(xref)
+		fmt.Println(ind.Names[0].Full)
+	}
+
+	// Output:
+	// Junior /Smith/
+	// Grandchild /Smith/
+}
+
+// ExampleDocument_Ancestors shows walking the family graph backward.
+func ExampleDocument_Ancestors() {
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME Grandpa /Smith/
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Grandma /Smith/
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Parent /Smith/
+1 FAMC @F1@
+1 FAMS @F2@
+0 @I4@ INDI
+1 NAME Mother /Smith/
+1 FAMS @F2@
+0 @I5@ INDI
+1 NAME Child /Smith/
+1 FAMC @F2@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+0 @F2@ FAM
+1 HUSB @I3@
+1 WIFE @I4@
+1 CHIL @I5@
+0 TRLR`
+
+	doc, _ := decoder.Decode(strings.NewReader(gedcomData))
+
+	for _, xref := range doc.Ancestors("@I5@") {
+		ind := doc.GetIndividual(xref)
+		fmt.Println(ind.Names[0].Full)
+	}
+
+	// Output:
+	// Parent /Smith/
+	// Mother /Smith/
+	// Grandpa /Smith/
+	// Grandma /Smith/
+}
+
+// ExampleDocument_Subset extracts a self-contained sub-document
+// containing a person and everyone transitively referenced by them.
+func ExampleDocument_Subset() {
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME John /Smith/
+1 FAMS @F1@
+1 SOUR @S1@
+0 @I2@ INDI
+1 NAME Jane /Smith/
+1 FAMS @F1@
+0 @I99@ INDI
+1 NAME Unrelated /Doe/
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+0 @S1@ SOUR
+1 TITL Birth certificate
+0 TRLR`
+
+	doc, _ := decoder.Decode(strings.NewReader(gedcomData))
+
+	// Subset including just John and everyone he references.
+	sub, err := doc.Subset([]string{"@I1@"})
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+	fmt.Printf("Records in subset: %d\n", len(sub.Records))
+
+	// @I99@ is in the source but not referenced by @I1@'s closure.
+	fmt.Printf("Unrelated included: %v\n", sub.GetIndividual("@I99@") != nil)
+	fmt.Printf("Spouse included:    %v\n", sub.GetIndividual("@I2@") != nil)
+	fmt.Printf("Source included:    %v\n", sub.GetSource("@S1@") != nil)
+
+	// Output:
+	// Records in subset: 4
+	// Unrelated included: false
+	// Spouse included:    true
+	// Source included:    true
+}
+
+// ExampleIndividual_Descendants shows the convenience wrapper that
+// resolves descendants to *Individual records.
+func ExampleIndividual_Descendants() {
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME Parent /Smith/
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Child /Smith/
+1 FAMC @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 CHIL @I2@
+0 TRLR`
+
+	doc, _ := decoder.Decode(strings.NewReader(gedcomData))
+	parent := doc.GetIndividual("@I1@")
+
+	for _, child := range parent.Descendants(doc) {
+		fmt.Println(child.Names[0].Full)
+	}
+
+	// Output:
+	// Child /Smith/
+}
+
 // ExampleDate_Validate shows date validation.
 func ExampleDate_Validate() {
 	// Valid date

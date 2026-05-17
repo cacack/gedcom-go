@@ -278,6 +278,67 @@ Supported on: Individual events (NO MARR, NO DEAT, NO NATU, NO EMIG, etc.) and F
 | UTF-16 LE/BE | Full | With BOM detection |
 | ANSEL | Full | With combining diacritical reordering |
 
+## Document Operations
+
+### Graph Traversal
+
+Transitive walks across family links, returning XRef sets that compose into other operations (e.g., `Subset`):
+
+```go
+descendants := doc.Descendants("@I1@")  // BFS through FAMS → children
+ancestors   := doc.Ancestors("@I1@")    // BFS through FAMC → parents
+```
+
+Convenience wrappers on `*Individual` that resolve XRefs to records:
+
+```go
+for _, child := range ind.Descendants(doc) { /* ... */ }
+for _, parent := range ind.Ancestors(doc)   { /* ... */ }
+```
+
+- BFS ordering: closer generations precede farther ones
+- Cycle-safe via visited-set termination
+- Results exclude the seed individual
+- Missing or non-individual XRefs return nil
+- No application-level policy baked in (no "include spouses" knob,
+  no generation cap) — callers compose those by unioning seed sets
+
+### Subset Extraction
+
+Build a self-contained sub-document from a seed set of XRefs. Performs
+transitive reference closure (FAM, SOUR, NOTE, OBJE, REPO, SUBM, SNOTE)
+and emits a valid document. The source is not mutated.
+
+```go
+sub, err := doc.Subset(doc.Descendants("@I1@"))
+```
+
+- Header carries Version, Encoding, SourceSystem, Date, Language,
+  Copyright, AncestryTreeID, and Schema from the source
+- `Header.Submitter` pointer kept only when the submitter record is in
+  the closure
+- Raw header tags with XRef fields are filtered: kept only when the
+  pointer target is in the closure
+- Strict mode: unknown seeds and dangling references during closure
+  walking return errors wrapping `gedcom.ErrUnknownXRef`
+- GEDCOM 7.0 `@VOID@` sentinel is skipped (not treated as a missing ref)
+- XRefs are preserved exactly — callers needing fresh IDs apply an
+  XRef remap as a separate step
+
+### Deep Copy
+
+Public `Clone()` methods on `Document`, `Header`, `Trailer`, `Record`,
+`Tag`, `Individual`, `Family`, `Source`, `Repository`, `Note`,
+`MediaObject`, `Submitter`, and `SharedNote`. All return nil for a nil
+receiver and share no pointers with the original.
+
+```go
+copy := doc.Clone()  // pure function; original unchanged
+```
+
+`gedcom.CloneTags([]*Tag) []*Tag` is the slice complement to
+`Tag.Clone()`.
+
 ## Record Types
 
 ### Individuals (INDI)
