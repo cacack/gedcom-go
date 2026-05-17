@@ -127,12 +127,20 @@ func BenchmarkStreamEncodeLarge(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		enc := NewStreamEncoder(io.Discard)
-		_ = enc.WriteHeader(header)
-		for j := 0; j < n; j++ {
-			_ = enc.WriteRecord(newIndividual(j))
+		if err := enc.WriteHeader(header); err != nil {
+			b.Fatal(err)
 		}
-		_ = enc.WriteTrailer()
-		_ = enc.Close()
+		for j := 0; j < n; j++ {
+			if err := enc.WriteRecord(newIndividual(j)); err != nil {
+				b.Fatal(err)
+			}
+		}
+		if err := enc.WriteTrailer(); err != nil {
+			b.Fatal(err)
+		}
+		if err := enc.Close(); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -155,19 +163,29 @@ func TestMemoryBatchVsStreamingEncode(t *testing.T) {
 
 	batchAllocs, batchRetained := measureMemory(t, func() {
 		doc := generateDocument(n)
-		_ = Encode(io.Discard, doc)
+		if err := Encode(io.Discard, doc); err != nil {
+			t.Fatal(err)
+		}
 		runtime.KeepAlive(doc)
 	})
 
 	streamAllocs, streamRetained := measureMemory(t, func() {
 		header := &gedcom.Header{Version: "5.5", Encoding: "UTF-8", SourceSystem: "benchmark"}
 		enc := NewStreamEncoder(io.Discard)
-		_ = enc.WriteHeader(header)
-		for i := 0; i < n; i++ {
-			_ = enc.WriteRecord(newIndividual(i))
+		if err := enc.WriteHeader(header); err != nil {
+			t.Fatal(err)
 		}
-		_ = enc.WriteTrailer()
-		_ = enc.Close()
+		for i := 0; i < n; i++ {
+			if err := enc.WriteRecord(newIndividual(i)); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := enc.WriteTrailer(); err != nil {
+			t.Fatal(err)
+		}
+		if err := enc.Close(); err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	t.Logf("Individuals: %d", n)

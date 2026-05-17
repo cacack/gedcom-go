@@ -120,8 +120,11 @@ For files too large to materialize in memory (10k+ individuals, exports from maj
 
 ```go
 import (
+    "os"
+
     "github.com/cacack/gedcom-go/charset"
     "github.com/cacack/gedcom-go/encoder"
+    "github.com/cacack/gedcom-go/gedcom"
     "github.com/cacack/gedcom-go/parser"
 )
 

@@ -52,7 +52,7 @@ These packages/APIs are stable and follow semver strictly:
 | `decoder` | Stable | `Decode()`, `DecodeWithOptions()` |
 | `encoder` | Stable | `Encode()`, `EncodeWithOptions()`, `NewStreamEncoder()`, `NewStreamEncoderWithOptions()`, `EncodeStreaming()`, `EncodeStreamingWithOptions()` |
 | `converter` | Stable | `Convert()`, `ConvertWithOptions()` |
-| `parser` | Stable | `Parse()`, `ParseLine()`, `NewRecordIterator()`, `Records()`, `RecordsWithOffset()`, `NewLazyParser()` |
+| `parser` | Stable | `Parse()`, `ParseLine()`, `NewRecordIterator()`, `NewRecordIteratorWithOffset()`, `Records()`, `RecordsWithOffset()`, `NewLazyParser()` |
 | `validator` | Stable | `Validate()`, `ValidateAll()`, `NewStreamingValidator()` |
 | `charset` | Stable | `NewReader()` |
 | `version` | Stable | `Detect()`, version constants |

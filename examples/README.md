@@ -174,7 +174,7 @@ go run main.go ../../testdata/gedcom-5.5/pres2020.ged /tmp/out.ged
 ```
 
 **Example output**:
-```
+```text
 === Streaming Parse ===
 Input: ../../testdata/gedcom-5.5/pres2020.ged
 Total lines processed: 49431
