@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1](https://github.com/cacack/gedcom-go/compare/v2.0.0...v2.0.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* **build:** set module path to /v2 to make v2 release installable ([e05301b](https://github.com/cacack/gedcom-go/commit/e05301ba9bb8cf33731f289252313b23b223b3c6))
+
 ## [2.0.0](https://github.com/cacack/gedcom-go/compare/v1.2.0...v2.0.0) (2026-05-17)
 
 
