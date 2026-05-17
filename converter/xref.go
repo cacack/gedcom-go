@@ -15,6 +15,9 @@ func normalizeXRefsToUppercase(doc *gedcom.Document, report *gedcom.ConversionRe
 	}
 
 	for _, record := range doc.Records {
+		if record == nil || record.XRef == "" {
+			continue
+		}
 		if newXRef, ok := mapping[record.XRef]; ok {
 			path := BuildRecordPath(string(record.Type), record.XRef)
 			report.AddNormalized(gedcom.ConversionNote{
@@ -41,7 +44,7 @@ func buildXRefMapping(doc *gedcom.Document) map[string]string {
 	mapping := make(map[string]string)
 
 	for _, record := range doc.Records {
-		if record.XRef == "" {
+		if record == nil || record.XRef == "" {
 			continue
 		}
 		upper := strings.ToUpper(record.XRef)

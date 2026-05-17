@@ -65,6 +65,10 @@ func Apply(d *Document, mapping map[string]string) {
 	if d == nil || len(mapping) == 0 {
 		return
 	}
+	// rewrite is used at known-XRef definition sites (Record.XRef,
+	// Header.Submitter, XRefMap keys). It looks up the mapping
+	// directly because the caller has already established the field
+	// holds an XRef.
 	rewrite := func(p *string) {
 		if p == nil || *p == "" {
 			return
@@ -73,9 +77,29 @@ func Apply(d *Document, mapping map[string]string) {
 			*p = newRef
 		}
 	}
+	// rewriteRef is used by walkRecord, which traverses union-type
+	// fields like Individual.Notes and SourceCitation.SourceXRef that
+	// may hold either an XRef pointer or inline text. Guarding with
+	// IsPointerXRef ensures Apply only ever rewrites pointer-shaped
+	// values, never inline text that happens to match a mapping key.
+	rewriteRef := func(p *string) {
+		if p == nil || !IsPointerXRef(*p) {
+			return
+		}
+		rewrite(p)
+	}
 
-	// Update definition sites and walk references inside each record.
-	for _, r := range d.Records {
+	applyToRecords(d.Records, mapping, rewrite, rewriteRef)
+	applyToHeader(d.Header, rewrite)
+	d.XRefMap = remapXRefMap(d.XRefMap, mapping)
+}
+
+// applyToRecords rewrites definition sites and walks references on
+// every record. Extracted from Apply to keep its cyclomatic complexity
+// in check; the two closures are passed in because they capture the
+// mapping.
+func applyToRecords(records []*Record, mapping map[string]string, rewrite, rewriteRef refCallback) {
+	for _, r := range records {
 		if r == nil {
 			continue
 		}
@@ -83,29 +107,39 @@ func Apply(d *Document, mapping map[string]string) {
 		if newXRef, ok := mapping[entityXRef(r.Entity)]; ok {
 			setEntityXRef(r.Entity, newXRef)
 		}
-		walkRecord(r, rewrite)
+		walkRecord(r, rewriteRef)
 	}
+}
 
-	// Update header references.
-	if d.Header != nil {
-		rewrite(&d.Header.Submitter)
-		for _, t := range d.Header.Tags {
-			walkTag(t, rewrite)
+// applyToHeader rewrites the Submitter pointer and walks every header
+// tag. Header tags go through walkTag which already filters by
+// IsPointerXRef, so the bare rewrite closure is sufficient.
+func applyToHeader(h *Header, rewrite refCallback) {
+	if h == nil {
+		return
+	}
+	rewrite(&h.Submitter)
+	for _, t := range h.Tags {
+		walkTag(t, rewrite)
+	}
+}
+
+// remapXRefMap returns a new XRefMap with keys rewritten per mapping.
+// Records whose key has no mapping entry retain their original key.
+// Returns nil if the input is nil.
+func remapXRefMap(in map[string]*Record, mapping map[string]string) map[string]*Record {
+	if in == nil {
+		return nil
+	}
+	out := make(map[string]*Record, len(in))
+	for k, v := range in {
+		if newK, ok := mapping[k]; ok {
+			out[newK] = v
+		} else {
+			out[k] = v
 		}
 	}
-
-	// Rebuild XRefMap with remapped keys.
-	if d.XRefMap != nil {
-		newMap := make(map[string]*Record, len(d.XRefMap))
-		for k, v := range d.XRefMap {
-			if newK, ok := mapping[k]; ok {
-				newMap[newK] = v
-			} else {
-				newMap[k] = v
-			}
-		}
-		d.XRefMap = newMap
-	}
+	return out
 }
 
 // entityXRef returns the XRef field on the typed entity for an

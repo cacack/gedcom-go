@@ -40,10 +40,11 @@ type CombineOptions struct {
 	Prefix string
 }
 
-// CombineReport describes what Combine did. It is always returned (even
-// on error from header conflict reporting), so callers can inspect both
-// the remapping that was applied to doc2 and any non-fatal header
-// field differences that were discarded.
+// CombineReport describes what Combine did on success. Combine returns
+// a nil report on every error path; callers should check err before
+// dereferencing the report. The report records both the remapping
+// applied to doc2 and any non-fatal header field differences that were
+// discarded in favor of doc1.
 type CombineReport struct {
 	// RemappedXRefs maps doc2's original XRefs to their new XRefs in
 	// the combined document. Only XRefs that actually changed are

@@ -182,6 +182,13 @@ func subsetHeader(src *Document, closure map[string]bool) *Header {
 		if tag.XRef != "" && !closure[tag.XRef] {
 			continue
 		}
+		// Tag.Value can also carry a pointer (parsers differ on which
+		// field they populate for vendor tags). Drop the tag if its
+		// Value resolves to a record outside the closure so the subset
+		// stays self-contained.
+		if IsPointerXRef(tag.Value) && !closure[tag.Value] {
+			continue
+		}
 		h.Tags = append(h.Tags, tag.Clone())
 	}
 	return h
