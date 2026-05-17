@@ -44,6 +44,9 @@ func (d *Document) Descendants(xref string) []string {
 				if childXRef == "" || visited[childXRef] {
 					continue
 				}
+				if d.GetIndividual(childXRef) == nil {
+					continue
+				}
 				visited[childXRef] = true
 				result = append(result, childXRef)
 				queue = append(queue, childXRef)
@@ -100,6 +103,9 @@ func (d *Document) Ancestors(xref string) []string {
 			}
 			for _, parent := range []string{fam.Husband, fam.Wife} {
 				if parent == "" || visited[parent] {
+					continue
+				}
+				if d.GetIndividual(parent) == nil {
 					continue
 				}
 				visited[parent] = true

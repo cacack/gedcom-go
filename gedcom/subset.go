@@ -54,17 +54,21 @@ func (e *UnknownXRefError) Is(target error) bool {
 // field points at a record not in the closure, which is dropped to
 // keep the result self-contained.
 //
-// Subset operates in strict mode: any seed XRef that does not exist in
-// the source, and any reference followed during closure walking that
-// does not resolve, returns an error wrapping ErrUnknownXRef.
-// Duplicate seed XRefs are deduplicated silently. Empty seeds produce
-// an empty document with the carried-over header.
+// Subset operates in strict mode for seeds: each seed must have the
+// @xref@ pointer shape and must resolve to a record in the source,
+// otherwise an error wrapping ErrUnknownXRef is returned. Empty
+// strings, the @VOID@ sentinel, and malformed seeds all error rather
+// than being silently dropped, so caller mistakes surface immediately.
+// Duplicate seed XRefs are deduplicated silently. A nil or empty
+// seeds slice produces an empty document with the carried-over header.
 //
-// The GEDCOM 7.0 "@VOID@" sentinel is treated as a non-reference and
-// silently skipped during closure walking; it does not pull anything
-// into the closure and does not error. Inline note text and inline
+// Strict mode also applies during the closure walk: any reference
+// followed from an included record that does not resolve returns an
+// error wrapping ErrUnknownXRef. The GEDCOM 7.0 "@VOID@" sentinel is
+// silently skipped during the walk (it does not pull anything into
+// the closure and does not error). Inline note text and inline
 // citation values that do not have the @xref@ pointer shape are
-// likewise ignored.
+// likewise ignored during the walk.
 func (d *Document) Subset(xrefs []string) (*Document, error) {
 	if d == nil {
 		return nil, errors.New("subset: source document is nil")
@@ -107,10 +111,10 @@ func (d *Document) subsetClosure(xrefs []string) (map[string]bool, error) {
 	queue := make([]string, 0, len(xrefs))
 
 	for _, seed := range xrefs {
-		if !isPointerXRef(seed) || closure[seed] {
+		if closure[seed] {
 			continue
 		}
-		if d.GetRecord(seed) == nil {
+		if !isPointerXRef(seed) || d.GetRecord(seed) == nil {
 			return nil, &UnknownXRefError{XRef: seed, IsSeed: true}
 		}
 		closure[seed] = true

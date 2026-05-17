@@ -59,31 +59,13 @@ func TestDescendants_Multigeneration(t *testing.T) {
 	doc := buildGenealogyFixture()
 	got := doc.Descendants("@I1@")
 
-	want := map[string]bool{
-		"@I3@": true, "@I7@": true,
-		"@I5@": true, "@I6@": true, "@I9@": true,
-	}
-	if len(got) != len(want) {
-		t.Fatalf("Descendants(@I1@) returned %d items, want %d: %v", len(got), len(want), got)
-	}
-	for _, x := range got {
-		if !want[x] {
-			t.Errorf("Descendants(@I1@) included unexpected %q", x)
-		}
-	}
-
-	// BFS ordering: closer generations precede farther ones.
-	// Children of @I1@/@I2@ come before grandchildren.
-	gen1 := map[string]bool{"@I3@": true, "@I7@": true}
-	gen2 := map[string]bool{"@I5@": true, "@I6@": true, "@I9@": true}
-	firstGen2Index := -1
-	for i, x := range got {
-		if gen2[x] && firstGen2Index == -1 {
-			firstGen2Index = i
-		}
-		if gen1[x] && firstGen2Index != -1 {
-			t.Errorf("Descendants ordering violated: gen1 %q appeared after a gen2 entry (index %d > %d)", x, i, firstGen2Index)
-		}
+	// Exact BFS order from @I1@: gen1 [@I3@, @I7@] (children of @F1@ in
+	// declared order), then gen2 reached via @I3@'s spouse families —
+	// [@I5@, @I6@] from @F2@, then [@I9@] from @F3@. @I7@ has no
+	// children so contributes nothing to gen2.
+	want := []string{"@I3@", "@I7@", "@I5@", "@I6@", "@I9@"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Descendants(@I1@) = %v, want %v", got, want)
 	}
 }
 
@@ -110,14 +92,11 @@ func TestDescendants_LeafReturnsEmpty(t *testing.T) {
 func TestDescendants_HalfSiblingsViaSecondMarriage(t *testing.T) {
 	doc := buildGenealogyFixture()
 	got := doc.Descendants("@I3@")
-	want := map[string]bool{"@I5@": true, "@I6@": true, "@I9@": true}
-	if len(got) != len(want) {
-		t.Fatalf("Descendants(@I3@) = %v, want %v entries", got, want)
-	}
-	for _, x := range got {
-		if !want[x] {
-			t.Errorf("Unexpected descendant %q", x)
-		}
+	// @I3@ has two spouse families: @F2@ (children [@I5@, @I6@]) then
+	// @F3@ (child [@I9@]). BFS visits them in SpouseInFamilies order.
+	want := []string{"@I5@", "@I6@", "@I9@"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Descendants(@I3@) = %v, want %v", got, want)
 	}
 }
 
@@ -183,17 +162,12 @@ func TestDescendants_CycleSafety(t *testing.T) {
 func TestAncestors_Multigeneration(t *testing.T) {
 	doc := buildGenealogyFixture()
 	got := doc.Ancestors("@I5@")
-	want := map[string]bool{
-		"@I3@": true, "@I4@": true,
-		"@I1@": true, "@I2@": true,
-	}
-	if len(got) != len(want) {
-		t.Fatalf("Ancestors(@I5@) returned %d items, want %d: %v", len(got), len(want), got)
-	}
-	for _, x := range got {
-		if !want[x] {
-			t.Errorf("Ancestors(@I5@) included unexpected %q", x)
-		}
+	// BFS from @I5@: parents [@I3@, @I4@] at @F2@ (husband-before-wife),
+	// then grandparents [@I1@, @I2@] reached via @I3@'s @F1@. @I4@ has
+	// no parent families so contributes nothing to gen 2.
+	want := []string{"@I3@", "@I4@", "@I1@", "@I2@"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Ancestors(@I5@) = %v, want %v", got, want)
 	}
 }
 

@@ -101,6 +101,38 @@ func TestSubset_EmptySeeds(t *testing.T) {
 	}
 }
 
+func TestSubset_MalformedSeedReturnsError(t *testing.T) {
+	doc := buildRichFixture()
+	cases := []struct{ name, seed string }{
+		{"empty string", ""},
+		{"no @ delimiters", "garbage"},
+		{"missing closing @", "@unterminated"},
+		{"VOID sentinel as seed", "@VOID@"},
+		{"contains whitespace", "@bad seed@"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := doc.Subset([]string{tc.seed})
+			if err == nil {
+				t.Fatalf("expected error for malformed seed %q, got nil", tc.seed)
+			}
+			if !errors.Is(err, ErrUnknownXRef) {
+				t.Errorf("error should wrap ErrUnknownXRef, got %v", err)
+			}
+			var uerr *UnknownXRefError
+			if !errors.As(err, &uerr) {
+				t.Fatalf("error should be *UnknownXRefError, got %T", err)
+			}
+			if !uerr.IsSeed {
+				t.Error("UnknownXRefError.IsSeed must be true for seed errors")
+			}
+			if uerr.XRef != tc.seed {
+				t.Errorf("UnknownXRefError.XRef = %q, want %q", uerr.XRef, tc.seed)
+			}
+		})
+	}
+}
+
 func TestSubset_UnknownSeedReturnsError(t *testing.T) {
 	doc := buildRichFixture()
 	_, err := doc.Subset([]string{"@I999@"})
