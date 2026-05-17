@@ -107,7 +107,7 @@ func TestTransformHeader(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Deep copy to avoid mutation between tests
-			doc := deepCopyDocument(tt.doc)
+			doc := tt.doc.Clone()
 			if doc == nil {
 				doc = &gedcom.Document{}
 			}
@@ -177,7 +177,7 @@ func TestUpgradeHeaderTo70(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			header := deepCopyHeader(tt.header)
+			header := tt.header.Clone()
 			report := &gedcom.ConversionReport{}
 
 			upgradeHeaderTo70(header, report)
@@ -249,7 +249,7 @@ func TestDowngradeHeaderFrom70(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			header := deepCopyHeader(tt.header)
+			header := tt.header.Clone()
 			report := &gedcom.ConversionReport{}
 
 			downgradeHeaderFrom70(header, tt.targetVersion, report)
@@ -324,7 +324,7 @@ func TestUpdateEncoding(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			header := deepCopyHeader(tt.header)
+			header := tt.header.Clone()
 			report := &gedcom.ConversionReport{}
 
 			updateEncoding(header, tt.targetVersion, report)

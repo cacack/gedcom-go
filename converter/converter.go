@@ -40,7 +40,7 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 	}
 
 	// Deep copy to avoid mutating original
-	converted := deepCopyDocument(doc)
+	converted := doc.Clone()
 
 	// Create report
 	report := &gedcom.ConversionReport{

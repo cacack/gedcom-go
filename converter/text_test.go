@@ -50,7 +50,7 @@ func TestTransformTextForVersion(t *testing.T) {
 			doc := &gedcom.Document{
 				Header: &gedcom.Header{},
 				Records: []*gedcom.Record{
-					{Tags: deepCopyTags(tt.inputTags)},
+					{Tags: gedcom.CloneTags(tt.inputTags)},
 				},
 			}
 			report := &gedcom.ConversionReport{}
@@ -148,7 +148,7 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			doc := &gedcom.Document{
 				Header: &gedcom.Header{},
 				Records: []*gedcom.Record{
-					{Tags: deepCopyTags(tt.inputTags)},
+					{Tags: gedcom.CloneTags(tt.inputTags)},
 				},
 			}
 			report := &gedcom.ConversionReport{}
