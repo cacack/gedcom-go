@@ -281,6 +281,9 @@ cd query && go run main.go ../../testdata/gedcom-5.5/royal92.ged && cd ..
 # Run validate example
 cd validate && go run main.go ../../testdata/gedcom-5.5/minimal.ged && cd ..
 
+# Run stream example (streaming parse + streaming encode)
+cd stream && go run main.go ../../testdata/gedcom-5.5/pres2020.ged /tmp/streamed.ged && cd ..
+
 # Run encode example
 cd encode && go run main.go /tmp/output.ged && cd ..
 ```
