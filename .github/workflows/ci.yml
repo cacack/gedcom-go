@@ -46,7 +46,7 @@ jobs:
       run: go mod verify
 
     - name: Run tests
-      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
+      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./merge ./parser ./validator ./version
       shell: bash
 
     - name: Upload coverage to Codecov
@@ -74,7 +74,7 @@ jobs:
         cache: true
 
     - name: Generate coverage
-      run: go test -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
+      run: go test -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./merge ./parser ./validator ./version
 
     - name: Check coverage thresholds
       uses: vladopajic/go-test-coverage@a93b868a4cbcbf18dc3781650fad241f0020e609 # v2
@@ -91,7 +91,7 @@ jobs:
         echo ""
         echo "| Package | Coverage | Status |"
         echo "|---------|----------|--------|"
-        for pkg in charset decoder encoder gedcom parser validator version; do
+        for pkg in charset decoder encoder gedcom merge parser validator version; do
           COV=$(go tool cover -func=coverage.out | grep "github.com/cacack/gedcom-go/$pkg" | tail -1 | awk '{print $3}')
           PCT=$(echo "$COV" | sed 's/%//')
           if (( $(echo "$PCT >= 85.0" | bc -l) )); then
@@ -439,7 +439,7 @@ jobs:
       - name: Check feat/fix commits touch library code
         run: |
           # Library packages that constitute the public module
-          LIB_PATTERN='^(charset|converter|decoder|encoder|gedcom|parser|validator|version)/'
+          LIB_PATTERN='^(charset|converter|decoder|encoder|gedcom|merge|parser|validator|version)/'
 
           FAILED=0
           for SHA in $(git log --format="%H" origin/main..HEAD); do
