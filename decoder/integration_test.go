@@ -1043,6 +1043,213 @@ func TestRootsMagicRealExport(t *testing.T) {
 		individuals, families, sources, repos)
 }
 
+// headerTag returns the first header tag with the given name, or nil.
+func headerTag(doc *gedcom.Document, name string) *gedcom.Tag {
+	for _, tg := range doc.Header.Tags {
+		if tg.Tag == name {
+			return tg
+		}
+	}
+	return nil
+}
+
+// individualHasTag reports whether the individual carries a raw tag by name.
+func individualHasTag(ind *gedcom.Individual, name string) bool {
+	for _, tg := range ind.Tags {
+		if tg.Tag == name {
+			return true
+		}
+	}
+	return false
+}
+
+// TestFamilySearchRealExport tests a real FamilySearch 2025 export (5.5.1).
+// FamilySearch is identified not by HEAD.SOUR (it preserves the original
+// authoring system) but by per-record _HASH/_LHASH change-detection checksums
+// and a header standardizer NOTE. See docs/COMPATIBILITY.md.
+func TestFamilySearchRealExport(t *testing.T) {
+	f, err := os.Open("../testdata/edge-cases/familysearch-2025-export.ged")
+	if err != nil {
+		t.Skipf("Test file not found: %s", "../testdata/edge-cases/familysearch-2025-export.ged")
+		return
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	if doc.Header.Version != gedcom.Version551 {
+		t.Errorf("Expected GEDCOM 5.5.1, got %v", doc.Header.Version)
+	}
+	if doc.Header.Encoding != gedcom.EncodingUTF8 {
+		t.Errorf("Expected UTF-8 encoding, got %v", doc.Header.Encoding)
+	}
+
+	// FamilySearch preserves the original authoring system rather than claiming
+	// authorship, so the file is NOT vendor-detectable from HEAD.SOUR.
+	if doc.Header.SourceSystem != "GEDCOM-GO" {
+		t.Errorf("Header.SourceSystem = %q, want %q (FamilySearch preserves original SOUR)", doc.Header.SourceSystem, "GEDCOM-GO")
+	}
+
+	if got := len(doc.Individuals()); got != 14 {
+		t.Errorf("Expected 14 individuals, got %d", got)
+	}
+	if got := len(doc.Families()); got != 5 {
+		t.Errorf("Expected 5 families, got %d", got)
+	}
+
+	// Per-record _HASH and _LHASH checksums must be preserved.
+	ind := doc.GetIndividual("@I1@")
+	if ind == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+	if !individualHasTag(ind, "_HASH") {
+		t.Error("Individual @I1@ missing _HASH tag (FamilySearch checksum dropped)")
+	}
+	if !individualHasTag(ind, "_LHASH") {
+		t.Error("Individual @I1@ missing _LHASH tag (FamilySearch checksum dropped)")
+	}
+
+	// The header standardizer NOTE identifies the export pipeline and must
+	// survive (regression guard for header-tag preservation).
+	foundStandardizer := false
+	for _, tg := range doc.Header.Tags {
+		if tg.Tag == "NOTE" && strings.Contains(tg.Value, "Standardizer") {
+			foundStandardizer = true
+			break
+		}
+	}
+	if !foundStandardizer {
+		t.Error("Header standardizer NOTE not preserved in Header.Tags")
+	}
+
+	t.Logf("Successfully verified FamilySearch 2025 real export: %d individuals, %d families",
+		len(doc.Individuals()), len(doc.Families()))
+}
+
+// TestMyHeritageRealExport tests a real MyHeritage 2025 export (5.5.1),
+// verifying _UID/RIN identifiers, header extensions, and the documented
+// behavior of stripping REPO records. See docs/COMPATIBILITY.md.
+func TestMyHeritageRealExport(t *testing.T) {
+	f, err := os.Open("../testdata/edge-cases/myheritage-2025-export.ged")
+	if err != nil {
+		t.Skipf("Test file not found: %s", "../testdata/edge-cases/myheritage-2025-export.ged")
+		return
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	if doc.Vendor != gedcom.VendorMyHeritage {
+		t.Errorf("Expected VendorMyHeritage, got %v", doc.Vendor)
+	}
+	if doc.Header.Version != gedcom.Version551 {
+		t.Errorf("Expected GEDCOM 5.5.1, got %v", doc.Header.Version)
+	}
+
+	if got := len(doc.Individuals()); got != 14 {
+		t.Errorf("Expected 14 individuals, got %d", got)
+	}
+	if got := len(doc.Families()); got != 5 {
+		t.Errorf("Expected 5 families, got %d", got)
+	}
+	// MyHeritage strips REPO records from its exports.
+	if got := len(doc.Repositories()); got != 0 {
+		t.Errorf("Expected 0 repositories (MyHeritage drops REPO), got %d", got)
+	}
+
+	// _UID and RIN identifiers must be preserved per record.
+	ind := doc.GetIndividual("@I1@")
+	if ind == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+	if !individualHasTag(ind, "_UID") {
+		t.Error("Individual @I1@ missing _UID tag")
+	}
+	if !individualHasTag(ind, "RIN") {
+		t.Error("Individual @I1@ missing RIN tag")
+	}
+
+	// Header extensions must survive (regression guard for header-tag loss).
+	for _, want := range []string{"_RTLSAVE", "_PROJECT_GUID", "_EXPORTED_FROM_SITE_ID"} {
+		if headerTag(doc, want) == nil {
+			t.Errorf("Header.Tags missing MyHeritage extension %q", want)
+		}
+	}
+
+	t.Logf("Successfully verified MyHeritage 2025 real export: %d individuals, %d families, %d repositories",
+		len(doc.Individuals()), len(doc.Families()), len(doc.Repositories()))
+}
+
+// TestGrampsRealExport tests a real Gramps 6.0.6 export (5.5.1), verifying
+// CHAN change-tracking records, NAME TYPE birth subrecords, note references,
+// and header copyright preservation. See docs/COMPATIBILITY.md.
+func TestGrampsRealExport(t *testing.T) {
+	f, err := os.Open("../testdata/edge-cases/gramps-2025-export.ged")
+	if err != nil {
+		t.Skipf("Test file not found: %s", "../testdata/edge-cases/gramps-2025-export.ged")
+		return
+	}
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	if doc.Vendor != gedcom.VendorGramps {
+		t.Errorf("Expected VendorGramps, got %v", doc.Vendor)
+	}
+	if doc.Header.SourceSystem != "Gramps" {
+		t.Errorf("Header.SourceSystem = %q, want %q", doc.Header.SourceSystem, "Gramps")
+	}
+
+	if got := len(doc.Individuals()); got != 14 {
+		t.Errorf("Expected 14 individuals, got %d", got)
+	}
+	if got := len(doc.Families()); got != 5 {
+		t.Errorf("Expected 5 families, got %d", got)
+	}
+
+	ind := doc.GetIndividual("@I0001@")
+	if ind == nil {
+		t.Fatal("GetIndividual(@I0001@) returned nil")
+	}
+
+	// CHAN change-date is captured into the typed ChangeDate field.
+	if ind.ChangeDate == nil {
+		t.Error("Individual @I0001@ missing ChangeDate (CHAN record)")
+	} else if ind.ChangeDate.Date != "27 JAN 2026" {
+		t.Errorf("ChangeDate.Date = %q, want %q", ind.ChangeDate.Date, "27 JAN 2026")
+	}
+
+	// Gramps tags the primary NAME with TYPE birth.
+	if len(ind.Names) == 0 {
+		t.Fatal("Individual @I0001@ has no names")
+	}
+	if ind.Names[0].Type != "birth" {
+		t.Errorf("Name.Type = %q, want %q", ind.Names[0].Type, "birth")
+	}
+
+	// Notes are stored as references to root-level NOTE records.
+	if len(ind.Notes) == 0 || !strings.HasPrefix(ind.Notes[0], "@N") {
+		t.Errorf("Individual @I0001@ Notes = %v, want a reference to a root-level NOTE record", ind.Notes)
+	}
+
+	// Gramps emits a header COPR copyright tag.
+	if doc.Header.Copyright == "" {
+		t.Error("Header.Copyright empty, want Gramps COPR value")
+	}
+
+	t.Logf("Successfully verified Gramps 6.0.6 real export: %d individuals, %d families",
+		len(doc.Individuals()), len(doc.Families()))
+}
+
 // TestVendorSpecificFiles tests GEDCOM files from various genealogy software vendors.
 // These files were sourced from the gedcom4j project (MIT License) and test vendor-specific
 // custom tags and extensions.

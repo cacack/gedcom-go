@@ -31,11 +31,13 @@ Support status for common genealogy software:
 
 | Software | Status |
 |----------|--------|
-| RootsMagic | ⚠️ Tested (older version) |
+| Ancestry.com | ✅ Real export tested (2025) |
+| FamilySearch | ✅ Real export tested (2025) |
+| MyHeritage | ✅ Real export tested (2025) |
+| Gramps | ✅ Real export tested (2025) |
+| RootsMagic | ✅ Real export tested (2026) |
 | Legacy Family Tree | ⚠️ Tested (older version) |
 | Family Tree Maker | ⚠️ Tested (older version) |
-| Gramps | 🧪 Synthetic test only |
-| Ancestry | 🧪 Synthetic test only |
 
 Full compatibility matrix: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)
 
