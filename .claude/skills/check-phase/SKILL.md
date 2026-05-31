@@ -8,23 +8,21 @@ agent: Explore
 
 # Phase Alignment Assessment
 
-Check whether recent work aligns with the current roadmap phase (Phase 1: API Polish & Stability).
+Check whether recent work aligns with the current roadmap phase. Phases and their milestone mapping are defined in the Phasing table in `docs/ETHOS.md`; the live issue list and exit criteria live in GitHub milestones. Phase 1 (Real-World Compatibility & API Polish, milestones `v2.1.0`/`v2.2.0`) is the current priority.
 
 ## Checks to Perform
 
 ### 1. Recent Commit Categorization
 Review the last 20 commits on main:
 - Run `git log --oneline -20`
-- Categorize each as Phase 1, Phase 2, Phase 3, or Maintenance based on docs/ROADMAP.md
+- Categorize each as Phase 1, Phase 2, Phase 3, or Maintenance using the Phasing table in docs/ETHOS.md (map by milestone: v2.1.0/v2.2.0 → Phase 1, v2.3.0 → Phase 2, unscheduled advanced work → Phase 3)
 - Calculate percentage of work in each phase
 
 ### 2. Phase 1 Issue Progress
-Check status of Phase 1 issues from docs/ROADMAP.md:
-- #156 — Options types for Encode and Validate
-- #135 — Place parsing helpers
-- #141 — Vendor test data (Legacy Family Tree)
-- #44 — CLI tool for GEDCOM validation
-- Report which are open, closed, or in progress
+Check status of the current-phase milestones against their exit criteria:
+- Read open issues grouped by milestone: `gh issue list --json number,title,milestone,state,labels`
+- Read milestone descriptions (which carry exit criteria): `gh api repos/cacack/gedcom-go/milestones`
+- For each Phase 1 milestone (`v2.1.0`, `v2.2.0`), report open vs. closed counts and whether exit criteria are met
 
 ### 3. Phase Leakage Detection
 Look for signs of Phase 2/3 work happening before Phase 1 is complete:
@@ -53,13 +51,11 @@ Check if work is being driven by real downstream usage:
 | Phase 3 | ... | ... |
 | Maintenance | ... | ... |
 
-### Phase 1 Issue Status
-| Issue | Title | Status |
-|-------|-------|--------|
-| #156 | Options types | ... |
-| #135 | Place parsing | ... |
-| #141 | Vendor test data | ... |
-| #44 | CLI tool | ... |
+### Phase 1 Milestone Status
+| Milestone | Open | Closed | Exit criteria met? |
+|-----------|------|--------|--------------------|
+| v2.1.0 | ... | ... | ... |
+| v2.2.0 | ... | ... | ... |
 
 ### Phase Leakage
 [Any premature Phase 2/3 work detected]

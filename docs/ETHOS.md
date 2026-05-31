@@ -1,6 +1,6 @@
 # Project Ethos
 
-The guiding philosophy and strategic vision for gedcom-go. For the phased feature plan, see [ROADMAP.md](./ROADMAP.md).
+The guiding philosophy and strategic vision for gedcom-go. Planned work lives in [GitHub Issues and Milestones](https://github.com/cacack/gedcom-go/milestones) — the single source of truth. This document covers the *why* and the order of the work.
 
 ---
 
@@ -61,6 +61,20 @@ GEDCOM is a real specification. Support it correctly, including the parts that a
 
 ---
 
+## Phasing
+
+Work is sequenced into phases to focus effort. **Resist jumping ahead** — features are driven by real downstream usage ([my-family](https://github.com/cacack/my-family)), not speculation. Each phase maps to one or more GitHub milestones; see [Milestones](https://github.com/cacack/gedcom-go/milestones) for the live issue list and per-milestone exit criteria.
+
+| Phase | Focus | Milestone(s) | Principle |
+|-------|-------|--------------|-----------|
+| **Phase 1 (Now)** | Real-world compatibility & API polish | `v2.1.0`, `v2.2.0` | Nail the Basics First |
+| **Phase 2 (Near-term)** | Document manipulation | `v2.3.0` | Dogfood Relentlessly |
+| **Phase 3 (Future)** | Advanced features & formats | _(unscheduled)_ | Start Small, Ship Often |
+
+Phase 3 is not yet milestoned. Issue-backed candidate: GEDZip archive support ([#127](https://github.com/cacack/gedcom-go/issues/127)). Pre-issue ideas live in [IDEAS.md](../IDEAS.md) (fluent builder API, JSON struct tags, BOM output option).
+
+---
+
 ## Anti-Patterns to Avoid
 
 - **Feature bloat** — Do fewer things well; a library is not an application
@@ -83,7 +97,7 @@ GEDCOM is a real specification. Support it correctly, including the parts that a
 
 ## Related
 
-- [Roadmap](./ROADMAP.md) — Phased feature plan
+- [GitHub Milestones](https://github.com/cacack/gedcom-go/milestones) — Phased feature plan and exit criteria (see [Phasing](#phasing) for the philosophy)
 - [Architecture Decision Records](./adr/) — Key design decisions
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — How to contribute
 - [API Stability](./API_STABILITY.md) — Compatibility guarantees
