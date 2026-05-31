@@ -68,7 +68,7 @@ Work is sequenced into phases to focus effort. **Resist jumping ahead** — feat
 | Phase | Focus | Milestone(s) | Principle |
 |-------|-------|--------------|-----------|
 | **Phase 1 (Now)** | Real-world compatibility & API polish | `v2.1.0`, `v2.2.0` | Nail the Basics First |
-| **Phase 2 (Near-term)** | Document manipulation | `v2.3.0` | Dogfood Relentlessly |
+| **Phase 2 (Near-term)** | Document manipulation | `v2.3.0` | Respect the Data |
 | **Phase 3 (Future)** | Advanced features & formats | _(unscheduled)_ | Start Small, Ship Often |
 
 Phase 3 is not yet milestoned. Issue-backed candidate: GEDZip archive support ([#127](https://github.com/cacack/gedcom-go/issues/127)). Pre-issue ideas live in [IDEAS.md](../IDEAS.md) (fluent builder API, JSON struct tags, BOM output option).

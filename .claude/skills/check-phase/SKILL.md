@@ -20,7 +20,7 @@ Review the last 20 commits on main:
 
 ### 2. Phase 1 Issue Progress
 Check status of the current-phase milestones against their exit criteria:
-- Read open issues grouped by milestone: `gh issue list --json number,title,milestone,state,labels`
+- Read all issues grouped by milestone (include closed, so open/closed counts are accurate): `gh issue list --state all --limit 1000 --json number,title,milestone,state,labels`
 - Read milestone descriptions (which carry exit criteria): `gh api repos/cacack/gedcom-go/milestones`
 - For each Phase 1 milestone (`v2.1.0`, `v2.2.0`), report open vs. closed counts and whether exit criteria are met
 
