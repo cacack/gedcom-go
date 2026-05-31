@@ -105,7 +105,7 @@ See `docs/TESTING.md` for critical paths that require 100% coverage.
 ## Strategic Context
 
 - **[docs/ETHOS.md](docs/ETHOS.md)** — Vision, core principles, differentiators, anti-patterns
-- **[docs/ROADMAP.md](docs/ROADMAP.md)** — Phased feature plan (Phase 1 is current priority)
+- **[GitHub Milestones](https://github.com/cacack/gedcom-go/milestones)** — Phased feature plan and exit criteria (Phase 1 is current priority). Phase philosophy is in [docs/ETHOS.md](docs/ETHOS.md#phasing).
 
 Two principles are **NON-NEGOTIABLE**: Test Coverage (≥85%) and Lossless Representation. See ETHOS.md for all six core principles.
 
@@ -116,8 +116,7 @@ Two principles are **NON-NEGOTIABLE**: Test Coverage (≥85%) and Lossless Repre
 - **IDEAS.md**: Unvetted ideas and rough concepts (create when needed)
 - **GitHub Issues**: Single source of truth for planned work
 - **docs/**: Implementation reference material
-  - `ETHOS.md` - Vision, core principles, differentiators, anti-patterns
-  - `ROADMAP.md` - Phased feature plan (Phase 1 is current priority)
+  - `ETHOS.md` - Vision, core principles, differentiators, anti-patterns (includes the phasing plan)
   - `API_STABILITY.md` - API compatibility guarantees and versioning policy
   - `TESTING.md` - Test coverage requirements and critical paths
   - `GEDCOM_VERSIONS.md` - GEDCOM version differences (5.5, 5.5.1, 7.0)
