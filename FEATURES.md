@@ -101,7 +101,9 @@ if doc.Vendor == gedcom.VendorAncestry {
 
 ## Vendor Extensions
 
-Structured parsing for vendor-specific GEDCOM extensions:
+Structured parsing for vendor-specific GEDCOM extensions. For the complete
+reference — every supported tag, typed vs preserved-raw handling, validation,
+and the lossless guarantee — see [docs/VENDOR_EXTENSIONS.md](docs/VENDOR_EXTENSIONS.md).
 
 ### Ancestry.com Extensions
 

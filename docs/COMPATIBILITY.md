@@ -321,6 +321,7 @@ See the "Contributing Test Files" section above for what vendor exports are most
 
 ## Related Documentation
 
+- [Vendor Extensions](VENDOR_EXTENSIONS.md) - Per-tag reference for vendor-specific extensions, typed accessors, and validation
 - [GEDCOM Version Differences](GEDCOM_VERSIONS.md) - Detailed spec differences
 - [Test Data README](../testdata/README.md) - Complete test file documentation
 - [API Stability](API_STABILITY.md) - What APIs are stable vs experimental

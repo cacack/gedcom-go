@@ -120,6 +120,7 @@ Two principles are **NON-NEGOTIABLE**: Test Coverage (≥85%) and Lossless Repre
   - `API_STABILITY.md` - API compatibility guarantees and versioning policy
   - `TESTING.md` - Test coverage requirements and critical paths
   - `GEDCOM_VERSIONS.md` - GEDCOM version differences (5.5, 5.5.1, 7.0)
+  - `VENDOR_EXTENSIONS.md` - Vendor-specific tag support (Ancestry, FamilySearch, etc.)
   - `ENCODING_IMPLEMENTATION_PLAN.md` - UTF-16/ANSEL implementation guide
   - `GEDCOM_DATE_FORMATS_RESEARCH.md` - Date format specification research
   - `PERFORMANCE.md` - Benchmarks and optimization notes
