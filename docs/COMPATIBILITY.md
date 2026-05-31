@@ -185,7 +185,9 @@ Tested with real export from FamilySearch.org (2025).
 - Removes SUBM (submitter) records
 - Nicknames preserved as NICK subrecord (standard-compliant)
 
-**Note**: FamilySearch exports GEDCOM 5.5.1, not GEDCOM 7.0, despite being the GEDCOM 7.0 spec maintainer. The GEDCOM 7.0 spec examples in our test suite are from gedcom.io documentation, not real FamilySearch exports.
+**Note**: Our FamilySearch fixture is GEDCOM 5.5.1, and the GEDCOM 7.0 spec examples in our test suite are from gedcom.io documentation, not real FamilySearch exports.
+
+**Note (2025+)**: FamilySearch's website family-tree download now produces **GEDCOM 7**. The 5.5.1 fixture above represents an earlier export style; obtaining and testing a real FamilySearch GEDCOM 7 export is tracked in [#301](https://github.com/cacack/gedcom-go/issues/301).
 
 ## How We Test Compatibility
 
