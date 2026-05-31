@@ -30,6 +30,8 @@ type Header struct {
 	// this GEDCOM was exported from.
 	AncestryTreeID string
 
-	// Raw tags from the header for preserving unknown/custom tags
+	// Tags contains all raw header sub-tags in document order, providing a
+	// lossless record of the header (including custom/unmapped tags such as
+	// _RTLSAVE or header NOTEs) alongside the typed fields above.
 	Tags []*Tag
 }

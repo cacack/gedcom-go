@@ -321,6 +321,18 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 			continue
 		}
 
+		// Preserve every header sub-tag in raw form (lossless dual storage,
+		// mirroring how buildRecords populates Record.Tags). Typed fields are
+		// still extracted below; this guarantees custom/unmapped header tags
+		// (e.g. _RTLSAVE, _PROJECT_GUID, header NOTEs) are not dropped.
+		doc.Header.Tags = append(doc.Header.Tags, &gedcom.Tag{
+			Level:      line.Level,
+			Tag:        line.Tag,
+			Value:      line.Value,
+			XRef:       line.XRef,
+			LineNumber: line.LineNumber,
+		})
+
 		// Track when we're inside SOUR structure
 		if line.Level == 1 && line.Tag == "SOUR" {
 			inSour = true

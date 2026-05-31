@@ -304,6 +304,66 @@ func TestDecodeHeaderComplete(t *testing.T) {
 	}
 }
 
+// TestDecodeHeaderPreservesRawTags verifies that all header sub-tags are kept
+// in Header.Tags (lossless dual storage), including custom/unmapped tags that
+// have no dedicated typed field. Regression test: buildHeader previously
+// extracted only a handful of known fields and silently dropped everything
+// else (e.g. _RTLSAVE, _PROJECT_GUID, header NOTEs).
+func TestDecodeHeaderPreservesRawTags(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 SOUR MYHERITAGE
+2 NAME MyHeritage Family Tree Builder
+2 _RTLSAVE RTL
+1 DEST MYHERITAGE
+1 _PROJECT_GUID ABC123
+1 _EXPORTED_FROM_SITE_ID 1729941170
+1 NOTE Unified System GEDCOM Standardizer 1.0
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	// Typed fields still extracted (dual storage, not replaced).
+	if doc.Header.SourceSystem != "MYHERITAGE" {
+		t.Errorf("Header.SourceSystem = %q, want %q", doc.Header.SourceSystem, "MYHERITAGE")
+	}
+
+	findTag := func(name string) *gedcom.Tag {
+		for _, tg := range doc.Header.Tags {
+			if tg.Tag == name {
+				return tg
+			}
+		}
+		return nil
+	}
+
+	// Custom/unmapped header tags that have no typed field must survive.
+	for _, want := range []struct {
+		tag, value string
+	}{
+		{"_RTLSAVE", "RTL"},
+		{"DEST", "MYHERITAGE"},
+		{"_PROJECT_GUID", "ABC123"},
+		{"_EXPORTED_FROM_SITE_ID", "1729941170"},
+		{"NOTE", "Unified System GEDCOM Standardizer 1.0"},
+	} {
+		got := findTag(want.tag)
+		if got == nil {
+			t.Errorf("Header.Tags missing %q (header tag was dropped)", want.tag)
+			continue
+		}
+		if got.Value != want.value {
+			t.Errorf("Header.Tags[%q].Value = %q, want %q", want.tag, got.Value, want.value)
+		}
+	}
+}
+
 // Test context cancellation at different stages
 func TestDecodeContextCancellationStages(t *testing.T) {
 	t.Run("context cancelled after parsing", func(t *testing.T) {
