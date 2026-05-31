@@ -258,6 +258,7 @@ To opt into strict parsing (fail on the first syntax error, no diagnostics colle
   - [`examples/validate`](examples/validate) - Validating GEDCOM files
   - [`examples/stream`](examples/stream) - Streaming parse and encode for very large files
 - **API Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go/v2](https://pkg.go.dev/github.com/cacack/gedcom-go/v2)
+- **Vendor Extensions**: [docs/VENDOR_EXTENSIONS.md](docs/VENDOR_EXTENSIONS.md) - Vendor-specific tag support (`_APID`, `_FSFTID`, etc.)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Advanced Usage
