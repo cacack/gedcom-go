@@ -506,6 +506,26 @@ mutated.
 - MAP coordinates (LATI, LONG)
 - Place notes
 
+### Coordinate Conversion
+
+Convert GEDCOM-format coordinates (direction-prefixed, e.g. `N42.3601`) to signed decimal degrees:
+
+```go
+// place.Coordinates is *Coordinates and is nil when the place has no MAP tag.
+// AsDecimal is nil-safe (a nil receiver yields 0, 0, nil), but guarding makes
+// the intent explicit:
+if !place.Coordinates.IsEmpty() {
+    // Whole pair, with axis + range validation
+    // (lat must use N/S ∈ [-90,90]; long must use E/W ∈ [-180,180]).
+    lat, long, err := place.Coordinates.AsDecimal()
+}
+
+// Single component (pure format conversion, no range/axis check).
+lat, err := gedcom.ParseCoordinate("N42.3601")  // 42.3601
+```
+
+`AsDecimal` returns `(0, 0, nil)` when the pair is empty (nil receiver or both components blank) and an error when only one is present. Valid coordinates at the origin (`N0`/`E0`) also return `(0, 0, nil)` — use `IsEmpty` to distinguish the absent case.
+
 ## Address Structure
 
 - ADR1, ADR2, ADR3 - Address lines

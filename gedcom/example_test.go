@@ -413,3 +413,29 @@ func ExampleDate_Validate() {
 	// Feb 28, 2020 is valid
 	// Feb 30 is invalid
 }
+
+// ExampleParseCoordinate shows parsing a single GEDCOM coordinate component
+// to signed decimal degrees.
+func ExampleParseCoordinate() {
+	lat, _ := gedcom.ParseCoordinate("N42.3601")
+	long, _ := gedcom.ParseCoordinate("W71.0589")
+	fmt.Printf("lat=%.4f long=%.4f\n", lat, long)
+
+	// Output:
+	// lat=42.3601 long=-71.0589
+}
+
+// ExampleCoordinates_AsDecimal shows converting a place's Coordinates to
+// signed decimal degrees with range validation.
+func ExampleCoordinates_AsDecimal() {
+	coords := &gedcom.Coordinates{Latitude: "S33.8688", Longitude: "E151.2093"}
+	lat, long, err := coords.AsDecimal()
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+	fmt.Printf("lat=%.4f long=%.4f\n", lat, long)
+
+	// Output:
+	// lat=-33.8688 long=151.2093
+}
