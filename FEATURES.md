@@ -74,6 +74,24 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 - Heuristic-based detection for malformed headers
 - Version-aware validation rules
 
+### Version-Aware Export
+
+`Document.MinimumVersion()` reports the lowest GEDCOM version that can losslessly
+represent the document — the canonical way to pick a target version for export.
+`Document.RequiresGEDCOM7()` is the underlying boolean check.
+
+```go
+opts := &encoder.EncodeOptions{TargetVersion: doc.MinimumVersion()}
+encoder.EncodeWithOptions(w, doc, opts)
+```
+
+`MinimumVersion` returns `Version551` by default and `Version70` when the document
+uses any 7.0-only feature the library models: `SCHMA`, `SNOTE` records, `EXID`,
+`CREA`, negative events (`NO`), event sort dates (`SDATE`), name transliterations
+(`TRAN`), association `PHRASE`, media `CROP`, media-file `TRAN`, and `SNOTE`
+references. INT (interpreted) dates and non-Gregorian calendars are **not** 7.0
+triggers — both are valid in 5.5.1.
+
 ## Vendor Detection
 
 Automatic detection of the originating software from `HEAD.SOUR`:

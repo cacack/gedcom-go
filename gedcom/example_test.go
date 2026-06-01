@@ -439,3 +439,26 @@ func ExampleCoordinates_AsDecimal() {
 	// Output:
 	// lat=-33.8688 long=151.2093
 }
+
+// ExampleDocument_MinimumVersion shows choosing the lowest GEDCOM version that
+// losslessly represents a document for version-aware export.
+func ExampleDocument_MinimumVersion() {
+	// A document using a GEDCOM 7.0-only feature (a negative event assertion).
+	doc := &gedcom.Document{
+		Records: []*gedcom.Record{
+			{
+				Type: gedcom.RecordTypeIndividual,
+				Entity: &gedcom.Individual{
+					Events: []*gedcom.Event{{Type: gedcom.EventBirth, IsNegative: true}},
+				},
+			},
+		},
+	}
+
+	fmt.Println("requires 7.0:", doc.RequiresGEDCOM7())
+	fmt.Println("minimum version:", doc.MinimumVersion())
+
+	// Output:
+	// requires 7.0: true
+	// minimum version: 7.0
+}
