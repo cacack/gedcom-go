@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0](https://github.com/cacack/gedcom-go/compare/v2.0.1...v2.1.0) (2026-06-01)
+
+
+### Features
+
+* **gedcom:** add coordinate decimal-degree helpers ([d62d08b](https://github.com/cacack/gedcom-go/commit/d62d08b01cc21296fc50dd49e60251f41b99721e)), closes [#288](https://github.com/cacack/gedcom-go/issues/288)
+* **gedcom:** add RequiresGEDCOM7 and MinimumVersion helpers ([ced5327](https://github.com/cacack/gedcom-go/commit/ced5327c7080bc285bf7bbf84b0359c63ae99729)), closes [#291](https://github.com/cacack/gedcom-go/issues/291)
+
+
+### Bug Fixes
+
+* **decoder:** preserve custom header tags losslessly ([d3a87dd](https://github.com/cacack/gedcom-go/commit/d3a87ddb4d50b3bd12e6470002a5157aab7e4213))
+
 ## [2.0.1](https://github.com/cacack/gedcom-go/compare/v2.0.0...v2.0.1) (2026-05-17)
 
 
