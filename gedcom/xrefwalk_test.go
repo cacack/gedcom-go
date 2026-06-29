@@ -127,9 +127,10 @@ func xrefwalkFullDocument() *Document {
 	}
 
 	source := &Source{
-		XRef:          "@S1@",
-		RepositoryRef: "@R-SRC@",
-		Notes:         []string{"@N-SRC@"},
+		XRef:           "@S1@",
+		RepositoryRef:  "@R-SRC@",
+		RepositoryLink: &SourceRepositoryLink{XRef: "@R-LINK@"},
+		Notes:          []string{"@N-SRC@"},
 		Media: []*MediaLink{
 			{MediaXRef: "@M-SRC@"},
 		},
@@ -236,7 +237,7 @@ func xrefwalkExpectedRefs() []string {
 		"@N-FAM@", "@S-FAM@", "@M-FAM@",
 		"@N-FAM-EVENT@", "@F-FAM-LDS@", "@T-FAM@",
 		// Source record
-		"@R-SRC@", "@N-SRC@", "@M-SRC@", "@T-SRC@",
+		"@R-SRC@", "@R-LINK@", "@N-SRC@", "@M-SRC@", "@T-SRC@",
 		// Repository record
 		"@N-REPO@", "@T-REPO@",
 		// Note record
@@ -417,6 +418,9 @@ func TestApply_RewritesEverything(t *testing.T) {
 	src := doc.Records[2].Entity.(*Source)
 	if got := src.RepositoryRef; got != "@R-SRC@X" {
 		t.Errorf("Source.RepositoryRef = %q", got)
+	}
+	if got := src.RepositoryLink.XRef; got != "@R-LINK@X" {
+		t.Errorf("Source.RepositoryLink.XRef = %q", got)
 	}
 	if got := src.Tags[0].Value; got != "@T-SRC@X" {
 		t.Errorf("Source.Tags[0].Value = %q", got)

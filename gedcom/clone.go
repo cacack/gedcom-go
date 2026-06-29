@@ -255,6 +255,8 @@ func (s *Source) Clone() *Source {
 		copied.Repository = &InlineRepository{Name: s.Repository.Name}
 	}
 
+	copied.RepositoryLink = cloneSourceRepositoryLink(s.RepositoryLink)
+
 	if s.Media != nil {
 		copied.Media = make([]*MediaLink, len(s.Media))
 		for k, media := range s.Media {
@@ -282,6 +284,34 @@ func (r *Repository) Clone() *Repository {
 		Notes:   cloneStringSlice(r.Notes),
 		Tags:    CloneTags(r.Tags),
 	}
+}
+
+// cloneSourceRepositoryLink returns a deep copy of a SourceRepositoryLink.
+// Returns nil if link is nil.
+func cloneSourceRepositoryLink(link *SourceRepositoryLink) *SourceRepositoryLink {
+	if link == nil {
+		return nil
+	}
+
+	copied := &SourceRepositoryLink{
+		XRef:        link.XRef,
+		CallNumbers: cloneStringSlice(link.CallNumbers),
+		MediaType:   link.MediaType,
+		Notes:       cloneStringSlice(link.Notes),
+	}
+
+	if link.Inline != nil {
+		copied.Inline = &InlineRepository{Name: link.Inline.Name}
+	}
+
+	if link.CallNumberMedia != nil {
+		copied.CallNumberMedia = make(map[string]string, len(link.CallNumberMedia))
+		for k, v := range link.CallNumberMedia {
+			copied.CallNumberMedia[k] = v
+		}
+	}
+
+	return copied
 }
 
 // Clone returns a deep copy of the note. Returns nil if n is nil.

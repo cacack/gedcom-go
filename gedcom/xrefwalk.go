@@ -370,6 +370,9 @@ func walkSource(s *Source, cb refCallback) {
 		return
 	}
 	cb(&s.RepositoryRef)
+	if s.RepositoryLink != nil {
+		cb(&s.RepositoryLink.XRef)
+	}
 	for k := range s.Notes {
 		cb(&s.Notes[k])
 	}

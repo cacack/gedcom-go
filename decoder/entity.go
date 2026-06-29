@@ -836,12 +836,10 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "TEXT":
 			src.Text = tag.Value
 		case "REPO":
-			if tag.Value != "" {
-				src.RepositoryRef = tag.Value
-			} else {
-				// Look for inline repository with NAME subordinate
-				src.Repository = parseInlineRepository(record.Tags, i, collector)
-			}
+			src.RepositoryLink = parseSourceRepositoryLink(record.Tags, i, collector)
+			// Populate deprecated fields for backward compatibility.
+			src.RepositoryRef = src.RepositoryLink.XRef
+			src.Repository = src.RepositoryLink.Inline
 		case "NOTE":
 			src.Notes = append(src.Notes, tag.Value)
 		case "OBJE":
@@ -869,34 +867,75 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 	return src
 }
 
-// parseInlineRepository extracts an inline repository from tags starting at repoIdx.
-// An inline repository has no XRef value and contains subordinate tags like NAME.
-func parseInlineRepository(tags []*gedcom.Tag, repoIdx int, collector *diagnosticCollector) *gedcom.InlineRepository {
-	repo := &gedcom.InlineRepository{}
+// parseSourceRepositoryLink extracts the structured REPO link of a source from
+// tags starting at repoIdx. The REPO substructure may carry a repository XRef
+// (or an inline repository by NAME), CALN call numbers (each with an optional
+// MEDI media type), and NOTE subordinates.
+func parseSourceRepositoryLink(tags []*gedcom.Tag, repoIdx int, collector *diagnosticCollector) *gedcom.SourceRepositoryLink {
+	link := &gedcom.SourceRepositoryLink{}
 
-	baseLevel := tags[repoIdx].Level
+	repoTag := tags[repoIdx]
+	baseLevel := repoTag.Level
 
-	// Look for subordinate tags at baseLevel+1
+	if repoTag.Value != "" {
+		link.XRef = repoTag.Value
+	} else {
+		// No XRef value: this is an inline repository referenced by name.
+		link.Inline = &gedcom.InlineRepository{}
+	}
+
 	for i := repoIdx + 1; i < len(tags); i++ {
 		tag := tags[i]
 		if tag.Level <= baseLevel {
 			break
 		}
-		if tag.Level == baseLevel+1 {
-			switch tag.Tag {
-			case "NAME":
-				repo.Name = tag.Value
-			case "CALN", "NOTE":
-				// Known tags not yet parsed into typed fields
-			default:
-				if !strings.HasPrefix(tag.Tag, "_") {
-					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+		if tag.Level != baseLevel+1 {
+			continue
+		}
+		switch tag.Tag {
+		case "NAME":
+			if link.Inline == nil {
+				link.Inline = &gedcom.InlineRepository{}
+			}
+			link.Inline.Name = tag.Value
+		case "CALN":
+			link.CallNumbers = append(link.CallNumbers, tag.Value)
+			// MEDI is a subordinate of CALN at baseLevel+2.
+			if medi := findSubordinate(tags, i, "MEDI"); medi != "" {
+				if link.MediaType == "" {
+					link.MediaType = medi
 				}
+				if link.CallNumberMedia == nil {
+					link.CallNumberMedia = make(map[string]string)
+				}
+				link.CallNumberMedia[tag.Value] = medi
+			}
+		case "NOTE":
+			link.Notes = append(link.Notes, tag.Value)
+		default:
+			if !strings.HasPrefix(tag.Tag, "_") {
+				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
 			}
 		}
 	}
 
-	return repo
+	return link
+}
+
+// findSubordinate returns the value of the first direct child tag of the tag at
+// parentIdx that matches name, or "" if none exists.
+func findSubordinate(tags []*gedcom.Tag, parentIdx int, name string) string {
+	parentLevel := tags[parentIdx].Level
+	for i := parentIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= parentLevel {
+			break
+		}
+		if tag.Level == parentLevel+1 && tag.Tag == name {
+			return tag.Value
+		}
+	}
+	return ""
 }
 
 // parseChangeDate extracts a change date structure from tags starting at chanIdx.

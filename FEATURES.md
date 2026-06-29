@@ -420,7 +420,9 @@ mutated.
 
 - Cross-reference ID (`@S1@`)
 - Title, author, publication info
-- Repository references
+- Structured repository link (`RepositoryLink`) carrying call numbers (CALN),
+  media type (MEDI), and per-link notes (NOTE) — by XRef or inline by name
+  (the flat `RepositoryRef`/`Repository` fields remain for compatibility)
 - Notes and multimedia
 
 ### Repositories (REPO)

@@ -345,10 +345,14 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 		tags = append(tags, textToTags(src.Text, 1, "TEXT", opts)...)
 	}
 
-	// Repository reference or inline (level 1) - REPO
-	if src.RepositoryRef != "" {
+	// Repository link (level 1) - REPO. Prefer the structured RepositoryLink;
+	// fall back to the legacy RepositoryRef/Repository fields.
+	switch {
+	case src.RepositoryLink != nil:
+		tags = append(tags, sourceRepositoryLinkToTags(src.RepositoryLink, opts)...)
+	case src.RepositoryRef != "":
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REPO", Value: src.RepositoryRef})
-	} else if src.Repository != nil && src.Repository.Name != "" {
+	case src.Repository != nil && src.Repository.Name != "":
 		tags = append(tags,
 			&gedcom.Tag{Level: 1, Tag: "REPO"},
 			&gedcom.Tag{Level: 2, Tag: "NAME", Value: src.Repository.Name},
@@ -383,6 +387,42 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	// UID (level 1)
 	if src.UID != "" {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "UID", Value: src.UID})
+	}
+
+	return tags
+}
+
+// sourceRepositoryLinkToTags converts a SourceRepositoryLink to GEDCOM tags,
+// emitting the REPO pointer (or inline NAME) plus CALN (with optional MEDI) and
+// NOTE subordinates.
+func sourceRepositoryLinkToTags(link *gedcom.SourceRepositoryLink, opts *EncodeOptions) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+
+	if link.XRef != "" {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REPO", Value: link.XRef})
+	} else {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REPO"})
+		if link.Inline != nil && link.Inline.Name != "" {
+			tags = append(tags, &gedcom.Tag{Level: 2, Tag: "NAME", Value: link.Inline.Name})
+		}
+	}
+
+	// Call numbers (level 2) - CALN, each with an optional MEDI (level 3).
+	for _, caln := range link.CallNumbers {
+		tags = append(tags, &gedcom.Tag{Level: 2, Tag: "CALN", Value: caln})
+		medi := link.CallNumberMedia[caln]
+		if medi == "" && len(link.CallNumbers) == 1 {
+			// Single CALN: fall back to the flat MediaType field.
+			medi = link.MediaType
+		}
+		if medi != "" {
+			tags = append(tags, &gedcom.Tag{Level: 3, Tag: "MEDI", Value: medi})
+		}
+	}
+
+	// Per-link notes (level 2) - NOTE (with CONT/CONC for multiline/long).
+	for _, note := range link.Notes {
+		tags = append(tags, textToTags(note, 2, "NOTE", opts)...)
 	}
 
 	return tags

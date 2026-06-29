@@ -2,6 +2,7 @@ package decoder
 
 import (
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -3321,6 +3322,107 @@ func TestSourceInlineRepositoryRoundtrip(t *testing.T) {
 	}
 	if src.Repository.Name != "County Archives" {
 		t.Errorf("Repository.Name = %s, want 'County Archives'", src.Repository.Name)
+	}
+}
+
+// TestSourceRepositoryLinkDecoding tests decoding of the structured REPO link
+// carrying CALN (with MEDI) and NOTE subordinates (Issue #289).
+func TestSourceRepositoryLinkDecoding(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL Census Record
+1 REPO @R1@
+2 CALN MS-1234
+3 MEDI Manuscript
+2 CALN Roll 42
+2 NOTE Held in archives, advance booking required
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	src := doc.GetSource("@S1@")
+	if src == nil {
+		t.Fatal("Source @S1@ not found")
+	}
+
+	link := src.RepositoryLink
+	if link == nil {
+		t.Fatal("src.RepositoryLink is nil, want non-nil")
+	}
+	if link.XRef != "@R1@" {
+		t.Errorf("link.XRef = %q, want %q", link.XRef, "@R1@")
+	}
+	if link.Inline != nil {
+		t.Errorf("link.Inline = %+v, want nil for XRef link", link.Inline)
+	}
+	wantCALN := []string{"MS-1234", "Roll 42"}
+	if !reflect.DeepEqual(link.CallNumbers, wantCALN) {
+		t.Errorf("link.CallNumbers = %v, want %v", link.CallNumbers, wantCALN)
+	}
+	if link.MediaType != "Manuscript" {
+		t.Errorf("link.MediaType = %q, want %q", link.MediaType, "Manuscript")
+	}
+	if got := link.CallNumberMedia["MS-1234"]; got != "Manuscript" {
+		t.Errorf("link.CallNumberMedia[MS-1234] = %q, want %q", got, "Manuscript")
+	}
+	if _, ok := link.CallNumberMedia["Roll 42"]; ok {
+		t.Errorf("link.CallNumberMedia should not contain 'Roll 42' (no MEDI)")
+	}
+	wantNotes := []string{"Held in archives, advance booking required"}
+	if !reflect.DeepEqual(link.Notes, wantNotes) {
+		t.Errorf("link.Notes = %v, want %v", link.Notes, wantNotes)
+	}
+
+	// Deprecated fields stay populated for backward compatibility.
+	if src.RepositoryRef != "@R1@" {
+		t.Errorf("src.RepositoryRef = %q, want %q", src.RepositoryRef, "@R1@")
+	}
+}
+
+// TestSourceRepositoryLinkInlineDecoding tests the structured REPO link for an
+// inline (by-name) repository with call-number metadata (Issue #289).
+func TestSourceRepositoryLinkInlineDecoding(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL Parish Register
+1 REPO
+2 NAME State Archives
+2 CALN PR-99
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	src := doc.GetSource("@S1@")
+	if src == nil {
+		t.Fatal("Source @S1@ not found")
+	}
+	link := src.RepositoryLink
+	if link == nil {
+		t.Fatal("src.RepositoryLink is nil, want non-nil")
+	}
+	if link.XRef != "" {
+		t.Errorf("link.XRef = %q, want empty", link.XRef)
+	}
+	if link.Inline == nil || link.Inline.Name != "State Archives" {
+		t.Errorf("link.Inline = %+v, want Name 'State Archives'", link.Inline)
+	}
+	if !reflect.DeepEqual(link.CallNumbers, []string{"PR-99"}) {
+		t.Errorf("link.CallNumbers = %v, want [PR-99]", link.CallNumbers)
+	}
+
+	// Deprecated Repository field stays populated.
+	if src.Repository == nil || src.Repository.Name != "State Archives" {
+		t.Errorf("src.Repository = %+v, want Name 'State Archives'", src.Repository)
 	}
 }
 
