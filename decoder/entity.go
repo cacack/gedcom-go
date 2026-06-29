@@ -894,10 +894,16 @@ func parseSourceRepositoryLink(tags []*gedcom.Tag, repoIdx int, collector *diagn
 		}
 		switch tag.Tag {
 		case "NAME":
-			if link.Inline == nil {
-				link.Inline = &gedcom.InlineRepository{}
+			// A NAME subordinate denotes an inline repository. If the REPO tag
+			// already carried an XRef value, the record is malformed (XRef and
+			// inline name are mutually exclusive); keep the XRef as canonical
+			// and ignore the stray NAME rather than populate both fields.
+			if link.XRef == "" {
+				if link.Inline == nil {
+					link.Inline = &gedcom.InlineRepository{}
+				}
+				link.Inline.Name = tag.Value
 			}
-			link.Inline.Name = tag.Value
 		case "CALN":
 			link.CallNumbers = append(link.CallNumbers, tag.Value)
 			// MEDI is a subordinate of CALN at baseLevel+2.
@@ -908,6 +914,9 @@ func parseSourceRepositoryLink(tags []*gedcom.Tag, repoIdx int, collector *diagn
 				if link.CallNumberMedia == nil {
 					link.CallNumberMedia = make(map[string]string)
 				}
+				// Duplicate CALN strings collapse to last-writer-wins here; the
+				// CallNumbers slice retains every entry. See the CallNumberMedia
+				// doc comment in gedcom/repository.go.
 				link.CallNumberMedia[tag.Value] = medi
 			}
 		case "NOTE":

@@ -127,9 +127,12 @@ func xrefwalkFullDocument() *Document {
 	}
 
 	source := &Source{
-		XRef:           "@S1@",
+		XRef: "@S1@",
+		// The decoder populates RepositoryRef and RepositoryLink.XRef with the
+		// same value; the fixture mirrors that so walkSource is exercised the
+		// way real decoded documents look.
 		RepositoryRef:  "@R-SRC@",
-		RepositoryLink: &SourceRepositoryLink{XRef: "@R-LINK@"},
+		RepositoryLink: &SourceRepositoryLink{XRef: "@R-SRC@"},
 		Notes:          []string{"@N-SRC@"},
 		Media: []*MediaLink{
 			{MediaXRef: "@M-SRC@"},
@@ -236,8 +239,9 @@ func xrefwalkExpectedRefs() []string {
 		"@I-HUSB@", "@I-WIFE@", "@I-CHILD1@", "@I-CHILD2@",
 		"@N-FAM@", "@S-FAM@", "@M-FAM@",
 		"@N-FAM-EVENT@", "@F-FAM-LDS@", "@T-FAM@",
-		// Source record
-		"@R-SRC@", "@R-LINK@", "@N-SRC@", "@M-SRC@", "@T-SRC@",
+		// Source record (RepositoryRef and RepositoryLink.XRef are the same
+		// logical pointer, so it is visited once)
+		"@R-SRC@", "@N-SRC@", "@M-SRC@", "@T-SRC@",
 		// Repository record
 		"@N-REPO@", "@T-REPO@",
 		// Note record
@@ -419,7 +423,7 @@ func TestApply_RewritesEverything(t *testing.T) {
 	if got := src.RepositoryRef; got != "@R-SRC@X" {
 		t.Errorf("Source.RepositoryRef = %q", got)
 	}
-	if got := src.RepositoryLink.XRef; got != "@R-LINK@X" {
+	if got := src.RepositoryLink.XRef; got != "@R-SRC@X" {
 		t.Errorf("Source.RepositoryLink.XRef = %q", got)
 	}
 	if got := src.Tags[0].Value; got != "@T-SRC@X" {

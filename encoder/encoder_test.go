@@ -155,6 +155,34 @@ func TestEncodeSourceRepositoryLinkInline(t *testing.T) {
 	}
 }
 
+// TestEncodeSourceRepositoryLinkDegenerate verifies that a non-nil but empty
+// RepositoryLink (no XRef, no inline name, no subordinates) emits no REPO tag
+// rather than a meaningless bare `1 REPO` (Issue #289).
+func TestEncodeSourceRepositoryLinkDegenerate(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: "5.5.1"},
+		Records: []*gedcom.Record{
+			{
+				Type: gedcom.RecordTypeSource,
+				XRef: "@S1@",
+				Entity: &gedcom.Source{
+					XRef:           "@S1@",
+					Title:          "Parish Register",
+					RepositoryLink: &gedcom.SourceRepositoryLink{},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	if strings.Contains(buf.String(), "REPO") {
+		t.Errorf("degenerate RepositoryLink should emit no REPO tag\noutput:\n%s", buf.String())
+	}
+}
+
 func TestEncodeCRLF(t *testing.T) {
 	input := `0 HEAD
 1 GEDC

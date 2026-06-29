@@ -3424,6 +3424,77 @@ func TestSourceRepositoryLinkInlineDecoding(t *testing.T) {
 	if src.Repository == nil || src.Repository.Name != "State Archives" {
 		t.Errorf("src.Repository = %+v, want Name 'State Archives'", src.Repository)
 	}
+	// An inline link has no XRef, so the deprecated RepositoryRef alias must
+	// stay empty (it mirrors RepositoryLink.XRef, not the inline name).
+	if src.RepositoryRef != "" {
+		t.Errorf("src.RepositoryRef = %q, want empty for an inline link", src.RepositoryRef)
+	}
+}
+
+// TestSourceRepositoryLinkMalformedXRefAndName verifies that a REPO carrying
+// both an XRef value and a stray NAME subordinate keeps the XRef canonical and
+// does not populate the inline form, preserving the XRef/Inline mutual
+// exclusion invariant.
+func TestSourceRepositoryLinkMalformedXRefAndName(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL Parish Register
+1 REPO @R1@
+2 NAME Stray Name
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := doc.GetSource("@S1@")
+	if src == nil {
+		t.Fatal("Source @S1@ not found")
+	}
+	link := src.RepositoryLink
+	if link == nil {
+		t.Fatal("src.RepositoryLink is nil, want non-nil")
+	}
+	if link.XRef != "@R1@" {
+		t.Errorf("link.XRef = %q, want %q", link.XRef, "@R1@")
+	}
+	if link.Inline != nil {
+		t.Errorf("link.Inline = %+v, want nil (XRef is canonical)", link.Inline)
+	}
+	if src.Repository != nil {
+		t.Errorf("src.Repository = %+v, want nil", src.Repository)
+	}
+}
+
+// TestSourceRepositoryLinkDuplicateCALN verifies that duplicate CALN strings
+// with differing MEDI subordinates retain both call numbers in the slice while
+// CallNumberMedia collapses to last-writer-wins.
+func TestSourceRepositoryLinkDuplicateCALN(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL Parish Register
+1 REPO @R1@
+2 CALN Box 1
+3 MEDI Manuscript
+2 CALN Box 1
+3 MEDI Photo
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	link := doc.GetSource("@S1@").RepositoryLink
+	if !reflect.DeepEqual(link.CallNumbers, []string{"Box 1", "Box 1"}) {
+		t.Errorf("link.CallNumbers = %v, want [Box 1, Box 1]", link.CallNumbers)
+	}
+	if got := link.CallNumberMedia["Box 1"]; got != "Photo" {
+		t.Errorf("link.CallNumberMedia[Box 1] = %q, want last-writer-wins %q", got, "Photo")
+	}
 }
 
 // TestFamilySearchIDParsing tests parsing of the _FSFTID tag (FamilySearch Family Tree ID).

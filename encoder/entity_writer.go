@@ -398,6 +398,14 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 func sourceRepositoryLinkToTags(link *gedcom.SourceRepositoryLink, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
+	// A degenerate link with neither pointer, inline name, nor any
+	// subordinate data would emit a meaningless bare `1 REPO` that round-trips
+	// as an empty inline repository. Skip it entirely.
+	hasInlineName := link.Inline != nil && link.Inline.Name != ""
+	if link.XRef == "" && !hasInlineName && len(link.CallNumbers) == 0 && len(link.Notes) == 0 {
+		return nil
+	}
+
 	if link.XRef != "" {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REPO", Value: link.XRef})
 	} else {
