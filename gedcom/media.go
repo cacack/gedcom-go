@@ -60,7 +60,21 @@ type MediaObject struct {
 	// Files contains 1:M file references (required, at least one)
 	Files []*MediaFile
 
-	// Notes are references to note records
+	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@")
+	// carried by NOTE tags. SNOTE pointers are tracked separately in
+	// SharedNoteXRefs.
+	NoteXRefs []string
+
+	// InlineNotes are note text values written directly on this record
+	// (1 NOTE <text> form, including CONT/CONC continuations).
+	InlineNotes []string
+
+	// Notes is deprecated: use NoteXRefs and InlineNotes instead. It is kept
+	// for backward compatibility and populated during decode with the inline
+	// note text and shared-note XRefs interleaved in their original GEDCOM
+	// order (not the NoteXRefs-then-InlineNotes order of the split fields).
+	//
+	// Deprecated: use NoteXRefs and InlineNotes.
 	Notes []string
 
 	// RefNumbers are user reference numbers (REFN tag, can have multiple)
@@ -87,6 +101,32 @@ type MediaObject struct {
 
 	// XRef is the cross-reference identifier for this media object
 	XRef string
+}
+
+// AllNotes returns this media object's inline notes followed by the text of any
+// shared notes referenced by NoteXRefs, resolved against doc. SharedNoteXRefs
+// entries (GEDCOM 7.0 SNOTE pointers) that are not already present in NoteXRefs
+// are included as well, so shared notes are never dropped. Shared notes that do
+// not resolve are skipped. Returns nil when there are no notes.
+func (m *MediaObject) AllNotes(doc *Document) []string {
+	xrefs := make([]string, len(m.NoteXRefs), len(m.NoteXRefs)+len(m.SharedNoteXRefs))
+	copy(xrefs, m.NoteXRefs)
+	for _, sx := range m.SharedNoteXRefs {
+		if !containsString(xrefs, sx) {
+			xrefs = append(xrefs, sx)
+		}
+	}
+	return allNotes(doc, m.InlineNotes, xrefs)
+}
+
+// containsString reports whether s is present in xs.
+func containsString(xs []string, s string) bool {
+	for _, x := range xs {
+		if x == s {
+			return true
+		}
+	}
+	return false
 }
 
 // MediaTranslation represents an alternate version of a file (GEDCOM 7.0 FILE-TRAN).

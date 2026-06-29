@@ -136,8 +136,8 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			cite := parseSourceCitation(record.Tags, i, tag.Level, collector)
 			indi.SourceCitations = append(indi.SourceCitations, cite)
 
-		case "NOTE":
-			indi.Notes = append(indi.Notes, tag.Value)
+		case "NOTE", "SNOTE":
+			indi.NoteXRefs, indi.InlineNotes, indi.Notes = appendRecordNote(record.Tags, i, indi.NoteXRefs, indi.InlineNotes, indi.Notes)
 
 		case "OBJE":
 			link := parseMediaLink(record.Tags, i, tag.Level, collector)
@@ -778,8 +778,8 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			cite := parseSourceCitation(record.Tags, i, tag.Level, collector)
 			fam.SourceCitations = append(fam.SourceCitations, cite)
 
-		case "NOTE":
-			fam.Notes = append(fam.Notes, tag.Value)
+		case "NOTE", "SNOTE":
+			fam.NoteXRefs, fam.InlineNotes, fam.Notes = appendRecordNote(record.Tags, i, fam.NoteXRefs, fam.InlineNotes, fam.Notes)
 
 		case "OBJE":
 			link := parseMediaLink(record.Tags, i, tag.Level, collector)
@@ -800,7 +800,7 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "EXID":
 			fam.ExternalIDs = append(fam.ExternalIDs, parseExternalID(record.Tags, i))
 
-		case "RESN", "SUBM", "ASSO", "SNOTE":
+		case "RESN", "SUBM", "ASSO":
 			// Known tags not yet parsed into typed fields
 
 		default:
@@ -840,8 +840,8 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			// Populate deprecated fields for backward compatibility.
 			src.RepositoryRef = src.RepositoryLink.XRef
 			src.Repository = src.RepositoryLink.Inline
-		case "NOTE":
-			src.Notes = append(src.Notes, tag.Value)
+		case "NOTE", "SNOTE":
+			src.NoteXRefs, src.InlineNotes, src.Notes = appendRecordNote(record.Tags, i, src.NoteXRefs, src.InlineNotes, src.Notes)
 		case "OBJE":
 			link := parseMediaLink(record.Tags, i, tag.Level, collector)
 			src.Media = append(src.Media, link)
@@ -855,7 +855,7 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			src.UID = tag.Value
 		case "EXID":
 			src.ExternalIDs = append(src.ExternalIDs, parseExternalID(record.Tags, i))
-		case "DATA", "ABBR", "SNOTE":
+		case "DATA", "ABBR":
 			// Known tags not yet parsed into typed fields
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
@@ -1017,13 +1017,13 @@ func parseSubmitter(record *gedcom.Record, collector *diagnosticCollector) *gedc
 		case "LANG":
 			subm.Language = append(subm.Language, tag.Value)
 
-		case "NOTE":
-			subm.Notes = append(subm.Notes, tag.Value)
+		case "NOTE", "SNOTE":
+			subm.NoteXRefs, subm.InlineNotes, subm.Notes = appendRecordNote(record.Tags, i, subm.NoteXRefs, subm.InlineNotes, subm.Notes)
 
 		case "EXID":
 			subm.ExternalIDs = append(subm.ExternalIDs, parseExternalID(record.Tags, i))
 
-		case "CHAN", "FAX", "WWW", "OBJE", "RIN", "UID", "SNOTE":
+		case "CHAN", "FAX", "WWW", "OBJE", "RIN", "UID":
 			// Known tags not yet parsed into typed fields
 
 		default:
@@ -1074,13 +1074,13 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 			}
 			repo.Address.Website = tag.Value
 
-		case "NOTE":
-			repo.Notes = append(repo.Notes, tag.Value)
+		case "NOTE", "SNOTE":
+			repo.NoteXRefs, repo.InlineNotes, repo.Notes = appendRecordNote(record.Tags, i, repo.NoteXRefs, repo.InlineNotes, repo.Notes)
 
 		case "EXID":
 			repo.ExternalIDs = append(repo.ExternalIDs, parseExternalID(record.Tags, i))
 
-		case "CHAN", "REFN", "UID", "SNOTE", "FAX":
+		case "CHAN", "REFN", "UID", "FAX":
 			// Known tags not yet parsed into typed fields
 
 		default:
@@ -1091,6 +1091,42 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 	}
 
 	return repo
+}
+
+// appendRecordNote classifies a record-level NOTE tag at noteIdx and appends it
+// to the appropriate slice. A pointer-shaped value (e.g. "@N1@") is an XRef to a
+// shared NOTE/SNOTE record and is appended to *xrefs. Any other value is inline
+// note text and is appended to *inline, with subordinate CONT/CONC lines folded
+// in (CONT joins with a newline, CONC concatenates). The legacy combined Notes
+// slice is appended to in the same order for backward compatibility.
+//
+// It returns the updated xrefs, inline, and legacy slices.
+func appendRecordNote(tags []*gedcom.Tag, noteIdx int, xrefs, inline, legacy []string) (newXRefs, newInline, newLegacy []string) {
+	tag := tags[noteIdx]
+	if gedcom.IsPointerXRef(tag.Value) {
+		// XRef pointer to a shared note: the GEDCOM specs do not permit
+		// subordinate CONT/CONC lines here, so there is nothing to fold in.
+		return append(xrefs, tag.Value), inline, append(legacy, tag.Value)
+	}
+
+	text := tag.Value
+	baseLevel := tag.Level
+	for i := noteIdx + 1; i < len(tags); i++ {
+		sub := tags[i]
+		if sub.Level <= baseLevel {
+			break
+		}
+		if sub.Level != baseLevel+1 {
+			continue
+		}
+		switch sub.Tag {
+		case "CONT":
+			text += "\n" + sub.Value
+		case "CONC":
+			text += sub.Value
+		}
+	}
+	return xrefs, append(inline, text), append(legacy, text)
 }
 
 // parseNote converts record tags to a Note entity.
@@ -1237,7 +1273,14 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 			file := parseMediaFile(record.Tags, i, tag.Level, collector)
 			media.Files = append(media.Files, file)
 		case "NOTE":
-			media.Notes = append(media.Notes, tag.Value)
+			media.NoteXRefs, media.InlineNotes, media.Notes = appendRecordNote(record.Tags, i, media.NoteXRefs, media.InlineNotes, media.Notes)
+		case "SNOTE":
+			// Route shared-note pointers through the split-note path so they
+			// reach the typed NoteXRefs API, the legacy Notes slice, and survive
+			// re-encode. Also track them in SharedNoteXRefs, which records the
+			// GEDCOM 7.0 SNOTE form used for version detection.
+			media.NoteXRefs, media.InlineNotes, media.Notes = appendRecordNote(record.Tags, i, media.NoteXRefs, media.InlineNotes, media.Notes)
+			media.SharedNoteXRefs = append(media.SharedNoteXRefs, tag.Value)
 		case "SOUR":
 			cite := parseSourceCitation(record.Tags, i, tag.Level, collector)
 			media.SourceCitations = append(media.SourceCitations, cite)
@@ -1253,8 +1296,6 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 			media.Restriction = tag.Value
 		case "EXID":
 			media.ExternalIDs = append(media.ExternalIDs, parseExternalID(record.Tags, i))
-		case "SNOTE":
-			media.SharedNoteXRefs = append(media.SharedNoteXRefs, tag.Value)
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
 				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)

@@ -55,6 +55,57 @@ func textToTags(value string, level int, tagName string, opts *EncodeOptions) []
 	return tags
 }
 
+// recordNotesToEncode returns the record-level NOTE values to emit. The
+// deprecated combined Notes slice preserves the original GEDCOM order of
+// interleaved XRef pointers and inline notes, so it is authoritative only while
+// the split NoteXRefs/InlineNotes fields still match what that Notes slice
+// decoded into. This keeps decoded round-trips lossless without letting the
+// deprecated slice shadow edits made through the typed split fields.
+//
+// When the split fields diverge from Notes (a hand-built document, or a caller
+// that edited NoteXRefs/InlineNotes after decode), this encodes from the split
+// fields instead, emitting XRef pointers first (as "NOTE @Nn@") followed by
+// inline note text.
+func recordNotesToEncode(noteXRefs, inlineNotes, notes []string) []string {
+	if len(notes) > 0 && splitMatchesNotes(noteXRefs, inlineNotes, notes) {
+		return notes
+	}
+	if len(noteXRefs) == 0 && len(inlineNotes) == 0 {
+		return notes
+	}
+	combined := make([]string, 0, len(noteXRefs)+len(inlineNotes))
+	combined = append(combined, noteXRefs...)
+	combined = append(combined, inlineNotes...)
+	return combined
+}
+
+// splitMatchesNotes reports whether the split NoteXRefs/InlineNotes fields are
+// exactly the partition that decoding the legacy Notes slice would produce:
+// pointer-shaped entries become XRefs and the rest become inline text, each in
+// original order. When true, Notes still reflects the split fields and can be
+// emitted as-is to preserve interleaved order; when false, the split fields have
+// diverged and must be encoded instead.
+func splitMatchesNotes(noteXRefs, inlineNotes, notes []string) bool {
+	if len(noteXRefs)+len(inlineNotes) != len(notes) {
+		return false
+	}
+	var xi, ii int
+	for _, note := range notes {
+		if gedcom.IsPointerXRef(note) {
+			if xi >= len(noteXRefs) || noteXRefs[xi] != note {
+				return false
+			}
+			xi++
+		} else {
+			if ii >= len(inlineNotes) || inlineNotes[ii] != note {
+				return false
+			}
+			ii++
+		}
+	}
+	return xi == len(noteXRefs) && ii == len(inlineNotes)
+}
+
 // splitLineForLength splits a single line into segments that fit within MaxLineLength.
 // Returns a slice with at least one element (the original line if no splitting needed).
 // Attempts to split at word boundaries (spaces) when possible.
@@ -210,7 +261,7 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range indi.Notes {
+	for _, note := range recordNotesToEncode(indi.NoteXRefs, indi.InlineNotes, indi.Notes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
@@ -289,7 +340,7 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range fam.Notes {
+	for _, note := range recordNotesToEncode(fam.NoteXRefs, fam.InlineNotes, fam.Notes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
@@ -365,7 +416,7 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range src.Notes {
+	for _, note := range recordNotesToEncode(src.NoteXRefs, src.InlineNotes, src.Notes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
@@ -466,7 +517,7 @@ func submitterToTags(subm *gedcom.Submitter, opts *EncodeOptions) []*gedcom.Tag 
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range subm.Notes {
+	for _, note := range recordNotesToEncode(subm.NoteXRefs, subm.InlineNotes, subm.Notes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
@@ -488,7 +539,7 @@ func repositoryToTags(repo *gedcom.Repository, opts *EncodeOptions) []*gedcom.Ta
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range repo.Notes {
+	for _, note := range recordNotesToEncode(repo.NoteXRefs, repo.InlineNotes, repo.Notes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
@@ -517,7 +568,7 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range media.Notes {
+	for _, note := range recordNotesToEncode(media.NoteXRefs, media.InlineNotes, media.Notes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 

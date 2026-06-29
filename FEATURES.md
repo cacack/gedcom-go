@@ -441,6 +441,13 @@ mutated.
 
 - Cross-reference ID (`@N1@`)
 - Text content with continuation
+- Split note fields on note-bearing records (Individual, Family, Source,
+  Repository, Submitter, MediaObject): `NoteXRefs` holds XRef pointers to
+  shared NOTE/SNOTE records, `InlineNotes` holds note text written directly
+  on the record. The legacy `Notes []string` field is deprecated (kept for
+  backward compatibility, populated in original GEDCOM order).
+- `AllNotes(doc)` helper returns inline note text plus the resolved text of
+  any shared notes referenced by XRef
 
 ### Multimedia (OBJE)
 

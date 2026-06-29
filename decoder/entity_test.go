@@ -2974,8 +2974,13 @@ func TestParseMediaObject_FullMetadata(t *testing.T) {
 		t.Errorf("media.SharedNoteXRefs[0] = %s, want @N1@", media.SharedNoteXRefs[0])
 	}
 
-	if len(media.Notes) != 1 {
-		t.Errorf("len(media.Notes) = %d, want 1", len(media.Notes))
+	// Notes holds the inline NOTE text plus the SNOTE pointer (routed through
+	// the split-note path), interleaved in original order.
+	if len(media.Notes) != 2 {
+		t.Errorf("len(media.Notes) = %d, want 2", len(media.Notes))
+	}
+	if len(media.NoteXRefs) != 1 || media.NoteXRefs[0] != "@N1@" {
+		t.Errorf("media.NoteXRefs = %#v, want [@N1@]", media.NoteXRefs)
 	}
 
 	if len(media.SourceCitations) != 1 {

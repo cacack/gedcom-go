@@ -56,6 +56,12 @@ linters:
         path: _test\.go
       - path: _test\.go
         text: SA5011
+      # The record-level Notes field is deprecated in favor of NoteXRefs and
+      # InlineNotes (issue #290), but must stay populated and readable during
+      # the deprecation window, so internal uses of it are expected.
+      - linters:
+          - staticcheck
+        text: 'SA1019:.*is deprecated: use NoteXRefs and InlineNotes'
       - linters:
           - lll
           - gocritic
