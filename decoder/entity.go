@@ -1104,6 +1104,8 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 func appendRecordNote(tags []*gedcom.Tag, noteIdx int, xrefs, inline, legacy []string) (newXRefs, newInline, newLegacy []string) {
 	tag := tags[noteIdx]
 	if gedcom.IsPointerXRef(tag.Value) {
+		// XRef pointer to a shared note: the GEDCOM specs do not permit
+		// subordinate CONT/CONC lines here, so there is nothing to fold in.
 		return append(xrefs, tag.Value), inline, append(legacy, tag.Value)
 	}
 

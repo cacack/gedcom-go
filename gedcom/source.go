@@ -49,8 +49,9 @@ type Source struct {
 	InlineNotes []string
 
 	// Notes is deprecated: use NoteXRefs and InlineNotes instead. It is kept
-	// for backward compatibility and populated during decode as the
-	// concatenation NoteXRefs + InlineNotes.
+	// for backward compatibility and populated during decode with the inline
+	// note text and shared-note XRefs interleaved in their original GEDCOM
+	// order (not the NoteXRefs-then-InlineNotes order of the split fields).
 	//
 	// Deprecated: use NoteXRefs and InlineNotes.
 	Notes []string
