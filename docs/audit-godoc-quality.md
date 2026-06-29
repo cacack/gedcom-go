@@ -261,21 +261,21 @@ The library has **good inline documentation** for most types and functions, but 
 
 ### Critical (Must Fix for 1.0)
 
-1. **Add doc.go for decoder/** - `/Users/chris/devel/home/gedcom-go/decoder/doc.go`
+1. **Add doc.go for decoder/** - `decoder/doc.go`
    - Package is the primary entry point; needs comprehensive package comment
    - Should include: purpose, basic usage example, common patterns
 
-2. **Add doc.go for encoder/** - `/Users/chris/devel/home/gedcom-go/encoder/doc.go`
+2. **Add doc.go for encoder/** - `encoder/doc.go`
    - Missing package-level documentation
 
-3. **Add Example for decoder.Decode()** - `/Users/chris/devel/home/gedcom-go/decoder/example_test.go`
+3. **Add Example for decoder.Decode()** - `decoder/example_test.go`
    - Most users will start here
    - Should show file opening, decoding, accessing individuals
 
-4. **Add Example for encoder.Encode()** - `/Users/chris/devel/home/gedcom-go/encoder/example_test.go`
+4. **Add Example for encoder.Encode()** - `encoder/example_test.go`
    - Basic encoding to file/buffer
 
-5. **Add doc.go for gedcom/** - `/Users/chris/devel/home/gedcom-go/gedcom/doc.go`
+5. **Add doc.go for gedcom/** - `gedcom/doc.go`
    - Package overview for core types
    - Should explain Document structure, record types, cross-references
 
@@ -294,10 +294,10 @@ The library has **good inline documentation** for most types and functions, but 
 4. **Add Example for StreamEncoder** - `encoder/example_test.go`
    - Streaming large file generation
 
-5. **Document Decoder type** - `/Users/chris/devel/home/gedcom-go/decoder/decoder.go`
+5. **Document Decoder type** - `decoder/decoder.go`
    - Add type-level comment explaining purpose
 
-6. **Document Encoder type** - `/Users/chris/devel/home/gedcom-go/encoder/encoder.go`
+6. **Document Encoder type** - `encoder/encoder.go`
    - Add type-level comment
 
 7. **Add Example for DecodeFile()** - `decoder/example_test.go`
