@@ -11,7 +11,18 @@ type Repository struct {
 	// Address is the physical address
 	Address *Address
 
-	// Notes are references to note records
+	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
+	NoteXRefs []string
+
+	// InlineNotes are note text values written directly on this record
+	// (1 NOTE <text> form, including CONT/CONC continuations).
+	InlineNotes []string
+
+	// Notes is deprecated: use NoteXRefs and InlineNotes instead. It is kept
+	// for backward compatibility and populated during decode as the
+	// concatenation NoteXRefs + InlineNotes.
+	//
+	// Deprecated: use NoteXRefs and InlineNotes.
 	Notes []string
 
 	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
@@ -20,6 +31,13 @@ type Repository struct {
 
 	// Tags contains all raw tags for this repository (for unknown/custom tags)
 	Tags []*Tag
+}
+
+// AllNotes returns this repository's inline notes followed by the text of any
+// shared notes referenced by NoteXRefs, resolved against doc. Shared notes that
+// do not resolve are skipped. Returns nil when there are no notes.
+func (r *Repository) AllNotes(doc *Document) []string {
+	return allNotes(doc, r.InlineNotes, r.NoteXRefs)
 }
 
 // InlineRepository represents an inline repository definition within a Source.

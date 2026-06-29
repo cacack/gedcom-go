@@ -60,7 +60,20 @@ type MediaObject struct {
 	// Files contains 1:M file references (required, at least one)
 	Files []*MediaFile
 
-	// Notes are references to note records
+	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@")
+	// carried by NOTE tags. SNOTE pointers are tracked separately in
+	// SharedNoteXRefs.
+	NoteXRefs []string
+
+	// InlineNotes are note text values written directly on this record
+	// (1 NOTE <text> form, including CONT/CONC continuations).
+	InlineNotes []string
+
+	// Notes is deprecated: use NoteXRefs and InlineNotes instead. It is kept
+	// for backward compatibility and populated during decode as the
+	// concatenation NoteXRefs + InlineNotes.
+	//
+	// Deprecated: use NoteXRefs and InlineNotes.
 	Notes []string
 
 	// RefNumbers are user reference numbers (REFN tag, can have multiple)
@@ -87,6 +100,13 @@ type MediaObject struct {
 
 	// XRef is the cross-reference identifier for this media object
 	XRef string
+}
+
+// AllNotes returns this media object's inline notes followed by the text of any
+// shared notes referenced by NoteXRefs, resolved against doc. Shared notes that
+// do not resolve are skipped. Returns nil when there are no notes.
+func (m *MediaObject) AllNotes(doc *Document) []string {
+	return allNotes(doc, m.InlineNotes, m.NoteXRefs)
 }
 
 // MediaTranslation represents an alternate version of a file (GEDCOM 7.0 FILE-TRAN).

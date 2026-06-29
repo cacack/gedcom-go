@@ -41,7 +41,18 @@ type Source struct {
 	// Media are references to media objects with optional crop/title
 	Media []*MediaLink
 
-	// Notes are references to note records
+	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
+	NoteXRefs []string
+
+	// InlineNotes are note text values written directly on this record
+	// (1 NOTE <text> form, including CONT/CONC continuations).
+	InlineNotes []string
+
+	// Notes is deprecated: use NoteXRefs and InlineNotes instead. It is kept
+	// for backward compatibility and populated during decode as the
+	// concatenation NoteXRefs + InlineNotes.
+	//
+	// Deprecated: use NoteXRefs and InlineNotes.
 	Notes []string
 
 	// ChangeDate is when the record was last modified (CHAN tag)
@@ -62,6 +73,13 @@ type Source struct {
 
 	// Tags contains all raw tags for this source (for unknown/custom tags)
 	Tags []*Tag
+}
+
+// AllNotes returns this source's inline notes followed by the text of any
+// shared notes referenced by NoteXRefs, resolved against doc. Shared notes that
+// do not resolve are skipped. Returns nil when there are no notes.
+func (s *Source) AllNotes(doc *Document) []string {
+	return allNotes(doc, s.InlineNotes, s.NoteXRefs)
 }
 
 // SourceCitationData represents extracted text and date from a source citation.

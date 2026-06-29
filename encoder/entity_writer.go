@@ -55,6 +55,23 @@ func textToTags(value string, level int, tagName string, opts *EncodeOptions) []
 	return tags
 }
 
+// recordNotesToEncode returns the record-level NOTE values to emit, preferring
+// the split NoteXRefs/InlineNotes fields when either is populated and falling
+// back to the deprecated combined Notes slice otherwise. XRef pointers are
+// emitted first (as "NOTE @Nn@"), followed by inline note text. For documents
+// produced by the decoder the split fields and Notes carry the same values, so
+// this yields identical output; for hand-built documents that set only the
+// split fields it ensures their notes are still written.
+func recordNotesToEncode(noteXRefs, inlineNotes, notes []string) []string {
+	if len(noteXRefs) == 0 && len(inlineNotes) == 0 {
+		return notes
+	}
+	combined := make([]string, 0, len(noteXRefs)+len(inlineNotes))
+	combined = append(combined, noteXRefs...)
+	combined = append(combined, inlineNotes...)
+	return combined
+}
+
 // splitLineForLength splits a single line into segments that fit within MaxLineLength.
 // Returns a slice with at least one element (the original line if no splitting needed).
 // Attempts to split at word boundaries (spaces) when possible.
@@ -210,7 +227,7 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range indi.Notes {
+	for _, note := range recordNotesToEncode(indi.NoteXRefs, indi.InlineNotes, indi.Notes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
@@ -289,7 +306,7 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range fam.Notes {
+	for _, note := range recordNotesToEncode(fam.NoteXRefs, fam.InlineNotes, fam.Notes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
@@ -365,7 +382,7 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range src.Notes {
+	for _, note := range recordNotesToEncode(src.NoteXRefs, src.InlineNotes, src.Notes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 

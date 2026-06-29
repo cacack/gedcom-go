@@ -137,7 +137,7 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			indi.SourceCitations = append(indi.SourceCitations, cite)
 
 		case "NOTE":
-			indi.Notes = append(indi.Notes, tag.Value)
+			indi.NoteXRefs, indi.InlineNotes, indi.Notes = appendRecordNote(record.Tags, i, indi.NoteXRefs, indi.InlineNotes, indi.Notes)
 
 		case "OBJE":
 			link := parseMediaLink(record.Tags, i, tag.Level, collector)
@@ -779,7 +779,7 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			fam.SourceCitations = append(fam.SourceCitations, cite)
 
 		case "NOTE":
-			fam.Notes = append(fam.Notes, tag.Value)
+			fam.NoteXRefs, fam.InlineNotes, fam.Notes = appendRecordNote(record.Tags, i, fam.NoteXRefs, fam.InlineNotes, fam.Notes)
 
 		case "OBJE":
 			link := parseMediaLink(record.Tags, i, tag.Level, collector)
@@ -841,7 +841,7 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			src.RepositoryRef = src.RepositoryLink.XRef
 			src.Repository = src.RepositoryLink.Inline
 		case "NOTE":
-			src.Notes = append(src.Notes, tag.Value)
+			src.NoteXRefs, src.InlineNotes, src.Notes = appendRecordNote(record.Tags, i, src.NoteXRefs, src.InlineNotes, src.Notes)
 		case "OBJE":
 			link := parseMediaLink(record.Tags, i, tag.Level, collector)
 			src.Media = append(src.Media, link)
@@ -1018,7 +1018,7 @@ func parseSubmitter(record *gedcom.Record, collector *diagnosticCollector) *gedc
 			subm.Language = append(subm.Language, tag.Value)
 
 		case "NOTE":
-			subm.Notes = append(subm.Notes, tag.Value)
+			subm.NoteXRefs, subm.InlineNotes, subm.Notes = appendRecordNote(record.Tags, i, subm.NoteXRefs, subm.InlineNotes, subm.Notes)
 
 		case "EXID":
 			subm.ExternalIDs = append(subm.ExternalIDs, parseExternalID(record.Tags, i))
@@ -1075,7 +1075,7 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 			repo.Address.Website = tag.Value
 
 		case "NOTE":
-			repo.Notes = append(repo.Notes, tag.Value)
+			repo.NoteXRefs, repo.InlineNotes, repo.Notes = appendRecordNote(record.Tags, i, repo.NoteXRefs, repo.InlineNotes, repo.Notes)
 
 		case "EXID":
 			repo.ExternalIDs = append(repo.ExternalIDs, parseExternalID(record.Tags, i))
@@ -1091,6 +1091,40 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 	}
 
 	return repo
+}
+
+// appendRecordNote classifies a record-level NOTE tag at noteIdx and appends it
+// to the appropriate slice. A pointer-shaped value (e.g. "@N1@") is an XRef to a
+// shared NOTE/SNOTE record and is appended to *xrefs. Any other value is inline
+// note text and is appended to *inline, with subordinate CONT/CONC lines folded
+// in (CONT joins with a newline, CONC concatenates). The legacy combined Notes
+// slice is appended to in the same order for backward compatibility.
+//
+// It returns the updated xrefs, inline, and legacy slices.
+func appendRecordNote(tags []*gedcom.Tag, noteIdx int, xrefs, inline, legacy []string) (newXRefs, newInline, newLegacy []string) {
+	tag := tags[noteIdx]
+	if gedcom.IsPointerXRef(tag.Value) {
+		return append(xrefs, tag.Value), inline, append(legacy, tag.Value)
+	}
+
+	text := tag.Value
+	baseLevel := tag.Level
+	for i := noteIdx + 1; i < len(tags); i++ {
+		sub := tags[i]
+		if sub.Level <= baseLevel {
+			break
+		}
+		if sub.Level != baseLevel+1 {
+			continue
+		}
+		switch sub.Tag {
+		case "CONT":
+			text += "\n" + sub.Value
+		case "CONC":
+			text += sub.Value
+		}
+	}
+	return xrefs, append(inline, text), append(legacy, text)
 }
 
 // parseNote converts record tags to a Note entity.
@@ -1237,7 +1271,7 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 			file := parseMediaFile(record.Tags, i, tag.Level, collector)
 			media.Files = append(media.Files, file)
 		case "NOTE":
-			media.Notes = append(media.Notes, tag.Value)
+			media.NoteXRefs, media.InlineNotes, media.Notes = appendRecordNote(record.Tags, i, media.NoteXRefs, media.InlineNotes, media.Notes)
 		case "SOUR":
 			cite := parseSourceCitation(record.Tags, i, tag.Level, collector)
 			media.SourceCitations = append(media.SourceCitations, cite)
