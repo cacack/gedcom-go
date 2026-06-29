@@ -122,6 +122,11 @@ func TestAllNotes(t *testing.T) {
 			xrefs:  []string{"@MISSING@", "@N1@"},
 			want:   []string{"keep", "Shared note line 1\nline 2"},
 		},
+		{
+			name:  "all xrefs unresolved with no inline returns nil",
+			xrefs: []string{"@MISSING@", "@ALSO_MISSING@"},
+			want:  nil,
+		},
 	}
 
 	for _, tt := range tests {

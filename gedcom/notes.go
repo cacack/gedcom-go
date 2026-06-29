@@ -33,5 +33,8 @@ func allNotes(doc *Document, inline, xrefs []string) []string {
 			result = append(result, text)
 		}
 	}
+	if len(result) == 0 {
+		return nil
+	}
 	return result
 }
