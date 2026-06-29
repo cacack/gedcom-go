@@ -104,10 +104,29 @@ type MediaObject struct {
 }
 
 // AllNotes returns this media object's inline notes followed by the text of any
-// shared notes referenced by NoteXRefs, resolved against doc. Shared notes that
-// do not resolve are skipped. Returns nil when there are no notes.
+// shared notes referenced by NoteXRefs, resolved against doc. SharedNoteXRefs
+// entries (GEDCOM 7.0 SNOTE pointers) that are not already present in NoteXRefs
+// are included as well, so shared notes are never dropped. Shared notes that do
+// not resolve are skipped. Returns nil when there are no notes.
 func (m *MediaObject) AllNotes(doc *Document) []string {
-	return allNotes(doc, m.InlineNotes, m.NoteXRefs)
+	xrefs := make([]string, len(m.NoteXRefs), len(m.NoteXRefs)+len(m.SharedNoteXRefs))
+	copy(xrefs, m.NoteXRefs)
+	for _, sx := range m.SharedNoteXRefs {
+		if !containsString(xrefs, sx) {
+			xrefs = append(xrefs, sx)
+		}
+	}
+	return allNotes(doc, m.InlineNotes, xrefs)
+}
+
+// containsString reports whether s is present in xs.
+func containsString(xs []string, s string) bool {
+	for _, x := range xs {
+		if x == s {
+			return true
+		}
+	}
+	return false
 }
 
 // MediaTranslation represents an alternate version of a file (GEDCOM 7.0 FILE-TRAN).
