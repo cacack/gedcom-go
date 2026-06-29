@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0](https://github.com/cacack/gedcom-go/compare/v2.1.0...v2.2.0) (2026-06-29)
+
+
+### Features
+
+* **gedcom:** expose structured source-to-repository link ([45caf53](https://github.com/cacack/gedcom-go/commit/45caf5320c54537e2f97f67d2129e2ce59602ca3)), closes [#289](https://github.com/cacack/gedcom-go/issues/289)
+* **gedcom:** split inline notes from shared-note XRefs in record types ([38a6247](https://github.com/cacack/gedcom-go/commit/38a62473f14288ff9edaa68e0669f81cc4d00c66)), closes [#290](https://github.com/cacack/gedcom-go/issues/290)
+
+
+### Bug Fixes
+
+* **decoder:** route SNOTE through split-note path ([5fdbcbe](https://github.com/cacack/gedcom-go/commit/5fdbcbeb6d78159ed7381da8d883cfa4166aea18))
+* **encoder:** encode split note fields when they diverge from legacy Notes ([0df4af1](https://github.com/cacack/gedcom-go/commit/0df4af179c927312daa16fd1d2744e2b75cfdcb1))
+* **encoder:** preserve note order and emit split notes for all record types ([40795b2](https://github.com/cacack/gedcom-go/commit/40795b23b311e707916031253fc50fbb0e89a28d))
+* **gedcom:** correct source-to-repository link edge cases ([dd486de](https://github.com/cacack/gedcom-go/commit/dd486de7ddf1ed0956e0a07afd8257015f7ae71c))
+* **gedcom:** include shared notes in MediaObject.AllNotes ([a5bee5c](https://github.com/cacack/gedcom-go/commit/a5bee5c14698f081a636a9ea5d8386a4121e5c6f))
+* **gedcom:** return nil from allNotes when no notes resolve ([b29bc8f](https://github.com/cacack/gedcom-go/commit/b29bc8f123c78ebf36e88d927c86b52a00887f66))
+
 ## [2.1.0](https://github.com/cacack/gedcom-go/compare/v2.0.1...v2.1.0) (2026-06-01)
 
 
