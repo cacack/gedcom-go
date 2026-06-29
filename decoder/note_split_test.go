@@ -40,6 +40,7 @@ func TestDecodeRecordNoteSplit(t *testing.T) {
 0 @R1@ REPO
 1 NAME A Repository
 1 NOTE @N1@
+1 SNOTE @N1@
 0 @SUB1@ SUBM
 1 NAME A Submitter
 1 NOTE Inline submitter note
@@ -48,6 +49,7 @@ func TestDecodeRecordNoteSplit(t *testing.T) {
 2 FORM image/jpeg
 1 NOTE Inline media note
 1 NOTE @N1@
+1 SNOTE @N1@
 0 TRLR`
 
 	doc, err := Decode(strings.NewReader(input))
@@ -97,15 +99,15 @@ func TestDecodeRecordNoteSplit(t *testing.T) {
 			},
 		},
 		{
-			name: "Repository xref only",
+			name: "Repository routes NOTE and SNOTE xrefs through split path",
 			got: func() recordNotes {
 				r := doc.GetRepository("@R1@")
 				return recordNotes{r.NoteXRefs, r.InlineNotes, r.Notes}
 			}(),
 			want: recordNotes{
-				xrefs:  []string{"@N1@"},
+				xrefs:  []string{"@N1@", "@N1@"},
 				inline: nil,
-				legacy: []string{"@N1@"},
+				legacy: []string{"@N1@", "@N1@"},
 			},
 		},
 		{
@@ -121,15 +123,15 @@ func TestDecodeRecordNoteSplit(t *testing.T) {
 			},
 		},
 		{
-			name: "MediaObject inline before xref",
+			name: "MediaObject routes NOTE and SNOTE through split path",
 			got: func() recordNotes {
 				m := doc.GetMediaObject("@O1@")
 				return recordNotes{m.NoteXRefs, m.InlineNotes, m.Notes}
 			}(),
 			want: recordNotes{
-				xrefs:  []string{"@N1@"},
+				xrefs:  []string{"@N1@", "@N1@"},
 				inline: []string{"Inline media note"},
-				legacy: []string{"Inline media note", "@N1@"},
+				legacy: []string{"Inline media note", "@N1@", "@N1@"},
 			},
 		},
 	}
@@ -146,5 +148,11 @@ func TestDecodeRecordNoteSplit(t *testing.T) {
 				t.Errorf("Notes = %#v, want %#v", tt.got.legacy, tt.want.legacy)
 			}
 		})
+	}
+
+	// A media SNOTE is also tracked in SharedNoteXRefs (the GEDCOM 7.0 form used
+	// for version detection) in addition to the split-note path.
+	if got, want := doc.GetMediaObject("@O1@").SharedNoteXRefs, []string{"@N1@"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("MediaObject SharedNoteXRefs = %#v, want %#v", got, want)
 	}
 }
