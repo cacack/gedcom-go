@@ -566,10 +566,17 @@ func TestSourceClone(t *testing.T) {
 			RefNumber:     "789",
 			UID:           "uid-789",
 			Repository:    &InlineRepository{Name: "Inline Repo"},
-			Media:         []*MediaLink{{MediaXRef: "@M1@"}},
-			ChangeDate:    &ChangeDate{Date: "1 JAN 2024"},
-			CreationDate:  &ChangeDate{Date: "1 JAN 2020"},
-			Tags:          []*Tag{{Tag: "CUSTOM"}},
+			RepositoryLink: &SourceRepositoryLink{
+				XRef:            "@R1@",
+				CallNumbers:     []string{"MS-1234"},
+				MediaType:       "Manuscript",
+				CallNumberMedia: map[string]string{"MS-1234": "Manuscript"},
+				Notes:           []string{"Held in archives"},
+			},
+			Media:        []*MediaLink{{MediaXRef: "@M1@"}},
+			ChangeDate:   &ChangeDate{Date: "1 JAN 2024"},
+			CreationDate: &ChangeDate{Date: "1 JAN 2020"},
+			Tags:         []*Tag{{Tag: "CUSTOM"}},
 		}
 
 		copied := original.Clone()
@@ -584,6 +591,28 @@ func TestSourceClone(t *testing.T) {
 		}
 		if copied.Repository.Name != original.Repository.Name {
 			t.Errorf("Repository.Name = %v, want %v", copied.Repository.Name, original.Repository.Name)
+		}
+		if copied.RepositoryLink == original.RepositoryLink {
+			t.Error("RepositoryLink should have different pointer")
+		}
+		if copied.RepositoryLink.XRef != original.RepositoryLink.XRef {
+			t.Errorf("RepositoryLink.XRef = %v, want %v", copied.RepositoryLink.XRef, original.RepositoryLink.XRef)
+		}
+		// Mutating the copy's maps/slices must not affect the original.
+		copied.RepositoryLink.CallNumberMedia["MS-1234"] = "changed"
+		if original.RepositoryLink.CallNumberMedia["MS-1234"] != "Manuscript" {
+			t.Error("RepositoryLink.CallNumberMedia map shares backing storage with original")
+		}
+		copied.RepositoryLink.CallNumbers[0] = "changed"
+		if original.RepositoryLink.CallNumbers[0] != "MS-1234" {
+			t.Error("RepositoryLink.CallNumbers slice shares backing storage with original")
+		}
+	})
+
+	t.Run("nil RepositoryLink clones to nil", func(t *testing.T) {
+		original := &Source{XRef: "@S2@"}
+		if original.Clone().RepositoryLink != nil {
+			t.Error("nil RepositoryLink should clone to nil")
 		}
 	})
 }

@@ -29,6 +29,47 @@ type InlineRepository struct {
 	Name string
 }
 
+// SourceRepositoryLink is a Source's reference to a Repository, with per-link
+// metadata (call numbers, media type, notes). It models the REPO substructure
+// of a SOUR record, which can carry CALN (call number), MEDI (media type), and
+// NOTE subordinates in addition to the repository pointer itself.
+type SourceRepositoryLink struct {
+	// XRef is the repository pointer, e.g. "@R1@". XRef and Inline are
+	// mutually exclusive: when XRef is non-empty, Inline is nil (the decoder
+	// enforces this even for malformed input that carries both).
+	XRef string
+
+	// Inline is set when the source references the repository by name rather
+	// than by XRef (i.e. the GEDCOM has `1 REPO` with a name value and no
+	// separate repository record).
+	Inline *InlineRepository
+
+	// CallNumbers holds CALN values (multiple allowed per GEDCOM spec).
+	CallNumbers []string
+
+	// MediaType is the MEDI subordinate of the first CALN that carries one
+	// (manuscript, photo, etc.). When multiple CALNs have differing MEDI
+	// values, use CallNumberMedia to recover the per-CALN pairing.
+	//
+	// The encoder only round-trips MediaType faithfully for a single-CALN
+	// link (it is emitted as that CALN's MEDI when CallNumberMedia has no
+	// entry for it). For multi-CALN links the encoder relies on
+	// CallNumberMedia; a MediaType set without a matching CallNumberMedia
+	// entry is not written out.
+	MediaType string
+
+	// CallNumberMedia indexes MEDI values by their parent CALN, when CALN and
+	// MEDI need to stay paired. Empty when no MEDI subordinates exist.
+	//
+	// Keyed by the CALN string value. If a record carries two CALN entries
+	// with identical text but different MEDI subordinates, the later MEDI
+	// wins (last-writer-wins); CallNumbers still retains both entries.
+	CallNumberMedia map[string]string
+
+	// Notes carries NOTE subordinates of the REPO link (not the source).
+	Notes []string
+}
+
 // Address represents a physical or digital address.
 type Address struct {
 	// Line1 is the first address line

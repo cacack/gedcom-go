@@ -61,6 +61,128 @@ func TestEncodeRoundtrip(t *testing.T) {
 	}
 }
 
+// TestEncodeSourceRepositoryLink verifies the structured REPO link (CALN, MEDI,
+// NOTE) survives a decode -> encode -> decode cycle without loss (Issue #289).
+func TestEncodeSourceRepositoryLink(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL Census Record
+1 REPO @R1@
+2 CALN MS-1234
+3 MEDI Manuscript
+2 NOTE Held in archives
+0 TRLR
+`
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	output := buf.String()
+
+	for _, want := range []string{
+		"1 REPO @R1@",
+		"2 CALN MS-1234",
+		"3 MEDI Manuscript",
+		"2 NOTE Held in archives",
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("output missing %q\noutput:\n%s", want, output)
+		}
+	}
+
+	doc2, err := decoder.Decode(strings.NewReader(output))
+	if err != nil {
+		t.Fatalf("re-decode error = %v\noutput:\n%s", err, output)
+	}
+	link := doc2.GetSource("@S1@").RepositoryLink
+	if link == nil {
+		t.Fatalf("RepositoryLink nil after roundtrip\noutput:\n%s", output)
+	}
+	if link.XRef != "@R1@" {
+		t.Errorf("link.XRef = %q, want %q", link.XRef, "@R1@")
+	}
+	if len(link.CallNumbers) != 1 || link.CallNumbers[0] != "MS-1234" {
+		t.Errorf("link.CallNumbers = %v, want [MS-1234]", link.CallNumbers)
+	}
+	if link.CallNumberMedia["MS-1234"] != "Manuscript" {
+		t.Errorf("link.CallNumberMedia[MS-1234] = %q, want %q", link.CallNumberMedia["MS-1234"], "Manuscript")
+	}
+	if len(link.Notes) != 1 || link.Notes[0] != "Held in archives" {
+		t.Errorf("link.Notes = %v, want [Held in archives]", link.Notes)
+	}
+}
+
+// TestEncodeSourceRepositoryLinkInline verifies an inline (by-name) REPO link
+// with a call number round-trips (Issue #289).
+func TestEncodeSourceRepositoryLinkInline(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL Parish Register
+1 REPO
+2 NAME State Archives
+2 CALN PR-99
+0 TRLR
+`
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	output := buf.String()
+
+	for _, want := range []string{"1 REPO", "2 NAME State Archives", "2 CALN PR-99"} {
+		if !strings.Contains(output, want) {
+			t.Errorf("output missing %q\noutput:\n%s", want, output)
+		}
+	}
+	if strings.Contains(output, "1 REPO @") {
+		t.Errorf("inline REPO should not have an XRef value\noutput:\n%s", output)
+	}
+}
+
+// TestEncodeSourceRepositoryLinkDegenerate verifies that a non-nil but empty
+// RepositoryLink (no XRef, no inline name, no subordinates) emits no REPO tag
+// rather than a meaningless bare `1 REPO` (Issue #289).
+func TestEncodeSourceRepositoryLinkDegenerate(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: "5.5.1"},
+		Records: []*gedcom.Record{
+			{
+				Type: gedcom.RecordTypeSource,
+				XRef: "@S1@",
+				Entity: &gedcom.Source{
+					XRef:           "@S1@",
+					Title:          "Parish Register",
+					RepositoryLink: &gedcom.SourceRepositoryLink{},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	if strings.Contains(buf.String(), "REPO") {
+		t.Errorf("degenerate RepositoryLink should emit no REPO tag\noutput:\n%s", buf.String())
+	}
+}
+
 func TestEncodeCRLF(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
