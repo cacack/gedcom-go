@@ -57,13 +57,17 @@ func textToTags(value string, level int, tagName string, opts *EncodeOptions) []
 
 // recordNotesToEncode returns the record-level NOTE values to emit. The
 // deprecated combined Notes slice preserves the original GEDCOM order of
-// interleaved XRef pointers and inline notes, so it is preferred whenever it is
-// populated to keep round-trips lossless. Only when Notes is empty (a hand-built
-// document that set just the split fields) does this fall back to combining the
-// split NoteXRefs/InlineNotes fields, emitting XRef pointers first (as
-// "NOTE @Nn@") followed by inline note text.
+// interleaved XRef pointers and inline notes, so it is authoritative only while
+// the split NoteXRefs/InlineNotes fields still match what that Notes slice
+// decoded into. This keeps decoded round-trips lossless without letting the
+// deprecated slice shadow edits made through the typed split fields.
+//
+// When the split fields diverge from Notes (a hand-built document, or a caller
+// that edited NoteXRefs/InlineNotes after decode), this encodes from the split
+// fields instead, emitting XRef pointers first (as "NOTE @Nn@") followed by
+// inline note text.
 func recordNotesToEncode(noteXRefs, inlineNotes, notes []string) []string {
-	if len(notes) > 0 {
+	if len(notes) > 0 && splitMatchesNotes(noteXRefs, inlineNotes, notes) {
 		return notes
 	}
 	if len(noteXRefs) == 0 && len(inlineNotes) == 0 {
@@ -73,6 +77,33 @@ func recordNotesToEncode(noteXRefs, inlineNotes, notes []string) []string {
 	combined = append(combined, noteXRefs...)
 	combined = append(combined, inlineNotes...)
 	return combined
+}
+
+// splitMatchesNotes reports whether the split NoteXRefs/InlineNotes fields are
+// exactly the partition that decoding the legacy Notes slice would produce:
+// pointer-shaped entries become XRefs and the rest become inline text, each in
+// original order. When true, Notes still reflects the split fields and can be
+// emitted as-is to preserve interleaved order; when false, the split fields have
+// diverged and must be encoded instead.
+func splitMatchesNotes(noteXRefs, inlineNotes, notes []string) bool {
+	if len(noteXRefs)+len(inlineNotes) != len(notes) {
+		return false
+	}
+	var xi, ii int
+	for _, note := range notes {
+		if gedcom.IsPointerXRef(note) {
+			if xi >= len(noteXRefs) || noteXRefs[xi] != note {
+				return false
+			}
+			xi++
+		} else {
+			if ii >= len(inlineNotes) || inlineNotes[ii] != note {
+				return false
+			}
+			ii++
+		}
+	}
+	return xi == len(noteXRefs) && ii == len(inlineNotes)
 }
 
 // splitLineForLength splits a single line into segments that fit within MaxLineLength.

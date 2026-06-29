@@ -32,6 +32,20 @@ func TestRecordNotesToEncode(t *testing.T) {
 			want:      []string{"@N1@", "first inline", "@N2@", "second inline"},
 		},
 		{
+			name:      "edited split fields override stale legacy Notes",
+			noteXRefs: []string{"@N1@"},
+			inline:    []string{"edited inline"},
+			notes:     []string{"@N1@", "original inline"},
+			want:      []string{"@N1@", "edited inline"},
+		},
+		{
+			name:      "added xref not in legacy Notes encodes from split fields",
+			noteXRefs: []string{"@N1@", "@N2@"},
+			inline:    []string{"first inline"},
+			notes:     []string{"@N1@", "first inline"},
+			want:      []string{"@N1@", "@N2@", "first inline"},
+		},
+		{
 			name:      "combines split fields when legacy Notes empty",
 			noteXRefs: []string{"@N1@", "@N2@"},
 			inline:    []string{"first inline", "second inline"},
@@ -97,11 +111,26 @@ func noteTagValues(tags []*gedcom.Tag) []string {
 	return out
 }
 
-// TestSubmitterRepositoryMediaNoteSplit confirms Submitter, Repository, and
-// MediaObject records built with only the split note fields still emit NOTE
-// tags for both the XRef pointer and inline text.
-func TestSubmitterRepositoryMediaNoteSplit(t *testing.T) {
+// TestRecordTypesNoteSplit confirms every note-bearing record type built with
+// only the split note fields still emits NOTE tags for both the XRef pointer and
+// inline text. It covers all six record types whose NOTE emission was changed.
+func TestRecordTypesNoteSplit(t *testing.T) {
 	want := []string{"@N1@", "An inline note"}
+
+	indi := &gedcom.Individual{NoteXRefs: []string{"@N1@"}, InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(individualToTags(indi, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("individualToTags() NOTE values = %#v, want %#v", got, want)
+	}
+
+	fam := &gedcom.Family{NoteXRefs: []string{"@N1@"}, InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(familyToTags(fam, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("familyToTags() NOTE values = %#v, want %#v", got, want)
+	}
+
+	src := &gedcom.Source{NoteXRefs: []string{"@N1@"}, InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(sourceToTags(src, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("sourceToTags() NOTE values = %#v, want %#v", got, want)
+	}
 
 	subm := &gedcom.Submitter{NoteXRefs: []string{"@N1@"}, InlineNotes: []string{"An inline note"}}
 	if got := noteTagValues(submitterToTags(subm, nil)); !reflect.DeepEqual(got, want) {
