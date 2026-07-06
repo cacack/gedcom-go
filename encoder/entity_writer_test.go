@@ -3237,6 +3237,116 @@ func TestEncodeSharedNoteEntityMultiLine(t *testing.T) {
 	}
 }
 
+// TestEncodeNoteEntityMultiLine verifies that a hand-built (entity-only, no raw
+// Tags) Note encodes its first line as the level-0 value and its Continuation as
+// CONT lines, surviving a full entity round-trip (issue #334, NOTE parity with #330).
+func TestEncodeNoteEntityMultiLine(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{
+			Version:  gedcom.Version70,
+			Encoding: gedcom.EncodingUTF8,
+		},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@N1@",
+				Type: gedcom.RecordTypeNote,
+				Entity: &gedcom.Note{
+					XRef:         "@N1@",
+					Text:         "a",
+					Continuation: []string{"b", "c"},
+				},
+			},
+			{
+				XRef: "@N2@",
+				Type: gedcom.RecordTypeNote,
+				Entity: &gedcom.Note{
+					XRef: "@N2@",
+					Text: "solo",
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	output := buf.String()
+	for _, want := range []string{"0 @N1@ NOTE a", "1 CONT b", "1 CONT c", "0 @N2@ NOTE solo"} {
+		if !strings.Contains(output, want) {
+			t.Errorf("output missing %q:\n%s", want, output)
+		}
+	}
+
+	// Full entity round-trip: no decode of a source file, so the entity encode
+	// path (entityRecordText for the value + noteToTags for continuation) is the
+	// only thing under test.
+	redoc, err := decoder.Decode(strings.NewReader(output))
+	if err != nil {
+		t.Fatalf("re-decode error = %v", err)
+	}
+	if n := redoc.GetNote("@N1@"); n == nil {
+		t.Fatal("GetNote(@N1@) returned nil after round-trip")
+	} else if want := "a\nb\nc"; n.FullText() != want {
+		t.Errorf("round-trip Note.FullText() = %q, want %q", n.FullText(), want)
+	}
+	if n := redoc.GetNote("@N2@"); n == nil {
+		t.Fatal("GetNote(@N2@) returned nil after round-trip")
+	} else if n.Text != "solo" {
+		t.Errorf("round-trip single-line Note.Text = %q, want %q", n.Text, "solo")
+	}
+}
+
+// TestEncodeNoteEntityTextNewlineNoInjection verifies that embedded newlines in a
+// hand-built Note.Text are folded into CONT lines rather than written verbatim
+// onto the level-0 line — where they would forge additional GEDCOM records
+// (issue #334 panel review; parity with the SNOTE textToTags split).
+func TestEncodeNoteEntityTextNewlineNoInjection(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version70, Encoding: gedcom.EncodingUTF8},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@N1@",
+				Type: gedcom.RecordTypeNote,
+				Entity: &gedcom.Note{
+					XRef: "@N1@",
+					// A malicious/naive multi-line value that, written verbatim, would
+					// inject a fabricated INDI record.
+					Text: "innocent\n0 @EVIL@ INDI\n1 NAME Injected",
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	output := buf.String()
+
+	// The level-0 line carries only the first segment; the rest are CONT values.
+	if !strings.Contains(output, "0 @N1@ NOTE innocent") {
+		t.Errorf("level-0 value not isolated to first line:\n%s", output)
+	}
+	if !strings.Contains(output, "1 CONT 0 @EVIL@ INDI") {
+		t.Errorf("injected line was not folded into a CONT value:\n%s", output)
+	}
+
+	// The forged record must not materialize on re-decode.
+	redoc, err := decoder.Decode(strings.NewReader(output))
+	if err != nil {
+		t.Fatalf("re-decode error = %v", err)
+	}
+	if indi := redoc.GetIndividual("@EVIL@"); indi != nil {
+		t.Fatalf("injection succeeded: fabricated INDI @EVIL@ decoded from note text")
+	}
+	if n := redoc.GetNote("@N1@"); n == nil {
+		t.Fatal("GetNote(@N1@) returned nil after round-trip")
+	} else if want := "innocent\n0 @EVIL@ INDI\n1 NAME Injected"; n.FullText() != want {
+		t.Errorf("round-trip Note.FullText() = %q, want %q", n.FullText(), want)
+	}
+}
+
 // TestRoundTripSharedNoteEmptyValueCONC guards against double-emission when a
 // decoded SNOTE has an empty level-0 value followed by a continuation (the entity
 // carries raw Tags, so writeRecord must NOT re-derive the value from Text). A

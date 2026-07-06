@@ -1118,23 +1118,32 @@ func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int) []*gedcom.
 	return tags
 }
 
-// entityRecordText returns the level-0 line value and the CONT/CONC continuation
-// tags for a record whose entity carries text on the level-0 line. Only GEDCOM 7.0
-// SharedNote (SNOTE) does today; NOTE entities require the caller to set
-// record.Value. The value and its continuation come from a single textToTags split
-// so they can never disagree, and the continuation tags are meant to precede the
-// entity's other level-1 substructures. Returns ("", nil) otherwise. Consulted
-// only for entity-only records (empty record.Value, no raw Tags).
+// entityRecordText returns the level-0 line value and any leading CONT/CONC
+// continuation tags for a record whose entity carries text on the level-0 line —
+// GEDCOM 7.0 SharedNote (SNOTE) and NOTE. Consulted only for entity-only records
+// (empty record.Value, no raw Tags); returns ("", nil) otherwise.
+//
+// Both types run Text through textToTags: the first segment is the level-0 value
+// and the remainder are leading CONT/CONC tags. This splits on embedded newlines
+// and enforces MaxLineLength — critical for correctness, since writing Text
+// verbatim onto the level-0 line would let an embedded newline forge additional
+// GEDCOM records. For NOTE, this covers the Text field only; note.Continuation is
+// emitted separately by noteToTags, and the two never overlap (Text holds the
+// first line, Continuation the rest), so there is no double-emission.
 func entityRecordText(record *gedcom.Record, opts *EncodeOptions) (string, []*gedcom.Tag) {
-	if record.Type != gedcom.RecordTypeSharedNote {
-		return "", nil
+	switch record.Type {
+	case gedcom.RecordTypeSharedNote:
+		if snote, ok := record.Entity.(*gedcom.SharedNote); ok && snote.Text != "" {
+			tags := textToTags(snote.Text, 0, "SNOTE", opts)
+			return tags[0].Value, tags[1:]
+		}
+	case gedcom.RecordTypeNote:
+		if note, ok := record.Entity.(*gedcom.Note); ok && note.Text != "" {
+			tags := textToTags(note.Text, 0, "NOTE", opts)
+			return tags[0].Value, tags[1:]
+		}
 	}
-	snote, ok := record.Entity.(*gedcom.SharedNote)
-	if !ok || snote.Text == "" {
-		return "", nil
-	}
-	tags := textToTags(snote.Text, 0, "SNOTE", opts)
-	return tags[0].Value, tags[1:]
+	return "", nil
 }
 
 // sharedNoteToTags converts a SharedNote entity to GEDCOM tags.
