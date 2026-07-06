@@ -547,7 +547,8 @@ func parseEventAddress(tags []*gedcom.Tag, addrIdx, baseLevel int, collector *di
 			case "CTRY":
 				addr.Country = tag.Value
 			case "CONT":
-				// Continue address on next line
+				// Continue address on next line. Not foldContinuation: an empty
+				// first line takes the value directly, with no leading newline.
 				if addr.Line1 != "" {
 					addr.Line1 += "\n" + tag.Value
 				} else {
@@ -1093,6 +1094,20 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 	return repo
 }
 
+// foldContinuation applies a CONT/CONC continuation tag to accumulated text:
+// CONT joins with a newline, CONC concatenates directly. Any other tag returns
+// text unchanged. Callers that special-case an empty base (parseEventAddress) or
+// accumulate into a slice (parseNote) intentionally do not use this.
+func foldContinuation(text string, tag *gedcom.Tag) string {
+	switch tag.Tag {
+	case "CONT":
+		return text + "\n" + tag.Value
+	case "CONC":
+		return text + tag.Value
+	}
+	return text
+}
+
 // appendRecordNote classifies a record-level NOTE tag at noteIdx and appends it
 // to the appropriate slice. A pointer-shaped value (e.g. "@N1@") is an XRef to a
 // shared NOTE/SNOTE record and is appended to *xrefs. Any other value is inline
@@ -1119,12 +1134,7 @@ func appendRecordNote(tags []*gedcom.Tag, noteIdx int, xrefs, inline, legacy []s
 		if sub.Level != baseLevel+1 {
 			continue
 		}
-		switch sub.Tag {
-		case "CONT":
-			text += "\n" + sub.Value
-		case "CONC":
-			text += sub.Value
-		}
+		text = foldContinuation(text, sub)
 	}
 	return xrefs, append(inline, text), append(legacy, text)
 }
@@ -1146,7 +1156,8 @@ func parseNote(record *gedcom.Record, collector *diagnosticCollector) *gedcom.No
 
 		switch tag.Tag {
 		case "CONT":
-			// Continue with newline
+			// Continue with newline. Not foldContinuation: this accumulates into
+			// the Continuation slice rather than folding into a single string.
 			note.Continuation = append(note.Continuation, tag.Value)
 
 		case "CONC":
@@ -1212,17 +1223,12 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "CHAN":
 			note.ChangeDate = parseChangeDate(record.Tags, i, collector)
 
-		case "CONT":
+		case "CONT", "CONC":
 			// Fold continuation lines back into the primary text so consumers
 			// reading SharedNote.Text get the full multi-line body, not just the
-			// first line (which lives in record.Value). CONT joins with a newline.
-			note.Text += "\n" + tag.Value
-
-		case "CONC":
-			// CONC is not valid in GEDCOM 7.0 SNOTE (removed in 7.0), but fold it
-			// in without a newline for robustness against malformed input — mirroring
-			// parseNote — so its payload is not silently dropped from Text.
-			note.Text += tag.Value
+			// first line (which lives in record.Value). CONC is invalid in GEDCOM
+			// 7.0 SNOTE but is folded in for robustness against malformed input.
+			note.Text = foldContinuation(note.Text, tag)
 
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
