@@ -2,9 +2,31 @@ package parser
 
 import (
 	"bytes"
+	"encoding/gob"
+	"errors"
 	"strings"
 	"testing"
 )
+
+// TestLoadIndex_VersionMismatch verifies that loading an index whose
+// serialized format version differs from IndexVersion fails with the
+// ErrIndexVersionMismatch sentinel, so callers can detect a stale index
+// by identity (ADR-007) rather than string-matching.
+func TestLoadIndex_VersionMismatch(t *testing.T) {
+	var buf bytes.Buffer
+	// Hand-encode an index payload carrying an incompatible version byte.
+	if err := gob.NewEncoder(&buf).Encode(indexData{
+		Version:  IndexVersion + 1,
+		Encoding: "UTF-8",
+		Entries:  map[string]IndexEntry{},
+	}); err != nil {
+		t.Fatalf("gob encode: %v", err)
+	}
+
+	if _, err := LoadIndex(&buf); !errors.Is(err, ErrIndexVersionMismatch) {
+		t.Fatalf("LoadIndex error = %v, want ErrIndexVersionMismatch", err)
+	}
+}
 
 func TestBuildIndex_Basic(t *testing.T) {
 	input := `0 HEAD
