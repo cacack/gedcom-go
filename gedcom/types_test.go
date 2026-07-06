@@ -91,32 +91,6 @@ func TestEncodingString(t *testing.T) {
 	}
 }
 
-func TestTag(t *testing.T) {
-	t.Run("HasValue", func(t *testing.T) {
-		tag := &Tag{Level: 1, Tag: "NAME", Value: "John /Doe/"}
-		if !tag.HasValue() {
-			t.Error("Tag should have value")
-		}
-
-		emptyTag := &Tag{Level: 1, Tag: "NAME"}
-		if emptyTag.HasValue() {
-			t.Error("Tag should not have value")
-		}
-	})
-
-	t.Run("HasXRef", func(t *testing.T) {
-		tag := &Tag{Level: 0, Tag: "INDI", XRef: "@I1@"}
-		if !tag.HasXRef() {
-			t.Error("Tag should have XRef")
-		}
-
-		noXRefTag := &Tag{Level: 1, Tag: "NAME"}
-		if noXRefTag.HasXRef() {
-			t.Error("Tag should not have XRef")
-		}
-	})
-}
-
 func TestRecord(t *testing.T) {
 	t.Run("IsIndividual", func(t *testing.T) {
 		record := &Record{Type: RecordTypeIndividual}

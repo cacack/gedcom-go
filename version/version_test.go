@@ -10,11 +10,10 @@ import (
 // T030: Write tests for version detection (header-based and tag-based fallback)
 func TestDetectVersion(t *testing.T) {
 	tests := []struct {
-		name     string
-		lines    []*parser.Line
-		want     gedcom.Version
-		wantErr  bool
-		fallback bool
+		name    string
+		lines   []*parser.Line
+		want    gedcom.Version
+		wantErr bool
 	}{
 		{
 			name: "detect 5.5 from header",
@@ -23,9 +22,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 2, Tag: "VERS", Value: "5.5"},
 			},
-			want:     gedcom.Version55,
-			wantErr:  false,
-			fallback: false,
+			want:    gedcom.Version55,
+			wantErr: false,
 		},
 		{
 			name: "detect 5.5.1 from header",
@@ -34,9 +32,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 2, Tag: "VERS", Value: "5.5.1"},
 			},
-			want:     gedcom.Version551,
-			wantErr:  false,
-			fallback: false,
+			want:    gedcom.Version551,
+			wantErr: false,
 		},
 		{
 			name: "detect 7.0 from header",
@@ -45,9 +42,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 2, Tag: "VERS", Value: "7.0"},
 			},
-			want:     gedcom.Version70,
-			wantErr:  false,
-			fallback: false,
+			want:    gedcom.Version70,
+			wantErr: false,
 		},
 		{
 			name: "no version in header",
@@ -55,16 +51,14 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "HEAD"},
 				{Level: 0, Tag: "TRLR"},
 			},
-			want:     gedcom.Version55,
-			wantErr:  false,
-			fallback: true,
+			want:    gedcom.Version55,
+			wantErr: false,
 		},
 		{
-			name:     "empty input",
-			lines:    []*parser.Line{},
-			want:     gedcom.Version55,
-			wantErr:  false,
-			fallback: true,
+			name:    "empty input",
+			lines:   []*parser.Line{},
+			want:    gedcom.Version55,
+			wantErr: false,
 		},
 		{
 			name: "detect 7.0.0 from header (alternative format)",
@@ -73,9 +67,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 2, Tag: "VERS", Value: "7.0.0"},
 			},
-			want:     gedcom.Version70,
-			wantErr:  false,
-			fallback: false,
+			want:    gedcom.Version70,
+			wantErr: false,
 		},
 		{
 			name: "detect with extra whitespace in version",
@@ -84,9 +77,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 2, Tag: "VERS", Value: "  5.5.1  "},
 			},
-			want:     gedcom.Version551,
-			wantErr:  false,
-			fallback: false,
+			want:    gedcom.Version551,
+			wantErr: false,
 		},
 		{
 			name: "unknown version falls back to 5.5",
@@ -95,9 +87,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 2, Tag: "VERS", Value: "6.0"},
 			},
-			want:     gedcom.Version55,
-			wantErr:  false,
-			fallback: true,
+			want:    gedcom.Version55,
+			wantErr: false,
 		},
 		{
 			name: "GEDC without VERS falls back",
@@ -106,9 +97,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 1, Tag: "CHAR", Value: "UTF-8"},
 			},
-			want:     gedcom.Version55,
-			wantErr:  false,
-			fallback: true,
+			want:    gedcom.Version55,
+			wantErr: false,
 		},
 		{
 			name: "detect 7.0 from tags (EXID)",
@@ -117,9 +107,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "INDI"},
 				{Level: 1, Tag: "EXID", Value: "123"},
 			},
-			want:     gedcom.Version70,
-			wantErr:  false,
-			fallback: true,
+			want:    gedcom.Version70,
+			wantErr: false,
 		},
 		{
 			name: "detect 7.0 from tags (PHRASE)",
@@ -127,9 +116,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "HEAD"},
 				{Level: 1, Tag: "PHRASE", Value: "test"},
 			},
-			want:     gedcom.Version70,
-			wantErr:  false,
-			fallback: true,
+			want:    gedcom.Version70,
+			wantErr: false,
 		},
 		{
 			name: "detect 7.0 from tags (SNOTE)",
@@ -137,9 +125,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "HEAD"},
 				{Level: 1, Tag: "SNOTE", Value: "@N1@"},
 			},
-			want:     gedcom.Version70,
-			wantErr:  false,
-			fallback: true,
+			want:    gedcom.Version70,
+			wantErr: false,
 		},
 		{
 			name: "detect 5.5.1 from tags (MAP)",
@@ -148,9 +135,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "MAP"},
 				{Level: 2, Tag: "LATI", Value: "N123"},
 			},
-			want:     gedcom.Version551,
-			wantErr:  false,
-			fallback: true,
+			want:    gedcom.Version551,
+			wantErr: false,
 		},
 		{
 			name: "detect 5.5.1 from tags (EMAIL)",
@@ -158,9 +144,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "HEAD"},
 				{Level: 1, Tag: "EMAIL", Value: "test@example.com"},
 			},
-			want:     gedcom.Version551,
-			wantErr:  false,
-			fallback: true,
+			want:    gedcom.Version551,
+			wantErr: false,
 		},
 		{
 			name: "detect 5.5.1 from tags (WWW)",
@@ -168,9 +153,8 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "HEAD"},
 				{Level: 1, Tag: "WWW", Value: "http://example.com"},
 			},
-			want:     gedcom.Version551,
-			wantErr:  false,
-			fallback: true,
+			want:    gedcom.Version551,
+			wantErr: false,
 		},
 		{
 			name: "detect 5.5.1 from tags (FACT)",
@@ -178,9 +162,46 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "HEAD"},
 				{Level: 1, Tag: "FACT", Value: "something"},
 			},
-			want:     gedcom.Version551,
-			wantErr:  false,
-			fallback: true,
+			want:    gedcom.Version551,
+			wantErr: false,
+		},
+		// ADR-005 cascade: the header VERS is trusted first and wins even
+		// when version-specific tags for a *different* version are present.
+		// The tag-based heuristic is a fallback, never an override.
+		{
+			name: "header 5.5 wins over 7.0 indicator tag (EXID)",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "VERS", Value: "5.5"},
+				{Level: 0, Tag: "INDI"},
+				{Level: 1, Tag: "EXID", Value: "123"},
+			},
+			want:    gedcom.Version55,
+			wantErr: false,
+		},
+		{
+			name: "header 7.0 wins over 5.5.1 indicator tags (MAP/LATI)",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "VERS", Value: "7.0"},
+				{Level: 1, Tag: "MAP"},
+				{Level: 2, Tag: "LATI", Value: "N123"},
+			},
+			want:    gedcom.Version70,
+			wantErr: false,
+		},
+		{
+			name: "header 5.5.1 wins over 7.0 indicator tag (SCHMA)",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "VERS", Value: "5.5.1"},
+				{Level: 1, Tag: "SCHMA"},
+			},
+			want:    gedcom.Version551,
+			wantErr: false,
 		},
 	}
 
