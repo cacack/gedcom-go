@@ -3192,6 +3192,80 @@ func TestEntityToTags_SharedNote(t *testing.T) {
 	}
 }
 
+// TestEncodeSharedNoteEntityMultiLine verifies that a hand-built (entity-only,
+// no raw Tags) multi-line SharedNote is encoded as a level-0 value plus CONT
+// continuation lines and survives a full entity round-trip (issue #330).
+func TestEncodeSharedNoteEntityMultiLine(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{
+			Version:  gedcom.Version70,
+			Encoding: gedcom.EncodingUTF8,
+		},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@SN1@",
+				Type: gedcom.RecordTypeSharedNote,
+				Entity: &gedcom.SharedNote{
+					XRef: "@SN1@",
+					Text: "a\nb\nc",
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	output := buf.String()
+	for _, want := range []string{"0 @SN1@ SNOTE a", "1 CONT b", "1 CONT c"} {
+		if !strings.Contains(output, want) {
+			t.Errorf("output missing %q:\n%s", want, output)
+		}
+	}
+
+	// Full entity round-trip: no decode of a source file, so the entity path is
+	// the only thing under test.
+	redoc, err := decoder.Decode(strings.NewReader(output))
+	if err != nil {
+		t.Fatalf("re-decode error = %v", err)
+	}
+	if sn := redoc.GetSharedNote("@SN1@"); sn == nil {
+		t.Fatal("GetSharedNote(@SN1@) returned nil after round-trip")
+	} else if want := "a\nb\nc"; sn.Text != want {
+		t.Errorf("round-trip SharedNote.Text = %q, want %q", sn.Text, want)
+	}
+}
+
+// TestRoundTripSharedNoteEmptyValueCONC guards against double-emission when a
+// decoded SNOTE has an empty level-0 value followed by a continuation (the entity
+// carries raw Tags, so writeRecord must NOT re-derive the value from Text). A
+// leading CONC folds into Text with no separating newline, so a naive value
+// derivation would reconstruct it and emit it twice (issue #330 panel review).
+func TestRoundTripSharedNoteEmptyValueCONC(t *testing.T) {
+	original := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @SN1@ SNOTE\n1 CONC something\n0 TRLR\n"
+
+	doc, err := decoder.Decode(strings.NewReader(original))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	output := buf.String()
+
+	// "something" must appear exactly once — on the CONC line, not also folded
+	// onto the level-0 SNOTE line.
+	if got := strings.Count(output, "something"); got != 1 {
+		t.Errorf("'something' appears %d times, want 1 (double-emission):\n%s", got, output)
+	}
+	if strings.Contains(output, "SNOTE something") {
+		t.Errorf("level-0 value was wrongly derived from Text:\n%s", output)
+	}
+}
+
 func TestRoundTripSharedNote(t *testing.T) {
 	original := `0 HEAD
 1 GEDC

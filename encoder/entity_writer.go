@@ -1118,8 +1118,29 @@ func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int) []*gedcom.
 	return tags
 }
 
+// entityRecordText returns the level-0 line value and the CONT/CONC continuation
+// tags for a record whose entity carries text on the level-0 line. Only GEDCOM 7.0
+// SharedNote (SNOTE) does today; NOTE entities require the caller to set
+// record.Value. The value and its continuation come from a single textToTags split
+// so they can never disagree, and the continuation tags are meant to precede the
+// entity's other level-1 substructures. Returns ("", nil) otherwise. Consulted
+// only for entity-only records (empty record.Value, no raw Tags).
+func entityRecordText(record *gedcom.Record, opts *EncodeOptions) (string, []*gedcom.Tag) {
+	if record.Type != gedcom.RecordTypeSharedNote {
+		return "", nil
+	}
+	snote, ok := record.Entity.(*gedcom.SharedNote)
+	if !ok || snote.Text == "" {
+		return "", nil
+	}
+	tags := textToTags(snote.Text, 0, "SNOTE", opts)
+	return tags[0].Value, tags[1:]
+}
+
 // sharedNoteToTags converts a SharedNote entity to GEDCOM tags.
 // GEDCOM 7.0 SNOTE records include MIME types, language tags, and translations.
+// The note's Text (level-0 value plus CONT/CONC continuation) is handled by
+// writeRecord via entityRecordText, not here.
 func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
