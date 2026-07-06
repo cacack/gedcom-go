@@ -61,6 +61,52 @@ func TestEncodeRoundtrip(t *testing.T) {
 	}
 }
 
+// TestEncodeSharedNoteMultiLineRoundtrip verifies a multi-line GEDCOM 7.0 SNOTE
+// body survives decode -> encode -> decode without loss (issue #329). The Text
+// assertions exercise the decoder's CONT fold-back; the CONT-line assertion
+// verifies the encoder's raw-tag round-trip (record.Tags carry the original CONT
+// lines, so re-emission does not depend on the fold). Entity-only encoding of a
+// hand-built multi-line Text is a separate, pre-existing gap, not covered here.
+func TestEncodeSharedNoteMultiLineRoundtrip(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @SN1@ SNOTE Line1
+1 CONT Line2
+1 CONT Line3
+0 TRLR
+`
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	if sn := doc.GetSharedNote("@SN1@"); sn == nil {
+		t.Fatal("GetSharedNote(@SN1@) returned nil")
+	} else if want := "Line1\nLine2\nLine3"; sn.Text != want {
+		t.Errorf("SharedNote.Text = %q, want %q", sn.Text, want)
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	output := buf.String()
+	if !strings.Contains(output, "1 CONT Line2") || !strings.Contains(output, "1 CONT Line3") {
+		t.Errorf("Encoded output missing CONT lines:\n%s", output)
+	}
+
+	doc2, err := decoder.Decode(strings.NewReader(output))
+	if err != nil {
+		t.Fatalf("Failed to decode encoded output: %v", err)
+	}
+	if sn := doc2.GetSharedNote("@SN1@"); sn == nil {
+		t.Fatal("round-trip GetSharedNote(@SN1@) returned nil")
+	} else if want := "Line1\nLine2\nLine3"; sn.Text != want {
+		t.Errorf("round-trip SharedNote.Text = %q, want %q", sn.Text, want)
+	}
+}
+
 // TestEncodeSourceRepositoryLink verifies the structured REPO link (CALN, MEDI,
 // NOTE) survives a decode -> encode -> decode cycle without loss (Issue #289).
 func TestEncodeSourceRepositoryLink(t *testing.T) {

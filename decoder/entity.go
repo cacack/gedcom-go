@@ -1212,9 +1212,17 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "CHAN":
 			note.ChangeDate = parseChangeDate(record.Tags, i, collector)
 
-		case "CONT", "CONC":
-			// Continuation lines are handled at the parser level and already merged into Value
-			// These are known tags that should not generate unknown tag warnings
+		case "CONT":
+			// Fold continuation lines back into the primary text so consumers
+			// reading SharedNote.Text get the full multi-line body, not just the
+			// first line (which lives in record.Value). CONT joins with a newline.
+			note.Text += "\n" + tag.Value
+
+		case "CONC":
+			// CONC is not valid in GEDCOM 7.0 SNOTE (removed in 7.0), but fold it
+			// in without a newline for robustness against malformed input — mirroring
+			// parseNote — so its payload is not silently dropped from Text.
+			note.Text += tag.Value
 
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
