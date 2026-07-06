@@ -159,11 +159,16 @@ func TestParseLine(t *testing.T) {
 
 			if tt.wantErr {
 				if err == nil {
-					t.Errorf("ParseLine() expected error but got none")
+					t.Fatalf("ParseLine() expected error but got none")
 				}
 				var parseErr *ParseError
 				if !errors.As(err, &parseErr) {
-					t.Errorf("expected *ParseError, got %T", err)
+					t.Fatalf("expected *ParseError, got %T", err)
+				}
+				// ParseLine operates on a single line, so ADR-007's
+				// 1-based line number is always 1.
+				if parseErr.Line != 1 {
+					t.Errorf("ParseError.Line = %d, want 1", parseErr.Line)
 				}
 				return
 			}

@@ -1,10 +1,31 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
 )
+
+// TestRecordsWithOffset_LineTooLong verifies that a single line longer
+// than MaxLineBytes aborts offset-based iteration with the ErrLineTooLong
+// sentinel — an inspectable identity (ADR-007), not an opaque error.
+func TestRecordsWithOffset_LineTooLong(t *testing.T) {
+	// A record whose NOTE line exceeds the 1 MiB cap.
+	huge := strings.Repeat("x", MaxLineBytes+1)
+	input := "0 @I1@ INDI\n1 NOTE " + huge + "\n"
+
+	var gotErr error
+	for _, err := range RecordsWithOffset(strings.NewReader(input)) {
+		if err != nil {
+			gotErr = err
+			break
+		}
+	}
+	if !errors.Is(gotErr, ErrLineTooLong) {
+		t.Fatalf("iteration error = %v, want ErrLineTooLong", gotErr)
+	}
+}
 
 func TestRecordIterator_BasicIteration(t *testing.T) {
 	input := `0 HEAD

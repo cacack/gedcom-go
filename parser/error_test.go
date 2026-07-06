@@ -78,20 +78,26 @@ func TestHierarchyLevelErrors(t *testing.T) {
 			p := NewParser()
 			_, err := p.Parse(strings.NewReader(tt.input))
 
-			if tt.wantErr && err == nil {
-				t.Error("Expected error but got none")
-			}
-			if !tt.wantErr && err != nil {
-				t.Errorf("Unexpected error: %v", err)
+			if !tt.wantErr {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				return
 			}
 
-			if err != nil {
-				var parseErr *ParseError
-				if errors.As(err, &parseErr) {
-					if parseErr.Line != tt.expectLine {
-						t.Errorf("Error at line %d, expected line %d", parseErr.Line, tt.expectLine)
-					}
-				}
+			if err == nil {
+				t.Fatal("Expected error but got none")
+			}
+			// ADR-007: parse failures surface a *ParseError carrying the
+			// 1-based line number of the offending line. Require the type
+			// so a regression that drops the structured error is caught,
+			// rather than silently passing when the assertion is skipped.
+			var parseErr *ParseError
+			if !errors.As(err, &parseErr) {
+				t.Fatalf("expected *ParseError, got %T", err)
+			}
+			if parseErr.Line != tt.expectLine {
+				t.Errorf("ParseError.Line = %d, want %d", parseErr.Line, tt.expectLine)
 			}
 		})
 	}
@@ -211,18 +217,22 @@ INVALID LINE HERE
 	p := NewParser()
 	_, err := p.Parse(strings.NewReader(input))
 
-	// Currently, parser stops at first error
-	// This test documents current behavior
+	// Currently, parser stops at first error. This test documents that
+	// behavior and pins down the ADR-007 guarantee that the error points
+	// at the exact offending line with its content preserved.
 	if err == nil {
-		t.Error("Expected error for invalid line")
+		t.Fatal("Expected error for invalid line")
 	}
 
 	var parseErr *ParseError
-	if errors.As(err, &parseErr) {
-		if parseErr.Line != 3 {
-			t.Errorf("Expected error at line 3, got line %d", parseErr.Line)
-		}
-		t.Logf("Error correctly reported at line %d: %v", parseErr.Line, parseErr)
+	if !errors.As(err, &parseErr) {
+		t.Fatalf("expected *ParseError, got %T", err)
+	}
+	if parseErr.Line != 3 {
+		t.Errorf("ParseError.Line = %d, want 3", parseErr.Line)
+	}
+	if !strings.Contains(parseErr.Context, "INVALID LINE HERE") {
+		t.Errorf("ParseError.Context = %q, want it to contain the offending line", parseErr.Context)
 	}
 }
 
@@ -316,8 +326,11 @@ func TestErrorMessageQuality(t *testing.T) {
 			}
 
 			var parseErr *ParseError
-			if errors.As(err, &parseErr) && parseErr.Line != tt.wantLineNumber {
-				t.Errorf("Line number = %d, want %d", parseErr.Line, tt.wantLineNumber)
+			if !errors.As(err, &parseErr) {
+				t.Fatalf("expected *ParseError, got %T", err)
+			}
+			if parseErr.Line != tt.wantLineNumber {
+				t.Errorf("ParseError.Line = %d, want %d", parseErr.Line, tt.wantLineNumber)
 			}
 		})
 	}

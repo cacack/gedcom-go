@@ -1,9 +1,12 @@
 package decoder
 
 import (
+	"errors"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/cacack/gedcom-go/v2/parser"
 )
 
 // T064: Test missing cross-reference targets
@@ -82,46 +85,63 @@ func TestMalformedFilesFromTestData(t *testing.T) {
 	}
 }
 
-// Test that decoder provides helpful error messages
+// Test that decoder surfaces the parser's structured *ParseError so
+// callers get ADR-007's guarantees — a line number, the offending
+// content, and the underlying cause — rather than an opaque string.
 func TestDecoderErrorMessages(t *testing.T) {
 	tests := []struct {
-		name         string
-		input        string
-		wantErr      bool
-		errSubstring string
+		name string
+		// input is the raw GEDCOM to decode.
+		input string
+		// wantErrSubstring must appear in the rendered error message.
+		wantErrSubstring string
+		// wantLine is the ParseError.Line the failure should report.
+		wantLine int
+		// wantContextSubstr, when non-empty, must appear in
+		// ParseError.Context (the preserved offending line content).
+		wantContextSubstr string
+		// wantWrapped asserts an underlying cause is reachable via
+		// Unwrap (e.g. the charset decode error behind a read failure).
+		wantWrapped bool
 	}{
 		{
-			name:         "invalid UTF-8",
-			input:        "0 HEAD\n1 NAME \xFF\xFE Invalid UTF-8\n0 TRLR",
-			wantErr:      true,
-			errSubstring: "error",
+			name:             "invalid UTF-8",
+			input:            "0 HEAD\n1 NAME \xFF\xFE Invalid UTF-8\n0 TRLR",
+			wantErrSubstring: "reading input",
+			wantLine:         0,
+			wantWrapped:      true,
 		},
 		{
-			name:         "completely invalid format",
-			input:        "This is not GEDCOM at all!",
-			wantErr:      true,
-			errSubstring: "level",
+			name:              "completely invalid format",
+			input:             "This is not GEDCOM at all!",
+			wantErrSubstring:  "level",
+			wantLine:          1,
+			wantContextSubstr: "This is not GEDCOM",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := Decode(strings.NewReader(tt.input))
-
-			if tt.wantErr && err == nil {
-				t.Error("Expected error but got none")
+			if err == nil {
+				t.Fatal("Expected error but got none")
 			}
 
-			if !tt.wantErr && err != nil {
-				t.Errorf("Unexpected error: %v", err)
+			var parseErr *parser.ParseError
+			if !errors.As(err, &parseErr) {
+				t.Fatalf("expected *parser.ParseError, got %T (%v)", err, err)
 			}
-
-			if tt.wantErr && err != nil {
-				errMsg := err.Error()
-				if !strings.Contains(errMsg, tt.errSubstring) {
-					t.Errorf("Error message %q should contain %q", errMsg, tt.errSubstring)
-				}
-				t.Logf("Got expected error: %v", err)
+			if parseErr.Line != tt.wantLine {
+				t.Errorf("ParseError.Line = %d, want %d", parseErr.Line, tt.wantLine)
+			}
+			if !strings.Contains(err.Error(), tt.wantErrSubstring) {
+				t.Errorf("error message %q should contain %q", err.Error(), tt.wantErrSubstring)
+			}
+			if tt.wantContextSubstr != "" && !strings.Contains(parseErr.Context, tt.wantContextSubstr) {
+				t.Errorf("ParseError.Context = %q, want it to contain %q", parseErr.Context, tt.wantContextSubstr)
+			}
+			if tt.wantWrapped && parseErr.Unwrap() == nil {
+				t.Error("expected ParseError to wrap an underlying cause (ADR-007), got nil")
 			}
 		})
 	}
