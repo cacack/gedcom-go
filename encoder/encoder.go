@@ -81,11 +81,29 @@ func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error 
 }
 
 func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error {
+	// Determine the tags to write and the level-0 line value together:
+	// - If record.Tags has content, use those (preserves lossless behavior) and the
+	//   stored record.Value.
+	// - If record.Tags is empty/nil but Entity is set, convert the entity to tags.
+	//   Some records (SNOTE) carry text on the level-0 line; when record.Value is
+	//   empty, derive that value and its CONT/CONC continuation from the entity in a
+	//   single split so a hand-built SharedNote's text is not lost. NOTE entities are
+	//   not derived — an entity-only Note must set record.Value itself.
+	tags := record.Tags
+	value := record.Value
+	if len(tags) == 0 && record.Entity != nil {
+		tags = entityToTags(record, opts)
+		if value == "" {
+			var contTags []*gedcom.Tag
+			value, contTags = entityRecordText(record, opts)
+			tags = append(contTags, tags...)
+		}
+	}
+
 	// Write record line
-	// Some records (NOTE, SNOTE) have a value on the level 0 line
 	if record.XRef != "" {
-		if record.Value != "" {
-			if _, err := fmt.Fprintf(w, "0 %s %s %s%s", record.XRef, record.Type, record.Value, opts.LineEnding); err != nil {
+		if value != "" {
+			if _, err := fmt.Fprintf(w, "0 %s %s %s%s", record.XRef, record.Type, value, opts.LineEnding); err != nil {
 				return err
 			}
 		} else {
@@ -97,14 +115,6 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 		if _, err := fmt.Fprintf(w, "0 %s%s", record.Type, opts.LineEnding); err != nil {
 			return err
 		}
-	}
-
-	// Determine which tags to write:
-	// - If record.Tags has content, use those (preserves lossless behavior)
-	// - If record.Tags is empty/nil but Entity is set, convert entity to tags
-	tags := record.Tags
-	if len(tags) == 0 && record.Entity != nil {
-		tags = entityToTags(record, opts)
 	}
 
 	// Filter out custom tags if PreserveUnknownTags is false
