@@ -7,7 +7,10 @@ type SharedNote struct {
 	// XRef is the cross-reference identifier for this shared note
 	XRef string
 
-	// Text is the note content
+	// Text is the full note content. Multi-line bodies carried by CONT
+	// continuation lines are folded in on decode (joined with "\n"), so unlike
+	// Note.Text — which holds only the first line and exposes the rest via
+	// Continuation/FullText() — this field already contains the complete text.
 	Text string
 
 	// MIME is the media type of the text content (e.g., "text/plain", "text/html")

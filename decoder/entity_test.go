@@ -4137,6 +4137,55 @@ func TestSharedNoteParsing(t *testing.T) {
 	}
 }
 
+// TestSharedNoteMultiLineText verifies that CONT continuation lines are folded
+// back into SharedNote.Text on decode (issue #329). GEDCOM 7.0 uses CONT only,
+// but a stray CONC (invalid in 7.0) must still fold in rather than be dropped.
+func TestSharedNoteMultiLineText(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @SN1@ SNOTE Line1
+1 CONT Line2
+1 CONT Line3
+0 @SN2@ SNOTE Only line
+1 MIME text/plain
+0 @SN3@ SNOTE First
+1 CONC Second
+1 CONT Third
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sn1 := doc.GetSharedNote("@SN1@")
+	if sn1 == nil {
+		t.Fatal("GetSharedNote(@SN1@) returned nil")
+	}
+	if want := "Line1\nLine2\nLine3"; sn1.Text != want {
+		t.Errorf("sn1.Text = %q, want %q", sn1.Text, want)
+	}
+
+	// A single-line SNOTE (no CONT) must be unaffected by the fold logic.
+	sn2 := doc.GetSharedNote("@SN2@")
+	if sn2 == nil {
+		t.Fatal("GetSharedNote(@SN2@) returned nil")
+	}
+	if want := "Only line"; sn2.Text != want {
+		t.Errorf("sn2.Text = %q, want %q", sn2.Text, want)
+	}
+
+	// CONC concatenates without a newline; a following CONT still adds one.
+	sn3 := doc.GetSharedNote("@SN3@")
+	if sn3 == nil {
+		t.Fatal("GetSharedNote(@SN3@) returned nil")
+	}
+	if want := "FirstSecond\nThird"; sn3.Text != want {
+		t.Errorf("sn3.Text = %q, want %q", sn3.Text, want)
+	}
+}
+
 // TestSharedNoteParsingFromFile tests parsing SNOTE records from notes-1.ged.
 func TestSharedNoteParsingFromFile(t *testing.T) {
 	f, err := os.Open("../testdata/gedcom-7.0/familysearch-examples/notes-1.ged")
