@@ -4021,3 +4021,99 @@ func TestRoundTripNegativeAssertion(t *testing.T) {
 		}
 	})
 }
+
+// TestRoundTripExternalIDs verifies that EXID (with its TYPE substructure) survives
+// a decode → encode → decode cycle on every record type whose decoder parses it.
+// This guards issue #326, where the encoder previously emitted EXID only for SNOTE.
+func TestRoundTripExternalIDs(t *testing.T) {
+	const header = "0 HEAD\n1 GEDC\n2 VERS 7.0\n1 CHAR UTF-8\n"
+
+	tests := []struct {
+		name   string
+		record string
+		want   []*gedcom.ExternalID
+		get    func(*gedcom.Document) []*gedcom.ExternalID
+	}{
+		{
+			name:   "Individual",
+			record: "0 @I1@ INDI\n1 EXID indi-12345\n2 TYPE http://example.com/indi\n",
+			want:   []*gedcom.ExternalID{{Value: "indi-12345", Type: "http://example.com/indi"}},
+			get:    func(d *gedcom.Document) []*gedcom.ExternalID { return d.GetIndividual("@I1@").ExternalIDs },
+		},
+		{
+			name:   "Family",
+			record: "0 @F1@ FAM\n1 EXID fam-12345\n2 TYPE http://example.com/fam\n",
+			want:   []*gedcom.ExternalID{{Value: "fam-12345", Type: "http://example.com/fam"}},
+			get:    func(d *gedcom.Document) []*gedcom.ExternalID { return d.GetFamily("@F1@").ExternalIDs },
+		},
+		{
+			name:   "Source",
+			record: "0 @S1@ SOUR\n1 TITL Test Source\n1 EXID sour-12345\n2 TYPE http://example.com/sour\n",
+			want:   []*gedcom.ExternalID{{Value: "sour-12345", Type: "http://example.com/sour"}},
+			get:    func(d *gedcom.Document) []*gedcom.ExternalID { return d.GetSource("@S1@").ExternalIDs },
+		},
+		{
+			name:   "Repository",
+			record: "0 @R1@ REPO\n1 NAME Test Repo\n1 EXID repo-12345\n2 TYPE http://example.com/repo\n",
+			want:   []*gedcom.ExternalID{{Value: "repo-12345", Type: "http://example.com/repo"}},
+			get:    func(d *gedcom.Document) []*gedcom.ExternalID { return d.GetRepository("@R1@").ExternalIDs },
+		},
+		{
+			name:   "Submitter",
+			record: "0 @U1@ SUBM\n1 NAME Test Submitter\n1 EXID subm-12345\n2 TYPE http://example.com/subm\n",
+			want:   []*gedcom.ExternalID{{Value: "subm-12345", Type: "http://example.com/subm"}},
+			get:    func(d *gedcom.Document) []*gedcom.ExternalID { return d.GetSubmitter("@U1@").ExternalIDs },
+		},
+		{
+			name:   "MediaObject",
+			record: "0 @O1@ OBJE\n1 FILE photo.jpg\n2 FORM image/jpeg\n1 EXID obje-12345\n2 TYPE http://example.com/obje\n",
+			want:   []*gedcom.ExternalID{{Value: "obje-12345", Type: "http://example.com/obje"}},
+			get:    func(d *gedcom.Document) []*gedcom.ExternalID { return d.GetMediaObject("@O1@").ExternalIDs },
+		},
+		{
+			// Multiple EXIDs on one record, mixing a typed and an untyped
+			// identifier — exercises the loop and the omitted-TYPE branch.
+			name:   "MultipleAndUntyped",
+			record: "0 @I2@ INDI\n1 EXID typed-1\n2 TYPE http://example.com/a\n1 EXID untyped-2\n",
+			want: []*gedcom.ExternalID{
+				{Value: "typed-1", Type: "http://example.com/a"},
+				{Value: "untyped-2"},
+			},
+			get: func(d *gedcom.Document) []*gedcom.ExternalID { return d.GetIndividual("@I2@").ExternalIDs },
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			original := header + tt.record + "0 TRLR\n"
+
+			doc, err := decoder.Decode(strings.NewReader(original))
+			if err != nil {
+				t.Fatalf("Decode failed: %v", err)
+			}
+
+			var buf bytes.Buffer
+			if err := Encode(&buf, doc); err != nil {
+				t.Fatalf("Encode failed: %v", err)
+			}
+
+			doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+			if err != nil {
+				t.Fatalf("Re-decode failed: %v\nEncoded:\n%s", err, buf.String())
+			}
+
+			exids := tt.get(doc2)
+			if len(exids) != len(tt.want) {
+				t.Fatalf("len(ExternalIDs) = %d, want %d\nEncoded:\n%s", len(exids), len(tt.want), buf.String())
+			}
+			for i, want := range tt.want {
+				if exids[i].Value != want.Value {
+					t.Errorf("ExternalIDs[%d].Value = %q, want %q", i, exids[i].Value, want.Value)
+				}
+				if exids[i].Type != want.Type {
+					t.Errorf("ExternalIDs[%d].Type = %q, want %q", i, exids[i].Type, want.Type)
+				}
+			}
+		})
+	}
+}

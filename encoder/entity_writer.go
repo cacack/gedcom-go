@@ -290,6 +290,9 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "UID", Value: indi.UID})
 	}
 
+	// External IDs (level 1) - EXID (GEDCOM 7.0)
+	tags = append(tags, externalIDsToTags(indi.ExternalIDs, 1)...)
+
 	// FamilySearch Family Tree ID (level 1) - _FSFTID
 	if indi.FamilySearchID != "" {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "_FSFTID", Value: indi.FamilySearchID})
@@ -369,6 +372,9 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "UID", Value: fam.UID})
 	}
 
+	// External IDs (level 1) - EXID (GEDCOM 7.0)
+	tags = append(tags, externalIDsToTags(fam.ExternalIDs, 1)...)
+
 	return tags
 }
 
@@ -439,6 +445,9 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	if src.UID != "" {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "UID", Value: src.UID})
 	}
+
+	// External IDs (level 1) - EXID (GEDCOM 7.0)
+	tags = append(tags, externalIDsToTags(src.ExternalIDs, 1)...)
 
 	return tags
 }
@@ -516,6 +525,11 @@ func submitterToTags(subm *gedcom.Submitter, opts *EncodeOptions) []*gedcom.Tag 
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "LANG", Value: lang})
 	}
 
+	// External IDs (level 1) - EXID (GEDCOM 7.0)
+	// Emitted before NOTE to match GEDCOM 7 structure order (IDENTIFIER_STRUCTURE
+	// precedes NOTE_STRUCTURE) and the placement used by the other record writers.
+	tags = append(tags, externalIDsToTags(subm.ExternalIDs, 1)...)
+
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
 	for _, note := range recordNotesToEncode(subm.NoteXRefs, subm.InlineNotes, subm.Notes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
@@ -537,6 +551,11 @@ func repositoryToTags(repo *gedcom.Repository, opts *EncodeOptions) []*gedcom.Ta
 	if repo.Address != nil {
 		tags = append(tags, addressToTags(repo.Address, 1)...)
 	}
+
+	// External IDs (level 1) - EXID (GEDCOM 7.0)
+	// Emitted before NOTE to match GEDCOM 7 structure order (IDENTIFIER_STRUCTURE
+	// precedes NOTE_STRUCTURE) and the placement used by the other record writers.
+	tags = append(tags, externalIDsToTags(repo.ExternalIDs, 1)...)
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
 	for _, note := range recordNotesToEncode(repo.NoteXRefs, repo.InlineNotes, repo.Notes) {
@@ -596,6 +615,9 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 	for _, uid := range media.UIDs {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "UID", Value: uid})
 	}
+
+	// External IDs (level 1) - EXID (GEDCOM 7.0)
+	tags = append(tags, externalIDsToTags(media.ExternalIDs, 1)...)
 
 	// Restriction (level 1) - RESN
 	if media.Restriction != "" {
