@@ -105,10 +105,10 @@ See `docs/testing.md` for critical paths that require 100% coverage.
 
 ## Strategic Context
 
-- **[docs/ETHOS.md](docs/ETHOS.md)** — Vision, core principles, differentiators, anti-patterns
-- **[GitHub Milestones](https://github.com/cacack/gedcom-go/milestones)** — Phased feature plan and exit criteria (Phase 1 is current priority). Phase philosophy is in [docs/ETHOS.md](docs/ETHOS.md#phasing).
+- **[CONSTITUTION.md](CONSTITUTION.md)** — Vision, core principles, differentiators, anti-patterns
+- **[GitHub Milestones](https://github.com/cacack/gedcom-go/milestones)** — Phased feature plan and exit criteria (Phase 1 is current priority). Phase philosophy is in [CONSTITUTION.md](CONSTITUTION.md#phasing).
 
-Two principles are **NON-NEGOTIABLE**: Test Coverage (≥85%) and Lossless Representation. See ETHOS.md for all six core principles.
+Two principles are **NON-NEGOTIABLE**: Test Coverage (≥85%) and Lossless Representation. See CONSTITUTION.md for all six core principles.
 
 ## Documentation Structure
 
@@ -122,7 +122,6 @@ Two principles are **NON-NEGOTIABLE**: Test Coverage (≥85%) and Lossless Repre
   - `guides/` - How-to guides: `converter.md`, `decoding.md`, `performance.md`, `vendor-extensions.md`
   - `governance/policies/` - `api-stability.md` (versioning/compatibility policy), `compatibility.md` (vendor matrix)
   - `testing.md` - Test coverage requirements and critical paths
-  - `ETHOS.md` - Vision, core principles, differentiators, anti-patterns (includes the phasing plan)
   - `GEDCOM_DATE_FORMATS_RESEARCH.md` - Date format specification research
   - `archive/` - Completed plans and point-in-time audit reports (historical; not maintained)
 

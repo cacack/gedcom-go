@@ -13,7 +13,7 @@ For the broader "which vendors are supported and how" picture, see
 ## Two ways extensions are handled
 
 gedcom-go follows a **lossless** principle (one of the project's two
-non-negotiable guarantees — see [ethos](../ETHOS.md)): no data is ever dropped
+non-negotiable guarantees — see [constitution](../../CONSTITUTION.md)): no data is ever dropped
 on decode/encode. Vendor extensions are handled in one of two ways:
 
 1. **Typed accessors** — A handful of high-value, widely-used tags are parsed
@@ -270,5 +270,5 @@ Registry contents:
 
 Vendor extensions — whether promoted to a typed field or kept in raw `Tags` —
 survive a full decode → encode round-trip unchanged. Lossless representation is
-a non-negotiable project principle ([ethos](../ETHOS.md)); if you find a vendor
+a non-negotiable project principle ([constitution](../../CONSTITUTION.md)); if you find a vendor
 tag that is dropped or altered, that is a bug worth reporting.

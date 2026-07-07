@@ -5,7 +5,7 @@
 // opinionated decisions about record-level merge policy (which field
 // wins, how to score fuzzy duplicates, how to reconcile conflicting
 // citations, how to detect "the same person"). That policy belongs in
-// the consuming application; see docs/ETHOS.md for the rationale
+// the consuming application; see CONSTITUTION.md for the rationale
 // ("a library is not an application").
 //
 // What this package does:

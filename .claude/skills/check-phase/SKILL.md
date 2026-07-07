@@ -8,14 +8,14 @@ agent: Explore
 
 # Phase Alignment Assessment
 
-Check whether recent work aligns with the current roadmap phase. Phases and their milestone mapping are defined in the Phasing table in `docs/ETHOS.md`; the live issue list and exit criteria live in GitHub milestones. Phase 1 (Real-World Compatibility & API Polish, milestones `v2.1.0`/`v2.2.0`) is the current priority.
+Check whether recent work aligns with the current roadmap phase. Phases and their milestone mapping are defined in the Phasing table in `CONSTITUTION.md`; the live issue list and exit criteria live in GitHub milestones. Phase 1 (Real-World Compatibility & API Polish, milestones `v2.1.0`/`v2.2.0`) is the current priority.
 
 ## Checks to Perform
 
 ### 1. Recent Commit Categorization
 Review the last 20 commits on main:
 - Run `git log --oneline -20`
-- Categorize each as Phase 1, Phase 2, Phase 3, or Maintenance using the Phasing table in docs/ETHOS.md (map by milestone: v2.1.0/v2.2.0 → Phase 1, v2.3.0 → Phase 2, unscheduled advanced work → Phase 3)
+- Categorize each as Phase 1, Phase 2, Phase 3, or Maintenance using the Phasing table in CONSTITUTION.md (map by milestone: v2.1.0/v2.2.0 → Phase 1, v2.3.0 → Phase 2, unscheduled advanced work → Phase 3)
 - Calculate percentage of work in each phase
 
 ### 2. Phase 1 Issue Progress

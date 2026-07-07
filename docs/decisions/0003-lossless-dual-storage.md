@@ -125,4 +125,4 @@ record.Tags = nil  // Clear to force entity-to-tags conversion
 - `gedcom/record.go` - Record struct definition
 - `encoder/encoder.go` - Tag preference logic
 - `encoder/entity_writer.go` - Entity-to-tags conversion
-- CLAUDE.md - Principle VI (Lossless Representation)
+- CONSTITUTION.md - Principle VI (Lossless Representation)

@@ -250,6 +250,7 @@ To opt into strict parsing (fail on the first syntax error, no diagnostics colle
 
 ## Documentation
 
+- **Project Constitution**: [CONSTITUTION.md](CONSTITUTION.md) - Vision, core principles, differentiators, and anti-patterns
 - **Usage Guide**: [USAGE.md](USAGE.md) - Comprehensive guide covering basic concepts, examples, and best practices
 - **Examples**: See the [`examples/`](examples/) directory ([README](examples/README.md)):
   - [`examples/parse`](examples/parse) - Basic parsing and information display
