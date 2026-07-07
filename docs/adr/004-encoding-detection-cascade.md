@@ -135,4 +135,4 @@ func NewReader(r io.Reader) (io.Reader, error) {
 - `charset/charset.go` - Detection implementation
 - `charset/bom.go` - BOM detection
 - `charset/ansel.go` - ANSEL decoding tables
-- `docs/ENCODING_IMPLEMENTATION_PLAN.md` - Detailed encoding notes
+- `docs/archive/ENCODING_IMPLEMENTATION_PLAN.md` - Detailed encoding notes

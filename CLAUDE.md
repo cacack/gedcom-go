@@ -122,10 +122,10 @@ Two principles are **NON-NEGOTIABLE**: Test Coverage (≥85%) and Lossless Repre
   - `TESTING.md` - Test coverage requirements and critical paths
   - `GEDCOM_VERSIONS.md` - GEDCOM version differences (5.5, 5.5.1, 7.0)
   - `VENDOR_EXTENSIONS.md` - Vendor-specific tag support (Ancestry, FamilySearch, etc.)
-  - `ENCODING_IMPLEMENTATION_PLAN.md` - UTF-16/ANSEL implementation guide
   - `GEDCOM_DATE_FORMATS_RESEARCH.md` - Date format specification research
   - `PERFORMANCE.md` - Benchmarks and optimization notes
   - `adr/` - Architecture Decision Records (see below)
+  - `archive/` - Completed plans and point-in-time audit reports (historical; not maintained)
 
 ### Architecture Decision Records
 
