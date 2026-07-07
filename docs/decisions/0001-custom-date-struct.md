@@ -103,5 +103,5 @@ func (d *Date) Validate() error {
 ## References
 
 - `CONSTITUTION.md` - Project constitution, Principle VI (Lossless Representation)
-- `docs/GEDCOM_DATE_FORMATS_RESEARCH.md` - Comprehensive date format specifications
+- `docs/reference/gedcom-date-formats.md` - Comprehensive date format specifications
 - `gedcom/date.go` - Current implementation

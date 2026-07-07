@@ -1,3 +1,9 @@
+<!-- Archived historical snapshot. Not maintained. -->
+
+> **Archived.** This is the original GEDCOM date-formats research report, preserved as a historical snapshot.
+> The maintained lookup reference is [../reference/gedcom-date-formats.md](../reference/gedcom-date-formats.md).
+> Its implementation-strategy sections (10 Best Practices, 12 Implementation Recommendations) are superseded by [ADR-0001](../decisions/0001-custom-date-struct.md) and the shipped `gedcom` / `parser` code.
+
 # GEDCOM Date Formats: Comprehensive Research Report
 
 **Project**: go-gedcom

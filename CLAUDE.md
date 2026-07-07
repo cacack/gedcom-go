@@ -118,11 +118,10 @@ Two principles are **NON-NEGOTIABLE**: Test Coverage (≥85%) and Lossless Repre
 - **GitHub Issues**: Single source of truth for planned work
 - **docs/**: Implementation reference material, organized by type
   - `decisions/` - Architecture Decision Records (see below)
-  - `reference/` - Lookup material: `gedcom-versions.md`, `gedcom-specifications.md`
+  - `reference/` - Lookup material: `gedcom-versions.md`, `gedcom-specifications.md`, `gedcom-date-formats.md`
   - `guides/` - How-to guides: `converter.md`, `decoding.md`, `performance.md`, `vendor-extensions.md`
   - `governance/policies/` - `api-stability.md` (versioning/compatibility policy), `compatibility.md` (vendor matrix)
   - `testing.md` - Test coverage requirements and critical paths
-  - `GEDCOM_DATE_FORMATS_RESEARCH.md` - Date format specification research
   - `archive/` - Completed plans and point-in-time audit reports (historical; not maintained)
 
 ### Architecture Decision Records
