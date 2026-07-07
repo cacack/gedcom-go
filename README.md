@@ -347,6 +347,7 @@ For fine-grained control, these packages are available:
 - **`decoder`** - High-level GEDCOM decoding with automatic version detection
 - **`encoder`** - GEDCOM document writing with configurable line endings
 - **`gedcom`** - Core data types (Document, Individual, Family, Source, etc.)
+- **`merge`** - Combine documents (XRef remap, collision strategies, header merge)
 - **`parser`** - Low-level line parsing with detailed error reporting
 - **`validator`** - Document validation with error categorization
 - **`version`** - GEDCOM version detection (header and heuristic-based)
@@ -366,7 +367,7 @@ This library follows [Semantic Versioning](https://semver.org/). We do not break
 | `parser` | Parse(), ParseLine(), NewRecordIterator(), NewRecordIteratorWithOffset(), Records(), RecordsWithOffset(), NewLazyParser() |
 | `validator` | Validate(), ValidateAll(), NewStreamingValidator() |
 | `charset` | NewReader() |
-| `version` | Detect() |
+| `version` | DetectVersion() |
 
 ### What May Change
 

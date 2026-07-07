@@ -18,27 +18,26 @@ These code paths handle core functionality where bugs would cause data loss or c
 
 | Function | Why Critical | Required Tests |
 |----------|--------------|----------------|
-| `ParseLine()` | Entry point for all GEDCOM data | Valid lines, malformed lines, edge cases |
-| `ParseLevel()` | Hierarchy determines structure | 0-99, invalid, overflow |
-| `ParseXRef()` | Cross-references link records | Valid `@ID@`, malformed, empty |
-| `ParseTag()` | Tags determine semantics | All standard tags, custom tags, case sensitivity |
+| `(*Parser).ParseLine()` | Extracts level, XRef, tag, and value from every line | Valid lines, malformed lines, edge cases |
+| `(*Parser).Parse()` | Assembles the full line stream for a document | Multi-record files, nesting, line endings |
+| `(*Parser).ParseWithOptions()` | Strict vs. lenient error handling | Strict/lenient modes, max-errors, recovery |
 
 ### Decoder (`decoder/`)
 
 | Function | Why Critical | Required Tests |
 |----------|--------------|----------------|
-| `Decode()` | Main entry point | Valid files, malformed, large files |
-| `DecodeIndividual()` | Most common record type | All INDI substructures |
-| `DecodeFamily()` | Relationship data | FAM links, children, events |
-| `resolveReferences()` | Data integrity | Valid refs, broken refs, circular refs |
+| `Decode()` / `DecodeWithOptions()` | Main entry points | Valid files, malformed, large files |
+| `DecodeWithDiagnostics()` | Lossless error collection during decode | Recovered records, error codes, strict vs. lenient |
+| `parseIndividual()` (internal) | Most common record type | All INDI substructures |
+| `parseFamily()` (internal) | Relationship data | FAM links, children, events |
 
 ### Encoder (`encoder/`)
 
 | Function | Why Critical | Required Tests |
 |----------|--------------|----------------|
-| `Encode()` | Output generation | Round-trip fidelity |
-| `EncodeRecord()` | Record serialization | All record types |
-| `escapeValue()` | Prevents injection | Special characters, newlines, @ symbols |
+| `Encode()` / `EncodeWithOptions()` | Output generation | Round-trip fidelity |
+| `writeRecord()` (internal) | Record serialization | All record types |
+| `textToTags()` / `splitLineForLength()` (internal) | CONC/CONT splitting and newline-safe text output | Special characters, newlines, long lines |
 
 ### Date Parsing (`gedcom/date.go`)
 
@@ -55,16 +54,16 @@ These code paths handle core functionality where bugs would cause data loss or c
 
 | Function | Why Critical | Required Tests |
 |----------|--------------|----------------|
-| `Validate()` | Error detection | All error types |
-| `ValidateStructure()` | Hierarchy correctness | Level violations |
-| `ValidateReferences()` | Link integrity | Missing refs, duplicates |
+| `(*Validator).Validate()` / `ValidateAll()` | Error detection | All error types |
+| `(*XRefValidator).ValidateXRefs()` | Cross-reference integrity | Missing refs, malformed XRefs |
+| `(*ReferenceValidator).Validate()` | Link integrity | Broken refs, orphans |
 
 ### Character Encoding (`charset/`)
 
 | Function | Why Critical | Required Tests |
 |----------|--------------|----------------|
-| `Detect()` | Encoding detection | UTF-8, UTF-16, BOM detection |
-| `Decode()` | Character conversion | All supported encodings |
+| `DetectBOM()` / `DetectEncodingFromHeader()` | Encoding detection | UTF-8, UTF-16, ANSEL, BOM detection |
+| `NewReader()` / `NewReaderWithEncoding()` | Character conversion to UTF-8 | All supported encodings |
 
 ## Test Patterns
 
