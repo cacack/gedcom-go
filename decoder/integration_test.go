@@ -1066,7 +1066,7 @@ func individualHasTag(ind *gedcom.Individual, name string) bool {
 // TestFamilySearchRealExport tests a real FamilySearch 2025 export (5.5.1).
 // FamilySearch is identified not by HEAD.SOUR (it preserves the original
 // authoring system) but by per-record _HASH/_LHASH change-detection checksums
-// and a header standardizer NOTE. See docs/COMPATIBILITY.md.
+// and a header standardizer NOTE. See docs/governance/policies/compatibility.md.
 func TestFamilySearchRealExport(t *testing.T) {
 	f, err := os.Open("../testdata/edge-cases/familysearch-2025-export.ged")
 	if err != nil {
@@ -1131,7 +1131,7 @@ func TestFamilySearchRealExport(t *testing.T) {
 
 // TestMyHeritageRealExport tests a real MyHeritage 2025 export (5.5.1),
 // verifying _UID/RIN identifiers, header extensions, and the documented
-// behavior of stripping REPO records. See docs/COMPATIBILITY.md.
+// behavior of stripping REPO records. See docs/governance/policies/compatibility.md.
 func TestMyHeritageRealExport(t *testing.T) {
 	f, err := os.Open("../testdata/edge-cases/myheritage-2025-export.ged")
 	if err != nil {
@@ -1188,7 +1188,7 @@ func TestMyHeritageRealExport(t *testing.T) {
 
 // TestGrampsRealExport tests a real Gramps 6.0.6 export (5.5.1), verifying
 // CHAN change-tracking records, NAME TYPE birth subrecords, note references,
-// and header copyright preservation. See docs/COMPATIBILITY.md.
+// and header copyright preservation. See docs/governance/policies/compatibility.md.
 func TestGrampsRealExport(t *testing.T) {
 	f, err := os.Open("../testdata/edge-cases/gramps-2025-export.ged")
 	if err != nil {

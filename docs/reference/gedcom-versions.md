@@ -231,5 +231,5 @@ The detected version is stored in `Document.Header.GedcomVersion`.
 
 ## Related Documentation
 
-- [Date Format Research](GEDCOM_DATE_FORMATS_RESEARCH.md) - Detailed date parsing specifications
-- [Encoding Implementation](archive/ENCODING_IMPLEMENTATION_PLAN.md) - Character encoding implementation details (archived)
+- [Date Format Research](../GEDCOM_DATE_FORMATS_RESEARCH.md) - Detailed date parsing specifications
+- [Encoding Implementation](../archive/encoding-implementation-plan.md) - Character encoding implementation details (archived)

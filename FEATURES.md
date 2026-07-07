@@ -121,7 +121,7 @@ if doc.Vendor == gedcom.VendorAncestry {
 
 Structured parsing for vendor-specific GEDCOM extensions. For the complete
 reference — every supported tag, typed vs preserved-raw handling, validation,
-and the lossless guarantee — see [docs/VENDOR_EXTENSIONS.md](docs/VENDOR_EXTENSIONS.md).
+and the lossless guarantee — see [docs/guides/vendor-extensions.md](docs/guides/vendor-extensions.md).
 
 ### Ancestry.com Extensions
 
@@ -1110,7 +1110,7 @@ if report.HasDataLoss() {
 }
 ```
 
-See [docs/CONVERTER.md](docs/CONVERTER.md) for detailed documentation.
+See [docs/guides/converter.md](docs/guides/converter.md) for detailed documentation.
 
 ## Encoder
 

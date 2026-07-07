@@ -209,5 +209,5 @@ if err != nil {
 
 ## Related Documentation
 
-- [GEDCOM Versions](GEDCOM_VERSIONS.md) - Detailed version specifications
-- [Encoding Implementation](archive/ENCODING_IMPLEMENTATION_PLAN.md) - Character encoding details (archived)
+- [GEDCOM Versions](../reference/gedcom-versions.md) - Detailed version specifications
+- [Encoding Implementation](../archive/encoding-implementation-plan.md) - Character encoding details (archived)

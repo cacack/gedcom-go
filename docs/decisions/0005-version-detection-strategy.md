@@ -139,4 +139,4 @@ func Detect(doc *Document) Version {
 
 - `version/version.go` - Version detection implementation
 - `version/v55.go`, `v551.go`, `v70.go` - Version-specific tag definitions
-- `docs/GEDCOM_VERSIONS.md` - Detailed version differences
+- `docs/reference/gedcom-versions.md` - Detailed version differences

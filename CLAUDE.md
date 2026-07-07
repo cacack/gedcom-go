@@ -101,7 +101,7 @@ testdata/
 | Per-package | ≥85% | Pre-commit hook, CI |
 | Critical paths | 100% | Code review |
 
-See `docs/TESTING.md` for critical paths that require 100% coverage.
+See `docs/testing.md` for critical paths that require 100% coverage.
 
 ## Strategic Context
 
@@ -116,31 +116,30 @@ Two principles are **NON-NEGOTIABLE**: Test Coverage (≥85%) and Lossless Repre
 - **FEATURES.md**: Exhaustive list of implemented features
 - **IDEAS.md**: Unvetted ideas and rough concepts (create when needed)
 - **GitHub Issues**: Single source of truth for planned work
-- **docs/**: Implementation reference material
+- **docs/**: Implementation reference material, organized by type
+  - `decisions/` - Architecture Decision Records (see below)
+  - `reference/` - Lookup material: `gedcom-versions.md`, `gedcom-specifications.md`
+  - `guides/` - How-to guides: `converter.md`, `decoding.md`, `performance.md`, `vendor-extensions.md`
+  - `governance/policies/` - `api-stability.md` (versioning/compatibility policy), `compatibility.md` (vendor matrix)
+  - `testing.md` - Test coverage requirements and critical paths
   - `ETHOS.md` - Vision, core principles, differentiators, anti-patterns (includes the phasing plan)
-  - `API_STABILITY.md` - API compatibility guarantees and versioning policy
-  - `TESTING.md` - Test coverage requirements and critical paths
-  - `GEDCOM_VERSIONS.md` - GEDCOM version differences (5.5, 5.5.1, 7.0)
-  - `VENDOR_EXTENSIONS.md` - Vendor-specific tag support (Ancestry, FamilySearch, etc.)
   - `GEDCOM_DATE_FORMATS_RESEARCH.md` - Date format specification research
-  - `PERFORMANCE.md` - Benchmarks and optimization notes
-  - `adr/` - Architecture Decision Records (see below)
   - `archive/` - Completed plans and point-in-time audit reports (historical; not maintained)
 
 ### Architecture Decision Records
 
-Key design decisions are documented in `docs/adr/`:
+Key design decisions are documented in `docs/decisions/`:
 
 | ADR | Decision |
 |-----|----------|
-| 001 | Custom Date struct for lossless GEDCOM dates |
-| 002 | XRef resolution via strings + O(1) map lookup |
-| 003 | Lossless dual storage (raw tags + typed entity) |
-| 004 | Encoding detection cascade (BOM → Header → UTF-8) |
-| 005 | Version detection (header-first with tag fallback) |
-| 006 | Line continuation handling (CONT/CONC) |
-| 007 | Error transparency (line numbers, context, never panic) |
-| 008 | Validator architecture (pluggable, configurable) |
+| 0001 | Custom Date struct for lossless GEDCOM dates |
+| 0002 | XRef resolution via strings + O(1) map lookup |
+| 0003 | Lossless dual storage (raw tags + typed entity) |
+| 0004 | Encoding detection cascade (BOM → Header → UTF-8) |
+| 0005 | Version detection (header-first with tag fallback) |
+| 0006 | Line continuation handling (CONT/CONC) |
+| 0007 | Error transparency (line numbers, context, never panic) |
+| 0008 | Validator architecture (pluggable, configurable) |
 
 ### Workflow for New Ideas
 
@@ -182,5 +181,5 @@ This library is consumed by `github.com/cacack/my-family`, which depends on tagg
 1. **Driven by real usage**: Features should be added when my-family needs them, not speculatively
 2. **Self-contained commits**: Each enhancement should be a complete, testable unit with its own tests
 3. **Verify after release**: Consumer verification happens once a version is released, since my-family pulls the released artifact. After tagging a release, bump my-family and run its tests: from the my-family checkout, `go get github.com/cacack/gedcom-go/v2@latest && go test ./...`
-4. **API stability**: Follow `docs/API_STABILITY.md`; prefer additive changes over breaking ones
+4. **API stability**: Follow `docs/governance/policies/api-stability.md`; prefer additive changes over breaking ones
 5. **Document in commit**: Note which my-family feature drove the change (e.g., "feat(decoder): add entity parsing for GEDCOM import")

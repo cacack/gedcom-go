@@ -98,6 +98,6 @@ Phase 3 is not yet milestoned. Issue-backed candidate: GEDZip archive support ([
 ## Related
 
 - [GitHub Milestones](https://github.com/cacack/gedcom-go/milestones) — Phased feature plan and exit criteria (see [Phasing](#phasing) for the philosophy)
-- [Architecture Decision Records](./adr/) — Key design decisions
+- [Architecture Decision Records](./decisions/) — Key design decisions
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — How to contribute
-- [API Stability](./API_STABILITY.md) — Compatibility guarantees
+- [API Stability](./governance/policies/api-stability.md) — Compatibility guarantees

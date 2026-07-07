@@ -37,7 +37,7 @@ Spot-check 3 test files for error message assertions:
 - Flag tests that only check `err != nil` without message validation
 
 ### 5. Critical Path Coverage
-Cross-reference docs/TESTING.md critical paths with actual tests:
+Cross-reference docs/testing.md critical paths with actual tests:
 - For each critical function listed, verify a dedicated test exists
 - Check that the test covers the "Required Tests" column
 - Flag any critical paths without sufficient test coverage

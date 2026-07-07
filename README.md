@@ -39,7 +39,7 @@ Support status for common genealogy software:
 | Legacy Family Tree | ⚠️ Tested (older version) |
 | Family Tree Maker | ⚠️ Tested (older version) |
 
-Full compatibility matrix: [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)
+Full compatibility matrix: [docs/governance/policies/compatibility.md](docs/governance/policies/compatibility.md)
 
 **GEDCOM Specification**: Full support for 5.5, 5.5.1, and 7.0
 
@@ -180,7 +180,7 @@ func writeStreamed(path string, records []*gedcom.Record) (err error) {
 }
 ```
 
-On a 1.1MB / 2,322-individual file, streaming parse holds **~17%** of the heap that batch decode retains after the call returns (and ~54% of the cumulative allocations). See [`examples/stream`](examples/stream/main.go) for the full pattern and [docs/PERFORMANCE.md](docs/PERFORMANCE.md#streaming-apis-performance) for benchmark details.
+On a 1.1MB / 2,322-individual file, streaming parse holds **~17%** of the heap that batch decode retains after the call returns (and ~54% of the cumulative allocations). See [`examples/stream`](examples/stream/main.go) for the full pattern and [docs/guides/performance.md](docs/guides/performance.md#streaming-apis-performance) for benchmark details.
 
 ### Convert Between Versions
 
@@ -258,7 +258,7 @@ To opt into strict parsing (fail on the first syntax error, no diagnostics colle
   - [`examples/validate`](examples/validate) - Validating GEDCOM files
   - [`examples/stream`](examples/stream) - Streaming parse and encode for very large files
 - **API Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go/v2](https://pkg.go.dev/github.com/cacack/gedcom-go/v2)
-- **Vendor Extensions**: [docs/VENDOR_EXTENSIONS.md](docs/VENDOR_EXTENSIONS.md) - Vendor-specific tag support (`_APID`, `_FSFTID`, etc.)
+- **Vendor Extensions**: [docs/guides/vendor-extensions.md](docs/guides/vendor-extensions.md) - Vendor-specific tag support (`_APID`, `_FSFTID`, etc.)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Advanced Usage
@@ -381,7 +381,7 @@ As GEDCOM 7.x evolves, we add support additively. New tags and structures are ad
 
 Vendor extensions (Ancestry, FamilySearch) are best-effort and not covered by stability guarantees.
 
-For the complete policy including deprecation process, see [docs/API_STABILITY.md](docs/API_STABILITY.md).
+For the complete policy including deprecation process, see [docs/governance/policies/api-stability.md](docs/governance/policies/api-stability.md).
 
 ## Development
 
@@ -485,7 +485,7 @@ Automated regression detection with 10% threshold:
 make perf-regression
 ```
 
-For detailed performance metrics, profiling guides, and optimization opportunities, see [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
+For detailed performance metrics, profiling guides, and optimization opportunities, see [docs/guides/performance.md](docs/guides/performance.md).
 
 ## License
 

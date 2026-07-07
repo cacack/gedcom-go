@@ -7,13 +7,13 @@ extensions: which tags are parsed into typed Go fields, which are preserved
 as-is, and how to validate them.
 
 For the broader "which vendors are supported and how" picture, see
-[COMPATIBILITY.md](COMPATIBILITY.md). For the exhaustive feature list, see
-[FEATURES.md](../FEATURES.md).
+[compatibility](../governance/policies/compatibility.md). For the exhaustive feature list, see
+[FEATURES.md](../../FEATURES.md).
 
 ## Two ways extensions are handled
 
 gedcom-go follows a **lossless** principle (one of the project's two
-non-negotiable guarantees — see [ETHOS.md](ETHOS.md)): no data is ever dropped
+non-negotiable guarantees — see [ethos](../ETHOS.md)): no data is ever dropped
 on decode/encode. Vendor extensions are handled in one of two ways:
 
 1. **Typed accessors** — A handful of high-value, widely-used tags are parsed
@@ -192,7 +192,7 @@ Gramps, Legacy Family Tree, Heredis, Family Historian, and FamilyTreeMaker
 exports are parsed and their custom tags preserved losslessly via raw `Tags`.
 Gramps and Legacy are recognized by vendor detection (`VendorGramps`,
 `VendorLegacy`); the others fall through to `VendorUnknown` but are still fully
-preserved. See [COMPATIBILITY.md](COMPATIBILITY.md) for the per-vendor support
+preserved. See [compatibility](../governance/policies/compatibility.md) for the per-vendor support
 matrix and tested fixtures.
 
 ## Typed vs preserved-raw — quick reference
@@ -270,5 +270,5 @@ Registry contents:
 
 Vendor extensions — whether promoted to a typed field or kept in raw `Tags` —
 survive a full decode → encode round-trip unchanged. Lossless representation is
-a non-negotiable project principle ([ETHOS.md](ETHOS.md)); if you find a vendor
+a non-negotiable project principle ([ethos](../ETHOS.md)); if you find a vendor
 tag that is dropped or altered, that is a bug worth reporting.

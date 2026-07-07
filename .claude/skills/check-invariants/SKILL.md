@@ -8,7 +8,7 @@ agent: Explore
 
 # ADR Invariant Spot-Checks
 
-Verify that the codebase honors the architectural decisions documented in docs/adr/. Each ADR establishes invariants that must hold.
+Verify that the codebase honors the architectural decisions documented in docs/decisions/. Each ADR establishes invariants that must hold.
 
 ## Checks to Perform
 
