@@ -55,7 +55,7 @@ These packages/APIs are stable and follow semver strictly:
 | `parser` | Stable | `Parse()`, `ParseLine()`, `NewRecordIterator()`, `NewRecordIteratorWithOffset()`, `Records()`, `RecordsWithOffset()`, `NewLazyParser()` |
 | `validator` | Stable | `Validate()`, `ValidateAll()`, `NewStreamingValidator()` |
 | `charset` | Stable | `NewReader()` |
-| `version` | Stable | `Detect()`, version constants |
+| `version` | Stable | `DetectVersion()`, version constants |
 
 ### Experimental (May Change)
 

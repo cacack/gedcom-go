@@ -14,7 +14,7 @@ Check whether recent work aligns with the current roadmap phase. Phases and thei
 
 ### 1. Recent Commit Categorization
 Review the last 20 commits on main:
-- Run `git log --oneline -20`
+- Run `git log --oneline --max-count=20 main`
 - Categorize each as Phase 1, Phase 2, Phase 3, or Maintenance using the Phasing table in CONSTITUTION.md (map by milestone: v2.1.0/v2.2.0 → Phase 1, v2.3.0 → Phase 2, unscheduled advanced work → Phase 3)
 - Calculate percentage of work in each phase
 

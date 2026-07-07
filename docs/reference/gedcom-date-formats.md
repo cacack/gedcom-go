@@ -640,13 +640,13 @@ Any dates in the gap should be flagged as impossible.
 
 ### 8.3 B.C./B.C.E. Dates
 
-**GEDCOM Format**: Year can be negative or use "B.C." suffix
+**GEDCOM Format**: Pre-7.0 files conventionally use a "B.C." suffix; GEDCOM 7.0 standardizes the epoch marker as "BCE" (see Appendix A). A negative year is an alternative representation.
 
 **Examples**:
 ```
-500 B.C.
--500
-100 BCE          (not standard, treat as phrase)
+500 B.C.         (GEDCOM 5.5 / 5.5.1 convention)
+500 BCE          (GEDCOM 7.0 grammar)
+-500             (negative-year representation)
 ```
 
 **Sorting Issues**:

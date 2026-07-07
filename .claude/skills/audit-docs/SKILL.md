@@ -25,10 +25,10 @@ Pick 3 features claimed in FEATURES.md and verify they exist:
 - Flag any features that appear to be missing or renamed
 
 ### 3. TESTING.md Critical Paths
-Verify critical path functions listed in docs/testing.md exist:
-- Search for each function name in the corresponding package
-- Flag functions that have been renamed or removed
-- Check that test files exist for the listed functions
+Verify critical path entry points listed in docs/testing.md exist:
+- Search for each listed symbol (function or method) in the corresponding package
+- Flag entries that have been renamed or removed
+- Check that test files exist for the listed entry points
 
 ### 4. ADR List Accuracy
 Compare the ADR table in CLAUDE.md against actual files in docs/decisions/:
