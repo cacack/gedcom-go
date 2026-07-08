@@ -192,6 +192,40 @@ func TestTransformEXIDToVendorTags_ExtraSubordinateNotConverted(t *testing.T) {
 	}
 }
 
+func TestTransformEXIDToVendorTags_ArkTypeWithDeepSubordinateNotConverted(t *testing.T) {
+	// A matching TYPE that itself carries a subordinate would lose that content
+	// if the block were collapsed to a single _FSFTID, so it is not converted.
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version70},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@I1@",
+				Type: gedcom.RecordTypeIndividual,
+				Tags: []*gedcom.Tag{
+					{Level: 1, Tag: "EXID", Value: "KWCJ-QN7"},
+					{Level: 2, Tag: "TYPE", Value: "https://www.familysearch.org/ark"},
+					{Level: 3, Tag: "NOTE", Value: "provenance detail"},
+				},
+			},
+		},
+	}
+
+	result, report, err := Convert(doc, gedcom.Version551)
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+	rec := result.Records[0]
+	if findTag(rec, "_FSFTID") != nil {
+		t.Error("EXID whose TYPE has a deeper subordinate must not be collapsed to _FSFTID")
+	}
+	if findTag(rec, "EXID") == nil || findTag(rec, "NOTE") == nil {
+		t.Error("EXID and the NOTE under its TYPE should be left in place")
+	}
+	if !exidInDataLoss(report) {
+		t.Error("un-converted EXID should still be reported as data loss")
+	}
+}
+
 func TestTransformEXIDToVendorTags_SkippedWhenPreserveUnknownFalse(t *testing.T) {
 	// _FSFTID is a vendor extension, so a caller who opts out of vendor tags
 	// keeps the plain EXID-is-data-loss behavior.

@@ -130,14 +130,16 @@ func isConvertibleFamilySearchEXID(block []*gedcom.Tag) bool {
 	exidLevel := block[0].Level
 	hasArkType := false
 	for _, t := range block[1:] {
-		if t.Level != exidLevel+1 {
-			continue // descendants ride along with their direct-subordinate parent
-		}
-		if t.Tag == "TYPE" && matchesFamilySearchArk(t.Value) {
+		// Only a plain EXID whose sole subordinate is the matching TYPE is
+		// convertible. Any other direct subordinate (a non-ARK TYPE, NOTE,
+		// SOUR, ...) or any deeper tag (e.g. a NOTE nested under the TYPE)
+		// would be lost when the block collapses to a single _FSFTID, so leave
+		// the EXID for the data-loss sweep instead.
+		if t.Level == exidLevel+1 && t.Tag == "TYPE" && matchesFamilySearchArk(t.Value) {
 			hasArkType = true
 			continue
 		}
-		return false // a non-ARK-TYPE direct subordinate would be lost on collapse
+		return false
 	}
 	return hasArkType
 }
