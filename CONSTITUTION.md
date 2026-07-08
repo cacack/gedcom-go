@@ -1,4 +1,4 @@
-# Project Ethos
+# Constitution
 
 The guiding philosophy and strategic vision for gedcom-go. Planned work lives in [GitHub Issues and Milestones](https://github.com/cacack/gedcom-go/milestones) — the single source of truth. This document covers the *why* and the order of the work.
 
@@ -71,7 +71,7 @@ Work is sequenced into phases to focus effort. **Resist jumping ahead** — feat
 | **Phase 2 (Near-term)** | Document manipulation | `v2.3.0` | Respect the Data |
 | **Phase 3 (Future)** | Advanced features & formats | _(unscheduled)_ | Start Small, Ship Often |
 
-Phase 3 is not yet milestoned. Issue-backed candidate: GEDZip archive support ([#127](https://github.com/cacack/gedcom-go/issues/127)). Pre-issue ideas live in [IDEAS.md](../IDEAS.md) (fluent builder API, JSON struct tags, BOM output option).
+Phase 3 is not yet milestoned. Issue-backed candidate: GEDZip archive support ([#127](https://github.com/cacack/gedcom-go/issues/127)). Pre-issue ideas live in [IDEAS.md](IDEAS.md) (fluent builder API, JSON struct tags, BOM output option).
 
 ---
 
@@ -98,6 +98,6 @@ Phase 3 is not yet milestoned. Issue-backed candidate: GEDZip archive support ([
 ## Related
 
 - [GitHub Milestones](https://github.com/cacack/gedcom-go/milestones) — Phased feature plan and exit criteria (see [Phasing](#phasing) for the philosophy)
-- [Architecture Decision Records](./adr/) — Key design decisions
-- [CONTRIBUTING.md](../CONTRIBUTING.md) — How to contribute
-- [API Stability](./API_STABILITY.md) — Compatibility guarantees
+- [Architecture Decision Records](docs/decisions/) — Key design decisions
+- [CONTRIBUTING.md](CONTRIBUTING.md) — How to contribute
+- [API Stability](docs/governance/policies/api-stability.md) — Compatibility guarantees

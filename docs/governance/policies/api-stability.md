@@ -55,7 +55,7 @@ These packages/APIs are stable and follow semver strictly:
 | `parser` | Stable | `Parse()`, `ParseLine()`, `NewRecordIterator()`, `NewRecordIteratorWithOffset()`, `Records()`, `RecordsWithOffset()`, `NewLazyParser()` |
 | `validator` | Stable | `Validate()`, `ValidateAll()`, `NewStreamingValidator()` |
 | `charset` | Stable | `NewReader()` |
-| `version` | Stable | `Detect()`, version constants |
+| `version` | Stable | `DetectVersion()`, version constants |
 
 ### Experimental (May Change)
 
@@ -98,7 +98,7 @@ Version 1.0.0 marked the first stable release with full compatibility guarantees
 
 If you encounter an unintentional breaking change:
 
-1. Check the [CHANGELOG](../CHANGELOG.md) for documented changes
+1. Check the [CHANGELOG](../../../CHANGELOG.md) for documented changes
 2. Open a [GitHub issue](https://github.com/cacack/gedcom-go/issues) with:
    - Version you upgraded from/to
    - Code that broke

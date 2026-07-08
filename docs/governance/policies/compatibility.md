@@ -71,7 +71,7 @@ The library automatically detects the source software from the `HEAD.SOUR` tag. 
 - Logging which software created a file
 - Future vendor-specific parsing behaviors if needed
 
-Detection is implemented in [`gedcom/vendor.go`](../gedcom/vendor.go).
+Detection is implemented in [`gedcom/vendor.go`](../../../gedcom/vendor.go).
 
 Currently detected vendors:
 - Ancestry.com (including FamilyTreeMaker)
@@ -83,7 +83,7 @@ Currently detected vendors:
 
 ## Test Data Sources
 
-All test files are documented in [`testdata/README.md`](../testdata/README.md) with:
+All test files are documented in [`testdata/README.md`](../../../testdata/README.md) with:
 
 - Source attribution (where the file came from)
 - License information
@@ -210,7 +210,7 @@ testdata/
 └── malformed/           # Invalid files for error handling tests
 ```
 
-See [`testdata/README.md`](../testdata/README.md) for complete attribution, licensing, and descriptions of each file.
+See [`testdata/README.md`](../../../testdata/README.md) for complete attribution, licensing, and descriptions of each file.
 
 ### What "Synthetic" Means
 
@@ -321,7 +321,7 @@ See the "Contributing Test Files" section above for what vendor exports are most
 
 ## Related Documentation
 
-- [Vendor Extensions](VENDOR_EXTENSIONS.md) - Per-tag reference for vendor-specific extensions, typed accessors, and validation
-- [GEDCOM Version Differences](GEDCOM_VERSIONS.md) - Detailed spec differences
-- [Test Data README](../testdata/README.md) - Complete test file documentation
-- [API Stability](API_STABILITY.md) - What APIs are stable vs experimental
+- [Vendor Extensions](../../guides/vendor-extensions.md) - Per-tag reference for vendor-specific extensions, typed accessors, and validation
+- [GEDCOM Version Differences](../../reference/gedcom-versions.md) - Detailed spec differences
+- [Test Data README](../../../testdata/README.md) - Complete test file documentation
+- [API Stability](api-stability.md) - What APIs are stable vs experimental

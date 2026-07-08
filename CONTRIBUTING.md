@@ -289,7 +289,7 @@ make test-coverage   # Shows per-package coverage with threshold check
 go test -cover ./... # Quick coverage summary
 ```
 
-For details on critical paths and testing patterns, see [docs/TESTING.md](docs/TESTING.md).
+For details on critical paths and testing patterns, see [docs/testing.md](docs/testing.md).
 
 ### Test Guidelines
 

@@ -246,7 +246,7 @@ License: GPL-2.0 (data files used as test inputs)
 
 #### Real Vendor Exports (2025+)
 
-Real exports from current software versions. See [docs/COMPATIBILITY.md](../docs/COMPATIBILITY.md) for detailed quirks.
+Real exports from current software versions. See [docs/governance/policies/compatibility.md](../docs/governance/policies/compatibility.md) for detailed quirks.
 
 | File | Source | Version | Records |
 |------|--------|---------|---------|

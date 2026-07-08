@@ -174,6 +174,6 @@ Tags with empty values are preserved: `1 BIRT` becomes `1 BIRT` (not `1 BIRT ` w
 
 ## Related Documentation
 
-- [COMPATIBILITY.md](COMPATIBILITY.md) - Vendor compatibility matrix
-- [GEDCOM_VERSIONS.md](GEDCOM_VERSIONS.md) - Version-specific differences
-- [API_STABILITY.md](API_STABILITY.md) - API compatibility guarantees
+- [compatibility](../governance/policies/compatibility.md) - Vendor compatibility matrix
+- [gedcom-versions](../reference/gedcom-versions.md) - Version-specific differences
+- [api-stability](../governance/policies/api-stability.md) - API compatibility guarantees
