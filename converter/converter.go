@@ -13,6 +13,12 @@ func Convert(doc *gedcom.Document, targetVersion gedcom.Version) (*gedcom.Docume
 
 // ConvertWithOptions converts a GEDCOM document with custom options.
 //
+// Behavior note: on a 7.0 -> 5.5/5.5.1 downgrade, a FamilySearch ARK EXID on an
+// individual is mapped to the vendor tag _FSFTID rather than being dropped (see
+// transformEXIDToVendorTags). Such an EXID therefore appears under the report's
+// Normalized notes instead of DataLoss. This mapping is skipped when
+// opts.PreserveUnknownTags is false, and has no inverse on the upgrade path.
+//
 //nolint:gocyclo // Routing to 6 conversion paths requires this branching structure
 func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts *ConvertOptions) (*gedcom.Document, *gedcom.ConversionReport, error) {
 	if doc == nil {
@@ -165,6 +171,9 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 //
 //nolint:unparam // error return kept for API consistency with other converters
 func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+	if opts.PreserveUnknownTags {
+		transformEXIDToVendorTags(doc, report, gedcom.Version55)
+	}
 	transformTextForVersion(doc, gedcom.Version55, report)
 	transformMediaTypes(doc, gedcom.Version55, report)
 	transformHeader(doc, gedcom.Version55, report)
@@ -184,6 +193,9 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 //
 //nolint:unparam // error return kept for API consistency with other converters
 func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+	if opts.PreserveUnknownTags {
+		transformEXIDToVendorTags(doc, report, gedcom.Version551)
+	}
 	transformTextForVersion(doc, gedcom.Version551, report)
 	transformMediaTypes(doc, gedcom.Version551, report)
 	transformHeader(doc, gedcom.Version551, report)
