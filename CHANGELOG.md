@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0](https://github.com/cacack/gedcom-go/compare/v2.2.2...v2.3.0) (2026-07-08)
+
+
+### Features
+
+* map FamilySearch ARK EXID to _FSFTID on 5.5.x downgrade ([3ff3ed6](https://github.com/cacack/gedcom-go/commit/3ff3ed6c91e1a9e71ff2897a5610bfd07dd7ca63))
+
+
+### Bug Fixes
+
+* reject EXID blocks with subordinates deeper than the ARK TYPE ([bc9a2cf](https://github.com/cacack/gedcom-go/commit/bc9a2cfe1b2fb79e3d824aaed475b8305d4aefb0))
+
 ## [2.2.2](https://github.com/cacack/gedcom-go/compare/v2.2.1...v2.2.2) (2026-07-06)
 
 
