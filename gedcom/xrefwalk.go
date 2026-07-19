@@ -30,6 +30,32 @@ func IsPointerXRef(s string) bool {
 	return !strings.ContainsAny(s[1:len(s)-1], " \t\n\r@")
 }
 
+// EscapeLeadingAt escapes a leading "@" in a line value as "@@", per the GEDCOM
+// convention that a literal leading "@" in a value must be doubled so it is not
+// read as the start of a cross-reference pointer or escape token. Only the
+// leading "@" is doubled; the rest of the value is unchanged. A value that does
+// not begin with "@" is returned as-is.
+//
+// Use this when writing a literal value (e.g. a synthesized vendor-tag
+// identifier) that could otherwise be pointer-shaped; UnescapeLeadingAt is the
+// inverse. Note this deliberately covers any leading "@", not only well-formed
+// "@xref@" pointers — a value like "@foo" still needs escaping per the spec.
+func EscapeLeadingAt(s string) string {
+	if strings.HasPrefix(s, "@") {
+		return "@" + s
+	}
+	return s
+}
+
+// UnescapeLeadingAt reverses EscapeLeadingAt: a leading "@@" collapses to a
+// single literal "@". A value that does not begin with "@@" is returned as-is.
+func UnescapeLeadingAt(s string) string {
+	if strings.HasPrefix(s, "@@") {
+		return s[1:]
+	}
+	return s
+}
+
 // Visit invokes visit for every pointer-shaped XRef reachable from r's
 // Entity and raw Tags. Definition sites (Record.XRef and entity XRef
 // fields) are not visited. Non-pointer-shaped values and the @VOID@

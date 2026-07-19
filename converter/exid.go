@@ -38,6 +38,11 @@ const familySearchArkType = "familysearch.org/ark"
 //   - One-way: this is a downgrade-only mapping. There is no inverse transform
 //     on the 5.5.x -> 7.0 upgrade path, so a round trip does not restore the
 //     original EXID structure (the identifier persists as _FSFTID).
+//   - Leading-@ escaping: an identifier beginning with "@" (e.g. the
+//     pointer-shaped "@I2@") is escaped to "@@..." in the emitted _FSFTID so it
+//     is not mistaken for an XRef pointer. The decoder unescapes it back into
+//     Individual.FamilySearchID (see gedcom.EscapeLeadingAt/UnescapeLeadingAt),
+//     but the raw tag value on disk retains the escaped "@@" form.
 //   - Gated by the caller: convert70To55/convert70To551 only invoke this when
 //     ConvertOptions.PreserveUnknownTags is set, since _FSFTID is itself a
 //     vendor extension; a caller opting out of vendor tags keeps the plain
@@ -94,7 +99,13 @@ func rewriteEXIDTags(record *gedcom.Record, report *gedcom.ConversionReport, tar
 		}
 
 		if isConvertibleFamilySearchEXID(tags[i:j]) {
-			out = append(out, &gedcom.Tag{Level: 1, Tag: "_FSFTID", Value: tag.Value})
+			// A leading "@" in the identifier (e.g. the pointer-shaped "@I2@")
+			// copied verbatim would be mistaken for an XRef pointer by the XRef
+			// walk and by strict parsers. Escape it per the GEDCOM spec (@@...)
+			// so it reads as literal data; the decoder unescapes it back into
+			// Individual.FamilySearchID.
+			val := gedcom.EscapeLeadingAt(tag.Value)
+			out = append(out, &gedcom.Tag{Level: 1, Tag: "_FSFTID", Value: val})
 			report.AddNormalized(gedcom.ConversionNote{
 				Path:     BuildNestedPath(string(record.Type), record.XRef, exidPathSegment(count)),
 				Original: "EXID",

@@ -38,6 +38,41 @@ func TestIsPointerXRef(t *testing.T) {
 	}
 }
 
+func TestEscapeUnescapeLeadingAt(t *testing.T) {
+	tests := []struct {
+		name      string
+		logical   string // unescaped value
+		escaped   string // on-disk value
+		roundTrip bool   // Unescape(Escape(logical)) == logical
+	}{
+		{"no leading at", "KWCJ-QN7", "KWCJ-QN7", true},
+		{"pointer shaped", "@I2@", "@@I2@", true},
+		{"leading at not pointer", "@foo", "@@foo", true},
+		{"interior at", "@a@b@", "@@a@b@", true},
+		{"empty", "", "", true},
+		{"void sentinel", "@VOID@", "@@VOID@", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := EscapeLeadingAt(tc.logical); got != tc.escaped {
+				t.Errorf("EscapeLeadingAt(%q) = %q, want %q", tc.logical, got, tc.escaped)
+			}
+			if got := UnescapeLeadingAt(tc.escaped); got != tc.logical {
+				t.Errorf("UnescapeLeadingAt(%q) = %q, want %q", tc.escaped, got, tc.logical)
+			}
+			if tc.roundTrip {
+				if got := UnescapeLeadingAt(EscapeLeadingAt(tc.logical)); got != tc.logical {
+					t.Errorf("round trip of %q = %q, want %q", tc.logical, got, tc.logical)
+				}
+			}
+			// An escaped value must never be pointer-shaped (that is the point).
+			if IsPointerXRef(tc.escaped) && tc.escaped != tc.logical {
+				t.Errorf("escaped value %q is still pointer-shaped", tc.escaped)
+			}
+		})
+	}
+}
+
 // xrefwalkFullDocument constructs a hand-built Document populated with every
 // entity type and every XRef-bearing field that the walker covers.
 // Each XRef uses a unique sentinel so tests can verify per-field coverage.

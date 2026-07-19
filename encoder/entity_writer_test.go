@@ -2435,6 +2435,17 @@ func TestFamilySearchIDEncoding(t *testing.T) {
 			expectedValue: "KWCJ-QN7",
 		},
 		{
+			// A pointer-shaped id must be written escaped so it is not
+			// mistaken for an XRef pointer (issue #346).
+			name: "individual with pointer-shaped FamilySearchID is escaped",
+			indi: &gedcom.Individual{
+				XRef:           "@I9@",
+				FamilySearchID: "@I2@",
+			},
+			expectFSFTID:  true,
+			expectedValue: "@@I2@",
+		},
+		{
 			name: "individual without FamilySearchID",
 			indi: &gedcom.Individual{
 				XRef: "@I2@",
