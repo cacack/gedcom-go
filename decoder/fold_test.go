@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v2/gedcom"
@@ -22,7 +23,10 @@ func TestFoldContinuation(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := foldContinuation(tt.base, tt.tag); got != tt.want {
+			var b strings.Builder
+			b.WriteString(tt.base)
+			foldContinuation(&b, tt.tag)
+			if got := b.String(); got != tt.want {
 				t.Errorf("foldContinuation(%q, %s) = %q, want %q", tt.base, tt.tag.Tag, got, tt.want)
 			}
 		})

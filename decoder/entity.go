@@ -1094,18 +1094,20 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 	return repo
 }
 
-// foldContinuation applies a CONT/CONC continuation tag to accumulated text:
-// CONT joins with a newline, CONC concatenates directly. Any other tag returns
-// text unchanged. Callers that special-case an empty base (parseEventAddress) or
-// accumulate into a slice (parseNote) intentionally do not use this.
-func foldContinuation(text string, tag *gedcom.Tag) string {
+// foldContinuation folds a CONT/CONC continuation tag into the builder b:
+// CONT writes a newline followed by the value, CONC writes the value directly.
+// Any other tag is a no-op. Writing into a single builder keeps folding O(n)
+// across a run of continuation lines. Callers that special-case an empty base
+// (parseEventAddress) or accumulate into a slice (parseNote) intentionally do
+// not use this.
+func foldContinuation(b *strings.Builder, tag *gedcom.Tag) {
 	switch tag.Tag {
 	case "CONT":
-		return text + "\n" + tag.Value
+		b.WriteString("\n")
+		b.WriteString(tag.Value)
 	case "CONC":
-		return text + tag.Value
+		b.WriteString(tag.Value)
 	}
-	return text
 }
 
 // appendRecordNote classifies a record-level NOTE tag at noteIdx and appends it
@@ -1124,7 +1126,8 @@ func appendRecordNote(tags []*gedcom.Tag, noteIdx int, xrefs, inline, legacy []s
 		return append(xrefs, tag.Value), inline, append(legacy, tag.Value)
 	}
 
-	text := tag.Value
+	var b strings.Builder
+	b.WriteString(tag.Value)
 	baseLevel := tag.Level
 	for i := noteIdx + 1; i < len(tags); i++ {
 		sub := tags[i]
@@ -1134,8 +1137,9 @@ func appendRecordNote(tags []*gedcom.Tag, noteIdx int, xrefs, inline, legacy []s
 		if sub.Level != baseLevel+1 {
 			continue
 		}
-		text = foldContinuation(text, sub)
+		foldContinuation(&b, sub)
 	}
+	text := b.String()
 	return xrefs, append(inline, text), append(legacy, text)
 }
 
@@ -1193,8 +1197,12 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 	note := &gedcom.SharedNote{
 		XRef: record.XRef,
 		Tags: record.Tags,
-		Text: record.Value, // The note text is in the value of the level 0 SNOTE tag
 	}
+
+	// Seed the fold with the level-0 SNOTE value; continuation lines fold in
+	// below. note.Text is assigned once after the loop to keep folding O(n).
+	var text strings.Builder
+	text.WriteString(record.Value)
 
 	for i := 0; i < len(record.Tags); i++ {
 		tag := record.Tags[i]
@@ -1228,7 +1236,7 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 			// reading SharedNote.Text get the full multi-line body, not just the
 			// first line (which lives in record.Value). CONC is invalid in GEDCOM
 			// 7.0 SNOTE but is folded in for robustness against malformed input.
-			note.Text = foldContinuation(note.Text, tag)
+			foldContinuation(&text, tag)
 
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
@@ -1236,6 +1244,8 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 			}
 		}
 	}
+
+	note.Text = text.String()
 
 	return note
 }
