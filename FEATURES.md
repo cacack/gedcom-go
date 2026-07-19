@@ -45,7 +45,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | Encode | `encoder.EncodeOptions` | `gedcomgo.EncodeWithOptions` | `LineEnding`, `MaxLineLength`, `DisableLineWrap`, `TargetVersion`, `PreserveUnknownTags` |
 | Validate | `validator.ValidateOptions` | `gedcomgo.ValidateAllWithOptions` | `Strictness`, `MaxErrors`, `SkipRules`, `DateLogic`, `Duplicates`, `TagRegistry`, `ValidateCustomTags`, `SkipEncodingValidation` |
 
-`gedcomgo.DefaultDecodeOptions()`, `DefaultEncodeOptions()`, and `DefaultValidateOptions()` return populated defaults you can tweak. `validator.ValidateOptions` is an alias for the original `validator.ValidatorConfig`; both names work interchangeably.
+`gedcomgo.DefaultDecodeOptions()`, `DefaultEncodeOptions()`, and `DefaultValidateOptions()` return populated defaults you can tweak. `validator.ValidateOptions` is an alias for the original `validator.ValidatorConfig`; both names work interchangeably. The basic `[]error` validation path has its own configurable entry point, `gedcomgo.ValidateWithOptions(doc, opts)`, alongside the comprehensive `ValidateAllWithOptions`.
 
 ## Lenient Parsing & Diagnostics
 
@@ -59,6 +59,8 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | `BAD_LEVEL_JUMP` | Indentation skips one or more levels (e.g., `1 BIRT` → `4 DATE`) | Level clamped to `prev + 1` so the subordinate attaches to its natural parent |
 | `UNKNOWN_TAG` | Unrecognized tag | Preserved in raw form |
 | `INVALID_VALUE` | Value doesn't match the expected format | Raw value preserved |
+| `MISSING_REQUIRED` | Required subordinate tag is missing | Reported; decoding continues |
+| `SKIPPED_RECORD` | An entire record was skipped due to errors | Record dropped; decoding continues |
 
 Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns the first syntax error.
 
@@ -396,7 +398,7 @@ mutated.
 - Cross-reference ID (`@I1@`)
 - Names with components (given, surname, prefix, suffix, nickname)
 - Name types (birth, married, aka)
-- Sex (M/F/U)
+- Sex (M/F/X/U)
 - Events (see Events section)
 - Attributes (see Attributes section)
 - Family links (FAMC, FAMS) with pedigree types
@@ -435,7 +437,6 @@ mutated.
 
 - Cross-reference ID (`@U1@`)
 - Name, address, language
-- Multimedia references
 
 ### Notes (NOTE)
 
@@ -485,6 +486,9 @@ mutated.
 | WILL | Will | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
 | EVEN | Generic Event | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
 
+On individuals, `EVEN` is currently preserved in raw form rather than decoded into a
+typed `Event`; typed `EVEN` decoding applies to family events (below).
+
 ### Family Events
 
 | Tag | Event | Subordinates |
@@ -505,7 +509,7 @@ mutated.
 | Tag | Attribute | Notes |
 |-----|-----------|-------|
 | OCCU | Occupation | With DATE for periods |
-| RESI | Residence | With ADDR structure |
+| RESI | Residence | Modeled as an Event (lands in `Events`, not `Attributes`); with ADDR structure |
 | EDUC | Education | |
 | RELI | Religion | |
 | TITL | Title | Nobility, professional |
@@ -562,8 +566,9 @@ lat, err := gedcom.ParseCoordinate("N42.3601")  // 42.3601
 - CTRY - Country
 - PHON - Phone numbers
 - EMAIL - Email addresses
-- FAX - Fax numbers
 - WWW - Web URLs
+
+(`FAX` is captured on events, not on the address structure.)
 
 ## Name Structure
 
@@ -674,11 +679,12 @@ Structured date parsing for GEDCOM date strings with full support for:
 // Validate complete dates using stdlib
 err := date.Validate()
 // Returns nil for valid dates
-// Returns clear error for invalid: "invalid date: February has 28 days in 2023"
+// Returns clear error for invalid: "invalid date: February has 28 days in 2023, got day 30"
 ```
 
 - Uses `time.Date()` normalization (no reimplemented calendar math)
 - Skips validation for partial dates (lossless representation)
+- Only Gregorian dates are validated; non-Gregorian calendars return nil
 - Detects invalid day/month combinations (Feb 30, Jun 31)
 - Handles leap years correctly (Feb 29 2000 valid, 1900 invalid)
 
@@ -727,10 +733,13 @@ date.Year     // 2020
 date.Modifier // ModifierNone
 
 // Edge case fields
-date.IsBC     // true for B.C. dates
-date.DualYear // second year from "1750/51" format
-date.Phrase   // text from "(unknown)" format
-date.IsPhrase // true for date phrases
+date.IsBC           // true for B.C. dates
+date.DualYear       // second year from "1750/51" format
+date.Phrase         // text from "(unknown)" format
+date.IsPhrase       // true for date phrases
+date.EndDate        // *Date: end of a range (BET...AND) or period (FROM...TO)
+date.IsInterpreted  // true for INT dates
+date.InterpretedFrom // original phrase captured from an INT date
 
 // Validate complete dates
 err := date.Validate()  // nil if valid
@@ -766,7 +775,7 @@ Supports conversion from Julian, Hebrew, and French Republican calendars to Greg
 
 ## Metadata
 
-- REFN - Reference numbers with TYPE
+- REFN - Reference numbers (the `TYPE` subordinate is preserved in raw form only)
 - UID - Unique identifiers
 - CHAN - Change date with DATE and TIME
 - CREA - Creation date (GEDCOM 7.0)
@@ -897,8 +906,8 @@ orphaned := validator.FilterByCode(issues, "ORPHANED_FAMC")
 Create validation issues with a fluent API:
 
 ```go
-issue := validator.NewIssue("CUSTOM_ERROR", "Custom error message").
-    WithRelatedXRef("@I1@").
+issue := validator.NewIssue(validator.SeverityError, "CUSTOM_ERROR", "Custom error message", "@I1@").
+    WithRelatedXRef("@I2@").
     WithDetail("field", "NAME")
 ```
 
@@ -1087,6 +1096,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | XRef uppercase | Upgrade to 7.0 | Normalizes cross-references |
 | Media types | Both | Maps between legacy (JPG) and IANA (image/jpeg) |
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |
+| FamilySearch ARK EXID → `_FSFTID` | Downgrade from 7.0 | Maps to the vendor tag instead of dropping the ID (when `PreserveUnknownTags`) |
 
 ### API
 
@@ -1348,7 +1358,11 @@ header, _ := lp.FindRecordByType("HEAD")
 trailer, _ := lp.FindRecordByType("TRLR")
 
 // Stream all records
-for it := lp.IterateAll(); it.Next(); {
+it, err := lp.IterateAll()
+if err != nil {
+    log.Fatal(err)
+}
+for it.Next() {
     rec := it.Record()
     // Process...
 }
@@ -1378,18 +1392,16 @@ Additional LazyParser methods:
 ## Performance
 
 - Zero-allocation validator for valid documents
-- Benchmarked performance:
-  - Parser: 66ns/op for simple lines
-  - Decoder: 13ms for 1000 individuals
-  - Encoder: 1.15ms for 1000 individuals
-  - Validator: 5.91μs for 1000 individuals
+- Benchmark coverage across parser, decoder, encoder, and validator hot paths.
+  Run `make bench` to reproduce figures on your own hardware — absolute numbers
+  are hardware- and warmup-dependent, so they are not quoted here.
 
 ## API Design
 
 - Clean, idiomatic Go API
 - Comprehensive godoc documentation
 - Example code for common use cases
-- Zero external dependencies (standard library only)
+- Single dependency: `golang.org/x/text` (Go's extended standard library) for encoding transforms; no third-party dependencies
 
 ### Record Lookup
 
@@ -1504,14 +1516,19 @@ Convenience methods on `Record` for type checking and casting:
 | `IsIndividual()` | `bool` | True if record contains an Individual |
 | `IsFamily()` | `bool` | True if record contains a Family |
 | `IsSource()` | `bool` | True if record contains a Source |
-| `GetIndividual()` | `*Individual` | Type assertion (nil if wrong type) |
-| `GetFamily()` | `*Family` | Type assertion (nil if wrong type) |
-| `GetSource()` | `*Source` | Type assertion (nil if wrong type) |
+| `IsSharedNote()` | `bool` | True if record contains a SharedNote |
+| `GetIndividual()` | `(*Individual, bool)` | Type assertion (`(nil, false)` if wrong type) |
+| `GetFamily()` | `(*Family, bool)` | Type assertion (`(nil, false)` if wrong type) |
+| `GetSource()` | `(*Source, bool)` | Type assertion (`(nil, false)` if wrong type) |
+| `GetRepository()` | `(*Repository, bool)` | Type assertion (`(nil, false)` if wrong type) |
+| `GetSubmitter()` | `(*Submitter, bool)` | Type assertion (`(nil, false)` if wrong type) |
+| `GetNote()` | `(*Note, bool)` | Type assertion (`(nil, false)` if wrong type) |
+| `GetMediaObject()` | `(*MediaObject, bool)` | Type assertion (`(nil, false)` if wrong type) |
+| `GetSharedNote()` | `(*SharedNote, bool)` | Type assertion (`(nil, false)` if wrong type) |
 
 ```go
 for _, record := range doc.Records {
-    if record.IsIndividual() {
-        indi := record.GetIndividual()
+    if indi, ok := record.GetIndividual(); ok {
         fmt.Printf("Individual: %s\n", indi.XRef)
     }
 }
@@ -1519,7 +1536,7 @@ for _, record := range doc.Records {
 
 ## Testing
 
-- 93% test coverage across core packages
+- Per-package test coverage floor of ≥85% enforced in CI (currently ~96% measured; run `make test-coverage`)
 - Multi-platform CI (Linux, macOS, Windows)
 - Multi-version Go testing (1.25, 1.26)
 - Benchmark regression testing
