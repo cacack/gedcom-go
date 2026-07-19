@@ -20,8 +20,8 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 - **Streaming APIs**: Memory-efficient parsing and encoding for very large files (1M+ records)
 - **Comprehensive Validation**: Date logic, orphaned references, duplicates, and quality reports
 - **Vendor Extensions**: Parse Ancestry.com and FamilySearch custom tags
-- **Zero Dependencies**: Uses only the Go standard library
-- **Well-tested**: 93-100% per-package test coverage with multi-platform CI
+- **Minimal Dependencies**: only `golang.org/x/text` (Go's extended standard library) for encoding transforms; no third-party dependencies
+- **Well-tested**: per-package test coverage floor of ≥85% enforced in CI (currently ~96% measured), with multi-platform CI
 
 See [FEATURES.md](FEATURES.md) for the complete feature list including all supported record types, events, attributes, and encoding details.
 
@@ -400,7 +400,7 @@ make all
 # Run tests
 make test
 
-# Run tests with coverage (93-100% per-package coverage)
+# Run tests with coverage (≥85% per-package floor enforced in CI)
 make test-coverage
 
 # Generate HTML coverage report
@@ -452,12 +452,10 @@ go vet ./...
 
 ## Performance
 
-The library is designed for high performance with efficient memory usage:
-
-- **Parser**: 66ns/op for simple lines, ~700μs for 1000 individuals
-- **Decoder**: 13ms for 1000 individuals with full document structure
-- **Encoder**: 1.15ms for 1000 individuals
-- **Validator**: 5.91μs for 1000 individuals, **zero allocations** for valid documents
+The library is designed for high performance with efficient memory usage, including
+**zero allocations** in the validator for valid documents. See
+[docs/guides/performance.md](docs/guides/performance.md) for measured benchmarks and the
+environment they were run on — run `make bench` to reproduce figures on your own hardware.
 
 ### Benchmarking
 

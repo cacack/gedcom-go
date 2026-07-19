@@ -7,8 +7,13 @@ This document provides detailed performance benchmarks and optimization guidance
 All benchmarks were run on:
 - **Platform**: Apple M2 (ARM64)
 - **OS**: macOS
-- **Go Version**: 1.24
+- **Go Version**: 1.25
 - **Test Files**: Real-world GEDCOM files from `testdata/`
+
+This document is the single source of truth for gedcom-go benchmark figures. The numbers
+below are specific to the environment above — absolute values are hardware- and
+warmup-dependent, so treat them as indicative rather than guaranteed. Run `make bench` to
+measure on your own hardware.
 
 ## Performance Summary
 
@@ -294,7 +299,7 @@ If performance becomes critical:
 
 1. **Correctness**: Full GEDCOM 5.5, 5.5.1, and 7.0 support
 2. **Safety**: Comprehensive validation and error reporting
-3. **Simplicity**: Zero dependencies, clean API
+3. **Simplicity**: minimal dependencies (only `golang.org/x/text`), clean API
 4. **Reasonable Performance**: 32 MB/s is fast enough for most use cases
 
 ## Questions?

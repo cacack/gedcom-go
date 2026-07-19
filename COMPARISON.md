@@ -27,8 +27,8 @@ This document compares gedcom-go (github.com/cacack/gedcom-go) against competing
 | **Streaming** | Yes | No | Yes | Unknown |
 | **ANSEL encoding** | Full | No | Limited | Unknown |
 | **UTF-16** | Full | Unknown | No | Unknown |
-| **Zero dependencies** | Yes* | No | Yes | Unknown |
-| **Test coverage** | 93% | Unknown | Unknown | Unknown |
+| **Minimal dependencies** | Yes* | No | Yes | Unknown |
+| **Test coverage** | ≥85% CI floor (~96%) | Unknown | Unknown | Unknown |
 | **Active (2024+)** | Yes | No (Nov 2023) | Yes (Aug 2024) | No (Aug 2023) |
 | **Stars** | - | 119 | 41 | 8 |
 
@@ -153,7 +153,7 @@ date.String()  // "ABT 1850" (original preserved)
 
 **Strengths:**
 - Standard Go idioms (io.Reader/io.Writer, error returns)
-- Zero external dependencies for core functionality
+- Minimal dependencies: only `golang.org/x/text` (Go's extended standard library); no third-party dependencies
 - Type-safe entity access
 - Lossless representation (original values preserved)
 - Comprehensive godoc documentation
@@ -204,13 +204,14 @@ for _, rec := range g.Individual {
 
 | Metric | gedcom-go | elliotchance | iand |
 |--------|-----------|--------------|------|
-| Parser (simple line) | 66 ns/op | Unknown | Unknown |
-| Decode (1000 individuals) | 13 ms | Unknown | Unknown |
-| Encode (1000 individuals) | 1.15 ms | Unknown | Unknown |
-| Validate (1000 individuals) | 5.91 us | Unknown | Unknown |
+| Published benchmarks | Yes — parser/decode/encode/validate | Unknown | Unknown |
 | Validator allocations | Zero | Unknown | Unknown |
 | Streaming support | Yes | No | Yes |
 | Large file handling | Good | Memory-intensive | Good |
+
+Figures (and the environment they were measured on) live in
+[docs/guides/performance.md](docs/guides/performance.md); run `make bench` to reproduce
+them on your own hardware.
 
 **Notes:**
 - gedcom-go has documented benchmarks with regression testing
