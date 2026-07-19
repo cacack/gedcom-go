@@ -1167,7 +1167,7 @@ func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Ta
 
 	// Translations (level 1) - TRAN with nested MIME/LANG at level 2
 	for _, tran := range note.Translations {
-		tags = append(tags, sharedNoteTranslationToTags(tran, 1)...)
+		tags = append(tags, sharedNoteTranslationToTags(tran, 1, opts)...)
 	}
 
 	// Source citations (level 1) - SOUR
@@ -1190,11 +1190,14 @@ func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Ta
 }
 
 // sharedNoteTranslationToTags converts a SharedNoteTranslation to GEDCOM tags at the specified level.
-func sharedNoteTranslationToTags(tran *gedcom.SharedNoteTranslation, level int) []*gedcom.Tag {
+func sharedNoteTranslationToTags(tran *gedcom.SharedNoteTranslation, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
-	// TRAN tag with translated text
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: "TRAN", Value: tran.Value})
+	// TRAN tag with translated text. Route Value through textToTags so a
+	// multi-line translation splits into TRAN + leading CONT/CONC tags rather
+	// than writing an embedded newline onto the TRAN line (which would forge
+	// additional GEDCOM records). Symmetric with the decode-side fold (issue #339).
+	tags = append(tags, textToTags(tran.Value, level, "TRAN", opts)...)
 
 	// MIME subordinate at level+1
 	if tran.MIME != "" {
