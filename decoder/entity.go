@@ -156,7 +156,11 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			indi.UID = tag.Value
 
 		case "_FSFTID":
-			indi.FamilySearchID = tag.Value
+			// A leading "@@" is the escaped form of a literal leading "@" (see
+			// gedcom.EscapeLeadingAt, applied by the EXID->_FSFTID converter).
+			// Unescape it so callers reading Individual.FamilySearchID /
+			// FamilySearchURL() get the logical id; the raw tag retains "@@".
+			indi.FamilySearchID = gedcom.UnescapeLeadingAt(tag.Value)
 
 		case "EXID":
 			indi.ExternalIDs = append(indi.ExternalIDs, parseExternalID(record.Tags, i))
@@ -1201,8 +1205,8 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 
 	// Seed the fold with the level-0 SNOTE value; continuation lines fold in
 	// below. note.Text is assigned once after the loop to keep folding O(n).
-	var text strings.Builder
-	text.WriteString(record.Value)
+	var b strings.Builder
+	b.WriteString(record.Value)
 
 	for i := 0; i < len(record.Tags); i++ {
 		tag := record.Tags[i]
@@ -1236,7 +1240,7 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 			// reading SharedNote.Text get the full multi-line body, not just the
 			// first line (which lives in record.Value). CONC is invalid in GEDCOM
 			// 7.0 SNOTE but is folded in for robustness against malformed input.
-			foldContinuation(&text, tag)
+			foldContinuation(&b, tag)
 
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
@@ -1245,7 +1249,7 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 		}
 	}
 
-	note.Text = text.String()
+	note.Text = b.String()
 
 	return note
 }

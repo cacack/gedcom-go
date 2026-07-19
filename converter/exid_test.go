@@ -104,6 +104,7 @@ func TestTransformEXIDToVendorTags_PointerShapedValueEscaped(t *testing.T) {
 		want  string
 	}{
 		{"pointer-shaped value escaped", "@I2@", "@@I2@"},
+		{"leading-@ non-pointer value escaped", "@foo", "@@foo"},
 		{"normal ARK value unchanged", "KWCJ-QN7", "KWCJ-QN7"},
 	}
 

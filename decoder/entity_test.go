@@ -3553,6 +3553,43 @@ func TestFamilySearchIDParsing(t *testing.T) {
 	}
 }
 
+// TestFamilySearchIDEscapedValue verifies that a _FSFTID whose on-disk value is
+// escaped (leading "@@", as emitted by the EXID->_FSFTID downgrade for a
+// pointer-shaped id) is unescaped back into Individual.FamilySearchID, while the
+// raw tag retains the escaped form. Ref: issue #346.
+func TestFamilySearchIDEscapedValue(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 _FSFTID @@I2@
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual @I1@ not found")
+	}
+	if indi.FamilySearchID != "@I2@" {
+		t.Errorf("FamilySearchID = %q, want %q (unescaped)", indi.FamilySearchID, "@I2@")
+	}
+	// The raw tag must keep the escaped form so re-encoding stays spec-safe.
+	var raw string
+	for _, tag := range indi.Tags {
+		if tag.Tag == "_FSFTID" {
+			raw = tag.Value
+		}
+	}
+	if raw != "@@I2@" {
+		t.Errorf("raw _FSFTID tag value = %q, want %q (escaped)", raw, "@@I2@")
+	}
+}
+
 // TestFamilySearchIDWithFile tests parsing _FSFTID from a GEDCOM file.
 func TestFamilySearchIDWithFile(t *testing.T) {
 	f, err := os.Open("../testdata/edge-cases/familysearch-extensions.ged")

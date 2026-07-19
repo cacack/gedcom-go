@@ -293,9 +293,11 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(indi.ExternalIDs, 1)...)
 
-	// FamilySearch Family Tree ID (level 1) - _FSFTID
+	// FamilySearch Family Tree ID (level 1) - _FSFTID. Escape a leading "@" so a
+	// pointer-shaped id is not written as an XRef pointer; this mirrors the
+	// decoder's UnescapeLeadingAt when reading _FSFTID back into FamilySearchID.
 	if indi.FamilySearchID != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "_FSFTID", Value: indi.FamilySearchID})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "_FSFTID", Value: gedcom.EscapeLeadingAt(indi.FamilySearchID)})
 	}
 
 	return tags
