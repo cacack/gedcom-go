@@ -3075,6 +3075,9 @@ func TestSharedNoteTranslationToTags(t *testing.T) {
 		tran     *gedcom.SharedNoteTranslation
 		level    int
 		contains []string
+		// wantExact, when set, asserts the full emitted tag sequence
+		// (level/tag/value) rather than mere tag presence.
+		wantExact []gedcom.Tag
 	}{
 		{
 			name:     "minimal translation",
@@ -3092,13 +3095,40 @@ func TestSharedNoteTranslationToTags(t *testing.T) {
 			level:    1,
 			contains: []string{"TRAN", "MIME", "LANG"},
 		},
+		{
+			name: "multi-line translation folds into CONT",
+			tran: &gedcom.SharedNoteTranslation{
+				Value:    "Line one.\nLine two.",
+				Language: "es",
+			},
+			level: 1,
+			// The second line must land in a CONT tag with its exact value,
+			// after the TRAN line and before LANG — not be dropped or merged.
+			wantExact: []gedcom.Tag{
+				{Level: 1, Tag: "TRAN", Value: "Line one."},
+				{Level: 2, Tag: "CONT", Value: "Line two."},
+				{Level: 2, Tag: "LANG", Value: "es"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := sharedNoteTranslationToTags(tt.tran, tt.level)
-			tagMap := tagNamesToMap(tags)
+			tags := sharedNoteTranslationToTags(tt.tran, tt.level, nil)
 
+			if tt.wantExact != nil {
+				if len(tags) != len(tt.wantExact) {
+					t.Fatalf("sharedNoteTranslationToTags() emitted %d tags, want %d: %+v", len(tags), len(tt.wantExact), tags)
+				}
+				for i, want := range tt.wantExact {
+					if tags[i].Level != want.Level || tags[i].Tag != want.Tag || tags[i].Value != want.Value {
+						t.Errorf("tag[%d] = {%d %s %q}, want {%d %s %q}", i, tags[i].Level, tags[i].Tag, tags[i].Value, want.Level, want.Tag, want.Value)
+					}
+				}
+				return
+			}
+
+			tagMap := tagNamesToMap(tags)
 			for _, expected := range tt.contains {
 				if !tagMap[expected] {
 					t.Errorf("sharedNoteTranslationToTags() missing expected tag %q", expected)
@@ -3696,6 +3726,56 @@ func TestSharedNoteEncoderEdgeCases(t *testing.T) {
 		}
 		if sn.ExternalIDs[1].Value != "ANC-456" {
 			t.Errorf("ExternalIDs[1].Value = %q, want 'ANC-456'", sn.ExternalIDs[1].Value)
+		}
+	})
+
+	// Round-trips a multi-line translation: decode → encode → decode. Guards
+	// against both the decode-side truncation and the encode-side forged newline
+	// on the TRAN line (issue #339).
+	t.Run("round-trip multi-line translation", func(t *testing.T) {
+		input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @SN1@ SNOTE Primary.
+1 TRAN Translation line one.
+2 CONT Translation line two.
+2 LANG es
+0 TRLR
+`
+		doc, err := decoder.Decode(strings.NewReader(input))
+		if err != nil {
+			t.Fatalf("initial decode failed: %v", err)
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode failed: %v", err)
+		}
+		encoded := buf.String()
+
+		// The translation must split across a CONT line, not carry an embedded
+		// newline on the TRAN line (which would forge extra GEDCOM records).
+		if !strings.Contains(encoded, "2 CONT Translation line two.") {
+			t.Errorf("encoded output missing folded CONT line:\n%s", encoded)
+		}
+
+		doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("Re-decode failed: %v", err)
+		}
+		sn := doc2.GetSharedNote("@SN1@")
+		if sn == nil {
+			t.Fatal("SharedNote @SN1@ not found after round-trip")
+		}
+		if len(sn.Translations) != 1 {
+			t.Fatalf("len(Translations) = %d, want 1", len(sn.Translations))
+		}
+		tran := sn.Translations[0]
+		if want := "Translation line one.\nTranslation line two."; tran.Value != want {
+			t.Errorf("round-trip Translation.Value = %q, want %q", tran.Value, want)
+		}
+		if tran.Language != "es" {
+			t.Errorf("round-trip Translation.Language = %q, want 'es'", tran.Language)
 		}
 	})
 

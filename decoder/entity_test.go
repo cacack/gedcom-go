@@ -4223,6 +4223,50 @@ func TestSharedNoteMultiLineText(t *testing.T) {
 	}
 }
 
+// TestSharedNoteMultiLineTranslation verifies CONT/CONC lines subordinate to a
+// TRAN fold into the translation Value, symmetric with the primary-text fold
+// (issue #339). Before the fix, a multi-line translation truncated to its first
+// line.
+func TestSharedNoteMultiLineTranslation(t *testing.T) {
+	gedcom := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @N1@ SNOTE Primary line one.
+1 CONT Primary line two.
+1 MIME text/html
+1 LANG en
+1 TRAN Translation line one.
+2 CONT Translation line two.
+2 LANG es
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(gedcom))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sn := doc.GetSharedNote("@N1@")
+	if sn == nil {
+		t.Fatal("GetSharedNote(@N1@) returned nil")
+	}
+
+	// Primary text still folds (regression guard for #329).
+	if want := "Primary line one.\nPrimary line two."; sn.Text != want {
+		t.Errorf("sn.Text = %q, want %q", sn.Text, want)
+	}
+
+	if len(sn.Translations) != 1 {
+		t.Fatalf("len(Translations) = %d, want 1", len(sn.Translations))
+	}
+	tran := sn.Translations[0]
+	if want := "Translation line one.\nTranslation line two."; tran.Value != want {
+		t.Errorf("tran.Value = %q, want %q", tran.Value, want)
+	}
+	if tran.Language != "es" {
+		t.Errorf("tran.Language = %q, want %q", tran.Language, "es")
+	}
+}
+
 // TestSharedNoteParsingFromFile tests parsing SNOTE records from notes-1.ged.
 func TestSharedNoteParsingFromFile(t *testing.T) {
 	f, err := os.Open("../testdata/gedcom-7.0/familysearch-examples/notes-1.ged")

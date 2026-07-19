@@ -1258,9 +1258,13 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 func parseSharedNoteTranslation(tags []*gedcom.Tag, tranIdx int) *gedcom.SharedNoteTranslation {
 	baseLevel := tags[tranIdx].Level
 
-	tran := &gedcom.SharedNoteTranslation{
-		Value: tags[tranIdx].Value,
-	}
+	tran := &gedcom.SharedNoteTranslation{}
+
+	// Seed the fold with the TRAN value; CONT/CONC continuation lines fold in
+	// below, symmetric with parseSharedNote's primary-text fold (issue #339).
+	// tran.Value is assigned once after the loop to keep folding O(n).
+	var b strings.Builder
+	b.WriteString(tags[tranIdx].Value)
 
 	// Look for subordinate tags at baseLevel+1
 	for i := tranIdx + 1; i < len(tags); i++ {
@@ -1274,9 +1278,13 @@ func parseSharedNoteTranslation(tags []*gedcom.Tag, tranIdx int) *gedcom.SharedN
 				tran.MIME = tag.Value
 			case "LANG":
 				tran.Language = tag.Value
+			case "CONT", "CONC":
+				foldContinuation(&b, tag)
 			}
 		}
 	}
+
+	tran.Value = b.String()
 
 	return tran
 }
