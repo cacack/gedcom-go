@@ -94,7 +94,15 @@ func rewriteEXIDTags(record *gedcom.Record, report *gedcom.ConversionReport, tar
 		}
 
 		if isConvertibleFamilySearchEXID(tags[i:j]) {
-			out = append(out, &gedcom.Tag{Level: 1, Tag: "_FSFTID", Value: tag.Value})
+			val := tag.Value
+			if gedcom.IsPointerXRef(val) {
+				// A pointer-shaped identifier (e.g. "@I2@") copied verbatim
+				// would be mistaken for an XRef pointer by the XRef walk and
+				// strict parsers. Escape the leading @ per the GEDCOM spec
+				// (@@...) so it reads as literal data; @@ is not pointer-shaped.
+				val = "@" + val
+			}
+			out = append(out, &gedcom.Tag{Level: 1, Tag: "_FSFTID", Value: val})
 			report.AddNormalized(gedcom.ConversionNote{
 				Path:     BuildNestedPath(string(record.Type), record.XRef, exidPathSegment(count)),
 				Original: "EXID",

@@ -93,6 +93,54 @@ func TestTransformEXIDToVendorTags_FamilySearchArkToFSFTID(t *testing.T) {
 	}
 }
 
+func TestTransformEXIDToVendorTags_PointerShapedValueEscaped(t *testing.T) {
+	// A FamilySearch ARK EXID whose value is itself pointer-shaped (e.g. "@I2@")
+	// must be escaped to "@@I2@" in the synthesized _FSFTID so the XRef walk and
+	// strict parsers do not mistake the literal identifier for a cross-reference
+	// pointer (issue #346). A normal ARK id passes through unchanged.
+	tests := []struct {
+		name  string
+		value string
+		want  string
+	}{
+		{"pointer-shaped value escaped", "@I2@", "@@I2@"},
+		{"normal ARK value unchanged", "KWCJ-QN7", "KWCJ-QN7"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc := &gedcom.Document{
+				Header: &gedcom.Header{Version: gedcom.Version70},
+				Records: []*gedcom.Record{
+					{
+						XRef: "@I1@",
+						Type: gedcom.RecordTypeIndividual,
+						Tags: []*gedcom.Tag{
+							{Level: 1, Tag: "EXID", Value: tt.value},
+							{Level: 2, Tag: "TYPE", Value: "https://www.familysearch.org/ark"},
+						},
+					},
+				},
+			}
+
+			result, _, err := Convert(doc, gedcom.Version551)
+			if err != nil {
+				t.Fatalf("Convert() error = %v", err)
+			}
+			fsftid := findTag(result.Records[0], "_FSFTID")
+			if fsftid == nil {
+				t.Fatalf("expected _FSFTID tag; got tags %+v", result.Records[0].Tags)
+			}
+			if fsftid.Value != tt.want {
+				t.Errorf("_FSFTID value = %q, want %q", fsftid.Value, tt.want)
+			}
+			if gedcom.IsPointerXRef(fsftid.Value) {
+				t.Errorf("_FSFTID value %q must not be pointer-shaped after conversion", fsftid.Value)
+			}
+		})
+	}
+}
+
 func TestTransformEXIDToVendorTags_NonFamilySearchStillDropped(t *testing.T) {
 	doc := &gedcom.Document{
 		Header: &gedcom.Header{Version: gedcom.Version70},
