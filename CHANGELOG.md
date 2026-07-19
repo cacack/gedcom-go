@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1](https://github.com/cacack/gedcom-go/compare/v2.3.0...v2.3.1) (2026-07-19)
+
+
+### Bug Fixes
+
+* **converter:** escape pointer-shaped EXID value in _FSFTID ([#346](https://github.com/cacack/gedcom-go/issues/346)) ([49c053c](https://github.com/cacack/gedcom-go/commit/49c053c4400fee0e30f09ba8dacb659cccebc4aa))
+* **decoder:** fold CONT/CONC under SNOTE TRAN into translation value ([42ae842](https://github.com/cacack/gedcom-go/commit/42ae8420f54caae3f2b0b49b287133c9d2ac125d))
+* **decoder:** fold note continuations in O(n) ([#340](https://github.com/cacack/gedcom-go/issues/340)) ([0938546](https://github.com/cacack/gedcom-go/commit/0938546f47ae6623522acd2768f35c47a92c0c6e))
+* **gedcom:** round-trip escaping for pointer-shaped _FSFTID values ([0323c47](https://github.com/cacack/gedcom-go/commit/0323c47b8275faebb6b73cae4931d43181577a22))
+
 ## [2.3.0](https://github.com/cacack/gedcom-go/compare/v2.2.2...v2.3.0) (2026-07-08)
 
 
