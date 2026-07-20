@@ -112,7 +112,7 @@ jobs:
         category: govulncheck
 
     - name: Run gosec
-      uses: securego/gosec@9e6a9843d7a4a6e3e9a8539b02612c8a4aa3f889 # master (docker: 2.25.0)
+      uses: securego/gosec@9e75c0576c9878035d4221392108d458abe10fc3 # master (docker: 2.25.0)
       with:
         args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
 
