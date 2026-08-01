@@ -84,7 +84,7 @@ jobs:
       run: go test -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./merge ./parser ./validator ./version
 
     - name: Check coverage thresholds
-      uses: vladopajic/go-test-coverage@a93b868a4cbcbf18dc3781650fad241f0020e609 # v2
+      uses: vladopajic/go-test-coverage@5f3508324fc185e82048a2861f8bdd3d83db133b # v2
       with:
         profile: coverage.out
         local-prefix: github.com/cacack/gedcom-go/v2
@@ -228,7 +228,7 @@ jobs:
         output-file: govulncheck-results.sarif
 
     - name: Upload govulncheck results to GitHub Security
-      uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
+      uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
       if: success() || failure()
       with:
         sarif_file: govulncheck-results.sarif
@@ -240,7 +240,7 @@ jobs:
         args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
 
     - name: Upload gosec results to GitHub Security
-      uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
+      uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
       if: success() || failure()
       with:
         sarif_file: gosec-results.sarif
@@ -265,7 +265,7 @@ jobs:
         severity: 'CRITICAL,HIGH,MEDIUM'
 
     - name: Upload Trivy results to GitHub Security
-      uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
+      uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
       if: success() || failure()
       with:
         sarif_file: trivy-results.sarif
@@ -283,7 +283,7 @@ jobs:
           ./
 
     - name: Upload osv-scanner results to GitHub Security
-      uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
+      uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
       if: success() || failure()
       with:
         sarif_file: osv-scanner-results.sarif
@@ -302,7 +302,7 @@ jobs:
           /src
 
     - name: Upload Semgrep results to GitHub Security
-      uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4
+      uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
       if: success() || failure()
       with:
         sarif_file: semgrep.sarif
