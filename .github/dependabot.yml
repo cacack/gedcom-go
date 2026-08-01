@@ -40,3 +40,13 @@ updates:
     labels:
       - "dependencies"
       - "ci"
+    # Ship minor/patch action bumps as one PR. Individual PRs break CodeQL,
+    # which requires init/autobuild/analyze/upload-sarif on a matching version,
+    # and leave later PRs stale once the first one merges. Majors stay separate.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
