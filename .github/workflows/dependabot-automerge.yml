@@ -8,8 +8,13 @@ on: pull_request_target
 #
 # `secrets: inherit` passes this repo's BOT_APP_ID / BOT_PRIVATE_KEY (the
 # gedcom-go-steward App) through to the called workflow.
+#
+# A called workflow's job cannot request more than the caller grants here, so
+# this must cover what that job declares — pull-requests included, or the run
+# fails at startup before any step executes (#371).
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   automerge:
