@@ -6,8 +6,10 @@ on: pull_request_target
 # calls it, instead of being copy-pasted and drifting. Pinned to a tag, so
 # changes there are opt-in here.
 #
-# `secrets: inherit` passes this repo's BOT_APP_ID / BOT_PRIVATE_KEY (the
-# gedcom-go-steward App) through to the called workflow.
+# The two secrets are mapped by name rather than passed with `secrets:
+# inherit`, which would hand this workflow every secret the repo holds to
+# satisfy a contract that declares exactly two. They belong to the
+# gedcom-go-steward App.
 #
 # A called workflow's job cannot request more than the caller grants here, so
 # this must cover what that job declares — pull-requests included, or the run
@@ -19,4 +21,6 @@ permissions:
 jobs:
   automerge:
     uses: cacack/workflows/.github/workflows/dependabot-automerge.yml@v1
-    secrets: inherit
+    secrets:
+      BOT_APP_ID: ${{ secrets.BOT_APP_ID }}
+      BOT_PRIVATE_KEY: ${{ secrets.BOT_PRIVATE_KEY }}
