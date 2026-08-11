@@ -1,0 +1,55 @@
+0 HEAD
+1 SOUR gedcom-go
+2 VERS 1.0.0
+2 NAME gedcom-go test suite
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE Family structure variant test file.
+2 CONT Original work written from the GEDCOM 5.5.1 structure rules for issue #301.
+2 CONT Covers children-only families, empty FAM records, self-marriage,
+2 CONT and same-sex marriage encodings in a 5.5.1 context.
+0 @I1@ INDI
+1 NAME Solo /Parentless/
+1 SEX M
+0 @I2@ INDI
+1 NAME Second /Child/
+1 SEX F
+0 @I3@ INDI
+1 NAME Narcissus /Selfwed/
+1 SEX M
+1 FAMS @F3@
+0 @I4@ INDI
+1 NAME Adam /Firstgroom/
+1 SEX M
+1 FAMS @F4@
+1 FAMS @F5@
+0 @I5@ INDI
+1 NAME Steve /Secondgroom/
+1 SEX M
+1 FAMS @F4@
+1 FAMS @F5@
+0 @F1@ FAM
+1 CHIL @I1@
+1 CHIL @I2@
+1 NOTE Children-only family: CHIL links but no HUSB or WIFE
+0 @F2@ FAM
+0 @F3@ FAM
+1 HUSB @I3@
+1 WIFE @I3@
+1 MARR
+2 DATE 1 APR 1900
+1 NOTE Self-marriage: the same individual appears as both HUSB and WIFE
+0 @F4@ FAM
+1 HUSB @I4@
+1 HUSB @I5@
+1 MARR
+2 DATE 26 JUN 2015
+1 NOTE Same-sex marriage encoded with two HUSB lines (no 5.5.1-sanctioned form exists)
+0 @F5@ FAM
+1 HUSB @I4@
+1 WIFE @I5@
+1 MARR
+1 NOTE Same-sex marriage encoded with HUSB and WIFE both pointing to SEX M individuals
+0 TRLR

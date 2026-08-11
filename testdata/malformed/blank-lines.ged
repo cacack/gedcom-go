@@ -1,0 +1,21 @@
+0 HEAD
+1 SOUR gedcom-go
+2 VERS 1.0.0
+2 NAME gedcom-go test suite
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE Blank line test file.
+2 CONT Original work for issue #301. Blank and whitespace-only lines are
+2 CONT invalid per the GEDCOM spec; strict mode must error, lenient mode
+2 CONT must skip them with EMPTY_LINE diagnostics.
+0 @I1@ INDI
+1 NAME Before /Blank/
+
+1 SEX M
+   
+0 @I2@ INDI
+1 NAME After /Blank/
+	
+0 TRLR

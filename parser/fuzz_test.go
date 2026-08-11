@@ -20,12 +20,20 @@ func FuzzParse(f *testing.F) {
 		"../testdata/edge-cases",
 	}
 
+	// Seeds must stay small: every seed runs on each plain `go test`, and
+	// the mutator works over seed-sized inputs. Scale-class fixtures
+	// (e.g. the ~46 MiB longsword.ged) would make fuzzing useless.
+	const maxSeedSize = 1 << 20 // 1 MiB
+
 	for _, dir := range seedDirs {
 		files, err := filepath.Glob(filepath.Join(dir, "*.ged"))
 		if err != nil {
 			continue
 		}
 		for _, file := range files {
+			if info, err := os.Stat(file); err != nil || info.Size() > maxSeedSize {
+				continue
+			}
 			data, err := os.ReadFile(file)
 			if err != nil {
 				continue

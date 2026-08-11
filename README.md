@@ -32,12 +32,15 @@ Support status for common genealogy software:
 | Software | Status |
 |----------|--------|
 | Ancestry.com | ✅ Real export tested (2025) |
-| FamilySearch | ✅ Real export tested (2025) |
-| MyHeritage | ✅ Real export tested (2025) |
+| FamilySearch | ✅ Real export tested (2025, GEDCOM 5.5.1) |
+| MyHeritage | ✅ Real exports tested (2025 web + Family Tree Builder 8 desktop) |
 | Gramps | ✅ Real export tested (2025) |
 | RootsMagic | ✅ Real export tested (2026) |
-| Legacy Family Tree | ⚠️ Tested (older version) |
-| Family Tree Maker | ⚠️ Tested (older version) |
+| Legacy Family Tree | ✅ Real export tested (Legacy 10, 2025) |
+| Ancestris | ✅ Real export tested (v11) |
+| Family Tree Maker | ⚠️ Current versions untested (real FTM 17 export ✅) |
+
+Plus vintage-platform coverage (PAF, Family Origins, The Master Genealogist, My Roots, EasyTree, webtreeprint) from real vendored exports. Brother's Keeper is vendored as a **known failure** (CP437 encoding unsupported) — see the compatibility matrix.
 
 Full compatibility matrix: [docs/governance/policies/compatibility.md](docs/governance/policies/compatibility.md)
 

@@ -10,29 +10,42 @@ The following table shows which genealogy software exports have been tested with
 |----------|---------------|--------|-------|
 | RootsMagic | 11 Essentials (2026) | ✅ | Real export tested; `_UID`, `_TMPLT` source templates, `_EVDEF` event defs |
 | RootsMagic | 7.0.2.2 (2015) | ⚠️ | Older version; inline/xref note patterns work |
+| Legacy Family Tree | 10.0 (2025) | ✅ | Real export tested (vendored corpus); UTF-8+BOM, real-world junk DATE values tolerated with diagnostics |
 | Legacy Family Tree | 8.0 (2016) | ⚠️ | Older version; custom tags preserved (`_TODO`, `_UID`, `_PRIV`) |
 | Family Tree Maker | 22.2.5 (2016) | ⚠️ | Older version; Ancestry format with custom tags |
+| Family Tree Maker | 17.0 (2005) | ✅ | Real export tested (vendored corpus); `CHAR ANSI` with real Windows-1252 bytes converted correctly |
 | Family Historian | 6.2.2 | ⚠️ | Custom tags preserved (`_ATTR`, `_USED`, `_SHAN`, `_SHAR`) |
 | HEREDIS | 14 PC | ⚠️ | French locales work; non-standard PLAC FORM handled |
 | Gramps | 6.0.6 (2025) | ✅ | Real export tested; `CHAN` records, `TYPE birth`, note refs |
 | MyHeritage | 5.5.1 (2025) | ✅ | Real export tested; `_UID`, `RIN`, HTML notes, `QUAY` tags |
+| MyHeritage Family Tree Builder | 8 (desktop) | ✅ | Real export tested (vendored corpus); empty `HEAD.SOUR` handled, `MH:` RINs, level-0 `_PUBLISH` record preserved |
 | Ancestry.com | 2025.08 | ✅ | Real export tested; `_TREE` parsed, long XRefs, nickname handling |
-| FamilySearch | 2025 | ✅ | Real export tested; `_HASH`/`_LHASH` tags, standardizer note |
+| FamilySearch | 2025 | ✅ | Real export tested (GEDCOM 5.5.1); `_HASH`/`_LHASH` tags, standardizer note |
+| Ancestris | 11 (2025) | ✅ | Real export tested (vendored corpus); 5.5.1 UTF-8, French data, OBJE FILE refs |
+| PAF (Personal Ancestral File) | 5.2.18.0 | ✅ | Real export tested (vendored corpus); decodes clean, zero diagnostics |
+| Family Origins | 5.0 | ✅ | Real export tested (vendored corpus); AFN tags, DATE trailing qualifiers flagged with diagnostics |
+| The Master Genealogist | 1.2a | ✅ | Real export tested (vendored corpus); `CHAR IBMPC` (ASCII payload), custom NUMB tags |
+| My Roots (Palm OS) | 4.00 | ✅ | Real export tested (vendored corpus); ANSEL encoding |
+| webtreeprint.com | 1.0 | ✅ | Real export tested (vendored corpus); ALIA usage, free-text month DATE flagged |
+| EasyTree | V1.0 | ✅ | Real export tested (vendored corpus); nonstandard `CHAR IBM WINDOWS` preserved verbatim |
+| Brother's Keeper | 5.2 | ❌ | Real export (vendored corpus); CP437 encoding unsupported — strict decode fails, lenient mode recovers a partial document |
 
 ### Legend
 
 | Symbol | Meaning |
 |--------|---------|
-| ✅ | Verified with official specification examples |
+| ✅ | Verified with a committed fixture and passing test (Notes say whether it is a real export or spec examples) |
 | ⚠️ | Tested with older software version; current versions may differ |
+| ❌ | Known failure; behavior documented and pinned by a test |
 | 🧪 | Synthetic test file only; not a real export |
 | ❓ | Vendor detection exists but no test data available |
 
 ### Important Notes
 
 - **Export column intentionally omitted**: This library produces standard GEDCOM output, not vendor-specific formats. All encoding is spec-compliant.
-- **Older versions**: Test files for Legacy, FTM, Family Historian, and HEREDIS are from 2015-2016 era software. Current versions may have different export patterns.
-- **FamilySearch "verified"**: Testing uses [official spec examples](https://gedcom.io/tools/) from FamilySearch, not real-world exports from the FamilySearch website.
+- **Older versions**: Test files for Legacy 8, FTM 22.2.5, Family Historian, and HEREDIS are from 2015-2016 era software. Current versions may have different export patterns.
+- **"Vendored corpus" rows**: Real exports vendored byte-identical (aside from submitter-contact redaction) from the [D-Jeffrey/gedcom-samples](https://github.com/D-Jeffrey/gedcom-samples) corpus (MIT OR CC0-1.0); several are vintage platforms (PAF, Family Origins, TMG, My Roots, EasyTree, Brother's Keeper) valuable for exercising historical export quirks. Exercised by `decoder/corpus_vendor_test.go`.
+- **FamilySearch**: The ✅ is backed by a real GEDCOM **5.5.1** export from FamilySearch.org (2025). FamilySearch's website now exports GEDCOM 7; our GEDCOM 7.0 coverage comes from [official spec examples](https://gedcom.io/tools/), and a real FamilySearch GEDCOM 7 export fixture is still tracked in [#301](https://github.com/cacack/gedcom-go/issues/301).
 
 ## GEDCOM Specification Support
 
@@ -97,6 +110,8 @@ Key sources include:
 | [TestGED Torture Suite](https://www.geditcom.com/gedcom.html) | `gedcom-5.5/torture-test/` | Non-commercial |
 | [gedcom4j Project](https://github.com/frizbog/gedcom4j) | `edge-cases/vendor-*.ged` | MIT |
 | [Gramps Project](https://github.com/gramps-project/gramps) | `encoding/ansel-lf.ged`, `vendor-rootsmagic.ged`, `vendor-heredis.ged` | GPL-2.0 |
+| [D-Jeffrey/gedcom-samples](https://github.com/D-Jeffrey/gedcom-samples) | 12 vintage exports in `edge-cases/`+`encoding/`, `gedcom-5.5.1/longsword.ged` | MIT OR CC0-1.0 |
+| [gedcom7code/test-files](https://github.com/gedcom7code/test-files) | `edge-cases/atsign-55.ged`, `xref-case.ged`, `age-keywords-551.ged`, `date-dual-years.ged` | Unlicense (public domain) |
 | Synthetic (this project) | Various test files | Apache-2.0 |
 
 ## Contributing Test Files
@@ -189,6 +204,14 @@ Tested with real export from FamilySearch.org (2025).
 
 **Note (2025+)**: FamilySearch's website family-tree download now produces **GEDCOM 7**. The 5.5.1 fixture above represents an earlier export style; obtaining and testing a real FamilySearch GEDCOM 7 export is tracked in [#301](https://github.com/cacack/gedcom-go/issues/301).
 
+### Encoding and Grammar Limitations
+
+- **CP437 (IBMPC) is not supported.** Files declaring `CHAR IBMPC` with genuine CP437 bytes fail strict decoding ("error reading input"); lenient mode recovers a partial document. Pinned by `encoding/ibmpc-cp437-broskeep.ged` and `TestCorpusVendorCP437KnownFailure` in `decoder/corpus_vendor_test.go`.
+- **UTF-16 without a BOM is not detected.** The encoding cascade (ADR 0004) is BOM → header declaration → UTF-8 fallback; BOM-less UTF-16 falls through. No fixture yet — a known follow-up from the #301 research.
+- **AFN and ALIA are misreported as `UNKNOWN_TAG`.** Both are standard GEDCOM 5.5/5.5.1 tags, but the decoder currently classifies them via `CodeUnknownTag`; the data is preserved losslessly in raw tags. Consumers filtering diagnostics for genuinely nonstandard tags will see false positives until [#375](https://github.com/cacack/gedcom-go/issues/375) is fixed.
+- **`BAD_LEVEL_JUMP` covers both clamped and dropped lines.** A spec-invalid level-100 line is clamped and *kept*, while a deeper line is *dropped* — both surface as `CodeBadLevelJump`, distinguishable only by `Diagnostic.Severity`. Check severity, not just code, to know whether data was preserved. Tracked in [#379](https://github.com/cacack/gedcom-go/issues/379).
+- **Payload-grammar strictness is deliberately out of scope for the decoder.** Invalid enum casing, malformed media types, out-of-range date parts, and similar payload-grammar violations are tolerated and preserved losslessly per ADR 0007 (error transparency) rather than rejected. Enforcing them is validator territory (ADR 0008 pluggable rules); peer libraries' `*-invalid.ged` strictness fixtures were reviewed and intentionally not vendored.
+
 ## How We Test Compatibility
 
 This section explains how compatibility claims in this document are verified, enabling you to audit our process or reproduce tests locally.
@@ -201,11 +224,11 @@ Test files are organized under `testdata/` by GEDCOM version and purpose:
 testdata/
 ├── gedcom-5.5/          # GEDCOM 5.5 samples
 │   └── torture-test/    # Comprehensive TGC55* validation suite
-├── gedcom-5.5.1/        # GEDCOM 5.5.1 samples (EMAIL/FAX/WWW tags)
+├── gedcom-5.5.1/        # GEDCOM 5.5.1 samples (EMAIL/FAX/WWW tags; 46 MiB scale fixture longsword.ged)
 ├── gedcom-7.0/          # GEDCOM 7.0 samples
 │   └── familysearch-examples/  # Official FamilySearch edge cases
-├── encoding/            # Character encoding tests (UTF-8, UTF-16, ANSEL)
-├── edge-cases/          # Structural edge cases, vendor-specific exports
+├── encoding/            # Character encoding tests (UTF-8, UTF-16, ANSEL, CP1252/CP437 vintage exports)
+├── edge-cases/          # Structural edge cases, vendor-specific exports, structural torture fixtures
 │   └── vendor-*.ged     # Vendor-specific custom tag tests
 └── malformed/           # Invalid files for error handling tests
 ```

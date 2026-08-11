@@ -34,10 +34,38 @@ measure on your own hardware.
 | 15KB (small) | 381 µs | 214 KB | 3,530 | ~39 MB/s |
 | 458KB (medium) | 17 ms | 8.5 MB | 139K | ~27 MB/s |
 | 1.1MB (large) | 32 ms | 14 MB | 214K | ~34 MB/s |
+| 46.1MB (scale) | 854 ms | 1.5 GB | 18.1M | ~57 MB/s |
 
-**Average Throughput**: ~32 MB/s for large files
+**Average Throughput**: ~32 MB/s for large files (the 46 MB scale fixture sustains ~57 MB/s)
 
-**Memory Usage**: ~1.2x file size (very efficient for in-memory parsing)
+**Memory Usage** (Memory column above): cumulative bytes allocated per decode (`B/op`),
+roughly 12-33x file size due to per-line and per-record churn (the 46 MB scale
+fixture measures ~33x). Retained heap after decode
+is much lower — the batch-vs-streaming section below measures it directly.
+
+### Scale Fixture (`testdata/gedcom-5.5.1/longsword.ged`)
+
+A deliberately large real-world export (Legacy 10.0, GEDCOM 5.5.1, UTF-8 with BOM):
+46.1 MiB, 203,154 individuals, 90,085 families, 293,241 XRefs. Measured on the
+environment above:
+
+| Metric | Value |
+|---|---|
+| Decode time | 854 ms/op |
+| Throughput | 56.6 MB/s |
+| Cumulative bytes/op | 1.50 GB |
+| Allocs/op | 18.1M |
+| Peak process RSS (single decode) | ~930 MB (~20x file size, includes GC headroom) |
+
+Throughput *improves* at this scale versus the 1 MB class — per-file fixed costs
+amortize and the XRef map stays O(1) — but a fully-decoded 46 MB document costs
+roughly 0.9 GB of peak process memory. For files this size and beyond, weigh the
+streaming APIs (next section). Reproduce with:
+
+```bash
+go test -bench BenchmarkScaleDecode -run '^$' -benchmem ./decoder/
+go test ./decoder -run TestScaleFixture -v
+```
 
 ### Hot Paths (CPU Profile)
 
@@ -225,7 +253,7 @@ Stream validator memory scales with unique cross-references (needed for orphan-r
    ```
 
 3. **Memory Budget**:
-   - Batch APIs: ~1.2x file size (100MB file -> ~120MB RAM)
+   - Batch APIs: budget ~20x file size peak RSS (measured: 46MB file -> ~930MB peak)
    - Streaming APIs: O(1) to O(unique XRefs) regardless of file size
 
 4. **Processing Time**: Budget ~30ms per MB (100MB file -> ~3 seconds)
