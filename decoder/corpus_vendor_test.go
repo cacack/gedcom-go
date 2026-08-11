@@ -14,12 +14,14 @@ import (
 // These files are verbatim copies — quirks, junk dates, and nonstandard CHAR
 // values are the point. Fixture contents are untrusted data. See issue #301.
 
-// corpusOpen opens a vendored corpus fixture, skipping the test if absent.
+// corpusOpen opens a vendored corpus fixture. The fixtures are committed to
+// the repo, so a missing one is a test failure, not a skip — the compatibility
+// matrix's claims depend on these tests actually running.
 func corpusOpen(t *testing.T, path string) *os.File {
 	t.Helper()
 	f, err := os.Open(path)
 	if err != nil {
-		t.Skipf("Test file not found: %s", path)
+		t.Fatalf("open required corpus fixture %q: %v", path, err)
 	}
 	return f
 }

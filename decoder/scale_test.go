@@ -44,12 +44,16 @@ func TestScaleFixture(t *testing.T) {
 	const (
 		wantIndividuals = 203154
 		wantFamilies    = 90085
+		wantXRefs       = 293241 // INDI + FAM + 1 SOUR + 1 SUBM per corpus audit
 	)
 	if got := len(doc.Individuals()); got != wantIndividuals {
 		t.Errorf("Individuals() = %d, want %d", got, wantIndividuals)
 	}
 	if got := len(doc.Families()); got != wantFamilies {
 		t.Errorf("Families() = %d, want %d", got, wantFamilies)
+	}
+	if got := len(doc.XRefMap); got != wantXRefs {
+		t.Errorf("len(XRefMap) = %d, want %d", got, wantXRefs)
 	}
 
 	t.Logf("Successfully parsed scale fixture: %d total records, %d individuals, %d families, %d XRefs",
@@ -61,6 +65,9 @@ func TestScaleFixture(t *testing.T) {
 //
 //	go test -bench BenchmarkScaleDecode -run '^$' -benchmem ./decoder/
 func BenchmarkScaleDecode(b *testing.B) {
+	if raceDetectorEnabled {
+		b.Skip("Skipping scale benchmark under the race detector (memory amplification)")
+	}
 	data, err := os.ReadFile(scaleFixturePath)
 	if err != nil {
 		b.Skip("Test file not found:", err)

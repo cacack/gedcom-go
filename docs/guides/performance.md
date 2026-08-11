@@ -58,7 +58,8 @@ environment above:
 | Peak process RSS (single decode) | ~930 MB (~20x file size, includes GC headroom) |
 
 Throughput *improves* at this scale versus the 1 MB class — per-file fixed costs
-amortize and the XRef map stays O(1) — but a fully-decoded 46 MB document costs
+amortize and XRefMap lookups remain average O(1), while map storage grows with
+the number of cross-references — but a fully-decoded 46 MB document costs
 roughly 0.9 GB of peak process memory. For files this size and beyond, weigh the
 streaming APIs (next section). Reproduce with:
 

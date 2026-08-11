@@ -110,7 +110,7 @@ Key sources include:
 | [TestGED Torture Suite](https://www.geditcom.com/gedcom.html) | `gedcom-5.5/torture-test/` | Non-commercial |
 | [gedcom4j Project](https://github.com/frizbog/gedcom4j) | `edge-cases/vendor-*.ged` | MIT |
 | [Gramps Project](https://github.com/gramps-project/gramps) | `encoding/ansel-lf.ged`, `vendor-rootsmagic.ged`, `vendor-heredis.ged` | GPL-2.0 |
-| [D-Jeffrey/gedcom-samples](https://github.com/D-Jeffrey/gedcom-samples) | 12 vintage exports in `edge-cases/`+`encoding/`, `gedcom-5.5.1/longsword.ged` | MIT OR CC0-1.0 |
+| [D-Jeffrey/gedcom-samples](https://github.com/D-Jeffrey/gedcom-samples) | 12 vendor exports (modern: Legacy 10, Ancestris 11, MyHeritage FTB 8; the rest vintage) in `edge-cases/`+`encoding/`, `gedcom-5.5.1/longsword.ged` | MIT OR CC0-1.0 |
 | [gedcom7code/test-files](https://github.com/gedcom7code/test-files) | `edge-cases/atsign-55.ged`, `xref-case.ged`, `age-keywords-551.ged`, `date-dual-years.ged` | Unlicense (public domain) |
 | Synthetic (this project) | Various test files | Apache-2.0 |
 
