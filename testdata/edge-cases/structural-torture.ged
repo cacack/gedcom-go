@@ -1,0 +1,23 @@
+0 HEAD
+1 SOUR gedcom-go
+2 VERS 1.0.0
+2 NAME gedcom-go test suite
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE Structural torture test file.
+2 CONT Original work written from the GEDCOM 5.5.1 structure rules for issue #301.
+2 CONT Covers: a NOTE record carrying both an XRef ID and a pointer payload,
+2 CONT a physical line longer than the 5.5.1 255-character limit,
+2 CONT and an unknown tag without a leading underscore.
+0 @N1@ NOTE This is the target note with ordinary text.
+0 @N2@ NOTE @N1@
+0 @I1@ INDI
+1 NAME Torture /Subject/
+1 SEX M
+1 NOTE This line deliberately exceeds the 255-character physical line limit of GEDCOM 5.5.1 to prove the parser imposes no fixed line buffer. Lorem ipsum filler text segment. Lorem ipsum filler text segment. Lorem ipsum filler text segment. Lorem ipsum filler text segment. Lorem ipsum filler text segment. Lorem ipsum filler text segment.
+1 BUST Marble bust in city hall
+2 DATE 1900
+1 NOTE The BUST tag above is an unknown tag WITHOUT a leading underscore.
+0 TRLR

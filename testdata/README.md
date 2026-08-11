@@ -20,7 +20,7 @@ testdata/
 
 ## Test File Summary
 
-**Total Test Files**: 55 GEDCOM files (as of 2026-01-12)
+**Total Test Files**: 94 GEDCOM files (as of 2026-08-10)
 
 ### GEDCOM 5.5 Files
 
@@ -77,6 +77,12 @@ Comprehensive validation suite that exercises every tag in GEDCOM 5.5:
 - Enhanced address structures
 - Extended multimedia support
 
+#### Scale Fixture
+- **longsword.ged** (46.1 MiB) - William Longsword descendant tree (203,154 individuals / 90,085 families; Legacy 10.0 export, GEDCOM 5.5.1, UTF-8 BOM)
+  - Source: [D-Jeffrey/gedcom-samples](https://github.com/D-Jeffrey/gedcom-samples) `longsword/WilliamLongsword.ged`, vendored byte-identical
+  - License: MIT OR CC0-1.0 (Copyright (c) 2025 D Jeffrey); the corpus README applies MIT-with-attribution to files gathered from Internet sources that name an author in the file
+  - Use case: scale/performance testing (`decoder/scale_test.go`); see [docs/guides/performance.md](../docs/guides/performance.md) for measured figures
+
 ### Character Encoding Tests (`encoding/`)
 
 Testing various character encodings and special characters:
@@ -117,6 +123,17 @@ License: GPL-2.0 (data files used as test inputs)
   - No Byte Order Mark (tests BOM-less detection)
   - Unix-style LF line endings
   - Tests UTF-8 encoding of ANSEL special characters
+
+#### Vintage Vendor Encoding Tests (D-Jeffrey corpus)
+Real vintage exports vendored byte-identical (aside from submitter-contact redaction); see the D-Jeffrey/gedcom-samples attribution block below for source and license.
+
+- **ansi-cp1252-ftm17.ged** (213K) - FTM 17.0.0.440 export, `CHAR ANSI` with genuine Windows-1252 bytes (ñ, ó, £)
+  - Tests ANSI→Latin-1 conversion producing correct UTF-8
+- **ibmpc-cp437-broskeep.ged** (380K) - Brother's Keeper 5.2 export, `CHAR IBMPC` with a real CP437 byte (0x82 'é')
+  - Known-unsupported encoding: strict decode fails by design; lenient mode recovers a partial document
+  - Documents current behavior until CP437 support lands (`TestCorpusVendorCP437KnownFailure`)
+- **ibm-windows-easytree.ged** (17K) - EasyTree V1.0 export with nonstandard `CHAR IBM WINDOWS`
+  - Tests raw CHAR value preservation in `Header.Encoding`
 
 ### Edge Cases (`edge-cases/`)
 
@@ -267,6 +284,54 @@ Real exports from current software versions. See [docs/governance/policies/compa
 - Death with CAUS (cause of death)
 - Stillbirth scenario
 
+#### D-Jeffrey/gedcom-samples Corpus Fixtures
+
+The following fixtures are verbatim copies from the
+[D-Jeffrey/gedcom-samples](https://github.com/D-Jeffrey/gedcom-samples) corpus,
+dual-licensed `MIT OR CC0-1.0` (MIT: Copyright (c) 2025 D Jeffrey). Per the
+corpus README, MIT-with-attribution applies to files gathered from Internet
+sources that name an author inside the GED file; CC0 applies where the author
+is D Jeffrey or no author is referenced. Files are copied byte-identical —
+encoding quirks, junk dates, and nonstandard structures are intentional —
+with one exception: personal contact details in SUBM (submitter) records
+(name, home address, phone, email) are redacted to placeholders before
+vendoring. When vendoring any new corpus file, scan its SUBM records (and any
+personal contact blocks) and redact them first; tests must never assert on
+submitter contact values. Exercised by `decoder/corpus_vendor_test.go`.
+
+| Fixture | Corpus source file | Origin/platform |
+|---|---|---|
+| edge-cases/legacy10-2025-export.ged | ivar/IvarKingOfDublin.ged | Legacy 10.0 export (FamilySearch-sourced data) |
+| edge-cases/vendor-paf5.ged | bach.ged | PAF 5.2.18.0 export (Bach family) |
+| edge-cases/vendor-familyorigins5.ged | washington/washington.ged | Family Origins 5.0 export (Washington family) |
+| edge-cases/vendor-tmg12.ged | famous family trees/royalty/Hawaiian+Kings.ged | The Master Genealogist 1.2a export |
+| edge-cases/vendor-ancestris11-export.ged | sample-bourbon/bourbon.ged | Ancestris 11 export (French Bourbon data) |
+| edge-cases/mhftb8-export.ged | queen/Queen.ged | MyHeritage Family Tree Builder 8 export |
+| edge-cases/vendor-myroots-palmos.ged | famous family trees/US presidents/Lincoln+Family.ged | My Roots 4.00 for Palm OS export |
+| edge-cases/vendor-webtreeprint.ged | bronte.ged | webtreeprint.com 1.0 web generator |
+| edge-cases/bare-header-geo-coords.ged | input.ged | Unknown tool; bare `0 HEAD`, PLAC MAP coordinates |
+| encoding/ansi-cp1252-ftm17.ged | famous family trees/royalty/Irish+Kings.ged | FTM 17 export, CHAR ANSI with real Windows-1252 bytes |
+| encoding/ibmpc-cp437-broskeep.ged | famous family trees/US presidents/US+Presidents+Trees+I.ged | Brother's Keeper 5.2, CHAR IBMPC with real CP437 bytes (known-unsupported; decode fails by design) |
+| encoding/ibm-windows-easytree.ged | famous family trees/US presidents/Kennedy+Family.ged | EasyTree V1.0, nonstandard `CHAR IBM WINDOWS` |
+
+The scale fixture `gedcom-5.5.1/longsword.ged` (see above) comes from the same corpus.
+
+#### Structural Torture Fixtures (issue #301)
+
+Deliberate structural edge cases mined from peer-library test suites (see
+[gedcom7code/test-files](https://github.com/gedcom7code/test-files), Unlicense /
+public domain, for the vendored ones). Exercised by `decoder/structural_torture_test.go`.
+
+- **family-structure-variants.ged** - Children-only family, empty FAM record, self-marriage, same-sex marriage (two-HUSB and HUSB+WIFE encodings) in 5.5.1. Original work (issue #301).
+- **sex-value-variants.ged** - Every SEX payload variant: M/F/U, 7.0-only X in a 5.5.1 file, empty payload, lowercase, and no SEX line. Original work (issue #301).
+- **structural-torture.ged** - NOTE record with both an XRef ID and a pointer payload, a physical line over the 255-char 5.5.1 limit, and an unknown non-underscore tag. Original work (issue #301).
+- **deep-nesting-levels.ged** - Generated chain nested one level at a time to level 99 (deepest two-digit level). Original work (issue #301).
+- **indented-lines.ged** - Lines indented with leading spaces/tabs (Geni.com-style); tolerated by the parser in both modes. Original work (issue #301).
+- **atsign-55.ged** - GEDCOM 5.5 at-sign torture: @@ doubling, @#...@ escapes in NOTE payloads, @@ at start of CONC/CONT. Vendored from gedcom7code/test-files (public domain).
+- **xref-case.ged** - XRef case-mismatch (@test@ vs @TEST@) and an XRef containing a space. Vendored from gedcom7code/test-files (public domain).
+- **age-keywords-551.ged** - 5.5.1 AGE keyword payloads (CHILD/INFANT/STILLBORN, case variants, </>). Vendored from gedcom7code/test-files (public domain).
+- **date-dual-years.ged** - Dual-year dates (1699/00) in plain, ABT, FROM/TO, and BET/AND forms. Vendored from gedcom7code/test-files (public domain).
+
 ### GEDCOM 7.0 Files
 
 #### Standard Samples
@@ -322,6 +387,11 @@ Files with intentional errors for testing error handling and validation:
   - Multiple records with same XRef (@I1@, @F1@)
   - Tests XRefMap handling of conflicts
   - Decoder behavior: last record wins, earlier records overwritten
+- **blank-lines.ged** - Blank and whitespace-only lines mid-file
+  - Strict mode errors, lenient mode skips with EMPTY_LINE diagnostics
+  - Original work (issue #301)
+- **level-over-99.ged** - Level 100 (spec-invalid, currently tolerated and clamped) and level 101 (exceeds parser MaxNestingDepth, rejected)
+  - Original work (issue #301)
 
 ## Usage Guidelines
 
@@ -340,6 +410,7 @@ Files with intentional errors for testing error handling and validation:
 3. **Performance Tests**: Use large real-world files
    - `pres2020.ged` (1.1M, 2,322 individuals)
    - `royal92.ged` (458K, 3,010 individuals)
+   - `longsword.ged` (46.1M, 203,154 individuals) - scale class; see `decoder/scale_test.go`
 
 4. **Encoding Tests**: Use encoding directory files
    - `utf8-bom.ged`, `utf16le.ged`, `utf16be.ged` - BOM handling
@@ -390,14 +461,24 @@ When adding new test files:
   - License: GPL-2.0 (test data files used as inputs, not derivative works)
   - Files: `encoding/ansel-lf.ged`, `encoding/utf8-nobom-lf.ged`, `edge-cases/vendor-rootsmagic.ged`, `edge-cases/vendor-heredis.ged`
   - Comprehensive ANSEL character tests, LF line endings, RootsMagic/HEREDIS exports
+- **D-Jeffrey/gedcom-samples Corpus**: https://github.com/D-Jeffrey/gedcom-samples
+  - License: MIT OR CC0-1.0 (Copyright (c) 2025 D Jeffrey)
+  - Files: 12 vintage vendor exports in `edge-cases/` and `encoding/` (see attribution table above) plus `gedcom-5.5.1/longsword.ged`
+  - Real exports from Legacy 10, PAF 5.2, Family Origins 5, TMG 1.2a, Ancestris 11, MyHeritage FTB 8, and more
+- **gedcom7code/test-files**: https://github.com/gedcom7code/test-files
+  - License: Unlicense (public domain)
+  - Files: `edge-cases/atsign-55.ged`, `edge-cases/xref-case.ged`, `edge-cases/age-keywords-551.ged`, `edge-cases/date-dual-years.ged`
+  - At-sign escaping, XRef case quirks, 5.5.1 AGE keywords, dual-year dates
 - **Synthetic Test Files**: Created specifically for this project
   - `gedcom-5.5.1/comprehensive.ged` - GEDCOM 5.5.1 features
   - `encoding/utf8-unicode.ged` - International character testing
   - `edge-cases/cont-conc.ged` - Line continuation testing
   - `edge-cases/calendar-dates.ged` - Non-Gregorian calendar dates (Hebrew, Julian, French Republican)
   - `edge-cases/structural-edge-cases.ged` - Parser structural stress tests
+  - `edge-cases/family-structure-variants.ged`, `sex-value-variants.ged`, `structural-torture.ged`, `deep-nesting-levels.ged`, `indented-lines.ged` - Structural torture cases (issue #301)
   - `malformed/circular-reference.ged` - Circular relationship loops
   - `malformed/duplicate-xref.ged` - Duplicate identifier testing
+  - `malformed/blank-lines.ged`, `malformed/level-over-99.ged` - Lenient-mode error cases (issue #301)
 
 ## License Notes
 
@@ -407,6 +488,8 @@ When adding new test files:
 - TestGED suite: Free for non-commercial use per included README
 - gedcom4j files: MIT License (Copyright 2009-2016 Matthew R. Harrah)
 - Gramps files: GPL-2.0 (used as test data inputs; GPL copyleft does not apply to data file consumers)
+- D-Jeffrey/gedcom-samples files: MIT OR CC0-1.0 (attribution given above per the corpus README)
+- gedcom7code/test-files files: Unlicense (public domain)
 
 ## Testing Best Practices
 

@@ -1,0 +1,35 @@
+0 HEAD
+1 SOUR gedcom-go
+2 VERS 1.0.0
+2 NAME gedcom-go test suite
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE SEX value variant test file.
+2 CONT Original work written from the GEDCOM 5.5.1 structure rules for issue #301.
+2 CONT Exercises every SEX payload variant: the 5.5.1 values M/F/U, the 7.0-only
+2 CONT value X appearing in a 5.5.1 file, an empty payload, a lowercase value,
+2 CONT and an individual with no SEX line at all.
+0 @I1@ INDI
+1 NAME Standard /Male/
+1 SEX M
+0 @I2@ INDI
+1 NAME Standard /Female/
+1 SEX F
+0 @I3@ INDI
+1 NAME Unknown /Sex/
+1 SEX U
+0 @I4@ INDI
+1 NAME Nonbinary /InLegacyFile/
+1 SEX X
+1 NOTE SEX X is only defined in GEDCOM 7.0; invalid-but-tolerated in 5.5.1
+0 @I5@ INDI
+1 NAME Empty /SexPayload/
+1 SEX
+0 @I6@ INDI
+1 NAME Lowercase /SexPayload/
+1 SEX m
+0 @I7@ INDI
+1 NAME No /SexLine/
+0 TRLR

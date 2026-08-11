@@ -1,0 +1,18 @@
+0 HEAD
+1 SOUR gedcom-go
+2 VERS 1.0.0
+2 NAME gedcom-go test suite
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE Indented line test file (Geni.com-style exports).
+2 CONT Original work for issue #301. Some vendors emit lines with leading
+2 CONT whitespace; the parser tolerates leading spaces and tabs.
+0 @I1@ INDI
+  1 NAME Space /Indented/
+    2 GIVN Space
+	1 SEX M
+1 BIRT
+   2 DATE 1 JAN 1900
+0 TRLR

@@ -1,0 +1,19 @@
+0 HEAD
+1 SOUR gedcom-go
+2 VERS 1.0.0
+2 NAME gedcom-go test suite
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE Level overflow test file.
+2 CONT Original work for issue #301. The GEDCOM level field is at most two
+2 CONT digits, so 99 is the deepest valid level. Line with level 100 is
+2 CONT spec-invalid but below the parser's MaxNestingDepth of 100; the line
+2 CONT with level 101 exceeds MaxNestingDepth and is rejected outright.
+0 @I1@ INDI
+1 NAME Level /Overflow/
+1 NOTE anchor
+100 CONT level one hundred
+101 CONT level one hundred one
+0 TRLR

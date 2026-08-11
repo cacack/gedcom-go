@@ -1,9 +1,13 @@
 # GEDCOM test files - preserve original line endings
 # These files specifically test different line ending formats
 
+# All GEDCOM fixtures are byte-exact test data - Git must never convert
+# their line endings (Windows autocrlf checkout broke byte-sensitive tests)
+testdata/**/*.ged -text
+testdata/**/*.GED -text
+
 # LF-only test files must keep LF endings on all platforms
 testdata/encoding/*-lf.ged text eol=lf
 
 # UTF-16 files are binary - Git must not modify them
 testdata/encoding/utf16*.ged binary
-

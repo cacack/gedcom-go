@@ -1,0 +1,115 @@
+0 HEAD
+1 SOUR gedcom-go
+2 VERS 1.0.0
+2 NAME gedcom-go test suite
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE Deep nesting level test file (generated).
+2 CONT Original work for issue #301: a chain of custom tags nested one level at
+2 CONT a time down to level 99, the deepest level expressible in the two-digit
+2 CONT level field GEDCOM 5.5.1 allows.
+0 @I1@ INDI
+1 NAME Deep /Nester/
+1 SEX F
+1 _D1 depth 1
+2 _D2 depth 2
+3 _D3 depth 3
+4 _D4 depth 4
+5 _D5 depth 5
+6 _D6 depth 6
+7 _D7 depth 7
+8 _D8 depth 8
+9 _D9 depth 9
+10 _D10 depth 10
+11 _D11 depth 11
+12 _D12 depth 12
+13 _D13 depth 13
+14 _D14 depth 14
+15 _D15 depth 15
+16 _D16 depth 16
+17 _D17 depth 17
+18 _D18 depth 18
+19 _D19 depth 19
+20 _D20 depth 20
+21 _D21 depth 21
+22 _D22 depth 22
+23 _D23 depth 23
+24 _D24 depth 24
+25 _D25 depth 25
+26 _D26 depth 26
+27 _D27 depth 27
+28 _D28 depth 28
+29 _D29 depth 29
+30 _D30 depth 30
+31 _D31 depth 31
+32 _D32 depth 32
+33 _D33 depth 33
+34 _D34 depth 34
+35 _D35 depth 35
+36 _D36 depth 36
+37 _D37 depth 37
+38 _D38 depth 38
+39 _D39 depth 39
+40 _D40 depth 40
+41 _D41 depth 41
+42 _D42 depth 42
+43 _D43 depth 43
+44 _D44 depth 44
+45 _D45 depth 45
+46 _D46 depth 46
+47 _D47 depth 47
+48 _D48 depth 48
+49 _D49 depth 49
+50 _D50 depth 50
+51 _D51 depth 51
+52 _D52 depth 52
+53 _D53 depth 53
+54 _D54 depth 54
+55 _D55 depth 55
+56 _D56 depth 56
+57 _D57 depth 57
+58 _D58 depth 58
+59 _D59 depth 59
+60 _D60 depth 60
+61 _D61 depth 61
+62 _D62 depth 62
+63 _D63 depth 63
+64 _D64 depth 64
+65 _D65 depth 65
+66 _D66 depth 66
+67 _D67 depth 67
+68 _D68 depth 68
+69 _D69 depth 69
+70 _D70 depth 70
+71 _D71 depth 71
+72 _D72 depth 72
+73 _D73 depth 73
+74 _D74 depth 74
+75 _D75 depth 75
+76 _D76 depth 76
+77 _D77 depth 77
+78 _D78 depth 78
+79 _D79 depth 79
+80 _D80 depth 80
+81 _D81 depth 81
+82 _D82 depth 82
+83 _D83 depth 83
+84 _D84 depth 84
+85 _D85 depth 85
+86 _D86 depth 86
+87 _D87 depth 87
+88 _D88 depth 88
+89 _D89 depth 89
+90 _D90 depth 90
+91 _D91 depth 91
+92 _D92 depth 92
+93 _D93 depth 93
+94 _D94 depth 94
+95 _D95 depth 95
+96 _D96 depth 96
+97 _D97 depth 97
+98 _D98 depth 98
+99 _D99 depth 99
+0 TRLR
