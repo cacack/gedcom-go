@@ -143,7 +143,7 @@ func (p *Parser) Parse(r io.Reader) ([]*Line, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, wrapParseError(p.lineNumber, "error reading input", "", err)
+		return nil, wrapParseError(readErrorLine(err, p.lineNumber), "error reading input", "", err)
 	}
 
 	return lines, nil
@@ -209,7 +209,7 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 
 	// Scanner errors are I/O errors - always fatal
 	if err := scanner.Err(); err != nil {
-		fatalErr = wrapParseError(p.lineNumber, "error reading input", "", err)
+		fatalErr = wrapParseError(readErrorLine(err, p.lineNumber), "error reading input", "", err)
 		return lines, parseErrors, fatalErr
 	}
 

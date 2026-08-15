@@ -105,10 +105,14 @@ func TestDecoderErrorMessages(t *testing.T) {
 		wantWrapped bool
 	}{
 		{
+			// The invalid bytes sit on physical line 2. The charset reader
+			// rejects the whole chunk, so the parser itself never tokenized a
+			// line; the reported location comes from the charset error, not
+			// from the parser's counter (issue #376).
 			name:             "invalid UTF-8",
 			input:            "0 HEAD\n1 NAME \xFF\xFE Invalid UTF-8\n0 TRLR",
 			wantErrSubstring: "reading input",
-			wantLine:         0,
+			wantLine:         2,
 			wantWrapped:      true,
 		},
 		{

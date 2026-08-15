@@ -1,11 +1,13 @@
 package decoder
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/v2/charset"
 	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
@@ -502,10 +504,11 @@ func TestCorpusVendorCP1252Conversion(t *testing.T) {
 // with an input-read error, and lenient mode still recovers a partial
 // document up to the offending byte.
 //
-// Known bug (issue #376): the error reports "line 15209" but the offending
-// byte is at physical line 15398 — the parser's line counter drifts from the
-// charset error location. If CP437 support ever lands, this test should be
-// rewritten to assert a successful decode.
+// The offending byte sits at physical line 15398, column 43 (file offset
+// 252364), and the reported location must say so: the parser's own line
+// counter stops at 15209, the last line the charset reader handed over before
+// it rejected the chunk holding the bad byte (issue #376). If CP437 support
+// ever lands, this test should be rewritten to assert a successful decode.
 func TestCorpusVendorCP437KnownFailure(t *testing.T) {
 	f := corpusOpen(t, "../testdata/encoding/ibmpc-cp437-broskeep.ged")
 	defer f.Close()
@@ -516,6 +519,22 @@ func TestCorpusVendorCP437KnownFailure(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "error reading input") {
 		t.Errorf("Decode() error = %v, want substring %q", err, "error reading input")
+	}
+	// The physical line of the offending byte, not the parser's stale counter.
+	if !strings.Contains(err.Error(), "line 15398") {
+		t.Errorf("Decode() error = %v, want substring %q", err, "line 15398")
+	}
+	if strings.Contains(err.Error(), "line 15209") {
+		t.Errorf("Decode() error = %v reports the parser's line counter, want the offending byte's line", err)
+	}
+
+	var utf8Err *charset.ErrInvalidUTF8
+	if !errors.As(err, &utf8Err) {
+		t.Fatalf("Decode() error = %v, want a wrapped *charset.ErrInvalidUTF8", err)
+	}
+	if utf8Err.Line != 15398 || utf8Err.Column != 43 {
+		t.Errorf("charset error at line %d, column %d; want line 15398, column 43",
+			utf8Err.Line, utf8Err.Column)
 	}
 
 	// Lenient mode returns the partial document alongside the error.

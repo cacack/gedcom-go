@@ -43,6 +43,14 @@ func (e *ErrInvalidUTF8) Error() string {
 	return fmt.Sprintf("invalid UTF-8 sequence at line %d, column %d", e.Line, e.Column)
 }
 
+// ErrorLine reports the physical line of the offending byte. Line-oriented
+// readers above this layer (the parser) only know how far their own input
+// reached, which lags the failure when a read is rejected mid-chunk; this
+// method lets them adopt the accurate location instead.
+func (e *ErrInvalidUTF8) ErrorLine() int {
+	return e.Line
+}
+
 // NewReader wraps an io.Reader to provide encoding detection and UTF-8 validation.
 // It first checks for a BOM (Byte Order Mark), then looks for a CHAR tag in the
 // GEDCOM header to determine the encoding. The input is converted to UTF-8 and validated.
@@ -248,7 +256,9 @@ func (u *utf8Reader) findInvalidUTF8(p []byte) error {
 	for i := 0; i < len(p); {
 		r, size := utf8.DecodeRune(p[i:])
 		if r == utf8.RuneError && size == 1 {
-			return &ErrInvalidUTF8{Line: u.line, Column: u.column + i}
+			// u.line/u.column already track the offending byte: the loop
+			// advanced them over every rune preceding it.
+			return &ErrInvalidUTF8{Line: u.line, Column: u.column}
 		}
 		if p[i] == '\n' {
 			u.line++

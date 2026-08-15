@@ -375,3 +375,91 @@ func TestParseErrorUnwrap(t *testing.T) {
 		}
 	})
 }
+
+// locatedReadError mimics a charset-layer failure: the reader rejects a chunk
+// it has already consumed, so the error knows a physical line the parser's own
+// counter has not reached yet.
+type locatedReadError struct {
+	line int
+}
+
+func (e *locatedReadError) Error() string  { return "invalid byte" }
+func (e *locatedReadError) ErrorLine() int { return e.line }
+
+// failingReader hands over content once, then fails with the given error.
+type failingReader struct {
+	content string
+	err     error
+	sent    bool
+}
+
+func (r *failingReader) Read(p []byte) (int, error) {
+	if r.sent {
+		return 0, r.err
+	}
+	r.sent = true
+	return copy(p, r.content), nil
+}
+
+// Reader errors that carry their own physical line must be reported at that
+// line, not at the last line the parser managed to tokenize (issue #376).
+func TestParseReadErrorReportsPhysicalLine(t *testing.T) {
+	const content = "0 HEAD\n1 SOUR TEST\n"
+
+	tests := []struct {
+		name     string
+		err      error
+		wantLine int
+	}{
+		{
+			name:     "error carries physical line",
+			err:      &locatedReadError{line: 42},
+			wantLine: 42,
+		},
+		{
+			name:     "error without a line falls back to parser counter",
+			err:      errors.New("disk on fire"),
+			wantLine: 2,
+		},
+		{
+			name:     "unset line falls back to parser counter",
+			err:      &locatedReadError{line: 0},
+			wantLine: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewParser()
+			_, err := p.Parse(&failingReader{content: content, err: tt.err})
+			assertReadErrorLine(t, err, tt.wantLine, tt.err)
+
+			p2 := NewParser()
+			lines, _, fatalErr := p2.ParseWithOptions(
+				&failingReader{content: content, err: tt.err},
+				&ParseOptions{Lenient: true},
+			)
+			assertReadErrorLine(t, fatalErr, tt.wantLine, tt.err)
+			if len(lines) != 2 {
+				t.Errorf("ParseWithOptions() returned %d lines, want 2", len(lines))
+			}
+		})
+	}
+}
+
+// assertReadErrorLine checks that err is a ParseError located at wantLine and
+// still wrapping the original reader error.
+func assertReadErrorLine(t *testing.T, err error, wantLine int, wantWrapped error) {
+	t.Helper()
+
+	var parseErr *ParseError
+	if !errors.As(err, &parseErr) {
+		t.Fatalf("error = %v (%T), want *ParseError", err, err)
+	}
+	if parseErr.Line != wantLine {
+		t.Errorf("ParseError.Line = %d, want %d", parseErr.Line, wantLine)
+	}
+	if !errors.Is(err, wantWrapped) {
+		t.Errorf("error = %v, want it to wrap %v", err, wantWrapped)
+	}
+}
