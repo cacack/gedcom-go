@@ -710,7 +710,9 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 	if event.IsNegative {
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "NO", Value: string(event.Type)})
 	} else {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: string(event.Type)})
+		// Description is the event line's own payload (the descriptor on a
+		// generic EVEN); empty for every event the decoder types by tag.
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: string(event.Type), Value: event.Description})
 	}
 
 	// Subordinate tags at level+1

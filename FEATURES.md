@@ -486,8 +486,9 @@ mutated.
 | WILL | Will | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
 | EVEN | Generic Event | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
 
-On individuals, `EVEN` is currently preserved in raw form rather than decoded into a
-typed `Event`; typed `EVEN` decoding applies to family events (below).
+`EVEN` is the only event tag whose own payload is data rather than a
+`[Y|<NULL>]` flag; that descriptor is decoded into `Event.Description` and
+written back out on the event line.
 
 ### Family Events
 
