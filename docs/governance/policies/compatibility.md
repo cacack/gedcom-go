@@ -23,10 +23,10 @@ The following table shows which genealogy software exports have been tested with
 | FamilySearch | 2025 | ✅ | Real export tested (GEDCOM 5.5.1); `_HASH`/`_LHASH` tags, standardizer note |
 | Ancestris | 11 (2025) | ✅ | Real export tested (vendored corpus); 5.5.1 UTF-8, French data, OBJE FILE refs |
 | PAF (Personal Ancestral File) | 5.2.18.0 | ✅ | Real export tested (vendored corpus); decodes clean, zero diagnostics |
-| Family Origins | 5.0 | ✅ | Real export tested (vendored corpus); AFN tags, DATE trailing qualifiers flagged with diagnostics |
+| Family Origins | 5.0 | ✅ | Real export tested (vendored corpus); AFN tags preserved, DATE trailing qualifiers flagged with diagnostics |
 | The Master Genealogist | 1.2a | ✅ | Real export tested (vendored corpus); `CHAR IBMPC` (ASCII payload), custom NUMB tags |
 | My Roots (Palm OS) | 4.00 | ✅ | Real export tested (vendored corpus); ANSEL encoding |
-| webtreeprint.com | 1.0 | ✅ | Real export tested (vendored corpus); ALIA usage, free-text month DATE flagged |
+| webtreeprint.com | 1.0 | ✅ | Real export tested (vendored corpus); ALIA usage preserved, free-text month DATE flagged |
 | EasyTree | V1.0 | ✅ | Real export tested (vendored corpus); nonstandard `CHAR IBM WINDOWS` preserved verbatim |
 | Brother's Keeper | 5.2 | ❌ | Real export (vendored corpus); CP437 encoding unsupported — strict decode fails, lenient mode recovers a partial document |
 
@@ -208,7 +208,7 @@ Tested with real export from FamilySearch.org (2025).
 
 - **CP437 (IBMPC) is not supported.** Files declaring `CHAR IBMPC` with genuine CP437 bytes fail strict decoding ("error reading input"); lenient mode recovers a partial document. Pinned by `encoding/ibmpc-cp437-broskeep.ged` and `TestCorpusVendorCP437KnownFailure` in `decoder/corpus_vendor_test.go`.
 - **UTF-16 without a BOM is not detected.** The encoding cascade (ADR 0004) is BOM → header declaration → UTF-8 fallback; BOM-less UTF-16 falls through. No fixture yet — a known follow-up from the #301 research.
-- **AFN and ALIA are misreported as `UNKNOWN_TAG`.** Both are standard GEDCOM 5.5/5.5.1 tags, but the decoder currently classifies them via `CodeUnknownTag`; the data is preserved losslessly in raw tags. Consumers filtering diagnostics for genuinely nonstandard tags will see false positives until [#375](https://github.com/cacack/gedcom-go/issues/375) is fixed.
+- **Some standard tags are recognized but not decoded into typed fields.** At the `INDI` level, `ALIA`, `AFN`, `RFN`, `RIN`, `ANCI`, `DESI`, `SUBM`, `RESN`, `FACT`, and `INIL` are preserved in `Individual.Tags` only — no typed accessor yet. They do *not* produce `UNKNOWN_TAG`, which is reserved for genuinely nonstandard tags ([#375](https://github.com/cacack/gedcom-go/issues/375)). The equivalent recognition tables for `FAM` and for subordinate structures still classify some standard tags as `UNKNOWN_TAG`.
 - **Levels above 99 are rejected, not clamped.** The GEDCOM level field is at most two digits, so the parser accepts levels 0-99 (`parser.MaxNestingDepth-1`) and drops anything deeper with a `CodeInvalidLevel` error — the line's content is lost. `CodeBadLevelJump` always means the opposite: the line was clamped and *kept*.
 - **`INVALID_XREF` covers both recovered and dropped lines.** An XRef containing a space is recovered and the record *kept*, while an XRef with no tag is *dropped* — both surface as `CodeInvalidXRef` at `SeverityError`, so severity does not distinguish them here. Check whether the record is present in `Document.XRefMap` if you need to know.
 - **Payload-grammar strictness is deliberately out of scope for the decoder.** Invalid enum casing, malformed media types, out-of-range date parts, and similar payload-grammar violations are tolerated and preserved losslessly per ADR 0007 (error transparency) rather than rejected. Enforcing them is validator territory (ADR 0008 pluggable rules); peer libraries' `*-invalid.ged` strictness fixtures were reviewed and intentionally not vendored.

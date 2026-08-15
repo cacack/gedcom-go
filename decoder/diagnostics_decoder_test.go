@@ -459,6 +459,63 @@ func TestEntityLevelDiagnosticsVendorExtensionNotWarned(t *testing.T) {
 	}
 }
 
+// TestEntityLevelDiagnosticsStandardIndividualTags pins the INDI-level tags
+// that are recognized but not yet parsed into typed fields (issue #375).
+// UNKNOWN_TAG means "nonstandard tag", so none of these may produce one, and
+// each must still survive on Individual.Tags (ADR 0003). Corpus fixtures only
+// exercise AFN, ALIA and RIN, so this test is what holds the rest in place.
+func TestEntityLevelDiagnosticsStandardIndividualTags(t *testing.T) {
+	// Subordinate lines are deliberately included: they must not leak
+	// diagnostics either, since only level-1 tags are dispatched.
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME John /Smith/
+1 ALIA @I2@
+1 AFN 1234-567
+1 RFN 7654321
+1 RIN 42
+1 ANCI @SUB1@
+1 DESI @SUB1@
+1 SUBM @SUB1@
+1 RESN confidential
+1 FACT Distinguished Service Cross
+2 TYPE Award
+1 INIL
+2 DATE 1 JAN 2000
+0 TRLR`
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+
+	for _, diag := range result.Diagnostics {
+		if diag.Code == CodeUnknownTag {
+			t.Errorf("standard INDI tag reported as UNKNOWN_TAG: %s", diag.Message)
+		}
+	}
+
+	ind := result.Document.GetIndividual("@I1@")
+	if ind == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+	want := []string{"ALIA", "AFN", "RFN", "RIN", "ANCI", "DESI", "SUBM", "RESN", "FACT", "INIL"}
+	for _, tag := range want {
+		found := false
+		for _, tg := range ind.Tags {
+			if tg.Level == 1 && tg.Tag == tag {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("individual @I1@ missing raw %s tag", tag)
+		}
+	}
+}
+
 // TestEntityLevelDiagnosticsInvalidValue tests that invalid values generate diagnostics.
 func TestEntityLevelDiagnosticsInvalidValue(t *testing.T) {
 	// Input with an invalid QUAY value (should be 0-3)

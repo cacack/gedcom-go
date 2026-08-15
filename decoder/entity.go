@@ -165,6 +165,19 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "EXID":
 			indi.ExternalIDs = append(indi.ExternalIDs, parseExternalID(record.Tags, i))
 
+		case "ALIA", "AFN", "RFN", "RIN", "ANCI", "DESI", "SUBM", "RESN", "FACT", "INIL":
+			// Standard INDI substructures not yet parsed into typed fields; the
+			// raw tags remain on Individual.Tags (ADR 0003). Recognizing them
+			// keeps UNKNOWN_TAG meaning "nonstandard tag" for callers who filter
+			// on it (issue #375). AFN/RFN/RIN are 5.5/5.5.1, INIL is 7.0.
+			// FACT and INIL were weighed against the attribute and LDS-ordinance
+			// cases above and left here on purpose: FACT's meaning lives in its
+			// mandatory subordinate TYPE, which gedcom.Attribute cannot hold,
+			// and a typed INIL wants a new LDSOrdinanceType constant. Both are
+			// API decisions, not part of this classification fix.
+			// EVEN is deliberately absent: issue #378 tracks decoding it into
+			// Individual.Events, which reclassifies it as a side effect.
+
 		default:
 			// Unknown tag - record diagnostic but continue processing
 			// Tags starting with _ are vendor extensions and expected
