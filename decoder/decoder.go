@@ -261,18 +261,24 @@ func convertParseErrors(parseErrors []*parser.ParseError) Diagnostics {
 }
 
 // classifyParseError maps a parse error message to a diagnostic code.
+//
+// CodeBadLevelJump is never returned here: it means the line was clamped and
+// kept, and it is only ever emitted by normalizeLevelJumps. An over-limit
+// level therefore classifies as CodeInvalidLevel, alongside the other level
+// rejections. The remaining codes say only what was wrong with the line, not
+// whether it survived.
 func classifyParseError(message string) string {
 	msg := strings.ToLower(message)
 
 	switch {
 	case strings.Contains(msg, "empty line"):
 		return CodeEmptyLine
-	case strings.Contains(msg, "invalid level") || strings.Contains(msg, "level cannot be negative"):
+	case strings.Contains(msg, "invalid level") ||
+		strings.Contains(msg, "level cannot be negative") ||
+		strings.Contains(msg, "nesting depth"):
 		return CodeInvalidLevel
 	case strings.Contains(msg, "xref"):
 		return CodeInvalidXRef
-	case strings.Contains(msg, "nesting") || strings.Contains(msg, "jump"):
-		return CodeBadLevelJump
 	default:
 		return CodeSyntaxError
 	}

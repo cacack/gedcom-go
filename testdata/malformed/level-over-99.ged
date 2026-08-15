@@ -8,9 +8,9 @@
 1 CHAR UTF-8
 1 NOTE Level overflow test file.
 2 CONT Original work for issue #301. The GEDCOM level field is at most two
-2 CONT digits, so 99 is the deepest valid level. Line with level 100 is
-2 CONT spec-invalid but below the parser's MaxNestingDepth of 100; the line
-2 CONT with level 101 exceeds MaxNestingDepth and is rejected outright.
+2 CONT digits, so 99 is the deepest valid level. Both the level 100 and the
+2 CONT level 101 line below exceed that ceiling and are rejected outright
+2 CONT with an INVALID_LEVEL diagnostic (issue #379).
 0 @I1@ INDI
 1 NAME Level /Overflow/
 1 NOTE anchor

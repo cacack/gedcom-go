@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/iotest"
@@ -278,22 +279,43 @@ func TestLineNumberTracking(t *testing.T) {
 	}
 }
 
-// Test nesting depth checking
+// Test nesting depth checking. The GEDCOM level field is at most two digits,
+// so level MaxNestingDepth-1 (99) is the deepest the grammar allows and any
+// deeper level is rejected.
 func TestMaxNestingDepth(t *testing.T) {
-	// Build input with >100 levels (should fail)
-	var input strings.Builder
-	for i := 0; i <= 101; i++ {
-		input.WriteString(strings.Repeat(" ", i))
-		input.WriteString("TAG\n")
+	tests := []struct {
+		level     int
+		wantError bool
+	}{
+		{MaxNestingDepth - 2, false}, // 98
+		{MaxNestingDepth - 1, false}, // 99: deepest valid level
+		{MaxNestingDepth, true},      // 100: three digits, out of spec
+		{MaxNestingDepth + 1, true},  // 101
 	}
 
-	// This test will verify that max depth checking works
-	// Implementation should add depth checking
-	p := NewParser()
-	_, err := p.Parse(strings.NewReader(input.String()))
+	for _, tt := range tests {
+		t.Run(strconv.Itoa(tt.level), func(t *testing.T) {
+			p := NewParser()
+			line, err := p.ParseLine(fmt.Sprintf("%d NOTE deep", tt.level))
 
-	// We expect this to eventually fail when depth checking is implemented
-	_ = err // For now, just parse it
+			if !tt.wantError {
+				if err != nil {
+					t.Fatalf("ParseLine(level %d) error = %v, want success", tt.level, err)
+				}
+				if line.Level != tt.level {
+					t.Errorf("Level = %d, want %d", line.Level, tt.level)
+				}
+				return
+			}
+
+			if err == nil {
+				t.Fatalf("ParseLine(level %d) succeeded, want nesting depth error", tt.level)
+			}
+			if !strings.Contains(err.Error(), "exceeds maximum nesting depth") {
+				t.Errorf("error = %v, want nesting depth message", err)
+			}
+		})
+	}
 }
 
 // Test ParseLine with tag at end of line (no value)

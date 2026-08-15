@@ -70,15 +70,15 @@ Parse-level errors (severity: ERROR):
 | Code | Meaning |
 |------|---------|
 | `SYNTAX_ERROR` | General syntax problem |
-| `INVALID_LEVEL` | Level number could not be parsed |
+| `INVALID_LEVEL` | Level number could not be parsed, is negative, or exceeds 99 (line dropped) |
 | `INVALID_XREF` | Malformed cross-reference identifier |
-| `BAD_LEVEL_JUMP` | Invalid level increment (e.g., 0 to 2) |
 | `EMPTY_LINE` | Unexpected blank line |
 
 Entity-level warnings (severity: WARNING):
 
 | Code | Meaning |
 |------|---------|
+| `BAD_LEVEL_JUMP` | Invalid level increment (e.g., 0 to 2); line clamped to `prev + 1` and kept |
 | `UNKNOWN_TAG` | Unrecognized tag (preserved in raw form) |
 | `INVALID_VALUE` | Value doesn't match expected format |
 | `MISSING_REQUIRED` | Required subordinate tag is missing |

@@ -12,8 +12,11 @@ type DecodeOptions struct {
 	// Context allows cancellation and timeout control
 	Context context.Context
 
-	// MaxNestingDepth sets the maximum allowed nesting depth (default: 100)
-	// This prevents stack overflow with malformed files
+	// MaxNestingDepth sets the number of accepted nesting levels: valid
+	// levels run from 0 through MaxNestingDepth-1 (default: 100, i.e. levels
+	// 0-99). This bounds memory use on malformed files.
+	//
+	// Currently unused: parser.MaxNestingDepth is the effective ceiling.
 	MaxNestingDepth int
 
 	// StrictMode controls how parsing errors are handled.
