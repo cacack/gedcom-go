@@ -43,6 +43,17 @@ func (e *ErrInvalidUTF8) Error() string {
 	return fmt.Sprintf("invalid UTF-8 sequence at line %d, column %d", e.Line, e.Column)
 }
 
+// ErrorLine reports the physical line of the offending byte. Line-oriented
+// readers above this layer (the parser) only know how far their own input
+// reached, which lags the failure when a read is rejected mid-chunk; this
+// method lets them adopt the accurate location instead.
+func (e *ErrInvalidUTF8) ErrorLine() int {
+	return e.Line
+}
+
+// The parser matches on this method, not on the concrete type, so pin it here.
+var _ interface{ ErrorLine() int } = (*ErrInvalidUTF8)(nil)
+
 // NewReader wraps an io.Reader to provide encoding detection and UTF-8 validation.
 // It first checks for a BOM (Byte Order Mark), then looks for a CHAR tag in the
 // GEDCOM header to determine the encoding. The input is converted to UTF-8 and validated.
@@ -89,6 +100,7 @@ type utf8Reader struct {
 	reader     io.Reader
 	line       int
 	column     int
+	lastWasCR  bool // previous byte was CR, so a following LF completes one CRLF break
 	bomSkipped bool
 	buffer     []byte // Buffer for BOM bytes that need to be returned
 	bufPos     int    // Current position in buffer
@@ -183,6 +195,8 @@ func (u *utf8Reader) processWorkBuffer(p, workBuf []byte, workN int) (int, error
 	}
 
 	if verr := u.validateAndTrack(workBuf[:workN]); verr != nil {
+		// The valid prefix of this chunk is dropped, so a caller recovering a
+		// partial document stops short of the line the error names.
 		return 0, verr
 	}
 
@@ -248,14 +262,11 @@ func (u *utf8Reader) findInvalidUTF8(p []byte) error {
 	for i := 0; i < len(p); {
 		r, size := utf8.DecodeRune(p[i:])
 		if r == utf8.RuneError && size == 1 {
-			return &ErrInvalidUTF8{Line: u.line, Column: u.column + i}
+			// u.line/u.column already track the offending byte: the loop
+			// advanced them over every rune preceding it.
+			return &ErrInvalidUTF8{Line: u.line, Column: u.column}
 		}
-		if p[i] == '\n' {
-			u.line++
-			u.column = 1
-		} else {
-			u.column += size
-		}
+		u.advance(p[i], size)
 		i += size
 	}
 	return nil
@@ -263,12 +274,30 @@ func (u *utf8Reader) findInvalidUTF8(p []byte) error {
 
 func (u *utf8Reader) updatePosition(p []byte) {
 	for i := 0; i < len(p); i++ {
-		if p[i] == '\n' {
+		u.advance(p[i], 1)
+	}
+}
+
+// advance moves the cursor over one rune of width bytes starting with b.
+// Line breaks follow the same rules as the parser's line splitter
+// (parser.scanGEDCOMLines): LF, CRLF and a bare CR each end one line. Tracking
+// lastWasCR across calls keeps a CRLF pair split over two reads from counting
+// twice. Columns are counted in bytes.
+func (u *utf8Reader) advance(b byte, width int) {
+	wasCR := u.lastWasCR
+	u.lastWasCR = b == '\r'
+
+	switch b {
+	case '\r':
+		u.line++
+		u.column = 1
+	case '\n':
+		if !wasCR {
 			u.line++
-			u.column = 1
-		} else {
-			u.column++
 		}
+		u.column = 1
+	default:
+		u.column += width
 	}
 }
 

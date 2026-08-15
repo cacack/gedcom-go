@@ -1,6 +1,9 @@
 package parser
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // ParseError represents an error that occurred during parsing.
 // It includes line number and context for better error reporting.
@@ -36,6 +39,26 @@ func newParseError(line int, message, context string) error {
 		Message: message,
 		Context: context,
 	}
+}
+
+// lineLocatedError is implemented by reader errors that know the physical line
+// of the byte that failed, such as charset.ErrInvalidUTF8.
+type lineLocatedError interface {
+	ErrorLine() int
+}
+
+// readErrorLine picks the line to report for a reader failure. The parser's own
+// counter only reaches the last line the reader handed over, so it lags whenever
+// a read is rejected part-way through a chunk it had already consumed; an error
+// that carries its own physical line is authoritative and wins.
+func readErrorLine(err error, fallback int) int {
+	var located lineLocatedError
+	if errors.As(err, &located) {
+		if line := located.ErrorLine(); line > 0 {
+			return line
+		}
+	}
+	return fallback
 }
 
 // wrapParseError wraps an existing error with parse context.

@@ -147,6 +147,46 @@ func TestNewReader_LineTracking(t *testing.T) {
 	if utf8Err.Line != 2 {
 		t.Errorf("Expected line 2, got line %d", utf8Err.Line)
 	}
+	// The invalid byte is the first one on line 2.
+	if utf8Err.Column != 1 {
+		t.Errorf("Expected column 1, got column %d", utf8Err.Column)
+	}
+	if utf8Err.ErrorLine() != 2 {
+		t.Errorf("ErrorLine() = %d, want 2", utf8Err.ErrorLine())
+	}
+}
+
+// The reported line must match the parser's line splitting, which ends a line
+// on LF, CRLF or a bare CR (old Macintosh). Counting only LF would report
+// line 1 for a whole CR-only file (issue #376).
+func TestNewReader_LineTrackingLineEndings(t *testing.T) {
+	tests := []struct {
+		name string
+		sep  string
+	}{
+		{"LF", "\n"},
+		{"CRLF", "\r\n"},
+		{"CR", "\r"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// The invalid byte is the 4th on line 4, after "ABC".
+			input := "Line 1" + tt.sep + "Line 2" + tt.sep + "Line 3" + tt.sep + "ABC\xFF"
+
+			r := NewReader(strings.NewReader(input))
+			_, err := io.ReadAll(r)
+
+			var utf8Err *ErrInvalidUTF8
+			if !errors.As(err, &utf8Err) {
+				t.Fatalf("ReadAll() error = %v (%T), want *ErrInvalidUTF8", err, err)
+			}
+			if utf8Err.Line != 4 || utf8Err.Column != 4 {
+				t.Errorf("error at line %d, column %d; want line 4, column 4",
+					utf8Err.Line, utf8Err.Column)
+			}
+		})
+	}
 }
 
 func TestErrInvalidUTF8_Error(t *testing.T) {
@@ -401,13 +441,12 @@ func TestNewReader_InvalidUTF8AfterValidChars(t *testing.T) {
 	}
 
 	// Error should be detected on line 1
-	// (column calculation accounts for position tracking in findInvalidUTF8)
 	if utf8Err.Line != 1 {
 		t.Errorf("Expected line 1, got line %d", utf8Err.Line)
 	}
-	// Column should be > 1 since invalid byte comes after valid chars
-	if utf8Err.Column < 1 {
-		t.Errorf("Expected column >= 1, got column %d", utf8Err.Column)
+	// The invalid byte is the 4th on the line, after "ABC"
+	if utf8Err.Column != 4 {
+		t.Errorf("Expected column 4, got column %d", utf8Err.Column)
 	}
 }
 
@@ -432,9 +471,9 @@ func TestNewReader_InvalidUTF8WithNewlineInBuffer(t *testing.T) {
 	if utf8Err.Line != 2 {
 		t.Errorf("Expected line 2, got line %d", utf8Err.Line)
 	}
-	// Column should be reported (column tracking through newlines)
-	if utf8Err.Column < 1 {
-		t.Errorf("Expected column >= 1, got column %d", utf8Err.Column)
+	// Column counts from the start of line 2, not the start of the buffer
+	if utf8Err.Column != 4 {
+		t.Errorf("Expected column 4, got column %d", utf8Err.Column)
 	}
 }
 

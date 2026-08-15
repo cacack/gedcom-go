@@ -125,6 +125,9 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 
 // Parse reads a GEDCOM file from a reader and returns all parsed lines.
 // Supports all line ending styles: LF (Unix), CRLF (Windows), CR (old Macintosh).
+//
+// If r fails with an error exposing ErrorLine() int, that line is reported as
+// ParseError.Line in preference to the parser's own counter.
 func (p *Parser) Parse(r io.Reader) ([]*Line, error) {
 	p.Reset()
 
@@ -143,7 +146,7 @@ func (p *Parser) Parse(r io.Reader) ([]*Line, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, wrapParseError(p.lineNumber, "error reading input", "", err)
+		return nil, wrapParseError(readErrorLine(err, p.lineNumber), "error reading input", "", err)
 	}
 
 	return lines, nil
@@ -155,6 +158,9 @@ func (p *Parser) Parse(r io.Reader) ([]*Line, error) {
 //   - lines: successfully parsed lines (may be partial in lenient mode)
 //   - parseErrors: syntax errors encountered (only populated in lenient mode)
 //   - fatalErr: unrecoverable errors like I/O failures
+//
+// If r fails with an error exposing ErrorLine() int, that line is reported as
+// ParseError.Line in preference to the parser's own counter.
 func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 	lines []*Line,
 	parseErrors []*ParseError,
@@ -209,7 +215,7 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 
 	// Scanner errors are I/O errors - always fatal
 	if err := scanner.Err(); err != nil {
-		fatalErr = wrapParseError(p.lineNumber, "error reading input", "", err)
+		fatalErr = wrapParseError(readErrorLine(err, p.lineNumber), "error reading input", "", err)
 		return lines, parseErrors, fatalErr
 	}
 
