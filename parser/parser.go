@@ -55,6 +55,12 @@ func (p *Parser) Reset() {
 //	0 @I1@ INDI
 //	1 NAME John /Smith/
 //	2 GIVN John
+//
+// An XRef containing a space (e.g. "0 @NoTe ref@ NOTE text") violates the
+// GEDCOM grammar. Such a line is reported as an error, but the recovered Line
+// is returned alongside it so lenient callers can keep the record instead of
+// dropping it; see [parseSpacedXRef]. A returned Line is therefore not proof
+// that the line was well formed — check the error too.
 func (p *Parser) ParseLine(input string) (*Line, error) {
 	p.lineNumber++
 
@@ -103,6 +109,8 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 		}
 		tag = parts[2]
 		valueStartIdx = 3
+	} else if id, rest, ok := splitSpacedXRef(parts[1], line); ok {
+		return p.parseSpacedXRef(level, line, id, rest)
 	} else {
 		tag = parts[1]
 		valueStartIdx = 2
@@ -129,6 +137,74 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 		XRef:       xref,
 		LineNumber: p.lineNumber,
 	}, nil
+}
+
+// splitSpacedXRef detects an XRef identifier containing a space, e.g.
+// "0 @NoTe ref@ NOTE mixed case and space", which strings.Fields splits across
+// two or more fields. It returns the identifier and the rest of the line.
+//
+// ok is false unless the field in the XRef position opens with "@", a later
+// "@" closes the identifier at a field boundary, and the identifier really
+// does contain a space. Every other shape keeps its existing parse (the field
+// becomes the tag): requiring a space keeps well-formed identifiers such as
+// "0 @I1@INDI" on that path, and requiring a field boundary keeps a pointer in
+// the value ("1 @I1 NOTE see @P1@") from posing as the closing "@".
+func splitSpacedXRef(xrefField, line string) (xref, rest string, ok bool) {
+	if !strings.HasPrefix(xrefField, "@") {
+		return "", "", false
+	}
+
+	// The level is numeric, so the first "@" in the line opens the XRef.
+	open := strings.Index(line, "@")
+	closeOffset := strings.Index(line[open+1:], "@")
+	if closeOffset < 0 {
+		return "", "", false
+	}
+	closeIdx := open + 1 + closeOffset
+
+	xref = line[open : closeIdx+1]
+	if !strings.Contains(xref, " ") {
+		return "", "", false
+	}
+
+	rest = line[closeIdx+1:]
+	if rest != "" && rest[0] != ' ' && rest[0] != '\t' {
+		return "", "", false
+	}
+	return xref, rest, true
+}
+
+// parseSpacedXRef parses a line whose XRef contains a space, as located by
+// [splitSpacedXRef]. The GEDCOM grammar forbids spaces inside an XRef, so the
+// line is always reported as an error: strict callers reject the file, lenient
+// callers record an INVALID_XREF diagnostic.
+//
+// The recovered Line is returned alongside the error so lenient callers can
+// keep the record. Dropping the line instead would lose the record and
+// silently reparent its subordinate lines onto the preceding record.
+//
+// The identifier is kept verbatim, spaces included, so nothing is lost; note
+// that re-encoding such a document reproduces a line this parser rejects in
+// strict mode.
+func (p *Parser) parseSpacedXRef(level int, line, xref, rest string) (*Line, error) {
+	fields := strings.Fields(rest)
+	if len(fields) == 0 {
+		return nil, newParseError(p.lineNumber, "line with xref must have a tag", line)
+	}
+
+	// rest holds only whitespace before the tag, so this finds the tag itself.
+	tag := fields[0]
+	afterTag := strings.Index(rest, tag) + len(tag)
+	value := strings.TrimLeft(rest[afterTag:], " ")
+
+	recovered := &Line{
+		Level:      level,
+		Tag:        tag,
+		Value:      value,
+		XRef:       xref,
+		LineNumber: p.lineNumber,
+	}
+	return recovered, newParseError(p.lineNumber, "xref contains a space: "+xref, line)
 }
 
 // Parse reads a GEDCOM file from a reader and returns all parsed lines.
@@ -163,8 +239,10 @@ func (p *Parser) Parse(r io.Reader) ([]*Line, error) {
 // ParseWithOptions reads a GEDCOM file with configurable error handling.
 // In lenient mode, it collects parse errors and continues parsing.
 // Returns:
-//   - lines: successfully parsed lines (may be partial in lenient mode)
-//   - parseErrors: syntax errors encountered (only populated in lenient mode)
+//   - lines: parsed lines, including any line recovered from a reported error
+//     (see [Parser.ParseLine]); may be partial in lenient mode
+//   - parseErrors: syntax errors encountered (only populated in lenient mode);
+//     an error here does not imply its line is missing from lines
 //   - fatalErr: unrecoverable errors like I/O failures
 //
 // If r fails with an error exposing ErrorLine() int, that line is reported as
@@ -215,7 +293,11 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 			if opts.MaxErrors == 0 || len(parseErrors) < opts.MaxErrors {
 				parseErrors = append(parseErrors, parseErr)
 			}
-			// Skip the problematic line and continue parsing
+			// A recovered line (e.g. an XRef containing a space) is kept so the
+			// record survives; otherwise the problematic line is skipped.
+			if line != nil {
+				lines = append(lines, line)
+			}
 			continue
 		}
 		lines = append(lines, line)

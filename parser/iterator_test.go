@@ -236,6 +236,26 @@ func TestRecordIterator_ParseError_SecondRecord(t *testing.T) {
 	}
 }
 
+// TestRecordIterator_SpacedXRef pins the streaming behavior for an XRef
+// containing a space (issue #377). The iterator has no lenient mode, so — like
+// [Parser.Parse] and every other parse error above — it stops and reports the
+// error rather than silently mangling the record. Callers who need the
+// recovered line must use ParseWithOptions in lenient mode.
+func TestRecordIterator_SpacedXRef(t *testing.T) {
+	input := "0 HEAD\n0 @NoTe ref@ NOTE mixed case and space\n0 TRLR"
+
+	it := NewRecordIterator(strings.NewReader(input))
+
+	// As in TestRecordIterator_ParseError, the error surfaces while scanning
+	// ahead for the next level-0 line, so even HEAD is not handed back.
+	if it.Next() {
+		t.Error("Expected iteration to stop on the spaced xref")
+	}
+	if it.Err() == nil || !strings.Contains(it.Err().Error(), "xref contains a space") {
+		t.Errorf("Err() = %v, want a spaced-xref error", it.Err())
+	}
+}
+
 func TestRecordIterator_MatchesFullParse(t *testing.T) {
 	input := `0 HEAD
 1 GEDC

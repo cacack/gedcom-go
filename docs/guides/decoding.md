@@ -26,7 +26,7 @@ if err != nil {
 |-------|---------|
 | Invalid level number | `XYZ NAME John` (non-numeric level) |
 | Missing tag | `0 @I1@` (XRef without tag) |
-| Malformed XRef | `0 @BADXREF INDI` (missing closing @) |
+| Malformed XRef | `0 @BAD XREF@ INDI` (space inside the identifier) |
 | Invalid level jump | Level 0 to level 2 (skipping level 1) |
 | Empty lines | Blank lines in the GEDCOM stream |
 
@@ -58,7 +58,7 @@ for _, d := range result.Diagnostics {
 
 ### Behavior
 
-- **Skips malformed lines**: Invalid lines are recorded as diagnostics
+- **Skips or recovers malformed lines**: Invalid lines are recorded as diagnostics; where a line can be recovered (see the table below) it is kept, so a diagnostic does not always mean the data is gone
 - **Preserves valid records**: All parseable data is kept
 - **Collects all issues**: Every problem is recorded with line number and context
 - **Returns error only if completely unparseable**: Empty or fully-corrupt files
@@ -71,7 +71,7 @@ Parse-level errors (severity: ERROR):
 |------|---------|
 | `SYNTAX_ERROR` | General syntax problem |
 | `INVALID_LEVEL` | Level number could not be parsed, is negative, or exceeds 99 (line dropped) |
-| `INVALID_XREF` | Malformed cross-reference identifier |
+| `INVALID_XREF` | Malformed cross-reference identifier (an XRef containing a space is recovered and kept — see [FEATURES.md](../../FEATURES.md#lenient-parsing--diagnostics)) |
 | `EMPTY_LINE` | Unexpected blank line |
 
 Entity-level warnings (severity: WARNING):
