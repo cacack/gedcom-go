@@ -3888,6 +3888,50 @@ func TestSharedNoteEncoderEdgeCases(t *testing.T) {
 	})
 }
 
+// TestEventToTagsDescription tests that the event line carries Description as
+// its payload, which is how a generic EVEN keeps its descriptor.
+// Ref: Issue #378
+func TestEventToTagsDescription(t *testing.T) {
+	tests := []struct {
+		name      string
+		event     *gedcom.Event
+		wantTag   string
+		wantValue string
+	}{
+		{
+			name: "generic event descriptor",
+			event: &gedcom.Event{
+				Type:            gedcom.EventType("EVEN"),
+				Description:     "White",
+				EventTypeDetail: "Race",
+			},
+			wantTag:   "EVEN",
+			wantValue: "White",
+		},
+		{
+			name:      "named event has no descriptor",
+			event:     &gedcom.Event{Type: gedcom.EventBirth, Date: "15 JUN 1875"},
+			wantTag:   "BIRT",
+			wantValue: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := eventToTags(tt.event, 1, nil)
+			if len(tags) == 0 {
+				t.Fatal("eventToTags() returned empty slice")
+			}
+			if tags[0].Tag != tt.wantTag {
+				t.Errorf("first tag = %q, want %q", tags[0].Tag, tt.wantTag)
+			}
+			if tags[0].Value != tt.wantValue {
+				t.Errorf("first tag value = %q, want %q", tags[0].Value, tt.wantValue)
+			}
+		})
+	}
+}
+
 // TestEventToTagsNegative tests that IsNegative=true produces NO tag.
 // Ref: Issue #121
 func TestEventToTagsNegative(t *testing.T) {

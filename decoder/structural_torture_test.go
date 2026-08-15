@@ -575,10 +575,8 @@ func TestStructuralTortureXRefCase(t *testing.T) {
 // (CHILD/INFANT/STILLBORN, case variants, </> bounds). Fixture vendored
 // verbatim from gedcom7code/test-files (public domain).
 //
-// Known bug (issue #378): the generic EVEN event tag is not decoded into
-// Individual.Events — each of the 40 EVEN structures is flagged UNKNOWN_TAG
-// and only preserved in raw tags (parseIndividual handles BIRT/DEAT/... but
-// not EVEN, although parseFamily does handle EVEN).
+// The 40 generic EVEN structures are decoded into Individual.Events, at
+// parity with parseFamily (issue #378).
 func TestStructuralTortureAgeKeywords551(t *testing.T) {
 	const path = "../testdata/edge-cases/age-keywords-551.ged"
 
@@ -595,16 +593,16 @@ func TestStructuralTortureAgeKeywords551(t *testing.T) {
 			unknownEven++
 		}
 	}
-	if unknownEven != 40 {
-		t.Errorf("got %d UNKNOWN_TAG diagnostics for EVEN, want 40 (current behavior; EVEN decoding is a follow-up)", unknownEven)
+	if unknownEven != 0 {
+		t.Errorf("got %d UNKNOWN_TAG diagnostics for EVEN, want 0 (generic EVEN is decoded)", unknownEven)
 	}
 
 	ind := doc.GetIndividual("@SIMPLE@")
 	if ind == nil {
 		t.Fatal("GetIndividual(@SIMPLE@) returned nil")
 	}
-	if len(ind.Events) != 0 {
-		t.Errorf("Individual.Events has %d entries; EVEN is currently not decoded — update this test when it is", len(ind.Events))
+	if len(ind.Events) != 40 {
+		t.Fatalf("Individual.Events has %d entries, want 40 (one per EVEN structure)", len(ind.Events))
 	}
 
 	// Lossless: every AGE payload survives verbatim in raw tags.
@@ -617,6 +615,7 @@ func TestStructuralTortureAgeKeywords551(t *testing.T) {
 	if len(ages) != 40 {
 		t.Fatalf("raw tags contain %d AGE values, want 40", len(ages))
 	}
+
 	spotChecks := map[string]bool{
 		"child": false, "CHILD": false, "STILLBORN": false,
 		"<0y": false, ">99y": false, "99y 11m 30d": false,
@@ -629,6 +628,78 @@ func TestStructuralTortureAgeKeywords551(t *testing.T) {
 	for value, seen := range spotChecks {
 		if !seen {
 			t.Errorf("AGE keyword %q not preserved in raw tags", value)
+		}
+	}
+
+	// Each decoded event mirrors its raw structure: generic EVEN type, the
+	// EVEN payload in Description, the TYPE subtag in EventTypeDetail, and the
+	// AGE payload verbatim. The fixture pairs each of the 40 EVEN structures
+	// with exactly one level-2 AGE and no other structure carries an AGE, so
+	// ages[i] belongs to Events[i]; Description ("when <age>") cross-checks
+	// that alignment independently.
+	for i, ev := range ind.Events {
+		if ev.Type != gedcom.EventType("EVEN") {
+			t.Errorf("Events[%d].Type = %q, want %q", i, ev.Type, "EVEN")
+		}
+		if ev.EventTypeDetail != "test" {
+			t.Errorf("Events[%d].EventTypeDetail = %q, want %q", i, ev.EventTypeDetail, "test")
+		}
+		if ev.Age != ages[i] {
+			t.Errorf("Events[%d].Age = %q, want %q (raw AGE payload)", i, ev.Age, ages[i])
+		}
+		if want := "when " + ages[i]; ev.Description != want {
+			t.Errorf("Events[%d].Description = %q, want %q (EVEN descriptor)", i, ev.Description, want)
+		}
+	}
+}
+
+// TestStructuralTortureCalendarEscapes covers the calendar-escape matrix
+// (@#DJULIAN@, @#DHEBREW@, @#DFRENCH R@), all of it carried on generic EVEN
+// structures. Decoding EVEN (issue #378) is what first exposes these dates to
+// gedcom.ParseDate, which handles a bare calendar escape but not one combined
+// with a modifier — the five INVALID_VALUE diagnostics pinned here are that
+// known gap, not a property of the fixture. Raw values are preserved either
+// way; tighten this test when ParseDate learns modifier + escape.
+func TestStructuralTortureCalendarEscapes(t *testing.T) {
+	const path = "../testdata/edge-cases/calendar-dates.ged"
+
+	result := decodeFixture(t, path)
+
+	var invalidDates []string
+	for _, d := range result.Diagnostics {
+		if d.Code != CodeInvalidValue {
+			t.Errorf("unexpected %s diagnostic at line %d: %s", d.Code, d.Line, d.Message)
+			continue
+		}
+		invalidDates = append(invalidDates, d.Message)
+	}
+	if len(invalidDates) != 5 {
+		t.Fatalf("got %d INVALID_VALUE diagnostics, want 5: %v", len(invalidDates), invalidDates)
+	}
+
+	// Every EVEN is decoded, and the raw date payload survives on the event
+	// even where ParsedDate is nil (lossless per ADR 0001). @I9@ is the
+	// modifier-plus-escape record, so its five events are the five above.
+	ind := result.Document.GetIndividual("@I9@")
+	if ind == nil {
+		t.Fatal("GetIndividual(@I9@) returned nil")
+	}
+	if len(ind.Events) != 5 {
+		t.Fatalf("@I9@ has %d events, want 5", len(ind.Events))
+	}
+	want := []string{
+		"ABT @#DJULIAN@ MAR 1066",
+		"BEF @#DHEBREW@ 1 TSH 5000",
+		"AFT @#DFRENCH R@ 1 VEND 1",
+		"EST @#DJULIAN@ 1200",
+		"BET @#DHEBREW@ 1 NSN 5700 AND @#DHEBREW@ 30 ELL 5700",
+	}
+	for i, w := range want {
+		if ind.Events[i].Date != w {
+			t.Errorf("Events[%d].Date = %q, want %q (verbatim escape)", i, ind.Events[i].Date, w)
+		}
+		if ind.Events[i].ParsedDate != nil {
+			t.Errorf("Events[%d].ParsedDate is non-nil; update the pinned diagnostic count", i)
 		}
 	}
 }

@@ -98,7 +98,7 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 
 		case "BIRT", "DEAT", "BAPM", "BURI", "CENS", "CHR", "ADOP", "RESI", "IMMI", "EMIG",
 			"BARM", "BASM", "BLES", "CHRA", "CONF", "FCOM",
-			"GRAD", "RETI", "NATU", "ORDN", "PROB", "WILL", "CREM":
+			"GRAD", "RETI", "NATU", "ORDN", "PROB", "WILL", "CREM", "EVEN":
 			event := parseEvent(record.Tags, i, tag.Tag, collector)
 			indi.Events = append(indi.Events, event)
 
@@ -453,6 +453,14 @@ func parseSourceCitationData(tags []*gedcom.Tag, dataIdx, baseLevel int, collect
 func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, collector *diagnosticCollector) *gedcom.Event {
 	event := &gedcom.Event{
 		Type: gedcom.EventType(eventTag),
+	}
+
+	// A generic event carries its descriptor as the EVEN line's own payload;
+	// named event tags carry the [Y|<NULL>] flag instead, which has no typed
+	// field. Guard on the raw tag so "NO EVEN" (7.0 negative assertion, where
+	// eventTag comes from the NO value) is not mistaken for a descriptor.
+	if tags[eventIdx].Tag == "EVEN" {
+		event.Description = tags[eventIdx].Value
 	}
 
 	baseLevel := tags[eventIdx].Level

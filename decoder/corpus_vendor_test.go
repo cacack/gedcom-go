@@ -101,7 +101,10 @@ func TestCorpusVendorFiles(t *testing.T) {
 			source:      "ANCESTRIS",
 			individuals: 303,
 			families:    139,
-			diags:       map[string]int{CodeUnknownTag: 66},
+			// 12 individual EVEN structures are decoded rather than flagged
+			// (issue #378); one of them nests a NOTE under OBJE, which
+			// parseMediaLink still reports. Net: 66 - 12 + 1.
+			diags: map[string]int{CodeUnknownTag: 55},
 		},
 		{
 			path:        "../testdata/edge-cases/mhftb8-export.ged",
@@ -111,7 +114,12 @@ func TestCorpusVendorFiles(t *testing.T) {
 			source:      "",
 			individuals: 4683,
 			families:    2863,
-			diags:       map[string]int{CodeUnknownTag: 14480, CodeInvalidValue: 117},
+			// UnknownTag is unchanged by issue #378 because the counts
+			// cancel: the 12 individual EVEN diagnostics are gone, and each
+			// of those now-walked subtrees contains a "2 RIN MH:..." that is
+			// reported in their place (#375 recognizes RIN at INDI level 1,
+			// but the subordinate-structure table still flags it).
+			diags: map[string]int{CodeUnknownTag: 14480, CodeInvalidValue: 117},
 		},
 		{
 			path:        "../testdata/edge-cases/vendor-myroots-palmos.ged",
@@ -151,7 +159,11 @@ func TestCorpusVendorFiles(t *testing.T) {
 			source:      "FTM",
 			individuals: 178,
 			families:    113,
-			diags:       map[string]int{CodeUnknownTag: 67},
+			// All 78 UNKNOWN_TAG diagnostics are gone: 67 individual EVEN
+			// structures are decoded (#378) and 11 ALIA are recognized as
+			// standard (#375). The entry is dropped rather than set to 0
+			// because the table asserts len(hist) == len(tt.diags).
+			diags: map[string]int{},
 		},
 		{
 			path:        "../testdata/encoding/ibmpc-cp437-broskeep.ged",
