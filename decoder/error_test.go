@@ -116,6 +116,24 @@ func TestDecoderErrorMessages(t *testing.T) {
 			wantWrapped:      true,
 		},
 		{
+			// Same failure over CRLF: the charset reader must not count the
+			// CR and the LF as two separate line breaks.
+			name:             "invalid UTF-8 with CRLF line endings",
+			input:            "0 HEAD\r\n1 NAME \xFF\xFE Invalid UTF-8\r\n0 TRLR",
+			wantErrSubstring: "reading input",
+			wantLine:         2,
+			wantWrapped:      true,
+		},
+		{
+			// Same failure over bare CR (old Macintosh), which the parser
+			// splits on but a naive LF-only counter would miss entirely.
+			name:             "invalid UTF-8 with CR line endings",
+			input:            "0 HEAD\r1 NAME \xFF\xFE Invalid UTF-8\r0 TRLR",
+			wantErrSubstring: "reading input",
+			wantLine:         2,
+			wantWrapped:      true,
+		},
+		{
 			name:              "completely invalid format",
 			input:             "This is not GEDCOM at all!",
 			wantErrSubstring:  "level",

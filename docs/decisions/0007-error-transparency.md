@@ -118,7 +118,29 @@ type ErrInvalidUTF8 struct {
 func (e *ErrInvalidUTF8) Error() string {
     return fmt.Sprintf("invalid UTF-8 sequence at line %d, column %d", e.Line, e.Column)
 }
+
+func (e *ErrInvalidUTF8) ErrorLine() int {
+    return e.Line
+}
 ```
+
+### Reader Errors Own Their Line Number
+
+A reader-layer error knows the physical line of the byte that failed; the
+line-oriented layers above it do not. The parser's counter only reaches the last
+line the reader handed over, so it lags whenever a read is rejected part-way
+through a chunk the reader had already consumed.
+
+The convention: **a reader error that knows its own physical line exposes
+`ErrorLine() int`, and the layer above adopts it in preference to its own
+counter.** `parser.readErrorLine` applies this when wrapping `scanner.Err()`,
+treating a zero return as "unknown" and falling back. Any new reader-layer error
+carrying a line (`ErrInvalidANSEL`, a future `ErrUnsupportedEncoding`) should
+implement it, or it will reintroduce the drift.
+
+Line numbering must also match the parser's line splitting, which ends a line on
+LF, CRLF, or a bare CR (old Macintosh). A counter that recognizes only LF
+reports line 1 for an entire CR-only file.
 
 ### Validation Issues
 
@@ -169,7 +191,7 @@ if level < 0 {
 
 ## References
 
-- `parser/errors.go` - ParseError implementation
+- `parser/errors.go` - ParseError implementation, readErrorLine
 - `charset/charset.go` - ErrInvalidUTF8
 - `validator/issue.go` - Validation issue structure
 - CLAUDE.md - Principle V (Error Transparency)
