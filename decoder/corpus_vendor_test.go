@@ -81,7 +81,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			source:      "FamilyOrigins",
 			individuals: 529,
 			families:    114,
-			diags:       map[string]int{CodeInvalidValue: 639, CodeUnknownTag: 529},
+			diags:       map[string]int{CodeInvalidValue: 639},
 		},
 		{
 			path:        "../testdata/edge-cases/vendor-tmg12.ged",
@@ -111,7 +111,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			source:      "",
 			individuals: 4683,
 			families:    2863,
-			diags:       map[string]int{CodeUnknownTag: 19163, CodeInvalidValue: 117},
+			diags:       map[string]int{CodeUnknownTag: 14480, CodeInvalidValue: 117},
 		},
 		{
 			path:        "../testdata/edge-cases/vendor-myroots-palmos.ged",
@@ -131,7 +131,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			source:      "webtreeprint.com",
 			individuals: 14,
 			families:    4,
-			diags:       map[string]int{CodeInvalidValue: 1, CodeUnknownTag: 1},
+			diags:       map[string]int{CodeInvalidValue: 1},
 		},
 		{
 			path:        "../testdata/edge-cases/bare-header-geo-coords.ged",
@@ -151,7 +151,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			source:      "FTM",
 			individuals: 178,
 			families:    113,
-			diags:       map[string]int{CodeUnknownTag: 78},
+			diags:       map[string]int{CodeUnknownTag: 67},
 		},
 		{
 			path:        "../testdata/encoding/ibmpc-cp437-broskeep.ged",
@@ -291,10 +291,9 @@ func TestCorpusVendorMHFTB8Quirks(t *testing.T) {
 // export: AFN tags on every individual and DATE values with a trailing
 // LDS-ordinance qualifier ("22 AUG 1877 SG") that fail date parsing.
 //
-// Known bug (issue #375): AFN is a standard GEDCOM 5.5 tag (Ancestral File
-// Number) but is currently reported as UNKNOWN_TAG (529 times here). The tag
-// is still preserved losslessly in Individual.Tags, so this test asserts the
-// observed (buggy) diagnostic classification.
+// AFN is a standard GEDCOM 5.5 tag (Ancestral File Number), so it must be
+// preserved in Individual.Tags without any UNKNOWN_TAG diagnostic — that code
+// is reserved for genuinely nonstandard tags (issue #375).
 func TestCorpusVendorFamilyOrigins5Quirks(t *testing.T) {
 	f := corpusOpen(t, "../testdata/edge-cases/vendor-familyorigins5.ged")
 	defer f.Close()
@@ -319,6 +318,19 @@ func TestCorpusVendorFamilyOrigins5Quirks(t *testing.T) {
 		t.Errorf("individuals with AFN raw tag = %d, want 529", afnCount)
 	}
 
+	// AFN is standard: none of those 529 tags may produce an UNKNOWN_TAG.
+	// (TestCorpusVendorFiles pins the file-wide count; this scopes it to AFN so
+	// an unrelated regression does not blame the wrong tag.)
+	afnUnknown := 0
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeUnknownTag && strings.Contains(d.Message, "AFN") {
+			afnUnknown++
+		}
+	}
+	if afnUnknown != 0 {
+		t.Errorf("UNKNOWN_TAG diagnostics for AFN = %d, want 0 (AFN is a standard GEDCOM 5.5 tag)", afnUnknown)
+	}
+
 	// The trailing-qualifier DATE surfaces as an INVALID_VALUE diagnostic with
 	// the raw value in context; the value itself is preserved.
 	foundSG := false
@@ -337,9 +349,10 @@ func TestCorpusVendorFamilyOrigins5Quirks(t *testing.T) {
 // a free-text month DATE ("29 December 1812") and an ALIA tag with a
 // non-pointer value ("Brunty").
 //
-// Known bug (issue #375): ALIA is a standard GEDCOM 5.5/5.5.1 tag but is
-// currently reported as UNKNOWN_TAG. It is preserved losslessly in
-// Individual.Tags; this test asserts the observed (buggy) classification.
+// ALIA is a standard GEDCOM 5.5/5.5.1 tag, so it is preserved losslessly in
+// Individual.Tags and must not be reported as UNKNOWN_TAG (issue #375) — even
+// with a non-pointer payload, which is a payload-grammar matter, not an
+// unknown tag.
 func TestCorpusVendorWebtreeprintQuirks(t *testing.T) {
 	f := corpusOpen(t, "../testdata/edge-cases/vendor-webtreeprint.ged")
 	defer f.Close()
@@ -350,7 +363,7 @@ func TestCorpusVendorWebtreeprintQuirks(t *testing.T) {
 	}
 	doc := result.Document
 
-	// ALIA preserved on @I0001@ despite the UNKNOWN_TAG diagnostic.
+	// ALIA preserved on @I0001@ and classified as a known tag.
 	ind := doc.GetIndividual("@I0001@")
 	if ind == nil {
 		t.Fatal("GetIndividual(@I0001@) returned nil")
@@ -364,6 +377,15 @@ func TestCorpusVendorWebtreeprintQuirks(t *testing.T) {
 	}
 	if !foundAlia {
 		t.Error("individual @I0001@ missing raw ALIA tag with value \"Brunty\"")
+	}
+	aliaUnknown := 0
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeUnknownTag && strings.Contains(d.Message, "ALIA") {
+			aliaUnknown++
+		}
+	}
+	if aliaUnknown != 0 {
+		t.Errorf("UNKNOWN_TAG diagnostics for ALIA = %d, want 0 (ALIA is a standard GEDCOM 5.5 tag)", aliaUnknown)
 	}
 
 	// Free-text month rejected by the date parser but reported with context.
