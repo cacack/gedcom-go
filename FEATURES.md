@@ -55,7 +55,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 |------|---------|----------|
 | `EMPTY_LINE` | Blank line in the data | Skipped |
 | `INVALID_LEVEL` | Unparseable, negative, or over-99 level number | Line skipped |
-| `INVALID_XREF` | Malformed cross-reference | Line skipped |
+| `INVALID_XREF` | Malformed cross-reference (e.g. an XRef containing a space) | Identifier recovered up to its closing `@` so the record and its subordinate lines survive; line skipped when no recovery is possible (e.g. an XRef with no tag) |
 | `BAD_LEVEL_JUMP` | Indentation skips one or more levels (e.g., `1 BIRT` → `4 DATE`) | Level clamped to `prev + 1` so the subordinate attaches to its natural parent |
 | `UNKNOWN_TAG` | Unrecognized tag | Preserved in raw form |
 | `INVALID_VALUE` | Value doesn't match the expected format | Raw value preserved |

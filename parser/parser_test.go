@@ -687,6 +687,44 @@ another bad line
 	}
 }
 
+// TestParseWithOptions_LenientKeepsRecoveredXRef verifies that a line whose
+// XRef contains a space is reported but kept, so the record (and the lines
+// subordinate to it) are not lost (issue #377).
+func TestParseWithOptions_LenientKeepsRecoveredXRef(t *testing.T) {
+	p := NewParser()
+
+	input := `0 HEAD
+0 @NoTe ref@ NOTE mixed case and space
+1 CONT more text
+0 TRLR`
+
+	opts := &ParseOptions{Lenient: true}
+	lines, parseErrors, fatalErr := p.ParseWithOptions(strings.NewReader(input), opts)
+
+	if fatalErr != nil {
+		t.Fatalf("Unexpected fatal error: %v", fatalErr)
+	}
+	if len(parseErrors) != 1 {
+		t.Fatalf("Expected 1 parse error, got %d: %v", len(parseErrors), parseErrors)
+	}
+	if parseErrors[0].Line != 2 || !strings.Contains(parseErrors[0].Message, "xref contains a space") {
+		t.Errorf("Parse error = %v, want a spaced-xref error on line 2", parseErrors[0])
+	}
+
+	// All four lines survive, with the malformed record recovered in place so
+	// the CONT line still attaches to it.
+	if len(lines) != 4 {
+		t.Fatalf("Expected 4 lines, got %d", len(lines))
+	}
+	got := lines[1]
+	if got.XRef != "@NoTe ref@" || got.Tag != "NOTE" || got.Value != "mixed case and space" {
+		t.Errorf("Recovered line = %+v, want xref @NoTe ref@, tag NOTE, value \"mixed case and space\"", *got)
+	}
+	if lines[2].Tag != "CONT" {
+		t.Errorf("Line 3 tag = %s, want CONT", lines[2].Tag)
+	}
+}
+
 // TestParseWithOptions_MaxErrors verifies that MaxErrors limit is respected
 func TestParseWithOptions_MaxErrors(t *testing.T) {
 	p := NewParser()

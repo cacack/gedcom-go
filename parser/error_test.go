@@ -106,42 +106,97 @@ func TestHierarchyLevelErrors(t *testing.T) {
 // T064: Write tests for missing cross-reference targets (decoder responsibility, but test parser handling)
 func TestMalformedXRefs(t *testing.T) {
 	tests := []struct {
-		name    string
-		input   string
-		wantErr bool
+		name  string
+		input string
+		// wantErr is the substring the ParseError message must contain;
+		// empty means the line must parse without error.
+		wantErr string
+		// wantLine is the parsed (or recovered) line, or nil when none is returned.
+		wantLine *Line
 	}{
 		{
-			name:    "xref without closing @",
-			input:   "0 @I1 INDI",
-			wantErr: false, // Parsed as tag "@I1", valid at parser level
+			name:     "xref without closing @",
+			input:    "0 @I1 INDI",
+			wantLine: &Line{Level: 0, Tag: "@I1", Value: "INDI", LineNumber: 1},
 		},
 		{
-			name:    "xref without opening @",
-			input:   "0 I1@ INDI",
-			wantErr: false, // Parsed as tag "I1@", valid at parser level
+			name:     "xref without opening @",
+			input:    "0 I1@ INDI",
+			wantLine: &Line{Level: 0, Tag: "I1@", Value: "INDI", LineNumber: 1},
 		},
 		{
-			name:    "empty xref",
-			input:   "0 @@ INDI",
-			wantErr: false, // Valid at parser level
+			name:     "empty xref",
+			input:    "0 @@ INDI",
+			wantLine: &Line{Level: 0, XRef: "@@", Tag: "INDI", LineNumber: 1},
 		},
 		{
-			name:    "xref with spaces",
-			input:   "0 @I 1@ INDI",
-			wantErr: false, // Parsed as tag "@I" with value "1@ INDI"
+			name:     "xref not followed by a space",
+			input:    "0 @I1@INDI",
+			wantLine: &Line{Level: 0, Tag: "@I1@INDI", LineNumber: 1},
+		},
+		{
+			name:     "xref run together with the tag",
+			input:    "0 @I1@x INDI",
+			wantLine: &Line{Level: 0, Tag: "@I1@x", Value: "INDI", LineNumber: 1},
+		},
+		{
+			name:     "xref with spaces",
+			input:    "0 @I 1@ INDI",
+			wantErr:  "xref contains a space", // Reported, and recovered (issue #377)
+			wantLine: &Line{Level: 0, XRef: "@I 1@", Tag: "INDI", LineNumber: 1},
+		},
+		{
+			name:     "xref with spaces separated from the tag by a tab",
+			input:    "0 @I 1@\tINDI extra value",
+			wantErr:  "xref contains a space",
+			wantLine: &Line{Level: 0, XRef: "@I 1@", Tag: "INDI", Value: "extra value", LineNumber: 1},
+		},
+		{
+			name:     "xref with spaces and no tag",
+			input:    "0 @I 1@",
+			wantErr:  "line with xref must have a tag",
+			wantLine: nil,
+		},
+		{
+			name:     "xref with spaces and a value",
+			input:    "0 @NoTe ref@ NOTE mixed case and space",
+			wantErr:  "xref contains a space",
+			wantLine: &Line{Level: 0, XRef: "@NoTe ref@", Tag: "NOTE", Value: "mixed case and space", LineNumber: 1},
+		},
+		{
+			// The pointer in the value must not pose as the closing @, so this
+			// keeps its pre-existing parse rather than inventing an identifier.
+			name:     "unterminated xref followed by a pointer in the value",
+			input:    "1 @I1 NOTE see @P1@ here",
+			wantLine: &Line{Level: 1, Tag: "@I1", Value: "NOTE see @P1@ here", LineNumber: 1},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := NewParser()
-			_, err := p.ParseLine(tt.input)
+			line, err := p.ParseLine(tt.input)
 
-			if tt.wantErr && err == nil {
-				t.Error("Expected error but got none")
-			}
-			if !tt.wantErr && err != nil {
+			switch {
+			case tt.wantErr == "" && err != nil:
 				t.Errorf("Unexpected error: %v", err)
+			case tt.wantErr != "" && err == nil:
+				t.Errorf("Expected error containing %q but got none", tt.wantErr)
+			case tt.wantErr != "" && !strings.Contains(err.Error(), tt.wantErr):
+				t.Errorf("Error = %v, want it to contain %q", err, tt.wantErr)
+			}
+
+			if tt.wantLine == nil {
+				if line != nil {
+					t.Errorf("Expected no line, got %+v", line)
+				}
+				return
+			}
+			if line == nil {
+				t.Fatalf("Expected line %+v, got nil", tt.wantLine)
+			}
+			if *line != *tt.wantLine {
+				t.Errorf("Line = %+v, want %+v", *line, *tt.wantLine)
 			}
 		})
 	}

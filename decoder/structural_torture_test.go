@@ -502,20 +502,27 @@ func TestStructuralTortureAtSign55(t *testing.T) {
 // record @TEST@) and an XRef containing a space. Fixture vendored verbatim
 // from gedcom7code/test-files (public domain).
 //
-// Current behavior documented here:
+// Behavior documented here:
 //   - XRefMap lookup is exact (case-sensitive); @test@ does not find @TEST@.
 //     Whether pointers should match case-insensitively is an open decision.
-//   - Known bug (issue #377): an XRef containing a space (@NoTe ref@) is
-//     silently mangled — the parser takes "@NoTe" as the tag, producing a
-//     bogus record type with an empty XRef instead of erroring or accepting.
+//   - An XRef containing a space (@NoTe ref@) is invalid GEDCOM: strict mode
+//     rejects the file, lenient mode recovers the full identifier and reports
+//     an INVALID_XREF diagnostic (issue #377).
 func TestStructuralTortureXRefCase(t *testing.T) {
 	const path = "../testdata/edge-cases/xref-case.ged"
 
-	if err := decodeFixtureStrict(t, path); err != nil {
-		t.Fatalf("strict decode should succeed, got %v", err)
-	}
+	t.Run("strict mode rejects the spaced xref", func(t *testing.T) {
+		err := decodeFixtureStrict(t, path)
+		if err == nil {
+			t.Fatal("strict decode should reject an xref containing a space")
+		}
+		if !strings.Contains(err.Error(), "xref contains a space") {
+			t.Errorf("strict decode error = %v, want it to mention the spaced xref", err)
+		}
+	})
 
-	doc := decodeFixture(t, path).Document
+	result := decodeFixture(t, path)
+	doc := result.Document
 
 	t.Run("case-sensitive lookup", func(t *testing.T) {
 		if doc.GetRecord("@TEST@") == nil {
@@ -530,21 +537,36 @@ func TestStructuralTortureXRefCase(t *testing.T) {
 	})
 
 	t.Run("xref containing a space", func(t *testing.T) {
-		if doc.GetRecord("@NoTe ref@") != nil {
-			t.Error("spaced xref is currently NOT stored under its full identifier")
+		// Recovered, not mangled: the record keeps its full identifier and the
+		// tag/value split is correct.
+		note := doc.GetNote("@NoTe ref@")
+		if note == nil {
+			t.Fatal("spaced xref should be stored under its full identifier @NoTe ref@")
 		}
-		var mangled *gedcom.Record
+		if note.Text != "mixed case and space" {
+			t.Errorf("note text = %q, want %q", note.Text, "mixed case and space")
+		}
 		for _, rec := range doc.Records {
 			if rec.Type == gedcom.RecordType("@NoTe") {
-				mangled = rec
+				t.Errorf("spaced xref must not surface as a bogus record type: %+v", rec)
 			}
 		}
-		if mangled == nil {
-			t.Fatal("expected the spaced-xref line to surface as a bogus record type @NoTe")
+
+		// And it is reported, never silently accepted.
+		var found bool
+		for _, d := range result.Diagnostics {
+			if d.Code == CodeInvalidXRef && d.Line == 13 {
+				found = true
+				if d.Severity != SeverityError {
+					t.Errorf("diagnostic severity = %v, want %v", d.Severity, SeverityError)
+				}
+				if !strings.Contains(d.Message, "@NoTe ref@") {
+					t.Errorf("diagnostic message = %q, want it to name the xref", d.Message)
+				}
+			}
 		}
-		if mangled.XRef != "" || mangled.Value != "ref@ NOTE mixed case and space" {
-			t.Errorf("mangled record = xref %q value %q; current behavior changed, revisit spaced-xref handling",
-				mangled.XRef, mangled.Value)
+		if !found {
+			t.Errorf("expected an %s diagnostic on line 13, got %v", CodeInvalidXRef, result.Diagnostics)
 		}
 	})
 }

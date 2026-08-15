@@ -32,6 +32,10 @@ type DecodeOptions struct {
 	//   - Level-jump lines (e.g., `1 BIRT` then `4 DATE`) are clamped to
 	//     prevLevel+1 and preserved as recovery, not skipped; a
 	//     CodeBadLevelJump diagnostic is emitted (SeverityWarning)
+	//   - An XRef containing a space (e.g. `0 @NoTe ref@ NOTE text`) is
+	//     recovered up to its closing `@` and the record is preserved; a
+	//     CodeInvalidXRef diagnostic is emitted (SeverityError, since the
+	//     identifier itself is not spec-conformant)
 	//   - Diagnostics are collected for all issues encountered
 	//   - Use [DecodeWithDiagnostics] to access diagnostics
 	//   - A partial document is returned if any valid records exist
