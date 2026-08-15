@@ -43,9 +43,9 @@ The following table shows which genealogy software exports have been tested with
 ### Important Notes
 
 - **Export column intentionally omitted**: This library produces standard GEDCOM output, not vendor-specific formats. All encoding is spec-compliant.
-- **Older versions**: Test files for Legacy 8, FTM 22.2.5, Family Historian, and HEREDIS are from 2015-2016 era software. Current versions may have different export patterns.
+- **Older versions**: Test files for FTM 22.2.5, Family Historian, and HEREDIS are from 2015-2016 era software. Current versions may have different export patterns. (Legacy is covered by both a current 10.0 export and the older 8.0 file.)
 - **"Vendored corpus" rows**: Real exports vendored byte-identical (aside from submitter-contact redaction) from the [D-Jeffrey/gedcom-samples](https://github.com/D-Jeffrey/gedcom-samples) corpus (MIT OR CC0-1.0); several are vintage platforms (PAF, Family Origins, TMG, My Roots, EasyTree, Brother's Keeper) valuable for exercising historical export quirks. Exercised by `decoder/corpus_vendor_test.go`.
-- **FamilySearch**: The ✅ is backed by a real GEDCOM **5.5.1** export from FamilySearch.org (2025). FamilySearch's website now exports GEDCOM 7; our GEDCOM 7.0 coverage comes from [official spec examples](https://gedcom.io/tools/), and a real FamilySearch GEDCOM 7 export fixture is still tracked in [#301](https://github.com/cacack/gedcom-go/issues/301).
+- **FamilySearch**: The ✅ is backed by a real GEDCOM **5.5.1** export from FamilySearch.org (2025). FamilySearch has since retired its own tree-download tool — [familysearch.org/innovate/export](https://www.familysearch.org/innovate/export) states "GEDCOM export is no longer supported using this resource" (verified 2026-08-15) — so no newer first-party export is obtainable. Our GEDCOM 7.0 coverage comes from [official spec examples](https://gedcom.io/tools/).
 
 ## GEDCOM Specification Support
 
@@ -202,7 +202,7 @@ Tested with real export from FamilySearch.org (2025).
 
 **Note**: Our FamilySearch fixture is GEDCOM 5.5.1, and the GEDCOM 7.0 spec examples in our test suite are from gedcom.io documentation, not real FamilySearch exports.
 
-**Note (2025+)**: FamilySearch's website family-tree download now produces **GEDCOM 7**. The 5.5.1 fixture above represents an earlier export style; obtaining and testing a real FamilySearch GEDCOM 7 export is tracked in [#301](https://github.com/cacack/gedcom-go/issues/301).
+**Note (2026+)**: FamilySearch has retired its own family-tree download. [familysearch.org/innovate/export](https://www.familysearch.org/innovate/export) now states "GEDCOM export is no longer supported using this resource" and directs users to third-party apps in its Solution Gallery; the tool produced **GEDCOM 7** before it was withdrawn. The 5.5.1 fixture above is therefore the newest first-party FamilySearch export we can obtain, and a real FamilySearch GEDCOM 7 export is no longer acquirable directly — only indirectly, via a Solution Gallery app re-exporting FamilySearch-sourced data (which is what `edge-cases/legacy10-2025-export.ged` is).
 
 ### Encoding and Grammar Limitations
 
