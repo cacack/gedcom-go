@@ -400,58 +400,50 @@ func TestStructuralTortureBlankLines(t *testing.T) {
 // TestStructuralTortureLevelOver99 covers the level-number ceiling. GEDCOM's
 // level field is at most two digits, so 99 is the deepest valid level.
 //
-// Current behavior (tracked in issue #379): the parser's MaxNestingDepth
-// boundary is 100, so a spec-invalid level-100 line is accepted by the parser
-// and only reduced to a BAD_LEVEL_JUMP clamp in lenient mode, while level 101
-// is rejected outright ("maximum nesting depth exceeded") — and that rejection
-// is classified as BAD_LEVEL_JUMP rather than INVALID_LEVEL.
+// Both the level-100 and the level-101 line are therefore rejected by the
+// parser (issue #379): the ceiling is parser.MaxNestingDepth-1, and a dropped
+// line reports INVALID_LEVEL, never BAD_LEVEL_JUMP — that code is reserved for
+// lines that were clamped and kept.
 func TestStructuralTortureLevelOver99(t *testing.T) {
 	const path = "../testdata/malformed/level-over-99.ged"
 
 	err := decodeFixtureStrict(t, path)
 	if err == nil {
-		t.Fatal("strict decode should fail on level 101")
+		t.Fatal("strict decode should fail on levels 100 and 101")
 	}
-	if !strings.Contains(err.Error(), "maximum nesting depth exceeded") {
-		t.Errorf("strict error = %v, want nesting depth message", err)
+	if !strings.Contains(err.Error(), "level 100 exceeds maximum nesting depth") {
+		t.Errorf("strict error = %v, want rejection of level 100", err)
 	}
 
 	result := decodeFixture(t, path)
 
-	var warnings, errors int
+	var rejected []int
 	for _, d := range result.Diagnostics {
-		if d.Code != CodeBadLevelJump {
+		if d.Code != CodeInvalidLevel {
 			t.Errorf("unexpected diagnostic %s: %s", d.Code, d.Message)
 			continue
 		}
-		switch d.Severity {
-		case SeverityWarning:
-			warnings++ // level 100 clamped to prevLevel+1
-		case SeverityError:
-			errors++ // level 101 rejected by the parser
+		if d.Severity != SeverityError {
+			t.Errorf("line %d: severity = %v, want SeverityError for a dropped line", d.Line, d.Severity)
 		}
+		rejected = append(rejected, d.Line)
 	}
-	if warnings != 1 || errors != 1 {
-		t.Errorf("got %d warnings and %d errors, want 1 clamp warning (level 100) and 1 rejection error (level 101)",
-			warnings, errors)
+	if len(rejected) != 2 || rejected[0] != 17 || rejected[1] != 18 {
+		t.Errorf("INVALID_LEVEL diagnostics at lines %v, want [17 18] (levels 100 and 101)", rejected)
 	}
 
-	// The level-100 line is preserved (clamped to level 2); level 101 is gone.
+	// Neither over-limit line survives: they are dropped, not clamped.
 	rec := result.Document.GetRecord("@I1@")
 	if rec == nil {
 		t.Fatal("GetRecord(@I1@) returned nil")
 	}
-	var clamped bool
 	for _, tag := range rec.Tags {
-		if tag.Value == "level one hundred" && tag.Level == 2 {
-			clamped = true
+		if tag.Value == "level one hundred" {
+			t.Errorf("level-100 line should have been rejected, got it at level %d", tag.Level)
 		}
 		if tag.Value == "level one hundred one" {
-			t.Error("level-101 line should have been skipped by the parser")
+			t.Error("level-101 line should have been rejected by the parser")
 		}
-	}
-	if !clamped {
-		t.Error("level-100 line should be clamped to level 2 and preserved")
 	}
 }
 

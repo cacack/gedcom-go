@@ -2,12 +2,16 @@ package parser
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
 )
 
-// MaxNestingDepth is the maximum allowed nesting depth to prevent stack overflow.
+// MaxNestingDepth is the maximum number of nesting levels accepted, which
+// bounds memory use on malformed files. GEDCOM's level field is at most two
+// digits, so the deepest valid level is 99: valid levels run from 0 through
+// MaxNestingDepth-1, and a line with a deeper level is rejected.
 const MaxNestingDepth = 100
 
 // Parser parses GEDCOM files into Line structures.
@@ -78,9 +82,13 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 		return nil, newParseError(p.lineNumber, "level cannot be negative", line)
 	}
 
-	// Check nesting depth
-	if level > MaxNestingDepth {
-		return nil, newParseError(p.lineNumber, "maximum nesting depth exceeded", line)
+	// Check nesting depth. The GEDCOM level field is at most two digits, so
+	// level 99 (MaxNestingDepth-1) is the deepest the grammar allows.
+	if level >= MaxNestingDepth {
+		return nil, newParseError(p.lineNumber,
+			fmt.Sprintf("level %d exceeds maximum nesting depth (valid levels are 0-%d)",
+				level, MaxNestingDepth-1),
+			line)
 	}
 
 	// Parse XRef and Tag

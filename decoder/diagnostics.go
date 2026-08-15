@@ -47,7 +47,9 @@ const (
 	// CodeSyntaxError indicates a general syntax error in the GEDCOM line.
 	CodeSyntaxError = "SYNTAX_ERROR"
 
-	// CodeInvalidLevel indicates the level number could not be parsed or is invalid.
+	// CodeInvalidLevel indicates the level number could not be parsed or is
+	// invalid: non-numeric, negative, or deeper than the level field's two
+	// digits allow (see parser.MaxNestingDepth). The line is always dropped.
 	CodeInvalidLevel = "INVALID_LEVEL"
 
 	// CodeInvalidXRef indicates a malformed cross-reference identifier.
@@ -57,6 +59,7 @@ const (
 	// `1 BIRT` directly followed by `4 DATE`, as seen in some real-world
 	// genealogy exports). In lenient mode the level is clamped to prevLevel+1
 	// and the document remains usable; emitted as SeverityWarning, not Error.
+	// The line is always kept: a dropped line reports CodeInvalidLevel instead.
 	CodeBadLevelJump = "BAD_LEVEL_JUMP"
 
 	// CodeEmptyLine indicates an unexpected empty line in the GEDCOM data.

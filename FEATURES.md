@@ -54,7 +54,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | Code | Meaning | Recovery |
 |------|---------|----------|
 | `EMPTY_LINE` | Blank line in the data | Skipped |
-| `INVALID_LEVEL` | Unparseable level number | Line skipped |
+| `INVALID_LEVEL` | Unparseable, negative, or over-99 level number | Line skipped |
 | `INVALID_XREF` | Malformed cross-reference | Line skipped |
 | `BAD_LEVEL_JUMP` | Indentation skips one or more levels (e.g., `1 BIRT` → `4 DATE`) | Level clamped to `prev + 1` so the subordinate attaches to its natural parent |
 | `UNKNOWN_TAG` | Unrecognized tag | Preserved in raw form |
@@ -1023,7 +1023,7 @@ Full control over decoding behavior with `DecodeOptions`:
 | Option | Type | Description |
 |--------|------|-------------|
 | `Context` | `context.Context` | Cancellation and timeout control |
-| `MaxNestingDepth` | `int` | Maximum nesting depth (default: 100) |
+| `MaxNestingDepth` | `int` | Number of accepted nesting levels; valid levels are 0..N-1 (default: 100, i.e. levels 0-99) |
 | `StrictMode` | `bool` | Reject non-standard extensions |
 | `OnProgress` | `ProgressCallback` | Progress reporting callback |
 | `TotalSize` | `int64` | Expected file size for progress percentage |

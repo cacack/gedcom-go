@@ -390,7 +390,7 @@ Files with intentional errors for testing error handling and validation:
 - **blank-lines.ged** - Blank and whitespace-only lines mid-file
   - Strict mode errors, lenient mode skips with EMPTY_LINE diagnostics
   - Original work (issue #301)
-- **level-over-99.ged** - Level 100 (spec-invalid, currently tolerated and clamped) and level 101 (exceeds parser MaxNestingDepth, rejected)
+- **level-over-99.ged** - Levels 100 and 101, both past the two-digit level ceiling; each is rejected with an INVALID_LEVEL diagnostic (issue #379)
   - Original work (issue #301)
 
 ## Usage Guidelines
