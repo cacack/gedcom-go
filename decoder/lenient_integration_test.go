@@ -91,6 +91,15 @@ func TestDecodeWithDiagnostics_MalformedFiles(t *testing.T) {
 			minRecords:           1,
 			expectDiagnosticCode: CodeBadLevelJump,
 		},
+		{
+			name:                 "unterminated-xref.ged",
+			path:                 "../testdata/malformed/unterminated-xref.ged",
+			description:          "File whose XRef has no closing @ (0 @I1 INDI)",
+			expectDiagnostics:    true,
+			expectError:          false,
+			minRecords:           1,
+			expectDiagnosticCode: CodeInvalidXRef,
+		},
 	}
 
 	for _, tt := range tests {
@@ -285,6 +294,160 @@ invalid3`,
 					t.Errorf("Expected diagnostic with code %s not found",
 						tt.expectDiagnosticCode)
 				}
+			}
+		})
+	}
+}
+
+// TestDecodeWithDiagnostics_UnterminatedXRef pins the end-to-end behavior for
+// an XRef with no closing "@" (issue #385): strict mode rejects the file,
+// lenient mode keeps the record under its verbatim identifier and reports an
+// INVALID_XREF diagnostic.
+func TestDecodeWithDiagnostics_UnterminatedXRef(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1 INDI
+1 NAME Broken /Xref/
+0 @I2@ INDI
+1 NAME Valid /Person/
+0 TRLR`
+
+	t.Run("strict mode rejects it", func(t *testing.T) {
+		_, err := DecodeWithOptions(strings.NewReader(input), &DecodeOptions{StrictMode: true})
+		if err == nil {
+			t.Fatal("strict decode should reject an xref with no closing @")
+		}
+		if !strings.Contains(err.Error(), "xref is missing its closing @") {
+			t.Errorf("strict decode error = %v, want it to name the unterminated xref", err)
+		}
+	})
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	doc := result.Document
+
+	t.Run("reported once", func(t *testing.T) {
+		if len(result.Diagnostics) != 1 {
+			t.Fatalf("Expected 1 diagnostic, got %v", result.Diagnostics)
+		}
+		d := result.Diagnostics[0]
+		if d.Code != CodeInvalidXRef || d.Severity != SeverityError || d.Line != 4 {
+			t.Errorf("Diagnostic = %s, want %s at %s on line 4",
+				d.String(), CodeInvalidXRef, SeverityError)
+		}
+		if !strings.Contains(d.Message, "@I1") {
+			t.Errorf("Diagnostic message = %q, want it to name the identifier", d.Message)
+		}
+	})
+
+	t.Run("record recovered under its verbatim identifier", func(t *testing.T) {
+		// The identifier is stored exactly as written, with no closing "@"
+		// invented. gedcom.IsPointerXRef needs both delimiters, so an ordinary
+		// "@I1@" pointer still will not reach this record: the value here is
+		// the diagnostic plus correct record typing, not pointer resolution.
+		indi := doc.GetIndividual("@I1")
+		if indi == nil {
+			t.Fatal("individual should be stored under its verbatim identifier @I1")
+		}
+		if doc.GetIndividual("@I1@") != nil {
+			t.Error("no closing @ was invented, so @I1@ must not resolve")
+		}
+		if len(indi.Names) != 1 || indi.Names[0].Full != "Broken /Xref/" {
+			t.Errorf("Names = %+v, want the single NAME from the recovered record", indi.Names)
+		}
+		for _, rec := range doc.Records {
+			if rec.Type == gedcom.RecordType("@I1") {
+				t.Errorf("unterminated xref must not surface as a bogus record type: %+v", rec)
+			}
+		}
+	})
+
+	t.Run("subordinates are not reparented", func(t *testing.T) {
+		// The regression guard for the panel blocker: dropping the level-0
+		// line would attach Broken's NAME to the preceding record instead.
+		if len(doc.Records) != 2 {
+			t.Fatalf("Expected 2 records, got %d", len(doc.Records))
+		}
+		next := doc.GetIndividual("@I2@")
+		if next == nil {
+			t.Fatal("individual @I2@ should exist")
+		}
+		if len(next.Names) != 1 || next.Names[0].Full != "Valid /Person/" {
+			t.Errorf("@I2@ Names = %+v, want exactly one NAME (\"Valid /Person/\")", next.Names)
+		}
+	})
+}
+
+// TestDecodeWithDiagnostics_UnterminatedXRefBeforeStructuralTag pins the
+// HEAD/TRLR carve-out in parseUnterminatedXRef (issue #385). buildHeader and
+// buildRecords both key off a bare level-0 HEAD/TRLR tag, so recovering the
+// identifier out of "0 @I1 HEAD" would make a bogus second header overwrite
+// the real one's typed fields, and out of "0 @I1 TRLR" would drop the line and
+// everything subordinate to it. Both keep their pre-existing parse instead,
+// reported but not recovered.
+func TestDecodeWithDiagnostics_UnterminatedXRefBeforeStructuralTag(t *testing.T) {
+	tests := []struct {
+		name string
+		tag  string
+	}{
+		{name: "HEAD", tag: "HEAD"},
+		{name: "TRLR", tag: "TRLR"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := `0 HEAD
+1 SOUR RealVendor
+1 GEDC
+2 VERS 5.5
+1 CHAR UTF-8
+0 @I1 ` + tt.tag + `
+1 SOUR FakeVendor
+1 CHAR ANSEL
+0 @I2@ INDI
+1 NAME Valid /Person/
+0 TRLR`
+
+			result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			doc := result.Document
+
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != CodeInvalidXRef {
+				t.Errorf("Diagnostics = %v, want exactly one %s", result.Diagnostics, CodeInvalidXRef)
+			}
+
+			// The real header must win: a second HEAD block must not be
+			// treated as a header at all.
+			if doc.Header.SourceSystem != "RealVendor" || doc.Header.Encoding != "UTF-8" {
+				t.Errorf("Header = {SourceSystem: %q, Encoding: %q}, want the real header's values",
+					doc.Header.SourceSystem, doc.Header.Encoding)
+			}
+
+			// The malformed line stays a record, keeping its subordinate lines
+			// with it (Lossless Representation).
+			if len(doc.Records) != 2 {
+				t.Fatalf("Expected 2 records, got %d", len(doc.Records))
+			}
+			rec := doc.Records[0]
+			if rec.Type != gedcom.RecordType("@I1") || rec.Value != tt.tag {
+				t.Errorf("Record[0] = {Type: %q, Value: %q}, want the pre-existing parse {@I1, %s}",
+					rec.Type, rec.Value, tt.tag)
+			}
+			if len(rec.Tags) != 2 || rec.Tags[0].Tag != "SOUR" || rec.Tags[1].Tag != "CHAR" {
+				t.Errorf("Record[0].Tags = %+v, want both subordinate lines", rec.Tags)
+			}
+
+			next := doc.GetIndividual("@I2@")
+			if next == nil {
+				t.Fatal("individual @I2@ should exist")
+			}
+			if len(next.Names) != 1 || next.Names[0].Full != "Valid /Person/" {
+				t.Errorf("@I2@ Names = %+v, want exactly one NAME (\"Valid /Person/\")", next.Names)
 			}
 		})
 	}

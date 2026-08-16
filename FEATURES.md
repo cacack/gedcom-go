@@ -55,7 +55,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 |------|---------|----------|
 | `EMPTY_LINE` | Blank line in the data | Skipped |
 | `INVALID_LEVEL` | Unparseable, negative, or over-99 level number | Line skipped |
-| `INVALID_XREF` | Malformed cross-reference (e.g. an XRef containing a space) | Identifier recovered up to its closing `@` so the record and its subordinate lines survive; line skipped when no recovery is possible (e.g. an XRef with no tag) |
+| `INVALID_XREF` | Malformed cross-reference (an XRef containing a space, or a level-0 XRef with no closing `@`) | Identifier recovered verbatim so the record and its subordinate lines survive; because nothing is invented, an unterminated `@I1` is stored as `@I1` and ordinary `@I1@` pointers elsewhere do not resolve to it. Line skipped when no recovery is possible (a well-formed XRef with no tag, `0 @I1@`). Reported but *not* recovered when an unterminated identifier has no usable record tag after it (`0 @I1`, `0 @I1 HEAD`, `0 @I1 TRLR`): the line keeps its pre-existing parse, so the record survives but with `Type == "@I1"` and an empty `XRef`, absent from `XRefMap` — see [compatibility.md](docs/governance/policies/compatibility.md#encoding-and-grammar-limitations) |
 | `BAD_LEVEL_JUMP` | Indentation skips one or more levels (e.g., `1 BIRT` → `4 DATE`) | Level clamped to `prev + 1` so the subordinate attaches to its natural parent |
 | `UNKNOWN_TAG` | Unrecognized tag | Preserved in raw form |
 | `INVALID_VALUE` | Value doesn't match the expected format | Raw value preserved |

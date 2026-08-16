@@ -117,7 +117,82 @@ func TestMalformedXRefs(t *testing.T) {
 		{
 			name:     "xref without closing @",
 			input:    "0 @I1 INDI",
-			wantLine: &Line{Level: 0, Tag: "@I1", Value: "INDI", LineNumber: 1},
+			wantErr:  "xref is missing its closing @", // Reported, and recovered (issue #385)
+			wantLine: &Line{Level: 0, XRef: "@I1", Tag: "INDI", LineNumber: 1},
+		},
+		{
+			name:     "xref without closing @ and a value",
+			input:    "0 @I1 INDI extra value",
+			wantErr:  "xref is missing its closing @",
+			wantLine: &Line{Level: 0, XRef: "@I1", Tag: "INDI", Value: "extra value", LineNumber: 1},
+		},
+		{
+			name:     "xref without closing @ separated from the tag by a tab",
+			input:    "0 @I1\tINDI extra value",
+			wantErr:  "xref is missing its closing @",
+			wantLine: &Line{Level: 0, XRef: "@I1", Tag: "INDI", Value: "extra value", LineNumber: 1},
+		},
+		{
+			// No tag means no record type to recover, so the line keeps the
+			// parse it has always had — but a Line is still returned, never
+			// nil, so a level-0 record can never be dropped by this path.
+			name:     "xref without closing @ and no tag",
+			input:    "0 @I1",
+			wantErr:  "xref is missing its closing @",
+			wantLine: &Line{Level: 0, Tag: "@I1", LineNumber: 1},
+		},
+		{
+			// HEAD/TRLR guard: the decoder keys the header block and the end
+			// of a record off a bare level-0 HEAD/TRLR tag, so promoting the
+			// tag here would let a bogus header overwrite the real one.
+			name:     "xref without closing @ before HEAD",
+			input:    "0 @I1 HEAD",
+			wantErr:  "xref is missing its closing @",
+			wantLine: &Line{Level: 0, Tag: "@I1", Value: "HEAD", LineNumber: 1},
+		},
+		{
+			// Same guard: promoting TRLR would drop the line and everything
+			// subordinate to it from the document.
+			name:     "xref without closing @ before TRLR",
+			input:    "0 @I1 TRLR",
+			wantErr:  "xref is missing its closing @",
+			wantLine: &Line{Level: 0, Tag: "@I1", Value: "TRLR", LineNumber: 1},
+		},
+		{
+			// Level guard: a subordinate Tag has nowhere to store an XRef, so
+			// recovering one here would delete the "@I1" text entirely.
+			name:     "unterminated xref below level 0",
+			input:    "1 @I1 NOTE plain text",
+			wantLine: &Line{Level: 1, Tag: "@I1", Value: "NOTE plain text", LineNumber: 1},
+		},
+		{
+			// Count guard: the email's "@" could equally be the terminator, so
+			// the shape is genuinely ambiguous and is left alone.
+			name:     "unterminated xref with an email in the value",
+			input:    "0 @N1 NOTE write to a@b.com",
+			wantLine: &Line{Level: 0, Tag: "@N1", Value: "NOTE write to a@b.com", LineNumber: 1},
+		},
+		{
+			// Count guard: an escaped "@@" in the value.
+			name:     "unterminated xref with an escaped at-sign in the value",
+			input:    "0 @N1 NOTE @@escaped",
+			wantLine: &Line{Level: 0, Tag: "@N1", Value: "NOTE @@escaped", LineNumber: 1},
+		},
+		{
+			// Count guard: a trailing pointer must not pose as the terminator.
+			name:     "unterminated xref with a trailing pointer",
+			input:    "0 @I1 INDI @X@",
+			wantLine: &Line{Level: 0, Tag: "@I1", Value: "INDI @X@", LineNumber: 1},
+		},
+		{
+			name:     "pointer value at level 1 is untouched",
+			input:    "1 FAMC @VOID@",
+			wantLine: &Line{Level: 1, Tag: "FAMC", Value: "@VOID@", LineNumber: 1},
+		},
+		{
+			name:     "calendar escape in the value is untouched",
+			input:    "0 @N1@ NOTE @#DJULIAN@ date escape",
+			wantLine: &Line{Level: 0, XRef: "@N1@", Tag: "NOTE", Value: "@#DJULIAN@ date escape", LineNumber: 1},
 		},
 		{
 			name:     "xref without opening @",

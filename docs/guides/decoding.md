@@ -26,7 +26,7 @@ if err != nil {
 |-------|---------|
 | Invalid level number | `XYZ NAME John` (non-numeric level) |
 | Missing tag | `0 @I1@` (XRef without tag) |
-| Malformed XRef | `0 @BAD XREF@ INDI` (space inside the identifier) |
+| Malformed XRef | `0 @BAD XREF@ INDI` (space inside the identifier), `0 @I1 INDI` (no closing `@`) |
 | Invalid level jump | Level 0 to level 2 (skipping level 1) |
 | Empty lines | Blank lines in the GEDCOM stream |
 
@@ -71,7 +71,7 @@ Parse-level errors (severity: ERROR):
 |------|---------|
 | `SYNTAX_ERROR` | General syntax problem |
 | `INVALID_LEVEL` | Level number could not be parsed, is negative, or exceeds 99 (line dropped) |
-| `INVALID_XREF` | Malformed cross-reference identifier (an XRef containing a space is recovered and kept — see [FEATURES.md](../../FEATURES.md#lenient-parsing--diagnostics)) |
+| `INVALID_XREF` | Malformed cross-reference identifier (an XRef containing a space, or a level-0 XRef with no closing `@`, is recovered and kept — see [FEATURES.md](../../FEATURES.md#lenient-parsing--diagnostics)) |
 | `EMPTY_LINE` | Unexpected blank line |
 
 Entity-level warnings (severity: WARNING):

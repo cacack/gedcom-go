@@ -256,6 +256,22 @@ func TestRecordIterator_SpacedXRef(t *testing.T) {
 	}
 }
 
+// TestRecordIterator_UnterminatedXRef pins the same streaming behavior for an
+// XRef with no closing "@" (issue #385): the iterator has no lenient mode, so
+// it stops and reports rather than silently mangling the record.
+func TestRecordIterator_UnterminatedXRef(t *testing.T) {
+	input := "0 HEAD\n0 @I1 INDI\n0 TRLR"
+
+	it := NewRecordIterator(strings.NewReader(input))
+
+	if it.Next() {
+		t.Error("Expected iteration to stop on the unterminated xref")
+	}
+	if it.Err() == nil || !strings.Contains(it.Err().Error(), "xref is missing its closing @") {
+		t.Errorf("Err() = %v, want an unterminated-xref error", it.Err())
+	}
+}
+
 func TestRecordIterator_MatchesFullParse(t *testing.T) {
 	input := `0 HEAD
 1 GEDC

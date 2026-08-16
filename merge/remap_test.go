@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/v2/decoder"
 	"github.com/cacack/gedcom-go/v2/gedcom"
 	"github.com/cacack/gedcom-go/v2/merge"
 )
@@ -388,6 +389,39 @@ func TestRemapXRefs_RejectsCollisions(t *testing.T) {
 	}
 	if !strings.Contains(rerr.Reason, "collides") {
 		t.Errorf("RemapError.Reason should mention collision, got %q", rerr.Reason)
+	}
+}
+
+// TestRemapXRefs_RejectsRecoveredNonPointerXRef pins the interaction between
+// the parser's malformed-XRef recovery and this package's strictness, which
+// compatibility.md documents: a recovered identifier is stored verbatim, so
+// "@I1" is not pointer-shaped, and RemapXRefs rejects the *whole document*
+// rather than skipping that one record. The strictness predates issue #385 —
+// the #377 spaced shape fails identically — but the claim is now in the docs,
+// so it is pinned here.
+func TestRemapXRefs_RejectsRecoveredNonPointerXRef(t *testing.T) {
+	result, err := decoder.DecodeWithDiagnostics(strings.NewReader(
+		"0 HEAD\n1 GEDC\n2 VERS 5.5\n0 @I1 INDI\n1 NAME John /Doe/\n0 TRLR\n"), nil)
+	if err != nil {
+		t.Fatalf("lenient decode should succeed: %v", err)
+	}
+	if got := result.Document.Records[0].XRef; got != "@I1" {
+		t.Fatalf("Record.XRef = %q, want the verbatim recovered %q", got, "@I1")
+	}
+
+	out, mapping, err := merge.RemapXRefs(result.Document, func(old string) string { return old })
+	if err == nil {
+		t.Fatal("expected RemapXRefs to reject a non-pointer-shaped XRef, got nil")
+	}
+	if out != nil || mapping != nil {
+		t.Error("output document and mapping should be nil on error")
+	}
+	var rerr *merge.RemapError
+	if !errors.As(err, &rerr) {
+		t.Fatalf("error should be *RemapError, got %T", err)
+	}
+	if rerr.Old != "@I1" {
+		t.Errorf("RemapError.Old = %q, want @I1", rerr.Old)
 	}
 }
 

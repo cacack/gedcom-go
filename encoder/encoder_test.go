@@ -61,6 +61,61 @@ func TestEncodeRoundtrip(t *testing.T) {
 	}
 }
 
+// TestEncodeUnterminatedXRefRoundtrip pins the byte-exact re-encode that the
+// unterminated-XRef recovery promises (issue #385). Because the identifier is
+// kept verbatim rather than given an invented closing "@", "0 @I1 INDI" must
+// come back out exactly as it went in — which also means the output still
+// fails strict mode on re-read, the documented asymmetry it shares with #377.
+//
+// The HEAD case pins the boundary of that promise. "0 @I1 HEAD" is reported but
+// deliberately not recovered, so the identifier stays in Tag and "HEAD" lands
+// in Value; the encoder does not write a level-0 Value, so the tag is lost on
+// re-encode. That gap predates #385 (any level-0 record carrying a Value hits
+// it) and is asserted here so the parser godoc's scoped claim has a guard.
+func TestEncodeUnterminatedXRefRoundtrip(t *testing.T) {
+	tests := []struct {
+		name     string
+		line     string
+		wantLine string
+	}{
+		{
+			name:     "recovered record re-encodes byte for byte",
+			line:     "0 @I1 INDI",
+			wantLine: "0 @I1 INDI",
+		},
+		{
+			name:     "reported-but-not-recovered HEAD loses its tag on re-encode",
+			line:     "0 @I1 HEAD",
+			wantLine: "0 @I1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := "0 HEAD\n1 GEDC\n2 VERS 5.5\n" + tt.line + "\n1 NAME Broken /Xref/\n0 TRLR\n"
+
+			result, err := decoder.DecodeWithDiagnostics(strings.NewReader(input), nil)
+			if err != nil {
+				t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+			}
+
+			var buf bytes.Buffer
+			if err := Encode(&buf, result.Document); err != nil {
+				t.Fatalf("Encode() error = %v", err)
+			}
+
+			if !strings.Contains(buf.String(), tt.wantLine+"\n") {
+				t.Errorf("re-encoded output missing %q\ngot:\n%s", tt.wantLine, buf.String())
+			}
+			// The subordinate line must survive either way -- losing it would
+			// mean the record was dropped and its children reparented.
+			if !strings.Contains(buf.String(), "1 NAME Broken /Xref/") {
+				t.Errorf("subordinate NAME lost on re-encode\ngot:\n%s", buf.String())
+			}
+		})
+	}
+}
+
 // TestEncodeSharedNoteMultiLineRoundtrip verifies a multi-line GEDCOM 7.0 SNOTE
 // body survives decode -> encode -> decode without loss (issue #329). The Text
 // assertions exercise the decoder's CONT fold-back; the CONT-line assertion
