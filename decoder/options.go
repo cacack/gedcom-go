@@ -37,10 +37,17 @@ type DecodeOptions struct {
 	//   - Level-jump lines (e.g., `1 BIRT` then `4 DATE`) are clamped to
 	//     prevLevel+1 and preserved as recovery, not skipped; a
 	//     CodeBadLevelJump diagnostic is emitted (SeverityWarning)
-	//   - An XRef containing a space (e.g. `0 @NoTe ref@ NOTE text`) is
-	//     recovered up to its closing `@` and the record is preserved; a
-	//     CodeInvalidXRef diagnostic is emitted (SeverityError, since the
-	//     identifier itself is not spec-conformant)
+	//   - An XRef containing a space (e.g. `0 @NoTe ref@ NOTE text`), or a
+	//     level-0 XRef with no closing `@` (e.g. `0 @I1 INDI`), is recovered
+	//     verbatim and the record is preserved; a CodeInvalidXRef diagnostic
+	//     is emitted (SeverityError, since the identifier itself is not
+	//     spec-conformant). Verbatim means `@I1` is stored as `@I1`, which is
+	//     not pointer-shaped, so `@I1@` references elsewhere in the file do
+	//     not resolve to the recovered record. `0 @I1`, `0 @I1 HEAD` and
+	//     `0 @I1 TRLR` are reported but not recovered: they keep their
+	//     pre-existing parse, since HEAD and TRLR are structural tags and
+	//     promoting either would overwrite the real header or drop the line
+	//     and its subordinates
 	//   - Diagnostics are collected for all issues encountered
 	//   - Use [DecodeWithDiagnostics] to access diagnostics
 	//   - A partial document is returned if any valid records exist

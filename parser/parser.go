@@ -56,11 +56,13 @@ func (p *Parser) Reset() {
 //	1 NAME John /Smith/
 //	2 GIVN John
 //
-// An XRef containing a space (e.g. "0 @NoTe ref@ NOTE text") violates the
-// GEDCOM grammar. Such a line is reported as an error, but the recovered Line
-// is returned alongside it so lenient callers can keep the record instead of
-// dropping it; see [parseSpacedXRef]. A returned Line is therefore not proof
-// that the line was well formed — check the error too.
+// Two malformed XRef shapes violate the GEDCOM grammar: an identifier
+// containing a space (e.g. "0 @NoTe ref@ NOTE text") and, at level 0, an
+// identifier with no closing "@" at all (e.g. "0 @I1 INDI"). Such a line is
+// reported as an error, but the recovered Line is returned alongside it so
+// lenient callers can keep the record instead of dropping it; see
+// [parseSpacedXRef] and [parseUnterminatedXRef]. A returned Line is therefore
+// not proof that the line was well formed — check the error too.
 func (p *Parser) ParseLine(input string) (*Line, error) {
 	p.lineNumber++
 
@@ -111,6 +113,8 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 		valueStartIdx = 3
 	} else if id, rest, ok := splitSpacedXRef(parts[1], line); ok {
 		return p.parseSpacedXRef(level, line, id, rest)
+	} else if id, rest, ok := splitUnterminatedXRef(level, parts[1], line); ok {
+		return p.parseUnterminatedXRef(level, line, id, rest)
 	} else {
 		tag = parts[1]
 		valueStartIdx = 2
@@ -174,6 +178,37 @@ func splitSpacedXRef(xrefField, line string) (xref, rest string, ok bool) {
 	return xref, rest, true
 }
 
+// splitUnterminatedXRef detects an XRef identifier with no closing "@" at all,
+// e.g. "0 @I1 INDI", which the well-formed test above rejects for want of a
+// suffix, so strings.Fields turns the identifier into a bogus record type. It
+// returns the identifier verbatim — no closing "@" is invented — and the rest
+// of the line.
+//
+// ok is false unless two guards both hold. The line must be at level 0,
+// because only a level-0 line introduces a record: [Line.XRef] on a
+// subordinate line has no home in the built document, so "recovering" one
+// deeper would delete the identifier text instead of preserving it. And the
+// line must hold exactly one "@", which is what makes the shape unambiguous —
+// every competing reading of a lone "@" carries a second one, so an escaped
+// "@@", a pointer or email in the value ("0 @N1 NOTE write to a@b.com"), a
+// "@VOID@", a "@#DJULIAN@" calendar escape, "0 @I1@INDI" and "0 @I1 INDI @X@"
+// are all excluded by construction and keep their existing parse. It also
+// makes this detector disjoint from [splitSpacedXRef], which needs at least
+// two "@" to fire.
+func splitUnterminatedXRef(level int, xrefField, line string) (xref, rest string, ok bool) {
+	if level != 0 || !strings.HasPrefix(xrefField, "@") {
+		return "", "", false
+	}
+	if strings.Count(line, "@") != 1 {
+		return "", "", false
+	}
+
+	// The lone "@" opens the identifier, so the field starts there and the
+	// rest of the line follows it.
+	open := strings.Index(line, "@")
+	return xrefField, line[open+len(xrefField):], true
+}
+
 // parseSpacedXRef parses a line whose XRef contains a space, as located by
 // [splitSpacedXRef]. The GEDCOM grammar forbids spaces inside an XRef, so the
 // line is always reported as an error: strict callers reject the file, lenient
@@ -191,20 +226,74 @@ func (p *Parser) parseSpacedXRef(level int, line, xref, rest string) (*Line, err
 	if len(fields) == 0 {
 		return nil, newParseError(p.lineNumber, "line with xref must have a tag", line)
 	}
+	return p.recoverXRefLine(level, xref, rest, fields[0]),
+		newParseError(p.lineNumber, "xref contains a space: "+xref, line)
+}
 
+// parseUnterminatedXRef parses a level-0 line whose XRef has no closing "@",
+// as located by [splitUnterminatedXRef]. The identifier is not spec-conformant,
+// so the line is always reported as an error: strict callers reject the file,
+// lenient callers record an INVALID_XREF diagnostic.
+//
+// As in [parseSpacedXRef], a Line is always returned alongside the error so
+// lenient callers keep the record; dropping a level-0 line would lose it and
+// silently reparent its subordinate lines onto the preceding record.
+//
+// Three spellings keep their pre-existing parse — the identifier stays the tag
+// — and are only reported: "0 @I1" with no tag to recover, and "0 @I1 HEAD" and
+// "0 @I1 TRLR", whose tags the decoder treats as structural rather than as a
+// record type. See the function body for why promoting those two loses data.
+//
+// The identifier is kept verbatim, so "@I1" stays "@I1" and re-encoding a
+// recovered line reproduces the input byte for byte — which also means the
+// output still fails this parser's own strict mode on re-read. That holds for
+// the recovered shape only: the three reported-but-not-recovered spellings
+// above keep the identifier in Tag and the remainder in Value, and the encoder
+// does not write a level-0 Value, so "0 @I1 HEAD" re-encodes as "0 @I1". That
+// gap predates this recovery rather than being introduced by it. Because
+// gedcom.IsPointerXRef requires both delimiters, an ordinary "@I1@" pointer
+// elsewhere in the file does not resolve to the recovered record: what this
+// recovery buys is the diagnostic and a correctly typed record, not pointer
+// resolution.
+func (p *Parser) parseUnterminatedXRef(level int, line, xref, rest string) (*Line, error) {
+	err := newParseError(p.lineNumber, "xref is missing its closing @: "+xref, line)
+
+	fields := strings.Fields(rest)
+	if len(fields) == 0 || fields[0] == "HEAD" || fields[0] == "TRLR" {
+		// Either no tag follows ("0 @I1"), so there is no record type to
+		// recover, or the tag that would be recovered is HEAD/TRLR. The
+		// decoder keys the header block and the end of the previous record off
+		// a bare level-0 HEAD/TRLR tag, so promoting the tag out of
+		// "0 @I1 HEAD" would let a bogus second header overwrite the real
+		// one's typed fields, and promoting it out of "0 @I1 TRLR" would drop
+		// the line and its subordinates from the document — a Lossless
+		// Representation violation. Keep the parse these lines have always had
+		// — the identifier becomes the tag, the remainder the value — and
+		// report them.
+		return &Line{
+			Level:      level,
+			Tag:        xref,
+			Value:      strings.TrimLeft(rest, " "),
+			LineNumber: p.lineNumber,
+		}, err
+	}
+	return p.recoverXRefLine(level, xref, rest, fields[0]), err
+}
+
+// recoverXRefLine builds the Line for a malformed XRef identifier located by
+// [splitSpacedXRef] or [splitUnterminatedXRef]. rest is the remainder of the
+// line after the identifier and tag is its first field.
+func (p *Parser) recoverXRefLine(level int, xref, rest, tag string) *Line {
 	// rest holds only whitespace before the tag, so this finds the tag itself.
-	tag := fields[0]
 	afterTag := strings.Index(rest, tag) + len(tag)
-	value := strings.TrimLeft(rest[afterTag:], " ")
 
-	recovered := &Line{
+	return &Line{
 		Level:      level,
 		Tag:        tag,
-		Value:      value,
+		Value:      strings.TrimLeft(rest[afterTag:], " "),
 		XRef:       xref,
 		LineNumber: p.lineNumber,
 	}
-	return recovered, newParseError(p.lineNumber, "xref contains a space: "+xref, line)
 }
 
 // Parse reads a GEDCOM file from a reader and returns all parsed lines.

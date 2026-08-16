@@ -379,6 +379,10 @@ Files with intentional errors for testing error handling and validation:
 
 - **invalid-level.ged** (110B) - Invalid level number (level 99)
 - **invalid-xref.ged** (76B) - Malformed cross-reference format
+- **unterminated-xref.ged** (61B) - XRef with no closing `@` (`0 @I1 INDI`)
+  - Strict mode rejects it; lenient mode recovers the record under the verbatim
+    identifier `@I1` with an `INVALID_XREF` diagnostic
+  - Original work (issue #385)
 - **missing-header.ged** (37B) - Missing required HEAD record
 - **missing-xref.ged** (76B) - Missing cross-reference target (broken XRef)
 - **circular-reference.ged** (~500B) - Circular family relationships

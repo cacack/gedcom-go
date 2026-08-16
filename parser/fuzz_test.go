@@ -86,6 +86,9 @@ func FuzzParseLine(f *testing.F) {
 		"0 @F1@ FAM",
 		"1 NAME    John",
 		"1 NAME John  Smith",
+		"0 @I1 INDI",
+		"0 @I1",
+		"0 @I1 NOTE a@b.com",
 	}
 
 	for _, seed := range seeds {

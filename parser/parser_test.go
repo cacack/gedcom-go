@@ -725,6 +725,43 @@ func TestParseWithOptions_LenientKeepsRecoveredXRef(t *testing.T) {
 	}
 }
 
+// TestParseWithOptions_LenientKeepsUnterminatedXRef is the same guarantee for
+// an XRef with no closing "@" (issue #385): the record survives in place, so
+// its subordinate lines cannot be reparented onto the preceding record.
+func TestParseWithOptions_LenientKeepsUnterminatedXRef(t *testing.T) {
+	p := NewParser()
+
+	input := `0 HEAD
+0 @I1 INDI
+1 NAME Broken /Xref/
+0 TRLR`
+
+	opts := &ParseOptions{Lenient: true}
+	lines, parseErrors, fatalErr := p.ParseWithOptions(strings.NewReader(input), opts)
+
+	if fatalErr != nil {
+		t.Fatalf("Unexpected fatal error: %v", fatalErr)
+	}
+	if len(parseErrors) != 1 {
+		t.Fatalf("Expected 1 parse error, got %d: %v", len(parseErrors), parseErrors)
+	}
+	if parseErrors[0].Line != 2 ||
+		!strings.Contains(parseErrors[0].Message, "xref is missing its closing @") {
+		t.Errorf("Parse error = %v, want an unterminated-xref error on line 2", parseErrors[0])
+	}
+
+	if len(lines) != 4 {
+		t.Fatalf("Expected 4 lines, got %d", len(lines))
+	}
+	got := lines[1]
+	if got.XRef != "@I1" || got.Tag != "INDI" {
+		t.Errorf("Recovered line = %+v, want xref @I1 and tag INDI", *got)
+	}
+	if lines[2].Tag != "NAME" {
+		t.Errorf("Line 3 tag = %s, want NAME", lines[2].Tag)
+	}
+}
+
 // TestParseWithOptions_MaxErrors verifies that MaxErrors limit is respected
 func TestParseWithOptions_MaxErrors(t *testing.T) {
 	p := NewParser()
