@@ -280,7 +280,7 @@ func (u *utf8Reader) updatePosition(p []byte) {
 
 // advance moves the cursor over one rune of width bytes starting with b.
 // Line breaks follow the same rules as the parser's line splitter
-// (parser.scanGEDCOMLines): LF, CRLF and a bare CR each end one line. Tracking
+// (parser.lineScanner): LF, CRLF and a bare CR each end one line. Tracking
 // lastWasCR across calls keeps a CRLF pair split over two reads from counting
 // twice. Columns are counted in bytes.
 func (u *utf8Reader) advance(b byte, width int) {

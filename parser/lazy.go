@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -137,10 +136,14 @@ func (p *LazyParser) readRecordAt(entry IndexEntry) (*RawRecord, error) {
 	}
 
 	parser := NewParser()
-	scanner := bufio.NewScanner(limitedReader)
-	scanner.Split(scanGEDCOMLines)
+	scanner := newLineScanner(limitedReader)
 
 	for scanner.Scan() {
+		if scanner.Truncated() {
+			// Not a line — the head of one the reader cut short. Drop it and
+			// let the reader error below be the failure that is reported.
+			break
+		}
 		line, err := parser.ParseLine(scanner.Text())
 		if err != nil {
 			return nil, fmt.Errorf("parsing line: %w", err)

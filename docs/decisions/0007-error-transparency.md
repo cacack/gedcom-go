@@ -142,6 +142,36 @@ Line numbering must also match the parser's line splitting, which ends a line on
 LF, CRLF, or a bare CR (old Macintosh). A counter that recognizes only LF
 reports line 1 for an entire CR-only file.
 
+### A Reader Error Outranks the Truncated Line It Leaves Behind
+
+Reads are byte-aligned, never line-aligned, so a read that fails lands part-way
+through a line as often as not. The line-oriented layer above is then holding
+the head of a line whose remaining bytes will never arrive, and `bufio.Scanner`
+offers no way to tell that fragment from a line: it treats *any* reader error as
+EOF, so it emits the residue as a token.
+
+Parsing that token is wrong either way it goes. With fewer than two fields it
+produces a syntax error against text the file never contained, and that error is
+reported instead of the read failure that caused it. With two or more fields
+(`1 NAME Fr`) it parses cleanly and a silently shortened value enters the
+document — the outcome this ADR exists to forbid.
+
+The convention: **a reader failure outranks any parse result derived from the
+line it truncated.** The fragment is dropped, contributes no diagnostic, and the
+wrapped reader error is reported — located, per the rule above, at the physical
+line the reader names. Nothing is hidden by the drop: the error identifies the
+exact line and column, and the fragment is by construction the last line, so no
+subordinate lines can be reparented by its absence (contrast the malformed-XRef
+recovery in `parser.ParseLine`, which keeps its line for exactly that reason).
+
+Completeness is decided by the terminator, not by the failure. A token that
+reached LF, CRLF, or a bare CR is a whole line and survives the read error that
+follows it — including a CRLF pair split at the failure point, where the CR ends
+the line and only the LF is lost. Only a token emitted with no terminator at all
+is a fragment, and only when the scan ended in a reader error rather than at
+end of input, where an unterminated final line is ordinary and valid.
+`parser.lineScanner.Truncated` is the single place that predicate lives.
+
 ### Validation Issues
 
 ```go
@@ -192,6 +222,7 @@ if level < 0 {
 ## References
 
 - `parser/errors.go` - ParseError implementation, readErrorLine
+- `parser/parser.go` - lineScanner.Truncated, the truncated-tail predicate
 - `charset/charset.go` - ErrInvalidUTF8
 - `validator/issue.go` - Validation issue structure
 - CLAUDE.md - Principle V (Error Transparency)

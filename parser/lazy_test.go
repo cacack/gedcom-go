@@ -904,3 +904,64 @@ func TestLazyParser_AllRecords_MatchesIterateAll(t *testing.T) {
 		}
 	}
 }
+
+// truncatingReadSeeker serves its content normally until arm is called, then
+// hands over budget more bytes before failing. That lets a test build an index
+// over intact content and only afterwards fail part-way through a line.
+type truncatingReadSeeker struct {
+	*strings.Reader
+	armed  bool
+	budget int
+	err    error
+}
+
+func (r *truncatingReadSeeker) arm(budget int, err error) {
+	r.armed = true
+	r.budget = budget
+	r.err = err
+}
+
+func (r *truncatingReadSeeker) Read(p []byte) (int, error) {
+	if !r.armed {
+		return r.Reader.Read(p)
+	}
+	if r.budget <= 0 {
+		return 0, r.err
+	}
+	if len(p) > r.budget {
+		p = p[:r.budget]
+	}
+	n, err := r.Reader.Read(p)
+	r.budget -= n
+	return n, err
+}
+
+// readRecordAt shares the truncated-tail hazard with Parse: a read that fails
+// part-way through a line leaves the scanner holding a fragment, and parsing
+// it reports a syntax error the file never contained (issue #382).
+func TestLazyParser_ReadErrorOutranksTruncatedTail(t *testing.T) {
+	// The HEAD record is the first 16 bytes; failing 8 bytes in leaves the
+	// scanner holding "1", which parses as a line with no tag.
+	const input = "0 HEAD\n1 SOUR T\n0 TRLR\n"
+	const headBytes = 8
+
+	rs := &truncatingReadSeeker{Reader: strings.NewReader(input)}
+	lp := NewLazyParser(rs)
+	if err := lp.BuildIndex(); err != nil {
+		t.Fatalf("BuildIndex() error = %v", err)
+	}
+
+	readErr := errors.New("disk on fire")
+	rs.arm(headBytes, readErr)
+
+	record, err := lp.FindRecordByType("HEAD")
+	if err == nil {
+		t.Fatalf("FindRecordByType() succeeded with record %+v, want the reader error", record)
+	}
+	if !errors.Is(err, readErr) {
+		t.Errorf("FindRecordByType() error = %v, want it to wrap %v", err, readErr)
+	}
+	if strings.Contains(err.Error(), "at least level and tag") {
+		t.Errorf("FindRecordByType() error = %v, want the reader error, not a syntax error about the fragment", err)
+	}
+}
