@@ -2,6 +2,7 @@ package decoder
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 
@@ -81,10 +82,10 @@ func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, erro
 	}
 
 	// Build document from lines
-	doc := buildDocument(lines, detectedVersion)
+	// Pass nil collector for existing API (no diagnostics collection)
+	doc := buildDocument(lines, detectedVersion, nil)
 
 	// Convert raw tags to proper entity types
-	// Pass nil collector for existing API (no diagnostics collection)
 	populateEntities(doc, nil)
 
 	return doc, nil
@@ -230,7 +231,7 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 	}
 
 	// Build document from lines
-	doc := buildDocument(lines, detectedVersion)
+	doc := buildDocument(lines, detectedVersion, collector)
 
 	// Convert raw tags to proper entity types
 	populateEntities(doc, collector)
@@ -285,7 +286,8 @@ func classifyParseError(message string) string {
 }
 
 // buildDocument constructs a Document from parsed lines.
-func buildDocument(lines []*parser.Line, ver gedcom.Version) *gedcom.Document {
+// If collector is nil, no diagnostics are collected.
+func buildDocument(lines []*parser.Line, ver gedcom.Version, collector *diagnosticCollector) *gedcom.Document {
 	doc := &gedcom.Document{
 		XRefMap: make(map[string]*gedcom.Record),
 		Header:  &gedcom.Header{Version: ver},
@@ -300,7 +302,7 @@ func buildDocument(lines []*parser.Line, ver gedcom.Version) *gedcom.Document {
 	buildHeader(doc, lines, ver)
 
 	// Build records and XRefMap
-	buildRecords(doc, lines)
+	buildRecords(doc, lines, collector)
 
 	return doc
 }
@@ -313,7 +315,11 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 	inSour := false
 
 	for i, line := range lines {
-		if line.Level == 0 && line.Tag == "HEAD" {
+		// The GEDCOM grammar gives HEAD no cross-reference identifier, so
+		// `0 @X1@ HEAD` is not a header: treating it as one would let a second,
+		// bogus header overwrite the real header's typed fields. buildRecords
+		// keeps it as an ordinary record and reports it.
+		if line.Level == 0 && line.Tag == "HEAD" && line.XRef == "" {
 			inHead = true
 			continue
 		}
@@ -417,7 +423,8 @@ func parseSchemaTag(doc *gedcom.Document, lines []*parser.Line, schmaIndex int) 
 }
 
 // buildRecords extracts records from lines and builds the XRefMap.
-func buildRecords(doc *gedcom.Document, lines []*parser.Line) {
+// If collector is nil, no diagnostics are collected.
+func buildRecords(doc *gedcom.Document, lines []*parser.Line, collector *diagnosticCollector) {
 	var currentRecord *gedcom.Record
 	var currentTags []*gedcom.Tag
 
@@ -431,10 +438,18 @@ func buildRecords(doc *gedcom.Document, lines []*parser.Line) {
 				currentTags = nil
 			}
 
-			// Skip HEAD and TRLR
+			// Skip HEAD and TRLR — but only the real ones. Neither takes a
+			// cross-reference identifier in the GEDCOM grammar, so a line such
+			// as `0 @X1@ HEAD` is not the document's header or trailer. Skipping
+			// it would drop the line and silently reparent its subordinates;
+			// keep it as an ordinary record (Type "HEAD"/"TRLR", XRef "@X1@")
+			// and report the misplaced identifier instead.
 			if line.Tag == "HEAD" || line.Tag == "TRLR" {
-				currentRecord = nil
-				continue
+				if line.XRef == "" {
+					currentRecord = nil
+					continue
+				}
+				collector.addXRefOnStructuralLine(line)
 			}
 
 			// Start new record
@@ -470,4 +485,28 @@ func buildRecords(doc *gedcom.Document, lines []*parser.Line) {
 		currentRecord.Tags = currentTags
 		doc.Records = append(doc.Records, currentRecord)
 	}
+}
+
+// addXRefOnStructuralLine records a level-0 HEAD or TRLR line that carries a
+// cross-reference identifier the GEDCOM grammar does not allow there.
+//
+// The code is CodeInvalidXRef — an XRef where the grammar forbids one, the same
+// classification the malformed-XRef shapes in the parser use. Severity is
+// SeverityError, not SeverityWarning: the line is not a valid header or trailer,
+// so the file is wrong even though the decoder keeps the data as a record.
+func (c *diagnosticCollector) addXRefOnStructuralLine(line *parser.Line) {
+	if c == nil {
+		return
+	}
+	// Context is the offending line reconstructed from its parsed fields, the
+	// same shape the parser reports raw lines in. TrimRight drops the trailing
+	// separator when there is no value, which is the usual case.
+	context := strings.TrimRight(fmt.Sprintf("%d %s %s %s", line.Level, line.XRef, line.Tag, line.Value), " ")
+	c.add(NewDiagnostic(
+		line.LineNumber,
+		SeverityError,
+		CodeInvalidXRef,
+		fmt.Sprintf("xref not allowed on %s: %s", line.Tag, line.XRef),
+		context,
+	))
 }

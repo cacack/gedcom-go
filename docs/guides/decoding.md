@@ -71,7 +71,7 @@ Parse-level errors (severity: ERROR):
 |------|---------|
 | `SYNTAX_ERROR` | General syntax problem |
 | `INVALID_LEVEL` | Level number could not be parsed, is negative, or exceeds 99 (line dropped) |
-| `INVALID_XREF` | Malformed cross-reference identifier (an XRef containing a space, or a level-0 XRef with no closing `@`, is recovered and kept — see [FEATURES.md](../../FEATURES.md#lenient-parsing--diagnostics)) |
+| `INVALID_XREF` | Cross-reference identifier that is malformed (contains a space, or has no closing `@`) or that the grammar forbids where it appears (`0 @X1@ HEAD`, `0 @X1@ TRLR`); the line is kept as a record wherever recovery is possible — see [FEATURES.md](../../FEATURES.md#lenient-parsing--diagnostics) |
 | `EMPTY_LINE` | Unexpected blank line |
 
 Entity-level warnings (severity: WARNING):

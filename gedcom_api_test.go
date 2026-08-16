@@ -605,6 +605,53 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
+// TestRoundTripXRefOnStructuralLine pins the end-to-end losslessness of a
+// level-0 HEAD/TRLR line that carries a cross-reference identifier the GEDCOM
+// grammar does not allow there (issue #396). The real header survives, the
+// misplaced line is re-encoded as the record it became — subordinates and all —
+// and a second decode/encode pass is stable.
+func TestRoundTripXRefOnStructuralLine(t *testing.T) {
+	input := `0 HEAD
+1 SOUR RealVendor
+1 GEDC
+2 VERS 5.5
+1 CHAR UTF-8
+0 @X1@ TRLR
+1 NOTE important
+0 @I1@ INDI
+1 NAME Valid /Person/
+0 TRLR
+`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	out := buf.String()
+	for _, want := range []string{"1 SOUR RealVendor", "0 @X1@ TRLR", "1 NOTE important"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("encoded output missing %q:\n%s", want, out)
+		}
+	}
+
+	doc2, err := Decode(strings.NewReader(out))
+	if err != nil {
+		t.Fatalf("second Decode() error = %v", err)
+	}
+	var buf2 bytes.Buffer
+	if err := Encode(&buf2, doc2); err != nil {
+		t.Fatalf("second Encode() error = %v", err)
+	}
+	if buf2.String() != out {
+		t.Errorf("round trip is not stable:\nfirst:\n%s\nsecond:\n%s", out, buf2.String())
+	}
+}
+
 // TestDecodeResultType verifies DecodeResult type alias.
 func TestDecodeResultType(t *testing.T) {
 	var result *DecodeResult

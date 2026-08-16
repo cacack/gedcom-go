@@ -45,9 +45,12 @@ type DecodeOptions struct {
 	//     not pointer-shaped, so `@I1@` references elsewhere in the file do
 	//     not resolve to the recovered record. `0 @I1`, `0 @I1 HEAD` and
 	//     `0 @I1 TRLR` are reported but not recovered: they keep their
-	//     pre-existing parse, since HEAD and TRLR are structural tags and
-	//     promoting either would overwrite the real header or drop the line
-	//     and its subordinates
+	//     pre-existing parse, with the identifier as the tag
+	//   - A well-formed XRef on a level-0 HEAD or TRLR line (e.g.
+	//     `0 @X1@ HEAD`) is not the document's header or trailer — the GEDCOM
+	//     grammar gives neither tag an identifier — so the line becomes an
+	//     ordinary record with Type "HEAD"/"TRLR", keeping its subordinate
+	//     lines; a CodeInvalidXRef diagnostic is emitted (SeverityError)
 	//   - Diagnostics are collected for all issues encountered
 	//   - Use [DecodeWithDiagnostics] to access diagnostics
 	//   - A partial document is returned if any valid records exist
