@@ -566,6 +566,148 @@ func TestAttributeSubordinates(t *testing.T) {
 	}
 }
 
+// TestAttributeTypeDetail pins the subordinate TYPE of an attribute onto
+// Attribute.TypeDetail (issue #386). parseAttribute used to discard TYPE for
+// every attribute tag, so IDNO — whose TYPE is mandatory in 5.5.1 — decoded
+// into a typed value that could not say what kind of identifier it was. The
+// two FACT cases are ordered and include an empty payload, whose entire
+// meaning is the TYPE line.
+func TestAttributeTypeDetail(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Smith/
+1 OCCU Bricklayer
+2 TYPE Trade
+1 IDNO 12345
+2 TYPE National ID
+1 TITL Dr.
+2 TYPE Academic
+2 DATE 1980
+2 PLAC Oxford, England
+1 FACT Distinguished Service Cross
+2 TYPE Award
+1 FACT
+2 TYPE Tomato
+1 RELI Methodist
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("Individual not found")
+	}
+
+	want := []struct {
+		attrType   string
+		value      string
+		typeDetail string
+		date       string
+		place      string
+	}{
+		{attrType: "OCCU", value: "Bricklayer", typeDetail: "Trade"},
+		{attrType: "IDNO", value: "12345", typeDetail: "National ID"},
+		{attrType: "TITL", value: "Dr.", typeDetail: "Academic", date: "1980", place: "Oxford, England"},
+		{attrType: "FACT", value: "Distinguished Service Cross", typeDetail: "Award"},
+		{attrType: "FACT", value: "", typeDetail: "Tomato"},
+		{attrType: "RELI", value: "Methodist", typeDetail: ""},
+	}
+
+	if len(indi.Attributes) != len(want) {
+		t.Fatalf("len(Attributes) = %d, want %d", len(indi.Attributes), len(want))
+	}
+
+	for i, exp := range want {
+		attr := indi.Attributes[i]
+		if attr.Type != exp.attrType {
+			t.Errorf("Attributes[%d].Type = %q, want %q", i, attr.Type, exp.attrType)
+		}
+		if attr.Value != exp.value {
+			t.Errorf("Attributes[%d].Value = %q, want %q", i, attr.Value, exp.value)
+		}
+		if attr.TypeDetail != exp.typeDetail {
+			t.Errorf("Attributes[%d].TypeDetail = %q, want %q", i, attr.TypeDetail, exp.typeDetail)
+		}
+		if attr.Date != exp.date {
+			t.Errorf("Attributes[%d].Date = %q, want %q", i, attr.Date, exp.date)
+		}
+		if attr.Place != exp.place {
+			t.Errorf("Attributes[%d].Place = %q, want %q", i, attr.Place, exp.place)
+		}
+	}
+}
+
+// TestFamilyFactRecognized pins FAM-level FACT as a recognized tag (issue
+// #386). FACT is 7.0-only under FAM and gedcom.Family has no Attributes
+// field, so it is recognized but not typed; it must not be reported as
+// UNKNOWN_TAG, and its subtree — which is never walked — must not add
+// diagnostics of its own.
+func TestFamilyFactRecognized(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @F1@ FAM
+1 FACT Fact
+2 TYPE Type of fact
+2 HUSB
+3 AGE 25y
+4 PHRASE Adult
+0 TRLR
+`
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+
+	for _, diag := range result.Diagnostics {
+		if diag.Code == CodeUnknownTag {
+			t.Errorf("unexpected UNKNOWN_TAG: %s", diag.Message)
+		}
+	}
+
+	fam := result.Document.GetFamily("@F1@")
+	if fam == nil {
+		t.Fatal("GetFamily(@F1@) returned nil")
+	}
+	found := false
+	for _, tg := range fam.Tags {
+		if tg.Level == 1 && tg.Tag == "FACT" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("family @F1@ missing raw FACT tag")
+	}
+}
+
+// TestMaximal70FactNotUnknown is the file-backed half of TestFamilyFactRecognized:
+// maximal70.ged carries a FACT under both INDI (line 296) and FAM (line 68).
+// Scoped to the FACT message so an unrelated regression cannot blame it.
+func TestMaximal70FactNotUnknown(t *testing.T) {
+	f, err := os.Open("../testdata/gedcom-7.0/maximal70.ged")
+	if err != nil {
+		t.Fatalf("Failed to open test file: %v", err)
+	}
+	defer f.Close()
+
+	result, err := DecodeWithDiagnostics(f, nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+
+	for _, diag := range result.Diagnostics {
+		if diag.Code == CodeUnknownTag && diag.Message == "unknown tag: FACT" {
+			t.Errorf("FACT reported as UNKNOWN_TAG at line %d", diag.Line)
+		}
+	}
+}
+
 // TestReligiousEvents tests parsing of religious event types.
 // Validates support for BARM, BASM, BLES, CONF, FCOM, CHRA event types.
 // Priority: P2 (Important)
@@ -1109,13 +1251,27 @@ func TestMaximal70Individual(t *testing.T) {
 
 	// Test attributes (RESI is parsed as an event, not attribute)
 	attrTypes := make(map[string]bool)
+	attrTypeDetails := make(map[string]string)
 	for _, attr := range indi.Attributes {
 		attrTypes[attr.Type] = true
+		attrTypeDetails[attr.Type] = attr.TypeDetail
 	}
-	expectedAttrs := []string{"CAST", "DSCR", "EDUC", "IDNO", "NATI", "OCCU", "RELI", "SSN", "TITL"}
+	expectedAttrs := []string{"CAST", "DSCR", "EDUC", "IDNO", "NATI", "OCCU", "RELI", "SSN", "TITL", "FACT"}
 	for _, exp := range expectedAttrs {
 		if !attrTypes[exp] {
 			t.Errorf("Attribute %s not found", exp)
+		}
+	}
+
+	// Every attribute in maximal70.ged carries a subordinate TYPE (issue #386)
+	expectedTypeDetails := map[string]string{
+		"CAST": "Caste type",
+		"IDNO": "ID number type",
+		"FACT": "fact type",
+	}
+	for attrType, want := range expectedTypeDetails {
+		if got := attrTypeDetails[attrType]; got != want {
+			t.Errorf("Attribute %s TypeDetail = %q, want %q", attrType, got, want)
 		}
 	}
 

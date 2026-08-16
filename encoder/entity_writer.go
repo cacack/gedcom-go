@@ -806,6 +806,10 @@ func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PLAC", Value: attr.Place})
 	}
 
+	if attr.TypeDetail != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: attr.TypeDetail})
+	}
+
 	// Source citations
 	for _, cite := range attr.SourceCitations {
 		tags = append(tags, sourceCitationToTags(cite, level+1, opts)...)

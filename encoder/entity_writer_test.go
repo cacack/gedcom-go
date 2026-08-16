@@ -881,6 +881,16 @@ func TestAttributeToTags(t *testing.T) {
 			level:    1,
 			contains: []string{"OCCU", "SOUR"},
 		},
+		{
+			name: "attribute with type detail",
+			attr: &gedcom.Attribute{
+				Type:       "FACT",
+				Value:      "Distinguished Service Cross",
+				TypeDetail: "Award",
+			},
+			level:    1,
+			contains: []string{"FACT", "TYPE"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -904,6 +914,126 @@ func TestAttributeToTags(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestAttributeToTagsTypeDetail pins Attribute.TypeDetail onto a TYPE line at
+// level+1, in the position eventToTags uses (after PLAC). Without it the
+// entity-to-tags path of ADR 0003 would re-encode a bare "1 FACT" and lose the
+// only thing that gives the attribute meaning (issue #386).
+func TestAttributeToTagsTypeDetail(t *testing.T) {
+	tests := []struct {
+		name string
+		attr *gedcom.Attribute
+		want []*gedcom.Tag
+	}{
+		{
+			name: "type detail after place",
+			attr: &gedcom.Attribute{
+				Type:       "IDNO",
+				Value:      "12345",
+				Date:       "1980",
+				Place:      "Oxford",
+				TypeDetail: "National ID",
+			},
+			want: []*gedcom.Tag{
+				{Level: 1, Tag: "IDNO", Value: "12345"},
+				{Level: 2, Tag: "DATE", Value: "1980"},
+				{Level: 2, Tag: "PLAC", Value: "Oxford"},
+				{Level: 2, Tag: "TYPE", Value: "National ID"},
+			},
+		},
+		{
+			name: "empty payload carries only the type",
+			attr: &gedcom.Attribute{Type: "FACT", TypeDetail: "Tomato"},
+			want: []*gedcom.Tag{
+				{Level: 1, Tag: "FACT", Value: ""},
+				{Level: 2, Tag: "TYPE", Value: "Tomato"},
+			},
+		},
+		{
+			name: "no type line when unset",
+			attr: &gedcom.Attribute{Type: "OCCU", Value: "Engineer"},
+			want: []*gedcom.Tag{
+				{Level: 1, Tag: "OCCU", Value: "Engineer"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tags := attributeToTags(tt.attr, 1, nil)
+			if len(tags) != len(tt.want) {
+				t.Fatalf("attributeToTags() returned %d tags, want %d: %v", len(tags), len(tt.want), tags)
+			}
+			for i, want := range tt.want {
+				got := tags[i]
+				if got.Level != want.Level || got.Tag != want.Tag || got.Value != want.Value {
+					t.Errorf("tag[%d] = %d %s %q, want %d %s %q",
+						i, got.Level, got.Tag, got.Value, want.Level, want.Tag, want.Value)
+				}
+			}
+		})
+	}
+}
+
+// TestAttributeTypeDetailEntityRoundTrip exercises the ADR 0003 entity-to-tags
+// path, which is the only path where a missing Attribute.TypeDetail would lose
+// data: writeRecord prefers record.Tags, so a decoded document re-encodes
+// unchanged regardless (issue #386).
+func TestAttributeTypeDetailEntityRoundTrip(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Smith/
+1 FACT Distinguished Service Cross
+2 TYPE Award
+0 TRLR
+`
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	// Drop the raw tags so the encoder must rebuild them from the entity.
+	for _, rec := range doc.Records {
+		if rec.Type == "INDI" {
+			rec.Tags = nil
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	if !strings.Contains(buf.String(), "2 TYPE Award") {
+		t.Errorf("entity-encoded output missing TYPE line:\n%s", buf.String())
+	}
+
+	redoc, err := decoder.Decode(strings.NewReader(buf.String()))
+	if err != nil {
+		t.Fatalf("re-Decode() error = %v", err)
+	}
+	indi := redoc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil after round trip")
+	}
+	var fact *gedcom.Attribute
+	for _, attr := range indi.Attributes {
+		if attr.Type == "FACT" {
+			fact = attr
+			break
+		}
+	}
+	if fact == nil {
+		t.Fatal("FACT attribute lost in entity round trip")
+	}
+	if fact.TypeDetail != "Award" {
+		t.Errorf("FACT TypeDetail = %q, want %q", fact.TypeDetail, "Award")
+	}
+	if fact.Value != "Distinguished Service Cross" {
+		t.Errorf("FACT Value = %q, want %q", fact.Value, "Distinguished Service Cross")
 	}
 }
 

@@ -937,6 +937,7 @@ func TestCloneAttributeWithCitations(t *testing.T) {
 		Value:           "Farmer",
 		Date:            "1900",
 		Place:           "Iowa",
+		TypeDetail:      "Trade",
 		ParsedDate:      &Date{Original: "1900", Year: 1900},
 		SourceCitations: []*SourceCitation{{SourceXRef: "@S1@", Page: "Page 5"}},
 	}
@@ -944,6 +945,9 @@ func TestCloneAttributeWithCitations(t *testing.T) {
 	copied := cloneAttribute(original)
 	if copied.Type != original.Type || copied.Value != original.Value || copied.Date != original.Date || copied.Place != original.Place {
 		t.Error("Field mismatch")
+	}
+	if copied.TypeDetail != original.TypeDetail {
+		t.Errorf("TypeDetail = %q, want %q", copied.TypeDetail, original.TypeDetail)
 	}
 	if copied.ParsedDate == nil {
 		t.Error("ParsedDate should not be nil")

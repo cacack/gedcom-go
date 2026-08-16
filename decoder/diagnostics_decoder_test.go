@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/v2/gedcom"
 	"github.com/cacack/gedcom-go/v2/parser"
 )
 
@@ -464,6 +465,9 @@ func TestEntityLevelDiagnosticsVendorExtensionNotWarned(t *testing.T) {
 // UNKNOWN_TAG means "nonstandard tag", so none of these may produce one, and
 // each must still survive on Individual.Tags (ADR 0003). Corpus fixtures only
 // exercise AFN, ALIA and RIN, so this test is what holds the rest in place.
+// FACT left the recognized-but-not-typed set in issue #386 and is asserted
+// below as typed; INIL stays raw-only by decision, which the same assertion
+// pins.
 func TestEntityLevelDiagnosticsStandardIndividualTags(t *testing.T) {
 	// Subordinate lines are deliberately included: they must not leak
 	// diagnostics either, since only level-1 tags are dispatched.
@@ -501,6 +505,8 @@ func TestEntityLevelDiagnosticsStandardIndividualTags(t *testing.T) {
 	if ind == nil {
 		t.Fatal("GetIndividual(@I1@) returned nil")
 	}
+	// FACT is included: it is typed now, but ADR 0003 still requires the raw
+	// tag alongside the typed view.
 	want := []string{"ALIA", "AFN", "RFN", "RIN", "ANCI", "DESI", "SUBM", "RESN", "FACT", "INIL"}
 	for _, tag := range want {
 		found := false
@@ -512,6 +518,31 @@ func TestEntityLevelDiagnosticsStandardIndividualTags(t *testing.T) {
 		}
 		if !found {
 			t.Errorf("individual @I1@ missing raw %s tag", tag)
+		}
+	}
+
+	// FACT is typed into Individual.Attributes with its mandatory TYPE (#386).
+	var fact *gedcom.Attribute
+	for _, attr := range ind.Attributes {
+		if attr.Type == "FACT" {
+			fact = attr
+			break
+		}
+	}
+	if fact == nil {
+		t.Fatal("FACT not decoded into Individual.Attributes")
+	}
+	if fact.Value != "Distinguished Service Cross" {
+		t.Errorf("FACT Value = %q, want %q", fact.Value, "Distinguished Service Cross")
+	}
+	if fact.TypeDetail != "Award" {
+		t.Errorf("FACT TypeDetail = %q, want %q", fact.TypeDetail, "Award")
+	}
+
+	// INIL stays raw-only by decision (#386): no typed LDS ordinance for it.
+	for _, ord := range ind.LDSOrdinances {
+		if string(ord.Type) == "INIL" {
+			t.Error("INIL decoded into Individual.LDSOrdinances; it is deliberately raw-only")
 		}
 	}
 }
