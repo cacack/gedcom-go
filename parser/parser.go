@@ -8,10 +8,10 @@ import (
 	"strings"
 )
 
-// MaxNestingDepth is the maximum number of nesting levels accepted, which
-// bounds memory use on malformed files. GEDCOM's level field is at most two
-// digits, so the deepest valid level is 99: valid levels run from 0 through
-// MaxNestingDepth-1, and a line with a deeper level is rejected.
+// MaxNestingDepth is the number of nesting levels accepted, derived from the
+// GEDCOM grammar rather than from any resource limit: the level field is at
+// most two digits, so the deepest valid level is 99. Valid levels run from 0
+// through MaxNestingDepth-1, and a line with a deeper level is rejected.
 const MaxNestingDepth = 100
 
 // Parser parses GEDCOM files into Line structures.

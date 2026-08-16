@@ -13,7 +13,7 @@ import (
 func TestDefaultOptionsHelpers(t *testing.T) {
 	t.Parallel()
 
-	if opts := gedcomgo.DefaultDecodeOptions(); opts == nil || opts.MaxNestingDepth == 0 {
+	if opts := gedcomgo.DefaultDecodeOptions(); opts == nil || opts.Context == nil {
 		t.Errorf("DefaultDecodeOptions returned unexpected value: %+v", opts)
 	}
 	if opts := gedcomgo.DefaultEncodeOptions(); opts == nil || opts.LineEnding == "" {

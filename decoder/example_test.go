@@ -82,8 +82,7 @@ func ExampleDecodeWithOptions() {
 
 	// Create custom options
 	opts := &decoder.DecodeOptions{
-		MaxNestingDepth: 50,
-		StrictMode:      false,
+		StrictMode: false,
 	}
 
 	doc, err := decoder.DecodeWithOptions(strings.NewReader(gedcomData), opts)
