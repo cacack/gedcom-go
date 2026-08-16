@@ -719,3 +719,76 @@ func TestValidateAllNilDocument(t *testing.T) {
 		t.Errorf("ValidateAll(nil) should return nil or empty, got %v", issues)
 	}
 }
+
+// TestConvert551To70MultilineNoteRoundTrips pins that converting a 5.5.1
+// document with a multi-line note to 7.0 produces output this library can read
+// back (issue #419).
+//
+// The converter consolidates CONT into an embedded newline as its internal
+// representation, which is fine; the defect was that the encoder then wrote
+// that value inline, emitting a line with no level and no tag. The result was a
+// conversion whose own output failed strict decode — while the ConversionReport
+// said DataLoss was empty, so a caller checking the documented safety signal got
+// an explicit all-clear on an unreadable file.
+//
+// CONT is retained in GEDCOM 7.0 (7.0 removed CONC, not CONT), so re-emitting it
+// is the correct target-version encoding, not a fallback.
+func TestConvert551To70MultilineNoteRoundTrips(t *testing.T) {
+	const input = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME A /B/
+1 NOTE line1
+2 CONT line2
+0 TRLR
+`
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	converted, report, err := converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert() error = %v", err)
+	}
+	if len(report.DataLoss) != 0 {
+		t.Errorf("DataLoss = %v, want none", report.DataLoss)
+	}
+
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, converted); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	out := buf.String()
+
+	// The line break must come back as CONT, not as bare continuation text.
+	if !strings.Contains(out, "1 NOTE line1\n2 CONT line2\n") {
+		t.Errorf("converted output does not re-emit the line break as CONT\ngot:\n%s", out)
+	}
+
+	// The point of the issue: the converter's own output must be readable.
+	roundTripped, err := decoder.Decode(strings.NewReader(out))
+	if err != nil {
+		t.Fatalf("re-decoding the converted output failed: %v\ngot:\n%s", err, out)
+	}
+
+	// And the note text must survive intact, not merely parse.
+	var got string
+	for _, r := range roundTripped.Records {
+		for i, tag := range r.Tags {
+			if tag.Tag != "NOTE" {
+				continue
+			}
+			got = tag.Value
+			if i+1 < len(r.Tags) && r.Tags[i+1].Tag == "CONT" {
+				got += "\n" + r.Tags[i+1].Value
+			}
+		}
+	}
+	if got != "line1\nline2" {
+		t.Errorf("note text after round trip = %q, want %q", got, "line1\nline2")
+	}
+}
