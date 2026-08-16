@@ -41,7 +41,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 
 | Operation | Options type | Facade entry point | Common knobs |
 |-----------|--------------|--------------------|--------------|
-| Decode | `decoder.DecodeOptions` | `gedcomgo.DecodeWithOptions` | `Context`, `MaxNestingDepth`, `StrictMode`, `OnProgress`, `TotalSize` |
+| Decode | `decoder.DecodeOptions` | `gedcomgo.DecodeWithOptions` | `Context`, `StrictMode`, `OnProgress`, `TotalSize` |
 | Encode | `encoder.EncodeOptions` | `gedcomgo.EncodeWithOptions` | `LineEnding`, `MaxLineLength`, `DisableLineWrap`, `TargetVersion`, `PreserveUnknownTags` |
 | Validate | `validator.ValidateOptions` | `gedcomgo.ValidateAllWithOptions` | `Strictness`, `MaxErrors`, `SkipRules`, `DateLogic`, `Duplicates`, `TagRegistry`, `ValidateCustomTags`, `SkipEncodingValidation` |
 
@@ -1024,10 +1024,10 @@ Full control over decoding behavior with `DecodeOptions`:
 | Option | Type | Description |
 |--------|------|-------------|
 | `Context` | `context.Context` | Cancellation and timeout control |
-| `MaxNestingDepth` | `int` | Number of accepted nesting levels; valid levels are 0..N-1 (default: 100, i.e. levels 0-99) |
 | `StrictMode` | `bool` | Reject non-standard extensions |
 | `OnProgress` | `ProgressCallback` | Progress reporting callback |
 | `TotalSize` | `int64` | Expected file size for progress percentage |
+| `MaxNestingDepth` | `int` | **Deprecated, no effect.** The decoder never reads it; the ceiling is fixed at `parser.MaxNestingDepth-1` (99) by the grammar. Will be removed in v3 ([#383](https://github.com/cacack/gedcom-go/issues/383)) |
 
 ### Progress Reporting
 

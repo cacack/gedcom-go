@@ -3,6 +3,7 @@ package decoder
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -202,21 +203,105 @@ func TestDecodeWithContext(t *testing.T) {
 	})
 }
 
-// Test max nesting depth
-func TestDecodeMaxNestingDepth(t *testing.T) {
-	input := `0 HEAD
+// TestDecodeMaxNestingDepthIsInert pins the contract of the deprecated
+// DecodeOptions.MaxNestingDepth field (issue #383): the decoder does not read
+// it, and the level ceiling is parser.MaxNestingDepth in every case. The two
+// subtests assert inertness in both directions, so this test FAILS if anyone
+// ever quietly wires the option up — which is the point. Do not "fix" it by
+// connecting the field; the field is scheduled for removal in v3.
+func TestDecodeMaxNestingDepthIsInert(t *testing.T) {
+	t.Run("cannot lower the ceiling", func(t *testing.T) {
+		// Level 4 is deeper than the configured limit of 3, and is perfectly
+		// valid GEDCOM. It must decode losslessly.
+		input := `0 HEAD
 1 GEDC
-2 VERS 5.5
+2 VERS 5.5.1
+0 @I1@ INDI
+1 BIRT
+2 SOUR @S1@
+3 DATA
+4 DATE 1 JAN 1900
 0 TRLR`
 
-	opts := &DecodeOptions{
-		MaxNestingDepth: 10,
-	}
+		opts := DefaultOptions()
+		opts.MaxNestingDepth = 3
 
-	_, err := DecodeWithOptions(strings.NewReader(input), opts)
-	if err != nil {
-		t.Fatalf("DecodeWithOptions() error = %v", err)
-	}
+		result, err := DecodeWithDiagnostics(strings.NewReader(input), opts)
+		if err != nil {
+			t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+		}
+		for _, d := range result.Diagnostics {
+			if d.Code == CodeInvalidLevel {
+				t.Errorf("line %d: unexpected %s (%s); MaxNestingDepth must not lower the ceiling",
+					d.Line, d.Code, d.Message)
+			}
+		}
+
+		// Lossless Representation: the level-4 line survives on the record.
+		rec := result.Document.GetRecord("@I1@")
+		if rec == nil {
+			t.Fatal("GetRecord(@I1@) returned nil")
+		}
+		var found bool
+		for _, tag := range rec.Tags {
+			if tag.Tag == "DATE" && tag.Value == "1 JAN 1900" {
+				found = true
+				if tag.Level != 4 {
+					t.Errorf("DATE tag level = %d, want 4 (unclamped)", tag.Level)
+				}
+			}
+		}
+		if !found {
+			t.Error("level-4 DATE tag missing; MaxNestingDepth must not drop deep lines")
+		}
+	})
+
+	t.Run("cannot raise the ceiling", func(t *testing.T) {
+		// parser.MaxNestingDepth is 100, so the fixture's level-100 and
+		// level-101 lines are rejected even though 1000 was configured.
+		const path = "../testdata/malformed/level-over-99.ged"
+
+		lenient := DefaultOptions()
+		lenient.MaxNestingDepth = 1000
+
+		f, err := os.Open(path)
+		if err != nil {
+			t.Fatalf("open fixture: %v", err)
+		}
+		defer f.Close()
+
+		result, err := DecodeWithDiagnostics(f, lenient)
+		if err != nil {
+			t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+		}
+		var rejected []int
+		for _, d := range result.Diagnostics {
+			if d.Code == CodeInvalidLevel {
+				rejected = append(rejected, d.Line)
+			}
+		}
+		// The same two lines TestStructuralTortureLevelOver99 pins with
+		// default options: raising the option changes nothing.
+		if len(rejected) != 2 || rejected[0] != 17 || rejected[1] != 18 {
+			t.Errorf("INVALID_LEVEL diagnostics at lines %v, want [17 18] (levels 100 and 101)", rejected)
+		}
+
+		strict := DefaultOptions()
+		strict.MaxNestingDepth = 1000
+		strict.StrictMode = true
+
+		sf, err := os.Open(path)
+		if err != nil {
+			t.Fatalf("open fixture: %v", err)
+		}
+		defer sf.Close()
+
+		if _, err := DecodeWithOptions(sf, strict); err == nil {
+			t.Fatal("strict decode should still fail on level 100")
+		} else if !strings.Contains(err.Error(), "level 100 exceeds maximum nesting depth") {
+			t.Errorf("strict error = %v, want rejection of level 100", err)
+		}
+	})
 }
 
 // Test strict mode

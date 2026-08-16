@@ -12,11 +12,16 @@ type DecodeOptions struct {
 	// Context allows cancellation and timeout control
 	Context context.Context
 
-	// MaxNestingDepth sets the number of accepted nesting levels: valid
-	// levels run from 0 through MaxNestingDepth-1 (default: 100, i.e. levels
-	// 0-99). This bounds memory use on malformed files.
+	// MaxNestingDepth is deprecated and has no effect: the decoder never
+	// reads it. The effective ceiling is parser.MaxNestingDepth-1, fixed by
+	// the GEDCOM grammar's two-digit level field, so valid levels are 0-99 no
+	// matter what this field is set to — setting it neither lowers nor raises
+	// the ceiling. It is kept, and still defaulted to 100 by DefaultOptions,
+	// for source compatibility through the v2 series.
 	//
-	// Currently unused: parser.MaxNestingDepth is the effective ceiling.
+	// Deprecated: has no effect; the level ceiling is fixed at
+	// parser.MaxNestingDepth-1 (99) by the GEDCOM grammar. Will be removed
+	// in v3.
 	MaxNestingDepth int
 
 	// StrictMode controls how parsing errors are handled.
