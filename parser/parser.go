@@ -123,15 +123,7 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 	// Parse value (everything after the tag)
 	var value string
 	if valueStartIdx < len(parts) {
-		// Find the position in the original line where the value starts
-		// We need to preserve original spacing in the value
-		tagPos := strings.Index(line, tag)
-		if tagPos >= 0 {
-			afterTag := tagPos + len(tag)
-			if afterTag < len(line) {
-				value = strings.TrimLeft(line[afterTag:], " ")
-			}
-		}
+		value = sliceValue(line, xref, tag)
 	}
 
 	return &Line{
@@ -141,6 +133,37 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 		XRef:       xref,
 		LineNumber: p.lineNumber,
 	}, nil
+}
+
+// sliceValue returns the value that follows tag on line, preserving the
+// original interior spacing — which is why it works on the raw line rather
+// than on the split fields.
+//
+// The search starts after the XRef, if there is one. An identifier may contain
+// the tag name ("1 @NOTE1@ NOTE See page 5"), and searching from the start of
+// the line would find that occurrence and slice the value out of the middle of
+// the identifier, giving "1@ NOTE See page 5". That was self-limiting while
+// the identifier was discarded on the way into the document; once it is kept
+// and re-encoded, the mangled value feeds back in and the line grows on every
+// round trip.
+func sliceValue(line, xref, tag string) string {
+	searchFrom := 0
+	if xref != "" {
+		if i := strings.Index(line, xref); i >= 0 {
+			searchFrom = i + len(xref)
+		}
+	}
+
+	rel := strings.Index(line[searchFrom:], tag)
+	if rel < 0 {
+		return ""
+	}
+
+	afterTag := searchFrom + rel + len(tag)
+	if afterTag >= len(line) {
+		return ""
+	}
+	return strings.TrimLeft(line[afterTag:], " ")
 }
 
 // splitSpacedXRef detects an XRef identifier containing a space, e.g.

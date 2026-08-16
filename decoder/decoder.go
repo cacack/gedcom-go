@@ -470,10 +470,16 @@ func buildRecords(doc *gedcom.Document, lines []*parser.Line, collector *diagnos
 
 		// Add tags to current record
 		if currentRecord != nil {
+			// XRef is carried through even at level >= 1. Well-formed GEDCOM
+			// never has an XRef there, so this is empty for valid input; it is
+			// non-empty only when splitSpacedXRef recovered a malformed
+			// identifier (e.g. "1 @I 1@ NOTE"). Lossless representation
+			// requires keeping it rather than dropping it on the floor.
 			tag := &gedcom.Tag{
 				Level:      line.Level,
 				Tag:        line.Tag,
 				Value:      line.Value,
+				XRef:       line.XRef,
 				LineNumber: line.LineNumber,
 			}
 			currentTags = append(currentTags, tag)

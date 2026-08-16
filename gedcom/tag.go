@@ -14,7 +14,10 @@ type Tag struct {
 	Value string
 
 	// XRef is the optional cross-reference identifier (e.g., "@I1@")
-	// Only present for records that can be referenced by other records
+	// Normally present only on level-0 records, the tags other records can
+	// point at. It is also populated on a subordinate tag when the source
+	// line carried a malformed identifier the decoder recovered (e.g.
+	// "1 @I 1@ NOTE"), so that identifier is preserved verbatim.
 	XRef string
 
 	// LineNumber is the line number in the source file where this tag appears
