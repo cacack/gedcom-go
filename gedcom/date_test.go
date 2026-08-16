@@ -1558,6 +1558,7 @@ func TestParseDate_CalendarWithModifiers(t *testing.T) {
 		wantYear     int
 		wantMonth    int
 		wantDay      int
+		wantIsBC     bool
 	}{
 		{
 			name:         "ABT with Hebrew",
@@ -1576,6 +1577,80 @@ func TestParseDate_CalendarWithModifiers(t *testing.T) {
 			wantYear:     1700,
 			wantMonth:    12,
 			wantDay:      25,
+		},
+		// Spec order (5.5.1): the escape lives inside <date>, so it follows the
+		// modifier keyword. The two cases above are the vendor-emitted reverse
+		// order and are kept as regression guards.
+		{
+			name:         "ABT then Julian month-year",
+			input:        "ABT @#DJULIAN@ MAR 1066",
+			wantModifier: ModifierAbout,
+			wantCalendar: CalendarJulian,
+			wantYear:     1066,
+			wantMonth:    3,
+		},
+		{
+			name:         "CAL then Julian day-month-year",
+			input:        "CAL @#DJULIAN@ 12 MAY 1675",
+			wantModifier: ModifierCalculated,
+			wantCalendar: CalendarJulian,
+			wantYear:     1675,
+			wantMonth:    5,
+			wantDay:      12,
+		},
+		{
+			name:         "EST then Julian year only",
+			input:        "EST @#DJULIAN@ 1200",
+			wantModifier: ModifierEstimated,
+			wantCalendar: CalendarJulian,
+			wantYear:     1200,
+		},
+		{
+			name:         "BEF then Hebrew",
+			input:        "BEF @#DHEBREW@ 1 TSH 5000",
+			wantModifier: ModifierBefore,
+			wantCalendar: CalendarHebrew,
+			wantYear:     5000,
+			wantMonth:    1,
+			wantDay:      1,
+		},
+		{
+			// "@#DFRENCH R@" contains a space, so the escape must be stripped
+			// before the payload is split into fields.
+			name:         "AFT then French Republican",
+			input:        "AFT @#DFRENCH R@ 1 VEND 1",
+			wantModifier: ModifierAfter,
+			wantCalendar: CalendarFrenchRepublican,
+			wantYear:     1,
+			wantMonth:    1,
+			wantDay:      1,
+		},
+		{
+			name:         "modifier then escape then dual year",
+			input:        "ABT @#DJULIAN@ 21 FEB 1750/51",
+			wantModifier: ModifierAbout,
+			wantCalendar: CalendarJulian,
+			wantYear:     1750,
+			wantMonth:    2,
+			wantDay:      21,
+		},
+		{
+			name:         "modifier then escape then BC suffix",
+			input:        "BEF @#DJULIAN@ 15 MAR 44 BC",
+			wantModifier: ModifierBefore,
+			wantCalendar: CalendarJulian,
+			wantYear:     44,
+			wantMonth:    3,
+			wantDay:      15,
+			wantIsBC:     true,
+		},
+		{
+			name:         "modifier then escape with extra whitespace",
+			input:        "ABT   @#DJULIAN@   MAR 1066",
+			wantModifier: ModifierAbout,
+			wantCalendar: CalendarJulian,
+			wantYear:     1066,
+			wantMonth:    3,
 		},
 	}
 
@@ -1601,40 +1676,196 @@ func TestParseDate_CalendarWithModifiers(t *testing.T) {
 			if date.Day != tt.wantDay {
 				t.Errorf("Day = %d, want %d", date.Day, tt.wantDay)
 			}
+			if date.IsBC != tt.wantIsBC {
+				t.Errorf("IsBC = %v, want %v", date.IsBC, tt.wantIsBC)
+			}
 		})
 	}
 }
 
-// TestParseDate_CalendarWithRanges tests calendar dates in ranges
-// NOTE: Currently the calendar is not propagated to range dates (known limitation)
-// This test verifies that the range structure parses correctly even if calendar is lost
+// TestParseDate_CalendarWithRanges tests calendar dates in ranges. The escape is
+// a property of each <date> in "BET <date> AND <date>", so it may appear on the
+// leading escape-first form, on either date, or on both, and each date keeps its
+// own calendar.
 func TestParseDate_CalendarWithRanges(t *testing.T) {
-	input := "@#DJULIAN@ BET 1700 AND 1750"
-	date, err := ParseDate(input)
-	if err != nil {
-		t.Fatalf("ParseDate(%q) error = %v", input, err)
+	tests := []struct {
+		name          string
+		input         string
+		wantCalendar  Calendar
+		wantYear      int
+		wantEndCal    Calendar
+		wantEndYear   int
+		wantEndMonth  int
+		wantMonth     int
+		wantDay       int
+		wantEndDay    int
+		wantModifier  DateModifier
+		wantNoEndDate bool
+	}{
+		{
+			// Vendor escape-first order: both dates take the leading calendar.
+			name:         "escape before BET",
+			input:        "@#DJULIAN@ BET 1700 AND 1750",
+			wantCalendar: CalendarJulian,
+			wantYear:     1700,
+			wantEndCal:   CalendarJulian,
+			wantEndYear:  1750,
+			wantModifier: ModifierBetween,
+		},
+		{
+			// Escape on the first date only: the second inherits it.
+			name:         "escape on first date",
+			input:        "BET @#DJULIAN@ 1700 AND 1750",
+			wantCalendar: CalendarJulian,
+			wantYear:     1700,
+			wantEndCal:   CalendarJulian,
+			wantEndYear:  1750,
+			wantModifier: ModifierBetween,
+		},
+		{
+			// Escape on the second date only: the first must stay Gregorian.
+			// Guards against hoisting any escape found anywhere to the parent.
+			name:         "escape on second date only",
+			input:        "BET 1700 AND @#DJULIAN@ 1750",
+			wantCalendar: CalendarGregorian,
+			wantYear:     1700,
+			wantEndCal:   CalendarJulian,
+			wantEndYear:  1750,
+			wantModifier: ModifierBetween,
+		},
+		{
+			name:         "escape on both dates",
+			input:        "BET @#DHEBREW@ 1 NSN 5700 AND @#DHEBREW@ 30 ELL 5700",
+			wantCalendar: CalendarHebrew,
+			wantYear:     5700,
+			wantMonth:    8,
+			wantDay:      1,
+			wantEndCal:   CalendarHebrew,
+			wantEndYear:  5700,
+			wantEndMonth: 13,
+			wantEndDay:   30,
+			wantModifier: ModifierBetween,
+		},
+		{
+			name:         "different escapes on each date",
+			input:        "BET @#DJULIAN@ 1700 AND @#DHEBREW@ 5500",
+			wantCalendar: CalendarJulian,
+			wantYear:     1700,
+			wantEndCal:   CalendarHebrew,
+			wantEndYear:  5500,
+			wantModifier: ModifierBetween,
+		},
+		{
+			name:         "FROM escape TO escape",
+			input:        "FROM @#DJULIAN@ 1700 TO @#DJULIAN@ 1750",
+			wantCalendar: CalendarJulian,
+			wantYear:     1700,
+			wantEndCal:   CalendarJulian,
+			wantEndYear:  1750,
+			wantModifier: ModifierFromTo,
+		},
+		{
+			name:         "FROM plain TO escape",
+			input:        "FROM 1700 TO @#DJULIAN@ 1750",
+			wantCalendar: CalendarGregorian,
+			wantYear:     1700,
+			wantEndCal:   CalendarJulian,
+			wantEndYear:  1750,
+			wantModifier: ModifierFromTo,
+		},
+		{
+			name:          "simple FROM with escape",
+			input:         "FROM @#DJULIAN@ 1700",
+			wantCalendar:  CalendarJulian,
+			wantYear:      1700,
+			wantModifier:  ModifierFrom,
+			wantNoEndDate: true,
+		},
+		{
+			name:          "simple TO with escape",
+			input:         "TO @#DHEBREW@ 5500",
+			wantCalendar:  CalendarHebrew,
+			wantYear:      5500,
+			wantModifier:  ModifierTo,
+			wantNoEndDate: true,
+		},
+		{
+			name:          "INT with escape",
+			input:         "INT @#DJULIAN@ 1700 (about seventeen hundred)",
+			wantCalendar:  CalendarJulian,
+			wantYear:      1700,
+			wantModifier:  ModifierInterpreted,
+			wantNoEndDate: true,
+		},
 	}
 
-	if date.Modifier != ModifierBetween {
-		t.Errorf("Modifier = %v, want ModifierBetween", date.Modifier)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			if date.Modifier != tt.wantModifier {
+				t.Errorf("Modifier = %v, want %v", date.Modifier, tt.wantModifier)
+			}
+			if date.Calendar != tt.wantCalendar {
+				t.Errorf("Calendar = %v, want %v", date.Calendar, tt.wantCalendar)
+			}
+			if date.Year != tt.wantYear {
+				t.Errorf("Year = %d, want %d", date.Year, tt.wantYear)
+			}
+			if date.Month != tt.wantMonth {
+				t.Errorf("Month = %d, want %d", date.Month, tt.wantMonth)
+			}
+			if date.Day != tt.wantDay {
+				t.Errorf("Day = %d, want %d", date.Day, tt.wantDay)
+			}
+
+			if tt.wantNoEndDate {
+				if date.EndDate != nil {
+					t.Fatalf("EndDate = %+v, want nil", date.EndDate)
+				}
+				return
+			}
+			if date.EndDate == nil {
+				t.Fatal("EndDate is nil, want non-nil")
+			}
+			if date.EndDate.Calendar != tt.wantEndCal {
+				t.Errorf("EndDate.Calendar = %v, want %v", date.EndDate.Calendar, tt.wantEndCal)
+			}
+			if date.EndDate.Year != tt.wantEndYear {
+				t.Errorf("EndDate.Year = %d, want %d", date.EndDate.Year, tt.wantEndYear)
+			}
+			if date.EndDate.Month != tt.wantEndMonth {
+				t.Errorf("EndDate.Month = %d, want %d", date.EndDate.Month, tt.wantEndMonth)
+			}
+			if date.EndDate.Day != tt.wantEndDay {
+				t.Errorf("EndDate.Day = %d, want %d", date.EndDate.Day, tt.wantEndDay)
+			}
+		})
 	}
-	// TODO: Calendar should be Julian but is currently lost in range parsing
-	// if date.Calendar != CalendarJulian {
-	//	t.Errorf("Calendar = %v, want CalendarJulian", date.Calendar)
-	// }
-	if date.Year != 1700 {
-		t.Errorf("Start Year = %d, want 1700", date.Year)
+}
+
+// TestParseDate_UnmappedCalendarWithModifier pins that escape names the library
+// does not map (@#DROMAN@, @#DUNKNOWN@ — reserved or undefined in 5.5.1) stay
+// parse errors under a modifier, exactly as they do bare. Composing a modifier
+// with an escape does not widen the set of recognized calendars.
+func TestParseDate_UnmappedCalendarWithModifier(t *testing.T) {
+	inputs := []string{
+		"ABT @#DROMAN@ 1700",
+		"ABT @#DUNKNOWN@ 25 DEC 2020",
+		"BET @#DROMAN@ 1700 AND @#DROMAN@ 1750",
+		"ABT @#DGREGORIAN@",
 	}
-	if date.EndDate == nil {
-		t.Fatal("EndDate is nil, want non-nil")
+
+	for _, input := range inputs {
+		t.Run(input, func(t *testing.T) {
+			if _, err := ParseDate(input); err == nil {
+				t.Fatalf("ParseDate(%q) expected error, got nil", input)
+			}
+		})
 	}
-	if date.EndDate.Year != 1750 {
-		t.Errorf("End Year = %d, want 1750", date.EndDate.Year)
-	}
-	// TODO: EndDate calendar should inherit from start date
-	// if date.EndDate.Calendar != CalendarJulian {
-	//	t.Errorf("EndDate.Calendar = %v, want CalendarJulian", date.EndDate.Calendar)
-	// }
 }
 
 // TestParseDate_CalendarMonthErrors tests invalid month codes for calendars
@@ -1840,6 +2071,142 @@ func TestDate_ToGregorian(t *testing.T) {
 				t.Errorf("ToGregorian().Original = %q, want %q", greg.Original, tt.wantOriginal)
 			}
 		})
+	}
+}
+
+// TestDate_ToGregorian_StructuralFields verifies that converting a date to
+// Gregorian keeps everything the calendar conversion does not touch: the
+// modifier, the interpreted-date fields, and the EndDate of a range or period
+// (converted in its own right, not carried over unconverted).
+func TestDate_ToGregorian_StructuralFields(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		wantMod     DateModifier
+		wantDay     int
+		wantMonth   int
+		wantYear    int
+		wantEnd     bool
+		wantEndDay  int
+		wantEndMon  int
+		wantEndYear int
+		wantIsInt   bool
+		wantIntFrom string
+	}{
+		{
+			name:        "Julian range keeps modifier and converts end date",
+			input:       "@#DJULIAN@ BET 1 JAN 1700 AND 1 JAN 1750",
+			wantMod:     ModifierBetween,
+			wantDay:     11, // Julian 1 JAN 1700 -> Gregorian 11 JAN 1700 (10-day gap until 28 FEB 1700)
+			wantMonth:   1,
+			wantYear:    1700,
+			wantEnd:     true,
+			wantEndDay:  12, // Julian 1 JAN 1750 -> Gregorian 12 JAN 1750
+			wantEndMon:  1,
+			wantEndYear: 1750,
+		},
+		{
+			name:        "Julian period keeps FROM..TO and converts end date",
+			input:       "@#DJULIAN@ FROM 1700 TO 1750",
+			wantMod:     ModifierFromTo,
+			wantYear:    1700,
+			wantEnd:     true,
+			wantEndYear: 1750,
+		},
+		{
+			name:        "Julian interpreted date keeps interpretation",
+			input:       "@#DJULIAN@ INT 1700 (about seventeen hundred)",
+			wantMod:     ModifierInterpreted,
+			wantYear:    1700,
+			wantIsInt:   true,
+			wantIntFrom: "about seventeen hundred",
+		},
+		{
+			// Start already Gregorian, so only the end date needs converting.
+			name:        "Gregorian start with Julian end converts the end date",
+			input:       "BET 1 JAN 1700 AND @#DJULIAN@ 1 JAN 1750",
+			wantMod:     ModifierBetween,
+			wantDay:     1,
+			wantMonth:   1,
+			wantYear:    1700,
+			wantEnd:     true,
+			wantEndDay:  12,
+			wantEndMon:  1,
+			wantEndYear: 1750,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+
+			greg, err := date.ToGregorian()
+			if err != nil {
+				t.Fatalf("ToGregorian() error = %v", err)
+			}
+
+			if greg.Modifier != tt.wantMod {
+				t.Errorf("ToGregorian().Modifier = %v, want %v", greg.Modifier, tt.wantMod)
+			}
+			if greg.Day != tt.wantDay || greg.Month != tt.wantMonth || greg.Year != tt.wantYear {
+				t.Errorf("ToGregorian() = %d/%d/%d, want %d/%d/%d",
+					greg.Day, greg.Month, greg.Year, tt.wantDay, tt.wantMonth, tt.wantYear)
+			}
+			if greg.IsInterpreted != tt.wantIsInt {
+				t.Errorf("ToGregorian().IsInterpreted = %v, want %v", greg.IsInterpreted, tt.wantIsInt)
+			}
+			if greg.InterpretedFrom != tt.wantIntFrom {
+				t.Errorf("ToGregorian().InterpretedFrom = %q, want %q", greg.InterpretedFrom, tt.wantIntFrom)
+			}
+
+			if !tt.wantEnd {
+				if greg.EndDate != nil {
+					t.Errorf("ToGregorian().EndDate = %+v, want nil", greg.EndDate)
+				}
+				return
+			}
+			if greg.EndDate == nil {
+				t.Fatal("ToGregorian().EndDate = nil, want converted end date")
+			}
+			if greg.EndDate == date.EndDate {
+				t.Error("ToGregorian().EndDate aliases the source EndDate, want an independent value")
+			}
+			if greg.EndDate.Calendar != CalendarGregorian {
+				t.Errorf("ToGregorian().EndDate.Calendar = %v, want CalendarGregorian", greg.EndDate.Calendar)
+			}
+			if greg.EndDate.Day != tt.wantEndDay || greg.EndDate.Month != tt.wantEndMon || greg.EndDate.Year != tt.wantEndYear {
+				t.Errorf("ToGregorian().EndDate = %d/%d/%d, want %d/%d/%d",
+					greg.EndDate.Day, greg.EndDate.Month, greg.EndDate.Year,
+					tt.wantEndDay, tt.wantEndMon, tt.wantEndYear)
+			}
+		})
+	}
+}
+
+// TestDate_ToGregorian_EndDateError verifies that an unconvertible end date
+// fails the whole conversion instead of yielding a range that quietly lost its
+// endpoint (ADR 0007: never a silently wrong result).
+func TestDate_ToGregorian_EndDateError(t *testing.T) {
+	date, err := ParseDate("@#DJULIAN@ BET 1700 AND 0")
+	if err != nil {
+		t.Fatalf("ParseDate() error = %v", err)
+	}
+	if date.EndDate == nil || date.EndDate.Year != 0 {
+		t.Fatalf("setup: want end date with year 0, got %+v", date.EndDate)
+	}
+
+	greg, err := date.ToGregorian()
+	if err == nil {
+		t.Fatalf("ToGregorian() error = nil, want end date error; got %+v", greg)
+	}
+	if greg != nil {
+		t.Errorf("ToGregorian() date = %+v, want nil on error", greg)
+	}
+	if !strings.Contains(err.Error(), "end date") {
+		t.Errorf("ToGregorian() error = %q, want substring 'end date'", err.Error())
 	}
 }
 

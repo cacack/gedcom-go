@@ -227,7 +227,10 @@ func ParseDate(s string) (*Date, error) {
 		return date, nil
 	}
 
-	// Check for calendar escape sequence
+	// Check for a leading calendar escape sequence. The grammar puts the escape
+	// inside each <date> production, so this only seeds the default calendar for
+	// the components below; parseDateComponents strips a per-component escape of
+	// its own and overrides the seed.
 	calendar, rest, found := parseCalendarEscape(s)
 	if found {
 		date.Calendar = calendar
@@ -244,13 +247,13 @@ func ParseDate(s string) (*Date, error) {
 		switch modifier {
 		case ModifierBetween:
 			// BET date1 AND date2
-			return parseDateRange(s, original)
+			return parseDateRange(s, original, date.Calendar)
 		case ModifierFrom, ModifierTo, ModifierFromTo:
 			// FROM date, TO date, or FROM date TO date
-			return parseDatePeriod(s, original, modifier)
+			return parseDatePeriod(s, original, modifier, date.Calendar)
 		case ModifierInterpreted:
 			// INT date (original phrase)
-			return parseInterpretedDate(s, original)
+			return parseInterpretedDate(s, original, date.Calendar)
 		}
 	}
 
@@ -345,7 +348,9 @@ func parseModifier(s string) (DateModifier, string, bool) {
 }
 
 // parseDateRange parses a date range in the format "date1 AND date2".
-func parseDateRange(s, original string) (*Date, error) {
+// defaultCal is the calendar each date starts from; either date may override it
+// with a calendar escape of its own.
+func parseDateRange(s, original string, defaultCal Calendar) (*Date, error) {
 	// Find the AND keyword (case-insensitive, byte-safe)
 	andIndex := indexFoldASCII(s, " AND ")
 	if andIndex == -1 {
@@ -354,7 +359,7 @@ func parseDateRange(s, original string) (*Date, error) {
 
 	// Parse the first date
 	date1Str := strings.TrimSpace(s[:andIndex])
-	date1 := &Date{Original: original, Calendar: CalendarGregorian, Modifier: ModifierBetween}
+	date1 := &Date{Original: original, Calendar: defaultCal, Modifier: ModifierBetween}
 	if err := parseDateComponents(date1Str, date1); err != nil {
 		return nil, fmt.Errorf("invalid start date in range: %w", err)
 	}
@@ -371,14 +376,16 @@ func parseDateRange(s, original string) (*Date, error) {
 }
 
 // parseDatePeriod parses a date period (FROM, TO, or FROM...TO).
-func parseDatePeriod(s, original string, modifier DateModifier) (*Date, error) {
+// defaultCal is the calendar each date starts from; either date may override it
+// with a calendar escape of its own.
+func parseDatePeriod(s, original string, modifier DateModifier, defaultCal Calendar) (*Date, error) {
 	// Check if there's a TO keyword for FROM...TO format (case-insensitive, byte-safe)
 	toIndex := indexFoldASCII(s, " TO ")
 
 	if modifier == ModifierFrom && toIndex != -1 {
 		// FROM date1 TO date2
 		date1Str := strings.TrimSpace(s[:toIndex])
-		date1 := &Date{Original: original, Calendar: CalendarGregorian, Modifier: ModifierFromTo}
+		date1 := &Date{Original: original, Calendar: defaultCal, Modifier: ModifierFromTo}
 		if err := parseDateComponents(date1Str, date1); err != nil {
 			return nil, fmt.Errorf("invalid start date in period: %w", err)
 		}
@@ -395,7 +402,7 @@ func parseDatePeriod(s, original string, modifier DateModifier) (*Date, error) {
 	}
 
 	// Simple FROM or TO
-	date := &Date{Original: original, Calendar: CalendarGregorian, Modifier: modifier}
+	date := &Date{Original: original, Calendar: defaultCal, Modifier: modifier}
 	if err := parseDateComponents(s, date); err != nil {
 		return nil, err
 	}
@@ -408,10 +415,13 @@ func parseDatePeriod(s, original string, modifier DateModifier) (*Date, error) {
 //   - "1850 (about eighteen fifty)" -> Year=1850, InterpretedFrom="about eighteen fifty"
 //   - "25 DEC 1850 (Christmas day)" -> Day=25, Month=12, Year=1850, InterpretedFrom="Christmas day"
 //   - "1850" -> Year=1850, InterpretedFrom="" (no phrase is valid)
-func parseInterpretedDate(s, original string) (*Date, error) {
+//
+// defaultCal is the calendar the date starts from; the date may override it with
+// a calendar escape of its own.
+func parseInterpretedDate(s, original string, defaultCal Calendar) (*Date, error) {
 	date := &Date{
 		Original:      original,
-		Calendar:      CalendarGregorian,
+		Calendar:      defaultCal,
 		Modifier:      ModifierInterpreted,
 		IsInterpreted: true,
 	}
@@ -458,7 +468,16 @@ func isBCSuffix(s string) bool {
 }
 
 // parseDateComponents parses the date components (day, month, year, BC, dual year) from a string.
+// A calendar escape belongs to the <date> production, so one may appear here even after a
+// modifier keyword has been consumed (e.g. "ABT @#DJULIAN@ MAR 1066"); it overrides the
+// calendar the caller seeded on date. The strip must precede tokenization because
+// "@#DFRENCH R@" contains a space that strings.Fields would split.
 func parseDateComponents(s string, date *Date) error {
+	if calendar, rest, found := parseCalendarEscape(strings.TrimSpace(s)); found {
+		date.Calendar = calendar
+		s = rest
+	}
+
 	fields := strings.Fields(s)
 	if len(fields) == 0 {
 		return fmt.Errorf("empty date")
@@ -839,8 +858,34 @@ func (d *Date) toJDN() (int, error) {
 // For partial dates (missing day or month), converts available components.
 // Returns error if year is 0 (date too incomplete to convert).
 //
-// The Original field is preserved from the source date.
+// Ranges and periods are converted as a unit: the EndDate is converted too,
+// and a failure there fails the whole conversion rather than returning a
+// range that silently lost its endpoint.
+//
+// All non-calendar fields (Original, Modifier, DualYear, Phrase, IsPhrase,
+// IsInterpreted, InterpretedFrom) are preserved from the source date.
 func (d *Date) ToGregorian() (*Date, error) {
+	result, err := d.toGregorianComponents()
+	if err != nil {
+		return nil, err
+	}
+
+	// A range or period is one value: its endpoint may carry its own calendar,
+	// so it needs converting even when the start date is already Gregorian.
+	if d.EndDate != nil {
+		end, err := d.EndDate.ToGregorian()
+		if err != nil {
+			return nil, fmt.Errorf("cannot convert end date to Gregorian: %w", err)
+		}
+		result.EndDate = end
+	}
+
+	return result, nil
+}
+
+// toGregorianComponents converts the date's own calendar components, ignoring
+// EndDate. ToGregorian handles the endpoint.
+func (d *Date) toGregorianComponents() (*Date, error) {
 	// If already Gregorian, return a copy
 	if d.Calendar == CalendarGregorian {
 		result := *d
@@ -864,12 +909,20 @@ func (d *Date) ToGregorian() (*Date, error) {
 	// Convert astronomical year back to GEDCOM format
 	year, isBC := FromAstronomicalYear(astroYear)
 
-	// Create new date with Gregorian calendar
+	// Create new date with Gregorian calendar. Only the calendar-dependent
+	// fields are recomputed; everything else carries over so the conversion
+	// stays lossless.
 	result := &Date{
-		Original: d.Original, // Preserve original for lossless representation
-		Year:     year,
-		Calendar: CalendarGregorian,
-		IsBC:     isBC,
+		Original:        d.Original, // Preserve original for lossless representation
+		Year:            year,
+		Calendar:        CalendarGregorian,
+		IsBC:            isBC,
+		Modifier:        d.Modifier,
+		DualYear:        d.DualYear,
+		Phrase:          d.Phrase,
+		IsPhrase:        d.IsPhrase,
+		IsInterpreted:   d.IsInterpreted,
+		InterpretedFrom: d.InterpretedFrom,
 	}
 
 	// For partial dates, preserve the precision level
