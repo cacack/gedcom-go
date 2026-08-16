@@ -453,6 +453,152 @@ func TestDecodeWithDiagnostics_UnterminatedXRefBeforeStructuralTag(t *testing.T)
 	}
 }
 
+// TestDecodeWithDiagnostics_XRefOnStructuralLine pins the handling of a
+// well-formed XRef on a level-0 HEAD or TRLR line (issue #396). Neither takes a
+// cross-reference identifier in the GEDCOM grammar, so "0 @X1@ HEAD" is not the
+// document's header: treating it as one let a bogus second header overwrite the
+// real header's typed fields, and treating "0 @X1@ TRLR" as the trailer dropped
+// the line and everything subordinate to it. Both are now ordinary records and
+// both are reported.
+func TestDecodeWithDiagnostics_XRefOnStructuralLine(t *testing.T) {
+	tests := []struct {
+		name string
+		tag  string
+	}{
+		{name: "HEAD", tag: "HEAD"},
+		{name: "TRLR", tag: "TRLR"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := `0 HEAD
+1 SOUR RealVendor
+1 GEDC
+2 VERS 5.5
+1 CHAR UTF-8
+0 @X1@ ` + tt.tag + `
+1 SOUR FakeVendor
+1 CHAR ANSEL
+0 @I2@ INDI
+1 NAME Valid /Person/
+0 TRLR`
+
+			result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			doc := result.Document
+
+			// Reported, never silently accepted (ADR 0007).
+			if len(result.Diagnostics) != 1 {
+				t.Errorf("Diagnostics = %v, want exactly one", result.Diagnostics)
+			} else {
+				d := result.Diagnostics[0]
+				if d.Code != CodeInvalidXRef || d.Severity != SeverityError || d.Line != 6 {
+					t.Errorf("Diagnostic = %s, want %s at %s on line 6",
+						d.String(), CodeInvalidXRef, SeverityError)
+				}
+				if !strings.Contains(d.Message, "@X1@") || !strings.Contains(d.Message, tt.tag) {
+					t.Errorf("Diagnostic message = %q, want it to name both the xref and the tag", d.Message)
+				}
+			}
+
+			// The real header must win: the second block is not a header at all.
+			if doc.Header.SourceSystem != "RealVendor" || doc.Header.Encoding != "UTF-8" {
+				t.Errorf("Header = {SourceSystem: %q, Encoding: %q}, want the real header's values",
+					doc.Header.SourceSystem, doc.Header.Encoding)
+			}
+
+			// The line stays a record and keeps its subordinates (Lossless
+			// Representation), and the following record is not swallowed.
+			if len(doc.Records) != 2 {
+				t.Fatalf("Expected 2 records, got %d", len(doc.Records))
+			}
+			rec := doc.Records[0]
+			if rec.Type != gedcom.RecordType(tt.tag) || rec.XRef != "@X1@" {
+				t.Errorf("Record[0] = {Type: %q, XRef: %q}, want {%s, @X1@}", rec.Type, rec.XRef, tt.tag)
+			}
+			if len(rec.Tags) != 2 || rec.Tags[0].Value != "FakeVendor" || rec.Tags[1].Value != "ANSEL" {
+				t.Errorf("Record[0].Tags = %+v, want both subordinate lines", rec.Tags)
+			}
+			if doc.GetRecord("@X1@") != rec {
+				t.Errorf("GetRecord(@X1@) = %v, want the %s record", doc.GetRecord("@X1@"), tt.tag)
+			}
+
+			// A structural record is not an entity: the typed accessors must
+			// not pick it up.
+			if rec.Entity != nil {
+				t.Errorf("Record[0].Entity = %v, want nil", rec.Entity)
+			}
+			if len(doc.Individuals()) != 1 || len(doc.Notes()) != 0 {
+				t.Errorf("Individuals = %d, Notes = %d, want 1 and 0",
+					len(doc.Individuals()), len(doc.Notes()))
+			}
+
+			next := doc.GetIndividual("@I2@")
+			if next == nil {
+				t.Fatal("individual @I2@ should exist")
+			}
+			if len(next.Names) != 1 || next.Names[0].Full != "Valid /Person/" {
+				t.Errorf("@I2@ Names = %+v, want exactly one NAME (\"Valid /Person/\")", next.Names)
+			}
+
+			// The line is well formed, so the parser accepts it and strict mode
+			// does not reject the file. DecodeWithOptions has no diagnostics
+			// channel, so the record shape is the only signal there — the
+			// document must still come out the same way.
+			strictDoc, err := DecodeWithOptions(strings.NewReader(input), &DecodeOptions{StrictMode: true})
+			if err != nil {
+				t.Fatalf("DecodeWithOptions() error = %v", err)
+			}
+			if strictDoc.Header.SourceSystem != "RealVendor" || len(strictDoc.Records) != 2 {
+				t.Errorf("strict decode = {SourceSystem: %q, Records: %d}, want {RealVendor, 2}",
+					strictDoc.Header.SourceSystem, len(strictDoc.Records))
+			}
+			if strictDoc.Records[0].Type != gedcom.RecordType(tt.tag) || strictDoc.Records[0].XRef != "@X1@" {
+				t.Errorf("strict decode Record[0] = {Type: %q, XRef: %q}, want {%s, @X1@}",
+					strictDoc.Records[0].Type, strictDoc.Records[0].XRef, tt.tag)
+			}
+		})
+	}
+}
+
+// TestDecode_StructuralLinesWithoutXRef guards the control case for issue #396:
+// a bare "0 HEAD" and "0 TRLR" stay structural, so an ordinary file is
+// completely unaffected by the XRef check.
+func TestDecode_StructuralLinesWithoutXRef(t *testing.T) {
+	input := `0 HEAD
+1 SOUR RealVendor
+1 GEDC
+2 VERS 5.5
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Valid /Person/
+0 TRLR`
+
+	// DecodeWithOptions passes a nil collector; the diagnostic path must be
+	// nil-safe on this API too.
+	doc, err := DecodeWithOptions(strings.NewReader(input), DefaultOptions())
+	if err != nil {
+		t.Fatalf("DecodeWithOptions() error = %v", err)
+	}
+	if doc.Header.SourceSystem != "RealVendor" || doc.Header.Encoding != "UTF-8" {
+		t.Errorf("Header = {SourceSystem: %q, Encoding: %q}, want the real header's values",
+			doc.Header.SourceSystem, doc.Header.Encoding)
+	}
+	if len(doc.Records) != 1 || doc.Records[0].Type != gedcom.RecordTypeIndividual {
+		t.Fatalf("Records = %+v, want the single INDI record", doc.Records)
+	}
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	if len(result.Diagnostics) != 0 {
+		t.Errorf("Diagnostics = %v, want none for a well-formed file", result.Diagnostics)
+	}
+}
+
 // TestDecodeWithDiagnostics_RecoveredRecordsUsable verifies recovered records are fully usable
 func TestDecodeWithDiagnostics_RecoveredRecordsUsable(t *testing.T) {
 	// Input with errors but recoverable individual record
