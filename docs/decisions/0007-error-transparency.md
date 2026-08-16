@@ -164,6 +164,17 @@ exact line and column, and the fragment is by construction the last line, so no
 subordinate lines can be reparented by its absence (contrast the malformed-XRef
 recovery in `parser.ParseLine`, which keeps its line for exactly that reason).
 
+The counterpart obligation runs the other way. A reader validates in chunks
+whose boundaries are byte-aligned, so the chunk holding a bad byte usually holds
+good lines too — 189 of them in the CP437 corpus fixture. **A reader that
+rejects a chunk still delivers the bytes ahead of the offending one**, so the
+partial document a lenient caller recovers reaches the last complete line before
+the failure rather than stopping a chunk short of the line the error names
+(Constitution Principle 6). Because that makes a failing reader hand back data,
+the failure is also sticky: a second `Read` re-reports it instead of resuming
+after the rejected bytes, which would turn a reported error into an unreported
+hole in the middle of the document.
+
 Completeness is decided by the terminator, not by the failure. A token that
 reached LF, CRLF, or a bare CR is a whole line and survives the read error that
 follows it — including a CRLF pair split at the failure point, where the CR ends

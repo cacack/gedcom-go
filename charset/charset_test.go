@@ -1713,3 +1713,136 @@ func TestNewReader_LATIN1_AutoDetection(t *testing.T) {
 		})
 	}
 }
+
+// The bytes ahead of an offending byte are valid UTF-8 and belong to the
+// caller. Dropping the whole chunk that was being validated made a recovered
+// partial document stop up to a chunk short of the line the error names
+// (issue #382, deferred by 25d369d and f0b7d8b).
+func TestNewReader_DeliversValidPrefixBeforeError(t *testing.T) {
+	// The offending byte is the 8th on line 2, so everything up to it —
+	// "0 HEAD\n1 NAME " — must survive.
+	const input = "0 HEAD\n1 NAME \xFF more text\n0 TRLR\n"
+	const wantPrefix = "0 HEAD\n1 NAME "
+
+	got, err := io.ReadAll(NewReader(strings.NewReader(input)))
+	if string(got) != wantPrefix {
+		t.Errorf("ReadAll() = %q, want %q", got, wantPrefix)
+	}
+
+	var utf8Err *ErrInvalidUTF8
+	if !errors.As(err, &utf8Err) {
+		t.Fatalf("ReadAll() error = %v (%T), want *ErrInvalidUTF8", err, err)
+	}
+	if utf8Err.Line != 2 || utf8Err.Column != 8 {
+		t.Errorf("error at line %d, column %d; want line 2, column 8", utf8Err.Line, utf8Err.Column)
+	}
+}
+
+// The work buffer is sized at len(pending)+len(p) with an 8-byte floor, so the
+// valid prefix can outrun p. Those bytes go to the complete buffer and must
+// still reach a caller reading one byte at a time.
+func TestNewReader_ValidPrefixOutrunningTheReadBuffer(t *testing.T) {
+	const input = "0 HEAD\n1 NAME \xFF"
+	const wantPrefix = "0 HEAD\n1 NAME "
+
+	r := NewReader(strings.NewReader(input))
+	var got []byte
+	var err error
+	for i := 0; i < len(input)+8; i++ {
+		buf := make([]byte, 1)
+		var n int
+		n, err = r.Read(buf)
+		got = append(got, buf[:n]...)
+		if err != nil {
+			break
+		}
+	}
+
+	if string(got) != wantPrefix {
+		t.Errorf("one-byte reads yielded %q, want %q", got, wantPrefix)
+	}
+	var utf8Err *ErrInvalidUTF8
+	if !errors.As(err, &utf8Err) {
+		t.Fatalf("Read() error = %v (%T), want *ErrInvalidUTF8", err, err)
+	}
+}
+
+// countingReader reports how many bytes of its content the utf8Reader has
+// actually consumed, so a test can tell "stopped" from "skipped ahead".
+type countingReader struct {
+	data []byte
+	pos  int
+}
+
+func (r *countingReader) Read(p []byte) (int, error) {
+	if r.pos >= len(r.data) {
+		return 0, io.EOF
+	}
+	n := copy(p, r.data[r.pos:])
+	r.pos += n
+	return n, nil
+}
+
+// A validation failure is sticky. Before, the reader kept no error state, so a
+// caller that read again silently resumed after the rejected chunk — turning a
+// reported failure into an unreported hole in the middle of the document. That
+// hazard only became reachable once the reader started returning data
+// alongside a failure, which is why it is fixed here rather than left.
+func TestNewReader_ValidationFailureIsSticky(t *testing.T) {
+	// Reads run 8 bytes at a time (the work buffer floor), so the failure
+	// lands in the second chunk and leaves plenty of content behind it.
+	src := &countingReader{data: []byte("0 HEAD\n1 NAME \xFF more text\n0 TRLR\n")}
+	r := NewReaderWithEncoding(src, EncodingUTF8)
+
+	var got []byte
+	var first error
+	for first == nil {
+		buf := make([]byte, 8)
+		n, err := r.Read(buf)
+		got = append(got, buf[:n]...)
+		first = err
+	}
+
+	var utf8Err *ErrInvalidUTF8
+	if !errors.As(first, &utf8Err) {
+		t.Fatalf("Read() error = %v (%T), want *ErrInvalidUTF8", first, first)
+	}
+	if string(got) != "0 HEAD\n1 NAME " {
+		t.Errorf("delivered %q, want %q", got, "0 HEAD\n1 NAME ")
+	}
+
+	consumed := src.pos
+	for i := 0; i < 3; i++ {
+		buf := make([]byte, 8)
+		n, err := r.Read(buf)
+		if n != 0 {
+			t.Errorf("retry %d returned %d bytes (%q), want none", i, n, buf[:n])
+		}
+		if !errors.Is(err, first) {
+			t.Errorf("retry %d error = %v, want the original %v", i, err, first)
+		}
+	}
+	if src.pos != consumed {
+		t.Errorf("retries consumed %d more source bytes; the reader resumed past the rejected chunk",
+			src.pos-consumed)
+	}
+}
+
+// When the offending byte is the first one there is no prefix to deliver, so
+// the failure is returned on its own rather than deferred behind data.
+func TestNewReader_NoValidPrefixToDeliver(t *testing.T) {
+	r := NewReader(strings.NewReader("\xFF0 HEAD\n0 TRLR\n"))
+
+	buf := make([]byte, 64)
+	n, err := r.Read(buf)
+	if n != 0 {
+		t.Errorf("Read() = %d bytes (%q), want none", n, buf[:n])
+	}
+	var utf8Err *ErrInvalidUTF8
+	if !errors.As(err, &utf8Err) {
+		t.Fatalf("Read() error = %v (%T), want *ErrInvalidUTF8", err, err)
+	}
+	if utf8Err.Line != 1 || utf8Err.Column != 1 {
+		t.Errorf("error at line %d, column %d; want line 1, column 1", utf8Err.Line, utf8Err.Column)
+	}
+}
