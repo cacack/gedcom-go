@@ -117,7 +117,7 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			ord := parseLDSOrdinance(record.Tags, i, ldsOrdinanceType(tag.Tag), collector)
 			indi.LDSOrdinances = append(indi.LDSOrdinances, ord)
 
-		case "OCCU", "CAST", "DSCR", "EDUC", "IDNO", "NATI", "SSN", "TITL", "RELI", "NCHI", "NMR", "PROP":
+		case "OCCU", "CAST", "DSCR", "EDUC", "IDNO", "NATI", "SSN", "TITL", "RELI", "NCHI", "NMR", "PROP", "FACT":
 			attr := parseAttribute(record.Tags, i, tag.Tag, collector)
 			indi.Attributes = append(indi.Attributes, attr)
 
@@ -165,16 +165,21 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "EXID":
 			indi.ExternalIDs = append(indi.ExternalIDs, parseExternalID(record.Tags, i))
 
-		case "ALIA", "AFN", "RFN", "RIN", "ANCI", "DESI", "SUBM", "RESN", "FACT", "INIL":
+		case "ALIA", "AFN", "RFN", "RIN", "ANCI", "DESI", "SUBM", "RESN", "INIL":
 			// Standard INDI substructures not yet parsed into typed fields; the
 			// raw tags remain on Individual.Tags (ADR 0003). Recognizing them
 			// keeps UNKNOWN_TAG meaning "nonstandard tag" for callers who filter
 			// on it (issue #375). AFN/RFN/RIN are 5.5/5.5.1, INIL is 7.0.
-			// FACT and INIL were weighed against the attribute and LDS-ordinance
-			// cases above and left here on purpose: FACT's meaning lives in its
-			// mandatory subordinate TYPE, which gedcom.Attribute cannot hold,
-			// and a typed INIL wants a new LDSOrdinanceType constant. Both are
-			// API decisions, not part of this classification fix.
+			// INIL stays here by decision (issue #386), not for want of a
+			// fixture — maximal70.ged and maximal70-lds.ged both carry one.
+			// A typed INIL needs a sixth gedcom.LDSOrdinanceType constant, but
+			// nothing in this repo switches on that type and the downstream
+			// consumer drops unrecognized ordinances at its default case, so
+			// the constant would ship for no reader. Revisit when a consumer
+			// grows a domain type for the initiatory ordinance.
+			// FACT is deliberately absent: it now decodes into
+			// Individual.Attributes, its subordinate TYPE landing in
+			// Attribute.TypeDetail.
 			// EVEN is deliberately absent: issue #378 tracks decoding it into
 			// Individual.Events, which reclassifies it as a side effect.
 
@@ -675,10 +680,12 @@ func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string, collector *
 				}
 			case "PLAC":
 				attr.Place = tag.Value
+			case "TYPE":
+				attr.TypeDetail = tag.Value
 			case "SOUR":
 				cite := parseSourceCitation(tags, i, tag.Level, collector)
 				attr.SourceCitations = append(attr.SourceCitations, cite)
-			case "TYPE", "NOTE", "AGE":
+			case "NOTE", "AGE":
 				// Known tags not yet parsed into typed fields
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
@@ -826,8 +833,11 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "EXID":
 			fam.ExternalIDs = append(fam.ExternalIDs, parseExternalID(record.Tags, i))
 
-		case "RESN", "SUBM", "ASSO":
-			// Known tags not yet parsed into typed fields
+		case "RESN", "SUBM", "ASSO", "FACT":
+			// Known tags not yet parsed into typed fields. FAM-level FACT is
+			// 7.0-only and gedcom.Family has no Attributes field, so unlike the
+			// INDI side (issue #386) it can only be recognized here; the raw
+			// tags remain on Family.Tags (ADR 0003).
 
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {

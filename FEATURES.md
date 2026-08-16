@@ -522,6 +522,11 @@ written back out on the event line.
 | NCHI | Number of Children | |
 | NMR | Number of Marriages | |
 | PROP | Property | |
+| FACT | Generic Fact | INDI only; its meaning is the TYPE (5.5.1+) |
+
+Each attribute's subordinate `TYPE` lands in `Attribute.TypeDetail`, alongside
+`DATE`, `PLAC` and `SOUR`. FAM-level `FACT` (7.0) is recognized but not typed:
+it is available on `Family.Tags` only.
 
 ## Source Citations
 

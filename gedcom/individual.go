@@ -197,6 +197,16 @@ type Attribute struct {
 	// Place where the attribute was applicable (optional)
 	Place string
 
+	// TypeDetail is the user-supplied classification of this attribute
+	// (TYPE subordinate). It is the Attribute counterpart of
+	// Event.EventTypeDetail; Type already holds the tag, so the tag's own
+	// TYPE line lands here. Mandatory under IDNO and FACT in 5.5.1, where
+	// the attribute has no meaning without it.
+	// Per ADR 0003 the raw TYPE tag also remains on Individual.Tags, so
+	// callers that hand-walk the raw subtree now have two sources for the
+	// same fact — the same dual storage Event.EventTypeDetail already has.
+	TypeDetail string
+
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation
 }

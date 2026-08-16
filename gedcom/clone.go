@@ -602,6 +602,7 @@ func cloneAttribute(a *Attribute) *Attribute {
 		Value:      a.Value,
 		Date:       a.Date,
 		Place:      a.Place,
+		TypeDetail: a.TypeDetail,
 		ParsedDate: cloneDate(a.ParsedDate),
 	}
 
