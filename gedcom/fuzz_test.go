@@ -49,6 +49,13 @@ func FuzzParseDate(f *testing.F) {
 		"@#DFRENCH R@ 1 VEND 1",
 		"@#DGREGORIAN@ 25 DEC 2020",
 
+		// Calendar escapes combined with modifiers (the escape is part of <date>)
+		"ABT @#DFRENCH R@ 1 VEND 1",
+		"BET @#DHEBREW@ 1 NSN 5700 AND @#DHEBREW@ 30 ELL 5700",
+		"BET 1700 AND @#DJULIAN@ 1750",
+		"FROM @#DJULIAN@ 1700 TO @#DJULIAN@ 1750",
+		"INT @#DJULIAN@ 1700 (about seventeen hundred)",
+
 		// Date phrases
 		"(unknown)",
 		"(about 1850)",

@@ -149,14 +149,16 @@ Testing parser robustness with edge cases:
   - Special characters and quotes in continued text
   - Tests that parser correctly reconstructs original text
 
-- **calendar-dates.ged** (~5K) - Non-Gregorian calendar date tests
+- **calendar-dates.ged** (~7K) - Non-Gregorian calendar date tests
   - Hebrew calendar dates (`@#DHEBREW@`) with all 13 month codes
   - Julian calendar dates (`@#DJULIAN@`) including BC dates and dual dating
   - French Republican calendar dates (`@#DFRENCH R@`) with all 13 month codes
-  - Date modifiers (ABT, BEF, AFT, EST, BET...AND) with non-Gregorian calendars
+  - Date modifiers (ABT, BEF, AFT, EST, CAL, BET...AND, FROM...TO, TO, INT) with
+    non-Gregorian calendars, including escapes on only the second date of a
+    range or period
   - Partial dates (year-only, month-year) in each calendar system
   - Historical figures: Julius Caesar, Augustus, Washington, Rashi, Maimonides, Napoleon
-  - Tests: 10 individuals with various calendar date formats
+  - Tests: 11 individuals with various calendar date formats
 
 - **structural-edge-cases.ged** (~3K) - Parser structural stress tests
   - Very long XRef identifiers (>22 characters)

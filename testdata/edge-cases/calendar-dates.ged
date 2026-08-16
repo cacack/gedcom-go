@@ -241,4 +241,32 @@
 2 TYPE French Month-Year
 2 DATE @#DFRENCH R@ THER 2
 2 NOTE Thermidor Year 2
+0 @I11@ INDI
+1 NAME Test /PeriodModifiers/
+1 SEX U
+1 NOTE Tests calendar dates with period, calculated and interpreted modifiers
+1 EVEN
+2 TYPE Calculated Julian
+2 DATE CAL @#DJULIAN@ 12 MAY 1675
+2 NOTE Calculated from a Julian record
+1 EVEN
+2 TYPE From-To Julian
+2 DATE FROM @#DJULIAN@ 1700 TO @#DJULIAN@ 1750
+2 NOTE Escape on both period endpoints
+1 EVEN
+2 TYPE From-To Mixed
+2 DATE FROM 1700 TO @#DJULIAN@ 1750
+2 NOTE Escape on the second date only
+1 EVEN
+2 TYPE To Hebrew
+2 DATE TO @#DHEBREW@ 5500
+2 NOTE Simple period end
+1 EVEN
+2 TYPE Between Mixed
+2 DATE BET 1700 AND @#DJULIAN@ 1750
+2 NOTE Escape on the second date only
+1 EVEN
+2 TYPE Interpreted Julian
+2 DATE INT @#DJULIAN@ 1700 (about seventeen hundred)
+2 NOTE Interpreted date carrying an escape
 0 TRLR

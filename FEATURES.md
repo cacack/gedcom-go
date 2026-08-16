@@ -717,6 +717,16 @@ date, _ := gedcom.ParseDate("@#DFRENCH R@ 1 VEND 1")
 date.Calendar  // CalendarFrenchRepublican
 date.Month     // 1 (Vendémiaire)
 date.Year      // 1 (Year I of the Republic)
+
+// The escape is part of <date>, so it follows the modifier keyword
+date, _ := gedcom.ParseDate("ABT @#DJULIAN@ MAR 1066")
+date.Calendar  // CalendarJulian
+date.Modifier  // ModifierAbout
+
+// Each <date> in a range or period carries its own escape
+date, _ := gedcom.ParseDate("BET 1700 AND @#DJULIAN@ 1750")
+date.Calendar          // CalendarGregorian (no escape of its own)
+date.EndDate.Calendar  // CalendarJulian
 ```
 
 ### Features
@@ -725,6 +735,9 @@ date.Year      // 1 (Year I of the Republic)
 - Whitespace tolerance (leading, trailing, multiple spaces)
 - Original string preserved for round-trip fidelity
 - B.C. date comparison (100 BC > 200 BC chronologically)
+- Calendar escapes compose with every modifier (`ABT`, `CAL`, `EST`, `BEF`,
+  `AFT`, `BET`/`AND`, `FROM`/`TO`, `INT`), per date; a date with no escape
+  inherits the preceding date's calendar, defaulting to Gregorian
 
 ### API
 
@@ -775,9 +788,21 @@ Convert dates from any calendar to Gregorian:
 hebrewDate, _ := gedcom.ParseDate("@#DHEBREW@ 15 NSN 5785")
 gregorian, err := hebrewDate.ToGregorian()
 // gregorian.Year, gregorian.Month, gregorian.Day in Gregorian calendar
+
+// Ranges and periods convert as a unit, endpoint included
+r, _ := gedcom.ParseDate("@#DJULIAN@ BET 1 JAN 1700 AND 1 JAN 1750")
+g, err := r.ToGregorian()
+// g.Modifier          // ModifierBetween (preserved)
+// g.Day               // 11 (Julian 1 JAN 1700)
+// g.EndDate.Day       // 12 (Julian 1 JAN 1750)
+// g.EndDate.Calendar  // CalendarGregorian
 ```
 
-Supports conversion from Julian, Hebrew, and French Republican calendars to Gregorian.
+Supports conversion from Julian, Hebrew, and French Republican calendars to
+Gregorian. Only the calendar-dependent fields change: the modifier, dual year,
+phrase and interpreted-date fields carry over unchanged. An endpoint too
+incomplete to convert (year 0) fails the whole conversion rather than dropping
+silently.
 
 ## Metadata
 

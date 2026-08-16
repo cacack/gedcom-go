@@ -443,6 +443,19 @@ FROM JAN 1900 TO DEC 1905
 @#DGREGORIAN@ 1 JAN 2000     (explicit, though default)
 ```
 
+The escape is part of `<date>`, so it follows the modifier keyword and each
+`<date>` in a range or period carries its own:
+```
+ABT @#DJULIAN@ MAR 1066
+BET @#DHEBREW@ 1 NSN 5700 AND @#DHEBREW@ 30 ELL 5700
+BET 1700 AND @#DJULIAN@ 1750    (start is Gregorian, end is Julian)
+FROM @#DJULIAN@ 1700 TO @#DJULIAN@ 1750
+```
+A date with no escape of its own inherits the calendar of the date before it,
+defaulting to Gregorian. Many vendors also write the escape ahead of the
+modifier (`@#DJULIAN@ ABT 15 MAR 44 BC`); gedcom-go accepts that form and treats
+the leading escape as the default for every `<date>` that follows.
+
 **Interpreted Dates** (GEDCOM 5.5 only, removed in 7.0):
 ```
 INT 1900 (probably around 1900)

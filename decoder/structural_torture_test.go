@@ -655,51 +655,125 @@ func TestStructuralTortureAgeKeywords551(t *testing.T) {
 
 // TestStructuralTortureCalendarEscapes covers the calendar-escape matrix
 // (@#DJULIAN@, @#DHEBREW@, @#DFRENCH R@), all of it carried on generic EVEN
-// structures. Decoding EVEN (issue #378) is what first exposes these dates to
-// gedcom.ParseDate, which handles a bare calendar escape but not one combined
-// with a modifier — the five INVALID_VALUE diagnostics pinned here are that
-// known gap, not a property of the fixture. Raw values are preserved either
-// way; tighten this test when ParseDate learns modifier + escape.
+// structures. Decoding EVEN (issue #378) is what first exposed these dates to
+// gedcom.ParseDate; the five INVALID_VALUE diagnostics that pinned the
+// modifier-plus-escape gap are retired by issue #384, so the fixture now decodes
+// clean. @I9@ carries the single-date and range modifiers, @I11@ the period,
+// calculated and interpreted ones. Raw payloads stay verbatim (lossless per
+// ADR 0001) alongside the typed date.
 func TestStructuralTortureCalendarEscapes(t *testing.T) {
 	const path = "../testdata/edge-cases/calendar-dates.ged"
 
 	result := decodeFixture(t, path)
 
-	var invalidDates []string
-	for _, d := range result.Diagnostics {
-		if d.Code != CodeInvalidValue {
-			t.Errorf("unexpected %s diagnostic at line %d: %s", d.Code, d.Line, d.Message)
-			continue
-		}
-		invalidDates = append(invalidDates, d.Message)
-	}
-	if len(invalidDates) != 5 {
-		t.Fatalf("got %d INVALID_VALUE diagnostics, want 5: %v", len(invalidDates), invalidDates)
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("got %d diagnostics, want 0: %v", len(result.Diagnostics), result.Diagnostics)
 	}
 
-	// Every EVEN is decoded, and the raw date payload survives on the event
-	// even where ParsedDate is nil (lossless per ADR 0001). @I9@ is the
-	// modifier-plus-escape record, so its five events are the five above.
-	ind := result.Document.GetIndividual("@I9@")
-	if ind == nil {
-		t.Fatal("GetIndividual(@I9@) returned nil")
+	type endDate struct {
+		calendar gedcom.Calendar
+		day      int
+		month    int
+		year     int
 	}
-	if len(ind.Events) != 5 {
-		t.Fatalf("@I9@ has %d events, want 5", len(ind.Events))
+	type wantEvent struct {
+		date     string
+		calendar gedcom.Calendar
+		modifier gedcom.DateModifier
+		day      int
+		month    int
+		year     int
+		end      *endDate
 	}
-	want := []string{
-		"ABT @#DJULIAN@ MAR 1066",
-		"BEF @#DHEBREW@ 1 TSH 5000",
-		"AFT @#DFRENCH R@ 1 VEND 1",
-		"EST @#DJULIAN@ 1200",
-		"BET @#DHEBREW@ 1 NSN 5700 AND @#DHEBREW@ 30 ELL 5700",
+
+	cases := []struct {
+		xref   string
+		events []wantEvent
+	}{
+		{
+			xref: "@I9@",
+			events: []wantEvent{
+				{date: "ABT @#DJULIAN@ MAR 1066", calendar: gedcom.CalendarJulian, modifier: gedcom.ModifierAbout, month: 3, year: 1066},
+				{date: "BEF @#DHEBREW@ 1 TSH 5000", calendar: gedcom.CalendarHebrew, modifier: gedcom.ModifierBefore, day: 1, month: 1, year: 5000},
+				{date: "AFT @#DFRENCH R@ 1 VEND 1", calendar: gedcom.CalendarFrenchRepublican, modifier: gedcom.ModifierAfter, day: 1, month: 1, year: 1},
+				{date: "EST @#DJULIAN@ 1200", calendar: gedcom.CalendarJulian, modifier: gedcom.ModifierEstimated, year: 1200},
+				{
+					date: "BET @#DHEBREW@ 1 NSN 5700 AND @#DHEBREW@ 30 ELL 5700", calendar: gedcom.CalendarHebrew,
+					modifier: gedcom.ModifierBetween, day: 1, month: 8, year: 5700,
+					end: &endDate{calendar: gedcom.CalendarHebrew, day: 30, month: 13, year: 5700},
+				},
+			},
+		},
+		{
+			xref: "@I11@",
+			events: []wantEvent{
+				{date: "CAL @#DJULIAN@ 12 MAY 1675", calendar: gedcom.CalendarJulian, modifier: gedcom.ModifierCalculated, day: 12, month: 5, year: 1675},
+				{
+					date: "FROM @#DJULIAN@ 1700 TO @#DJULIAN@ 1750", calendar: gedcom.CalendarJulian,
+					modifier: gedcom.ModifierFromTo, year: 1700,
+					end: &endDate{calendar: gedcom.CalendarJulian, year: 1750},
+				},
+				{
+					// Escape on the second date only: the first stays Gregorian.
+					date: "FROM 1700 TO @#DJULIAN@ 1750", calendar: gedcom.CalendarGregorian,
+					modifier: gedcom.ModifierFromTo, year: 1700,
+					end: &endDate{calendar: gedcom.CalendarJulian, year: 1750},
+				},
+				{date: "TO @#DHEBREW@ 5500", calendar: gedcom.CalendarHebrew, modifier: gedcom.ModifierTo, year: 5500},
+				{
+					date: "BET 1700 AND @#DJULIAN@ 1750", calendar: gedcom.CalendarGregorian,
+					modifier: gedcom.ModifierBetween, year: 1700,
+					end: &endDate{calendar: gedcom.CalendarJulian, year: 1750},
+				},
+				{
+					date: "INT @#DJULIAN@ 1700 (about seventeen hundred)", calendar: gedcom.CalendarJulian,
+					modifier: gedcom.ModifierInterpreted, year: 1700,
+				},
+			},
+		},
 	}
-	for i, w := range want {
-		if ind.Events[i].Date != w {
-			t.Errorf("Events[%d].Date = %q, want %q (verbatim escape)", i, ind.Events[i].Date, w)
+
+	for _, tc := range cases {
+		ind := result.Document.GetIndividual(tc.xref)
+		if ind == nil {
+			t.Fatalf("GetIndividual(%s) returned nil", tc.xref)
 		}
-		if ind.Events[i].ParsedDate != nil {
-			t.Errorf("Events[%d].ParsedDate is non-nil; update the pinned diagnostic count", i)
+		if len(ind.Events) != len(tc.events) {
+			t.Fatalf("%s has %d events, want %d", tc.xref, len(ind.Events), len(tc.events))
+		}
+		for i, w := range tc.events {
+			ev := ind.Events[i]
+			if ev.Date != w.date {
+				t.Errorf("%s Events[%d].Date = %q, want %q (verbatim escape)", tc.xref, i, ev.Date, w.date)
+			}
+			pd := ev.ParsedDate
+			if pd == nil {
+				t.Errorf("%s Events[%d].ParsedDate is nil, want parsed %q", tc.xref, i, w.date)
+				continue
+			}
+			if pd.Calendar != w.calendar || pd.Modifier != w.modifier ||
+				pd.Day != w.day || pd.Month != w.month || pd.Year != w.year {
+				t.Errorf("%s Events[%d] parsed as (%v, %v, %d, %d, %d), want (%v, %v, %d, %d, %d)",
+					tc.xref, i, pd.Calendar, pd.Modifier, pd.Day, pd.Month, pd.Year,
+					w.calendar, w.modifier, w.day, w.month, w.year)
+			}
+			if w.end == nil {
+				if pd.EndDate != nil {
+					t.Errorf("%s Events[%d].ParsedDate.EndDate = %+v, want nil", tc.xref, i, pd.EndDate)
+				}
+				continue
+			}
+			if pd.EndDate == nil {
+				t.Errorf("%s Events[%d].ParsedDate.EndDate is nil, want %+v", tc.xref, i, *w.end)
+				continue
+			}
+			end := pd.EndDate
+			if end.Calendar != w.end.calendar || end.Day != w.end.day ||
+				end.Month != w.end.month || end.Year != w.end.year {
+				t.Errorf("%s Events[%d].EndDate = (%v, %d, %d, %d), want (%v, %d, %d, %d)",
+					tc.xref, i, end.Calendar, end.Day, end.Month, end.Year,
+					w.end.calendar, w.end.day, w.end.month, w.end.year)
+			}
 		}
 	}
 }
