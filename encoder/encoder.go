@@ -3,6 +3,7 @@ package encoder
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v2/gedcom"
@@ -130,12 +131,22 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 }
 
 func writeTag(w io.Writer, tag *gedcom.Tag, opts *EncodeOptions) error {
+	// A subordinate tag normally carries no XRef, so prefix is just the level
+	// and output is unchanged for valid GEDCOM. A subordinate XRef exists only
+	// when the decoder recovered a malformed identifier from the source line
+	// (e.g. "1 @I 1@ NOTE"); write it back verbatim so the document round-trips
+	// losslessly. The re-encoded line stays malformed, exactly as the input was.
+	prefix := strconv.Itoa(tag.Level)
+	if tag.XRef != "" {
+		prefix += " " + tag.XRef
+	}
+
 	if tag.Value != "" {
-		if _, err := fmt.Fprintf(w, "%d %s %s%s", tag.Level, tag.Tag, tag.Value, opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "%s %s %s%s", prefix, tag.Tag, tag.Value, opts.LineEnding); err != nil {
 			return err
 		}
 	} else {
-		if _, err := fmt.Fprintf(w, "%d %s%s", tag.Level, tag.Tag, opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "%s %s%s", prefix, tag.Tag, opts.LineEnding); err != nil {
 			return err
 		}
 	}

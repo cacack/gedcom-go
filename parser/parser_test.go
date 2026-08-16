@@ -42,6 +42,26 @@ func TestParseLine(t *testing.T) {
 			description: "Individual record with cross-reference",
 		},
 		{
+			name:        "xref containing the tag name",
+			input:       "1 @NOTE1@ NOTE See page 5",
+			wantLevel:   1,
+			wantTag:     "NOTE",
+			wantValue:   "See page 5",
+			wantXRef:    "@NOTE1@",
+			wantErr:     false,
+			description: "The value search must start after the identifier: @NOTE1@ contains NOTE, and matching there slices the value out of the middle of the identifier",
+		},
+		{
+			name:        "level 0 xref containing the tag name",
+			input:       "0 @NOTE@ NOTE hello",
+			wantLevel:   0,
+			wantTag:     "NOTE",
+			wantValue:   "hello",
+			wantXRef:    "@NOTE@",
+			wantErr:     false,
+			description: "Same slicing hazard at level 0, where the identifier is exactly the tag wrapped in @",
+		},
+		{
 			name:        "level 1 with value",
 			input:       "1 NAME John /Smith/",
 			wantLevel:   1,
@@ -189,6 +209,71 @@ func TestParseLine(t *testing.T) {
 			}
 			if line.XRef != tt.wantXRef {
 				t.Errorf("XRef = %q, want %q", line.XRef, tt.wantXRef)
+			}
+		})
+	}
+}
+
+// sliceValue's two "nothing follows the tag" guards are defensive: ParseLine
+// only calls it when the split fields already show a value, so neither is
+// reachable through ParseLine today. They are exercised directly because an
+// unguarded slice would panic or return garbage if a future caller changed
+// that assumption, and an untested guard is one nobody can safely rely on.
+func TestSliceValue(t *testing.T) {
+	tests := []struct {
+		name string
+		line string
+		xref string
+		tag  string
+		want string
+	}{
+		{
+			name: "value follows the tag",
+			line: "1 NAME John /Smith/",
+			tag:  "NAME",
+			want: "John /Smith/",
+		},
+		{
+			name: "search starts after the xref",
+			line: "1 @NOTE1@ NOTE See page 5",
+			xref: "@NOTE1@",
+			tag:  "NOTE",
+			want: "See page 5",
+		},
+		{
+			name: "interior spacing is preserved",
+			line: "1 NAME John   /Smith/",
+			tag:  "NAME",
+			want: "John   /Smith/",
+		},
+		{
+			name: "tag ends the line",
+			line: "1 @N1@ NOTE",
+			xref: "@N1@",
+			tag:  "NOTE",
+			want: "",
+		},
+		{
+			name: "tag absent after the xref",
+			line: "1 @N1@ NOTE",
+			xref: "@N1@",
+			tag:  "MISSING",
+			want: "",
+		},
+		{
+			name: "xref not present in the line",
+			line: "1 NAME John",
+			xref: "@NOPE@",
+			tag:  "NAME",
+			want: "John",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sliceValue(tt.line, tt.xref, tt.tag); got != tt.want {
+				t.Errorf("sliceValue(%q, %q, %q) = %q, want %q",
+					tt.line, tt.xref, tt.tag, got, tt.want)
 			}
 		})
 	}

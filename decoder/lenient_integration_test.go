@@ -931,3 +931,82 @@ func TestDecodeWithDiagnostics_LevelJumpRecovery_MidRecordSubordinateSkip(t *tes
 		t.Errorf("BIRT.Date = %q, want %q", birt.Date, "1 JAN 1900")
 	}
 }
+
+// TestDecodeWithDiagnostics_SubordinateSpacedXRef pins that a recovered XRef
+// on a level >= 1 line survives into the built document (issue #395). The
+// parser recovers "1 @I 1@ NOTE some text" into Line{XRef: "@I 1@"} and
+// reports it, but buildRecords used to drop line.XRef when it built the
+// subordinate gedcom.Tag, so the identifier vanished from the document
+// entirely -- a Lossless Representation violation.
+func TestDecodeWithDiagnostics_SubordinateSpacedXRef(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I2@ INDI
+1 @I 1@ NOTE some text
+1 NAME Valid /Person/
+0 TRLR`
+
+	t.Run("strict mode rejects it", func(t *testing.T) {
+		_, err := DecodeWithOptions(strings.NewReader(input), &DecodeOptions{StrictMode: true})
+		if err == nil {
+			t.Fatal("strict decode should reject an xref containing a space")
+		}
+		if !strings.Contains(err.Error(), "xref contains a space") {
+			t.Errorf("strict decode error = %v, want it to name the spaced xref", err)
+		}
+	})
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	doc := result.Document
+
+	t.Run("reported once", func(t *testing.T) {
+		if len(result.Diagnostics) != 1 {
+			t.Fatalf("Expected 1 diagnostic, got %v", result.Diagnostics)
+		}
+		d := result.Diagnostics[0]
+		if d.Code != CodeInvalidXRef || d.Severity != SeverityError || d.Line != 5 {
+			t.Errorf("Diagnostic = %s, want %s at %s on line 5",
+				d.String(), CodeInvalidXRef, SeverityError)
+		}
+	})
+
+	t.Run("identifier survives on the raw tag", func(t *testing.T) {
+		rec := doc.GetRecord("@I2@")
+		if rec == nil {
+			t.Fatal("record @I2@ should exist")
+		}
+		if len(rec.Tags) != 2 {
+			t.Fatalf("Tags = %+v, want the NOTE and the NAME", rec.Tags)
+		}
+		note := rec.Tags[0]
+		if note.Tag != "NOTE" || note.Value != "some text" {
+			t.Errorf("tag = %+v, want NOTE with value %q", note, "some text")
+		}
+		if note.XRef != "@I 1@" {
+			t.Errorf("tag XRef = %q, want %q -- the recovered identifier must not be dropped",
+				note.XRef, "@I 1@")
+		}
+		// The malformed identifier is preserved, not promoted: it is not a
+		// pointer (gedcom.IsPointerXRef rejects an interior space) and it does
+		// not become an addressable record.
+		if gedcom.IsPointerXRef(note.XRef) {
+			t.Errorf("%q must not count as a resolvable pointer", note.XRef)
+		}
+		if doc.GetRecord("@I 1@") != nil {
+			t.Error("a subordinate identifier must not be indexed as a record")
+		}
+	})
+
+	t.Run("valid lines carry no subordinate xref", func(t *testing.T) {
+		// Well-formed GEDCOM has no XRef at level >= 1, so every other tag in
+		// the document is unaffected by carrying line.XRef through.
+		rec := doc.GetRecord("@I2@")
+		if got := rec.Tags[1]; got.Tag != "NAME" || got.XRef != "" {
+			t.Errorf("NAME tag = %+v, want XRef %q", got, "")
+		}
+	})
+}

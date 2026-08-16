@@ -2029,3 +2029,93 @@ func TestIsCustomTag(t *testing.T) {
 		})
 	}
 }
+
+// TestEncodeSubordinateXRef pins that writeTag emits a subordinate tag's XRef
+// (issue #395). A subordinate XRef only ever exists because the decoder
+// recovered a malformed identifier, so it is written back verbatim rather than
+// silently dropped.
+//
+// Deliberate asymmetry, matching the recovery precedent of issues #377 and
+// #385: the re-encoded line is still malformed, so a strict re-parse of the
+// output still rejects it. Preserving the input beats inventing a shape for it.
+func TestEncodeSubordinateXRef(t *testing.T) {
+	t.Run("emitted when present", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{Version: "5.5"},
+			Records: []*gedcom.Record{
+				{
+					XRef: "@I2@",
+					Type: gedcom.RecordTypeIndividual,
+					Tags: []*gedcom.Tag{
+						{Level: 1, XRef: "@I 1@", Tag: "NOTE", Value: "some text"},
+						{Level: 1, XRef: "@I 3@", Tag: "SEX"},
+					},
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		for _, want := range []string{"1 @I 1@ NOTE some text\n", "1 @I 3@ SEX\n"} {
+			if !strings.Contains(buf.String(), want) {
+				t.Errorf("output missing %q, got:\n%s", want, buf.String())
+			}
+		}
+	})
+
+	t.Run("absent for valid tags", func(t *testing.T) {
+		// No valid GEDCOM has an XRef at level >= 1, so the common path must
+		// emit exactly the level, tag and value it always has.
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{Version: "5.5"},
+			Records: []*gedcom.Record{
+				{
+					XRef: "@I1@",
+					Type: gedcom.RecordTypeIndividual,
+					Tags: []*gedcom.Tag{
+						{Level: 1, Tag: "NAME", Value: "John /Smith/"},
+						{Level: 1, Tag: "SEX"},
+					},
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+
+		for _, want := range []string{"1 NAME John /Smith/\n", "1 SEX\n"} {
+			if !strings.Contains(buf.String(), want) {
+				t.Errorf("output missing %q, got:\n%s", want, buf.String())
+			}
+		}
+	})
+}
+
+// TestRoundtripSubordinateSpacedXRef is the end-to-end guard for issue #395:
+// a malformed subordinate identifier makes it through decode and back out of
+// encode byte-for-byte.
+func TestRoundtripSubordinateSpacedXRef(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @I2@ INDI\n1 @I 1@ NOTE some text\n0 TRLR\n"
+
+	// Lenient decode: the source line is malformed, so strict mode rejects the
+	// file outright. The re-encoded output is malformed for the same reason --
+	// preserving the input verbatim beats inventing a well-formed shape for it.
+	result, err := decoder.DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, result.Document); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+
+	if buf.String() != input {
+		t.Errorf("round-trip changed the document.\n got:\n%s\nwant:\n%s", buf.String(), input)
+	}
+}
