@@ -47,7 +47,7 @@ type RawRecord struct {
 // RecordIterator provides streaming access to GEDCOM records.
 // It groups lines into records (level-0 boundaries) without loading the entire file into memory.
 type RecordIterator struct {
-	scanner    *bufio.Scanner
+	scanner    *lineScanner
 	parser     *Parser
 	current    *RawRecord
 	pending    *Line // Buffered line that belongs to next record
@@ -63,9 +63,12 @@ type RecordIterator struct {
 // Lines longer than [MaxLineBytes] cause iteration to abort with an error
 // rather than allocating unboundedly. Spec-compliant GEDCOM lines never
 // approach this limit.
+//
+// A reader failure outranks the truncated final line it leaves behind: the
+// fragment is dropped and [RecordIterator.Err] reports the reader error. See
+// [lineScanner.Truncated].
 func NewRecordIterator(r io.Reader) *RecordIterator {
-	scanner := bufio.NewScanner(r)
-	scanner.Split(scanGEDCOMLines)
+	scanner := newLineScanner(r)
 	// Explicit buffer with documented ceiling; default bufio.Scanner cap is
 	// 64 KiB which can be too small for files containing embedded BLOBs.
 	scanner.Buffer(make([]byte, 0, 4096), MaxLineBytes)
@@ -104,6 +107,11 @@ func (it *RecordIterator) Next() bool {
 
 	// Read subordinate lines until next level-0 tag or EOF
 	for it.scanner.Scan() {
+		if it.scanner.Truncated() {
+			// Not a line — the head of one the reader cut short. Drop it and
+			// let the reader error below be the failure that is reported.
+			break
+		}
 		text := it.scanner.Text()
 		lineLen := len(it.scanner.Bytes()) + it.lineEnding
 
@@ -147,6 +155,13 @@ func (it *RecordIterator) scanNextLine(record *RawRecord) bool {
 		if err := it.scanner.Err(); err != nil {
 			it.err = err
 		}
+		return false
+	}
+
+	if it.scanner.Truncated() {
+		// Not a line — the head of one the reader cut short. Report the reader
+		// failure rather than whatever the fragment parses as.
+		it.err = it.scanner.Err()
 		return false
 	}
 

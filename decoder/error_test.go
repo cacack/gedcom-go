@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/v2/charset"
 	"github.com/cacack/gedcom-go/v2/parser"
 )
 
@@ -105,10 +106,10 @@ func TestDecoderErrorMessages(t *testing.T) {
 		wantWrapped bool
 	}{
 		{
-			// The invalid bytes sit on physical line 2. The charset reader
-			// rejects the whole chunk, so the parser itself never tokenized a
-			// line; the reported location comes from the charset error, not
-			// from the parser's counter (issue #376).
+			// The invalid bytes sit on physical line 2. The parser's own
+			// counter reaches only line 1 — the charset reader delivers the
+			// valid prefix and then stops — so the reported location has to
+			// come from the charset error (issue #376).
 			name:             "invalid UTF-8",
 			input:            "0 HEAD\n1 NAME \xFF\xFE Invalid UTF-8\n0 TRLR",
 			wantErrSubstring: "reading input",
@@ -209,5 +210,76 @@ func TestTruncatedFiles(t *testing.T) {
 				t.Logf("Successfully parsed truncated file: %d records", len(doc.Records))
 			}
 		})
+	}
+}
+
+// End-to-end guard for both halves of issue #382. The charset reader delivers
+// the bytes ahead of the offending one, so the lenient partial document
+// reaches the last complete line before it; the parser drops the truncated
+// tail those bytes end in, so nothing shortened enters the document and the
+// reader error is what gets reported.
+//
+// Deliberately independent of any buffer size: the assertion is "every
+// complete line before the bad byte survives", which holds at whatever offset
+// the chunk boundary happens to fall.
+func TestDecodePartialRecoveryUpToInvalidByte(t *testing.T) {
+	// Four complete lines, then a fifth cut short by an invalid byte.
+	const input = "0 HEAD\n" +
+		"1 SOUR TEST\n" +
+		"0 @I1@ INDI\n" +
+		"1 NAME John /Smith/\n" +
+		"1 NOTE Fr\xFF"
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), DefaultOptions())
+	if err == nil {
+		t.Fatal("DecodeWithDiagnostics() error = nil, want the read failure")
+	}
+
+	var utf8Err *charset.ErrInvalidUTF8
+	if !errors.As(err, &utf8Err) {
+		t.Fatalf("error = %v (%T), want a wrapped *charset.ErrInvalidUTF8", err, err)
+	}
+	if utf8Err.Line != 5 || utf8Err.Column != 10 {
+		t.Errorf("error at line %d, column %d; want line 5, column 10", utf8Err.Line, utf8Err.Column)
+	}
+	if strings.Contains(err.Error(), "at least level and tag") {
+		t.Errorf("error = %v, want the read failure, not a syntax error about the truncated line", err)
+	}
+
+	if result == nil || result.Document == nil {
+		t.Fatal("DecodeWithDiagnostics() returned no document; want the lines ahead of the bad byte")
+	}
+	indis := result.Document.Individuals()
+	if len(indis) != 1 {
+		t.Fatalf("partial document has %d individuals, want 1", len(indis))
+	}
+	if len(indis[0].Names) != 1 || indis[0].Names[0].Full != "John /Smith/" {
+		t.Errorf("individual names = %+v, want the complete NAME line", indis[0].Names)
+	}
+	// The truncated NOTE is dropped rather than kept as "Fr".
+	if got := len(indis[0].Notes); got != 0 {
+		t.Errorf("individual has %d notes, want 0 (the truncated line must not be kept)", got)
+	}
+	for _, d := range result.Diagnostics {
+		if strings.Contains(d.Message, "at least level and tag") {
+			t.Errorf("diagnostic %+v reports a syntax error the input never contained", d)
+		}
+	}
+}
+
+// The no-partial-data branch stays reachable: when the very first byte is
+// invalid there is nothing to recover, so the result is nil and the read
+// failure is returned on its own.
+func TestDecodeInvalidFirstByteHasNoPartialDocument(t *testing.T) {
+	result, err := DecodeWithDiagnostics(strings.NewReader("\xFF0 HEAD\n0 TRLR\n"), DefaultOptions())
+	if err == nil {
+		t.Fatal("DecodeWithDiagnostics() error = nil, want the read failure")
+	}
+	if result != nil {
+		t.Errorf("DecodeWithDiagnostics() result = %+v, want nil when no line could be parsed", result)
+	}
+	var utf8Err *charset.ErrInvalidUTF8
+	if !errors.As(err, &utf8Err) {
+		t.Fatalf("error = %v (%T), want a wrapped *charset.ErrInvalidUTF8", err, err)
 	}
 }

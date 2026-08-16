@@ -828,3 +828,51 @@ func TestRecords_MatchesRecordIterator(t *testing.T) {
 		}
 	}
 }
+
+// A read that fails part-way through a line must be reported as the reader
+// error it is, not as whatever the leftover fragment parses as (issue #382).
+func TestRecordIterator_ReadErrorOutranksTruncatedTail(t *testing.T) {
+	tests := []struct {
+		name string
+		// content is handed over in full, then the read fails.
+		content string
+		// wantRecords is the number of records completed before the fragment.
+		wantRecords int
+	}{
+		{
+			// The fragment is the first line the iterator sees, so the failure
+			// lands in scanNextLine.
+			name:        "fragment starts a record",
+			content:     "0",
+			wantRecords: 0,
+		},
+		{
+			// The fragment is a subordinate line, so the failure lands in Next.
+			name:        "fragment continues a record",
+			content:     "0 HEAD\n1 SOUR TEST\n0 @I1@ INDI\n1",
+			wantRecords: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			readErr := &locatedReadError{line: 42}
+			it := NewRecordIterator(&failingReader{content: tt.content, err: readErr})
+
+			count := 0
+			for it.Next() {
+				count++
+			}
+			if count != tt.wantRecords {
+				t.Errorf("iterated %d records, want %d", count, tt.wantRecords)
+			}
+			if !errors.Is(it.Err(), readErr) {
+				t.Errorf("Err() = %v, want the reader error %v", it.Err(), readErr)
+			}
+			var parseErr *ParseError
+			if errors.As(it.Err(), &parseErr) {
+				t.Errorf("Err() = %v, want the reader error, not a syntax error about the fragment", it.Err())
+			}
+		})
+	}
+}

@@ -540,9 +540,12 @@ func TestCorpusVendorCP1252Conversion(t *testing.T) {
 //
 // The offending byte sits at physical line 15398, column 43 (file offset
 // 252364), and the reported location must say so: the parser's own line
-// counter stops at 15209, the last line the charset reader handed over before
-// it rejected the chunk holding the bad byte (issue #376). If CP437 support
-// ever lands, this test should be rewritten to assert a successful decode.
+// counter stops at 15397, the last complete line ahead of the bad byte, so a
+// fallback to it would name the wrong line (issue #376). Before #382 that
+// counter stopped at 15209, because the charset reader dropped the whole
+// chunk holding the bad byte and the parser then counted the truncated
+// residue as a line of its own. If CP437 support ever lands, this test should
+// be rewritten to assert a successful decode.
 func TestCorpusVendorCP437KnownFailure(t *testing.T) {
 	f := corpusOpen(t, "../testdata/encoding/ibmpc-cp437-broskeep.ged")
 	defer f.Close()
@@ -558,7 +561,7 @@ func TestCorpusVendorCP437KnownFailure(t *testing.T) {
 	if !strings.Contains(err.Error(), "line 15398") {
 		t.Errorf("Decode() error = %v, want substring %q", err, "line 15398")
 	}
-	if strings.Contains(err.Error(), "line 15209") {
+	if strings.Contains(err.Error(), "line 15397") {
 		t.Errorf("Decode() error = %v reports the parser's line counter, want the offending byte's line", err)
 	}
 
@@ -582,7 +585,10 @@ func TestCorpusVendorCP437KnownFailure(t *testing.T) {
 	if result == nil || result.Document == nil {
 		t.Fatal("DecodeWithDiagnostics() returned nil result; want partial document alongside the error")
 	}
-	if got := len(result.Document.Individuals()); got != 1784 {
-		t.Errorf("partial document Individuals() = %d, want 1784", got)
+	// 1808 = the 1784 recovered before #382 plus the 24 level-0 INDI lines in
+	// the 189-line chunk the charset reader used to discard (lenient parsing
+	// reaches line 15397 now, where it stopped at 15208 before).
+	if got := len(result.Document.Individuals()); got != 1808 {
+		t.Errorf("partial document Individuals() = %d, want 1808", got)
 	}
 }

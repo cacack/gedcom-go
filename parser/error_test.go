@@ -577,6 +577,45 @@ func TestParseReadErrorReportsPhysicalLine(t *testing.T) {
 	}
 }
 
+// A reader error that carries no physical line still falls back to the parser's
+// counter -- but once the truncated tail is dropped, that counter no longer
+// counts the partial line the failure landed on, so the fallback is one line
+// short of the physical failure point.
+//
+// The pre-existing fallback cases above cannot observe this: their content ends
+// in "\n", so there is no residue to drop and the counter already matched. This
+// case deliberately ends mid-line, which is the shape that exposes it.
+//
+// The trade is favourable and deliberate -- the alternative is keeping a
+// silently shortened line in the document, which is the ADR 0007 violation this
+// fix exists to remove -- but it is a real regression for the one error type
+// that still lacks ErrorLine(). charset.ErrInvalidANSEL is that type; giving it
+// ErrorLine() is tracked as #403 and makes this fallback moot. Pinned here so
+// the behaviour is a recorded decision rather than an accident.
+func TestParseReadErrorFallbackLineAfterDroppedTail(t *testing.T) {
+	// The failure lands on physical line 3, mid-line.
+	const content = "0 HEAD\n1 SOUR TEST\n1 NAME Jo"
+	readErr := errors.New("disk on fire")
+
+	p := NewParser()
+	lines, _, fatalErr := p.ParseWithOptions(
+		&failingReader{content: content, err: readErr},
+		&ParseOptions{Lenient: true},
+	)
+
+	// The truncated "1 NAME Jo" must not survive as a complete line.
+	if len(lines) != 2 {
+		t.Fatalf("ParseWithOptions() returned %d lines, want 2 (the tail must be dropped)", len(lines))
+	}
+	if got := lines[len(lines)-1]; got.Tag == "NAME" {
+		t.Errorf("truncated tail survived as %+v", got)
+	}
+
+	// Without ErrorLine() the parser counter is all there is, and it now stops
+	// at the last complete line (2) rather than the physical failure line (3).
+	assertReadErrorLine(t, fatalErr, 2, readErr)
+}
+
 // assertReadErrorLine checks that err is a ParseError located at wantLine and
 // still wrapping the original reader error.
 func assertReadErrorLine(t *testing.T, err error, wantLine int, wantWrapped error) {
@@ -591,5 +630,133 @@ func assertReadErrorLine(t *testing.T, err error, wantLine int, wantWrapped erro
 	}
 	if !errors.Is(err, wantWrapped) {
 		t.Errorf("error = %v, want it to wrap %v", err, wantWrapped)
+	}
+}
+
+// A read that fails part-way through a line leaves the scanner holding the
+// head of that line. bufio.Scanner treats any reader error as EOF, so it hands
+// that fragment over as if it were a whole line; the parser must recognise it
+// as a fragment and report the reader failure instead (issue #382).
+//
+// Note the content in these cases deliberately does NOT end on a line
+// terminator — that is the whole point, and it is why the pre-existing
+// failingReader cases above never exercised this path.
+func TestParseReadErrorOutranksTruncatedTail(t *testing.T) {
+	tests := []struct {
+		name string
+		// content is handed over in full, then the read fails.
+		content string
+		// wantLines is the number of complete lines that precede the fragment.
+		wantLines int
+	}{
+		{
+			// The fragment has one field, so parsing it invents a syntax
+			// error the input never contained. This is the shape #382 reports.
+			name:      "fragment with too few fields",
+			content:   "0 HEAD\r\n1 SOUR TEST\r\n0",
+			wantLines: 2,
+		},
+		{
+			// The fragment has two fields, so it parses cleanly and would
+			// enter the document as a complete but silently shortened line.
+			name:      "fragment that parses as a whole line",
+			content:   "0 HEAD\n1 NAME Fr",
+			wantLines: 1,
+		},
+		{
+			name:      "fragment ending inside a value",
+			content:   "0 HEAD\n0 @I1@ INDI\n1 NAME John /Sm",
+			wantLines: 2,
+		},
+	}
+
+	const wantLine = 42
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			readErr := &locatedReadError{line: wantLine}
+
+			p := NewParser()
+			_, err := p.Parse(&failingReader{content: tt.content, err: readErr})
+			assertReadErrorLine(t, err, wantLine, readErr)
+			if strings.Contains(err.Error(), "at least level and tag") {
+				t.Errorf("Parse() error = %v, want the reader error, not a syntax error about the fragment", err)
+			}
+
+			p2 := NewParser()
+			lines, parseErrors, fatalErr := p2.ParseWithOptions(
+				&failingReader{content: tt.content, err: readErr},
+				&ParseOptions{Lenient: true},
+			)
+			assertReadErrorLine(t, fatalErr, wantLine, readErr)
+			if len(parseErrors) != 0 {
+				t.Errorf("ParseWithOptions() parseErrors = %v, want none for a truncated tail", parseErrors)
+			}
+			if len(lines) != tt.wantLines {
+				t.Fatalf("ParseWithOptions() returned %d lines, want %d (the fragment must be dropped)",
+					len(lines), tt.wantLines)
+			}
+			for _, line := range lines {
+				if line.LineNumber > tt.wantLines {
+					t.Errorf("line %d survived the truncated tail: %+v", line.LineNumber, line)
+				}
+			}
+		})
+	}
+}
+
+// A token that did reach a line terminator is complete, so it must survive the
+// read failure that follows it. Two shapes matter: a plain terminated line,
+// and a CRLF pair split by the failure, where the CR ends the line and only
+// the LF is lost — the scanner emits that token through its at-EOF CR branch,
+// which is a terminator, not the unterminated fall-through.
+func TestParseReadErrorKeepsTerminatedFinalLine(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+	}{
+		{name: "final line ends with LF", content: "0 HEAD\n1 SOUR TEST\n"},
+		{name: "final line ends with a bare CR", content: "0 HEAD\n1 SOUR TEST\r"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			readErr := &locatedReadError{line: 42}
+
+			p := NewParser()
+			lines, _, fatalErr := p.ParseWithOptions(
+				&failingReader{content: tt.content, err: readErr},
+				&ParseOptions{Lenient: true},
+			)
+			assertReadErrorLine(t, fatalErr, 42, readErr)
+			if len(lines) != 2 {
+				t.Fatalf("ParseWithOptions() returned %d lines, want 2", len(lines))
+			}
+			// Keeping the line is only half the contract -- it must also be
+			// whole. A terminated line that survived but was silently
+			// shortened is the exact failure this fix exists to prevent, and
+			// a bare length check cannot see it.
+			if lines[1].Tag != "SOUR" || lines[1].Value != "TEST" {
+				t.Errorf("final line = %+v, want tag SOUR value TEST", lines[1])
+			}
+		})
+	}
+}
+
+// The unterminated-token path is also how a well-formed file with no trailing
+// newline ends. There is no reader error there, so the last line must be kept.
+func TestParseKeepsUnterminatedFinalLineAtEOF(t *testing.T) {
+	const input = "0 HEAD\n1 SOUR TEST"
+
+	p := NewParser()
+	lines, err := p.Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Parse() error = %v, want nil", err)
+	}
+	if len(lines) != 2 {
+		t.Fatalf("Parse() returned %d lines, want 2", len(lines))
+	}
+	if lines[1].Tag != "SOUR" || lines[1].Value != "TEST" {
+		t.Errorf("final line = %+v, want tag SOUR value TEST", lines[1])
 	}
 }

@@ -106,6 +106,7 @@ type utf8Reader struct {
 	bufPos     int    // Current position in buffer
 	pending    []byte // Incomplete UTF-8 sequence from previous read
 	complete   []byte // Complete UTF-8 bytes ready to return
+	err        error  // Sticky read failure, surfaced once complete has drained
 }
 
 func (u *utf8Reader) Read(p []byte) (n int, err error) {
@@ -121,6 +122,14 @@ func (u *utf8Reader) Read(p []byte) (n int, err error) {
 	// Return any complete bytes first
 	if n, ok := u.drainComplete(p); ok {
 		return n, nil
+	}
+
+	// A validation failure is sticky. Its valid prefix has been delivered by
+	// now, so report it: the bytes that follow the offending one were never
+	// validated, and resuming past them would turn a rejected chunk into a
+	// silent gap in the middle of the caller's document.
+	if u.err != nil {
+		return 0, u.err
 	}
 
 	// Skip BOM on first read
@@ -172,6 +181,17 @@ func (u *utf8Reader) readAndProcess(p []byte) (int, error) {
 
 	n, verr := u.processWorkBuffer(p, workBuf, workN)
 	if verr != nil {
+		// The valid prefix has already been handed over — into p, and into
+		// u.complete when the work buffer outran p, which it can by up to
+		// len(u.pending) bytes (bufSize above) or by the 8-byte floor. Hold
+		// the failure until those bytes have drained, as the EOF path in Read
+		// does, so delivering the prefix never costs the caller a byte. A
+		// prefix of zero bytes leaves nothing in u.complete either, so there
+		// is nothing to wait for.
+		u.err = verr
+		if n > 0 {
+			return n, nil
+		}
 		return 0, verr
 	}
 
@@ -194,10 +214,16 @@ func (u *utf8Reader) processWorkBuffer(p, workBuf []byte, workN int) (int, error
 		return 0, nil
 	}
 
-	if verr := u.validateAndTrack(workBuf[:workN]); verr != nil {
-		// The valid prefix of this chunk is dropped, so a caller recovering a
-		// partial document stops short of the line the error names.
-		return 0, verr
+	goodLen, verr := u.validateAndTrack(workBuf[:workN])
+	if verr != nil {
+		// Everything ahead of the offending byte is valid UTF-8 and is the
+		// caller's data, so deliver it: dropping it would make a recovered
+		// partial document stop up to a whole chunk short of the line the
+		// error names. Nothing from the offending byte onward is deliverable,
+		// including the incomplete sequence pended above — it sits past the
+		// failure point and will never be completed.
+		u.pending = nil
+		workN = goodLen
 	}
 
 	n := copy(p, workBuf[:workN])
@@ -206,7 +232,7 @@ func (u *utf8Reader) processWorkBuffer(p, workBuf []byte, workN int) (int, error
 		copy(u.complete, workBuf[n:workN])
 	}
 
-	return n, nil
+	return n, verr
 }
 
 func (u *utf8Reader) readBuffered(p []byte) (int, bool) {
@@ -250,26 +276,29 @@ func (u *utf8Reader) handleBOM(p []byte) (int, error) {
 	return 0, nil
 }
 
-func (u *utf8Reader) validateAndTrack(p []byte) error {
+// validateAndTrack validates p as UTF-8 and advances the line/column cursor
+// over it. It returns how many leading bytes are valid: len(p) on success, and
+// the offset of the offending byte alongside the error on failure.
+func (u *utf8Reader) validateAndTrack(p []byte) (int, error) {
 	if !utf8.Valid(p) {
 		return u.findInvalidUTF8(p)
 	}
 	u.updatePosition(p)
-	return nil
+	return len(p), nil
 }
 
-func (u *utf8Reader) findInvalidUTF8(p []byte) error {
+func (u *utf8Reader) findInvalidUTF8(p []byte) (int, error) {
 	for i := 0; i < len(p); {
 		r, size := utf8.DecodeRune(p[i:])
 		if r == utf8.RuneError && size == 1 {
 			// u.line/u.column already track the offending byte: the loop
 			// advanced them over every rune preceding it.
-			return &ErrInvalidUTF8{Line: u.line, Column: u.column}
+			return i, &ErrInvalidUTF8{Line: u.line, Column: u.column}
 		}
 		u.advance(p[i], size)
 		i += size
 	}
-	return nil
+	return len(p), nil
 }
 
 func (u *utf8Reader) updatePosition(p []byte) {
@@ -280,7 +309,7 @@ func (u *utf8Reader) updatePosition(p []byte) {
 
 // advance moves the cursor over one rune of width bytes starting with b.
 // Line breaks follow the same rules as the parser's line splitter
-// (parser.scanGEDCOMLines): LF, CRLF and a bare CR each end one line. Tracking
+// (parser.lineScanner): LF, CRLF and a bare CR each end one line. Tracking
 // lastWasCR across calls keeps a CRLF pair split over two reads from counting
 // twice. Columns are counted in bytes.
 func (u *utf8Reader) advance(b byte, width int) {

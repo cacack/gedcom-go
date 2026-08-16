@@ -301,15 +301,21 @@ func (p *Parser) recoverXRefLine(level int, xref, rest, tag string) *Line {
 //
 // If r fails with an error exposing ErrorLine() int, that line is reported as
 // ParseError.Line in preference to the parser's own counter.
+//
+// A reader failure outranks any syntax error the truncated final line would
+// produce; see [lineScanner.Truncated].
 func (p *Parser) Parse(r io.Reader) ([]*Line, error) {
 	p.Reset()
 
-	scanner := bufio.NewScanner(r)
-	// Use custom split function that handles CR, LF, and CRLF line endings
-	scanner.Split(scanGEDCOMLines)
+	scanner := newLineScanner(r)
 	var lines []*Line
 
 	for scanner.Scan() {
+		if scanner.Truncated() {
+			// Not a line — the head of one the reader cut short. Drop it and
+			// let the reader error below be the failure that is reported.
+			break
+		}
 		text := scanner.Text()
 		line, err := p.ParseLine(text)
 		if err != nil {
@@ -335,7 +341,10 @@ func (p *Parser) Parse(r io.Reader) ([]*Line, error) {
 //   - fatalErr: unrecoverable errors like I/O failures
 //
 // If r fails with an error exposing ErrorLine() int, that line is reported as
-// ParseError.Line in preference to the parser's own counter.
+// ParseError.Line in preference to the parser's own counter. A reader failure
+// outranks the truncated final line it leaves behind: that fragment is dropped
+// from lines and produces no entry in parseErrors, so no silently shortened
+// value enters the partial document. See [lineScanner.Truncated].
 func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 	lines []*Line,
 	parseErrors []*ParseError,
@@ -352,10 +361,17 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 		opts.MaxErrors = 0
 	}
 
-	scanner := bufio.NewScanner(r)
-	scanner.Split(scanGEDCOMLines)
+	scanner := newLineScanner(r)
 
 	for scanner.Scan() {
+		if scanner.Truncated() {
+			// Not a line — the head of one the reader cut short. Drop it: a
+			// fragment that happens to hold two fields ("1 NAME Fr") would
+			// otherwise enter the document as a complete, silently shortened
+			// line, and one that does not would report a syntax error the
+			// input never contained.
+			break
+		}
 		text := scanner.Text()
 		line, err := p.ParseLine(text)
 		if err != nil {
@@ -401,10 +417,55 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 	return lines, parseErrors, nil
 }
 
-// scanGEDCOMLines is a split function for bufio.Scanner that handles
-// all GEDCOM line ending styles: LF, CRLF, and CR (old Macintosh).
-// This is based on bufio.ScanLines but adds CR-only support.
-func scanGEDCOMLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
+// lineScanner reads GEDCOM lines, handling all line ending styles: LF, CRLF,
+// and CR (old Macintosh). It adds the one fact [bufio.Scanner] cannot report:
+// whether the token it just returned actually reached a line terminator.
+//
+// That matters because bufio.Scanner passes atEOF to its split function
+// whenever the reader has failed, not only at io.EOF (bufio/scan.go: the
+// argument is `s.err != nil`). A read that fails part-way through a line
+// therefore makes the scanner emit the residue it already holds as if it were
+// a whole line, when it is really the head of a line whose remaining bytes
+// never arrived. [lineScanner.Truncated] identifies that token so callers can
+// drop it and report the reader failure instead of guessing at the fragment.
+type lineScanner struct {
+	*bufio.Scanner
+
+	// unterminated records whether the most recent token was emitted by the
+	// at-EOF fall-through, i.e. with no line terminator after it.
+	unterminated bool
+}
+
+// newLineScanner wraps r in a scanner that splits GEDCOM lines.
+func newLineScanner(r io.Reader) *lineScanner {
+	s := &lineScanner{Scanner: bufio.NewScanner(r)}
+	s.Split(s.split)
+	return s
+}
+
+// Truncated reports whether the token just returned by Scan is the head of a
+// line the reader failed part-way through, rather than a line.
+//
+// Both halves are needed. Unterminated alone is the ordinary shape of a final
+// line with no trailing newline, which is valid and must be kept; a reader
+// error alone still leaves every complete line the scanner already holds worth
+// parsing. Only their conjunction means bytes are missing from the token. A
+// token that did reach a terminator is complete even if the read that would
+// have followed it failed — including the CRLF pair split across the failure
+// point, where the CR terminates the line and only the LF is lost.
+//
+// An unterminated token is always the last one: the fall-through that produces
+// it consumes all remaining data, so the next split call sees an empty buffer
+// and ends the scan.
+func (s *lineScanner) Truncated() bool {
+	return s.unterminated && s.Err() != nil
+}
+
+// split is the [bufio.SplitFunc] backing lineScanner. It is based on
+// bufio.ScanLines but adds CR-only support.
+func (s *lineScanner) split(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	s.unterminated = false
+
 	if atEOF && len(data) == 0 {
 		return 0, nil, nil
 	}
@@ -434,8 +495,11 @@ func scanGEDCOMLines(data []byte, atEOF bool) (advance int, token []byte, err er
 		}
 	}
 
-	// If we're at EOF, return remaining data as final line
+	// If we're at EOF, return remaining data as final line. No terminator
+	// followed it, so record that: if the scan ended because the reader failed
+	// rather than because the input ran out, this token is a fragment.
 	if atEOF {
+		s.unterminated = true
 		return len(data), data, nil
 	}
 
