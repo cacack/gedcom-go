@@ -61,6 +61,99 @@ func TestEncodeRoundtrip(t *testing.T) {
 	}
 }
 
+// TestEncodeMultilineTagValue pins that a raw tag value carrying line breaks is
+// written back as CONT lines rather than as bare continuation text (issue #419).
+// Emitting it inline produces a line with no level and no tag, which this
+// library cannot read back — so the encoder's own output failed its own strict
+// decode. That is reachable from ordinary input: converting any 5.5.1 file with
+// a multi-line note to 7.0 embeds the newline in the value.
+//
+// All three terminators the parser recognises are covered, because it treats a
+// bare CR as a line break too (issue #376), so a CR in a value is the same
+// hazard as an LF.
+func TestEncodeMultilineTagValue(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+		want  []string
+	}{
+		{
+			name:  "LF becomes CONT",
+			value: "line1\nline2",
+			want:  []string{"1 NOTE line1", "2 CONT line2"},
+		},
+		{
+			name:  "CRLF becomes CONT",
+			value: "line1\r\nline2",
+			want:  []string{"1 NOTE line1", "2 CONT line2"},
+		},
+		{
+			name:  "bare CR becomes CONT",
+			value: "line1\rline2",
+			want:  []string{"1 NOTE line1", "2 CONT line2"},
+		},
+		{
+			name:  "three lines",
+			value: "a\nb\nc",
+			want:  []string{"1 NOTE a", "2 CONT b", "2 CONT c"},
+		},
+		{
+			name:  "empty line is preserved as an empty CONT",
+			value: "a\n\nb",
+			want:  []string{"1 NOTE a", "2 CONT", "2 CONT b"},
+		},
+		{
+			name:  "value without a line break is unchanged",
+			value: "line1 line2",
+			want:  []string{"1 NOTE line1 line2"},
+		},
+		{
+			name:  "leading line break yields an empty primary value",
+			value: "\na",
+			want:  []string{"1 NOTE", "2 CONT a"},
+		},
+		{
+			name:  "trailing line break yields a trailing empty CONT",
+			value: "a\n",
+			want:  []string{"1 NOTE a", "2 CONT"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc := &gedcom.Document{
+				Header:  &gedcom.Header{Version: gedcom.Version551, Encoding: "UTF-8"},
+				XRefMap: map[string]*gedcom.Record{},
+				Records: []*gedcom.Record{{
+					XRef: "@I1@", Type: "INDI",
+					Tags: []*gedcom.Tag{{Level: 1, Tag: "NOTE", Value: tt.value}},
+				}},
+			}
+
+			var buf bytes.Buffer
+			if err := Encode(&buf, doc); err != nil {
+				t.Fatalf("Encode() error = %v", err)
+			}
+			out := buf.String()
+
+			// Assert the lines as one contiguous block rather than
+			// individually: a per-line Contains check cannot tell "a\nb\nc"
+			// from "a\nc\nb", and reordered CONT lines silently corrupt the
+			// text while every individual assertion still passes.
+			block := strings.Join(tt.want, "\n") + "\n"
+			if !strings.Contains(out, block) {
+				t.Errorf("output missing contiguous block:\n%s\ngot:\n%s", block, out)
+			}
+
+			// The whole point: the encoder's output must be readable by this
+			// library's own strict decoder.
+			if _, err := decoder.Decode(strings.NewReader(out)); err != nil {
+				t.Errorf("re-decoding the encoded output failed: %v\ngot:\n%s", err, out)
+			}
+		})
+	}
+}
+
 // TestEncodeUnterminatedXRefRoundtrip pins the byte-exact re-encode that the
 // unterminated-XRef recovery promises (issue #385). Because the identifier is
 // kept verbatim rather than given an invented closing "@", "0 @I1 INDI" must

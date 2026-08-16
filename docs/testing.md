@@ -37,7 +37,8 @@ These code paths handle core functionality where bugs would cause data loss or c
 |----------|--------------|----------------|
 | `Encode()` / `EncodeWithOptions()` | Output generation | Round-trip fidelity |
 | `writeRecord()` (internal) | Record serialization | All record types |
-| `textToTags()` / `splitLineForLength()` (internal) | CONC/CONT splitting and newline-safe text output | Special characters, newlines, long lines |
+| `textToTags()` / `splitLineForLength()` (internal) | CONC/CONT splitting and newline-safe text output on the typed-entity path | Special characters, newlines, long lines |
+| `writeTag()` / `splitValueLines()` (internal) | CONT splitting on the raw-tag path — a value carrying a line break must not be written inline, or the output is a continuation with no level and no tag that this library cannot read back ([#419](https://github.com/cacack/gedcom-go/issues/419)) | LF, CRLF and bare CR in a value; leading, trailing and consecutive breaks; encoded output re-decodes |
 
 ### Date Parsing (`gedcom/date.go`)
 

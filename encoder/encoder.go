@@ -141,16 +141,83 @@ func writeTag(w io.Writer, tag *gedcom.Tag, opts *EncodeOptions) error {
 		prefix += " " + tag.XRef
 	}
 
-	if tag.Value != "" {
-		if _, err := fmt.Fprintf(w, "%s %s %s%s", prefix, tag.Tag, tag.Value, opts.LineEnding); err != nil {
+	// A value carrying line breaks has to be split back across CONT lines. The
+	// converter embeds newlines when it consolidates CONT for 7.0, and a
+	// hand-built Tag may hold them too; writing such a value inline would emit
+	// a continuation with no level and no tag, which this library cannot read
+	// back. CONT is the encoding for a line break in every GEDCOM version,
+	// including 7.0 -- 7.0 removed CONC, not CONT.
+	//
+	// Long lines are deliberately NOT split with CONC here: an over-length line
+	// is still parseable, CONC is invalid in 7.0, and writeTag has no target
+	// version to decide with. Length-based splitting stays on the typed-entity
+	// path (textToTags), which does know the options.
+	//
+	// A line break in a value at level MaxNestingDepth-1 (99) cannot be encoded
+	// at all: its CONT would sit at level 100, past the two-digit ceiling the
+	// grammar allows. The CONT is still written, because an over-level line is
+	// at least reported as INVALID_LEVEL on re-read, where the bare
+	// continuation this replaces produced a misleading SYNTAX_ERROR against the
+	// following line. Neither is valid GEDCOM -- such a document is
+	// un-encodable -- and textToTags has always had the same limit.
+	// Almost every value is a single line, so that case must not pay for the
+	// split: writeTag runs for every subordinate line of every record, and
+	// allocating a one-element slice here cost ~8000 allocations and 21% on
+	// BenchmarkEncodeLarge, well past the 10% gate in make perf-regression.
+	// IndexByte rather than ContainsAny: the two-byte set makes ContainsAny
+	// build an asciiSet and scan in Go, while IndexByte is assembly. The write
+	// is inlined rather than delegated so the common path is exactly the two
+	// Fprintf calls it was before.
+	if strings.IndexByte(tag.Value, '\n') < 0 && strings.IndexByte(tag.Value, '\r') < 0 {
+		if tag.Value != "" {
+			_, err := fmt.Fprintf(w, "%s %s %s%s", prefix, tag.Tag, tag.Value, opts.LineEnding)
 			return err
 		}
-	} else {
-		if _, err := fmt.Fprintf(w, "%s %s%s", prefix, tag.Tag, opts.LineEnding); err != nil {
+		_, err := fmt.Fprintf(w, "%s %s%s", prefix, tag.Tag, opts.LineEnding)
+		return err
+	}
+
+	lines := splitValueLines(tag.Value)
+
+	if err := writeTagLine(w, prefix, tag.Tag, lines[0], opts); err != nil {
+		return err
+	}
+	contPrefix := strconv.Itoa(tag.Level + 1)
+	for _, cont := range lines[1:] {
+		if err := writeTagLine(w, contPrefix, "CONT", cont, opts); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// splitValueLines splits a tag value on line breaks, returning at least one
+// element. All three terminators the parser recognises are normalised first --
+// CRLF, bare LF and bare CR -- so that re-encoding is the exact inverse of
+// reading: whichever form the source used, the parser saw a line break there,
+// and a CONT is how that line break is written back.
+// Callers on the hot path should skip it entirely for a value with no line
+// break rather than rely on it returning a single element, so that the common
+// case allocates nothing.
+func splitValueLines(value string) []string {
+	if !strings.ContainsAny(value, "\n\r") {
+		return []string{value}
+	}
+	normalized := strings.ReplaceAll(value, "\r\n", "\n")
+	normalized = strings.ReplaceAll(normalized, "\r", "\n")
+	return strings.Split(normalized, "\n")
+}
+
+// writeTagLine writes one physical GEDCOM line. prefix carries the level and,
+// for a recovered malformed identifier, the XRef.
+func writeTagLine(w io.Writer, prefix, tag, value string, opts *EncodeOptions) error {
+	var err error
+	if value != "" {
+		_, err = fmt.Fprintf(w, "%s %s %s%s", prefix, tag, value, opts.LineEnding)
+	} else {
+		_, err = fmt.Fprintf(w, "%s %s%s", prefix, tag, opts.LineEnding)
+	}
+	return err
 }
 
 func writeTrailer(w io.Writer, opts *EncodeOptions) error {

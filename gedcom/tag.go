@@ -10,7 +10,13 @@ type Tag struct {
 	// Tag is the GEDCOM tag name (e.g., "INDI", "NAME", "BIRT")
 	Tag string
 
-	// Value is the optional value associated with the tag
+	// Value is the optional value associated with the tag.
+	//
+	// A line break in Value is structural rather than textual: the encoder
+	// writes the remainder as CONT lines, because GEDCOM has no other way to
+	// express one. CRLF, bare LF and bare CR are all treated as a break,
+	// matching what the parser accepts, so Value cannot carry a literal
+	// carriage return as data.
 	Value string
 
 	// XRef is the optional cross-reference identifier (e.g., "@I1@")

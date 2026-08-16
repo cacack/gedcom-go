@@ -10,7 +10,7 @@ This document summarizes the key differences between GEDCOM versions 5.5, 5.5.1,
 | UTF-8 Support | No | Yes | Required |
 | UTF-16 Support | Yes (with BOM) | Yes (with BOM) | No |
 | CONC Continuation | Yes | Yes | Removed |
-| CONT Continuation | Yes | Yes | Replaced with multiline |
+| CONT Continuation | Yes | Yes | Retained (the encoding for a line break) |
 | XRef Format | `@[A-Za-z0-9_]+@` | `@[A-Za-z0-9_]+@` | `@[A-Z0-9_]+@` (uppercase) |
 
 ## GEDCOM 5.5 Specification
@@ -140,7 +140,6 @@ This document summarizes the key differences between GEDCOM versions 5.5, 5.5.1,
 
 - ANSEL encoding (UTF-8 only)
 - CONC tag (use longer lines)
-- CONT tag (replaced with structured multiline values)
 - Some custom tags standardized or removed
 
 ### Backward Compatibility
