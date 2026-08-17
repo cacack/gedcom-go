@@ -134,13 +134,32 @@ through a chunk the reader had already consumed.
 The convention: **a reader error that knows its own physical line exposes
 `ErrorLine() int`, and the layer above adopts it in preference to its own
 counter.** `parser.readErrorLine` applies this when wrapping `scanner.Err()`,
-treating a zero return as "unknown" and falling back. Any new reader-layer error
-carrying a line (`ErrInvalidANSEL`, a future `ErrUnsupportedEncoding`) should
-implement it, or it will reintroduce the drift.
+treating a zero return as "unknown" and falling back.
+
+Reader errors carrying a line, and their conformance to the contract:
+
+| Error | Package | `ErrorLine()` |
+|-------|---------|---------------|
+| `ErrInvalidUTF8` | `charset` | yes |
+| `ErrInvalidANSEL` | `charset` | yes |
+
+Each implementer pins the method with a `var _ interface{ ErrorLine() int }`
+assertion, since the parser matches on the method rather than the concrete type.
+Any new reader-layer error carrying a line (a future `ErrUnsupportedEncoding`)
+belongs in this table, or it will reintroduce the drift.
 
 Line numbering must also match the parser's line splitting, which ends a line on
 LF, CRLF, or a bare CR (old Macintosh). A counter that recognizes only LF
-reports line 1 for an entire CR-only file.
+reports line 1 for an entire CR-only file. Each `charset` reader implements this
+rule in its own `advance` method — two copies of the same switch, so a change to
+one must be mirrored in the other.
+
+The fallback counter cannot reach the line the bad byte is on. Nothing after
+that byte is delivered, and the truncated head of its line is dropped rather
+than tokenized (see the next section), so the counter stops at the last
+*complete* line — one short — and reports line 0 when the bad byte is the first
+in the file. `ErrorLine()` is therefore the only source of the right answer, not
+a refinement of a usually-correct guess.
 
 ### A Reader Error Outranks the Truncated Line It Leaves Behind
 
@@ -235,5 +254,6 @@ if level < 0 {
 - `parser/errors.go` - ParseError implementation, readErrorLine
 - `parser/parser.go` - lineScanner.Truncated, the truncated-tail predicate
 - `charset/charset.go` - ErrInvalidUTF8
+- `charset/ansel.go` - ErrInvalidANSEL
 - `validator/issue.go` - Validation issue structure
 - CLAUDE.md - Principle V (Error Transparency)

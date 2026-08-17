@@ -2,7 +2,9 @@ package charset
 
 import (
 	"bytes"
+	"errors"
 	"io"
+	"strings"
 	"testing"
 )
 
@@ -357,6 +359,16 @@ func TestErrInvalidANSEL_Error(t *testing.T) {
 	}
 }
 
+// ADR 0007 makes ErrorLine() the cross-layer contract for a reader error that
+// knows its own physical line; the parser matches on the method, so the ANSEL
+// error must expose it as ErrInvalidUTF8 does (issue #403).
+func TestErrInvalidANSEL_ErrorLine(t *testing.T) {
+	err := &ErrInvalidANSEL{Line: 5, Column: 10, Byte: 0x80}
+	if got := err.ErrorLine(); got != 5 {
+		t.Errorf("ErrorLine() = %d, want 5", got)
+	}
+}
+
 func TestIsCombiningDiacritical(t *testing.T) {
 	tests := []struct {
 		b    byte
@@ -400,6 +412,39 @@ func TestNewAnselReader_LineColumnTracking(t *testing.T) {
 	}
 	if anselErr.Column != 1 {
 		t.Errorf("Column = %d, want 1", anselErr.Column)
+	}
+}
+
+// The reported line must match the parser's line splitting, which ends a line
+// on LF, CRLF or a bare CR (old Macintosh). Counting only LF reported line 1
+// for a whole CR-only file, as the UTF-8 path did before #376 (issue #403).
+func TestNewAnselReader_LineTrackingLineEndings(t *testing.T) {
+	tests := []struct {
+		name string
+		sep  string
+	}{
+		{"LF", "\n"},
+		{"CRLF", "\r\n"},
+		{"CR", "\r"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// The invalid byte is the 4th on line 4, after "ABC".
+			input := "Line 1" + tt.sep + "Line 2" + tt.sep + "Line 3" + tt.sep + "ABC\x80"
+
+			r := newAnselReader(strings.NewReader(input))
+			_, err := io.ReadAll(r)
+
+			var anselErr *ErrInvalidANSEL
+			if !errors.As(err, &anselErr) {
+				t.Fatalf("ReadAll() error = %v (%T), want *ErrInvalidANSEL", err, err)
+			}
+			if anselErr.Line != 4 || anselErr.Column != 4 {
+				t.Errorf("error at line %d, column %d; want line 4, column 4",
+					anselErr.Line, anselErr.Column)
+			}
+		})
 	}
 }
 
