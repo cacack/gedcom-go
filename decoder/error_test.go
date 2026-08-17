@@ -283,3 +283,63 @@ func TestDecodeInvalidFirstByteHasNoPartialDocument(t *testing.T) {
 		t.Fatalf("error = %v (%T), want a wrapped *charset.ErrInvalidUTF8", err, err)
 	}
 }
+
+// An invalid ANSEL byte must be reported at its own physical line, end to end
+// through charset -> parser -> decoder. This is the ADR 0007 ErrorLine()
+// contract: without it the parser falls back to its own counter, which cannot
+// reach the line the bad byte is on -- nothing after that byte arrives, and the
+// truncated head of its line is dropped rather than tokenized (#382). So the
+// fallback lands one line short, and reports the impossible "line 0" when the
+// bad byte is the first in the file. Both are pinned here (issue #403).
+func TestANSELErrorReportsPhysicalLine(t *testing.T) {
+	separators := []struct {
+		name string
+		sep  string
+	}{
+		{"LF", "\n"},
+		{"CRLF", "\r\n"},
+		{"CR", "\r"},
+	}
+
+	tests := []struct {
+		name     string
+		lastLine string
+		wantLine int
+	}{
+		{"bad byte in column 1", "\x80 NAME x", 5},
+		{"bad byte mid-line", "1 NAME \x80x", 5},
+	}
+
+	for _, sepCase := range separators {
+		for _, tt := range tests {
+			t.Run(sepCase.name+"/"+tt.name, func(t *testing.T) {
+				sep := sepCase.sep
+				input := "0 HEAD" + sep + "1 CHAR ANSEL" + sep + "1 GEDC" + sep +
+					"2 VERS 5.5.1" + sep + tt.lastLine + sep + "0 TRLR" + sep
+
+				_, err := Decode(strings.NewReader(input))
+
+				var parseErr *parser.ParseError
+				if !errors.As(err, &parseErr) {
+					t.Fatalf("Decode() error = %v (%T), want *parser.ParseError", err, err)
+				}
+				if parseErr.Line != tt.wantLine {
+					t.Errorf("ParseError.Line = %d, want %d", parseErr.Line, tt.wantLine)
+				}
+			})
+		}
+	}
+
+	// A bad first byte reported "line 0" before #403.
+	t.Run("bad byte at offset 0", func(t *testing.T) {
+		_, err := Decode(strings.NewReader("\x800 HEAD\n1 CHAR ANSEL\n0 TRLR\n"))
+
+		var parseErr *parser.ParseError
+		if !errors.As(err, &parseErr) {
+			t.Fatalf("Decode() error = %v (%T), want *parser.ParseError", err, err)
+		}
+		if parseErr.Line != 1 {
+			t.Errorf("ParseError.Line = %d, want 1", parseErr.Line)
+		}
+	})
+}

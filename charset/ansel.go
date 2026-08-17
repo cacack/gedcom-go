@@ -26,16 +26,27 @@ func (e *ErrInvalidANSEL) Error() string {
 	return fmt.Sprintf("invalid ANSEL byte 0x%02X at line %d, column %d", e.Byte, e.Line, e.Column)
 }
 
+// ErrorLine reports the physical line of the offending byte, as ErrInvalidUTF8
+// does for the UTF-8 path. See ADR 0007: a reader error that knows its own line
+// exposes this so the parser can adopt it over its own lagging counter.
+func (e *ErrInvalidANSEL) ErrorLine() int {
+	return e.Line
+}
+
+// The parser matches on this method, not on the concrete type, so pin it here.
+var _ interface{ ErrorLine() int } = (*ErrInvalidANSEL)(nil)
+
 // anselReader implements io.Reader to convert ANSEL-encoded input to UTF-8.
 type anselReader struct {
-	reader  io.Reader
-	pending []rune // Buffered combining diacriticals waiting for base character
-	outBuf  []byte // UTF-8 output buffer
-	outPos  int    // Current read position in output buffer
-	line    int    // Current line number for error reporting
-	column  int    // Current column number for error reporting
-	eof     bool   // Whether underlying reader has reached EOF
-	err     error  // Stored error from processing
+	reader    io.Reader
+	pending   []rune // Buffered combining diacriticals waiting for base character
+	outBuf    []byte // UTF-8 output buffer
+	outPos    int    // Current read position in output buffer
+	line      int    // Current line number for error reporting
+	column    int    // Current column number for error reporting
+	lastWasCR bool   // Previous byte was CR, so a following LF completes one break
+	eof       bool   // Whether underlying reader has reached EOF
+	err       error  // Stored error from processing
 }
 
 // newAnselReader creates a new reader that converts ANSEL-encoded input to UTF-8.
@@ -162,7 +173,7 @@ func (r *anselReader) processByte(b byte) error {
 			return &ErrInvalidANSEL{Line: r.line, Column: r.column, Byte: b}
 		}
 		r.pending = append(r.pending, combining)
-		r.column++
+		r.advance(b)
 		return nil
 	}
 
@@ -193,15 +204,31 @@ func (r *anselReader) processByte(b byte) error {
 	}
 	r.pending = r.pending[:0] // Clear the buffer
 
-	// Update line/column tracking
-	if b == '\n' {
-		r.line++
-		r.column = 1
-	} else {
-		r.column++
-	}
+	r.advance(b)
 
 	return nil
+}
+
+// advance moves the cursor over one input byte. Line breaks follow the same
+// rules as the parser's line splitter (parser.scanGEDCOMLines): LF, CRLF and a
+// bare CR each end one line. Tracking lastWasCR keeps a CRLF pair from counting
+// twice. This mirrors utf8Reader.advance; ANSEL bytes are one column each.
+func (r *anselReader) advance(b byte) {
+	wasCR := r.lastWasCR
+	r.lastWasCR = b == '\r'
+
+	switch b {
+	case '\r':
+		r.line++
+		r.column = 1
+	case '\n':
+		if !wasCR {
+			r.line++
+		}
+		r.column = 1
+	default:
+		r.column++
+	}
 }
 
 // emitRune appends a rune to the output buffer as UTF-8 bytes.
