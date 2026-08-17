@@ -10,6 +10,7 @@ import (
 	"github.com/cacack/gedcom-go/v2/decoder"
 	"github.com/cacack/gedcom-go/v2/encoder"
 	"github.com/cacack/gedcom-go/v2/gedcom"
+	gedcomtesting "github.com/cacack/gedcom-go/v2/gedcom/testing"
 	"github.com/cacack/gedcom-go/v2/validator"
 )
 
@@ -573,35 +574,84 @@ func TestDecodeRealFile(t *testing.T) {
 	}
 }
 
-// TestRoundTrip verifies that encoding a decoded document produces valid output.
+// TestRoundTrip verifies decode → encode → decode fidelity for the public API.
+//
+// It compares document *content*, not record cardinality: gedcomtesting.
+// AssertRoundTrip walks records and their subordinate tags recursively, so a
+// round-trip that preserved the record skeleton while dropping every NAME,
+// DATE, SOUR and NOTE fails here (issue #410).
+//
+// Two limits are worth knowing before trusting a green run:
+//
+//   - Header.Tags are NOT compared. compareDocuments gates them behind
+//     WithHeaderTagComparison(), off by default, because the encoder rebuilds
+//     HEAD from four scalar fields and discards the rest. Enabling it fails
+//     most fixtures below. That is real encoder loss, tracked separately — not
+//     something this test may claim to cover.
+//   - It compares decode(input) against decode(encode(decode(input))), so any
+//     information both decode passes lose identically is invisible here.
+//
+// Lossless Representation is non-negotiable (CONSTITUTION.md); this test is a
+// necessary part of guarding it, not the whole of it.
 func TestRoundTrip(t *testing.T) {
-	// Decode
-	doc, err := Decode(strings.NewReader(testGedcomMinimal))
-	if err != nil {
-		t.Fatalf("Decode() error = %v", err)
+	t.Run("minimal inline", func(t *testing.T) {
+		gedcomtesting.AssertRoundTrip(t, []byte(testGedcomMinimal))
+	})
+
+	// Spans all three supported versions plus edge-case exports, so the
+	// assertion covers version-specific structures rather than one dialect.
+	// The 46 MiB longsword.ged is deliberately excluded: a round-trip decodes
+	// it twice, and decoder.TestScaleFixture already skips it under -race for
+	// memory reasons.
+	fixtures := []string{
+		"testdata/gedcom-5.5/555SAMPLE.GED",
+		"testdata/gedcom-5.5/royal92.ged",
+		"testdata/gedcom-5.5.1/comprehensive.ged",
+		"testdata/gedcom-7.0/maximal70.ged",
+		"testdata/gedcom-7.0/remarriage1.ged",
+		"testdata/edge-cases/calendar-dates.ged",
+		"testdata/edge-cases/cont-conc.ged",
+		"testdata/edge-cases/deep-nesting-levels.ged",
+		"testdata/edge-cases/structural-torture.ged",
 	}
 
-	// Encode
-	var buf bytes.Buffer
-	err = Encode(&buf, doc)
-	if err != nil {
-		t.Fatalf("Encode() error = %v", err)
+	for _, path := range fixtures {
+		t.Run(path, func(t *testing.T) {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("ReadFile(%s) error = %v", path, err)
+			}
+			gedcomtesting.AssertRoundTrip(t, data)
+		})
+	}
+}
+
+// These fixtures carry a value on a level-0 line (`0 _ROOT Root element`),
+// which the encoder drops — issue #404. Each one fails only on
+// Record[...].Value differences; every other structure round-trips. Remove the
+// skip when #404 lands: the fixtures should pass as-is (issue #410).
+//
+// This is not the only round-trip failure in testdata/ — testdata/encoding/
+// fixtures fail for an unrelated reason (the encoder writes UTF-8 bytes under
+// the source file's CHAR declaration), tracked separately. These three are
+// grouped only because they share the #404 cause.
+func TestRoundTrip_Level0RecordValue(t *testing.T) {
+	fixtures := []string{
+		"testdata/edge-cases/vendor-customtags-torture.ged",
+		"testdata/edge-cases/vendor-legacy.ged",
+		"testdata/edge-cases/rootsmagic-2026-export.ged",
 	}
 
-	// Decode the encoded output
-	doc2, err := Decode(&buf)
-	if err != nil {
-		t.Fatalf("second Decode() error = %v", err)
-	}
+	for _, path := range fixtures {
+		t.Run(path, func(t *testing.T) {
+			t.Skip("blocked on #404: encoder does not write a level-0 record Value")
 
-	// Compare
-	if len(doc.Individuals()) != len(doc2.Individuals()) {
-		t.Errorf("Individuals mismatch: original=%d, roundtrip=%d",
-			len(doc.Individuals()), len(doc2.Individuals()))
-	}
-	if len(doc.Families()) != len(doc2.Families()) {
-		t.Errorf("Families mismatch: original=%d, roundtrip=%d",
-			len(doc.Families()), len(doc2.Families()))
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("ReadFile(%s) error = %v", path, err)
+			}
+			gedcomtesting.AssertRoundTrip(t, data)
+		})
 	}
 }
 

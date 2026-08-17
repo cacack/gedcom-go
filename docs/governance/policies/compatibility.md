@@ -274,18 +274,26 @@ Round-trip testing verifies: **decode -> encode -> decode produces semantically 
 
 **How round-trip is tested**:
 
-```go
-// Simplified from actual test code
-doc1, _ := decoder.Decode(input)       // Original decode
-var buf bytes.Buffer
-encoder.Encode(&buf, doc1)             // Re-encode
-doc2, _ := decoder.Decode(&buf)        // Decode the output
+Use `gedcomtesting.AssertRoundTrip`, which decodes, re-encodes, decodes again,
+and compares the two documents recursively — records, values and subordinate
+tags, ignoring only `LineNumber`:
 
-// Compare semantic content
-assertEqual(t, len(doc1.Individuals()), len(doc2.Individuals()))
-assertEqual(t, len(doc1.Families()), len(doc2.Families()))
-// ... and all other record types, values, references
+```go
+import gedcomtesting "github.com/cacack/gedcom-go/v2/gedcom/testing"
+
+func TestMyGEDCOM(t *testing.T) {
+    data, _ := os.ReadFile("family.ged")
+    gedcomtesting.AssertRoundTrip(t, data)
+}
 ```
+
+`CheckRoundTrip` is the non-test equivalent, returning a `*RoundTripReport`
+that lists each difference.
+
+Two limits apply. `Header.Tags` are compared only under
+`WithHeaderTagComparison()`, off by default because the encoder rebuilds `HEAD`
+from a few scalar fields. And the comparison is between two decoded documents,
+so information lost identically by both decode passes is not visible to it.
 
 Round-trip tests exist throughout the codebase:
 - `encoder/encoder_test.go` - `TestEncodeRoundtrip`
