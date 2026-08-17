@@ -84,10 +84,19 @@ func TestSubset_RoundtripComprehensive551(t *testing.T) {
 	}
 }
 
+// Subset must not mutate the document it reads from. Comparing record and
+// XRefMap counts only catches mutations that add or remove records, so this
+// also compares the source's full encoded form before and after (issue #410).
+//
+// That covers what the encoder writes — Records[].{XRef,Type,Value} and
+// Tags[].{Level,Tag,Value}. Mutations to Header.Tags, Tag.XRef, Entity, or the
+// XRefMap's targets are invisible to it. TestSubset_DoesNotMutateSource covers
+// the aliasing cases directly.
 func TestSubset_SourceUnchangedAfterRoundtrip(t *testing.T) {
 	doc := mustDecode(t, "../testdata/gedcom-7.0/maximal70.ged")
 	originalCount := len(doc.Records)
 	originalXRefMapCount := len(doc.XRefMap)
+	before := mustEncode(t, doc)
 	seed := firstIndividualXRef(t, doc)
 
 	if _, err := doc.Subset([]string{seed}); err != nil {
@@ -100,6 +109,19 @@ func TestSubset_SourceUnchangedAfterRoundtrip(t *testing.T) {
 	if len(doc.XRefMap) != originalXRefMapCount {
 		t.Errorf("source XRefMap mutated: %d -> %d", originalXRefMapCount, len(doc.XRefMap))
 	}
+	if after := mustEncode(t, doc); !bytes.Equal(before, after) {
+		t.Errorf("source content mutated: encoded form differs after Subset (%d bytes -> %d bytes)",
+			len(before), len(after))
+	}
+}
+
+func mustEncode(t *testing.T, doc *gedcom.Document) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, doc); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	return buf.Bytes()
 }
 
 func mustDecode(t *testing.T, path string) *gedcom.Document {
