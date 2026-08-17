@@ -139,7 +139,7 @@ check: fmt vet test ## Run all checks (format, vet, test)
 
 check-coverage: ## Check coverage thresholds (same as CI)
 	@echo "Running tests with coverage..."
-	$(GOTEST) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
+	$(GOTEST) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./...
 	@echo ""
 	@echo "Checking coverage thresholds (85% per-package, 85% total)..."
 	@GO_TEST_COVERAGE=$$(command -v go-test-coverage || echo "$$HOME/go/bin/go-test-coverage"); \
@@ -335,11 +335,11 @@ preflight: ## Run all CI checks locally before pushing
 	@echo "✓ Lint passed"
 	@echo ""
 	@echo "→ [6/9] Running tests with race detector..."
-	@$(GOTEST) -race ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
+	@$(GOTEST) -race ./...
 	@echo "✓ Tests passed"
 	@echo ""
 	@echo "→ [7/9] Checking coverage thresholds..."
-	@$(GOTEST) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version > /dev/null
+	@$(GOTEST) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./... > /dev/null
 	@GO_TEST_COVERAGE=$$(command -v go-test-coverage || echo "$$HOME/go/bin/go-test-coverage"); \
 	if [ ! -x "$$GO_TEST_COVERAGE" ]; then GO_TEST_COVERAGE="$$(go env GOPATH)/bin/go-test-coverage"; fi; \
 	if [ ! -x "$$GO_TEST_COVERAGE" ]; then echo "go-test-coverage not found. Run 'make install-tools'" && exit 1; fi; \
