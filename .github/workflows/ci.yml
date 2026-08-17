@@ -47,8 +47,12 @@ jobs:
     - name: Verify dependencies
       run: go mod verify
 
+    # ./... rather than a hand-maintained package list: the list silently fell
+    # behind and left the root package, converter and gedcom/testing ungated
+    # (#430). examples/ and specs/ are excluded from the coverage thresholds by
+    # .testcoverage.yml, not here.
     - name: Run tests
-      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./merge ./parser ./validator ./version
+      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
       shell: bash
 
     - name: Upload coverage to Codecov
@@ -81,16 +85,19 @@ jobs:
         cache: true
 
     - name: Generate coverage
-      run: go test -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./merge ./parser ./validator ./version
+      run: go test -coverprofile=coverage.out -covermode=atomic ./...
 
+    # Thresholds and exclusions both come from .testcoverage.yml. They used to
+    # be inline here, which meant the action never read that file and its
+    # exclude.paths (examples/, specs/) went unapplied -- harmless while the
+    # profile was built from a hand-listed set of library packages, but it
+    # fails the moment the profile covers ./... (#430).
     - name: Check coverage thresholds
       uses: vladopajic/go-test-coverage@f94bcf0d6b9fa5fb8b783830b22648f6c17475e2 # v2
       with:
+        config: .testcoverage.yml
         profile: coverage.out
         local-prefix: github.com/cacack/gedcom-go/v2
-        threshold-file: 0
-        threshold-package: 85
-        threshold-total: 85
 
     - name: Per-package coverage report
       run: |
