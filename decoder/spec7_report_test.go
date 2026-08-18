@@ -112,6 +112,14 @@ the encoder, validator and converter are not exercised here.
 - **`+"`typed`"+` is not a claim of completeness.** It means the structure changed the
   typed model, not that every part of its payload was interpreted.
 
+## What is being done about the gaps
+
+Everything below that is not `+"`typed`"+` was triaged when this report was first
+published; the resulting issues are linked from
+[issue #444](https://github.com/cacack/gedcom-go/issues/444). Read the table as
+a statement of where the library is, not a backlog — the backlog lives in the
+tracker.
+
 ## Regenerating
 
 `+"```bash"+`
