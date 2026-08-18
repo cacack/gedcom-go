@@ -571,7 +571,10 @@ func repositoryToTags(repo *gedcom.Repository, opts *EncodeOptions) []*gedcom.Ta
 func noteToTags(note *gedcom.Note) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
-	// Note continuation lines (level 1) - CONT
+	// Note continuation lines (level 1) - CONT. Continuation is deprecated and
+	// never populated by the decoder, but a hand-built note may still split its
+	// body across Text and Continuation, so it is honoured here.
+	//nolint:staticcheck // SA1019: deliberate support for the deprecated field
 	for _, cont := range note.Continuation {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "CONT", Value: cont})
 	}

@@ -2829,19 +2829,10 @@ func TestNoteParsing(t *testing.T) {
 	if note1.XRef != "@N1@" {
 		t.Errorf("note1.XRef = %s, want @N1@", note1.XRef)
 	}
-	if note1.Text != "This is a shared note that can be" {
-		t.Errorf("note1.Text = %s, want 'This is a shared note that can be'", note1.Text)
-	}
-
-	// Test continuation lines
-	if len(note1.Continuation) != 2 {
-		t.Fatalf("len(note1.Continuation) = %d, want 2", len(note1.Continuation))
-	}
-	if note1.Continuation[0] != "referenced from multiple records." {
-		t.Errorf("note1.Continuation[0] = %s, want 'referenced from multiple records.'", note1.Continuation[0])
-	}
-	if note1.Continuation[1] != "It supports continuation lines." {
-		t.Errorf("note1.Continuation[1] = %s, want 'It supports continuation lines.'", note1.Continuation[1])
+	// #439: CONT lines fold into Text, so Text is the whole note body.
+	expectedText := "This is a shared note that can be\nreferenced from multiple records.\nIt supports continuation lines."
+	if note1.Text != expectedText {
+		t.Errorf("note1.Text = %q, want %q", note1.Text, expectedText)
 	}
 
 	// Test FullText method
@@ -2862,9 +2853,6 @@ func TestNoteParsing(t *testing.T) {
 	if note2.Text != "Short note" {
 		t.Errorf("note2.Text = %s, want 'Short note'", note2.Text)
 	}
-	if len(note2.Continuation) != 0 {
-		t.Errorf("len(note2.Continuation) = %d, want 0", len(note2.Continuation))
-	}
 	if note2.FullText() != "Short note" {
 		t.Errorf("note2.FullText() = %s, want 'Short note'", note2.FullText())
 	}
@@ -2877,17 +2865,11 @@ func TestNoteParsing(t *testing.T) {
 	if note3.XRef != "@N3@" {
 		t.Errorf("note3.XRef = %s, want @N3@", note3.XRef)
 	}
-	// CONC should concatenate to main text
-	expectedText := "This note has concatenation without space."
-	if note3.Text != expectedText {
-		t.Errorf("note3.Text = %s, want %s", note3.Text, expectedText)
-	}
-	// CONT should add to continuation
-	if len(note3.Continuation) != 1 {
-		t.Fatalf("len(note3.Continuation) = %d, want 1", len(note3.Continuation))
-	}
-	if note3.Continuation[0] != "And continuation with newline." {
-		t.Errorf("note3.Continuation[0] = %s, want 'And continuation with newline.'", note3.Continuation[0])
+	// CONC concatenates with no separator, CONT joins with a newline; both
+	// land in Text.
+	expectedText3 := "This note has concatenation without space.\nAnd continuation with newline."
+	if note3.Text != expectedText3 {
+		t.Errorf("note3.Text = %q, want %q", note3.Text, expectedText3)
 	}
 
 	expectedFullText3 := "This note has concatenation without space.\nAnd continuation with newline."
@@ -2900,6 +2882,69 @@ func TestNoteParsing(t *testing.T) {
 	nonExistent := doc.GetNote("@N999@")
 	if nonExistent != nil {
 		t.Error("GetNote(@N999@) should return nil")
+	}
+}
+
+// TestNoteContinuationFolding covers #439: every CONT and CONC line on a NOTE
+// record folds into Note.Text, in the order they appear.
+func TestNoteContinuationFolding(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{
+			name: "CONT only",
+			body: "0 @N1@ NOTE First line.\n1 CONT Second line.\n1 CONT Third line.\n",
+			want: "First line.\nSecond line.\nThird line.",
+		},
+		{
+			name: "CONC only",
+			body: "0 @N1@ NOTE Concat start\n1 CONC ed together\n",
+			want: "Concat started together",
+		},
+		{
+			name: "mixed chain",
+			body: "0 @N1@ NOTE Line one begin\n1 CONC s here.\n1 CONT Line two begin\n1 CONC s here.\n1 CONT Line three.\n",
+			want: "Line one begins here.\nLine two begins here.\nLine three.",
+		},
+		{
+			name: "empty CONT is a blank line",
+			body: "0 @N1@ NOTE First line.\n1 CONT\n1 CONT Third line.\n",
+			want: "First line.\n\nThird line.",
+		},
+		{
+			name: "CONT before any text",
+			body: "0 @N1@ NOTE\n1 CONT Second line.\n",
+			want: "\nSecond line.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			src := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" + tt.body + "0 TRLR\n"
+			doc, err := Decode(strings.NewReader(src))
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+			note := doc.GetNote("@N1@")
+			if note == nil {
+				t.Fatal("GetNote(@N1@) returned nil")
+			}
+			if note.Text != tt.want {
+				t.Errorf("Text = %q, want %q", note.Text, tt.want)
+			}
+			if note.FullText() != tt.want {
+				t.Errorf("FullText() = %q, want %q", note.FullText(), tt.want)
+			}
+			// Deliberately reading the deprecated field: leaving it empty is
+			// what keeps the encoder from emitting the body twice.
+			//nolint:staticcheck // SA1019: asserting the deprecated field stays empty
+			if len(note.Continuation) != 0 {
+				//nolint:staticcheck // SA1019: same
+				t.Errorf("len(Continuation) = %d, want 0", len(note.Continuation))
+			}
+		})
 	}
 }
 

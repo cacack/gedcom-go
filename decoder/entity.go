@@ -1133,8 +1133,7 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 // CONT writes a newline followed by the value, CONC writes the value directly.
 // Any other tag is a no-op. Writing into a single builder keeps folding O(n)
 // across a run of continuation lines. Callers that special-case an empty base
-// (parseEventAddress) or accumulate into a slice (parseNote) intentionally do
-// not use this.
+// (parseEventAddress) intentionally do not use this.
 func foldContinuation(b *strings.Builder, tag *gedcom.Tag) {
 	switch tag.Tag {
 	case "CONT":
@@ -1183,10 +1182,13 @@ func parseNote(record *gedcom.Record, collector *diagnosticCollector) *gedcom.No
 	note := &gedcom.Note{
 		XRef: record.XRef,
 		Tags: record.Tags,
-		Text: record.Value, // The note text is in the value of the level 0 NOTE tag
 	}
 
-	// Process continuation lines
+	// Seed the fold with the level-0 NOTE value; continuation lines fold in
+	// below. note.Text is assigned once after the loop to keep folding O(n).
+	var b strings.Builder
+	b.WriteString(record.Value)
+
 	for i := 0; i < len(record.Tags); i++ {
 		tag := record.Tags[i]
 		if tag.Level != 1 {
@@ -1194,20 +1196,13 @@ func parseNote(record *gedcom.Record, collector *diagnosticCollector) *gedcom.No
 		}
 
 		switch tag.Tag {
-		case "CONT":
-			// Continue with newline. Not foldContinuation: this accumulates into
-			// the Continuation slice rather than folding into a single string.
-			note.Continuation = append(note.Continuation, tag.Value)
-
-		case "CONC":
-			// Concatenate without newline to the last piece of text
-			if len(note.Continuation) > 0 {
-				// Append to last continuation
-				note.Continuation[len(note.Continuation)-1] += tag.Value
-			} else {
-				// Append to main text
-				note.Text += tag.Value
-			}
+		case "CONT", "CONC":
+			// Fold continuation lines back into the primary text, symmetric
+			// with parseSharedNote. Before #439 only CONC was folded and CONT
+			// went to the Continuation slice, so every multi-line NOTE read
+			// back through Text as its first line alone. Continuation is left
+			// nil on decode; see its doc comment.
+			foldContinuation(&b, tag)
 
 		case "EXID":
 			note.ExternalIDs = append(note.ExternalIDs, parseExternalID(record.Tags, i))
@@ -1221,6 +1216,8 @@ func parseNote(record *gedcom.Record, collector *diagnosticCollector) *gedcom.No
 			}
 		}
 	}
+
+	note.Text = b.String()
 
 	return note
 }

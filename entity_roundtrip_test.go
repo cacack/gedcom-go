@@ -36,10 +36,10 @@ import (
 // entityKnownBad maps "Type.Field" to the issue responsible. Self-cleaning: an
 // entry that starts passing fails the test asking to be removed.
 var entityKnownBad = map[string]string{
-	// #439: the decoder folds CONC into Note.Text but not CONT, so a multi-line
-	// note comes back truncated to its first line. SharedNote handles CONT
-	// correctly (#329), which is why only Note is listed.
-	"Note.Text": "#439 decoder drops CONT from Note.Text",
+	// #442: the same defect #439 fixed on Note, one entity over — the decoder
+	// assigns the TEXT tag value and never folds in its CONT/CONC lines, so a
+	// multi-line source text reads back as its first line alone.
+	"Source.Text": "#442 decoder drops CONT/CONC from Source.Text",
 }
 
 // nilElementPanics lists entity fields whose slices panic on a nil element.
@@ -94,6 +94,9 @@ func sampleEntities() []struct {
 			Title:       "Vital Records of Boston",
 			Author:      "City Clerk",
 			Publication: "Boston, 1930",
+			// Multi-line, because the single-line value this sample used to
+			// carry is what hid #442 from the harness.
+			Text: "First line of the source text.\nSecond line of the source text.",
 		}},
 		{"Repository", "@R1@", gedcom.RecordTypeRepository, &gedcom.Repository{
 			XRef: "@R1@",

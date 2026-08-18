@@ -148,7 +148,10 @@ Example decode:
 1 CONC  with more text
 ```
 
-Becomes `Note.FullText()`: `"First line\nSecond line with more text"`
+Becomes `Note.Text`: `"First line\nSecond line with more text"`
+
+`Note.FullText()` returns the same string. It exists for the deprecated
+`Note.Continuation` slice, which the decoder no longer populates — read `Text`.
 
 Re-encoded (may differ from original):
 ```
