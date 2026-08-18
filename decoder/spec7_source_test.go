@@ -1,30 +1,25 @@
 package decoder
 
 // spec7_source_test.go loads the vendored GEDCOM 7.0 specification files and
-// turns them into probe documents.
+// turns them into the graph and document form spec_common_test.go measures.
 //
 // The specification's own extracted files (testdata/spec/gedcom-7.0) list every
 // structure the standard defines, keyed by the superstructure it appears under.
 // That key is the whole point: GEDCOM tag meaning depends on context, so a flat
 // per-tag table would overstate coverage. What this file does with the data:
 //
-//  1. read substructures.tsv into a directed graph of (superstructure -> tag ->
-//     substructure) edges, with the ten top-level structures as roots;
-//  2. find each structure's shortest path from a root, so any (superstructure,
-//     tag) pair can be expressed as a concrete nesting of GEDCOM lines;
-//  3. render that path as a minimal, decodable GEDCOM 7.0 document, giving every
-//     line a payload of the type payloads.tsv declares for it.
+//  1. read substructures.tsv into (superstructure, tag, structure) pairs, which
+//     newSpecGraph turns into a directed graph with the ten top-level
+//     structures as roots;
+//  2. describe what a minimal 7.0 document looks like, so any pair can be
+//     rendered as a concrete nesting of GEDCOM lines with a payload of the type
+//     payloads.tsv declares for it.
 //
 // spec7_coverage_test.go decodes those documents to derive what the library
 // supports. Nothing here reads or asserts anything about the decoder.
 
 import (
-	"encoding/csv"
-	"fmt"
-	"os"
 	"path/filepath"
-	"slices"
-	"sort"
 	"strings"
 	"testing"
 )
@@ -35,26 +30,10 @@ const spec7Dir = "../testdata/spec/gedcom-7.0"
 // spec7TermPrefix is the URI namespace every standard 7.0 structure lives under.
 const spec7TermPrefix = "https://gedcom.io/terms/v7/"
 
-// spec7Step is one line of a GEDCOM structure path: the tag as it appears in
-// the file, and the URI of the structure that tag denotes in that position.
-type spec7Step struct {
-	tag       string
-	structure string
-}
-
-// spec7Pair is one (superstructure, tag) entry of the specification inventory,
-// which is the unit this whole exercise reports coverage for. superstructure is
-// empty for the ten structures that appear at level 0.
-type spec7Pair struct {
-	superstructure string
-	tag            string
-	structure      string
-}
-
 // spec7Spec is the specification data needed to build probe documents.
 type spec7Spec struct {
-	// pairs is every (superstructure, tag) entry, in specification file order.
-	pairs []spec7Pair
+	*specGraph
+	*specForm
 
 	// payloads maps a structure URI to its declared payload type. A structure
 	// with no payload is present with an empty value.
@@ -63,10 +42,6 @@ type spec7Spec struct {
 	// enumValues maps a structure URI whose payload is an enumeration to a
 	// valid value for it.
 	enumValues map[string]string
-
-	// paths maps a structure URI to its shortest path from a top-level
-	// structure, inclusive of the structure itself.
-	paths map[string][]spec7Step
 
 	// source is the provenance recorded in the vendored SOURCE file.
 	source map[string]string
@@ -79,7 +54,7 @@ func spec7Term(uri string) string {
 }
 
 // loadSpec7 reads the vendored specification files and derives the structure
-// paths. It fails the test rather than returning an error: every caller here
+// graph. It fails the test rather than returning an error: every caller here
 // treats missing or malformed spec data as unrecoverable.
 func loadSpec7(t *testing.T) *spec7Spec {
 	t.Helper()
@@ -90,8 +65,9 @@ func loadSpec7(t *testing.T) *spec7Spec {
 		source:     spec7Source(t),
 	}
 
+	var pairs []specPair
 	for _, row := range spec7TSV(t, "substructures.tsv", "superstructure", "tag", "structure") {
-		s.pairs = append(s.pairs, spec7Pair{superstructure: row[0], tag: row[1], structure: row[2]})
+		pairs = append(pairs, specPair{superstructure: row[0], tag: row[1], structure: row[2]})
 	}
 	for _, row := range spec7TSV(t, "payloads.tsv", "structure", "payload") {
 		s.payloads[row[0]] = row[1]
@@ -113,7 +89,19 @@ func loadSpec7(t *testing.T) *spec7Spec {
 		}
 	}
 
-	s.paths = spec7Paths(t, s.pairs)
+	s.specGraph = newSpecGraph(pairs)
+	s.specForm = &specForm{
+		version: "7.0",
+		head:    spec7TermPrefix + "HEAD",
+		gedc:    gedcURI,
+		vers:    gedcVersURI,
+		trlr:    trlrURI,
+		fillers: spec7Fillers,
+		value:   s.payloadFor,
+		pointer: func(structure string) (string, bool) {
+			return specPointerTarget(s.payloads[structure])
+		},
+	}
 	return s
 }
 
@@ -129,153 +117,19 @@ func spec7EnumTag(uri string) string {
 	return name
 }
 
-// spec7TSV reads a tab-separated file from the vendored directory and returns
-// its data rows.
-//
-// The header row is checked rather than assumed. Upstream has shipped these
-// files without one, and dropping row 1 unconditionally would eat a structure
-// silently -- the resulting failure says the decoder's coverage changed, which
-// would send whoever re-vendored the files looking in entirely the wrong place.
+// spec7TSV reads one of the vendored files. Upstream has shipped them without a
+// header row, which specTSV is what catches.
 func spec7TSV(t *testing.T, name string, columns ...string) [][]string {
 	t.Helper()
 
-	f, err := os.Open(filepath.Join(spec7Dir, name))
-	if err != nil {
-		t.Fatalf("open %s: %v", name, err)
-	}
-	defer func() { _ = f.Close() }()
-
-	r := csv.NewReader(f)
-	r.Comma = '\t'
-	r.FieldsPerRecord = len(columns)
-	rows, err := r.ReadAll()
-	if err != nil {
-		t.Fatalf("read %s: %v", name, err)
-	}
-	if len(rows) == 0 {
-		t.Fatalf("%s is empty", name)
-	}
-	if !slices.Equal(rows[0], columns) {
-		t.Fatalf("%s: first row is %v, want the header %v -- re-vendor it from a "+
-			"commit that has one, or this loses a structure", name, rows[0], columns)
-	}
-	return rows[1:]
+	return specTSV(t, spec7Dir, name, columns...)
 }
 
 // spec7Source parses the vendored SOURCE file into its "key: value" entries.
 func spec7Source(t *testing.T) map[string]string {
 	t.Helper()
 
-	data, err := os.ReadFile(filepath.Join(spec7Dir, "SOURCE"))
-	if err != nil {
-		t.Fatalf("read SOURCE: %v", err)
-	}
-
-	source := map[string]string{}
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		key, value, ok := strings.Cut(line, ":")
-		if !ok {
-			t.Fatalf("SOURCE line is not \"key: value\": %q", line)
-		}
-		source[strings.TrimSpace(key)] = strings.TrimSpace(value)
-	}
-	return source
-}
-
-// spec7Paths finds each structure's shortest path from a top-level structure.
-//
-// Breadth-first from the roots, so a structure reachable several ways gets its
-// shallowest nesting -- the fewest lines a probe document has to spend before
-// reaching the structure under test. Ties break on tag then structure URI, so
-// the chosen path does not depend on map iteration order.
-func spec7Paths(t *testing.T, pairs []spec7Pair) map[string][]spec7Step {
-	t.Helper()
-
-	children := map[string][]spec7Pair{}
-	for _, p := range pairs {
-		children[p.superstructure] = append(children[p.superstructure], p)
-	}
-	for _, group := range children {
-		sort.Slice(group, func(i, j int) bool {
-			if group[i].tag != group[j].tag {
-				return group[i].tag < group[j].tag
-			}
-			return group[i].structure < group[j].structure
-		})
-	}
-
-	paths := map[string][]spec7Step{}
-	var queue []string
-	for _, root := range children[""] {
-		if _, seen := paths[root.structure]; seen {
-			continue
-		}
-		paths[root.structure] = []spec7Step{{tag: root.tag, structure: root.structure}}
-		queue = append(queue, root.structure)
-	}
-
-	for len(queue) > 0 {
-		current := queue[0]
-		queue = queue[1:]
-		for _, child := range children[current] {
-			if _, seen := paths[child.structure]; seen {
-				continue
-			}
-			path := make([]spec7Step, len(paths[current]), len(paths[current])+1)
-			copy(path, paths[current])
-			paths[child.structure] = append(path, spec7Step{tag: child.tag, structure: child.structure})
-			queue = append(queue, child.structure)
-		}
-	}
-	return paths
-}
-
-// pathFor returns the nesting of lines that reaches pair: the path to its
-// superstructure, extended by the pair's own tag. Top-level pairs are their own
-// path. The second result is false when the superstructure is unreachable from
-// any top-level structure, which would mean the specification data does not
-// describe a connected document.
-func (s *spec7Spec) pathFor(pair spec7Pair) ([]spec7Step, bool) {
-	step := spec7Step{tag: pair.tag, structure: pair.structure}
-	if pair.superstructure == "" {
-		return []spec7Step{step}, true
-	}
-	parent, ok := s.paths[pair.superstructure]
-	if !ok {
-		return nil, false
-	}
-	path := make([]spec7Step, len(parent), len(parent)+1)
-	copy(path, parent)
-	return append(path, step), true
-}
-
-// spec7Xrefs are the cross-reference identifiers of the filler records every
-// probe document carries, so that pointer payloads point at something real.
-// They are deliberately distinct from the probe record's own identifier.
-var spec7Xrefs = map[string]string{
-	spec7TermPrefix + "record-INDI":  "@PI@",
-	spec7TermPrefix + "record-FAM":   "@PF@",
-	spec7TermPrefix + "record-SOUR":  "@PS@",
-	spec7TermPrefix + "record-REPO":  "@PR@",
-	spec7TermPrefix + "record-OBJE":  "@PO@",
-	spec7TermPrefix + "record-SNOTE": "@PN@",
-	spec7TermPrefix + "record-SUBM":  "@PU@",
-}
-
-// spec7ProbeXref is the identifier given to the record a probe path is rooted
-// in, when that root takes one.
-const spec7ProbeXref = "@PX@"
-
-// spec7PointerTarget reports the record type a pointer payload points at, and
-// whether the payload is a pointer at all.
-func spec7PointerTarget(payload string) (string, bool) {
-	if !strings.HasPrefix(payload, "@<") {
-		return "", false
-	}
-	return strings.TrimSuffix(strings.TrimPrefix(payload, "@<"), ">@"), true
+	return specSourceFile(t, filepath.Join(spec7Dir, "SOURCE"))
 }
 
 // payloadFor returns a value of the type the specification declares for the
@@ -304,7 +158,7 @@ func (s *spec7Spec) payloadFor(structure string) string {
 
 	payload := s.payloads[structure]
 
-	if target, ok := spec7PointerTarget(payload); ok {
+	if target, ok := specPointerTarget(payload); ok {
 		return spec7Xrefs[target]
 	}
 
@@ -353,52 +207,8 @@ func (s *spec7Spec) payloadFor(structure string) string {
 	}
 }
 
-// spec7SentinelTag is a tag no version of GEDCOM defines and no vendor uses. A
-// decoder that inspects a context at all must report it as unknown there, so it
-// answers a question no standard tag can: whether silence about a standard tag
-// means the decoder accepted it deliberately or never looked.
-//
-// It carries no underscore on purpose. Underscore-prefixed tags are vendor
-// extensions, which ADR 0003 routes to raw storage without complaint, so one
-// would be silent everywhere and measure nothing.
-const spec7SentinelTag = "ZZZZ"
-
-// sentinelFor renders a document with the sentinel tag in place of a
-// substructure of superstructure. The second result is false when the
-// superstructure is unreachable.
-func (s *spec7Spec) sentinelFor(superstructure string) (spec7Probe, bool) {
-	sentinel := spec7Step{tag: spec7SentinelTag}
-	if superstructure == "" {
-		return s.probeFor([]spec7Step{sentinel}), true
-	}
-	parent, ok := s.paths[superstructure]
-	if !ok {
-		return spec7Probe{}, false
-	}
-	path := make([]spec7Step, len(parent), len(parent)+1)
-	copy(path, parent)
-	return s.probeFor(append(path, sentinel)), true
-}
-
-// spec7Probe is a pair of documents that differ in exactly one line.
-type spec7Probe struct {
-	// with is a document in which the structure under test is present.
-	with string
-
-	// without is the same document with that one line left out. It is the
-	// control: any difference in the decoded typed model between the two is
-	// attributable to the structure under test and nothing else.
-	without string
-
-	// line is the 1-based line number of the structure under test within with.
-	line int
-}
-
-// A probe document needs three things a path may not supply: a header, a
-// version statement, and a trailer. The harness injects what is missing -- but
-// never as a duplicate of a line the path itself contributes. A removed line
-// that a retained line reproduces cannot change anything, so such a probe
-// measures nothing and publishes a confident, meaningless status.
+// The structures a probe document needs to know by name, because the harness
+// injects them when a path does not supply them.
 const (
 	// gedcURI is the container the version statement lives in.
 	gedcURI = spec7TermPrefix + "GEDC"
@@ -410,120 +220,30 @@ const (
 	trlrURI = spec7TermPrefix + "TRLR"
 )
 
-// probeFor renders the pair of documents that isolate path's deepest line.
-//
-// The document is the smallest thing that decodes: a header stating GEDCOM 7.0,
-// the path under test nested from its top-level structure, a filler record for
-// each pointer payload the path actually uses, and a trailer. Levels come
-// straight from the path index, since a path always starts at level 0.
-//
-// Filler records are demand-driven rather than always present because they are
-// not inert: a record type is itself evidence of a GEDCOM version, and unused
-// fillers would let version detection succeed from the record list alone. Both
-// documents get the same fillers -- those the full path needs -- so the pair
-// still differs in exactly one line.
-func (s *spec7Spec) probeFor(path []spec7Step) spec7Probe {
-	headRooted := path[0].structure == spec7TermPrefix+"HEAD"
-
-	var suppliesGedc, suppliesVersion, suppliesTrailer bool
-	needed := map[string]bool{}
-	for _, step := range path {
-		switch step.structure {
-		case gedcURI:
-			suppliesGedc = true
-		case gedcVersURI:
-			suppliesVersion = true
-		case trlrURI:
-			suppliesTrailer = true
-		}
-		if target, ok := spec7PointerTarget(s.payloads[step.structure]); ok {
-			needed[target] = true
-		}
-	}
-
-	render := func(omitLast bool) (lines []string, probeLine int) {
-		steps := path
-		if omitLast {
-			steps = path[:len(path)-1]
-		}
-
-		var head, body []string
-		for i, step := range steps {
-			line := fmt.Sprintf("%d %s", i, step.tag)
-			if i == 0 && !headRooted && step.tag != "TRLR" {
-				line = fmt.Sprintf("0 %s %s", spec7ProbeXref, step.tag)
-			}
-			if payload := s.payloadFor(step.structure); payload != "" {
-				line += " " + payload
-			}
-			if headRooted {
-				head = append(head, line)
-			} else {
-				body = append(body, line)
-			}
-		}
-
-		if !headRooted {
-			head = []string{"0 HEAD"}
-		}
-		// The version statement goes last in the header so it never sits
-		// between a path line and its parent. What is injected depends on how
-		// much of it the path already supplies.
-		switch {
-		case suppliesVersion:
-			// The path is the version statement. A second one would leave the
-			// control declaring 7.0 with the line removed.
-		case suppliesGedc:
-			// The path is the GEDC container. Nesting the version statement
-			// inside it rather than in a second GEDC is what makes the probe
-			// mean something: with the line, the version is stated; without it,
-			// the statement is orphaned and the document has no version.
-			head = append(head, "2 VERS 7.0")
-		default:
-			head = append(head, "1 GEDC", "2 VERS 7.0")
-		}
-
-		lines = append(lines, head...)
-		lines = append(lines, body...)
-		if headRooted {
-			probeLine = len(steps)
-		} else {
-			probeLine = len(head) + len(body)
-		}
-
-		for _, uri := range spec7FillerOrder {
-			if !needed[uri] {
-				continue
-			}
-			line := fmt.Sprintf("0 %s %s", spec7Xrefs[uri], strings.TrimPrefix(spec7Term(uri), "record-"))
-			if payload := s.payloadFor(uri); payload != "" {
-				line += " " + payload
-			}
-			lines = append(lines, line)
-		}
-		if !suppliesTrailer {
-			lines = append(lines, "0 TRLR")
-		}
-		return lines, probeLine
-	}
-
-	with, probeLine := render(false)
-	without, _ := render(true)
-	return spec7Probe{
-		with:    strings.Join(with, "\n") + "\n",
-		without: strings.Join(without, "\n") + "\n",
-		line:    probeLine,
-	}
+// spec7Fillers are the records every probe document can point at, in the order
+// they are written.
+var spec7Fillers = []specFiller{
+	spec7Filler("INDI", "@PI@"),
+	spec7Filler("FAM", "@PF@"),
+	spec7Filler("SOUR", "@PS@"),
+	spec7Filler("REPO", "@PR@"),
+	spec7Filler("OBJE", "@PO@"),
+	spec7Filler("SNOTE", "@PN@"),
+	spec7Filler("SUBM", "@PU@"),
 }
 
-// spec7FillerOrder fixes the order of the filler records so probe documents are
-// byte-for-byte reproducible.
-var spec7FillerOrder = []string{
-	spec7TermPrefix + "record-INDI",
-	spec7TermPrefix + "record-FAM",
-	spec7TermPrefix + "record-SOUR",
-	spec7TermPrefix + "record-REPO",
-	spec7TermPrefix + "record-OBJE",
-	spec7TermPrefix + "record-SNOTE",
-	spec7TermPrefix + "record-SUBM",
+// spec7Xrefs maps a pointer payload's target to the filler record's identifier.
+var spec7Xrefs = func() map[string]string {
+	xrefs := map[string]string{}
+	for _, filler := range spec7Fillers {
+		xrefs[filler.target] = filler.xref
+	}
+	return xrefs
+}()
+
+// spec7Filler describes one filler record. In 7.0 a pointer payload names the
+// record structure's URI, so the target and the structure are the same thing.
+func spec7Filler(tag, xref string) specFiller {
+	uri := spec7TermPrefix + "record-" + tag
+	return specFiller{target: uri, xref: xref, tag: tag, structure: uri}
 }
