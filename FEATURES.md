@@ -76,10 +76,15 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 - Heuristic-based detection for malformed headers
 - Version-aware validation rules
 
-"Full" means every version decodes losslessly: no line of any of them is dropped,
-and all three round-trip byte-for-byte. It is a separate question how much of a
-version reaches the *typed* model rather than raw tags, and for GEDCOM 7.0 that
-question has a measured answer —
+"Full" is a claim about *decoding*: every version is decoded without dropping a
+line, because every line is kept in raw form regardless of whether the decoder
+understands it ([ADR 0003](docs/decisions/0003-lossless-dual-storage.md)). It is
+not a claim that re-encoding reproduces the input byte for byte — `byte_roundtrip_test.go`
+enumerates where it does not, and the largest of those gaps is tracked in
+[#429](https://github.com/cacack/gedcom-go/issues/429).
+
+How much of a version reaches the *typed* model rather than raw tags is a third,
+separate question, and for GEDCOM 7.0 it has a measured answer —
 [docs/reference/gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) reports
 every one of the 1,389 (superstructure, tag) pairs the standard defines, derived
 by decoding rather than estimated.

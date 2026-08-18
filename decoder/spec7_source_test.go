@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -89,24 +90,24 @@ func loadSpec7(t *testing.T) *spec7Spec {
 		source:     spec7Source(t),
 	}
 
-	for _, row := range spec7TSV(t, "substructures.tsv", 3) {
+	for _, row := range spec7TSV(t, "substructures.tsv", "superstructure", "tag", "structure") {
 		s.pairs = append(s.pairs, spec7Pair{superstructure: row[0], tag: row[1], structure: row[2]})
 	}
-	for _, row := range spec7TSV(t, "payloads.tsv", 2) {
+	for _, row := range spec7TSV(t, "payloads.tsv", "structure", "payload") {
 		s.payloads[row[0]] = row[1]
 	}
 
 	// enumerations.tsv names the enumeration set a structure draws from;
 	// enumerationsets.tsv lists that set's members. Collapse the two into one
-	// representative value per structure, taking the first member in file order
-	// so the choice is stable across runs.
+	// representative value per structure, taking the last member in file order:
+	// stable across runs, and away from the first, which for QUAY is "0" -- the
+	// value its typed field holds when the line is absent, so a probe carrying
+	// it would measure nothing. See payloadFor.
 	setMember := map[string]string{}
-	for _, row := range spec7TSV(t, "enumerationsets.tsv", 2) {
-		if _, seen := setMember[row[0]]; !seen {
-			setMember[row[0]] = row[1]
-		}
+	for _, row := range spec7TSV(t, "enumerationsets.tsv", "set", "value") {
+		setMember[row[0]] = row[1]
 	}
-	for _, row := range spec7TSV(t, "enumerations.tsv", 2) {
+	for _, row := range spec7TSV(t, "enumerations.tsv", "structure", "set") {
 		if member, ok := setMember[row[1]]; ok {
 			s.enumValues[row[0]] = spec7EnumTag(member)
 		}
@@ -128,9 +129,14 @@ func spec7EnumTag(uri string) string {
 	return name
 }
 
-// spec7TSV reads a tab-separated file from the vendored directory, skipping its
-// header row and requiring exactly fields columns.
-func spec7TSV(t *testing.T, name string, fields int) [][]string {
+// spec7TSV reads a tab-separated file from the vendored directory and returns
+// its data rows.
+//
+// The header row is checked rather than assumed. Upstream has shipped these
+// files without one, and dropping row 1 unconditionally would eat a structure
+// silently -- the resulting failure says the decoder's coverage changed, which
+// would send whoever re-vendored the files looking in entirely the wrong place.
+func spec7TSV(t *testing.T, name string, columns ...string) [][]string {
 	t.Helper()
 
 	f, err := os.Open(filepath.Join(spec7Dir, name))
@@ -141,13 +147,17 @@ func spec7TSV(t *testing.T, name string, fields int) [][]string {
 
 	r := csv.NewReader(f)
 	r.Comma = '\t'
-	r.FieldsPerRecord = fields
+	r.FieldsPerRecord = len(columns)
 	rows, err := r.ReadAll()
 	if err != nil {
 		t.Fatalf("read %s: %v", name, err)
 	}
 	if len(rows) == 0 {
 		t.Fatalf("%s is empty", name)
+	}
+	if !slices.Equal(rows[0], columns) {
+		t.Fatalf("%s: first row is %v, want the header %v -- re-vendor it from a "+
+			"commit that has one, or this loses a structure", name, rows[0], columns)
 	}
 	return rows[1:]
 }
@@ -269,9 +279,20 @@ func spec7PointerTarget(payload string) (string, bool) {
 }
 
 // payloadFor returns a value of the type the specification declares for the
-// structure, or the empty string when it declares none. The value only has to
-// be well formed enough that the decoder has something real to store; nothing
-// here depends on which value it is.
+// structure, or the empty string when it declares none.
+//
+// Which value it is does matter, in one specific way: a probe measures whether
+// removing a line changes the typed model, so the payload must be a value the
+// model could not already hold without that line. Two ways it can collide, both
+// of which produced a wrong published status before this was understood:
+//
+//   - a shared literal. Every xsd:string payload used to be "text", so an ADR1
+//     carrying "text" under an ADDR carrying "text" left Address.Line1 unchanged
+//     -- the ADDR line seeds it and ADR1 overwrote it with the same string.
+//     Free-text payloads are therefore unique per structure.
+//   - a zero value. QUAY decodes to an int, and its enumeration's first member
+//     is "0", which is what the field holds anyway. Enumerations therefore take
+//     their last member rather than their first.
 func (s *spec7Spec) payloadFor(structure string) string {
 	// The specification types the version statement as a plain string, but a
 	// probe document has to declare which GEDCOM it is before any of this means
@@ -293,7 +314,7 @@ func (s *spec7Spec) payloadFor(structure string) string {
 	case "Y|<NULL>":
 		return "Y"
 	case "http://www.w3.org/2001/XMLSchema#string":
-		return "text"
+		return "text-" + spec7Term(structure)
 	case "http://www.w3.org/2001/XMLSchema#nonNegativeInteger":
 		return "1"
 	case "http://www.w3.org/2001/XMLSchema#Language":
@@ -328,7 +349,7 @@ func (s *spec7Spec) payloadFor(structure string) string {
 	case spec7TermPrefix + "type-TagDef":
 		return "_EXAMPLE https://example.com/ext"
 	default:
-		return "text"
+		return "text-" + spec7Term(structure)
 	}
 }
 
@@ -373,12 +394,21 @@ type spec7Probe struct {
 	line int
 }
 
-// gedcVersURI identifies the VERS structure under GEDC, which is what states a
-// document's version. A probe path that already contains it supplies the
-// version itself and must not be given a second one -- otherwise the control
-// document would still declare 7.0 with the line removed, and the probe would
-// measure nothing.
-const gedcVersURI = spec7TermPrefix + "GEDC-VERS"
+// A probe document needs three things a path may not supply: a header, a
+// version statement, and a trailer. The harness injects what is missing -- but
+// never as a duplicate of a line the path itself contributes. A removed line
+// that a retained line reproduces cannot change anything, so such a probe
+// measures nothing and publishes a confident, meaningless status.
+const (
+	// gedcURI is the container the version statement lives in.
+	gedcURI = spec7TermPrefix + "GEDC"
+
+	// gedcVersURI is the version statement itself.
+	gedcVersURI = spec7TermPrefix + "GEDC-VERS"
+
+	// trlrURI is the trailer.
+	trlrURI = spec7TermPrefix + "TRLR"
+)
 
 // probeFor renders the pair of documents that isolate path's deepest line.
 //
@@ -395,11 +425,16 @@ const gedcVersURI = spec7TermPrefix + "GEDC-VERS"
 func (s *spec7Spec) probeFor(path []spec7Step) spec7Probe {
 	headRooted := path[0].structure == spec7TermPrefix+"HEAD"
 
-	suppliesVersion := false
+	var suppliesGedc, suppliesVersion, suppliesTrailer bool
 	needed := map[string]bool{}
 	for _, step := range path {
-		if step.structure == gedcVersURI {
+		switch step.structure {
+		case gedcURI:
+			suppliesGedc = true
+		case gedcVersURI:
 			suppliesVersion = true
+		case trlrURI:
+			suppliesTrailer = true
 		}
 		if target, ok := spec7PointerTarget(s.payloads[step.structure]); ok {
 			needed[target] = true
@@ -432,13 +467,19 @@ func (s *spec7Spec) probeFor(path []spec7Step) spec7Probe {
 			head = []string{"0 HEAD"}
 		}
 		// The version statement goes last in the header so it never sits
-		// between a path line and its parent. It is omitted only when the path
-		// is itself the version statement, which is the one case where adding
-		// it would mask what the probe is measuring. It stays even when the
-		// control document drops `0 HEAD` itself, leaving it orphaned: the
-		// documents have to differ in exactly one line, and an orphaned header
-		// body is the honest answer to what `0 HEAD` contributes.
-		if !suppliesVersion {
+		// between a path line and its parent. What is injected depends on how
+		// much of it the path already supplies.
+		switch {
+		case suppliesVersion:
+			// The path is the version statement. A second one would leave the
+			// control declaring 7.0 with the line removed.
+		case suppliesGedc:
+			// The path is the GEDC container. Nesting the version statement
+			// inside it rather than in a second GEDC is what makes the probe
+			// mean something: with the line, the version is stated; without it,
+			// the statement is orphaned and the document has no version.
+			head = append(head, "2 VERS 7.0")
+		default:
 			head = append(head, "1 GEDC", "2 VERS 7.0")
 		}
 
@@ -460,7 +501,9 @@ func (s *spec7Spec) probeFor(path []spec7Step) spec7Probe {
 			}
 			lines = append(lines, line)
 		}
-		lines = append(lines, "0 TRLR")
+		if !suppliesTrailer {
+			lines = append(lines, "0 TRLR")
+		}
 		return lines, probeLine
 	}
 

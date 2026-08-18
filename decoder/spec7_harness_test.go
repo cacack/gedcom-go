@@ -9,14 +9,15 @@ package decoder
 // be read directly out of the decoder, so degradation fails loudly instead.
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
 
 // TestSpec7SentinelIsUnknown verifies the assumption the raw (accepted) /
-// raw (unwatched) split rests on: that the sentinel tag is not a structure the
-// specification defines anywhere. A sentinel the decoder could legitimately
-// recognize would silently reclassify every unwatched context.
+// raw (undiagnosed) split rests on: that the sentinel tag is not a structure
+// the specification defines anywhere. A sentinel the decoder could legitimately
+// recognize would silently reclassify every undiagnosed context.
 func TestSpec7SentinelIsUnknown(t *testing.T) {
 	for _, pair := range loadSpec7(t).pairs {
 		if pair.tag == spec7SentinelTag {
@@ -68,6 +69,16 @@ func TestSpec7ProbesAreWellFormed(t *testing.T) {
 			(fields[1] != pair.tag && (len(fields) < 3 || fields[2] != pair.tag)) {
 			t.Errorf("%s: line %d is %q, which does not carry the tag under test",
 				name, probe.line, removed)
+			continue
+		}
+		// A removed line the control still contains verbatim cannot change
+		// anything, so the probe would report a confident status having
+		// measured nothing. This is how HEAD.GEDC and the top-level TRLR were
+		// wrong: the harness injected boilerplate identical to the line under
+		// test. It is also how the next such bug will announce itself.
+		if slices.Contains(without, removed) {
+			t.Errorf("%s: line %d (%q) is still present in the control, so removing "+
+				"it measures nothing\nprobe:\n%s", name, probe.line, removed, probe.with)
 		}
 	}
 }
@@ -104,7 +115,7 @@ func TestSpec7AnchorStatuses(t *testing.T) {
 		{
 			superstructure: "HEAD",
 			tag:            "DEST",
-			want:           spec7RawUnwatched,
+			want:           spec7RawUndiagnosed,
 			because:        "buildHeader is given no diagnostic collector, so it reports nothing",
 		},
 	}

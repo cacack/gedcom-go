@@ -11,3 +11,9 @@ testdata/encoding/*-lf.ged text eol=lf
 
 # UTF-16 files are binary - Git must not modify them
 testdata/encoding/utf16*.ged binary
+
+# Generated documents compared byte-exactly by their tests. Windows autocrlf
+# checkout would rewrite them and the resulting failure is undiagnosable:
+# the diff prints lines that look identical, and regenerating cannot fix it.
+docs/reference/gedcom-7-coverage.md text eol=lf
+testdata/spec/** text eol=lf

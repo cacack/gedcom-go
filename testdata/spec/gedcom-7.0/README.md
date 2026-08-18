@@ -2,8 +2,10 @@
 
 Vendored, unmodified, from the `extracted-files/` directory of
 [FamilySearch/GEDCOM](https://github.com/FamilySearch/GEDCOM). Provenance —
-release, commit, retrieval date — lives in `SOURCE`, which is the single place
-it is recorded; the generated coverage document reads it from there.
+commit, what it describes, retrieval date — lives in `SOURCE`, which is the
+single place it is recorded; the generated coverage document reads it from
+there. Note that a commit is pinned, not a release tag: the two differ, and
+some tagged revisions ship these files without a header row.
 
 Upstream generates these files from the specification text itself, so they are
 the standards body's own machine-readable statement of the 7.0 structure set,

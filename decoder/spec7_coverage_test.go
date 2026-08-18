@@ -63,15 +63,22 @@ const (
 	spec7RawFlagged spec7Status = "raw (flagged)"
 
 	// spec7RawAccepted means the structure stays in raw tags only, but the
-	// decoder reads the context -- it reports the sentinel tag there -- and
-	// deliberately says nothing about this tag. A known structure with no typed
+	// context does report unknown tags -- the sentinel is flagged there -- and
+	// this tag is deliberately not among them. A known structure with no typed
 	// field yet.
 	spec7RawAccepted spec7Status = "raw (accepted)"
 
-	// spec7RawUnwatched means the decoder does not read the context at all: not
-	// even the sentinel tag is reported there. Every structure in such a context
-	// is raw, and no diagnostic will ever say so.
-	spec7RawUnwatched spec7Status = "raw (unwatched)"
+	// spec7RawUndiagnosed means no unknown-tag diagnostic is emitted in this
+	// context at all: not even the sentinel is reported. Silence about a
+	// standard tag here therefore says nothing about whether the decoder knows
+	// it.
+	//
+	// This does not mean the context is unparsed, and the harness cannot tell
+	// the two causes apart. buildHeader reads every header line and types four
+	// of them, yet buildDocument hands it no diagnosticCollector, so the whole
+	// header is undiagnosed (issue #449). A context no parser visits looks
+	// identical from out here (issue #448).
+	spec7RawUndiagnosed spec7Status = "raw (undiagnosed)"
 
 	// spec7Partial means the structure reaches the typed model and is still
 	// reported as unknown -- a tag handled in part, or reported in error.
@@ -233,7 +240,7 @@ func spec7Classify(t *testing.T, probe spec7Probe, watched bool) spec7Status {
 	case watched:
 		return spec7RawAccepted
 	default:
-		return spec7RawUnwatched
+		return spec7RawUndiagnosed
 	}
 }
 
@@ -300,6 +307,16 @@ func spec7RawField(name string) bool {
 	return name == "Tags" || name == "LineNumber"
 }
 
+// spec7HasExportedField reports whether a struct type exposes any field at all.
+func spec7HasExportedField(t reflect.Type) bool {
+	for i := 0; i < t.NumField(); i++ {
+		if t.Field(i).IsExported() {
+			return true
+		}
+	}
+	return false
+}
+
 // spec7Render writes a deterministic rendering of v, skipping raw-storage
 // fields at every level.
 func spec7Render(sb *strings.Builder, v reflect.Value, depth int) {
@@ -318,6 +335,16 @@ func spec7Render(sb *strings.Builder, v reflect.Value, depth int) {
 		}
 		spec7Render(sb, v.Elem(), depth+1)
 	case reflect.Struct:
+		// A struct with no exported fields at all -- time.Time is the one in
+		// this model, behind Header.Date -- would render as an empty {} for
+		// every value it can hold, making a typed field permanently invisible.
+		// Formatting it is the only way to see inside. Structs that merely have
+		// all their fields skipped are not this case and must keep rendering
+		// empty, or the skip would not skip.
+		if !spec7HasExportedField(v.Type()) {
+			fmt.Fprintf(sb, "%v", v.Interface())
+			return
+		}
 		sb.WriteString("{")
 		t := v.Type()
 		for i := 0; i < t.NumField(); i++ {

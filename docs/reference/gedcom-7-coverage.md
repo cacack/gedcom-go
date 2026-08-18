@@ -14,11 +14,14 @@ flat per-tag table would overstate support.
 ## Where the specification comes from
 
 The inventory is the specification's own machine-readable structure list, not a
-transcription: the `extracted-files/` directory of
-[https://github.com/FamilySearch/GEDCOM](https://github.com/FamilySearch/GEDCOM), release v7.0.18, commit
-[`b2900a15d177e5b7f63e5862bf3dff031eddc520`](https://github.com/FamilySearch/GEDCOM/tree/b2900a15d177e5b7f63e5862bf3dff031eddc520/extracted-files),
-vendored under `testdata/spec/gedcom-7.0`. It is Apache-2.0-licensed; the required
-`NOTICE` is vendored alongside it.
+transcription: the `extracted-files/` directory of [FamilySearch/GEDCOM](https://github.com/FamilySearch/GEDCOM), at commit
+[`b2900a15d177e5b7f63e5862bf3dff031eddc520`](https://github.com/FamilySearch/GEDCOM/tree/b2900a15d177e5b7f63e5862bf3dff031eddc520/extracted-files)
+(main, 17 commits after release v7.0.18). It is vendored under `testdata/spec/gedcom-7.0` and is Apache-2.0-licensed; the
+required `NOTICE` is vendored alongside it.
+
+The commit is pinned rather than the release tag, and the two are not the same
+thing — see `testdata/spec/gedcom-7.0/SOURCE`, which is the one place this
+provenance is recorded.
 
 The files are test data. No library code reads them, and they add no runtime
 dependency — this document is a report, not a parsing engine.
@@ -38,17 +41,28 @@ that one line removed. It decodes both and reads three signals:
   a control document is used at all — removing a line shifts the ones after it.
 - **the diagnostics** — whether the decoder reported `UNKNOWN_TAG` for that line.
 - **a sentinel tag** — `ZZZZ`, which no version of GEDCOM defines, placed in the
-  same context. A decoder that reads a context must report the sentinel there.
-  If it stays silent about the sentinel too, the context is not read at all, and
-  silence about a standard tag says nothing. This is what separates
-  `raw (accepted)` from `raw (unwatched)`, which are indistinguishable from the
-  outside without it.
+  same context. A context that reports the sentinel reports unknown tags at all;
+  one that stays silent about the sentinel is silent about everything, so silence
+  about a standard tag there says nothing. This separates `raw (accepted)` —
+  the decoder knows the tag and chose not to type it — from `raw (undiagnosed)`,
+  where no diagnostic is possible either way. The two are indistinguishable from
+  the outside without it.
 
-Two things worth stating plainly. A `raw` status never means data is lost:
-[ADR 0003](../decisions/0003-lossless-dual-storage.md) keeps every line in
-`Record.Tags`, and byte-for-byte round-tripping is a non-negotiable principle.
-It means there is no typed field for it. And this measures the decoder only —
-the encoder, validator and converter are not exercised here.
+  Note what `raw (undiagnosed)` does *not* say. It does not mean the context is
+  unparsed. Silence has two causes and this cannot tell them apart: a context no
+  parser visits, and a context whose parser was never handed a diagnostic
+  collector. The header is the second kind — `buildHeader` reads every header line
+  and types four of them, but takes no collector, so all of `HEAD` is
+  `raw (undiagnosed)`.
+
+Two things worth stating plainly. A `raw` status means there is no typed field
+for the structure, not that the structure is dropped: every line is kept in
+`Record.Tags` under [ADR 0003](../decisions/0003-lossless-dual-storage.md),
+whether the decoder understands it or not. That is a statement about decoding.
+Whether the encoder writes those raw tags back out is a different question with a
+different answer — see `byte_roundtrip_test.go`, which enumerates where it does
+not. This report measures the decoder alone; the encoder, validator and converter
+are not exercised here.
 
 ## What the numbers do not say
 
@@ -63,6 +77,13 @@ the encoder, validator and converter are not exercised here.
   the record its shortest path starts at.
 - **`typed` is not a claim of completeness.** It means the structure changed the
   typed model, not that every part of its payload was interpreted.
+- **Every payload is invented.** The specification says a structure carries a
+  date, an enumeration or free text; it does not supply an example. The harness
+  synthesizes one of the declared type. A decoder that accepted one plausible
+  value and rejected another would be measured on the value it was given.
+- **The drift test proves the report matches the decoder, not that the decoder is
+  right.** A behaviour change fails it; a behaviour that was always wrong does
+  not.
 
 ## What is being done about the gaps
 
@@ -85,23 +106,23 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 837 | 60.3% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 840 | 60.5% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 91 | 6.6% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 89 | 6.4% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 307 | 22.1% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (unwatched) | 154 | 11.1% | Raw tags only. The decoder does not read this context, so nothing in it is ever reported. |
+| raw (undiagnosed) | 153 | 11.0% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
 ### By top-level structure
 
 The structure each pair is nested under at level 0.
 
-| Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (unwatched) |
-|---------|-----------:|------:|--------:|---------------:|--------------:|----------------:|
+| Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |
+|---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|
 | `INDI` | 873 | 550 | 0 | 44 | 263 | 16 |
-| `FAM` | 392 | 213 | 0 | 35 | 37 | 107 |
+| `FAM` | 392 | 214 | 0 | 34 | 37 | 107 |
 | `SOUR` | 29 | 17 | 0 | 2 | 1 | 9 |
-| `HEAD` | 27 | 8 | 0 | 0 | 0 | 19 |
-| `REPO` | 21 | 15 | 0 | 5 | 1 | 0 |
+| `HEAD` | 27 | 9 | 0 | 0 | 0 | 18 |
+| `REPO` | 21 | 16 | 0 | 4 | 1 | 0 |
 | `OBJE` | 17 | 16 | 0 | 0 | 0 | 1 |
 | `SUBM` | 16 | 9 | 0 | 5 | 2 | 0 |
 | `SNOTE` | 12 | 9 | 0 | 0 | 3 | 0 |
@@ -118,7 +139,7 @@ Structures that appear at the top of a document.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `CONT` | `CONT` | raw (unwatched) |
+| `CONT` | `CONT` | raw (undiagnosed) |
 | `FAM` | `record-FAM` | typed |
 | `HEAD` | `HEAD` | typed |
 | `INDI` | `record-INDI` | typed |
@@ -127,7 +148,7 @@ Structures that appear at the top of a document.
 | `SNOTE` | `record-SNOTE` | typed |
 | `SOUR` | `record-SOUR` | typed |
 | `SUBM` | `record-SUBM` | typed |
-| `TRLR` | `TRLR` | raw (unwatched) |
+| `TRLR` | `TRLR` | raw (undiagnosed) |
 
 ### `FAM`
 
@@ -202,7 +223,7 @@ Substructures of `DATE`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `PHRASE` | `PHRASE` | typed |
-| `TIME` | `TIME` | raw (unwatched) |
+| `TIME` | `TIME` | raw (undiagnosed) |
 
 ### `FAM.ANUL.HUSB`
 
@@ -210,7 +231,7 @@ Substructures of `HUSB`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `AGE` | `AGE` | raw (unwatched) |
+| `AGE` | `AGE` | raw (undiagnosed) |
 
 ### `FAM.ANUL.PLAC`
 
@@ -241,7 +262,7 @@ Substructures of `PLAC-TRAN`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `LANG` | `LANG` | raw (unwatched) |
+| `LANG` | `LANG` | raw (undiagnosed) |
 
 ### `FAM.ANUL.SDATE`
 
@@ -249,8 +270,8 @@ Substructures of `SDATE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
-| `TIME` | `TIME` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
+| `TIME` | `TIME` | raw (undiagnosed) |
 
 ### `FAM.ANUL.WIFE`
 
@@ -258,7 +279,7 @@ Substructures of `WIFE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `AGE` | `AGE` | raw (unwatched) |
+| `AGE` | `AGE` | raw (undiagnosed) |
 
 ### `FAM.ASSO`
 
@@ -266,11 +287,11 @@ Substructures of `ASSO`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `NOTE` | `NOTE` | raw (unwatched) |
-| `PHRASE` | `PHRASE` | raw (unwatched) |
-| `ROLE` | `ROLE` | raw (unwatched) |
-| `SNOTE` | `SNOTE` | raw (unwatched) |
-| `SOUR` | `SOUR` | raw (unwatched) |
+| `NOTE` | `NOTE` | raw (undiagnosed) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
+| `ROLE` | `ROLE` | raw (undiagnosed) |
+| `SNOTE` | `SNOTE` | raw (undiagnosed) |
+| `SOUR` | `SOUR` | raw (undiagnosed) |
 
 ### `FAM.ASSO.ROLE`
 
@@ -278,7 +299,7 @@ Substructures of `ROLE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
 
 ### `FAM.CENS`
 
@@ -286,27 +307,27 @@ Substructures of `FAM-CENS`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (unwatched) |
-| `AGNC` | `AGNC` | raw (unwatched) |
-| `ASSO` | `ASSO` | raw (unwatched) |
-| `CAUS` | `CAUS` | raw (unwatched) |
-| `DATE` | `DATE` | raw (unwatched) |
-| `EMAIL` | `EMAIL` | raw (unwatched) |
-| `FAX` | `FAX` | raw (unwatched) |
-| `HUSB` | `HUSB` | raw (unwatched) |
-| `NOTE` | `NOTE` | raw (unwatched) |
-| `OBJE` | `OBJE` | raw (unwatched) |
-| `PHON` | `PHON` | raw (unwatched) |
-| `PLAC` | `PLAC` | raw (unwatched) |
-| `RELI` | `RELI` | raw (unwatched) |
-| `RESN` | `RESN` | raw (unwatched) |
-| `SDATE` | `SDATE` | raw (unwatched) |
-| `SNOTE` | `SNOTE` | raw (unwatched) |
-| `SOUR` | `SOUR` | raw (unwatched) |
-| `TYPE` | `TYPE` | raw (unwatched) |
-| `UID` | `UID` | raw (unwatched) |
-| `WIFE` | `WIFE` | raw (unwatched) |
-| `WWW` | `WWW` | raw (unwatched) |
+| `ADDR` | `ADDR` | raw (undiagnosed) |
+| `AGNC` | `AGNC` | raw (undiagnosed) |
+| `ASSO` | `ASSO` | raw (undiagnosed) |
+| `CAUS` | `CAUS` | raw (undiagnosed) |
+| `DATE` | `DATE` | raw (undiagnosed) |
+| `EMAIL` | `EMAIL` | raw (undiagnosed) |
+| `FAX` | `FAX` | raw (undiagnosed) |
+| `HUSB` | `HUSB` | raw (undiagnosed) |
+| `NOTE` | `NOTE` | raw (undiagnosed) |
+| `OBJE` | `OBJE` | raw (undiagnosed) |
+| `PHON` | `PHON` | raw (undiagnosed) |
+| `PLAC` | `PLAC` | raw (undiagnosed) |
+| `RELI` | `RELI` | raw (undiagnosed) |
+| `RESN` | `RESN` | raw (undiagnosed) |
+| `SDATE` | `SDATE` | raw (undiagnosed) |
+| `SNOTE` | `SNOTE` | raw (undiagnosed) |
+| `SOUR` | `SOUR` | raw (undiagnosed) |
+| `TYPE` | `TYPE` | raw (undiagnosed) |
+| `UID` | `UID` | raw (undiagnosed) |
+| `WIFE` | `WIFE` | raw (undiagnosed) |
+| `WWW` | `WWW` | raw (undiagnosed) |
 
 ### `FAM.CHAN`
 
@@ -332,7 +353,7 @@ Substructures of `CHIL`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
 
 ### `FAM.CREA`
 
@@ -468,27 +489,27 @@ Substructures of `FAM-FACT`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (unwatched) |
-| `AGNC` | `AGNC` | raw (unwatched) |
-| `ASSO` | `ASSO` | raw (unwatched) |
-| `CAUS` | `CAUS` | raw (unwatched) |
-| `DATE` | `DATE` | raw (unwatched) |
-| `EMAIL` | `EMAIL` | raw (unwatched) |
-| `FAX` | `FAX` | raw (unwatched) |
-| `HUSB` | `HUSB` | raw (unwatched) |
-| `NOTE` | `NOTE` | raw (unwatched) |
-| `OBJE` | `OBJE` | raw (unwatched) |
-| `PHON` | `PHON` | raw (unwatched) |
-| `PLAC` | `PLAC` | raw (unwatched) |
-| `RELI` | `RELI` | raw (unwatched) |
-| `RESN` | `RESN` | raw (unwatched) |
-| `SDATE` | `SDATE` | raw (unwatched) |
-| `SNOTE` | `SNOTE` | raw (unwatched) |
-| `SOUR` | `SOUR` | raw (unwatched) |
-| `TYPE` | `TYPE` | raw (unwatched) |
-| `UID` | `UID` | raw (unwatched) |
-| `WIFE` | `WIFE` | raw (unwatched) |
-| `WWW` | `WWW` | raw (unwatched) |
+| `ADDR` | `ADDR` | raw (undiagnosed) |
+| `AGNC` | `AGNC` | raw (undiagnosed) |
+| `ASSO` | `ASSO` | raw (undiagnosed) |
+| `CAUS` | `CAUS` | raw (undiagnosed) |
+| `DATE` | `DATE` | raw (undiagnosed) |
+| `EMAIL` | `EMAIL` | raw (undiagnosed) |
+| `FAX` | `FAX` | raw (undiagnosed) |
+| `HUSB` | `HUSB` | raw (undiagnosed) |
+| `NOTE` | `NOTE` | raw (undiagnosed) |
+| `OBJE` | `OBJE` | raw (undiagnosed) |
+| `PHON` | `PHON` | raw (undiagnosed) |
+| `PLAC` | `PLAC` | raw (undiagnosed) |
+| `RELI` | `RELI` | raw (undiagnosed) |
+| `RESN` | `RESN` | raw (undiagnosed) |
+| `SDATE` | `SDATE` | raw (undiagnosed) |
+| `SNOTE` | `SNOTE` | raw (undiagnosed) |
+| `SOUR` | `SOUR` | raw (undiagnosed) |
+| `TYPE` | `TYPE` | raw (undiagnosed) |
+| `UID` | `UID` | raw (undiagnosed) |
+| `WIFE` | `WIFE` | raw (undiagnosed) |
+| `WWW` | `WWW` | raw (undiagnosed) |
 
 ### `FAM.HUSB`
 
@@ -496,7 +517,7 @@ Substructures of `FAM-HUSB`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
 
 ### `FAM.MARB`
 
@@ -644,27 +665,27 @@ Substructures of `FAM-NCHI`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (unwatched) |
-| `AGNC` | `AGNC` | raw (unwatched) |
-| `ASSO` | `ASSO` | raw (unwatched) |
-| `CAUS` | `CAUS` | raw (unwatched) |
-| `DATE` | `DATE` | raw (unwatched) |
-| `EMAIL` | `EMAIL` | raw (unwatched) |
-| `FAX` | `FAX` | raw (unwatched) |
-| `HUSB` | `HUSB` | raw (unwatched) |
-| `NOTE` | `NOTE` | raw (unwatched) |
-| `OBJE` | `OBJE` | raw (unwatched) |
-| `PHON` | `PHON` | raw (unwatched) |
-| `PLAC` | `PLAC` | raw (unwatched) |
-| `RELI` | `RELI` | raw (unwatched) |
-| `RESN` | `RESN` | raw (unwatched) |
-| `SDATE` | `SDATE` | raw (unwatched) |
-| `SNOTE` | `SNOTE` | raw (unwatched) |
-| `SOUR` | `SOUR` | raw (unwatched) |
-| `TYPE` | `TYPE` | raw (unwatched) |
-| `UID` | `UID` | raw (unwatched) |
-| `WIFE` | `WIFE` | raw (unwatched) |
-| `WWW` | `WWW` | raw (unwatched) |
+| `ADDR` | `ADDR` | raw (undiagnosed) |
+| `AGNC` | `AGNC` | raw (undiagnosed) |
+| `ASSO` | `ASSO` | raw (undiagnosed) |
+| `CAUS` | `CAUS` | raw (undiagnosed) |
+| `DATE` | `DATE` | raw (undiagnosed) |
+| `EMAIL` | `EMAIL` | raw (undiagnosed) |
+| `FAX` | `FAX` | raw (undiagnosed) |
+| `HUSB` | `HUSB` | raw (undiagnosed) |
+| `NOTE` | `NOTE` | raw (undiagnosed) |
+| `OBJE` | `OBJE` | raw (undiagnosed) |
+| `PHON` | `PHON` | raw (undiagnosed) |
+| `PLAC` | `PLAC` | raw (undiagnosed) |
+| `RELI` | `RELI` | raw (undiagnosed) |
+| `RESN` | `RESN` | raw (undiagnosed) |
+| `SDATE` | `SDATE` | raw (undiagnosed) |
+| `SNOTE` | `SNOTE` | raw (undiagnosed) |
+| `SOUR` | `SOUR` | raw (undiagnosed) |
+| `TYPE` | `TYPE` | raw (undiagnosed) |
+| `UID` | `UID` | raw (undiagnosed) |
+| `WIFE` | `WIFE` | raw (undiagnosed) |
+| `WWW` | `WWW` | raw (undiagnosed) |
 
 ### `FAM.NO`
 
@@ -691,10 +712,10 @@ Substructures of `NOTE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `LANG` | `LANG` | raw (unwatched) |
-| `MIME` | `MIME` | raw (unwatched) |
-| `SOUR` | `SOUR` | raw (unwatched) |
-| `TRAN` | `NOTE-TRAN` | raw (unwatched) |
+| `LANG` | `LANG` | raw (undiagnosed) |
+| `MIME` | `MIME` | raw (undiagnosed) |
+| `SOUR` | `SOUR` | raw (undiagnosed) |
+| `TRAN` | `NOTE-TRAN` | raw (undiagnosed) |
 
 ### `FAM.OBJE`
 
@@ -722,7 +743,7 @@ Substructures of `REFN`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `TYPE` | `TYPE` | raw (unwatched) |
+| `TYPE` | `TYPE` | raw (undiagnosed) |
 
 ### `FAM.RESI`
 
@@ -730,27 +751,27 @@ Substructures of `FAM-RESI`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (unwatched) |
-| `AGNC` | `AGNC` | raw (unwatched) |
-| `ASSO` | `ASSO` | raw (unwatched) |
-| `CAUS` | `CAUS` | raw (unwatched) |
-| `DATE` | `DATE` | raw (unwatched) |
-| `EMAIL` | `EMAIL` | raw (unwatched) |
-| `FAX` | `FAX` | raw (unwatched) |
-| `HUSB` | `HUSB` | raw (unwatched) |
-| `NOTE` | `NOTE` | raw (unwatched) |
-| `OBJE` | `OBJE` | raw (unwatched) |
-| `PHON` | `PHON` | raw (unwatched) |
-| `PLAC` | `PLAC` | raw (unwatched) |
-| `RELI` | `RELI` | raw (unwatched) |
-| `RESN` | `RESN` | raw (unwatched) |
-| `SDATE` | `SDATE` | raw (unwatched) |
-| `SNOTE` | `SNOTE` | raw (unwatched) |
-| `SOUR` | `SOUR` | raw (unwatched) |
-| `TYPE` | `TYPE` | raw (unwatched) |
-| `UID` | `UID` | raw (unwatched) |
-| `WIFE` | `WIFE` | raw (unwatched) |
-| `WWW` | `WWW` | raw (unwatched) |
+| `ADDR` | `ADDR` | raw (undiagnosed) |
+| `AGNC` | `AGNC` | raw (undiagnosed) |
+| `ASSO` | `ASSO` | raw (undiagnosed) |
+| `CAUS` | `CAUS` | raw (undiagnosed) |
+| `DATE` | `DATE` | raw (undiagnosed) |
+| `EMAIL` | `EMAIL` | raw (undiagnosed) |
+| `FAX` | `FAX` | raw (undiagnosed) |
+| `HUSB` | `HUSB` | raw (undiagnosed) |
+| `NOTE` | `NOTE` | raw (undiagnosed) |
+| `OBJE` | `OBJE` | raw (undiagnosed) |
+| `PHON` | `PHON` | raw (undiagnosed) |
+| `PLAC` | `PLAC` | raw (undiagnosed) |
+| `RELI` | `RELI` | raw (undiagnosed) |
+| `RESN` | `RESN` | raw (undiagnosed) |
+| `SDATE` | `SDATE` | raw (undiagnosed) |
+| `SNOTE` | `SNOTE` | raw (undiagnosed) |
+| `SOUR` | `SOUR` | raw (undiagnosed) |
+| `TYPE` | `TYPE` | raw (undiagnosed) |
+| `UID` | `UID` | raw (undiagnosed) |
+| `WIFE` | `WIFE` | raw (undiagnosed) |
+| `WWW` | `WWW` | raw (undiagnosed) |
 
 ### `FAM.SLGS`
 
@@ -772,7 +793,7 @@ Substructures of `ord-STAT`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `DATE` | `DATE-exact` | raw (unwatched) |
+| `DATE` | `DATE-exact` | raw (undiagnosed) |
 
 ### `FAM.SOUR`
 
@@ -785,7 +806,7 @@ Substructures of `SOUR`.
 | `NOTE` | `NOTE` | raw (accepted) |
 | `OBJE` | `OBJE` | raw (accepted) |
 | `PAGE` | `PAGE` | typed |
-| `QUAY` | `QUAY` | raw (accepted) |
+| `QUAY` | `QUAY` | typed |
 | `SNOTE` | `SNOTE` | raw (flagged) |
 
 ### `FAM.SOUR.DATA`
@@ -803,8 +824,8 @@ Substructures of `SOUR-EVEN`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
-| `ROLE` | `ROLE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
+| `ROLE` | `ROLE` | raw (undiagnosed) |
 
 ### `FAM.WIFE`
 
@@ -812,7 +833,7 @@ Substructures of `FAM-WIFE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
 
 ### `HEAD`
 
@@ -821,16 +842,16 @@ Substructures of `HEAD`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `COPR` | `COPR` | typed |
-| `DATE` | `HEAD-DATE` | raw (unwatched) |
-| `DEST` | `DEST` | raw (unwatched) |
-| `GEDC` | `GEDC` | raw (unwatched) |
+| `DATE` | `HEAD-DATE` | raw (undiagnosed) |
+| `DEST` | `DEST` | raw (undiagnosed) |
+| `GEDC` | `GEDC` | typed |
 | `LANG` | `HEAD-LANG` | typed |
-| `NOTE` | `NOTE` | raw (unwatched) |
-| `PLAC` | `HEAD-PLAC` | raw (unwatched) |
+| `NOTE` | `NOTE` | raw (undiagnosed) |
+| `PLAC` | `HEAD-PLAC` | raw (undiagnosed) |
 | `SCHMA` | `SCHMA` | typed |
-| `SNOTE` | `SNOTE` | raw (unwatched) |
+| `SNOTE` | `SNOTE` | raw (undiagnosed) |
 | `SOUR` | `HEAD-SOUR` | typed |
-| `SUBM` | `SUBM` | raw (unwatched) |
+| `SUBM` | `SUBM` | raw (undiagnosed) |
 
 ### `HEAD.DATE`
 
@@ -838,7 +859,7 @@ Substructures of `HEAD-DATE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `TIME` | `TIME` | raw (unwatched) |
+| `TIME` | `TIME` | raw (undiagnosed) |
 
 ### `HEAD.GEDC`
 
@@ -854,7 +875,7 @@ Substructures of `HEAD-PLAC`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `FORM` | `HEAD-PLAC-FORM` | raw (unwatched) |
+| `FORM` | `HEAD-PLAC-FORM` | raw (undiagnosed) |
 
 ### `HEAD.SCHMA`
 
@@ -870,10 +891,10 @@ Substructures of `HEAD-SOUR`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `CORP` | `CORP` | raw (unwatched) |
-| `DATA` | `HEAD-SOUR-DATA` | raw (unwatched) |
-| `NAME` | `NAME` | raw (unwatched) |
-| `VERS` | `VERS` | raw (unwatched) |
+| `CORP` | `CORP` | raw (undiagnosed) |
+| `DATA` | `HEAD-SOUR-DATA` | raw (undiagnosed) |
+| `NAME` | `NAME` | raw (undiagnosed) |
+| `VERS` | `VERS` | raw (undiagnosed) |
 
 ### `HEAD.SOUR.CORP`
 
@@ -881,11 +902,11 @@ Substructures of `CORP`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (unwatched) |
-| `EMAIL` | `EMAIL` | raw (unwatched) |
-| `FAX` | `FAX` | raw (unwatched) |
-| `PHON` | `PHON` | raw (unwatched) |
-| `WWW` | `WWW` | raw (unwatched) |
+| `ADDR` | `ADDR` | raw (undiagnosed) |
+| `EMAIL` | `EMAIL` | raw (undiagnosed) |
+| `FAX` | `FAX` | raw (undiagnosed) |
+| `PHON` | `PHON` | raw (undiagnosed) |
+| `WWW` | `WWW` | raw (undiagnosed) |
 
 ### `HEAD.SOUR.DATA`
 
@@ -894,7 +915,7 @@ Substructures of `HEAD-SOUR-DATA`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `COPR` | `COPR` | typed |
-| `DATE` | `DATE-exact` | raw (unwatched) |
+| `DATE` | `DATE-exact` | raw (undiagnosed) |
 
 ### `INDI`
 
@@ -999,7 +1020,7 @@ Substructures of `AGE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
 
 ### `INDI.ADOP.FAMC`
 
@@ -1007,7 +1028,7 @@ Substructures of `ADOP-FAMC`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADOP` | `FAMC-ADOP` | raw (unwatched) |
+| `ADOP` | `FAMC-ADOP` | raw (undiagnosed) |
 
 ### `INDI.ADOP.FAMC.ADOP`
 
@@ -1015,7 +1036,7 @@ Substructures of `FAMC-ADOP`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
 
 ### `INDI.ALIA`
 
@@ -1023,7 +1044,7 @@ Substructures of `ALIA`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
 
 ### `INDI.BAPL`
 
@@ -1572,7 +1593,7 @@ Substructures of `PEDI`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
 
 ### `INDI.FAMC.STAT`
 
@@ -1580,7 +1601,7 @@ Substructures of `FAMC-STAT`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
 
 ### `INDI.FAMS`
 
@@ -1588,8 +1609,8 @@ Substructures of `FAMS`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `NOTE` | `NOTE` | raw (unwatched) |
-| `SNOTE` | `SNOTE` | raw (unwatched) |
+| `NOTE` | `NOTE` | raw (undiagnosed) |
+| `SNOTE` | `SNOTE` | raw (undiagnosed) |
 
 ### `INDI.FCOM`
 
@@ -1705,13 +1726,13 @@ Substructures of `INIL`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `DATE` | `DATE` | raw (unwatched) |
-| `NOTE` | `NOTE` | raw (unwatched) |
-| `PLAC` | `PLAC` | raw (unwatched) |
-| `SNOTE` | `SNOTE` | raw (unwatched) |
-| `SOUR` | `SOUR` | raw (unwatched) |
-| `STAT` | `ord-STAT` | raw (unwatched) |
-| `TEMP` | `TEMP` | raw (unwatched) |
+| `DATE` | `DATE` | raw (undiagnosed) |
+| `NOTE` | `NOTE` | raw (undiagnosed) |
+| `PLAC` | `PLAC` | raw (undiagnosed) |
+| `SNOTE` | `SNOTE` | raw (undiagnosed) |
+| `SOUR` | `SOUR` | raw (undiagnosed) |
+| `STAT` | `ord-STAT` | raw (undiagnosed) |
+| `TEMP` | `TEMP` | raw (undiagnosed) |
 
 ### `INDI.NAME`
 
@@ -1751,7 +1772,7 @@ Substructures of `NAME-TYPE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
 
 ### `INDI.NATI`
 
@@ -2187,7 +2208,7 @@ Substructures of `MEDI`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
 
 ### `OBJE.FILE.TRAN`
 
@@ -2223,7 +2244,7 @@ Substructures of `ADDR`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADR1` | `ADR1` | raw (accepted) |
+| `ADR1` | `ADR1` | typed |
 | `ADR2` | `ADR2` | typed |
 | `ADR3` | `ADR3` | typed |
 | `CITY` | `CITY` | typed |
@@ -2284,10 +2305,10 @@ Substructures of `DATA`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `AGNC` | `AGNC` | raw (unwatched) |
-| `EVEN` | `DATA-EVEN` | raw (unwatched) |
-| `NOTE` | `NOTE` | raw (unwatched) |
-| `SNOTE` | `SNOTE` | raw (unwatched) |
+| `AGNC` | `AGNC` | raw (undiagnosed) |
+| `EVEN` | `DATA-EVEN` | raw (undiagnosed) |
+| `NOTE` | `NOTE` | raw (undiagnosed) |
+| `SNOTE` | `SNOTE` | raw (undiagnosed) |
 
 ### `SOUR.DATA.EVEN`
 
@@ -2295,8 +2316,8 @@ Substructures of `DATA-EVEN`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `DATE` | `DATA-EVEN-DATE` | raw (unwatched) |
-| `PLAC` | `PLAC` | raw (unwatched) |
+| `DATE` | `DATA-EVEN-DATE` | raw (undiagnosed) |
+| `PLAC` | `PLAC` | raw (undiagnosed) |
 
 ### `SOUR.DATA.EVEN.DATE`
 
@@ -2304,7 +2325,7 @@ Substructures of `DATA-EVEN-DATE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (unwatched) |
+| `PHRASE` | `PHRASE` | raw (undiagnosed) |
 
 ### `SOUR.REPO`
 
@@ -2330,8 +2351,8 @@ Substructures of `TEXT`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `LANG` | `LANG` | raw (unwatched) |
-| `MIME` | `MIME` | raw (unwatched) |
+| `LANG` | `LANG` | raw (undiagnosed) |
+| `MIME` | `MIME` | raw (undiagnosed) |
 
 ### `SUBM`
 

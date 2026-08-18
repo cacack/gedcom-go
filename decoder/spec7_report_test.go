@@ -12,17 +12,17 @@ import (
 
 // spec7StatusOrder fixes the order statuses are reported in, best first.
 var spec7StatusOrder = []spec7Status{
-	spec7Typed, spec7Partial, spec7RawAccepted, spec7RawFlagged, spec7RawUnwatched,
+	spec7Typed, spec7Partial, spec7RawAccepted, spec7RawFlagged, spec7RawUndiagnosed,
 }
 
 // spec7StatusMeaning explains each status where it is first tabulated, so the
 // summary is readable without the methodology section.
 var spec7StatusMeaning = map[spec7Status]string{
-	spec7Typed:        "Decoded into the typed model; reachable without walking `Record.Tags`.",
-	spec7Partial:      "Reaches the typed model but is still reported as an unknown tag.",
-	spec7RawAccepted:  "Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it.",
-	spec7RawFlagged:   "Raw tags only. The decoder reads this context and reports the tag as unknown.",
-	spec7RawUnwatched: "Raw tags only. The decoder does not read this context, so nothing in it is ever reported.",
+	spec7Typed:          "Decoded into the typed model; reachable without walking `Record.Tags`.",
+	spec7Partial:        "Reaches the typed model but is still reported as an unknown tag.",
+	spec7RawAccepted:    "Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it.",
+	spec7RawFlagged:     "Raw tags only. The decoder reads this context and reports the tag as unknown.",
+	spec7RawUndiagnosed: "Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing.",
 }
 
 // spec7Group is the set of entries sharing one superstructure.
@@ -62,11 +62,14 @@ flat per-tag table would overstate support.
 ## Where the specification comes from
 
 The inventory is the specification's own machine-readable structure list, not a
-transcription: the `+"`extracted-files/`"+` directory of
-[%s](%s), release %s, commit
-[`+"`%s`"+`](%s/tree/%s/extracted-files),
-vendored under `+"`testdata/spec/gedcom-7.0`"+`. It is %s-licensed; the required
-`+"`NOTICE`"+` is vendored alongside it.
+transcription: the `+"`extracted-files/`"+` directory of [%s](%s), at commit
+[`+"`%s`"+`](%s/tree/%s/extracted-files)
+(%s). It is vendored under `+"`testdata/spec/gedcom-7.0`"+` and is %s-licensed; the
+required `+"`NOTICE`"+` is vendored alongside it.
+
+The commit is pinned rather than the release tag, and the two are not the same
+thing — see `+"`testdata/spec/gedcom-7.0/SOURCE`"+`, which is the one place this
+provenance is recorded.
 
 The files are test data. No library code reads them, and they add no runtime
 dependency — this document is a report, not a parsing engine.
@@ -86,17 +89,28 @@ that one line removed. It decodes both and reads three signals:
   a control document is used at all — removing a line shifts the ones after it.
 - **the diagnostics** — whether the decoder reported `+"`UNKNOWN_TAG`"+` for that line.
 - **a sentinel tag** — `+"`ZZZZ`"+`, which no version of GEDCOM defines, placed in the
-  same context. A decoder that reads a context must report the sentinel there.
-  If it stays silent about the sentinel too, the context is not read at all, and
-  silence about a standard tag says nothing. This is what separates
-  `+"`raw (accepted)`"+` from `+"`raw (unwatched)`"+`, which are indistinguishable from the
-  outside without it.
+  same context. A context that reports the sentinel reports unknown tags at all;
+  one that stays silent about the sentinel is silent about everything, so silence
+  about a standard tag there says nothing. This separates `+"`raw (accepted)`"+` —
+  the decoder knows the tag and chose not to type it — from `+"`raw (undiagnosed)`"+`,
+  where no diagnostic is possible either way. The two are indistinguishable from
+  the outside without it.
 
-Two things worth stating plainly. A `+"`raw`"+` status never means data is lost:
-[ADR 0003](../decisions/0003-lossless-dual-storage.md) keeps every line in
-`+"`Record.Tags`"+`, and byte-for-byte round-tripping is a non-negotiable principle.
-It means there is no typed field for it. And this measures the decoder only —
-the encoder, validator and converter are not exercised here.
+  Note what `+"`raw (undiagnosed)`"+` does *not* say. It does not mean the context is
+  unparsed. Silence has two causes and this cannot tell them apart: a context no
+  parser visits, and a context whose parser was never handed a diagnostic
+  collector. The header is the second kind — `+"`buildHeader`"+` reads every header line
+  and types four of them, but takes no collector, so all of `+"`HEAD`"+` is
+  `+"`raw (undiagnosed)`"+`.
+
+Two things worth stating plainly. A `+"`raw`"+` status means there is no typed field
+for the structure, not that the structure is dropped: every line is kept in
+`+"`Record.Tags`"+` under [ADR 0003](../decisions/0003-lossless-dual-storage.md),
+whether the decoder understands it or not. That is a statement about decoding.
+Whether the encoder writes those raw tags back out is a different question with a
+different answer — see `+"`byte_roundtrip_test.go`"+`, which enumerates where it does
+not. This report measures the decoder alone; the encoder, validator and converter
+are not exercised here.
 
 ## What the numbers do not say
 
@@ -111,6 +125,13 @@ the encoder, validator and converter are not exercised here.
   the record its shortest path starts at.
 - **`+"`typed`"+` is not a claim of completeness.** It means the structure changed the
   typed model, not that every part of its payload was interpreted.
+- **Every payload is invented.** The specification says a structure carries a
+  date, an enumeration or free text; it does not supply an example. The harness
+  synthesizes one of the declared type. A decoder that accepted one plausible
+  value and rejected another would be measured on the value it was given.
+- **The drift test proves the report matches the decoder, not that the decoder is
+  right.** A behaviour change fails it; a behaviour that was always wrong does
+  not.
 
 ## What is being done about the gaps
 
@@ -130,10 +151,16 @@ The document is checked in and compared on every test run, so a change in what
 the decoder supports fails `+"`TestSpec7Coverage`"+` until it is regenerated.
 `,
 		len(entries),
-		spec.source["repository"], spec.source["repository"], spec.source["release"],
+		spec7RepoName(spec.source["repository"]), spec.source["repository"],
 		spec.source["commit"], spec.source["repository"], spec.source["commit"],
-		spec.source["license"],
+		spec.source["describes"], spec.source["license"],
 	)
+}
+
+// spec7RepoName shortens a repository URL to the owner/name a reader recognizes,
+// so the link reads as a repository rather than as a URL printed twice.
+func spec7RepoName(url string) string {
+	return strings.TrimPrefix(strings.TrimPrefix(url, "https://"), "github.com/")
 }
 
 // spec7Summary writes the overall counts and the per-record breakdown, which is
@@ -181,13 +208,13 @@ func spec7Summary(entries []spec7Entry) string {
 		return roots[i] < roots[j]
 	})
 
-	sb.WriteString("| Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (unwatched) |\n")
-	sb.WriteString("|---------|-----------:|------:|--------:|---------------:|--------------:|----------------:|\n")
+	sb.WriteString("| Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |\n")
+	sb.WriteString("|---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|\n")
 	for _, root := range roots {
 		counts := byRoot[root]
 		fmt.Fprintf(&sb, "| `%s` | %d | %d | %d | %d | %d | %d |\n",
 			root, totals[root], counts[spec7Typed], counts[spec7Partial],
-			counts[spec7RawAccepted], counts[spec7RawFlagged], counts[spec7RawUnwatched])
+			counts[spec7RawAccepted], counts[spec7RawFlagged], counts[spec7RawUndiagnosed])
 	}
 
 	return sb.String()
