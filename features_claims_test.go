@@ -19,9 +19,12 @@ import (
 	"testing"
 )
 
-// coverageReportPath is the generated GEDCOM 7.0 inventory, which is the
-// authority for every 7.0 coverage number stated anywhere else.
-const coverageReportPath = "docs/reference/gedcom-7-coverage.md"
+// The generated inventories, which are the authority for every coverage number
+// stated anywhere else.
+const (
+	coverageReportPath   = "docs/reference/gedcom-7-coverage.md"
+	coverage55ReportPath = "docs/reference/gedcom-5.5-coverage.md"
+)
 
 // featuresClaim is one number FEATURES.md states, with the pattern that finds
 // it and the value it has to equal.
@@ -34,14 +37,30 @@ type featuresClaim struct {
 func TestFeaturesNumbersMatchTheirSources(t *testing.T) {
 	features := readFile(t, "FEATURES.md")
 	typed, total := coverageReportTotals(t)
+	typed55, total55, typed551, total551 := coverage55ReportTotals(t)
 
 	fixtures := len(gedcomFixtures(t))
 	decodable := fixtures - len(undecodable)
 
 	claims := []featuresClaim{
-		{"typed 7.0 structures", regexp.MustCompile(`\[(\d[\d,]*) of [\d,]+ structures\]`), typed},
-		{"total 7.0 structures", regexp.MustCompile(`\[[\d,]+ of (\d[\d,]*) structures\]`), total},
-		{"typed 7.0 structures, restated", regexp.MustCompile(`(\d[\d,]*) reach the typed model`), typed},
+		{"typed 7.0 structures", regexp.MustCompile(
+			`\[(\d[\d,]*) of [\d,]+ structures\]\(docs/reference/gedcom-7-coverage\.md\)`), typed},
+		{"total 7.0 structures", regexp.MustCompile(
+			`\[[\d,]+ of (\d[\d,]*) structures\]\(docs/reference/gedcom-7-coverage\.md\)`), total},
+		{"typed 5.5 structures", regexp.MustCompile(
+			`\| GEDCOM 5\.5 \|[^|]*\| \[(\d[\d,]*) of `), typed55},
+		{"total 5.5 structures", regexp.MustCompile(
+			`\| GEDCOM 5\.5 \|[^|]*\| \[[\d,]+ of (\d[\d,]*) structures\]`), total55},
+		{"typed 5.5.1 structures", regexp.MustCompile(
+			`\| GEDCOM 5\.5\.1 \|[^|]*\| \[(\d[\d,]*) of `), typed551},
+		{"total 5.5.1 structures", regexp.MustCompile(
+			`\| GEDCOM 5\.5\.1 \|[^|]*\| \[[\d,]+ of (\d[\d,]*) structures\]`), total551},
+		{"typed 7.0 structures, restated", regexp.MustCompile(
+			`(\d[\d,]*) of 7\.0's pairs reach the typed model`), typed},
+		{"typed 5.5 structures, restated", regexp.MustCompile(
+			`reach the typed model, (\d[\d,]*) of 5\.5's`), typed55},
+		{"typed 5.5.1 structures, restated", regexp.MustCompile(
+			`of 5\.5's, and (\d[\d,]*) of 5\.5\.1's`), typed551},
 		{"corpus fixtures", regexp.MustCompile(`Of (\d[\d,]*) corpus\s+fixtures`), fixtures},
 		{"undecodable fixtures", regexp.MustCompile(`fixtures, (\d[\d,]*) do not survive`), len(undecodable)},
 		{"decodable fixtures", regexp.MustCompile(`of the (\d[\d,]*) that do`), decodable},
@@ -67,13 +86,50 @@ func TestFeaturesNumbersMatchTheirSources(t *testing.T) {
 		}
 	}
 
-	// The percentage is derived from the first two, so it cannot be checked
+	// The percentages are derived from the counts, so they cannot be checked
 	// against a source -- only against arithmetic.
-	wantShare := fmt.Sprintf("(%.1f%%)", 100*float64(typed)/float64(total))
-	if !strings.Contains(features, wantShare) {
-		t.Errorf("FEATURES.md does not state the typed share as %s (%d of %d)",
-			wantShare, typed, total)
+	for _, share := range []struct{ typed, total int }{
+		{typed, total}, {typed55, total55}, {typed551, total551},
+	} {
+		want := fmt.Sprintf("(%.1f%%)", 100*float64(share.typed)/float64(share.total))
+		if !strings.Contains(features, want) {
+			t.Errorf("FEATURES.md does not state the typed share as %s (%d of %d)",
+				want, share.typed, share.total)
+		}
 	}
+}
+
+// coverage55ReportTotals reads both versions' counts out of the combined 5.5 and
+// 5.5.1 report, whose summary table carries a count and a share per version.
+func coverage55ReportTotals(t *testing.T) (typed55, total55, typed551, total551 int) {
+	t.Helper()
+
+	report := readFile(t, coverage55ReportPath)
+
+	// Rows are "| status | 5.5 count | share | 5.5.1 count | share | meaning |".
+	rows := regexp.MustCompile(
+		`(?m)^\| (typed|partial|raw \([a-z]+\)) \| (\d+) \| [\d.]+% \| (\d+) \|`).
+		FindAllStringSubmatch(report, -1)
+	if len(rows) == 0 {
+		t.Fatalf("%s has no summary table; regenerate it with `make spec-coverage`",
+			coverage55ReportPath)
+	}
+	for _, row := range rows {
+		counts := make([]int, 2)
+		for i, field := range row[2:4] {
+			n, err := strconv.Atoi(field)
+			if err != nil {
+				t.Fatalf("%s: %q is not a count: %v", coverage55ReportPath, field, err)
+			}
+			counts[i] = n
+		}
+		total55 += counts[0]
+		total551 += counts[1]
+		if row[1] == "typed" {
+			typed55, typed551 = counts[0], counts[1]
+		}
+	}
+	return typed55, total55, typed551, total551
 }
 
 // coverageReportTotals reads the typed count and the total from the generated

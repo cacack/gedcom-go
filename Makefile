@@ -137,11 +137,12 @@ security: ## Run security scanners (gosec, govulncheck)
 check: fmt vet test ## Run all checks (format, vet, test)
 	@echo "✓ All checks passed"
 
-spec-coverage: ## Regenerate docs/reference/gedcom-7-coverage.md from the decoder
-	@echo "Deriving GEDCOM 7.0 coverage..."
-	$(GOTEST) ./decoder -run TestSpec7Coverage -update-spec-coverage -v
+spec-coverage: ## Regenerate the docs/reference/gedcom-*-coverage.md reports from the decoder
+	@echo "Deriving GEDCOM specification coverage..."
+	$(GOTEST) ./decoder -run 'TestSpec7Coverage|TestSpec55Coverage' -update-spec-coverage -v
 	@echo ""
 	@echo "✓ docs/reference/gedcom-7-coverage.md regenerated — review the diff"
+	@echo "✓ docs/reference/gedcom-5.5-coverage.md regenerated — review the diff"
 
 check-coverage: ## Check coverage thresholds (same as CI)
 	@echo "Running tests with coverage..."

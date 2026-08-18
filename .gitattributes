@@ -16,4 +16,5 @@ testdata/encoding/utf16*.ged binary
 # checkout would rewrite them and the resulting failure is undiagnosable:
 # the diff prints lines that look identical, and regenerating cannot fix it.
 docs/reference/gedcom-7-coverage.md text eol=lf
+docs/reference/gedcom-5.5-coverage.md text eol=lf
 testdata/spec/** text eol=lf
