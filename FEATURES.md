@@ -68,8 +68,8 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | Not yet measured ([#446](https://github.com/cacack/gedcom-go/issues/446)) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | Not yet measured ([#446](https://github.com/cacack/gedcom-go/issues/446)) | Most common format |
+| GEDCOM 5.5 | Every readable line preserved | [705 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (70.6%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [856 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (65.0%) | Most common format |
 | GEDCOM 7.0 | Every readable line preserved | [840 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (60.5%) | Latest standard |
 
 - Automatic version detection from header
@@ -86,13 +86,18 @@ parser *cannot* read are skipped and reported as diagnostics — see the lenient
 parsing table above, which says which shapes those are.
 
 **Typed coverage.** How much of a version reaches typed fields rather than raw
-tags. For GEDCOM 7.0 this is measured, not estimated:
-[docs/reference/gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md)
-reports every one of the 1,389 (superstructure, tag) pairs the standard defines,
-each derived by decoding a document built for it. 840 reach the typed model. For
-5.5 and 5.5.1 it is not measured yet — that is
-[#446](https://github.com/cacack/gedcom-go/issues/446), and until it lands this
-table cannot say more than "unknown".
+tags. All three versions are measured, not estimated. Every structure each
+specification defines, in every context it defines it, is derived by decoding a
+document built for it: 840 of 7.0's structures reach the typed model, 705 of
+5.5's, and 856 of 5.5.1's.
+The reports say which, and why the rest do not —
+[gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
+[gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
+
+Read each percentage against its own version, not against the others. The three
+specifications define different structure sets — 7.0 defines the most, and much
+of what it added is what this library has yet to type — so the shares rank the
+work left per version, not the versions.
 
 **Re-encoding.** Not byte-for-byte, and this is measured too. Of 96 corpus
 fixtures, 5 do not survive decode and encode at all; of the 91 that do, 13

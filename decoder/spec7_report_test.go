@@ -10,21 +10,6 @@ import (
 	"strings"
 )
 
-// spec7StatusOrder fixes the order statuses are reported in, best first.
-var spec7StatusOrder = []spec7Status{
-	spec7Typed, spec7Partial, spec7RawAccepted, spec7RawFlagged, spec7RawUndiagnosed,
-}
-
-// spec7StatusMeaning explains each status where it is first tabulated, so the
-// summary is readable without the methodology section.
-var spec7StatusMeaning = map[spec7Status]string{
-	spec7Typed:          "Decoded into the typed model; reachable without walking `Record.Tags`.",
-	spec7Partial:        "Reaches the typed model but is still reported as an unknown tag.",
-	spec7RawAccepted:    "Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it.",
-	spec7RawFlagged:     "Raw tags only. The decoder reads this context and reports the tag as unknown.",
-	spec7RawUndiagnosed: "Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing.",
-}
-
 // spec7Group is the set of entries sharing one superstructure.
 type spec7Group struct {
 	context string
@@ -170,28 +155,28 @@ func spec7Summary(entries []spec7Entry) string {
 	var sb strings.Builder
 	sb.WriteString("\n## Summary\n\n")
 
-	overall := map[spec7Status]int{}
+	overall := map[specStatus]int{}
 	for _, e := range entries {
 		overall[e.status]++
 	}
 
 	sb.WriteString("| Status | Structures | Share | Meaning |\n")
 	sb.WriteString("|--------|-----------:|------:|---------|\n")
-	for _, status := range spec7StatusOrder {
+	for _, status := range specStatusOrder {
 		fmt.Fprintf(&sb, "| %s | %d | %s | %s |\n",
-			status, overall[status], spec7Share(overall[status], len(entries)),
-			spec7StatusMeaning[status])
+			status, overall[status], specShare(overall[status], len(entries)),
+			specStatusMeaning[status])
 	}
 
 	sb.WriteString("\n### By top-level structure\n\n")
 	sb.WriteString("The structure each pair is nested under at level 0.\n\n")
 
-	byRoot := map[string]map[spec7Status]int{}
+	byRoot := map[string]map[specStatus]int{}
 	totals := map[string]int{}
 	for _, e := range entries {
 		root := e.path[0].tag
 		if byRoot[root] == nil {
-			byRoot[root] = map[spec7Status]int{}
+			byRoot[root] = map[specStatus]int{}
 		}
 		byRoot[root][e.status]++
 		totals[root]++
@@ -213,19 +198,11 @@ func spec7Summary(entries []spec7Entry) string {
 	for _, root := range roots {
 		counts := byRoot[root]
 		fmt.Fprintf(&sb, "| `%s` | %d | %d | %d | %d | %d | %d |\n",
-			root, totals[root], counts[spec7Typed], counts[spec7Partial],
-			counts[spec7RawAccepted], counts[spec7RawFlagged], counts[spec7RawUndiagnosed])
+			root, totals[root], counts[specTyped], counts[specPartial],
+			counts[specRawAccepted], counts[specRawFlagged], counts[specRawUndiagnosed])
 	}
 
 	return sb.String()
-}
-
-// spec7Share formats n out of total as a percentage.
-func spec7Share(n, total int) string {
-	if total == 0 {
-		return "0.0%"
-	}
-	return fmt.Sprintf("%.1f%%", 100*float64(n)/float64(total))
 }
 
 // spec7Inventory writes the full table, one section per superstructure. Each

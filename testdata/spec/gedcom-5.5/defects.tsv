@@ -1,0 +1,18 @@
+block	line	problem	reading
+EVENT_TYPE_CITED_FROM	EVENT_TYPE_CITED_FROM: = {SIZE=1:15}	the size annotation is spelled "SIZE", not "Size"	read as a size annotation
+HEADER	+1 DEST <RECEIVING_SYSTEM_NAME> {0:1*} p.51	a footnote marker sits inside the cardinality braces	read as {0:1}
+HEADER	+1 SUBM @XREF:SUBM@ {1:1} p.55	the cross-reference payload is spelled irregularly	read as @<XREF:SUBM>@
+HEADER	+1 SUBN @XREF:SUBN@ {0:1} p.55	the cross-reference payload is spelled irregularly	read as @<XREF:SUBN>@
+INDIVIDUAL_RECORD	n @XREF:INDI@ INDI {1:1}	the cross-reference is written without its angle brackets	read as @<XREF:INDI>@
+MONTH	MONTH: = {Size=3}	the size annotation states one width, not a range	read as a maximum of 3 with no minimum
+MONTH_FREN	MONTH_FREN: = {Size=4}	the size annotation states one width, not a range	read as a maximum of 4 with no minimum
+MONTH_HEBR	MONTH_HEBR: = {Size=3}	the size annotation states one width, not a range	read as a maximum of 3 with no minimum
+MULTIMEDIA_RECORD	n @XREF:OBJE@ OBJE {1:1}	the cross-reference is written without its angle brackets	read as @<XREF:OBJE>@
+NOTE_STRUCTURE	n NOTE [SUBMITTER_TEXT> | <NULL>] {1:1} p.54	the value type is missing an angle bracket	read as the value type named in "[SUBMITTER_TEXT> | <NULL>]"
+PERSONAL_NAME_STRUCTURE	+1 SPFX <NAME_PIECE_SURNAME_PREFIX {0:1} p.49	the value type is missing an angle bracket	read as the value type named in "<NAME_PIECE_SURNAME_PREFIX"
+SOURCE_PUBLICATION_FACTS	SOURCE_PUBLICATION_FACTS: = {Size=248}	the size annotation states one width, not a range	read as a maximum of 248 with no minimum
+SOURCE_REPOSITORY_CITATION	[	an alternation is opened and never closed	read as closing at the end of the block, which is where its last branch ends anyway
+SOURCE_REPOSITORY_CITATION	n REPO @XREF:REPO@ {1:1} p.55	the cross-reference payload is spelled irregularly	read as @<XREF:REPO>@
+SUBMISSION_RECORD	+1 SUBM @XREF:SUBM@ {0:1} p.55	the cross-reference payload is spelled irregularly	read as @<XREF:SUBM>@
+SUBMISSION_RECORD	n @XREF:SUBN@ SUBN {1:1]	the cardinality closes with "]", not "}"	read as {1:1}
+SUBMISSION_RECORD	n @XREF:SUBN@ SUBN {1:1]	the cross-reference is written without its angle brackets	read as @<XREF:SUBN>@

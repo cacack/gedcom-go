@@ -8,3 +8,4 @@ Lookup material — version differences and specification pointers.
 | [gedcom-specifications.md](gedcom-specifications.md) | Official specification versions and PDF links |
 | [gedcom-date-formats.md](gedcom-date-formats.md) | Date grammars, calendar systems, modifiers, and conversion formulas |
 | [gedcom-7-coverage.md](gedcom-7-coverage.md) | What this library does with every GEDCOM 7.0 structure (generated) |
+| [gedcom-5.5-coverage.md](gedcom-5.5-coverage.md) | What this library does with every GEDCOM 5.5 and 5.5.1 structure (generated) |
