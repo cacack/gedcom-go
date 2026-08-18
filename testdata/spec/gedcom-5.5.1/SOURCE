@@ -1,0 +1,6 @@
+document: The GEDCOM Standard Release 5.5.1
+url: https://gedcom.io/specifications/ged551.pdf
+sha256: b81d16576ae8ad099ddf7a4ae2035a6f1d6b3c3f46e0b20f5738294388711c11
+retrieved: 2026-08-18
+copyright: Copyright © 1987, 1989, 1992, 1993, 1995, 1999 by The Church of Jesus Christ of Latter-day Saints.
+transcribed-by: scripts/spec55/transcribe.py

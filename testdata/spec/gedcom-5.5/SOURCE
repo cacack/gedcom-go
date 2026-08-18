@@ -1,0 +1,6 @@
+document: The GEDCOM Standard Release 5.5
+url: https://gedcom.io/specifications/ged55.pdf
+sha256: 4949bd56a42d0a8cffb0e0fb45cc339010e553bcbeda764a69d98a20d374eaa1
+retrieved: 2026-08-18
+copyright: Copyright © 1987, 1989, 1992, 1993, 1995 by The Church of Jesus Christ of Latter-day Saints. This document may be copied for purposes of review or programming of genealogical software, provided this notice is included. All other rights reserved.
+transcribed-by: scripts/spec55/transcribe.py

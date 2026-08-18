@@ -1,0 +1,24 @@
+block	line	problem	reading
+EVENT_TYPE_CITED_FROM	EVENT_TYPE_CITED_FROM: = {SIZE=1:15}	the size annotation is spelled "SIZE", not "Size"	read as a size annotation
+FAMILY_EVENT_STRUCTURE	n RESI	the line states no cardinality	read as the cardinality of the splice that reaches it, which is the only bound stated for it anywhere
+FAM_RECORD	+1 RESN <RESTRICTION_NOTICE> {0:1) p.60	the cardinality closes with ")", not "}"	read as {0:1}
+HEADER	+1 DEST <RECEIVING_SYSTEM_NAME> {0:1* p.59	a footnote marker sits inside the cardinality braces	read as {0:1}
+HEADER	+1 DEST <RECEIVING_SYSTEM_NAME> {0:1* p.59	the cardinality is never closed	read as {0:1}
+HEADER	+3 COPR <COPYRIGHT_SOURCE_DATA> {0:1) p.44	the cardinality closes with ")", not "}"	read as {0:1}
+HEADER	+3 DATE <PUBLICATION_DATE> {0:1) p.59	the cardinality closes with ")", not "}"	read as {0:1}
+INDIVIDUAL_EVENT_DETAIL	n <<EVENT_DETAIL >> {1:1} p.32	the substructure name has a stray space before ">>"	read as <<EVENT_DETAIL>>
+INDIVIDUAL_RECORD	n @XREF:INDI@ INDI {1:1}	the cross-reference is written without its angle brackets	read as @<XREF:INDI>@
+LINEAGE_LINKED_GEDCOM	0 <<HEADER >> {1:1} p.23	the substructure name has a stray space before ">>"	read as <<HEADER>>
+LINEAGE_LINKED_GEDCOM	0 <<RECORD >> {1:M} p.24	the substructure name has a stray space before ">>"	read as <<RECORD>>
+MONTH	MONTH: = {Size=3}	the size annotation states one width, not a range	read as a maximum of 3 with no minimum
+MONTH_FREN	MONTH_FREN: = {Size=4}	the size annotation states one width, not a range	read as a maximum of 4 with no minimum
+MONTH_HEBR	MONTH_HEBR: = {Size=3}	the size annotation states one width, not a range	read as a maximum of 3 with no minimum
+MULTIMEDIA_LINK	n OBJE	the line states no cardinality	read as the cardinality of the splice that reaches it, which is the only bound stated for it anywhere
+MULTIMEDIA_LINK	n OBJE @<XREF:OBJE> @ {1:1} p.26	the cross-reference payload is spelled irregularly	read as @<XREF:OBJE>@
+MULTIMEDIA_LINK	|	a branch separator appears outside any "[ ... ]"	read as an alternation spanning the whole block
+MULTIMEDIA_RECORD	n @XREF:OBJE@ OBJE {1:1}	the cross-reference is written without its angle brackets	read as @<XREF:OBJE>@
+PERSONAL_NAME_PIECES	n SPFX <NAME_PIECE_SURNAME_PREFIX {0:1} p.56	the value type is missing an angle bracket	read as the value type named in "<NAME_PIECE_SURNAME_PREFIX"
+SOURCE_REPOSITORY_CITATION	n REPO [ @XREF:REPO@ | <NULL>] {1:1} p.27	the cross-reference payload is spelled irregularly	read as @<XREF:REPO>@
+SUBMISSION_RECORD	+1 SUBM @XREF:SUBM@ {0:1} p.28	the cross-reference payload is spelled irregularly	read as @<XREF:SUBM>@
+SUBMISSION_RECORD	n @XREF:SUBN@ SUBN {1:1}	the cross-reference is written without its angle brackets	read as @<XREF:SUBN>@
+SUBMITTER_RECORD	+1 <<ADDRESS_STRUCTURE >> {0:1}* p.31	the substructure name has a stray space before ">>"	read as <<ADDRESS_STRUCTURE>>

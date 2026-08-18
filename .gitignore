@@ -58,3 +58,7 @@ prompts/
 
 # Downloaded specification PDFs (copyrighted, not for redistribution)
 docs/specs/*.pdf
+
+# Python bytecode from the by-hand transcription scripts in scripts/spec55
+__pycache__/
+*.pyc
