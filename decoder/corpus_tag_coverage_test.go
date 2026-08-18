@@ -20,6 +20,12 @@ import (
 // measurable instead of anecdotal: it answers "what don't we understand?" from
 // the 20+ vendor exports in testdata/, and fails when the answer changes.
 //
+// This answers "what do real files contain that we do not understand?".
+// spec7_coverage_test.go answers the other half, "what does the standard define
+// that we do not understand?", from the specification rather than the corpus.
+// Neither subsumes the other: a construct can be common in exports and rare in
+// the spec, or defined by the spec and absent from every file in testdata/.
+//
 // Underscore-prefixed tags are excluded. They are vendor extensions, and ADR
 // 0003 deliberately routes them through Record.Tags rather than the typed
 // model, so UNKNOWN_TAG is the correct classification for them, not a defect.
