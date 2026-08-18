@@ -622,16 +622,18 @@ func cloneDate(d *Date) *Date {
 	}
 
 	copied := &Date{
-		Original: d.Original,
-		Day:      d.Day,
-		Month:    d.Month,
-		Year:     d.Year,
-		Modifier: d.Modifier,
-		Calendar: d.Calendar,
-		IsBC:     d.IsBC,
-		DualYear: d.DualYear,
-		Phrase:   d.Phrase,
-		IsPhrase: d.IsPhrase,
+		Original:        d.Original,
+		Day:             d.Day,
+		Month:           d.Month,
+		Year:            d.Year,
+		Modifier:        d.Modifier,
+		Calendar:        d.Calendar,
+		IsBC:            d.IsBC,
+		DualYear:        d.DualYear,
+		Phrase:          d.Phrase,
+		IsPhrase:        d.IsPhrase,
+		IsInterpreted:   d.IsInterpreted,
+		InterpretedFrom: d.InterpretedFrom,
 	}
 	copied.EndDate = cloneDate(d.EndDate)
 	return copied

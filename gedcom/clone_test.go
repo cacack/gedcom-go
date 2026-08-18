@@ -709,6 +709,26 @@ func TestCloneDate(t *testing.T) {
 			t.Errorf("EndDate.Year = %d, want %d", copied.EndDate.Year, original.EndDate.Year)
 		}
 	})
+
+	// #400: the interpretation was dropped, so "INT 1700 (some phrase)" cloned
+	// into a plain 1700 with no record of what it was interpreted from.
+	t.Run("copies interpreted date", func(t *testing.T) {
+		original := &Date{
+			Original:        "INT 1700 (some phrase)",
+			Year:            1700,
+			Modifier:        ModifierInterpreted,
+			IsInterpreted:   true,
+			InterpretedFrom: "some phrase",
+		}
+
+		copied := cloneDate(original)
+		if copied.IsInterpreted != original.IsInterpreted {
+			t.Errorf("IsInterpreted = %t, want %t", copied.IsInterpreted, original.IsInterpreted)
+		}
+		if copied.InterpretedFrom != original.InterpretedFrom {
+			t.Errorf("InterpretedFrom = %q, want %q", copied.InterpretedFrom, original.InterpretedFrom)
+		}
+	})
 }
 
 func TestMediaObjectClone(t *testing.T) {
