@@ -63,7 +63,19 @@ GEDCOM is a real specification. Support it correctly, including the parts that a
 
 ## Phasing
 
-Work is sequenced into phases to focus effort. **Resist jumping ahead** — features are driven by real downstream usage ([my-family](https://github.com/cacack/my-family)), not speculation. Each phase maps to one or more GitHub milestones; see [Milestones](https://github.com/cacack/gedcom-go/milestones) for the live issue list and per-milestone exit criteria.
+Work is sequenced into phases to focus effort. **Resist jumping ahead** — features are driven by evidence, not speculation. Each phase maps to one or more GitHub milestones; see [Milestones](https://github.com/cacack/gedcom-go/milestones) for the live issue list and per-milestone exit criteria.
+
+### What counts as evidence
+
+Three signals, any of which can justify work. They are listed in the order that has proven most reliable, not in order of importance:
+
+1. **The test corpus.** `testdata/` holds real exports from 20+ vendors. A construct that appears in real files and that the library mishandles is a defect against Differentiator 3, whether or not anyone has complained.
+2. **Spec coverage.** A tag defined by 5.5, 5.5.1 or 7.0 that the library does not handle is a gap against Strategic Principle 5. A library calling itself *the reference* must be able to state its own coverage.
+3. **Downstream need.** A concrete request from a consumer, [my-family](https://github.com/cacack/my-family) or otherwise.
+
+Downstream need was previously the *only* signal, and that was a mistake: because `Record.Tags` always provides a lossless fallback, a consumer that needs an unmodelled structure simply reads the raw tags and never files a request. The gap then registers as zero demand forever. An escape hatch that works is not evidence of a need being met.
+
+This does **not** relax the bar against speculation. "Someone might want this" is still not a reason. The change is what may serve as proof — measured corpus behaviour and spec coverage now count, alongside asking.
 
 | Phase | Focus | Milestone(s) | Principle |
 |-------|-------|--------------|-----------|
@@ -78,7 +90,8 @@ Phase 3 is not yet milestoned. Issue-backed candidate: GEDZip archive support ([
 ## Anti-Patterns to Avoid
 
 - **Feature bloat** — Do fewer things well; a library is not an application
-- **Speculative features** — Build what downstream consumers need, not what might be cool
+- **Speculative features** — Build what the evidence supports (see [Phasing](#what-counts-as-evidence)), not what might be cool
+- **Mistaking a working fallback for a met need** — `Record.Tags` means no gap ever blocks a consumer, so silence is not a signal
 - **Vendor lock-in** — Data must always be exportable; never add proprietary requirements
 - **Breaking changes** — Follow API stability guarantees; prefer additive changes
 - **Ignoring real-world files** — Support what vendors actually produce, not just the spec

@@ -176,7 +176,7 @@ This prevents duplicate changelog entries (release-please picks up both PR title
 
 This library is consumed by `github.com/cacack/my-family`, which depends on tagged releases via the Go module system — it builds against the published artifact, not a local `replace`. When adding features:
 
-1. **Driven by real usage**: Features should be added when my-family needs them, not speculatively
+1. **Driven by evidence**: Features need proof of need — corpus behaviour, spec coverage, or a downstream request. See [CONSTITUTION.md](CONSTITUTION.md#what-counts-as-evidence); note that my-family's silence is not evidence of sufficiency, since `Record.Tags` always lets it work around a gap
 2. **Self-contained commits**: Each enhancement should be a complete, testable unit with its own tests
 3. **Verify after release**: Consumer verification happens once a version is released, since my-family pulls the released artifact. After tagging a release, bump my-family and run its tests: from the my-family checkout, `go get github.com/cacack/gedcom-go/v2@latest && go test ./...`
 4. **API stability**: Follow `docs/governance/policies/api-stability.md`; prefer additive changes over breaking ones
