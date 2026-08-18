@@ -460,9 +460,10 @@ func TestParseLineValueSpacing(t *testing.T) {
 			want:  "John",
 		},
 		{
+			// #426: one space is the delimiter, the other three are payload.
 			name:  "multiple spaces before value",
 			input: "1 NAME    John",
-			want:  "John",
+			want:  "   John",
 		},
 		{
 			name:  "value with internal spaces",
@@ -473,6 +474,31 @@ func TestParseLineValueSpacing(t *testing.T) {
 			name:  "value with trailing spaces preserved",
 			input: "1 NAME John  ",
 			want:  "John  ",
+		},
+		{
+			// #426: CONC adds no separator of its own, so this leading space
+			// is the only thing keeping "hello" and "and" apart.
+			name:  "CONC leading space is the word separator",
+			input: "2 CONC  and then left",
+			want:  " and then left",
+		},
+		{
+			// #426: redundant with the /Surname/ convention, but still payload.
+			name:  "NAME with empty given name",
+			input: "1 NAME  /Mac Imair/",
+			want:  " /Mac Imair/",
+		},
+		{
+			// GEDCOM makes the delimiter optional when there is no value, so
+			// "1 CONT " and "1 CONT" denote the same empty value.
+			name:  "delimiter with no payload yields empty",
+			input: "1 CONT ",
+			want:  "",
+		},
+		{
+			name:  "no delimiter at all yields empty",
+			input: "1 CONT",
+			want:  "",
 		},
 	}
 
