@@ -5190,3 +5190,82 @@ func TestNOTagMissingEventTypeFamily(t *testing.T) {
 		}
 	}
 }
+
+// TestPaddedTokenValues covers the consumers that the #426 parser change would
+// otherwise break. The parser keeps every space past the one delimiter, because
+// in a CONC continuation that space is payload — but in a token position it is
+// not, and these fields are compared by exact string or resolved through
+// Document.XRefMap.
+func TestPaddedTokenValues(t *testing.T) {
+	src := "0 HEAD\n1 CHAR  UTF-8\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @I1@ INDI\n" +
+		"1 SEX  M\n" +
+		"1 NAME John /Smith/\n2 GIVN  John\n2 SURN  Smith\n" +
+		"1 NOTE  @N1@\n" +
+		"1 FAMS  @F1@\n" +
+		"0 @F1@ FAM\n1 HUSB  @I1@\n1 CHIL  @I2@\n" +
+		"0 @N1@ NOTE Shared note body.\n" +
+		"0 TRLR\n"
+
+	doc, err := Decode(strings.NewReader(src))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	if got := string(doc.Header.Encoding); got != "UTF-8" {
+		t.Errorf("Header.Encoding = %q, want %q", got, "UTF-8")
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi.Sex != "M" {
+		t.Errorf("Sex = %q, want %q", indi.Sex, "M")
+	}
+	if indi.Names[0].Given != "John" || indi.Names[0].Surname != "Smith" {
+		t.Errorf("Given/Surname = %q/%q, want %q/%q",
+			indi.Names[0].Given, indi.Names[0].Surname, "John", "Smith")
+	}
+
+	// A padded pointer must stay a pointer: classified as an XRef, stored
+	// trimmed, and resolvable through the document.
+	if len(indi.NoteXRefs) != 1 || indi.NoteXRefs[0] != "@N1@" {
+		t.Fatalf("NoteXRefs = %q, want [\"@N1@\"]", indi.NoteXRefs)
+	}
+	if doc.GetNote(indi.NoteXRefs[0]) == nil {
+		t.Error("note xref does not resolve")
+	}
+	if len(indi.InlineNotes) != 0 {
+		t.Errorf("InlineNotes = %q, want none — the pointer was demoted to text", indi.InlineNotes)
+	}
+
+	if len(indi.SpouseInFamilies) != 1 || indi.SpouseInFamilies[0] != "@F1@" {
+		t.Errorf("SpouseInFamilies = %q, want [\"@F1@\"]", indi.SpouseInFamilies)
+	}
+
+	fam := doc.GetFamily("@F1@")
+	if fam.Husband != "@I1@" {
+		t.Errorf("Husband = %q, want %q", fam.Husband, "@I1@")
+	}
+	if doc.GetIndividual(fam.Husband) == nil {
+		t.Error("husband xref does not resolve")
+	}
+	if len(fam.Children) != 1 || fam.Children[0] != "@I2@" {
+		t.Errorf("Children = %q, want [\"@I2@\"]", fam.Children)
+	}
+}
+
+// TestPaddedInlineNoteKeepsPayload is the counterweight to TestPaddedTokenValues:
+// prose must NOT be trimmed, because that is the space #426 exists to keep.
+func TestPaddedInlineNoteKeepsPayload(t *testing.T) {
+	src := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @I1@ INDI\n1 NOTE He said hello\n2 CONC  and then left\n0 TRLR\n"
+
+	doc, err := Decode(strings.NewReader(src))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	indi := doc.GetIndividual("@I1@")
+	want := "He said hello and then left"
+	if len(indi.InlineNotes) != 1 || indi.InlineNotes[0] != want {
+		t.Errorf("InlineNotes = %q, want [%q]", indi.InlineNotes, want)
+	}
+}

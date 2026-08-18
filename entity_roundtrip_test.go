@@ -37,9 +37,14 @@ import (
 // entry that starts passing fails the test asking to be removed.
 var entityKnownBad = map[string]string{
 	// #442: the same defect #439 fixed on Note, one entity over — the decoder
-	// assigns the TEXT tag value and never folds in its CONT/CONC lines, so a
-	// multi-line source text reads back as its first line alone.
-	"Source.Text": "#442 decoder drops CONT/CONC from Source.Text",
+	// assigns the tag value and never folds in its CONT/CONC lines, so a
+	// multi-line value reads back as its first line alone. Title, Author and
+	// Publication are worse than Text on the way out too: Text goes through
+	// textToTags, they are written raw, so an embedded newline forges a line.
+	"Source.Text":        "#442 decoder drops CONT/CONC from Source.Text",
+	"Source.Title":       "#442 decoder drops CONT/CONC; encoder writes Title raw",
+	"Source.Author":      "#442 decoder drops CONT/CONC; encoder writes Author raw",
+	"Source.Publication": "#442 decoder drops CONT/CONC; encoder writes Publication raw",
 }
 
 // nilElementPanics lists entity fields whose slices panic on a nil element.
@@ -89,14 +94,15 @@ func sampleEntities() []struct {
 				{Type: "MARR", Date: "1 JAN 1925", Place: "Boston, Massachusetts"},
 			},
 		}},
+		// Every free-text field here is multi-line on purpose. The single-line
+		// values this sample used to carry are what hid #442 from the harness,
+		// and the same sentence was true of Author and Publication.
 		{"Source", "@S1@", gedcom.RecordTypeSource, &gedcom.Source{
 			XRef:        "@S1@",
-			Title:       "Vital Records of Boston",
-			Author:      "City Clerk",
-			Publication: "Boston, 1930",
-			// Multi-line, because the single-line value this sample used to
-			// carry is what hid #442 from the harness.
-			Text: "First line of the source text.\nSecond line of the source text.",
+			Title:       "Vital Records of Boston\nVolume II",
+			Author:      "City Clerk\nBoston, Massachusetts",
+			Publication: "Boston, 1930\nReprinted 1961",
+			Text:        "First line of the source text.\nSecond line of the source text.",
 		}},
 		{"Repository", "@R1@", gedcom.RecordTypeRepository, &gedcom.Repository{
 			XRef: "@R1@",

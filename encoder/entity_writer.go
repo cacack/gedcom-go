@@ -1138,9 +1138,15 @@ func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int) []*gedcom.
 // and the remainder are leading CONT/CONC tags. This splits on embedded newlines
 // and enforces MaxLineLength — critical for correctness, since writing Text
 // verbatim onto the level-0 line would let an embedded newline forge additional
-// GEDCOM records. For NOTE, this covers the Text field only; note.Continuation is
-// emitted separately by noteToTags, and the two never overlap (Text holds the
-// first line, Continuation the rest), so there is no double-emission.
+// GEDCOM records.
+//
+// For NOTE, this covers the Text field only; the deprecated note.Continuation is
+// emitted separately by noteToTags. Since #439 the decoder folds every
+// continuation line into Text and leaves Continuation nil, so a decoded note
+// cannot double-emit. A hand-built note still can, by setting a multi-line Text
+// and a non-empty Continuation — that combination writes the body twice and is
+// why Continuation is deprecated rather than kept as a parallel way to say the
+// same thing.
 func entityRecordText(record *gedcom.Record, opts *EncodeOptions) (string, []*gedcom.Tag) {
 	switch record.Type {
 	case gedcom.RecordTypeSharedNote:

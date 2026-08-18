@@ -715,6 +715,65 @@ func TestParseLineXRefWithoutTag(t *testing.T) {
 	}
 }
 
+// TestRecoveredXRefValueSpacing covers the two XRef-recovery paths, which reach
+// trimDelimiter without the strings.Fields guard the well-formed path has. The
+// one-delimiter rule from #426 applies to them, but a remainder of nothing but
+// spaces is still no value — the same answer "1 CONT " gets.
+func TestRecoveredXRefValueSpacing(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantTag   string
+		wantValue string
+	}{
+		{
+			name:      "no tag, only trailing spaces",
+			input:     "0 @I1   ",
+			wantTag:   "@I1",
+			wantValue: "",
+		},
+		{
+			name:      "HEAD branch keeps one delimiter",
+			input:     "0 @I1  HEAD",
+			wantTag:   "@I1",
+			wantValue: " HEAD",
+		},
+		{
+			name:      "recovered tag, only trailing spaces after it",
+			input:     "0 @I1 INDI   ",
+			wantTag:   "INDI",
+			wantValue: "",
+		},
+		{
+			name:      "recovered tag keeps padded value",
+			input:     "0 @I1 INDI  John",
+			wantTag:   "INDI",
+			wantValue: " John",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewParser()
+			line, err := p.ParseLine(tt.input)
+			// Every input here is malformed, so an error is expected alongside
+			// the recovered line.
+			if err == nil {
+				t.Fatal("expected an error for a malformed xref")
+			}
+			if line == nil {
+				t.Fatal("expected a recovered line alongside the error")
+			}
+			if line.Tag != tt.wantTag {
+				t.Errorf("Tag = %q, want %q", line.Tag, tt.wantTag)
+			}
+			if line.Value != tt.wantValue {
+				t.Errorf("Value = %q, want %q", line.Value, tt.wantValue)
+			}
+		})
+	}
+}
+
 // --- ParseWithOptions Tests ---
 
 // TestParseWithOptions_StrictMode verifies that strict mode (Lenient=false) behaves like Parse()

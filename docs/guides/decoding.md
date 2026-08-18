@@ -159,6 +159,25 @@ Re-encoded (may differ from original):
 1 CONT Second line with more text
 ```
 
+**Value Whitespace**
+
+GEDCOM separates a tag from its value with exactly one space. The decoder consumes
+that one space and keeps everything after it, so a value that an exporter padded
+with extra spaces arrives padded:
+
+```
+1 ADDR   123 Main St     ->  Line1 = "  123 Main St"
+2 CONC  and then left    ->  the leading space is the word separator
+```
+
+That padding is payload, not formatting — dropping it merges words across a `CONC`
+continuation. Callers that want tidy display strings should `strings.TrimSpace`
+the fields they render; the library does not trim on your behalf, because it
+cannot tell a cosmetic space from a significant one.
+
+A value that is nothing but spaces is reported as empty: `1 CONT ` and `1 CONT`
+both yield `""`.
+
 **Header Reconstruction**
 
 The header is rebuilt from `Document.Header` fields. Non-standard header tags not mapped to typed fields may not round-trip.

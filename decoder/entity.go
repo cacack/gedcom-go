@@ -8,6 +8,26 @@ import (
 	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
+// tagToken returns a tag value with surrounding whitespace removed, for a typed
+// field whose value is a token — an XRef pointer, a name part, an enumerated
+// code — rather than prose.
+//
+// GEDCOM's delimiter is exactly one space and the parser keeps every space past
+// it, because in a CONC continuation that space is payload (#426). In a token
+// position it never is: a producer writing "1 FAMS  @F1@" means "@F1@". Left
+// padded, such a value fails gedcom.IsPointerXRef, so the link is silently
+// demoted to inline text and merge's XRef remap skips it — and a padded "SURN"
+// disagrees with the same name part derived from the NAME line, which
+// parsePersonalName already trims.
+//
+// Only the typed field is normalized. The raw Tag.Value keeps the original
+// bytes, so byte fidelity is untouched; this is ADR-003's dual storage doing
+// what it is for. Prose fields — note text, CONT/CONC continuations — must not
+// use this, because there the extra space is the payload.
+func tagToken(s string) string {
+	return strings.TrimSpace(s)
+}
+
 // diagnosticCollector accumulates diagnostics during entity population.
 // It is nil-safe: all methods check for nil receiver before acting.
 type diagnosticCollector struct {
@@ -94,7 +114,7 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			indi.Names = append(indi.Names, name)
 
 		case "SEX":
-			indi.Sex = tag.Value
+			indi.Sex = tagToken(tag.Value)
 
 		case "BIRT", "DEAT", "BAPM", "BURI", "CENS", "CHR", "ADOP", "RESI", "IMMI", "EMIG",
 			"BARM", "BASM", "BLES", "CHRA", "CONF", "FCOM",
@@ -126,7 +146,7 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			indi.ChildInFamilies = append(indi.ChildInFamilies, famLink)
 
 		case "FAMS":
-			indi.SpouseInFamilies = append(indi.SpouseInFamilies, tag.Value)
+			indi.SpouseInFamilies = append(indi.SpouseInFamilies, tagToken(tag.Value))
 
 		case "ASSO":
 			assoc := parseAssociation(record.Tags, i, collector)
@@ -225,17 +245,17 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCol
 		if tag.Level == 2 {
 			switch tag.Tag {
 			case "GIVN":
-				name.Given = tag.Value
+				name.Given = tagToken(tag.Value)
 			case "SURN":
-				name.Surname = tag.Value
+				name.Surname = tagToken(tag.Value)
 			case "NPFX":
-				name.Prefix = tag.Value
+				name.Prefix = tagToken(tag.Value)
 			case "NSFX":
-				name.Suffix = tag.Value
+				name.Suffix = tagToken(tag.Value)
 			case "NICK":
-				name.Nickname = tag.Value
+				name.Nickname = tagToken(tag.Value)
 			case "SPFX":
-				name.SurnamePrefix = tag.Value
+				name.SurnamePrefix = tagToken(tag.Value)
 			case "TYPE":
 				name.Type = tag.Value
 			case "TRAN":
@@ -300,7 +320,7 @@ func parseNameTransliteration(tags []*gedcom.Tag, tranIdx int, collector *diagno
 // parseFamilyLink extracts a family link from tags starting at famcIdx.
 func parseFamilyLink(tags []*gedcom.Tag, famcIdx int, collector *diagnosticCollector) gedcom.FamilyLink {
 	famLink := gedcom.FamilyLink{
-		FamilyXRef: tags[famcIdx].Value,
+		FamilyXRef: tagToken(tags[famcIdx].Value),
 	}
 
 	// Look for subordinate tags (level 2)
@@ -331,7 +351,7 @@ func parseAssociation(tags []*gedcom.Tag, assoIdx int, collector *diagnosticColl
 	baseLevel := tags[assoIdx].Level
 
 	assoc := &gedcom.Association{
-		IndividualXRef: tags[assoIdx].Value,
+		IndividualXRef: tagToken(tags[assoIdx].Value),
 	}
 
 	// Look for subordinate tags at baseLevel+1
@@ -386,7 +406,7 @@ func parseExternalID(tags []*gedcom.Tag, exidIdx int) *gedcom.ExternalID {
 // parseSourceCitation extracts a source citation from tags starting at sourIdx.
 func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *diagnosticCollector) *gedcom.SourceCitation {
 	cite := &gedcom.SourceCitation{
-		SourceXRef: tags[sourIdx].Value,
+		SourceXRef: tagToken(tags[sourIdx].Value),
 	}
 
 	// Look for subordinate tags at baseLevel+1
@@ -746,7 +766,7 @@ func parseLDSOrdinance(tags []*gedcom.Tag, ordIdx int, ordType gedcom.LDSOrdinan
 			case "STAT":
 				ord.Status = tag.Value
 			case "FAMC":
-				ord.FamilyXRef = tag.Value
+				ord.FamilyXRef = tagToken(tag.Value)
 			case "NOTE", "SOUR":
 				// Known tags not yet parsed into typed fields
 			default:
@@ -777,13 +797,13 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 
 		switch tag.Tag {
 		case "HUSB":
-			fam.Husband = tag.Value
+			fam.Husband = tagToken(tag.Value)
 
 		case "WIFE":
-			fam.Wife = tag.Value
+			fam.Wife = tagToken(tag.Value)
 
 		case "CHIL":
-			fam.Children = append(fam.Children, tag.Value)
+			fam.Children = append(fam.Children, tagToken(tag.Value))
 
 		case "NCHI":
 			fam.NumberOfChildren = tag.Value
@@ -914,7 +934,7 @@ func parseSourceRepositoryLink(tags []*gedcom.Tag, repoIdx int, collector *diagn
 	baseLevel := repoTag.Level
 
 	if repoTag.Value != "" {
-		link.XRef = repoTag.Value
+		link.XRef = tagToken(repoTag.Value)
 	} else {
 		// No XRef value: this is an inline repository referenced by name.
 		link.Inline = &gedcom.InlineRepository{}
@@ -1154,10 +1174,15 @@ func foldContinuation(b *strings.Builder, tag *gedcom.Tag) {
 // It returns the updated xrefs, inline, and legacy slices.
 func appendRecordNote(tags []*gedcom.Tag, noteIdx int, xrefs, inline, legacy []string) (newXRefs, newInline, newLegacy []string) {
 	tag := tags[noteIdx]
-	if gedcom.IsPointerXRef(tag.Value) {
+	// The pointer test runs on the trimmed value, and only a value that passes
+	// it is stored trimmed. "1 NOTE  @N1@" is a padded pointer (#426 keeps every
+	// space past the delimiter), and testing the raw value would classify it as
+	// inline text, silently dropping the link to the shared note. Inline text
+	// keeps its raw value, because there a leading space is payload.
+	if ptr := tagToken(tag.Value); gedcom.IsPointerXRef(ptr) {
 		// XRef pointer to a shared note: the GEDCOM specs do not permit
 		// subordinate CONT/CONC lines here, so there is nothing to fold in.
-		return append(xrefs, tag.Value), inline, append(legacy, tag.Value)
+		return append(xrefs, ptr), inline, append(legacy, ptr)
 	}
 
 	var b strings.Builder
@@ -1344,7 +1369,7 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 			// re-encode. Also track them in SharedNoteXRefs, which records the
 			// GEDCOM 7.0 SNOTE form used for version detection.
 			media.NoteXRefs, media.InlineNotes, media.Notes = appendRecordNote(record.Tags, i, media.NoteXRefs, media.InlineNotes, media.Notes)
-			media.SharedNoteXRefs = append(media.SharedNoteXRefs, tag.Value)
+			media.SharedNoteXRefs = append(media.SharedNoteXRefs, tagToken(tag.Value))
 		case "SOUR":
 			cite := parseSourceCitation(record.Tags, i, tag.Level, collector)
 			media.SourceCitations = append(media.SourceCitations, cite)
@@ -1441,7 +1466,7 @@ func parseMediaTranslation(tags []*gedcom.Tag, tranIdx, baseLevel int, collector
 // parseMediaLink extracts a MediaLink from OBJE reference tag and its subordinates.
 func parseMediaLink(tags []*gedcom.Tag, objeIdx, baseLevel int, collector *diagnosticCollector) *gedcom.MediaLink {
 	link := &gedcom.MediaLink{
-		MediaXRef: tags[objeIdx].Value,
+		MediaXRef: tagToken(tags[objeIdx].Value),
 	}
 
 	for i := objeIdx + 1; i < len(tags); i++ {

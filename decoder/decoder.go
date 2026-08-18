@@ -373,7 +373,11 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 		// Extract header fields
 		switch line.Tag {
 		case "CHAR":
-			doc.Header.Encoding = gedcom.Encoding(line.Value)
+			// tagToken, not line.Value: the encoding name is a token compared
+			// by exact string in validator/encoding.go, so a producer's
+			// "1 CHAR  UTF-8" would otherwise be reported invalid for a file
+			// charset detection reads perfectly well. See #426.
+			doc.Header.Encoding = gedcom.Encoding(tagToken(line.Value))
 		case "LANG":
 			doc.Header.Language = line.Value
 		case "COPR":

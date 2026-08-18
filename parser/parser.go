@@ -175,10 +175,16 @@ func sliceValue(line, xref, tag string) string {
 // back as "helloand"), and loses the byte fidelity of lines such as
 // "1 NAME  /Mac Imair/" that carry a redundant but real second space.
 //
-// A value that is only spaces still yields "": the caller does not reach here
-// unless strings.Fields found a field after the tag, so "1 CONT " is empty by
-// the same route it always was.
+// A remainder that is nothing but spaces is no value at all, and is reported as
+// "". That is not a second delimiter rule, it is agreement with the well-formed
+// path: there, strings.Fields finds no field after the tag and the value is
+// never sliced, so "1 CONT " has always been empty. The XRef-recovery call
+// sites reach this function without that guard, and without this they would
+// keep a residue of the delimiter run as the value.
 func trimDelimiter(s string) string {
+	if strings.TrimLeft(s, " ") == "" {
+		return ""
+	}
 	return strings.TrimPrefix(s, " ")
 }
 
