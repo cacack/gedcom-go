@@ -50,11 +50,13 @@ func spec55Preamble(specs map[string]*spec55Spec, rows []*spec55Row) string {
 	}
 
 	perVersion := make([]string, 0, len(spec55Editions))
+	distinct := map[[2]string]bool{}
 	for _, edition := range spec55Editions {
 		n := 0
 		for _, row := range rows {
 			if _, ok := row.measured[edition.version]; ok {
 				n++
+				distinct[[2]string{row.superstructure, row.tag}] = true
 			}
 		}
 		perVersion = append(perVersion, fmt.Sprintf("%d in %s", n, edition.version))
@@ -64,15 +66,22 @@ func spec55Preamble(specs map[string]*spec55Spec, rows []*spec55Row) string {
 
 # GEDCOM 5.5 and 5.5.1 coverage
 
-What this library does with every structure GEDCOM 5.5 and 5.5.1 define: %d
-distinct (superstructure, tag) pairs across the two versions — %s — each
-measured against the decoder rather than estimated. The GEDCOM 7.0 half is
-[a separate document](gedcom-7-coverage.md), derived the same way.
+What this library does with every structure GEDCOM 5.5 and 5.5.1 define, in
+every context they define it: %d rows across the two versions — %s —
+each measured against the decoder rather than estimated. The GEDCOM 7.0 half
+is [a separate document](gedcom-7-coverage.md), derived the same way.
 
-Coverage is reported per pair, not per tag, because GEDCOM tag meaning depends
-on where the tag appears. `+"`RELI`"+` under an individual and `+"`RELI`"+` under an event are
-different structures, and this library may well support one and not the other. A
-flat per-tag table would overstate support.
+Coverage is reported per context, not per tag, because GEDCOM tag meaning
+depends on where the tag appears. `+"`RELI`"+` under an individual and `+"`RELI`"+` under an
+event are different structures, and this library may well support one and not
+the other. A flat per-tag table would overstate support.
+
+A row is a (superstructure, tag, structure) triple rather than a
+(superstructure, tag) pair, and the two are not the same count here: these
+grammars alternate, so one tag can name two different structures under one
+parent — `+"`NOTE`"+` under an event is either a pointer to a note record or inline
+text — and each is measured separately because this library may support one and
+not the other. The %d rows are %d distinct (superstructure, tag) pairs.
 
 The two versions are reported together because they share most of a grammar.
 Where they agree, one row says so; where they differ, the row shows it.
@@ -224,8 +233,8 @@ inventory itself is regenerated only by re-running the transcription against the
 specification PDFs, which is described in
 [`+"`scripts/spec55/README.md`"+`](../../scripts/spec55/README.md).
 `,
-		len(rows), strings.Join(perVersion, " and "), provenance.String(),
-		notices.String(),
+		len(rows), strings.Join(perVersion, " and "), len(rows), len(distinct),
+		provenance.String(), notices.String(),
 	)
 }
 

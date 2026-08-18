@@ -20,7 +20,6 @@ package decoder
 // regenerated with `make spec-coverage`.
 
 import (
-	"os"
 	"sort"
 	"testing"
 )
@@ -130,23 +129,5 @@ func TestSpec55Coverage(t *testing.T) {
 		ordered = append(ordered, rows[key])
 	}
 
-	got := spec55Document(specs, ordered)
-
-	if *updateSpec7Coverage {
-		if err := os.WriteFile(spec55DocPath, []byte(got), 0o644); err != nil {
-			t.Fatalf("write %s: %v", spec55DocPath, err)
-		}
-		t.Logf("wrote %s (%d rows)", spec55DocPath, len(ordered))
-		return
-	}
-
-	want, err := os.ReadFile(spec55DocPath)
-	if err != nil {
-		t.Fatalf("read %s (regenerate with `make spec-coverage`): %v", spec55DocPath, err)
-	}
-	if string(want) != got {
-		t.Errorf("%s is out of date: the decoder's GEDCOM 5.5/5.5.1 coverage has changed.\n"+
-			"Regenerate with `make spec-coverage` and review the diff.\n%s",
-			spec55DocPath, specDiff(string(want), got))
-	}
+	specPublish(t, spec55DocPath, spec55Document(specs, ordered))
 }

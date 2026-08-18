@@ -2,15 +2,22 @@
 
 # GEDCOM 5.5 and 5.5.1 coverage
 
-What this library does with every structure GEDCOM 5.5 and 5.5.1 define: 1408
-distinct (superstructure, tag) pairs across the two versions — 998 in 5.5 and 1316 in 5.5.1 — each
-measured against the decoder rather than estimated. The GEDCOM 7.0 half is
-[a separate document](gedcom-7-coverage.md), derived the same way.
+What this library does with every structure GEDCOM 5.5 and 5.5.1 define, in
+every context they define it: 1408 rows across the two versions — 998 in 5.5 and 1316 in 5.5.1 —
+each measured against the decoder rather than estimated. The GEDCOM 7.0 half
+is [a separate document](gedcom-7-coverage.md), derived the same way.
 
-Coverage is reported per pair, not per tag, because GEDCOM tag meaning depends
-on where the tag appears. `RELI` under an individual and `RELI` under an event are
-different structures, and this library may well support one and not the other. A
-flat per-tag table would overstate support.
+Coverage is reported per context, not per tag, because GEDCOM tag meaning
+depends on where the tag appears. `RELI` under an individual and `RELI` under an
+event are different structures, and this library may well support one and not
+the other. A flat per-tag table would overstate support.
+
+A row is a (superstructure, tag, structure) triple rather than a
+(superstructure, tag) pair, and the two are not the same count here: these
+grammars alternate, so one tag can name two different structures under one
+parent — `NOTE` under an event is either a pointer to a note record or inline
+text — and each is measured separately because this library may support one and
+not the other. The 1408 rows are 1150 distinct (superstructure, tag) pairs.
 
 The two versions are reported together because they share most of a grammar.
 Where they agree, one row says so; where they differ, the row shows it.

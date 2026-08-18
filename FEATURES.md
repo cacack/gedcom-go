@@ -86,9 +86,10 @@ parser *cannot* read are skipped and reported as diagnostics — see the lenient
 parsing table above, which says which shapes those are.
 
 **Typed coverage.** How much of a version reaches typed fields rather than raw
-tags. All three versions are measured, not estimated. Every (superstructure,
-tag) pair each specification defines is derived by decoding a document built for
-it: 840 of 7.0's pairs reach the typed model, 705 of 5.5's, and 856 of 5.5.1's.
+tags. All three versions are measured, not estimated. Every structure each
+specification defines, in every context it defines it, is derived by decoding a
+document built for it: 840 of 7.0's structures reach the typed model, 705 of
+5.5's, and 856 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).

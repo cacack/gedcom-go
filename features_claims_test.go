@@ -56,11 +56,11 @@ func TestFeaturesNumbersMatchTheirSources(t *testing.T) {
 		{"total 5.5.1 structures", regexp.MustCompile(
 			`\| GEDCOM 5\.5\.1 \|[^|]*\| \[[\d,]+ of (\d[\d,]*) structures\]`), total551},
 		{"typed 7.0 structures, restated", regexp.MustCompile(
-			`(\d[\d,]*) of 7\.0's pairs reach the typed model`), typed},
+			`(\d[\d,]*) of 7\.0's structures reach the typed\s+model`), typed},
 		{"typed 5.5 structures, restated", regexp.MustCompile(
-			`reach the typed model, (\d[\d,]*) of 5\.5's`), typed55},
+			`reach the typed\s+model, (\d[\d,]*) of\s+5\.5's`), typed55},
 		{"typed 5.5.1 structures, restated", regexp.MustCompile(
-			`of 5\.5's, and (\d[\d,]*) of 5\.5\.1's`), typed551},
+			`of\s+5\.5's, and (\d[\d,]*) of 5\.5\.1's`), typed551},
 		{"corpus fixtures", regexp.MustCompile(`Of (\d[\d,]*) corpus\s+fixtures`), fixtures},
 		{"undecodable fixtures", regexp.MustCompile(`fixtures, (\d[\d,]*) do not survive`), len(undecodable)},
 		{"decodable fixtures", regexp.MustCompile(`of the (\d[\d,]*) that do`), decodable},
@@ -105,6 +105,15 @@ func coverage55ReportTotals(t *testing.T) (typed55, total55, typed551, total551 
 	t.Helper()
 
 	report := readFile(t, coverage55ReportPath)
+
+	// The counts are read positionally, so the header has to name the versions
+	// in the order the columns are in. A reordering of spec55Editions would
+	// otherwise swap the two versions' numbers and check both claims against
+	// each other's source.
+	if !strings.Contains(report, "| Status | 5.5 | Share | 5.5.1 | Share | Meaning |") {
+		t.Fatalf("%s: the summary header is not the 5.5-then-5.5.1 column order this "+
+			"reads counts by; update both together", coverage55ReportPath)
+	}
 
 	// Rows are "| status | 5.5 count | share | 5.5.1 count | share | meaning |".
 	rows := regexp.MustCompile(

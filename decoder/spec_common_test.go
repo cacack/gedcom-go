@@ -13,6 +13,7 @@ package decoder
 import (
 	"bytes"
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,6 +25,46 @@ import (
 
 	"github.com/cacack/gedcom-go/v2/gedcom"
 )
+
+// updateSpecCoverage regenerates the checked-in coverage documents instead of
+// comparing against them. Run via `make spec-coverage`. Both harnesses share
+// it, so the two reports are always regenerated together and cannot drift into
+// describing different revisions of the decoder.
+var updateSpecCoverage = flag.Bool("update-spec-coverage", false,
+	"rewrite the docs/reference/gedcom-*-coverage.md reports from the decoder's actual behaviour")
+
+// specPublish writes a regenerated coverage document, or compares the derived
+// one against what is checked in.
+//
+// It refuses to write after the measurement has reported an error. A pair whose
+// superstructure is unreachable is reported and skipped, which leaves the
+// document short of a row -- and writing it then would turn a loud failure into
+// a quiet, committable omission.
+func specPublish(t *testing.T, path, got string) {
+	t.Helper()
+
+	if *updateSpecCoverage {
+		if t.Failed() {
+			t.Fatalf("not writing %s: the measurement reported errors above, so the "+
+				"document would be published incomplete", path)
+		}
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatalf("write %s: %v", path, err)
+		}
+		t.Logf("wrote %s", path)
+		return
+	}
+
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s (regenerate with `make spec-coverage`): %v", path, err)
+	}
+	if string(want) != got {
+		t.Errorf("%s is out of date: the decoder's coverage has changed.\n"+
+			"Regenerate with `make spec-coverage` and review the diff.\n%s",
+			path, specDiff(string(want), got))
+	}
+}
 
 // specStep is one line of a GEDCOM structure path: the tag as it appears in the
 // file, and the identity of the structure that tag denotes in that position.

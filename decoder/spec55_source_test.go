@@ -138,6 +138,20 @@ func loadSpec55(t *testing.T, edition spec55Edition) *spec55Spec {
 	}
 
 	s.specGraph = newSpecGraph(pairs)
+	// A pointer payload whose target has no filler record would be written as a
+	// bare tag with no value, and the pair measured against a document the
+	// decoder cannot resolve -- a wrong status the totals would absorb in
+	// silence. The eight record types cover both versions today.
+	for structure, payload := range s.payloads {
+		target, ok := specPointerTarget(spec55Declared(payload))
+		if !ok {
+			continue
+		}
+		if _, filled := spec55Xrefs[target]; !filled {
+			t.Fatalf("%s: %s points at %s, which spec55Fillers has no record for",
+				edition.version, structure, target)
+		}
+	}
 	s.specForm = &specForm{
 		version: edition.version,
 		head:    spec55Head,

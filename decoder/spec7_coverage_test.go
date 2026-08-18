@@ -20,16 +20,9 @@ package decoder
 // regenerated with `make spec-coverage`.
 
 import (
-	"flag"
-	"os"
 	"strings"
 	"testing"
 )
-
-// updateSpec7Coverage regenerates the checked-in coverage document instead of
-// comparing against it. Run via `make spec-coverage`.
-var updateSpec7Coverage = flag.Bool("update-spec-coverage", false,
-	"rewrite docs/reference/gedcom-7-coverage.md from the decoder's actual behaviour")
 
 // spec7DocPath is the published coverage document, relative to this package.
 const spec7DocPath = "../docs/reference/gedcom-7-coverage.md"
@@ -71,23 +64,5 @@ func TestSpec7Coverage(t *testing.T) {
 		entries = append(entries, spec7Entry{pair: pair, path: path, status: status})
 	}
 
-	got := spec7Document(spec, entries)
-
-	if *updateSpec7Coverage {
-		if err := os.WriteFile(spec7DocPath, []byte(got), 0o644); err != nil {
-			t.Fatalf("write %s: %v", spec7DocPath, err)
-		}
-		t.Logf("wrote %s (%d entries)", spec7DocPath, len(entries))
-		return
-	}
-
-	want, err := os.ReadFile(spec7DocPath)
-	if err != nil {
-		t.Fatalf("read %s (regenerate with `make spec-coverage`): %v", spec7DocPath, err)
-	}
-	if string(want) != got {
-		t.Errorf("%s is out of date: the decoder's GEDCOM 7.0 coverage has changed.\n"+
-			"Regenerate with `make spec-coverage` and review the diff.\n%s",
-			spec7DocPath, specDiff(string(want), got))
-	}
+	specPublish(t, spec7DocPath, spec7Document(spec, entries))
 }
