@@ -66,28 +66,40 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 ## Multi-Version Support
 
-| Version | Status | Notes |
-|---------|--------|-------|
-| GEDCOM 5.5 | Full | Legacy format support |
-| GEDCOM 5.5.1 | Full | Most common format |
-| GEDCOM 7.0 | Full | Latest standard |
+| Version | Decoding | Typed coverage | Notes |
+|---------|----------|----------------|-------|
+| GEDCOM 5.5 | Every readable line preserved | Not yet measured ([#446](https://github.com/cacack/gedcom-go/issues/446)) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | Not yet measured ([#446](https://github.com/cacack/gedcom-go/issues/446)) | Most common format |
+| GEDCOM 7.0 | Every readable line preserved | [840 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (60.5%) | Latest standard |
 
 - Automatic version detection from header
 - Heuristic-based detection for malformed headers
 - Version-aware validation rules
 
-"Full" is a claim about *decoding*: every version is decoded without dropping a
-line, because every line is kept in raw form regardless of whether the decoder
-understands it ([ADR 0003](docs/decisions/0003-lossless-dual-storage.md)). It is
-not a claim that re-encoding reproduces the input byte for byte — `byte_roundtrip_test.go`
-enumerates where it does not, and the largest of those gaps is tracked in
-[#429](https://github.com/cacack/gedcom-go/issues/429).
+The table separates three claims that are easy to run together, because this
+library is much stronger on the first than on the third.
 
-How much of a version reaches the *typed* model rather than raw tags is a third,
-separate question, and for GEDCOM 7.0 it has a measured answer —
-[docs/reference/gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) reports
-every one of the 1,389 (superstructure, tag) pairs the standard defines, derived
-by decoding rather than estimated.
+**Decoding.** Every line the parser can read is kept, whether or not the decoder
+understands it: unrecognized tags land in `Record.Tags` rather than being
+dropped ([ADR 0003](docs/decisions/0003-lossless-dual-storage.md)). Lines the
+parser *cannot* read are skipped and reported as diagnostics — see the lenient
+parsing table above, which says which shapes those are.
+
+**Typed coverage.** How much of a version reaches typed fields rather than raw
+tags. For GEDCOM 7.0 this is measured, not estimated:
+[docs/reference/gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md)
+reports every one of the 1,389 (superstructure, tag) pairs the standard defines,
+each derived by decoding a document built for it. 840 reach the typed model. For
+5.5 and 5.5.1 it is not measured yet — that is
+[#446](https://github.com/cacack/gedcom-go/issues/446), and until it lands this
+table cannot say more than "unknown".
+
+**Re-encoding.** Not byte-for-byte, and this is measured too. Of 96 corpus
+fixtures, 5 do not survive decode and encode at all; of the 91 that do, 13
+reproduce their header byte for byte and 77 reproduce their record body.
+`byte_roundtrip_test.go` names the defect behind every exception; the largest is
+[#429](https://github.com/cacack/gedcom-go/issues/429), the encoder rebuilding
+`HEAD` from four scalar fields.
 
 ### Version-Aware Export
 
