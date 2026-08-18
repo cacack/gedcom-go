@@ -1,7 +1,7 @@
 # Makefile for gedcom-go
 # Go genealogy library for parsing and validating GEDCOM files
 
-.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint security clean coverage-html install-tools build build-examples tidy check check-coverage all setup-hooks setup preflight api-check
+.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint security clean coverage-html install-tools build build-examples tidy check check-coverage spec-coverage all setup-hooks setup preflight api-check
 
 # Default target
 .DEFAULT_GOAL := help
@@ -136,6 +136,12 @@ security: ## Run security scanners (gosec, govulncheck)
 
 check: fmt vet test ## Run all checks (format, vet, test)
 	@echo "✓ All checks passed"
+
+spec-coverage: ## Regenerate docs/reference/gedcom-7-coverage.md from the decoder
+	@echo "Deriving GEDCOM 7.0 coverage..."
+	$(GOTEST) ./decoder -run TestSpec7Coverage -update-spec-coverage -v
+	@echo ""
+	@echo "✓ docs/reference/gedcom-7-coverage.md regenerated — review the diff"
 
 check-coverage: ## Check coverage thresholds (same as CI)
 	@echo "Running tests with coverage..."
