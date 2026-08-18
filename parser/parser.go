@@ -163,7 +163,29 @@ func sliceValue(line, xref, tag string) string {
 	if afterTag >= len(line) {
 		return ""
 	}
-	return strings.TrimLeft(line[afterTag:], " ")
+	return trimDelimiter(line[afterTag:])
+}
+
+// trimDelimiter removes the single space separating a tag — or a recovered XRef
+// identifier — from the value that follows it.
+//
+// GEDCOM's delimiter is exactly one space, so every space after the first is
+// payload and belongs in the value. Trimming the whole run merges words across
+// a CONC continuation ("1 NOTE He said hello" / "2 CONC  and then left" reads
+// back as "helloand"), and loses the byte fidelity of lines such as
+// "1 NAME  /Mac Imair/" that carry a redundant but real second space.
+//
+// A remainder that is nothing but spaces is no value at all, and is reported as
+// "". That is not a second delimiter rule, it is agreement with the well-formed
+// path: there, strings.Fields finds no field after the tag and the value is
+// never sliced, so "1 CONT " has always been empty. The XRef-recovery call
+// sites reach this function without that guard, and without this they would
+// keep a residue of the delimiter run as the value.
+func trimDelimiter(s string) string {
+	if strings.TrimLeft(s, " ") == "" {
+		return ""
+	}
+	return strings.TrimPrefix(s, " ")
 }
 
 // splitSpacedXRef detects an XRef identifier containing a space, e.g.
@@ -296,7 +318,7 @@ func (p *Parser) parseUnterminatedXRef(level int, line, xref, rest string) (*Lin
 		return &Line{
 			Level:      level,
 			Tag:        xref,
-			Value:      strings.TrimLeft(rest, " "),
+			Value:      trimDelimiter(rest),
 			LineNumber: p.lineNumber,
 		}, err
 	}
@@ -313,7 +335,7 @@ func (p *Parser) recoverXRefLine(level int, xref, rest, tag string) *Line {
 	return &Line{
 		Level:      level,
 		Tag:        tag,
-		Value:      strings.TrimLeft(rest[afterTag:], " "),
+		Value:      trimDelimiter(rest[afterTag:]),
 		XRef:       xref,
 		LineNumber: p.lineNumber,
 	}

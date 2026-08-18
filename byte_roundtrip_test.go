@@ -55,20 +55,13 @@ var headerByteIdentical = map[string]bool{
 // the defect responsible. Every entry is a live bug; none is an accepted
 // difference. Delete an entry when its issue is fixed.
 var bodyKnownBad = map[string]string{
-	// #426: value parsing trims every leading space, but GEDCOM's delimiter is
-	// exactly one. The rest is payload — a CONC word separator, or, in
-	// "1 NAME  /Mac Imair/", an empty given name.
-	"testdata/edge-cases/cont-conc.ged":                 "#426 CONC leading space",
-	"testdata/edge-cases/ftm-conc-test.ged":             "#426 CONC leading space",
-	"testdata/edge-cases/ftm-general.ged":               "#426 CONC leading space",
-	"testdata/edge-cases/vendor-customtags-torture.ged": "#426 CONC leading space",
-	"testdata/edge-cases/legacy10-2025-export.ged":      "#426 NAME with empty given name",
-	"testdata/edge-cases/vendor-familyorigins5.ged":     "#426 NAME with empty given name",
-	"testdata/gedcom-5.5/royal92.ged":                   "#426 DATE leading space",
-
 	// #404: a value on a level-0 line is dropped by writeRecord.
-	"testdata/edge-cases/rootsmagic-2026-export.ged": "#404 level-0 record value",
-	"testdata/edge-cases/vendor-legacy.ged":          "#404 level-0 record value",
+	// vendor-customtags-torture.ged was attributed to #426 until that fix
+	// landed and uncovered this second defect underneath it ("0 _ROOT Root
+	// element"); it stays on the list under its remaining cause.
+	"testdata/edge-cases/rootsmagic-2026-export.ged":    "#404 level-0 record value",
+	"testdata/edge-cases/vendor-legacy.ged":             "#404 level-0 record value",
+	"testdata/edge-cases/vendor-customtags-torture.ged": "#404 level-0 record value",
 
 	// #425: output is UTF-8 but declares the source charset, so re-reading it
 	// applies the decoding a second time.

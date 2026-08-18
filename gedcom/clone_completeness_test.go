@@ -30,38 +30,6 @@ import (
 // cloneKnownBad maps "Type.field.path" to the issue responsible. Every entry is
 // a live bug. Delete an entry when its issue is fixed; the test will say so.
 var cloneKnownBad = map[string]string{
-	// #400: cloneDate omits IsInterpreted and InterpretedFrom. Reached through
-	// every type that carries a Date, and again through Date.EndDate, so one
-	// two-field omission accounts for 28 of the paths below.
-	"Attribute.ParsedDate.EndDate.InterpretedFrom":        "#400 cloneDate",
-	"Attribute.ParsedDate.EndDate.IsInterpreted":          "#400 cloneDate",
-	"Attribute.ParsedDate.InterpretedFrom":                "#400 cloneDate",
-	"Attribute.ParsedDate.IsInterpreted":                  "#400 cloneDate",
-	"Date.EndDate.EndDate.InterpretedFrom":                "#400 cloneDate",
-	"Date.EndDate.EndDate.IsInterpreted":                  "#400 cloneDate",
-	"Date.EndDate.InterpretedFrom":                        "#400 cloneDate",
-	"Date.EndDate.IsInterpreted":                          "#400 cloneDate",
-	"Date.InterpretedFrom":                                "#400 cloneDate",
-	"Date.IsInterpreted":                                  "#400 cloneDate",
-	"Event.ParsedDate.EndDate.InterpretedFrom":            "#400 cloneDate",
-	"Event.ParsedDate.EndDate.IsInterpreted":              "#400 cloneDate",
-	"Event.ParsedDate.InterpretedFrom":                    "#400 cloneDate",
-	"Event.ParsedDate.IsInterpreted":                      "#400 cloneDate",
-	"Family.Events.ParsedDate.InterpretedFrom":            "#400 cloneDate",
-	"Family.Events.ParsedDate.IsInterpreted":              "#400 cloneDate",
-	"Family.LDSOrdinances.ParsedDate.InterpretedFrom":     "#400 cloneDate",
-	"Family.LDSOrdinances.ParsedDate.IsInterpreted":       "#400 cloneDate",
-	"Individual.Attributes.ParsedDate.InterpretedFrom":    "#400 cloneDate",
-	"Individual.Attributes.ParsedDate.IsInterpreted":      "#400 cloneDate",
-	"Individual.Events.ParsedDate.InterpretedFrom":        "#400 cloneDate",
-	"Individual.Events.ParsedDate.IsInterpreted":          "#400 cloneDate",
-	"Individual.LDSOrdinances.ParsedDate.InterpretedFrom": "#400 cloneDate",
-	"Individual.LDSOrdinances.ParsedDate.IsInterpreted":   "#400 cloneDate",
-	"LDSOrdinance.ParsedDate.EndDate.InterpretedFrom":     "#400 cloneDate",
-	"LDSOrdinance.ParsedDate.EndDate.IsInterpreted":       "#400 cloneDate",
-	"LDSOrdinance.ParsedDate.InterpretedFrom":             "#400 cloneDate",
-	"LDSOrdinance.ParsedDate.IsInterpreted":               "#400 cloneDate",
-
 	// #428: NoteXRefs, InlineNotes, SharedNoteXRefs and ExternalIDs are not
 	// copied. The issue names Individual, Family and MediaObject; it is
 	// actually six record types.

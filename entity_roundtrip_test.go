@@ -36,10 +36,15 @@ import (
 // entityKnownBad maps "Type.Field" to the issue responsible. Self-cleaning: an
 // entry that starts passing fails the test asking to be removed.
 var entityKnownBad = map[string]string{
-	// #439: the decoder folds CONC into Note.Text but not CONT, so a multi-line
-	// note comes back truncated to its first line. SharedNote handles CONT
-	// correctly (#329), which is why only Note is listed.
-	"Note.Text": "#439 decoder drops CONT from Note.Text",
+	// #442: the same defect #439 fixed on Note, one entity over — the decoder
+	// assigns the tag value and never folds in its CONT/CONC lines, so a
+	// multi-line value reads back as its first line alone. Title, Author and
+	// Publication are worse than Text on the way out too: Text goes through
+	// textToTags, they are written raw, so an embedded newline forges a line.
+	"Source.Text":        "#442 decoder drops CONT/CONC from Source.Text",
+	"Source.Title":       "#442 decoder drops CONT/CONC; encoder writes Title raw",
+	"Source.Author":      "#442 decoder drops CONT/CONC; encoder writes Author raw",
+	"Source.Publication": "#442 decoder drops CONT/CONC; encoder writes Publication raw",
 }
 
 // nilElementPanics lists entity fields whose slices panic on a nil element.
@@ -89,11 +94,15 @@ func sampleEntities() []struct {
 				{Type: "MARR", Date: "1 JAN 1925", Place: "Boston, Massachusetts"},
 			},
 		}},
+		// Every free-text field here is multi-line on purpose. The single-line
+		// values this sample used to carry are what hid #442 from the harness,
+		// and the same sentence was true of Author and Publication.
 		{"Source", "@S1@", gedcom.RecordTypeSource, &gedcom.Source{
 			XRef:        "@S1@",
-			Title:       "Vital Records of Boston",
-			Author:      "City Clerk",
-			Publication: "Boston, 1930",
+			Title:       "Vital Records of Boston\nVolume II",
+			Author:      "City Clerk\nBoston, Massachusetts",
+			Publication: "Boston, 1930\nReprinted 1961",
+			Text:        "First line of the source text.\nSecond line of the source text.",
 		}},
 		{"Repository", "@R1@", gedcom.RecordTypeRepository, &gedcom.Repository{
 			XRef: "@R1@",

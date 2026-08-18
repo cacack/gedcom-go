@@ -460,9 +460,10 @@ func TestParseLineValueSpacing(t *testing.T) {
 			want:  "John",
 		},
 		{
+			// #426: one space is the delimiter, the other three are payload.
 			name:  "multiple spaces before value",
 			input: "1 NAME    John",
-			want:  "John",
+			want:  "   John",
 		},
 		{
 			name:  "value with internal spaces",
@@ -473,6 +474,31 @@ func TestParseLineValueSpacing(t *testing.T) {
 			name:  "value with trailing spaces preserved",
 			input: "1 NAME John  ",
 			want:  "John  ",
+		},
+		{
+			// #426: CONC adds no separator of its own, so this leading space
+			// is the only thing keeping "hello" and "and" apart.
+			name:  "CONC leading space is the word separator",
+			input: "2 CONC  and then left",
+			want:  " and then left",
+		},
+		{
+			// #426: redundant with the /Surname/ convention, but still payload.
+			name:  "NAME with empty given name",
+			input: "1 NAME  /Mac Imair/",
+			want:  " /Mac Imair/",
+		},
+		{
+			// GEDCOM makes the delimiter optional when there is no value, so
+			// "1 CONT " and "1 CONT" denote the same empty value.
+			name:  "delimiter with no payload yields empty",
+			input: "1 CONT ",
+			want:  "",
+		},
+		{
+			name:  "no delimiter at all yields empty",
+			input: "1 CONT",
+			want:  "",
 		},
 	}
 
@@ -684,6 +710,65 @@ func TestParseLineXRefWithoutTag(t *testing.T) {
 			}
 			if !strings.Contains(parseErr.Message, "xref must have a tag") {
 				t.Errorf("expected 'xref must have a tag' in Message, got: %q", parseErr.Message)
+			}
+		})
+	}
+}
+
+// TestRecoveredXRefValueSpacing covers the two XRef-recovery paths, which reach
+// trimDelimiter without the strings.Fields guard the well-formed path has. The
+// one-delimiter rule from #426 applies to them, but a remainder of nothing but
+// spaces is still no value — the same answer "1 CONT " gets.
+func TestRecoveredXRefValueSpacing(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantTag   string
+		wantValue string
+	}{
+		{
+			name:      "no tag, only trailing spaces",
+			input:     "0 @I1   ",
+			wantTag:   "@I1",
+			wantValue: "",
+		},
+		{
+			name:      "HEAD branch keeps one delimiter",
+			input:     "0 @I1  HEAD",
+			wantTag:   "@I1",
+			wantValue: " HEAD",
+		},
+		{
+			name:      "recovered tag, only trailing spaces after it",
+			input:     "0 @I1 INDI   ",
+			wantTag:   "INDI",
+			wantValue: "",
+		},
+		{
+			name:      "recovered tag keeps padded value",
+			input:     "0 @I1 INDI  John",
+			wantTag:   "INDI",
+			wantValue: " John",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewParser()
+			line, err := p.ParseLine(tt.input)
+			// Every input here is malformed, so an error is expected alongside
+			// the recovered line.
+			if err == nil {
+				t.Fatal("expected an error for a malformed xref")
+			}
+			if line == nil {
+				t.Fatal("expected a recovered line alongside the error")
+			}
+			if line.Tag != tt.wantTag {
+				t.Errorf("Tag = %q, want %q", line.Tag, tt.wantTag)
+			}
+			if line.Value != tt.wantValue {
+				t.Errorf("Value = %q, want %q", line.Value, tt.wantValue)
 			}
 		})
 	}
