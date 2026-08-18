@@ -76,6 +76,14 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 - Heuristic-based detection for malformed headers
 - Version-aware validation rules
 
+"Full" means every version decodes losslessly: no line of any of them is dropped,
+and all three round-trip byte-for-byte. It is a separate question how much of a
+version reaches the *typed* model rather than raw tags, and for GEDCOM 7.0 that
+question has a measured answer —
+[docs/reference/gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) reports
+every one of the 1,389 (superstructure, tag) pairs the standard defines, derived
+by decoding rather than estimated.
+
 ### Version-Aware Export
 
 `Document.MinimumVersion()` reports the lowest GEDCOM version that can losslessly
