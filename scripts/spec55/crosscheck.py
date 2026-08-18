@@ -18,8 +18,10 @@ is checked twice, against sources that were made without reference to it:
      directly, and the two inventories can be compared as data.
 
 Gedcom.pm is Perl-licensed (Artistic/GPL), which this MIT repository cannot
-vendor. Nothing is copied: the files are fetched to a temporary path, read, and
-the differences reported. What lands in the repository is our own transcription
+vendor. Nothing is copied: the files are read over the network into memory,
+parsed, and compared, and this writes none of their content anywhere. (With
+--offline they are read from a directory you supply instead, which this still
+only reads.) What lands in the repository is our own transcription
 and the list of places the two disagree.
 
 Usage:

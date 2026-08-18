@@ -77,7 +77,8 @@ edited by hand and not re-derived.
 and `gedcom-5.5.1.grammar`, transcriptions of the same chapters by someone else,
 in the specification's own notation. **Nothing is copied from them.** Gedcom.pm
 is Perl-licensed (Artistic/GPL), which this MIT repository cannot vendor; the
-files are fetched to a temporary path, parsed, compared, and discarded.
+files are read over the network into memory, parsed, and compared, and none of
+their content is written anywhere.
 
 Its README says the author "had to modify slightly" the standard versions "to
 correct a few errors", so the two are *expected* to differ. Each difference

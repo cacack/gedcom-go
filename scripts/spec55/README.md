@@ -113,8 +113,9 @@ dropping a structure.
 `crosscheck.py` compares the transcription against two sources made without
 reference to it — the 5.5 specification's own Appendix B, and
 [pjcj/Gedcom.pm](https://github.com/pjcj/Gedcom.pm)'s `.grammar` files. Gedcom.pm
-is Perl-licensed and nothing is copied from it: the files are fetched to a
-temporary path, read, compared, and discarded.
+is Perl-licensed and nothing is copied from it: the files are read over the
+network into memory, parsed, and compared, and none of their content is written
+anywhere.
 
 The current differences, and why each is expected, are recorded in
 [`testdata/spec/README.md`](../../testdata/spec/README.md). A new difference
