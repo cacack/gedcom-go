@@ -16,6 +16,57 @@ func transformHeader(doc *gedcom.Document, targetVersion gedcom.Version, report 
 	}
 
 	updateEncoding(doc.Header, targetVersion, report)
+	updateVersionTag(doc.Header, targetVersion)
+}
+
+// updateVersionTag rewrites GEDC.VERS in the raw header tags to the target
+// version.
+//
+// The typed Header.Version is set by the caller, but the encoder writes a
+// decoded document's header from Header.Tags -- so leaving the tag alone would
+// emit a converted document still declaring its source version. Conversion owns
+// the version change, so it owns the tag that states it.
+//
+// VERS is matched under GEDC only: it also appears under SOUR as the source
+// system's own version, which a conversion must not touch.
+func updateVersionTag(header *gedcom.Header, targetVersion gedcom.Version) {
+	// Nothing to keep in sync: a header with no raw tags is written from the
+	// typed fields, which the caller already set.
+	if len(header.Tags) == 0 {
+		return
+	}
+
+	inGEDC := false
+	updated := false
+
+	for _, tag := range header.Tags {
+		// A nil tag has no level to read; it also cannot open or close a GEDC
+		// structure, so the surrounding context carries across it unchanged.
+		if tag == nil {
+			continue
+		}
+
+		if tag.Level <= 1 {
+			inGEDC = tag.Level == 1 && tag.Tag == "GEDC"
+		}
+
+		if inGEDC && tag.Level == 2 && tag.Tag == "VERS" {
+			tag.Value = targetVersion.String()
+			updated = true
+		}
+	}
+
+	if updated {
+		return
+	}
+
+	// Some 5.5 files carry no GEDC block at all (royal92.ged is one). A
+	// conversion has to leave the target version stated somewhere the encoder
+	// will write it, so the structure is added rather than assumed.
+	header.Tags = append(header.Tags,
+		&gedcom.Tag{Level: 1, Tag: "GEDC"},
+		&gedcom.Tag{Level: 2, Tag: "VERS", Value: targetVersion.String()},
+	)
 }
 
 // upgradeHeaderTo70 prepares the header for GEDCOM 7.0.
