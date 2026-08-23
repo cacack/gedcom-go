@@ -234,17 +234,13 @@ func TestByteRoundTrip(t *testing.T) {
 			gotHeader, gotBody := splitHeader(normalizeGEDCOM(buf.Bytes()))
 
 			t.Run("header", func(t *testing.T) {
-				if wantHeader != gotHeader {
-					reason, known := headerKnownBad[path]
-					if !known {
-						t.Errorf("header does not round-trip:\n%s", firstDiff(wantHeader, gotHeader))
-						return
-					}
-					_ = reason
-					return
-				}
-				if reason, known := headerKnownBad[path]; known {
+				match := wantHeader == gotHeader
+				reason, known := headerKnownBad[path]
+				switch {
+				case match && known:
 					t.Errorf("header now round-trips; remove %q from headerKnownBad (was: %s)", path, reason)
+				case !match && !known:
+					t.Errorf("header does not round-trip:\n%s", firstDiff(wantHeader, gotHeader))
 				}
 			})
 

@@ -33,7 +33,7 @@ func applyOptions(opts ...Option) *roundTripConfig {
 // encoder, and the comparison no longer has anything to opt into.
 //
 // Deprecated: header tags are always compared. Remove the call; it does
-// nothing. This function will be removed in the next major version.
+// nothing. Will be removed in v3.
 func WithHeaderTagComparison() Option {
 	return func(*roundTripConfig) {}
 }

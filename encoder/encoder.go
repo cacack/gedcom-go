@@ -100,6 +100,12 @@ func writeHeaderTags(w io.Writer, tags []*gedcom.Tag, opts *EncodeOptions) error
 	// system's own version (comprehensive.ged has "1 SOUR FamilyTreeMaker /
 	// 2 VERS 16.0"). Overriding by tag name alone would rewrite the source
 	// system's version to a GEDCOM version.
+	//
+	// converter.updateVersionTag walks header tags for the same structure and
+	// must agree with this on what "inside GEDC" means. The two are deliberately
+	// not shared: that one edits the document so a conversion is visible to
+	// every reader of it, while this one substitutes at write time and must
+	// leave the caller's document untouched. Change one, check the other.
 	inGEDC := false
 	wroteVersion := false
 

@@ -40,6 +40,33 @@
 //	    log.Fatal(err)
 //	}
 //
+// # How the Header Is Written
+//
+// The header has two write paths, chosen by whether [gedcom.Header.Tags] holds
+// anything.
+//
+// A decoded document carries every header sub-tag in Tags, and those tags are
+// what gets written — so SCHMA, SUBM, DEST, COPR, the SOUR subtree and header
+// notes all survive a round-trip. The typed scalar fields (Version, Encoding,
+// SourceSystem, Language) are NOT consulted on this path. Setting
+// doc.Header.SourceSystem on a decoded document and encoding it does not change
+// the output; edit the corresponding entry in doc.Header.Tags instead. This is
+// the trade the library makes for a lossless header: what was read is what is
+// written.
+//
+// A document assembled in memory has no tags, so its header is built from those
+// typed fields instead.
+//
+// Two values are the encoder's rather than the document's, on both paths:
+//
+//   - CHAR always declares UTF-8, because Encode always writes UTF-8 and
+//     converts nothing on the way out. A header echoing a source charset it no
+//     longer contains cannot be re-decoded.
+//   - GEDC.VERS follows TargetVersion when that option is set.
+//
+// Version conversion belongs to the converter package, which updates the raw
+// header tags alongside the typed fields for exactly this reason.
+//
 // # Nil Values
 //
 // A document assembled in memory can hold nils that a decoded one never does.
