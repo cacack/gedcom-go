@@ -265,12 +265,26 @@ Round-trip testing verifies: **decode -> encode -> decode produces semantically 
 - Tag values and data content
 - Custom/vendor-specific tags
 - All typed entities (individuals, families, sources, etc.)
+- The header structure, including `SCHMA`, `SUBM`, `DEST`, `COPR`, the `SOUR`
+  subtree and header notes
 
 **Tolerated differences** (not considered failures):
 - Line ending normalization (CR/LF/CRLF)
 - Whitespace in certain contexts
-- Encoding declaration changes (e.g., input ANSEL -> output UTF-8)
 - Tag ordering within a record (when spec allows)
+- The `CHAR` declaration, which always reads `UTF-8`
+
+**On the `CHAR` declaration.** Output is always UTF-8: the encoder transcodes a
+non-UTF-8 input on the way in and does not convert back. The `HEAD.CHAR` line
+therefore declares `UTF-8` rather than the source charset, in every version. It
+used to echo the source, which produced files this library could not re-read —
+an ANSEL declaration over UTF-8 bytes had the ANSEL table applied a second time.
+
+GEDCOM 5.5 has no legal token for UTF-8 (`ANSEL`, `ASCII` or `UNICODE` only),
+and `UNICODE` conventionally denotes UTF-16, so no in-spec value describes what
+a 5.5 file from this library actually contains. Declaring the encoding that was
+written is the reading that keeps the file readable; consumers requiring a
+strictly in-spec 5.5 charset should convert the output themselves.
 
 **How round-trip is tested**:
 
@@ -290,10 +304,14 @@ func TestMyGEDCOM(t *testing.T) {
 `CheckRoundTrip` is the non-test equivalent, returning a `*RoundTripReport`
 that lists each difference.
 
-Two limits apply. `Header.Tags` are compared only under
-`WithHeaderTagComparison()`, off by default because the encoder rebuilds `HEAD`
-from a few scalar fields. And the comparison is between two decoded documents,
-so information lost identically by both decode passes is not visible to it.
+`Header.Tags` are compared unconditionally. They were gated behind
+`WithHeaderTagComparison()` while the encoder rebuilt `HEAD` from a few scalar
+fields; that option is now a deprecated no-op.
+
+One limit still applies: the comparison is between two decoded documents, so
+information lost identically by both decode passes is not visible to it.
+`byte_roundtrip_test.go` closes that gap by comparing against the original
+bytes.
 
 Round-trip tests exist throughout the codebase:
 - `encoder/encoder_test.go` - `TestEncodeRoundtrip`
