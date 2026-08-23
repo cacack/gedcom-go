@@ -1,6 +1,7 @@
 package encoder
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -9,13 +10,29 @@ import (
 	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
+// ErrNilDocument is returned when there is no document to encode. A nil
+// Document is a missing argument rather than an empty one: it carries no header
+// to write and no records to skip, so nothing -- not even the "0 HEAD" and
+// "0 TRLR" of an empty document -- can be written for it.
+var ErrNilDocument = errors.New("document is nil")
+
 // Encode writes a GEDCOM document to a writer.
+//
+// Returns ErrNilDocument if doc is nil. See the package documentation for how
+// nil values inside a document are handled.
 func Encode(w io.Writer, doc *gedcom.Document) error {
 	return EncodeWithOptions(w, doc, DefaultOptions())
 }
 
 // EncodeWithOptions writes a GEDCOM document with custom options.
+//
+// Returns ErrNilDocument if doc is nil. See the package documentation for how
+// nil values inside a document are handled.
 func EncodeWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeOptions) error {
+	if doc == nil {
+		return ErrNilDocument
+	}
+
 	if opts == nil {
 		opts = DefaultOptions()
 	}
@@ -41,6 +58,13 @@ func EncodeWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeOptions) e
 }
 
 func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error {
+	// A document assembled in memory may carry no header at all. Encoding it as
+	// an empty one keeps every header field on a single code path, so options
+	// like TargetVersion still apply.
+	if header == nil {
+		header = &gedcom.Header{}
+	}
+
 	if _, err := fmt.Fprintf(w, "0 HEAD%s", opts.LineEnding); err != nil {
 		return err
 	}
@@ -82,6 +106,10 @@ func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error 
 }
 
 func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error {
+	if record == nil {
+		return nil
+	}
+
 	// Determine the tags to write and the level-0 line value together:
 	// - If record.Tags has content, use those (preserves lossless behavior) and the
 	//   stored record.Value.
@@ -131,6 +159,10 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 }
 
 func writeTag(w io.Writer, tag *gedcom.Tag, opts *EncodeOptions) error {
+	if tag == nil {
+		return nil
+	}
+
 	// A subordinate tag normally carries no XRef, so prefix is just the level
 	// and output is unchanged for valid GEDCOM. A subordinate XRef exists only
 	// when the decoder recovered a malformed identifier from the source line
@@ -242,6 +274,12 @@ func filterTags(tags []*gedcom.Tag, preserveUnknown bool) []*gedcom.Tag {
 	skipUntilLevel := -1 // -1 means not skipping
 
 	for _, tag := range tags {
+		// A nil tag writes nothing, so drop it here rather than let it decide
+		// whether a custom tag's children are still being skipped.
+		if tag == nil {
+			continue
+		}
+
 		// If we're skipping and encounter a tag at same or lower level, stop skipping
 		if skipUntilLevel >= 0 && tag.Level <= skipUntilLevel {
 			skipUntilLevel = -1

@@ -2,6 +2,7 @@ package gedcomgo
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -261,6 +262,25 @@ func TestEncode(t *testing.T) {
 	}
 }
 
+// TestEncodeNilDocument checks that the sentinel a facade caller receives is
+// matchable with the sentinel this package re-exports, without importing the
+// encoder package to name it.
+func TestEncodeNilDocument(t *testing.T) {
+	var buf bytes.Buffer
+
+	if err := Encode(&buf, nil); !errors.Is(err, ErrNilDocument) {
+		t.Errorf("Encode(nil) error = %v, want ErrNilDocument", err)
+	}
+
+	if err := EncodeWithOptions(&buf, nil, nil); !errors.Is(err, ErrNilDocument) {
+		t.Errorf("EncodeWithOptions(nil) error = %v, want ErrNilDocument", err)
+	}
+
+	if !errors.Is(ErrNilDocument, encoder.ErrNilDocument) {
+		t.Error("ErrNilDocument is not the encoder package's sentinel")
+	}
+}
+
 func TestEncodeMatchesDirectCall(t *testing.T) {
 	doc, err := Decode(strings.NewReader(testGedcomMinimal))
 	if err != nil {
@@ -305,10 +325,10 @@ func TestValidate(t *testing.T) {
 				t.Fatalf("setup Decode() failed: %v", err)
 			}
 
-			errors := Validate(doc)
-			hasErrors := len(errors) > 0
+			validationErrs := Validate(doc)
+			hasErrors := len(validationErrs) > 0
 			if hasErrors != tt.wantErrors {
-				t.Errorf("has errors = %v, want %v (errors: %v)", hasErrors, tt.wantErrors, errors)
+				t.Errorf("has errors = %v, want %v (errors: %v)", hasErrors, tt.wantErrors, validationErrs)
 			}
 		})
 	}
@@ -755,10 +775,10 @@ func TestValidateEmptyDocument(t *testing.T) {
 		Header:  &gedcom.Header{},
 		Trailer: &gedcom.Trailer{},
 	}
-	errors := Validate(doc)
+	validationErrs := Validate(doc)
 	// Empty document is valid structurally
-	if len(errors) > 0 {
-		t.Logf("Validate() on empty document returned %d errors: %v", len(errors), errors)
+	if len(validationErrs) > 0 {
+		t.Logf("Validate() on empty document returned %d errors: %v", len(validationErrs), validationErrs)
 	}
 }
 
