@@ -666,15 +666,12 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
-// These fixtures carry a value on a level-0 line (`0 _ROOT Root element`),
-// which the encoder drops — issue #404. Each one fails only on
-// Record[...].Value differences; every other structure round-trips. Remove the
-// skip when #404 lands: the fixtures should pass as-is (issue #410).
-//
-// This is not the only round-trip failure in testdata/ — testdata/encoding/
-// fixtures fail for an unrelated reason (the encoder writes UTF-8 bytes under
-// the source file's CHAR declaration), tracked separately. These three are
-// grouped only because they share the #404 cause.
+// These fixtures carry a value on a level-0 line (`0 _ROOT Root element`,
+// `0 _EVENT_DEFN Military Service`, RootsMagic's `0 _EVDEF ...` block), which
+// the encoder used to drop — issue #404. Each failed only on Record[...].Value
+// differences; every other structure already round-tripped. They are kept as a
+// group so the level-0 value path stays guarded by real vendor exports rather
+// than by a synthetic case alone (issue #410).
 func TestRoundTrip_Level0RecordValue(t *testing.T) {
 	fixtures := []string{
 		"testdata/edge-cases/vendor-customtags-torture.ged",
@@ -684,8 +681,6 @@ func TestRoundTrip_Level0RecordValue(t *testing.T) {
 
 	for _, path := range fixtures {
 		t.Run(path, func(t *testing.T) {
-			t.Skip("blocked on #404: encoder does not write a level-0 record Value")
-
 			data, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatalf("ReadFile(%s) error = %v", path, err)

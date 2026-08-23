@@ -289,13 +289,12 @@ func (p *Parser) parseSpacedXRef(level int, line, xref, rest string) (*Line, err
 // "0 @I1 TRLR", whose tags the decoder treats as structural rather than as a
 // record type. See the function body for why promoting those two loses data.
 //
-// The identifier is kept verbatim, so "@I1" stays "@I1" and re-encoding a
-// recovered line reproduces the input byte for byte — which also means the
-// output still fails this parser's own strict mode on re-read. That holds for
-// the recovered shape only: the three reported-but-not-recovered spellings
-// above keep the identifier in Tag and the remainder in Value, and the encoder
-// does not write a level-0 Value, so "0 @I1 HEAD" re-encodes as "0 @I1". That
-// gap predates this recovery rather than being introduced by it. Because
+// The identifier is kept verbatim, so "@I1" stays "@I1" and re-encoding a line
+// reproduces the input byte for byte — which also means the output still fails
+// this parser's own strict mode on re-read. That holds for every spelling
+// above: the reported-but-not-recovered ones keep the identifier in Tag and the
+// remainder in Value, and the encoder writes a level-0 Value, so "0 @I1 HEAD"
+// re-encodes unchanged too. Because
 // gedcom.IsPointerXRef requires both delimiters, an ordinary "@I1@" pointer
 // elsewhere in the file does not resolve to the recovered record: what this
 // recovery buys is the diagnostic and a correctly typed record, not pointer

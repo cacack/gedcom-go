@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -160,11 +161,12 @@ func TestEncodeMultilineTagValue(t *testing.T) {
 // come back out exactly as it went in — which also means the output still
 // fails strict mode on re-read, the documented asymmetry it shares with #377.
 //
-// The HEAD case pins the boundary of that promise. "0 @I1 HEAD" is reported but
+// The HEAD case pins the other spelling. "0 @I1 HEAD" is reported but
 // deliberately not recovered, so the identifier stays in Tag and "HEAD" lands
-// in Value; the encoder does not write a level-0 Value, so the tag is lost on
-// re-encode. That gap predates #385 (any level-0 record carrying a Value hits
-// it) and is asserted here so the parser godoc's scoped claim has a guard.
+// in Value. That Value used to be dropped on re-encode (issue #404), making the
+// byte-exact promise true of the recovered shape only; now that writeRecord
+// writes a level-0 Value, both spellings come back out unchanged and the
+// promise is unqualified.
 func TestEncodeUnterminatedXRefRoundtrip(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -177,9 +179,9 @@ func TestEncodeUnterminatedXRefRoundtrip(t *testing.T) {
 			wantLine: "0 @I1 INDI",
 		},
 		{
-			name:     "reported-but-not-recovered HEAD loses its tag on re-encode",
+			name:     "reported-but-not-recovered HEAD re-encodes byte for byte",
 			line:     "0 @I1 HEAD",
-			wantLine: "0 @I1",
+			wantLine: "0 @I1 HEAD",
 		},
 	}
 
@@ -206,6 +208,214 @@ func TestEncodeUnterminatedXRefRoundtrip(t *testing.T) {
 				t.Errorf("subordinate NAME lost on re-encode\ngot:\n%s", buf.String())
 			}
 		})
+	}
+}
+
+// TestEncodeLevel0RecordValue pins that a value on a level-0 line survives
+// re-encoding, with and without an XRef (issue #404). The XRef-less branch of
+// writeRecord used to format only the type, so "0 _ROOT Root element" came back
+// as "0 _ROOT" -- a Lossless Representation violation that real vendor exports
+// hit, since RootsMagic's "0 _EVDEF BIRT" block and Legacy's "0 _EVENT_DEFN"
+// records are exactly this shape.
+func TestEncodeLevel0RecordValue(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+1 CHAR UTF-8
+0 _ROOT Root element
+0 @N1@ NOTE Some note text
+1 CONT second line
+0 @I1@ INDI
+1 NAME John /Smith/
+0 TRLR
+`
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+
+	// The XRef-less line is the one #404 dropped; the XRef'd one guards against
+	// a fix that moved the defect rather than removing it.
+	for _, want := range []string{"0 _ROOT Root element", "0 @N1@ NOTE Some note text"} {
+		if !strings.Contains(buf.String(), want+"\n") {
+			t.Errorf("re-encoded output missing %q\ngot:\n%s", want, buf.String())
+		}
+	}
+
+	if buf.String() != input {
+		t.Errorf("re-encode is not byte-exact\nwant:\n%s\ngot:\n%s", input, buf.String())
+	}
+}
+
+// TestEncodeLevel0RecordValueNewline pins that a line break inside a level-0
+// Record.Value is folded into CONT rather than written inline (issue #421).
+// Written inline it produced a line with no level and no tag, which this
+// library cannot read back -- and where the text began with a digit, the bare
+// line parsed as a level-0 record, forging a record the caller never wrote.
+//
+// Only a caller hand-building or editing Record.Value can reach this: the
+// decoder keeps a CONT as a subordinate tag and the converter's
+// consolidateCONCAndCONT only ever folds into a Tag value, never into
+// Record.Value.
+func TestEncodeLevel0RecordValueNewline(t *testing.T) {
+	tests := []struct {
+		name  string
+		value string
+		want  []string
+	}{
+		{
+			name:  "LF",
+			value: "line1\nline2",
+			want:  []string{"0 @N1@ NOTE line1\n", "1 CONT line2\n"},
+		},
+		{
+			name:  "CRLF",
+			value: "line1\r\nline2",
+			want:  []string{"0 @N1@ NOTE line1\n", "1 CONT line2\n"},
+		},
+		{
+			name:  "bare CR",
+			value: "line1\rline2",
+			want:  []string{"0 @N1@ NOTE line1\n", "1 CONT line2\n"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc := &gedcom.Document{
+				// A version, so the first encode already emits GEDC/VERS and
+				// the stability check below is not measuring the encoder's
+				// separate habit of synthesizing them for an empty header.
+				Header:  &gedcom.Header{Version: gedcom.Version55},
+				Records: []*gedcom.Record{{XRef: "@N1@", Type: gedcom.RecordTypeNote, Value: tt.value}},
+			}
+
+			var buf bytes.Buffer
+			if err := Encode(&buf, doc); err != nil {
+				t.Fatalf("Encode() error = %v", err)
+			}
+
+			for _, want := range tt.want {
+				if !strings.Contains(buf.String(), want) {
+					t.Errorf("encoded output missing %q\ngot:\n%s", want, buf.String())
+				}
+			}
+
+			// Re-decoding is the real assertion: the inline form failed here
+			// with "line must have at least level and tag".
+			doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+			if err != nil {
+				t.Fatalf("re-decoding the encoded output failed: %v\ngot:\n%s", err, buf.String())
+			}
+
+			var buf2 bytes.Buffer
+			if err := Encode(&buf2, doc2); err != nil {
+				t.Fatalf("second Encode() error = %v", err)
+			}
+			if buf2.String() != buf.String() {
+				t.Errorf("round trip is not stable:\nfirst:\n%s\nsecond:\n%s", buf.String(), buf2.String())
+			}
+		})
+	}
+}
+
+// TestEncodeLevel0RecordValueDoesNotForgeRecord is the sharp end of #421: a
+// level-0 Record.Value whose second line looks like a GEDCOM record must not
+// become one. Written inline, "0 @F1@ FAM" on its own line was indistinguishable
+// from a record the document actually contained.
+// TestEncodeEntityTextLineEndings pins that a hand-built entity's Text encodes
+// the same way whichever line terminator it uses. textToTags used to split on
+// "\n" alone, so CRLF text left a trailing "\r" on every segment. That was
+// invisible while the level-0 line was written raw -- the stray CR sat right
+// before the line ending the encoder was about to write anyway -- but once
+// writeValue started folding a CR in a value into CONT, the leftover became an
+// extra empty CONT and re-decoded as a blank line inside the note.
+//
+// This is the entity path (Entity set, no Tags, no Value), which is the one
+// TestEncodeLevel0RecordValueNewline does not reach.
+func TestEncodeEntityTextLineEndings(t *testing.T) {
+	want := "0 @N1@ NOTE line1\n1 CONT line2\n"
+
+	for _, text := range []string{"line1\nline2", "line1\r\nline2", "line1\rline2"} {
+		t.Run(strconv.Quote(text), func(t *testing.T) {
+			doc := &gedcom.Document{
+				Header: &gedcom.Header{Version: gedcom.Version55},
+				Records: []*gedcom.Record{{
+					XRef:   "@N1@",
+					Type:   gedcom.RecordTypeNote,
+					Entity: &gedcom.Note{XRef: "@N1@", Text: text},
+				}},
+			}
+
+			var buf bytes.Buffer
+			if err := Encode(&buf, doc); err != nil {
+				t.Fatalf("Encode() error = %v", err)
+			}
+
+			if !strings.Contains(buf.String(), want) {
+				t.Errorf("encoded output missing %q\ngot:\n%s", want, buf.String())
+			}
+
+			// An empty CONT is the specific corruption: it re-decodes as a
+			// blank line the caller never wrote.
+			if strings.Contains(buf.String(), "1 CONT\n") {
+				t.Errorf("empty CONT emitted for %q\ngot:\n%s", text, buf.String())
+			}
+
+			doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+			if err != nil {
+				t.Fatalf("re-decoding the encoded output failed: %v\ngot:\n%s", err, buf.String())
+			}
+			note := doc2.GetNote("@N1@")
+			if note == nil {
+				t.Fatal("note record lost on re-decode")
+			}
+			if note.Text != "line1\nline2" {
+				t.Errorf("Note.Text = %q, want %q", note.Text, "line1\nline2")
+			}
+		})
+	}
+}
+
+func TestEncodeLevel0RecordValueDoesNotForgeRecord(t *testing.T) {
+	doc := &gedcom.Document{
+		Header:  &gedcom.Header{},
+		Records: []*gedcom.Record{{Type: "_X", Value: "harmless\n0 @F1@ FAM"}},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+
+	doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatalf("re-decoding the encoded output failed: %v\ngot:\n%s", err, buf.String())
+	}
+
+	if got := len(doc2.Records); got != 1 {
+		t.Fatalf("value forged a record: got %d records, want 1\nencoded:\n%s", got, buf.String())
+	}
+	if doc2.GetFamily("@F1@") != nil {
+		t.Error("forged @F1@ resolved as a real family record")
+	}
+
+	// The second line comes back as a subordinate CONT rather than in Value:
+	// the decoder folds CONT into a Tag value, never back into Record.Value
+	// (#421 documents the same asymmetry). Nothing is lost -- it just lives one
+	// level down -- so assert where it actually landed.
+	rec := doc2.Records[0]
+	if rec.Value != "harmless" {
+		t.Errorf("Record.Value = %q, want %q", rec.Value, "harmless")
+	}
+	if len(rec.Tags) != 1 || rec.Tags[0].Tag != "CONT" || rec.Tags[0].Value != "0 @F1@ FAM" {
+		t.Errorf("second line not preserved as a CONT: %+v\nencoded:\n%s", rec.Tags, buf.String())
 	}
 }
 
@@ -2002,6 +2212,51 @@ func TestEncodePreserveUnknownTags(t *testing.T) {
 		}
 		if !strings.Contains(output, "2 DATE 1 JAN 1900") {
 			t.Error("Output should contain DATE tag")
+		}
+	})
+
+	// A custom record TYPE, as opposed to a custom tag inside a standard
+	// record. Before this was pinned, PreserveUnknownTags=false stripped such a
+	// record's children but still wrote its level-0 line, leaving a "0 _ROOT"
+	// stub that means nothing to a reader. The option says custom tags are not
+	// included in the output; a custom record is one, so it goes entirely.
+	t.Run("filter drops a whole custom record", func(t *testing.T) {
+		docWithCustomRecord := &gedcom.Document{
+			Header: &gedcom.Header{Version: gedcom.Version55},
+			Records: []*gedcom.Record{
+				{Type: "_ROOT", Value: "Root element", Tags: []*gedcom.Tag{
+					{Level: 1, Tag: "_CHILD", Value: "child data"},
+				}},
+				{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Tags: []*gedcom.Tag{
+					{Level: 1, Tag: "NAME", Value: "Jane /Smith/"},
+				}},
+			},
+		}
+
+		var buf bytes.Buffer
+		opts := &EncodeOptions{LineEnding: "\n", PreserveUnknownTags: false}
+		if err := EncodeWithOptions(&buf, docWithCustomRecord, opts); err != nil {
+			t.Fatalf("EncodeWithOptions() error = %v", err)
+		}
+
+		if strings.Contains(buf.String(), "_ROOT") {
+			t.Errorf("custom record still written:\n%s", buf.String())
+		}
+		if strings.Contains(buf.String(), "Root element") {
+			t.Errorf("custom record's value still written:\n%s", buf.String())
+		}
+		// The standard record either side of it must be untouched.
+		if !strings.Contains(buf.String(), "0 @I1@ INDI\n1 NAME Jane /Smith/\n") {
+			t.Errorf("standard record damaged by the filter:\n%s", buf.String())
+		}
+
+		// The default keeps it, value and all -- that is the #404 fix.
+		var kept bytes.Buffer
+		if err := Encode(&kept, docWithCustomRecord); err != nil {
+			t.Fatalf("Encode() error = %v", err)
+		}
+		if !strings.Contains(kept.String(), "0 _ROOT Root element\n") {
+			t.Errorf("default encoding lost the custom record:\n%s", kept.String())
 		}
 	})
 
