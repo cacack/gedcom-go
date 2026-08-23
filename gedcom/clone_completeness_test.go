@@ -29,39 +29,10 @@ import (
 
 // cloneKnownBad maps "Type.field.path" to the issue responsible. Every entry is
 // a live bug. Delete an entry when its issue is fixed; the test will say so.
-var cloneKnownBad = map[string]string{
-	// #428: NoteXRefs, InlineNotes, SharedNoteXRefs and ExternalIDs are not
-	// copied. The issue names Individual, Family and MediaObject; it is
-	// actually six record types.
-	"Family.ExternalIDs":          "#428 note/external-ID fields",
-	"Family.InlineNotes":          "#428 note/external-ID fields",
-	"Family.NoteXRefs":            "#428 note/external-ID fields",
-	"Individual.InlineNotes":      "#428 note/external-ID fields",
-	"Individual.NoteXRefs":        "#428 note/external-ID fields",
-	"MediaObject.ExternalIDs":     "#428 note/external-ID fields",
-	"MediaObject.InlineNotes":     "#428 note/external-ID fields",
-	"MediaObject.NoteXRefs":       "#428 note/external-ID fields",
-	"MediaObject.SharedNoteXRefs": "#428 note/external-ID fields",
-	"Note.ExternalIDs":            "#428 note/external-ID fields",
-	"Record.Entity.InlineNotes":   "#428 note/external-ID fields",
-	"Record.Entity.NoteXRefs":     "#428 note/external-ID fields",
-	"Repository.ExternalIDs":      "#428 note/external-ID fields",
-	"Repository.InlineNotes":      "#428 note/external-ID fields",
-	"Repository.NoteXRefs":        "#428 note/external-ID fields",
-	"Source.ExternalIDs":          "#428 note/external-ID fields",
-	"Source.InlineNotes":          "#428 note/external-ID fields",
-	"Source.NoteXRefs":            "#428 note/external-ID fields",
-	"Submitter.ExternalIDs":       "#428 note/external-ID fields",
-	"Submitter.InlineNotes":       "#428 note/external-ID fields",
-	"Submitter.NoteXRefs":         "#428 note/external-ID fields",
-
-	// #436: cloneEvent omits IsNegative, which eventRequiresGEDCOM7 reads to
-	// decide whether a document needs 7.0.
-	"Event.IsNegative":                "#436 cloneEvent",
-	"Family.Events.IsNegative":        "#436 cloneEvent",
-	"Individual.Events.IsNegative":    "#436 cloneEvent",
-	"Record.Entity.Events.IsNegative": "#436 cloneEvent",
-}
+// Empty: #428 (note and external-ID fields, 21 paths) and #436 (cloneEvent
+// dropping IsNegative, 4 paths) are fixed. Add an entry only alongside a filed
+// issue, and delete it with the fix.
+var cloneKnownBad = map[string]string{}
 
 // unfillable records field paths that reflection cannot populate meaningfully,
 // so their absence from the clone proves nothing. Kept explicit rather than

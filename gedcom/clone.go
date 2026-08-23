@@ -103,9 +103,12 @@ func (i *Individual) Clone() *Individual {
 		Sex:              i.Sex,
 		SpouseInFamilies: cloneStringSlice(i.SpouseInFamilies),
 		Notes:            cloneStringSlice(i.Notes),
+		NoteXRefs:        cloneStringSlice(i.NoteXRefs),
+		InlineNotes:      cloneStringSlice(i.InlineNotes),
 		RefNumber:        i.RefNumber,
 		UID:              i.UID,
 		FamilySearchID:   i.FamilySearchID,
+		ExternalIDs:      cloneExternalIDs(i.ExternalIDs),
 	}
 
 	if i.Names != nil {
@@ -167,13 +170,6 @@ func (i *Individual) Clone() *Individual {
 		}
 	}
 
-	if i.ExternalIDs != nil {
-		copied.ExternalIDs = make([]*ExternalID, len(i.ExternalIDs))
-		for k, ext := range i.ExternalIDs {
-			copied.ExternalIDs[k] = cloneExternalID(ext)
-		}
-	}
-
 	copied.ChangeDate = cloneChangeDate(i.ChangeDate)
 	copied.CreationDate = cloneChangeDate(i.CreationDate)
 	copied.Tags = CloneTags(i.Tags)
@@ -194,8 +190,11 @@ func (f *Family) Clone() *Family {
 		Children:         cloneStringSlice(f.Children),
 		NumberOfChildren: f.NumberOfChildren,
 		Notes:            cloneStringSlice(f.Notes),
+		NoteXRefs:        cloneStringSlice(f.NoteXRefs),
+		InlineNotes:      cloneStringSlice(f.InlineNotes),
 		RefNumber:        f.RefNumber,
 		UID:              f.UID,
+		ExternalIDs:      cloneExternalIDs(f.ExternalIDs),
 	}
 
 	if f.Events != nil {
@@ -247,8 +246,11 @@ func (s *Source) Clone() *Source {
 		Text:          s.Text,
 		RepositoryRef: s.RepositoryRef,
 		Notes:         cloneStringSlice(s.Notes),
+		NoteXRefs:     cloneStringSlice(s.NoteXRefs),
+		InlineNotes:   cloneStringSlice(s.InlineNotes),
 		RefNumber:     s.RefNumber,
 		UID:           s.UID,
+		ExternalIDs:   cloneExternalIDs(s.ExternalIDs),
 	}
 
 	if s.Repository != nil {
@@ -278,11 +280,14 @@ func (r *Repository) Clone() *Repository {
 	}
 
 	return &Repository{
-		XRef:    r.XRef,
-		Name:    r.Name,
-		Address: cloneAddress(r.Address),
-		Notes:   cloneStringSlice(r.Notes),
-		Tags:    CloneTags(r.Tags),
+		XRef:        r.XRef,
+		Name:        r.Name,
+		Address:     cloneAddress(r.Address),
+		Notes:       cloneStringSlice(r.Notes),
+		NoteXRefs:   cloneStringSlice(r.NoteXRefs),
+		InlineNotes: cloneStringSlice(r.InlineNotes),
+		ExternalIDs: cloneExternalIDs(r.ExternalIDs),
+		Tags:        CloneTags(r.Tags),
 	}
 }
 
@@ -324,6 +329,7 @@ func (n *Note) Clone() *Note {
 		XRef:         n.XRef,
 		Text:         n.Text,
 		Continuation: cloneStringSlice(n.Continuation),
+		ExternalIDs:  cloneExternalIDs(n.ExternalIDs),
 		Tags:         CloneTags(n.Tags),
 	}
 }
@@ -335,11 +341,15 @@ func (m *MediaObject) Clone() *MediaObject {
 	}
 
 	copied := &MediaObject{
-		XRef:        m.XRef,
-		Notes:       cloneStringSlice(m.Notes),
-		RefNumbers:  cloneStringSlice(m.RefNumbers),
-		Restriction: m.Restriction,
-		UIDs:        cloneStringSlice(m.UIDs),
+		XRef:            m.XRef,
+		Notes:           cloneStringSlice(m.Notes),
+		NoteXRefs:       cloneStringSlice(m.NoteXRefs),
+		InlineNotes:     cloneStringSlice(m.InlineNotes),
+		SharedNoteXRefs: cloneStringSlice(m.SharedNoteXRefs),
+		RefNumbers:      cloneStringSlice(m.RefNumbers),
+		Restriction:     m.Restriction,
+		UIDs:            cloneStringSlice(m.UIDs),
+		ExternalIDs:     cloneExternalIDs(m.ExternalIDs),
 	}
 
 	if m.Files != nil {
@@ -370,14 +380,17 @@ func (s *Submitter) Clone() *Submitter {
 	}
 
 	return &Submitter{
-		XRef:     s.XRef,
-		Name:     s.Name,
-		Address:  cloneAddress(s.Address),
-		Phone:    cloneStringSlice(s.Phone),
-		Email:    cloneStringSlice(s.Email),
-		Language: cloneStringSlice(s.Language),
-		Notes:    cloneStringSlice(s.Notes),
-		Tags:     CloneTags(s.Tags),
+		XRef:        s.XRef,
+		Name:        s.Name,
+		Address:     cloneAddress(s.Address),
+		Phone:       cloneStringSlice(s.Phone),
+		Email:       cloneStringSlice(s.Email),
+		Language:    cloneStringSlice(s.Language),
+		Notes:       cloneStringSlice(s.Notes),
+		NoteXRefs:   cloneStringSlice(s.NoteXRefs),
+		InlineNotes: cloneStringSlice(s.InlineNotes),
+		ExternalIDs: cloneExternalIDs(s.ExternalIDs),
+		Tags:        CloneTags(s.Tags),
 	}
 }
 
@@ -415,13 +428,7 @@ func (s *SharedNote) Clone() *SharedNote {
 		}
 	}
 
-	if s.ExternalIDs != nil {
-		copied.ExternalIDs = make([]*ExternalID, len(s.ExternalIDs))
-		for k, ext := range s.ExternalIDs {
-			copied.ExternalIDs[k] = cloneExternalID(ext)
-		}
-	}
-
+	copied.ExternalIDs = cloneExternalIDs(s.ExternalIDs)
 	copied.ChangeDate = cloneChangeDate(s.ChangeDate)
 	copied.Tags = CloneTags(s.Tags)
 
@@ -566,6 +573,7 @@ func cloneEvent(e *Event) *Event {
 		Restriction:     e.Restriction,
 		UID:             e.UID,
 		SortDate:        e.SortDate,
+		IsNegative:      e.IsNegative,
 		Notes:           cloneStringSlice(e.Notes),
 		Phone:           cloneStringSlice(e.Phone),
 		Email:           cloneStringSlice(e.Email),
@@ -799,6 +807,19 @@ func cloneExternalID(ext *ExternalID) *ExternalID {
 		Value: ext.Value,
 		Type:  ext.Type,
 	}
+}
+
+// cloneExternalIDs returns a deep copy of a slice of external IDs.
+// Returns nil if exts is nil.
+func cloneExternalIDs(exts []*ExternalID) []*ExternalID {
+	if exts == nil {
+		return nil
+	}
+	copied := make([]*ExternalID, len(exts))
+	for i, ext := range exts {
+		copied[i] = cloneExternalID(ext)
+	}
+	return copied
 }
 
 func cloneStringSlice(s []string) []string {
