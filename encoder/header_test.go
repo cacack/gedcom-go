@@ -196,6 +196,117 @@ func TestHeaderFieldsPathWhenNoTags(t *testing.T) {
 	}
 }
 
+// TestHeaderTagsWriteErrorsPropagate covers the error paths on the tag-writing
+// header path. Each write can fail, and a header that silently stops half-way
+// through would leave a truncated HEAD block behind with no error to show for
+// it. failAfter is tuned to fail inside each of the three writes the synthesis
+// path makes.
+func TestHeaderTagsWriteErrorsPropagate(t *testing.T) {
+	// A header with a GEDC carrying no VERS of its own, so a retarget has to
+	// synthesize one, and a second header with no GEDC at all.
+	withBareGEDC := &gedcom.Document{
+		Header: &gedcom.Header{
+			Tags: []*gedcom.Tag{
+				{Level: 1, Tag: "CHAR", Value: "ANSEL"},
+				{Level: 1, Tag: "GEDC"},
+			},
+		},
+	}
+	withoutGEDC := &gedcom.Document{
+		Header: &gedcom.Header{
+			Tags: []*gedcom.Tag{{Level: 1, Tag: "SOUR", Value: "PAF 2.2"}},
+		},
+	}
+
+	tests := []struct {
+		name      string
+		doc       *gedcom.Document
+		failAfter int
+	}{
+		{"overridden CHAR tag", withBareGEDC, 1},
+		{"GEDC tag", withBareGEDC, 2},
+		{"synthesized VERS inside GEDC", withBareGEDC, 3},
+		{"synthesized GEDC when the source has none", withoutGEDC, 2},
+		{"synthesized VERS when the source has no GEDC", withoutGEDC, 3},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := DefaultOptions()
+			opts.TargetVersion = gedcom.Version551
+
+			err := EncodeWithOptions(&failWriter{failAfter: tt.failAfter}, tt.doc, opts)
+			if err == nil {
+				t.Error("write failure was swallowed; a truncated header must report an error")
+			}
+		})
+	}
+}
+
+// TestHeaderTagsSkipsNilTag covers the nil guard on the tag path. A hand-built
+// document can hold a nil where a decoded one never does; it must be skipped
+// rather than panic, and it must not end the GEDC structure it sits inside --
+// otherwise a retarget would synthesize a second VERS beside the real one.
+func TestHeaderTagsSkipsNilTag(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{
+			Tags: []*gedcom.Tag{
+				{Level: 1, Tag: "GEDC"},
+				nil,
+				{Level: 2, Tag: "VERS", Value: "5.5"},
+			},
+		},
+	}
+
+	opts := DefaultOptions()
+	opts.TargetVersion = gedcom.Version551
+
+	var buf bytes.Buffer
+	if err := EncodeWithOptions(&buf, doc, opts); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	out := buf.String()
+	if n := strings.Count(out, "2 VERS"); n != 1 {
+		t.Errorf("expected exactly one VERS, got %d:\n%s", n, out)
+	}
+	if !strings.Contains(out, "2 VERS 5.5.1") {
+		t.Errorf("the existing VERS was not retargeted:\n%s", out)
+	}
+}
+
+// TestHeaderRetargetWhenGEDCIsNotLast covers the scan leaving the GEDC subtree
+// at the next level-1 structure rather than at the end of the header. A GEDC
+// carrying children but no VERS, followed by another structure, still needs its
+// version supplied -- and the VERS must land inside GEDC, not after CHAR.
+func TestHeaderRetargetWhenGEDCIsNotLast(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{
+			Tags: []*gedcom.Tag{
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "FORM", Value: "LINEAGE-LINKED"},
+				{Level: 1, Tag: "CHAR", Value: "ANSEL"},
+			},
+		},
+	}
+
+	opts := DefaultOptions()
+	opts.TargetVersion = gedcom.Version551
+
+	var buf bytes.Buffer
+	if err := EncodeWithOptions(&buf, doc, opts); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	out := buf.String()
+	if n := strings.Count(out, "2 VERS 5.5.1"); n != 1 {
+		t.Errorf("expected exactly one synthesized VERS, got %d:\n%s", n, out)
+	}
+	if strings.Index(out, "2 VERS 5.5.1") > strings.Index(out, "1 CHAR") {
+		t.Errorf("VERS landed outside the GEDC structure it belongs to:\n%s", out)
+	}
+}
+
 // TestHeaderEncodeDoesNotMutateDocument guards the substitution mechanism: the
 // overrides write a copy of the tag, because encoding a document must not edit
 // it. A caller that encodes twice, or encodes and then inspects, must see what
