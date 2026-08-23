@@ -101,13 +101,13 @@ work left per version, not the versions.
 
 **Re-encoding.** Not byte-for-byte, and this is measured too. Of 96 corpus
 fixtures, 5 do not survive decode and encode at all; of the 91 that do, 83
-reproduce their header byte for byte and 77 reproduce their record body.
-`byte_roundtrip_test.go` names the reason behind every exception. Most of what
-remains is not a defect but a limit of byte comparison itself: a source that was
-not UTF-8 has been transcoded, so its bytes cannot match whatever the encoder
-does. The live defect is
-[#404](https://github.com/cacack/gedcom-go/issues/404), a value on a level-0
-line.
+reproduce their header byte for byte and 80 reproduce their record body.
+`byte_roundtrip_test.go` names the reason behind every exception. What remains
+in the body count is not a defect but a limit of byte comparison itself: a
+source that was not UTF-8 has been transcoded, so its bytes cannot match
+whatever the encoder does, and three malformed fixtures are rewritten by lenient
+recovery rather than preserved — a difference kept on the list so that the
+decision to accept it stays explicit.
 
 ### Version-Aware Export
 

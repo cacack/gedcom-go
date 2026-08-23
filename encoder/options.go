@@ -28,6 +28,12 @@ type EncodeOptions struct {
 
 	// PreserveUnknownTags controls whether custom/unknown tags are included
 	// in the output. Custom tags are typically underscore-prefixed (e.g., _CUSTOM).
+	//
+	// When false, a custom tag is dropped along with everything subordinate to
+	// it, and a record whose own type is a custom tag ("0 _ROOT", RootsMagic's
+	// "0 _EVDEF") is dropped in full -- writing the level-0 line while stripping
+	// its children would leave a stub that carries no data.
+	//
 	// Default: true (preserve all tags)
 	PreserveUnknownTags bool
 }

@@ -25,8 +25,15 @@ func textToTags(value string, level int, tagName string, opts *EncodeOptions) []
 		return []*gedcom.Tag{{Level: level, Tag: tagName, Value: ""}}
 	}
 
-	// Split on newlines first
-	lines := strings.Split(value, "\n")
+	// splitValueLines rather than strings.Split(value, "\n"): a CRLF source
+	// leaves a trailing "\r" on every segment of a plain "\n" split, and that
+	// stray CR is a line break to every reader of the output. It used to be
+	// invisible because it landed immediately before the line ending the
+	// encoder wrote anyway; now that writeValue treats a CR in a value as a
+	// break to fold, it would emit an extra empty CONT and put a blank line
+	// into the text on re-decode. One splitter for the whole package keeps the
+	// encoder's idea of "a line break" from differing by call site.
+	lines := splitValueLines(value)
 
 	tags := make([]*gedcom.Tag, 0, len(lines))
 

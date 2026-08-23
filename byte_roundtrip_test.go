@@ -70,14 +70,6 @@ var headerKnownBad = map[string]string{
 // the defect responsible. Every entry is a live bug; none is an accepted
 // difference. Delete an entry when its issue is fixed.
 var bodyKnownBad = map[string]string{
-	// #404: a value on a level-0 line is dropped by writeRecord.
-	// vendor-customtags-torture.ged was attributed to #426 until that fix
-	// landed and uncovered this second defect underneath it ("0 _ROOT Root
-	// element"); it stays on the list under its remaining cause.
-	"testdata/edge-cases/rootsmagic-2026-export.ged":    "#404 level-0 record value",
-	"testdata/edge-cases/vendor-legacy.ged":             "#404 level-0 record value",
-	"testdata/edge-cases/vendor-customtags-torture.ged": "#404 level-0 record value",
-
 	// Not a bug: these sources are not UTF-8, so their record bytes are ANSEL,
 	// CP1252 or UTF-16 in the original and UTF-8 in the output. Byte comparison
 	// against an untranscoded original cannot match, whatever the encoder does.

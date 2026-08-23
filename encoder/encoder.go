@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v2/gedcom"
@@ -259,6 +258,22 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 		return nil
 	}
 
+	// A record whose type is itself a custom tag ("0 _ROOT", RootsMagic's
+	// "0 _EVDEF", Legacy's "0 _EVENT_DEFN") is an unknown structure in its
+	// entirety, so a caller who asked not to preserve unknown tags gets none of
+	// it -- the level-0 line, its value and its subtree alike. filterTags
+	// applies exactly this rule to a custom tag one level down; excluding the
+	// record from it emitted a "0 _ROOT" stub whose children had been stripped,
+	// which is neither the record nor its absence, and which no GEDCOM reader
+	// can do anything with. Writing the level-0 value (issue #404) widened that
+	// stub rather than creating it.
+	//
+	// This is the lossy mode the option exists to request; the default is
+	// PreserveUnknownTags=true, where nothing here applies.
+	if !opts.PreserveUnknownTags && isCustomTag(string(record.Type)) {
+		return nil
+	}
+
 	// Determine the tags to write and the level-0 line value together:
 	// - If record.Tags has content, use those (preserves lossless behavior) and the
 	//   stored record.Value.
@@ -277,21 +292,22 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 		}
 	}
 
-	// Write record line
-	if record.XRef != "" {
-		if value != "" {
-			if _, err := fmt.Fprintf(w, "0 %s %s %s%s", record.XRef, record.Type, value, opts.LineEnding); err != nil {
-				return err
-			}
-		} else {
-			if _, err := fmt.Fprintf(w, "0 %s %s%s", record.XRef, record.Type, opts.LineEnding); err != nil {
-				return err
-			}
-		}
-	} else {
-		if _, err := fmt.Fprintf(w, "0 %s%s", record.Type, opts.LineEnding); err != nil {
-			return err
-		}
+	// The level-0 line goes through the same writer as every other line. Two
+	// raw Fprintf branches used to sit here and each was wrong in its own way:
+	// the XRef-less one formatted only the type, so a value on a level-0 line
+	// was dropped outright (issue #404), and the XRef one wrote the value
+	// inline, so a line break in it emitted a continuation with no level and no
+	// tag -- text beginning with a digit forged a whole record on re-read
+	// (issue #421). Mirroring the XRef branch to fix the first would have handed
+	// the second to XRef-less records too.
+	//
+	// writeValue already is the value-safe line writer that writeTag delegates
+	// to: it emits the level, the XRef and the tag, and folds a line break in
+	// the value into CONT at level+1, which is 1 here. Sharing it leaves one
+	// place that decides what a value on a line means, rather than two that
+	// drifted apart.
+	if err := writeValue(w, 0, record.XRef, string(record.Type), value, opts); err != nil {
+		return err
 	}
 
 	// Filter out custom tags if PreserveUnknownTags is false
@@ -311,17 +327,18 @@ func writeTag(w io.Writer, tag *gedcom.Tag, opts *EncodeOptions) error {
 	if tag == nil {
 		return nil
 	}
+	return writeValue(w, tag.Level, tag.XRef, tag.Tag, tag.Value, opts)
+}
 
-	// A subordinate tag normally carries no XRef, so prefix is just the level
-	// and output is unchanged for valid GEDCOM. A subordinate XRef exists only
-	// when the decoder recovered a malformed identifier from the source line
-	// (e.g. "1 @I 1@ NOTE"); write it back verbatim so the document round-trips
-	// losslessly. The re-encoded line stays malformed, exactly as the input was.
-	prefix := strconv.Itoa(tag.Level)
-	if tag.XRef != "" {
-		prefix += " " + tag.XRef
-	}
-
+// writeValue writes a value at a given level: the line that opens it, plus a
+// CONT line for each line break inside it. It is the many-lines half of the
+// pair -- [writeLine] is the one that writes exactly one physical line, and
+// this delegates to it once per line produced.
+//
+// It takes the four parts rather than a *gedcom.Tag so writeRecord can share it
+// for the level-0 line without allocating a Tag to describe a record it already
+// has.
+func writeValue(w io.Writer, level int, xref, tag, value string, opts *EncodeOptions) error {
 	// A value carrying line breaks has to be split back across CONT lines. The
 	// converter embeds newlines when it consolidates CONT for 7.0, and a
 	// hand-built Tag may hold them too; writing such a value inline would emit
@@ -342,30 +359,24 @@ func writeTag(w io.Writer, tag *gedcom.Tag, opts *EncodeOptions) error {
 	// following line. Neither is valid GEDCOM -- such a document is
 	// un-encodable -- and textToTags has always had the same limit.
 	// Almost every value is a single line, so that case must not pay for the
-	// split: writeTag runs for every subordinate line of every record, and
-	// allocating a one-element slice here cost ~8000 allocations and 21% on
+	// split: writeValue runs for every line of every record, and allocating a
+	// one-element slice here cost ~8000 allocations and 21% on
 	// BenchmarkEncodeLarge, well past the 10% gate in make perf-regression.
 	// IndexByte rather than ContainsAny: the two-byte set makes ContainsAny
-	// build an asciiSet and scan in Go, while IndexByte is assembly. The write
-	// is inlined rather than delegated so the common path is exactly the two
-	// Fprintf calls it was before.
-	if strings.IndexByte(tag.Value, '\n') < 0 && strings.IndexByte(tag.Value, '\r') < 0 {
-		if tag.Value != "" {
-			_, err := fmt.Fprintf(w, "%s %s %s%s", prefix, tag.Tag, tag.Value, opts.LineEnding)
-			return err
-		}
-		_, err := fmt.Fprintf(w, "%s %s%s", prefix, tag.Tag, opts.LineEnding)
-		return err
+	// build an asciiSet and scan in Go, while IndexByte is assembly.
+	if strings.IndexByte(value, '\n') < 0 && strings.IndexByte(value, '\r') < 0 {
+		return writeLine(w, level, xref, tag, value, opts)
 	}
 
-	lines := splitValueLines(tag.Value)
+	lines := splitValueLines(value)
 
-	if err := writeTagLine(w, prefix, tag.Tag, lines[0], opts); err != nil {
+	if err := writeLine(w, level, xref, tag, lines[0], opts); err != nil {
 		return err
 	}
-	contPrefix := strconv.Itoa(tag.Level + 1)
+	// A CONT never carries the XRef: the identifier belongs to the line that
+	// opened the structure, not to its continuations.
 	for _, cont := range lines[1:] {
-		if err := writeTagLine(w, contPrefix, "CONT", cont, opts); err != nil {
+		if err := writeLine(w, level+1, "", "CONT", cont, opts); err != nil {
 			return err
 		}
 	}
@@ -389,14 +400,35 @@ func splitValueLines(value string) []string {
 	return strings.Split(normalized, "\n")
 }
 
-// writeTagLine writes one physical GEDCOM line. prefix carries the level and,
-// for a recovered malformed identifier, the XRef.
-func writeTagLine(w io.Writer, prefix, tag, value string, opts *EncodeOptions) error {
+// writeLine writes exactly one physical GEDCOM line: the level, then the
+// XRef if there is one, the tag, and the value if there is one.
+//
+// A line normally carries no XRef, so the output is unchanged for every
+// subordinate line of valid GEDCOM. A subordinate XRef exists only when the
+// decoder recovered a malformed identifier from the source line (e.g.
+// "1 @I 1@ NOTE"); write it back verbatim so the document round-trips
+// losslessly. The re-encoded line stays malformed, exactly as the input was. At
+// level 0 the XRef is the ordinary record identifier and this is how "0 @I1@
+// INDI" gets written.
+//
+// The four shapes are spelled out rather than assembled from a level-plus-XRef
+// prefix string, because formatting that prefix with %s boxes a string into an
+// interface and allocates on every line. Formatting the level with %d instead
+// costs nothing: a GEDCOM level is 0-99, so it comes from the runtime's static
+// small-integer table. Measured against the pre-#404 encoder that is 8000 fewer
+// allocations on BenchmarkEncodeLarge -- one per line, -24% -- so sharing this
+// path from writeRecord lands well inside the parity issue #421 asked for.
+func writeLine(w io.Writer, level int, xref, tag, value string, opts *EncodeOptions) error {
 	var err error
-	if value != "" {
-		_, err = fmt.Fprintf(w, "%s %s %s%s", prefix, tag, value, opts.LineEnding)
-	} else {
-		_, err = fmt.Fprintf(w, "%s %s%s", prefix, tag, opts.LineEnding)
+	switch {
+	case xref == "" && value == "":
+		_, err = fmt.Fprintf(w, "%d %s%s", level, tag, opts.LineEnding)
+	case xref == "":
+		_, err = fmt.Fprintf(w, "%d %s %s%s", level, tag, value, opts.LineEnding)
+	case value == "":
+		_, err = fmt.Fprintf(w, "%d %s %s%s", level, xref, tag, opts.LineEnding)
+	default:
+		_, err = fmt.Fprintf(w, "%d %s %s %s%s", level, xref, tag, value, opts.LineEnding)
 	}
 	return err
 }
