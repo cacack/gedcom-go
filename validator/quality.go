@@ -323,6 +323,9 @@ func (a *QualityAnalyzer) calculateCompleteness(individuals []*gedcom.Individual
 // hasPlace checks if an individual has any event with a place.
 func (a *QualityAnalyzer) hasPlace(ind *gedcom.Individual) bool {
 	for _, event := range ind.Events {
+		if event == nil {
+			continue
+		}
 		if event.Place != "" || (event.PlaceDetail != nil && event.PlaceDetail.Name != "") {
 			return true
 		}

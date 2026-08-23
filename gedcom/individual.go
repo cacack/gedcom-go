@@ -214,7 +214,7 @@ type Attribute struct {
 // BirthEvent returns the first birth event for this individual, or nil if none found.
 func (i *Individual) BirthEvent() *Event {
 	for _, event := range i.Events {
-		if event.Type == EventBirth {
+		if event != nil && event.Type == EventBirth {
 			return event
 		}
 	}
@@ -224,7 +224,7 @@ func (i *Individual) BirthEvent() *Event {
 // DeathEvent returns the first death event for this individual, or nil if none found.
 func (i *Individual) DeathEvent() *Event {
 	for _, event := range i.Events {
-		if event.Type == EventDeath {
+		if event != nil && event.Type == EventDeath {
 			return event
 		}
 	}

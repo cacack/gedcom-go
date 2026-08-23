@@ -27,7 +27,7 @@ type Document struct {
 // GetRecord returns the record with the given cross-reference ID.
 // Returns nil if the record is not found.
 func (d *Document) GetRecord(xref string) *Record {
-	if d.XRefMap == nil {
+	if d == nil || d.XRefMap == nil {
 		return nil
 	}
 	return d.XRefMap[xref]
@@ -74,6 +74,9 @@ func (d *Document) GetSource(xref string) *Source {
 
 // Individuals returns all individual records in the document.
 func (d *Document) Individuals() []*Individual {
+	if d == nil {
+		return nil
+	}
 	var individuals []*Individual
 	for _, record := range d.Records {
 		if ind, ok := record.GetIndividual(); ok {
@@ -85,6 +88,9 @@ func (d *Document) Individuals() []*Individual {
 
 // Families returns all family records in the document.
 func (d *Document) Families() []*Family {
+	if d == nil {
+		return nil
+	}
 	var families []*Family
 	for _, record := range d.Records {
 		if fam, ok := record.GetFamily(); ok {
@@ -96,6 +102,9 @@ func (d *Document) Families() []*Family {
 
 // Sources returns all source records in the document.
 func (d *Document) Sources() []*Source {
+	if d == nil {
+		return nil
+	}
 	var sources []*Source
 	for _, record := range d.Records {
 		if src, ok := record.GetSource(); ok {
@@ -120,6 +129,9 @@ func (d *Document) GetSubmitter(xref string) *Submitter {
 
 // Submitters returns all submitter records in the document.
 func (d *Document) Submitters() []*Submitter {
+	if d == nil {
+		return nil
+	}
 	var submitters []*Submitter
 	for _, record := range d.Records {
 		if subm, ok := record.GetSubmitter(); ok {
@@ -144,6 +156,9 @@ func (d *Document) GetRepository(xref string) *Repository {
 
 // Repositories returns all repository records in the document.
 func (d *Document) Repositories() []*Repository {
+	if d == nil {
+		return nil
+	}
 	var repositories []*Repository
 	for _, record := range d.Records {
 		if repo, ok := record.GetRepository(); ok {
@@ -168,6 +183,9 @@ func (d *Document) GetNote(xref string) *Note {
 
 // Notes returns all note records in the document.
 func (d *Document) Notes() []*Note {
+	if d == nil {
+		return nil
+	}
 	var notes []*Note
 	for _, record := range d.Records {
 		if note, ok := record.GetNote(); ok {
@@ -192,6 +210,9 @@ func (d *Document) GetMediaObject(xref string) *MediaObject {
 
 // MediaObjects returns all media object records in the document.
 func (d *Document) MediaObjects() []*MediaObject {
+	if d == nil {
+		return nil
+	}
 	var objects []*MediaObject
 	for _, record := range d.Records {
 		if media, ok := record.GetMediaObject(); ok {
@@ -216,6 +237,9 @@ func (d *Document) GetSharedNote(xref string) *SharedNote {
 
 // SharedNotes returns all shared note records in the document (GEDCOM 7.0).
 func (d *Document) SharedNotes() []*SharedNote {
+	if d == nil {
+		return nil
+	}
 	var notes []*SharedNote
 	for _, record := range d.Records {
 		if snote, ok := record.GetSharedNote(); ok {

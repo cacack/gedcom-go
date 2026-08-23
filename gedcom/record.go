@@ -52,24 +52,40 @@ type Record struct {
 	Entity interface{}
 }
 
+// The Is* and Get* accessors below never panic. A nil *Record receiver, and an
+// Entity holding a typed nil pointer, both report false rather than returning a
+// value the caller cannot use. See docs/decisions/0007-error-transparency.md.
+
 // IsIndividual returns true if this record is an individual record.
 func (r *Record) IsIndividual() bool {
+	if r == nil {
+		return false
+	}
 	return r.Type == RecordTypeIndividual
 }
 
 // IsFamily returns true if this record is a family record.
 func (r *Record) IsFamily() bool {
+	if r == nil {
+		return false
+	}
 	return r.Type == RecordTypeFamily
 }
 
 // IsSource returns true if this record is a source record.
 func (r *Record) IsSource() bool {
+	if r == nil {
+		return false
+	}
 	return r.Type == RecordTypeSource
 }
 
 // GetIndividual returns the record as an Individual if it's the correct type.
 func (r *Record) GetIndividual() (*Individual, bool) {
-	if ind, ok := r.Entity.(*Individual); ok {
+	if r == nil {
+		return nil, false
+	}
+	if ind, ok := r.Entity.(*Individual); ok && ind != nil {
 		return ind, true
 	}
 	return nil, false
@@ -77,7 +93,10 @@ func (r *Record) GetIndividual() (*Individual, bool) {
 
 // GetFamily returns the record as a Family if it's the correct type.
 func (r *Record) GetFamily() (*Family, bool) {
-	if fam, ok := r.Entity.(*Family); ok {
+	if r == nil {
+		return nil, false
+	}
+	if fam, ok := r.Entity.(*Family); ok && fam != nil {
 		return fam, true
 	}
 	return nil, false
@@ -85,7 +104,10 @@ func (r *Record) GetFamily() (*Family, bool) {
 
 // GetSource returns the record as a Source if it's the correct type.
 func (r *Record) GetSource() (*Source, bool) {
-	if src, ok := r.Entity.(*Source); ok {
+	if r == nil {
+		return nil, false
+	}
+	if src, ok := r.Entity.(*Source); ok && src != nil {
 		return src, true
 	}
 	return nil, false
@@ -93,7 +115,10 @@ func (r *Record) GetSource() (*Source, bool) {
 
 // GetSubmitter returns the record as a Submitter if it's the correct type.
 func (r *Record) GetSubmitter() (*Submitter, bool) {
-	if subm, ok := r.Entity.(*Submitter); ok {
+	if r == nil {
+		return nil, false
+	}
+	if subm, ok := r.Entity.(*Submitter); ok && subm != nil {
 		return subm, true
 	}
 	return nil, false
@@ -101,7 +126,10 @@ func (r *Record) GetSubmitter() (*Submitter, bool) {
 
 // GetRepository returns the record as a Repository if it's the correct type.
 func (r *Record) GetRepository() (*Repository, bool) {
-	if repo, ok := r.Entity.(*Repository); ok {
+	if r == nil {
+		return nil, false
+	}
+	if repo, ok := r.Entity.(*Repository); ok && repo != nil {
 		return repo, true
 	}
 	return nil, false
@@ -109,7 +137,10 @@ func (r *Record) GetRepository() (*Repository, bool) {
 
 // GetNote returns the record as a Note if it's the correct type.
 func (r *Record) GetNote() (*Note, bool) {
-	if note, ok := r.Entity.(*Note); ok {
+	if r == nil {
+		return nil, false
+	}
+	if note, ok := r.Entity.(*Note); ok && note != nil {
 		return note, true
 	}
 	return nil, false
@@ -117,7 +148,10 @@ func (r *Record) GetNote() (*Note, bool) {
 
 // GetMediaObject returns the record as a MediaObject if it's the correct type.
 func (r *Record) GetMediaObject() (*MediaObject, bool) {
-	if media, ok := r.Entity.(*MediaObject); ok {
+	if r == nil {
+		return nil, false
+	}
+	if media, ok := r.Entity.(*MediaObject); ok && media != nil {
 		return media, true
 	}
 	return nil, false
@@ -125,12 +159,18 @@ func (r *Record) GetMediaObject() (*MediaObject, bool) {
 
 // IsSharedNote returns true if this record is a shared note record (GEDCOM 7.0).
 func (r *Record) IsSharedNote() bool {
+	if r == nil {
+		return false
+	}
 	return r.Type == RecordTypeSharedNote
 }
 
 // GetSharedNote returns the record as a SharedNote if it's the correct type.
 func (r *Record) GetSharedNote() (*SharedNote, bool) {
-	if snote, ok := r.Entity.(*SharedNote); ok {
+	if r == nil {
+		return nil, false
+	}
+	if snote, ok := r.Entity.(*SharedNote); ok && snote != nil {
 		return snote, true
 	}
 	return nil, false

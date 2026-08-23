@@ -51,7 +51,7 @@ func transformMediaTypes(doc *gedcom.Document, targetVersion gedcom.Version, rep
 	var details []string
 
 	for _, record := range doc.Records {
-		if record.Type != gedcom.RecordTypeMedia {
+		if record == nil || record.Type != gedcom.RecordTypeMedia {
 			continue
 		}
 

@@ -127,15 +127,15 @@ func (sv *StreamingValidator) ValidateRecord(record *gedcom.Record) []Issue {
 	// Validate based on record type
 	switch record.Type {
 	case gedcom.RecordTypeIndividual:
-		if ind, ok := record.GetIndividual(); ok && ind != nil {
+		if ind, ok := record.GetIndividual(); ok {
 			issues = append(issues, sv.validateIndividual(ind)...)
 		}
 	case gedcom.RecordTypeFamily:
-		if fam, ok := record.GetFamily(); ok && fam != nil {
+		if fam, ok := record.GetFamily(); ok {
 			issues = append(issues, sv.validateFamily(fam)...)
 		}
 	case gedcom.RecordTypeSource:
-		if src, ok := record.GetSource(); ok && src != nil {
+		if src, ok := record.GetSource(); ok {
 			sv.collectSourceReferences(src)
 		}
 	}

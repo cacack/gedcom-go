@@ -55,16 +55,8 @@
 //   - A nil [gedcom.Document] returns [ErrNilDocument], because there is no
 //     document to write at all.
 //
-// A nil element carries no data, so skipping it loses nothing that was there —
-// but it usually means the code that built the document has a bug, and the
-// encoder does not report one. Callers that need to know should check for nils
-// before encoding.
-//
-// This policy covers the encoder, not the whole library (issue #458). A
-// document holding nils encodes cleanly, but the same document can still panic
-// elsewhere: validator, converter and the [gedcom.Document] collection
-// accessors read Document.Records without a nil check. Traversal in the gedcom
-// package (Visit, Apply, Clone, subset extraction) and XRef remapping in merge
-// do skip nils, so the split is per package. Do not read a clean encode as
-// proof that a document is nil-free.
+// The skip is silent, so a clean encode is not proof that a document is
+// nil-free; callers that need to know should check before encoding. The
+// library-wide policy, and why a nil is skipped rather than reported, is in
+// docs/decisions/0007-error-transparency.md.
 package encoder

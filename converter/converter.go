@@ -31,14 +31,31 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 		return nil, nil, fmt.Errorf("invalid target version: %s", targetVersion)
 	}
 
-	sourceVersion := doc.Header.Version
+	// A nil header carries no version, so it falls through to the default below.
+	var sourceVersion gedcom.Version
+	if doc.Header != nil {
+		sourceVersion = doc.Header.Version
+	}
 	if sourceVersion == "" {
 		sourceVersion = gedcom.Version55 // Default assumption
 	}
 
-	// No conversion needed if versions match
+	// No conversion needed if versions match. The document comes back as-is,
+	// except that a nil header is materialised into the empty one it is read as,
+	// so the result is never a document a caller can dereference into a panic.
+	// The version is deliberately not stamped here: this path does not convert,
+	// and a document that already carries an empty header does not get one
+	// either -- a nil header has to behave exactly like that empty twin. The
+	// materialisation goes on a shallow copy, because the caller's document is
+	// an input, not ours to mutate.
 	if sourceVersion == targetVersion {
-		return doc, &gedcom.ConversionReport{
+		converted := doc
+		if converted.Header == nil {
+			shallow := *doc
+			shallow.Header = &gedcom.Header{}
+			converted = &shallow
+		}
+		return converted, &gedcom.ConversionReport{
 			SourceVersion: sourceVersion,
 			TargetVersion: targetVersion,
 			Success:       true,
@@ -84,7 +101,11 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 		return nil, report, fmt.Errorf("conversion would result in data loss (strict mode enabled)")
 	}
 
-	// Update header version
+	// Update header version. A nil header is treated as an empty one (as the
+	// encoder does) so the converted document still declares its target version.
+	if converted.Header == nil {
+		converted.Header = &gedcom.Header{}
+	}
 	converted.Header.Version = targetVersion
 
 	// Validate if requested
@@ -219,7 +240,13 @@ func record551Tags(doc *gedcom.Document, report *gedcom.ConversionReport) {
 	perRecord := make(map[string]map[string]bool) // tag -> xref -> true
 
 	for _, record := range doc.Records {
+		if record == nil {
+			continue
+		}
 		for _, tag := range record.Tags {
+			if tag == nil {
+				continue
+			}
 			for _, target := range tags551 {
 				if tag.Tag == target {
 					found[target]++
@@ -260,6 +287,9 @@ func record70DataLoss(doc *gedcom.Document, report *gedcom.ConversionReport, tar
 	found := make(map[string][]string)
 
 	for _, record := range doc.Records {
+		if record == nil {
+			continue
+		}
 		affected := findTagsInRecord(record.Tags, tags70)
 		for _, tag := range affected {
 			found[tag] = append(found[tag], record.XRef)
@@ -292,6 +322,9 @@ func record70DataLoss(doc *gedcom.Document, report *gedcom.ConversionReport, tar
 // countTagsInRecord counts occurrences of specific tags.
 func countTagsInRecord(tags []*gedcom.Tag, targetTags []string, found map[string]int) {
 	for _, tag := range tags {
+		if tag == nil {
+			continue
+		}
 		for _, target := range targetTags {
 			if tag.Tag == target {
 				found[target]++
@@ -304,6 +337,9 @@ func countTagsInRecord(tags []*gedcom.Tag, targetTags []string, found map[string
 func findTagsInRecord(tags []*gedcom.Tag, targetTags []string) []string {
 	foundSet := make(map[string]bool)
 	for _, tag := range tags {
+		if tag == nil {
+			continue
+		}
 		for _, target := range targetTags {
 			if tag.Tag == target {
 				foundSet[target] = true
@@ -320,7 +356,7 @@ func findTagsInRecord(tags []*gedcom.Tag, targetTags []string) []string {
 
 // getRecordTypeByXRef returns the record type string for a given XRef.
 func getRecordTypeByXRef(doc *gedcom.Document, xref string) string {
-	if record, ok := doc.XRefMap[xref]; ok {
+	if record, ok := doc.XRefMap[xref]; ok && record != nil {
 		return string(record.Type)
 	}
 	return "UNKNOWN"
@@ -338,6 +374,9 @@ func recordPreservedUnknownTags(doc *gedcom.Document, report *gedcom.ConversionR
 
 	// Process all record tags
 	for _, record := range doc.Records {
+		if record == nil {
+			continue
+		}
 		for _, tag := range record.Tags {
 			recordPreservedTagsRecursive(tag, string(record.Type), record.XRef, report)
 		}

@@ -94,15 +94,31 @@ func (p DuplicatePair) ToIssue() Issue {
 	return issue
 }
 
+// primaryName returns the first usable name on ind, or nil when it has none.
+// A hand-built document can hold a nil element in Names, so Names[0] is not
+// necessarily a name and a length check is not a nil check. Skipping nils
+// matches the library-wide policy in docs/decisions/0007-error-transparency.md.
+func primaryName(ind *gedcom.Individual) *gedcom.PersonalName {
+	if ind == nil {
+		return nil
+	}
+	for _, name := range ind.Names {
+		if name != nil {
+			return name
+		}
+	}
+	return nil
+}
+
 // getDisplayName returns a display name for an individual.
 func getDisplayName(ind *gedcom.Individual) string {
 	if ind == nil {
 		return ""
 	}
-	if len(ind.Names) == 0 {
+	name := primaryName(ind)
+	if name == nil {
 		return ind.XRef
 	}
-	name := ind.Names[0]
 	if name.Full != "" {
 		// Remove slashes from GEDCOM format
 		return strings.ReplaceAll(strings.ReplaceAll(name.Full, "/", ""), "  ", " ")
@@ -183,11 +199,10 @@ func (d *DuplicateDetector) buildSurnameGroups(individuals []*gedcom.Individual)
 
 // extractSurname extracts the surname from an individual's primary name.
 func (d *DuplicateDetector) extractSurname(ind *gedcom.Individual) string {
-	if ind == nil || len(ind.Names) == 0 {
+	name := primaryName(ind)
+	if name == nil {
 		return ""
 	}
-
-	name := ind.Names[0]
 
 	// Use explicit surname if available
 	if name.Surname != "" {
@@ -214,11 +229,10 @@ func extractSurnameFromFull(fullName string) string {
 
 // extractGivenName extracts the given name from an individual's primary name.
 func extractGivenName(ind *gedcom.Individual) string {
-	if ind == nil || len(ind.Names) == 0 {
+	name := primaryName(ind)
+	if name == nil {
 		return ""
 	}
-
-	name := ind.Names[0]
 
 	// Use explicit given name if available
 	if name.Given != "" {
