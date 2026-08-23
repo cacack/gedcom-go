@@ -86,8 +86,11 @@ type HeaderConflict struct {
 //   - Submitter: doc1's submitter wins if set. If doc1 has none,
 //     doc2's submitter is used and is looked up in the remapping
 //     (it may have been renamed by collision resolution).
-//   - Header tags are concatenated (doc1's first, then doc2's) so
-//     custom tags from both documents are preserved.
+//   - Header tags: doc1's are kept. A doc2 structure whose tag doc1
+//     already declares is dropped and recorded as a HeaderConflict,
+//     because a GEDCOM header may declare each structure only once.
+//     Vendor extensions (underscore-prefixed) sit outside that rule
+//     and are kept from both documents.
 //   - Trailer: doc1's wins; if doc1 has none, doc2's is used.
 //
 // Returns an error if either doc is nil, if the opts are invalid for
@@ -533,8 +536,19 @@ func extractIDNumber(xref string) (prefix string, num int, ok bool) {
 // via doc1.Clone() before calling). h2 is the (already-remapped) doc2
 // header — its Submitter has already been rewritten if needed.
 //
-// Header.Tags are concatenated rather than merged: doc1's first, then
-// doc2's. This preserves any custom tags from either document.
+// Header.Tags: doc1's are kept, and doc2's are appended only where they
+// cannot collide. A GEDCOM header has no repeatable substructures -- SOUR,
+// DEST, DATE, SUBM, FILE, COPR, GEDC, CHAR and the rest are all {0:1} or
+// {1:1} -- so appending doc2's wholesale produced a HEAD declaring two of
+// each, which is not a valid header in any version. Vendor extensions
+// (underscore-prefixed) are still carried from both documents: those are
+// outside the grammar, so the original "preserve any custom tags" intent
+// holds for exactly the tags it can hold for.
+//
+// Each dropped structure is reported as a HeaderConflict, matching how the
+// scalar fields already report a doc2 value discarded in favour of doc1.
+// Concatenation was harmless while the encoder rebuilt HEAD from scalar
+// fields and ignored these tags; it writes them now.
 func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 	if h1 == nil && h2 == nil {
 		return nil, nil
@@ -565,13 +579,62 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 		out.Submitter = h2.Submitter
 	}
 
-	// Tags: append h2's after h1's. h1's clone already has the doc1
-	// tags; we append clones of doc2's tags.
+	// Tags: h1's clone already has the doc1 tags; append the doc2 tags that
+	// do not collide with them.
+	tagConflicts := appendNonCollidingHeaderTags(out, h2)
+	conflicts = append(conflicts, tagConflicts...)
+
+	return out, conflicts
+}
+
+// appendNonCollidingHeaderTags appends h2's header structures to out, skipping
+// any whose level-1 tag out already carries, and returns a conflict for each
+// one dropped.
+//
+// A skipped structure takes its whole subtree with it: Header.Tags is a flat,
+// level-encoded list, so dropping a parent and keeping its children would
+// re-parent them under whatever structure precedes them in the output.
+func appendNonCollidingHeaderTags(out, h2 *gedcom.Header) []HeaderConflict {
+	present := make(map[string]bool)
+	for _, t := range out.Tags {
+		if t != nil && t.Level == 1 {
+			present[t.Tag] = true
+		}
+	}
+
+	var conflicts []HeaderConflict
+	skipping := false
+
 	for _, t := range h2.Tags {
+		if t == nil {
+			continue
+		}
+
+		if t.Level <= 1 {
+			// A vendor extension is outside the grammar that makes these
+			// structures singular, so both documents' copies are kept.
+			collides := t.Level == 1 && present[t.Tag] && !strings.HasPrefix(t.Tag, "_")
+			skipping = collides
+			if collides {
+				conflicts = append(conflicts, HeaderConflict{
+					Field: "Tags." + t.Tag,
+					Doc1:  "kept",
+					Doc2:  "dropped (header structure may appear only once)",
+				})
+			}
+		}
+
+		if skipping {
+			continue
+		}
+
+		if t.Level == 1 {
+			present[t.Tag] = true
+		}
 		out.Tags = append(out.Tags, t.Clone())
 	}
 
-	return out, conflicts
+	return conflicts
 }
 
 // mergeScalarHeaderFields applies h1-wins-promote-h2 logic to the

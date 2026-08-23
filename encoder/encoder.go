@@ -57,6 +57,17 @@ func EncodeWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeOptions) e
 	return nil
 }
 
+// writtenEncoding is the charset every Encode call actually produces. The
+// encoder converts nothing on the way out, so this is what the CHAR line has to
+// declare regardless of what the source file said -- a header claiming ANSEL
+// over UTF-8 bytes is a file this library cannot read back (issue #425).
+//
+// GEDCOM 5.5 has no legal token for UTF-8 (ANSEL, ASCII or UNICODE only), and
+// UNICODE conventionally means UTF-16 to other tools, so declaring UTF-8
+// everywhere is the reading that matches the bytes. compatibility.md already
+// records "input ANSEL -> output UTF-8" as an acceptable normalization.
+const writtenEncoding = gedcom.EncodingUTF8
+
 func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error {
 	// A document assembled in memory may carry no header at all. Encoding it as
 	// an empty one keeps every header field on a single code path, so options
@@ -69,6 +80,142 @@ func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error 
 		return err
 	}
 
+	// A decoded document carries every header sub-tag in Tags, so writing those
+	// preserves the header the source actually had -- SCHMA, SUBM, DEST, DATE,
+	// COPR, the SOUR subtree and header NOTEs all reach the output, where
+	// rebuilding from four scalar fields discarded them (issue #429).
+	if len(header.Tags) > 0 {
+		return writeHeaderTags(w, header.Tags, opts)
+	}
+
+	return writeHeaderFields(w, header, opts)
+}
+
+// writeHeaderTags writes a header from its raw tags, overriding the two values
+// the encoder owns rather than the document: the charset it actually wrote, and
+// the version it was asked to target.
+func writeHeaderTags(w io.Writer, tags []*gedcom.Tag, opts *EncodeOptions) error {
+	// inGEDC tracks the parent structure because VERS is not unique: it appears
+	// under GEDC as the specification version and under SOUR as the source
+	// system's own version (comprehensive.ged has "1 SOUR FamilyTreeMaker /
+	// 2 VERS 16.0"). Overriding by tag name alone would rewrite the source
+	// system's version to a GEDCOM version.
+	//
+	// converter.updateVersionTag walks header tags for the same structure and
+	// must agree with this on what "inside GEDC" means. The two are deliberately
+	// not shared: that one edits the document so a conversion is visible to
+	// every reader of it, while this one substitutes at write time and must
+	// leave the caller's document untouched. Change one, check the other.
+	inGEDC := false
+	wroteVersion := false
+
+	filtered := filterTags(tags, opts.PreserveUnknownTags)
+
+	for i, tag := range filtered {
+		if tag == nil {
+			continue
+		}
+
+		if tag.Level <= 1 {
+			inGEDC = tag.Level == 1 && tag.Tag == "GEDC"
+		}
+
+		if err := writeTag(w, overrideHeaderTag(tag, inGEDC, opts), opts); err != nil {
+			return err
+		}
+
+		wrote, err := writeRetargetedVersion(w, filtered, i, inGEDC, opts)
+		if err != nil {
+			return err
+		}
+		if wrote || isGEDCVersion(tag, inGEDC) {
+			wroteVersion = true
+		}
+	}
+
+	// No GEDC at all in the source -- royal92.ged is such a file. Preserving
+	// that absence is right for a plain re-encode, but a caller who asked for a
+	// specific version must get a document that declares it.
+	if opts.TargetVersion != "" && !wroteVersion {
+		return writeGEDCVersion(w, opts)
+	}
+
+	return nil
+}
+
+// isGEDCVersion reports whether tag is the specification version, as opposed to
+// a source system's own VERS.
+func isGEDCVersion(tag *gedcom.Tag, inGEDC bool) bool {
+	return inGEDC && tag.Level == 2 && tag.Tag == "VERS"
+}
+
+// overrideHeaderTag returns the tag to write: the original, or a copy carrying
+// the value the encoder owns. Never the original mutated -- encoding a document
+// must not edit it.
+func overrideHeaderTag(tag *gedcom.Tag, inGEDC bool, opts *EncodeOptions) *gedcom.Tag {
+	override, ok := headerTagOverride(tag, inGEDC, opts)
+	if !ok {
+		return tag
+	}
+	replaced := *tag
+	replaced.Value = override
+	return &replaced
+}
+
+// writeRetargetedVersion supplies the VERS a retarget needs when the source's
+// GEDC has none of its own to override. Writing it here rather than appending
+// at the end keeps it inside the GEDC structure it belongs to.
+func writeRetargetedVersion(w io.Writer, tags []*gedcom.Tag, i int, inGEDC bool, opts *EncodeOptions) (bool, error) {
+	if !inGEDC || tags[i].Level != 1 || opts.TargetVersion == "" || hasVersionChild(tags, i) {
+		return false, nil
+	}
+	err := writeTag(w, &gedcom.Tag{Level: 2, Tag: "VERS", Value: string(opts.TargetVersion)}, opts)
+	return err == nil, err
+}
+
+// writeGEDCVersion writes a complete GEDC structure for the target version.
+func writeGEDCVersion(w io.Writer, opts *EncodeOptions) error {
+	if err := writeTag(w, &gedcom.Tag{Level: 1, Tag: "GEDC"}, opts); err != nil {
+		return err
+	}
+	return writeTag(w, &gedcom.Tag{Level: 2, Tag: "VERS", Value: string(opts.TargetVersion)}, opts)
+}
+
+// hasVersionChild reports whether the GEDC tag at index i is followed by its
+// own VERS subtag.
+func hasVersionChild(tags []*gedcom.Tag, i int) bool {
+	for _, tag := range tags[i+1:] {
+		if tag == nil {
+			continue
+		}
+		// Anything back at GEDC's level or above ends the structure.
+		if tag.Level <= 1 {
+			return false
+		}
+		if tag.Level == 2 && tag.Tag == "VERS" {
+			return true
+		}
+	}
+	return false
+}
+
+// headerTagOverride reports the value the encoder must substitute for a header
+// tag, if any. Everything it does not claim is written through verbatim --
+// including a GEDC.VERS the library does not model, such as 555SAMPLE.GED's
+// "5.5.5", which reconstruction used to silently normalize to 5.5.1.
+func headerTagOverride(tag *gedcom.Tag, inGEDC bool, opts *EncodeOptions) (string, bool) {
+	if tag.Level == 1 && tag.Tag == "CHAR" {
+		return string(writtenEncoding), true
+	}
+	if inGEDC && tag.Level == 2 && tag.Tag == "VERS" && opts.TargetVersion != "" {
+		return string(opts.TargetVersion), true
+	}
+	return "", false
+}
+
+// writeHeaderFields reconstructs a header from the typed fields. This is the
+// hand-built path: a document assembled in memory has no raw tags to preserve.
+func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error {
 	// Use TargetVersion if set, otherwise use header.Version
 	version := header.Version
 	if opts.TargetVersion != "" {
@@ -84,8 +231,10 @@ func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error 
 		}
 	}
 
+	// Declared only when the header declares one at all: GEDCOM 7.0 removed
+	// CHAR, and synthesizing one there would add a line the source never had.
 	if header.Encoding != "" {
-		if _, err := fmt.Fprintf(w, "1 CHAR %s%s", header.Encoding, opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "1 CHAR %s%s", writtenEncoding, opts.LineEnding); err != nil {
 			return err
 		}
 	}

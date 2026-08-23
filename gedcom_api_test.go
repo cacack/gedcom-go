@@ -601,13 +601,15 @@ func TestDecodeRealFile(t *testing.T) {
 // round-trip that preserved the record skeleton while dropping every NAME,
 // DATE, SOUR and NOTE fails here (issue #410).
 //
-// Two limits are worth knowing before trusting a green run:
+// Header.Tags are compared, unconditionally. They were gated behind an
+// off-by-default option while the encoder rebuilt HEAD from four scalar fields
+// and discarded the rest (#429); with the header preserved, the gate is gone
+// and the whole header is covered. The one value the encoder deliberately
+// rewrites is CHAR, which must equal the charset it actually wrote — asserted
+// positively in compareHeaders, not skipped.
 //
-//   - Header.Tags are NOT compared. compareDocuments gates them behind
-//     WithHeaderTagComparison(), off by default, because the encoder rebuilds
-//     HEAD from four scalar fields and discards the rest. Enabling it fails
-//     most fixtures below. That is real encoder loss, tracked separately — not
-//     something this test may claim to cover.
+// One limit is worth knowing before trusting a green run:
+//
 //   - It compares decode(input) against decode(encode(decode(input))), so any
 //     information both decode passes lose identically is invisible here.
 //
@@ -633,6 +635,24 @@ func TestRoundTrip(t *testing.T) {
 		"testdata/edge-cases/cont-conc.ged",
 		"testdata/edge-cases/deep-nesting-levels.ged",
 		"testdata/edge-cases/structural-torture.ged",
+
+		// Non-UTF-8 sources. The encoder writes UTF-8 bytes whatever it read,
+		// so these are the fixtures that catch a CHAR line contradicting its
+		// own file: ansel-lf.ged used to fail its re-decode outright, and
+		// ansi-cp1252 came back double-encoded ("La Coruña" -> "La CoruÃ±a").
+		// No fixture from this directory was in any round-trip table before
+		// (issue #425).
+		// ibmpc-cp437-broskeep.ged and ibm-windows-easytree.ged are excluded:
+		// they fail the *first* decode ("1 CHAR IBMPC"), which charset/ does not
+		// implement. That is a decoder gap, not a round-trip one, so it does not
+		// belong to this table.
+		"testdata/encoding/ansel-lf.ged",
+		"testdata/encoding/ansi-cp1252-ftm17.ged",
+		"testdata/encoding/utf16le.ged",
+		"testdata/encoding/utf16be.ged",
+		"testdata/encoding/utf8-bom.ged",
+		"testdata/encoding/utf8-nobom-lf.ged",
+		"testdata/encoding/utf8-unicode.ged",
 	}
 
 	for _, path := range fixtures {

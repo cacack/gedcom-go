@@ -23,32 +23,47 @@ import (
 // it also sees legitimate normalization, so the small set of differences we
 // accept is enumerated in normalizeGEDCOM below and nowhere else.
 //
-// Both lists here are self-cleaning: a fixture that starts passing fails the
+// The lists here are self-cleaning: a fixture that starts passing fails the
 // test asking to be promoted, and a fixture that starts failing fails the test
 // as a regression. Fixing an issue deletes entries; nothing goes stale quietly.
 
-// headerByteIdentical lists the fixtures whose HEAD block survives a round-trip
-// byte for byte. It is an allow-list rather than a deny-list because the
-// encoder rebuilds HEAD from four scalar fields and discards Header.Tags
-// (#429), so almost nothing survives: 13 of 96 at the time of writing, and all
-// 13 have headers small enough to fit in those four fields.
+// headerKnownBad lists the fixtures whose HEAD block still does not survive a
+// round-trip byte for byte, with the defect responsible.
 //
-// When #429 lands this list becomes every decodable fixture, and the assertion
-// below inverts into a plain "all must match".
-var headerByteIdentical = map[string]bool{
-	"testdata/gedcom-7.0/familysearch-examples/obje-1.ged":            true,
-	"testdata/gedcom-7.0/familysearch-examples/remarriage2.ged":       true,
-	"testdata/gedcom-7.0/familysearch-examples/same-sex-marriage.ged": true,
-	"testdata/gedcom-7.0/familysearch-examples/voidptr.ged":           true,
-	"testdata/gedcom-7.0/minimal70.ged":                               true,
-	"testdata/gedcom-7.0/remarriage1.ged":                             true,
-	"testdata/malformed/circular-reference.ged":                       true,
-	"testdata/malformed/duplicate-xref.ged":                           true,
-	"testdata/malformed/invalid-level.ged":                            true,
-	"testdata/malformed/invalid-xref.ged":                             true,
-	"testdata/malformed/level-jump-skip.ged":                          true,
-	"testdata/malformed/level-jump-subordinate.ged":                   true,
-	"testdata/malformed/missing-xref.ged":                             true,
+// This was an allow-list of the 13 fixtures out of 96 that happened to survive,
+// because the encoder rebuilt HEAD from four scalar fields and discarded
+// Header.Tags. #429 fixed that, so it inverted into a deny-list as the comment
+// here promised: every decodable fixture's header must now match, and anything
+// that does not is named with its cause.
+//
+// An allow-list could not see a fixture that was failing and unlisted; a
+// deny-list fails on exactly that case.
+//
+// Unlike bodyKnownBad, not every entry here is a bug. The first group is a
+// limit of byte comparison itself; the second is deliberate behaviour whose
+// desirability is an open question, recorded so the choice is visible rather
+// than assumed.
+var headerKnownBad = map[string]string{
+	// The source is not UTF-8, so its header payload bytes are ANSEL or UTF-16
+	// while the output's are UTF-8 (TGC's "1 COPR © 1997..." is the ANSEL
+	// copyright sign; the UTF-16 files differ from the BOM onward). The CHAR
+	// declaration is normalized, but the text it describes cannot be, so a
+	// byte-for-byte comparison against the original can never match. These same
+	// fixtures are on bodyKnownBad for the same reason.
+	"testdata/encoding/utf16be.ged":                 "non-UTF-8 source; payload transcoded",
+	"testdata/encoding/utf16le.ged":                 "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom-5.5/torture-test/TGC551.ged":   "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom-5.5/torture-test/TGC551LF.ged": "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom-5.5/torture-test/TGC55C.ged":   "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom-5.5/torture-test/TGC55CLF.ged": "non-UTF-8 source; payload transcoded",
+
+	// The encoder synthesizes what a header must have when the source has no
+	// header at all, or an empty one: "0 HEAD" for the first, "1 GEDC / 2 VERS"
+	// from the detected version for the second. Both produce a more valid file
+	// than the input, and both are additions the input did not contain. The
+	// allow-list could not see either, because neither fixture was on it.
+	"testdata/malformed/missing-header.ged":          "encoder writes 0 HEAD for a headerless file",
+	"testdata/edge-cases/bare-header-geo-coords.ged": "encoder writes GEDC.VERS for an empty header",
 }
 
 // bodyKnownBad lists fixtures whose records do not survive a round-trip, with
@@ -63,16 +78,23 @@ var bodyKnownBad = map[string]string{
 	"testdata/edge-cases/vendor-legacy.ged":             "#404 level-0 record value",
 	"testdata/edge-cases/vendor-customtags-torture.ged": "#404 level-0 record value",
 
-	// #425: output is UTF-8 but declares the source charset, so re-reading it
-	// applies the decoding a second time.
-	"testdata/encoding/ansel-lf.ged":                "#425 ANSEL declared, UTF-8 written",
-	"testdata/encoding/ansi-cp1252-ftm17.ged":       "#425 CP1252 declared, UTF-8 written",
-	"testdata/encoding/utf16be.ged":                 "#425 UTF-16 source, records lost",
-	"testdata/encoding/utf16le.ged":                 "#425 UTF-16 source, records lost",
-	"testdata/gedcom-5.5/torture-test/TGC551.ged":   "#425 ANSEL declared, UTF-8 written",
-	"testdata/gedcom-5.5/torture-test/TGC551LF.ged": "#425 ANSEL declared, UTF-8 written",
-	"testdata/gedcom-5.5/torture-test/TGC55C.ged":   "#425 ANSEL declared, UTF-8 written",
-	"testdata/gedcom-5.5/torture-test/TGC55CLF.ged": "#425 ANSEL declared, UTF-8 written",
+	// Not a bug: these sources are not UTF-8, so their record bytes are ANSEL,
+	// CP1252 or UTF-16 in the original and UTF-8 in the output. Byte comparison
+	// against an untranscoded original cannot match, whatever the encoder does.
+	//
+	// They were attributed to #425 while the output also declared the source
+	// charset -- which made them genuinely unreadable, not merely incomparable.
+	// That is fixed; these fixtures now decode, re-encode and re-decode
+	// cleanly, and TestRoundTrip covers them. Only the byte-level comparison
+	// still cannot see it.
+	"testdata/encoding/ansel-lf.ged":                "non-UTF-8 source; payload transcoded",
+	"testdata/encoding/ansi-cp1252-ftm17.ged":       "non-UTF-8 source; payload transcoded",
+	"testdata/encoding/utf16be.ged":                 "non-UTF-8 source; payload transcoded",
+	"testdata/encoding/utf16le.ged":                 "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom-5.5/torture-test/TGC551.ged":   "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom-5.5/torture-test/TGC551LF.ged": "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom-5.5/torture-test/TGC55C.ged":   "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom-5.5/torture-test/TGC55CLF.ged": "non-UTF-8 source; payload transcoded",
 
 	// Lenient recovery rewrites the line rather than preserving it. Arguably
 	// correct — the input is malformed — but it is a real byte difference and
@@ -100,9 +122,24 @@ var undecodable = map[string]string{
 // is followed by anything is payload, and its loss is #426.
 var valuelessLine = regexp.MustCompile(`^\d+ (@[^@]+@ )?[A-Za-z_][A-Za-z0-9_]* +$`)
 
+// charLine matches the level-1 CHAR declaration.
+var charLine = regexp.MustCompile(`^1 CHAR .+$`)
+
 // normalizeGEDCOM applies the differences we accept, and only those:
 // a UTF-8 BOM, the choice of line terminator, a trailing delimiter space on a
-// valueless line, and a trailing blank line at end of file.
+// valueless line, a trailing blank line at end of file, and the charset the
+// CHAR line declares.
+//
+// CHAR is accepted because the encoder writes UTF-8 whatever it read and now
+// declares that (#425) -- a file that says ANSEL over UTF-8 bytes is one this
+// library cannot re-read. The declaration is normalized on both sides rather
+// than skipped, so a missing CHAR line is still a difference; only its value is
+// exempt. compatibility.md records the same normalization.
+//
+// Note this does not make a non-UTF-8 fixture comparable: its *payload* bytes
+// are still ANSEL or UTF-16 in the original and UTF-8 in the output. Those
+// fixtures are listed in headerKnownBad and bodyKnownBad with that as the
+// reason.
 func normalizeGEDCOM(b []byte) string {
 	b = bytes.TrimPrefix(b, []byte("\xEF\xBB\xBF"))
 	s := string(b)
@@ -114,13 +151,18 @@ func normalizeGEDCOM(b []byte) string {
 		if valuelessLine.MatchString(l) {
 			lines[i] = strings.TrimRight(l, " ")
 		}
+		if charLine.MatchString(lines[i]) {
+			lines[i] = "1 CHAR <normalized>"
+		}
 	}
 	return strings.Join(lines, "\n")
 }
 
 // splitHeader returns the HEAD block and everything from the first non-HEAD
-// level-0 line onward, so the two can be asserted independently. Until #429 is
-// fixed the header comparison would otherwise mask every body difference.
+// level-0 line onward, so the two can be asserted independently. The split
+// existed because header collapse (#429) would otherwise have masked every body
+// difference; it stays because the two have genuinely different failure modes --
+// a header can be synthesized where none existed, which no record can.
 func splitHeader(s string) (header, body string) {
 	lines := strings.Split(s, "\n")
 	for i, l := range lines {
@@ -193,11 +235,12 @@ func TestByteRoundTrip(t *testing.T) {
 
 			t.Run("header", func(t *testing.T) {
 				match := wantHeader == gotHeader
+				reason, known := headerKnownBad[path]
 				switch {
-				case match && !headerByteIdentical[path]:
-					t.Errorf("header now round-trips byte for byte; add %q to headerByteIdentical", path)
-				case !match && headerByteIdentical[path]:
-					t.Errorf("header no longer round-trips:\n%s", firstDiff(wantHeader, gotHeader))
+				case match && known:
+					t.Errorf("header now round-trips; remove %q from headerKnownBad (was: %s)", path, reason)
+				case !match && !known:
+					t.Errorf("header does not round-trip:\n%s", firstDiff(wantHeader, gotHeader))
 				}
 			})
 

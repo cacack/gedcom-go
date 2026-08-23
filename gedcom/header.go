@@ -33,5 +33,12 @@ type Header struct {
 	// Tags contains all raw header sub-tags in document order, providing a
 	// lossless record of the header (including custom/unmapped tags such as
 	// _RTLSAVE or header NOTEs) alongside the typed fields above.
+	//
+	// Tags is authoritative when encoding. The encoder writes the header from
+	// Tags whenever it is non-empty, and consults the typed fields above only
+	// for a document that has none. Editing a typed field on a decoded document
+	// therefore does not change the encoded header — edit the matching tag, or
+	// use the converter, which keeps both in step. See the encoder package
+	// documentation for the full rule.
 	Tags []*Tag
 }
