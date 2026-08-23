@@ -675,6 +675,35 @@ func TestCloneEvent(t *testing.T) {
 	})
 }
 
+// A negative assertion (the 7.0-only NO structure) is one of two markers
+// eventRequiresGEDCOM7 reads. Dropping IsNegative in the clone made a cloned
+// document report 5.5.1 for input that genuinely needs 7.0, so downgrading on
+// that basis discarded the NO structure silently.
+func TestDocumentCloneKeepsNegativeAssertionVersion(t *testing.T) {
+	doc := &Document{
+		Header:  &Header{Version: Version70},
+		XRefMap: make(map[string]*Record),
+	}
+	ind := &Individual{
+		XRef:   "@I1@",
+		Events: []*Event{{Type: "MARR", IsNegative: true}},
+	}
+	doc.Records = []*Record{{XRef: "@I1@", Type: RecordTypeIndividual, Entity: ind}}
+	doc.XRefMap["@I1@"] = doc.Records[0]
+
+	if !doc.RequiresGEDCOM7() {
+		t.Fatal("source document with a negative assertion should require 7.0")
+	}
+
+	copied := doc.Clone()
+	if !copied.RequiresGEDCOM7() {
+		t.Error("clone of a document with a negative assertion should require 7.0")
+	}
+	if got := copied.MinimumVersion(); got != doc.MinimumVersion() {
+		t.Errorf("clone MinimumVersion = %v, want %v", got, doc.MinimumVersion())
+	}
+}
+
 func TestCloneDate(t *testing.T) {
 	t.Run("nil returns nil", func(t *testing.T) {
 		if cloneDate(nil) != nil {
