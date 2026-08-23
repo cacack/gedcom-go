@@ -474,13 +474,16 @@ func TestEncodeHeaderFields(t *testing.T) {
 			},
 		},
 		{
+			// The declaration states the charset written, not the one set:
+			// Encode always emits UTF-8, and a header contradicting its own
+			// bytes is a file this library cannot re-read (#425).
 			name: "header with encoding only",
 			header: &gedcom.Header{
 				Encoding: "ANSEL",
 			},
 			want: []string{
 				"0 HEAD",
-				"1 CHAR ANSEL",
+				"1 CHAR UTF-8",
 			},
 		},
 		{
