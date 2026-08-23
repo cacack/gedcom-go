@@ -4,18 +4,16 @@ package testing
 type Option func(*roundTripConfig)
 
 // roundTripConfig holds configuration for round-trip testing.
-type roundTripConfig struct {
-	// compareHeaderTags enables comparison of Header.Tags
-	// By default, header tags are not compared because the encoder
-	// reconstructs the header from Header fields.
-	compareHeaderTags bool
-}
+//
+// Empty for now: header-tag comparison, the only setting it ever held, is
+// unconditional since the encoder stopped discarding the header. The type and
+// the Option plumbing stay because the variadic opts parameter is part of the
+// AssertRoundTrip and CheckRoundTrip signatures.
+type roundTripConfig struct{}
 
 // defaultConfig returns the default configuration.
 func defaultConfig() *roundTripConfig {
-	return &roundTripConfig{
-		compareHeaderTags: false,
-	}
+	return &roundTripConfig{}
 }
 
 // applyOptions applies functional options to the config.
@@ -27,12 +25,15 @@ func applyOptions(opts ...Option) *roundTripConfig {
 	return cfg
 }
 
-// WithHeaderTagComparison enables comparison of Header.Tags.
-// By default, header tags are not compared because the encoder
-// reconstructs the header structure from Header fields, which may
-// produce different tags than the original.
+// WithHeaderTagComparison is a no-op retained for compatibility.
+//
+// Header tags are now compared on every round-trip. The option existed because
+// the encoder rebuilt HEAD from four scalar fields and discarded everything
+// else, so comparing them failed nearly every fixture; issue #429 fixed the
+// encoder, and the comparison no longer has anything to opt into.
+//
+// Deprecated: header tags are always compared. Remove the call; it does
+// nothing. This function will be removed in the next major version.
 func WithHeaderTagComparison() Option {
-	return func(cfg *roundTripConfig) {
-		cfg.compareHeaderTags = true
-	}
+	return func(*roundTripConfig) {}
 }

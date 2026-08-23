@@ -64,7 +64,7 @@ func TestFeaturesNumbersMatchTheirSources(t *testing.T) {
 		{"corpus fixtures", regexp.MustCompile(`Of (\d[\d,]*) corpus\s+fixtures`), fixtures},
 		{"undecodable fixtures", regexp.MustCompile(`fixtures, (\d[\d,]*) do not survive`), len(undecodable)},
 		{"decodable fixtures", regexp.MustCompile(`of the (\d[\d,]*) that do`), decodable},
-		{"headers that round-trip", regexp.MustCompile(`(\d[\d,]*)\s+reproduce their header`), len(headerByteIdentical)},
+		{"headers that round-trip", regexp.MustCompile(`(\d[\d,]*)\s+reproduce their header`), decodable - len(headerKnownBad)},
 		{"bodies that round-trip", regexp.MustCompile(`(\d[\d,]*) reproduce their record body`), decodable - len(bodyKnownBad)},
 	}
 

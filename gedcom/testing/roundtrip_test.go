@@ -235,7 +235,7 @@ func TestCompareDocuments_DifferentRecordCounts(t *testing.T) {
 	}
 
 	report := &RoundTripReport{Equal: true}
-	compareDocuments(before, after, report, defaultConfig())
+	compareDocuments(before, after, report)
 
 	if report.Equal {
 		t.Error("expected Equal=false for different record counts")
@@ -332,7 +332,7 @@ func TestCompareHeaders(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			report := &RoundTripReport{Equal: true}
-			compareHeaders(tt.before, tt.after, report, defaultConfig())
+			compareHeaders(tt.before, tt.after, report)
 
 			if len(report.Differences) != tt.expectDiffs {
 				t.Errorf("expected %d differences, got %d: %v",
@@ -597,68 +597,97 @@ func TestCompareRecords(t *testing.T) {
 	}
 }
 
-// TestOptions tests functional options.
-func TestOptions(t *testing.T) {
-	t.Run("default config", func(t *testing.T) {
-		cfg := defaultConfig()
-		if cfg.compareHeaderTags {
-			t.Error("expected compareHeaderTags=false by default")
-		}
-	})
-
-	t.Run("WithHeaderTagComparison", func(t *testing.T) {
-		cfg := applyOptions(WithHeaderTagComparison())
-		if !cfg.compareHeaderTags {
-			t.Error("expected compareHeaderTags=true after WithHeaderTagComparison")
-		}
-	})
-}
-
-// TestWithHeaderTagComparison_AffectsComparison verifies the option changes behavior.
-func TestWithHeaderTagComparison_AffectsComparison(t *testing.T) {
+// TestHeaderTagsAlwaysCompared pins the contract that replaced the
+// WithHeaderTagComparison option: a header tag lost or altered by a round-trip
+// is a difference whether or not any option was passed. The option itself is a
+// deprecated no-op, so passing it must not change the outcome either way.
+func TestHeaderTagsAlwaysCompared(t *testing.T) {
 	before := &gedcom.Header{
 		Version: "5.5.1",
 		Tags: []*gedcom.Tag{
-			{Tag: "CHAR", Value: "UTF-8"},
+			{Level: 1, Tag: "SUBM", XRef: "@SUBM1@"},
 		},
 	}
 	after := &gedcom.Header{
 		Version: "5.5.1",
-		Tags: []*gedcom.Tag{
-			{Tag: "CHAR", Value: "ANSEL"},
-		},
 	}
 
-	t.Run("without option - tags not compared", func(t *testing.T) {
+	t.Run("a lost header tag is a difference", func(t *testing.T) {
 		report := &RoundTripReport{Equal: true}
-		compareHeaders(before, after, report, defaultConfig())
-
-		if !report.Equal {
-			t.Error("expected Equal=true when header tags comparison is disabled")
-		}
-	})
-
-	t.Run("with option - tags are compared", func(t *testing.T) {
-		cfg := applyOptions(WithHeaderTagComparison())
-		report := &RoundTripReport{Equal: true}
-		compareHeaders(before, after, report, cfg)
+		compareHeaders(before, after, report)
 
 		if report.Equal {
-			t.Error("expected Equal=false when header tags differ and comparison is enabled")
+			t.Fatal("expected a difference when the header loses SUBM")
 		}
 
-		// Should have tag value difference
 		found := false
 		for _, diff := range report.Differences {
-			if diff.Path == "Header.Tags[0].Value" {
+			if diff.Path == "Header.Tags.Count" && diff.Before == "1" && diff.After == "0" {
 				found = true
-				if diff.Before != "UTF-8" || diff.After != "ANSEL" {
-					t.Errorf("unexpected diff values: %+v", diff)
-				}
 			}
 		}
 		if !found {
-			t.Errorf("expected Header.Tags[0].Value difference, got: %v", report.Differences)
+			t.Errorf("expected Header.Tags.Count difference, got: %v", report.Differences)
+		}
+	})
+
+	// The deprecated option is accepted at the CheckRoundTrip boundary, which
+	// is the only place a caller can still pass it. It must change nothing.
+	t.Run("the deprecated option changes nothing", func(t *testing.T) {
+		plain, err := CheckRoundTrip(strings.NewReader(validMinimalGEDCOM))
+		if err != nil {
+			t.Fatalf("without option: %v", err)
+		}
+		withOption, err := CheckRoundTrip(strings.NewReader(validMinimalGEDCOM), WithHeaderTagComparison())
+		if err != nil {
+			t.Fatalf("with option: %v", err)
+		}
+
+		if plain.Equal != withOption.Equal || len(plain.Differences) != len(withOption.Differences) {
+			t.Errorf("the no-op option changed the result: %v vs %v", plain, withOption)
+		}
+	})
+}
+
+// TestHeaderCharNormalizationIsAsserted covers the one header value the encoder
+// deliberately rewrites. Declaring the source charset over UTF-8 bytes produced
+// files this library could not re-read (#425), so the encoder now always writes
+// UTF-8 -- and the comparison asserts that positively rather than skipping the
+// field, which would let a future wrong charset through unnoticed.
+func TestHeaderCharNormalizationIsAsserted(t *testing.T) {
+	t.Run("ANSEL source normalized to UTF-8 is not a difference", func(t *testing.T) {
+		before := &gedcom.Header{
+			Encoding: gedcom.EncodingANSEL,
+			Tags:     []*gedcom.Tag{{Level: 1, Tag: "CHAR", Value: "ANSEL"}},
+		}
+		after := &gedcom.Header{
+			Encoding: gedcom.EncodingUTF8,
+			Tags:     []*gedcom.Tag{{Level: 1, Tag: "CHAR", Value: "UTF-8"}},
+		}
+
+		report := &RoundTripReport{Equal: true}
+		compareHeaders(before, after, report)
+
+		if !report.Equal {
+			t.Errorf("expected the ANSEL -> UTF-8 normalization to be accepted, got: %v", report.Differences)
+		}
+	})
+
+	t.Run("any other charset is a difference", func(t *testing.T) {
+		before := &gedcom.Header{
+			Encoding: gedcom.EncodingANSEL,
+			Tags:     []*gedcom.Tag{{Level: 1, Tag: "CHAR", Value: "ANSEL"}},
+		}
+		after := &gedcom.Header{
+			Encoding: gedcom.EncodingLATIN1,
+			Tags:     []*gedcom.Tag{{Level: 1, Tag: "CHAR", Value: "LATIN1"}},
+		}
+
+		report := &RoundTripReport{Equal: true}
+		compareHeaders(before, after, report)
+
+		if report.Equal {
+			t.Error("expected a difference when the output declares a charset it did not write")
 		}
 	})
 }
@@ -948,7 +977,7 @@ func TestCompareDocuments_ExtraRecordsInAfter(t *testing.T) {
 	}
 
 	report := &RoundTripReport{Equal: true}
-	compareDocuments(before, after, report, defaultConfig())
+	compareDocuments(before, after, report)
 
 	if report.Equal {
 		t.Error("expected Equal=false for different record counts")

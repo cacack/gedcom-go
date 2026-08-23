@@ -8,9 +8,9 @@ import (
 
 // compareDocuments compares two documents and returns differences.
 // It compares headers, record counts, and all record tags.
-func compareDocuments(before, after *gedcom.Document, report *RoundTripReport, cfg *roundTripConfig) {
+func compareDocuments(before, after *gedcom.Document, report *RoundTripReport) {
 	// Compare headers
-	compareHeaders(before.Header, after.Header, report, cfg)
+	compareHeaders(before.Header, after.Header, report)
 
 	// Compare record counts
 	if len(before.Records) != len(after.Records) {
@@ -60,7 +60,7 @@ func compareDocuments(before, after *gedcom.Document, report *RoundTripReport, c
 }
 
 // compareHeaders compares two header structs.
-func compareHeaders(before, after *gedcom.Header, report *RoundTripReport, cfg *roundTripConfig) {
+func compareHeaders(before, after *gedcom.Header, report *RoundTripReport) {
 	// Handle nil headers
 	if before == nil && after == nil {
 		return
@@ -83,11 +83,22 @@ func compareHeaders(before, after *gedcom.Header, report *RoundTripReport, cfg *
 		)
 	}
 
-	// Compare Encoding
-	if before.Encoding != after.Encoding {
+	// Compare Encoding.
+	//
+	// The encoder always writes UTF-8 bytes and declares that charset, so a
+	// document decoded from ANSEL or CP1252 is expected to come back as UTF-8.
+	// That is asserted positively rather than exempted: an encoder that started
+	// declaring something else would still fail here, where skipping the field
+	// would hide it. compatibility.md records the normalization.
+	switch {
+	case before.Encoding == "":
+		if after.Encoding != "" {
+			report.AddDifference("Header.Encoding", "", string(after.Encoding))
+		}
+	case after.Encoding != gedcom.EncodingUTF8:
 		report.AddDifference(
 			"Header.Encoding",
-			string(before.Encoding),
+			string(before.Encoding)+" (expected normalization to UTF-8)",
 			string(after.Encoding),
 		)
 	}
@@ -110,12 +121,31 @@ func compareHeaders(before, after *gedcom.Header, report *RoundTripReport, cfg *
 		)
 	}
 
-	// Compare Header.Tags if enabled
-	// By default, header tags are not compared because the encoder
-	// reconstructs the header from Header fields.
-	if cfg != nil && cfg.compareHeaderTags {
-		compareTags(before.Tags, after.Tags, "Header.Tags", report)
+	// Header tags are compared unconditionally. They were gated behind an
+	// off-by-default option while the encoder rebuilt HEAD from four scalars
+	// and discarded the rest, which meant the round-trip guard could not see
+	// the largest source of loss in the library (issues #429, #410).
+	compareTags(normalizeCharTag(before.Tags), after.Tags, "Header.Tags", report)
+}
+
+// normalizeCharTag returns tags with the level-1 CHAR value set to the charset
+// the encoder actually writes, so the expected normalization does not register
+// as a difference while every other header tag is still compared verbatim.
+//
+// The input is not mutated: the comparison must not edit the document it was
+// handed.
+func normalizeCharTag(tags []*gedcom.Tag) []*gedcom.Tag {
+	normalized := make([]*gedcom.Tag, len(tags))
+	for i, tag := range tags {
+		if tag != nil && tag.Level == 1 && tag.Tag == "CHAR" && tag.Value != string(gedcom.EncodingUTF8) {
+			replaced := *tag
+			replaced.Value = string(gedcom.EncodingUTF8)
+			normalized[i] = &replaced
+			continue
+		}
+		normalized[i] = tag
 	}
+	return normalized
 }
 
 // compareRecords compares two records at the given index.

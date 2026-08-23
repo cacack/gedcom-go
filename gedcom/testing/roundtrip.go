@@ -52,7 +52,11 @@ func AssertRoundTrip(t *testing.T, input []byte, opts ...Option) {
 //	    log.Printf("Differences found: %s", report.String())
 //	}
 func CheckRoundTrip(input io.Reader, opts ...Option) (*RoundTripReport, error) {
-	cfg := applyOptions(opts...)
+	// Options are applied but carry no settings today: the only one that ever
+	// existed, WithHeaderTagComparison, is a deprecated no-op now that header
+	// tags are always compared. The call stays so a future option has one place
+	// to land, and so passing one is never silently ignored at a different layer.
+	_ = applyOptions(opts...)
 
 	// Step 1: Decode original
 	originalDoc, err := decoder.Decode(input)
@@ -74,7 +78,7 @@ func CheckRoundTrip(input io.Reader, opts ...Option) (*RoundTripReport, error) {
 
 	// Step 4: Compare documents
 	report := &RoundTripReport{Equal: true}
-	compareDocuments(originalDoc, roundTrippedDoc, report, cfg)
+	compareDocuments(originalDoc, roundTrippedDoc, report)
 
 	return report, nil
 }
