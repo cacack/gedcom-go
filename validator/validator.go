@@ -233,6 +233,10 @@ func (v *Validator) getEncodingValidator() *EncodingValidator {
 func (v *Validator) Validate(doc *gedcom.Document) []error {
 	v.errors = make([]error, 0)
 
+	if doc == nil {
+		return v.errors
+	}
+
 	// Validate cross-references
 	v.validateXRefs(doc)
 
@@ -249,7 +253,13 @@ func (v *Validator) validateXRefs(doc *gedcom.Document) {
 
 	// Scan all records for XRef usage
 	for _, record := range doc.Records {
+		if record == nil {
+			continue
+		}
 		for _, tag := range record.Tags {
+			if tag == nil {
+				continue
+			}
 			// Check if value looks like an XRef
 			if len(tag.Value) > 2 && tag.Value[0] == '@' && tag.Value[len(tag.Value)-1] == '@' {
 				xref := tag.Value
@@ -271,6 +281,9 @@ func (v *Validator) validateXRefs(doc *gedcom.Document) {
 // validateRecords validates individual records.
 func (v *Validator) validateRecords(doc *gedcom.Document) {
 	for _, record := range doc.Records {
+		if record == nil {
+			continue
+		}
 		switch record.Type {
 		case gedcom.RecordTypeIndividual:
 			v.validateIndividual(record)
@@ -282,9 +295,16 @@ func (v *Validator) validateRecords(doc *gedcom.Document) {
 
 // validateIndividual validates an individual record.
 func (v *Validator) validateIndividual(record *gedcom.Record) {
+	if record == nil {
+		return
+	}
+
 	// Check for required NAME tag
 	hasName := false
 	for _, tag := range record.Tags {
+		if tag == nil {
+			continue
+		}
 		if tag.Tag == "NAME" {
 			hasName = true
 			break
@@ -302,9 +322,16 @@ func (v *Validator) validateIndividual(record *gedcom.Record) {
 
 // validateFamily validates a family record.
 func (v *Validator) validateFamily(record *gedcom.Record) {
+	if record == nil {
+		return
+	}
+
 	// Family records should have at least one spouse or child
 	hasMembers := false
 	for _, tag := range record.Tags {
+		if tag == nil {
+			continue
+		}
 		if tag.Tag == "HUSB" || tag.Tag == "WIFE" || tag.Tag == "CHIL" {
 			hasMembers = true
 			break

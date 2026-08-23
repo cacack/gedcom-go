@@ -54,7 +54,7 @@ const familySearchArkType = "familysearch.org/ark"
 func transformEXIDToVendorTags(doc *gedcom.Document, report *gedcom.ConversionReport, targetVersion gedcom.Version) {
 	total := 0
 	for _, record := range doc.Records {
-		if record.Type != gedcom.RecordTypeIndividual {
+		if record == nil || record.Type != gedcom.RecordTypeIndividual {
 			continue
 		}
 		rewritten, n := rewriteEXIDTags(record, report, targetVersion)
@@ -86,15 +86,16 @@ func rewriteEXIDTags(record *gedcom.Record, report *gedcom.ConversionReport, tar
 	count := 0
 	for i := 0; i < len(tags); i++ {
 		tag := tags[i]
-		if tag.Level != 1 || tag.Tag != "EXID" {
+		if tag == nil || tag.Level != 1 || tag.Tag != "EXID" {
 			out = append(out, tag)
 			continue
 		}
 
 		// Delimit this EXID's subordinate block (everything deeper than it,
-		// until the next tag at the same or a shallower level).
+		// until the next tag at the same or a shallower level). A nil tag has
+		// no level to compare, so it stays inside the block.
 		j := i + 1
-		for j < len(tags) && tags[j].Level > tag.Level {
+		for j < len(tags) && (tags[j] == nil || tags[j].Level > tag.Level) {
 			j++
 		}
 
@@ -106,6 +107,13 @@ func rewriteEXIDTags(record *gedcom.Record, report *gedcom.ConversionReport, tar
 			// Individual.FamilySearchID.
 			val := gedcom.EscapeLeadingAt(tag.Value)
 			out = append(out, &gedcom.Tag{Level: 1, Tag: "_FSFTID", Value: val})
+			// The block collapses to that single tag, but a nil inside it is
+			// the caller's element to keep, not ours to drop.
+			for _, sub := range tags[i+1 : j] {
+				if sub == nil {
+					out = append(out, nil)
+				}
+			}
 			report.AddNormalized(gedcom.ConversionNote{
 				Path:     BuildNestedPath(string(record.Type), record.XRef, exidPathSegment(count)),
 				Original: "EXID",
@@ -125,7 +133,7 @@ func rewriteEXIDTags(record *gedcom.Record, report *gedcom.ConversionReport, tar
 // cheap presence check so rewriteEXIDTags allocates only when there is work.
 func hasLevel1EXID(tags []*gedcom.Tag) bool {
 	for _, t := range tags {
-		if t.Level == 1 && t.Tag == "EXID" {
+		if t != nil && t.Level == 1 && t.Tag == "EXID" {
 			return true
 		}
 	}
@@ -141,6 +149,11 @@ func isConvertibleFamilySearchEXID(block []*gedcom.Tag) bool {
 	exidLevel := block[0].Level
 	hasArkType := false
 	for _, t := range block[1:] {
+		// A nil tag carries no content, so it neither qualifies nor
+		// disqualifies the block.
+		if t == nil {
+			continue
+		}
 		// Only a plain EXID whose sole subordinate is the matching TYPE is
 		// convertible. Any other direct subordinate (a non-ARK TYPE, NOTE,
 		// SOUR, ...) or any deeper tag (e.g. a NOTE nested under the TYPE)

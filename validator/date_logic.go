@@ -209,7 +209,7 @@ func (v *DateLogicValidator) checkMarriageBeforeBirth(doc *gedcom.Document, ind 
 
 		// Look for marriage event
 		for _, event := range fam.Events {
-			if event.Type != gedcom.EventMarriage {
+			if event == nil || event.Type != gedcom.EventMarriage {
 				continue
 			}
 

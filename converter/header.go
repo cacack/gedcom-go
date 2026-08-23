@@ -35,7 +35,7 @@ func upgradeHeaderTo70(header *gedcom.Header, report *gedcom.ConversionReport) {
 	// Check if SCHMA tag exists in header tags
 	hasSCHMA := false
 	for _, tag := range header.Tags {
-		if tag.Tag == "SCHMA" {
+		if tag != nil && tag.Tag == "SCHMA" {
 			hasSCHMA = true
 			break
 		}
@@ -52,7 +52,9 @@ func downgradeHeaderFrom70(header *gedcom.Header, targetVersion gedcom.Version, 
 	var newTags []*gedcom.Tag
 	schmaRemoved := false
 	for _, tag := range header.Tags {
-		if tag.Tag == "SCHMA" {
+		// A nil tag is not a SCHMA; it lands in newTags unchanged so the
+		// rebuilt slice keeps every element the caller put in it.
+		if tag != nil && tag.Tag == "SCHMA" {
 			schmaRemoved = true
 			continue
 		}

@@ -47,6 +47,9 @@ func consolidateCONCAndCONT(doc *gedcom.Document, report *gedcom.ConversionRepor
 
 	// Process all record tags
 	for _, record := range doc.Records {
+		if record == nil {
+			continue
+		}
 		var c1, c2 int
 		var notes []consolidationNote
 		record.Tags, c1, c2, notes = consolidateCONCAndCONTInTagsWithNotes(record.Tags)
@@ -108,6 +111,14 @@ func consolidateCONCAndCONTInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom
 	i := 0
 	for i < len(tags) {
 		tag := tags[i]
+		if tag == nil {
+			// A nil tag has no level, so it neither owns continuations nor is
+			// one. Keep it where the caller put it rather than shortening the
+			// slice.
+			result = append(result, nil)
+			i++
+			continue
+		}
 		baseLevel := tag.Level
 		originalValue := tag.Value
 
@@ -124,6 +135,12 @@ func consolidateCONCAndCONTInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom
 
 		for j < len(tags) {
 			nextTag := tags[j]
+			// A nil tag is never a continuation; preserve it in place.
+			if nextTag == nil {
+				otherChildren = append(otherChildren, nil)
+				j++
+				continue
+			}
 			// If level goes back to baseLevel or lower, we're done with children
 			if nextTag.Level <= baseLevel {
 				break
@@ -201,6 +218,9 @@ func consolidateCONC(doc *gedcom.Document, report *gedcom.ConversionReport) {
 
 	// Process all record tags
 	for _, record := range doc.Records {
+		if record == nil {
+			continue
+		}
 		var c int
 		record.Tags, c = consolidateCONCOnlyInTags(record.Tags)
 		concCount += c
@@ -225,6 +245,11 @@ func consolidateCONCOnlyInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, concCo
 	i := 0
 	for i < len(tags) {
 		tag := tags[i]
+		if tag == nil {
+			result = append(result, nil)
+			i++
+			continue
+		}
 		baseLevel := tag.Level
 
 		// Look ahead for CONC children at baseLevel+1
@@ -238,6 +263,12 @@ func consolidateCONCOnlyInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, concCo
 
 		for j < len(tags) {
 			nextTag := tags[j]
+			// A nil tag is never a continuation; preserve it in place.
+			if nextTag == nil {
+				otherChildren = append(otherChildren, nil)
+				j++
+				continue
+			}
 			// If level goes back to baseLevel or lower, we're done with children
 			if nextTag.Level <= baseLevel {
 				break
@@ -284,6 +315,9 @@ func convertCONTToNewlines(doc *gedcom.Document, report *gedcom.ConversionReport
 
 	// Process all record tags
 	for _, record := range doc.Records {
+		if record == nil {
+			continue
+		}
 		var c int
 		record.Tags, c = convertCONTOnlyInTags(record.Tags)
 		contCount += c
@@ -307,6 +341,11 @@ func convertCONTOnlyInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, contCount 
 	i := 0
 	for i < len(tags) {
 		tag := tags[i]
+		if tag == nil {
+			result = append(result, nil)
+			i++
+			continue
+		}
 		baseLevel := tag.Level
 
 		// Look ahead for CONT children at baseLevel+1
@@ -320,6 +359,12 @@ func convertCONTOnlyInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, contCount 
 
 		for j < len(tags) {
 			nextTag := tags[j]
+			// A nil tag is never a continuation; preserve it in place.
+			if nextTag == nil {
+				otherChildren = append(otherChildren, nil)
+				j++
+				continue
+			}
 			// If level goes back to baseLevel or lower, we're done with children
 			if nextTag.Level <= baseLevel {
 				break
@@ -382,6 +427,9 @@ func expandNewlinesToCONT(doc *gedcom.Document, report *gedcom.ConversionReport)
 
 	// Process all record tags
 	for _, record := range doc.Records {
+		if record == nil {
+			continue
+		}
 		var c int
 		var notes []expansionNote
 		record.Tags, c, notes = expandNewlinesInTagsWithNotes(record.Tags)
@@ -422,6 +470,11 @@ func expandNewlinesInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom.Tag, co
 	}
 
 	for _, tag := range tags {
+		// A nil tag has no value to expand; preserve it in place.
+		if tag == nil {
+			result = append(result, nil)
+			continue
+		}
 		// Check if this tag has embedded newlines
 		if strings.Contains(tag.Value, "\n") {
 			originalValue := tag.Value

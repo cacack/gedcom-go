@@ -1247,7 +1247,7 @@ Full support for encoding typed entities back to GEDCOM format:
 | Note | Text with continuation lines |
 | MediaObject | Files, formats, translations, citations |
 
-Nil values in a hand-built document are written as nothing instead of panicking: a nil element in any slice (a record, a tag, a name, an event, a citation) is skipped, a nil `Header` encodes as an empty one, and a nil `Document` returns `encoder.ErrNilDocument`. This covers the encoder only — a document holding nils encodes cleanly but can still panic in the validator, the converter, or a `Document` accessor. See the `encoder` package documentation for the full policy.
+Nil values in a hand-built document are written as nothing instead of panicking: a nil element in any slice (a record, a tag, a name, an event, a citation) is skipped, a nil `Header` encodes as an empty one, and a nil `Document` returns `encoder.ErrNilDocument`. The same skip-rather-than-panic rule applies library-wide — see [ADR 0007](docs/decisions/0007-error-transparency.md#nil-values) for the full policy, and the `encoder` package documentation for what the encoder writes for each shape.
 
 ### Round-Trip Encoding
 
@@ -1580,14 +1580,16 @@ Convenience methods on `Record` for type checking and casting:
 | `IsFamily()` | `bool` | True if record contains a Family |
 | `IsSource()` | `bool` | True if record contains a Source |
 | `IsSharedNote()` | `bool` | True if record contains a SharedNote |
-| `GetIndividual()` | `(*Individual, bool)` | Type assertion (`(nil, false)` if wrong type) |
-| `GetFamily()` | `(*Family, bool)` | Type assertion (`(nil, false)` if wrong type) |
-| `GetSource()` | `(*Source, bool)` | Type assertion (`(nil, false)` if wrong type) |
-| `GetRepository()` | `(*Repository, bool)` | Type assertion (`(nil, false)` if wrong type) |
-| `GetSubmitter()` | `(*Submitter, bool)` | Type assertion (`(nil, false)` if wrong type) |
-| `GetNote()` | `(*Note, bool)` | Type assertion (`(nil, false)` if wrong type) |
-| `GetMediaObject()` | `(*MediaObject, bool)` | Type assertion (`(nil, false)` if wrong type) |
-| `GetSharedNote()` | `(*SharedNote, bool)` | Type assertion (`(nil, false)` if wrong type) |
+| `GetIndividual()` | `(*Individual, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
+| `GetFamily()` | `(*Family, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
+| `GetSource()` | `(*Source, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
+| `GetRepository()` | `(*Repository, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
+| `GetSubmitter()` | `(*Submitter, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
+| `GetNote()` | `(*Note, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
+| `GetMediaObject()` | `(*MediaObject, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
+| `GetSharedNote()` | `(*SharedNote, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
+
+All twelve are nil-receiver safe: on a nil `*Record` every `Is*` returns `false` and every `Get*` returns `(nil, false)`. See [ADR 0007](docs/decisions/0007-error-transparency.md#nil-values).
 
 ```go
 for _, record := range doc.Records {

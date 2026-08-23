@@ -132,6 +132,10 @@ func (e *EncodingValidator) ValidateControlCharacters(doc *gedcom.Document) []Is
 
 	// Scan all records
 	for _, record := range doc.Records {
+		if record == nil {
+			continue
+		}
+
 		e.scanTagsForControlChars(record.Tags, record.XRef, &issues)
 
 		// Also check the record's value field
@@ -148,6 +152,9 @@ func (e *EncodingValidator) ValidateControlCharacters(doc *gedcom.Document) []Is
 // scanTagsForControlChars recursively scans tags for banned control characters.
 func (e *EncodingValidator) scanTagsForControlChars(tags []*gedcom.Tag, recordXRef string, issues *[]Issue) {
 	for _, tag := range tags {
+		if tag == nil {
+			continue
+		}
 		if tag.Value != "" {
 			if issue := e.checkControlChars(tag.Value, recordXRef, tag.Tag); issue != nil {
 				*issues = append(*issues, *issue)

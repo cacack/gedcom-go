@@ -397,6 +397,9 @@ func (s *SharedNote) Clone() *SharedNote {
 	if s.Translations != nil {
 		copied.Translations = make([]*SharedNoteTranslation, len(s.Translations))
 		for k, t := range s.Translations {
+			if t == nil {
+				continue
+			}
 			copied.Translations[k] = &SharedNoteTranslation{
 				Value:    t.Value,
 				MIME:     t.MIME,
@@ -750,6 +753,9 @@ func cloneMediaFile(mf *MediaFile) *MediaFile {
 	if mf.Translations != nil {
 		copied.Translations = make([]*MediaTranslation, len(mf.Translations))
 		for i, t := range mf.Translations {
+			if t == nil {
+				continue
+			}
 			copied.Translations[i] = &MediaTranslation{
 				FileRef: t.FileRef,
 				Form:    t.Form,

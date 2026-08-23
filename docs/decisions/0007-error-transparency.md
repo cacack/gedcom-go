@@ -233,7 +233,7 @@ Validation issue:
 The library follows Go's convention that panics are for programmer errors, not runtime conditions:
 
 - Invalid input returns error, never panics
-- Nil checks return early with descriptive errors
+- Nil checks return early: with a descriptive error where an argument is missing, silently where an element is (see Nil Values below)
 - Index bounds checked before access
 - Type assertions use comma-ok form
 
@@ -249,6 +249,59 @@ if level < 0 {
 }
 ```
 
+### Nil Values
+
+A document assembled in memory can hold nils that a decoded one never does: a
+half-built record, a slice element a generator left unset, a `Record.Entity`
+holding a typed nil pointer. The never-panic rule is unconditional, so it covers
+these too, and it resolves them the same way everywhere — **a nil element is
+skipped**.
+
+Skipped:
+
+- A nil element in any slice: `Document.Records`, `Record.Tags`, and every
+  slice-of-pointer field on an entity (`Names`, `Events`, `SourceCitations`, and
+  the rest).
+- A `Record.Entity` holding a typed nil pointer. The interface value is non-nil,
+  so it reaches code that would dereference it; `Record.Get*` reports
+  `(nil, false)` for it rather than handing back a pointer the caller cannot use.
+- A nil `Document.Header`, read as an empty header.
+- A nil `*Document` receiver on `Document`'s lookup and collection accessors,
+  which return nil rather than dereferencing it.
+
+Refused:
+
+- `Encode(w, nil)` returns `encoder.ErrNilDocument`. A nil `Document` is a
+  missing argument, not a missing element — there is nothing to write and no
+  surrounding structure to carry on with, so writing an empty file would hide
+  the caller's mistake rather than step over it.
+
+Skip beats error because a nil carries no data: dropping it loses nothing that
+was ever there, and the result matches the same document with the nils removed.
+Erroring would be the larger change, since it would give these entry points a
+content-error contract they have never had — every caller would then have to
+handle a failure only a caller that built a nil can cause.
+
+Skipping is silent, deliberately. A nil usually means the code that built the
+document has a bug, and the library does not say so. Reporting nils belongs with
+the other diagnostics rather than as a new failure mode on the write path, and
+is tracked by issue #457 — silence here is a decision, not an oversight.
+
+The policy is library-wide: the encoder, `Record`'s `Is*`/`Get*`, `Document`'s
+lookup and collection accessors, the entity helpers that walk a slice field, the
+validator, the converter, the `gedcom` traversal helpers (`Visit`, `Apply`,
+`Clone`, subset extraction) and `merge`'s XRef remapping all follow it.
+
+"Skip" carries one qualification, in the converter. It rebuilds tag slices
+rather than dropping their nils, so every nil comes back, in its original
+relative order. The index is not promised: CONC/CONT consolidation and the EXID
+collapse merge several tags into one, so a preserved nil shifts along with
+everything that followed the tags which disappeared.
+Its CONC/CONT and EXID lookaheads therefore treat a nil as neither a
+continuation nor a block terminator: a nil between two `CONC` tags must not end
+the block, or the merged value would differ from the one the same document
+without the nil produces.
+
 ## References
 
 - `parser/errors.go` - ParseError implementation, readErrorLine
@@ -256,4 +309,6 @@ if level < 0 {
 - `charset/charset.go` - ErrInvalidUTF8
 - `charset/ansel.go` - ErrInvalidANSEL
 - `validator/issue.go` - Validation issue structure
+- `encoder/doc.go` - what the encoder writes for each nil shape, ErrNilDocument
+- `gedcom/record.go` - nil-safe Record accessors
 - CLAUDE.md - Principle V (Error Transparency)

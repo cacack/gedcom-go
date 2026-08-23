@@ -48,6 +48,10 @@ func (v *TagValidator) Validate(doc *gedcom.Document) []Issue {
 	var issues []Issue
 
 	for _, record := range doc.Records {
+		if record == nil {
+			continue
+		}
+
 		// The record type tag (INDI, FAM, etc.) is the parent for level 1 tags
 		recordTypeTag := string(record.Type)
 
@@ -72,6 +76,10 @@ func (v *TagValidator) scanTags(tags []*gedcom.Tag, recordType, recordXRef strin
 	parentStack = append(parentStack, recordType) // Level 0 parent is the record type
 
 	for _, tag := range tags {
+		if tag == nil {
+			continue
+		}
+
 		// Determine the parent tag for this tag
 		// For a tag at level N, the parent is at level N-1
 		parent := ""
