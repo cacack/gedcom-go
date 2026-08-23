@@ -29,7 +29,7 @@ This installs pre-commit hooks that enforce:
 | `make test-coverage` | Run tests with per-package coverage report |
 | `make fmt` | Format code |
 | `make vet` | Run go vet |
-| `make lint` | Run staticcheck |
+| `make lint` | Run golangci-lint (same rules and exclusions as CI) |
 | `make security` | Run gosec + govulncheck |
 | `make api-check` | Check for breaking API changes vs latest release |
 | `make bench` | Run benchmarks |

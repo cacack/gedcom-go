@@ -44,7 +44,7 @@ This project adheres to a simple code of conduct:
 
    This single command will:
    - Download Go dependencies
-   - Install development tools (golangci-lint, staticcheck, gosec, govulncheck, apidiff)
+   - Install development tools (golangci-lint, gosec, govulncheck, apidiff)
    - Install git hooks for faster feedback (catch CI failures locally)
    - Verify everything works by running tests
 
@@ -150,7 +150,7 @@ make fmt
 # Run vet
 make vet
 
-# Run staticcheck linter
+# Run golangci-lint (same rules and exclusions as CI)
 make lint
 
 # Run security scanners (gosec, govulncheck)
@@ -171,9 +171,6 @@ go fmt ./...
 
 # Run vet
 go vet ./...
-
-# Run staticcheck (if installed)
-staticcheck ./...
 ```
 
 ### 5. Commit Your Changes

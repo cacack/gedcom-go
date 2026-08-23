@@ -1,7 +1,10 @@
 # golangci-lint v2 config
 # IMPORTANT: v2 config is NOT compatible with v1
-# Version pinned in go.mod via tools/tools.go (single source of truth)
-# Dependabot will create PRs when new versions are available
+# Version is pinned in two places and Dependabot covers neither -- the gomod
+# ecosystem cannot see a Makefile variable, and the github-actions ecosystem
+# bumps the action's `uses:` SHA, not its `version:` input. Bump both by hand:
+#   Makefile                   GOLANGCI_LINT_VERSION
+#   .github/workflows/ci.yml   golangci-lint-action `version:`
 version: "2"
 run:
   modules-download-mode: readonly

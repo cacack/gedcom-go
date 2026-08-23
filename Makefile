@@ -111,10 +111,12 @@ vet: ## Run go vet
 	$(GOVET) ./...
 	@echo "✓ No issues found"
 
-lint: ## Run staticcheck linter
-	@echo "Running staticcheck..."
-	@which staticcheck > /dev/null || (echo "staticcheck not found. Run 'make install-tools'" && exit 1)
-	staticcheck ./...
+lint: ## Run golangci-lint (same rules and exclusions as CI)
+	@echo "Running golangci-lint..."
+	@GOLANGCI_LINT=$$(command -v golangci-lint || echo "$$HOME/go/bin/golangci-lint"); \
+	if [ ! -x "$$GOLANGCI_LINT" ]; then GOLANGCI_LINT="$$(go env GOPATH)/bin/golangci-lint"; fi; \
+	if [ ! -x "$$GOLANGCI_LINT" ]; then echo "golangci-lint not found. Run 'make install-tools'" && exit 1; fi; \
+	$$GOLANGCI_LINT run --timeout=5m ./...
 	@echo "✓ No issues found"
 
 security: ## Run security scanners (gosec, govulncheck)
@@ -177,7 +179,6 @@ clean: ## Clean build artifacts and coverage files
 
 # Dev tool versions - update these when upgrading
 GOLANGCI_LINT_VERSION := v2.7.2
-STATICCHECK_VERSION := 2025.1
 GOSEC_VERSION := v2.22.10
 GOVULNCHECK_VERSION := latest
 GO_TEST_COVERAGE_VERSION := latest
@@ -186,14 +187,12 @@ APIDIFF_VERSION := latest
 install-tools: ## Install development tools (pinned versions)
 	@echo "Installing development tools..."
 	$(GOCMD) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
-	$(GOCMD) install honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION)
 	$(GOCMD) install github.com/securego/gosec/v2/cmd/gosec@$(GOSEC_VERSION)
 	$(GOCMD) install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
 	$(GOCMD) install github.com/vladopajic/go-test-coverage/v2@$(GO_TEST_COVERAGE_VERSION)
 	$(GOCMD) install golang.org/x/exp/cmd/apidiff@$(APIDIFF_VERSION)
 	@echo "✓ Tools installed:"
 	@echo "  golangci-lint $(GOLANGCI_LINT_VERSION)"
-	@echo "  staticcheck $(STATICCHECK_VERSION)"
 	@echo "  gosec $(GOSEC_VERSION)"
 	@echo "  govulncheck $(GOVULNCHECK_VERSION)"
 	@echo "  go-test-coverage $(GO_TEST_COVERAGE_VERSION)"
@@ -226,7 +225,7 @@ setup: download install-tools setup-hooks ## Set up complete dev environment
 	@echo "  Useful commands:"
 	@echo "    make test           Run all tests"
 	@echo "    make check-coverage Check coverage thresholds"
-	@echo "    make lint           Run staticcheck linter"
+	@echo "    make lint           Run golangci-lint"
 	@echo "    make fmt            Format code"
 	@echo ""
 
@@ -334,12 +333,8 @@ preflight: ## Run all CI checks locally before pushing
 	@$(GOVET) ./...
 	@echo "✓ No vet issues"
 	@echo ""
-	@echo "→ [5/9] Running golangci-lint..."
-	@GOLANGCI_LINT=$$(command -v golangci-lint || echo "$$HOME/go/bin/golangci-lint"); \
-	if [ ! -x "$$GOLANGCI_LINT" ]; then GOLANGCI_LINT="$$(go env GOPATH)/bin/golangci-lint"; fi; \
-	if [ ! -x "$$GOLANGCI_LINT" ]; then echo "golangci-lint not found. Run 'make install-tools'" && exit 1; fi; \
-	$$GOLANGCI_LINT run --timeout=5m
-	@echo "✓ Lint passed"
+	@echo "→ [5/9] Linting..."
+	@$(MAKE) --no-print-directory lint
 	@echo ""
 	@echo "→ [6/9] Running tests with race detector..."
 	@$(GOTEST) -race ./...
