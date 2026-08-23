@@ -142,6 +142,10 @@ func (e *StreamEncoder) WriteHeader(h *gedcom.Header) error {
 // before calling this method. This method can be called multiple times to write
 // multiple records.
 //
+// A nil record writes nothing and leaves the encoder's state untouched, so a
+// caller can range over a slice of records without filtering it first. See the
+// package documentation for the full nil policy.
+//
 // Returns ErrHeaderNotWritten if the header has not been written,
 // or ErrEncodingComplete if the encoding is already complete.
 func (e *StreamEncoder) WriteRecord(r *gedcom.Record) error {
@@ -156,6 +160,13 @@ func (e *StreamEncoder) WriteRecord(r *gedcom.Record) error {
 		// Valid states, proceed
 	case stateComplete:
 		return ErrEncodingComplete
+	}
+
+	// Checked after the state transitions so a misordered call still reports the
+	// misordering, and before the write so state does not advance to
+	// "records written" for a record that produced no bytes.
+	if r == nil {
+		return nil
 	}
 
 	if err := writeRecord(e.writer, r, e.options); err != nil {
@@ -254,12 +265,20 @@ func (e *StreamEncoder) Err() error {
 // EncodeStreaming is a convenience function that streams a complete document.
 // It's equivalent to calling WriteHeader, WriteRecord for each record, and WriteTrailer.
 // This function exists mainly for API symmetry with the batch Encode function.
+//
+// Returns ErrNilDocument if doc is nil, matching Encode.
 func EncodeStreaming(w io.Writer, doc *gedcom.Document) error {
 	return EncodeStreamingWithOptions(w, doc, DefaultOptions())
 }
 
 // EncodeStreamingWithOptions is like EncodeStreaming but with custom options.
+//
+// Returns ErrNilDocument if doc is nil, matching EncodeWithOptions.
 func EncodeStreamingWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeOptions) error {
+	if doc == nil {
+		return ErrNilDocument
+	}
+
 	enc := NewStreamEncoderWithOptions(w, opts)
 
 	if err := enc.WriteHeader(doc.Header); err != nil {

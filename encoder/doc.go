@@ -39,4 +39,32 @@
 //	if err := encoder.EncodeWithOptions(f, doc, opts); err != nil {
 //	    log.Fatal(err)
 //	}
+//
+// # Nil Values
+//
+// A document assembled in memory can hold nils that a decoded one never does.
+// The encoder never panics on them (see ADR 0007); it writes them as nothing:
+//
+//   - A nil element in any slice — a record in Document.Records, a tag in
+//     Record.Tags, or an entity's Names, Events, SourceCitations and so on — is
+//     skipped. The surrounding record and its remaining elements encode normally.
+//   - A nil entity field, and a Record.Entity holding a typed nil pointer,
+//     contribute no tags.
+//   - A nil Document.Header is written as an empty header, exactly as
+//     &gedcom.Header{} is, so options such as TargetVersion still apply.
+//   - A nil [gedcom.Document] returns [ErrNilDocument], because there is no
+//     document to write at all.
+//
+// A nil element carries no data, so skipping it loses nothing that was there —
+// but it usually means the code that built the document has a bug, and the
+// encoder does not report one. Callers that need to know should check for nils
+// before encoding.
+//
+// This policy covers the encoder, not the whole library (issue #458). A
+// document holding nils encodes cleanly, but the same document can still panic
+// elsewhere: validator, converter and the [gedcom.Document] collection
+// accessors read Document.Records without a nil check. Traversal in the gedcom
+// package (Visit, Apply, Clone, subset extraction) and XRef remapping in merge
+// do skip nils, so the split is per package. Do not read a clean encode as
+// proof that a document is nil-free.
 package encoder

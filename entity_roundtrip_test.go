@@ -22,7 +22,8 @@ import (
 // decoded document still produces byte-identical output.
 //
 // That path is what programmatic consumers use, and it is where #421, #404,
-// #438, #330, #334 and #326 all live.
+// #330, #334 and #326 all live. #438 lived here too and is fixed; what pins it
+// now is TestEntityNilElementDoesNotPanic below.
 //
 // Note what is deliberately NOT asserted here: that the typed model carries
 // everything the raw tags do. ADR 0003 gives raw tags the losslessness role and
@@ -45,15 +46,6 @@ var entityKnownBad = map[string]string{
 	"Source.Title":       "#442 decoder drops CONT/CONC; encoder writes Title raw",
 	"Source.Author":      "#442 decoder drops CONT/CONC; encoder writes Author raw",
 	"Source.Publication": "#442 decoder drops CONT/CONC; encoder writes Publication raw",
-}
-
-// nilElementPanics lists entity fields whose slices panic on a nil element.
-// Delete an entry when #438 is fixed; the test fails if one stops panicking.
-var nilElementPanics = map[string]string{
-	"Individual.Names":        "#438",
-	"Individual.Events":       "#438",
-	"Individual.Attributes":   "#438",
-	"Individual.Associations": "#438",
 }
 
 // sampleEntities are populated by hand rather than by reflection. Reflection
@@ -236,6 +228,12 @@ func compareEntity(typeName string, want, got interface{}) []string {
 // TestEntityNilElementDoesNotPanic pins #438: a nil inside an entity's slice
 // field must not panic the encoder. ADR 0007 makes the no-panic rule
 // unconditional, so this is a contract test, not a robustness nicety.
+//
+// These four fields are the ones this harness found; the exhaustive matrix --
+// every slice-of-pointer field on every entity type, asserting the output also
+// matches an encode of the same document without the nil -- lives in
+// encoder/nil_safety_test.go. Both are worth keeping: this one guards the entity
+// path from the outside, where the harness that found the defect sits.
 func TestEntityNilElementDoesNotPanic(t *testing.T) {
 	cases := []struct {
 		path   string
@@ -257,28 +255,20 @@ func TestEntityNilElementDoesNotPanic(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.path, func(t *testing.T) {
-			_, known := nilElementPanics[tc.path]
-
-			panicked := func() (p bool) {
-				defer func() {
-					if r := recover(); r != nil {
-						p = true
-					}
-				}()
-				doc := &gedcom.Document{
-					Header:  &gedcom.Header{Version: gedcom.Version551},
-					Records: []*gedcom.Record{{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: tc.entity()}},
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("Encode panicked on a nil element in %s: %v (ADR 0007: the library never panics)", tc.path, r)
 				}
-				var buf bytes.Buffer
-				_ = Encode(&buf, doc)
-				return false
 			}()
 
-			switch {
-			case panicked && !known:
-				t.Errorf("Encode panicked on a nil element in %s (ADR 0007: the library never panics)", tc.path)
-			case !panicked && known:
-				t.Errorf("%s no longer panics; remove it from nilElementPanics (#438)", tc.path)
+			doc := &gedcom.Document{
+				Header:  &gedcom.Header{Version: gedcom.Version551},
+				Records: []*gedcom.Record{{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: tc.entity()}},
+			}
+
+			var buf bytes.Buffer
+			if err := Encode(&buf, doc); err != nil {
+				t.Errorf("Encode() error = %v", err)
 			}
 		})
 	}

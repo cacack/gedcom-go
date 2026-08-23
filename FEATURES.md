@@ -1247,6 +1247,8 @@ Full support for encoding typed entities back to GEDCOM format:
 | Note | Text with continuation lines |
 | MediaObject | Files, formats, translations, citations |
 
+Nil values in a hand-built document are written as nothing instead of panicking: a nil element in any slice (a record, a tag, a name, an event, a citation) is skipped, a nil `Header` encodes as an empty one, and a nil `Document` returns `encoder.ErrNilDocument`. This covers the encoder only — a document holding nils encodes cleanly but can still panic in the validator, the converter, or a `Document` accessor. See the `encoder` package documentation for the full policy.
+
 ### Round-Trip Encoding
 
 Decode → modify → encode workflow:

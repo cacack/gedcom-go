@@ -165,6 +165,16 @@ func findWordBoundary(line string, maxLen int) int {
 // entityToTags converts an entity to tags based on record type.
 // Returns nil if no conversion is needed (entity is nil or type not supported).
 //
+// Every *ToTags writer below returns nil for a nil argument, which is what makes
+// a nil element in a hand-built slice harmless: the loops append the writer's
+// result without inspecting the element, and appending nothing is a no-op. Only
+// externalIDsToTags, which reads its elements inline instead of delegating,
+// skips nils itself. Callers construct these values, so a nil element is a
+// caller bug the encoder cannot repair -- but it carries no data, so skipping it
+// loses nothing and keeps the document encodable. gedcom.Visit and gedcom.Apply
+// walk the same entities the same way. See the package documentation for the
+// full nil policy.
+//
 //nolint:gocyclo // Type switch for all GEDCOM record types requires many cases
 func entityToTags(record *gedcom.Record, opts *EncodeOptions) []*gedcom.Tag {
 	if record.Entity == nil {
@@ -213,6 +223,10 @@ func entityToTags(record *gedcom.Record, opts *EncodeOptions) []*gedcom.Tag {
 //
 //nolint:gocyclo // Converting all individual fields requires handling many cases
 func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Tag {
+	if indi == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// Names (level 1)
@@ -307,6 +321,10 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 //
 //nolint:gocyclo // Converting all family fields requires handling many cases
 func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
+	if fam == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// Husband (level 1) - HUSB
@@ -381,7 +399,13 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 }
 
 // sourceToTags converts a Source entity to GEDCOM tags.
+//
+//nolint:gocyclo // Converting all source fields requires handling many cases
 func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
+	if src == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// Title (level 1) - TITL
@@ -458,6 +482,10 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 // emitting the REPO pointer (or inline NAME) plus CALN (with optional MEDI) and
 // NOTE subordinates.
 func sourceRepositoryLinkToTags(link *gedcom.SourceRepositoryLink, opts *EncodeOptions) []*gedcom.Tag {
+	if link == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// A degenerate link with neither pointer, inline name, nor any
@@ -500,6 +528,10 @@ func sourceRepositoryLinkToTags(link *gedcom.SourceRepositoryLink, opts *EncodeO
 
 // submitterToTags converts a Submitter entity to GEDCOM tags.
 func submitterToTags(subm *gedcom.Submitter, opts *EncodeOptions) []*gedcom.Tag {
+	if subm == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// Name (level 1) - NAME
@@ -542,6 +574,10 @@ func submitterToTags(subm *gedcom.Submitter, opts *EncodeOptions) []*gedcom.Tag 
 
 // repositoryToTags converts a Repository entity to GEDCOM tags.
 func repositoryToTags(repo *gedcom.Repository, opts *EncodeOptions) []*gedcom.Tag {
+	if repo == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// Name (level 1) - NAME
@@ -569,6 +605,10 @@ func repositoryToTags(repo *gedcom.Repository, opts *EncodeOptions) []*gedcom.Ta
 
 // noteToTags converts a Note entity to GEDCOM tags.
 func noteToTags(note *gedcom.Note) []*gedcom.Tag {
+	if note == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// Note continuation lines (level 1) - CONT. Continuation is deprecated and
@@ -584,6 +624,10 @@ func noteToTags(note *gedcom.Note) []*gedcom.Tag {
 
 // mediaObjectToTags converts a MediaObject entity to GEDCOM tags.
 func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom.Tag {
+	if media == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// Files (level 1) - FILE
@@ -634,6 +678,10 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 
 // nameToTags converts a PersonalName to GEDCOM tags at the specified level.
 func nameToTags(name *gedcom.PersonalName, level int) []*gedcom.Tag {
+	if name == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// NAME tag with full name value
@@ -672,6 +720,10 @@ func nameToTags(name *gedcom.PersonalName, level int) []*gedcom.Tag {
 
 // transliterationToTags converts a Transliteration to GEDCOM tags at the specified level.
 func transliterationToTags(tran *gedcom.Transliteration, level int) []*gedcom.Tag {
+	if tran == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// TRAN tag with transliterated name value
@@ -707,6 +759,10 @@ func transliterationToTags(tran *gedcom.Transliteration, level int) []*gedcom.Ta
 //
 //nolint:gocyclo // Converting all event fields requires handling many cases
 func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.Tag {
+	if event == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// Event tag - for negative assertions (GEDCOM 7.0), use NO tag with event type as value
@@ -795,6 +851,10 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 
 // attributeToTags converts an Attribute to GEDCOM tags at the specified level.
 func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*gedcom.Tag {
+	if attr == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// Attribute tag (OCCU, EDUC, etc.) with value
@@ -823,6 +883,10 @@ func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*
 
 // sourceCitationToTags converts a SourceCitation to GEDCOM tags at the specified level.
 func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOptions) []*gedcom.Tag {
+	if cite == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// SOUR tag with source XRef
@@ -852,6 +916,10 @@ func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOp
 
 // sourceCitationDataToTags converts SourceCitationData to GEDCOM tags at the specified level.
 func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int, opts *EncodeOptions) []*gedcom.Tag {
+	if data == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// DATA tag
@@ -872,6 +940,10 @@ func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int, opts *
 
 // addressToTags converts an Address to GEDCOM tags at the specified level.
 func addressToTags(addr *gedcom.Address, level int) []*gedcom.Tag {
+	if addr == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// ADDR tag with optional first line value
@@ -927,6 +999,10 @@ func placeToTags(placeName string, detail *gedcom.PlaceDetail, level int) []*ged
 
 // coordinatesToTags converts Coordinates to GEDCOM tags at the specified level.
 func coordinatesToTags(coords *gedcom.Coordinates, level int) []*gedcom.Tag {
+	if coords == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// MAP tag
@@ -945,6 +1021,10 @@ func coordinatesToTags(coords *gedcom.Coordinates, level int) []*gedcom.Tag {
 
 // ldsOrdinanceToTags converts an LDSOrdinance to GEDCOM tags at the specified level.
 func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int) []*gedcom.Tag {
+	if ord == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// Ordinance tag (BAPL, CONL, ENDL, SLGC, SLGS)
@@ -977,6 +1057,10 @@ func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int) []*gedcom.Tag {
 
 // familyLinkToTags converts a FamilyLink to GEDCOM tags at the specified level.
 func familyLinkToTags(link *gedcom.FamilyLink, level int) []*gedcom.Tag {
+	if link == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// FAMC tag with family XRef
@@ -992,6 +1076,10 @@ func familyLinkToTags(link *gedcom.FamilyLink, level int) []*gedcom.Tag {
 
 // associationToTags converts an Association to GEDCOM tags at the specified level.
 func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions) []*gedcom.Tag {
+	if assoc == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// ASSO tag with individual XRef
@@ -1023,6 +1111,10 @@ func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions
 
 // changeDateToTags converts a ChangeDate to GEDCOM tags at the specified level.
 func changeDateToTags(cd *gedcom.ChangeDate, level int, tagName string) []*gedcom.Tag {
+	if cd == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// CHAN or CREA tag
@@ -1043,6 +1135,10 @@ func changeDateToTags(cd *gedcom.ChangeDate, level int, tagName string) []*gedco
 
 // mediaLinkToTags converts a MediaLink to GEDCOM tags at the specified level.
 func mediaLinkToTags(link *gedcom.MediaLink, level int) []*gedcom.Tag {
+	if link == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// OBJE tag with media XRef
@@ -1062,6 +1158,10 @@ func mediaLinkToTags(link *gedcom.MediaLink, level int) []*gedcom.Tag {
 
 // cropRegionToTags converts a CropRegion to GEDCOM tags at the specified level.
 func cropRegionToTags(crop *gedcom.CropRegion, level int) []*gedcom.Tag {
+	if crop == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// CROP tag
@@ -1086,6 +1186,10 @@ func cropRegionToTags(crop *gedcom.CropRegion, level int) []*gedcom.Tag {
 
 // mediaFileToTags converts a MediaFile to GEDCOM tags at the specified level.
 func mediaFileToTags(file *gedcom.MediaFile, level int) []*gedcom.Tag {
+	if file == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// FILE tag with file reference
@@ -1116,6 +1220,10 @@ func mediaFileToTags(file *gedcom.MediaFile, level int) []*gedcom.Tag {
 
 // mediaTranslationToTags converts a MediaTranslation to GEDCOM tags at the specified level.
 func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int) []*gedcom.Tag {
+	if tran == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// TRAN tag with file reference
@@ -1150,12 +1258,12 @@ func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int) []*gedcom.
 func entityRecordText(record *gedcom.Record, opts *EncodeOptions) (string, []*gedcom.Tag) {
 	switch record.Type {
 	case gedcom.RecordTypeSharedNote:
-		if snote, ok := record.Entity.(*gedcom.SharedNote); ok && snote.Text != "" {
+		if snote, ok := record.Entity.(*gedcom.SharedNote); ok && snote != nil && snote.Text != "" {
 			tags := textToTags(snote.Text, 0, "SNOTE", opts)
 			return tags[0].Value, tags[1:]
 		}
 	case gedcom.RecordTypeNote:
-		if note, ok := record.Entity.(*gedcom.Note); ok && note.Text != "" {
+		if note, ok := record.Entity.(*gedcom.Note); ok && note != nil && note.Text != "" {
 			tags := textToTags(note.Text, 0, "NOTE", opts)
 			return tags[0].Value, tags[1:]
 		}
@@ -1168,6 +1276,10 @@ func entityRecordText(record *gedcom.Record, opts *EncodeOptions) (string, []*ge
 // The note's Text (level-0 value plus CONT/CONC continuation) is handled by
 // writeRecord via entityRecordText, not here.
 func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Tag {
+	if note == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// MIME (level 1)
@@ -1206,6 +1318,10 @@ func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Ta
 
 // sharedNoteTranslationToTags converts a SharedNoteTranslation to GEDCOM tags at the specified level.
 func sharedNoteTranslationToTags(tran *gedcom.SharedNoteTranslation, level int, opts *EncodeOptions) []*gedcom.Tag {
+	if tran == nil {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// TRAN tag with translated text. Route Value through textToTags so a
@@ -1232,6 +1348,10 @@ func externalIDsToTags(externalIDs []*gedcom.ExternalID, level int) []*gedcom.Ta
 	var tags []*gedcom.Tag
 
 	for _, exid := range externalIDs {
+		if exid == nil {
+			continue
+		}
+
 		// EXID tag with external identifier value
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "EXID", Value: exid.Value})
 
