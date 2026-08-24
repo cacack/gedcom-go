@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0](https://github.com/cacack/gedcom-go/compare/v2.3.1...v2.4.0) (2026-08-24)
+
+
+### Features
+
+* **gedcom:** add Attribute.TypeDetail and type FACT into Attributes ([e549a74](https://github.com/cacack/gedcom-go/commit/e549a74fb351d19a3f8212ce930dda85cc2dd7e2)), closes [#386](https://github.com/cacack/gedcom-go/issues/386)
+
+
+### Bug Fixes
+
+* **charset:** count bare CR as a line break when locating bad bytes ([f0b7d8b](https://github.com/cacack/gedcom-go/commit/f0b7d8b359e64c016d884c301c25167f3713178a)), closes [#376](https://github.com/cacack/gedcom-go/issues/376)
+* **charset:** deliver the valid prefix of a rejected chunk ([a7d1b0e](https://github.com/cacack/gedcom-go/commit/a7d1b0e0adc0e7d3fc39259f0552b2cbd95bab6d)), closes [#382](https://github.com/cacack/gedcom-go/issues/382)
+* **charset:** report the physical line of an invalid ANSEL byte ([d892c21](https://github.com/cacack/gedcom-go/commit/d892c211270926d28117020cad09c27af563c004)), closes [#403](https://github.com/cacack/gedcom-go/issues/403)
+* **converter,merge:** reconcile the other producers of Header.Tags ([2dc3e64](https://github.com/cacack/gedcom-go/commit/2dc3e64aca64b293407f5b6728080d862f273626))
+* **converter:** update the version tag, not just the version field ([b6c1183](https://github.com/cacack/gedcom-go/commit/b6c1183fae85386852e1ec5c5cabcfb1687c1660))
+* **decoder:** decode individual EVEN into Individual.Events ([acf2887](https://github.com/cacack/gedcom-go/commit/acf28876d07a5e943c555f3354cbd19d3e73f9df)), closes [#378](https://github.com/cacack/gedcom-go/issues/378)
+* **decoder:** fold CONT into Note.Text, not just CONC ([986119b](https://github.com/cacack/gedcom-go/commit/986119b53aed70d7d770f984cab8a39f923e6bfe)), closes [#439](https://github.com/cacack/gedcom-go/issues/439) [#442](https://github.com/cacack/gedcom-go/issues/442)
+* **decoder:** keep a level-0 HEAD/TRLR line that carries an XRef ([cac4ff8](https://github.com/cacack/gedcom-go/commit/cac4ff8b2cd2d730fb522703c87d080b6781cb54)), closes [#396](https://github.com/cacack/gedcom-go/issues/396)
+* **decoder:** keep a recovered XRef on the subordinate tag ([a31b90c](https://github.com/cacack/gedcom-go/commit/a31b90c14873a52a0e335202e3a1bb2935623736)), closes [#395](https://github.com/cacack/gedcom-go/issues/395)
+* **decoder:** normalize padded token values after the delimiter fix ([7d545f0](https://github.com/cacack/gedcom-go/commit/7d545f02b3ffdecb19286a34ad8637f2dde337b5)), closes [#426](https://github.com/cacack/gedcom-go/issues/426)
+* **decoder:** recognize standard INDI tags instead of UNKNOWN_TAG ([c5d61f5](https://github.com/cacack/gedcom-go/commit/c5d61f56026de04e137bc0b634ad14bb0e7401b4)), closes [#375](https://github.com/cacack/gedcom-go/issues/375)
+* **encoder:** write a level-0 record's value, safely ([7901cd7](https://github.com/cacack/gedcom-go/commit/7901cd7310ac36d96f134ccdab2d543860c5f700))
+* **encoder:** write a multiline tag value back as CONT lines ([75f5270](https://github.com/cacack/gedcom-go/commit/75f5270375f7ac6476d902271edf2c20f67caf55)), closes [#419](https://github.com/cacack/gedcom-go/issues/419)
+* **encoder:** write a nil as nothing instead of panicking ([e51a5d3](https://github.com/cacack/gedcom-go/commit/e51a5d3bc1b927ac3dca4e08f3ac37147a2bc7f4)), closes [#438](https://github.com/cacack/gedcom-go/issues/438)
+* **encoder:** write the header the document has, not four fields of it ([d71c35a](https://github.com/cacack/gedcom-go/commit/d71c35a07afa7d8a796611877f41208d9273a358))
+* **gedcom:** carry note and external-ID fields through every Clone ([176e386](https://github.com/cacack/gedcom-go/commit/176e386fea07e2cf53388ef0fff20f0744917c9f))
+* **gedcom:** compose calendar escapes with date modifiers ([e844494](https://github.com/cacack/gedcom-go/commit/e84449481a74cf5e2a202fb9dbb4850514a84138)), closes [#384](https://github.com/cacack/gedcom-go/issues/384)
+* **gedcom:** copy IsInterpreted and InterpretedFrom in cloneDate ([1e9d1fe](https://github.com/cacack/gedcom-go/commit/1e9d1fe34b2be428c57fbf7e1e6f8d53469d1230)), closes [#400](https://github.com/cacack/gedcom-go/issues/400)
+* **parser:** consume one delimiter space, not the whole run ([2b393ac](https://github.com/cacack/gedcom-go/commit/2b393acb59515e7d55b79a4ff7a802cba7e7e018)), closes [#426](https://github.com/cacack/gedcom-go/issues/426)
+* **parser:** reject levels above 99 and classify drops as INVALID_LEVEL ([a1f09c6](https://github.com/cacack/gedcom-go/commit/a1f09c60f142a29d670f94ab5eb77fdc41a3b534)), closes [#379](https://github.com/cacack/gedcom-go/issues/379)
+* **parser:** report and recover a level-0 XRef with no closing @ ([b53c7ad](https://github.com/cacack/gedcom-go/commit/b53c7ad4de99f22fb89fb32eb330f9f4b8db53ba)), closes [#385](https://github.com/cacack/gedcom-go/issues/385)
+* **parser:** report and recover XRefs containing a space ([c3c264a](https://github.com/cacack/gedcom-go/commit/c3c264a825210ef09b1248457e745ef0f4400fd4)), closes [#377](https://github.com/cacack/gedcom-go/issues/377)
+* **parser:** report the offending byte's physical line on read errors ([25d369d](https://github.com/cacack/gedcom-go/commit/25d369d9be8955c57a8f8efa616f3fecfe8eb729)), closes [#376](https://github.com/cacack/gedcom-go/issues/376)
+* **parser:** report the reader error, not the line it truncated ([9b2dea5](https://github.com/cacack/gedcom-go/commit/9b2dea5ecc8fd175e8f2709daff7c845d3152579)), closes [#382](https://github.com/cacack/gedcom-go/issues/382)
+* skip nils library-wide instead of panicking on them ([902f70c](https://github.com/cacack/gedcom-go/commit/902f70c54d1e3cb877577088c53ad10c2018ef1e))
+
 ## [2.3.1](https://github.com/cacack/gedcom-go/compare/v2.3.0...v2.3.1) (2026-07-19)
 
 
