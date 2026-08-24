@@ -14,11 +14,25 @@ type Family struct {
 	// Children are XRefs to child individuals
 	Children []string
 
-	// NumberOfChildren is the declared number of children (NCHI tag)
+	// NumberOfChildren is the declared number of children (NCHI tag).
+	//
+	// A decoded family stores NCHI twice: here, and as an entry in
+	// Attributes, which also carries the line's subordinates. When both are
+	// present the encoder writes the Attributes entry and ignores this
+	// field, so setting it alone on a decoded family is silently discarded
+	// on re-encode. Update the Attributes entry, or clear it, to change the
+	// value that is written.
 	NumberOfChildren string
 
 	// Events contains family events (marriage, divorce, etc.)
 	Events []*Event
+
+	// Attributes contains family attributes (NCHI, FACT).
+	// This is the family counterpart of Individual.Attributes.
+	//
+	// CENS and RESI are not here: they decode into Events, matching how
+	// Individual models the same two tags.
+	Attributes []*Attribute
 
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation

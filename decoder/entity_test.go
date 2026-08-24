@@ -643,10 +643,9 @@ func TestAttributeTypeDetail(t *testing.T) {
 }
 
 // TestFamilyFactRecognized pins FAM-level FACT as a recognized tag (issue
-// #386). FACT is 7.0-only under FAM and gedcom.Family has no Attributes
-// field, so it is recognized but not typed; it must not be reported as
-// UNKNOWN_TAG, and its subtree — which is never walked — must not add
-// diagnostics of its own.
+// #386) that now decodes into Family.Attributes (issue #448). It must not be
+// reported as UNKNOWN_TAG, and its subtree — which is now walked — must not
+// add diagnostics of its own.
 func TestFamilyFactRecognized(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
@@ -683,6 +682,19 @@ func TestFamilyFactRecognized(t *testing.T) {
 	}
 	if !found {
 		t.Error("family @F1@ missing raw FACT tag")
+	}
+
+	if len(fam.Attributes) != 1 {
+		t.Fatalf("len(Attributes) = %d, want 1", len(fam.Attributes))
+	}
+	if got := fam.Attributes[0].Type; got != "FACT" {
+		t.Errorf("Attributes[0].Type = %q, want \"FACT\"", got)
+	}
+	if got := fam.Attributes[0].Value; got != "Fact" {
+		t.Errorf("Attributes[0].Value = %q, want \"Fact\"", got)
+	}
+	if got := fam.Attributes[0].TypeDetail; got != "Type of fact" {
+		t.Errorf("Attributes[0].TypeDetail = %q, want \"Type of fact\"", got)
 	}
 }
 
@@ -5081,9 +5093,16 @@ func TestNOTagFamilyWithSubordinates(t *testing.T) {
 		t.Errorf("Events[0].Date = %q, want 'FROM 1700 TO 1800'", divEvent.Date)
 	}
 
-	// Check subordinates on NO DIV
-	if len(divEvent.Notes) != 1 {
-		t.Fatalf("len(Notes) = %d, want 1", len(divEvent.Notes))
+	// Check subordinates on NO DIV. The SNOTE pointer joins the inline NOTE
+	// in the legacy Notes slice and lands in NoteXRefs (issue #447).
+	if len(divEvent.Notes) != 2 {
+		t.Fatalf("len(Notes) = %d, want 2", len(divEvent.Notes))
+	}
+	if len(divEvent.InlineNotes) != 1 || divEvent.InlineNotes[0] != "Note text" {
+		t.Errorf("InlineNotes = %q, want [\"Note text\"]", divEvent.InlineNotes)
+	}
+	if len(divEvent.NoteXRefs) != 1 || divEvent.NoteXRefs[0] != "@N2@" {
+		t.Errorf("NoteXRefs = %q, want [\"@N2@\"]", divEvent.NoteXRefs)
 	}
 	if len(divEvent.SourceCitations) != 2 {
 		t.Fatalf("len(SourceCitations) = %d, want 2", len(divEvent.SourceCitations))
@@ -5267,5 +5286,459 @@ func TestPaddedInlineNoteKeepsPayload(t *testing.T) {
 	want := "He said hello and then left"
 	if len(indi.InlineNotes) != 1 || indi.InlineNotes[0] != want {
 		t.Errorf("InlineNotes = %q, want [%q]", indi.InlineNotes, want)
+	}
+}
+
+// unknownTagsIn returns the tag names of every UNKNOWN_TAG diagnostic in diags.
+// The tests below assert on which tags the decoder failed to recognize, and the
+// tag name is the part of the message that matters.
+func unknownTagsIn(diags Diagnostics) []string {
+	var tags []string
+	for _, d := range diags {
+		if d.Code == CodeUnknownTag {
+			tags = append(tags, strings.TrimPrefix(d.Message, "unknown tag: "))
+		}
+	}
+	return tags
+}
+
+// TestEventDetailAssociationReligionSharedNote pins the three EVENT_DETAIL
+// substructures parseEvent used to drop (issue #447): ASSO, RELI and SNOTE.
+// A conformant 7.0 event carrying all three must decode into typed fields and
+// produce no UNKNOWN_TAG.
+func TestEventDetailAssociationReligionSharedNote(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 BAPM
+2 DATE 3 MAR 1850
+2 RELI Baptist
+2 ASSO @I2@
+3 ROLE CLERGY
+2 NOTE Inline note
+2 SNOTE @N1@
+0 @I2@ INDI
+1 NAME Rev /Green/
+0 @N1@ SNOTE Shared note
+0 TRLR
+`
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	if got := unknownTagsIn(result.Diagnostics); len(got) != 0 {
+		t.Errorf("UNKNOWN_TAG diagnostics = %v, want none", got)
+	}
+
+	indi := result.Document.GetIndividual("@I1@")
+	if indi == nil || len(indi.Events) != 1 {
+		t.Fatalf("GetIndividual(@I1@) = %v, want one event", indi)
+	}
+	event := indi.Events[0]
+
+	if event.ReligiousAffiliation != "Baptist" {
+		t.Errorf("ReligiousAffiliation = %q, want \"Baptist\"", event.ReligiousAffiliation)
+	}
+	if len(event.Associations) != 1 {
+		t.Fatalf("len(Associations) = %d, want 1", len(event.Associations))
+	}
+	if got := event.Associations[0].IndividualXRef; got != "@I2@" {
+		t.Errorf("Associations[0].IndividualXRef = %q, want \"@I2@\"", got)
+	}
+	if got := event.Associations[0].Role; got != "CLERGY" {
+		t.Errorf("Associations[0].Role = %q, want \"CLERGY\"", got)
+	}
+	if want := []string{"Inline note"}; !reflect.DeepEqual(event.InlineNotes, want) {
+		t.Errorf("InlineNotes = %v, want %v", event.InlineNotes, want)
+	}
+	if want := []string{"@N1@"}; !reflect.DeepEqual(event.NoteXRefs, want) {
+		t.Errorf("NoteXRefs = %v, want %v", event.NoteXRefs, want)
+	}
+	if want := []string{"Inline note", "@N1@"}; !reflect.DeepEqual(event.Notes, want) {
+		t.Errorf("Notes = %v, want %v", event.Notes, want)
+	}
+}
+
+// TestEventInlineNoteFoldsContinuation pins the behaviour change from routing
+// event NOTEs through appendRecordNote: before issue #447 an event note was the
+// raw NOTE value alone, so a multi-line note read back as its first line.
+func TestEventInlineNoteFoldsContinuation(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 BIRT
+2 NOTE First line
+3 CONT Second line
+3 CONC  continued
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	event := doc.GetIndividual("@I1@").Events[0]
+	want := "First line\nSecond line continued"
+	if len(event.InlineNotes) != 1 || event.InlineNotes[0] != want {
+		t.Errorf("InlineNotes = %q, want [%q]", event.InlineNotes, want)
+	}
+	if len(event.Notes) != 1 || event.Notes[0] != want {
+		t.Errorf("Notes = %q, want [%q]", event.Notes, want)
+	}
+}
+
+// TestAttributeEventDetail pins the full EVENT_DETAIL set on an attribute
+// (issue #402). parseAttribute used to recognize only NOTE/AGE/DATE/PLAC/SOUR,
+// so every other subtag was reported as unknown.
+func TestAttributeEventDetail(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 OCCU Blacksmith
+2 TYPE Trade
+2 DATE 1880
+2 AGE 30y
+2 PLAC Springfield
+3 FORM City
+3 MAP
+4 LATI N39.7
+4 LONG W89.6
+2 CAUS Apprenticeship
+2 AGNC Guild of Smiths
+2 RELI Methodist
+2 RESN confidential
+2 UID 12345
+2 SDATE 1880-01-01
+2 ADDR 1 Forge Lane
+3 CITY Springfield
+2 PHON +1 555 0100
+2 EMAIL smith@example.com
+2 FAX +1 555 0101
+2 WWW https://example.com
+2 OBJE @M1@
+2 ASSO @I2@
+3 ROLE OTHER
+2 SOUR @S1@
+3 PAGE 12
+2 NOTE Inline note
+2 SNOTE @N1@
+0 @I2@ INDI
+1 NAME Other /Person/
+0 @M1@ OBJE
+1 FILE forge.jpg
+0 @S1@ SOUR
+1 TITL Guild Register
+0 @N1@ SNOTE Shared note
+0 TRLR
+`
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	if got := unknownTagsIn(result.Diagnostics); len(got) != 0 {
+		t.Errorf("UNKNOWN_TAG diagnostics = %v, want none", got)
+	}
+
+	indi := result.Document.GetIndividual("@I1@")
+	if indi == nil || len(indi.Attributes) != 1 {
+		t.Fatalf("GetIndividual(@I1@) = %v, want one attribute", indi)
+	}
+	attr := indi.Attributes[0]
+
+	strFields := []struct {
+		name string
+		got  string
+		want string
+	}{
+		{"Value", attr.Value, "Blacksmith"},
+		{"TypeDetail", attr.TypeDetail, "Trade"},
+		{"Date", attr.Date, "1880"},
+		{"Place", attr.Place, "Springfield"},
+		{"Cause", attr.Cause, "Apprenticeship"},
+		{"Agency", attr.Agency, "Guild of Smiths"},
+		{"ReligiousAffiliation", attr.ReligiousAffiliation, "Methodist"},
+		{"Restriction", attr.Restriction, "confidential"},
+		{"UID", attr.UID, "12345"},
+		{"SortDate", attr.SortDate, "1880-01-01"},
+	}
+	for _, f := range strFields {
+		if f.got != f.want {
+			t.Errorf("%s = %q, want %q", f.name, f.got, f.want)
+		}
+	}
+
+	if attr.ParsedDate == nil || attr.ParsedDate.Year != 1880 {
+		t.Errorf("ParsedDate = %+v, want year 1880", attr.ParsedDate)
+	}
+	if attr.PlaceDetail == nil || attr.PlaceDetail.Form != "City" {
+		t.Fatalf("PlaceDetail = %+v, want Form \"City\"", attr.PlaceDetail)
+	}
+	if attr.PlaceDetail.Coordinates == nil || attr.PlaceDetail.Coordinates.Latitude != "N39.7" {
+		t.Errorf("PlaceDetail.Coordinates = %+v, want latitude N39.7", attr.PlaceDetail.Coordinates)
+	}
+	if attr.Address == nil || attr.Address.City != "Springfield" {
+		t.Fatalf("Address = %+v, want City \"Springfield\"", attr.Address)
+	}
+	if attr.Address.Line1 != "1 Forge Lane" {
+		t.Errorf("Address.Line1 = %q, want \"1 Forge Lane\"", attr.Address.Line1)
+	}
+
+	sliceFields := []struct {
+		name string
+		got  []string
+		want []string
+	}{
+		{"Phone", attr.Phone, []string{"+1 555 0100"}},
+		{"Email", attr.Email, []string{"smith@example.com"}},
+		{"Fax", attr.Fax, []string{"+1 555 0101"}},
+		{"Website", attr.Website, []string{"https://example.com"}},
+		{"NoteXRefs", attr.NoteXRefs, []string{"@N1@"}},
+		{"InlineNotes", attr.InlineNotes, []string{"Inline note"}},
+		{"Notes", attr.Notes, []string{"Inline note", "@N1@"}},
+	}
+	for _, f := range sliceFields {
+		if !reflect.DeepEqual(f.got, f.want) {
+			t.Errorf("%s = %v, want %v", f.name, f.got, f.want)
+		}
+	}
+
+	if len(attr.Media) != 1 || attr.Media[0].MediaXRef != "@M1@" {
+		t.Errorf("Media = %+v, want one link to @M1@", attr.Media)
+	}
+	if len(attr.Associations) != 1 || attr.Associations[0].IndividualXRef != "@I2@" {
+		t.Errorf("Associations = %+v, want one link to @I2@", attr.Associations)
+	}
+	if len(attr.SourceCitations) != 1 || attr.SourceCitations[0].Page != "12" {
+		t.Errorf("SourceCitations = %+v, want one citation with page 12", attr.SourceCitations)
+	}
+}
+
+// TestAttributeUnknownSubtagFlagged pins that an attribute still diagnoses a
+// nonstandard subtag: recognizing the EVENT_DETAIL set must not silence the
+// tags that genuinely are unknown (ADR 0007).
+func TestAttributeUnknownSubtagFlagged(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 OCCU Blacksmith
+2 NUMB 3
+2 _CUSTOM keep quiet
+0 TRLR
+`
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	got := unknownTagsIn(result.Diagnostics)
+	if want := []string{"NUMB"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("UNKNOWN_TAG diagnostics = %v, want %v", got, want)
+	}
+}
+
+// TestFamilyEventAndAttributeContexts pins the four FAM contexts parseFamily
+// never read (issue #448): CENS and RESI decode as events, NCHI and FACT as
+// attributes. NCHI is deliberate dual storage — Family.NumberOfChildren stays
+// populated alongside the new Family.Attributes entry.
+func TestFamilyEventAndAttributeContexts(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @F1@ FAM
+1 CENS
+2 DATE 1900
+2 PLAC Springfield
+1 RESI
+2 DATE 1905
+2 PLAC Chicago
+1 NCHI 3
+2 DATE 1910
+1 FACT Homesteaders
+2 TYPE Lifestyle
+0 TRLR
+`
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	if got := unknownTagsIn(result.Diagnostics); len(got) != 0 {
+		t.Errorf("UNKNOWN_TAG diagnostics = %v, want none", got)
+	}
+
+	fam := result.Document.GetFamily("@F1@")
+	if fam == nil {
+		t.Fatal("GetFamily(@F1@) returned nil")
+	}
+
+	if len(fam.Events) != 2 {
+		t.Fatalf("len(Events) = %d, want 2", len(fam.Events))
+	}
+	if fam.Events[0].Type != "CENS" || fam.Events[0].Date != "1900" || fam.Events[0].Place != "Springfield" {
+		t.Errorf("Events[0] = %+v, want CENS 1900 Springfield", fam.Events[0])
+	}
+	if fam.Events[1].Type != "RESI" || fam.Events[1].Date != "1905" || fam.Events[1].Place != "Chicago" {
+		t.Errorf("Events[1] = %+v, want RESI 1905 Chicago", fam.Events[1])
+	}
+
+	if len(fam.Attributes) != 2 {
+		t.Fatalf("len(Attributes) = %d, want 2", len(fam.Attributes))
+	}
+	if fam.Attributes[0].Type != "NCHI" || fam.Attributes[0].Value != "3" || fam.Attributes[0].Date != "1910" {
+		t.Errorf("Attributes[0] = %+v, want NCHI 3 dated 1910", fam.Attributes[0])
+	}
+	if fam.Attributes[1].Type != "FACT" || fam.Attributes[1].TypeDetail != "Lifestyle" {
+		t.Errorf("Attributes[1] = %+v, want FACT with TypeDetail \"Lifestyle\"", fam.Attributes[1])
+	}
+	if fam.NumberOfChildren != "3" {
+		t.Errorf("NumberOfChildren = %q, want \"3\" (dual storage with Attributes)", fam.NumberOfChildren)
+	}
+}
+
+// TestFamilyDetailContextsDiagnoseUnknownSubtags is the diagnostic half of
+// issue #448: before parseFamily read CENS/FACT/NCHI/RESI, a nonstandard tag
+// under any of them produced no UNKNOWN_TAG at all, so a caller filtering on
+// that code could not see what the library had not understood.
+//
+// One subtest per context rather than one combined document: a single
+// regression in any one of the four is otherwise indistinguishable from a
+// regression in all of them.
+func TestFamilyDetailContextsDiagnoseUnknownSubtags(t *testing.T) {
+	tests := []struct {
+		name    string
+		context string
+	}{
+		{name: "CENS", context: "1 CENS"},
+		{name: "RESI", context: "1 RESI"},
+		{name: "NCHI", context: "1 NCHI 3"},
+		{name: "FACT", context: "1 FACT Homesteaders"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @F1@ FAM\n" +
+				tt.context + "\n2 NUMB 1\n2 _CUSTOM keep quiet\n0 TRLR\n"
+			result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+			if err != nil {
+				t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+			}
+			// NUMB is nonstandard under a FAM detail context and must be
+			// reported; the underscore tag is a vendor extension and must not
+			// be (ADR 0003).
+			want := []string{"NUMB"}
+			if got := unknownTagsIn(result.Diagnostics); !reflect.DeepEqual(got, want) {
+				t.Errorf("UNKNOWN_TAG diagnostics under %q = %v, want %v", tt.context, got, want)
+			}
+		})
+	}
+}
+
+// TestSharedNoteRecognizedInSubstructures pins SNOTE as standard wherever the
+// 7.0 spec allows it (issue #447). None of these contexts may report it as
+// unknown, and the three that split notes must route it to NoteXRefs.
+func TestSharedNoteRecognizedInSubstructures(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+2 SNOTE @N1@
+1 FAMC @F1@
+2 SNOTE @N1@
+1 BIRT
+2 PLAC Springfield
+3 SNOTE @N1@
+2 SOUR @S1@
+3 SNOTE @N1@
+1 BAPL
+2 SNOTE @N1@
+1 CHAN
+2 DATE 1 JAN 2020
+2 SNOTE @N1@
+0 @F1@ FAM
+1 CHIL @I1@
+0 @S1@ SOUR
+1 REPO @R1@
+2 SNOTE @N1@
+0 @R1@ REPO
+1 NAME Archive
+0 @N1@ SNOTE Shared note
+0 TRLR
+`
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	if got := unknownTagsIn(result.Diagnostics); len(got) != 0 {
+		t.Errorf("UNKNOWN_TAG diagnostics = %v, want none", got)
+	}
+
+	indi := result.Document.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+	want := []string{"@N1@"}
+	if len(indi.Events) != 1 || len(indi.Events[0].SourceCitations) != 1 {
+		t.Fatalf("Events = %+v, want one event with one citation", indi.Events)
+	}
+	if got := indi.Events[0].SourceCitations[0].NoteXRefs; !reflect.DeepEqual(got, want) {
+		t.Errorf("SourceCitations[0].NoteXRefs = %v, want %v", got, want)
+	}
+	if len(indi.LDSOrdinances) != 1 {
+		t.Fatalf("len(LDSOrdinances) = %d, want 1", len(indi.LDSOrdinances))
+	}
+	if got := indi.LDSOrdinances[0].NoteXRefs; !reflect.DeepEqual(got, want) {
+		t.Errorf("LDSOrdinances[0].NoteXRefs = %v, want %v", got, want)
+	}
+	if indi.ChangeDate == nil {
+		t.Fatal("ChangeDate = nil, want the CHAN structure")
+	}
+	if got := indi.ChangeDate.NoteXRefs; !reflect.DeepEqual(got, want) {
+		t.Errorf("ChangeDate.NoteXRefs = %v, want %v", got, want)
+	}
+}
+
+// TestSubstructureNotesSplit pins the note split promoted onto source
+// citations, LDS ordinances and change dates: inline text and shared-note
+// pointers land in the typed fields, with CONT/CONC folded in.
+func TestSubstructureNotesSplit(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 SOUR @S1@
+2 NOTE Citation note
+3 CONT second line
+1 BAPL
+2 NOTE Ordinance note
+1 CHAN
+2 DATE 1 JAN 2020
+2 NOTE Change note
+0 @S1@ SOUR
+1 TITL A Source
+0 TRLR
+`
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+
+	wantCite := []string{"Citation note\nsecond line"}
+	if got := indi.SourceCitations[0].InlineNotes; !reflect.DeepEqual(got, wantCite) {
+		t.Errorf("SourceCitations[0].InlineNotes = %v, want %v", got, wantCite)
+	}
+	if got := indi.SourceCitations[0].Notes; !reflect.DeepEqual(got, wantCite) {
+		t.Errorf("SourceCitations[0].Notes = %v, want %v", got, wantCite)
+	}
+	if got, want := indi.LDSOrdinances[0].InlineNotes, []string{"Ordinance note"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("LDSOrdinances[0].InlineNotes = %v, want %v", got, want)
+	}
+	if got, want := indi.ChangeDate.InlineNotes, []string{"Change note"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("ChangeDate.InlineNotes = %v, want %v", got, want)
 	}
 }

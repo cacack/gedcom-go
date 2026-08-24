@@ -179,11 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 705 | 70.6% | 856 | 65.0% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 832 | 83.4% | 1113 | 84.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 116 | 11.6% | 130 | 9.9% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
-| raw (flagged) | 94 | 9.4% | 192 | 14.6% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 83 | 8.3% | 138 | 10.5% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (accepted) | 78 | 7.8% | 92 | 7.0% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (flagged) | 21 | 2.1% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
+| raw (undiagnosed) | 67 | 6.7% | 98 | 7.4% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -193,9 +193,9 @@ pairs under it reach the typed model.
 
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
-| `FAM` | 179 / 254 | 213 / 324 |
+| `FAM` | 202 / 254 | 269 / 324 |
 | `HEAD` | 5 / 28 | 8 / 33 |
-| `INDI` | 479 / 625 | 582 / 855 |
+| `INDI` | 583 / 625 | 783 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 5 / 12 | 10 / 13 |
 | `REPO` | 13 / 17 | 16 / 21 |
@@ -304,8 +304,8 @@ Measured at `FAM.CHAN` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `DATE` | `CHANGE_DATE.CHAN.DATE` | typed | typed | `{1:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 
 ### `CHANGE_DATE.CHAN.DATE`
 
@@ -363,7 +363,7 @@ Measured at `FAM.ANUL` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -378,29 +378,29 @@ Measured at `FAM.CENS` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (undiagnosed) | — | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `DATE` | `EVENT_DETAIL.DATE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (undiagnosed) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (undiagnosed) | `{0:3}` |
-| `HUSB` | `FAMILY_EVENT_DETAIL.HUSB` | — | raw (undiagnosed) | `{0:1}` |
-| `HUSB` | `FAM_RECORD.FAM.FAMILY_EVENT_STRUCTURE.HUSB` | raw (undiagnosed) | — | `{0:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (undiagnosed) | raw (undiagnosed) | `{0:3}` |
-| `PLAC` | `PLACE_STRUCTURE.PLAC` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (undiagnosed) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (undiagnosed) | `{0:1}` |
-| `SOUR` | `SOURCE_CITATION.SOUR` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `SOUR` | `SOURCE_CITATION.SOUR#2` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `TYPE` | `EVENT_DETAIL.TYPE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `WIFE` | `FAMILY_EVENT_DETAIL.WIFE` | — | raw (undiagnosed) | `{0:1}` |
-| `WIFE` | `FAM_RECORD.FAM.FAMILY_EVENT_STRUCTURE.WIFE` | raw (undiagnosed) | — | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (undiagnosed) | `{0:3}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
+| `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `HUSB` | `FAMILY_EVENT_DETAIL.HUSB` | — | raw (accepted) | `{0:1}` |
+| `HUSB` | `FAM_RECORD.FAM.FAMILY_EVENT_STRUCTURE.HUSB` | raw (accepted) | — | `{0:1}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
+| `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
+| `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
+| `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
+| `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
+| `WIFE` | `FAMILY_EVENT_DETAIL.WIFE` | — | raw (accepted) | `{0:1}` |
+| `WIFE` | `FAM_RECORD.FAM.FAMILY_EVENT_STRUCTURE.WIFE` | raw (accepted) | — | `{0:1}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `FAMILY_EVENT_STRUCTURE.DIV`
 
@@ -423,7 +423,7 @@ Measured at `FAM.DIV` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -453,7 +453,7 @@ Measured at `FAM.DIVF` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -483,7 +483,7 @@ Measured at `FAM.ENGA` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -513,7 +513,7 @@ Measured at `FAM.EVEN` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -543,7 +543,7 @@ Measured at `FAM.MARB` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -573,7 +573,7 @@ Measured at `FAM.MARC` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -603,7 +603,7 @@ Measured at `FAM.MARL` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -633,7 +633,7 @@ Measured at `FAM.MARR` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -663,7 +663,7 @@ Measured at `FAM.MARS` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -678,26 +678,26 @@ Measured at `FAM.RESI` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | — | raw (undiagnosed) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | — | raw (undiagnosed) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | — | raw (undiagnosed) | `{0:1}` |
-| `DATE` | `EVENT_DETAIL.DATE` | — | raw (undiagnosed) | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (undiagnosed) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (undiagnosed) | `{0:3}` |
-| `HUSB` | `FAMILY_EVENT_DETAIL.HUSB` | — | raw (undiagnosed) | `{0:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | — | raw (undiagnosed) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | — | raw (undiagnosed) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | — | raw (undiagnosed) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | — | raw (undiagnosed) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | — | raw (undiagnosed) | `{0:3}` |
-| `PLAC` | `PLACE_STRUCTURE.PLAC` | — | raw (undiagnosed) | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (undiagnosed) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (undiagnosed) | `{0:1}` |
-| `SOUR` | `SOURCE_CITATION.SOUR` | — | raw (undiagnosed) | `{0:M}` |
-| `SOUR` | `SOURCE_CITATION.SOUR#2` | — | raw (undiagnosed) | `{0:M}` |
-| `TYPE` | `EVENT_DETAIL.TYPE` | — | raw (undiagnosed) | `{0:1}` |
-| `WIFE` | `FAMILY_EVENT_DETAIL.WIFE` | — | raw (undiagnosed) | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (undiagnosed) | `{0:3}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | — | typed | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | — | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | — | typed | `{0:1}` |
+| `DATE` | `EVENT_DETAIL.DATE` | — | typed | `{0:1}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `HUSB` | `FAMILY_EVENT_DETAIL.HUSB` | — | raw (accepted) | `{0:1}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | — | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | — | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | — | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | — | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | — | typed | `{0:3}` |
+| `PLAC` | `PLACE_STRUCTURE.PLAC` | — | typed | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
+| `SOUR` | `SOURCE_CITATION.SOUR` | — | typed | `{0:M}` |
+| `SOUR` | `SOURCE_CITATION.SOUR#2` | — | typed | `{0:M}` |
+| `TYPE` | `EVENT_DETAIL.TYPE` | — | typed | `{0:1}` |
+| `WIFE` | `FAMILY_EVENT_DETAIL.WIFE` | — | raw (accepted) | `{0:1}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `FAM_RECORD.FAM`
 
@@ -706,7 +706,7 @@ Measured at `FAM` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ANUL` | `FAMILY_EVENT_STRUCTURE.ANUL` | typed | typed | `{0:M}` |
-| `CENS` | `FAMILY_EVENT_STRUCTURE.CENS` | raw (flagged) | raw (flagged) | `{0:M}` |
+| `CENS` | `FAMILY_EVENT_STRUCTURE.CENS` | typed | typed | `{0:M}` |
 | `CHAN` | `CHANGE_DATE.CHAN` | typed | typed | `{0:1}` |
 | `CHIL` | `FAM_RECORD.FAM.CHIL` | typed | typed | `{0:M}` |
 | `DIV` | `FAMILY_EVENT_STRUCTURE.DIV` | typed | typed | `{0:M}` |
@@ -725,7 +725,7 @@ Measured at `FAM` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `REFN` | `FAM_RECORD.FAM.REFN` | typed | typed | `{0:M}` |
-| `RESI` | `FAMILY_EVENT_STRUCTURE.RESI` | — | raw (flagged) | `{0:M}` |
+| `RESI` | `FAMILY_EVENT_STRUCTURE.RESI` | — | typed | `{0:M}` |
 | `RESN` | `FAM_RECORD.FAM.RESN` | — | raw (accepted) | `{0:1}` |
 | `RIN` | `FAM_RECORD.FAM.RIN` | raw (flagged) | raw (flagged) | `{0:1}` |
 | `SLGS` | `LDS_SPOUSE_SEALING.SLGS` | typed | typed | `{0:M}` |
@@ -866,26 +866,26 @@ Measured at `INDI.CAST` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (flagged) | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (flagged) | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.DSCR`
 
@@ -893,28 +893,28 @@ Measured at `INDI.DSCR` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (flagged) | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `CONC` | `INDIVIDUAL_ATTRIBUTE_STRUCTURE.DSCR.CONC` | — | raw (flagged) | `{0:M}` |
 | `CONT` | `INDIVIDUAL_ATTRIBUTE_STRUCTURE.DSCR.CONT` | — | raw (flagged) | `{0:M}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (flagged) | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.EDUC`
 
@@ -922,26 +922,26 @@ Measured at `INDI.EDUC` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (flagged) | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (flagged) | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.FACT`
 
@@ -949,25 +949,25 @@ Measured at `INDI.FACT` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | — | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | — | typed | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | — | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | — | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | — | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | — | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | — | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | — | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | — | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | — | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | — | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | — | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | — | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | — | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | — | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | — | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | — | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | — | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | — | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | — | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | — | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.IDNO`
 
@@ -975,26 +975,26 @@ Measured at `INDI.IDNO` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (flagged) | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (flagged) | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.NATI`
 
@@ -1002,26 +1002,26 @@ Measured at `INDI.NATI` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (flagged) | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (flagged) | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.NCHI`
 
@@ -1029,26 +1029,26 @@ Measured at `INDI.NCHI` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (flagged) | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (flagged) | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.NMR`
 
@@ -1056,26 +1056,26 @@ Measured at `INDI.NMR` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (flagged) | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (flagged) | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.OCCU`
 
@@ -1083,26 +1083,26 @@ Measured at `INDI.OCCU` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (flagged) | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (flagged) | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.PROP`
 
@@ -1110,26 +1110,26 @@ Measured at `INDI.PROP` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (flagged) | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (flagged) | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.RELI`
 
@@ -1137,26 +1137,26 @@ Measured at `INDI.RELI` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (flagged) | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (flagged) | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.RESI`
 
@@ -1178,7 +1178,7 @@ Measured at `INDI.RESI` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1191,26 +1191,26 @@ Measured at `INDI.SSN` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (flagged) | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (flagged) | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.TITL`
 
@@ -1218,26 +1218,26 @@ Measured at `INDI.TITL` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
-| `AGNC` | `EVENT_DETAIL.AGNC` | raw (flagged) | raw (flagged) | `{0:1}` |
-| `CAUS` | `EVENT_DETAIL.CAUS` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
+| `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (flagged) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (flagged) | `{0:3}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (flagged) | raw (flagged) | `{0:3}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
-| `RESN` | `EVENT_DETAIL.RESN` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
+| `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `TYPE` | `EVENT_DETAIL.TYPE` | typed | typed | `{0:1}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (flagged) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `INDIVIDUAL_EVENT_STRUCTURE.ADOP`
 
@@ -1260,7 +1260,7 @@ Measured at `INDI.ADOP` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1295,7 +1295,7 @@ Measured at `INDI.BAPM` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1322,7 +1322,7 @@ Measured at `INDI.BARM` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1349,7 +1349,7 @@ Measured at `INDI.BASM` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1377,7 +1377,7 @@ Measured at `INDI.BIRT` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1404,7 +1404,7 @@ Measured at `INDI.BLES` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1431,7 +1431,7 @@ Measured at `INDI.BURI` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1458,7 +1458,7 @@ Measured at `INDI.CENS` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1486,7 +1486,7 @@ Measured at `INDI.CHR` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1513,7 +1513,7 @@ Measured at `INDI.CHRA` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1540,7 +1540,7 @@ Measured at `INDI.CONF` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1567,7 +1567,7 @@ Measured at `INDI.CREM` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1594,7 +1594,7 @@ Measured at `INDI.DEAT` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1621,7 +1621,7 @@ Measured at `INDI.EMIG` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1648,7 +1648,7 @@ Measured at `INDI.EVEN` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1675,7 +1675,7 @@ Measured at `INDI.FCOM` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1702,7 +1702,7 @@ Measured at `INDI.GRAD` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1729,7 +1729,7 @@ Measured at `INDI.IMMI` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1756,7 +1756,7 @@ Measured at `INDI.NATU` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1783,7 +1783,7 @@ Measured at `INDI.ORDN` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1810,7 +1810,7 @@ Measured at `INDI.PROB` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1837,7 +1837,7 @@ Measured at `INDI.RETI` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1864,7 +1864,7 @@ Measured at `INDI.WILL` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `PLAC` | `PLACE_STRUCTURE.PLAC` | typed | typed | `{0:1}` |
-| `RELI` | `EVENT_DETAIL.RELI` | — | raw (flagged) | `{0:1}` |
+| `RELI` | `EVENT_DETAIL.RELI` | — | typed | `{0:1}` |
 | `RESN` | `EVENT_DETAIL.RESN` | — | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -1955,8 +1955,8 @@ Measured at `INDI.BAPL` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `DATE` | `LDS_INDIVIDUAL_ORDINANCE.BAPL.DATE` | typed | typed | `{0:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `PLAC` | `LDS_INDIVIDUAL_ORDINANCE.BAPL.PLAC` | typed | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | raw (accepted) | raw (accepted) | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | raw (accepted) | raw (accepted) | `{0:M}` |
@@ -1978,8 +1978,8 @@ Measured at `INDI.CONL` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `DATE` | `LDS_INDIVIDUAL_ORDINANCE.BAPL.DATE` | typed | typed | `{0:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `PLAC` | `LDS_INDIVIDUAL_ORDINANCE.BAPL.PLAC` | typed | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | raw (accepted) | raw (accepted) | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | raw (accepted) | raw (accepted) | `{0:M}` |
@@ -1993,8 +1993,8 @@ Measured at `INDI.ENDL` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `DATE` | `LDS_INDIVIDUAL_ORDINANCE.ENDL.DATE` | typed | typed | `{0:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `PLAC` | `LDS_INDIVIDUAL_ORDINANCE.ENDL.PLAC` | typed | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | raw (accepted) | raw (accepted) | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | raw (accepted) | raw (accepted) | `{0:M}` |
@@ -2017,8 +2017,8 @@ Measured at `INDI.SLGC` in 5.5, 5.5.1.
 |-----|-----------|--------|--------|-------------|
 | `DATE` | `LDS_INDIVIDUAL_ORDINANCE.SLGC.DATE` | typed | typed | `{0:1}` |
 | `FAMC` | `LDS_INDIVIDUAL_ORDINANCE.SLGC.FAMC` | typed | typed | `{1:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `PLAC` | `LDS_INDIVIDUAL_ORDINANCE.SLGC.PLAC` | typed | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | raw (accepted) | raw (accepted) | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | raw (accepted) | raw (accepted) | `{0:M}` |
@@ -2040,8 +2040,8 @@ Measured at `FAM.SLGS` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `DATE` | `LDS_SPOUSE_SEALING.SLGS.DATE` | typed | typed | `{0:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `PLAC` | `LDS_SPOUSE_SEALING.SLGS.PLAC` | typed | typed | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | raw (accepted) | raw (accepted) | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | raw (accepted) | raw (accepted) | `{0:M}` |
@@ -2314,8 +2314,8 @@ Measured at `FAM.SOUR` in 5.5, 5.5.1.
 |-----|-----------|--------|--------|-------------|
 | `DATA` | `SOURCE_CITATION.SOUR.DATA` | typed | typed | `{0:1}` |
 | `EVEN` | `SOURCE_CITATION.SOUR.EVEN` | raw (accepted) | raw (accepted) | `{0:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (accepted) | raw (accepted) | `{0:M}` |
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
 | `PAGE` | `SOURCE_CITATION.SOUR.PAGE` | typed | typed | `{0:1}` |
@@ -2329,8 +2329,8 @@ Measured at `FAM.SOUR` in 5.5, 5.5.1.
 |-----|-----------|--------|--------|-------------|
 | `CONC` | `SOURCE_CITATION.SOUR#2.CONC` | raw (flagged) | raw (flagged) | `{0:M}` |
 | `CONT` | `SOURCE_CITATION.SOUR#2.CONT` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `OBJE` | `MULTIMEDIA_LINK.OBJE` | — | raw (accepted) | `{0:M}` |
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | — | raw (accepted) | `{0:M}` |
 | `QUAY` | `SOURCE_CITATION.SOUR#2.QUAY` | — | typed | `{0:1}` |

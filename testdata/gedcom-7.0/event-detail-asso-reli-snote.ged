@@ -1,0 +1,20 @@
+0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+1 BAPM
+2 DATE 3 MAR 1850
+2 PLAC Springfield, Illinois
+2 RELI Baptist
+2 ASSO @I2@
+3 ROLE CLERGY
+2 NOTE Recorded in the parish register
+2 SNOTE @N1@
+1 CHAN
+2 DATE 1 JAN 2020
+2 SNOTE @N1@
+0 @I2@ INDI
+1 NAME Amos /Green/
+0 @N1@ SNOTE Enumerator remarks
+0 TRLR

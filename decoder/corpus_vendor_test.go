@@ -103,8 +103,17 @@ func TestCorpusVendorFiles(t *testing.T) {
 			families:    139,
 			// 12 individual EVEN structures are decoded rather than flagged
 			// (issue #378); one of them nests a NOTE under OBJE, which
-			// parseMediaLink still reports. Net: 66 - 12 + 1.
-			diags: map[string]int{CodeUnknownTag: 55},
+			// parseMediaLink still reports. Net: 66 - 12 + 1 = 55.
+			//
+			// 55 -> 42 for issue #402: parseAttribute now reads the whole
+			// EVENT_DETAIL instead of NOTE/AGE/DATE/PLAC/SOUR only, so the
+			// file's 13 "2 CAUS" lines under attributes stop being flagged.
+			// 55 - 13 CAUS = 42, and the histogram is now a single entry:
+			// 42 NOTE, every one of them under an inline OBJE (issue #470).
+			// This file contains no FACT line at all -- the 13 were always
+			// false positives on other attribute tags, which is why #402 had
+			// to be its own issue.
+			diags: map[string]int{CodeUnknownTag: 42},
 		},
 		{
 			path:        "../testdata/edge-cases/mhftb8-export.ged",

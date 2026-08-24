@@ -106,11 +106,11 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 840 | 60.5% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1232 | 88.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 89 | 6.4% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
-| raw (flagged) | 307 | 22.1% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 153 | 11.0% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (accepted) | 79 | 5.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (flagged) | 9 | 0.6% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
+| raw (undiagnosed) | 69 | 5.0% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
 ### By top-level structure
 
@@ -118,9 +118,9 @@ The structure each pair is nested under at level 0.
 
 | Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |
 |---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|
-| `INDI` | 873 | 550 | 0 | 44 | 263 | 16 |
-| `FAM` | 392 | 214 | 0 | 34 | 37 | 107 |
-| `SOUR` | 29 | 17 | 0 | 2 | 1 | 9 |
+| `INDI` | 873 | 825 | 0 | 29 | 3 | 16 |
+| `FAM` | 392 | 330 | 0 | 39 | 0 | 23 |
+| `SOUR` | 29 | 18 | 0 | 2 | 0 | 9 |
 | `HEAD` | 27 | 9 | 0 | 0 | 0 | 18 |
 | `REPO` | 21 | 16 | 0 | 4 | 1 | 0 |
 | `OBJE` | 17 | 16 | 0 | 0 | 0 | 1 |
@@ -158,7 +158,7 @@ Substructures of `record-FAM`.
 |-----|-----------|--------|
 | `ANUL` | `ANUL` | typed |
 | `ASSO` | `ASSO` | raw (accepted) |
-| `CENS` | `FAM-CENS` | raw (flagged) |
+| `CENS` | `FAM-CENS` | typed |
 | `CHAN` | `CHAN` | typed |
 | `CHIL` | `CHIL` | typed |
 | `CREA` | `CREA` | typed |
@@ -167,7 +167,7 @@ Substructures of `record-FAM`.
 | `ENGA` | `ENGA` | typed |
 | `EVEN` | `FAM-EVEN` | typed |
 | `EXID` | `EXID` | typed |
-| `FACT` | `FAM-FACT` | raw (accepted) |
+| `FACT` | `FAM-FACT` | typed |
 | `HUSB` | `FAM-HUSB` | typed |
 | `MARB` | `MARB` | typed |
 | `MARC` | `MARC` | typed |
@@ -179,7 +179,7 @@ Substructures of `record-FAM`.
 | `NOTE` | `NOTE` | typed |
 | `OBJE` | `OBJE` | typed |
 | `REFN` | `REFN` | typed |
-| `RESI` | `FAM-RESI` | raw (flagged) |
+| `RESI` | `FAM-RESI` | typed |
 | `RESN` | `RESN` | raw (accepted) |
 | `SLGS` | `SLGS` | typed |
 | `SNOTE` | `SNOTE` | typed |
@@ -196,7 +196,7 @@ Substructures of `ANUL`.
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -206,10 +206,10 @@ Substructures of `ANUL`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -244,7 +244,7 @@ Substructures of `PLAC`.
 | `LANG` | `LANG` | raw (accepted) |
 | `MAP` | `MAP` | typed |
 | `NOTE` | `NOTE` | raw (accepted) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | raw (accepted) |
 | `TRAN` | `PLAC-TRAN` | raw (accepted) |
 
 ### `FAM.ANUL.PLAC.MAP`
@@ -307,27 +307,27 @@ Substructures of `FAM-CENS`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (undiagnosed) |
-| `AGNC` | `AGNC` | raw (undiagnosed) |
-| `ASSO` | `ASSO` | raw (undiagnosed) |
-| `CAUS` | `CAUS` | raw (undiagnosed) |
-| `DATE` | `DATE` | raw (undiagnosed) |
-| `EMAIL` | `EMAIL` | raw (undiagnosed) |
-| `FAX` | `FAX` | raw (undiagnosed) |
-| `HUSB` | `HUSB` | raw (undiagnosed) |
-| `NOTE` | `NOTE` | raw (undiagnosed) |
-| `OBJE` | `OBJE` | raw (undiagnosed) |
-| `PHON` | `PHON` | raw (undiagnosed) |
-| `PLAC` | `PLAC` | raw (undiagnosed) |
-| `RELI` | `RELI` | raw (undiagnosed) |
-| `RESN` | `RESN` | raw (undiagnosed) |
-| `SDATE` | `SDATE` | raw (undiagnosed) |
-| `SNOTE` | `SNOTE` | raw (undiagnosed) |
-| `SOUR` | `SOUR` | raw (undiagnosed) |
-| `TYPE` | `TYPE` | raw (undiagnosed) |
-| `UID` | `UID` | raw (undiagnosed) |
-| `WIFE` | `WIFE` | raw (undiagnosed) |
-| `WWW` | `WWW` | raw (undiagnosed) |
+| `ADDR` | `ADDR` | typed |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
+| `DATE` | `DATE` | typed |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `HUSB` | `HUSB` | raw (accepted) |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
+| `PLAC` | `PLAC` | typed |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
+| `SOUR` | `SOUR` | typed |
+| `TYPE` | `TYPE` | typed |
+| `UID` | `UID` | typed |
+| `WIFE` | `WIFE` | raw (accepted) |
+| `WWW` | `WWW` | typed |
 
 ### `FAM.CHAN`
 
@@ -336,8 +336,8 @@ Substructures of `CHAN`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `DATE` | `DATE-exact` | typed |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `NOTE` | `NOTE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 
 ### `FAM.CHAN.DATE`
 
@@ -371,7 +371,7 @@ Substructures of `DIV`.
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -381,10 +381,10 @@ Substructures of `DIV`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -399,7 +399,7 @@ Substructures of `DIVF`.
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -409,10 +409,10 @@ Substructures of `DIVF`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -427,7 +427,7 @@ Substructures of `ENGA`.
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -437,10 +437,10 @@ Substructures of `ENGA`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -455,7 +455,7 @@ Substructures of `FAM-EVEN`.
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -465,10 +465,10 @@ Substructures of `FAM-EVEN`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -489,27 +489,27 @@ Substructures of `FAM-FACT`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (undiagnosed) |
-| `AGNC` | `AGNC` | raw (undiagnosed) |
-| `ASSO` | `ASSO` | raw (undiagnosed) |
-| `CAUS` | `CAUS` | raw (undiagnosed) |
-| `DATE` | `DATE` | raw (undiagnosed) |
-| `EMAIL` | `EMAIL` | raw (undiagnosed) |
-| `FAX` | `FAX` | raw (undiagnosed) |
-| `HUSB` | `HUSB` | raw (undiagnosed) |
-| `NOTE` | `NOTE` | raw (undiagnosed) |
-| `OBJE` | `OBJE` | raw (undiagnosed) |
-| `PHON` | `PHON` | raw (undiagnosed) |
-| `PLAC` | `PLAC` | raw (undiagnosed) |
-| `RELI` | `RELI` | raw (undiagnosed) |
-| `RESN` | `RESN` | raw (undiagnosed) |
-| `SDATE` | `SDATE` | raw (undiagnosed) |
-| `SNOTE` | `SNOTE` | raw (undiagnosed) |
-| `SOUR` | `SOUR` | raw (undiagnosed) |
-| `TYPE` | `TYPE` | raw (undiagnosed) |
-| `UID` | `UID` | raw (undiagnosed) |
-| `WIFE` | `WIFE` | raw (undiagnosed) |
-| `WWW` | `WWW` | raw (undiagnosed) |
+| `ADDR` | `ADDR` | typed |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
+| `DATE` | `DATE` | typed |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `HUSB` | `HUSB` | raw (accepted) |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
+| `PLAC` | `PLAC` | typed |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
+| `SOUR` | `SOUR` | typed |
+| `TYPE` | `TYPE` | typed |
+| `UID` | `UID` | typed |
+| `WIFE` | `WIFE` | raw (accepted) |
+| `WWW` | `WWW` | typed |
 
 ### `FAM.HUSB`
 
@@ -527,7 +527,7 @@ Substructures of `MARB`.
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -537,10 +537,10 @@ Substructures of `MARB`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -555,7 +555,7 @@ Substructures of `MARC`.
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -565,10 +565,10 @@ Substructures of `MARC`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -583,7 +583,7 @@ Substructures of `MARL`.
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -593,10 +593,10 @@ Substructures of `MARL`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -611,7 +611,7 @@ Substructures of `MARR`.
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -621,10 +621,10 @@ Substructures of `MARR`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -639,7 +639,7 @@ Substructures of `MARS`.
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -649,10 +649,10 @@ Substructures of `MARS`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -665,27 +665,27 @@ Substructures of `FAM-NCHI`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (undiagnosed) |
-| `AGNC` | `AGNC` | raw (undiagnosed) |
-| `ASSO` | `ASSO` | raw (undiagnosed) |
-| `CAUS` | `CAUS` | raw (undiagnosed) |
-| `DATE` | `DATE` | raw (undiagnosed) |
-| `EMAIL` | `EMAIL` | raw (undiagnosed) |
-| `FAX` | `FAX` | raw (undiagnosed) |
-| `HUSB` | `HUSB` | raw (undiagnosed) |
-| `NOTE` | `NOTE` | raw (undiagnosed) |
-| `OBJE` | `OBJE` | raw (undiagnosed) |
-| `PHON` | `PHON` | raw (undiagnosed) |
-| `PLAC` | `PLAC` | raw (undiagnosed) |
-| `RELI` | `RELI` | raw (undiagnosed) |
-| `RESN` | `RESN` | raw (undiagnosed) |
-| `SDATE` | `SDATE` | raw (undiagnosed) |
-| `SNOTE` | `SNOTE` | raw (undiagnosed) |
-| `SOUR` | `SOUR` | raw (undiagnosed) |
-| `TYPE` | `TYPE` | raw (undiagnosed) |
-| `UID` | `UID` | raw (undiagnosed) |
-| `WIFE` | `WIFE` | raw (undiagnosed) |
-| `WWW` | `WWW` | raw (undiagnosed) |
+| `ADDR` | `ADDR` | typed |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
+| `DATE` | `DATE` | typed |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `HUSB` | `HUSB` | raw (accepted) |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
+| `PLAC` | `PLAC` | typed |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
+| `SOUR` | `SOUR` | typed |
+| `TYPE` | `TYPE` | typed |
+| `UID` | `UID` | typed |
+| `WIFE` | `WIFE` | raw (accepted) |
+| `WWW` | `WWW` | typed |
 
 ### `FAM.NO`
 
@@ -695,7 +695,7 @@ Substructures of `NO`.
 |-----|-----------|--------|
 | `DATE` | `NO-DATE` | typed |
 | `NOTE` | `NOTE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 
 ### `FAM.NO.DATE`
@@ -751,27 +751,27 @@ Substructures of `FAM-RESI`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (undiagnosed) |
-| `AGNC` | `AGNC` | raw (undiagnosed) |
-| `ASSO` | `ASSO` | raw (undiagnosed) |
-| `CAUS` | `CAUS` | raw (undiagnosed) |
-| `DATE` | `DATE` | raw (undiagnosed) |
-| `EMAIL` | `EMAIL` | raw (undiagnosed) |
-| `FAX` | `FAX` | raw (undiagnosed) |
-| `HUSB` | `HUSB` | raw (undiagnosed) |
-| `NOTE` | `NOTE` | raw (undiagnosed) |
-| `OBJE` | `OBJE` | raw (undiagnosed) |
-| `PHON` | `PHON` | raw (undiagnosed) |
-| `PLAC` | `PLAC` | raw (undiagnosed) |
-| `RELI` | `RELI` | raw (undiagnosed) |
-| `RESN` | `RESN` | raw (undiagnosed) |
-| `SDATE` | `SDATE` | raw (undiagnosed) |
-| `SNOTE` | `SNOTE` | raw (undiagnosed) |
-| `SOUR` | `SOUR` | raw (undiagnosed) |
-| `TYPE` | `TYPE` | raw (undiagnosed) |
-| `UID` | `UID` | raw (undiagnosed) |
-| `WIFE` | `WIFE` | raw (undiagnosed) |
-| `WWW` | `WWW` | raw (undiagnosed) |
+| `ADDR` | `ADDR` | typed |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
+| `DATE` | `DATE` | typed |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `HUSB` | `HUSB` | raw (accepted) |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
+| `PLAC` | `PLAC` | typed |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
+| `SOUR` | `SOUR` | typed |
+| `TYPE` | `TYPE` | typed |
+| `UID` | `UID` | typed |
+| `WIFE` | `WIFE` | raw (accepted) |
+| `WWW` | `WWW` | typed |
 
 ### `FAM.SLGS`
 
@@ -780,9 +780,9 @@ Substructures of `SLGS`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `DATE` | `DATE` | typed |
-| `NOTE` | `NOTE` | raw (accepted) |
+| `NOTE` | `NOTE` | typed |
 | `PLAC` | `PLAC` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | raw (accepted) |
 | `STAT` | `ord-STAT` | typed |
 | `TEMP` | `TEMP` | typed |
@@ -803,11 +803,11 @@ Substructures of `SOUR`.
 |-----|-----------|--------|
 | `DATA` | `SOUR-DATA` | typed |
 | `EVEN` | `SOUR-EVEN` | raw (accepted) |
-| `NOTE` | `NOTE` | raw (accepted) |
+| `NOTE` | `NOTE` | typed |
 | `OBJE` | `OBJE` | raw (accepted) |
 | `PAGE` | `PAGE` | typed |
 | `QUAY` | `QUAY` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 
 ### `FAM.SOUR.DATA`
 
@@ -995,7 +995,7 @@ Substructures of `ADOP`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1005,10 +1005,10 @@ Substructures of `ADOP`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1053,9 +1053,9 @@ Substructures of `BAPL`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `DATE` | `DATE` | typed |
-| `NOTE` | `NOTE` | raw (accepted) |
+| `NOTE` | `NOTE` | typed |
 | `PLAC` | `PLAC` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | raw (accepted) |
 | `STAT` | `ord-STAT` | typed |
 | `TEMP` | `TEMP` | typed |
@@ -1069,7 +1069,7 @@ Substructures of `BAPM`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1078,10 +1078,10 @@ Substructures of `BAPM`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1096,7 +1096,7 @@ Substructures of `BARM`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1105,10 +1105,10 @@ Substructures of `BARM`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1123,7 +1123,7 @@ Substructures of `BASM`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1132,10 +1132,10 @@ Substructures of `BASM`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1150,7 +1150,7 @@ Substructures of `BIRT`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1160,10 +1160,10 @@ Substructures of `BIRT`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1178,7 +1178,7 @@ Substructures of `BLES`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1187,10 +1187,10 @@ Substructures of `BLES`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1205,7 +1205,7 @@ Substructures of `BURI`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1214,10 +1214,10 @@ Substructures of `BURI`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1229,26 +1229,26 @@ Substructures of `CAST`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.CENS`
 
@@ -1259,7 +1259,7 @@ Substructures of `INDI-CENS`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1268,10 +1268,10 @@ Substructures of `INDI-CENS`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1286,7 +1286,7 @@ Substructures of `CHR`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1296,10 +1296,10 @@ Substructures of `CHR`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1314,7 +1314,7 @@ Substructures of `CHRA`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1323,10 +1323,10 @@ Substructures of `CHRA`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1341,7 +1341,7 @@ Substructures of `CONF`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1350,10 +1350,10 @@ Substructures of `CONF`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1366,9 +1366,9 @@ Substructures of `CONL`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `DATE` | `DATE` | typed |
-| `NOTE` | `NOTE` | raw (accepted) |
+| `NOTE` | `NOTE` | typed |
 | `PLAC` | `PLAC` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | raw (accepted) |
 | `STAT` | `ord-STAT` | typed |
 | `TEMP` | `TEMP` | typed |
@@ -1382,7 +1382,7 @@ Substructures of `CREM`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1391,10 +1391,10 @@ Substructures of `CREM`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1409,7 +1409,7 @@ Substructures of `DEAT`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1418,10 +1418,10 @@ Substructures of `DEAT`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1433,26 +1433,26 @@ Substructures of `DSCR`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.EDUC`
 
@@ -1460,26 +1460,26 @@ Substructures of `EDUC`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.EMIG`
 
@@ -1490,7 +1490,7 @@ Substructures of `EMIG`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1499,10 +1499,10 @@ Substructures of `EMIG`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1515,9 +1515,9 @@ Substructures of `ENDL`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `DATE` | `DATE` | typed |
-| `NOTE` | `NOTE` | raw (accepted) |
+| `NOTE` | `NOTE` | typed |
 | `PLAC` | `PLAC` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | raw (accepted) |
 | `STAT` | `ord-STAT` | typed |
 | `TEMP` | `TEMP` | typed |
@@ -1531,7 +1531,7 @@ Substructures of `INDI-EVEN`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1540,10 +1540,10 @@ Substructures of `INDI-EVEN`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1555,26 +1555,26 @@ Substructures of `INDI-FACT`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.FAMC`
 
@@ -1584,7 +1584,7 @@ Substructures of `INDI-FAMC`.
 |-----|-----------|--------|
 | `NOTE` | `NOTE` | raw (accepted) |
 | `PEDI` | `PEDI` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | raw (accepted) |
 | `STAT` | `FAMC-STAT` | raw (accepted) |
 
 ### `INDI.FAMC.PEDI`
@@ -1621,7 +1621,7 @@ Substructures of `FCOM`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1630,10 +1630,10 @@ Substructures of `FCOM`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1648,7 +1648,7 @@ Substructures of `GRAD`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1657,10 +1657,10 @@ Substructures of `GRAD`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1672,26 +1672,26 @@ Substructures of `IDNO`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.IMMI`
 
@@ -1702,7 +1702,7 @@ Substructures of `IMMI`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1711,10 +1711,10 @@ Substructures of `IMMI`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1745,7 +1745,7 @@ Substructures of `INDI-NAME`.
 | `NOTE` | `NOTE` | raw (accepted) |
 | `NPFX` | `NPFX` | typed |
 | `NSFX` | `NSFX` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | raw (accepted) |
 | `SOUR` | `SOUR` | raw (accepted) |
 | `SPFX` | `SPFX` | typed |
 | `SURN` | `SURN` | typed |
@@ -1780,26 +1780,26 @@ Substructures of `NATI`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.NATU`
 
@@ -1810,7 +1810,7 @@ Substructures of `NATU`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1819,10 +1819,10 @@ Substructures of `NATU`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1834,26 +1834,26 @@ Substructures of `INDI-NCHI`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.NMR`
 
@@ -1861,26 +1861,26 @@ Substructures of `NMR`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.OCCU`
 
@@ -1888,26 +1888,26 @@ Substructures of `OCCU`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.ORDN`
 
@@ -1918,7 +1918,7 @@ Substructures of `ORDN`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1927,10 +1927,10 @@ Substructures of `ORDN`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1945,7 +1945,7 @@ Substructures of `PROB`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -1954,10 +1954,10 @@ Substructures of `PROB`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -1969,26 +1969,26 @@ Substructures of `PROP`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.RELI`
 
@@ -1996,26 +1996,26 @@ Substructures of `INDI-RELI`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.RESI`
 
@@ -2026,7 +2026,7 @@ Substructures of `INDI-RESI`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -2035,10 +2035,10 @@ Substructures of `INDI-RESI`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -2053,7 +2053,7 @@ Substructures of `RETI`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -2062,10 +2062,10 @@ Substructures of `RETI`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -2079,9 +2079,9 @@ Substructures of `SLGC`.
 |-----|-----------|--------|
 | `DATE` | `DATE` | typed |
 | `FAMC` | `FAMC` | typed |
-| `NOTE` | `NOTE` | raw (accepted) |
+| `NOTE` | `NOTE` | typed |
 | `PLAC` | `PLAC` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | raw (accepted) |
 | `STAT` | `ord-STAT` | typed |
 | `TEMP` | `TEMP` | typed |
@@ -2092,26 +2092,26 @@ Substructures of `SSN`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.TITL`
 
@@ -2119,26 +2119,26 @@ Substructures of `INDI-TITL`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (flagged) |
+| `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | raw (accepted) |
-| `AGNC` | `AGNC` | raw (flagged) |
-| `ASSO` | `ASSO` | raw (flagged) |
-| `CAUS` | `CAUS` | raw (flagged) |
+| `AGNC` | `AGNC` | typed |
+| `ASSO` | `ASSO` | typed |
+| `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
-| `EMAIL` | `EMAIL` | raw (flagged) |
-| `FAX` | `FAX` | raw (flagged) |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `OBJE` | `OBJE` | raw (flagged) |
-| `PHON` | `PHON` | raw (flagged) |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `NOTE` | `NOTE` | typed |
+| `OBJE` | `OBJE` | typed |
+| `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
-| `RESN` | `RESN` | raw (flagged) |
-| `SDATE` | `SDATE` | raw (flagged) |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `RELI` | `RELI` | typed |
+| `RESN` | `RESN` | typed |
+| `SDATE` | `SDATE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
-| `UID` | `UID` | raw (flagged) |
-| `WWW` | `WWW` | raw (flagged) |
+| `UID` | `UID` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `INDI.WILL`
 
@@ -2149,7 +2149,7 @@ Substructures of `WILL`.
 | `ADDR` | `ADDR` | typed |
 | `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
-| `ASSO` | `ASSO` | raw (flagged) |
+| `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
@@ -2158,10 +2158,10 @@ Substructures of `WILL`.
 | `OBJE` | `OBJE` | typed |
 | `PHON` | `PHON` | typed |
 | `PLAC` | `PLAC` | typed |
-| `RELI` | `RELI` | raw (flagged) |
+| `RELI` | `RELI` | typed |
 | `RESN` | `RESN` | typed |
 | `SDATE` | `SDATE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TYPE` | `TYPE` | typed |
 | `UID` | `UID` | typed |
@@ -2335,7 +2335,7 @@ Substructures of `REPO`.
 |-----|-----------|--------|
 | `CALN` | `CALN` | typed |
 | `NOTE` | `NOTE` | typed |
-| `SNOTE` | `SNOTE` | raw (flagged) |
+| `SNOTE` | `SNOTE` | typed |
 
 ### `SOUR.REPO.CALN`
 

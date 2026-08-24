@@ -29,7 +29,7 @@ These code paths handle core functionality where bugs would cause data loss or c
 | `Decode()` / `DecodeWithOptions()` | Main entry points | Valid files, malformed, large files |
 | `DecodeWithDiagnostics()` | Lossless error collection during decode | Recovered records, error codes, strict vs. lenient |
 | `parseIndividual()` (internal) | Most common record type | All INDI substructures |
-| `parseFamily()` (internal) | Relationship data | FAM links, children, events |
+| `parseFamily()` (internal) | Relationship data | FAM links, children, events, attributes (`CENS`, `FACT`, `NCHI`, `RESI`) |
 
 ### Encoder (`encoder/`)
 

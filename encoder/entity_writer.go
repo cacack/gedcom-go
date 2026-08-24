@@ -258,7 +258,7 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 
 	// LDS Ordinances (level 1) - BAPL, CONL, ENDL, SLGC
 	for _, ord := range indi.LDSOrdinances {
-		tags = append(tags, ldsOrdinanceToTags(ord, 1)...)
+		tags = append(tags, ldsOrdinanceToTags(ord, 1, opts)...)
 	}
 
 	// Family links as child (level 1) - FAMC
@@ -293,12 +293,12 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 
 	// Change date (level 1) - CHAN
 	if indi.ChangeDate != nil {
-		tags = append(tags, changeDateToTags(indi.ChangeDate, 1, "CHAN")...)
+		tags = append(tags, changeDateToTags(indi.ChangeDate, 1, "CHAN", opts)...)
 	}
 
 	// Creation date (level 1) - CREA (GEDCOM 7.0)
 	if indi.CreationDate != nil {
-		tags = append(tags, changeDateToTags(indi.CreationDate, 1, "CREA")...)
+		tags = append(tags, changeDateToTags(indi.CreationDate, 1, "CREA", opts)...)
 	}
 
 	// Reference number (level 1) - REFN
@@ -322,6 +322,18 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 	}
 
 	return tags
+}
+
+// hasAttributeType reports whether attrs holds an attribute of the given type.
+// It guards fields that duplicate an attribute the decoder also stores in the
+// Attributes slice, so the encoder writes such a tag exactly once.
+func hasAttributeType(attrs []*gedcom.Attribute, attrType string) bool {
+	for _, attr := range attrs {
+		if attr != nil && attr.Type == attrType {
+			return true
+		}
+	}
+	return false
 }
 
 // familyToTags converts a Family entity to GEDCOM tags.
@@ -349,8 +361,12 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "CHIL", Value: child})
 	}
 
-	// Number of children (level 1) - NCHI
-	if fam.NumberOfChildren != "" {
+	// Number of children (level 1) - NCHI. The decoder stores an NCHI line
+	// twice: in NumberOfChildren and as an Attributes entry, which also carries
+	// the line's subordinates. Emitting both would write the tag twice, so the
+	// attribute wins whenever it is present -- it is the richer of the two --
+	// and this line is written only when nothing in Attributes covers it.
+	if fam.NumberOfChildren != "" && !hasAttributeType(fam.Attributes, "NCHI") {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NCHI", Value: fam.NumberOfChildren})
 	}
 
@@ -359,9 +375,14 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 		tags = append(tags, eventToTags(event, 1, opts)...)
 	}
 
+	// Attributes (level 1) - NCHI, FACT (CENS and RESI decode as Events), etc.
+	for _, attr := range fam.Attributes {
+		tags = append(tags, attributeToTags(attr, 1, opts)...)
+	}
+
 	// LDS Ordinances (level 1) - SLGS
 	for _, ord := range fam.LDSOrdinances {
-		tags = append(tags, ldsOrdinanceToTags(ord, 1)...)
+		tags = append(tags, ldsOrdinanceToTags(ord, 1, opts)...)
 	}
 
 	// Source citations (level 1) - SOUR
@@ -381,12 +402,12 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 
 	// Change date (level 1) - CHAN
 	if fam.ChangeDate != nil {
-		tags = append(tags, changeDateToTags(fam.ChangeDate, 1, "CHAN")...)
+		tags = append(tags, changeDateToTags(fam.ChangeDate, 1, "CHAN", opts)...)
 	}
 
 	// Creation date (level 1) - CREA (GEDCOM 7.0)
 	if fam.CreationDate != nil {
-		tags = append(tags, changeDateToTags(fam.CreationDate, 1, "CREA")...)
+		tags = append(tags, changeDateToTags(fam.CreationDate, 1, "CREA", opts)...)
 	}
 
 	// Reference number (level 1) - REFN
@@ -461,12 +482,12 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 
 	// Change date (level 1) - CHAN
 	if src.ChangeDate != nil {
-		tags = append(tags, changeDateToTags(src.ChangeDate, 1, "CHAN")...)
+		tags = append(tags, changeDateToTags(src.ChangeDate, 1, "CHAN", opts)...)
 	}
 
 	// Creation date (level 1) - CREA (GEDCOM 7.0)
 	if src.CreationDate != nil {
-		tags = append(tags, changeDateToTags(src.CreationDate, 1, "CREA")...)
+		tags = append(tags, changeDateToTags(src.CreationDate, 1, "CREA", opts)...)
 	}
 
 	// Reference number (level 1) - REFN
@@ -654,12 +675,12 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 
 	// Change date (level 1) - CHAN
 	if media.ChangeDate != nil {
-		tags = append(tags, changeDateToTags(media.ChangeDate, 1, "CHAN")...)
+		tags = append(tags, changeDateToTags(media.ChangeDate, 1, "CHAN", opts)...)
 	}
 
 	// Creation date (level 1) - CREA (GEDCOM 7.0)
 	if media.CreationDate != nil {
-		tags = append(tags, changeDateToTags(media.CreationDate, 1, "CREA")...)
+		tags = append(tags, changeDateToTags(media.CreationDate, 1, "CREA", opts)...)
 	}
 
 	// Reference numbers (level 1) - REFN
@@ -762,9 +783,130 @@ func transliterationToTags(tran *gedcom.Transliteration, level int) []*gedcom.Ta
 	return tags
 }
 
-// eventToTags converts an Event to GEDCOM tags at the specified level.
+// eventDetail is the EVENT_DETAIL substructure set that gedcom.Event and
+// gedcom.Attribute hold under identically named fields. Both writers fill one
+// in and hand it to eventDetailToTags so the shared block has a single writer
+// instead of two copies that drift apart. Attribute leaves age empty: AGE is
+// the one EVENT_DETAIL member gedcom.Attribute does not model.
+type eventDetail struct {
+	date                 string
+	place                string
+	placeDetail          *gedcom.PlaceDetail
+	typeDetail           string
+	cause                string
+	age                  string
+	agency               string
+	religiousAffiliation string
+	address              *gedcom.Address
+	phone                []string
+	email                []string
+	fax                  []string
+	website              []string
+	restriction          string
+	uid                  string
+	sortDate             string
+	associations         []*gedcom.Association
+	noteXRefs            []string
+	inlineNotes          []string
+	notes                []string
+	sourceCitations      []*gedcom.SourceCitation
+	media                []*gedcom.MediaLink
+}
+
+// eventDetailToTags converts the EVENT_DETAIL substructures shared by events and
+// attributes to GEDCOM tags. level is the level of the subordinate lines
+// themselves; the owning event or attribute line sits one level above.
 //
-//nolint:gocyclo // Converting all event fields requires handling many cases
+//nolint:gocyclo // One guarded append per EVENT_DETAIL substructure
+func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+
+	if d.date != "" {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "DATE", Value: d.date})
+	}
+
+	// Place with optional details
+	if d.place != "" {
+		tags = append(tags, placeToTags(d.place, d.placeDetail, level)...)
+	}
+
+	if d.typeDetail != "" {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "TYPE", Value: d.typeDetail})
+	}
+
+	if d.cause != "" {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "CAUS", Value: d.cause})
+	}
+
+	if d.age != "" {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "AGE", Value: d.age})
+	}
+
+	if d.agency != "" {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "AGNC", Value: d.agency})
+	}
+
+	if d.religiousAffiliation != "" {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "RELI", Value: d.religiousAffiliation})
+	}
+
+	// Address
+	if d.address != nil {
+		tags = append(tags, addressToTags(d.address, level)...)
+	}
+
+	// Contact info
+	for _, phone := range d.phone {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "PHON", Value: phone})
+	}
+	for _, email := range d.email {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "EMAIL", Value: email})
+	}
+	for _, fax := range d.fax {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "FAX", Value: fax})
+	}
+	for _, www := range d.website {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "WWW", Value: www})
+	}
+
+	if d.restriction != "" {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "RESN", Value: d.restriction})
+	}
+
+	if d.uid != "" {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "UID", Value: d.uid})
+	}
+
+	if d.sortDate != "" {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "SDATE", Value: d.sortDate})
+	}
+
+	// Associations - ASSO (witnesses, officiants, godparents)
+	for _, assoc := range d.associations {
+		tags = append(tags, associationToTags(assoc, level, opts)...)
+	}
+
+	// Notes - NOTE (XRef pointers and inline text, with CONT/CONC for
+	// multiline/long). Pointers are written as "NOTE @Nn@" exactly as the
+	// record-level writers do; see recordNotesToEncode.
+	for _, note := range recordNotesToEncode(d.noteXRefs, d.inlineNotes, d.notes) {
+		tags = append(tags, textToTags(note, level, "NOTE", opts)...)
+	}
+
+	// Source citations
+	for _, cite := range d.sourceCitations {
+		tags = append(tags, sourceCitationToTags(cite, level, opts)...)
+	}
+
+	// Media links
+	for _, media := range d.media {
+		tags = append(tags, mediaLinkToTags(media, level)...)
+	}
+
+	return tags
+}
+
+// eventToTags converts an Event to GEDCOM tags at the specified level.
 func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if event == nil {
 		return nil
@@ -782,78 +924,30 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 	}
 
 	// Subordinate tags at level+1
-	if event.Date != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: event.Date})
-	}
-
-	// Place with optional details
-	if event.Place != "" {
-		tags = append(tags, placeToTags(event.Place, event.PlaceDetail, level+1)...)
-	}
-
-	if event.EventTypeDetail != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: event.EventTypeDetail})
-	}
-
-	if event.Cause != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CAUS", Value: event.Cause})
-	}
-
-	if event.Age != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "AGE", Value: event.Age})
-	}
-
-	if event.Agency != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "AGNC", Value: event.Agency})
-	}
-
-	// Address
-	if event.Address != nil {
-		tags = append(tags, addressToTags(event.Address, level+1)...)
-	}
-
-	// Contact info
-	for _, phone := range event.Phone {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PHON", Value: phone})
-	}
-	for _, email := range event.Email {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "EMAIL", Value: email})
-	}
-	for _, fax := range event.Fax {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FAX", Value: fax})
-	}
-	for _, www := range event.Website {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "WWW", Value: www})
-	}
-
-	if event.Restriction != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "RESN", Value: event.Restriction})
-	}
-
-	if event.UID != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "UID", Value: event.UID})
-	}
-
-	if event.SortDate != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SDATE", Value: event.SortDate})
-	}
-
-	// Notes (with CONT/CONC for multiline/long)
-	for _, note := range event.Notes {
-		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
-	}
-
-	// Source citations
-	for _, cite := range event.SourceCitations {
-		tags = append(tags, sourceCitationToTags(cite, level+1, opts)...)
-	}
-
-	// Media links
-	for _, media := range event.Media {
-		tags = append(tags, mediaLinkToTags(media, level+1)...)
-	}
-
-	return tags
+	return append(tags, eventDetailToTags(&eventDetail{
+		date:                 event.Date,
+		place:                event.Place,
+		placeDetail:          event.PlaceDetail,
+		typeDetail:           event.EventTypeDetail,
+		cause:                event.Cause,
+		age:                  event.Age,
+		agency:               event.Agency,
+		religiousAffiliation: event.ReligiousAffiliation,
+		address:              event.Address,
+		phone:                event.Phone,
+		email:                event.Email,
+		fax:                  event.Fax,
+		website:              event.Website,
+		restriction:          event.Restriction,
+		uid:                  event.UID,
+		sortDate:             event.SortDate,
+		associations:         event.Associations,
+		noteXRefs:            event.NoteXRefs,
+		inlineNotes:          event.InlineNotes,
+		notes:                event.Notes,
+		sourceCitations:      event.SourceCitations,
+		media:                event.Media,
+	}, level+1, opts)...)
 }
 
 // attributeToTags converts an Attribute to GEDCOM tags at the specified level.
@@ -862,30 +956,33 @@ func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*
 		return nil
 	}
 
-	var tags []*gedcom.Tag
-
 	// Attribute tag (OCCU, EDUC, etc.) with value
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: attr.Type, Value: attr.Value})
+	tags := []*gedcom.Tag{{Level: level, Tag: attr.Type, Value: attr.Value}}
 
 	// Subordinate tags at level+1
-	if attr.Date != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: attr.Date})
-	}
-
-	if attr.Place != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PLAC", Value: attr.Place})
-	}
-
-	if attr.TypeDetail != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: attr.TypeDetail})
-	}
-
-	// Source citations
-	for _, cite := range attr.SourceCitations {
-		tags = append(tags, sourceCitationToTags(cite, level+1, opts)...)
-	}
-
-	return tags
+	return append(tags, eventDetailToTags(&eventDetail{
+		date:                 attr.Date,
+		place:                attr.Place,
+		placeDetail:          attr.PlaceDetail,
+		typeDetail:           attr.TypeDetail,
+		cause:                attr.Cause,
+		agency:               attr.Agency,
+		religiousAffiliation: attr.ReligiousAffiliation,
+		address:              attr.Address,
+		phone:                attr.Phone,
+		email:                attr.Email,
+		fax:                  attr.Fax,
+		website:              attr.Website,
+		restriction:          attr.Restriction,
+		uid:                  attr.UID,
+		sortDate:             attr.SortDate,
+		associations:         attr.Associations,
+		noteXRefs:            attr.NoteXRefs,
+		inlineNotes:          attr.InlineNotes,
+		notes:                attr.Notes,
+		sourceCitations:      attr.SourceCitations,
+		media:                attr.Media,
+	}, level+1, opts)...)
 }
 
 // sourceCitationToTags converts a SourceCitation to GEDCOM tags at the specified level.
@@ -911,6 +1008,11 @@ func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOp
 	// DATA subordinate
 	if cite.Data != nil {
 		tags = append(tags, sourceCitationDataToTags(cite.Data, level+1, opts)...)
+	}
+
+	// Notes - NOTE (with CONT/CONC for multiline/long)
+	for _, note := range recordNotesToEncode(cite.NoteXRefs, cite.InlineNotes, cite.Notes) {
+		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
 	// Ancestry APID (vendor extension)
@@ -1027,7 +1129,7 @@ func coordinatesToTags(coords *gedcom.Coordinates, level int) []*gedcom.Tag {
 }
 
 // ldsOrdinanceToTags converts an LDSOrdinance to GEDCOM tags at the specified level.
-func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int) []*gedcom.Tag {
+func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if ord == nil {
 		return nil
 	}
@@ -1057,6 +1159,11 @@ func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int) []*gedcom.Tag {
 	// FAMC for SLGC (sealing to parents)
 	if ord.FamilyXRef != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FAMC", Value: ord.FamilyXRef})
+	}
+
+	// Notes - NOTE (with CONT/CONC for multiline/long)
+	for _, note := range recordNotesToEncode(ord.NoteXRefs, ord.InlineNotes, ord.Notes) {
+		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
 	return tags
@@ -1117,7 +1224,7 @@ func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions
 }
 
 // changeDateToTags converts a ChangeDate to GEDCOM tags at the specified level.
-func changeDateToTags(cd *gedcom.ChangeDate, level int, tagName string) []*gedcom.Tag {
+func changeDateToTags(cd *gedcom.ChangeDate, level int, tagName string, opts *EncodeOptions) []*gedcom.Tag {
 	if cd == nil {
 		return nil
 	}
@@ -1135,6 +1242,11 @@ func changeDateToTags(cd *gedcom.ChangeDate, level int, tagName string) []*gedco
 		if cd.Time != "" {
 			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "TIME", Value: cd.Time})
 		}
+	}
+
+	// Notes - NOTE (with CONT/CONC for multiline/long)
+	for _, note := range recordNotesToEncode(cd.NoteXRefs, cd.InlineNotes, cd.Notes) {
+		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
 	return tags
@@ -1314,7 +1426,7 @@ func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Ta
 
 	// Change date (level 1) - CHAN
 	if note.ChangeDate != nil {
-		tags = append(tags, changeDateToTags(note.ChangeDate, 1, "CHAN")...)
+		tags = append(tags, changeDateToTags(note.ChangeDate, 1, "CHAN", opts)...)
 	}
 
 	// Preserved unknown tags

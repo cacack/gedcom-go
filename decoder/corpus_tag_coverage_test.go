@@ -41,6 +41,26 @@ import (
 // unhandledTags maps a tag to why it is currently unrecognized. Self-cleaning:
 // a tag that stops being flagged fails the test asking to be removed, and a
 // newly flagged tag fails it as a regression.
+//
+// The EVENT_DETAIL cycle (issues #402, #447, #448) removed nine entries at
+// once: 34 unrecognized tags -> 25, i.e. 34 - 9 = 25. The nine split cleanly by
+// the code path that stopped flagging them, and each was measured against the
+// corpus before the change rather than inferred from the issue text:
+//
+//	#402 parseAttribute, which read only NOTE/AGE/DATE/PLAC/SOUR, so every
+//	other EVENT_DETAIL child of any of the 13 attribute tags was flagged:
+//	  ADDR (4 occurrences), AGNC (4), CAUS (17), OBJE (4)   -- 4 tags
+//
+//	#447 parseEvent and the citation/LDS/CHAN/NAME/REPO paths, which had no
+//	typed field for these:
+//	  ASSO (4), RELI (2), SNOTE (10)                        -- 3 tags
+//
+//	#448 parseFamily, which never read these contexts at all, so the FAM-level
+//	tag itself was flagged:
+//	  CENS (6), RESI (2)                                    -- 2 tags
+//
+// 4 + 3 + 2 = 9. No tag appears in two groups: RELI was flagged only under
+// events (DEAT, MARR) in this corpus, never under an attribute.
 var unhandledTags = map[string]string{
 	// Standard tags. These are the actionable entries.
 	"RIN":   "standard 5.5.1 record ID; no typed access (#441) and unrecognized in every context",
@@ -49,17 +69,12 @@ var unhandledTags = map[string]string{
 	"CONC":  "continuation mechanic, unrecognized in some contexts",
 	"CONT":  "continuation mechanic, unrecognized in some contexts",
 	"NAME":  "standard; unrecognized in some contexts",
-	"NOTE":  "standard; unrecognized in some contexts",
+	"NOTE":  "standard 5.5 MULTIMEDIA_LINK subtag; every remaining occurrence is under an inline OBJE (#470)",
 	"SOUR":  "standard; unrecognized in some contexts",
 	"ALIA":  "standard; #375 fixed level 1 on INDI, still unrecognized at level 2",
-	"CAUS":  "standard EVENT_DETAIL subtag; see #402",
 	"FAMC":  "standard; unrecognized in some contexts",
 	"TITL":  "standard; unrecognized in some contexts",
-	"CENS":  "standard event; unrecognized in some contexts",
-	"ADDR":  "standard; unrecognized in some contexts",
-	"AGNC":  "standard EVENT_DETAIL subtag; see #402",
 	"BLOB":  "standard 5.5 multimedia blob",
-	"OBJE":  "standard; unrecognized in some contexts",
 	"RFN":   "standard 5.5.1 record file number",
 	"DATE":  "standard; unrecognized in some contexts",
 	"EMAIL": "standard 5.5.1/7.0 contact tag",
@@ -68,12 +83,8 @@ var unhandledTags = map[string]string{
 
 	// GEDCOM 7.0 tags, all from maximal70.ged. Version Support is Principle 4
 	// and Differentiator 2, so these are the sharpest entries in the list.
-	"SNOTE": "GEDCOM 7.0 shared note; unrecognized in some contexts",
-	"CREA":  "GEDCOM 7.0 creation timestamp",
-	"ASSO":  "GEDCOM 7.0 association; unrecognized in some contexts",
-	"REFN":  "GEDCOM 7.0 user reference number",
-	"RELI":  "standard religion tag; unrecognized in some contexts",
-	"RESI":  "standard residence; unrecognized in some contexts",
+	"CREA": "GEDCOM 7.0 creation timestamp",
+	"REFN": "GEDCOM 7.0 user reference number",
 
 	// Vendor tags that omit the underscore convention. Nothing for the decoder
 	// to fix -- recorded so they are not mistaken for standard-tag gaps.
