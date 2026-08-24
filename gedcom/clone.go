@@ -204,6 +204,13 @@ func (f *Family) Clone() *Family {
 		}
 	}
 
+	if f.Attributes != nil {
+		copied.Attributes = make([]*Attribute, len(f.Attributes))
+		for k, attr := range f.Attributes {
+			copied.Attributes[k] = cloneAttribute(attr)
+		}
+	}
+
 	if f.SourceCitations != nil {
 		copied.SourceCitations = make([]*SourceCitation, len(f.SourceCitations))
 		for k, sc := range f.SourceCitations {
@@ -562,23 +569,26 @@ func cloneEvent(e *Event) *Event {
 	}
 
 	copied := &Event{
-		Type:            e.Type,
-		Date:            e.Date,
-		Place:           e.Place,
-		Description:     e.Description,
-		EventTypeDetail: e.EventTypeDetail,
-		Cause:           e.Cause,
-		Age:             e.Age,
-		Agency:          e.Agency,
-		Restriction:     e.Restriction,
-		UID:             e.UID,
-		SortDate:        e.SortDate,
-		IsNegative:      e.IsNegative,
-		Notes:           cloneStringSlice(e.Notes),
-		Phone:           cloneStringSlice(e.Phone),
-		Email:           cloneStringSlice(e.Email),
-		Fax:             cloneStringSlice(e.Fax),
-		Website:         cloneStringSlice(e.Website),
+		Type:                 e.Type,
+		Date:                 e.Date,
+		Place:                e.Place,
+		Description:          e.Description,
+		EventTypeDetail:      e.EventTypeDetail,
+		Cause:                e.Cause,
+		Age:                  e.Age,
+		Agency:               e.Agency,
+		ReligiousAffiliation: e.ReligiousAffiliation,
+		Restriction:          e.Restriction,
+		UID:                  e.UID,
+		SortDate:             e.SortDate,
+		IsNegative:           e.IsNegative,
+		Notes:                cloneStringSlice(e.Notes),
+		NoteXRefs:            cloneStringSlice(e.NoteXRefs),
+		InlineNotes:          cloneStringSlice(e.InlineNotes),
+		Phone:                cloneStringSlice(e.Phone),
+		Email:                cloneStringSlice(e.Email),
+		Fax:                  cloneStringSlice(e.Fax),
+		Website:              cloneStringSlice(e.Website),
 	}
 
 	copied.ParsedDate = cloneDate(e.ParsedDate)
@@ -599,6 +609,13 @@ func cloneEvent(e *Event) *Event {
 		}
 	}
 
+	if e.Associations != nil {
+		copied.Associations = make([]*Association, len(e.Associations))
+		for i, assoc := range e.Associations {
+			copied.Associations[i] = cloneAssociation(assoc)
+		}
+	}
+
 	copied.Tags = CloneTags(e.Tags)
 	return copied
 }
@@ -609,18 +626,47 @@ func cloneAttribute(a *Attribute) *Attribute {
 	}
 
 	copied := &Attribute{
-		Type:       a.Type,
-		Value:      a.Value,
-		Date:       a.Date,
-		Place:      a.Place,
-		TypeDetail: a.TypeDetail,
-		ParsedDate: cloneDate(a.ParsedDate),
+		Type:                 a.Type,
+		Value:                a.Value,
+		Date:                 a.Date,
+		Place:                a.Place,
+		TypeDetail:           a.TypeDetail,
+		Cause:                a.Cause,
+		Agency:               a.Agency,
+		ReligiousAffiliation: a.ReligiousAffiliation,
+		Restriction:          a.Restriction,
+		UID:                  a.UID,
+		SortDate:             a.SortDate,
+		Notes:                cloneStringSlice(a.Notes),
+		NoteXRefs:            cloneStringSlice(a.NoteXRefs),
+		InlineNotes:          cloneStringSlice(a.InlineNotes),
+		Phone:                cloneStringSlice(a.Phone),
+		Email:                cloneStringSlice(a.Email),
+		Fax:                  cloneStringSlice(a.Fax),
+		Website:              cloneStringSlice(a.Website),
+		ParsedDate:           cloneDate(a.ParsedDate),
+		PlaceDetail:          clonePlaceDetail(a.PlaceDetail),
+		Address:              cloneAddress(a.Address),
 	}
 
 	if a.SourceCitations != nil {
 		copied.SourceCitations = make([]*SourceCitation, len(a.SourceCitations))
 		for i, sc := range a.SourceCitations {
 			copied.SourceCitations[i] = cloneSourceCitation(sc)
+		}
+	}
+
+	if a.Media != nil {
+		copied.Media = make([]*MediaLink, len(a.Media))
+		for i, media := range a.Media {
+			copied.Media[i] = cloneMediaLink(media)
+		}
+	}
+
+	if a.Associations != nil {
+		copied.Associations = make([]*Association, len(a.Associations))
+		for i, assoc := range a.Associations {
+			copied.Associations[i] = cloneAssociation(assoc)
 		}
 	}
 
@@ -694,9 +740,12 @@ func cloneSourceCitation(sc *SourceCitation) *SourceCitation {
 	}
 
 	copied := &SourceCitation{
-		SourceXRef: sc.SourceXRef,
-		Page:       sc.Page,
-		Quality:    sc.Quality,
+		SourceXRef:  sc.SourceXRef,
+		Page:        sc.Page,
+		Quality:     sc.Quality,
+		Notes:       cloneStringSlice(sc.Notes),
+		NoteXRefs:   cloneStringSlice(sc.NoteXRefs),
+		InlineNotes: cloneStringSlice(sc.InlineNotes),
 	}
 
 	if sc.Data != nil {
@@ -779,13 +828,16 @@ func cloneLDSOrdinance(ord *LDSOrdinance) *LDSOrdinance {
 		return nil
 	}
 	return &LDSOrdinance{
-		Type:       ord.Type,
-		Date:       ord.Date,
-		ParsedDate: cloneDate(ord.ParsedDate),
-		Temple:     ord.Temple,
-		Place:      ord.Place,
-		Status:     ord.Status,
-		FamilyXRef: ord.FamilyXRef,
+		Type:        ord.Type,
+		Date:        ord.Date,
+		ParsedDate:  cloneDate(ord.ParsedDate),
+		Temple:      ord.Temple,
+		Place:       ord.Place,
+		Status:      ord.Status,
+		FamilyXRef:  ord.FamilyXRef,
+		Notes:       cloneStringSlice(ord.Notes),
+		NoteXRefs:   cloneStringSlice(ord.NoteXRefs),
+		InlineNotes: cloneStringSlice(ord.InlineNotes),
 	}
 }
 
@@ -794,8 +846,11 @@ func cloneChangeDate(cd *ChangeDate) *ChangeDate {
 		return nil
 	}
 	return &ChangeDate{
-		Date: cd.Date,
-		Time: cd.Time,
+		Date:        cd.Date,
+		Time:        cd.Time,
+		Notes:       cloneStringSlice(cd.Notes),
+		NoteXRefs:   cloneStringSlice(cd.NoteXRefs),
+		InlineNotes: cloneStringSlice(cd.InlineNotes),
 	}
 }
 

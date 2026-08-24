@@ -197,6 +197,9 @@ type Attribute struct {
 	// Place where the attribute was applicable (optional)
 	Place string
 
+	// PlaceDetail provides structured place information with optional coordinates
+	PlaceDetail *PlaceDetail
+
 	// TypeDetail is the user-supplied classification of this attribute
 	// (TYPE subordinate). It is the Attribute counterpart of
 	// Event.EventTypeDetail; Type already holds the tag, so the tag's own
@@ -207,8 +210,73 @@ type Attribute struct {
 	// same fact — the same dual storage Event.EventTypeDetail already has.
 	TypeDetail string
 
+	// Cause is the cause of the attribute (CAUS subordinate)
+	Cause string
+
+	// Agency is the responsible agency (AGNC subordinate)
+	Agency string
+
+	// ReligiousAffiliation is the religious denomination associated with the
+	// attribute (RELI subordinate)
+	ReligiousAffiliation string
+
+	// Address is the attribute address structure (ADDR subordinate)
+	Address *Address
+
+	// Phone numbers associated with the attribute (PHON subordinate, can repeat)
+	Phone []string
+
+	// Email addresses associated with the attribute (EMAIL subordinate, can repeat)
+	Email []string
+
+	// Fax numbers associated with the attribute (FAX subordinate, can repeat)
+	Fax []string
+
+	// Websites associated with the attribute (WWW subordinate, can repeat)
+	Website []string
+
+	// Restriction notice for privacy controls (RESN subordinate)
+	// Common values: "confidential", "locked", "privacy" (or combinations)
+	Restriction string
+
+	// UID is a unique identifier for the attribute (UID subordinate)
+	UID string
+
+	// SortDate is the date used for sorting attributes (SDATE subordinate, GEDCOM 7.0)
+	// Typically in ISO 8601 format (e.g., "1900-01-01")
+	SortDate string
+
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation
+
+	// Media are references to media objects with optional crop/title
+	Media []*MediaLink
+
+	// Associations are links to individuals associated with this attribute
+	// (ASSO subordinate), e.g. witnesses, officiants or godparents
+	Associations []*Association
+
+	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
+	NoteXRefs []string
+
+	// InlineNotes are note text values written directly on this attribute
+	// (NOTE <text> form, including CONT/CONC continuations).
+	InlineNotes []string
+
+	// Notes is deprecated: use NoteXRefs and InlineNotes instead. It is kept
+	// for backward compatibility and populated during decode with the inline
+	// note text and shared-note XRefs interleaved in their original GEDCOM
+	// order (not the NoteXRefs-then-InlineNotes order of the split fields).
+	//
+	// Deprecated: use NoteXRefs and InlineNotes.
+	Notes []string
+}
+
+// AllNotes returns this attribute's inline notes followed by the text of any
+// shared notes referenced by NoteXRefs, resolved against doc. Shared notes that
+// do not resolve are skipped. Returns nil when there are no notes.
+func (a *Attribute) AllNotes(doc *Document) []string {
+	return allNotes(doc, a.InlineNotes, a.NoteXRefs)
 }
 
 // BirthEvent returns the first birth event for this individual, or nil if none found.

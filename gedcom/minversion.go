@@ -54,7 +54,8 @@ func recordRequiresGEDCOM7(rec *Record) bool {
 	case *Family:
 		return familyRequiresGEDCOM7(e)
 	case *Source:
-		return len(e.ExternalIDs) > 0 || e.CreationDate != nil || mediaLinksRequireGEDCOM7(e.Media)
+		return len(e.ExternalIDs) > 0 || e.CreationDate != nil || e.UID != "" ||
+			mediaLinksRequireGEDCOM7(e.Media)
 	case *MediaObject:
 		return mediaObjectRequiresGEDCOM7(e)
 	// Repository, Submitter, and Note have no CreationDate field (only
@@ -90,7 +91,13 @@ func individualRequiresGEDCOM7(i *Individual) bool {
 	if i == nil {
 		return false
 	}
-	if len(i.ExternalIDs) > 0 || i.CreationDate != nil || mediaLinksRequireGEDCOM7(i.Media) {
+	// UID has no 5.5 or 5.5.1 position at any level -- it does not appear in
+	// the 5.5 coverage matrix at all -- and the encoder writes it with no
+	// version guard, so a record carrying one cannot honestly be labelled
+	// 5.5.1. Same argument as eventRequiresGEDCOM7 and
+	// attributeRequiresGEDCOM7 make one level down.
+	if len(i.ExternalIDs) > 0 || i.CreationDate != nil || i.UID != "" ||
+		mediaLinksRequireGEDCOM7(i.Media) {
 		return true
 	}
 	for _, n := range i.Names {
@@ -98,18 +105,19 @@ func individualRequiresGEDCOM7(i *Individual) bool {
 			return true
 		}
 	}
-	for _, a := range i.Associations {
-		if a != nil && a.Phrase != "" {
-			return true
-		}
+	if associationPhraseRequiresGEDCOM7(i.Associations) {
+		return true
 	}
 	for _, ev := range i.Events {
 		if eventRequiresGEDCOM7(ev) {
 			return true
 		}
 	}
-	// Individual.Attributes is intentionally not inspected: the Attribute struct
-	// carries no 7.0-only typed fields. Revisit if that ever changes.
+	for _, at := range i.Attributes {
+		if attributeRequiresGEDCOM7(at) {
+			return true
+		}
+	}
 	return false
 }
 
@@ -117,11 +125,17 @@ func familyRequiresGEDCOM7(f *Family) bool {
 	if f == nil {
 		return false
 	}
-	if len(f.ExternalIDs) > 0 || f.CreationDate != nil || mediaLinksRequireGEDCOM7(f.Media) {
+	if len(f.ExternalIDs) > 0 || f.CreationDate != nil || f.UID != "" ||
+		mediaLinksRequireGEDCOM7(f.Media) {
 		return true
 	}
 	for _, ev := range f.Events {
 		if eventRequiresGEDCOM7(ev) {
+			return true
+		}
+	}
+	for _, at := range f.Attributes {
+		if attributeRequiresGEDCOM7(at) {
 			return true
 		}
 	}
@@ -132,18 +146,66 @@ func eventRequiresGEDCOM7(ev *Event) bool {
 	if ev == nil {
 		return false
 	}
-	// NO (negative assertion) and SDATE (sort date) are 7.0-only.
-	if ev.IsNegative || ev.SortDate != "" {
+	// NO (negative assertion), SDATE (sort date) and UID are 7.0-only.
+	// UID is checked here for the same reason attributeRequiresGEDCOM7
+	// checks it: both come from the one shared EVENT_DETAIL parse, so a
+	// rule that held for one and not the other would be arbitrary.
+	if ev.IsNegative || ev.SortDate != "" || ev.UID != "" {
+		return true
+	}
+	// An ASSO on an event is 7.0-only by position: 5.5 and 5.5.1 define
+	// ASSOCIATION_STRUCTURE under INDI only, never inside EVENT_DETAIL.
+	// Presence is the test here, unlike Individual.Associations where 5.5.1
+	// has the structure and only PHRASE is new.
+	if len(ev.Associations) > 0 {
 		return true
 	}
 	return mediaLinksRequireGEDCOM7(ev.Media)
+}
+
+// attributeRequiresGEDCOM7 reports whether an attribute carries a
+// structure only GEDCOM 7.0 defines. UID and SDATE on an attribute, and
+// an ASSO with a PHRASE, are all 7.0-only; the encoder emits them
+// unconditionally, so a document holding one cannot honestly be labelled
+// 5.5.1.
+func attributeRequiresGEDCOM7(at *Attribute) bool {
+	if at == nil {
+		return false
+	}
+	if at.UID != "" || at.SortDate != "" {
+		return true
+	}
+	// As on an event, an ASSO under an attribute has no 5.5.1 position.
+	if len(at.Associations) > 0 {
+		return true
+	}
+	return mediaLinksRequireGEDCOM7(at.Media)
+}
+
+// associationPhraseRequiresGEDCOM7 reports whether any association carries a
+// PHRASE, which 5.5.1 has no equivalent for.
+//
+// This is the right test only for Individual.Associations, where 5.5.1
+// already has INDI.ASSO and PHRASE is the sole 7.0 addition. On an event or
+// attribute the structure itself is 7.0-only, so those callers test presence.
+func associationPhraseRequiresGEDCOM7(assocs []*Association) bool {
+	for _, a := range assocs {
+		if a != nil && a.Phrase != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func mediaObjectRequiresGEDCOM7(m *MediaObject) bool {
 	if m == nil {
 		return false
 	}
-	if len(m.ExternalIDs) > 0 || m.CreationDate != nil || len(m.SharedNoteXRefs) > 0 {
+	// RESN on an OBJE record is 7.0-only: the 5.5.1 MULTIMEDIA_RECORD has no
+	// RESN substructure. RESN inside EVENT_DETAIL is a different position and
+	// is 5.5.1-valid, which is why Event/Attribute do not check it.
+	if len(m.ExternalIDs) > 0 || m.CreationDate != nil || len(m.SharedNoteXRefs) > 0 ||
+		len(m.UIDs) > 0 || m.Restriction != "" {
 		return true
 	}
 	for _, f := range m.Files {

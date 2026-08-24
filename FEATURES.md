@@ -68,9 +68,9 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [705 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (70.6%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [856 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (65.0%) | Most common format |
-| GEDCOM 7.0 | Every readable line preserved | [840 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (60.5%) | Latest standard |
+| GEDCOM 5.5 | Every readable line preserved | [832 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (83.4%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,113 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (84.6%) | Most common format |
+| GEDCOM 7.0 | Every readable line preserved | [1,232 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (88.7%) | Latest standard |
 
 - Automatic version detection from header
 - Heuristic-based detection for malformed headers
@@ -88,8 +88,8 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 840 of 7.0's structures reach the typed model, 705 of
-5.5's, and 856 of 5.5.1's.
+document built for it: 1,232 of 7.0's structures reach the typed model, 832 of
+5.5's, and 1,113 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -99,9 +99,9 @@ specifications define different structure sets — 7.0 defines the most, and muc
 of what it added is what this library has yet to type — so the shares rank the
 work left per version, not the versions.
 
-**Re-encoding.** Not byte-for-byte, and this is measured too. Of 96 corpus
-fixtures, 5 do not survive decode and encode at all; of the 91 that do, 83
-reproduce their header byte for byte and 80 reproduce their record body.
+**Re-encoding.** Not byte-for-byte, and this is measured too. Of 99 corpus
+fixtures, 5 do not survive decode and encode at all; of the 94 that do, 86
+reproduce their header byte for byte and 83 reproduce their record body.
 `byte_roundtrip_test.go` names the reason behind every exception. What remains
 in the body count is not a defect but a limit of byte comparison itself: a
 source that was not UTF-8 has been transcoded, so its bytes cannot match
@@ -447,6 +447,8 @@ mutated.
 - Husband/Wife references
 - Children references
 - Family events (see Events section)
+- Family attributes (`Family.Attributes`, the counterpart of
+  `Individual.Attributes`) — see Attributes section
 - LDS ordinances (SLGS)
 - Source citations
 - Notes
@@ -476,12 +478,15 @@ mutated.
 - Cross-reference ID (`@N1@`)
 - Text content with continuation
 - Split note fields on note-bearing records (Individual, Family, Source,
-  Repository, Submitter, MediaObject): `NoteXRefs` holds XRef pointers to
-  shared NOTE/SNOTE records, `InlineNotes` holds note text written directly
-  on the record. The legacy `Notes []string` field is deprecated (kept for
-  backward compatibility, populated in original GEDCOM order).
+  Repository, Submitter, MediaObject) and on the note-bearing substructures
+  (Event, Attribute, SourceCitation, LDSOrdinance, ChangeDate): `NoteXRefs`
+  holds XRef pointers to shared NOTE/SNOTE records, `InlineNotes` holds note
+  text written directly on the structure, with `CONT`/`CONC` folded. The legacy
+  `Notes []string` field is deprecated (kept for backward compatibility,
+  populated in original GEDCOM order).
 - `AllNotes(doc)` helper returns inline note text plus the resolved text of
-  any shared notes referenced by XRef
+  any shared notes referenced by XRef; also available on `Event` and
+  `Attribute`
 
 ### Multimedia (OBJE)
 
@@ -536,7 +541,36 @@ written back out on the event line.
 | DIV | Divorce | DATE, PLAC |
 | DIVF | Divorce Filed | DATE, PLAC |
 | ANUL | Annulment | DATE, PLAC |
+| CENS | Family Census | DATE, PLAC, plus the full EVENT_DETAIL below |
+| RESI | Family Residence | DATE, PLAC, ADDR, plus the full EVENT_DETAIL below |
 | EVEN | Generic Event | DATE, PLAC, TYPE |
+
+### Event Detail
+
+Beyond the subordinates named per tag above, every event — individual or
+family — decodes the shared `EVENT_DETAIL` structure into typed fields:
+
+| Tag | Field |
+|-----|-------|
+| DATE | `Event.Date`, `Event.ParsedDate` |
+| PLAC | `Event.Place`, `Event.PlaceDetail` (FORM, MAP/LATI/LONG) |
+| TYPE | `Event.EventTypeDetail` |
+| CAUS | `Event.Cause` |
+| AGE | `Event.Age` |
+| AGNC | `Event.Agency` |
+| RELI | `Event.ReligiousAffiliation` |
+| ADDR | `Event.Address` |
+| PHON, EMAIL, FAX, WWW | `Event.Phone`, `Email`, `Fax`, `Website` |
+| RESN | `Event.Restriction` |
+| UID | `Event.UID` |
+| SDATE | `Event.SortDate` |
+| ASSO | `Event.Associations` |
+| NOTE, SNOTE | `Event.NoteXRefs`, `Event.InlineNotes`, `Event.AllNotes(doc)` |
+| SOUR | `Event.SourceCitations` |
+| OBJE | `Event.Media` |
+
+`gedcom.Attribute` names the same fields, so an attribute reads the same way as
+an event.
 
 ## Attributes
 
@@ -555,11 +589,16 @@ written back out on the event line.
 | NCHI | Number of Children | |
 | NMR | Number of Marriages | |
 | PROP | Property | |
-| FACT | Generic Fact | INDI only; its meaning is the TYPE (5.5.1+) |
+| FACT | Generic Fact | INDI and FAM; its meaning is the TYPE (5.5.1+) |
 
 Each attribute's subordinate `TYPE` lands in `Attribute.TypeDetail`, alongside
-`DATE`, `PLAC` and `SOUR`. FAM-level `FACT` (7.0) is recognized but not typed:
-it is available on `Family.Tags` only.
+the full `EVENT_DETAIL` set listed under Events — `gedcom.Attribute` carries the
+same fields as `gedcom.Event`.
+
+At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
+`CENS` and `RESI` into `Family.Events`, each with its `EVENT_DETAIL`. `NCHI` is
+dual-stored: the scalar `Family.NumberOfChildren` stays populated alongside the
+richer `Family.Attributes` entry, and the encoder writes the line once.
 
 ## Source Citations
 

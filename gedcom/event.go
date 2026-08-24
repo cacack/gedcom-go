@@ -130,6 +130,10 @@ type Event struct {
 	// Agency is the responsible agency (AGNC subordinate)
 	Agency string
 
+	// ReligiousAffiliation is the religious denomination associated with the
+	// event (RELI subordinate)
+	ReligiousAffiliation string
+
 	// Address is the event address structure (ADDR subordinate)
 	Address *Address
 
@@ -165,7 +169,23 @@ type Event struct {
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation
 
-	// Notes are references to note records
+	// Associations are links to individuals associated with this event
+	// (ASSO subordinate), e.g. witnesses, officiants or godparents
+	Associations []*Association
+
+	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
+	NoteXRefs []string
+
+	// InlineNotes are note text values written directly on this event
+	// (NOTE <text> form, including CONT/CONC continuations).
+	InlineNotes []string
+
+	// Notes is deprecated: use NoteXRefs and InlineNotes instead. It is kept
+	// for backward compatibility and populated during decode with the inline
+	// note text and shared-note XRefs interleaved in their original GEDCOM
+	// order (not the NoteXRefs-then-InlineNotes order of the split fields).
+	//
+	// Deprecated: use NoteXRefs and InlineNotes.
 	Notes []string
 
 	// Media are references to media objects with optional crop/title
@@ -173,4 +193,11 @@ type Event struct {
 
 	// Tags contains all raw tags for this event (for unknown/custom fields)
 	Tags []*Tag
+}
+
+// AllNotes returns this event's inline notes followed by the text of any
+// shared notes referenced by NoteXRefs, resolved against doc. Shared notes that
+// do not resolve are skipped. Returns nil when there are no notes.
+func (e *Event) AllNotes(doc *Document) []string {
+	return allNotes(doc, e.InlineNotes, e.NoteXRefs)
 }

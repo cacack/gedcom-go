@@ -153,6 +153,20 @@ Becomes `Note.Text`: `"First line\nSecond line with more text"`
 `Note.FullText()` returns the same string. It exists for the deprecated
 `Note.Continuation` slice, which the decoder no longer populates — read `Text`.
 
+The same folding now applies to notes on substructures, not only to the `NOTE`
+record. `Event`, `Attribute`, `SourceCitation`, `LDSOrdinance` and `ChangeDate`
+each expose `NoteXRefs` (pointers to `NOTE`/`SNOTE` records) and `InlineNotes`
+(text, with `CONT`/`CONC` folded), plus the deprecated interleaved
+`Notes []string`.
+
+**Behaviour change.** `Event.Notes` previously received the raw `NOTE` value
+with no folding, so a multi-line event note read back as its first line only;
+it now carries the whole folded text. A `SNOTE` pointer on an event is also no
+longer reported as an unknown tag, so an event carrying both `NOTE` and `SNOTE`
+has two `Notes` entries where it previously had one. Notes on `SourceCitation`,
+`LDSOrdinance` and `ChangeDate` were previously dropped entirely and are now
+kept.
+
 Re-encoded (may differ from original):
 ```
 0 @N1@ NOTE First line

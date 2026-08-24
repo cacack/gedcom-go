@@ -1,0 +1,23 @@
+0 HEAD
+1 SOUR gedcom-go
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Smith/
+1 OCCU Blacksmith
+2 TYPE Trade
+2 DATE 1880
+2 AGNC Guild of Smiths
+2 CAUS Apprenticeship
+2 OBJE @M1@
+1 FACT Purple Heart
+2 TYPE Award
+2 AGNC US Army
+2 CAUS Wounded in action
+2 OBJE @M1@
+0 @M1@ OBJE
+1 FILE medal.jpg
+2 FORM jpg
+0 TRLR

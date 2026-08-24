@@ -331,19 +331,8 @@ func walkIndividual(i *Individual, cb refCallback) {
 	for k := range i.SpouseInFamilies {
 		cb(&i.SpouseInFamilies[k])
 	}
-	for k := range i.Notes {
-		cb(&i.Notes[k])
-	}
-	for _, a := range i.Associations {
-		if a == nil {
-			continue
-		}
-		cb(&a.IndividualXRef)
-		for k := range a.Notes {
-			cb(&a.Notes[k])
-		}
-		walkCitations(a.SourceCitations, cb)
-	}
+	walkNotes(i.NoteXRefs, i.Notes, cb)
+	walkAssociations(i.Associations, cb)
 	walkCitations(i.SourceCitations, cb)
 	walkMediaLinks(i.Media, cb)
 	for _, ev := range i.Events {
@@ -352,12 +341,9 @@ func walkIndividual(i *Individual, cb refCallback) {
 	for _, at := range i.Attributes {
 		walkAttribute(at, cb)
 	}
-	for _, ord := range i.LDSOrdinances {
-		if ord == nil {
-			continue
-		}
-		cb(&ord.FamilyXRef)
-	}
+	walkLDSOrdinances(i.LDSOrdinances, cb)
+	walkChangeDate(i.ChangeDate, cb)
+	walkChangeDate(i.CreationDate, cb)
 	for _, t := range i.Tags {
 		walkTag(t, cb)
 	}
@@ -372,20 +358,18 @@ func walkFamily(f *Family, cb refCallback) {
 	for k := range f.Children {
 		cb(&f.Children[k])
 	}
-	for k := range f.Notes {
-		cb(&f.Notes[k])
-	}
+	walkNotes(f.NoteXRefs, f.Notes, cb)
 	walkCitations(f.SourceCitations, cb)
 	walkMediaLinks(f.Media, cb)
 	for _, ev := range f.Events {
 		walkEvent(ev, cb)
 	}
-	for _, ord := range f.LDSOrdinances {
-		if ord == nil {
-			continue
-		}
-		cb(&ord.FamilyXRef)
+	for _, at := range f.Attributes {
+		walkAttribute(at, cb)
 	}
+	walkLDSOrdinances(f.LDSOrdinances, cb)
+	walkChangeDate(f.ChangeDate, cb)
+	walkChangeDate(f.CreationDate, cb)
 	for _, t := range f.Tags {
 		walkTag(t, cb)
 	}
@@ -406,10 +390,13 @@ func walkSource(s *Source, cb refCallback) {
 	} else {
 		cb(&s.RepositoryRef)
 	}
-	for k := range s.Notes {
-		cb(&s.Notes[k])
+	walkNotes(s.NoteXRefs, s.Notes, cb)
+	if s.RepositoryLink != nil {
+		walkStrings(s.RepositoryLink.Notes, cb)
 	}
 	walkMediaLinks(s.Media, cb)
+	walkChangeDate(s.ChangeDate, cb)
+	walkChangeDate(s.CreationDate, cb)
 	for _, t := range s.Tags {
 		walkTag(t, cb)
 	}
@@ -419,9 +406,7 @@ func walkRepository(r *Repository, cb refCallback) {
 	if r == nil {
 		return
 	}
-	for k := range r.Notes {
-		cb(&r.Notes[k])
-	}
+	walkNotes(r.NoteXRefs, r.Notes, cb)
 	for _, t := range r.Tags {
 		walkTag(t, cb)
 	}
@@ -440,10 +425,15 @@ func walkMediaObject(m *MediaObject, cb refCallback) {
 	if m == nil {
 		return
 	}
-	for k := range m.Notes {
-		cb(&m.Notes[k])
-	}
+	walkNotes(m.NoteXRefs, m.Notes, cb)
+	// SharedNoteXRefs holds the same SNOTE pointers as NoteXRefs. AllNotes
+	// appends any entry not already in NoteXRefs, so remapping one and not
+	// the other makes the dedup check fail and surfaces the stale pointer as
+	// a second, foreign note.
+	walkStrings(m.SharedNoteXRefs, cb)
 	walkCitations(m.SourceCitations, cb)
+	walkChangeDate(m.ChangeDate, cb)
+	walkChangeDate(m.CreationDate, cb)
 	for _, t := range m.Tags {
 		walkTag(t, cb)
 	}
@@ -453,9 +443,7 @@ func walkSubmitter(s *Submitter, cb refCallback) {
 	if s == nil {
 		return
 	}
-	for k := range s.Notes {
-		cb(&s.Notes[k])
-	}
+	walkNotes(s.NoteXRefs, s.Notes, cb)
 	for _, t := range s.Tags {
 		walkTag(t, cb)
 	}
@@ -466,6 +454,7 @@ func walkSharedNote(s *SharedNote, cb refCallback) {
 		return
 	}
 	walkCitations(s.SourceCitations, cb)
+	walkChangeDate(s.ChangeDate, cb)
 	for _, t := range s.Tags {
 		walkTag(t, cb)
 	}
@@ -475,11 +464,10 @@ func walkEvent(e *Event, cb refCallback) {
 	if e == nil {
 		return
 	}
-	for k := range e.Notes {
-		cb(&e.Notes[k])
-	}
+	walkNotes(e.NoteXRefs, e.Notes, cb)
 	walkCitations(e.SourceCitations, cb)
 	walkMediaLinks(e.Media, cb)
+	walkAssociations(e.Associations, cb)
 	for _, t := range e.Tags {
 		walkTag(t, cb)
 	}
@@ -489,7 +477,10 @@ func walkAttribute(a *Attribute, cb refCallback) {
 	if a == nil {
 		return
 	}
+	walkNotes(a.NoteXRefs, a.Notes, cb)
 	walkCitations(a.SourceCitations, cb)
+	walkMediaLinks(a.Media, cb)
+	walkAssociations(a.Associations, cb)
 }
 
 func walkCitations(citations []*SourceCitation, cb refCallback) {
@@ -498,7 +489,67 @@ func walkCitations(citations []*SourceCitation, cb refCallback) {
 			continue
 		}
 		cb(&sc.SourceXRef)
+		walkNotes(sc.NoteXRefs, sc.Notes, cb)
 	}
+}
+
+// walkStrings visits every element of a string slice in place, so a
+// rewriting callback can replace the values it is given.
+func walkStrings(ss []string, cb refCallback) {
+	for k := range ss {
+		cb(&ss[k])
+	}
+}
+
+// walkNotes visits both halves of a structure's note storage: the
+// pointer-only NoteXRefs slice and the legacy Notes slice, which
+// interleaves pointers with inline text.
+//
+// Both must be walked, not just one. The two hold the same logical
+// pointers, and the encoder treats disagreement between them as a
+// caller edit rather than as corruption (see recordNotesToEncode) --
+// so remapping only Notes leaves the stale NoteXRefs to win, silently
+// emitting a dangling pointer. Visiting a pointer twice is harmless:
+// Subset accumulates into a set, and Apply's rewrite is a map lookup.
+//
+// InlineNotes is deliberately absent. It holds note text, never a
+// pointer, and an XRef-shaped string there is payload rather than a
+// reference.
+func walkNotes(noteXRefs, notes []string, cb refCallback) {
+	walkStrings(noteXRefs, cb)
+	walkStrings(notes, cb)
+}
+
+// walkAssociations visits an ASSO structure's pointer to the associated
+// individual, plus the notes and citations hanging off it.
+func walkAssociations(assocs []*Association, cb refCallback) {
+	for _, a := range assocs {
+		if a == nil {
+			continue
+		}
+		cb(&a.IndividualXRef)
+		walkStrings(a.Notes, cb)
+		walkCitations(a.SourceCitations, cb)
+	}
+}
+
+// walkLDSOrdinances visits an ordinance's FAMC pointer and its notes.
+func walkLDSOrdinances(ords []*LDSOrdinance, cb refCallback) {
+	for _, ord := range ords {
+		if ord == nil {
+			continue
+		}
+		cb(&ord.FamilyXRef)
+		walkNotes(ord.NoteXRefs, ord.Notes, cb)
+	}
+}
+
+// walkChangeDate visits the notes on a CHAN or CREA structure.
+func walkChangeDate(cd *ChangeDate, cb refCallback) {
+	if cd == nil {
+		return
+	}
+	walkNotes(cd.NoteXRefs, cd.Notes, cb)
 }
 
 func walkMediaLinks(links []*MediaLink, cb refCallback) {

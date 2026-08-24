@@ -2,6 +2,8 @@ package encoder
 
 import (
 	"bytes"
+	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1253,7 +1255,7 @@ func TestLDSOrdinanceToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := ldsOrdinanceToTags(tt.ord, tt.level)
+			tags := ldsOrdinanceToTags(tt.ord, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -1384,7 +1386,7 @@ func TestChangeDateToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := changeDateToTags(tt.cd, tt.level, tt.tagName)
+			tags := changeDateToTags(tt.cd, tt.level, tt.tagName, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -4564,5 +4566,489 @@ func TestRoundTripExternalIDs(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// formatTags renders tags as "<level> <TAG> <value>" lines for comparison.
+func formatTags(tags []*gedcom.Tag) []string {
+	out := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		line := strconv.Itoa(tag.Level) + " " + tag.Tag
+		if tag.Value != "" {
+			line += " " + tag.Value
+		}
+		out = append(out, line)
+	}
+	return out
+}
+
+// TestEventToTagsEventDetail pins the EVENT_DETAIL members added for issue #447
+// onto the event writer: RELI, ASSO (through the association writer) and the
+// split note fields. Without them an entity-built event silently loses what the
+// decoder now types.
+func TestEventToTagsEventDetail(t *testing.T) {
+	event := &gedcom.Event{
+		Type:                 gedcom.EventBaptism,
+		Date:                 "3 MAR 1880",
+		ReligiousAffiliation: "Lutheran",
+		Associations: []*gedcom.Association{
+			{IndividualXRef: "@I2@", Role: "GODP", Phrase: "Godparent"},
+		},
+		NoteXRefs:   []string{"@N1@"},
+		InlineNotes: []string{"Recorded in the parish book"},
+	}
+
+	got := formatTags(eventToTags(event, 1, nil))
+	want := []string{
+		"1 BAPM",
+		"2 DATE 3 MAR 1880",
+		"2 RELI Lutheran",
+		"2 ASSO @I2@",
+		"3 PHRASE Godparent",
+		"3 ROLE GODP",
+		"2 NOTE @N1@",
+		"2 NOTE Recorded in the parish book",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("eventToTags() = %#v, want %#v", got, want)
+	}
+}
+
+// TestAttributeToTagsEventDetail pins the full EVENT_DETAIL set added for issue
+// #447 onto the attribute writer, in the same order and at the same levels the
+// event writer uses -- both go through eventDetailToTags.
+func TestAttributeToTagsEventDetail(t *testing.T) {
+	attr := &gedcom.Attribute{
+		Type:  "RESI",
+		Value: "Farmhouse",
+		Date:  "1901",
+		Place: "Springfield, Illinois",
+		PlaceDetail: &gedcom.PlaceDetail{
+			Form:        "City, State",
+			Coordinates: &gedcom.Coordinates{Latitude: "N39.7", Longitude: "W89.6"},
+		},
+		TypeDetail:           "Homestead",
+		Cause:                "Marriage",
+		Agency:               "County Recorder",
+		ReligiousAffiliation: "Methodist",
+		Address: &gedcom.Address{
+			Line1: "12 Elm Street",
+			City:  "Springfield",
+		},
+		Phone:       []string{"555-1234"},
+		Email:       []string{"clerk@example.org"},
+		Fax:         []string{"555-4321"},
+		Website:     []string{"http://example.org"},
+		Restriction: "confidential",
+		UID:         "ATTR-UID-1",
+		SortDate:    "1901-01-01",
+		Associations: []*gedcom.Association{
+			{IndividualXRef: "@I2@", Role: "WITN"},
+		},
+		NoteXRefs:   []string{"@N1@"},
+		InlineNotes: []string{"An inline note"},
+		SourceCitations: []*gedcom.SourceCitation{
+			{SourceXRef: "@S1@", Page: "p. 7"},
+		},
+		Media: []*gedcom.MediaLink{
+			{MediaXRef: "@O1@", Title: "Deed"},
+		},
+	}
+
+	got := formatTags(attributeToTags(attr, 1, nil))
+	want := []string{
+		"1 RESI Farmhouse",
+		"2 DATE 1901",
+		"2 PLAC Springfield, Illinois",
+		"3 FORM City, State",
+		"3 MAP",
+		"4 LATI N39.7",
+		"4 LONG W89.6",
+		"2 TYPE Homestead",
+		"2 CAUS Marriage",
+		"2 AGNC County Recorder",
+		"2 RELI Methodist",
+		"2 ADDR 12 Elm Street",
+		"3 ADR1 12 Elm Street",
+		"3 CITY Springfield",
+		"2 PHON 555-1234",
+		"2 EMAIL clerk@example.org",
+		"2 FAX 555-4321",
+		"2 WWW http://example.org",
+		"2 RESN confidential",
+		"2 UID ATTR-UID-1",
+		"2 SDATE 1901-01-01",
+		"2 ASSO @I2@",
+		"3 ROLE WITN",
+		"2 NOTE @N1@",
+		"2 NOTE An inline note",
+		"2 SOUR @S1@",
+		"3 PAGE p. 7",
+		"2 OBJE @O1@",
+		"3 TITL Deed",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("attributeToTags() = %#v, want %#v", got, want)
+	}
+}
+
+// TestFamilyToTagsAttributes confirms Family.Attributes (issue #448) reaches the
+// output through the shared attribute writer, subordinates included.
+func TestFamilyToTagsAttributes(t *testing.T) {
+	fam := &gedcom.Family{
+		Attributes: []*gedcom.Attribute{
+			{Type: "RESI", Value: "Farmhouse", Date: "1901", Place: "Springfield"},
+			{Type: "FACT", Value: "Wealthy", TypeDetail: "Standing"},
+		},
+	}
+
+	got := formatTags(familyToTags(fam, nil))
+	want := []string{
+		"1 RESI Farmhouse",
+		"2 DATE 1901",
+		"2 PLAC Springfield",
+		"1 FACT Wealthy",
+		"2 TYPE Standing",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("familyToTags() = %#v, want %#v", got, want)
+	}
+}
+
+// TestFamilyToTagsNCHIOnce guards the one tag the decoder stores twice: an NCHI
+// line populates both Family.NumberOfChildren and a Family.Attributes entry, so
+// the writer has to pick a single source or the encoded family gains a second
+// NCHI line on every round trip. The attribute wins when present because it also
+// carries the line's subordinates.
+func TestFamilyToTagsNCHIOnce(t *testing.T) {
+	tests := []struct {
+		name string
+		fam  *gedcom.Family
+		want []string
+	}{
+		{
+			name: "field only",
+			fam:  &gedcom.Family{NumberOfChildren: "3"},
+			want: []string{"1 NCHI 3"},
+		},
+		{
+			name: "attribute only",
+			fam: &gedcom.Family{
+				Attributes: []*gedcom.Attribute{{Type: "NCHI", Value: "3"}},
+			},
+			want: []string{"1 NCHI 3"},
+		},
+		{
+			name: "dual storage emits the attribute, with its subordinates",
+			fam: &gedcom.Family{
+				NumberOfChildren: "3",
+				Attributes: []*gedcom.Attribute{
+					{Type: "NCHI", Value: "3", SourceCitations: []*gedcom.SourceCitation{{SourceXRef: "@S1@"}}},
+				},
+			},
+			want: []string{"1 NCHI 3", "2 SOUR @S1@"},
+		},
+		{
+			name: "unrelated attribute does not suppress the field",
+			fam: &gedcom.Family{
+				NumberOfChildren: "3",
+				Attributes:       []*gedcom.Attribute{{Type: "RESI", Value: "Farmhouse"}},
+			},
+			want: []string{"1 NCHI 3", "1 RESI Farmhouse"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatTags(familyToTags(tt.fam, nil))
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("familyToTags() = %#v, want %#v", got, tt.want)
+			}
+			var nchi int
+			for _, line := range got {
+				if strings.HasPrefix(line, "1 NCHI") {
+					nchi++
+				}
+			}
+			if nchi > 1 {
+				t.Errorf("familyToTags() wrote NCHI %d times, want at most 1: %#v", nchi, got)
+			}
+		})
+	}
+}
+
+// TestSubstructureNotes covers the note fields added to the three substructures
+// that gained them in issue #447: source citations, LDS ordinances and change
+// dates. Each emits XRef pointers and inline text one level below its own tag.
+func TestSubstructureNotes(t *testing.T) {
+	cite := &gedcom.SourceCitation{
+		SourceXRef:  "@S1@",
+		Page:        "p. 42",
+		NoteXRefs:   []string{"@N1@"},
+		InlineNotes: []string{"Citation note"},
+	}
+	got := formatTags(sourceCitationToTags(cite, 2, nil))
+	want := []string{"2 SOUR @S1@", "3 PAGE p. 42", "3 NOTE @N1@", "3 NOTE Citation note"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("sourceCitationToTags() = %#v, want %#v", got, want)
+	}
+
+	ord := &gedcom.LDSOrdinance{
+		Type:        gedcom.LDSBaptism,
+		Date:        "1 JAN 1990",
+		NoteXRefs:   []string{"@N1@"},
+		InlineNotes: []string{"Ordinance note"},
+	}
+	got = formatTags(ldsOrdinanceToTags(ord, 1, nil))
+	want = []string{"1 BAPL", "2 DATE 1 JAN 1990", "2 NOTE @N1@", "2 NOTE Ordinance note"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("ldsOrdinanceToTags() = %#v, want %#v", got, want)
+	}
+
+	cd := &gedcom.ChangeDate{
+		Date:        "1 JAN 1990",
+		Time:        "12:00:00",
+		NoteXRefs:   []string{"@N1@"},
+		InlineNotes: []string{"Change note"},
+	}
+	got = formatTags(changeDateToTags(cd, 1, "CHAN", nil))
+	want = []string{"1 CHAN", "2 DATE 1 JAN 1990", "3 TIME 12:00:00", "2 NOTE @N1@", "2 NOTE Change note"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("changeDateToTags() = %#v, want %#v", got, want)
+	}
+}
+
+// TestEntityBuiltEventDetailEncodes is the end-to-end check the lossless
+// principle actually needs: a document assembled from typed entities alone (no
+// Record.Tags to replay) must still write every EVENT_DETAIL field, and a
+// re-decode must find them again.
+func TestEntityBuiltEventDetailEncodes(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version551},
+		Records: []*gedcom.Record{
+			{
+				XRef: "@F1@",
+				Type: gedcom.RecordTypeFamily,
+				Entity: &gedcom.Family{
+					XRef:     "@F1@",
+					Husband:  "@I1@",
+					Wife:     "@I2@",
+					Children: []string{"@I3@"},
+					Events: []*gedcom.Event{
+						{
+							Type:                 gedcom.EventMarriage,
+							Date:                 "15 JUN 1920",
+							ReligiousAffiliation: "Lutheran",
+							Associations: []*gedcom.Association{
+								{IndividualXRef: "@I4@", Role: "WITN"},
+							},
+							NoteXRefs:   []string{"@N1@"},
+							InlineNotes: []string{"Married in the village church"},
+						},
+					},
+					Attributes: []*gedcom.Attribute{
+						{
+							Type:                 "RESI",
+							Value:                "Farmhouse",
+							Date:                 "1921",
+							Agency:               "County Recorder",
+							ReligiousAffiliation: "Methodist",
+							Restriction:          "confidential",
+							InlineNotes:          []string{"Attribute note"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	out := buf.String()
+
+	for _, line := range []string{
+		"1 MARR",
+		"2 RELI Lutheran",
+		"2 ASSO @I4@",
+		"3 ROLE WITN",
+		"2 NOTE @N1@",
+		"2 NOTE Married in the village church",
+		"1 RESI Farmhouse",
+		"2 AGNC County Recorder",
+		"2 RELI Methodist",
+		"2 RESN confidential",
+		"2 NOTE Attribute note",
+	} {
+		if !strings.Contains(out, line+"\n") {
+			t.Errorf("encoded output missing %q:\n%s", line, out)
+		}
+	}
+
+	redoc, err := decoder.Decode(strings.NewReader(out))
+	if err != nil {
+		t.Fatalf("re-Decode() error = %v", err)
+	}
+	fam := redoc.GetFamily("@F1@")
+	if fam == nil {
+		t.Fatal("GetFamily(@F1@) returned nil after entity encode")
+	}
+	var marr *gedcom.Event
+	for _, event := range fam.Events {
+		if event.Type == gedcom.EventMarriage {
+			marr = event
+			break
+		}
+	}
+	if marr == nil {
+		t.Fatal("marriage event lost in entity encode round trip")
+	}
+	if got := marr.ReligiousAffiliation; got != "Lutheran" {
+		t.Errorf("re-decoded event ReligiousAffiliation = %q, want %q", got, "Lutheran")
+	}
+	if got := len(marr.Associations); got != 1 {
+		t.Errorf("re-decoded event has %d associations, want 1", got)
+	}
+}
+
+// decodedNoteFixture is the input for the two tests below: every substructure
+// that gained note fields in issue #447, plus the dual-stored NCHI of #448.
+const decodedNoteFixture = `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+1 BIRT
+2 DATE 1900
+2 NOTE Event note
+2 SNOTE @N1@
+1 OCCU Blacksmith
+2 NOTE Attribute note
+2 SNOTE @N1@
+1 SOUR @S1@
+2 PAGE 12
+2 NOTE Citation note
+1 BAPL
+2 DATE 1 JAN 1990
+2 NOTE Ordinance note
+1 CHAN
+2 DATE 1 JAN 2020
+2 NOTE Change note
+0 @F1@ FAM
+1 HUSB @I1@
+1 NCHI 3
+2 DATE 1910
+0 @S1@ SOUR
+1 TITL A Source
+0 @N1@ SNOTE Shared note
+0 TRLR
+`
+
+// encodeFromEntities decodes input, drops every record's raw tags so the
+// encoder must rebuild them from the typed entities, and returns the output.
+// writeRecord prefers record.Tags, so this is the only way to reach the entity
+// writers with a document the decoder produced rather than one built by hand.
+func encodeFromEntities(t *testing.T, input string) string {
+	t.Helper()
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	for _, rec := range doc.Records {
+		rec.Tags = nil
+	}
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	return buf.String()
+}
+
+// countLine returns how many times line appears as a whole line in out.
+func countLine(out, line string) int {
+	return strings.Count(out, line+"\n")
+}
+
+// TestDecodedNotesEncodeOnce guards the duplication hazard the decoder created
+// in issue #447: it now fills NoteXRefs/InlineNotes *and* the deprecated
+// interleaved Notes slice from the same source lines, at five sites that had no
+// note fields at all before. A writer emitting both slices would double every
+// note. recordNotesToEncode is the single place that resolves this; this test
+// is what fails if a writer stops going through it.
+func TestDecodedNotesEncodeOnce(t *testing.T) {
+	out := encodeFromEntities(t, decodedNoteFixture)
+
+	// Each inline note belongs to a different substructure, so one count per
+	// line names the writer that broke.
+	once := []struct {
+		site string
+		line string
+	}{
+		{"Event", "2 NOTE Event note"},
+		{"Attribute", "2 NOTE Attribute note"},
+		{"SourceCitation", "2 NOTE Citation note"},
+		{"LDSOrdinance", "2 NOTE Ordinance note"},
+		{"ChangeDate", "2 NOTE Change note"},
+	}
+	for _, w := range once {
+		if got := countLine(out, w.line); got != 1 {
+			t.Errorf("%s wrote %q %d times, want 1:\n%s", w.site, w.line, got, out)
+		}
+	}
+
+	// The shared-note pointer appears under the event and the attribute, once
+	// each. It is written as NOTE rather than SNOTE — see issue #471.
+	if got := countLine(out, "2 NOTE @N1@"); got != 2 {
+		t.Errorf("shared-note pointer written %d times, want 2 (event + attribute):\n%s", got, out)
+	}
+
+	// The whole document must still re-decode to the same notes.
+	redoc, err := decoder.Decode(strings.NewReader(out))
+	if err != nil {
+		t.Fatalf("re-Decode() error = %v", err)
+	}
+	indi := redoc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil after entity encode")
+	}
+	if want := []string{"Event note", "@N1@"}; !reflect.DeepEqual(indi.Events[0].Notes, want) {
+		t.Errorf("re-decoded event Notes = %v, want %v", indi.Events[0].Notes, want)
+	}
+	if want := []string{"Attribute note", "@N1@"}; !reflect.DeepEqual(indi.Attributes[0].Notes, want) {
+		t.Errorf("re-decoded attribute Notes = %v, want %v", indi.Attributes[0].Notes, want)
+	}
+}
+
+// TestDecodedNCHIEncodesOnce is the decoded-document half of
+// TestFamilyToTagsNCHIOnce, which builds its families by hand. The decoder is
+// what actually creates the dual storage — one "1 NCHI" line populates both
+// Family.NumberOfChildren and a Family.Attributes entry — so this is the path
+// where a missing guard would emit the line twice.
+func TestDecodedNCHIEncodesOnce(t *testing.T) {
+	out := encodeFromEntities(t, decodedNoteFixture)
+
+	if got := countLine(out, "1 NCHI 3"); got != 1 {
+		t.Errorf("NCHI written %d times, want 1:\n%s", got, out)
+	}
+	// The attribute is the source of truth because it carries the subordinates
+	// the scalar field cannot hold.
+	if got := countLine(out, "2 DATE 1910"); got != 1 {
+		t.Errorf("NCHI subordinate DATE written %d times, want 1:\n%s", got, out)
+	}
+
+	redoc, err := decoder.Decode(strings.NewReader(out))
+	if err != nil {
+		t.Fatalf("re-Decode() error = %v", err)
+	}
+	fam := redoc.GetFamily("@F1@")
+	if fam == nil {
+		t.Fatal("GetFamily(@F1@) returned nil after entity encode")
+	}
+	if fam.NumberOfChildren != "3" {
+		t.Errorf("re-decoded NumberOfChildren = %q, want %q", fam.NumberOfChildren, "3")
+	}
+	if len(fam.Attributes) != 1 || fam.Attributes[0].Date != "1910" {
+		t.Errorf("re-decoded Attributes = %+v, want one NCHI dated 1910", fam.Attributes)
 	}
 }

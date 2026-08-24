@@ -261,7 +261,7 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCol
 			case "TRAN":
 				tran := parseNameTransliteration(tags, i, collector)
 				name.Transliterations = append(name.Transliterations, tran)
-			case "SOUR", "NOTE", "FONE", "ROMN":
+			case "SOUR", "NOTE", "SNOTE", "FONE", "ROMN":
 				// Known tags that we don't parse into typed fields (yet)
 				// SOUR/NOTE are common, FONE/ROMN are GEDCOM 5.5.1 phonetic/romanized variants
 			default:
@@ -333,7 +333,7 @@ func parseFamilyLink(tags []*gedcom.Tag, famcIdx int, collector *diagnosticColle
 			switch tag.Tag {
 			case "PEDI":
 				famLink.Pedigree = tag.Value
-			case "STAT", "NOTE":
+			case "STAT", "NOTE", "SNOTE":
 				// Known tags not yet parsed into typed fields
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
@@ -366,7 +366,7 @@ func parseAssociation(tags []*gedcom.Tag, assoIdx int, collector *diagnosticColl
 				assoc.Role = tag.Value
 			case "PHRASE":
 				assoc.Phrase = tag.Value
-			case "NOTE":
+			case "NOTE", "SNOTE":
 				assoc.Notes = append(assoc.Notes, tag.Value)
 			case "SOUR":
 				cite := parseSourceCitation(tags, i, tag.Level, collector)
@@ -432,7 +432,9 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 			case "_APID":
 				// Parse Ancestry Permanent Identifier (vendor extension)
 				cite.AncestryAPID = gedcom.ParseAPID(tag.Value)
-			case "NOTE", "OBJE", "EVEN", "TEXT":
+			case "NOTE", "SNOTE":
+				cite.NoteXRefs, cite.InlineNotes, cite.Notes = appendRecordNote(tags, i, cite.NoteXRefs, cite.InlineNotes, cite.Notes)
+			case "OBJE", "EVEN", "TEXT":
 				// Known tags not yet parsed into typed fields
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
@@ -472,9 +474,169 @@ func parseSourceCitationData(tags []*gedcom.Tag, dataIdx, baseLevel int, collect
 	return data
 }
 
-// parseEvent extracts an event from tags starting at eventIdx.
+// eventDetail is a writable view over the GEDCOM EVENT_DETAIL substructures
+// that gedcom.Event and gedcom.Attribute both carry under identical field
+// names. parseEvent and parseAttribute each build one over their own struct and
+// hand it to parseEventDetailTag, so the shared subtag list lives in exactly one
+// switch. Duplicating that switch is what let parseAttribute fall a dozen tags
+// behind parseEvent (issue #402); a shared view cannot drift the same way.
+//
+// Every field must be set by the constructors below: parseEventDetailTag writes
+// through the pointers unguarded.
+type eventDetail struct {
+	date            *string
+	parsedDate      **gedcom.Date
+	place           *string
+	placeDetail     **gedcom.PlaceDetail
+	cause           *string
+	agency          *string
+	religion        *string
+	address         **gedcom.Address
+	phone           *[]string
+	email           *[]string
+	fax             *[]string
+	website         *[]string
+	restriction     *string
+	uid             *string
+	sortDate        *string
+	sourceCitations *[]*gedcom.SourceCitation
+	media           *[]*gedcom.MediaLink
+	associations    *[]*gedcom.Association
+	noteXRefs       *[]string
+	inlineNotes     *[]string
+	notes           *[]string
+}
+
+// eventDetailOf returns the EVENT_DETAIL view of an event.
+func eventDetailOf(e *gedcom.Event) eventDetail {
+	return eventDetail{
+		date:            &e.Date,
+		parsedDate:      &e.ParsedDate,
+		place:           &e.Place,
+		placeDetail:     &e.PlaceDetail,
+		cause:           &e.Cause,
+		agency:          &e.Agency,
+		religion:        &e.ReligiousAffiliation,
+		address:         &e.Address,
+		phone:           &e.Phone,
+		email:           &e.Email,
+		fax:             &e.Fax,
+		website:         &e.Website,
+		restriction:     &e.Restriction,
+		uid:             &e.UID,
+		sortDate:        &e.SortDate,
+		sourceCitations: &e.SourceCitations,
+		media:           &e.Media,
+		associations:    &e.Associations,
+		noteXRefs:       &e.NoteXRefs,
+		inlineNotes:     &e.InlineNotes,
+		notes:           &e.Notes,
+	}
+}
+
+// eventDetailOfAttribute returns the EVENT_DETAIL view of an attribute.
+func eventDetailOfAttribute(a *gedcom.Attribute) eventDetail {
+	return eventDetail{
+		date:            &a.Date,
+		parsedDate:      &a.ParsedDate,
+		place:           &a.Place,
+		placeDetail:     &a.PlaceDetail,
+		cause:           &a.Cause,
+		agency:          &a.Agency,
+		religion:        &a.ReligiousAffiliation,
+		address:         &a.Address,
+		phone:           &a.Phone,
+		email:           &a.Email,
+		fax:             &a.Fax,
+		website:         &a.Website,
+		restriction:     &a.Restriction,
+		uid:             &a.UID,
+		sortDate:        &a.SortDate,
+		sourceCitations: &a.SourceCitations,
+		media:           &a.Media,
+		associations:    &a.Associations,
+		noteXRefs:       &a.NoteXRefs,
+		inlineNotes:     &a.InlineNotes,
+		notes:           &a.Notes,
+	}
+}
+
+// parseEventDetailTag decodes the EVENT_DETAIL subtag at tags[i] into detail.
+// It covers every substructure gedcom.Event and gedcom.Attribute share; the
+// tags that belong to only one of them (TYPE, and AGE, which is typed on an
+// event and not on an attribute) stay with their own parser, which delegates
+// here for the rest.
+// Unrecognized standard tags are reported to collector (ADR 0007).
 //
 //nolint:gocyclo // GEDCOM parsing inherently requires handling many tag types
+func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collector *diagnosticCollector) {
+	tag := tags[i]
+	switch tag.Tag {
+	case "DATE":
+		*detail.date = tag.Value
+		if parsed, err := gedcom.ParseDate(tag.Value); err == nil {
+			*detail.parsedDate = parsed
+		} else {
+			// Date parsing failed - raw value is preserved, add diagnostic
+			collector.addInvalidValue(tag.LineNumber, "DATE", tag.Value, err.Error())
+		}
+		// PHRASE (7.0) is a DATE subordinate carrying the date in prose. An
+		// empty one is ignored rather than assigned, because ParseDate itself
+		// fills Phrase for a parenthesized date phrase.
+		if phrase := findSubordinate(tags, i, "PHRASE"); phrase != "" {
+			if parsed := *detail.parsedDate; parsed != nil {
+				parsed.Phrase = phrase
+			}
+		}
+	case "PLAC":
+		*detail.place = tag.Value
+		*detail.placeDetail = parsePlaceDetail(tags, i, tag.Level, collector)
+	case "CAUS":
+		*detail.cause = tag.Value
+	case "AGNC":
+		*detail.agency = tag.Value
+	case "RELI":
+		*detail.religion = tag.Value
+	case "ADDR":
+		*detail.address = parseEventAddress(tags, i, tag.Level, collector)
+	case "PHON":
+		*detail.phone = append(*detail.phone, tag.Value)
+	case "EMAIL":
+		*detail.email = append(*detail.email, tag.Value)
+	case "FAX":
+		*detail.fax = append(*detail.fax, tag.Value)
+	case "WWW":
+		*detail.website = append(*detail.website, tag.Value)
+	case "RESN":
+		*detail.restriction = tag.Value
+	case "UID":
+		*detail.uid = tag.Value
+	case "SDATE":
+		*detail.sortDate = tag.Value
+	case "SOUR":
+		cite := parseSourceCitation(tags, i, tag.Level, collector)
+		*detail.sourceCitations = append(*detail.sourceCitations, cite)
+	case "OBJE":
+		link := parseMediaLink(tags, i, tag.Level, collector)
+		*detail.media = append(*detail.media, link)
+	case "ASSO":
+		assoc := parseAssociation(tags, i, collector)
+		*detail.associations = append(*detail.associations, assoc)
+	case "NOTE", "SNOTE":
+		*detail.noteXRefs, *detail.inlineNotes, *detail.notes = appendRecordNote(
+			tags, i, *detail.noteXRefs, *detail.inlineNotes, *detail.notes)
+	case "HUSB", "WIFE":
+		// FAMILY_EVENT_DETAIL: the spouse ages on a family event or family
+		// attribute (maximal70.ged carries one under FAM.FACT). Known tags not
+		// yet parsed into typed fields.
+	default:
+		if !strings.HasPrefix(tag.Tag, "_") {
+			collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+		}
+	}
+}
+
+// parseEvent extracts an event from tags starting at eventIdx.
 func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, collector *diagnosticCollector) *gedcom.Event {
 	event := &gedcom.Event{
 		Type: gedcom.EventType(eventTag),
@@ -489,6 +651,7 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, collector *di
 	}
 
 	baseLevel := tags[eventIdx].Level
+	detail := eventDetailOf(event)
 
 	// Look for subordinate tags at baseLevel+1
 	for i := eventIdx + 1; i < len(tags); i++ {
@@ -498,69 +661,13 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, collector *di
 		}
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
-			case "DATE":
-				event.Date = tag.Value
-				if parsed, err := gedcom.ParseDate(tag.Value); err == nil {
-					event.ParsedDate = parsed
-				} else {
-					// Date parsing failed - raw value is preserved, add diagnostic
-					collector.addInvalidValue(tag.LineNumber, "DATE", tag.Value, err.Error())
-				}
-				// Look for PHRASE subordinate at baseLevel+2
-				for j := i + 1; j < len(tags); j++ {
-					phraseTag := tags[j]
-					if phraseTag.Level <= baseLevel+1 {
-						break
-					}
-					if phraseTag.Level == baseLevel+2 && phraseTag.Tag == "PHRASE" {
-						if event.ParsedDate != nil {
-							event.ParsedDate.Phrase = phraseTag.Value
-						}
-						break
-					}
-				}
-			case "PLAC":
-				event.Place = tag.Value
-				event.PlaceDetail = parsePlaceDetail(tags, i, tag.Level, collector)
 			case "TYPE":
 				event.EventTypeDetail = tag.Value
-			case "CAUS":
-				event.Cause = tag.Value
 			case "AGE":
 				event.Age = tag.Value
-			case "AGNC":
-				event.Agency = tag.Value
-			case "ADDR":
-				event.Address = parseEventAddress(tags, i, tag.Level, collector)
-			case "PHON":
-				event.Phone = append(event.Phone, tag.Value)
-			case "EMAIL":
-				event.Email = append(event.Email, tag.Value)
-			case "FAX":
-				event.Fax = append(event.Fax, tag.Value)
-			case "WWW":
-				event.Website = append(event.Website, tag.Value)
-			case "RESN":
-				event.Restriction = tag.Value
-			case "UID":
-				event.UID = tag.Value
-			case "SDATE":
-				event.SortDate = tag.Value
-			case "NOTE":
-				event.Notes = append(event.Notes, tag.Value)
-			case "SOUR":
-				cite := parseSourceCitation(tags, i, tag.Level, collector)
-				event.SourceCitations = append(event.SourceCitations, cite)
-			case "OBJE":
-				link := parseMediaLink(tags, i, tag.Level, collector)
-				event.Media = append(event.Media, link)
-			case "HUSB", "WIFE":
-				// These appear in family events (marriage, etc.) for spouse ages
-				// Known tags not yet parsed into typed fields
 			default:
-				if !strings.HasPrefix(tag.Tag, "_") {
-					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
-				}
+				// Everything else is EVENT_DETAIL, shared with parseAttribute.
+				parseEventDetailTag(&detail, tags, i, collector)
 			}
 		}
 	}
@@ -636,7 +743,7 @@ func parsePlaceDetail(tags []*gedcom.Tag, placIdx, baseLevel int, collector *dia
 				place.Form = tag.Value
 			case "MAP":
 				place.Coordinates = parseCoordinates(tags, i, tag.Level, collector)
-			case "FONE", "ROMN", "TRAN", "NOTE", "EXID", "LANG":
+			case "FONE", "ROMN", "TRAN", "NOTE", "SNOTE", "EXID", "LANG":
 				// Known tags not yet parsed into typed fields
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
@@ -683,34 +790,26 @@ func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string, collector *
 		Value: tags[attrIdx].Value,
 	}
 
-	// Look for subordinate tags (level 2)
+	baseLevel := tags[attrIdx].Level
+	detail := eventDetailOfAttribute(attr)
+
+	// Look for subordinate tags at baseLevel+1
 	for i := attrIdx + 1; i < len(tags); i++ {
 		tag := tags[i]
-		if tag.Level <= 1 {
+		if tag.Level <= baseLevel {
 			break
 		}
-		if tag.Level == 2 {
+		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
-			case "DATE":
-				attr.Date = tag.Value
-				if parsed, err := gedcom.ParseDate(tag.Value); err == nil {
-					attr.ParsedDate = parsed
-				} else {
-					collector.addInvalidValue(tag.LineNumber, "DATE", tag.Value, err.Error())
-				}
-			case "PLAC":
-				attr.Place = tag.Value
 			case "TYPE":
 				attr.TypeDetail = tag.Value
-			case "SOUR":
-				cite := parseSourceCitation(tags, i, tag.Level, collector)
-				attr.SourceCitations = append(attr.SourceCitations, cite)
-			case "NOTE", "AGE":
-				// Known tags not yet parsed into typed fields
+			case "AGE":
+				// Known tag not parsed into a typed field: gedcom.Attribute has
+				// no Age counterpart to Event.Age, and nothing asks for one. The
+				// raw tag remains on the owning record's Tags (ADR 0003).
 			default:
-				if !strings.HasPrefix(tag.Tag, "_") {
-					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
-				}
+				// Everything else is EVENT_DETAIL, shared with parseEvent.
+				parseEventDetailTag(&detail, tags, i, collector)
 			}
 		}
 	}
@@ -767,8 +866,10 @@ func parseLDSOrdinance(tags []*gedcom.Tag, ordIdx int, ordType gedcom.LDSOrdinan
 				ord.Status = tag.Value
 			case "FAMC":
 				ord.FamilyXRef = tagToken(tag.Value)
-			case "NOTE", "SOUR":
-				// Known tags not yet parsed into typed fields
+			case "NOTE", "SNOTE":
+				ord.NoteXRefs, ord.InlineNotes, ord.Notes = appendRecordNote(tags, i, ord.NoteXRefs, ord.InlineNotes, ord.Notes)
+			case "SOUR":
+				// Known tag not yet parsed into typed fields
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -805,10 +906,17 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "CHIL":
 			fam.Children = append(fam.Children, tagToken(tag.Value))
 
-		case "NCHI":
-			fam.NumberOfChildren = tag.Value
+		case "NCHI", "FACT":
+			attr := parseAttribute(record.Tags, i, tag.Tag, collector)
+			fam.Attributes = append(fam.Attributes, attr)
+			if tag.Tag == "NCHI" {
+				// Deliberate dual storage: NumberOfChildren predates
+				// Family.Attributes and stays populated, so callers reading it
+				// are unaffected by NCHI also reaching the attribute list.
+				fam.NumberOfChildren = tag.Value
+			}
 
-		case "MARR", "DIV", "ENGA", "ANUL", "MARB", "MARC", "MARL", "MARS", "DIVF", "EVEN":
+		case "MARR", "DIV", "ENGA", "ANUL", "MARB", "MARC", "MARL", "MARS", "DIVF", "CENS", "RESI", "EVEN":
 			event := parseEvent(record.Tags, i, tag.Tag, collector)
 			fam.Events = append(fam.Events, event)
 
@@ -853,11 +961,13 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "EXID":
 			fam.ExternalIDs = append(fam.ExternalIDs, parseExternalID(record.Tags, i))
 
-		case "RESN", "SUBM", "ASSO", "FACT":
-			// Known tags not yet parsed into typed fields. FAM-level FACT is
-			// 7.0-only and gedcom.Family has no Attributes field, so unlike the
-			// INDI side (issue #386) it can only be recognized here; the raw
-			// tags remain on Family.Tags (ADR 0003).
+		case "RESN", "SUBM", "ASSO":
+			// Known tags not yet parsed into typed fields; the raw tags remain
+			// on Family.Tags (ADR 0003). Recognizing them keeps UNKNOWN_TAG
+			// meaning "nonstandard tag" for callers who filter on it (#375).
+			// FACT is deliberately absent: like the INDI side (issue #386) it
+			// now decodes into Family.Attributes, so its own substructures are
+			// walked and can be diagnosed (issue #448).
 
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
@@ -975,7 +1085,7 @@ func parseSourceRepositoryLink(tags []*gedcom.Tag, repoIdx int, collector *diagn
 				// doc comment in gedcom/repository.go.
 				link.CallNumberMedia[tag.Value] = medi
 			}
-		case "NOTE":
+		case "NOTE", "SNOTE":
 			link.Notes = append(link.Notes, tag.Value)
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
@@ -1031,8 +1141,8 @@ func parseChangeDate(tags []*gedcom.Tag, chanIdx int, collector *diagnosticColle
 						break
 					}
 				}
-			case "NOTE":
-				// Known tag not yet parsed into typed fields
+			case "NOTE", "SNOTE":
+				cd.NoteXRefs, cd.InlineNotes, cd.Notes = appendRecordNote(tags, i, cd.NoteXRefs, cd.InlineNotes, cd.Notes)
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)

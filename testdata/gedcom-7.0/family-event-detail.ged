@@ -1,0 +1,41 @@
+0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CENS
+2 DATE 1900
+2 PLAC Springfield, Illinois
+2 AGNC Bureau of the Census
+2 NOTE Household of six
+2 SNOTE @N1@
+2 SOUR @S1@
+3 PAGE Sheet 4B
+1 RESI
+2 DATE FROM 1901 TO 1910
+2 PLAC Chicago, Illinois
+2 ADDR 12 Elm Street
+3 CITY Chicago
+2 PHON +1 555 0100
+1 NCHI 3
+2 DATE 1910
+2 CAUS Census enumeration
+2 ASSO @I1@
+3 ROLE OTHER
+1 FACT Homesteaders
+2 TYPE Lifestyle
+2 RELI Methodist
+2 RESN CONFIDENTIAL
+2 OBJE @M1@
+0 @I1@ INDI
+1 NAME John /Doe/
+0 @I2@ INDI
+1 NAME Jane /Doe/
+0 @M1@ OBJE
+1 FILE homestead.jpg
+2 FORM image/jpeg
+0 @S1@ SOUR
+1 TITL 1900 Federal Census
+0 @N1@ SNOTE Enumerator remarks
+0 TRLR
