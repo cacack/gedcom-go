@@ -284,13 +284,37 @@ unrecognised event subtags go to `Record.Tags` — and the encoder built its
 output purely from typed fields, so a tag placed there was cloned and walked but
 never written.
 
+There is no mechanical one-line replacement, because `Record.Tags` is not a
+side channel the way `Event.Tags` looked like one. Two rules govern it, and the
+naive `append` translation breaks both:
+
+**`Record.Tags` is all-or-nothing.** The encoder writes `Tags` verbatim whenever
+it is non-empty and derives tags from `Entity` only for a record that has none
+(`encoder/encoder.go`, and the `Record.Tags` godoc). So appending a single tag
+to a *hand-built* record — one whose `Tags` is empty because you built it from
+the typed model — suppresses the whole derivation, and the record encodes to its
+level-0 line plus your one tag. Everything else is silently gone.
+
+**Tags are written in slice order, at the level each one stores.** Nothing
+renumbers or re-nests them. On a *decoded* record, appending a `Level: 2` tag
+puts it at the end of the record, where it nests under whichever level-1
+structure happens to be last — not under the event you meant.
+
 ```go
 // v2 — accepted, and silently dropped on encode
 ev.Tags = append(ev.Tags, &gedcom.Tag{Level: 2, Tag: "_EVCUST", Value: "e"})
 
-// v3 — put the custom subtag where the encoder actually reads it
-rec.Tags = append(rec.Tags, &gedcom.Tag{Level: 2, Tag: "_EVCUST", Value: "e"})
+// v3, decoded record — insert at the event's position, not at the end.
+// Find the event's level-1 line, then insert after its subordinates.
+i := indexAfterEventSubordinates(rec.Tags, eventIdx) // your own helper
+rec.Tags = slices.Insert(rec.Tags, i, &gedcom.Tag{Level: 2, Tag: "_EVCUST", Value: "e"})
 ```
+
+On a hand-built record there is no typed-model-plus-one-raw-tag mode: either
+build the whole record as `Tags`, or accept that the typed model is what gets
+written. This is the same rule the `Family.NumberOfChildren` note above
+describes, and it is worth reading once — `Record.Tags` reports no error and no
+diagnostic when it drops something.
 
 ### `Note.Continuation` in detail
 
