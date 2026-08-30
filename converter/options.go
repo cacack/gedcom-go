@@ -2,21 +2,26 @@ package converter
 
 // ConvertOptions configures the conversion behavior.
 //
-// The zero value is treated as "unset": passing a nil *ConvertOptions, or a
-// pointer to a wholly zero struct, is identical to passing DefaultOptions().
-//
-// A *partially* populated literal is taken at face value, so each field it
-// leaves out takes its own zero value rather than the DefaultOptions value.
-// To change one setting, start from DefaultOptions:
+// A nil *ConvertOptions means DefaultOptions(). Any non-nil pointer is taken
+// exactly as written, including a wholly zero &ConvertOptions{} -- so every
+// field a literal omits takes that field's own zero value, not the
+// DefaultOptions value. To change one setting, start from DefaultOptions:
 //
 //	opts := converter.DefaultOptions()
 //	opts.StrictDataLoss = true
 //
-// Every field below documents what its own zero value does, so a literal never
-// behaves differently from what the field's own comment says.
+// Each field below documents its own zero value, and nothing overrides it.
+// An earlier design silently substituted the defaults for a wholly zero
+// struct; that made "every option off" impossible to express, since the
+// literal for it was indistinguishable from "unset".
+//
+// Nothing here can cause data loss: the converter preserves every tag
+// regardless of these settings.
 type ConvertOptions struct {
 	// Validate runs validation on the converted document.
 	// Zero value: false (no validation). DefaultOptions sets it true.
+	// Note that the converter discards the validation error either way; this
+	// only controls whether the work is done.
 	Validate bool
 
 	// StrictDataLoss fails the conversion if any data would be lost.

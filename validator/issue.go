@@ -161,9 +161,17 @@ type Issue struct {
 	// RecordXRef would be the child and RelatedXRef would be the parent.
 	RelatedXRef string
 
-	// LineNumber is the 1-based source line the issue was raised against, or
-	// 0 when the check has no single line in hand (a whole-document rule, or a
-	// header field the parser did not attribute to a line).
+	// LineNumber is the 1-based source line the issue was raised against, or 0
+	// when the check has no single line in hand.
+	//
+	// 0 is common and is not a defect. Checks that compare whole entities
+	// (date logic, duplicate detection) or the document as a whole (a missing
+	// header SUBM) have no single line to point at, and the typed Header
+	// fields are not attributed to one. Codes raised while walking raw tags --
+	// the custom-tag and control-character checks, and the XRef-length check
+	// -- do carry it.
+	//
+	// Do not read 0 as "line 1".
 	LineNumber int
 
 	// Details carries context specific to one code, as key-value pairs.
@@ -186,7 +194,7 @@ func (i Issue) Error() string {
 func (i Issue) String() string {
 	var sb strings.Builder
 
-	// Format: [SEVERITY] CODE: Message (XRef: @I1@)
+	// Format: [SEVERITY] CODE: Message (XRef: @I1@) [line N]
 	sb.WriteString("[")
 	sb.WriteString(i.Severity.String())
 	sb.WriteString("] ")
@@ -202,6 +210,12 @@ func (i Issue) String() string {
 			sb.WriteString(i.RelatedXRef)
 		}
 		sb.WriteString(")")
+	}
+
+	// A line number is only rendered when one is known; 0 means the check had
+	// none, and printing "line 0" would read as a real location.
+	if i.LineNumber > 0 {
+		fmt.Fprintf(&sb, " [line %d]", i.LineNumber)
 	}
 
 	return sb.String()

@@ -24,10 +24,7 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 	if doc == nil {
 		return nil, nil, fmt.Errorf("document is nil")
 	}
-	// A nil pointer and a wholly zero struct both mean "unset". Without the
-	// second case a bare &ConvertOptions{} silently ran with validation off and
-	// no EXID mapping, contradicting the fields' own documented defaults.
-	if opts == nil || *opts == (ConvertOptions{}) {
+	if opts == nil {
 		opts = DefaultOptions()
 	}
 	if !targetVersion.IsValid() {

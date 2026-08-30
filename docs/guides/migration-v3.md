@@ -89,11 +89,19 @@ Note that this field shared a name with `encoder.EncodeOptions.PreserveUnknownTa
 while meaning something entirely different — the encoder's really did drop tags.
 After v3 no identifier by that name remains anywhere in the module.
 
-**A zero `&converter.ConvertOptions{}` now means "use the defaults"**, matching
-`nil` and `DefaultOptions()`. In v2 only `nil` did, so a bare literal silently
-ran with validation off. A *partially* populated literal still takes each
-omitted field's zero value, so start from `DefaultOptions()` when changing one
-setting.
+`nil` still means `DefaultOptions()`. Any non-nil pointer is taken exactly as
+written, so a literal that omits a field gets that field's zero value — start
+from `DefaultOptions()` when changing one setting:
+
+```go
+opts := converter.DefaultOptions()
+opts.StrictDataLoss = true
+```
+
+This is deliberately *not* smart about a wholly zero `&ConvertOptions{}`. An
+earlier draft substituted the defaults for it, which read as friendlier but made
+"every option off" impossible to express — the literal for it is the zero
+struct.
 
 ### `SourceCitation.Quality` is now `*int`
 
@@ -124,6 +132,27 @@ if cite.Quality != nil {
 Byte round-trips were never affected, because `Record.Tags` is authoritative on
 encode. The loss showed on hand-built documents, the converter, and anything
 that clears `Tags`.
+
+> **The compile error has a wrong mechanical fix.** If the value comes from a
+> function that returns `0` to mean "no quality recorded", taking its address
+> turns that into a *positive* `QUAY 0` — "unreliable evidence or estimated
+> data" — on every such citation. v2's `> 0` guard hid the conflation; v3 emits
+> it. Keep the pointer nil in the unset branch:
+>
+> ```go
+> // WRONG: 0 might mean "unset", and this now asserts "unreliable".
+> q := mapQuality(x)
+> cite.Quality = &q
+>
+> // RIGHT: only take the address when a rating was actually determined.
+> if q, ok := mapQuality(x); ok {
+>     cite.Quality = &q
+> }
+> ```
+>
+> Symmetrically on read, `cite.Quality` is nil for a citation with no `QUAY`,
+> so a helper taking a bare `int` must become `*int` and handle nil rather than
+> dereferencing.
 
 ### `validator.Strictness` renumbered
 
@@ -169,9 +198,14 @@ mechanically.
 |----|----|
 | `strconv.Atoi(issue.Details["line_number"])` | `issue.LineNumber` |
 
-`Issue.LineNumber` is a real field now, populated wherever a source line is in
-hand rather than on the 2 of 23 codes that happened to set the map key. It is
-`0` when a check has no single line — a whole-document rule, for instance.
+`Issue.LineNumber` is a real field now. It is populated by the checks that walk
+raw tags — the custom-tag checks, the control-character checks, and the
+XRef-length check — and is `0` elsewhere.
+
+`0` is common and does not mean line 1. Checks that compare whole entities
+(date logic, duplicate detection) or the document as a whole (a missing header
+`SUBM`) have no single line to point at. Broader population is follow-up work,
+not something this release completed.
 
 The compiler cannot help here: a map lookup on a removed key returns the zero
 value, so the old code keeps compiling and silently reads `""`.
@@ -256,6 +290,23 @@ Letting the encoder split `Text` is also safer than splitting it yourself: it
 enforces `MaxLineLength` and stops an embedded newline from forging a new
 GEDCOM record.
 
+#### Known downstream call sites
+
+`my-family` is the documented consumer of this library, and these are the sites
+that will not compile against v3. They are listed here so the migration is not
+rediscovered at `go get` time:
+
+| Site | v2 | v3 |
+|------|----|----|
+| `internal/gedcom/exporter.go` (`toGedcomNoteRecord`) | `&gedcom.Note{Text: first, Continuation: rest}` | `&gedcom.Note{Text: n.Text}` — drop the hand split entirely |
+| `internal/gedcom/importer.go` | `note.FullText()` | `note.Text` |
+| `internal/gedcom/exporter.go` (citation export) | `citation.Quality = mapGPSToGedcomQuality(...)` | see the `Quality` warning above — the unset branch must leave the pointer nil |
+| `internal/gedcom/importer.go` (citation import) | `mapGedcomQualityToGPS(srcCit.Quality)` | take `*int` and return the empty rating for nil |
+
+The exporter's hand split is a net loss to keep: the encoder's split additionally
+enforces `MaxLineLength` and guards against newline injection, neither of which
+a manual `strings.Split` does.
+
 One behaviour improves silently: `Visit` and `Document.Subset` no longer write
 to the `Source` they traverse. In v2 they re-synced `RepositoryRef` from
 `RepositoryLink.XRef` on every walk, which blanked a caller-set value on a
@@ -265,9 +316,10 @@ document with an inline repository.
 
 `make api-check` in this repository reports the full apidiff between the last
 release and `main`, including constant value changes. For your own code, the
-compiler catches every removal and rename on this page, and the `*int` retype
-too; the value *remaps* — the inverted boolean and the renumbered constant —
-are the ones it cannot.
+compiler catches every removal and rename on this page. It does **not** catch
+the value changes — the inverted boolean, the renumbered constant, and the
+`*int` retype, whose compile error has a mechanical fix that can be wrong (see
+below).
 
 See [`docs/governance/policies/api-stability.md`](../governance/policies/api-stability.md)
 for what the project treats as a breaking change, including the semantic breaks

@@ -55,3 +55,58 @@ func TestIssueWithLineNumber(t *testing.T) {
 		t.Errorf("WithLineNumber mutated the receiver: LineNumber = %d", base.LineNumber)
 	}
 }
+
+// TestControlCharIssueCarriesLineNumber pins the two control-character paths
+// that have a source line in hand. The record-value path shipped passing a
+// literal 0 despite Record.LineNumber being populated and in scope; no test
+// asserted the value, which is why the gap got through (panel review).
+func TestControlCharIssueCarriesLineNumber(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantLine int
+	}{
+		{
+			// The banned character sits on a subordinate tag's value.
+			name: "tag value",
+			input: "0 HEAD\n1 GEDC\n2 VERS 7.0\n1 CHAR UTF-8\n" +
+				"0 @I1@ INDI\n1 NAME John\x07Doe\n0 TRLR\n",
+			wantLine: 6,
+		},
+		{
+			// The banned character sits on a record's level-0 value.
+			name: "record value",
+			input: "0 HEAD\n1 GEDC\n2 VERS 7.0\n1 CHAR UTF-8\n" +
+				"0 @N1@ NOTE bad\x07text\n0 TRLR\n",
+			wantLine: 5,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := decoder.Decode(strings.NewReader(tt.input))
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+
+			var found bool
+			for _, issue := range New().ValidateEncoding(doc) {
+				if issue.Code != CodeBannedControlCharacter {
+					continue
+				}
+				found = true
+				if issue.LineNumber != tt.wantLine {
+					t.Errorf("LineNumber = %d, want %d", issue.LineNumber, tt.wantLine)
+				}
+				// The byte offset within the value is a different fact and
+				// must survive alongside the line number.
+				if issue.Details["position"] == "" {
+					t.Error("Details[position] missing; it is not the line number and should remain")
+				}
+			}
+			if !found {
+				t.Fatal("no BANNED_CONTROL_CHARACTER issue; the fixture would prove nothing")
+			}
+		})
+	}
+}

@@ -5501,7 +5501,7 @@ func TestAttributeUnknownSubtagFlagged(t *testing.T) {
 
 // TestFamilyEventAndAttributeContexts pins the four FAM contexts parseFamily
 // never read (issue #448): CENS and RESI decode as events, NCHI and FACT as
-// attributes. NCHI is deliberate dual storage — Family.NumberOfChildren stays
+// attributes. NCHI lives only in Family.Attributes — Family.NumberOfChildren() reads
 // populated alongside the new Family.Attributes entry.
 func TestFamilyEventAndAttributeContexts(t *testing.T) {
 	input := `0 HEAD

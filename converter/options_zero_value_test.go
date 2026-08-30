@@ -27,49 +27,58 @@ func vendorDoc() *gedcom.Document {
 	}
 }
 
-// TestZeroConvertOptionsMatchesDefaults pins the zero value of ConvertOptions.
-// Before issue #491 only a *nil* pointer picked up DefaultOptions, so a bare
-// &ConvertOptions{} silently ran with validation off and no EXID mapping,
-// contradicting every field's documented default. All three call shapes must
-// now agree.
-func TestZeroConvertOptionsMatchesDefaults(t *testing.T) {
-	shapes := map[string]*ConvertOptions{
-		"nil":            nil,
-		"zero struct":    {},
-		"DefaultOptions": DefaultOptions(),
-	}
-
-	type outcome struct {
-		bytes      string
-		preserved  int
-		dataLoss   int
-		normalized int
-	}
-	got := make(map[string]outcome, len(shapes))
-
-	for name, opts := range shapes {
-		result, report, err := ConvertWithOptions(vendorDoc(), gedcom.Version551, opts)
+// TestConvertOptionsZeroValueIsHonoured pins that a non-nil *ConvertOptions is
+// taken exactly as written. Only nil means "use the defaults".
+//
+// An earlier version of this change also substituted the defaults for a wholly
+// zero struct. That looked friendlier but made "every option off" impossible to
+// express: the literal for it is the zero struct, so the request was silently
+// overridden and the struct's own doc comment became untrue (issue #491, panel
+// review).
+func TestConvertOptionsZeroValueIsHonoured(t *testing.T) {
+	report := func(t *testing.T, opts *ConvertOptions) *gedcom.ConversionReport {
+		t.Helper()
+		_, rep, err := ConvertWithOptions(vendorDoc(), gedcom.Version551, opts)
 		if err != nil {
-			t.Fatalf("%s: ConvertWithOptions() error = %v", name, err)
+			t.Fatalf("ConvertWithOptions() error = %v", err)
 		}
-		var buf bytes.Buffer
-		if err := encoder.EncodeWithOptions(&buf, result, &encoder.EncodeOptions{}); err != nil {
-			t.Fatalf("%s: encode error = %v", name, err)
-		}
-		got[name] = outcome{
-			bytes:      buf.String(),
-			preserved:  len(report.Preserved),
-			dataLoss:   len(report.DataLoss),
-			normalized: len(report.Normalized),
-		}
+		return rep
 	}
 
-	want := got["DefaultOptions"]
-	for _, name := range []string{"nil", "zero struct"} {
-		if got[name] != want {
-			t.Errorf("%s differs from DefaultOptions:\n got  %+v\n want %+v", name, got[name], want)
+	t.Run("nil means DefaultOptions", func(t *testing.T) {
+		if got, want := len(report(t, nil).Preserved), len(report(t, DefaultOptions()).Preserved); got != want {
+			t.Errorf("nil preserved %d entries, DefaultOptions %d; they should agree", got, want)
 		}
-	}
+	})
+
+	t.Run("a zero struct means every option off, and is honoured", func(t *testing.T) {
+		zero := report(t, &ConvertOptions{})
+		if len(zero.Preserved) != 0 {
+			t.Errorf("ReportPreservedTags was forced on: %d Preserved entries", len(zero.Preserved))
+		}
+
+		// Distinguishable from the defaults, which is the whole point.
+		if def := report(t, DefaultOptions()); len(def.Preserved) == len(zero.Preserved) {
+			t.Errorf("a zero struct is indistinguishable from DefaultOptions (%d entries each)",
+				len(zero.Preserved))
+		}
+	})
+
+	t.Run("every option off is constructible", func(t *testing.T) {
+		// The configuration the earlier design could not express.
+		opts := &ConvertOptions{
+			Validate:            false,
+			StrictDataLoss:      false,
+			ReportPreservedTags: false,
+			MapEXIDToVendorTags: false,
+		}
+		if *opts != (ConvertOptions{}) {
+			t.Fatal("fixture is not the zero struct; the test would prove nothing")
+		}
+		if len(report(t, opts).Preserved) != 0 {
+			t.Error("an all-false literal was overridden")
+		}
+	})
 }
 
 // TestConvertOutputBytesIgnoreReportOptions asserts the converter preserves

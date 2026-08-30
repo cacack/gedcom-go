@@ -45,15 +45,21 @@ func (x *XRefValidator) ValidateXRefs(doc *gedcom.Document) []Issue {
 		return issues
 	}
 
-	for xref := range doc.XRefMap {
+	for xref, record := range doc.XRefMap {
 		content := strings.Trim(xref, "@")
 		if len(content) > MaxXRefLength {
+			// The record the XRef declares carries the line it was declared on.
+			line := 0
+			if record != nil {
+				line = record.LineNumber
+			}
 			issues = append(issues, NewIssue(
 				SeverityWarning,
 				CodeXRefTooLong,
 				fmt.Sprintf("XRef %s exceeds %d-character limit for GEDCOM %s", xref, MaxXRefLength, doc.Header.Version),
 				xref,
 			).
+				WithLineNumber(line).
 				WithDetail("length", fmt.Sprintf("%d", len(content))).
 				WithDetail("version", string(doc.Header.Version)))
 		}

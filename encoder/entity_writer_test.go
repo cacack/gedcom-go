@@ -4917,7 +4917,7 @@ func TestEntityBuiltEventDetailEncodes(t *testing.T) {
 }
 
 // decodedNoteFixture is the input for the two tests below: every substructure
-// that gained note fields in issue #447, plus the dual-stored NCHI of #448.
+// that gained note fields in issue #447, plus the NCHI attribute of #448.
 const decodedNoteFixture = `0 HEAD
 1 GEDC
 2 VERS 7.0
@@ -5025,10 +5025,10 @@ func TestDecodedNotesEncodeOnce(t *testing.T) {
 }
 
 // TestDecodedNCHIEncodesOnce is the decoded-document half of
-// TestFamilyToTagsNCHIOnce, which builds its families by hand. The decoder is
-// what actually creates the dual storage — one "1 NCHI" line populates both
-// Family.NumberOfChildren and a Family.Attributes entry — so this is the path
-// where a missing guard would emit the line twice.
+// TestFamilyToTagsNCHIOnce, which builds its families by hand. It guards the
+// round trip: one "1 NCHI" line in, one Family.Attributes entry, one line back
+// out. Until v3 the decoder also populated a second, scalar store here, and a
+// missing encoder guard emitted the line twice.
 func TestDecodedNCHIEncodesOnce(t *testing.T) {
 	out := encodeFromEntities(t, decodedNoteFixture)
 
