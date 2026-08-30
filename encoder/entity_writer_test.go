@@ -202,7 +202,7 @@ func TestFamilyToTags(t *testing.T) {
 		{
 			name: "family with number of children",
 			fam: &gedcom.Family{
-				NumberOfChildren: "3",
+				Attributes: []*gedcom.Attribute{{Type: "NCHI", Value: "3"}},
 			},
 			contains: []string{"NCHI"},
 		},
@@ -4714,22 +4714,17 @@ func TestFamilyToTagsAttributes(t *testing.T) {
 	}
 }
 
-// TestFamilyToTagsNCHIOnce guards the one tag the decoder stores twice: an NCHI
-// line populates both Family.NumberOfChildren and a Family.Attributes entry, so
-// the writer has to pick a single source or the encoded family gains a second
-// NCHI line on every round trip. The attribute wins when present because it also
-// carries the line's subordinates.
+// TestFamilyToTagsNCHIOnce guards against a family gaining a second NCHI line
+// on a round trip. Until v3 an NCHI line was stored twice -- in the removed
+// Family.NumberOfChildren field and as a Family.Attributes entry -- and the
+// writer had to pick one. Attributes is now the only store, and it carries the
+// line's subordinates too.
 func TestFamilyToTagsNCHIOnce(t *testing.T) {
 	tests := []struct {
 		name string
 		fam  *gedcom.Family
 		want []string
 	}{
-		{
-			name: "field only",
-			fam:  &gedcom.Family{NumberOfChildren: "3"},
-			want: []string{"1 NCHI 3"},
-		},
 		{
 			name: "attribute only",
 			fam: &gedcom.Family{
@@ -4738,9 +4733,8 @@ func TestFamilyToTagsNCHIOnce(t *testing.T) {
 			want: []string{"1 NCHI 3"},
 		},
 		{
-			name: "dual storage emits the attribute, with its subordinates",
+			name: "attribute carries its subordinates",
 			fam: &gedcom.Family{
-				NumberOfChildren: "3",
 				Attributes: []*gedcom.Attribute{
 					{Type: "NCHI", Value: "3", SourceCitations: []*gedcom.SourceCitation{{SourceXRef: "@S1@"}}},
 				},
@@ -4748,10 +4742,21 @@ func TestFamilyToTagsNCHIOnce(t *testing.T) {
 			want: []string{"1 NCHI 3", "2 SOUR @S1@"},
 		},
 		{
-			name: "unrelated attribute does not suppress the field",
+			name: "set through the typed setter",
+			fam: func() *gedcom.Family {
+				f := &gedcom.Family{}
+				f.SetNumberOfChildren("3")
+				return f
+			}(),
+			want: []string{"1 NCHI 3"},
+		},
+		{
+			name: "unrelated attribute is unaffected",
 			fam: &gedcom.Family{
-				NumberOfChildren: "3",
-				Attributes:       []*gedcom.Attribute{{Type: "RESI", Value: "Farmhouse"}},
+				Attributes: []*gedcom.Attribute{
+					{Type: "NCHI", Value: "3"},
+					{Type: "RESI", Value: "Farmhouse"},
+				},
 			},
 			want: []string{"1 NCHI 3", "1 RESI Farmhouse"},
 		},
@@ -5044,8 +5049,8 @@ func TestDecodedNCHIEncodesOnce(t *testing.T) {
 	if fam == nil {
 		t.Fatal("GetFamily(@F1@) returned nil after entity encode")
 	}
-	if fam.NumberOfChildren != "3" {
-		t.Errorf("re-decoded NumberOfChildren = %q, want %q", fam.NumberOfChildren, "3")
+	if fam.NumberOfChildren() != "3" {
+		t.Errorf("re-decoded NumberOfChildren() = %q, want %q", fam.NumberOfChildren(), "3")
 	}
 	if len(fam.Attributes) != 1 || fam.Attributes[0].Date != "1910" {
 		t.Errorf("re-decoded Attributes = %+v, want one NCHI dated 1910", fam.Attributes)

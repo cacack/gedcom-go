@@ -510,21 +510,20 @@ func TestFamilyClone(t *testing.T) {
 
 	t.Run("copies all fields", func(t *testing.T) {
 		original := &Family{
-			XRef:             "@F1@",
-			Husband:          "@I1@",
-			Wife:             "@I2@",
-			Children:         []string{"@I3@"},
-			NumberOfChildren: "1",
-			Notes:            []string{"@N1@"},
-			RefNumber:        "456",
-			UID:              "uid-456",
-			Events:           []*Event{{Type: "MARR", Date: "1 JAN 1920"}},
-			SourceCitations:  []*SourceCitation{{SourceXRef: "@S1@"}},
-			Media:            []*MediaLink{{MediaXRef: "@M1@"}},
-			LDSOrdinances:    []*LDSOrdinance{{Type: "SLGS"}},
-			ChangeDate:       &ChangeDate{Date: "1 JAN 2024"},
-			CreationDate:     &ChangeDate{Date: "1 JAN 2020"},
-			Tags:             []*Tag{{Tag: "CUSTOM"}},
+			XRef:            "@F1@",
+			Husband:         "@I1@",
+			Wife:            "@I2@",
+			Children:        []string{"@I3@"},
+			Notes:           []string{"@N1@"},
+			RefNumber:       "456",
+			UID:             "uid-456",
+			Events:          []*Event{{Type: "MARR", Date: "1 JAN 1920"}},
+			SourceCitations: []*SourceCitation{{SourceXRef: "@S1@"}},
+			Media:           []*MediaLink{{MediaXRef: "@M1@"}},
+			LDSOrdinances:   []*LDSOrdinance{{Type: "SLGS"}},
+			ChangeDate:      &ChangeDate{Date: "1 JAN 2024"},
+			CreationDate:    &ChangeDate{Date: "1 JAN 2020"},
+			Tags:            []*Tag{{Tag: "CUSTOM"}},
 		}
 
 		copied := original.Clone()

@@ -911,12 +911,6 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "NCHI", "FACT":
 			attr := parseAttribute(record.Tags, i, tag.Tag, collector)
 			fam.Attributes = append(fam.Attributes, attr)
-			if tag.Tag == "NCHI" {
-				// Deliberate dual storage: NumberOfChildren predates
-				// Family.Attributes and stays populated, so callers reading it
-				// are unaffected by NCHI also reaching the attribute list.
-				fam.NumberOfChildren = tag.Value
-			}
 
 		case "MARR", "DIV", "ENGA", "ANUL", "MARB", "MARC", "MARL", "MARS", "DIVF", "CENS", "RESI", "EVEN":
 			event := parseEvent(record.Tags, i, tag.Tag, collector)

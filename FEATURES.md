@@ -595,9 +595,9 @@ the full `EVENT_DETAIL` set listed under Events — `gedcom.Attribute` carries t
 same fields as `gedcom.Event`.
 
 At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
-`CENS` and `RESI` into `Family.Events`, each with its `EVENT_DETAIL`. `NCHI` is
-dual-stored: the scalar `Family.NumberOfChildren` stays populated alongside the
-richer `Family.Attributes` entry, and the encoder writes the line once.
+`CENS` and `RESI` into `Family.Events`, each with its `EVENT_DETAIL`.
+`Family.Attributes` is the single store for `NCHI`; read it through
+`Family.NumberOfChildren()` and write it through `SetNumberOfChildren`.
 
 ## Source Citations
 

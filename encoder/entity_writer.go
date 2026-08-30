@@ -324,18 +324,6 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 	return tags
 }
 
-// hasAttributeType reports whether attrs holds an attribute of the given type.
-// It guards fields that duplicate an attribute the decoder also stores in the
-// Attributes slice, so the encoder writes such a tag exactly once.
-func hasAttributeType(attrs []*gedcom.Attribute, attrType string) bool {
-	for _, attr := range attrs {
-		if attr != nil && attr.Type == attrType {
-			return true
-		}
-	}
-	return false
-}
-
 // familyToTags converts a Family entity to GEDCOM tags.
 //
 //nolint:gocyclo // Converting all family fields requires handling many cases
@@ -359,15 +347,6 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	// Children (level 1) - CHIL
 	for _, child := range fam.Children {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "CHIL", Value: child})
-	}
-
-	// Number of children (level 1) - NCHI. The decoder stores an NCHI line
-	// twice: in NumberOfChildren and as an Attributes entry, which also carries
-	// the line's subordinates. Emitting both would write the tag twice, so the
-	// attribute wins whenever it is present -- it is the richer of the two --
-	// and this line is written only when nothing in Attributes covers it.
-	if fam.NumberOfChildren != "" && !hasAttributeType(fam.Attributes, "NCHI") {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NCHI", Value: fam.NumberOfChildren})
 	}
 
 	// Events (level 1) - MARR, DIV, etc.

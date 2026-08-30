@@ -157,8 +157,8 @@ func checkFamilyDetailFixture(t *testing.T, doc *gedcom.Document) {
 	}
 	// Deliberate dual storage: the scalar field stays populated alongside the
 	// richer attribute entry, and the encoder guards against writing both.
-	if fam.NumberOfChildren != "3" {
-		t.Errorf("NumberOfChildren = %q, want %q", fam.NumberOfChildren, "3")
+	if fam.NumberOfChildren() != "3" {
+		t.Errorf("NumberOfChildren() = %q, want %q", fam.NumberOfChildren(), "3")
 	}
 
 	fact := findFamilyAttribute(fam, "FACT")

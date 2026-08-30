@@ -192,6 +192,27 @@ src.RepositoryLink = &gedcom.SourceRepositoryLink{
 `SourceRepositoryLink` also carries the call numbers, media type, and per-link
 notes that the flat fields could not represent, so it is a strict superset.
 
+### `Family.NumberOfChildren` is now a method
+
+| v2 | v3 |
+|----|----|
+| `fam.NumberOfChildren` (read) | `fam.NumberOfChildren()` |
+| `fam.NumberOfChildren = "4"` | `fam.SetNumberOfChildren("4")` |
+
+The field was a second store for a fact `Family.Attributes` already held, and
+the attribute is strictly richer — it carries the `NCHI` line's subordinates as
+well as its value. The encoder preferred the attribute, so a write to the field
+appeared to succeed, survived in memory, and vanished on encode.
+
+`SetNumberOfChildren` updates an existing `NCHI` attribute in place (keeping its
+subordinates) or appends one, so the write stays typed and you never need to
+know the raw tag name.
+
+**On a decoded family this changes the typed model only.** `Record.Tags` is
+authoritative on encode (see the `Record.Tags` godoc), so to change what a
+decoded family writes, edit the `NCHI` tag in `Record.Tags`, or clear `Tags` to
+rebuild from the typed model.
+
 ### `Note.Continuation` in detail
 
 `Note` now matches `SharedNote`: one `Text` field holding the whole body.

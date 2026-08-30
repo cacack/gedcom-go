@@ -184,17 +184,16 @@ func (f *Family) Clone() *Family {
 	}
 
 	copied := &Family{
-		XRef:             f.XRef,
-		Husband:          f.Husband,
-		Wife:             f.Wife,
-		Children:         cloneStringSlice(f.Children),
-		NumberOfChildren: f.NumberOfChildren,
-		Notes:            cloneStringSlice(f.Notes),
-		NoteXRefs:        cloneStringSlice(f.NoteXRefs),
-		InlineNotes:      cloneStringSlice(f.InlineNotes),
-		RefNumber:        f.RefNumber,
-		UID:              f.UID,
-		ExternalIDs:      cloneExternalIDs(f.ExternalIDs),
+		XRef:        f.XRef,
+		Husband:     f.Husband,
+		Wife:        f.Wife,
+		Children:    cloneStringSlice(f.Children),
+		Notes:       cloneStringSlice(f.Notes),
+		NoteXRefs:   cloneStringSlice(f.NoteXRefs),
+		InlineNotes: cloneStringSlice(f.InlineNotes),
+		RefNumber:   f.RefNumber,
+		UID:         f.UID,
+		ExternalIDs: cloneExternalIDs(f.ExternalIDs),
 	}
 
 	if f.Events != nil {

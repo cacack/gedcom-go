@@ -2494,8 +2494,8 @@ func TestFamilyStatisticsAttributes(t *testing.T) {
 		t.Fatal("Family @F1@ not found")
 	}
 
-	if fam.NumberOfChildren != "3" {
-		t.Errorf("Family.NumberOfChildren = %s, want 3", fam.NumberOfChildren)
+	if fam.NumberOfChildren() != "3" {
+		t.Errorf("Family.NumberOfChildren() = %s, want 3", fam.NumberOfChildren())
 	}
 
 	// Verify the family has 3 CHIL tags
@@ -5552,8 +5552,8 @@ func TestFamilyEventAndAttributeContexts(t *testing.T) {
 	if fam.Attributes[1].Type != "FACT" || fam.Attributes[1].TypeDetail != "Lifestyle" {
 		t.Errorf("Attributes[1] = %+v, want FACT with TypeDetail \"Lifestyle\"", fam.Attributes[1])
 	}
-	if fam.NumberOfChildren != "3" {
-		t.Errorf("NumberOfChildren = %q, want \"3\" (dual storage with Attributes)", fam.NumberOfChildren)
+	if fam.NumberOfChildren() != "3" {
+		t.Errorf("NumberOfChildren() = %q, want \"3\" (read from Attributes)", fam.NumberOfChildren())
 	}
 }
 
