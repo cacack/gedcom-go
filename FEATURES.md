@@ -947,6 +947,26 @@ for _, issue := range issues {
 }
 ```
 
+**Place Carrier Consistency:**
+
+| Check | Severity | Description |
+|-------|----------|-------------|
+| PLACE_CARRIER_MISMATCH | Warning | An event or attribute whose `Place` scalar and `PlaceDetail.Name` hold different values |
+
+A place can be recorded on either carrier. Decode fills both from the same line,
+so a decoded document never disagrees -- but a hand-built one can, and the
+disagreement is otherwise invisible: `PlaceName()` reads `PlaceDetail.Name`
+while the encoder writes `Place`, so a caller who updates only the structured
+field sees the new value in memory and writes the old one to the file. This
+check is the signal for that.
+
+```go
+issues := validator.NewPlaceConsistencyValidator().Validate(doc)
+```
+
+It fires only when both carriers are non-empty and differ; one carrier empty is
+the ordinary shape and is not reported.
+
 **Orphaned Reference Detection:**
 
 Typed detection for all GEDCOM reference types:
