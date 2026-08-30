@@ -428,14 +428,14 @@ func (i *Individual) Children(doc *Document) []*Individual {
 	return children
 }
 
-// ParentalFamilies returns all families where this individual is a child.
-// These are the family records containing this individual's parents.
+// FamiliesAsChild returns the families in which this individual is a child --
+// the family records containing this individual's parents.
 //
 // The doc parameter is required for O(1) cross-reference lookups.
 // Returns an empty slice if doc is nil, no parental families are found, or if
 // family xrefs are invalid. Invalid xrefs are silently skipped.
 // Order is preserved from the GEDCOM file.
-func (i *Individual) ParentalFamilies(doc *Document) []*Family {
+func (i *Individual) FamiliesAsChild(doc *Document) []*Family {
 	if doc == nil {
 		return nil
 	}
@@ -449,14 +449,14 @@ func (i *Individual) ParentalFamilies(doc *Document) []*Family {
 	return families
 }
 
-// SpouseFamilies returns all families where this individual is a spouse.
-// These are the family records where this individual is either the husband or wife.
+// FamiliesAsSpouse returns the families in which this individual is a spouse --
+// the family records where this individual is either the husband or the wife.
 //
 // The doc parameter is required for O(1) cross-reference lookups.
 // Returns an empty slice if doc is nil, no spouse families are found, or if
 // family xrefs are invalid. Invalid xrefs are silently skipped.
 // Order is preserved from the GEDCOM file.
-func (i *Individual) SpouseFamilies(doc *Document) []*Family {
+func (i *Individual) FamiliesAsSpouse(doc *Document) []*Family {
 	if doc == nil {
 		return nil
 	}

@@ -89,6 +89,27 @@ integer** — a config file, a database column, a JSON payload — must remap it
 because a stored `0` meant Relaxed under v2 and means Normal under v3. There is
 no compiler signal for this.
 
+## Renames
+
+### `Individual.ParentalFamilies` / `SpouseFamilies`
+
+| v2 | v3 |
+|----|----|
+| `ind.ParentalFamilies(doc)` | `ind.FamiliesAsChild(doc)` |
+| `ind.SpouseFamilies(doc)` | `ind.FamiliesAsSpouse(doc)` |
+
+The old pair used opposite conventions for the same kind of relation.
+`SpouseFamilies` meant "families where I am a spouse", but `ParentalFamilies`
+meant "families where I am a **child**" — under the first name's own rule it
+reads as the opposite, and "families where I am a parent" is exactly what
+`SpouseFamilies` returned.
+
+Both take a `*Document` and return `[]*Family`, so transposing them produced a
+wrong-but-plausible tree with no type error and no panic. **If your code had
+them swapped, the compiler will not tell you — but your results change.** Check
+each call site against the role you meant, rather than mapping the names
+mechanically.
+
 ## Straight removals
 
 Each of these is superseded by something that already exists in v2, so you can

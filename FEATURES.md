@@ -1551,8 +1551,8 @@ Navigate family relationships with convenience methods that eliminate manual cro
 | `Parents(doc)` | `[]*Individual` | Parents from FAMC families |
 | `Spouses(doc)` | `[]*Individual` | Spouses from FAMS families (handles remarriage) |
 | `Children(doc)` | `[]*Individual` | Children from all FAMS families |
-| `ParentalFamilies(doc)` | `[]*Family` | Families where individual is a child |
-| `SpouseFamilies(doc)` | `[]*Family` | Families where individual is a spouse |
+| `FamiliesAsChild(doc)` | `[]*Family` | Families where individual is a child |
+| `FamiliesAsSpouse(doc)` | `[]*Family` | Families where individual is a spouse |
 
 **Family Methods:**
 
