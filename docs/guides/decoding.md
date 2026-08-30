@@ -113,6 +113,41 @@ fmt.Println(result.Diagnostics.String())
 
 When encoding a decoded document back to GEDCOM format, here's what to expect.
 
+### Modifying a decoded document
+
+**Editing a typed field on a decoded record does not change what it encodes to.**
+
+`Record.Tags` is authoritative on encode: the encoder writes it verbatim
+whenever it is non-empty, and builds tags from the typed `Entity` only for a
+record that has none. A decoded record always has tags, so:
+
+```go
+indi := doc.GetIndividual("@I1@")
+indi.Names[0].Full = "Jane /Roe/"   // succeeds in memory...
+// ...and is silently absent from the encoded output. No error, no diagnostic.
+```
+
+Two supported ways to change the output:
+
+```go
+// 1. Edit the raw tag — keeps everything else lossless.
+for _, tag := range rec.Tags {
+    if tag.Tag == "NAME" {
+        tag.Value = "Jane /Roe/"
+    }
+}
+
+// 2. Clear Tags so the record is rebuilt from the typed model. This drops any
+//    raw tag the typed model does not represent, so it trades losslessness for
+//    the typed view.
+rec.Tags = nil
+```
+
+The converter keeps both in step and is the safe option when changing version.
+
+This is the trade the library makes for Lossless Representation: what was read
+is what is written. It applies to every record type, not just the header.
+
 ### Preserved Exactly
 
 | Element | Notes |

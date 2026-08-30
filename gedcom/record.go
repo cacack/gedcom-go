@@ -41,7 +41,24 @@ type Record struct {
 	// Value is the value from the level 0 line (used for NOTE records, etc.)
 	Value string
 
-	// Tags contains all the tags that make up this record
+	// Tags contains all the tags that make up this record, in document order.
+	//
+	// Tags is authoritative when encoding. The encoder writes Tags verbatim
+	// whenever it is non-empty and builds tags from Entity only for a record
+	// that has none. Editing a typed field on a decoded record therefore does
+	// not change the encoded output: the write succeeds in memory, survives a
+	// round of reads, and is silently absent from the file. There is no error
+	// and no diagnostic.
+	//
+	// Two supported ways to change what a decoded record encodes to:
+	//
+	//   - Edit the matching entry in Tags.
+	//   - Set Tags to nil, so the encoder re-derives the whole record from
+	//     Entity. This drops any raw tag the typed model does not represent,
+	//     so it trades losslessness for the typed model's view.
+	//
+	// The converter keeps both in step and is the safe option when converting
+	// between GEDCOM versions.
 	Tags []*Tag
 
 	// LineNumber is the line number where the record starts
