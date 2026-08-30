@@ -1128,7 +1128,9 @@ Full control over decoding behavior with `DecodeOptions`:
 | `StrictMode` | `bool` | Reject non-standard extensions |
 | `OnProgress` | `ProgressCallback` | Progress reporting callback |
 | `TotalSize` | `int64` | Expected file size for progress percentage |
-| `MaxNestingDepth` | `int` | **Deprecated, no effect.** The decoder never reads it; the ceiling is fixed at `parser.MaxNestingDepth-1` (99) by the grammar. Will be removed in v3 ([#383](https://github.com/cacack/gedcom-go/issues/383)) |
+
+The nesting ceiling is not an option: the GEDCOM grammar's two-digit level
+field fixes it at `parser.MaxNestingDepth-1` (99).
 
 ### Progress Reporting
 
