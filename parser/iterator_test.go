@@ -660,7 +660,7 @@ func TestRecords_EarlyTermination(t *testing.T) {
 	var sb strings.Builder
 	sb.WriteString("0 HEAD\n1 SOUR Test\n")
 	for i := 1; i <= 100; i++ {
-		sb.WriteString(fmt.Sprintf("0 @I%d@ INDI\n1 NAME Person%d\n", i, i))
+		fmt.Fprintf(&sb, "0 @I%d@ INDI\n1 NAME Person%d\n", i, i)
 	}
 	sb.WriteString("0 TRLR\n")
 	input := sb.String()
@@ -757,7 +757,7 @@ func TestRecordsWithOffset_EarlyTermination(t *testing.T) {
 	var sb strings.Builder
 	sb.WriteString("0 HEAD\n1 SOUR Test\n")
 	for i := 1; i <= 50; i++ {
-		sb.WriteString(fmt.Sprintf("0 @I%d@ INDI\n1 NAME Person%d\n", i, i))
+		fmt.Fprintf(&sb, "0 @I%d@ INDI\n1 NAME Person%d\n", i, i)
 	}
 	sb.WriteString("0 TRLR\n")
 	input := sb.String()

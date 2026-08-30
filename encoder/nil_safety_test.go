@@ -400,7 +400,7 @@ func TestEncode_NilRecordElement(t *testing.T) {
 }
 
 // TestEncode_NilTagElement covers a nil element in Record.Tags, on both sides of
-// the PreserveUnknownTags branch: filterTags only runs when it is false.
+// the DropUnknownTags branch: filterTags only does work when it is set.
 func TestEncode_NilTagElement(t *testing.T) {
 	tags := func(withNil bool) []*gedcom.Tag {
 		clean := []*gedcom.Tag{
@@ -425,10 +425,10 @@ func TestEncode_NilTagElement(t *testing.T) {
 		}
 	}
 
-	for _, preserve := range []bool{true, false} {
-		t.Run("PreserveUnknownTags="+map[bool]string{true: "true", false: "false"}[preserve], func(t *testing.T) {
+	for _, drop := range []bool{false, true} {
+		t.Run("DropUnknownTags="+map[bool]string{true: "true", false: "false"}[drop], func(t *testing.T) {
 			opts := DefaultOptions()
-			opts.PreserveUnknownTags = preserve
+			opts.DropUnknownTags = drop
 
 			encode := func(d *gedcom.Document) string {
 				t.Helper()

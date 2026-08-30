@@ -75,7 +75,7 @@ func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error 
 		header = &gedcom.Header{}
 	}
 
-	if _, err := fmt.Fprintf(w, "0 HEAD%s", opts.LineEnding); err != nil {
+	if _, err := fmt.Fprintf(w, "0 HEAD%s", opts.effectiveLineEnding()); err != nil {
 		return err
 	}
 
@@ -108,7 +108,7 @@ func writeHeaderTags(w io.Writer, tags []*gedcom.Tag, opts *EncodeOptions) error
 	inGEDC := false
 	wroteVersion := false
 
-	filtered := filterTags(tags, opts.PreserveUnknownTags)
+	filtered := filterTags(tags, opts.DropUnknownTags)
 
 	for i, tag := range filtered {
 		if tag == nil {
@@ -222,10 +222,10 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 	}
 
 	if version != "" {
-		if _, err := fmt.Fprintf(w, "1 GEDC%s", opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "1 GEDC%s", opts.effectiveLineEnding()); err != nil {
 			return err
 		}
-		if _, err := fmt.Fprintf(w, "2 VERS %s%s", version, opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "2 VERS %s%s", version, opts.effectiveLineEnding()); err != nil {
 			return err
 		}
 	}
@@ -233,19 +233,19 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 	// Declared only when the header declares one at all: GEDCOM 7.0 removed
 	// CHAR, and synthesizing one there would add a line the source never had.
 	if header.Encoding != "" {
-		if _, err := fmt.Fprintf(w, "1 CHAR %s%s", writtenEncoding, opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "1 CHAR %s%s", writtenEncoding, opts.effectiveLineEnding()); err != nil {
 			return err
 		}
 	}
 
 	if header.SourceSystem != "" {
-		if _, err := fmt.Fprintf(w, "1 SOUR %s%s", header.SourceSystem, opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "1 SOUR %s%s", header.SourceSystem, opts.effectiveLineEnding()); err != nil {
 			return err
 		}
 	}
 
 	if header.Language != "" {
-		if _, err := fmt.Fprintf(w, "1 LANG %s%s", header.Language, opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "1 LANG %s%s", header.Language, opts.effectiveLineEnding()); err != nil {
 			return err
 		}
 	}
@@ -268,9 +268,9 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 	// can do anything with. Writing the level-0 value (issue #404) widened that
 	// stub rather than creating it.
 	//
-	// This is the lossy mode the option exists to request; the default is
-	// PreserveUnknownTags=true, where nothing here applies.
-	if !opts.PreserveUnknownTags && isCustomTag(string(record.Type)) {
+	// This is the lossy mode the option exists to request; the zero value is
+	// DropUnknownTags=false, where nothing here applies.
+	if opts.DropUnknownTags && isCustomTag(string(record.Type)) {
 		return nil
 	}
 
@@ -310,8 +310,8 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 		return err
 	}
 
-	// Filter out custom tags if PreserveUnknownTags is false
-	tags = filterTags(tags, opts.PreserveUnknownTags)
+	// Filter out custom tags if DropUnknownTags is set
+	tags = filterTags(tags, opts.DropUnknownTags)
 
 	// Write tags
 	for _, tag := range tags {
@@ -422,19 +422,19 @@ func writeLine(w io.Writer, level int, xref, tag, value string, opts *EncodeOpti
 	var err error
 	switch {
 	case xref == "" && value == "":
-		_, err = fmt.Fprintf(w, "%d %s%s", level, tag, opts.LineEnding)
+		_, err = fmt.Fprintf(w, "%d %s%s", level, tag, opts.effectiveLineEnding())
 	case xref == "":
-		_, err = fmt.Fprintf(w, "%d %s %s%s", level, tag, value, opts.LineEnding)
+		_, err = fmt.Fprintf(w, "%d %s %s%s", level, tag, value, opts.effectiveLineEnding())
 	case value == "":
-		_, err = fmt.Fprintf(w, "%d %s %s%s", level, xref, tag, opts.LineEnding)
+		_, err = fmt.Fprintf(w, "%d %s %s%s", level, xref, tag, opts.effectiveLineEnding())
 	default:
-		_, err = fmt.Fprintf(w, "%d %s %s %s%s", level, xref, tag, value, opts.LineEnding)
+		_, err = fmt.Fprintf(w, "%d %s %s %s%s", level, xref, tag, value, opts.effectiveLineEnding())
 	}
 	return err
 }
 
 func writeTrailer(w io.Writer, opts *EncodeOptions) error {
-	_, err := fmt.Fprintf(w, "0 TRLR%s", opts.LineEnding)
+	_, err := fmt.Fprintf(w, "0 TRLR%s", opts.effectiveLineEnding())
 	return err
 }
 
@@ -444,10 +444,10 @@ func isCustomTag(tagName string) bool {
 	return strings.HasPrefix(tagName, "_")
 }
 
-// filterTags returns tags with custom tags filtered out if PreserveUnknownTags is false.
+// filterTags returns tags with custom tags filtered out if dropUnknown is set.
 // When a custom tag is filtered, its child tags (higher level) are also removed.
-func filterTags(tags []*gedcom.Tag, preserveUnknown bool) []*gedcom.Tag {
-	if preserveUnknown {
+func filterTags(tags []*gedcom.Tag, dropUnknown bool) []*gedcom.Tag {
+	if !dropUnknown {
 		return tags
 	}
 

@@ -65,6 +65,13 @@ linters:
       - linters:
           - staticcheck
         text: 'SA1019:.*is deprecated: use NoteXRefs and InlineNotes'
+      # Note.Continuation is deprecated on read but still honoured on encode
+      # (issue #439), so the encoder tests must keep exercising it until it is
+      # removed. Drop this rule with the field (issue #487).
+      - linters:
+          - staticcheck
+        path: _test\.go
+        text: 'SA1019:.*\.Continuation is deprecated'
       - linters:
           - lll
           - gocritic

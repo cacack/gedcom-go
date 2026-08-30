@@ -58,19 +58,19 @@ func (r *QualityReport) String() string {
 
 	sb.WriteString("GEDCOM Quality Report\n")
 	sb.WriteString("=====================\n")
-	sb.WriteString(fmt.Sprintf("Records: %d individuals, %d families, %d sources\n",
-		r.TotalIndividuals, r.TotalFamilies, r.TotalSources))
+	fmt.Fprintf(&sb, "Records: %d individuals, %d families, %d sources\n",
+		r.TotalIndividuals, r.TotalFamilies, r.TotalSources)
 
 	sb.WriteString("\nData Completeness:\n")
-	sb.WriteString(fmt.Sprintf("- Birth dates: %.0f%% (%d/%d)\n",
-		r.BirthDateCoverage*100, r.IndividualsWithBirthDate, r.TotalIndividuals))
-	sb.WriteString(fmt.Sprintf("- Sources: %.0f%% (%d/%d)\n",
-		r.SourceCoverage*100, r.IndividualsWithSources, r.TotalIndividuals))
+	fmt.Fprintf(&sb, "- Birth dates: %.0f%% (%d/%d)\n",
+		r.BirthDateCoverage*100, r.IndividualsWithBirthDate, r.TotalIndividuals)
+	fmt.Fprintf(&sb, "- Sources: %.0f%% (%d/%d)\n",
+		r.SourceCoverage*100, r.IndividualsWithSources, r.TotalIndividuals)
 
-	sb.WriteString(fmt.Sprintf("\nIssues Found: %d total\n", r.TotalIssues))
-	sb.WriteString(fmt.Sprintf("- Errors: %d\n", r.ErrorCount))
-	sb.WriteString(fmt.Sprintf("- Warnings: %d\n", r.WarningCount))
-	sb.WriteString(fmt.Sprintf("- Info: %d\n", r.InfoCount))
+	fmt.Fprintf(&sb, "\nIssues Found: %d total\n", r.TotalIssues)
+	fmt.Fprintf(&sb, "- Errors: %d\n", r.ErrorCount)
+	fmt.Fprintf(&sb, "- Warnings: %d\n", r.WarningCount)
+	fmt.Fprintf(&sb, "- Info: %d\n", r.InfoCount)
 
 	// Top issues by code
 	if r.TotalIssues > 0 {
@@ -93,7 +93,7 @@ func (r *QualityReport) String() string {
 			if i >= 5 {
 				break
 			}
-			sb.WriteString(fmt.Sprintf("- %s: %d\n", cc.code, cc.count))
+			fmt.Fprintf(&sb, "- %s: %d\n", cc.code, cc.count)
 		}
 	}
 

@@ -831,8 +831,8 @@ func TestStreamingValidator_SourceRepositoryReference(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{})
 
 	src := &gedcom.Source{
-		XRef:          "@S1@",
-		RepositoryRef: "@R999@", // Orphaned repository reference
+		XRef:           "@S1@",
+		RepositoryLink: &gedcom.SourceRepositoryLink{XRef: "@R999@"}, // Orphaned repository reference
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@S1@", Type: gedcom.RecordTypeSource, Entity: src})
 

@@ -17,26 +17,11 @@ type Source struct {
 	// Text is the actual text from the source
 	Text string
 
-	// RepositoryLink is the structured form of the source's repository link.
-	// It carries the call number(s), media type, and per-link notes that the
-	// REPO substructure can hold. Prefer this over RepositoryRef/Repository,
-	// which only expose the bare pointer or inline name.
+	// RepositoryLink is the source's repository link. It carries the
+	// repository pointer (XRef), any inline repository definition (Inline),
+	// and the call number(s), media type, and per-link notes that the REPO
+	// substructure can hold.
 	RepositoryLink *SourceRepositoryLink
-
-	// RepositoryRef is the XRef to the repository where this source is stored.
-	//
-	// Superseded by RepositoryLink (use RepositoryLink.XRef). Retained for
-	// backward compatibility until the next major release; it is populated
-	// from RepositoryLink.XRef during decode.
-	RepositoryRef string
-
-	// Repository is an inline repository definition (alternative to
-	// RepositoryRef).
-	//
-	// Superseded by RepositoryLink (use RepositoryLink.Inline). Retained for
-	// backward compatibility until the next major release; it is populated
-	// from RepositoryLink.Inline during decode.
-	Repository *InlineRepository
 
 	// Media are references to media objects with optional crop/title
 	Media []*MediaLink

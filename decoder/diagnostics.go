@@ -112,7 +112,7 @@ func (d Diagnostic) String() string {
 	sb.WriteString("[")
 	sb.WriteString(d.Severity.String())
 	sb.WriteString("] line ")
-	sb.WriteString(fmt.Sprintf("%d", d.Line))
+	fmt.Fprintf(&sb, "%d", d.Line)
 	sb.WriteString(": ")
 	sb.WriteString(d.Code)
 	sb.WriteString(": ")
@@ -120,7 +120,7 @@ func (d Diagnostic) String() string {
 
 	if d.Context != "" {
 		sb.WriteString(" (context: ")
-		sb.WriteString(fmt.Sprintf("%q", d.Context))
+		fmt.Fprintf(&sb, "%q", d.Context)
 		sb.WriteString(")")
 	}
 
@@ -193,7 +193,7 @@ func (ds Diagnostics) String() string {
 	}
 
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("%d diagnostic(s):\n", len(ds)))
+	fmt.Fprintf(&sb, "%d diagnostic(s):\n", len(ds))
 	for _, d := range ds {
 		sb.WriteString("  ")
 		sb.WriteString(d.String())

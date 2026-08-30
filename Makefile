@@ -178,8 +178,8 @@ clean: ## Clean build artifacts and coverage files
 	@echo "✓ Cleaned"
 
 # Dev tool versions - update these when upgrading
-GOLANGCI_LINT_VERSION := v2.7.2
-GOSEC_VERSION := v2.22.10
+GOLANGCI_LINT_VERSION := v2.13.2
+GOSEC_VERSION := v2.29.0
 GOVULNCHECK_VERSION := latest
 GO_TEST_COVERAGE_VERSION := latest
 APIDIFF_VERSION := latest

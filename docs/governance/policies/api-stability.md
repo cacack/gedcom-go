@@ -40,6 +40,35 @@ CI automatically detects breaking API changes using [apidiff](https://pkg.go.dev
 | **Add new type** | Adding `MediaObject` struct |
 | **Extend enum/const** | Adding `VendorRootsMagic` constant |
 
+### Semantic Breaks
+
+A semantic break changes what a value *means* without changing any signature.
+The caller still compiles; the failure appears at runtime, in their code, on
+data they had already stored.
+
+`apidiff` catches some of these and not others. It does report a change to an
+exported constant's value, so the `validator.Strictness` renumbering below
+shows up under "Incompatible changes" — verify with `make api-check` rather
+than assuming either way. What it can never see is a change to which code
+paths consult an unchanged field, or to what a function does with unchanged
+inputs.
+
+Because the compiler gives the caller no signal at all, a semantic break
+requires:
+
+1. A major version, exactly like a signature break.
+2. An explicit `BREAKING CHANGE:` footer. State in the commit body whether
+   `make api-check` flags it, so a reader is not left guessing.
+3. A migration note giving the old-to-new mapping in full — a caller cannot
+   diff their way to it.
+
+Known members of this category:
+
+| Change | Release | Caller impact |
+|--------|---------|---------------|
+| `validator.Strictness` renumbered so `StrictnessNormal` is the zero value ([#489](https://github.com/cacack/gedcom-go/issues/489)) | v3.0.0 | A `Strictness` integer persisted to a config file, database column or API payload changes meaning on upgrade. Old: Relaxed=0, Normal=1, Strict=2. New: Normal=0, Relaxed=1, Strict=2. Reported by `apidiff` as two constant value changes. |
+| `encoder.EncodeOptions.LineEnding` defaults to `"\n"` when empty ([#486](https://github.com/cacack/gedcom-go/issues/486)) | v3.0.0 | The field's type and name are unchanged; what the encoder does with an unchanged input changed. An empty `LineEnding` previously wrote every line with no separator, producing one unparseable line; it now writes `"\n"`. `apidiff` reports nothing at all. |
+
 ## Stability Guarantees
 
 ### Stable (Full Compatibility Promise)

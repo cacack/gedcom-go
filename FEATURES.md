@@ -42,7 +42,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | Operation | Options type | Facade entry point | Common knobs |
 |-----------|--------------|--------------------|--------------|
 | Decode | `decoder.DecodeOptions` | `gedcomgo.DecodeWithOptions` | `Context`, `StrictMode`, `OnProgress`, `TotalSize` |
-| Encode | `encoder.EncodeOptions` | `gedcomgo.EncodeWithOptions` | `LineEnding`, `MaxLineLength`, `DisableLineWrap`, `TargetVersion`, `PreserveUnknownTags` |
+| Encode | `encoder.EncodeOptions` | `gedcomgo.EncodeWithOptions` | `LineEnding`, `MaxLineLength`, `DisableLineWrap`, `TargetVersion`, `DropUnknownTags` |
 | Validate | `validator.ValidateOptions` | `gedcomgo.ValidateAllWithOptions` | `Strictness`, `MaxErrors`, `SkipRules`, `DateLogic`, `Duplicates`, `TagRegistry`, `ValidateCustomTags`, `SkipEncodingValidation` |
 
 `gedcomgo.DefaultDecodeOptions()`, `DefaultEncodeOptions()`, and `DefaultValidateOptions()` return populated defaults you can tweak. `validator.ValidateOptions` is an alias for the original `validator.ValidatorConfig`; both names work interchangeably. The basic `[]error` validation path has its own configurable entry point, `gedcomgo.ValidateWithOptions(doc, opts)`, alongside the comprehensive `ValidateAllWithOptions`.
@@ -459,7 +459,6 @@ mutated.
 - Title, author, publication info
 - Structured repository link (`RepositoryLink`) carrying call numbers (CALN),
   media type (MEDI), and per-link notes (NOTE) — by XRef or inline by name
-  (the flat `RepositoryRef`/`Repository` fields remain for compatibility)
 - Notes and multimedia
 
 ### Repositories (REPO)
@@ -1020,8 +1019,8 @@ Control which severity levels are reported:
 
 | Level | Reports |
 |-------|---------|
+| StrictnessNormal | Errors + Warnings (the zero value) |
 | StrictnessRelaxed | Errors only |
-| StrictnessNormal | Errors + Warnings (default) |
 | StrictnessStrict | All issues including Info |
 
 ```go
@@ -1129,7 +1128,9 @@ Full control over decoding behavior with `DecodeOptions`:
 | `StrictMode` | `bool` | Reject non-standard extensions |
 | `OnProgress` | `ProgressCallback` | Progress reporting callback |
 | `TotalSize` | `int64` | Expected file size for progress percentage |
-| `MaxNestingDepth` | `int` | **Deprecated, no effect.** The decoder never reads it; the ceiling is fixed at `parser.MaxNestingDepth-1` (99) by the grammar. Will be removed in v3 ([#383](https://github.com/cacack/gedcom-go/issues/383)) |
+
+The nesting ceiling is not an option: the GEDCOM grammar's two-digit level
+field fixes it at `parser.MaxNestingDepth-1` (99).
 
 ### Progress Reporting
 
@@ -1333,11 +1334,13 @@ Sources support both XRef references and inline repository definitions:
 
 ```go
 // XRef reference to separate repository record
-source.RepositoryRef = "@R1@"
+source.RepositoryLink = &gedcom.SourceRepositoryLink{XRef: "@R1@"}
 // Encodes as: 1 REPO @R1@
 
 // Inline repository definition (no separate record needed)
-source.Repository = &gedcom.InlineRepository{Name: "State Archives"}
+source.RepositoryLink = &gedcom.SourceRepositoryLink{
+    Inline: &gedcom.InlineRepository{Name: "State Archives"},
+}
 // Encodes as:
 // 1 REPO
 // 2 NAME State Archives

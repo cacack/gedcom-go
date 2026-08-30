@@ -8,21 +8,12 @@ import "context"
 type ProgressCallback func(bytesRead, totalBytes int64)
 
 // DecodeOptions provides configuration options for decoding GEDCOM files.
+//
+// The nesting ceiling is not configurable: the GEDCOM grammar's two-digit
+// level field fixes it at parser.MaxNestingDepth-1 (99).
 type DecodeOptions struct {
 	// Context allows cancellation and timeout control
 	Context context.Context
-
-	// MaxNestingDepth is deprecated and has no effect: the decoder never
-	// reads it. The effective ceiling is parser.MaxNestingDepth-1, fixed by
-	// the GEDCOM grammar's two-digit level field, so valid levels are 0-99 no
-	// matter what this field is set to — setting it neither lowers nor raises
-	// the ceiling. It is kept, and still defaulted to 100 by DefaultOptions,
-	// for source compatibility through the v2 series.
-	//
-	// Deprecated: has no effect; the level ceiling is fixed at
-	// parser.MaxNestingDepth-1 (99) by the GEDCOM grammar. Will be removed
-	// in v3.
-	MaxNestingDepth int
 
 	// StrictMode controls how parsing errors are handled.
 	//
@@ -71,8 +62,7 @@ type DecodeOptions struct {
 // DefaultOptions returns the default decoding options.
 func DefaultOptions() *DecodeOptions {
 	return &DecodeOptions{
-		Context:         context.Background(),
-		MaxNestingDepth: 100,
-		StrictMode:      false,
+		Context:    context.Background(),
+		StrictMode: false,
 	}
 }

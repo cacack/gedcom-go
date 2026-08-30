@@ -193,7 +193,7 @@ func plantedPointers(t *testing.T) map[string]string {
 			return
 		}
 		switch v.Kind() {
-		case reflect.Ptr:
+		case reflect.Pointer:
 			if !v.IsNil() {
 				collect(v.Elem(), path, depth+1)
 			}
@@ -294,7 +294,7 @@ func TestApplyRewritesEveryPointerField(t *testing.T) {
 			return
 		}
 		switch v.Kind() {
-		case reflect.Ptr:
+		case reflect.Pointer:
 			if !v.IsNil() {
 				check(v.Elem(), path, depth+1)
 			}

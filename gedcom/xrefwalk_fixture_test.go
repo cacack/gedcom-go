@@ -46,19 +46,14 @@ func carrierFieldNames() map[string]bool {
 		"NoteXRefs": true, "Notes": true, "Children": true,
 		"SpouseInFamilies": true, "Husband": true, "Wife": true,
 		"IndividualXRef": true, "FamilyXRef": true, "SourceXRef": true,
-		"MediaXRef": true, "RepositoryRef": true,
+		"MediaXRef": true,
 	}
 }
 
 // exemptFromFixture records carrier-typed fields the fixture deliberately
 // leaves unset, with the reason. Keep this small and justified -- an entry
-// here is a hole in the reachability guarantee.
-var exemptFromFixture = map[string]string{
-	// RepositoryRef is the legacy alias of RepositoryLink.XRef. walkSource
-	// walks the canonical field and re-syncs the alias, so populating both
-	// would assert a pointer is visited twice rather than once.
-	"Source.RepositoryRef": "legacy alias of RepositoryLink.XRef; walkSource re-syncs it",
-}
+// here is a hole in the reachability guarantee. Empty is the goal state.
+var exemptFromFixture = map[string]string{}
 
 func TestReachabilityFixtureIsComplete(t *testing.T) {
 	carrierTypes := carrierTypeNames()
@@ -71,7 +66,7 @@ func TestReachabilityFixtureIsComplete(t *testing.T) {
 			return
 		}
 		switch v.Kind() {
-		case reflect.Ptr:
+		case reflect.Pointer:
 			if !v.IsNil() {
 				inspect(v.Elem(), path, depth+1)
 			}

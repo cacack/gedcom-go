@@ -31,9 +31,10 @@
 //     entities (default: 248). Pre-built [gedcom.Tag] values are written verbatim.
 //   - DisableLineWrap     — disable CONC splitting entirely
 //   - TargetVersion       — override the document's GEDCOM version in output
-//   - PreserveUnknownTags — true (default) keeps custom _UNDERSCORE tags. False
-//     drops each one with its whole subtree, and drops a record whose own type
-//     is a custom tag ("0 _EVDEF") entirely rather than leaving a stub.
+//   - DropUnknownTags     — false (the zero value) keeps custom _UNDERSCORE
+//     tags. True drops each one with its whole subtree, and drops a record
+//     whose own type is a custom tag ("0 _EVDEF") entirely rather than
+//     leaving a stub.
 //
 // Example with CRLF line endings:
 //

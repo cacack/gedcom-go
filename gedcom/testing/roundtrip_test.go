@@ -598,9 +598,8 @@ func TestCompareRecords(t *testing.T) {
 }
 
 // TestHeaderTagsAlwaysCompared pins the contract that replaced the
-// WithHeaderTagComparison option: a header tag lost or altered by a round-trip
-// is a difference whether or not any option was passed. The option itself is a
-// deprecated no-op, so passing it must not change the outcome either way.
+// WithHeaderTagComparison option (removed in v3): a header tag lost or altered
+// by a round-trip is a difference, with no opt-in required.
 func TestHeaderTagsAlwaysCompared(t *testing.T) {
 	before := &gedcom.Header{
 		Version: "5.5.1",
@@ -628,23 +627,6 @@ func TestHeaderTagsAlwaysCompared(t *testing.T) {
 		}
 		if !found {
 			t.Errorf("expected Header.Tags.Count difference, got: %v", report.Differences)
-		}
-	})
-
-	// The deprecated option is accepted at the CheckRoundTrip boundary, which
-	// is the only place a caller can still pass it. It must change nothing.
-	t.Run("the deprecated option changes nothing", func(t *testing.T) {
-		plain, err := CheckRoundTrip(strings.NewReader(validMinimalGEDCOM))
-		if err != nil {
-			t.Fatalf("without option: %v", err)
-		}
-		withOption, err := CheckRoundTrip(strings.NewReader(validMinimalGEDCOM), WithHeaderTagComparison())
-		if err != nil {
-			t.Fatalf("with option: %v", err)
-		}
-
-		if plain.Equal != withOption.Equal || len(plain.Differences) != len(withOption.Differences) {
-			t.Errorf("the no-op option changed the result: %v vs %v", plain, withOption)
 		}
 	})
 }

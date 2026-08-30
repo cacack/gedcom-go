@@ -36,7 +36,7 @@ type StreamingOptions struct {
 	DateLogic *DateLogicConfig
 
 	// Strictness controls which severity levels are included in results.
-	// Default: StrictnessNormal (errors and warnings).
+	// The zero value is StrictnessNormal (errors and warnings).
 	Strictness Strictness
 }
 
@@ -75,7 +75,10 @@ type StreamingValidator struct {
 }
 
 // NewStreamingValidator creates a new StreamingValidator with the given options.
-// If opts is the zero value, default options are used.
+//
+// opts is stored as given; no field is defaulted. The zero value is already
+// the intended default: Strictness is StrictnessNormal, and a nil DateLogic
+// makes NewDateLogicValidator use its own defaults.
 func NewStreamingValidator(opts StreamingOptions) *StreamingValidator {
 	return &StreamingValidator{
 		opts:      opts,
@@ -284,11 +287,11 @@ func (sv *StreamingValidator) validateFamily(fam *gedcom.Family) []Issue {
 // collectSourceReferences collects XRef references from a Source record.
 func (sv *StreamingValidator) collectSourceReferences(src *gedcom.Source) {
 	// Collect REPO reference
-	if src.RepositoryRef != "" {
-		sv.usedXRefs[src.RepositoryRef] = append(sv.usedXRefs[src.RepositoryRef], usageLocation{
+	if src.RepositoryLink != nil && src.RepositoryLink.XRef != "" {
+		sv.usedXRefs[src.RepositoryLink.XRef] = append(sv.usedXRefs[src.RepositoryLink.XRef], usageLocation{
 			RecordXRef: src.XRef,
 			Context:    "REPO",
-			Field:      "RepositoryRef",
+			Field:      "RepositoryLink.XRef",
 			Index:      0,
 		})
 	}

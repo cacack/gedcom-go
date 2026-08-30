@@ -53,9 +53,10 @@ func AssertRoundTrip(t *testing.T, input []byte, opts ...Option) {
 //	}
 func CheckRoundTrip(input io.Reader, opts ...Option) (*RoundTripReport, error) {
 	// Options are applied but carry no settings today: the only one that ever
-	// existed, WithHeaderTagComparison, is a deprecated no-op now that header
-	// tags are always compared. The call stays so a future option has one place
-	// to land, and so passing one is never silently ignored at a different layer.
+	// existed, WithHeaderTagComparison, was removed in v3 once header tags
+	// became unconditionally compared. The call stays so a future option has
+	// one place to land, and so passing one is never silently ignored at a
+	// different layer.
 	_ = applyOptions(opts...)
 
 	// Step 1: Decode original

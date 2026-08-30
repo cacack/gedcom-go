@@ -14,7 +14,7 @@ import (
 // whole buries the one field that actually differs.
 func differingFields(want, got interface{}) []string {
 	a, b := reflect.ValueOf(want), reflect.ValueOf(got)
-	if a.Kind() != reflect.Ptr || b.Kind() != reflect.Ptr || a.IsNil() || b.IsNil() {
+	if a.Kind() != reflect.Pointer || b.Kind() != reflect.Pointer || a.IsNil() || b.IsNil() {
 		return []string{fmt.Sprintf("entity shape (%T vs %T)", want, got)}
 	}
 	a, b = a.Elem(), b.Elem()

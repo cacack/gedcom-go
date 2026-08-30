@@ -443,8 +443,8 @@ for _, source := range sources {
         fmt.Printf("  Publisher: %s\n", source.Publisher)
     }
 
-    if source.RepositoryRef != "" {
-        fmt.Printf("  Repository: %s\n", source.RepositoryRef)
+    if source.RepositoryLink != nil && source.RepositoryLink.XRef != "" {
+        fmt.Printf("  Repository: %s\n", source.RepositoryLink.XRef)
     }
 }
 ```

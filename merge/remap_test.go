@@ -70,7 +70,7 @@ func buildRichFixture() *gedcom.Document {
 	add("@N1@", gedcom.RecordTypeNote, &gedcom.Note{XRef: "@N1@", Text: "Note 1"})
 	add("@N2@", gedcom.RecordTypeNote, &gedcom.Note{XRef: "@N2@", Text: "Note 2"})
 
-	add("@S1@", gedcom.RecordTypeSource, &gedcom.Source{XRef: "@S1@", Title: "Source 1", RepositoryRef: "@R1@"})
+	add("@S1@", gedcom.RecordTypeSource, &gedcom.Source{XRef: "@S1@", Title: "Source 1", RepositoryLink: &gedcom.SourceRepositoryLink{XRef: "@R1@"}})
 	add("@S2@", gedcom.RecordTypeSource, &gedcom.Source{XRef: "@S2@", Title: "Source 2"})
 
 	add("@R1@", gedcom.RecordTypeRepository, &gedcom.Repository{XRef: "@R1@", Name: "Repo 1"})
@@ -226,8 +226,8 @@ func TestRemapXRefs_PrefixTransformUpdatesAllRecordsAndReferences(t *testing.T) 
 	if s1 == nil {
 		t.Fatal("source @A_S1@ missing")
 	}
-	if s1.RepositoryRef != "@A_R1@" {
-		t.Errorf("S1.RepositoryRef = %q, want @A_R1@", s1.RepositoryRef)
+	if s1.RepositoryLink == nil || s1.RepositoryLink.XRef != "@A_R1@" {
+		t.Errorf("S1.RepositoryLink.XRef = %+v, want @A_R1@", s1.RepositoryLink)
 	}
 
 	// Verify media citation was rewritten.
