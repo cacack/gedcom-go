@@ -108,7 +108,7 @@ func writeHeaderTags(w io.Writer, tags []*gedcom.Tag, opts *EncodeOptions) error
 	inGEDC := false
 	wroteVersion := false
 
-	filtered := filterTags(tags, opts.PreserveUnknownTags)
+	filtered := filterTags(tags, opts.DropUnknownTags)
 
 	for i, tag := range filtered {
 		if tag == nil {
@@ -268,9 +268,9 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 	// can do anything with. Writing the level-0 value (issue #404) widened that
 	// stub rather than creating it.
 	//
-	// This is the lossy mode the option exists to request; the default is
-	// PreserveUnknownTags=true, where nothing here applies.
-	if !opts.PreserveUnknownTags && isCustomTag(string(record.Type)) {
+	// This is the lossy mode the option exists to request; the zero value is
+	// DropUnknownTags=false, where nothing here applies.
+	if opts.DropUnknownTags && isCustomTag(string(record.Type)) {
 		return nil
 	}
 
@@ -310,8 +310,8 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 		return err
 	}
 
-	// Filter out custom tags if PreserveUnknownTags is false
-	tags = filterTags(tags, opts.PreserveUnknownTags)
+	// Filter out custom tags if DropUnknownTags is set
+	tags = filterTags(tags, opts.DropUnknownTags)
 
 	// Write tags
 	for _, tag := range tags {
@@ -444,10 +444,10 @@ func isCustomTag(tagName string) bool {
 	return strings.HasPrefix(tagName, "_")
 }
 
-// filterTags returns tags with custom tags filtered out if PreserveUnknownTags is false.
+// filterTags returns tags with custom tags filtered out if dropUnknown is set.
 // When a custom tag is filtered, its child tags (higher level) are also removed.
-func filterTags(tags []*gedcom.Tag, preserveUnknown bool) []*gedcom.Tag {
-	if preserveUnknown {
+func filterTags(tags []*gedcom.Tag, dropUnknown bool) []*gedcom.Tag {
+	if !dropUnknown {
 		return tags
 	}
 

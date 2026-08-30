@@ -26,25 +26,24 @@ type EncodeOptions struct {
 	// If empty, the version from the document header is preserved.
 	TargetVersion gedcom.Version
 
-	// PreserveUnknownTags controls whether custom/unknown tags are included
-	// in the output. Custom tags are typically underscore-prefixed (e.g., _CUSTOM).
+	// DropUnknownTags controls whether custom/unknown tags are stripped from
+	// the output. Custom tags are typically underscore-prefixed (e.g. _CUSTOM).
 	//
-	// When false, a custom tag is dropped along with everything subordinate to
+	// The zero value keeps every tag, so a bare &EncodeOptions{} is lossless.
+	//
+	// When true, a custom tag is dropped along with everything subordinate to
 	// it, and a record whose own type is a custom tag ("0 _ROOT", RootsMagic's
 	// "0 _EVDEF") is dropped in full -- writing the level-0 line while stripping
 	// its children would leave a stub that carries no data.
-	//
-	// Default: true (preserve all tags)
-	PreserveUnknownTags bool
+	DropUnknownTags bool
 }
 
 // DefaultOptions returns the default encoding options.
 func DefaultOptions() *EncodeOptions {
 	return &EncodeOptions{
-		LineEnding:          "\n",
-		MaxLineLength:       DefaultMaxLineLength,
-		DisableLineWrap:     false,
-		PreserveUnknownTags: true,
+		LineEnding:      "\n",
+		MaxLineLength:   DefaultMaxLineLength,
+		DisableLineWrap: false,
 	}
 }
 

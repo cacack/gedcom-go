@@ -2070,9 +2070,8 @@ func TestEncodeTargetVersion(t *testing.T) {
 
 	t.Run("target version overrides header", func(t *testing.T) {
 		opts := &EncodeOptions{
-			LineEnding:          "\n",
-			TargetVersion:       gedcom.Version70,
-			PreserveUnknownTags: true,
+			LineEnding:    "\n",
+			TargetVersion: gedcom.Version70,
 		}
 
 		var buf bytes.Buffer
@@ -2091,9 +2090,8 @@ func TestEncodeTargetVersion(t *testing.T) {
 
 	t.Run("empty target version uses header", func(t *testing.T) {
 		opts := &EncodeOptions{
-			LineEnding:          "\n",
-			TargetVersion:       "", // Empty - should use header
-			PreserveUnknownTags: true,
+			LineEnding:    "\n",
+			TargetVersion: "", // Empty - should use header
 		}
 
 		var buf bytes.Buffer
@@ -2114,9 +2112,8 @@ func TestEncodeTargetVersion(t *testing.T) {
 		}
 
 		opts := &EncodeOptions{
-			LineEnding:          "\n",
-			TargetVersion:       gedcom.Version551,
-			PreserveUnknownTags: true,
+			LineEnding:    "\n",
+			TargetVersion: gedcom.Version551,
 		}
 
 		var buf bytes.Buffer
@@ -2131,8 +2128,8 @@ func TestEncodeTargetVersion(t *testing.T) {
 	})
 }
 
-// TestEncodePreserveUnknownTags tests the PreserveUnknownTags option.
-func TestEncodePreserveUnknownTags(t *testing.T) {
+// TestEncodeDropUnknownTags tests the DropUnknownTags option.
+func TestEncodeDropUnknownTags(t *testing.T) {
 	doc := &gedcom.Document{
 		Header: &gedcom.Header{
 			Version:  gedcom.Version551,
@@ -2166,20 +2163,20 @@ func TestEncodePreserveUnknownTags(t *testing.T) {
 		output := buf.String()
 		// All tags should be present
 		if !strings.Contains(output, "1 _CUSTOM custom value") {
-			t.Error("Output should contain _CUSTOM tag when PreserveUnknownTags is true")
+			t.Error("Output should contain _CUSTOM tag when DropUnknownTags is false")
 		}
 		if !strings.Contains(output, "2 _NESTED nested under custom") {
-			t.Error("Output should contain _NESTED tag when PreserveUnknownTags is true")
+			t.Error("Output should contain _NESTED tag when DropUnknownTags is false")
 		}
 		if !strings.Contains(output, "1 _ANOTHER another custom") {
-			t.Error("Output should contain _ANOTHER tag when PreserveUnknownTags is true")
+			t.Error("Output should contain _ANOTHER tag when DropUnknownTags is false")
 		}
 	})
 
 	t.Run("filter unknown tags", func(t *testing.T) {
 		opts := &EncodeOptions{
-			LineEnding:          "\n",
-			PreserveUnknownTags: false,
+			LineEnding:      "\n",
+			DropUnknownTags: true,
 		}
 
 		var buf bytes.Buffer
@@ -2191,13 +2188,13 @@ func TestEncodePreserveUnknownTags(t *testing.T) {
 
 		// Custom tags should be filtered
 		if strings.Contains(output, "_CUSTOM") {
-			t.Error("Output should not contain _CUSTOM tag when PreserveUnknownTags is false")
+			t.Error("Output should not contain _CUSTOM tag when DropUnknownTags is true")
 		}
 		if strings.Contains(output, "_NESTED") {
-			t.Error("Output should not contain _NESTED tag (child of custom) when PreserveUnknownTags is false")
+			t.Error("Output should not contain _NESTED tag (child of custom) when DropUnknownTags is true")
 		}
 		if strings.Contains(output, "_ANOTHER") {
-			t.Error("Output should not contain _ANOTHER tag when PreserveUnknownTags is false")
+			t.Error("Output should not contain _ANOTHER tag when DropUnknownTags is true")
 		}
 
 		// Standard tags should still be present
@@ -2216,7 +2213,7 @@ func TestEncodePreserveUnknownTags(t *testing.T) {
 	})
 
 	// A custom record TYPE, as opposed to a custom tag inside a standard
-	// record. Before this was pinned, PreserveUnknownTags=false stripped such a
+	// record. Before this was pinned, dropping unknown tags stripped such a
 	// record's children but still wrote its level-0 line, leaving a "0 _ROOT"
 	// stub that means nothing to a reader. The option says custom tags are not
 	// included in the output; a custom record is one, so it goes entirely.
@@ -2234,7 +2231,7 @@ func TestEncodePreserveUnknownTags(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		opts := &EncodeOptions{LineEnding: "\n", PreserveUnknownTags: false}
+		opts := &EncodeOptions{LineEnding: "\n", DropUnknownTags: true}
 		if err := EncodeWithOptions(&buf, docWithCustomRecord, opts); err != nil {
 			t.Fatalf("EncodeWithOptions() error = %v", err)
 		}
@@ -2279,8 +2276,8 @@ func TestEncodePreserveUnknownTags(t *testing.T) {
 		}
 
 		opts := &EncodeOptions{
-			LineEnding:          "\n",
-			PreserveUnknownTags: false,
+			LineEnding:      "\n",
+			DropUnknownTags: true,
 		}
 
 		var buf bytes.Buffer
@@ -2308,11 +2305,58 @@ func TestEncodePreserveUnknownTags(t *testing.T) {
 	})
 }
 
-// TestDefaultOptionsPreserveUnknownTags verifies default value for PreserveUnknownTags.
-func TestDefaultOptionsPreserveUnknownTags(t *testing.T) {
+// TestDefaultOptionsDropUnknownTags verifies DefaultOptions leaves
+// DropUnknownTags at its zero value, so the default is lossless.
+func TestDefaultOptionsDropUnknownTags(t *testing.T) {
 	opts := DefaultOptions()
-	if !opts.PreserveUnknownTags {
-		t.Error("DefaultOptions().PreserveUnknownTags should be true")
+	if opts.DropUnknownTags {
+		t.Error("DefaultOptions().DropUnknownTags should be false")
+	}
+}
+
+// TestBareOptionsLiteralIsLossless pins the zero value of EncodeOptions
+// against Lossless Representation. The field this replaced,
+// PreserveUnknownTags, read false as "drop every custom tag and every
+// custom-tag-typed record", so a hand-built &EncodeOptions{} silently
+// stripped vendor extensions with no error and no diagnostic (issue #486).
+// Both write paths share writeRecord, so both are asserted here.
+func TestBareOptionsLiteralIsLossless(t *testing.T) {
+	input := "0 HEAD\n" +
+		"1 GEDC\n" +
+		"2 VERS 5.5.1\n" +
+		"1 CHAR UTF-8\n" +
+		"0 @I1@ INDI\n" +
+		"1 NAME John /Doe/\n" +
+		"1 _MILT Served 1917-1918\n" +
+		"2 _MILTPLAC France\n" +
+		"0 _EVDEF\n" +
+		"1 TITL Custom event definition\n" +
+		"0 TRLR\n"
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	writers := map[string]func(*bytes.Buffer) error{
+		"EncodeWithOptions": func(buf *bytes.Buffer) error {
+			return EncodeWithOptions(buf, doc, &EncodeOptions{LineEnding: "\n"})
+		},
+		"EncodeStreamingWithOptions": func(buf *bytes.Buffer) error {
+			return EncodeStreamingWithOptions(buf, doc, &EncodeOptions{LineEnding: "\n"})
+		},
+	}
+
+	for name, write := range writers {
+		t.Run(name, func(t *testing.T) {
+			var buf bytes.Buffer
+			if err := write(&buf); err != nil {
+				t.Fatalf("%s() error = %v", name, err)
+			}
+			if got := buf.String(); got != input {
+				t.Errorf("a bare &EncodeOptions{} was lossy:\ngot:\n%s\nwant:\n%s", got, input)
+			}
+		})
 	}
 }
 
@@ -2329,14 +2373,14 @@ func TestFilterTagsHelper(t *testing.T) {
 	}
 
 	t.Run("preserve all", func(t *testing.T) {
-		result := filterTags(tags, true)
+		result := filterTags(tags, false)
 		if len(result) != len(tags) {
-			t.Errorf("filterTags(true) = %d tags, want %d", len(result), len(tags))
+			t.Errorf("filterTags(dropUnknown=false) = %d tags, want %d", len(result), len(tags))
 		}
 	})
 
 	t.Run("filter custom", func(t *testing.T) {
-		result := filterTags(tags, false)
+		result := filterTags(tags, true)
 
 		// Should have: NAME, NEXT, SUB (filtered: _CUSTOM and all children until NEXT)
 		// _CUSTOM at level 1 -> skip until we see level 1 or lower
@@ -2351,7 +2395,7 @@ func TestFilterTagsHelper(t *testing.T) {
 			for _, t := range result {
 				got = append(got, t.Tag)
 			}
-			t.Errorf("filterTags(false) = %v, want %v", got, expected)
+			t.Errorf("filterTags(dropUnknown=true) = %v, want %v", got, expected)
 		}
 	})
 }
