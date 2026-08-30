@@ -36,7 +36,7 @@ type StreamingOptions struct {
 	DateLogic *DateLogicConfig
 
 	// Strictness controls which severity levels are included in results.
-	// Default: StrictnessNormal (errors and warnings).
+	// The zero value is StrictnessNormal (errors and warnings).
 	Strictness Strictness
 }
 
@@ -75,7 +75,10 @@ type StreamingValidator struct {
 }
 
 // NewStreamingValidator creates a new StreamingValidator with the given options.
-// If opts is the zero value, default options are used.
+//
+// opts is stored as given; no field is defaulted. The zero value is already
+// the intended default: Strictness is StrictnessNormal, and a nil DateLogic
+// makes NewDateLogicValidator use its own defaults.
 func NewStreamingValidator(opts StreamingOptions) *StreamingValidator {
 	return &StreamingValidator{
 		opts:      opts,

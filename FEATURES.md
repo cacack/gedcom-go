@@ -1019,8 +1019,8 @@ Control which severity levels are reported:
 
 | Level | Reports |
 |-------|---------|
+| StrictnessNormal | Errors + Warnings (the zero value) |
 | StrictnessRelaxed | Errors only |
-| StrictnessNormal | Errors + Warnings (default) |
 | StrictnessStrict | All issues including Info |
 
 ```go

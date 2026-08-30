@@ -115,6 +115,12 @@ const (
 )
 ```
 
+> **Superseded in v3.0.0**: the constants were renumbered so `StrictnessNormal`
+> is the zero value ([#489](https://github.com/cacack/gedcom-go/issues/489)).
+> As originally ordered, an option struct that left `Strictness` unset got
+> Relaxed and silently discarded every warning, contradicting the doc comments.
+> The order above is kept as the record of what was decided in 2025.
+
 ### Validator Structure
 
 ```go

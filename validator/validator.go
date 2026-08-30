@@ -28,10 +28,11 @@ func (e *ValidationError) Error() string {
 type Strictness int
 
 const (
+	// StrictnessNormal reports errors and warnings. It is the zero value, so
+	// an option struct that leaves Strictness unset gets it.
+	StrictnessNormal Strictness = iota
 	// StrictnessRelaxed reports only errors.
-	StrictnessRelaxed Strictness = iota
-	// StrictnessNormal reports errors and warnings (default).
-	StrictnessNormal
+	StrictnessRelaxed
 	// StrictnessStrict reports all issues including info.
 	StrictnessStrict
 )
@@ -53,7 +54,7 @@ type ValidatorConfig struct {
 	Duplicates *DuplicateConfig
 
 	// Strictness controls which severity levels are included in results.
-	// Default: StrictnessNormal (errors and warnings).
+	// The zero value is StrictnessNormal (errors and warnings).
 	Strictness Strictness
 
 	// TagRegistry holds definitions for custom (underscore-prefixed) tags.
