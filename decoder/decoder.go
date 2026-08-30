@@ -76,10 +76,7 @@ func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, erro
 	}
 
 	// Detect GEDCOM version
-	detectedVersion, err := version.DetectVersion(lines)
-	if err != nil {
-		return nil, err
-	}
+	detectedVersion := version.DetectVersion(lines)
 
 	// Build document from lines
 	// Pass nil collector for existing API (no diagnostics collection)
@@ -210,11 +207,7 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 	}
 
 	// Detect GEDCOM version
-	detectedVersion, err := version.DetectVersion(lines)
-	if err != nil {
-		// Version detection failed - still try to build partial document
-		detectedVersion = ""
-	}
+	detectedVersion := version.DetectVersion(lines)
 
 	// Create a collector for entity-level diagnostics if in lenient mode
 	var collector *diagnosticCollector

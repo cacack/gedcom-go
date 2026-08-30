@@ -98,6 +98,10 @@ type PlaceDetail struct {
 }
 
 // Event represents a life event with date, place, and source information.
+//
+// An event carries no raw-tag store of its own: Record.Tags is the single
+// store for an event's unknown or custom subtags, and is what governs what a
+// decoded record writes (see Record.Tags).
 type Event struct {
 	// Type is the event type (birth, death, marriage, etc.)
 	Type EventType
@@ -190,11 +194,6 @@ type Event struct {
 
 	// Media are references to media objects with optional crop/title
 	Media []*MediaLink
-
-	// Tags contains all raw tags for this event (for unknown/custom tags),
-	// a lossless read-side record per ADR 0003. It does not drive encoding --
-	// see Record.Tags for the rule that governs what a decoded record writes.
-	Tags []*Tag
 }
 
 // AllNotes returns this event's inline notes followed by the text of any

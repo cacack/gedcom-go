@@ -460,9 +460,6 @@ func walkEvent(e *Event, cb refCallback) {
 	walkCitations(e.SourceCitations, cb)
 	walkMediaLinks(e.Media, cb)
 	walkAssociations(e.Associations, cb)
-	for _, t := range e.Tags {
-		walkTag(t, cb)
-	}
 }
 
 func walkAttribute(a *Attribute, cb refCallback) {

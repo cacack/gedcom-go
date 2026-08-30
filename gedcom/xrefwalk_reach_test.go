@@ -76,7 +76,6 @@ func fullyPopulatedRecords() []*Record {
 			Associations:    []*Association{assoc("@" + prefix + "_EV_ASSO@")},
 			NoteXRefs:       []string{"@" + prefix + "_EV_NX@"},
 			Notes:           []string{"@" + prefix + "_EV_NOTE@"},
-			Tags:            rawTags(prefix + "_EV"),
 		}
 	}
 	chg := func(prefix string) *ChangeDate {

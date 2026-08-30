@@ -10,10 +10,9 @@ import (
 // T030: Write tests for version detection (header-based and tag-based fallback)
 func TestDetectVersion(t *testing.T) {
 	tests := []struct {
-		name    string
-		lines   []*parser.Line
-		want    gedcom.Version
-		wantErr bool
+		name  string
+		lines []*parser.Line
+		want  gedcom.Version
 	}{
 		{
 			name: "detect 5.5 from header",
@@ -22,8 +21,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 2, Tag: "VERS", Value: "5.5"},
 			},
-			want:    gedcom.Version55,
-			wantErr: false,
+			want: gedcom.Version55,
 		},
 		{
 			name: "detect 5.5.1 from header",
@@ -32,8 +30,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 2, Tag: "VERS", Value: "5.5.1"},
 			},
-			want:    gedcom.Version551,
-			wantErr: false,
+			want: gedcom.Version551,
 		},
 		{
 			name: "detect 7.0 from header",
@@ -42,8 +39,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 2, Tag: "VERS", Value: "7.0"},
 			},
-			want:    gedcom.Version70,
-			wantErr: false,
+			want: gedcom.Version70,
 		},
 		{
 			name: "no version in header",
@@ -51,14 +47,12 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "HEAD"},
 				{Level: 0, Tag: "TRLR"},
 			},
-			want:    gedcom.Version55,
-			wantErr: false,
+			want: gedcom.Version55,
 		},
 		{
-			name:    "empty input",
-			lines:   []*parser.Line{},
-			want:    gedcom.Version55,
-			wantErr: false,
+			name:  "empty input",
+			lines: []*parser.Line{},
+			want:  gedcom.Version55,
 		},
 		{
 			name: "detect 7.0.0 from header (alternative format)",
@@ -67,8 +61,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 2, Tag: "VERS", Value: "7.0.0"},
 			},
-			want:    gedcom.Version70,
-			wantErr: false,
+			want: gedcom.Version70,
 		},
 		{
 			name: "detect with extra whitespace in version",
@@ -77,8 +70,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 2, Tag: "VERS", Value: "  5.5.1  "},
 			},
-			want:    gedcom.Version551,
-			wantErr: false,
+			want: gedcom.Version551,
 		},
 		{
 			name: "unknown version falls back to 5.5",
@@ -87,8 +79,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 2, Tag: "VERS", Value: "6.0"},
 			},
-			want:    gedcom.Version55,
-			wantErr: false,
+			want: gedcom.Version55,
 		},
 		{
 			name: "GEDC without VERS falls back",
@@ -97,8 +88,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "GEDC"},
 				{Level: 1, Tag: "CHAR", Value: "UTF-8"},
 			},
-			want:    gedcom.Version55,
-			wantErr: false,
+			want: gedcom.Version55,
 		},
 		{
 			name: "detect 7.0 from tags (EXID)",
@@ -107,8 +97,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "INDI"},
 				{Level: 1, Tag: "EXID", Value: "123"},
 			},
-			want:    gedcom.Version70,
-			wantErr: false,
+			want: gedcom.Version70,
 		},
 		{
 			name: "detect 7.0 from tags (PHRASE)",
@@ -116,8 +105,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "HEAD"},
 				{Level: 1, Tag: "PHRASE", Value: "test"},
 			},
-			want:    gedcom.Version70,
-			wantErr: false,
+			want: gedcom.Version70,
 		},
 		{
 			name: "detect 7.0 from tags (SNOTE)",
@@ -125,8 +113,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "HEAD"},
 				{Level: 1, Tag: "SNOTE", Value: "@N1@"},
 			},
-			want:    gedcom.Version70,
-			wantErr: false,
+			want: gedcom.Version70,
 		},
 		{
 			name: "detect 5.5.1 from tags (MAP)",
@@ -135,8 +122,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "MAP"},
 				{Level: 2, Tag: "LATI", Value: "N123"},
 			},
-			want:    gedcom.Version551,
-			wantErr: false,
+			want: gedcom.Version551,
 		},
 		{
 			name: "detect 5.5.1 from tags (EMAIL)",
@@ -144,8 +130,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "HEAD"},
 				{Level: 1, Tag: "EMAIL", Value: "test@example.com"},
 			},
-			want:    gedcom.Version551,
-			wantErr: false,
+			want: gedcom.Version551,
 		},
 		{
 			name: "detect 5.5.1 from tags (WWW)",
@@ -153,8 +138,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "HEAD"},
 				{Level: 1, Tag: "WWW", Value: "http://example.com"},
 			},
-			want:    gedcom.Version551,
-			wantErr: false,
+			want: gedcom.Version551,
 		},
 		{
 			name: "detect 5.5.1 from tags (FACT)",
@@ -162,8 +146,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "HEAD"},
 				{Level: 1, Tag: "FACT", Value: "something"},
 			},
-			want:    gedcom.Version551,
-			wantErr: false,
+			want: gedcom.Version551,
 		},
 		// ADR-005 cascade: the header VERS is trusted first and wins even
 		// when version-specific tags for a *different* version are present.
@@ -177,8 +160,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 0, Tag: "INDI"},
 				{Level: 1, Tag: "EXID", Value: "123"},
 			},
-			want:    gedcom.Version55,
-			wantErr: false,
+			want: gedcom.Version55,
 		},
 		{
 			name: "header 7.0 wins over 5.5.1 indicator tags (MAP/LATI)",
@@ -189,8 +171,7 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 1, Tag: "MAP"},
 				{Level: 2, Tag: "LATI", Value: "N123"},
 			},
-			want:    gedcom.Version70,
-			wantErr: false,
+			want: gedcom.Version70,
 		},
 		{
 			name: "header 5.5.1 wins over 7.0 indicator tag (SCHMA)",
@@ -200,50 +181,16 @@ func TestDetectVersion(t *testing.T) {
 				{Level: 2, Tag: "VERS", Value: "5.5.1"},
 				{Level: 1, Tag: "SCHMA"},
 			},
-			want:    gedcom.Version551,
-			wantErr: false,
+			want: gedcom.Version551,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := DetectVersion(tt.lines)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("DetectVersion() expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("DetectVersion() unexpected error: %v", err)
-			}
+			got := DetectVersion(tt.lines)
 
 			if got != tt.want {
 				t.Errorf("DetectVersion() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestIsValidVersion(t *testing.T) {
-	tests := []struct {
-		name    string
-		version gedcom.Version
-		want    bool
-	}{
-		{"5.5 is valid", gedcom.Version55, true},
-		{"5.5.1 is valid", gedcom.Version551, true},
-		{"7.0 is valid", gedcom.Version70, true},
-		{"empty is invalid", gedcom.Version(""), false},
-		{"unknown is invalid", gedcom.Version("1.0"), false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsValidVersion(tt.version); got != tt.want {
-				t.Errorf("IsValidVersion() = %v, want %v", got, tt.want)
 			}
 		})
 	}

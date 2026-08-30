@@ -18,11 +18,7 @@ func Example() {
 		{Level: 0, Tag: "TRLR"},
 	}
 
-	ver, err := version.DetectVersion(lines)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
-	}
+	ver := version.DetectVersion(lines)
 
 	fmt.Printf("Detected version: %s\n", ver)
 
@@ -42,14 +38,10 @@ func ExampleDetectVersion() {
 		{Level: 0, Tag: "TRLR"},
 	}
 
-	ver, err := version.DetectVersion(lines)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
-	}
+	ver := version.DetectVersion(lines)
 
 	fmt.Printf("Version: %s\n", ver)
-	fmt.Printf("Is valid: %v\n", version.IsValidVersion(ver))
+	fmt.Printf("Is valid: %v\n", ver.IsValid())
 
 	// Output:
 	// Version: 5.5
@@ -67,7 +59,7 @@ func ExampleDetectVersion_v55() {
 		{Level: 0, Tag: "TRLR"},
 	}
 
-	ver, _ := version.DetectVersion(lines)
+	ver := version.DetectVersion(lines)
 	fmt.Printf("Version: %s\n", ver)
 	fmt.Printf("Is 5.5: %v\n", ver == gedcom.Version55)
 
@@ -86,7 +78,7 @@ func ExampleDetectVersion_v70() {
 		{Level: 0, Tag: "TRLR"},
 	}
 
-	ver, _ := version.DetectVersion(lines)
+	ver := version.DetectVersion(lines)
 	fmt.Printf("Version: %s\n", ver)
 	fmt.Printf("Is 7.0: %v\n", ver == gedcom.Version70)
 
@@ -108,24 +100,9 @@ func ExampleDetectVersion_tagFallback() {
 		{Level: 0, Tag: "TRLR"},
 	}
 
-	ver, _ := version.DetectVersion(lines)
+	ver := version.DetectVersion(lines)
 	fmt.Printf("Detected version: %s\n", ver)
 
 	// Output:
 	// Detected version: 7.0
-}
-
-// ExampleIsValidVersion demonstrates validating version constants.
-func ExampleIsValidVersion() {
-	// Check if a version is one of the supported GEDCOM versions
-	fmt.Printf("5.5 valid: %v\n", version.IsValidVersion(gedcom.Version55))
-	fmt.Printf("5.5.1 valid: %v\n", version.IsValidVersion(gedcom.Version551))
-	fmt.Printf("7.0 valid: %v\n", version.IsValidVersion(gedcom.Version70))
-	fmt.Printf("empty valid: %v\n", version.IsValidVersion(gedcom.Version("")))
-
-	// Output:
-	// 5.5 valid: true
-	// 5.5.1 valid: true
-	// 7.0 valid: true
-	// empty valid: false
 }

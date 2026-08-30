@@ -111,9 +111,6 @@ func xrefwalkFullDocument() *Document {
 				Media: []*MediaLink{
 					{MediaXRef: "@M-EVENT@"},
 				},
-				Tags: []*Tag{
-					{Tag: "_CUSTOM", XRef: "@T-EVENT@"},
-				},
 			},
 			nil,
 		},
@@ -262,7 +259,7 @@ func xrefwalkExpectedRefs() []string {
 		"@F-CHILD@", "@F-SPOUSE@", "@N-IND@",
 		"@I-ASSOC@", "@N-ASSOC@", "@S-ASSOC@",
 		"@S-IND@", "@M-IND@",
-		"@N-EVENT@", "@S-EVENT@", "@M-EVENT@", "@T-EVENT@",
+		"@N-EVENT@", "@S-EVENT@", "@M-EVENT@",
 		"@S-ATTR@", "@F-LDS@",
 		"@T-IND-XREF@", "@T-IND-VAL@",
 		"@T-REC@",
@@ -436,9 +433,6 @@ func TestApply_RewritesEverything(t *testing.T) {
 	}
 	if got := ind.Associations[0].SourceCitations[0].SourceXRef; got != "@S-ASSOC@X" {
 		t.Errorf("Association.SourceCitations[0].SourceXRef = %q", got)
-	}
-	if got := ind.Events[0].Tags[0].XRef; got != "@T-EVENT@X" {
-		t.Errorf("Event.Tags[0].XRef = %q", got)
 	}
 	if got := ind.LDSOrdinances[0].FamilyXRef; got != "@F-LDS@X" {
 		t.Errorf("Individual.LDSOrdinances[0].FamilyXRef = %q", got)

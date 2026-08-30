@@ -11,16 +11,15 @@ import (
 // It first tries to find the version in the header (HEAD -> GEDC -> VERS).
 // If not found, it falls back to tag-based heuristics.
 // Returns Version55 as the default if detection fails.
-func DetectVersion(lines []*parser.Line) (gedcom.Version, error) {
+func DetectVersion(lines []*parser.Line) gedcom.Version {
 	// Try to detect from header first
 	version := detectFromHeader(lines)
 	if version != "" {
-		return version, nil
+		return version
 	}
 
 	// Fallback to tag-based heuristics
-	version = detectFromTags(lines)
-	return version, nil
+	return detectFromTags(lines)
 }
 
 // detectFromHeader looks for the version in the GEDCOM header.
@@ -125,14 +124,4 @@ func detectFromTags(lines []*parser.Line) gedcom.Version {
 
 	// Default to 5.5 (most common)
 	return gedcom.Version55
-}
-
-// IsValidVersion checks if a version string is a valid GEDCOM version.
-func IsValidVersion(version gedcom.Version) bool {
-	switch version {
-	case gedcom.Version55, gedcom.Version551, gedcom.Version70:
-		return true
-	default:
-		return false
-	}
 }
