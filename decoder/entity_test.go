@@ -3480,14 +3480,17 @@ func TestSourceInlineRepositoryDecoding(t *testing.T) {
 	if src1.Title != "Test Source" {
 		t.Errorf("src1.Title = %s, want 'Test Source'", src1.Title)
 	}
-	if src1.RepositoryRef != "" {
-		t.Errorf("src1.RepositoryRef = %s, want empty", src1.RepositoryRef)
+	if src1.RepositoryLink == nil {
+		t.Fatal("src1.RepositoryLink is nil, want non-nil")
 	}
-	if src1.Repository == nil {
-		t.Fatal("src1.Repository is nil, want non-nil")
+	if src1.RepositoryLink.XRef != "" {
+		t.Errorf("src1.RepositoryLink.XRef = %s, want empty", src1.RepositoryLink.XRef)
 	}
-	if src1.Repository.Name != "State Archives" {
-		t.Errorf("src1.Repository.Name = %s, want 'State Archives'", src1.Repository.Name)
+	if src1.RepositoryLink.Inline == nil {
+		t.Fatal("src1.RepositoryLink.Inline is nil, want non-nil")
+	}
+	if src1.RepositoryLink.Inline.Name != "State Archives" {
+		t.Errorf("src1.RepositoryLink.Inline.Name = %s, want 'State Archives'", src1.RepositoryLink.Inline.Name)
 	}
 
 	// Test source with XRef repository
@@ -3495,11 +3498,14 @@ func TestSourceInlineRepositoryDecoding(t *testing.T) {
 	if src2 == nil {
 		t.Fatal("Source @S2@ not found")
 	}
-	if src2.RepositoryRef != "@R1@" {
-		t.Errorf("src2.RepositoryRef = %s, want '@R1@'", src2.RepositoryRef)
+	if src2.RepositoryLink == nil {
+		t.Fatal("src2.RepositoryLink is nil, want non-nil")
 	}
-	if src2.Repository != nil {
-		t.Errorf("src2.Repository should be nil when XRef is present")
+	if src2.RepositoryLink.XRef != "@R1@" {
+		t.Errorf("src2.RepositoryLink.XRef = %s, want '@R1@'", src2.RepositoryLink.XRef)
+	}
+	if src2.RepositoryLink.Inline != nil {
+		t.Errorf("src2.RepositoryLink.Inline should be nil when XRef is present")
 	}
 
 	// Test source with no repository
@@ -3507,11 +3513,8 @@ func TestSourceInlineRepositoryDecoding(t *testing.T) {
 	if src3 == nil {
 		t.Fatal("Source @S3@ not found")
 	}
-	if src3.RepositoryRef != "" {
-		t.Errorf("src3.RepositoryRef = %s, want empty", src3.RepositoryRef)
-	}
-	if src3.Repository != nil {
-		t.Errorf("src3.Repository should be nil")
+	if src3.RepositoryLink != nil {
+		t.Errorf("src3.RepositoryLink should be nil")
 	}
 }
 
@@ -3535,11 +3538,11 @@ func TestSourceInlineRepositoryRoundtrip(t *testing.T) {
 	if src == nil {
 		t.Fatal("Source not found")
 	}
-	if src.Repository == nil {
-		t.Fatal("Repository is nil after decode")
+	if src.RepositoryLink == nil || src.RepositoryLink.Inline == nil {
+		t.Fatal("RepositoryLink.Inline is nil after decode")
 	}
-	if src.Repository.Name != "County Archives" {
-		t.Errorf("Repository.Name = %s, want 'County Archives'", src.Repository.Name)
+	if src.RepositoryLink.Inline.Name != "County Archives" {
+		t.Errorf("RepositoryLink.Inline.Name = %s, want 'County Archives'", src.RepositoryLink.Inline.Name)
 	}
 }
 
@@ -3596,10 +3599,6 @@ func TestSourceRepositoryLinkDecoding(t *testing.T) {
 		t.Errorf("link.Notes = %v, want %v", link.Notes, wantNotes)
 	}
 
-	// Deprecated fields stay populated for backward compatibility.
-	if src.RepositoryRef != "@R1@" {
-		t.Errorf("src.RepositoryRef = %q, want %q", src.RepositoryRef, "@R1@")
-	}
 }
 
 // TestSourceRepositoryLinkInlineDecoding tests the structured REPO link for an
@@ -3638,15 +3637,6 @@ func TestSourceRepositoryLinkInlineDecoding(t *testing.T) {
 		t.Errorf("link.CallNumbers = %v, want [PR-99]", link.CallNumbers)
 	}
 
-	// Deprecated Repository field stays populated.
-	if src.Repository == nil || src.Repository.Name != "State Archives" {
-		t.Errorf("src.Repository = %+v, want Name 'State Archives'", src.Repository)
-	}
-	// An inline link has no XRef, so the deprecated RepositoryRef alias must
-	// stay empty (it mirrors RepositoryLink.XRef, not the inline name).
-	if src.RepositoryRef != "" {
-		t.Errorf("src.RepositoryRef = %q, want empty for an inline link", src.RepositoryRef)
-	}
 }
 
 // TestSourceRepositoryLinkMalformedXRefAndName verifies that a REPO carrying
@@ -3680,9 +3670,6 @@ func TestSourceRepositoryLinkMalformedXRefAndName(t *testing.T) {
 	}
 	if link.Inline != nil {
 		t.Errorf("link.Inline = %+v, want nil (XRef is canonical)", link.Inline)
-	}
-	if src.Repository != nil {
-		t.Errorf("src.Repository = %+v, want nil", src.Repository)
 	}
 }
 

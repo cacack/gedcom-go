@@ -456,18 +456,9 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 		tags = append(tags, textToTags(src.Text, 1, "TEXT", opts)...)
 	}
 
-	// Repository link (level 1) - REPO. Prefer the structured RepositoryLink;
-	// fall back to the legacy RepositoryRef/Repository fields.
-	switch {
-	case src.RepositoryLink != nil:
+	// Repository link (level 1) - REPO
+	if src.RepositoryLink != nil {
 		tags = append(tags, sourceRepositoryLinkToTags(src.RepositoryLink, opts)...)
-	case src.RepositoryRef != "":
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REPO", Value: src.RepositoryRef})
-	case src.Repository != nil && src.Repository.Name != "":
-		tags = append(tags,
-			&gedcom.Tag{Level: 1, Tag: "REPO"},
-			&gedcom.Tag{Level: 2, Tag: "NAME", Value: src.Repository.Name},
-		)
 	}
 
 	// Media links (level 1) - OBJE

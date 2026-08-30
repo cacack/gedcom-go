@@ -1003,9 +1003,6 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			src.Text = tag.Value
 		case "REPO":
 			src.RepositoryLink = parseSourceRepositoryLink(record.Tags, i, collector)
-			// Populate deprecated fields for backward compatibility.
-			src.RepositoryRef = src.RepositoryLink.XRef
-			src.Repository = src.RepositoryLink.Inline
 		case "NOTE", "SNOTE":
 			src.NoteXRefs, src.InlineNotes, src.Notes = appendRecordNote(record.Tags, i, src.NoteXRefs, src.InlineNotes, src.Notes)
 		case "OBJE":

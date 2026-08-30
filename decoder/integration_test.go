@@ -1026,7 +1026,7 @@ func TestRootsMagicRealExport(t *testing.T) {
 	if source.Title == "" {
 		t.Error("Source @S2@ has empty title")
 	}
-	if source.RepositoryRef == "" {
+	if source.RepositoryLink == nil || source.RepositoryLink.XRef == "" {
 		t.Error("Source @S2@ has no repository reference")
 	}
 

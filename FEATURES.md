@@ -459,7 +459,6 @@ mutated.
 - Title, author, publication info
 - Structured repository link (`RepositoryLink`) carrying call numbers (CALN),
   media type (MEDI), and per-link notes (NOTE) — by XRef or inline by name
-  (the flat `RepositoryRef`/`Repository` fields remain for compatibility)
 - Notes and multimedia
 
 ### Repositories (REPO)
@@ -1333,11 +1332,13 @@ Sources support both XRef references and inline repository definitions:
 
 ```go
 // XRef reference to separate repository record
-source.RepositoryRef = "@R1@"
+source.RepositoryLink = &gedcom.SourceRepositoryLink{XRef: "@R1@"}
 // Encodes as: 1 REPO @R1@
 
 // Inline repository definition (no separate record needed)
-source.Repository = &gedcom.InlineRepository{Name: "State Archives"}
+source.RepositoryLink = &gedcom.SourceRepositoryLink{
+    Inline: &gedcom.InlineRepository{Name: "State Archives"},
+}
 // Encodes as:
 // 1 REPO
 // 2 NAME State Archives

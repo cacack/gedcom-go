@@ -379,16 +379,8 @@ func walkSource(s *Source, cb refCallback) {
 	if s == nil {
 		return
 	}
-	// RepositoryRef is the legacy alias of RepositoryLink.XRef (the decoder
-	// populates both from the same REPO pointer). Walk only the canonical
-	// field to avoid visiting/rewriting the same logical pointer twice, then
-	// re-sync the alias so an Apply rewrite propagates to it. When there is no
-	// RepositoryLink (legacy-only Source), fall back to walking RepositoryRef.
 	if s.RepositoryLink != nil {
 		cb(&s.RepositoryLink.XRef)
-		s.RepositoryRef = s.RepositoryLink.XRef
-	} else {
-		cb(&s.RepositoryRef)
 	}
 	walkNotes(s.NoteXRefs, s.Notes, cb)
 	if s.RepositoryLink != nil {

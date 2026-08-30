@@ -246,22 +246,17 @@ func (s *Source) Clone() *Source {
 	}
 
 	copied := &Source{
-		XRef:          s.XRef,
-		Title:         s.Title,
-		Author:        s.Author,
-		Publication:   s.Publication,
-		Text:          s.Text,
-		RepositoryRef: s.RepositoryRef,
-		Notes:         cloneStringSlice(s.Notes),
-		NoteXRefs:     cloneStringSlice(s.NoteXRefs),
-		InlineNotes:   cloneStringSlice(s.InlineNotes),
-		RefNumber:     s.RefNumber,
-		UID:           s.UID,
-		ExternalIDs:   cloneExternalIDs(s.ExternalIDs),
-	}
-
-	if s.Repository != nil {
-		copied.Repository = &InlineRepository{Name: s.Repository.Name}
+		XRef:        s.XRef,
+		Title:       s.Title,
+		Author:      s.Author,
+		Publication: s.Publication,
+		Text:        s.Text,
+		Notes:       cloneStringSlice(s.Notes),
+		NoteXRefs:   cloneStringSlice(s.NoteXRefs),
+		InlineNotes: cloneStringSlice(s.InlineNotes),
+		RefNumber:   s.RefNumber,
+		UID:         s.UID,
+		ExternalIDs: cloneExternalIDs(s.ExternalIDs),
 	}
 
 	copied.RepositoryLink = cloneSourceRepositoryLink(s.RepositoryLink)

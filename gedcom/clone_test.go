@@ -556,18 +556,17 @@ func TestSourceClone(t *testing.T) {
 
 	t.Run("copies all fields", func(t *testing.T) {
 		original := &Source{
-			XRef:          "@S1@",
-			Title:         "Test Source",
-			Author:        "Test Author",
-			Publication:   "Publisher",
-			Text:          "Source text",
-			RepositoryRef: "@R1@",
-			Notes:         []string{"@N1@"},
-			RefNumber:     "789",
-			UID:           "uid-789",
-			Repository:    &InlineRepository{Name: "Inline Repo"},
+			XRef:        "@S1@",
+			Title:       "Test Source",
+			Author:      "Test Author",
+			Publication: "Publisher",
+			Text:        "Source text",
+			Notes:       []string{"@N1@"},
+			RefNumber:   "789",
+			UID:         "uid-789",
 			RepositoryLink: &SourceRepositoryLink{
 				XRef:            "@R1@",
+				Inline:          &InlineRepository{Name: "Inline Repo"},
 				CallNumbers:     []string{"MS-1234"},
 				MediaType:       "Manuscript",
 				CallNumberMedia: map[string]string{"MS-1234": "Manuscript"},
@@ -586,11 +585,11 @@ func TestSourceClone(t *testing.T) {
 		if copied.Title != original.Title {
 			t.Errorf("Title = %v, want %v", copied.Title, original.Title)
 		}
-		if copied.Repository == original.Repository {
-			t.Error("Repository should have different pointer")
+		if copied.RepositoryLink.Inline == original.RepositoryLink.Inline {
+			t.Error("RepositoryLink.Inline should have different pointer")
 		}
-		if copied.Repository.Name != original.Repository.Name {
-			t.Errorf("Repository.Name = %v, want %v", copied.Repository.Name, original.Repository.Name)
+		if copied.RepositoryLink.Inline.Name != original.RepositoryLink.Inline.Name {
+			t.Errorf("RepositoryLink.Inline.Name = %v, want %v", copied.RepositoryLink.Inline.Name, original.RepositoryLink.Inline.Name)
 		}
 		if copied.RepositoryLink == original.RepositoryLink {
 			t.Error("RepositoryLink should have different pointer")

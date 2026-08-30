@@ -60,7 +60,7 @@ func buildRichFixture() *Document {
 	add("@N1@", RecordTypeNote, &Note{XRef: "@N1@", Text: "Note 1"})
 	add("@N2@", RecordTypeNote, &Note{XRef: "@N2@", Text: "Note 2"})
 
-	add("@S1@", RecordTypeSource, &Source{XRef: "@S1@", Title: "Source 1", RepositoryRef: "@R1@"})
+	add("@S1@", RecordTypeSource, &Source{XRef: "@S1@", Title: "Source 1", RepositoryLink: &SourceRepositoryLink{XRef: "@R1@"}})
 	add("@S2@", RecordTypeSource, &Source{XRef: "@S2@", Title: "Source 2"})
 
 	add("@R1@", RecordTypeRepository, &Repository{XRef: "@R1@", Name: "Repo 1"})

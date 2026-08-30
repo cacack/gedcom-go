@@ -162,11 +162,7 @@ func xrefwalkFullDocument() *Document {
 	}
 
 	source := &Source{
-		XRef: "@S1@",
-		// The decoder populates RepositoryRef and RepositoryLink.XRef with the
-		// same value; the fixture mirrors that so walkSource is exercised the
-		// way real decoded documents look.
-		RepositoryRef:  "@R-SRC@",
+		XRef:           "@S1@",
 		RepositoryLink: &SourceRepositoryLink{XRef: "@R-SRC@"},
 		Notes:          []string{"@N-SRC@"},
 		Media: []*MediaLink{
@@ -274,8 +270,7 @@ func xrefwalkExpectedRefs() []string {
 		"@I-HUSB@", "@I-WIFE@", "@I-CHILD1@", "@I-CHILD2@",
 		"@N-FAM@", "@S-FAM@", "@M-FAM@",
 		"@N-FAM-EVENT@", "@F-FAM-LDS@", "@T-FAM@",
-		// Source record (RepositoryRef and RepositoryLink.XRef are the same
-		// logical pointer, so it is visited once)
+		// Source record
 		"@R-SRC@", "@N-SRC@", "@M-SRC@", "@T-SRC@",
 		// Repository record
 		"@N-REPO@", "@T-REPO@",
@@ -455,9 +450,6 @@ func TestApply_RewritesEverything(t *testing.T) {
 		t.Errorf("Family.Children[1] = %q", got)
 	}
 	src := doc.Records[2].Entity.(*Source)
-	if got := src.RepositoryRef; got != "@R-SRC@X" {
-		t.Errorf("Source.RepositoryRef = %q", got)
-	}
 	if got := src.RepositoryLink.XRef; got != "@R-SRC@X" {
 		t.Errorf("Source.RepositoryLink.XRef = %q", got)
 	}
@@ -627,5 +619,35 @@ func TestApply_NilTypedEntity(t *testing.T) {
 		}
 		Apply(doc, map[string]string{"@Z@": "@ZZ@"})
 		Visit(rec, func(string) {})
+	}
+}
+
+// TestVisitDoesNotMutateSource guards the read-only contract of Visit and
+// Subset on the Source repository link. walkSource once re-synced the legacy
+// RepositoryRef alias from RepositoryLink.XRef, which silently blanked a
+// caller-set field on a traversal documented as read-only (issue #476).
+func TestVisitDoesNotMutateSource(t *testing.T) {
+	link := &SourceRepositoryLink{
+		Inline:      &InlineRepository{Name: "State Archives"},
+		CallNumbers: []string{"MS-1234"},
+	}
+	src := &Source{XRef: "@S1@", Title: "Inline-only source", RepositoryLink: link}
+	rec := &Record{XRef: "@S1@", Type: RecordTypeSource, Entity: src}
+
+	Visit(rec, func(string) {})
+
+	if link.XRef != "" {
+		t.Errorf("Visit wrote RepositoryLink.XRef = %q, want it untouched", link.XRef)
+	}
+	if link.Inline == nil || link.Inline.Name != "State Archives" {
+		t.Errorf("Visit altered RepositoryLink.Inline = %+v", link.Inline)
+	}
+
+	doc := &Document{Records: []*Record{rec}, XRefMap: map[string]*Record{"@S1@": rec}}
+	if _, err := doc.Subset([]string{"@S1@"}); err != nil {
+		t.Fatalf("Subset: %v", err)
+	}
+	if link.XRef != "" {
+		t.Errorf("Subset wrote RepositoryLink.XRef = %q, want it untouched", link.XRef)
 	}
 }

@@ -284,11 +284,11 @@ func (sv *StreamingValidator) validateFamily(fam *gedcom.Family) []Issue {
 // collectSourceReferences collects XRef references from a Source record.
 func (sv *StreamingValidator) collectSourceReferences(src *gedcom.Source) {
 	// Collect REPO reference
-	if src.RepositoryRef != "" {
-		sv.usedXRefs[src.RepositoryRef] = append(sv.usedXRefs[src.RepositoryRef], usageLocation{
+	if src.RepositoryLink != nil && src.RepositoryLink.XRef != "" {
+		sv.usedXRefs[src.RepositoryLink.XRef] = append(sv.usedXRefs[src.RepositoryLink.XRef], usageLocation{
 			RecordXRef: src.XRef,
 			Context:    "REPO",
-			Field:      "RepositoryRef",
+			Field:      "RepositoryLink.XRef",
 			Index:      0,
 		})
 	}
