@@ -36,12 +36,6 @@ func TestIssueLineNumberIsPopulated(t *testing.T) {
 		if issue.LineNumber == 0 {
 			t.Errorf("%s carries no LineNumber", issue.Code)
 		}
-		// The field must agree with the legacy key while both exist.
-		if got := issue.Details["line_number"]; got != "" {
-			if want := itoa(issue.LineNumber); got != want {
-				t.Errorf("Details[line_number] = %q, LineNumber = %s; they disagree", got, want)
-			}
-		}
 	}
 	if !found {
 		t.Fatal("no UNKNOWN_CUSTOM_TAG issue produced; the fixture would prove nothing")
@@ -60,16 +54,4 @@ func TestIssueWithLineNumber(t *testing.T) {
 	if base.LineNumber != 0 {
 		t.Errorf("WithLineNumber mutated the receiver: LineNumber = %d", base.LineNumber)
 	}
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	var digits []byte
-	for n > 0 {
-		digits = append([]byte{byte('0' + n%10)}, digits...)
-		n /= 10
-	}
-	return string(digits)
 }

@@ -122,7 +122,6 @@ func (v *TagValidator) validateCustomTag(tag *gedcom.Tag, parent, recordXRef str
 			}
 			issue.RecordXRef = recordXRef
 			issue.LineNumber = tag.LineNumber
-			issue.Details["line_number"] = fmt.Sprintf("%d", tag.LineNumber)
 			*issues = append(*issues, *issue)
 		}
 		return
@@ -137,8 +136,7 @@ func (v *TagValidator) validateCustomTag(tag *gedcom.Tag, parent, recordXRef str
 			recordXRef,
 		).WithLineNumber(tag.LineNumber).
 			WithDetail("tag", tag.Tag).
-			WithDetail("parent", parent).
-			WithDetail("line_number", fmt.Sprintf("%d", tag.LineNumber))
+			WithDetail("parent", parent)
 
 		*issues = append(*issues, issue)
 	}

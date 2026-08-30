@@ -163,6 +163,23 @@ them swapped, the compiler will not tell you — but your results change.** Chec
 each call site against the role you meant, rather than mapping the names
 mechanically.
 
+### `validator.Issue.Details["line_number"]` removed
+
+| v2 | v3 |
+|----|----|
+| `strconv.Atoi(issue.Details["line_number"])` | `issue.LineNumber` |
+
+`Issue.LineNumber` is a real field now, populated wherever a source line is in
+hand rather than on the 2 of 23 codes that happened to set the map key. It is
+`0` when a check has no single line — a whole-document rule, for instance.
+
+The compiler cannot help here: a map lookup on a removed key returns the zero
+value, so the old code keeps compiling and silently reads `""`.
+
+`Details["position"]` is **not** removed. It is a byte offset within a field's
+value, not a source line, and `CodeBannedControlCharacter` now carries both:
+`LineNumber` for the line, `Details["position"]` for the offset within it.
+
 ## Straight removals
 
 Each of these is superseded by something that already exists in v2, so you can
