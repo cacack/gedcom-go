@@ -2847,13 +2847,6 @@ func TestNoteParsing(t *testing.T) {
 		t.Errorf("note1.Text = %q, want %q", note1.Text, expectedText)
 	}
 
-	// Test FullText method
-	expectedFullText := "This is a shared note that can be\nreferenced from multiple records.\nIt supports continuation lines."
-	fullText := note1.FullText()
-	if fullText != expectedFullText {
-		t.Errorf("note1.FullText() = %q, want %q", fullText, expectedFullText)
-	}
-
 	// Test second note (short note without continuation)
 	note2 := doc.GetNote("@N2@")
 	if note2 == nil {
@@ -2864,9 +2857,6 @@ func TestNoteParsing(t *testing.T) {
 	}
 	if note2.Text != "Short note" {
 		t.Errorf("note2.Text = %s, want 'Short note'", note2.Text)
-	}
-	if note2.FullText() != "Short note" {
-		t.Errorf("note2.FullText() = %s, want 'Short note'", note2.FullText())
 	}
 
 	// Test third note with CONC and CONT
@@ -2882,12 +2872,6 @@ func TestNoteParsing(t *testing.T) {
 	expectedText3 := "This note has concatenation without space.\nAnd continuation with newline."
 	if note3.Text != expectedText3 {
 		t.Errorf("note3.Text = %q, want %q", note3.Text, expectedText3)
-	}
-
-	expectedFullText3 := "This note has concatenation without space.\nAnd continuation with newline."
-	fullText3 := note3.FullText()
-	if fullText3 != expectedFullText3 {
-		t.Errorf("note3.FullText() = %q, want %q", fullText3, expectedFullText3)
 	}
 
 	// Test GetNote with non-existent xref
@@ -2945,16 +2929,6 @@ func TestNoteContinuationFolding(t *testing.T) {
 			}
 			if note.Text != tt.want {
 				t.Errorf("Text = %q, want %q", note.Text, tt.want)
-			}
-			if note.FullText() != tt.want {
-				t.Errorf("FullText() = %q, want %q", note.FullText(), tt.want)
-			}
-			// Deliberately reading the deprecated field: leaving it empty is
-			// what keeps the encoder from emitting the body twice.
-			//nolint:staticcheck // SA1019: asserting the deprecated field stays empty
-			if len(note.Continuation) != 0 {
-				//nolint:staticcheck // SA1019: same
-				t.Errorf("len(Continuation) = %d, want 0", len(note.Continuation))
 			}
 		})
 	}

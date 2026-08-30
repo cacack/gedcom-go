@@ -150,9 +150,6 @@ Example decode:
 
 Becomes `Note.Text`: `"First line\nSecond line with more text"`
 
-`Note.FullText()` returns the same string. It exists for the deprecated
-`Note.Continuation` slice, which the decoder no longer populates — read `Text`.
-
 The same folding now applies to notes on substructures, not only to the `NOTE`
 record. `Event`, `Attribute`, `SourceCitation`, `LDSOrdinance` and `ChangeDate`
 each expose `NoteXRefs` (pointers to `NOTE`/`SNOTE` records) and `InlineNotes`

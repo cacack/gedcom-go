@@ -1167,16 +1167,17 @@ func TestNoteClone(t *testing.T) {
 		}
 	})
 
-	t.Run("deep copies continuation", func(t *testing.T) {
+	t.Run("copies the note body", func(t *testing.T) {
 		original := &Note{
-			XRef:         "@N1@",
-			Text:         "Hello",
-			Continuation: []string{"line2", "line3"},
+			XRef: "@N1@",
+			Text: "Hello\nWorld",
 		}
 		copied := original.Clone()
-		copied.Continuation[0] = "modified"
-		if original.Continuation[0] == "modified" {
-			t.Error("Continuation was not deep copied")
+		if copied == original {
+			t.Error("Clone() should return a different pointer")
+		}
+		if copied.Text != original.Text {
+			t.Errorf("Text = %q, want %q", copied.Text, original.Text)
 		}
 	})
 }

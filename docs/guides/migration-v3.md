@@ -141,6 +141,8 @@ migrate before upgrading.
 |---------|-------------|
 | `gedcom.Source.RepositoryRef` | `Source.RepositoryLink.XRef` |
 | `gedcom.Source.Repository` | `Source.RepositoryLink.Inline` |
+| `gedcom.Note.Continuation` | put the whole body in `Note.Text`, newlines included |
+| `gedcom.Note.FullText()` | `Note.Text` |
 | `decoder.DecodeOptions.MaxNestingDepth` | none needed — the field was never read. The ceiling is fixed at `parser.MaxNestingDepth-1` (99) by the grammar's two-digit level field |
 | `gedcom/testing.WithHeaderTagComparison()` | none needed — delete the argument. Header tags have been compared unconditionally since v2 |
 
@@ -158,6 +160,32 @@ src.RepositoryLink = &gedcom.SourceRepositoryLink{
 
 `SourceRepositoryLink` also carries the call numbers, media type, and per-link
 notes that the flat fields could not represent, so it is a strict superset.
+
+### `Note.Continuation` in detail
+
+`Note` now matches `SharedNote`: one `Text` field holding the whole body.
+
+```go
+// v2 — a hand-built multi-line note
+note := &gedcom.Note{
+    Text:         lines[0],
+    Continuation: lines[1:],
+}
+text := note.FullText()
+
+// v3 — the encoder does the CONT/CONC split for you
+note := &gedcom.Note{Text: strings.Join(lines, "\n")}
+text := note.Text
+```
+
+The old field was broken in both directions. The decoder never populated it, so
+reading it on a decoded document always gave `nil` and made every multi-line
+note look single-line. And the encoder emitted it *in addition to* `Text`, so a
+hand-built note that set both wrote its body twice.
+
+Letting the encoder split `Text` is also safer than splitting it yourself: it
+enforces `MaxLineLength` and stops an embedded newline from forging a new
+GEDCOM record.
 
 One behaviour improves silently: `Visit` and `Document.Subset` no longer write
 to the `Source` they traverse. In v2 they re-synced `RepositoryRef` from

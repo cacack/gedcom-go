@@ -1623,8 +1623,7 @@ func TestRoundtripEntityEncoding(t *testing.T) {
 				Type: gedcom.RecordTypeNote,
 				Tags: nil,
 				Entity: &gedcom.Note{
-					Text:         "This is a note",
-					Continuation: []string{"with continuation"},
+					Text: "This is a note\nwith continuation",
 				},
 			},
 			{

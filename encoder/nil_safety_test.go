@@ -599,7 +599,6 @@ func TestToTagsWriters_NilArgument(t *testing.T) {
 		{"sourceRepositoryLinkToTags", func() []*gedcom.Tag { return sourceRepositoryLinkToTags(nil, opts) }},
 		{"submitterToTags", func() []*gedcom.Tag { return submitterToTags(nil, opts) }},
 		{"repositoryToTags", func() []*gedcom.Tag { return repositoryToTags(nil, opts) }},
-		{"noteToTags", func() []*gedcom.Tag { return noteToTags(nil) }},
 		{"mediaObjectToTags", func() []*gedcom.Tag { return mediaObjectToTags(nil, opts) }},
 		{"sharedNoteToTags", func() []*gedcom.Tag { return sharedNoteToTags(nil, opts) }},
 		{"nameToTags", func() []*gedcom.Tag { return nameToTags(nil, 1) }},

@@ -493,8 +493,8 @@ func TestStructuralTortureAtSign55(t *testing.T) {
 		t.Fatal("GetNote(@N19@) returned nil")
 	}
 	want := "@@ at at front and @@ at after CONC and \n@@ at after CONT and @ inside CONT too."
-	if n19.FullText() != want {
-		t.Errorf("N19 FullText = %q, want %q", n19.FullText(), want)
+	if n19.Text != want {
+		t.Errorf("N19 Text = %q, want %q", n19.Text, want)
 	}
 }
 

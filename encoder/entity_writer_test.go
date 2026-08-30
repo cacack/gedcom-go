@@ -543,38 +543,36 @@ func TestRepositoryToTags(t *testing.T) {
 	}
 }
 
-func TestNoteToTags(t *testing.T) {
-	tests := []struct {
-		name     string
-		note     *gedcom.Note
-		contains []string
-	}{
-		{
-			name:     "note without continuation",
-			note:     &gedcom.Note{Text: "Simple note"},
-			contains: []string{}, // No CONT expected
-		},
-		{
-			name: "note with continuation",
-			note: &gedcom.Note{
-				Text:         "First line",
-				Continuation: []string{"Second line", "Third line"},
-			},
-			contains: []string{"CONT"},
-		},
+// TestNoteRecordTextIsSoleCONTProducer pins that a Note's body has exactly one
+// carrier. Note.Continuation used to be a second one, emitted separately by
+// noteToTags, so a hand-built note with a multi-line Text and a non-empty
+// Continuation wrote its body twice (issue #487).
+func TestNoteRecordTextIsSoleCONTProducer(t *testing.T) {
+	rec := &gedcom.Record{
+		XRef:   "@N1@",
+		Type:   gedcom.RecordTypeNote,
+		Entity: &gedcom.Note{XRef: "@N1@", Text: "First line\nSecond line\nThird line"},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tags := noteToTags(tt.note)
-			tagMap := tagNamesToMap(tags)
+	value, tags := entityRecordText(rec, nil)
+	if value != "First line" {
+		t.Errorf("level-0 value = %q, want %q", value, "First line")
+	}
 
-			for _, expected := range tt.contains {
-				if !tagMap[expected] {
-					t.Errorf("noteToTags() missing expected tag %q", expected)
-				}
-			}
-		})
+	var conts []string
+	for _, tag := range tags {
+		if tag.Tag == "CONT" {
+			conts = append(conts, tag.Value)
+		}
+	}
+	want := []string{"Second line", "Third line"}
+	if !reflect.DeepEqual(conts, want) {
+		t.Errorf("CONT values = %v, want %v", conts, want)
+	}
+
+	// entityToTags must contribute nothing further, or the body doubles.
+	if extra := entityToTags(rec, nil); len(extra) != 0 {
+		t.Errorf("entityToTags() returned %d tags for a Note, want 0: %+v", len(extra), extra)
 	}
 }
 
@@ -1784,9 +1782,9 @@ func TestEntityToTagsDispatch(t *testing.T) {
 			name: "note dispatch",
 			record: &gedcom.Record{
 				Type:   gedcom.RecordTypeNote,
-				Entity: &gedcom.Note{Continuation: []string{"line"}},
+				Entity: &gedcom.Note{Text: "line"},
 			},
-			expectTags: true,
+			expectTags: false,
 		},
 		{
 			name: "media dispatch",
@@ -3426,9 +3424,8 @@ func TestEncodeNoteEntityMultiLine(t *testing.T) {
 				XRef: "@N1@",
 				Type: gedcom.RecordTypeNote,
 				Entity: &gedcom.Note{
-					XRef:         "@N1@",
-					Text:         "a",
-					Continuation: []string{"b", "c"},
+					XRef: "@N1@",
+					Text: "a\nb\nc",
 				},
 			},
 			{
@@ -3454,7 +3451,7 @@ func TestEncodeNoteEntityMultiLine(t *testing.T) {
 	}
 
 	// Full entity round-trip: no decode of a source file, so the entity encode
-	// path (entityRecordText for the value + noteToTags for continuation) is the
+	// path (entityRecordText alone, since v3 removed Note.Continuation) is the
 	// only thing under test.
 	redoc, err := decoder.Decode(strings.NewReader(output))
 	if err != nil {
@@ -3462,8 +3459,8 @@ func TestEncodeNoteEntityMultiLine(t *testing.T) {
 	}
 	if n := redoc.GetNote("@N1@"); n == nil {
 		t.Fatal("GetNote(@N1@) returned nil after round-trip")
-	} else if want := "a\nb\nc"; n.FullText() != want {
-		t.Errorf("round-trip Note.FullText() = %q, want %q", n.FullText(), want)
+	} else if want := "a\nb\nc"; n.Text != want {
+		t.Errorf("round-trip Note.Text = %q, want %q", n.Text, want)
 	}
 	if n := redoc.GetNote("@N2@"); n == nil {
 		t.Fatal("GetNote(@N2@) returned nil after round-trip")
@@ -3517,8 +3514,8 @@ func TestEncodeNoteEntityTextNewlineNoInjection(t *testing.T) {
 	}
 	if n := redoc.GetNote("@N1@"); n == nil {
 		t.Fatal("GetNote(@N1@) returned nil after round-trip")
-	} else if want := "innocent\n0 @EVIL@ INDI\n1 NAME Injected"; n.FullText() != want {
-		t.Errorf("round-trip Note.FullText() = %q, want %q", n.FullText(), want)
+	} else if want := "innocent\n0 @EVIL@ INDI\n1 NAME Injected"; n.Text != want {
+		t.Errorf("round-trip Note.Text = %q, want %q", n.Text, want)
 	}
 }
 

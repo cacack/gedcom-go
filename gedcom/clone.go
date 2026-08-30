@@ -328,11 +328,10 @@ func (n *Note) Clone() *Note {
 	}
 
 	return &Note{
-		XRef:         n.XRef,
-		Text:         n.Text,
-		Continuation: cloneStringSlice(n.Continuation),
-		ExternalIDs:  cloneExternalIDs(n.ExternalIDs),
-		Tags:         CloneTags(n.Tags),
+		XRef:        n.XRef,
+		Text:        n.Text,
+		ExternalIDs: cloneExternalIDs(n.ExternalIDs),
+		Tags:        CloneTags(n.Tags),
 	}
 }
 
