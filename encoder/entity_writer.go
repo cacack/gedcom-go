@@ -973,8 +973,8 @@ func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOp
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PAGE", Value: cite.Page})
 	}
 
-	if cite.Quality > 0 {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "QUAY", Value: strconv.Itoa(cite.Quality)})
+	if cite.Quality != nil {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "QUAY", Value: strconv.Itoa(*cite.Quality)})
 	}
 
 	// DATA subordinate

@@ -143,7 +143,7 @@ func TestIndividualToTags(t *testing.T) {
 			name: "individual with source citations",
 			indi: &gedcom.Individual{
 				SourceCitations: []*gedcom.SourceCitation{
-					{SourceXRef: "@S1@", Page: "p. 42", Quality: 3},
+					{SourceXRef: "@S1@", Page: "p. 42", Quality: intPtr(3)},
 				},
 			},
 			contains: []string{"SOUR", "PAGE", "QUAY"},
@@ -1057,7 +1057,7 @@ func TestSourceCitationToTags(t *testing.T) {
 			cite: &gedcom.SourceCitation{
 				SourceXRef: "@S1@",
 				Page:       "p. 42",
-				Quality:    3,
+				Quality:    intPtr(3),
 			},
 			level:    2,
 			contains: []string{"SOUR", "PAGE", "QUAY"},
@@ -5051,3 +5051,7 @@ func TestDecodedNCHIEncodesOnce(t *testing.T) {
 		t.Errorf("re-decoded Attributes = %+v, want one NCHI dated 1910", fam.Attributes)
 	}
 }
+
+// intPtr returns a pointer to v, for building optional integer fields such as
+// SourceCitation.Quality in table-driven fixtures.
+func intPtr(v int) *int { return &v }

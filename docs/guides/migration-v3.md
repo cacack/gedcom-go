@@ -8,11 +8,12 @@ This guide is written as v3 is assembled, so it grows with each breaking change
 that lands. Every entry gives the old form, the new form, and — where the
 compiler cannot tell you — the value mapping.
 
-> **Read the value mappings, not just the names.** Three changes on this page
-> alter what a value *means* — a boolean inverts, a constant is renumbered, and
-> an empty string stops meaning "empty". For the first two the mechanical fix
-> (rename the identifier, keep the value) produces working code with the
-> opposite behaviour and no error.
+> **Read the value mappings, not just the names.** Several changes on this page
+> alter what a value *means* — a boolean inverts, a constant is renumbered, an
+> empty string stops meaning "empty", and an `int` becomes a `*int` so that zero
+> stops meaning absent. Where the change is a rename, the mechanical fix (rename
+> the identifier, keep the value) can produce working code with the opposite
+> behaviour and no error.
 
 ## Module path
 
@@ -93,6 +94,36 @@ After v3 no identifier by that name remains anywhere in the module.
 ran with validation off. A *partially* populated literal still takes each
 omitted field's zero value, so start from `DefaultOptions()` when changing one
 setting.
+
+### `SourceCitation.Quality` is now `*int`
+
+| v2 | v3 |
+|----|----|
+| `cite.Quality` (an `int`) | `cite.Quality` (a `*int`) — nil check, then dereference |
+| `Quality: 3` | `q := 3; Quality: &q` |
+| absent, or `Quality: 0` | `nil` means absent; `&zero` means a real `QUAY 0` |
+
+`QUAY` is an enumeration whose `0` is a meaningful assertion — "unreliable
+evidence or estimated data" — not an absence. As an `int` its Go zero value
+collided with that, and the encoder resolved the ambiguity in favour of absent
+by emitting the tag only when `Quality > 0`. So `1 QUAY 0` decoded fine and then
+vanished on re-encode, and no caller could assert "unreliable" at all.
+
+```go
+// v2
+if cite.Quality > 0 {
+    fmt.Println("quality:", cite.Quality)
+}
+
+// v3
+if cite.Quality != nil {
+    fmt.Println("quality:", *cite.Quality)
+}
+```
+
+Byte round-trips were never affected, because `Record.Tags` is authoritative on
+encode. The loss showed on hand-built documents, the converter, and anything
+that clears `Tags`.
 
 ### `validator.Strictness` renumbered
 
@@ -196,8 +227,9 @@ document with an inline repository.
 
 `make api-check` in this repository reports the full apidiff between the last
 release and `main`, including constant value changes. For your own code, the
-compiler catches every removal and rename on this page; the three value
-changes above are the ones it cannot.
+compiler catches every removal and rename on this page, and the `*int` retype
+too; the value *remaps* — the inverted boolean and the renumbered constant —
+are the ones it cannot.
 
 See [`docs/governance/policies/api-stability.md`](../governance/policies/api-stability.md)
 for what the project treats as a breaking change, including the semantic breaks

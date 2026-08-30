@@ -1070,7 +1070,7 @@ func TestCloneSourceCitationFull(t *testing.T) {
 	original := &SourceCitation{
 		SourceXRef:   "@S1@",
 		Page:         "Page 123",
-		Quality:      2,
+		Quality:      intPtr(2),
 		AncestryAPID: &AncestryAPID{Raw: "1:2:3", Database: "1", Record: "2"},
 	}
 
@@ -1078,8 +1078,14 @@ func TestCloneSourceCitationFull(t *testing.T) {
 	if copied.SourceXRef != original.SourceXRef || copied.Page != original.Page {
 		t.Error("Field mismatch")
 	}
-	if copied.Quality != original.Quality {
-		t.Errorf("Quality = %v, want %v", copied.Quality, original.Quality)
+	if copied.Quality == nil {
+		t.Fatal("Quality should not be nil")
+	}
+	if *copied.Quality != *original.Quality {
+		t.Errorf("*Quality = %d, want %d", *copied.Quality, *original.Quality)
+	}
+	if copied.Quality == original.Quality {
+		t.Error("Quality should be a deep copy, not a shared pointer")
 	}
 	if copied.AncestryAPID == nil {
 		t.Fatal("AncestryAPID should not be nil")
@@ -1226,3 +1232,7 @@ func createFullTestDocument() *Document {
 
 	return doc
 }
+
+// intPtr returns a pointer to v, for building optional integer fields such as
+// SourceCitation.Quality in test fixtures.
+func intPtr(v int) *int { return &v }

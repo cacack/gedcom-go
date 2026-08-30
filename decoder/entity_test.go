@@ -422,8 +422,8 @@ func TestSourceCitationStructure(t *testing.T) {
 	if cite.Page != "Page 42, Entry 103" {
 		t.Errorf("Page = %s, want 'Page 42, Entry 103'", cite.Page)
 	}
-	if cite.Quality != 2 {
-		t.Errorf("Quality = %d, want 2", cite.Quality)
+	if cite.Quality == nil || *cite.Quality != 2 {
+		t.Errorf("Quality = %v, want 2", cite.Quality)
 	}
 	if cite.Data == nil {
 		t.Fatal("Data is nil, want non-nil")
@@ -1410,8 +1410,8 @@ func TestMaximal70Family(t *testing.T) {
 	} else {
 		for _, cite := range fam.SourceCitations {
 			if cite.SourceXRef == "@S1@" && cite.Page == "1" {
-				if cite.Quality != 1 {
-					t.Errorf("Citation QUAY = %d, want 1", cite.Quality)
+				if cite.Quality == nil || *cite.Quality != 1 {
+					t.Errorf("Citation QUAY = %v, want 1", cite.Quality)
 				}
 				break
 			}
@@ -1644,8 +1644,8 @@ func TestEmptySourceCitation(t *testing.T) {
 	if cite.Page != "" {
 		t.Errorf("Page = %s, want empty", cite.Page)
 	}
-	if cite.Quality != 0 {
-		t.Errorf("Quality = %d, want 0", cite.Quality)
+	if cite.Quality != nil {
+		t.Errorf("Quality = %v, want nil (no QUAY tag)", cite.Quality)
 	}
 	if cite.Data != nil {
 		t.Errorf("Data = %v, want nil", cite.Data)
@@ -1775,9 +1775,9 @@ func TestSourceCitationInvalidQuay(t *testing.T) {
 		t.Fatalf("len(SourceCitations) = %d, want 1", len(indi.SourceCitations))
 	}
 
-	// Invalid QUAY should result in 0 (default)
-	if indi.SourceCitations[0].Quality != 0 {
-		t.Errorf("Quality = %d, want 0 (invalid value ignored)", indi.SourceCitations[0].Quality)
+	// An invalid QUAY leaves the pointer nil -- distinct from a real QUAY 0.
+	if indi.SourceCitations[0].Quality != nil {
+		t.Errorf("Quality = %v, want nil (invalid value ignored)", indi.SourceCitations[0].Quality)
 	}
 }
 
@@ -1835,7 +1835,7 @@ func TestMultipleSourceCitationsOnEvent(t *testing.T) {
 	if birth.SourceCitations[1].Page != "p. 20" {
 		t.Errorf("Citation[1].Page = %s, want 'p. 20'", birth.SourceCitations[1].Page)
 	}
-	if birth.SourceCitations[1].Quality != 3 {
+	if q := birth.SourceCitations[1].Quality; q == nil || *q != 3 {
 		t.Errorf("Citation[1].Quality = %d, want 3", birth.SourceCitations[1].Quality)
 	}
 }

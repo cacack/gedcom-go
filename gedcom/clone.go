@@ -736,10 +736,16 @@ func cloneSourceCitation(sc *SourceCitation) *SourceCitation {
 	copied := &SourceCitation{
 		SourceXRef:  sc.SourceXRef,
 		Page:        sc.Page,
-		Quality:     sc.Quality,
 		Notes:       cloneStringSlice(sc.Notes),
 		NoteXRefs:   cloneStringSlice(sc.NoteXRefs),
 		InlineNotes: cloneStringSlice(sc.InlineNotes),
+	}
+
+	// Deep-copy the pointer so a mutation through the copy cannot reach the
+	// original.
+	if sc.Quality != nil {
+		quality := *sc.Quality
+		copied.Quality = &quality
 	}
 
 	if sc.Data != nil {
