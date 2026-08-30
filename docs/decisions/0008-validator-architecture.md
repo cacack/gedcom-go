@@ -190,6 +190,13 @@ type Issue struct {
 }
 ```
 
+> **Field drift, resolved in v3.0.0.** The shipped `Issue` carried this list
+> *minus* `LineNumber` for its whole life; the line number lived in `Details`
+> as a stringified `"line_number"` key that only 2 of 23 codes ever set. The
+> field was added in [#509](https://github.com/cacack/gedcom-go/issues/509) and
+> the key removed in [#498](https://github.com/cacack/gedcom-go/issues/498), so
+> the struct and this ADR now agree field-for-field.
+
 ### Usage Examples
 
 ```go

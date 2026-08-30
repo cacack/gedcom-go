@@ -119,7 +119,7 @@ func (e *EncodingValidator) ValidateControlCharacters(doc *gedcom.Document) []Is
 	}
 	for _, hf := range headerFields {
 		if hf.value != "" {
-			if issue := e.checkControlChars(hf.value, "", hf.field); issue != nil {
+			if issue := e.checkControlChars(hf.value, "", hf.field, 0); issue != nil {
 				issues = append(issues, *issue)
 			}
 		}
@@ -140,7 +140,7 @@ func (e *EncodingValidator) ValidateControlCharacters(doc *gedcom.Document) []Is
 
 		// Also check the record's value field
 		if record.Value != "" {
-			if issue := e.checkControlChars(record.Value, record.XRef, string(record.Type)); issue != nil {
+			if issue := e.checkControlChars(record.Value, record.XRef, string(record.Type), 0); issue != nil {
 				issues = append(issues, *issue)
 			}
 		}
@@ -156,7 +156,7 @@ func (e *EncodingValidator) scanTagsForControlChars(tags []*gedcom.Tag, recordXR
 			continue
 		}
 		if tag.Value != "" {
-			if issue := e.checkControlChars(tag.Value, recordXRef, tag.Tag); issue != nil {
+			if issue := e.checkControlChars(tag.Value, recordXRef, tag.Tag, tag.LineNumber); issue != nil {
 				*issues = append(*issues, *issue)
 			}
 		}
@@ -165,7 +165,12 @@ func (e *EncodingValidator) scanTagsForControlChars(tags []*gedcom.Tag, recordXR
 
 // checkControlChars checks a string for banned C0 control characters.
 // Returns an Issue if a banned character is found, nil otherwise.
-func (e *EncodingValidator) checkControlChars(value, recordXRef, field string) *Issue {
+//
+// line is the source line the value came from, or 0 when the caller has none.
+// The reported "position" detail is a byte offset within value -- a different
+// fact from the source line, and the reason that key is not folded into
+// Issue.LineNumber.
+func (e *EncodingValidator) checkControlChars(value, recordXRef, field string, line int) *Issue {
 	for i, r := range value {
 		if e.isBannedControlChar(r) {
 			issue := NewIssue(
@@ -173,7 +178,8 @@ func (e *EncodingValidator) checkControlChars(value, recordXRef, field string) *
 				CodeBannedControlCharacter,
 				fmt.Sprintf("banned C0 control character U+%04X in %s field", r, field),
 				recordXRef,
-			).WithDetail("character", fmt.Sprintf("U+%04X", r)).
+			).WithLineNumber(line).
+				WithDetail("character", fmt.Sprintf("U+%04X", r)).
 				WithDetail("field", field).
 				WithDetail("position", fmt.Sprintf("%d", i))
 			return &issue

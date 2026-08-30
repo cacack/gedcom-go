@@ -161,8 +161,17 @@ type Issue struct {
 	// RecordXRef would be the child and RelatedXRef would be the parent.
 	RelatedXRef string
 
-	// Details contains additional context as key-value pairs.
+	// LineNumber is the 1-based source line the issue was raised against, or
+	// 0 when the check has no single line in hand (a whole-document rule, or a
+	// header field the parser did not attribute to a line).
+	LineNumber int
+
+	// Details carries context specific to one code, as key-value pairs.
 	// Common keys include "field", "value", "expected", "actual".
+	//
+	// It is not the place for anything Issue models as a field: a source line
+	// belongs in LineNumber, not under a stringified "line_number" key that
+	// only some codes set and every caller has to strconv.Atoi.
 	Details map[string]string
 }
 
@@ -208,6 +217,14 @@ func NewIssue(severity Severity, code, message, recordXRef string) Issue {
 		RecordXRef: recordXRef,
 		Details:    make(map[string]string),
 	}
+}
+
+// WithLineNumber returns a copy of the Issue with LineNumber set.
+//
+//nolint:gocritic // Value receiver intentional for immutability
+func (i Issue) WithLineNumber(line int) Issue {
+	i.LineNumber = line
+	return i
 }
 
 // WithRelatedXRef returns a copy of the Issue with the RelatedXRef set.
