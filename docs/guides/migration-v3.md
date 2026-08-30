@@ -227,6 +227,7 @@ migrate before upgrading.
 | `gedcom.Note.FullText()` | `Note.Text` |
 | `decoder.DecodeOptions.MaxNestingDepth` | none needed — the field was never read. The ceiling is fixed at `parser.MaxNestingDepth-1` (99) by the grammar's two-digit level field |
 | `gedcom/testing.WithHeaderTagComparison()` | none needed — delete the argument. Header tags have been compared unconditionally since v2 |
+| `version.IsValidVersion(v)` | `v.IsValid()` — the same switch, as a method on `gedcom.Version` |
 
 ```go
 // v2
@@ -263,6 +264,17 @@ know the raw tag name.
 authoritative on encode (see the `Record.Tags` godoc), so to change what a
 decoded family writes, edit the `NCHI` tag in `Record.Tags`, or clear `Tags` to
 rebuild from the typed model.
+
+### `version.DetectVersion` no longer returns an error
+
+| v2 | v3 |
+|----|----|
+| `ver, err := version.DetectVersion(lines)` | `ver := version.DetectVersion(lines)` |
+
+The error was always nil. Detection cannot fail: a file with no recognisable
+version falls back to tag heuristics and then to `gedcom.Version55`, by design
+(see [ADR 0005](../decisions/0005-version-detection-strategy.md)). Every caller
+wrote a branch that could not be taken.
 
 ### `Note.Continuation` in detail
 

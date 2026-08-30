@@ -7,9 +7,6 @@
 // Example usage:
 //
 //	lines, _ := parser.Parse(reader)
-//	version, err := version.DetectVersion(lines)
-//	if err != nil {
-//	    log.Fatal(err)
-//	}
-//	fmt.Printf("Detected GEDCOM version: %s\n", version)
+//	detected := version.DetectVersion(lines)
+//	fmt.Printf("Detected GEDCOM version: %s\n", detected)
 package version
