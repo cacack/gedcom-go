@@ -196,7 +196,13 @@ type Attribute struct {
 	// This is nil if the date string could not be parsed.
 	ParsedDate *Date
 
-	// Place where the attribute was applicable (optional)
+	// Place where the attribute was applicable (optional).
+	//
+	// [Attribute.PlaceName] is the supported read path: it is nil-safe,
+	// prefers PlaceDetail.Name, and keeps working once this scalar is removed.
+	// The encoder resolves the two carriers the other way, preferring this
+	// field when both are set -- a choice that only matters for a hand-built
+	// attribute, since decode fills both from the same line.
 	Place string
 
 	// PlaceDetail provides structured place information with optional coordinates
@@ -272,6 +278,28 @@ type Attribute struct {
 	//
 	// Deprecated: use NoteXRefs and InlineNotes.
 	Notes []string
+}
+
+// PlaceName returns the attribute's place name, or "" when no place is
+// recorded.
+//
+// It prefers PlaceDetail.Name and falls back to the legacy Place scalar, so a
+// call site written against it keeps working once the scalar is removed. Safe
+// on a nil receiver and a nil PlaceDetail.
+//
+// Note the encoder resolves the two carriers the other way round, preferring
+// the scalar. That only changes what is written for a hand-built attribute
+// whose carriers disagree: decode fills both from the same line, and
+// byte-fidelity for a decoded document comes from Record.Tags, not from either
+// precedence.
+func (a *Attribute) PlaceName() string {
+	if a == nil {
+		return ""
+	}
+	if a.PlaceDetail != nil && a.PlaceDetail.Name != "" {
+		return a.PlaceDetail.Name
+	}
+	return a.Place
 }
 
 // AllNotes returns this attribute's inline notes followed by the text of any
