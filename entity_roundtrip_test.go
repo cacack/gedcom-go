@@ -212,7 +212,7 @@ func compareEntity(typeName string, want, got interface{}) []string {
 			if gf.Len() < wf.Len() {
 				lost = append(lost, path)
 			}
-		case reflect.Ptr, reflect.Interface:
+		case reflect.Pointer, reflect.Interface:
 			if gf.IsNil() {
 				lost = append(lost, path)
 			}

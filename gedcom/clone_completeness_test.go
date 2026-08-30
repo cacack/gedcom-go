@@ -72,7 +72,7 @@ func (f *filler) fill(v reflect.Value, path string, depth int) {
 		v.SetFloat(float64(f.next()) + 0.5)
 	case reflect.Bool:
 		v.SetBool(true)
-	case reflect.Ptr:
+	case reflect.Pointer:
 		v.Set(reflect.New(v.Type().Elem()))
 		f.fill(v.Elem(), path, depth+1)
 	case reflect.Slice:
@@ -117,7 +117,7 @@ func diffFields(a, b reflect.Value, path string, out *[]string, depth int) {
 	}
 
 	switch a.Kind() {
-	case reflect.Ptr, reflect.Interface:
+	case reflect.Pointer, reflect.Interface:
 		if a.IsNil() {
 			return
 		}

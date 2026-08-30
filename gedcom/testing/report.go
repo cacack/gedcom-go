@@ -45,13 +45,13 @@ func (r *RoundTripReport) String() string {
 		return sb.String()
 	}
 
-	sb.WriteString(fmt.Sprintf("Round-trip: FAILED (%d differences found)\n", len(r.Differences)))
+	fmt.Fprintf(&sb, "Round-trip: FAILED (%d differences found)\n", len(r.Differences))
 	sb.WriteString("\n")
 
 	for i, diff := range r.Differences {
-		sb.WriteString(fmt.Sprintf("  [%d] %s\n", i+1, diff.Path))
-		sb.WriteString(fmt.Sprintf("      Before: %q\n", diff.Before))
-		sb.WriteString(fmt.Sprintf("      After:  %q\n", diff.After))
+		fmt.Fprintf(&sb, "  [%d] %s\n", i+1, diff.Path)
+		fmt.Fprintf(&sb, "      Before: %q\n", diff.Before)
+		fmt.Fprintf(&sb, "      After:  %q\n", diff.After)
 	}
 
 	return sb.String()

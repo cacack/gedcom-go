@@ -151,53 +151,53 @@ func (r *ConversionReport) HasDataLoss() bool {
 func (r *ConversionReport) String() string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("Conversion: %s -> %s\n", r.SourceVersion, r.TargetVersion))
-	sb.WriteString(fmt.Sprintf("Success: %t\n", r.Success))
+	fmt.Fprintf(&sb, "Conversion: %s -> %s\n", r.SourceVersion, r.TargetVersion)
+	fmt.Fprintf(&sb, "Success: %t\n", r.Success)
 
 	if len(r.Transformations) > 0 {
-		sb.WriteString(fmt.Sprintf("Transformations: %d\n", len(r.Transformations)))
+		fmt.Fprintf(&sb, "Transformations: %d\n", len(r.Transformations))
 		for _, t := range r.Transformations {
-			sb.WriteString(fmt.Sprintf("  - %s: %s (%d instances)\n", t.Type, t.Description, t.Count))
+			fmt.Fprintf(&sb, "  - %s: %s (%d instances)\n", t.Type, t.Description, t.Count)
 		}
 	}
 
 	if len(r.DataLoss) > 0 {
-		sb.WriteString(fmt.Sprintf("Data Loss: %d items\n", len(r.DataLoss)))
+		fmt.Fprintf(&sb, "Data Loss: %d items\n", len(r.DataLoss))
 		for _, d := range r.DataLoss {
-			sb.WriteString(fmt.Sprintf("  - %s: %s\n", d.Feature, d.Reason))
+			fmt.Fprintf(&sb, "  - %s: %s\n", d.Feature, d.Reason)
 		}
 	}
 
 	if len(r.Dropped) > 0 {
-		sb.WriteString(fmt.Sprintf("Dropped: %d items\n", len(r.Dropped)))
+		fmt.Fprintf(&sb, "Dropped: %d items\n", len(r.Dropped))
 		for _, n := range r.Dropped {
 			sb.WriteString(formatConversionNote(n))
 		}
 	}
 
 	if len(r.Normalized) > 0 {
-		sb.WriteString(fmt.Sprintf("Normalized: %d items\n", len(r.Normalized)))
+		fmt.Fprintf(&sb, "Normalized: %d items\n", len(r.Normalized))
 		for _, n := range r.Normalized {
 			sb.WriteString(formatConversionNote(n))
 		}
 	}
 
 	if len(r.Approximated) > 0 {
-		sb.WriteString(fmt.Sprintf("Approximated: %d items\n", len(r.Approximated)))
+		fmt.Fprintf(&sb, "Approximated: %d items\n", len(r.Approximated))
 		for _, n := range r.Approximated {
 			sb.WriteString(formatConversionNote(n))
 		}
 	}
 
 	if len(r.Preserved) > 0 {
-		sb.WriteString(fmt.Sprintf("Preserved: %d items\n", len(r.Preserved)))
+		fmt.Fprintf(&sb, "Preserved: %d items\n", len(r.Preserved))
 		for _, n := range r.Preserved {
 			sb.WriteString(formatConversionNote(n))
 		}
 	}
 
 	if len(r.ValidationIssues) > 0 {
-		sb.WriteString(fmt.Sprintf("Validation Issues: %d\n", len(r.ValidationIssues)))
+		fmt.Fprintf(&sb, "Validation Issues: %d\n", len(r.ValidationIssues))
 	}
 
 	return sb.String()
@@ -206,15 +206,15 @@ func (r *ConversionReport) String() string {
 // formatConversionNote formats a single conversion note for display.
 func formatConversionNote(n ConversionNote) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("  - %s\n", n.Path))
+	fmt.Fprintf(&sb, "  - %s\n", n.Path)
 	if n.Original != "" {
-		sb.WriteString(fmt.Sprintf("      Original: %s\n", n.Original))
+		fmt.Fprintf(&sb, "      Original: %s\n", n.Original)
 	}
 	if n.Result != "" {
-		sb.WriteString(fmt.Sprintf("      Result: %s\n", n.Result))
+		fmt.Fprintf(&sb, "      Result: %s\n", n.Result)
 	}
 	if n.Reason != "" {
-		sb.WriteString(fmt.Sprintf("      Reason: %s\n", n.Reason))
+		fmt.Fprintf(&sb, "      Reason: %s\n", n.Reason)
 	}
 	return sb.String()
 }

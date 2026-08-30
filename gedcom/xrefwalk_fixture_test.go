@@ -71,7 +71,7 @@ func TestReachabilityFixtureIsComplete(t *testing.T) {
 			return
 		}
 		switch v.Kind() {
-		case reflect.Ptr:
+		case reflect.Pointer:
 			if !v.IsNil() {
 				inspect(v.Elem(), path, depth+1)
 			}
