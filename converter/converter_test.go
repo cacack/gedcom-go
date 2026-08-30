@@ -857,7 +857,7 @@ func TestConversionNotes_PreservedUnknownTags(t *testing.T) {
 	doc.XRefMap["@I1@"] = doc.Records[0]
 
 	opts := &ConvertOptions{
-		PreserveUnknownTags: true,
+		ReportPreservedTags: true,
 	}
 	_, report, err := ConvertWithOptions(doc, gedcom.Version70, opts)
 	if err != nil {

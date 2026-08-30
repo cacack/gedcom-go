@@ -17,14 +17,17 @@ func Convert(doc *gedcom.Document, targetVersion gedcom.Version) (*gedcom.Docume
 // individual is mapped to the vendor tag _FSFTID rather than being dropped (see
 // transformEXIDToVendorTags). Such an EXID therefore appears under the report's
 // Normalized notes instead of DataLoss. This mapping is skipped when
-// opts.PreserveUnknownTags is false, and has no inverse on the upgrade path.
+// opts.MapEXIDToVendorTags is false, and has no inverse on the upgrade path.
 //
 //nolint:gocyclo // Routing to 6 conversion paths requires this branching structure
 func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts *ConvertOptions) (*gedcom.Document, *gedcom.ConversionReport, error) {
 	if doc == nil {
 		return nil, nil, fmt.Errorf("document is nil")
 	}
-	if opts == nil {
+	// A nil pointer and a wholly zero struct both mean "unset". Without the
+	// second case a bare &ConvertOptions{} silently ran with validation off and
+	// no EXID mapping, contradicting the fields' own documented defaults.
+	if opts == nil || *opts == (ConvertOptions{}) {
 		opts = DefaultOptions()
 	}
 	if !targetVersion.IsValid() {
@@ -122,7 +125,7 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 //nolint:unparam // error return kept for API consistency with other converters
 func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformHeader(doc, gedcom.Version551, report)
-	if opts.PreserveUnknownTags {
+	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
 	report.AddTransformation(gedcom.Transformation{
@@ -141,7 +144,7 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 	normalizeXRefsToUppercase(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
-	if opts.PreserveUnknownTags {
+	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
 	report.AddTransformation(gedcom.Transformation{
@@ -158,7 +161,7 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformHeader(doc, gedcom.Version55, report)
 	record551Tags(doc, report)
-	if opts.PreserveUnknownTags {
+	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
 	report.AddTransformation(gedcom.Transformation{
@@ -177,7 +180,7 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 	normalizeXRefsToUppercase(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
-	if opts.PreserveUnknownTags {
+	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
 	report.AddTransformation(gedcom.Transformation{
@@ -192,14 +195,14 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 //
 //nolint:unparam // error return kept for API consistency with other converters
 func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
-	if opts.PreserveUnknownTags {
+	if opts.MapEXIDToVendorTags {
 		transformEXIDToVendorTags(doc, report, gedcom.Version55)
 	}
 	transformTextForVersion(doc, gedcom.Version55, report)
 	transformMediaTypes(doc, gedcom.Version55, report)
 	transformHeader(doc, gedcom.Version55, report)
 	record70DataLoss(doc, report, gedcom.Version55)
-	if opts.PreserveUnknownTags {
+	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
 	report.AddTransformation(gedcom.Transformation{
@@ -214,14 +217,14 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 //
 //nolint:unparam // error return kept for API consistency with other converters
 func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
-	if opts.PreserveUnknownTags {
+	if opts.MapEXIDToVendorTags {
 		transformEXIDToVendorTags(doc, report, gedcom.Version551)
 	}
 	transformTextForVersion(doc, gedcom.Version551, report)
 	transformMediaTypes(doc, gedcom.Version551, report)
 	transformHeader(doc, gedcom.Version551, report)
 	record70DataLoss(doc, report, gedcom.Version551)
-	if opts.PreserveUnknownTags {
+	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
 	report.AddTransformation(gedcom.Transformation{

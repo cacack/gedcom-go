@@ -52,10 +52,6 @@ Renaming the identifier while keeping `true` silently strips every custom tag
 and every custom-tag-typed record from your output. There is no error and no
 diagnostic; the file just comes back smaller.
 
-`converter.ConvertOptions.PreserveUnknownTags` is a **different field** and is
-unchanged in v3 — it keeps its original polarity, so a bare
-`&converter.ConvertOptions{}` still drops unknown tags. Set it explicitly, or
-use `converter.DefaultOptions()`.
 
 ### `encoder.EncodeOptions.LineEnding` defaults when empty
 
@@ -71,6 +67,32 @@ Together with `DropUnknownTags` above and `MaxLineLength` (which already
 defaulted to 248), this makes a bare `&encoder.EncodeOptions{}` lossless in
 full: every field's zero value is now the safe one.
 
+
+### `converter.ConvertOptions.PreserveUnknownTags` split in two
+
+The old field's name was wrong: it never preserved anything. Nothing is dropped
+by the converter either way. It gated two unrelated things, which are now
+separate fields that each say what they do.
+
+| v2 | v3 |
+|----|----|
+| `PreserveUnknownTags: true` | `ReportPreservedTags: true` **and** `MapEXIDToVendorTags: true` |
+| `PreserveUnknownTags: false` | omit both — `false` is each field's zero value |
+
+- `ReportPreservedTags` — itemises each preserved vendor/unknown tag in the
+  conversion report. Report-only; no output byte depends on it.
+- `MapEXIDToVendorTags` — on a 7.0 downgrade, maps a FamilySearch ARK EXID to
+  `_FSFTID` rather than recording it as data loss.
+
+Note that this field shared a name with `encoder.EncodeOptions.PreserveUnknownTags`
+while meaning something entirely different — the encoder's really did drop tags.
+After v3 no identifier by that name remains anywhere in the module.
+
+**A zero `&converter.ConvertOptions{}` now means "use the defaults"**, matching
+`nil` and `DefaultOptions()`. In v2 only `nil` did, so a bare literal silently
+ran with validation off. A *partially* populated literal still takes each
+omitted field's zero value, so start from `DefaultOptions()` when changing one
+setting.
 
 ### `validator.Strictness` renumbered
 

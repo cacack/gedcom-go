@@ -93,12 +93,10 @@ func ExampleConvertWithOptions() {
 		return
 	}
 
-	// Configure conversion options
-	opts := &converter.ConvertOptions{
-		Validate:            true,  // Validate after conversion
-		StrictDataLoss:      false, // Allow conversions with data loss
-		PreserveUnknownTags: true,  // Keep vendor extensions
-	}
+	// Configure conversion options. Start from DefaultOptions so the fields
+	// left alone keep their documented defaults.
+	opts := converter.DefaultOptions()
+	opts.StrictDataLoss = false // Allow conversions with data loss
 
 	converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, opts)
 	if err != nil {
