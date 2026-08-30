@@ -121,6 +121,7 @@ func (v *TagValidator) validateCustomTag(tag *gedcom.Tag, parent, recordXRef str
 				issue.Severity = SeverityError
 			}
 			issue.RecordXRef = recordXRef
+			issue.LineNumber = tag.LineNumber
 			issue.Details["line_number"] = fmt.Sprintf("%d", tag.LineNumber)
 			*issues = append(*issues, *issue)
 		}
@@ -134,7 +135,8 @@ func (v *TagValidator) validateCustomTag(tag *gedcom.Tag, parent, recordXRef str
 			CodeUnknownCustomTag,
 			fmt.Sprintf("unknown custom tag %s", tag.Tag),
 			recordXRef,
-		).WithDetail("tag", tag.Tag).
+		).WithLineNumber(tag.LineNumber).
+			WithDetail("tag", tag.Tag).
 			WithDetail("parent", parent).
 			WithDetail("line_number", fmt.Sprintf("%d", tag.LineNumber))
 
