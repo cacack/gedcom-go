@@ -94,6 +94,7 @@ func main() {
 
 	if len(os.Args) > 1 {
 		filename := filepath.Clean(os.Args[1])
+		// #nosec G703 -- the path is this CLI's own argv, not attacker-controlled input; see the package comment on validating against an allowed root in production.
 		out, err = os.Create(filename)
 		if err != nil {
 			log.Fatalf("Failed to create file: %v", err)

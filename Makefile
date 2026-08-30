@@ -126,7 +126,7 @@ security: ## Run security scanners (gosec, govulncheck)
 	@GOSEC=$$(command -v gosec || echo "$$HOME/go/bin/gosec"); \
 	if [ ! -x "$$GOSEC" ]; then GOSEC="$$(go env GOPATH)/bin/gosec"; fi; \
 	if [ ! -x "$$GOSEC" ]; then echo "gosec not found. Run 'make install-tools'" && exit 1; fi; \
-	$$GOSEC -quiet -exclude-dir=examples ./...
+	$$GOSEC -quiet ./...
 	@echo ""
 	@echo "→ Running govulncheck..."
 	@GOVULNCHECK=$$(command -v govulncheck || echo "$$HOME/go/bin/govulncheck"); \
@@ -359,7 +359,7 @@ preflight: ## Run all CI checks locally before pushing
 	@GOSEC=$$(command -v gosec || echo "$$HOME/go/bin/gosec"); \
 	if [ ! -x "$$GOSEC" ]; then GOSEC="$$(go env GOPATH)/bin/gosec"; fi; \
 	if [ ! -x "$$GOSEC" ]; then echo "gosec not found. Run 'make install-tools'" && exit 1; fi; \
-	$$GOSEC -quiet -exclude-dir=examples ./...
+	$$GOSEC -quiet ./...
 	@GOVULNCHECK=$$(command -v govulncheck || echo "$$HOME/go/bin/govulncheck"); \
 	if [ ! -x "$$GOVULNCHECK" ]; then GOVULNCHECK="$$(go env GOPATH)/bin/govulncheck"; fi; \
 	if [ ! -x "$$GOVULNCHECK" ]; then echo "govulncheck not found. Run 'make install-tools'" && exit 1; fi; \

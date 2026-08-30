@@ -78,6 +78,7 @@ func main() {
 // Document. parser.Records yields one *parser.RawRecord at a time; previous
 // records fall out of scope and become eligible for GC immediately.
 func streamingParse(path string) (map[string]int, int, error) {
+	// #nosec G703 -- the path is this CLI's own argv, not attacker-controlled input; see the package comment on validating against an allowed root in production.
 	f, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		return nil, 0, fmt.Errorf("open input: %w", err)
@@ -112,6 +113,7 @@ func streamingParse(path string) (map[string]int, int, error) {
 // errors, including ErrTrailerNotWritten if an earlier write returned
 // early before WriteTrailer ran.
 func streamingEncode(path string, count int) (err error) {
+	// #nosec G703 -- the path is this CLI's own argv, not attacker-controlled input; see the package comment on validating against an allowed root in production.
 	f, err := os.Create(filepath.Clean(path))
 	if err != nil {
 		return fmt.Errorf("create output: %w", err)

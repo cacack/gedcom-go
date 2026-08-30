@@ -22,6 +22,7 @@ func main() {
 	filename := filepath.Clean(os.Args[1])
 
 	// Open and parse GEDCOM file
+	// #nosec G703 -- the path is this CLI's own argv, not attacker-controlled input; see the package comment on validating against an allowed root in production.
 	f, err := os.Open(filename)
 	if err != nil {
 		log.Fatalf("Failed to open file: %v", err)
