@@ -8,10 +8,11 @@ This guide is written as v3 is assembled, so it grows with each breaking change
 that lands. Every entry gives the old form, the new form, and — where the
 compiler cannot tell you — the value mapping.
 
-> **Read the value mappings, not just the names.** Two changes on this page
-> invert a boolean or renumber a constant. In both, the mechanical fix (rename
-> the identifier, keep the value) produces working code with the opposite
-> behaviour and no error.
+> **Read the value mappings, not just the names.** Three changes on this page
+> alter what a value *means* — a boolean inverts, a constant is renumbered, and
+> an empty string stops meaning "empty". For the first two the mechanical fix
+> (rename the identifier, keep the value) produces working code with the
+> opposite behaviour and no error.
 
 ## Module path
 
@@ -51,14 +52,25 @@ Renaming the identifier while keeping `true` silently strips every custom tag
 and every custom-tag-typed record from your output. There is no error and no
 diagnostic; the file just comes back smaller.
 
-Relatedly, a bare `&encoder.EncodeOptions{}` is now lossless in full: every
-field defaults on its zero value, including `LineEnding` (`"\n"`) and
-`MaxLineLength` (248).
-
 `converter.ConvertOptions.PreserveUnknownTags` is a **different field** and is
 unchanged in v3 — it keeps its original polarity, so a bare
 `&converter.ConvertOptions{}` still drops unknown tags. Set it explicitly, or
 use `converter.DefaultOptions()`.
+
+### `encoder.EncodeOptions.LineEnding` defaults when empty
+
+| v2 | v3 |
+|----|----|
+| `LineEnding: ""` wrote every line with no separator | `LineEnding: ""` writes `"\n"` |
+
+In v2 an empty `LineEnding` produced a single unparseable line — the whole
+document concatenated — so no correct program relied on it. If you set it
+explicitly to `"\r\n"` or `"\n"`, nothing changes.
+
+Together with `DropUnknownTags` above and `MaxLineLength` (which already
+defaulted to 248), this makes a bare `&encoder.EncodeOptions{}` lossless in
+full: every field's zero value is now the safe one.
+
 
 ### `validator.Strictness` renumbered
 
@@ -113,8 +125,8 @@ document with an inline repository.
 
 `make api-check` in this repository reports the full apidiff between the last
 release and `main`, including constant value changes. For your own code, the
-compiler catches every removal and rename on this page; the two value remaps
-above are the ones it cannot.
+compiler catches every removal and rename on this page; the three value
+changes above are the ones it cannot.
 
 See [`docs/governance/policies/api-stability.md`](../governance/policies/api-stability.md)
 for what the project treats as a breaking change, including the semantic breaks
