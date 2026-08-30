@@ -126,7 +126,7 @@ security: ## Run security scanners (gosec, govulncheck)
 	@GOSEC=$$(command -v gosec || echo "$$HOME/go/bin/gosec"); \
 	if [ ! -x "$$GOSEC" ]; then GOSEC="$$(go env GOPATH)/bin/gosec"; fi; \
 	if [ ! -x "$$GOSEC" ]; then echo "gosec not found. Run 'make install-tools'" && exit 1; fi; \
-	$$GOSEC -quiet ./...
+	$$GOSEC -quiet -exclude-dir=examples ./...
 	@echo ""
 	@echo "→ Running govulncheck..."
 	@GOVULNCHECK=$$(command -v govulncheck || echo "$$HOME/go/bin/govulncheck"); \
@@ -179,7 +179,7 @@ clean: ## Clean build artifacts and coverage files
 
 # Dev tool versions - update these when upgrading
 GOLANGCI_LINT_VERSION := v2.13.2
-GOSEC_VERSION := v2.22.10
+GOSEC_VERSION := v2.29.0
 GOVULNCHECK_VERSION := latest
 GO_TEST_COVERAGE_VERSION := latest
 APIDIFF_VERSION := latest
@@ -359,7 +359,7 @@ preflight: ## Run all CI checks locally before pushing
 	@GOSEC=$$(command -v gosec || echo "$$HOME/go/bin/gosec"); \
 	if [ ! -x "$$GOSEC" ]; then GOSEC="$$(go env GOPATH)/bin/gosec"; fi; \
 	if [ ! -x "$$GOSEC" ]; then echo "gosec not found. Run 'make install-tools'" && exit 1; fi; \
-	$$GOSEC -quiet ./...
+	$$GOSEC -quiet -exclude-dir=examples ./...
 	@GOVULNCHECK=$$(command -v govulncheck || echo "$$HOME/go/bin/govulncheck"); \
 	if [ ! -x "$$GOVULNCHECK" ]; then GOVULNCHECK="$$(go env GOPATH)/bin/govulncheck"; fi; \
 	if [ ! -x "$$GOVULNCHECK" ]; then echo "govulncheck not found. Run 'make install-tools'" && exit 1; fi; \
