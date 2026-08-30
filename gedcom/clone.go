@@ -609,7 +609,6 @@ func cloneEvent(e *Event) *Event {
 		}
 	}
 
-	copied.Tags = CloneTags(e.Tags)
 	return copied
 }
 

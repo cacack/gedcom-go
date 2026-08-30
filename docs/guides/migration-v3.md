@@ -228,6 +228,7 @@ migrate before upgrading.
 | `decoder.DecodeOptions.MaxNestingDepth` | none needed — the field was never read. The ceiling is fixed at `parser.MaxNestingDepth-1` (99) by the grammar's two-digit level field |
 | `gedcom/testing.WithHeaderTagComparison()` | none needed — delete the argument. Header tags have been compared unconditionally since v2 |
 | `version.IsValidVersion(v)` | `v.IsValid()` — the same switch, as a method on `gedcom.Version` |
+| `gedcom.Event.Tags` | `Record.Tags` — the single store for an event's raw tags |
 
 ```go
 // v2
@@ -273,8 +274,23 @@ rebuild from the typed model.
 
 The error was always nil. Detection cannot fail: a file with no recognisable
 version falls back to tag heuristics and then to `gedcom.Version55`, by design
-(see [ADR 0005](../decisions/0005-version-detection-strategy.md)). Every caller
-wrote a branch that could not be taken.
+(see [ADR 0005](../decisions/0005-version-detection-strategy.md)). Every caller wrote a
+branch that could not be taken.
+
+### `Event.Tags` in detail
+
+`Event.Tags` was dead in both directions. The decoder never assigned it —
+unrecognised event subtags go to `Record.Tags` — and the encoder built its
+output purely from typed fields, so a tag placed there was cloned and walked but
+never written.
+
+```go
+// v2 — accepted, and silently dropped on encode
+ev.Tags = append(ev.Tags, &gedcom.Tag{Level: 2, Tag: "_EVCUST", Value: "e"})
+
+// v3 — put the custom subtag where the encoder actually reads it
+rec.Tags = append(rec.Tags, &gedcom.Tag{Level: 2, Tag: "_EVCUST", Value: "e"})
+```
 
 ### `Note.Continuation` in detail
 

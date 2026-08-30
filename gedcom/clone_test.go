@@ -648,7 +648,6 @@ func TestCloneEvent(t *testing.T) {
 			Address:         &Address{Line1: "123 Main St", City: "New York"},
 			SourceCitations: []*SourceCitation{{SourceXRef: "@S1@"}},
 			Media:           []*MediaLink{{MediaXRef: "@M1@"}},
-			Tags:            []*Tag{{Tag: "CUSTOM"}},
 		}
 
 		copied := cloneEvent(original)
