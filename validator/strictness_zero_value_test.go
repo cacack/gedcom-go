@@ -24,7 +24,8 @@ func TestStrictnessZeroValueIsNormal(t *testing.T) {
 }
 
 // warningFixture returns a 5.5.1 document that trips MISSING_SUBM (no header
-// SUBM) and XREF_TOO_LONG (a 21-character identifier), both at SeverityWarning.
+// SUBM) and XREF_TOO_LONG (a 22-character identifier, against the 20-character
+// MaxXRefLength), both at SeverityWarning.
 func warningFixture() *gedcom.Document {
 	const longXRef = "@I012345678901234567890@"
 	rec := &gedcom.Record{

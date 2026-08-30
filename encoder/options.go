@@ -9,7 +9,8 @@ const DefaultMaxLineLength = 248
 
 // EncodeOptions provides configuration for encoding GEDCOM files.
 type EncodeOptions struct {
-	// LineEnding specifies the line ending to use ("\r\n" or "\n")
+	// LineEnding specifies the line ending to use ("\r\n" or "\n").
+	// Set to "" (the zero value) to use "\n".
 	LineEnding string
 
 	// MaxLineLength specifies the maximum length for line content before
@@ -29,7 +30,9 @@ type EncodeOptions struct {
 	// DropUnknownTags controls whether custom/unknown tags are stripped from
 	// the output. Custom tags are typically underscore-prefixed (e.g. _CUSTOM).
 	//
-	// The zero value keeps every tag, so a bare &EncodeOptions{} is lossless.
+	// The zero value keeps every tag. Together with LineEnding and
+	// MaxLineLength defaulting on their own zero values, that makes a bare
+	// &EncodeOptions{} lossless.
 	//
 	// When true, a custom tag is dropped along with everything subordinate to
 	// it, and a record whose own type is a custom tag ("0 _ROOT", RootsMagic's
@@ -45,6 +48,16 @@ func DefaultOptions() *EncodeOptions {
 		MaxLineLength:   DefaultMaxLineLength,
 		DisableLineWrap: false,
 	}
+}
+
+// effectiveLineEnding returns the line ending to use, defaulting to "\n" when
+// unset. Without this, a hand-built &EncodeOptions{} wrote every line with no
+// separator at all, producing a single unparseable line.
+func (opts *EncodeOptions) effectiveLineEnding() string {
+	if opts == nil || opts.LineEnding == "" {
+		return "\n"
+	}
+	return opts.LineEnding
 }
 
 // effectiveMaxLineLength returns the max line length to use,

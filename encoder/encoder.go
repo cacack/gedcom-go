@@ -75,7 +75,7 @@ func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error 
 		header = &gedcom.Header{}
 	}
 
-	if _, err := fmt.Fprintf(w, "0 HEAD%s", opts.LineEnding); err != nil {
+	if _, err := fmt.Fprintf(w, "0 HEAD%s", opts.effectiveLineEnding()); err != nil {
 		return err
 	}
 
@@ -222,10 +222,10 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 	}
 
 	if version != "" {
-		if _, err := fmt.Fprintf(w, "1 GEDC%s", opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "1 GEDC%s", opts.effectiveLineEnding()); err != nil {
 			return err
 		}
-		if _, err := fmt.Fprintf(w, "2 VERS %s%s", version, opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "2 VERS %s%s", version, opts.effectiveLineEnding()); err != nil {
 			return err
 		}
 	}
@@ -233,19 +233,19 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 	// Declared only when the header declares one at all: GEDCOM 7.0 removed
 	// CHAR, and synthesizing one there would add a line the source never had.
 	if header.Encoding != "" {
-		if _, err := fmt.Fprintf(w, "1 CHAR %s%s", writtenEncoding, opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "1 CHAR %s%s", writtenEncoding, opts.effectiveLineEnding()); err != nil {
 			return err
 		}
 	}
 
 	if header.SourceSystem != "" {
-		if _, err := fmt.Fprintf(w, "1 SOUR %s%s", header.SourceSystem, opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "1 SOUR %s%s", header.SourceSystem, opts.effectiveLineEnding()); err != nil {
 			return err
 		}
 	}
 
 	if header.Language != "" {
-		if _, err := fmt.Fprintf(w, "1 LANG %s%s", header.Language, opts.LineEnding); err != nil {
+		if _, err := fmt.Fprintf(w, "1 LANG %s%s", header.Language, opts.effectiveLineEnding()); err != nil {
 			return err
 		}
 	}
@@ -422,19 +422,19 @@ func writeLine(w io.Writer, level int, xref, tag, value string, opts *EncodeOpti
 	var err error
 	switch {
 	case xref == "" && value == "":
-		_, err = fmt.Fprintf(w, "%d %s%s", level, tag, opts.LineEnding)
+		_, err = fmt.Fprintf(w, "%d %s%s", level, tag, opts.effectiveLineEnding())
 	case xref == "":
-		_, err = fmt.Fprintf(w, "%d %s %s%s", level, tag, value, opts.LineEnding)
+		_, err = fmt.Fprintf(w, "%d %s %s%s", level, tag, value, opts.effectiveLineEnding())
 	case value == "":
-		_, err = fmt.Fprintf(w, "%d %s %s%s", level, xref, tag, opts.LineEnding)
+		_, err = fmt.Fprintf(w, "%d %s %s%s", level, xref, tag, opts.effectiveLineEnding())
 	default:
-		_, err = fmt.Fprintf(w, "%d %s %s %s%s", level, xref, tag, value, opts.LineEnding)
+		_, err = fmt.Fprintf(w, "%d %s %s %s%s", level, xref, tag, value, opts.effectiveLineEnding())
 	}
 	return err
 }
 
 func writeTrailer(w io.Writer, opts *EncodeOptions) error {
-	_, err := fmt.Fprintf(w, "0 TRLR%s", opts.LineEnding)
+	_, err := fmt.Fprintf(w, "0 TRLR%s", opts.effectiveLineEnding())
 	return err
 }
 

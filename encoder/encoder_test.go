@@ -2315,10 +2315,17 @@ func TestDefaultOptionsDropUnknownTags(t *testing.T) {
 }
 
 // TestBareOptionsLiteralIsLossless pins the zero value of EncodeOptions
-// against Lossless Representation. The field this replaced,
-// PreserveUnknownTags, read false as "drop every custom tag and every
-// custom-tag-typed record", so a hand-built &EncodeOptions{} silently
-// stripped vendor extensions with no error and no diagnostic (issue #486).
+// against Lossless Representation, and it uses a genuinely bare literal --
+// naming no field at all -- because every field's zero value is load-bearing
+// to that claim.
+//
+// Two separate defects made this literal lossy. PreserveUnknownTags read
+// false as "drop every custom tag and every custom-tag-typed record", so
+// vendor extensions vanished (issue #486). LineEnding had no fallback, so
+// every line was written with no separator and the whole document came back
+// as one unparseable line. Fixing only the first would have traded silent
+// data loss for silent corruption.
+//
 // Both write paths share writeRecord, so both are asserted here.
 func TestBareOptionsLiteralIsLossless(t *testing.T) {
 	input := "0 HEAD\n" +
@@ -2340,10 +2347,10 @@ func TestBareOptionsLiteralIsLossless(t *testing.T) {
 
 	writers := map[string]func(*bytes.Buffer) error{
 		"EncodeWithOptions": func(buf *bytes.Buffer) error {
-			return EncodeWithOptions(buf, doc, &EncodeOptions{LineEnding: "\n"})
+			return EncodeWithOptions(buf, doc, &EncodeOptions{})
 		},
 		"EncodeStreamingWithOptions": func(buf *bytes.Buffer) error {
-			return EncodeStreamingWithOptions(buf, doc, &EncodeOptions{LineEnding: "\n"})
+			return EncodeStreamingWithOptions(buf, doc, &EncodeOptions{})
 		},
 	}
 
