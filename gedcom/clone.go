@@ -184,17 +184,16 @@ func (f *Family) Clone() *Family {
 	}
 
 	copied := &Family{
-		XRef:             f.XRef,
-		Husband:          f.Husband,
-		Wife:             f.Wife,
-		Children:         cloneStringSlice(f.Children),
-		NumberOfChildren: f.NumberOfChildren,
-		Notes:            cloneStringSlice(f.Notes),
-		NoteXRefs:        cloneStringSlice(f.NoteXRefs),
-		InlineNotes:      cloneStringSlice(f.InlineNotes),
-		RefNumber:        f.RefNumber,
-		UID:              f.UID,
-		ExternalIDs:      cloneExternalIDs(f.ExternalIDs),
+		XRef:        f.XRef,
+		Husband:     f.Husband,
+		Wife:        f.Wife,
+		Children:    cloneStringSlice(f.Children),
+		Notes:       cloneStringSlice(f.Notes),
+		NoteXRefs:   cloneStringSlice(f.NoteXRefs),
+		InlineNotes: cloneStringSlice(f.InlineNotes),
+		RefNumber:   f.RefNumber,
+		UID:         f.UID,
+		ExternalIDs: cloneExternalIDs(f.ExternalIDs),
 	}
 
 	if f.Events != nil {
@@ -328,11 +327,10 @@ func (n *Note) Clone() *Note {
 	}
 
 	return &Note{
-		XRef:         n.XRef,
-		Text:         n.Text,
-		Continuation: cloneStringSlice(n.Continuation),
-		ExternalIDs:  cloneExternalIDs(n.ExternalIDs),
-		Tags:         CloneTags(n.Tags),
+		XRef:        n.XRef,
+		Text:        n.Text,
+		ExternalIDs: cloneExternalIDs(n.ExternalIDs),
+		Tags:        CloneTags(n.Tags),
 	}
 }
 
@@ -737,10 +735,16 @@ func cloneSourceCitation(sc *SourceCitation) *SourceCitation {
 	copied := &SourceCitation{
 		SourceXRef:  sc.SourceXRef,
 		Page:        sc.Page,
-		Quality:     sc.Quality,
 		Notes:       cloneStringSlice(sc.Notes),
 		NoteXRefs:   cloneStringSlice(sc.NoteXRefs),
 		InlineNotes: cloneStringSlice(sc.InlineNotes),
+	}
+
+	// Deep-copy the pointer so a mutation through the copy cannot reach the
+	// original.
+	if sc.Quality != nil {
+		quality := *sc.Quality
+		copied.Quality = &quality
 	}
 
 	if sc.Data != nil {

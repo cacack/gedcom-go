@@ -540,21 +540,21 @@ func TestDocument(t *testing.T) {
 	})
 }
 
-func TestNoteFullText(t *testing.T) {
+// TestNoteText pins Text as the single carrier of a note's body. Note used to
+// have a Continuation slice and a FullText() method to bridge the two; both
+// were removed in v3 (issue #487), so Note now matches SharedNote's shape.
+func TestNoteText(t *testing.T) {
 	t.Run("Single line", func(t *testing.T) {
 		note := &Note{Text: "This is a note"}
-		if got := note.FullText(); got != "This is a note" {
+		if got := note.Text; got != "This is a note" {
 			t.Errorf("Got %q, want %q", got, "This is a note")
 		}
 	})
 
 	t.Run("Multi-line", func(t *testing.T) {
-		note := &Note{
-			Text:         "Line 1",
-			Continuation: []string{"Line 2", "Line 3"},
-		}
 		want := "Line 1\nLine 2\nLine 3"
-		if got := note.FullText(); got != want {
+		note := &Note{Text: want}
+		if got := note.Text; got != want {
 			t.Errorf("Got %q, want %q", got, want)
 		}
 	})

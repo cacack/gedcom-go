@@ -510,21 +510,20 @@ func TestFamilyClone(t *testing.T) {
 
 	t.Run("copies all fields", func(t *testing.T) {
 		original := &Family{
-			XRef:             "@F1@",
-			Husband:          "@I1@",
-			Wife:             "@I2@",
-			Children:         []string{"@I3@"},
-			NumberOfChildren: "1",
-			Notes:            []string{"@N1@"},
-			RefNumber:        "456",
-			UID:              "uid-456",
-			Events:           []*Event{{Type: "MARR", Date: "1 JAN 1920"}},
-			SourceCitations:  []*SourceCitation{{SourceXRef: "@S1@"}},
-			Media:            []*MediaLink{{MediaXRef: "@M1@"}},
-			LDSOrdinances:    []*LDSOrdinance{{Type: "SLGS"}},
-			ChangeDate:       &ChangeDate{Date: "1 JAN 2024"},
-			CreationDate:     &ChangeDate{Date: "1 JAN 2020"},
-			Tags:             []*Tag{{Tag: "CUSTOM"}},
+			XRef:            "@F1@",
+			Husband:         "@I1@",
+			Wife:            "@I2@",
+			Children:        []string{"@I3@"},
+			Notes:           []string{"@N1@"},
+			RefNumber:       "456",
+			UID:             "uid-456",
+			Events:          []*Event{{Type: "MARR", Date: "1 JAN 1920"}},
+			SourceCitations: []*SourceCitation{{SourceXRef: "@S1@"}},
+			Media:           []*MediaLink{{MediaXRef: "@M1@"}},
+			LDSOrdinances:   []*LDSOrdinance{{Type: "SLGS"}},
+			ChangeDate:      &ChangeDate{Date: "1 JAN 2024"},
+			CreationDate:    &ChangeDate{Date: "1 JAN 2020"},
+			Tags:            []*Tag{{Tag: "CUSTOM"}},
 		}
 
 		copied := original.Clone()
@@ -1070,7 +1069,7 @@ func TestCloneSourceCitationFull(t *testing.T) {
 	original := &SourceCitation{
 		SourceXRef:   "@S1@",
 		Page:         "Page 123",
-		Quality:      2,
+		Quality:      intPtr(2),
 		AncestryAPID: &AncestryAPID{Raw: "1:2:3", Database: "1", Record: "2"},
 	}
 
@@ -1078,8 +1077,14 @@ func TestCloneSourceCitationFull(t *testing.T) {
 	if copied.SourceXRef != original.SourceXRef || copied.Page != original.Page {
 		t.Error("Field mismatch")
 	}
-	if copied.Quality != original.Quality {
-		t.Errorf("Quality = %v, want %v", copied.Quality, original.Quality)
+	if copied.Quality == nil {
+		t.Fatal("Quality should not be nil")
+	}
+	if *copied.Quality != *original.Quality {
+		t.Errorf("*Quality = %d, want %d", *copied.Quality, *original.Quality)
+	}
+	if copied.Quality == original.Quality {
+		t.Error("Quality should be a deep copy, not a shared pointer")
 	}
 	if copied.AncestryAPID == nil {
 		t.Fatal("AncestryAPID should not be nil")
@@ -1167,16 +1172,17 @@ func TestNoteClone(t *testing.T) {
 		}
 	})
 
-	t.Run("deep copies continuation", func(t *testing.T) {
+	t.Run("copies the note body", func(t *testing.T) {
 		original := &Note{
-			XRef:         "@N1@",
-			Text:         "Hello",
-			Continuation: []string{"line2", "line3"},
+			XRef: "@N1@",
+			Text: "Hello\nWorld",
 		}
 		copied := original.Clone()
-		copied.Continuation[0] = "modified"
-		if original.Continuation[0] == "modified" {
-			t.Error("Continuation was not deep copied")
+		if copied == original {
+			t.Error("Clone() should return a different pointer")
+		}
+		if copied.Text != original.Text {
+			t.Errorf("Text = %q, want %q", copied.Text, original.Text)
 		}
 	})
 }
@@ -1225,3 +1231,7 @@ func createFullTestDocument() *Document {
 
 	return doc
 }
+
+// intPtr returns a pointer to v, for building optional integer fields such as
+// SourceCitation.Quality in test fixtures.
+func intPtr(v int) *int { return &v }

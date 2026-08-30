@@ -161,8 +161,25 @@ type Issue struct {
 	// RecordXRef would be the child and RelatedXRef would be the parent.
 	RelatedXRef string
 
-	// Details contains additional context as key-value pairs.
+	// LineNumber is the 1-based source line the issue was raised against, or 0
+	// when the check has no single line in hand.
+	//
+	// 0 is common and is not a defect. Checks that compare whole entities
+	// (date logic, duplicate detection) or the document as a whole (a missing
+	// header SUBM) have no single line to point at, and the typed Header
+	// fields are not attributed to one. Codes raised while walking raw tags --
+	// the custom-tag and control-character checks, and the XRef-length check
+	// -- do carry it.
+	//
+	// Do not read 0 as "line 1".
+	LineNumber int
+
+	// Details carries context specific to one code, as key-value pairs.
 	// Common keys include "field", "value", "expected", "actual".
+	//
+	// It is not the place for anything Issue models as a field: a source line
+	// belongs in LineNumber, not under a stringified "line_number" key that
+	// only some codes set and every caller has to strconv.Atoi.
 	Details map[string]string
 }
 
@@ -177,7 +194,7 @@ func (i Issue) Error() string {
 func (i Issue) String() string {
 	var sb strings.Builder
 
-	// Format: [SEVERITY] CODE: Message (XRef: @I1@)
+	// Format: [SEVERITY] CODE: Message (XRef: @I1@) [line N]
 	sb.WriteString("[")
 	sb.WriteString(i.Severity.String())
 	sb.WriteString("] ")
@@ -195,6 +212,12 @@ func (i Issue) String() string {
 		sb.WriteString(")")
 	}
 
+	// A line number is only rendered when one is known; 0 means the check had
+	// none, and printing "line 0" would read as a real location.
+	if i.LineNumber > 0 {
+		fmt.Fprintf(&sb, " [line %d]", i.LineNumber)
+	}
+
 	return sb.String()
 }
 
@@ -208,6 +231,14 @@ func NewIssue(severity Severity, code, message, recordXRef string) Issue {
 		RecordXRef: recordXRef,
 		Details:    make(map[string]string),
 	}
+}
+
+// WithLineNumber returns a copy of the Issue with LineNumber set.
+//
+//nolint:gocritic // Value receiver intentional for immutability
+func (i Issue) WithLineNumber(line int) Issue {
+	i.LineNumber = line
+	return i
 }
 
 // WithRelatedXRef returns a copy of the Issue with the RelatedXRef set.

@@ -1,15 +1,14 @@
 package gedcom
 
 // resolveSharedNoteText returns the text of the NOTE or SNOTE record that xref
-// points to. NOTE records contribute their full text (including CONT/CONC
-// continuations); SNOTE records contribute their text. The bool reports whether
-// the XRef resolved to a known note record.
+// points to. Both carry their whole body in Text, CONT/CONC continuations
+// included. The bool reports whether the XRef resolved to a known note record.
 func resolveSharedNoteText(doc *Document, xref string) (string, bool) {
 	if doc == nil {
 		return "", false
 	}
 	if note := doc.GetNote(xref); note != nil {
-		return note.FullText(), true
+		return note.Text, true
 	}
 	if snote := doc.GetSharedNote(xref); snote != nil {
 		return snote.Text, true

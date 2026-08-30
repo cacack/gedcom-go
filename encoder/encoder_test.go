@@ -1314,8 +1314,8 @@ func TestEncodeRoundtripNewFeatures(t *testing.T) {
 		if cite.Page != "p. 42" {
 			t.Errorf("Birth citation Page = %s, want 'p. 42'", cite.Page)
 		}
-		if cite.Quality != 3 {
-			t.Errorf("Birth citation Quality = %d, want 3", cite.Quality)
+		if cite.Quality == nil || *cite.Quality != 3 {
+			t.Errorf("Birth citation Quality = %v, want 3", cite.Quality)
 		}
 		if cite.Data == nil {
 			t.Error("Birth citation Data is nil")
@@ -1623,8 +1623,7 @@ func TestRoundtripEntityEncoding(t *testing.T) {
 				Type: gedcom.RecordTypeNote,
 				Tags: nil,
 				Entity: &gedcom.Note{
-					Text:         "This is a note",
-					Continuation: []string{"with continuation"},
+					Text: "This is a note\nwith continuation",
 				},
 			},
 			{
@@ -1836,7 +1835,7 @@ func TestRoundtripComplexIndividual(t *testing.T) {
 								{
 									SourceXRef: "@S1@",
 									Page:       "p. 42",
-									Quality:    3,
+									Quality:    intPtr(3),
 									Data: &gedcom.SourceCitationData{
 										Date: "17 DEC 1770",
 										Text: "Birth entry",

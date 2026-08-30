@@ -336,11 +336,10 @@ err := gedcomgo.EncodeWithOptions(writer, doc, opts)
 ### Custom Conversion Options
 
 ```go
-// Convert with strict data loss checking
-opts := &converter.ConvertOptions{
-    Validate:       true,
-    StrictDataLoss: true,  // Fail on any data loss
-}
+// Convert with strict data loss checking. Start from DefaultOptions so the
+// fields you don't name keep their documented defaults.
+opts := converter.DefaultOptions()
+opts.StrictDataLoss = true  // Fail on any data loss
 converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version55, opts)
 ```
 

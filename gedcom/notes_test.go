@@ -12,9 +12,8 @@ func noteDoc() *Document {
 		XRef: "@N1@",
 		Type: RecordTypeNote,
 		Entity: &Note{
-			XRef:         "@N1@",
-			Text:         "Shared note line 1",
-			Continuation: []string{"line 2"},
+			XRef: "@N1@",
+			Text: "Shared note line 1\nline 2",
 		},
 	}
 	snoteRec := &Record{

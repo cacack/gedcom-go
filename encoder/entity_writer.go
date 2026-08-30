@@ -210,9 +210,9 @@ func entityToTags(record *gedcom.Record, opts *EncodeOptions) []*gedcom.Tag {
 			return repositoryToTags(repo, opts)
 		}
 	case gedcom.RecordTypeNote:
-		if note, ok := record.Entity.(*gedcom.Note); ok {
-			return noteToTags(note)
-		}
+		// A Note carries its whole body in Text, which entityRecordText writes
+		// as the level-0 value plus CONT/CONC. Nothing is left for this path.
+		return nil
 	case gedcom.RecordTypeMedia:
 		if media, ok := record.Entity.(*gedcom.MediaObject); ok {
 			return mediaObjectToTags(media, opts)
@@ -324,18 +324,6 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 	return tags
 }
 
-// hasAttributeType reports whether attrs holds an attribute of the given type.
-// It guards fields that duplicate an attribute the decoder also stores in the
-// Attributes slice, so the encoder writes such a tag exactly once.
-func hasAttributeType(attrs []*gedcom.Attribute, attrType string) bool {
-	for _, attr := range attrs {
-		if attr != nil && attr.Type == attrType {
-			return true
-		}
-	}
-	return false
-}
-
 // familyToTags converts a Family entity to GEDCOM tags.
 //
 //nolint:gocyclo // Converting all family fields requires handling many cases
@@ -359,15 +347,6 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	// Children (level 1) - CHIL
 	for _, child := range fam.Children {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "CHIL", Value: child})
-	}
-
-	// Number of children (level 1) - NCHI. The decoder stores an NCHI line
-	// twice: in NumberOfChildren and as an Attributes entry, which also carries
-	// the line's subordinates. Emitting both would write the tag twice, so the
-	// attribute wins whenever it is present -- it is the richer of the two --
-	// and this line is written only when nothing in Attributes covers it.
-	if fam.NumberOfChildren != "" && !hasAttributeType(fam.Attributes, "NCHI") {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NCHI", Value: fam.NumberOfChildren})
 	}
 
 	// Events (level 1) - MARR, DIV, etc.
@@ -617,25 +596,6 @@ func repositoryToTags(repo *gedcom.Repository, opts *EncodeOptions) []*gedcom.Ta
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
 	for _, note := range recordNotesToEncode(repo.NoteXRefs, repo.InlineNotes, repo.Notes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
-	}
-
-	return tags
-}
-
-// noteToTags converts a Note entity to GEDCOM tags.
-func noteToTags(note *gedcom.Note) []*gedcom.Tag {
-	if note == nil {
-		return nil
-	}
-
-	var tags []*gedcom.Tag
-
-	// Note continuation lines (level 1) - CONT. Continuation is deprecated and
-	// never populated by the decoder, but a hand-built note may still split its
-	// body across Text and Continuation, so it is honoured here.
-	//nolint:staticcheck // SA1019: deliberate support for the deprecated field
-	for _, cont := range note.Continuation {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "CONT", Value: cont})
 	}
 
 	return tags
@@ -992,8 +952,8 @@ func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOp
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PAGE", Value: cite.Page})
 	}
 
-	if cite.Quality > 0 {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "QUAY", Value: strconv.Itoa(cite.Quality)})
+	if cite.Quality != nil {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "QUAY", Value: strconv.Itoa(*cite.Quality)})
 	}
 
 	// DATA subordinate
@@ -1358,13 +1318,9 @@ func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int) []*gedcom.
 // verbatim onto the level-0 line would let an embedded newline forge additional
 // GEDCOM records.
 //
-// For NOTE, this covers the Text field only; the deprecated note.Continuation is
-// emitted separately by noteToTags. Since #439 the decoder folds every
-// continuation line into Text and leaves Continuation nil, so a decoded note
-// cannot double-emit. A hand-built note still can, by setting a multi-line Text
-// and a non-empty Continuation — that combination writes the body twice and is
-// why Continuation is deprecated rather than kept as a parallel way to say the
-// same thing.
+// For NOTE this covers the Text field, which since v3 is the only carrier of a
+// note's body: entityRecordText is the single CONT/CONC producer for notes, so
+// there is no second path that could emit the body twice.
 func entityRecordText(record *gedcom.Record, opts *EncodeOptions) (string, []*gedcom.Tag) {
 	switch record.Type {
 	case gedcom.RecordTypeSharedNote:

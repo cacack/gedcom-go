@@ -19,8 +19,12 @@ func TestDefaultOptions(t *testing.T) {
 		t.Error("StrictDataLoss should be false by default")
 	}
 
-	if !opts.PreserveUnknownTags {
-		t.Error("PreserveUnknownTags should be true by default")
+	if !opts.ReportPreservedTags {
+		t.Error("ReportPreservedTags should be true by default")
+	}
+
+	if !opts.MapEXIDToVendorTags {
+		t.Error("MapEXIDToVendorTags should be true by default")
 	}
 }
 
@@ -29,7 +33,8 @@ func TestConvertOptions(t *testing.T) {
 		opts := &ConvertOptions{
 			Validate:            false,
 			StrictDataLoss:      true,
-			PreserveUnknownTags: false,
+			ReportPreservedTags: false,
+			MapEXIDToVendorTags: false,
 		}
 
 		if opts.Validate {
@@ -38,8 +43,11 @@ func TestConvertOptions(t *testing.T) {
 		if !opts.StrictDataLoss {
 			t.Error("StrictDataLoss should be true")
 		}
-		if opts.PreserveUnknownTags {
-			t.Error("PreserveUnknownTags should be false")
+		if opts.ReportPreservedTags {
+			t.Error("ReportPreservedTags should be false")
+		}
+		if opts.MapEXIDToVendorTags {
+			t.Error("MapEXIDToVendorTags should be false")
 		}
 	})
 }

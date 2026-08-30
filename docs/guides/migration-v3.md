@@ -8,11 +8,12 @@ This guide is written as v3 is assembled, so it grows with each breaking change
 that lands. Every entry gives the old form, the new form, and — where the
 compiler cannot tell you — the value mapping.
 
-> **Read the value mappings, not just the names.** Three changes on this page
-> alter what a value *means* — a boolean inverts, a constant is renumbered, and
-> an empty string stops meaning "empty". For the first two the mechanical fix
-> (rename the identifier, keep the value) produces working code with the
-> opposite behaviour and no error.
+> **Read the value mappings, not just the names.** Several changes on this page
+> alter what a value *means* — a boolean inverts, a constant is renumbered, an
+> empty string stops meaning "empty", and an `int` becomes a `*int` so that zero
+> stops meaning absent. Where the change is a rename, the mechanical fix (rename
+> the identifier, keep the value) can produce working code with the opposite
+> behaviour and no error.
 
 ## Module path
 
@@ -52,10 +53,6 @@ Renaming the identifier while keeping `true` silently strips every custom tag
 and every custom-tag-typed record from your output. There is no error and no
 diagnostic; the file just comes back smaller.
 
-`converter.ConvertOptions.PreserveUnknownTags` is a **different field** and is
-unchanged in v3 — it keeps its original polarity, so a bare
-`&converter.ConvertOptions{}` still drops unknown tags. Set it explicitly, or
-use `converter.DefaultOptions()`.
 
 ### `encoder.EncodeOptions.LineEnding` defaults when empty
 
@@ -71,6 +68,91 @@ Together with `DropUnknownTags` above and `MaxLineLength` (which already
 defaulted to 248), this makes a bare `&encoder.EncodeOptions{}` lossless in
 full: every field's zero value is now the safe one.
 
+
+### `converter.ConvertOptions.PreserveUnknownTags` split in two
+
+The old field's name was wrong: it never preserved anything. Nothing is dropped
+by the converter either way. It gated two unrelated things, which are now
+separate fields that each say what they do.
+
+| v2 | v3 |
+|----|----|
+| `PreserveUnknownTags: true` | `ReportPreservedTags: true` **and** `MapEXIDToVendorTags: true` |
+| `PreserveUnknownTags: false` | omit both — `false` is each field's zero value |
+
+- `ReportPreservedTags` — itemises each preserved vendor/unknown tag in the
+  conversion report. Report-only; no output byte depends on it.
+- `MapEXIDToVendorTags` — on a 7.0 downgrade, maps a FamilySearch ARK EXID to
+  `_FSFTID` rather than recording it as data loss.
+
+Note that this field shared a name with `encoder.EncodeOptions.PreserveUnknownTags`
+while meaning something entirely different — the encoder's really did drop tags.
+After v3 no identifier by that name remains anywhere in the module.
+
+`nil` still means `DefaultOptions()`. Any non-nil pointer is taken exactly as
+written, so a literal that omits a field gets that field's zero value — start
+from `DefaultOptions()` when changing one setting:
+
+```go
+opts := converter.DefaultOptions()
+opts.StrictDataLoss = true
+```
+
+This is deliberately *not* smart about a wholly zero `&ConvertOptions{}`. An
+earlier draft substituted the defaults for it, which read as friendlier but made
+"every option off" impossible to express — the literal for it is the zero
+struct.
+
+### `SourceCitation.Quality` is now `*int`
+
+| v2 | v3 |
+|----|----|
+| `cite.Quality` (an `int`) | `cite.Quality` (a `*int`) — nil check, then dereference |
+| `Quality: 3` | `q := 3; Quality: &q` |
+| absent, or `Quality: 0` | `nil` means absent; `&zero` means a real `QUAY 0` |
+
+`QUAY` is an enumeration whose `0` is a meaningful assertion — "unreliable
+evidence or estimated data" — not an absence. As an `int` its Go zero value
+collided with that, and the encoder resolved the ambiguity in favour of absent
+by emitting the tag only when `Quality > 0`. So `1 QUAY 0` decoded fine and then
+vanished on re-encode, and no caller could assert "unreliable" at all.
+
+```go
+// v2
+if cite.Quality > 0 {
+    fmt.Println("quality:", cite.Quality)
+}
+
+// v3
+if cite.Quality != nil {
+    fmt.Println("quality:", *cite.Quality)
+}
+```
+
+Byte round-trips were never affected, because `Record.Tags` is authoritative on
+encode. The loss showed on hand-built documents, the converter, and anything
+that clears `Tags`.
+
+> **The compile error has a wrong mechanical fix.** If the value comes from a
+> function that returns `0` to mean "no quality recorded", taking its address
+> turns that into a *positive* `QUAY 0` — "unreliable evidence or estimated
+> data" — on every such citation. v2's `> 0` guard hid the conflation; v3 emits
+> it. Keep the pointer nil in the unset branch:
+>
+> ```go
+> // WRONG: 0 might mean "unset", and this now asserts "unreliable".
+> q := mapQuality(x)
+> cite.Quality = &q
+>
+> // RIGHT: only take the address when a rating was actually determined.
+> if q, ok := mapQuality(x); ok {
+>     cite.Quality = &q
+> }
+> ```
+>
+> Symmetrically on read, `cite.Quality` is nil for a citation with no `QUAY`,
+> so a helper taking a bare `int` must become `*int` and handle nil rather than
+> dereferencing.
 
 ### `validator.Strictness` renumbered
 
@@ -89,6 +171,49 @@ integer** — a config file, a database column, a JSON payload — must remap it
 because a stored `0` meant Relaxed under v2 and means Normal under v3. There is
 no compiler signal for this.
 
+## Renames
+
+### `Individual.ParentalFamilies` / `SpouseFamilies`
+
+| v2 | v3 |
+|----|----|
+| `ind.ParentalFamilies(doc)` | `ind.FamiliesAsChild(doc)` |
+| `ind.SpouseFamilies(doc)` | `ind.FamiliesAsSpouse(doc)` |
+
+The old pair used opposite conventions for the same kind of relation.
+`SpouseFamilies` meant "families where I am a spouse", but `ParentalFamilies`
+meant "families where I am a **child**" — under the first name's own rule it
+reads as the opposite, and "families where I am a parent" is exactly what
+`SpouseFamilies` returned.
+
+Both take a `*Document` and return `[]*Family`, so transposing them produced a
+wrong-but-plausible tree with no type error and no panic. **If your code had
+them swapped, the compiler will not tell you — but your results change.** Check
+each call site against the role you meant, rather than mapping the names
+mechanically.
+
+### `validator.Issue.Details["line_number"]` removed
+
+| v2 | v3 |
+|----|----|
+| `strconv.Atoi(issue.Details["line_number"])` | `issue.LineNumber` |
+
+`Issue.LineNumber` is a real field now. It is populated by the checks that walk
+raw tags — the custom-tag checks, the control-character checks, and the
+XRef-length check — and is `0` elsewhere.
+
+`0` is common and does not mean line 1. Checks that compare whole entities
+(date logic, duplicate detection) or the document as a whole (a missing header
+`SUBM`) have no single line to point at. Broader population is follow-up work,
+not something this release completed.
+
+The compiler cannot help here: a map lookup on a removed key returns the zero
+value, so the old code keeps compiling and silently reads `""`.
+
+`Details["position"]` is **not** removed. It is a byte offset within a field's
+value, not a source line, and `CodeBannedControlCharacter` now carries both:
+`LineNumber` for the line, `Details["position"]` for the offset within it.
+
 ## Straight removals
 
 Each of these is superseded by something that already exists in v2, so you can
@@ -98,6 +223,8 @@ migrate before upgrading.
 |---------|-------------|
 | `gedcom.Source.RepositoryRef` | `Source.RepositoryLink.XRef` |
 | `gedcom.Source.Repository` | `Source.RepositoryLink.Inline` |
+| `gedcom.Note.Continuation` | put the whole body in `Note.Text`, newlines included |
+| `gedcom.Note.FullText()` | `Note.Text` |
 | `decoder.DecodeOptions.MaxNestingDepth` | none needed — the field was never read. The ceiling is fixed at `parser.MaxNestingDepth-1` (99) by the grammar's two-digit level field |
 | `gedcom/testing.WithHeaderTagComparison()` | none needed — delete the argument. Header tags have been compared unconditionally since v2 |
 
@@ -116,6 +243,70 @@ src.RepositoryLink = &gedcom.SourceRepositoryLink{
 `SourceRepositoryLink` also carries the call numbers, media type, and per-link
 notes that the flat fields could not represent, so it is a strict superset.
 
+### `Family.NumberOfChildren` is now a method
+
+| v2 | v3 |
+|----|----|
+| `fam.NumberOfChildren` (read) | `fam.NumberOfChildren()` |
+| `fam.NumberOfChildren = "4"` | `fam.SetNumberOfChildren("4")` |
+
+The field was a second store for a fact `Family.Attributes` already held, and
+the attribute is strictly richer — it carries the `NCHI` line's subordinates as
+well as its value. The encoder preferred the attribute, so a write to the field
+appeared to succeed, survived in memory, and vanished on encode.
+
+`SetNumberOfChildren` updates an existing `NCHI` attribute in place (keeping its
+subordinates) or appends one, so the write stays typed and you never need to
+know the raw tag name.
+
+**On a decoded family this changes the typed model only.** `Record.Tags` is
+authoritative on encode (see the `Record.Tags` godoc), so to change what a
+decoded family writes, edit the `NCHI` tag in `Record.Tags`, or clear `Tags` to
+rebuild from the typed model.
+
+### `Note.Continuation` in detail
+
+`Note` now matches `SharedNote`: one `Text` field holding the whole body.
+
+```go
+// v2 — a hand-built multi-line note
+note := &gedcom.Note{
+    Text:         lines[0],
+    Continuation: lines[1:],
+}
+text := note.FullText()
+
+// v3 — the encoder does the CONT/CONC split for you
+note := &gedcom.Note{Text: strings.Join(lines, "\n")}
+text := note.Text
+```
+
+The old field was broken in both directions. The decoder never populated it, so
+reading it on a decoded document always gave `nil` and made every multi-line
+note look single-line. And the encoder emitted it *in addition to* `Text`, so a
+hand-built note that set both wrote its body twice.
+
+Letting the encoder split `Text` is also safer than splitting it yourself: it
+enforces `MaxLineLength` and stops an embedded newline from forging a new
+GEDCOM record.
+
+#### Known downstream call sites
+
+`my-family` is the documented consumer of this library, and these are the sites
+that will not compile against v3. They are listed here so the migration is not
+rediscovered at `go get` time:
+
+| Site | v2 | v3 |
+|------|----|----|
+| `internal/gedcom/exporter.go` (`toGedcomNoteRecord`) | `&gedcom.Note{Text: first, Continuation: rest}` | `&gedcom.Note{Text: n.Text}` — drop the hand split entirely |
+| `internal/gedcom/importer.go` | `note.FullText()` | `note.Text` |
+| `internal/gedcom/exporter.go` (citation export) | `citation.Quality = mapGPSToGedcomQuality(...)` | see the `Quality` warning above — the unset branch must leave the pointer nil |
+| `internal/gedcom/importer.go` (citation import) | `mapGedcomQualityToGPS(srcCit.Quality)` | take `*int` and return the empty rating for nil |
+
+The exporter's hand split is a net loss to keep: the encoder's split additionally
+enforces `MaxLineLength` and guards against newline injection, neither of which
+a manual `strings.Split` does.
+
 One behaviour improves silently: `Visit` and `Document.Subset` no longer write
 to the `Source` they traverse. In v2 they re-synced `RepositoryRef` from
 `RepositoryLink.XRef` on every walk, which blanked a caller-set value on a
@@ -125,8 +316,10 @@ document with an inline repository.
 
 `make api-check` in this repository reports the full apidiff between the last
 release and `main`, including constant value changes. For your own code, the
-compiler catches every removal and rename on this page; the three value
-changes above are the ones it cannot.
+compiler catches every removal and rename on this page. It does **not** catch
+the value changes — the inverted boolean, the renumbered constant, and the
+`*int` retype, whose compile error has a mechanical fix that can be wrong (see
+below).
 
 See [`docs/governance/policies/api-stability.md`](../governance/policies/api-stability.md)
 for what the project treats as a breaking change, including the semantic breaks

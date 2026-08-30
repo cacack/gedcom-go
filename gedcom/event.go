@@ -191,7 +191,9 @@ type Event struct {
 	// Media are references to media objects with optional crop/title
 	Media []*MediaLink
 
-	// Tags contains all raw tags for this event (for unknown/custom fields)
+	// Tags contains all raw tags for this event (for unknown/custom tags),
+	// a lossless read-side record per ADR 0003. It does not drive encoding --
+	// see Record.Tags for the rule that governs what a decoded record writes.
 	Tags []*Tag
 }
 

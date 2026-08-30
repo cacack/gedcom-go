@@ -14,16 +14,6 @@ type Family struct {
 	// Children are XRefs to child individuals
 	Children []string
 
-	// NumberOfChildren is the declared number of children (NCHI tag).
-	//
-	// A decoded family stores NCHI twice: here, and as an entry in
-	// Attributes, which also carries the line's subordinates. When both are
-	// present the encoder writes the Attributes entry and ignores this
-	// field, so setting it alone on a decoded family is silently discarded
-	// on re-encode. Update the Attributes entry, or clear it, to change the
-	// value that is written.
-	NumberOfChildren string
-
 	// Events contains family events (marriage, divorce, etc.)
 	Events []*Event
 
@@ -74,7 +64,9 @@ type Family struct {
 	// Links this record to external systems like FamilySearch, Ancestry, etc.
 	ExternalIDs []*ExternalID
 
-	// Tags contains all raw tags for this family (for unknown/custom tags)
+	// Tags contains all raw tags for this family (for unknown/custom tags),
+	// a lossless read-side record per ADR 0003. It does not drive encoding --
+	// see Record.Tags for the rule that governs what a decoded record writes.
 	Tags []*Tag
 }
 
@@ -83,6 +75,50 @@ type Family struct {
 // do not resolve are skipped. Returns nil when there are no notes.
 func (f *Family) AllNotes(doc *Document) []string {
 	return allNotes(doc, f.InlineNotes, f.NoteXRefs)
+}
+
+// NumberOfChildren returns the value of the NCHI entry in Attributes, or "" if
+// the family has none. It is nil-safe.
+//
+// This replaces the NumberOfChildren field removed in v3. That field was a
+// second store for a fact Attributes already held, and the richer of the two
+// won on encode -- so writing the field on a decoded family was silently
+// discarded. Attributes is now the single store, and it carries the NCHI
+// line's subordinates as well as its value.
+func (f *Family) NumberOfChildren() string {
+	if f == nil {
+		return ""
+	}
+	for _, attr := range f.Attributes {
+		if attr != nil && attr.Type == "NCHI" {
+			return attr.Value
+		}
+	}
+	return ""
+}
+
+// SetNumberOfChildren sets the value of the family's NCHI attribute, adding the
+// attribute if it has none and leaving any subordinates on an existing entry
+// intact. It is a no-op on a nil Family.
+//
+// This keeps the write typed and discoverable. Without it the only way to set a
+// child count would be to append &Attribute{Type: "NCHI"} by hand, which
+// requires knowing the raw GEDCOM tag name.
+//
+// Note that on a *decoded* family this changes the typed model only. Record.Tags
+// is authoritative on encode, so edit the NCHI tag there (or clear Tags) to
+// change encoded output -- see the Record.Tags documentation.
+func (f *Family) SetNumberOfChildren(value string) {
+	if f == nil {
+		return
+	}
+	for _, attr := range f.Attributes {
+		if attr != nil && attr.Type == "NCHI" {
+			attr.Value = value
+			return
+		}
+	}
+	f.Attributes = append(f.Attributes, &Attribute{Type: "NCHI", Value: value})
 }
 
 // HusbandIndividual returns the Individual record for the husband.

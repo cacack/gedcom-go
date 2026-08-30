@@ -595,9 +595,9 @@ the full `EVENT_DETAIL` set listed under Events — `gedcom.Attribute` carries t
 same fields as `gedcom.Event`.
 
 At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
-`CENS` and `RESI` into `Family.Events`, each with its `EVENT_DETAIL`. `NCHI` is
-dual-stored: the scalar `Family.NumberOfChildren` stays populated alongside the
-richer `Family.Attributes` entry, and the encoder writes the line once.
+`CENS` and `RESI` into `Family.Events`, each with its `EVENT_DETAIL`.
+`Family.Attributes` is the single store for `NCHI`; read it through
+`Family.NumberOfChildren()` and write it through `SetNumberOfChildren`.
 
 ## Source Citations
 
@@ -1200,7 +1200,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | XRef uppercase | Upgrade to 7.0 | Normalizes cross-references |
 | Media types | Both | Maps between legacy (JPG) and IANA (image/jpeg) |
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |
-| FamilySearch ARK EXID → `_FSFTID` | Downgrade from 7.0 | Maps to the vendor tag instead of dropping the ID (when `PreserveUnknownTags`) |
+| FamilySearch ARK EXID → `_FSFTID` | Downgrade from 7.0 | Maps to the vendor tag instead of dropping the ID (when `MapEXIDToVendorTags`) |
 
 ### API
 
@@ -1212,7 +1212,8 @@ converted, report, err := converter.Convert(doc, gedcom.Version70)
 opts := &converter.ConvertOptions{
     Validate:            true,
     StrictDataLoss:      true,  // Fail on any data loss
-    PreserveUnknownTags: true,  // Keep vendor extensions (default: true)
+    ReportPreservedTags: true,  // Itemise preserved vendor tags in the report
+    MapEXIDToVendorTags: true,  // Map a 7.0 EXID to _FSFTID on downgrade
 }
 converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version55, opts)
 
@@ -1551,8 +1552,8 @@ Navigate family relationships with convenience methods that eliminate manual cro
 | `Parents(doc)` | `[]*Individual` | Parents from FAMC families |
 | `Spouses(doc)` | `[]*Individual` | Spouses from FAMS families (handles remarriage) |
 | `Children(doc)` | `[]*Individual` | Children from all FAMS families |
-| `ParentalFamilies(doc)` | `[]*Family` | Families where individual is a child |
-| `SpouseFamilies(doc)` | `[]*Family` | Families where individual is a spouse |
+| `FamiliesAsChild(doc)` | `[]*Family` | Families where individual is a child |
+| `FamiliesAsSpouse(doc)` | `[]*Family` | Families where individual is a spouse |
 
 **Family Methods:**
 

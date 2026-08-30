@@ -422,8 +422,8 @@ func TestSourceCitationStructure(t *testing.T) {
 	if cite.Page != "Page 42, Entry 103" {
 		t.Errorf("Page = %s, want 'Page 42, Entry 103'", cite.Page)
 	}
-	if cite.Quality != 2 {
-		t.Errorf("Quality = %d, want 2", cite.Quality)
+	if cite.Quality == nil || *cite.Quality != 2 {
+		t.Errorf("Quality = %v, want 2", cite.Quality)
 	}
 	if cite.Data == nil {
 		t.Fatal("Data is nil, want non-nil")
@@ -1410,8 +1410,8 @@ func TestMaximal70Family(t *testing.T) {
 	} else {
 		for _, cite := range fam.SourceCitations {
 			if cite.SourceXRef == "@S1@" && cite.Page == "1" {
-				if cite.Quality != 1 {
-					t.Errorf("Citation QUAY = %d, want 1", cite.Quality)
+				if cite.Quality == nil || *cite.Quality != 1 {
+					t.Errorf("Citation QUAY = %v, want 1", cite.Quality)
 				}
 				break
 			}
@@ -1644,8 +1644,8 @@ func TestEmptySourceCitation(t *testing.T) {
 	if cite.Page != "" {
 		t.Errorf("Page = %s, want empty", cite.Page)
 	}
-	if cite.Quality != 0 {
-		t.Errorf("Quality = %d, want 0", cite.Quality)
+	if cite.Quality != nil {
+		t.Errorf("Quality = %v, want nil (no QUAY tag)", cite.Quality)
 	}
 	if cite.Data != nil {
 		t.Errorf("Data = %v, want nil", cite.Data)
@@ -1775,9 +1775,9 @@ func TestSourceCitationInvalidQuay(t *testing.T) {
 		t.Fatalf("len(SourceCitations) = %d, want 1", len(indi.SourceCitations))
 	}
 
-	// Invalid QUAY should result in 0 (default)
-	if indi.SourceCitations[0].Quality != 0 {
-		t.Errorf("Quality = %d, want 0 (invalid value ignored)", indi.SourceCitations[0].Quality)
+	// An invalid QUAY leaves the pointer nil -- distinct from a real QUAY 0.
+	if indi.SourceCitations[0].Quality != nil {
+		t.Errorf("Quality = %v, want nil (invalid value ignored)", indi.SourceCitations[0].Quality)
 	}
 }
 
@@ -1835,7 +1835,7 @@ func TestMultipleSourceCitationsOnEvent(t *testing.T) {
 	if birth.SourceCitations[1].Page != "p. 20" {
 		t.Errorf("Citation[1].Page = %s, want 'p. 20'", birth.SourceCitations[1].Page)
 	}
-	if birth.SourceCitations[1].Quality != 3 {
+	if q := birth.SourceCitations[1].Quality; q == nil || *q != 3 {
 		t.Errorf("Citation[1].Quality = %d, want 3", birth.SourceCitations[1].Quality)
 	}
 }
@@ -2494,8 +2494,8 @@ func TestFamilyStatisticsAttributes(t *testing.T) {
 		t.Fatal("Family @F1@ not found")
 	}
 
-	if fam.NumberOfChildren != "3" {
-		t.Errorf("Family.NumberOfChildren = %s, want 3", fam.NumberOfChildren)
+	if fam.NumberOfChildren() != "3" {
+		t.Errorf("Family.NumberOfChildren() = %s, want 3", fam.NumberOfChildren())
 	}
 
 	// Verify the family has 3 CHIL tags
@@ -2847,13 +2847,6 @@ func TestNoteParsing(t *testing.T) {
 		t.Errorf("note1.Text = %q, want %q", note1.Text, expectedText)
 	}
 
-	// Test FullText method
-	expectedFullText := "This is a shared note that can be\nreferenced from multiple records.\nIt supports continuation lines."
-	fullText := note1.FullText()
-	if fullText != expectedFullText {
-		t.Errorf("note1.FullText() = %q, want %q", fullText, expectedFullText)
-	}
-
 	// Test second note (short note without continuation)
 	note2 := doc.GetNote("@N2@")
 	if note2 == nil {
@@ -2864,9 +2857,6 @@ func TestNoteParsing(t *testing.T) {
 	}
 	if note2.Text != "Short note" {
 		t.Errorf("note2.Text = %s, want 'Short note'", note2.Text)
-	}
-	if note2.FullText() != "Short note" {
-		t.Errorf("note2.FullText() = %s, want 'Short note'", note2.FullText())
 	}
 
 	// Test third note with CONC and CONT
@@ -2882,12 +2872,6 @@ func TestNoteParsing(t *testing.T) {
 	expectedText3 := "This note has concatenation without space.\nAnd continuation with newline."
 	if note3.Text != expectedText3 {
 		t.Errorf("note3.Text = %q, want %q", note3.Text, expectedText3)
-	}
-
-	expectedFullText3 := "This note has concatenation without space.\nAnd continuation with newline."
-	fullText3 := note3.FullText()
-	if fullText3 != expectedFullText3 {
-		t.Errorf("note3.FullText() = %q, want %q", fullText3, expectedFullText3)
 	}
 
 	// Test GetNote with non-existent xref
@@ -2945,16 +2929,6 @@ func TestNoteContinuationFolding(t *testing.T) {
 			}
 			if note.Text != tt.want {
 				t.Errorf("Text = %q, want %q", note.Text, tt.want)
-			}
-			if note.FullText() != tt.want {
-				t.Errorf("FullText() = %q, want %q", note.FullText(), tt.want)
-			}
-			// Deliberately reading the deprecated field: leaving it empty is
-			// what keeps the encoder from emitting the body twice.
-			//nolint:staticcheck // SA1019: asserting the deprecated field stays empty
-			if len(note.Continuation) != 0 {
-				//nolint:staticcheck // SA1019: same
-				t.Errorf("len(Continuation) = %d, want 0", len(note.Continuation))
 			}
 		})
 	}
@@ -5527,7 +5501,7 @@ func TestAttributeUnknownSubtagFlagged(t *testing.T) {
 
 // TestFamilyEventAndAttributeContexts pins the four FAM contexts parseFamily
 // never read (issue #448): CENS and RESI decode as events, NCHI and FACT as
-// attributes. NCHI is deliberate dual storage — Family.NumberOfChildren stays
+// attributes. NCHI lives only in Family.Attributes — Family.NumberOfChildren() reads
 // populated alongside the new Family.Attributes entry.
 func TestFamilyEventAndAttributeContexts(t *testing.T) {
 	input := `0 HEAD
@@ -5578,8 +5552,8 @@ func TestFamilyEventAndAttributeContexts(t *testing.T) {
 	if fam.Attributes[1].Type != "FACT" || fam.Attributes[1].TypeDetail != "Lifestyle" {
 		t.Errorf("Attributes[1] = %+v, want FACT with TypeDetail \"Lifestyle\"", fam.Attributes[1])
 	}
-	if fam.NumberOfChildren != "3" {
-		t.Errorf("NumberOfChildren = %q, want \"3\" (dual storage with Attributes)", fam.NumberOfChildren)
+	if fam.NumberOfChildren() != "3" {
+		t.Errorf("NumberOfChildren() = %q, want \"3\" (read from Attributes)", fam.NumberOfChildren())
 	}
 }
 

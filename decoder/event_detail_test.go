@@ -155,10 +155,9 @@ func checkFamilyDetailFixture(t *testing.T, doc *gedcom.Document) {
 	if len(nchi.Associations) != 1 || nchi.Associations[0].IndividualXRef != "@I1@" {
 		t.Errorf("NCHI Associations = %+v, want one link to @I1@", nchi.Associations)
 	}
-	// Deliberate dual storage: the scalar field stays populated alongside the
-	// richer attribute entry, and the encoder guards against writing both.
-	if fam.NumberOfChildren != "3" {
-		t.Errorf("NumberOfChildren = %q, want %q", fam.NumberOfChildren, "3")
+	// Family.Attributes is the single store for NCHI; the accessor reads it.
+	if fam.NumberOfChildren() != "3" {
+		t.Errorf("NumberOfChildren() = %q, want %q", fam.NumberOfChildren(), "3")
 	}
 
 	fact := findFamilyAttribute(fam, "FACT")

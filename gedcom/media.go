@@ -89,7 +89,9 @@ type MediaObject struct {
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation
 
-	// Tags contains all raw tags for this media object (for unknown/custom tags)
+	// Tags contains all raw tags for this media object (for unknown/custom tags),
+	// a lossless read-side record per ADR 0003. It does not drive encoding --
+	// see Record.Tags for the rule that governs what a decoded record writes.
 	Tags []*Tag
 
 	// UIDs are unique identifiers (UID tag, can have multiple in GEDCOM 7.0)

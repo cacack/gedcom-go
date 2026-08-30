@@ -801,8 +801,8 @@ func TestIndividual_Children(t *testing.T) {
 	}
 }
 
-// TestIndividual_ParentalFamilies tests the ParentalFamilies relationship traversal method.
-func TestIndividual_ParentalFamilies(t *testing.T) {
+// TestIndividual_FamiliesAsChild tests the FamiliesAsChild relationship traversal method.
+func TestIndividual_FamiliesAsChild(t *testing.T) {
 	// Individual with one parental family
 	singleFamily := &Individual{
 		XRef:            "@I1@",
@@ -881,17 +881,17 @@ func TestIndividual_ParentalFamilies(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.individual.ParentalFamilies(tt.doc)
+			got := tt.individual.FamiliesAsChild(tt.doc)
 
 			if len(got) != tt.wantCount {
-				t.Errorf("ParentalFamilies() returned %d families, want %d (%s)", len(got), tt.wantCount, tt.description)
+				t.Errorf("FamiliesAsChild() returned %d families, want %d (%s)", len(got), tt.wantCount, tt.description)
 				return
 			}
 
 			if tt.wantXRefs != nil {
 				for i, xref := range tt.wantXRefs {
 					if got[i].XRef != xref {
-						t.Errorf("ParentalFamilies()[%d].XRef = %q, want %q", i, got[i].XRef, xref)
+						t.Errorf("FamiliesAsChild()[%d].XRef = %q, want %q", i, got[i].XRef, xref)
 					}
 				}
 			}
@@ -899,8 +899,8 @@ func TestIndividual_ParentalFamilies(t *testing.T) {
 	}
 }
 
-// TestIndividual_SpouseFamilies tests the SpouseFamilies relationship traversal method.
-func TestIndividual_SpouseFamilies(t *testing.T) {
+// TestIndividual_FamiliesAsSpouse tests the FamiliesAsSpouse relationship traversal method.
+func TestIndividual_FamiliesAsSpouse(t *testing.T) {
 	// Individual with one spouse family
 	singleSpouse := &Individual{
 		XRef:             "@I1@",
@@ -976,17 +976,17 @@ func TestIndividual_SpouseFamilies(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.individual.SpouseFamilies(tt.doc)
+			got := tt.individual.FamiliesAsSpouse(tt.doc)
 
 			if len(got) != tt.wantCount {
-				t.Errorf("SpouseFamilies() returned %d families, want %d (%s)", len(got), tt.wantCount, tt.description)
+				t.Errorf("FamiliesAsSpouse() returned %d families, want %d (%s)", len(got), tt.wantCount, tt.description)
 				return
 			}
 
 			if tt.wantXRefs != nil {
 				for i, xref := range tt.wantXRefs {
 					if got[i].XRef != xref {
-						t.Errorf("SpouseFamilies()[%d].XRef = %q, want %q", i, got[i].XRef, xref)
+						t.Errorf("FamiliesAsSpouse()[%d].XRef = %q, want %q", i, got[i].XRef, xref)
 					}
 				}
 			}

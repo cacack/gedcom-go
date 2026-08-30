@@ -420,9 +420,11 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 			case "PAGE":
 				cite.Page = tag.Value
 			case "QUAY":
-				// Parse quality as integer (0-3)
+				// Parse quality as integer (0-3). QUAY 0 is a real assertion,
+				// so the pointer is set for every in-range value.
 				if q, err := strconv.Atoi(tag.Value); err == nil && q >= 0 && q <= 3 {
-					cite.Quality = q
+					quality := q
+					cite.Quality = &quality
 				} else {
 					collector.addInvalidValue(tag.LineNumber, "QUAY", tag.Value, "expected integer 0-3")
 				}
@@ -909,12 +911,6 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "NCHI", "FACT":
 			attr := parseAttribute(record.Tags, i, tag.Tag, collector)
 			fam.Attributes = append(fam.Attributes, attr)
-			if tag.Tag == "NCHI" {
-				// Deliberate dual storage: NumberOfChildren predates
-				// Family.Attributes and stays populated, so callers reading it
-				// are unaffected by NCHI also reaching the attribute list.
-				fam.NumberOfChildren = tag.Value
-			}
 
 		case "MARR", "DIV", "ENGA", "ANUL", "MARB", "MARC", "MARL", "MARS", "DIVF", "CENS", "RESI", "EVEN":
 			event := parseEvent(record.Tags, i, tag.Tag, collector)

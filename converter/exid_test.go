@@ -292,13 +292,13 @@ func TestTransformEXIDToVendorTags_SkippedWhenPreserveUnknownFalse(t *testing.T)
 		},
 	}
 
-	result, report, err := ConvertWithOptions(doc, gedcom.Version551, &ConvertOptions{Validate: true, PreserveUnknownTags: false})
+	result, report, err := ConvertWithOptions(doc, gedcom.Version551, &ConvertOptions{Validate: true, MapEXIDToVendorTags: false})
 	if err != nil {
 		t.Fatalf("ConvertWithOptions() error = %v", err)
 	}
 	rec := result.Records[0]
 	if findTag(rec, "_FSFTID") != nil {
-		t.Error("EXID must not be mapped to _FSFTID when PreserveUnknownTags is false")
+		t.Error("EXID must not be mapped to _FSFTID when MapEXIDToVendorTags is false")
 	}
 	if !exidInDataLoss(report) {
 		t.Error("with vendor tags disabled, EXID should be reported as data loss")

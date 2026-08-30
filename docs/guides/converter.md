@@ -52,18 +52,24 @@ Converts a document with custom options for fine-grained control over the conver
 
 ### ConvertOptions
 
-| Option | Default | Description |
-|--------|---------|-------------|
+| Option | `DefaultOptions` | Description |
+|--------|------------------|-------------|
 | `Validate` | `true` | Run validation on converted document |
 | `StrictDataLoss` | `false` | Fail if any data would be lost |
-| `PreserveUnknownTags` | `true` | Keep vendor extensions and unknown tags |
+| `ReportPreservedTags` | `true` | Itemise each preserved vendor/unknown tag in the report. Report-only — tags are preserved either way |
+| `MapEXIDToVendorTags` | `true` | On a 7.0 downgrade, map a FamilySearch ARK EXID to `_FSFTID` instead of recording it as data loss |
+
+Nothing the converter does drops a tag: preservation is unconditional, and
+`ReportPreservedTags` only controls whether the report lists what was kept.
+
+`nil` and a wholly zero `&converter.ConvertOptions{}` both mean "use the
+defaults". A **partially** populated literal does not — each field you leave
+out takes its own zero value, so start from `DefaultOptions()` to change one
+setting:
 
 ```go
-opts := &converter.ConvertOptions{
-    Validate:            true,
-    StrictDataLoss:      true,  // Fail on any data loss
-    PreserveUnknownTags: true,
-}
+opts := converter.DefaultOptions()
+opts.StrictDataLoss = true  // Fail on any data loss
 converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, opts)
 ```
 
@@ -197,9 +203,8 @@ Transformations: 3
 When `StrictDataLoss` is enabled, the conversion fails if any data would be lost:
 
 ```go
-opts := &converter.ConvertOptions{
-    StrictDataLoss: true,
-}
+opts := converter.DefaultOptions()
+opts.StrictDataLoss = true
 converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version55, opts)
 if err != nil {
     // Error: "conversion would result in data loss (strict mode enabled)"

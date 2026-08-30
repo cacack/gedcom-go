@@ -41,7 +41,9 @@ type Submitter struct {
 	// Links this record to external systems like FamilySearch, Ancestry, etc.
 	ExternalIDs []*ExternalID
 
-	// Tags contains all raw tags for this submitter (for unknown/custom tags)
+	// Tags contains all raw tags for this submitter (for unknown/custom tags),
+	// a lossless read-side record per ADR 0003. It does not drive encoding --
+	// see Record.Tags for the rule that governs what a decoded record writes.
 	Tags []*Tag
 }
 

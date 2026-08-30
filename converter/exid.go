@@ -44,8 +44,8 @@ const familySearchArkType = "familysearch.org/ark"
 //     Individual.FamilySearchID (see gedcom.EscapeLeadingAt/UnescapeLeadingAt),
 //     but the raw tag value on disk retains the escaped "@@" form.
 //   - Gated by the caller: convert70To55/convert70To551 only invoke this when
-//     ConvertOptions.PreserveUnknownTags is set, since _FSFTID is itself a
-//     vendor extension; a caller opting out of vendor tags keeps the plain
+//     ConvertOptions.MapEXIDToVendorTags is set, since _FSFTID is itself a
+//     vendor extension; a caller opting out keeps the plain
 //     EXID-is-data-loss behavior.
 //
 // It must run before record70DataLoss so a converted EXID is not also counted

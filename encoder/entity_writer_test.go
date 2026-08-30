@@ -143,7 +143,7 @@ func TestIndividualToTags(t *testing.T) {
 			name: "individual with source citations",
 			indi: &gedcom.Individual{
 				SourceCitations: []*gedcom.SourceCitation{
-					{SourceXRef: "@S1@", Page: "p. 42", Quality: 3},
+					{SourceXRef: "@S1@", Page: "p. 42", Quality: intPtr(3)},
 				},
 			},
 			contains: []string{"SOUR", "PAGE", "QUAY"},
@@ -202,7 +202,7 @@ func TestFamilyToTags(t *testing.T) {
 		{
 			name: "family with number of children",
 			fam: &gedcom.Family{
-				NumberOfChildren: "3",
+				Attributes: []*gedcom.Attribute{{Type: "NCHI", Value: "3"}},
 			},
 			contains: []string{"NCHI"},
 		},
@@ -543,38 +543,36 @@ func TestRepositoryToTags(t *testing.T) {
 	}
 }
 
-func TestNoteToTags(t *testing.T) {
-	tests := []struct {
-		name     string
-		note     *gedcom.Note
-		contains []string
-	}{
-		{
-			name:     "note without continuation",
-			note:     &gedcom.Note{Text: "Simple note"},
-			contains: []string{}, // No CONT expected
-		},
-		{
-			name: "note with continuation",
-			note: &gedcom.Note{
-				Text:         "First line",
-				Continuation: []string{"Second line", "Third line"},
-			},
-			contains: []string{"CONT"},
-		},
+// TestNoteRecordTextIsSoleCONTProducer pins that a Note's body has exactly one
+// carrier. Note.Continuation used to be a second one, emitted separately by
+// noteToTags, so a hand-built note with a multi-line Text and a non-empty
+// Continuation wrote its body twice (issue #487).
+func TestNoteRecordTextIsSoleCONTProducer(t *testing.T) {
+	rec := &gedcom.Record{
+		XRef:   "@N1@",
+		Type:   gedcom.RecordTypeNote,
+		Entity: &gedcom.Note{XRef: "@N1@", Text: "First line\nSecond line\nThird line"},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tags := noteToTags(tt.note)
-			tagMap := tagNamesToMap(tags)
+	value, tags := entityRecordText(rec, nil)
+	if value != "First line" {
+		t.Errorf("level-0 value = %q, want %q", value, "First line")
+	}
 
-			for _, expected := range tt.contains {
-				if !tagMap[expected] {
-					t.Errorf("noteToTags() missing expected tag %q", expected)
-				}
-			}
-		})
+	var conts []string
+	for _, tag := range tags {
+		if tag.Tag == "CONT" {
+			conts = append(conts, tag.Value)
+		}
+	}
+	want := []string{"Second line", "Third line"}
+	if !reflect.DeepEqual(conts, want) {
+		t.Errorf("CONT values = %v, want %v", conts, want)
+	}
+
+	// entityToTags must contribute nothing further, or the body doubles.
+	if extra := entityToTags(rec, nil); len(extra) != 0 {
+		t.Errorf("entityToTags() returned %d tags for a Note, want 0: %+v", len(extra), extra)
 	}
 }
 
@@ -1059,7 +1057,7 @@ func TestSourceCitationToTags(t *testing.T) {
 			cite: &gedcom.SourceCitation{
 				SourceXRef: "@S1@",
 				Page:       "p. 42",
-				Quality:    3,
+				Quality:    intPtr(3),
 			},
 			level:    2,
 			contains: []string{"SOUR", "PAGE", "QUAY"},
@@ -1784,9 +1782,9 @@ func TestEntityToTagsDispatch(t *testing.T) {
 			name: "note dispatch",
 			record: &gedcom.Record{
 				Type:   gedcom.RecordTypeNote,
-				Entity: &gedcom.Note{Continuation: []string{"line"}},
+				Entity: &gedcom.Note{Text: "line"},
 			},
-			expectTags: true,
+			expectTags: false,
 		},
 		{
 			name: "media dispatch",
@@ -3426,9 +3424,8 @@ func TestEncodeNoteEntityMultiLine(t *testing.T) {
 				XRef: "@N1@",
 				Type: gedcom.RecordTypeNote,
 				Entity: &gedcom.Note{
-					XRef:         "@N1@",
-					Text:         "a",
-					Continuation: []string{"b", "c"},
+					XRef: "@N1@",
+					Text: "a\nb\nc",
 				},
 			},
 			{
@@ -3454,7 +3451,7 @@ func TestEncodeNoteEntityMultiLine(t *testing.T) {
 	}
 
 	// Full entity round-trip: no decode of a source file, so the entity encode
-	// path (entityRecordText for the value + noteToTags for continuation) is the
+	// path (entityRecordText alone, since v3 removed Note.Continuation) is the
 	// only thing under test.
 	redoc, err := decoder.Decode(strings.NewReader(output))
 	if err != nil {
@@ -3462,8 +3459,8 @@ func TestEncodeNoteEntityMultiLine(t *testing.T) {
 	}
 	if n := redoc.GetNote("@N1@"); n == nil {
 		t.Fatal("GetNote(@N1@) returned nil after round-trip")
-	} else if want := "a\nb\nc"; n.FullText() != want {
-		t.Errorf("round-trip Note.FullText() = %q, want %q", n.FullText(), want)
+	} else if want := "a\nb\nc"; n.Text != want {
+		t.Errorf("round-trip Note.Text = %q, want %q", n.Text, want)
 	}
 	if n := redoc.GetNote("@N2@"); n == nil {
 		t.Fatal("GetNote(@N2@) returned nil after round-trip")
@@ -3517,8 +3514,8 @@ func TestEncodeNoteEntityTextNewlineNoInjection(t *testing.T) {
 	}
 	if n := redoc.GetNote("@N1@"); n == nil {
 		t.Fatal("GetNote(@N1@) returned nil after round-trip")
-	} else if want := "innocent\n0 @EVIL@ INDI\n1 NAME Injected"; n.FullText() != want {
-		t.Errorf("round-trip Note.FullText() = %q, want %q", n.FullText(), want)
+	} else if want := "innocent\n0 @EVIL@ INDI\n1 NAME Injected"; n.Text != want {
+		t.Errorf("round-trip Note.Text = %q, want %q", n.Text, want)
 	}
 }
 
@@ -4717,22 +4714,17 @@ func TestFamilyToTagsAttributes(t *testing.T) {
 	}
 }
 
-// TestFamilyToTagsNCHIOnce guards the one tag the decoder stores twice: an NCHI
-// line populates both Family.NumberOfChildren and a Family.Attributes entry, so
-// the writer has to pick a single source or the encoded family gains a second
-// NCHI line on every round trip. The attribute wins when present because it also
-// carries the line's subordinates.
+// TestFamilyToTagsNCHIOnce guards against a family gaining a second NCHI line
+// on a round trip. Until v3 an NCHI line was stored twice -- in the removed
+// Family.NumberOfChildren field and as a Family.Attributes entry -- and the
+// writer had to pick one. Attributes is now the only store, and it carries the
+// line's subordinates too.
 func TestFamilyToTagsNCHIOnce(t *testing.T) {
 	tests := []struct {
 		name string
 		fam  *gedcom.Family
 		want []string
 	}{
-		{
-			name: "field only",
-			fam:  &gedcom.Family{NumberOfChildren: "3"},
-			want: []string{"1 NCHI 3"},
-		},
 		{
 			name: "attribute only",
 			fam: &gedcom.Family{
@@ -4741,9 +4733,8 @@ func TestFamilyToTagsNCHIOnce(t *testing.T) {
 			want: []string{"1 NCHI 3"},
 		},
 		{
-			name: "dual storage emits the attribute, with its subordinates",
+			name: "attribute carries its subordinates",
 			fam: &gedcom.Family{
-				NumberOfChildren: "3",
 				Attributes: []*gedcom.Attribute{
 					{Type: "NCHI", Value: "3", SourceCitations: []*gedcom.SourceCitation{{SourceXRef: "@S1@"}}},
 				},
@@ -4751,10 +4742,21 @@ func TestFamilyToTagsNCHIOnce(t *testing.T) {
 			want: []string{"1 NCHI 3", "2 SOUR @S1@"},
 		},
 		{
-			name: "unrelated attribute does not suppress the field",
+			name: "set through the typed setter",
+			fam: func() *gedcom.Family {
+				f := &gedcom.Family{}
+				f.SetNumberOfChildren("3")
+				return f
+			}(),
+			want: []string{"1 NCHI 3"},
+		},
+		{
+			name: "unrelated attribute is unaffected",
 			fam: &gedcom.Family{
-				NumberOfChildren: "3",
-				Attributes:       []*gedcom.Attribute{{Type: "RESI", Value: "Farmhouse"}},
+				Attributes: []*gedcom.Attribute{
+					{Type: "NCHI", Value: "3"},
+					{Type: "RESI", Value: "Farmhouse"},
+				},
 			},
 			want: []string{"1 NCHI 3", "1 RESI Farmhouse"},
 		},
@@ -4915,7 +4917,7 @@ func TestEntityBuiltEventDetailEncodes(t *testing.T) {
 }
 
 // decodedNoteFixture is the input for the two tests below: every substructure
-// that gained note fields in issue #447, plus the dual-stored NCHI of #448.
+// that gained note fields in issue #447, plus the NCHI attribute of #448.
 const decodedNoteFixture = `0 HEAD
 1 GEDC
 2 VERS 7.0
@@ -5023,10 +5025,10 @@ func TestDecodedNotesEncodeOnce(t *testing.T) {
 }
 
 // TestDecodedNCHIEncodesOnce is the decoded-document half of
-// TestFamilyToTagsNCHIOnce, which builds its families by hand. The decoder is
-// what actually creates the dual storage — one "1 NCHI" line populates both
-// Family.NumberOfChildren and a Family.Attributes entry — so this is the path
-// where a missing guard would emit the line twice.
+// TestFamilyToTagsNCHIOnce, which builds its families by hand. It guards the
+// round trip: one "1 NCHI" line in, one Family.Attributes entry, one line back
+// out. Until v3 the decoder also populated a second, scalar store here, and a
+// missing encoder guard emitted the line twice.
 func TestDecodedNCHIEncodesOnce(t *testing.T) {
 	out := encodeFromEntities(t, decodedNoteFixture)
 
@@ -5047,10 +5049,14 @@ func TestDecodedNCHIEncodesOnce(t *testing.T) {
 	if fam == nil {
 		t.Fatal("GetFamily(@F1@) returned nil after entity encode")
 	}
-	if fam.NumberOfChildren != "3" {
-		t.Errorf("re-decoded NumberOfChildren = %q, want %q", fam.NumberOfChildren, "3")
+	if fam.NumberOfChildren() != "3" {
+		t.Errorf("re-decoded NumberOfChildren() = %q, want %q", fam.NumberOfChildren(), "3")
 	}
 	if len(fam.Attributes) != 1 || fam.Attributes[0].Date != "1910" {
 		t.Errorf("re-decoded Attributes = %+v, want one NCHI dated 1910", fam.Attributes)
 	}
 }
+
+// intPtr returns a pointer to v, for building optional integer fields such as
+// SourceCitation.Quality in table-driven fixtures.
+func intPtr(v int) *int { return &v }

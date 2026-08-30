@@ -57,7 +57,9 @@ type Source struct {
 	// Links this record to external systems like FamilySearch, Ancestry, etc.
 	ExternalIDs []*ExternalID
 
-	// Tags contains all raw tags for this source (for unknown/custom tags)
+	// Tags contains all raw tags for this source (for unknown/custom tags),
+	// a lossless read-side record per ADR 0003. It does not drive encoding --
+	// see Record.Tags for the rule that governs what a decoded record writes.
 	Tags []*Tag
 }
 
@@ -85,12 +87,16 @@ type SourceCitation struct {
 	// Page is the page or location within the source (e.g., "Page 42, Entry 103")
 	Page string
 
-	// Quality is the evidence quality assessment (0-3 scale per GEDCOM spec)
+	// Quality is the evidence quality assessment (0-3 scale per GEDCOM spec).
+	// nil means the citation carried no QUAY tag; every value in range is a
+	// real assertion, including 0 -- which is why this is a pointer rather
+	// than a bare int whose zero value would be indistinguishable from absent.
+	//
 	// 0 = unreliable evidence or estimated data
 	// 1 = questionable reliability of evidence
 	// 2 = secondary evidence, data officially recorded sometime after event
 	// 3 = direct and primary evidence used, or by dominance of the evidence
-	Quality int
+	Quality *int
 
 	// Data contains optional extracted text and date from the source
 	Data *SourceCitationData
