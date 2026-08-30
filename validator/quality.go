@@ -326,7 +326,7 @@ func (a *QualityAnalyzer) hasPlace(ind *gedcom.Individual) bool {
 		if event == nil {
 			continue
 		}
-		if event.Place != "" || (event.PlaceDetail != nil && event.PlaceDetail.Name != "") {
+		if event.PlaceName() != "" {
 			return true
 		}
 	}

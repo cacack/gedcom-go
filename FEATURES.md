@@ -576,6 +576,30 @@ it is available on `Family.Tags` only.
 - MAP coordinates (LATI, LONG)
 - Place notes
 
+### Place Name Accessors
+
+`Event.PlaceDetail` is a pointer, so reading a name off it needs a nil check.
+`PlaceName()` does it for you:
+
+| Accessor | Returns |
+|----------|---------|
+| `Event.PlaceName()` | Place name, or `""` when no place is recorded |
+| `Attribute.PlaceName()` | Place name, or `""` when no place is recorded |
+
+```go
+// Nil-safe on the receiver and on PlaceDetail.
+fmt.Printf("Born at %s\n", person.BirthEvent().PlaceName())
+```
+
+`Event.PlaceName()` prefers `PlaceDetail.Name` and falls back to the legacy
+`Place` scalar, so a call site written against the accessor keeps working once
+that scalar is removed. An `Attribute` has only the scalar in v2, so its
+accessor reads that. The encoder resolves the event's two carriers the other way
+round, preferring the scalar. That only changes what is written for a hand-built
+value whose carriers disagree -- decode fills both from the same line, and
+byte-fidelity for a decoded document comes from `Record.Tags` being
+authoritative on encode, not from either precedence.
+
 ### Coordinate Conversion
 
 Convert GEDCOM-format coordinates (direction-prefixed, e.g. `N42.3601`) to signed decimal degrees:
@@ -1561,7 +1585,7 @@ Convenience methods for accessing parsed events and dates on individuals:
 // Access birth and death events directly
 person := doc.GetIndividual("@I1@")
 if birth := person.BirthEvent(); birth != nil {
-    fmt.Printf("Born: %s at %s\n", birth.Date, birth.Place)
+    fmt.Printf("Born: %s at %s\n", birth.Date, birth.PlaceName())
 }
 if death := person.DeathEvent(); death != nil {
     fmt.Printf("Died: %s\n", death.Date)

@@ -83,8 +83,8 @@ func main() {
 					if event.Date != "" {
 						fmt.Printf(": %s", event.Date)
 					}
-					if event.Place != "" {
-						fmt.Printf(" at %s", event.Place)
+					if place := event.PlaceName(); place != "" {
+						fmt.Printf(" at %s", place)
 					}
 					fmt.Println()
 				}

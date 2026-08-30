@@ -109,7 +109,13 @@ type Event struct {
 	// This is nil if the date string could not be parsed.
 	ParsedDate *Date
 
-	// Place is where the event occurred (kept for backward compatibility)
+	// Place is where the event occurred (kept for backward compatibility).
+	//
+	// [Event.PlaceName] is the supported read path: it is nil-safe, prefers
+	// PlaceDetail.Name, and keeps working once this scalar is removed. The
+	// encoder resolves the two carriers the other way, preferring this field
+	// when both are set -- a choice that only matters for a hand-built event,
+	// since decode fills both from the same line.
 	Place string
 
 	// PlaceDetail provides structured place information with optional coordinates
@@ -173,4 +179,24 @@ type Event struct {
 
 	// Tags contains all raw tags for this event (for unknown/custom fields)
 	Tags []*Tag
+}
+
+// PlaceName returns the event's place name, or "" when no place is recorded.
+//
+// It prefers PlaceDetail.Name and falls back to the legacy Place scalar, so a
+// call site written against it keeps working once the scalar is removed. Safe
+// on a nil receiver and a nil PlaceDetail.
+//
+// Note the encoder resolves the two carriers the other way round, preferring
+// the scalar. That only changes what is written for a hand-built event whose
+// carriers disagree: decode fills both from the same line, and byte-fidelity
+// for a decoded document comes from Record.Tags, not from either precedence.
+func (e *Event) PlaceName() string {
+	if e == nil {
+		return ""
+	}
+	if e.PlaceDetail != nil && e.PlaceDetail.Name != "" {
+		return e.PlaceDetail.Name
+	}
+	return e.Place
 }

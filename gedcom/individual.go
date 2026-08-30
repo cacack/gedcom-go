@@ -194,7 +194,13 @@ type Attribute struct {
 	// This is nil if the date string could not be parsed.
 	ParsedDate *Date
 
-	// Place where the attribute was applicable (optional)
+	// Place where the attribute was applicable (optional).
+	//
+	// [Attribute.PlaceName] is the supported read path and
+	// [Attribute.SetPlaceName] the supported write path: both are nil-safe and
+	// both keep working once this scalar is replaced by a structured carrier in
+	// v3. Unlike Event, an attribute has no PlaceDetail in v2, so this field is
+	// the only carrier here.
 	Place string
 
 	// TypeDetail is the user-supplied classification of this attribute
@@ -209,6 +215,20 @@ type Attribute struct {
 
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation
+}
+
+// PlaceName returns the attribute's place name, or "" when no place is
+// recorded. Safe on a nil receiver.
+//
+// An attribute has a single place carrier in v2, so this reads Place. v3
+// replaces that scalar with a structured PlaceDetail and this accessor reads
+// the name out of it, so a call site written against PlaceName is correct
+// before and after the removal and can be migrated ahead of the break.
+func (a *Attribute) PlaceName() string {
+	if a == nil {
+		return ""
+	}
+	return a.Place
 }
 
 // BirthEvent returns the first birth event for this individual, or nil if none found.
