@@ -552,7 +552,7 @@ family — decodes the shared `EVENT_DETAIL` structure into typed fields:
 | Tag | Field |
 |-----|-------|
 | DATE | `Event.Date`, `Event.ParsedDate` |
-| PLAC | `Event.Place`, `Event.PlaceDetail` (FORM, MAP/LATI/LONG) |
+| PLAC | `Event.PlaceDetail` (FORM, MAP/LATI/LONG), read via `Event.PlaceName()`; `Event.Place` is the legacy scalar |
 | TYPE | `Event.EventTypeDetail` |
 | CAUS | `Event.Cause` |
 | AGE | `Event.Age` |
@@ -613,6 +613,29 @@ At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
 - Place name with hierarchy (comma-separated)
 - MAP coordinates (LATI, LONG)
 - Place notes
+
+### Place Name Accessors
+
+`Event.PlaceDetail` and `Attribute.PlaceDetail` are pointers, so reading a name
+off them needs a nil check. `PlaceName()` does it for you:
+
+| Accessor | Returns |
+|----------|---------|
+| `Event.PlaceName()` | Place name, or `""` when no place is recorded |
+| `Attribute.PlaceName()` | Place name, or `""` when no place is recorded |
+
+```go
+// Nil-safe on the receiver and on PlaceDetail.
+fmt.Printf("Born at %s\n", person.BirthEvent().PlaceName())
+```
+
+Both prefer `PlaceDetail.Name` and fall back to the legacy `Place` scalar, so a
+call site written against the accessor keeps working once that scalar is
+removed. The encoder resolves the two carriers the other way round, preferring
+the scalar. That only changes what is written for a hand-built value whose
+carriers disagree -- decode fills both from the same line, and byte-fidelity for
+a decoded document comes from `Record.Tags` being authoritative on encode, not
+from either precedence.
 
 ### Coordinate Conversion
 
@@ -923,6 +946,26 @@ for _, issue := range issues {
     fmt.Printf("[%s] %s: %s\n", issue.Severity, issue.Code, issue.Message)
 }
 ```
+
+**Place Carrier Consistency:**
+
+| Check | Severity | Description |
+|-------|----------|-------------|
+| PLACE_CARRIER_MISMATCH | Warning | An event or attribute whose `Place` scalar and `PlaceDetail.Name` hold different values |
+
+A place can be recorded on either carrier. Decode fills both from the same line,
+so a decoded document never disagrees -- but a hand-built one can, and the
+disagreement is otherwise invisible: `PlaceName()` reads `PlaceDetail.Name`
+while the encoder writes `Place`, so a caller who updates only the structured
+field sees the new value in memory and writes the old one to the file. This
+check is the signal for that.
+
+```go
+issues := validator.NewPlaceConsistencyValidator().Validate(doc)
+```
+
+It fires only when both carriers are non-empty and differ; one carrier empty is
+the ordinary shape and is not reported.
 
 **Orphaned Reference Detection:**
 
@@ -1604,7 +1647,7 @@ Convenience methods for accessing parsed events and dates on individuals:
 // Access birth and death events directly
 person := doc.GetIndividual("@I1@")
 if birth := person.BirthEvent(); birth != nil {
-    fmt.Printf("Born: %s at %s\n", birth.Date, birth.Place)
+    fmt.Printf("Born: %s at %s\n", birth.Date, birth.PlaceName())
 }
 if death := person.DeathEvent(); death != nil {
     fmt.Printf("Died: %s\n", death.Date)

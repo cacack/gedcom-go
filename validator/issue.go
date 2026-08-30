@@ -101,6 +101,12 @@ const (
 
 	// CodeNoSources indicates a record has no source citations.
 	CodeNoSources = "NO_SOURCES"
+
+	// CodePlaceCarrierMismatch indicates an event or attribute whose legacy
+	// Place scalar and PlaceDetail.Name hold different values. The encoder
+	// writes the scalar while PlaceName() reads PlaceDetail.Name, so the
+	// document on disk and the document in memory disagree.
+	CodePlaceCarrierMismatch = "PLACE_CARRIER_MISMATCH"
 )
 
 // Error codes for custom tag registry validation.
