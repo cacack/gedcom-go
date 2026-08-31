@@ -919,12 +919,12 @@ func TestDecodeWithDiagnostics_LevelJumpRecovery_MidRecordSubordinateSkip(t *tes
 	}
 
 	// PLAC must attach to DEAT (its preceding level-1 sibling), not BIRT.
-	if deat.Place != "London, England" {
-		t.Errorf("DEAT.Place = %q, want %q (PLAC was attached to the wrong event after clamping)",
-			deat.Place, "London, England")
+	if deat.PlaceName() != "London, England" {
+		t.Errorf("DEAT.PlaceName() = %q, want %q (PLAC was attached to the wrong event after clamping)",
+			deat.PlaceName(), "London, England")
 	}
-	if birt.Place != "" {
-		t.Errorf("BIRT.Place = %q, expected empty (PLAC should not have leaked to BIRT)", birt.Place)
+	if birt.PlaceName() != "" {
+		t.Errorf("BIRT.PlaceName() = %q, expected empty (PLAC should not have leaked to BIRT)", birt.PlaceName())
 	}
 	// BIRT.Date should still parse normally.
 	if birt.Date != "1 JAN 1900" {

@@ -1566,9 +1566,9 @@ func TestRoundtripEntityEncoding(t *testing.T) {
 					Sex: "M",
 					Events: []*gedcom.Event{
 						{
-							Type:  gedcom.EventBirth,
-							Date:  "1 JAN 1950",
-							Place: "Boston, MA",
+							Type:        gedcom.EventBirth,
+							Date:        "1 JAN 1950",
+							PlaceDetail: &gedcom.PlaceDetail{Name: "Boston, MA"},
 						},
 					},
 				},
@@ -1816,10 +1816,10 @@ func TestRoundtripComplexIndividual(t *testing.T) {
 					Sex: "M",
 					Events: []*gedcom.Event{
 						{
-							Type:  gedcom.EventBirth,
-							Date:  "17 DEC 1770",
-							Place: "Bonn, Germany",
+							Type: gedcom.EventBirth,
+							Date: "17 DEC 1770",
 							PlaceDetail: &gedcom.PlaceDetail{
+								Name: "Bonn, Germany",
 								Form: "City, Country",
 								Coordinates: &gedcom.Coordinates{
 									Latitude:  "N50.7339",
@@ -1846,7 +1846,7 @@ func TestRoundtripComplexIndividual(t *testing.T) {
 						{Type: gedcom.EventDeath, Date: "26 MAR 1827", Cause: "Liver disease"},
 					},
 					Attributes: []*gedcom.Attribute{
-						{Type: "OCCU", Value: "Composer", Date: "1792", Place: "Vienna"},
+						{Type: "OCCU", Value: "Composer", Date: "1792", PlaceDetail: &gedcom.PlaceDetail{Name: "Vienna"}},
 					},
 					ChildInFamilies:  []gedcom.FamilyLink{{FamilyXRef: "@F1@", Pedigree: "birth"}},
 					SpouseInFamilies: []string{"@F2@"},

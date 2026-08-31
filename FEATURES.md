@@ -552,7 +552,7 @@ family — decodes the shared `EVENT_DETAIL` structure into typed fields:
 | Tag | Field |
 |-----|-------|
 | DATE | `Event.Date`, `Event.ParsedDate` |
-| PLAC | `Event.PlaceDetail` (FORM, MAP/LATI/LONG), read via `Event.PlaceName()`; `Event.Place` is the legacy scalar |
+| PLAC | `Event.PlaceDetail` (FORM, MAP/LATI/LONG), read via `Event.PlaceName()`, written via `Event.SetPlaceName()` |
 | TYPE | `Event.EventTypeDetail` |
 | CAUS | `Event.Cause` |
 | AGE | `Event.Age` |
@@ -617,25 +617,37 @@ At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
 ### Place Name Accessors
 
 `Event.PlaceDetail` and `Attribute.PlaceDetail` are pointers, so reading a name
-off them needs a nil check. `PlaceName()` does it for you:
+off them needs a nil check and writing one needs an allocation. These accessors
+do both for you:
 
-| Accessor | Returns |
-|----------|---------|
+| Accessor | Behaviour |
+|----------|-----------|
 | `Event.PlaceName()` | Place name, or `""` when no place is recorded |
 | `Attribute.PlaceName()` | Place name, or `""` when no place is recorded |
+| `Event.SetPlaceName(name)` | Sets the name, allocating `PlaceDetail` if absent |
+| `Attribute.SetPlaceName(name)` | Sets the name, allocating `PlaceDetail` if absent |
 
 ```go
 // Nil-safe on the receiver and on PlaceDetail.
 fmt.Printf("Born at %s\n", person.BirthEvent().PlaceName())
+
+// Allocates PlaceDetail on a freshly built event; preserves Form and
+// Coordinates on one that already has them.
+ev := &gedcom.Event{Type: gedcom.EventBirth}
+ev.SetPlaceName("Boston, MA")
 ```
 
-Both prefer `PlaceDetail.Name` and fall back to the legacy `Place` scalar, so a
-call site written against the accessor keeps working once that scalar is
-removed. The encoder resolves the two carriers the other way round, preferring
-the scalar. That only changes what is written for a hand-built value whose
-carriers disagree -- decode fills both from the same line, and byte-fidelity for
-a decoded document comes from `Record.Tags` being authoritative on encode, not
-from either precedence.
+On events and attributes, `PlaceDetail` is the sole place carrier: both readers
+return `PlaceDetail.Name`, and the encoder writes a `PLAC` line whenever
+`PlaceDetail` is non-nil -- an empty `Name` still writes a valueless `PLAC`,
+which is what a bare `2 PLAC` line decodes to. The corollary is the reason
+`SetPlaceName` exists: a nil `PlaceDetail` means *no place*, so a writer that
+leaves it nil emits no `PLAC` line at all, in memory-visible silence. Setting an
+empty name on an event that has no carrier is therefore a no-op; to clear a place
+that is already recorded, assign `PlaceDetail = nil`.
+
+`LDSOrdinance.Place` is a separate scalar with no `PlaceDetail` twin and is
+unaffected by any of the above.
 
 ### Coordinate Conversion
 
@@ -946,26 +958,6 @@ for _, issue := range issues {
     fmt.Printf("[%s] %s: %s\n", issue.Severity, issue.Code, issue.Message)
 }
 ```
-
-**Place Carrier Consistency:**
-
-| Check | Severity | Description |
-|-------|----------|-------------|
-| PLACE_CARRIER_MISMATCH | Warning | An event or attribute whose `Place` scalar and `PlaceDetail.Name` hold different values |
-
-A place can be recorded on either carrier. Decode fills both from the same line,
-so a decoded document never disagrees -- but a hand-built one can, and the
-disagreement is otherwise invisible: `PlaceName()` reads `PlaceDetail.Name`
-while the encoder writes `Place`, so a caller who updates only the structured
-field sees the new value in memory and writes the old one to the file. This
-check is the signal for that.
-
-```go
-issues := validator.NewPlaceConsistencyValidator().Validate(doc)
-```
-
-It fires only when both carriers are non-empty and differ; one carrier empty is
-the ordinary shape and is not reported.
 
 **Orphaned Reference Detection:**
 

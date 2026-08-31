@@ -71,7 +71,7 @@ func sampleEntities() []struct {
 				{Full: "John /Smith/", Given: "John", Surname: "Smith"},
 			},
 			Events: []*gedcom.Event{
-				{Type: "BIRT", Date: "5 AUG 1901", Place: "Boston, Massachusetts"},
+				{Type: "BIRT", Date: "5 AUG 1901", PlaceDetail: &gedcom.PlaceDetail{Name: "Boston, Massachusetts"}},
 			},
 			Attributes: []*gedcom.Attribute{
 				{Type: "OCCU", Value: "Carpenter"},
@@ -83,7 +83,7 @@ func sampleEntities() []struct {
 			Wife:     "@I2@",
 			Children: []string{"@I3@"},
 			Events: []*gedcom.Event{
-				{Type: "MARR", Date: "1 JAN 1925", Place: "Boston, Massachusetts"},
+				{Type: "MARR", Date: "1 JAN 1925", PlaceDetail: &gedcom.PlaceDetail{Name: "Boston, Massachusetts"}},
 			},
 		}},
 		// Every free-text field here is multi-line on purpose. The single-line

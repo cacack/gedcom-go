@@ -488,7 +488,6 @@ func parseSourceCitationData(tags []*gedcom.Tag, dataIdx, baseLevel int, collect
 type eventDetail struct {
 	date            *string
 	parsedDate      **gedcom.Date
-	place           *string
 	placeDetail     **gedcom.PlaceDetail
 	cause           *string
 	agency          *string
@@ -514,7 +513,6 @@ func eventDetailOf(e *gedcom.Event) eventDetail {
 	return eventDetail{
 		date:            &e.Date,
 		parsedDate:      &e.ParsedDate,
-		place:           &e.Place,
 		placeDetail:     &e.PlaceDetail,
 		cause:           &e.Cause,
 		agency:          &e.Agency,
@@ -541,7 +539,6 @@ func eventDetailOfAttribute(a *gedcom.Attribute) eventDetail {
 	return eventDetail{
 		date:            &a.Date,
 		parsedDate:      &a.ParsedDate,
-		place:           &a.Place,
 		placeDetail:     &a.PlaceDetail,
 		cause:           &a.Cause,
 		agency:          &a.Agency,
@@ -591,7 +588,6 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 			}
 		}
 	case "PLAC":
-		*detail.place = tag.Value
 		*detail.placeDetail = parsePlaceDetail(tags, i, tag.Level, collector)
 	case "CAUS":
 		*detail.cause = tag.Value

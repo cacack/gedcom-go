@@ -115,8 +115,8 @@ func checkFamilyDetailFixture(t *testing.T, doc *gedcom.Document) {
 	if cens == nil {
 		t.Fatal("FAM.CENS did not reach Family.Events")
 	}
-	if cens.Date != "1900" || cens.Place != "Springfield, Illinois" {
-		t.Errorf("CENS date/place = %q/%q, want \"1900\"/\"Springfield, Illinois\"", cens.Date, cens.Place)
+	if cens.Date != "1900" || cens.PlaceName() != "Springfield, Illinois" {
+		t.Errorf("CENS date/place = %q/%q, want \"1900\"/\"Springfield, Illinois\"", cens.Date, cens.PlaceName())
 	}
 	if cens.Agency != "Bureau of the Census" {
 		t.Errorf("CENS Agency = %q, want %q", cens.Agency, "Bureau of the Census")
@@ -135,8 +135,8 @@ func checkFamilyDetailFixture(t *testing.T, doc *gedcom.Document) {
 	if resi == nil {
 		t.Fatal("FAM.RESI did not reach Family.Events")
 	}
-	if resi.Date != "FROM 1901 TO 1910" || resi.Place != "Chicago, Illinois" {
-		t.Errorf("RESI date/place = %q/%q, want \"FROM 1901 TO 1910\"/\"Chicago, Illinois\"", resi.Date, resi.Place)
+	if resi.Date != "FROM 1901 TO 1910" || resi.PlaceName() != "Chicago, Illinois" {
+		t.Errorf("RESI date/place = %q/%q, want \"FROM 1901 TO 1910\"/\"Chicago, Illinois\"", resi.Date, resi.PlaceName())
 	}
 	if resi.Address == nil || resi.Address.City != "Chicago" {
 		t.Fatalf("RESI Address = %+v, want City \"Chicago\"", resi.Address)

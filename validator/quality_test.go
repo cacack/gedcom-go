@@ -27,7 +27,7 @@ func makeIndividualWithDetails(xref string, birthYear int, hasSource, hasPlace, 
 		if len(ind.Events) == 0 {
 			ind.Events = append(ind.Events, &gedcom.Event{Type: gedcom.EventBirth})
 		}
-		ind.Events[0].Place = "Test Place"
+		ind.Events[0].PlaceDetail = &gedcom.PlaceDetail{Name: "Test Place"}
 	}
 
 	if hasName {
@@ -570,7 +570,7 @@ func TestQualityAnalyzer_Analyze_PlaceDetection(t *testing.T) {
 		place    string
 		hasPlace bool
 	}{
-		{"with place string", "Test Place", true},
+		{"with place name", "Test Place", true},
 		{"without place", "", false},
 	}
 
@@ -580,9 +580,9 @@ func TestQualityAnalyzer_Analyze_PlaceDetection(t *testing.T) {
 				XRef:  "@I1@",
 				Names: []*gedcom.PersonalName{{Full: "Test"}},
 				Events: []*gedcom.Event{{
-					Type:       gedcom.EventBirth,
-					ParsedDate: makeYearDate(1950),
-					Place:      tt.place,
+					Type:        gedcom.EventBirth,
+					ParsedDate:  makeYearDate(1950),
+					PlaceDetail: &gedcom.PlaceDetail{Name: tt.place},
 				}},
 				SourceCitations: []*gedcom.SourceCitation{{SourceXRef: "@S1@"}},
 			}

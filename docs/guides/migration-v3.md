@@ -217,7 +217,10 @@ value, not a source line, and `CodeBannedControlCharacter` now carries both:
 ## Straight removals
 
 Each of these is superseded by something that already exists in v2, so you can
-migrate before upgrading.
+migrate before upgrading -- provided you are on a v2 release that carries the
+replacement. The place accessors are the exception worth checking: they postdate
+`v2.4.0`, so see [Migrating a write](#migrating-a-write) before staging that
+migration.
 
 | Removed | Replacement |
 |---------|-------------|
@@ -229,6 +232,9 @@ migrate before upgrading.
 | `gedcom/testing.WithHeaderTagComparison()` | none needed — delete the argument. Header tags have been compared unconditionally since v2 |
 | `version.IsValidVersion(v)` | `v.IsValid()` — the same switch, as a method on `gedcom.Version` |
 | `gedcom.Event.Tags` | `Record.Tags` — the single store for an event's raw tags |
+| `gedcom.Event.Place` | `Event.PlaceName()` to read, `Event.SetPlaceName(name)` to write |
+| `gedcom.Attribute.Place` | `Attribute.PlaceName()` to read, `Attribute.SetPlaceName(name)` to write |
+| `validator.PlaceConsistencyValidator`, `validator.NewPlaceConsistencyValidator()`, `validator.CodePlaceCarrierMismatch` | none needed — the check compared two place carriers and there is now one. Never shipped in a tagged release |
 
 ```go
 // v2
@@ -244,6 +250,119 @@ src.RepositoryLink = &gedcom.SourceRepositoryLink{
 
 `SourceRepositoryLink` also carries the call numbers, media type, and per-link
 notes that the flat fields could not represent, so it is a strict superset.
+
+```go
+// v2 — two carriers for one fact, written apart
+ev.Place = "Boston, MA"
+ev.PlaceDetail = &gedcom.PlaceDetail{
+    Name:        "Boston, MA",
+    Coordinates: &gedcom.Coordinates{Latitude: "N42.3601", Longitude: "W71.0589"},
+}
+
+// v3 — one carrier
+ev.PlaceDetail = &gedcom.PlaceDetail{
+    Name:        "Boston, MA",
+    Coordinates: &gedcom.Coordinates{Latitude: "N42.3601", Longitude: "W71.0589"},
+}
+fmt.Println(ev.PlaceName()) // nil-safe read on the receiver and on PlaceDetail
+```
+
+#### Migrating a write
+
+**`PlaceDetail` is a pointer, and in v3 a nil one means "no place" — the encoder
+writes no `PLAC` line at all.** That makes two otherwise-reasonable repairs of a
+`Place` assignment silently wrong, so prefer `SetPlaceName`, which allocates
+when needed and leaves any existing `Form` and `Coordinates` untouched:
+
+```go
+// v2
+ev.Place = name
+
+// v3 — allocates PlaceDetail if absent, nil-safe on the receiver
+ev.SetPlaceName(name)
+```
+
+Both of these are traps:
+
+```go
+ev.PlaceDetail.Name = name   // panics: a freshly built Event has no PlaceDetail
+// (deleting the `ev.Place = name` line)  // place silently vanishes on encode
+```
+
+The second is the one to watch for, because it compiles. Code that allocated
+`PlaceDetail` only inside a conditional -- a coordinates branch, say -- keeps
+compiling once the `Place` assignment is deleted, and every place that misses
+that branch stops being written. The loss is invisible in memory, since reads
+still resolve, and it produces no error and no diagnostic; only a diff of the
+exported file shows it. If you assign `PlaceDetail` wholesale instead of calling
+`SetPlaceName`, hoist the allocation out of any conditional.
+
+`SetPlaceName` is a safe substitution for an optional value: an empty name on an
+event that has no `PlaceDetail` yet does nothing, matching what `ev.Place = ""`
+did in v2, so an existing `if place != ""` guard around the call is redundant
+rather than load-bearing. Clearing a place that *is* already recorded is the one
+thing the setter does not do -- assign `ev.PlaceDetail = nil` for that, since
+calling it with an empty name blanks the name but keeps the carrier, and a
+carrier with an empty `Name` still encodes as a valueless `PLAC` line.
+
+In a composite literal, where no method call is possible, assign the structured
+field directly and keep it out of any conditional:
+
+```go
+ev := &gedcom.Event{
+    Type:        gedcom.EventBirth,
+    PlaceDetail: &gedcom.PlaceDetail{Name: p.BirthPlace},
+}
+```
+
+`PlaceName()` resolves to `PlaceDetail.Name`, so a read migrated ahead of the
+upgrade needs no further change once you are on a release that carries the
+accessor (see the note below). A write behaves differently than it did: the
+encoder used to prefer the scalar, so code that set only `PlaceDetail` could
+lose the place -- name and coordinates both, since `MAP` hangs off the `PLAC`
+line. In v3 a non-nil `PlaceDetail` is the whole gate, and an empty `Name` still
+writes a valueless `PLAC` line.
+
+> **Minimum version for a staged migration.** `PlaceName()`, `SetPlaceName()`
+> and the encoder fix that emits `PLAC` from `PlaceDetail` alone all postdate
+> `v2.4.0`. Migrating reads and writes *before* upgrading to v3 requires a v2
+> release that carries them; against `v2.4.0` or earlier, the read accessor does
+> not exist and the compile break and the behaviour change arrive together.
+
+#### Known downstream call sites
+
+`my-family` is the documented consumer of this library, and these are the sites
+that will not compile against v3. They are listed here so the migration is not
+rediscovered at `go get` time:
+
+Counts below are as of `v2.4.0-37-g4369558`; re-grep before relying on them.
+
+| Site | v2 | v3 |
+|------|----|----|
+| `internal/gedcom/importer.go` (9 read sites) | `event.Place` | `event.PlaceName()` |
+| `internal/gedcom/exporter.go` (4 event write sites) | `ev.Place = name` | `ev.SetPlaceName(name)` |
+| `internal/gedcom/exporter.go` (attribute write) | `ga.Place = attr.Place` | `ga.SetPlaceName(attr.Place)` |
+| `internal/query/validation_service.go` (3 event literals) | `Place: p.BirthPlace` | `PlaceDetail: &gedcom.PlaceDetail{Name: p.BirthPlace}` |
+
+The exporter's event write sites need the closest reading. Each one assigns
+`Place` unconditionally but allocates `PlaceDetail` only inside a nested
+coordinates branch, so deleting the `Place` line compiles and drops every place
+that has no latitude and longitude. Replacing the line with `SetPlaceName` keeps
+the coordinates branch working unchanged -- it allocates only when `PlaceDetail`
+is still nil, and never clears `Coordinates`. The attribute write site has no
+coordinates branch at all, so deleting its line drops the place unconditionally.
+Note that the value there comes from a read model with a plain `Place` field and
+no accessor, so it stays `attr.Place` on the right-hand side.
+
+`validation_service.go` is the easiest one to get wrong. Its three sites are
+**composite literals**, so `SetPlaceName` cannot be used inline and the
+structured field has to be assigned directly. The events exist only to be handed
+to `ValidateAll`, so silently dropping the field there does not corrupt an
+exported file -- it makes the quality analyzer report missing places for records
+that have them.
+
+`LDSOrdinance.Place` is a different field with no `PlaceDetail` twin. It is
+unchanged in v3, so leave those call sites alone.
 
 ### `Family.NumberOfChildren` is now a method
 

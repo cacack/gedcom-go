@@ -89,9 +89,9 @@ func TestIndividualToTags(t *testing.T) {
 			indi: &gedcom.Individual{
 				Events: []*gedcom.Event{
 					{
-						Type:  gedcom.EventBirth,
-						Date:  "1 JAN 1900",
-						Place: "London, England",
+						Type:        gedcom.EventBirth,
+						Date:        "1 JAN 1900",
+						PlaceDetail: &gedcom.PlaceDetail{Name: "London, England"},
 					},
 					{
 						Type:  gedcom.EventDeath,
@@ -107,7 +107,7 @@ func TestIndividualToTags(t *testing.T) {
 			indi: &gedcom.Individual{
 				Attributes: []*gedcom.Attribute{
 					{Type: "OCCU", Value: "Software Engineer", Date: "2000"},
-					{Type: "EDUC", Value: "PhD Computer Science", Place: "MIT"},
+					{Type: "EDUC", Value: "PhD Computer Science", PlaceDetail: &gedcom.PlaceDetail{Name: "MIT"}},
 				},
 			},
 			contains: []string{"OCCU", "EDUC", "DATE", "PLAC"},
@@ -210,7 +210,7 @@ func TestFamilyToTags(t *testing.T) {
 			name: "family with events",
 			fam: &gedcom.Family{
 				Events: []*gedcom.Event{
-					{Type: gedcom.EventMarriage, Date: "15 JUN 1920", Place: "Boston, MA"},
+					{Type: gedcom.EventMarriage, Date: "15 JUN 1920", PlaceDetail: &gedcom.PlaceDetail{Name: "Boston, MA"}},
 					{Type: gedcom.EventDivorce, Date: "1 JAN 1940"},
 				},
 			},
@@ -737,9 +737,9 @@ func TestEventToTags(t *testing.T) {
 		{
 			name: "event with date and place",
 			event: &gedcom.Event{
-				Type:  gedcom.EventDeath,
-				Date:  "31 DEC 1999",
-				Place: "New York, NY",
+				Type:        gedcom.EventDeath,
+				Date:        "31 DEC 1999",
+				PlaceDetail: &gedcom.PlaceDetail{Name: "New York, NY"},
 			},
 			level:    1,
 			contains: []string{"DEAT", "DATE", "PLAC"},
@@ -747,9 +747,9 @@ func TestEventToTags(t *testing.T) {
 		{
 			name: "event with place coordinates",
 			event: &gedcom.Event{
-				Type:  gedcom.EventBirth,
-				Place: "Boston, MA",
+				Type: gedcom.EventBirth,
 				PlaceDetail: &gedcom.PlaceDetail{
+					Name: "Boston, MA",
 					Form: "City, State",
 					Coordinates: &gedcom.Coordinates{
 						Latitude:  "N42.3601",
@@ -863,10 +863,10 @@ func TestAttributeToTags(t *testing.T) {
 		{
 			name: "attribute with date and place",
 			attr: &gedcom.Attribute{
-				Type:  "EDUC",
-				Value: "Bachelor's Degree",
-				Date:  "1985",
-				Place: "MIT",
+				Type:        "EDUC",
+				Value:       "Bachelor's Degree",
+				Date:        "1985",
+				PlaceDetail: &gedcom.PlaceDetail{Name: "MIT"},
 			},
 			level:    1,
 			contains: []string{"EDUC", "DATE", "PLAC"},
@@ -932,11 +932,11 @@ func TestAttributeToTagsTypeDetail(t *testing.T) {
 		{
 			name: "type detail after place",
 			attr: &gedcom.Attribute{
-				Type:       "IDNO",
-				Value:      "12345",
-				Date:       "1980",
-				Place:      "Oxford",
-				TypeDetail: "National ID",
+				Type:        "IDNO",
+				Value:       "12345",
+				Date:        "1980",
+				PlaceDetail: &gedcom.PlaceDetail{Name: "Oxford"},
+				TypeDetail:  "National ID",
 			},
 			want: []*gedcom.Tag{
 				{Level: 1, Tag: "IDNO", Value: "12345"},
@@ -1599,49 +1599,59 @@ func TestMediaTranslationToTags(t *testing.T) {
 
 func TestPlaceToTags(t *testing.T) {
 	tests := []struct {
-		name     string
-		place    string
-		detail   *gedcom.PlaceDetail
-		level    int
-		contains []string
+		name   string
+		detail *gedcom.PlaceDetail
+		level  int
+		want   []string
 	}{
 		{
-			name:     "place name only",
-			place:    "Boston, MA",
-			detail:   nil,
-			level:    2,
-			contains: []string{"PLAC"},
+			name:   "nil detail writes nothing",
+			detail: nil,
+			level:  2,
+			want:   []string{},
 		},
 		{
-			name:     "place with form",
-			place:    "Boston, MA",
-			detail:   &gedcom.PlaceDetail{Form: "City, State"},
-			level:    2,
-			contains: []string{"PLAC", "FORM"},
+			name:   "empty name still writes a bare PLAC",
+			detail: &gedcom.PlaceDetail{},
+			level:  2,
+			want:   []string{"2 PLAC"},
 		},
 		{
-			name:  "place with coordinates",
-			place: "Boston, MA",
+			name:   "place name only",
+			detail: &gedcom.PlaceDetail{Name: "Boston, MA"},
+			level:  2,
+			want:   []string{"2 PLAC Boston, MA"},
+		},
+		{
+			name:   "place with form",
+			detail: &gedcom.PlaceDetail{Name: "Boston, MA", Form: "City, State"},
+			level:  2,
+			want:   []string{"2 PLAC Boston, MA", "3 FORM City, State"},
+		},
+		{
+			name: "place with coordinates",
 			detail: &gedcom.PlaceDetail{
+				Name: "Boston, MA",
 				Coordinates: &gedcom.Coordinates{
 					Latitude:  "N42.3601",
 					Longitude: "W71.0589",
 				},
 			},
-			level:    2,
-			contains: []string{"PLAC", "MAP", "LATI", "LONG"},
+			level: 2,
+			want: []string{
+				"2 PLAC Boston, MA",
+				"3 MAP",
+				"4 LATI N42.3601",
+				"4 LONG W71.0589",
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := placeToTags(tt.place, tt.detail, tt.level)
-			tagMap := tagNamesToMap(tags)
-
-			for _, expected := range tt.contains {
-				if !tagMap[expected] {
-					t.Errorf("placeToTags() missing expected tag %q", expected)
-				}
+			got := formatTags(placeToTags(tt.detail, tt.level))
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("placeToTags() = %#v, want %#v", got, tt.want)
 			}
 		})
 	}
@@ -4621,8 +4631,8 @@ func TestAttributeToTagsEventDetail(t *testing.T) {
 		Type:  "RESI",
 		Value: "Farmhouse",
 		Date:  "1901",
-		Place: "Springfield, Illinois",
 		PlaceDetail: &gedcom.PlaceDetail{
+			Name:        "Springfield, Illinois",
 			Form:        "City, State",
 			Coordinates: &gedcom.Coordinates{Latitude: "N39.7", Longitude: "W89.6"},
 		},
@@ -4696,7 +4706,7 @@ func TestAttributeToTagsEventDetail(t *testing.T) {
 func TestFamilyToTagsAttributes(t *testing.T) {
 	fam := &gedcom.Family{
 		Attributes: []*gedcom.Attribute{
-			{Type: "RESI", Value: "Farmhouse", Date: "1901", Place: "Springfield"},
+			{Type: "RESI", Value: "Farmhouse", Date: "1901", PlaceDetail: &gedcom.PlaceDetail{Name: "Springfield"}},
 			{Type: "FACT", Value: "Wealthy", TypeDetail: "Standing"},
 		},
 	}
