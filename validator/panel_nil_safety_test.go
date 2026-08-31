@@ -120,7 +120,7 @@ func TestValidateAll_NilEventInFamilyEvents(t *testing.T) {
 // hasPlace is the third reader of Individual.Events; BirthEvent and DeathEvent
 // were the two that were guarded first.
 func TestQualityAnalyzer_NilEventElement(t *testing.T) {
-	event := &gedcom.Event{Type: gedcom.EventBirth, Place: "London"}
+	event := &gedcom.Event{Type: gedcom.EventBirth, PlaceDetail: &gedcom.PlaceDetail{Name: "London"}}
 	got := NewQualityAnalyzer().Analyze(panelDoc(
 		panelInd("@I1@", aName(), []*gedcom.Event{nil, event}),
 	))

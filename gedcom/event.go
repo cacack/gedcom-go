@@ -113,16 +113,9 @@ type Event struct {
 	// This is nil if the date string could not be parsed.
 	ParsedDate *Date
 
-	// Place is where the event occurred (kept for backward compatibility).
-	//
-	// [Event.PlaceName] is the supported read path: it is nil-safe, prefers
-	// PlaceDetail.Name, and keeps working once this scalar is removed. The
-	// encoder resolves the two carriers the other way, preferring this field
-	// when both are set -- a choice that only matters for a hand-built event,
-	// since decode fills both from the same line.
-	Place string
-
-	// PlaceDetail provides structured place information with optional coordinates
+	// PlaceDetail is where the event occurred, with optional coordinates.
+	// It is the sole place carrier; [Event.PlaceName] is the nil-safe read
+	// path for just the name.
 	PlaceDetail *PlaceDetail
 
 	// Description provides additional details
@@ -202,24 +195,39 @@ type Event struct {
 	Media []*MediaLink
 }
 
-// PlaceName returns the event's place name, or "" when no place is recorded.
-//
-// It prefers PlaceDetail.Name and falls back to the legacy Place scalar, so a
-// call site written against it keeps working once the scalar is removed. Safe
-// on a nil receiver and a nil PlaceDetail.
-//
-// Note the encoder resolves the two carriers the other way round, preferring
-// the scalar. That only changes what is written for a hand-built event whose
-// carriers disagree: decode fills both from the same line, and byte-fidelity
-// for a decoded document comes from Record.Tags, not from either precedence.
+// PlaceName returns PlaceDetail.Name, or "" when no place is recorded.
+// Safe on a nil receiver and a nil PlaceDetail.
 func (e *Event) PlaceName() string {
-	if e == nil {
+	if e == nil || e.PlaceDetail == nil {
 		return ""
 	}
-	if e.PlaceDetail != nil && e.PlaceDetail.Name != "" {
-		return e.PlaceDetail.Name
+	return e.PlaceDetail.Name
+}
+
+// SetPlaceName records name as the event's place, allocating PlaceDetail if the
+// event does not have one yet and leaving any existing Form and Coordinates
+// intact. Safe on a nil receiver, where it does nothing.
+//
+// This is the counterpart of [Event.PlaceName] and the supported write path:
+// assigning through PlaceDetail directly panics on an event built without one,
+// and leaving PlaceDetail nil means the encoder writes no PLAC line at all.
+//
+// An empty name on an event that has no PlaceDetail is a no-op, so threading an
+// optional place through this method cannot conjure a placeless PLAC line. To
+// clear a place that is already recorded, set PlaceDetail to nil -- calling this
+// with an empty name only blanks the name, and a PlaceDetail whose Name is empty
+// still encodes as a valueless PLAC line.
+func (e *Event) SetPlaceName(name string) {
+	if e == nil {
+		return
 	}
-	return e.Place
+	if e.PlaceDetail == nil {
+		if name == "" {
+			return
+		}
+		e.PlaceDetail = &PlaceDetail{}
+	}
+	e.PlaceDetail.Name = name
 }
 
 // AllNotes returns this event's inline notes followed by the text of any

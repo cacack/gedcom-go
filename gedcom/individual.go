@@ -196,16 +196,9 @@ type Attribute struct {
 	// This is nil if the date string could not be parsed.
 	ParsedDate *Date
 
-	// Place where the attribute was applicable (optional).
-	//
-	// [Attribute.PlaceName] is the supported read path: it is nil-safe,
-	// prefers PlaceDetail.Name, and keeps working once this scalar is removed.
-	// The encoder resolves the two carriers the other way, preferring this
-	// field when both are set -- a choice that only matters for a hand-built
-	// attribute, since decode fills both from the same line.
-	Place string
-
-	// PlaceDetail provides structured place information with optional coordinates
+	// PlaceDetail is where the attribute was applicable (optional), with
+	// optional coordinates. It is the sole place carrier;
+	// [Attribute.PlaceName] is the nil-safe read path for just the name.
 	PlaceDetail *PlaceDetail
 
 	// TypeDetail is the user-supplied classification of this attribute
@@ -280,26 +273,40 @@ type Attribute struct {
 	Notes []string
 }
 
-// PlaceName returns the attribute's place name, or "" when no place is
-// recorded.
-//
-// It prefers PlaceDetail.Name and falls back to the legacy Place scalar, so a
-// call site written against it keeps working once the scalar is removed. Safe
-// on a nil receiver and a nil PlaceDetail.
-//
-// Note the encoder resolves the two carriers the other way round, preferring
-// the scalar. That only changes what is written for a hand-built attribute
-// whose carriers disagree: decode fills both from the same line, and
-// byte-fidelity for a decoded document comes from Record.Tags, not from either
-// precedence.
+// PlaceName returns PlaceDetail.Name, or "" when no place is recorded.
+// Safe on a nil receiver and a nil PlaceDetail.
 func (a *Attribute) PlaceName() string {
-	if a == nil {
+	if a == nil || a.PlaceDetail == nil {
 		return ""
 	}
-	if a.PlaceDetail != nil && a.PlaceDetail.Name != "" {
-		return a.PlaceDetail.Name
+	return a.PlaceDetail.Name
+}
+
+// SetPlaceName records name as the attribute's place, allocating PlaceDetail if
+// the attribute does not have one yet and leaving any existing Form and
+// Coordinates intact. Safe on a nil receiver, where it does nothing.
+//
+// This is the counterpart of [Attribute.PlaceName] and the supported write
+// path: assigning through PlaceDetail directly panics on an attribute built
+// without one, and leaving PlaceDetail nil means the encoder writes no PLAC
+// line at all.
+//
+// An empty name on an attribute that has no PlaceDetail is a no-op, so threading
+// an optional place through this method cannot conjure a placeless PLAC line. To
+// clear a place that is already recorded, set PlaceDetail to nil -- calling this
+// with an empty name only blanks the name, and a PlaceDetail whose Name is empty
+// still encodes as a valueless PLAC line.
+func (a *Attribute) SetPlaceName(name string) {
+	if a == nil {
+		return
 	}
-	return a.Place
+	if a.PlaceDetail == nil {
+		if name == "" {
+			return
+		}
+		a.PlaceDetail = &PlaceDetail{}
+	}
+	a.PlaceDetail.Name = name
 }
 
 // AllNotes returns this attribute's inline notes followed by the text of any

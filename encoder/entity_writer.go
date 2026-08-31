@@ -741,7 +741,6 @@ func transliterationToTags(tran *gedcom.Transliteration, level int) []*gedcom.Ta
 // the one EVENT_DETAIL member gedcom.Attribute does not model.
 type eventDetail struct {
 	date                 string
-	place                string
 	placeDetail          *gedcom.PlaceDetail
 	typeDetail           string
 	cause                string
@@ -776,19 +775,12 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "DATE", Value: d.date})
 	}
 
-	// Place with optional details. The gate is the presence of either carrier,
-	// not the legacy scalar alone: a caller who follows the structured-place
-	// advice and sets only PlaceDetail used to lose the place entirely -- name
-	// and coordinates both, since MAP hangs off a PLAC line that was never
-	// written.
-	//
-	// A non-nil PlaceDetail is enough, even with an empty Name. That is the
-	// correspondence the decoder already establishes in the other direction: a
-	// bare "2 PLAC" line with MAP children parses to a non-nil PlaceDetail
-	// whose Name is "", so gating on Name would discard coordinates the
-	// library itself produces.
-	if d.place != "" || d.placeDetail != nil {
-		tags = append(tags, placeToTags(d.place, d.placeDetail, level)...)
+	// Place. A non-nil PlaceDetail is enough, even with an empty Name: the
+	// decoder parses a bare "2 PLAC" line to a non-nil PlaceDetail whose Name
+	// is "", so gating on Name would drop the line and any MAP children with
+	// it.
+	if d.placeDetail != nil {
+		tags = append(tags, placeToTags(d.placeDetail, level)...)
 	}
 
 	if d.typeDetail != "" {
@@ -887,7 +879,6 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 	// Subordinate tags at level+1
 	return append(tags, eventDetailToTags(&eventDetail{
 		date:                 event.Date,
-		place:                event.Place,
 		placeDetail:          event.PlaceDetail,
 		typeDetail:           event.EventTypeDetail,
 		cause:                event.Cause,
@@ -923,7 +914,6 @@ func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*
 	// Subordinate tags at level+1
 	return append(tags, eventDetailToTags(&eventDetail{
 		date:                 attr.Date,
-		place:                attr.Place,
 		placeDetail:          attr.PlaceDetail,
 		typeDetail:           attr.TypeDetail,
 		cause:                attr.Cause,
@@ -1045,39 +1035,27 @@ func addressToTags(addr *gedcom.Address, level int) []*gedcom.Tag {
 	return tags
 }
 
-// placeToTags converts place information to GEDCOM tags at the specified level.
+// placeToTags converts a place structure to GEDCOM tags at the specified level.
 //
-// The PLAC value comes from placeName when it is set and from detail.Name
-// otherwise; both may be empty, which writes a valueless PLAC line carrying
-// only its subordinates.
-//
-// The scalar wins when the two carriers disagree. That is a choice about
-// hand-built values only: the decoder sets both from the same line, so no
-// decoded document can tell the two orders apart, and byte-fidelity for
-// decoded documents comes from Record.Tags (see the encoder package doc), not
-// from this precedence. The read path deliberately resolves the other way --
-// [gedcom.Event.PlaceName] prefers detail.Name so it stays correct once the
-// scalar is gone.
-func placeToTags(placeName string, detail *gedcom.PlaceDetail, level int) []*gedcom.Tag {
-	var tags []*gedcom.Tag
-
-	if placeName == "" && detail != nil {
-		placeName = detail.Name
+// The PLAC value is detail.Name, which may be empty: an empty Name writes a
+// valueless PLAC line carrying only its subordinates, which is what a bare
+// "2 PLAC" line decodes to. A nil detail means no place was recorded and
+// writes nothing.
+func placeToTags(detail *gedcom.PlaceDetail, level int) []*gedcom.Tag {
+	if detail == nil {
+		return nil
 	}
 
 	// PLAC tag with place name
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: "PLAC", Value: placeName})
+	tags := []*gedcom.Tag{{Level: level, Tag: "PLAC", Value: detail.Name}}
 
-	// Add detail subordinates if present
-	if detail != nil {
-		if detail.Form != "" {
-			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FORM", Value: detail.Form})
-		}
+	if detail.Form != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FORM", Value: detail.Form})
+	}
 
-		// Coordinates via MAP
-		if detail.Coordinates != nil {
-			tags = append(tags, coordinatesToTags(detail.Coordinates, level+1)...)
-		}
+	// Coordinates via MAP
+	if detail.Coordinates != nil {
+		tags = append(tags, coordinatesToTags(detail.Coordinates, level+1)...)
 	}
 
 	return tags

@@ -93,14 +93,14 @@ func TestPopulateEntities(t *testing.T) {
 				Type  string
 				Date  string
 				Place string
-			}{string(ev.Type), ev.Date, ev.Place}
+			}{string(ev.Type), ev.Date, ev.PlaceName()}
 		}
 		if ev.Type == "DEAT" {
 			deathEvent = &struct {
 				Type  string
 				Date  string
 				Place string
-			}{string(ev.Type), ev.Date, ev.Place}
+			}{string(ev.Type), ev.Date, ev.PlaceName()}
 		}
 	}
 	if birthEvent == nil {
@@ -163,8 +163,8 @@ func TestPopulateEntities(t *testing.T) {
 		if fam.Events[0].Date != "10 JUN 1875" {
 			t.Errorf("fam.Events[0].Date = %s, want 10 JUN 1875", fam.Events[0].Date)
 		}
-		if fam.Events[0].Place != "Chicago, IL" {
-			t.Errorf("fam.Events[0].Place = %s, want Chicago, IL", fam.Events[0].Place)
+		if fam.Events[0].PlaceName() != "Chicago, IL" {
+			t.Errorf("fam.Events[0].PlaceName() = %s, want Chicago, IL", fam.Events[0].PlaceName())
 		}
 	}
 
@@ -507,8 +507,8 @@ func TestIndividualAttributes(t *testing.T) {
 			if attr.Date != "1972" {
 				t.Errorf("EDUC Date = %s, want 1972", attr.Date)
 			}
-			if attr.Place != "MIT, Cambridge, MA" {
-				t.Errorf("EDUC Place = %s, want 'MIT, Cambridge, MA'", attr.Place)
+			if attr.PlaceName() != "MIT, Cambridge, MA" {
+				t.Errorf("EDUC Place = %s, want 'MIT, Cambridge, MA'", attr.PlaceName())
 			}
 		}
 	}
@@ -555,8 +555,8 @@ func TestAttributeSubordinates(t *testing.T) {
 	if occu.Date != "2000" {
 		t.Errorf("Attribute.Date = %s, want 2000", occu.Date)
 	}
-	if occu.Place != "Silicon Valley, CA" {
-		t.Errorf("Attribute.Place = %s, want 'Silicon Valley, CA'", occu.Place)
+	if occu.PlaceName() != "Silicon Valley, CA" {
+		t.Errorf("Attribute.PlaceName() = %s, want 'Silicon Valley, CA'", occu.PlaceName())
 	}
 	if len(occu.SourceCitations) != 1 {
 		t.Fatalf("len(SourceCitations) = %d, want 1", len(occu.SourceCitations))
@@ -636,8 +636,8 @@ func TestAttributeTypeDetail(t *testing.T) {
 		if attr.Date != exp.date {
 			t.Errorf("Attributes[%d].Date = %q, want %q", i, attr.Date, exp.date)
 		}
-		if attr.Place != exp.place {
-			t.Errorf("Attributes[%d].Place = %q, want %q", i, attr.Place, exp.place)
+		if attr.PlaceName() != exp.place {
+			t.Errorf("Attributes[%d].PlaceName() = %q, want %q", i, attr.PlaceName(), exp.place)
 		}
 	}
 }
@@ -1091,9 +1091,9 @@ func TestPlaceStructure(t *testing.T) {
 		t.Errorf("birth.Type = %s, want BIRT", birth.Type)
 	}
 
-	// Backward compatibility: Event.Place should still be populated
-	if birth.Place != "Boston, Suffolk, Massachusetts, USA" {
-		t.Errorf("birth.Place = %s, want 'Boston, Suffolk, Massachusetts, USA'", birth.Place)
+	// The place name reads through the sole carrier, PlaceDetail
+	if birth.PlaceName() != "Boston, Suffolk, Massachusetts, USA" {
+		t.Errorf("birth.PlaceName() = %s, want 'Boston, Suffolk, Massachusetts, USA'", birth.PlaceName())
 	}
 
 	// Test PlaceDetail structure
@@ -1123,8 +1123,8 @@ func TestPlaceStructure(t *testing.T) {
 	if death.Type != "DEAT" {
 		t.Errorf("death.Type = %s, want DEAT", death.Type)
 	}
-	if death.Place != "Springfield, IL" {
-		t.Errorf("death.Place = %s, want 'Springfield, IL'", death.Place)
+	if death.PlaceName() != "Springfield, IL" {
+		t.Errorf("death.PlaceName() = %s, want 'Springfield, IL'", death.PlaceName())
 	}
 	if death.PlaceDetail == nil {
 		t.Fatal("death.PlaceDetail is nil, want non-nil")
@@ -1209,8 +1209,8 @@ func TestFamilyEvents(t *testing.T) {
 		if fam.Events[i].Date != expected.date {
 			t.Errorf("Event[%d].Date = %s, want %s", i, fam.Events[i].Date, expected.date)
 		}
-		if fam.Events[i].Place != expected.place {
-			t.Errorf("Event[%d].Place = %s, want %s", i, fam.Events[i].Place, expected.place)
+		if fam.Events[i].PlaceName() != expected.place {
+			t.Errorf("Event[%d].PlaceName() = %s, want %s", i, fam.Events[i].PlaceName(), expected.place)
 		}
 	}
 }
@@ -1481,8 +1481,8 @@ func TestEmptyEventSubordinates(t *testing.T) {
 	if birth.Date != "" {
 		t.Errorf("BIRT.Date = %s, want empty", birth.Date)
 	}
-	if birth.Place != "" {
-		t.Errorf("BIRT.Place = %s, want empty", birth.Place)
+	if birth.PlaceName() != "" {
+		t.Errorf("BIRT.PlaceName() = %s, want empty", birth.PlaceName())
 	}
 	if birth.PlaceDetail != nil {
 		t.Errorf("BIRT.PlaceDetail = %v, want nil", birth.PlaceDetail)
@@ -1526,8 +1526,8 @@ func TestEmptyAttributeSubordinates(t *testing.T) {
 	if attr.Date != "" {
 		t.Errorf("Attribute.Date = %s, want empty", attr.Date)
 	}
-	if attr.Place != "" {
-		t.Errorf("Attribute.Place = %s, want empty", attr.Place)
+	if attr.PlaceName() != "" {
+		t.Errorf("Attribute.PlaceName() = %s, want empty", attr.PlaceName())
 	}
 	if len(attr.SourceCitations) != 0 {
 		t.Errorf("len(SourceCitations) = %d, want 0", len(attr.SourceCitations))
@@ -1970,8 +1970,8 @@ func TestEventAddressStructure(t *testing.T) {
 	}
 
 	// Birth should have both PLAC and ADDR
-	if birth.Place != "Boston, MA" {
-		t.Errorf("Birth.Place = %s, want 'Boston, MA'", birth.Place)
+	if birth.PlaceName() != "Boston, MA" {
+		t.Errorf("Birth.PlaceName() = %s, want 'Boston, MA'", birth.PlaceName())
 	}
 }
 
@@ -2423,7 +2423,7 @@ func TestFamilyStatisticsAttributes(t *testing.T) {
 	for _, attr := range indi1.Attributes {
 		attrMap[attr.Type] = attr.Value
 		attrDates[attr.Type] = attr.Date
-		attrPlaces[attr.Type] = attr.Place
+		attrPlaces[attr.Type] = attr.PlaceName()
 	}
 
 	// Test NCHI (Number of Children)
@@ -5416,7 +5416,7 @@ func TestAttributeEventDetail(t *testing.T) {
 		{"Value", attr.Value, "Blacksmith"},
 		{"TypeDetail", attr.TypeDetail, "Trade"},
 		{"Date", attr.Date, "1880"},
-		{"Place", attr.Place, "Springfield"},
+		{"Place", attr.PlaceName(), "Springfield"},
 		{"Cause", attr.Cause, "Apprenticeship"},
 		{"Agency", attr.Agency, "Guild of Smiths"},
 		{"ReligiousAffiliation", attr.ReligiousAffiliation, "Methodist"},
@@ -5536,10 +5536,10 @@ func TestFamilyEventAndAttributeContexts(t *testing.T) {
 	if len(fam.Events) != 2 {
 		t.Fatalf("len(Events) = %d, want 2", len(fam.Events))
 	}
-	if fam.Events[0].Type != "CENS" || fam.Events[0].Date != "1900" || fam.Events[0].Place != "Springfield" {
+	if fam.Events[0].Type != "CENS" || fam.Events[0].Date != "1900" || fam.Events[0].PlaceName() != "Springfield" {
 		t.Errorf("Events[0] = %+v, want CENS 1900 Springfield", fam.Events[0])
 	}
-	if fam.Events[1].Type != "RESI" || fam.Events[1].Date != "1905" || fam.Events[1].Place != "Chicago" {
+	if fam.Events[1].Type != "RESI" || fam.Events[1].Date != "1905" || fam.Events[1].PlaceName() != "Chicago" {
 		t.Errorf("Events[1] = %+v, want RESI 1905 Chicago", fam.Events[1])
 	}
 

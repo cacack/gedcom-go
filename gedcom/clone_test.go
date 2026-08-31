@@ -626,7 +626,6 @@ func TestCloneEvent(t *testing.T) {
 		original := &Event{
 			Type:            "BIRT",
 			Date:            "1 JAN 1900",
-			Place:           "New York",
 			Description:     "Birth event",
 			EventTypeDetail: "Birth",
 			Cause:           "Natural",
@@ -982,15 +981,18 @@ func TestCloneAttributeWithCitations(t *testing.T) {
 		Type:            "OCCU",
 		Value:           "Farmer",
 		Date:            "1900",
-		Place:           "Iowa",
+		PlaceDetail:     &PlaceDetail{Name: "Iowa"},
 		TypeDetail:      "Trade",
 		ParsedDate:      &Date{Original: "1900", Year: 1900},
 		SourceCitations: []*SourceCitation{{SourceXRef: "@S1@", Page: "Page 5"}},
 	}
 
 	copied := cloneAttribute(original)
-	if copied.Type != original.Type || copied.Value != original.Value || copied.Date != original.Date || copied.Place != original.Place {
+	if copied.Type != original.Type || copied.Value != original.Value || copied.Date != original.Date || copied.PlaceName() != original.PlaceName() {
 		t.Error("Field mismatch")
+	}
+	if copied.PlaceDetail == original.PlaceDetail {
+		t.Error("PlaceDetail should have different pointer")
 	}
 	if copied.TypeDetail != original.TypeDetail {
 		t.Errorf("TypeDetail = %q, want %q", copied.TypeDetail, original.TypeDetail)

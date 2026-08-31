@@ -564,7 +564,6 @@ func cloneEvent(e *Event) *Event {
 	copied := &Event{
 		Type:                 e.Type,
 		Date:                 e.Date,
-		Place:                e.Place,
 		Description:          e.Description,
 		EventTypeDetail:      e.EventTypeDetail,
 		Cause:                e.Cause,
@@ -621,7 +620,6 @@ func cloneAttribute(a *Attribute) *Attribute {
 		Type:                 a.Type,
 		Value:                a.Value,
 		Date:                 a.Date,
-		Place:                a.Place,
 		TypeDetail:           a.TypeDetail,
 		Cause:                a.Cause,
 		Agency:               a.Agency,

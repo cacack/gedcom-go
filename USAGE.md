@@ -287,8 +287,8 @@ for _, person := range individuals {
     // Get events (birth, death, etc.)
     for _, event := range person.Events {
         fmt.Printf("  %s: %s", event.Type, event.Date)
-        if event.Place != "" {
-            fmt.Printf(" at %s", event.Place)
+        if place := event.PlaceName(); place != "" {
+            fmt.Printf(" at %s", place)
         }
         fmt.Println()
     }
@@ -339,8 +339,8 @@ for _, person := range doc.Individuals() {
         }
 
         // Place
-        if event.Place != "" {
-            fmt.Printf("  Place: %s\n", event.Place)
+        if place := event.PlaceName(); place != "" {
+            fmt.Printf("  Place: %s\n", place)
         }
 
         // Additional details
@@ -670,7 +670,7 @@ individual := &gedcom.Record{
         },
         Sex: "M",
         Events: []*gedcom.Event{
-            {Type: "BIRT", Date: "1 JAN 1900", Place: "New York, USA"},
+            {Type: "BIRT", Date: "1 JAN 1900", PlaceDetail: &gedcom.PlaceDetail{Name: "New York, USA"}},
         },
     },
 }
@@ -698,7 +698,7 @@ family := &gedcom.Record{
         Husband: "@I1@",
         Wife:    "@I2@",
         Events: []*gedcom.Event{
-            {Type: "MARR", Date: "15 JUN 1925", Place: "Boston, Massachusetts, USA"},
+            {Type: "MARR", Date: "15 JUN 1925", PlaceDetail: &gedcom.PlaceDetail{Name: "Boston, Massachusetts, USA"}},
         },
     },
 }
