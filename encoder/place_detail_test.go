@@ -73,6 +73,34 @@ func TestEncodeScalarOnlyStillEmitsPLAC(t *testing.T) {
 	}
 }
 
+// TestEncodeAfterSetPlaceName is the end-to-end check for a write migrated
+// ahead of v3: a decoded event carries both carriers, SetPlaceName replaces the
+// name, and the encoder must write the new one. A setter that touched only
+// PlaceDetail would leave the scalar behind for the encoder to prefer, so the
+// same call site would encode the old name under v2 and the new one under v3.
+func TestEncodeAfterSetPlaceName(t *testing.T) {
+	const input = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n" +
+		"0 @I1@ INDI\n1 BIRT\n2 PLAC Boston, MA\n0 TRLR\n"
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	doc.GetIndividual("@I1@").Events[0].SetPlaceName("Cambridge, MA")
+	for _, rec := range doc.Records {
+		rec.Tags = nil // force the entity path
+	}
+
+	got := mustEncode(t, doc)
+
+	if !strings.Contains(got, "2 PLAC Cambridge, MA") {
+		t.Errorf("encoded output missing the name just set; got:\n%s", got)
+	}
+	if strings.Contains(got, "Boston, MA") {
+		t.Errorf("encoded output still carries the replaced name; got:\n%s", got)
+	}
+}
+
 // TestEncodePlacePrecedence pins the documented precedence for a hand-built
 // event whose two carriers disagree: the encoder writes the scalar. Decode sets
 // both from the same line, so this only arises when a caller sets them apart;

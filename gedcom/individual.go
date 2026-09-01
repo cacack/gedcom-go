@@ -231,6 +231,21 @@ func (a *Attribute) PlaceName() string {
 	return a.Place
 }
 
+// SetPlaceName records name as the attribute's place. Safe on a nil receiver,
+// where it does nothing.
+//
+// This is the counterpart of [Attribute.PlaceName] and the supported write
+// path. An attribute has a single place carrier in v2, so this writes Place;
+// v3 replaces that scalar with a structured PlaceDetail that this method
+// allocates. Writing through the method rather than the field means the call
+// site needs no change then.
+func (a *Attribute) SetPlaceName(name string) {
+	if a == nil {
+		return
+	}
+	a.Place = name
+}
+
 // BirthEvent returns the first birth event for this individual, or nil if none found.
 func (i *Individual) BirthEvent() *Event {
 	for _, event := range i.Events {

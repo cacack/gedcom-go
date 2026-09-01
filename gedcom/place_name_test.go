@@ -96,3 +96,81 @@ func TestPlaceNameAccessors(t *testing.T) {
 		}
 	})
 }
+
+// TestSetPlaceName covers the write path that lets a caller migrate an
+// `ev.Place = name` assignment ahead of v3, where the scalar is gone and
+// PlaceDetail is the only carrier.
+func TestSetPlaceName(t *testing.T) {
+	t.Run("allocates PlaceDetail on an event that has none", func(t *testing.T) {
+		ev := &Event{Type: EventBirth}
+		ev.SetPlaceName("Boston, MA")
+
+		if ev.PlaceDetail == nil {
+			t.Fatal("PlaceDetail was not allocated")
+		}
+		if got := ev.PlaceName(); got != "Boston, MA" {
+			t.Errorf("PlaceName() = %q, want %q", got, "Boston, MA")
+		}
+	})
+
+	t.Run("writes both carriers so the encoder cannot emit a stale name", func(t *testing.T) {
+		// The shape a decoded event has: both carriers filled from one PLAC
+		// line. The encoder prefers the scalar, so a setter that touched only
+		// PlaceDetail would re-encode the old name -- and v3, with one carrier,
+		// would write the new one. Same call site, two results.
+		ev := &Event{Type: EventBirth, Place: "Old", PlaceDetail: &PlaceDetail{Name: "Old"}}
+		ev.SetPlaceName("New")
+
+		if ev.Place != "New" {
+			t.Errorf("Place = %q, want %q", ev.Place, "New")
+		}
+		if ev.PlaceDetail.Name != "New" {
+			t.Errorf("PlaceDetail.Name = %q, want %q", ev.PlaceDetail.Name, "New")
+		}
+	})
+
+	t.Run("preserves Form and Coordinates", func(t *testing.T) {
+		coords := &Coordinates{Latitude: "N42.3601", Longitude: "W71.0589"}
+		ev := &Event{
+			Type:        EventBirth,
+			PlaceDetail: &PlaceDetail{Name: "Old", Form: "City, State", Coordinates: coords},
+		}
+		ev.SetPlaceName("New")
+
+		if ev.PlaceDetail.Form != "City, State" {
+			t.Errorf("Form = %q, want it preserved", ev.PlaceDetail.Form)
+		}
+		if ev.PlaceDetail.Coordinates != coords {
+			t.Error("Coordinates were replaced")
+		}
+	})
+
+	t.Run("empty name records no place and allocates nothing", func(t *testing.T) {
+		ev := &Event{Type: EventBirth}
+		ev.SetPlaceName("")
+
+		if ev.PlaceDetail != nil {
+			t.Errorf("PlaceDetail = %+v, want nil for an empty name", ev.PlaceDetail)
+		}
+		if got := ev.PlaceName(); got != "" {
+			t.Errorf("PlaceName() = %q, want empty", got)
+		}
+	})
+
+	t.Run("Attribute records the name", func(t *testing.T) {
+		attr := &Attribute{Type: "OCCU"}
+		attr.SetPlaceName("Salem, MA")
+
+		if got := attr.PlaceName(); got != "Salem, MA" {
+			t.Errorf("PlaceName() = %q, want %q", got, "Salem, MA")
+		}
+	})
+
+	t.Run("nil receivers are safe", func(t *testing.T) {
+		var ev *Event
+		ev.SetPlaceName("Boston, MA")
+
+		var attr *Attribute
+		attr.SetPlaceName("Boston, MA")
+	})
+}

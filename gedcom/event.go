@@ -200,3 +200,38 @@ func (e *Event) PlaceName() string {
 	}
 	return e.Place
 }
+
+// SetPlaceName records name as the event's place, allocating PlaceDetail if the
+// event does not have one yet and leaving any existing Form and Coordinates
+// intact. Safe on a nil receiver, where it does nothing.
+//
+// This is the counterpart of [Event.PlaceName] and the supported write path. It
+// exists so a write can be migrated ahead of v3, where the Place scalar is gone
+// and PlaceDetail is the only carrier: assigning through that pointer panics on
+// an event built without one, and leaving it nil means the encoder writes no
+// PLAC line at all.
+//
+// While both carriers exist this writes both, because the encoder prefers the
+// scalar and would otherwise emit a stale name over the one just set. That
+// keeps what PlaceName reads, what the encoder writes, and what v3 will do all
+// in agreement, so a call site converted now behaves the same before and after
+// the upgrade.
+//
+// An empty name blanks the place rather than recording an empty one: no
+// PlaceDetail is allocated for it, so threading an optional place through this
+// method cannot conjure a placeless PLAC line. To drop a place that is already
+// recorded, clear both carriers -- a PlaceDetail whose Name is empty still
+// encodes as a valueless PLAC line.
+func (e *Event) SetPlaceName(name string) {
+	if e == nil {
+		return
+	}
+	e.Place = name
+	if e.PlaceDetail == nil {
+		if name == "" {
+			return
+		}
+		e.PlaceDetail = &PlaceDetail{}
+	}
+	e.PlaceDetail.Name = name
+}

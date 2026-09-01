@@ -578,26 +578,35 @@ it is available on `Family.Tags` only.
 
 ### Place Name Accessors
 
-`Event.PlaceDetail` is a pointer, so reading a name off it needs a nil check.
-`PlaceName()` does it for you:
+`Event.PlaceDetail` is a pointer, so reading a name off it needs a nil check and
+writing one needs an allocation. The accessors do both for you:
 
-| Accessor | Returns |
-|----------|---------|
+| Accessor | Behaviour |
+|----------|-----------|
 | `Event.PlaceName()` | Place name, or `""` when no place is recorded |
+| `Event.SetPlaceName(name)` | Records the name, allocating `PlaceDetail` when absent |
 | `Attribute.PlaceName()` | Place name, or `""` when no place is recorded |
+| `Attribute.SetPlaceName(name)` | Records the name |
 
 ```go
 // Nil-safe on the receiver and on PlaceDetail.
 fmt.Printf("Born at %s\n", person.BirthEvent().PlaceName())
+
+// Allocates PlaceDetail when the event has none, and leaves any Form and
+// Coordinates it already has intact.
+ev.SetPlaceName("Boston, MA")
 ```
 
 `Event.PlaceName()` prefers `PlaceDetail.Name` and falls back to the legacy
 `Place` scalar, so a call site written against the accessor keeps working once
 that scalar is removed. An `Attribute` has only the scalar in v2, so its
-accessor reads that. The encoder resolves the event's two carriers the other way
-round, preferring the scalar. That only changes what is written for a hand-built
-value whose carriers disagree -- decode fills both from the same line, and
-byte-fidelity for a decoded document comes from `Record.Tags` being
+accessors read and write that.
+
+The encoder resolves the event's two carriers the other way round, preferring
+the scalar, which is why `Event.SetPlaceName` writes both -- otherwise a name
+set on a decoded event would encode as the one it replaced. That keeps what the
+accessor reads, what the encoder writes, and what v3 will do all in agreement.
+For a decoded document byte-fidelity comes from `Record.Tags` being
 authoritative on encode, not from either precedence.
 
 ### Coordinate Conversion
