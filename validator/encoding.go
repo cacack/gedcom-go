@@ -140,7 +140,7 @@ func (e *EncodingValidator) ValidateControlCharacters(doc *gedcom.Document) []Is
 
 		// Also check the record's value field
 		if record.Value != "" {
-			if issue := e.checkControlChars(record.Value, record.XRef, string(record.Type), 0); issue != nil {
+			if issue := e.checkControlChars(record.Value, record.XRef, string(record.Type), record.LineNumber); issue != nil {
 				issues = append(issues, *issue)
 			}
 		}
@@ -166,7 +166,8 @@ func (e *EncodingValidator) scanTagsForControlChars(tags []*gedcom.Tag, recordXR
 // checkControlChars checks a string for banned C0 control characters.
 // Returns an Issue if a banned character is found, nil otherwise.
 //
-// line is the source line the value came from, or 0 when the caller has none.
+// line is the source line the value came from, or 0 when the caller genuinely
+// has none -- the header path, whose typed fields are not attributed to a line.
 // The reported "position" detail is a byte offset within value -- a different
 // fact from the source line, and the reason that key is not folded into
 // Issue.LineNumber.
