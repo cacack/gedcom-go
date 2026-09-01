@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0](https://github.com/cacack/gedcom-go/compare/v2.4.0...v2.5.0) (2026-09-01)
+
+
+### Features
+
+* **gedcom:** add nil-safe PlaceName accessors on Event and Attribute ([ee78600](https://github.com/cacack/gedcom-go/commit/ee78600f42dbe9d0f5f1c4b5903aad5ab9a78582)), closes [#506](https://github.com/cacack/gedcom-go/issues/506)
+* **gedcom:** add SetPlaceName on Event and Attribute ([1aca8bc](https://github.com/cacack/gedcom-go/commit/1aca8bc649f1874bb5454b89be44fc8645e4bde2))
+* **gedcom:** mark every symbol v3 removes as deprecated ([de00b1f](https://github.com/cacack/gedcom-go/commit/de00b1f387e8bba555fe6ed1bf12792b4891cb68))
+* **validator:** add Issue.LineNumber and populate it where the line is known ([dfeac98](https://github.com/cacack/gedcom-go/commit/dfeac98eb81f73f614745576cb6ed9398deb9fdc))
+
+
+### Bug Fixes
+
+* **encoder:** emit PLAC when only PlaceDetail is set ([53c976f](https://github.com/cacack/gedcom-go/commit/53c976fa60a1c2a3527769a9014591d077c8a167)), closes [#505](https://github.com/cacack/gedcom-go/issues/505)
+* **validator:** carry the record's line number where one is known ([1cd85e3](https://github.com/cacack/gedcom-go/commit/1cd85e3651afea7bb1393a459359f6191d14504c))
+
 ## [2.4.0](https://github.com/cacack/gedcom-go/compare/v2.3.1...v2.4.0) (2026-08-24)
 
 
