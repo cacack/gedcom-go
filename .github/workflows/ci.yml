@@ -478,8 +478,11 @@ jobs:
           TITLE: ${{ github.event.pull_request.title }}
           PR_USER: ${{ github.event.pull_request.user.login }}
         run: |
-          # Exempt release-please PRs (they use chore(main): release X.Y.Z)
-          if echo "$TITLE" | grep -qE "^chore\(main\): release [0-9]"; then
+          # Exempt release-please PRs. It scopes the title to the branch it
+          # targets, so a maintenance line reads chore(release-2.x): release
+          # X.Y.Z. The scopes are enumerated rather than left open, so a
+          # hand-written "chore(whatever): release ..." still gets checked.
+          if echo "$TITLE" | grep -qE "^chore\((main|release-[0-9]+\.x)\): release [0-9]"; then
             echo "✅ Release-please PR exempt from title check"
             exit 0
           fi
