@@ -35,6 +35,13 @@ type EncodeOptions struct {
 	// its children would leave a stub that carries no data.
 	//
 	// Default: true (preserve all tags)
+	//
+	// Deprecated: v3 replaces this with DropUnknownTags, whose polarity is
+	// inverted so that the zero value preserves data. The replacement does not
+	// exist in v2, and renaming the identifier while keeping the value is the
+	// wrong fix: PreserveUnknownTags: true becomes the default (omit the
+	// field), and PreserveUnknownTags: false becomes DropUnknownTags: true.
+	// See docs/guides/migration-v3.md.
 	PreserveUnknownTags bool
 }
 

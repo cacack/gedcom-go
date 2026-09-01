@@ -33,6 +33,10 @@ type Note struct {
 // On a decoded note this is the same string as Text, because the decoder folds
 // continuation lines in. It still differs for a hand-built note that populates
 // the deprecated Continuation slice.
+//
+// Deprecated: read Text, which already holds the whole body with its newlines.
+// Removed in v3 alongside Continuation, the only thing that made the two
+// differ.
 func (n *Note) FullText() string {
 	if len(n.Continuation) == 0 {
 		return n.Text

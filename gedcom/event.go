@@ -109,13 +109,17 @@ type Event struct {
 	// This is nil if the date string could not be parsed.
 	ParsedDate *Date
 
-	// Place is where the event occurred (kept for backward compatibility).
+	// Place is where the event occurred.
 	//
-	// [Event.PlaceName] is the supported read path: it is nil-safe, prefers
-	// PlaceDetail.Name, and keeps working once this scalar is removed. The
-	// encoder resolves the two carriers the other way, preferring this field
-	// when both are set -- a choice that only matters for a hand-built event,
-	// since decode fills both from the same line.
+	// The encoder resolves the two carriers the other way from the read path,
+	// preferring this field when both are set -- a choice that only matters for
+	// a hand-built event, since decode fills both from the same line.
+	//
+	// Deprecated: use [Event.PlaceName] to read and [Event.SetPlaceName] to
+	// write. Both are nil-safe, both are in this release, and both keep working
+	// once this scalar is removed in v3, so call sites can be migrated before
+	// the upgrade. See docs/guides/migration-v3.md -- deleting an assignment to
+	// this field without replacing it compiles and silently drops the place.
 	Place string
 
 	// PlaceDetail provides structured place information with optional coordinates
@@ -178,6 +182,10 @@ type Event struct {
 	Media []*MediaLink
 
 	// Tags contains all raw tags for this event (for unknown/custom fields)
+	//
+	// Deprecated: use [Record.Tags], the single store for a record's raw tags
+	// and the one the encoder replays. Removed in v3; no code path reads or
+	// writes this field.
 	Tags []*Tag
 }
 

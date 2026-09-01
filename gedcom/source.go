@@ -25,17 +25,17 @@ type Source struct {
 
 	// RepositoryRef is the XRef to the repository where this source is stored.
 	//
-	// Superseded by RepositoryLink (use RepositoryLink.XRef). Retained for
-	// backward compatibility until the next major release; it is populated
-	// from RepositoryLink.XRef during decode.
+	// It is populated from RepositoryLink.XRef during decode.
+	//
+	// Deprecated: use RepositoryLink.XRef. Removed in v3.
 	RepositoryRef string
 
 	// Repository is an inline repository definition (alternative to
 	// RepositoryRef).
 	//
-	// Superseded by RepositoryLink (use RepositoryLink.Inline). Retained for
-	// backward compatibility until the next major release; it is populated
-	// from RepositoryLink.Inline during decode.
+	// It is populated from RepositoryLink.Inline during decode.
+	//
+	// Deprecated: use RepositoryLink.Inline. Removed in v3.
 	Repository *InlineRepository
 
 	// Media are references to media objects with optional crop/title
@@ -105,6 +105,15 @@ type SourceCitation struct {
 	// 1 = questionable reliability of evidence
 	// 2 = secondary evidence, data officially recorded sometime after event
 	// 3 = direct and primary evidence used, or by dominance of the evidence
+	//
+	// Note this field becomes a *int in v3 rather than being removed, so it
+	// carries no deprecation marker. QUAY 0 is a meaningful assertion, not an
+	// absence, and as an int its Go zero value collides with that -- the
+	// encoder resolves the ambiguity by emitting the tag only when Quality > 0,
+	// so "1 QUAY 0" decodes and then vanishes on re-encode. In v3 nil means
+	// absent. When migrating, only take the address where a rating was actually
+	// determined: turning an unset 0 into &0 asserts "unreliable evidence" on
+	// every such citation. See docs/guides/migration-v3.md.
 	Quality int
 
 	// Data contains optional extracted text and date from the source

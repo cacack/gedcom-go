@@ -180,6 +180,15 @@ type Issue struct {
 	// It is not the place for anything Issue models as a field: a source line
 	// belongs in LineNumber, not under a stringified "line_number" key that
 	// only some codes set and every caller has to strconv.Atoi.
+	//
+	// The "line_number" key is removed in v3; read LineNumber instead. A map
+	// key carries no deprecation marker, so nothing warns a caller: a lookup of
+	// a removed key keeps compiling and quietly returns "". Migrate those reads
+	// while both exist -- they agree in this release.
+	//
+	// "position" is not going anywhere. It is a byte offset within a field's
+	// value, a different fact from the source line, and
+	// CodeBannedControlCharacter carries both.
 	Details map[string]string
 }
 

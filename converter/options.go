@@ -12,6 +12,12 @@ type ConvertOptions struct {
 
 	// PreserveUnknownTags keeps vendor extensions and unknown tags.
 	// Default: true
+	//
+	// Deprecated: the name is wrong -- the converter never dropped anything
+	// either way. v3 splits it into ReportPreservedTags (itemise preserved tags
+	// in the conversion report) and MapEXIDToVendorTags (map a FamilySearch ARK
+	// EXID to _FSFTID on a 7.0 downgrade). Neither exists in v2, so this is a
+	// change to make at upgrade time; see docs/guides/migration-v3.md.
 	PreserveUnknownTags bool
 }
 

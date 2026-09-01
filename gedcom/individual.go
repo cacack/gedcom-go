@@ -196,11 +196,11 @@ type Attribute struct {
 
 	// Place where the attribute was applicable (optional).
 	//
-	// [Attribute.PlaceName] is the supported read path and
-	// [Attribute.SetPlaceName] the supported write path: both are nil-safe and
-	// both keep working once this scalar is replaced by a structured carrier in
-	// v3. Unlike Event, an attribute has no PlaceDetail in v2, so this field is
-	// the only carrier here.
+	// Deprecated: use [Attribute.PlaceName] to read and
+	// [Attribute.SetPlaceName] to write. Both are nil-safe, both are in this
+	// release, and both keep working once this scalar is replaced by a
+	// structured carrier in v3, so call sites can be migrated before the
+	// upgrade. See docs/guides/migration-v3.md.
 	Place string
 
 	// TypeDetail is the user-supplied classification of this attribute
@@ -402,6 +402,13 @@ func (i *Individual) Children(doc *Document) []*Individual {
 // Returns an empty slice if doc is nil, no parental families are found, or if
 // family xrefs are invalid. Invalid xrefs are silently skipped.
 // Order is preserved from the GEDCOM file.
+//
+// Deprecated: renamed to FamiliesAsChild in v3, which has no v2 equivalent to
+// migrate to yet. Read the rename carefully rather than applying it
+// mechanically: this method returns families where the individual is a *child*,
+// while SpouseFamilies returns families where they are a spouse, so the two are
+// easy to transpose with no compiler signal and a wrong-but-plausible result.
+// See docs/guides/migration-v3.md.
 func (i *Individual) ParentalFamilies(doc *Document) []*Family {
 	if doc == nil {
 		return nil
@@ -423,6 +430,10 @@ func (i *Individual) ParentalFamilies(doc *Document) []*Family {
 // Returns an empty slice if doc is nil, no spouse families are found, or if
 // family xrefs are invalid. Invalid xrefs are silently skipped.
 // Order is preserved from the GEDCOM file.
+//
+// Deprecated: renamed to FamiliesAsSpouse in v3, which has no v2 equivalent to
+// migrate to yet. See the note on ParentalFamilies -- the two are easy to
+// transpose, and the compiler cannot tell you.
 func (i *Individual) SpouseFamilies(doc *Document) []*Family {
 	if doc == nil {
 		return nil

@@ -65,6 +65,43 @@ linters:
       - linters:
           - staticcheck
         text: 'SA1019:.*is deprecated: use NoteXRefs and InlineNotes'
+      # The symbols v3 removes carry a // Deprecated: marker from v2.5.0 on, so
+      # callers get a tooling warning before the break (issue #522). The library
+      # itself must keep using them for the whole deprecation window -- the
+      # decoder populates them and the encoder emits from them -- so its own
+      # uses are expected. Each pattern names one deprecation message; that
+      # keeps the exclusion tied to a specific removal rather than blanket
+      # -disabling SA1019, which would also hide a genuinely stale call.
+      - linters:
+          - staticcheck
+        text: 'SA1019:.*is deprecated: use \[Event\.PlaceName\]'
+      - linters:
+          - staticcheck
+        text: 'SA1019:.*is deprecated: use \[Attribute\.PlaceName\]'
+      - linters:
+          - staticcheck
+        text: 'SA1019:.*is deprecated: use \[Record\.Tags\]'
+      - linters:
+          - staticcheck
+        text: 'SA1019:.*is deprecated: use RepositoryLink'
+      - linters:
+          - staticcheck
+        text: 'SA1019:.*is deprecated: v3 replaces this field with an accessor pair'
+      - linters:
+          - staticcheck
+        text: 'SA1019:.*is deprecated: renamed to Families(AsChild|AsSpouse)'
+      - linters:
+          - staticcheck
+        text: 'SA1019:.*is deprecated: read Text, which already holds'
+      - linters:
+          - staticcheck
+        text: 'SA1019:.*is deprecated: use \[gedcom\.Version\.IsValid\]'
+      - linters:
+          - staticcheck
+        text: 'SA1019:.*is deprecated: v3 replaces this with DropUnknownTags'
+      - linters:
+          - staticcheck
+        text: 'SA1019:.*is deprecated: the name is wrong'
       - linters:
           - lll
           - gocritic

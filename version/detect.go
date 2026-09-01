@@ -128,6 +128,10 @@ func detectFromTags(lines []*parser.Line) gedcom.Version {
 }
 
 // IsValidVersion checks if a version string is a valid GEDCOM version.
+//
+// Deprecated: use [gedcom.Version.IsValid], the same switch as a method on the
+// version itself. It is already in v2, so call sites can be migrated before
+// this function is removed in v3.
 func IsValidVersion(version gedcom.Version) bool {
 	switch version {
 	case gedcom.Version55, gedcom.Version551, gedcom.Version70:

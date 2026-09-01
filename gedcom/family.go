@@ -15,6 +15,12 @@ type Family struct {
 	Children []string
 
 	// NumberOfChildren is the declared number of children (NCHI tag)
+	//
+	// Deprecated: v3 replaces this field with an accessor pair of the same
+	// name, NumberOfChildren() and SetNumberOfChildren(). A method cannot share
+	// a name with a field, so there is no v2-side replacement to migrate to
+	// ahead of the break: the call sites change shape on upgrade. See
+	// docs/guides/migration-v3.md.
 	NumberOfChildren string
 
 	// Events contains family events (marriage, divorce, etc.)
