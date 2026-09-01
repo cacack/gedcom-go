@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+      # The v2.x maintenance line. `main` accumulates the next major's breaking
+      # commits during a major cycle, so a v2 release has to be cut from a branch
+      # off the previous tag instead.
+      - release-2.x
 
 # Restrict default GITHUB_TOKEN permissions (principle of least privilege).
 # Release-please needs write access to create release PRs and tags.
@@ -39,6 +43,9 @@ jobs:
         id: release
         with:
           release-type: go
+          # Release against whichever branch was pushed, so the maintenance line
+          # gets its own release PR driven by its own manifest. A no-op on main.
+          target-branch: ${{ github.ref_name }}
           token: ${{ steps.app-token.outputs.token }}
 
   # Trigger pkg.go.dev indexing after release
