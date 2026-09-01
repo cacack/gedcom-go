@@ -786,8 +786,18 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: event.Date})
 	}
 
-	// Place with optional details
-	if event.Place != "" {
+	// Place with optional details. The gate is the presence of either carrier,
+	// not the legacy scalar alone: a caller who follows the structured-place
+	// advice and sets only PlaceDetail used to lose the place entirely -- name
+	// and coordinates both, since MAP hangs off a PLAC line that was never
+	// written.
+	//
+	// A non-nil PlaceDetail is enough, even with an empty Name. That is the
+	// correspondence the decoder already establishes in the other direction: a
+	// bare "2 PLAC" line with MAP children parses to a non-nil PlaceDetail
+	// whose Name is "", so gating on Name would discard coordinates the
+	// library itself produces.
+	if event.Place != "" || event.PlaceDetail != nil {
 		tags = append(tags, placeToTags(event.Place, event.PlaceDetail, level+1)...)
 	}
 
@@ -983,8 +993,24 @@ func addressToTags(addr *gedcom.Address, level int) []*gedcom.Tag {
 }
 
 // placeToTags converts place information to GEDCOM tags at the specified level.
+//
+// The PLAC value comes from placeName when it is set and from detail.Name
+// otherwise; both may be empty, which writes a valueless PLAC line carrying
+// only its subordinates.
+//
+// The scalar wins when the two carriers disagree. That is a choice about
+// hand-built values only: the decoder sets both from the same line, so no
+// decoded document can tell the two orders apart, and byte-fidelity for
+// decoded documents comes from Record.Tags (see the encoder package doc), not
+// from this precedence. The read path deliberately resolves the other way --
+// [gedcom.Event.PlaceName] prefers detail.Name so it stays correct once the
+// scalar is gone.
 func placeToTags(placeName string, detail *gedcom.PlaceDetail, level int) []*gedcom.Tag {
 	var tags []*gedcom.Tag
+
+	if placeName == "" && detail != nil {
+		placeName = detail.Name
+	}
 
 	// PLAC tag with place name
 	tags = append(tags, &gedcom.Tag{Level: level, Tag: "PLAC", Value: placeName})
