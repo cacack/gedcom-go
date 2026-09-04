@@ -8,6 +8,13 @@ This guide is written as v3 is assembled, so it grows with each breaking change
 that lands. Every entry gives the old form, the new form, and — where the
 compiler cannot tell you — the value mapping.
 
+**Upgrade to `v2.5.0` before you start.** It is the last v2 minor, and it exists
+to make this migration a staged one: it carries the replacements that postdate
+`v2.4.0` and marks every symbol v3 removes as `// Deprecated:`, so your tooling
+lists the call sites and each one can be converted, tested and shipped while
+still on v2. What is left at the v3 upgrade is then the module path and the
+changes that genuinely have no v2 form.
+
 > **Read the value mappings, not just the names.** Several changes on this page
 > alter what a value *means* — a boolean inverts, a constant is renumbered, an
 > empty string stops meaning "empty", and an `int` becomes a `*int` so that zero
@@ -208,7 +215,12 @@ XRef-length check — and is `0` elsewhere.
 not something this release completed.
 
 The compiler cannot help here: a map lookup on a removed key returns the zero
-value, so the old code keeps compiling and silently reads `""`.
+value, so the old code keeps compiling and silently reads `""`. Nor can a
+`// Deprecated:` marker, since a map key cannot carry one — the `Details` godoc
+says so instead.
+
+`Issue.LineNumber` ships in `v2.5.0`, where both it and the legacy key exist and
+agree, so migrate these reads there rather than at upgrade time.
 
 `Details["position"]` is **not** removed. It is a byte offset within a field's
 value, not a source line, and `CodeBannedControlCharacter` now carries both:
@@ -217,10 +229,12 @@ value, not a source line, and `CodeBannedControlCharacter` now carries both:
 ## Straight removals
 
 Each of these is superseded by something that already exists in v2, so you can
-migrate before upgrading -- provided you are on a v2 release that carries the
-replacement. The place accessors are the exception worth checking: they postdate
-`v2.4.0`, so see [Migrating a write](#migrating-a-write) before staging that
-migration.
+migrate before upgrading. **Be on `v2.5.0` first.** The place accessors and the
+encoder fix that goes with them postdate `v2.4.0` and were released in `v2.5.0`
+specifically so these migrations can be staged; against `v2.4.0` or earlier the
+replacement does not exist, and the compile break and the behaviour change arrive
+together. `v2.5.0` also carries a `// Deprecated:` marker on every symbol listed
+here, so your tooling will point at the call sites that still need attention.
 
 | Removed | Replacement |
 |---------|-------------|
@@ -323,11 +337,17 @@ lose the place -- name and coordinates both, since `MAP` hangs off the `PLAC`
 line. In v3 a non-nil `PlaceDetail` is the whole gate, and an empty `Name` still
 writes a valueless `PLAC` line.
 
-> **Minimum version for a staged migration.** `PlaceName()`, `SetPlaceName()`
-> and the encoder fix that emits `PLAC` from `PlaceDetail` alone all postdate
-> `v2.4.0`. Migrating reads and writes *before* upgrading to v3 requires a v2
-> release that carries them; against `v2.4.0` or earlier, the read accessor does
-> not exist and the compile break and the behaviour change arrive together.
+> **Minimum version for a staged migration: `v2.5.0`.** `PlaceName()`,
+> `SetPlaceName()` and the encoder fix that emits `PLAC` from `PlaceDetail` alone
+> all postdate `v2.4.0` and were released together in `v2.5.0`. Against `v2.4.0`
+> or earlier the read accessor does not exist, and the compile break and the
+> behaviour change arrive together.
+>
+> One difference to know about while you are still on v2: `SetPlaceName` there
+> writes both carriers, because the v2 encoder prefers the scalar and would
+> otherwise re-emit the name you just replaced. v3 has one carrier and writes only
+> that. Either way the encoded output is the name you set, which is what lets the
+> same call site work before and after the upgrade.
 
 #### Known downstream call sites
 
