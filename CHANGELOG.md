@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0](https://github.com/cacack/gedcom-go/compare/v2.4.0...v3.0.0) (2026-09-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* **gedcom:** gedcom.Event.Place and gedcom.Attribute.Place are removed, as are validator.PlaceConsistencyValidator, validator.NewPlaceConsistencyValidator and validator.CodePlaceCarrierMismatch. Read a place with PlaceName() and write one with SetPlaceName(); see docs/guides/migration-v3.md.
+* **gedcom:** `gedcom.Event.Tags` is removed. Custom event subtags live on `Record.Tags`, which is authoritative on encode.
+* **version:** `version.IsValidVersion(v)` is removed -- use `v.IsValid()`. `version.DetectVersion` returns `gedcom.Version` only; drop the error result.
+* **validator:** validator.Issue.Details no longer carries a "line_number" key. Replace strconv.Atoi(issue.Details["line_number"]) with issue.LineNumber. make api-check is clean -- a map key appears in no signature, so apidiff cannot see it disappear and a caller reading the key silently gets "" rather than a compile error. Listed accordingly in the Semantic Breaks section of the API stability policy.
+* **gedcom:** gedcom.Family.NumberOfChildren changes from a string field to a method pair. Replace reads with fam.NumberOfChildren() and writes with fam.SetNumberOfChildren(v). On a decoded family, edit the NCHI entry in Record.Tags to change encoded output.
+* **gedcom:** gedcom.SourceCitation.Quality changes from int to *int. Replace `cite.Quality` with a nil check plus dereference, and `Quality: 3` with a pointer to 3. nil now means "no QUAY tag"; a pointer to 0 means a real QUAY 0, which v2 could not represent.
+* **gedcom:** gedcom.Note.Continuation and gedcom.Note.FullText() are removed. Put the whole body in Note.Text with embedded newlines and let the encoder split it into CONT/CONC -- which also enforces MaxLineLength and prevents an embedded newline forging a record, neither of which a hand split does. Replace note.FullText() with note.Text.
+* **converter:** converter.ConvertOptions.PreserveUnknownTags is replaced by ReportPreservedTags and MapEXIDToVendorTags. Set both true where the old field was true; omit both where it was false. A wholly zero &ConvertOptions{} now behaves as DefaultOptions() rather than as all-false.
+* **gedcom:** Individual.ParentalFamilies is renamed to FamiliesAsChild and Individual.SpouseFamilies to FamiliesAsSpouse. A caller who had the two transposed will see corrected results, with no compiler signal that the behaviour changed.
+* **encoder:** encoder.EncodeOptions.LineEnding now defaults to "\n" when empty. A caller who relied on the empty string producing output with no line separators -- which was unparseable GEDCOM -- gets "\n" instead.
+* **validator:** validator.Strictness constants are renumbered. Old: Relaxed=0, Normal=1, Strict=2. New: Normal=0, Relaxed=1, Strict=2. Callers who named the constants are unaffected. A Strictness integer persisted to a config file, database column or API payload changes meaning on upgrade and must be remapped.
+* **encoder:** encoder.EncodeOptions.PreserveUnknownTags is replaced by DropUnknownTags with the opposite sense. Delete `PreserveUnknownTags: true` from options literals — it is now the default; set `DropUnknownTags: true` only where dropping was actually wanted.
+* **decoder:** decoder.DecodeOptions.MaxNestingDepth and gedcom/testing.WithHeaderTagComparison are removed. Delete the field assignment and delete the argument respectively; neither did anything.
+* **gedcom:** Source.RepositoryRef and Source.Repository are removed. Use SourceRepositoryLink instead: RepositoryRef -> RepositoryLink.XRef, Repository -> RepositoryLink.Inline.
+* **decoder:** gedcom.ChangeDate, gedcom.LDSOrdinance and gedcom.SourceCitation gained []string note fields and are therefore no longer comparable with ==. Callers comparing these by value must compare the fields they care about instead; pointer comparison is unaffected, and the API hands all three out as pointers.
+
+### Features
+
+* **converter:** split PreserveUnknownTags and fix the zero value ([62a9bd6](https://github.com/cacack/gedcom-go/commit/62a9bd66f36f7060c095550f4e62cfd28f3eb950))
+* **decoder:** decode full EVENT_DETAIL on events, attributes and family attributes ([fd7a09c](https://github.com/cacack/gedcom-go/commit/fd7a09c27d633a099aceca25a43c4314833ee2e0))
+* **decoder:** honour the two published "will be removed in v3" markers ([01872c7](https://github.com/cacack/gedcom-go/commit/01872c7d0bc420e207d6105c9d560bc6d24c0253))
+* **encoder:** invert PreserveUnknownTags to DropUnknownTags ([9721eb1](https://github.com/cacack/gedcom-go/commit/9721eb1bdb77831866a8ededd8b8bac465ff1987))
+* **gedcom:** add nil-safe PlaceName accessors on Event and Attribute ([4f5f0cb](https://github.com/cacack/gedcom-go/commit/4f5f0cb5c9e9128fa5cbdb2cb84b7f49903954a0)), closes [#506](https://github.com/cacack/gedcom-go/issues/506)
+* **gedcom:** remove Event.Tags, which no code path read or wrote ([5be5b45](https://github.com/cacack/gedcom-go/commit/5be5b455b5e75df159abc5ac09b8b277b1b17f22)), closes [#492](https://github.com/cacack/gedcom-go/issues/492)
+* **gedcom:** remove Note.Continuation and Note.FullText() ([f38b128](https://github.com/cacack/gedcom-go/commit/f38b12859ca828792f63791ddb03450448d9a87f))
+* **gedcom:** remove Source.RepositoryRef and Source.Repository ([2d0effb](https://github.com/cacack/gedcom-go/commit/2d0effbac9845791822cf816fa7b95c4ff8576f8)), closes [#476](https://github.com/cacack/gedcom-go/issues/476)
+* **gedcom:** remove the legacy Event.Place and Attribute.Place scalars ([09aabd3](https://github.com/cacack/gedcom-go/commit/09aabd3aea5ae93e1b6b04a5a120260d367cd238)), closes [#483](https://github.com/cacack/gedcom-go/issues/483)
+* **gedcom:** rename ParentalFamilies/SpouseFamilies to state the role ([c8c1499](https://github.com/cacack/gedcom-go/commit/c8c1499bee0c3e9ecb39b9691746d7ccf75402c8))
+* **gedcom:** replace Family.NumberOfChildren with an accessor pair ([409106b](https://github.com/cacack/gedcom-go/commit/409106b2c984d26a2b85af4a70b3bb3ce42ca6cf))
+* **gedcom:** retype SourceCitation.Quality from int to *int ([7cd1782](https://github.com/cacack/gedcom-go/commit/7cd17828f82ae8c26c8850acf1c51d123fd64703))
+* **validator:** add Issue.LineNumber and populate it where the line is known ([b3130d6](https://github.com/cacack/gedcom-go/commit/b3130d60222b1b2cf772fdf4016e0c33b87598ae))
+* **validator:** flag events whose two place carriers disagree ([29d849a](https://github.com/cacack/gedcom-go/commit/29d849a43c5f8f1fa94ea91ec333356898ab6241)), closes [#519](https://github.com/cacack/gedcom-go/issues/519)
+* **validator:** remove the line_number Details key now LineNumber exists ([5e4bb44](https://github.com/cacack/gedcom-go/commit/5e4bb44e7bd83d273ac7d2c7033a194ae36bd66f))
+* **validator:** renumber Strictness so the zero value is Normal ([5dea800](https://github.com/cacack/gedcom-go/commit/5dea800ef569d74c284f76af829cb34075a81fc6))
+* **version:** remove IsValidVersion and DetectVersion's always-nil error ([52e253d](https://github.com/cacack/gedcom-go/commit/52e253db0ec8b724c20b44e765edae9dceedc683)), closes [#488](https://github.com/cacack/gedcom-go/issues/488)
+
+
+### Bug Fixes
+
+* **encoder:** default LineEnding so a bare EncodeOptions really is lossless ([e69637e](https://github.com/cacack/gedcom-go/commit/e69637e8b2911137816b56016318a7ae5067046a)), closes [#486](https://github.com/cacack/gedcom-go/issues/486)
+* **encoder:** emit PLAC when only PlaceDetail is set ([d860eee](https://github.com/cacack/gedcom-go/commit/d860eee526586c21c144480571f0d74c4f3471c7)), closes [#505](https://github.com/cacack/gedcom-go/issues/505)
+* **validator:** carry the record's line number, and stop overriding zero options ([e06bac9](https://github.com/cacack/gedcom-go/commit/e06bac9d820cee465186a3432ffc0d454071c8a1))
+
 ## [2.4.0](https://github.com/cacack/gedcom-go/compare/v2.3.1...v2.4.0) (2026-08-24)
 
 
