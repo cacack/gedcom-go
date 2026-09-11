@@ -940,6 +940,75 @@ func TestFindDuplicates_NoNormalization(t *testing.T) {
 	}
 }
 
+func TestFindDuplicates_NoNormalizationStillMatches(t *testing.T) {
+	// The companion to TestFindDuplicates_NoNormalization: with normalization
+	// off, names that already agree must still match. Grouping and comparison
+	// read the same precomputed keys, so this pins both halves to the same
+	// NormalizeNames setting -- a match here proves the flag is honoured on the
+	// matching path, not just the rejecting one.
+	// Sex matches too: surname (0.3) plus given name (0.3) alone total 0.6,
+	// which sits under the default MinConfidence of 0.7.
+	ind1 := &gedcom.Individual{
+		XRef:  "@I1@",
+		Names: []*gedcom.PersonalName{{Full: "John /Doe/"}},
+		Sex:   "M",
+	}
+	ind2 := &gedcom.Individual{
+		XRef:  "@I2@",
+		Names: []*gedcom.PersonalName{{Full: "John /Doe/"}},
+		Sex:   "M",
+	}
+
+	doc := &gedcom.Document{
+		Records: []*gedcom.Record{
+			{XRef: ind1.XRef, Type: gedcom.RecordTypeIndividual, Entity: ind1},
+			{XRef: ind2.XRef, Type: gedcom.RecordTypeIndividual, Entity: ind2},
+		},
+	}
+
+	config := DefaultDuplicateConfig()
+	config.NormalizeNames = false
+	detector := NewDuplicateDetector(&config)
+	duplicates := detector.FindDuplicates(doc)
+
+	if len(duplicates) != 1 {
+		t.Fatalf("Expected 1 duplicate without normalization (names identical), got %d", len(duplicates))
+	}
+}
+
+func TestFindDuplicates_SurnamelessNeverMatch(t *testing.T) {
+	// Individuals with no surname share the empty-string bucket without sharing
+	// a surname. Every other signal agrees here -- same given name, same birth
+	// year, same sex -- so only the missing surname can keep them apart. The
+	// bucket is skipped outright for speed (#529); this pins the behaviour that
+	// skip relies on, so a future change that starts pairing them fails loudly.
+	birthDate, _ := gedcom.ParseDate("1 JAN 1850")
+	newInd := func(xref string) *gedcom.Individual {
+		return &gedcom.Individual{
+			XRef:  xref,
+			Names: []*gedcom.PersonalName{{Full: "John"}},
+			Sex:   "M",
+			Events: []*gedcom.Event{
+				{Type: gedcom.EventBirth, ParsedDate: birthDate},
+			},
+		}
+	}
+	ind1 := newInd("@I1@")
+	ind2 := newInd("@I2@")
+
+	doc := &gedcom.Document{
+		Records: []*gedcom.Record{
+			{XRef: ind1.XRef, Type: gedcom.RecordTypeIndividual, Entity: ind1},
+			{XRef: ind2.XRef, Type: gedcom.RecordTypeIndividual, Entity: ind2},
+		},
+	}
+
+	detector := NewDuplicateDetector(nil)
+	if duplicates := detector.FindDuplicates(doc); len(duplicates) != 0 {
+		t.Errorf("Expected 0 duplicates for surname-less individuals, got %d", len(duplicates))
+	}
+}
+
 func TestDuplicatePairToIssue(t *testing.T) {
 	ind1 := &gedcom.Individual{
 		XRef:  "@I1@",
