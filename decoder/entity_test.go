@@ -129,7 +129,7 @@ func TestPopulateEntities(t *testing.T) {
 	if jane == nil {
 		t.Fatal("GetIndividual(@I2@) returned nil")
 	}
-	if len(jane.SpouseInFamilies) != 1 || jane.SpouseInFamilies[0] != "@F1@" {
+	if len(jane.SpouseInFamilies) != 1 || jane.SpouseInFamilies[0].FamilyXRef != "@F1@" {
 		t.Errorf("jane.SpouseInFamilies = %v, want [@F1@]", jane.SpouseInFamilies)
 	}
 
@@ -5214,7 +5214,7 @@ func TestPaddedTokenValues(t *testing.T) {
 		t.Errorf("InlineNotes = %q, want none — the pointer was demoted to text", indi.InlineNotes)
 	}
 
-	if len(indi.SpouseInFamilies) != 1 || indi.SpouseInFamilies[0] != "@F1@" {
+	if len(indi.SpouseInFamilies) != 1 || indi.SpouseInFamilies[0].FamilyXRef != "@F1@" {
 		t.Errorf("SpouseInFamilies = %q, want [\"@F1@\"]", indi.SpouseInFamilies)
 	}
 

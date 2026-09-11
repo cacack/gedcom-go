@@ -411,15 +411,19 @@ for _, family := range families {
 person := doc.GetIndividual("@I1@")
 if person != nil {
     // Families where this person is a spouse
-    for _, famXRef := range person.SpouseInFamilies {
-        family := doc.GetFamily(famXRef)
-        fmt.Printf("Spouse in family: %s\n", famXRef)
+    for _, link := range person.SpouseInFamilies {
+        family := doc.GetFamily(link.FamilyXRef)
+        if family != nil { // nil for an orphaned FAMS pointer
+            fmt.Printf("Spouse in family: %s (%d children)\n", family.XRef, len(family.Children))
+        }
     }
 
     // Families where this person is a child
-    for _, famXRef := range person.ChildInFamilies {
-        family := doc.GetFamily(famXRef)
-        fmt.Printf("Child in family: %s\n", famXRef)
+    for _, link := range person.ChildInFamilies {
+        family := doc.GetFamily(link.FamilyXRef)
+        if family != nil { // nil for an orphaned FAMC pointer
+            fmt.Printf("Child in family: %s (pedigree: %q)\n", family.XRef, link.Pedigree)
+        }
     }
 }
 ```

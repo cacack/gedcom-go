@@ -610,7 +610,7 @@ func TestToTagsWriters_NilArgument(t *testing.T) {
 		{"addressToTags", func() []*gedcom.Tag { return addressToTags(nil, 2) }},
 		{"coordinatesToTags", func() []*gedcom.Tag { return coordinatesToTags(nil, 3) }},
 		{"ldsOrdinanceToTags", func() []*gedcom.Tag { return ldsOrdinanceToTags(nil, 1, opts) }},
-		{"familyLinkToTags", func() []*gedcom.Tag { return familyLinkToTags(nil, 1, nil) }},
+		{"familyLinkToTags", func() []*gedcom.Tag { return familyLinkToTags(nil, "FAMC", 1, nil) }},
 		{"associationToTags", func() []*gedcom.Tag { return associationToTags(nil, 1, opts) }},
 		{"changeDateToTags", func() []*gedcom.Tag { return changeDateToTags(nil, 1, "CHAN", opts) }},
 		{"mediaLinkToTags", func() []*gedcom.Tag { return mediaLinkToTags(nil, 1, nil) }},

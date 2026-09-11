@@ -89,8 +89,8 @@ func TestReferenceValidatorValidate_AllValid(t *testing.T) {
 	src := &gedcom.Source{XRef: "@S1@"}
 
 	// Set up bidirectional links
-	ind1.SpouseInFamilies = []string{"@F1@"}
-	ind2.SpouseInFamilies = []string{"@F1@"}
+	ind1.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
+	ind2.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 	ind3.ChildInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 	ind1.SourceCitations = []*gedcom.SourceCitation{{SourceXRef: "@S1@"}}
 
@@ -154,7 +154,7 @@ func TestReferenceValidatorValidate_OrphanedFAMS(t *testing.T) {
 
 	ind := &gedcom.Individual{
 		XRef:             "@I1@",
-		SpouseInFamilies: []string{"@F999@"}, // Non-existent family
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F999@"}}, // Non-existent family
 	}
 	addIndividual(doc, ind)
 
@@ -345,7 +345,7 @@ func TestReferenceValidatorValidate_MultipleOrphans(t *testing.T) {
 			{FamilyXRef: "@F999@"},
 			{FamilyXRef: "@F998@"},
 		},
-		SpouseInFamilies: []string{"@F997@"},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F997@"}},
 	}
 	addIndividual(doc, ind)
 
@@ -400,7 +400,7 @@ func TestReferenceValidatorValidate_EmptyXRefs(t *testing.T) {
 		ChildInFamilies: []gedcom.FamilyLink{
 			{FamilyXRef: ""}, // Empty - should be skipped
 		},
-		SpouseInFamilies: []string{""}, // Empty - should be skipped
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: ""}}, // Empty - should be skipped
 		SourceCitations: []*gedcom.SourceCitation{
 			{SourceXRef: ""}, // Empty - should be skipped
 			nil,              // Nil - should be skipped
@@ -521,8 +521,8 @@ func TestReferenceValidatorReport_AllValid(t *testing.T) {
 	}
 	src := &gedcom.Source{XRef: "@S1@"}
 
-	ind1.SpouseInFamilies = []string{"@F1@"}
-	ind2.SpouseInFamilies = []string{"@F1@"}
+	ind1.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
+	ind2.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 	ind3.ChildInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 	ind1.SourceCitations = []*gedcom.SourceCitation{{SourceXRef: "@S1@"}}
 
@@ -579,7 +579,7 @@ func TestReferenceValidatorReport_WithOrphans(t *testing.T) {
 		Children: []string{"@I1@", "@I998@"}, // 1 valid, 1 orphaned
 	}
 
-	ind1.SpouseInFamilies = []string{"@F1@", "@F999@"} // 1 valid, 1 orphaned
+	ind1.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}, {FamilyXRef: "@F999@"}} // 1 valid, 1 orphaned
 
 	addIndividual(doc, ind1)
 	addFamily(doc, fam)
@@ -671,7 +671,7 @@ func TestReferenceValidatorReport_EmptyXRefs(t *testing.T) {
 		ChildInFamilies: []gedcom.FamilyLink{
 			{FamilyXRef: ""},
 		},
-		SpouseInFamilies: []string{""},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: ""}},
 		SourceCitations: []*gedcom.SourceCitation{
 			{SourceXRef: ""},
 			nil,
@@ -777,7 +777,7 @@ func TestReferenceValidatorValidate_MessageFormat(t *testing.T) {
 			setup: func(doc *gedcom.Document) {
 				ind := &gedcom.Individual{
 					XRef:             "@I1@",
-					SpouseInFamilies: []string{"@F999@"},
+					SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F999@"}},
 				}
 				addIndividual(doc, ind)
 			},
@@ -867,7 +867,7 @@ func TestReferenceValidatorReport_Accuracy(t *testing.T) {
 	addSource(doc, src)
 
 	// Individual 1: 1 valid FAMS, 1 orphaned FAMS, 1 valid SOUR
-	ind1.SpouseInFamilies = []string{"@F1@", "@F999@"}
+	ind1.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}, {FamilyXRef: "@F999@"}}
 	ind1.SourceCitations = []*gedcom.SourceCitation{{SourceXRef: "@S1@"}}
 
 	// Individual 2: 1 valid FAMC, 1 orphaned FAMC

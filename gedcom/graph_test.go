@@ -22,7 +22,10 @@ func buildGenealogyFixture() *Document {
 	}
 
 	addIndividual := func(xref string, fams []string, famc []string) {
-		ind := &Individual{XRef: xref, SpouseInFamilies: fams}
+		ind := &Individual{XRef: xref}
+		for _, f := range fams {
+			ind.SpouseInFamilies = append(ind.SpouseInFamilies, FamilyLink{FamilyXRef: f})
+		}
 		for _, f := range famc {
 			ind.ChildInFamilies = append(ind.ChildInFamilies, FamilyLink{FamilyXRef: f})
 		}
@@ -133,7 +136,10 @@ func TestDescendants_CycleSafety(t *testing.T) {
 	// and descendant of @I2@. Subset relies on visited-set termination.
 	doc := &Document{Header: &Header{Version: Version551}, XRefMap: make(map[string]*Record)}
 	addInd := func(xref string, fams []string, famc []string) {
-		ind := &Individual{XRef: xref, SpouseInFamilies: fams}
+		ind := &Individual{XRef: xref}
+		for _, f := range fams {
+			ind.SpouseInFamilies = append(ind.SpouseInFamilies, FamilyLink{FamilyXRef: f})
+		}
 		for _, f := range famc {
 			ind.ChildInFamilies = append(ind.ChildInFamilies, FamilyLink{FamilyXRef: f})
 		}

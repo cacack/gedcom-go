@@ -35,8 +35,8 @@ func (d *Document) Descendants(xref string) []string {
 			continue
 		}
 
-		for _, famXRef := range ind.SpouseInFamilies {
-			fam := d.GetFamily(famXRef)
+		for _, link := range ind.SpouseInFamilies {
+			fam := d.GetFamily(link.FamilyXRef)
 			if fam == nil {
 				continue
 			}

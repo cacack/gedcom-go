@@ -100,7 +100,7 @@ func fullyPopulatedRecords() []*Record {
 	indi := &Individual{
 		XRef:             "@I1@",
 		ChildInFamilies:  []FamilyLink{{FamilyXRef: "@I_FAMC@", NoteXRefs: []string{"@I_FAMC_NX@"}}},
-		SpouseInFamilies: []string{"@I_FAMS@"},
+		SpouseInFamilies: []FamilyLink{{FamilyXRef: "@I_FAMS@", NoteXRefs: []string{"@I_FAMS_NX@"}}},
 		NoteXRefs:        []string{"@I_NX@"},
 		Associations:     []*Association{assoc("@I_ASSO@")},
 		SourceCitations:  []*SourceCitation{cite("@I_SOUR@")},

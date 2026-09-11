@@ -149,7 +149,7 @@ func TestStreamingValidator_ValidateRecord_CollectsFAMS(t *testing.T) {
 
 	ind := &gedcom.Individual{
 		XRef:             "@I1@",
-		SpouseInFamilies: []string{"@F1@", "@F2@"},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}, {FamilyXRef: "@F2@"}},
 	}
 	record := &gedcom.Record{
 		XRef:   "@I1@",
@@ -281,7 +281,7 @@ func TestStreamingValidator_ValidateRecord_SkipsEmptyXRefs(t *testing.T) {
 			{FamilyXRef: ""},     // Empty - should be skipped
 			{FamilyXRef: "@F1@"}, // Valid
 		},
-		SpouseInFamilies: []string{"", "@F2@"}, // First empty, second valid
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: ""}, {FamilyXRef: "@F2@"}}, // First empty, second valid
 		SourceCitations: []*gedcom.SourceCitation{
 			nil,                  // Nil - should be skipped
 			{SourceXRef: ""},     // Empty - should be skipped
@@ -306,8 +306,8 @@ func TestStreamingValidator_Finalize_NoOrphanedReferences(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{})
 
 	// Create valid linked structure
-	ind1 := &gedcom.Individual{XRef: "@I1@", SpouseInFamilies: []string{"@F1@"}}
-	ind2 := &gedcom.Individual{XRef: "@I2@", SpouseInFamilies: []string{"@F1@"}}
+	ind1 := &gedcom.Individual{XRef: "@I1@", SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}}
+	ind2 := &gedcom.Individual{XRef: "@I2@", SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}}
 	ind3 := &gedcom.Individual{XRef: "@I3@", ChildInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}}
 	fam := &gedcom.Family{XRef: "@F1@", Husband: "@I1@", Wife: "@I2@", Children: []string{"@I3@"}}
 
@@ -358,7 +358,7 @@ func TestStreamingValidator_Finalize_OrphanedFAMS(t *testing.T) {
 
 	ind := &gedcom.Individual{
 		XRef:             "@I1@",
-		SpouseInFamilies: []string{"@F999@"}, // Non-existent family
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F999@"}}, // Non-existent family
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind})
 
@@ -460,7 +460,7 @@ func TestStreamingValidator_Finalize_MultipleOrphanedReferences(t *testing.T) {
 	ind := &gedcom.Individual{
 		XRef:             "@I1@",
 		ChildInFamilies:  []gedcom.FamilyLink{{FamilyXRef: "@F999@"}},
-		SpouseInFamilies: []string{"@F998@"},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F998@"}},
 		SourceCitations:  []*gedcom.SourceCitation{{SourceXRef: "@S999@"}},
 	}
 	fam := &gedcom.Family{
@@ -512,7 +512,7 @@ func TestStreamingValidator_Reset(t *testing.T) {
 	// Add some data
 	ind := &gedcom.Individual{
 		XRef:             "@I1@",
-		SpouseInFamilies: []string{"@F1@"},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind})
 
@@ -545,7 +545,7 @@ func TestStreamingValidator_Reset_CanBeReused(t *testing.T) {
 	// First file: has orphaned reference
 	ind1 := &gedcom.Individual{
 		XRef:             "@I1@",
-		SpouseInFamilies: []string{"@F999@"},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F999@"}},
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind1})
 	issues1 := sv.Finalize()
@@ -560,7 +560,7 @@ func TestStreamingValidator_Reset_CanBeReused(t *testing.T) {
 	// Second file: valid references
 	ind2 := &gedcom.Individual{
 		XRef:             "@I1@",
-		SpouseInFamilies: []string{"@F1@"},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
 	}
 	fam := &gedcom.Family{XRef: "@F1@", Husband: "@I1@"}
 
@@ -603,7 +603,7 @@ func TestStreamingValidator_UsedXRefCount(t *testing.T) {
 	// Add individual with references
 	ind := &gedcom.Individual{
 		XRef:             "@I1@",
-		SpouseInFamilies: []string{"@F1@", "@F2@"},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}, {FamilyXRef: "@F2@"}},
 		SourceCitations:  []*gedcom.SourceCitation{{SourceXRef: "@S1@"}},
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind})
@@ -623,7 +623,7 @@ func TestStreamingValidator_MemoryUsage(t *testing.T) {
 		xref := fmt.Sprintf("@I%d@", i)
 		ind := &gedcom.Individual{
 			XRef:             xref,
-			SpouseInFamilies: []string{"@F1@"}, // All reference same family
+			SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}, // All reference same family
 		}
 		sv.ValidateRecord(&gedcom.Record{XRef: xref, Type: gedcom.RecordTypeIndividual, Entity: ind})
 	}
@@ -671,7 +671,7 @@ func TestStreamingValidator_Strictness_FiltersWarnings(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{Strictness: StrictnessRelaxed})
 
 	// Add orphaned reference (produces ERROR)
-	ind := &gedcom.Individual{XRef: "@I1@", SpouseInFamilies: []string{"@F999@"}}
+	ind := &gedcom.Individual{XRef: "@I1@", SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F999@"}}}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind})
 
 	issues := sv.Finalize()
@@ -690,8 +690,8 @@ func TestStreamingValidator_EquivalenceToBatchValidator(t *testing.T) {
 	doc := newTestDocument()
 
 	// Valid individuals and families
-	ind1 := &gedcom.Individual{XRef: "@I1@", SpouseInFamilies: []string{"@F1@"}}
-	ind2 := &gedcom.Individual{XRef: "@I2@", SpouseInFamilies: []string{"@F1@"}}
+	ind1 := &gedcom.Individual{XRef: "@I1@", SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}}
+	ind2 := &gedcom.Individual{XRef: "@I2@", SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}}
 	ind3 := &gedcom.Individual{XRef: "@I3@", ChildInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}}
 	fam := &gedcom.Family{XRef: "@F1@", Husband: "@I1@", Wife: "@I2@", Children: []string{"@I3@"}}
 	src := &gedcom.Source{XRef: "@S1@"}
@@ -1064,7 +1064,7 @@ func TestStreamingValidator_Strictness_Normal(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{Strictness: StrictnessNormal})
 
 	// Add orphaned reference (produces ERROR)
-	ind := &gedcom.Individual{XRef: "@I1@", SpouseInFamilies: []string{"@F999@"}}
+	ind := &gedcom.Individual{XRef: "@I1@", SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F999@"}}}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind})
 
 	issues := sv.Finalize()
@@ -1083,7 +1083,7 @@ func TestStreamingValidator_Strictness_Strict(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{Strictness: StrictnessStrict})
 
 	// Add orphaned reference (produces ERROR)
-	ind := &gedcom.Individual{XRef: "@I1@", SpouseInFamilies: []string{"@F999@"}}
+	ind := &gedcom.Individual{XRef: "@I1@", SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F999@"}}}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind})
 
 	issues := sv.Finalize()

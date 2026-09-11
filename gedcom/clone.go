@@ -101,7 +101,8 @@ func (i *Individual) Clone() *Individual {
 	copied := &Individual{
 		XRef:             i.XRef,
 		Sex:              i.Sex,
-		SpouseInFamilies: cloneStringSlice(i.SpouseInFamilies),
+		ChildInFamilies:  cloneFamilyLinks(i.ChildInFamilies),
+		SpouseInFamilies: cloneFamilyLinks(i.SpouseInFamilies),
 		NoteXRefs:        cloneStringSlice(i.NoteXRefs),
 		InlineNotes:      cloneStringSlice(i.InlineNotes),
 		RefNumber:        i.RefNumber,
@@ -114,18 +115,6 @@ func (i *Individual) Clone() *Individual {
 		copied.Names = make([]*PersonalName, len(i.Names))
 		for k, name := range i.Names {
 			copied.Names[k] = clonePersonalName(name)
-		}
-	}
-
-	if i.ChildInFamilies != nil {
-		copied.ChildInFamilies = make([]FamilyLink, len(i.ChildInFamilies))
-		for k, link := range i.ChildInFamilies {
-			copied.ChildInFamilies[k] = FamilyLink{
-				FamilyXRef:  link.FamilyXRef,
-				Pedigree:    link.Pedigree,
-				NoteXRefs:   cloneStringSlice(link.NoteXRefs),
-				InlineNotes: cloneStringSlice(link.InlineNotes),
-			}
 		}
 	}
 
@@ -866,6 +855,22 @@ func cloneExternalIDs(exts []*ExternalID) []*ExternalID {
 	copied := make([]*ExternalID, len(exts))
 	for i, ext := range exts {
 		copied[i] = cloneExternalID(ext)
+	}
+	return copied
+}
+
+func cloneFamilyLinks(links []FamilyLink) []FamilyLink {
+	if links == nil {
+		return nil
+	}
+	copied := make([]FamilyLink, len(links))
+	for i, link := range links {
+		copied[i] = FamilyLink{
+			FamilyXRef:  link.FamilyXRef,
+			Pedigree:    link.Pedigree,
+			NoteXRefs:   cloneStringSlice(link.NoteXRefs),
+			InlineNotes: cloneStringSlice(link.InlineNotes),
+		}
 	}
 	return copied
 }

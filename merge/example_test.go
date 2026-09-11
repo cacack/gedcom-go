@@ -23,7 +23,7 @@ func Example_remapXRefs() {
 		doc.Records = append(doc.Records, rec)
 		doc.XRefMap[xref] = rec
 	}
-	add("@I1@", gedcom.RecordTypeIndividual, &gedcom.Individual{XRef: "@I1@", SpouseInFamilies: []string{"@F1@"}})
+	add("@I1@", gedcom.RecordTypeIndividual, &gedcom.Individual{XRef: "@I1@", SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}})
 	add("@F1@", gedcom.RecordTypeFamily, &gedcom.Family{XRef: "@F1@", Husband: "@I1@"})
 
 	// Recommended transform: prefix every XRef into a disjoint namespace.

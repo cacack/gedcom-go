@@ -243,6 +243,82 @@ document, or one whose `Tags` you cleared):
 
 Only code that reads the two fields directly needs a change.
 
+## Retypes
+
+A field keeps its name and its meaning but changes its type. The build fails
+wherever a call site names a field of the retyped value, so the compiler hands
+you most of the list — apply the mapping below rather than the first fix that
+compiles. It does not hand you the whole list; see the caveat in each entry.
+
+### `Individual.SpouseInFamilies` is now `[]FamilyLink`
+
+| v2 | v3 |
+|----|----|
+| `SpouseInFamilies []string` — family XRefs | `SpouseInFamilies []FamilyLink` — the XRef plus the link's own subordinates |
+
+`ChildInFamilies` made this move in v2; the two halves now match. `FAMC` and
+`FAMS` are one `FAM-LINK` structure in both 5.5.1 and 7.0, but only the child
+half carried the `NoteXRefs`/`InlineNotes` fields, so a `NOTE` or `SNOTE` under
+a `FAMS` line was dropped on the typed path. A spouse link's notes now survive a
+decode and re-encode exactly as a child link's do.
+
+Ranging over the slice needs the XRef taken off the link:
+
+```go
+// v2
+for _, famXRef := range ind.SpouseInFamilies { use(doc.GetFamily(famXRef)) }
+
+// v3
+for _, link := range ind.SpouseInFamilies { use(doc.GetFamily(link.FamilyXRef)) }
+```
+
+**Every site that names a field is a compile error** — `link.FamilyXRef` has no
+`[]string` form, so direct field access cannot survive the retype silently.
+
+**A clean build is still not proof you found them all.** A site that passes the
+slice somewhere as a whole — rather than naming a field of it — never stops
+compiling, and its output changes underneath:
+
+```go
+// Compiles before and after. Was "[@F1@]", now "[{@F1@  [] []}]".
+fmt.Printf("%v\n", ind.SpouseInFamilies)
+```
+
+The same silence covers any `any`/`interface{}` hand-off and a `text/template`
+`{{range .SpouseInFamilies}}` whose body prints the element. `Individual`
+carries no struct tags, so anything serialising it with `encoding/json` or
+`encoding/gob` also changes wire shape with no build error:
+
+```text
+v2: ["@F1@"]
+v3: [{"FamilyXRef":"@F1@","Pedigree":"","NoteXRefs":null,"InlineNotes":null}]
+```
+
+`len(ind.SpouseInFamilies)` is the reassuring case: still one entry per `FAMS`
+line, so a count does not change.
+
+This repository had to hand-fix its own `examples/query` for exactly this — the
+compiler flagged nothing. **Grep for `SpouseInFamilies` as well as building.**
+
+`FamiliesAsSpouse(doc)` is unaffected by the retype — it still takes a
+`*Document` and returns `[]*Family`. The method is renamed, though; see below.
+
+`FamilyLink.Pedigree` is meaningless on a spouse link: neither 5.5.1 nor 7.0
+defines `PEDI` under `FAMS`. It is present only because both link kinds share
+one struct, and the encoder still writes it when set, so that malformed input
+round-trips. Do not read it off a spouse link. Decoding one now also records an
+`INVALID_VALUE` diagnostic, so the anomaly is reportable rather than merely
+preserved.
+
+**Expect more decode diagnostics on some files.** In v2 nothing subordinate to a
+`FAMS` line was ever visited, so nothing under it could be reported. v3 parses
+those subordinates, and any tag there that is not `PEDI`, `NOTE`, `SNOTE`,
+`STAT`, or a `_`-prefixed vendor extension now yields an `UNKNOWN_TAG` warning —
+once per occurrence. A vendor export carrying, say, `2 SOUR` under every `1 FAMS`
+can gain a large number of warnings on input that decoded quietly before. No
+data is lost either way: the raw tags were preserved in v2 and still are. If you
+surface diagnostics to end users, check the volume before shipping the upgrade.
+
 ## Renames
 
 ### `Individual.ParentalFamilies` / `SpouseFamilies`
@@ -698,12 +774,17 @@ relying on them.
 
 `make api-check` in this repository reports the full apidiff between the last
 release and `main`, including constant value changes. For your own code, the
-compiler catches every removal and rename on this page. It does **not** catch
-the value changes — the inverted boolean, the renumbered constant, the `*int`
-retype (whose compile error has a mechanical fix that can be wrong), or the
-`MediaObject` note-pointer partition, which changes no signature at all and so
-produces no build error anywhere. A clean build is not evidence that those
-four are done.
+compiler catches every removal and rename on this page, and every site that
+*names a field* of a retyped value. It does **not** catch the value changes —
+the inverted boolean, the renumbered constant, the `*int` retype (whose compile
+error has a mechanical fix that can be wrong), or the `MediaObject`
+note-pointer partition, which changes no signature at all and so produces no
+build error anywhere. A clean build is not evidence that those four are done.
+
+Nor does it catch a retyped slice that a call site only prints, marshals, or
+measures: `SpouseInFamilies` changes shape for `%v`, `encoding/json` and
+`text/template` without ever failing to compile. Grep for the field name
+alongside building; the Retypes entry above lists the shapes to look for.
 
 See [`docs/governance/policies/api-stability.md`](../governance/policies/api-stability.md)
 for what the project treats as a breaking change, including the semantic breaks

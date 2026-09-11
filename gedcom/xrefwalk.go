@@ -331,7 +331,8 @@ func walkIndividual(i *Individual, cb refCallback) {
 		walkStrings(i.ChildInFamilies[k].NoteXRefs, cb)
 	}
 	for k := range i.SpouseInFamilies {
-		cb(&i.SpouseInFamilies[k])
+		cb(&i.SpouseInFamilies[k].FamilyXRef)
+		walkStrings(i.SpouseInFamilies[k].NoteXRefs, cb)
 	}
 	walkNotes(i.NoteXRefs, cb)
 	walkAssociations(i.Associations, cb)

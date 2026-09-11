@@ -120,7 +120,9 @@ func TestRecordTypesNoteSplit(t *testing.T) {
 }
 
 // TestSubstructureTypesNoteSplit confirms the five substructures split in
-// issue #472 emit NOTE tags for both the XRef pointer and inline text.
+// issue #472 emit NOTE tags for both the XRef pointer and inline text. The
+// FamilyLink case is checked under both tag names, because #534 routed FAMS
+// through the same writer as FAMC.
 func TestSubstructureTypesNoteSplit(t *testing.T) {
 	want := []string{"@N1@", "An inline note"}
 
@@ -132,8 +134,13 @@ func TestSubstructureTypesNoteSplit(t *testing.T) {
 
 	fl := &gedcom.FamilyLink{FamilyXRef: "@F1@", NoteXRefs: []string{"@N1@"},
 		InlineNotes: []string{"An inline note"}}
-	if got := noteTagValues(familyLinkToTags(fl, 1, nil)); !reflect.DeepEqual(got, want) {
-		t.Errorf("familyLinkToTags() NOTE values = %#v, want %#v", got, want)
+	if got := noteTagValues(familyLinkToTags(fl, "FAMC", 1, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("familyLinkToTags(FAMC) NOTE values = %#v, want %#v", got, want)
+	}
+	// A spouse link is the same struct written under a different tag name
+	// (#534), so both tag names must emit both note forms.
+	if got := noteTagValues(familyLinkToTags(fl, "FAMS", 1, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("familyLinkToTags(FAMS) NOTE values = %#v, want %#v", got, want)
 	}
 
 	pd := &gedcom.PlaceDetail{Name: "Springfield", NoteXRefs: []string{"@N1@"},

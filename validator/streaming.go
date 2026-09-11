@@ -170,9 +170,9 @@ func (sv *StreamingValidator) validateIndividual(ind *gedcom.Individual) []Issue
 	}
 
 	// Collect FAMS references
-	for i, famXRef := range ind.SpouseInFamilies {
-		if famXRef != "" {
-			sv.usedXRefs[famXRef] = append(sv.usedXRefs[famXRef], usageLocation{
+	for i, link := range ind.SpouseInFamilies {
+		if link.FamilyXRef != "" {
+			sv.usedXRefs[link.FamilyXRef] = append(sv.usedXRefs[link.FamilyXRef], usageLocation{
 				RecordXRef: ind.XRef,
 				Context:    "FAMS",
 				Field:      fmt.Sprintf("SpouseInFamilies[%d]", i),

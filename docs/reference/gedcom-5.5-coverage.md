@@ -179,11 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 838 | 84.0% | 1117 | 84.9% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 840 | 84.2% | 1119 | 85.0% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 74 | 7.4% | 88 | 6.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 67 | 6.7% | 98 | 7.4% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 65 | 6.5% | 96 | 7.3% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -195,7 +195,7 @@ pairs under it reach the typed model.
 |---------|----------------:|----------------:|
 | `FAM` | 206 / 254 | 271 / 324 |
 | `HEAD` | 5 / 28 | 8 / 33 |
-| `INDI` | 585 / 625 | 785 / 855 |
+| `INDI` | 587 / 625 | 787 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 5 / 12 | 10 / 13 |
 | `REPO` | 13 / 17 | 16 / 21 |
@@ -2480,8 +2480,8 @@ Measured at `INDI.FAMS` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 
 ### `SUBMISSION_RECORD.SUBN`
 

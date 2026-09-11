@@ -40,7 +40,7 @@ func buildRichFixture() *gedcom.Document {
 
 	add("@I1@", gedcom.RecordTypeIndividual, &gedcom.Individual{
 		XRef:             "@I1@",
-		SpouseInFamilies: []string{"@F1@"},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
 		NoteXRefs:        []string{"@N1@"},
 		SourceCitations:  []*gedcom.SourceCitation{{SourceXRef: "@S1@"}},
 		Media:            []*gedcom.MediaLink{{MediaXRef: "@M1@"}},
@@ -53,7 +53,7 @@ func buildRichFixture() *gedcom.Document {
 	})
 	add("@I2@", gedcom.RecordTypeIndividual, &gedcom.Individual{
 		XRef:             "@I2@",
-		SpouseInFamilies: []string{"@F1@"},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
 	})
 	add("@I3@", gedcom.RecordTypeIndividual, &gedcom.Individual{
 		XRef:            "@I3@",
@@ -202,7 +202,7 @@ func TestRemapXRefs_PrefixTransformUpdatesAllRecordsAndReferences(t *testing.T) 
 	if i1 == nil {
 		t.Fatal("individual @A_I1@ missing from output")
 	}
-	if len(i1.SpouseInFamilies) != 1 || i1.SpouseInFamilies[0] != "@A_F1@" {
+	if len(i1.SpouseInFamilies) != 1 || i1.SpouseInFamilies[0].FamilyXRef != "@A_F1@" {
 		t.Errorf("I1.SpouseInFamilies = %v, want [@A_F1@]", i1.SpouseInFamilies)
 	}
 	if len(i1.NoteXRefs) != 1 || i1.NoteXRefs[0] != "@A_N1@" {

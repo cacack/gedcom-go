@@ -152,7 +152,8 @@ func TestDecodeRecordNoteSplit(t *testing.T) {
 }
 
 // TestDecodeSubstructureNoteSplit covers the five substructures given note
-// fields by issue #472.
+// fields by issue #472, and both FamilyLink sites -- FAMC and, since #534,
+// FAMS.
 //
 // The MediaLink case uses a padded pointer ("NOTE  @N1@"), which is the shape
 // #426 preserves and which a naive pointer test on the raw value would
@@ -167,6 +168,10 @@ func TestDecodeSubstructureNoteSplit(t *testing.T) {
 1 FAMC @F1@
 2 PEDI birth
 2 NOTE Family link note
+2 NOTE @N1@
+1 FAMS @F1@
+2 NOTE Spouse link note
+3 CONT second line
 2 NOTE @N1@
 1 ASSO @I2@
 2 ROLE WITN
@@ -215,7 +220,7 @@ func TestDecodeSubstructureNoteSplit(t *testing.T) {
 		want recordNotes
 	}{
 		{
-			name: "FamilyLink splits inline and xref",
+			name: "FamilyLink under FAMC splits inline and xref",
 			got: func() recordNotes {
 				l := indi.ChildInFamilies[0]
 				return recordNotes{l.NoteXRefs, l.InlineNotes}
@@ -223,6 +228,22 @@ func TestDecodeSubstructureNoteSplit(t *testing.T) {
 			want: recordNotes{
 				xrefs:  []string{"@N1@"},
 				inline: []string{"Family link note"},
+			},
+		},
+		{
+			// The FAMS half of #534: a spouse link takes the same parse path
+			// as a child link, so its notes split identically. The CONT also
+			// pins that appendRecordNote folds continuations under a FAMS --
+			// parity with FAMC, but FAMS is the newer caller and no file in
+			// testdata/ carries a continued note there.
+			name: "FamilyLink under FAMS splits inline and xref",
+			got: func() recordNotes {
+				l := indi.SpouseInFamilies[0]
+				return recordNotes{l.NoteXRefs, l.InlineNotes}
+			}(),
+			want: recordNotes{
+				xrefs:  []string{"@N1@"},
+				inline: []string{"Spouse link note\nsecond line"},
 			},
 		},
 		{

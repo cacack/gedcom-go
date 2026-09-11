@@ -385,7 +385,7 @@ func TestDateLogicValidator_CheckMarriageBeforeBirth(t *testing.T) {
 			}
 
 			// Link individual to family as spouse
-			ind.SpouseInFamilies = []string{"@F1@"}
+			ind.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 
 			// Create document
 			doc := makeDocument([]*gedcom.Individual{ind, spouse}, []*gedcom.Family{family})
@@ -606,7 +606,7 @@ func TestDateLogicValidator_CheckReasonableParentAge(t *testing.T) {
 			}
 
 			// Link parent to family as spouse
-			parent.SpouseInFamilies = []string{"@F1@"}
+			parent.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 
 			// Create document
 			doc := makeDocument([]*gedcom.Individual{parent, child}, []*gedcom.Family{family})
@@ -653,7 +653,7 @@ func TestDateLogicValidator_Validate_Integration(t *testing.T) {
 		Husband:  "@I1@",
 		Children: []string{"@I2@"},
 	}
-	parent.SpouseInFamilies = []string{"@F1@"}
+	parent.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 
 	doc := makeDocument([]*gedcom.Individual{parent, child}, []*gedcom.Family{family})
 
@@ -848,7 +848,7 @@ func TestDateLogicValidator_MultipleMarriages(t *testing.T) {
 		}},
 	}
 
-	ind.SpouseInFamilies = []string{"@F1@", "@F2@"}
+	ind.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}, {FamilyXRef: "@F2@"}}
 
 	doc := makeDocument(
 		[]*gedcom.Individual{ind, spouse1, spouse2},
@@ -884,7 +884,7 @@ func TestDateLogicValidator_MultipleChildren(t *testing.T) {
 		Children: []string{"@I2@", "@I3@", "@I4@"},
 	}
 
-	parent.SpouseInFamilies = []string{"@F1@"}
+	parent.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 
 	doc := makeDocument(
 		[]*gedcom.Individual{parent, child1, child2, child3},
