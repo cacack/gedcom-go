@@ -11,6 +11,13 @@ GOCMD=go
 GOBUILD=$(GOCMD) build
 GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
+# Explicit test budget, mirroring CI (.github/workflows/ci.yml). Go's implicit
+# 10m default let a quadratic regression grow until it crossed the limit, and
+# the failure read as an unexplained panic rather than a budget being exceeded
+# (#529). Stated here so the local reproduction path fails the same, nameable
+# way CI does. Applied to the full-suite targets only -- benchmark targets have
+# their own runtime shape and are left ungated.
+GOTEST_TIMEOUT=10m
 GOGET=$(GOCMD) get
 GOMOD=$(GOCMD) mod
 GOFMT=$(GOCMD) fmt
@@ -38,11 +45,11 @@ all: clean fmt vet test build ## Run all checks and build
 
 test: ## Run all tests (with race detector)
 	@echo "Running tests..."
-	$(GOTEST) -v -race ./...
+	$(GOTEST) -v -race -timeout $(GOTEST_TIMEOUT) ./...
 
 test-verbose: ## Run tests with verbose output
 	@echo "Running tests (verbose)..."
-	$(GOTEST) -v -race ./...
+	$(GOTEST) -v -race -timeout $(GOTEST_TIMEOUT) ./...
 
 test-short: ## Run tests in short mode (skip slow tests)
 	@echo "Running tests (short mode)..."
@@ -50,7 +57,7 @@ test-short: ## Run tests in short mode (skip slow tests)
 
 test-coverage: ## Run tests with coverage report
 	@echo "Running tests with coverage..."
-	$(GOTEST) -coverprofile=$(COVERAGE_FILE) -covermode=atomic $(shell $(GOCMD) list ./... | grep -v /examples/ | grep -v /specs/)
+	$(GOTEST) -timeout $(GOTEST_TIMEOUT) -coverprofile=$(COVERAGE_FILE) -covermode=atomic $(shell $(GOCMD) list ./... | grep -v /examples/ | grep -v /specs/)
 	@echo ""
 	@echo "Coverage summary (library packages only):"
 	@$(GOCMD) tool cover -func=$(COVERAGE_FILE) | grep total | awk '{print "Total coverage: " $$3}'
@@ -148,7 +155,7 @@ spec-coverage: ## Regenerate the docs/reference/gedcom-*-coverage.md reports fro
 
 check-coverage: ## Check coverage thresholds (same as CI)
 	@echo "Running tests with coverage..."
-	$(GOTEST) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./...
+	$(GOTEST) -timeout $(GOTEST_TIMEOUT) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./...
 	@echo ""
 	@echo "Checking coverage thresholds (85% per-package, 85% total)..."
 	@GO_TEST_COVERAGE=$$(command -v go-test-coverage || echo "$$HOME/go/bin/go-test-coverage"); \
@@ -337,11 +344,11 @@ preflight: ## Run all CI checks locally before pushing
 	@$(MAKE) --no-print-directory lint
 	@echo ""
 	@echo "→ [6/9] Running tests with race detector..."
-	@$(GOTEST) -race ./...
+	@$(GOTEST) -race -timeout $(GOTEST_TIMEOUT) ./...
 	@echo "✓ Tests passed"
 	@echo ""
 	@echo "→ [7/9] Checking coverage thresholds..."
-	@$(GOTEST) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./... > /dev/null
+	@$(GOTEST) -timeout $(GOTEST_TIMEOUT) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./... > /dev/null
 	@GO_TEST_COVERAGE=$$(command -v go-test-coverage || echo "$$HOME/go/bin/go-test-coverage"); \
 	if [ ! -x "$$GO_TEST_COVERAGE" ]; then GO_TEST_COVERAGE="$$(go env GOPATH)/bin/go-test-coverage"; fi; \
 	if [ ! -x "$$GO_TEST_COVERAGE" ]; then echo "go-test-coverage not found. Run 'make install-tools'" && exit 1; fi; \
