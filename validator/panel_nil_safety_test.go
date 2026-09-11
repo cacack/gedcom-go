@@ -96,7 +96,7 @@ func TestValidateAll_NilEventInFamilyEvents(t *testing.T) {
 		ind := panelInd("@I1@", aName(), []*gedcom.Event{
 			{Type: gedcom.EventBirth, ParsedDate: &gedcom.Date{Year: 1900}},
 		})
-		ind.Entity.(*gedcom.Individual).SpouseInFamilies = []string{"@F1@"}
+		ind.Entity.(*gedcom.Individual).SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 		fam := &gedcom.Record{
 			XRef:   "@F1@",
 			Type:   gedcom.RecordTypeFamily,

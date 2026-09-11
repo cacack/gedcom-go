@@ -142,11 +142,12 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			indi.Attributes = append(indi.Attributes, attr)
 
 		case "FAMC":
-			famLink := parseFamilyLink(record.Tags, i, collector)
+			famLink := parseFamilyLink(record.Tags, i, "FAMC", collector)
 			indi.ChildInFamilies = append(indi.ChildInFamilies, famLink)
 
 		case "FAMS":
-			indi.SpouseInFamilies = append(indi.SpouseInFamilies, tagToken(tag.Value))
+			famLink := parseFamilyLink(record.Tags, i, "FAMS", collector)
+			indi.SpouseInFamilies = append(indi.SpouseInFamilies, famLink)
 
 		case "ASSO":
 			assoc := parseAssociation(record.Tags, i, collector)
@@ -317,14 +318,18 @@ func parseNameTransliteration(tags []*gedcom.Tag, tranIdx int, collector *diagno
 	return tran
 }
 
-// parseFamilyLink extracts a family link from tags starting at famcIdx.
-func parseFamilyLink(tags []*gedcom.Tag, famcIdx int, collector *diagnosticCollector) gedcom.FamilyLink {
+// parseFamilyLink extracts a family link from tags starting at linkIdx.
+//
+// tagName is the link tag being parsed, "FAMC" or "FAMS". The two share the
+// FAM-LINK shape in both 5.5.1 and 7.0, so one parser serves both; they differ
+// in a single substructure, PEDI, which only a child link may carry.
+func parseFamilyLink(tags []*gedcom.Tag, linkIdx int, tagName string, collector *diagnosticCollector) gedcom.FamilyLink {
 	famLink := gedcom.FamilyLink{
-		FamilyXRef: tagToken(tags[famcIdx].Value),
+		FamilyXRef: tagToken(tags[linkIdx].Value),
 	}
 
 	// Look for subordinate tags (level 2)
-	for i := famcIdx + 1; i < len(tags); i++ {
+	for i := linkIdx + 1; i < len(tags); i++ {
 		tag := tags[i]
 		if tag.Level <= 1 {
 			break
@@ -332,6 +337,15 @@ func parseFamilyLink(tags []*gedcom.Tag, famcIdx int, collector *diagnosticColle
 		if tag.Level == 2 {
 			switch tag.Tag {
 			case "PEDI":
+				// A spouse link has no pedigree in either spec. The value is
+				// still stored and re-encoded, per the lossless-representation
+				// principle -- but it takes the recognized branch, so without
+				// this diagnostic a caller auditing file quality would see a
+				// clean FAMS while carrying a value invalid in 5.5.1 and 7.0.
+				if tagName == "FAMS" {
+					collector.addInvalidValue(tag.LineNumber, "PEDI", tag.Value,
+						"not valid under FAMS; a spouse link has no pedigree")
+				}
 				famLink.Pedigree = tag.Value
 			case "NOTE", "SNOTE":
 				famLink.NoteXRefs, famLink.InlineNotes = appendRecordNote(

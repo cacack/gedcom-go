@@ -447,7 +447,7 @@ func TestIndividualClone(t *testing.T) {
 		original := &Individual{
 			XRef:             "@I1@",
 			Sex:              "M",
-			SpouseInFamilies: []string{"@F1@"},
+			SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}},
 			NoteXRefs:        []string{"@N1@"},
 			RefNumber:        "123",
 			UID:              "uid-123",
@@ -1238,7 +1238,11 @@ func createFullTestDocument() *Document {
 func intPtr(v int) *int { return &v }
 
 // TestCloneNoteSlicesAreDeepCopied pins deep-copy independence for the note
-// slices added to five substructures in #472. A length comparison -- the shape
+// slices added to five substructures in #472, plus the sixth carrier #534
+// created by retyping SpouseInFamilies to []FamilyLink. FAMC and FAMS share one
+// clone helper today, so the FAMS rows would not fail independently -- they are
+// here so that a future change which special-cases either link kind cannot
+// quietly drop the deep copy for one of them. A length comparison -- the shape
 // several tests in this file use -- is satisfied by a shared backing array, so
 // a clone that assigned `copied.NoteXRefs = src.NoteXRefs` would pass every
 // other assertion here while letting a write through one document corrupt
@@ -1256,6 +1260,11 @@ func TestCloneNoteSlicesAreDeepCopied(t *testing.T) {
 			FamilyXRef:  "@F1@",
 			NoteXRefs:   []string{"@N2@"},
 			InlineNotes: []string{"family link note"},
+		}},
+		SpouseInFamilies: []FamilyLink{{
+			FamilyXRef:  "@F2@",
+			NoteXRefs:   []string{"@N5@"},
+			InlineNotes: []string{"spouse link note"},
 		}},
 		Associations: []*Association{{
 			IndividualXRef: "@I2@",
@@ -1277,6 +1286,8 @@ func TestCloneNoteSlicesAreDeepCopied(t *testing.T) {
 	copied.Media[0].InlineNotes[0] = "modified"
 	copied.ChildInFamilies[0].NoteXRefs[0] = "modified"
 	copied.ChildInFamilies[0].InlineNotes[0] = "modified"
+	copied.SpouseInFamilies[0].NoteXRefs[0] = "modified"
+	copied.SpouseInFamilies[0].InlineNotes[0] = "modified"
 	copied.Associations[0].NoteXRefs[0] = "modified"
 	copied.Associations[0].InlineNotes[0] = "modified"
 	copied.Events[0].PlaceDetail.NoteXRefs[0] = "modified"
@@ -1288,8 +1299,10 @@ func TestCloneNoteSlicesAreDeepCopied(t *testing.T) {
 	}{
 		{"MediaLink.NoteXRefs", original.Media[0].NoteXRefs[0]},
 		{"MediaLink.InlineNotes", original.Media[0].InlineNotes[0]},
-		{"FamilyLink.NoteXRefs", original.ChildInFamilies[0].NoteXRefs[0]},
-		{"FamilyLink.InlineNotes", original.ChildInFamilies[0].InlineNotes[0]},
+		{"FamilyLink.NoteXRefs (FAMC)", original.ChildInFamilies[0].NoteXRefs[0]},
+		{"FamilyLink.InlineNotes (FAMC)", original.ChildInFamilies[0].InlineNotes[0]},
+		{"FamilyLink.NoteXRefs (FAMS)", original.SpouseInFamilies[0].NoteXRefs[0]},
+		{"FamilyLink.InlineNotes (FAMS)", original.SpouseInFamilies[0].InlineNotes[0]},
 		{"Association.NoteXRefs", original.Associations[0].NoteXRefs[0]},
 		{"Association.InlineNotes", original.Associations[0].InlineNotes[0]},
 		{"PlaceDetail.NoteXRefs", original.Events[0].PlaceDetail.NoteXRefs[0]},

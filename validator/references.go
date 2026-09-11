@@ -93,17 +93,17 @@ func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, ind
 	}
 
 	// Check FAMS references (SpouseInFamilies)
-	for i, famXRef := range ind.SpouseInFamilies {
-		if famXRef == "" {
+	for i, link := range ind.SpouseInFamilies {
+		if link.FamilyXRef == "" {
 			continue
 		}
-		if doc.GetFamily(famXRef) == nil {
+		if doc.GetFamily(link.FamilyXRef) == nil {
 			issue := NewIssue(
 				SeverityError,
 				CodeOrphanedFAMS,
-				fmt.Sprintf("FAMS reference to non-existent family %s", famXRef),
+				fmt.Sprintf("FAMS reference to non-existent family %s", link.FamilyXRef),
 				ind.XRef,
-			).WithRelatedXRef(famXRef).
+			).WithRelatedXRef(link.FamilyXRef).
 				WithDetail("reference_type", string(RefTypeFAMS)).
 				WithDetail("field", fmt.Sprintf("SpouseInFamilies[%d]", i))
 			issues = append(issues, issue)
@@ -250,13 +250,13 @@ func (v *ReferenceValidator) countIndividualReferences(doc *gedcom.Document, ind
 	}
 
 	// Count FAMS references
-	for _, famXRef := range ind.SpouseInFamilies {
-		if famXRef == "" {
+	for _, link := range ind.SpouseInFamilies {
+		if link.FamilyXRef == "" {
 			continue
 		}
 		report.TotalReferences++
 		report.ByType[string(RefTypeFAMS)]++
-		if doc.GetFamily(famXRef) == nil {
+		if doc.GetFamily(link.FamilyXRef) == nil {
 			report.OrphanedReferences++
 			report.OrphanedByType[string(RefTypeFAMS)]++
 		} else {

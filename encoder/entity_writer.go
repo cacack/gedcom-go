@@ -223,12 +223,12 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 
 	// Family links as child (level 1) - FAMC
 	for i := range indi.ChildInFamilies {
-		tags = append(tags, familyLinkToTags(&indi.ChildInFamilies[i], 1, opts)...)
+		tags = append(tags, familyLinkToTags(&indi.ChildInFamilies[i], "FAMC", 1, opts)...)
 	}
 
 	// Family links as spouse (level 1) - FAMS
-	for _, famXRef := range indi.SpouseInFamilies {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "FAMS", Value: famXRef})
+	for i := range indi.SpouseInFamilies {
+		tags = append(tags, familyLinkToTags(&indi.SpouseInFamilies[i], "FAMS", 1, opts)...)
 	}
 
 	// Associations (level 1) - ASSO
@@ -1095,15 +1095,16 @@ func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions
 }
 
 // familyLinkToTags converts a FamilyLink to GEDCOM tags at the specified level.
-func familyLinkToTags(link *gedcom.FamilyLink, level int, opts *EncodeOptions) []*gedcom.Tag {
+// tagName is the link's own tag: "FAMC" for a child link, "FAMS" for a spouse link.
+func familyLinkToTags(link *gedcom.FamilyLink, tagName string, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if link == nil {
 		return nil
 	}
 
 	var tags []*gedcom.Tag
 
-	// FAMC tag with family XRef
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: "FAMC", Value: link.FamilyXRef})
+	// Link tag with family XRef
+	tags = append(tags, &gedcom.Tag{Level: level, Tag: tagName, Value: link.FamilyXRef})
 
 	// Subordinate tags at level+1
 	if link.Pedigree != "" {

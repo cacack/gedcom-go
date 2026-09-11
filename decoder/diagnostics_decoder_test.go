@@ -583,6 +583,55 @@ func TestEntityLevelDiagnosticsInvalidValue(t *testing.T) {
 	}
 }
 
+// TestPedigreeUnderFAMSIsReported covers the asymmetry #534 left behind. FAMC
+// and FAMS share one parser, so a PEDI under FAMS takes the recognized branch
+// and is stored -- deliberately, so that malformed input still round-trips.
+// Without a diagnostic a caller auditing file quality would see a clean FAMS
+// while carrying a value neither 5.5.1 nor 7.0 permits there. The value must
+// survive AND be reported; asserting only one of the two misses the point.
+func TestPedigreeUnderFAMSIsReported(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 FAMC @F1@
+2 PEDI birth
+1 FAMS @F2@
+2 PEDI adopted
+0 TRLR`
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+
+	ind := result.Document.GetIndividual("@I1@")
+	if ind == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+	if got := ind.SpouseInFamilies[0].Pedigree; got != "adopted" {
+		t.Errorf("spouse link Pedigree = %q, want %q (the value must still be preserved)", got, "adopted")
+	}
+
+	var pediDiags []Diagnostic
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeInvalidValue && strings.Contains(d.Message, "PEDI") {
+			pediDiags = append(pediDiags, d)
+		}
+	}
+
+	// Exactly one: the FAMC pedigree is valid and must stay silent.
+	if len(pediDiags) != 1 {
+		t.Fatalf("got %d PEDI diagnostics, want 1 (FAMS only): %v", len(pediDiags), pediDiags)
+	}
+	if pediDiags[0].Severity != SeverityWarning {
+		t.Errorf("Severity = %v, want %v", pediDiags[0].Severity, SeverityWarning)
+	}
+	if !strings.Contains(pediDiags[0].Message, "FAMS") {
+		t.Errorf("message does not say which context is at fault: %s", pediDiags[0].Message)
+	}
+}
+
 // TestEntityLevelDiagnosticsStrictModeNoCollection tests that strict mode doesn't collect entity diagnostics.
 func TestEntityLevelDiagnosticsStrictModeNoCollection(t *testing.T) {
 	// Input with an unknown tag (but valid syntax)

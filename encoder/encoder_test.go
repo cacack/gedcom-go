@@ -1849,7 +1849,7 @@ func TestRoundtripComplexIndividual(t *testing.T) {
 						{Type: "OCCU", Value: "Composer", Date: "1792", PlaceDetail: &gedcom.PlaceDetail{Name: "Vienna"}},
 					},
 					ChildInFamilies:  []gedcom.FamilyLink{{FamilyXRef: "@F1@", Pedigree: "birth"}},
-					SpouseInFamilies: []string{"@F2@"},
+					SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F2@"}},
 					Associations: []*gedcom.Association{
 						{IndividualXRef: "@I2@", Role: "GODP", InlineNotes: []string{"Godfather"}},
 					},

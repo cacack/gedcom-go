@@ -33,7 +33,7 @@ func buildRichFixture() *Document {
 
 	add("@I1@", RecordTypeIndividual, &Individual{
 		XRef:             "@I1@",
-		SpouseInFamilies: []string{"@F1@"},
+		SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}},
 		NoteXRefs:        []string{"@N1@"},
 		SourceCitations:  []*SourceCitation{{SourceXRef: "@S1@"}},
 		Media:            []*MediaLink{{MediaXRef: "@M1@"}},
@@ -43,7 +43,7 @@ func buildRichFixture() *Document {
 	})
 	add("@I2@", RecordTypeIndividual, &Individual{
 		XRef:             "@I2@",
-		SpouseInFamilies: []string{"@F1@"},
+		SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}},
 	})
 	add("@I3@", RecordTypeIndividual, &Individual{
 		XRef:            "@I3@",

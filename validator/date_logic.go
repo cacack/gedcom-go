@@ -201,8 +201,8 @@ func (v *DateLogicValidator) checkMarriageBeforeBirth(doc *gedcom.Document, ind 
 	var issues []Issue
 
 	// Check all families where this individual is a spouse
-	for _, famXRef := range ind.SpouseInFamilies {
-		fam := doc.GetFamily(famXRef)
+	for _, link := range ind.SpouseInFamilies {
+		fam := doc.GetFamily(link.FamilyXRef)
 		if fam == nil {
 			continue
 		}

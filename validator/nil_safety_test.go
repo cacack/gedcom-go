@@ -38,7 +38,7 @@ func nilSafetyDoc(mutate func(*gedcom.Document)) *gedcom.Document {
 		Entity: &gedcom.Individual{
 			XRef:             "@I1@",
 			Names:            []*gedcom.PersonalName{{Full: "John /Smith/"}},
-			SpouseInFamilies: []string{"@F1@", "@F999@"},
+			SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}, {FamilyXRef: "@F999@"}},
 		},
 	}
 	fam := &gedcom.Record{

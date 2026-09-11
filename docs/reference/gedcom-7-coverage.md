@@ -106,11 +106,11 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 1236 | 89.0% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1238 | 89.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 75 | 5.4% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 9 | 0.6% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 69 | 5.0% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 67 | 4.8% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
 ### By top-level structure
 
@@ -118,7 +118,7 @@ The structure each pair is nested under at level 0.
 
 | Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |
 |---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|
-| `INDI` | 873 | 827 | 0 | 27 | 3 | 16 |
+| `INDI` | 873 | 829 | 0 | 27 | 3 | 14 |
 | `FAM` | 392 | 332 | 0 | 37 | 0 | 23 |
 | `SOUR` | 29 | 18 | 0 | 2 | 0 | 9 |
 | `HEAD` | 27 | 9 | 0 | 0 | 0 | 18 |
@@ -1609,8 +1609,8 @@ Substructures of `FAMS`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `NOTE` | `NOTE` | raw (undiagnosed) |
-| `SNOTE` | `SNOTE` | raw (undiagnosed) |
+| `NOTE` | `NOTE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 
 ### `INDI.FCOM`
 

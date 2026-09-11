@@ -21,7 +21,7 @@ type Individual struct {
 	ChildInFamilies []FamilyLink
 
 	// SpouseInFamilies are references to families where this person is a spouse
-	SpouseInFamilies []string // XRef to Family records
+	SpouseInFamilies []FamilyLink
 
 	// Associations are links to associated individuals (godparents, witnesses, etc.)
 	Associations []*Association
@@ -147,6 +147,8 @@ type FamilyLink struct {
 
 	// Pedigree is the pedigree linkage type (e.g., "birth", "adopted", "foster", "sealing")
 	// Empty string if not specified. Preserves original casing from GEDCOM.
+	// Pedigree applies to child links (FAMC) only; neither spec defines it for a
+	// spouse link (FAMS), where it is preserved solely so malformed input round-trips.
 	Pedigree string
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
@@ -408,8 +410,8 @@ func (i *Individual) Spouses(doc *Document) []*Individual {
 	}
 
 	var spouses []*Individual
-	for _, famXRef := range i.SpouseInFamilies {
-		fam := doc.GetFamily(famXRef)
+	for _, link := range i.SpouseInFamilies {
+		fam := doc.GetFamily(link.FamilyXRef)
 		if fam == nil {
 			continue
 		}
@@ -446,8 +448,8 @@ func (i *Individual) Children(doc *Document) []*Individual {
 	}
 
 	var children []*Individual
-	for _, famXRef := range i.SpouseInFamilies {
-		fam := doc.GetFamily(famXRef)
+	for _, link := range i.SpouseInFamilies {
+		fam := doc.GetFamily(link.FamilyXRef)
 		if fam == nil {
 			continue
 		}
@@ -494,8 +496,8 @@ func (i *Individual) FamiliesAsSpouse(doc *Document) []*Family {
 	}
 
 	var families []*Family
-	for _, famXRef := range i.SpouseInFamilies {
-		if fam := doc.GetFamily(famXRef); fam != nil {
+	for _, link := range i.SpouseInFamilies {
+		if fam := doc.GetFamily(link.FamilyXRef); fam != nil {
 			families = append(families, fam)
 		}
 	}

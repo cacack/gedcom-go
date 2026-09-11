@@ -82,7 +82,7 @@ func xrefwalkFullDocument() *Document {
 		ChildInFamilies: []FamilyLink{
 			{FamilyXRef: "@F-CHILD@"},
 		},
-		SpouseInFamilies: []string{"@F-SPOUSE@"},
+		SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F-SPOUSE@"}},
 		NoteXRefs:        []string{"@N-IND@"},
 		InlineNotes:      []string{"inline note text"},
 		Associations: []*Association{
@@ -323,7 +323,7 @@ func TestVisit_CoversAllEntities(t *testing.T) {
 func TestVisit_SkipsVoidAndNonPointer(t *testing.T) {
 	individual := &Individual{
 		XRef:             "@I1@",
-		SpouseInFamilies: []string{"@VOID@", "inline note text", "", "@F-REAL@"},
+		SpouseInFamilies: []FamilyLink{{FamilyXRef: "@VOID@"}, {FamilyXRef: "inline note text"}, {FamilyXRef: ""}, {FamilyXRef: "@F-REAL@"}},
 		NoteXRefs:        []string{"@VOID@", "literal text", "@N-REAL@"},
 	}
 	rec := &Record{XRef: "@I1@", Type: RecordTypeIndividual, Entity: individual}
@@ -351,12 +351,12 @@ func TestVisit_NilRecordAndCallback(t *testing.T) {
 
 func TestApply_EmptyMappingIsNoop(t *testing.T) {
 	doc := xrefwalkFullDocument()
-	before := doc.Records[0].Entity.(*Individual).SpouseInFamilies[0]
+	before := doc.Records[0].Entity.(*Individual).SpouseInFamilies[0].FamilyXRef
 
 	Apply(doc, nil)
 	Apply(doc, map[string]string{})
 
-	after := doc.Records[0].Entity.(*Individual).SpouseInFamilies[0]
+	after := doc.Records[0].Entity.(*Individual).SpouseInFamilies[0].FamilyXRef
 	if before != after {
 		t.Errorf("empty mapping mutated state: before=%q after=%q", before, after)
 	}
@@ -567,8 +567,8 @@ func TestApply_NoMappingMatchPreservesValue(t *testing.T) {
 
 	// Spot check: nothing changed.
 	ind := doc.Records[0].Entity.(*Individual)
-	if ind.SpouseInFamilies[0] != "@F-SPOUSE@" {
-		t.Errorf("unrelated field mutated: %q", ind.SpouseInFamilies[0])
+	if ind.SpouseInFamilies[0].FamilyXRef != "@F-SPOUSE@" {
+		t.Errorf("unrelated field mutated: %q", ind.SpouseInFamilies[0].FamilyXRef)
 	}
 	if _, ok := doc.XRefMap["@I1@"]; !ok {
 		t.Error("XRefMap key @I1@ was unexpectedly removed")

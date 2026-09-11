@@ -46,7 +46,7 @@ func buildDoc(prefix string) *gedcom.Document {
 	add(indXRef, gedcom.RecordTypeIndividual, &gedcom.Individual{
 		XRef:             indXRef,
 		Names:            []*gedcom.PersonalName{{Full: "Test /" + prefix + "Person/"}},
-		SpouseInFamilies: []string{famXRef},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: famXRef}},
 	})
 	// Append NAME and FAMS tags so the document passes basic
 	// validation (Individual requires NAME, Family requires HUSB/WIFE/CHIL).

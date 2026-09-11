@@ -116,7 +116,7 @@ func TestIndividualToTags(t *testing.T) {
 			name: "individual with family links",
 			indi: &gedcom.Individual{
 				ChildInFamilies:  []gedcom.FamilyLink{{FamilyXRef: "@F1@", Pedigree: "birth"}},
-				SpouseInFamilies: []string{"@F2@"},
+				SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F2@"}},
 			},
 			contains: []string{"FAMC", "PEDI", "FAMS"},
 		},
@@ -1271,12 +1271,14 @@ func TestFamilyLinkToTags(t *testing.T) {
 	tests := []struct {
 		name     string
 		link     *gedcom.FamilyLink
+		tagName  string
 		level    int
 		contains []string
 	}{
 		{
 			name:     "link without pedigree",
 			link:     &gedcom.FamilyLink{FamilyXRef: "@F1@"},
+			tagName:  "FAMC",
 			level:    1,
 			contains: []string{"FAMC"},
 		},
@@ -1286,14 +1288,30 @@ func TestFamilyLinkToTags(t *testing.T) {
 				FamilyXRef: "@F1@",
 				Pedigree:   "birth",
 			},
+			tagName:  "FAMC",
 			level:    1,
 			contains: []string{"FAMC", "PEDI"},
+		},
+		{
+			// PEDI is a FAMC-only substructure in the spec, but the writer
+			// emits it under FAMS too whenever Pedigree is set. That is the
+			// deliberate lossless-representation choice from #534: a source
+			// file that put PEDI under FAMS survives the typed round trip
+			// rather than having the value silently dropped.
+			name: "spouse link keeps a pedigree the source gave it",
+			link: &gedcom.FamilyLink{
+				FamilyXRef: "@F1@",
+				Pedigree:   "birth",
+			},
+			tagName:  "FAMS",
+			level:    1,
+			contains: []string{"FAMS", "PEDI"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := familyLinkToTags(tt.link, tt.level, nil)
+			tags := familyLinkToTags(tt.link, tt.tagName, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -4927,8 +4945,8 @@ func TestEntityBuiltEventDetailEncodes(t *testing.T) {
 }
 
 // decodedNoteFixture is the input for the two tests below: every substructure
-// that gained note fields in issue #447, plus the NCHI attribute of #448 and
-// the five substructures split in issue #472.
+// that gained note fields in issue #447, plus the NCHI attribute of #448, the
+// five substructures split in issue #472, and the FAMS link of #534.
 const decodedNoteFixture = `0 HEAD
 1 GEDC
 2 VERS 7.0
@@ -4936,6 +4954,9 @@ const decodedNoteFixture = `0 HEAD
 1 NAME John /Doe/
 1 FAMC @F1@
 2 NOTE FamilyLink note
+1 FAMS @F1@
+2 NOTE FamilyLink spouse note
+2 NOTE @N1@
 1 ASSO @I2@
 2 ROLE WITN
 2 NOTE Association note
@@ -5029,7 +5050,8 @@ func TestDecodedNotesEncodeOnce(t *testing.T) {
 		site string
 		line string
 	}{
-		{"FamilyLink", "2 NOTE FamilyLink note"},
+		{"FamilyLink (FAMC)", "2 NOTE FamilyLink note"},
+		{"FamilyLink (FAMS)", "2 NOTE FamilyLink spouse note"},
 		{"Association", "2 NOTE Association note"},
 		{"PlaceDetail", "3 NOTE Place note"},
 		{"MediaLink", "3 NOTE MediaLink note"},
@@ -5044,8 +5066,8 @@ func TestDecodedNotesEncodeOnce(t *testing.T) {
 
 	// The shared-note pointer appears under the event and the attribute, once
 	// each. It is written as NOTE rather than SNOTE — see issue #471.
-	if got := countLine(out, "2 NOTE @N1@"); got != 2 {
-		t.Errorf("shared-note pointer written %d times, want 2 (event + attribute):\n%s", got, out)
+	if got := countLine(out, "2 NOTE @N1@"); got != 3 {
+		t.Errorf("shared-note pointer written %d times, want 3 (event + attribute + spouse link):\n%s", got, out)
 	}
 
 	// The whole document must still re-decode to the same notes.
@@ -5072,7 +5094,16 @@ func TestDecodedNotesEncodeOnce(t *testing.T) {
 
 	// The #472 substructures round-trip into their split fields.
 	if want := []string{"FamilyLink note"}; !reflect.DeepEqual(indi.ChildInFamilies[0].InlineNotes, want) {
-		t.Errorf("re-decoded FamilyLink InlineNotes = %v, want %v", indi.ChildInFamilies[0].InlineNotes, want)
+		t.Errorf("re-decoded FAMC FamilyLink InlineNotes = %v, want %v", indi.ChildInFamilies[0].InlineNotes, want)
+	}
+	// The FAMS half of #534. Raw Record.Tags round-trip these notes whatever
+	// the typed model does, so only this cleared-tags path can see them go
+	// missing.
+	if want := []string{"FamilyLink spouse note"}; !reflect.DeepEqual(indi.SpouseInFamilies[0].InlineNotes, want) {
+		t.Errorf("re-decoded FAMS FamilyLink InlineNotes = %v, want %v", indi.SpouseInFamilies[0].InlineNotes, want)
+	}
+	if want := []string{"@N1@"}; !reflect.DeepEqual(indi.SpouseInFamilies[0].NoteXRefs, want) {
+		t.Errorf("re-decoded FAMS FamilyLink NoteXRefs = %v, want %v", indi.SpouseInFamilies[0].NoteXRefs, want)
 	}
 	if want := []string{"Association note"}; !reflect.DeepEqual(indi.Associations[0].InlineNotes, want) {
 		t.Errorf("re-decoded Association InlineNotes = %v, want %v", indi.Associations[0].InlineNotes, want)

@@ -96,7 +96,11 @@ func main() {
 				fmt.Printf("  Child in families: %v\n", person.ChildInFamilies)
 			}
 			if len(person.SpouseInFamilies) > 0 {
-				fmt.Printf("  Spouse in families: %v\n", person.SpouseInFamilies)
+				spouseFams := make([]string, len(person.SpouseInFamilies))
+				for i, link := range person.SpouseInFamilies {
+					spouseFams[i] = link.FamilyXRef
+				}
+				fmt.Printf("  Spouse in families: %v\n", spouseFams)
 			}
 		}
 	}
