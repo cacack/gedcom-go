@@ -106,9 +106,9 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 1232 | 88.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1236 | 89.0% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 79 | 5.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 75 | 5.4% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 9 | 0.6% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 69 | 5.0% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
@@ -118,8 +118,8 @@ The structure each pair is nested under at level 0.
 
 | Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |
 |---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|
-| `INDI` | 873 | 825 | 0 | 29 | 3 | 16 |
-| `FAM` | 392 | 330 | 0 | 39 | 0 | 23 |
+| `INDI` | 873 | 827 | 0 | 27 | 3 | 16 |
+| `FAM` | 392 | 332 | 0 | 37 | 0 | 23 |
 | `SOUR` | 29 | 18 | 0 | 2 | 0 | 9 |
 | `HEAD` | 27 | 9 | 0 | 0 | 0 | 18 |
 | `REPO` | 21 | 16 | 0 | 4 | 1 | 0 |
@@ -243,8 +243,8 @@ Substructures of `PLAC`.
 | `FORM` | `PLAC-FORM` | typed |
 | `LANG` | `LANG` | raw (accepted) |
 | `MAP` | `MAP` | typed |
-| `NOTE` | `NOTE` | raw (accepted) |
-| `SNOTE` | `SNOTE` | raw (accepted) |
+| `NOTE` | `NOTE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 | `TRAN` | `PLAC-TRAN` | raw (accepted) |
 
 ### `FAM.ANUL.PLAC.MAP`
@@ -1582,9 +1582,9 @@ Substructures of `INDI-FAMC`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `NOTE` | `NOTE` | raw (accepted) |
+| `NOTE` | `NOTE` | typed |
 | `PEDI` | `PEDI` | typed |
-| `SNOTE` | `SNOTE` | raw (accepted) |
+| `SNOTE` | `SNOTE` | typed |
 | `STAT` | `FAMC-STAT` | raw (accepted) |
 
 ### `INDI.FAMC.PEDI`

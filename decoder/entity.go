@@ -157,7 +157,7 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			indi.SourceCitations = append(indi.SourceCitations, cite)
 
 		case "NOTE", "SNOTE":
-			indi.NoteXRefs, indi.InlineNotes, indi.Notes = appendRecordNote(record.Tags, i, indi.NoteXRefs, indi.InlineNotes, indi.Notes)
+			indi.NoteXRefs, indi.InlineNotes = appendRecordNote(record.Tags, i, indi.NoteXRefs, indi.InlineNotes)
 
 		case "OBJE":
 			link := parseMediaLink(record.Tags, i, tag.Level, collector)
@@ -333,8 +333,11 @@ func parseFamilyLink(tags []*gedcom.Tag, famcIdx int, collector *diagnosticColle
 			switch tag.Tag {
 			case "PEDI":
 				famLink.Pedigree = tag.Value
-			case "STAT", "NOTE", "SNOTE":
-				// Known tags not yet parsed into typed fields
+			case "NOTE", "SNOTE":
+				famLink.NoteXRefs, famLink.InlineNotes = appendRecordNote(
+					tags, i, famLink.NoteXRefs, famLink.InlineNotes)
+			case "STAT":
+				// Known tag not yet parsed into a typed field
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -367,7 +370,8 @@ func parseAssociation(tags []*gedcom.Tag, assoIdx int, collector *diagnosticColl
 			case "PHRASE":
 				assoc.Phrase = tag.Value
 			case "NOTE", "SNOTE":
-				assoc.Notes = append(assoc.Notes, tag.Value)
+				assoc.NoteXRefs, assoc.InlineNotes = appendRecordNote(
+					tags, i, assoc.NoteXRefs, assoc.InlineNotes)
 			case "SOUR":
 				cite := parseSourceCitation(tags, i, tag.Level, collector)
 				assoc.SourceCitations = append(assoc.SourceCitations, cite)
@@ -435,7 +439,7 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 				// Parse Ancestry Permanent Identifier (vendor extension)
 				cite.AncestryAPID = gedcom.ParseAPID(tag.Value)
 			case "NOTE", "SNOTE":
-				cite.NoteXRefs, cite.InlineNotes, cite.Notes = appendRecordNote(tags, i, cite.NoteXRefs, cite.InlineNotes, cite.Notes)
+				cite.NoteXRefs, cite.InlineNotes = appendRecordNote(tags, i, cite.NoteXRefs, cite.InlineNotes)
 			case "OBJE", "EVEN", "TEXT":
 				// Known tags not yet parsed into typed fields
 			default:
@@ -505,7 +509,6 @@ type eventDetail struct {
 	associations    *[]*gedcom.Association
 	noteXRefs       *[]string
 	inlineNotes     *[]string
-	notes           *[]string
 }
 
 // eventDetailOf returns the EVENT_DETAIL view of an event.
@@ -530,7 +533,6 @@ func eventDetailOf(e *gedcom.Event) eventDetail {
 		associations:    &e.Associations,
 		noteXRefs:       &e.NoteXRefs,
 		inlineNotes:     &e.InlineNotes,
-		notes:           &e.Notes,
 	}
 }
 
@@ -556,7 +558,6 @@ func eventDetailOfAttribute(a *gedcom.Attribute) eventDetail {
 		associations:    &a.Associations,
 		noteXRefs:       &a.NoteXRefs,
 		inlineNotes:     &a.InlineNotes,
-		notes:           &a.Notes,
 	}
 }
 
@@ -621,8 +622,8 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 		assoc := parseAssociation(tags, i, collector)
 		*detail.associations = append(*detail.associations, assoc)
 	case "NOTE", "SNOTE":
-		*detail.noteXRefs, *detail.inlineNotes, *detail.notes = appendRecordNote(
-			tags, i, *detail.noteXRefs, *detail.inlineNotes, *detail.notes)
+		*detail.noteXRefs, *detail.inlineNotes = appendRecordNote(
+			tags, i, *detail.noteXRefs, *detail.inlineNotes)
 	case "HUSB", "WIFE":
 		// FAMILY_EVENT_DETAIL: the spouse ages on a family event or family
 		// attribute (maximal70.ged carries one under FAM.FACT). Known tags not
@@ -741,7 +742,10 @@ func parsePlaceDetail(tags []*gedcom.Tag, placIdx, baseLevel int, collector *dia
 				place.Form = tag.Value
 			case "MAP":
 				place.Coordinates = parseCoordinates(tags, i, tag.Level, collector)
-			case "FONE", "ROMN", "TRAN", "NOTE", "SNOTE", "EXID", "LANG":
+			case "NOTE", "SNOTE":
+				place.NoteXRefs, place.InlineNotes = appendRecordNote(
+					tags, i, place.NoteXRefs, place.InlineNotes)
+			case "FONE", "ROMN", "TRAN", "EXID", "LANG":
 				// Known tags not yet parsed into typed fields
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
@@ -865,7 +869,7 @@ func parseLDSOrdinance(tags []*gedcom.Tag, ordIdx int, ordType gedcom.LDSOrdinan
 			case "FAMC":
 				ord.FamilyXRef = tagToken(tag.Value)
 			case "NOTE", "SNOTE":
-				ord.NoteXRefs, ord.InlineNotes, ord.Notes = appendRecordNote(tags, i, ord.NoteXRefs, ord.InlineNotes, ord.Notes)
+				ord.NoteXRefs, ord.InlineNotes = appendRecordNote(tags, i, ord.NoteXRefs, ord.InlineNotes)
 			case "SOUR":
 				// Known tag not yet parsed into typed fields
 			default:
@@ -932,7 +936,7 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			fam.SourceCitations = append(fam.SourceCitations, cite)
 
 		case "NOTE", "SNOTE":
-			fam.NoteXRefs, fam.InlineNotes, fam.Notes = appendRecordNote(record.Tags, i, fam.NoteXRefs, fam.InlineNotes, fam.Notes)
+			fam.NoteXRefs, fam.InlineNotes = appendRecordNote(record.Tags, i, fam.NoteXRefs, fam.InlineNotes)
 
 		case "OBJE":
 			link := parseMediaLink(record.Tags, i, tag.Level, collector)
@@ -996,7 +1000,7 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "REPO":
 			src.RepositoryLink = parseSourceRepositoryLink(record.Tags, i, collector)
 		case "NOTE", "SNOTE":
-			src.NoteXRefs, src.InlineNotes, src.Notes = appendRecordNote(record.Tags, i, src.NoteXRefs, src.InlineNotes, src.Notes)
+			src.NoteXRefs, src.InlineNotes = appendRecordNote(record.Tags, i, src.NoteXRefs, src.InlineNotes)
 		case "OBJE":
 			link := parseMediaLink(record.Tags, i, tag.Level, collector)
 			src.Media = append(src.Media, link)
@@ -1075,7 +1079,8 @@ func parseSourceRepositoryLink(tags []*gedcom.Tag, repoIdx int, collector *diagn
 				link.CallNumberMedia[tag.Value] = medi
 			}
 		case "NOTE", "SNOTE":
-			link.Notes = append(link.Notes, tag.Value)
+			link.NoteXRefs, link.InlineNotes = appendRecordNote(
+				tags, i, link.NoteXRefs, link.InlineNotes)
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
 				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -1131,7 +1136,7 @@ func parseChangeDate(tags []*gedcom.Tag, chanIdx int, collector *diagnosticColle
 					}
 				}
 			case "NOTE", "SNOTE":
-				cd.NoteXRefs, cd.InlineNotes, cd.Notes = appendRecordNote(tags, i, cd.NoteXRefs, cd.InlineNotes, cd.Notes)
+				cd.NoteXRefs, cd.InlineNotes = appendRecordNote(tags, i, cd.NoteXRefs, cd.InlineNotes)
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -1173,7 +1178,7 @@ func parseSubmitter(record *gedcom.Record, collector *diagnosticCollector) *gedc
 			subm.Language = append(subm.Language, tag.Value)
 
 		case "NOTE", "SNOTE":
-			subm.NoteXRefs, subm.InlineNotes, subm.Notes = appendRecordNote(record.Tags, i, subm.NoteXRefs, subm.InlineNotes, subm.Notes)
+			subm.NoteXRefs, subm.InlineNotes = appendRecordNote(record.Tags, i, subm.NoteXRefs, subm.InlineNotes)
 
 		case "EXID":
 			subm.ExternalIDs = append(subm.ExternalIDs, parseExternalID(record.Tags, i))
@@ -1230,7 +1235,7 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 			repo.Address.Website = tag.Value
 
 		case "NOTE", "SNOTE":
-			repo.NoteXRefs, repo.InlineNotes, repo.Notes = appendRecordNote(record.Tags, i, repo.NoteXRefs, repo.InlineNotes, repo.Notes)
+			repo.NoteXRefs, repo.InlineNotes = appendRecordNote(record.Tags, i, repo.NoteXRefs, repo.InlineNotes)
 
 		case "EXID":
 			repo.ExternalIDs = append(repo.ExternalIDs, parseExternalID(record.Tags, i))
@@ -1265,13 +1270,12 @@ func foldContinuation(b *strings.Builder, tag *gedcom.Tag) {
 
 // appendRecordNote classifies a record-level NOTE tag at noteIdx and appends it
 // to the appropriate slice. A pointer-shaped value (e.g. "@N1@") is an XRef to a
-// shared NOTE/SNOTE record and is appended to *xrefs. Any other value is inline
-// note text and is appended to *inline, with subordinate CONT/CONC lines folded
-// in (CONT joins with a newline, CONC concatenates). The legacy combined Notes
-// slice is appended to in the same order for backward compatibility.
+// shared NOTE/SNOTE record and is appended to xrefs. Any other value is inline
+// note text and is appended to inline, with subordinate CONT/CONC lines folded
+// in (CONT joins with a newline, CONC concatenates).
 //
-// It returns the updated xrefs, inline, and legacy slices.
-func appendRecordNote(tags []*gedcom.Tag, noteIdx int, xrefs, inline, legacy []string) (newXRefs, newInline, newLegacy []string) {
+// It returns the updated xrefs and inline slices.
+func appendRecordNote(tags []*gedcom.Tag, noteIdx int, xrefs, inline []string) (newXRefs, newInline []string) {
 	tag := tags[noteIdx]
 	// The pointer test runs on the trimmed value, and only a value that passes
 	// it is stored trimmed. "1 NOTE  @N1@" is a padded pointer (#426 keeps every
@@ -1281,7 +1285,7 @@ func appendRecordNote(tags []*gedcom.Tag, noteIdx int, xrefs, inline, legacy []s
 	if ptr := tagToken(tag.Value); gedcom.IsPointerXRef(ptr) {
 		// XRef pointer to a shared note: the GEDCOM specs do not permit
 		// subordinate CONT/CONC lines here, so there is nothing to fold in.
-		return append(xrefs, ptr), inline, append(legacy, ptr)
+		return append(xrefs, ptr), inline
 	}
 
 	var b strings.Builder
@@ -1298,7 +1302,7 @@ func appendRecordNote(tags []*gedcom.Tag, noteIdx int, xrefs, inline, legacy []s
 		foldContinuation(&b, sub)
 	}
 	text := b.String()
-	return xrefs, append(inline, text), append(legacy, text)
+	return xrefs, append(inline, text)
 }
 
 // parseNote converts record tags to a Note entity.
@@ -1461,14 +1465,24 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 			file := parseMediaFile(record.Tags, i, tag.Level, collector)
 			media.Files = append(media.Files, file)
 		case "NOTE":
-			media.NoteXRefs, media.InlineNotes, media.Notes = appendRecordNote(record.Tags, i, media.NoteXRefs, media.InlineNotes, media.Notes)
+			media.NoteXRefs, media.InlineNotes = appendRecordNote(record.Tags, i, media.NoteXRefs, media.InlineNotes)
 		case "SNOTE":
-			// Route shared-note pointers through the split-note path so they
-			// reach the typed NoteXRefs API, the legacy Notes slice, and survive
-			// re-encode. Also track them in SharedNoteXRefs, which records the
-			// GEDCOM 7.0 SNOTE form used for version detection.
-			media.NoteXRefs, media.InlineNotes, media.Notes = appendRecordNote(record.Tags, i, media.NoteXRefs, media.InlineNotes, media.Notes)
-			media.SharedNoteXRefs = append(media.SharedNoteXRefs, tagToken(tag.Value))
+			// SharedNoteXRefs holds the GEDCOM 7.0 SNOTE pointers and NoteXRefs
+			// the NOTE ones, so the two partition (#499). A caller wanting every
+			// note pointer concatenates them; nothing needs deduping.
+			//
+			// The pointer test is what keeps SharedNoteXRefs holding only what
+			// its name promises. SNOTE is pointer-only in the 7.0 spec, but a
+			// lenient decoder still meets "1 SNOTE some text" in the wild, and
+			// an unresolvable entry here is dropped without trace by AllNotes
+			// (see allNotes in gedcom/notes.go). Route a non-pointer value
+			// through appendRecordNote instead, which files it as inline text
+			// with its CONT/CONC continuations folded in.
+			if ptr := tagToken(tag.Value); gedcom.IsPointerXRef(ptr) {
+				media.SharedNoteXRefs = append(media.SharedNoteXRefs, ptr)
+			} else {
+				media.NoteXRefs, media.InlineNotes = appendRecordNote(record.Tags, i, media.NoteXRefs, media.InlineNotes)
+			}
 		case "SOUR":
 			cite := parseSourceCitation(record.Tags, i, tag.Level, collector)
 			media.SourceCitations = append(media.SourceCitations, cite)
@@ -1579,6 +1593,11 @@ func parseMediaLink(tags []*gedcom.Tag, objeIdx, baseLevel int, collector *diagn
 				link.Crop = parseCropRegion(tags, i, tag.Level, collector)
 			case "TITL":
 				link.Title = tag.Value
+			case "NOTE", "SNOTE":
+				// Before #472 this fell through to default and every
+				// OBJE-level NOTE was reported as an unknown tag (#470).
+				link.NoteXRefs, link.InlineNotes = appendRecordNote(
+					tags, i, link.NoteXRefs, link.InlineNotes)
 			case "FILE":
 				// Known tag for inline media references
 			default:

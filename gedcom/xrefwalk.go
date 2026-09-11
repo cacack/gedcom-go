@@ -10,9 +10,10 @@ type refCallback func(*string)
 
 // IsPointerXRef reports whether s is shaped like a GEDCOM XRef pointer
 // (@xref@) and is not the GEDCOM 7.0 "@VOID@" sentinel (intentionally
-// null pointer). Fields like Individual.Notes and
-// SourceCitation.SourceXRef may carry either an XRef pointer or inline
-// text; this distinguishes the two so callers only follow actual pointers.
+// null pointer). Fields like Individual.NoteXRefs and
+// SourceCitation.SourceXRef are pointer-typed by contract but hold plain
+// strings; this distinguishes a real pointer from anything else a caller
+// may have put there, so only actual pointers are followed.
 //
 // The body (between the delimiting @s) must contain no whitespace and no
 // interior @ characters. Per the GEDCOM spec, a literal @ inside a value
@@ -103,11 +104,11 @@ func Apply(d *Document, mapping map[string]string) {
 			*p = newRef
 		}
 	}
-	// rewriteRef is used by walkRecord, which traverses union-type
-	// fields like Individual.Notes and SourceCitation.SourceXRef that
-	// may hold either an XRef pointer or inline text. Guarding with
+	// rewriteRef is used by walkRecord, which traverses string fields
+	// like Individual.NoteXRefs and SourceCitation.SourceXRef that are
+	// pointer-typed by contract but hold plain strings. Guarding with
 	// IsPointerXRef ensures Apply only ever rewrites pointer-shaped
-	// values, never inline text that happens to match a mapping key.
+	// values, never text that happens to match a mapping key.
 	rewriteRef := func(p *string) {
 		if p == nil || !IsPointerXRef(*p) {
 			return
@@ -327,11 +328,12 @@ func walkIndividual(i *Individual, cb refCallback) {
 	}
 	for k := range i.ChildInFamilies {
 		cb(&i.ChildInFamilies[k].FamilyXRef)
+		walkStrings(i.ChildInFamilies[k].NoteXRefs, cb)
 	}
 	for k := range i.SpouseInFamilies {
 		cb(&i.SpouseInFamilies[k])
 	}
-	walkNotes(i.NoteXRefs, i.Notes, cb)
+	walkNotes(i.NoteXRefs, cb)
 	walkAssociations(i.Associations, cb)
 	walkCitations(i.SourceCitations, cb)
 	walkMediaLinks(i.Media, cb)
@@ -358,7 +360,7 @@ func walkFamily(f *Family, cb refCallback) {
 	for k := range f.Children {
 		cb(&f.Children[k])
 	}
-	walkNotes(f.NoteXRefs, f.Notes, cb)
+	walkNotes(f.NoteXRefs, cb)
 	walkCitations(f.SourceCitations, cb)
 	walkMediaLinks(f.Media, cb)
 	for _, ev := range f.Events {
@@ -382,9 +384,9 @@ func walkSource(s *Source, cb refCallback) {
 	if s.RepositoryLink != nil {
 		cb(&s.RepositoryLink.XRef)
 	}
-	walkNotes(s.NoteXRefs, s.Notes, cb)
+	walkNotes(s.NoteXRefs, cb)
 	if s.RepositoryLink != nil {
-		walkStrings(s.RepositoryLink.Notes, cb)
+		walkNotes(s.RepositoryLink.NoteXRefs, cb)
 	}
 	walkMediaLinks(s.Media, cb)
 	walkChangeDate(s.ChangeDate, cb)
@@ -398,7 +400,7 @@ func walkRepository(r *Repository, cb refCallback) {
 	if r == nil {
 		return
 	}
-	walkNotes(r.NoteXRefs, r.Notes, cb)
+	walkNotes(r.NoteXRefs, cb)
 	for _, t := range r.Tags {
 		walkTag(t, cb)
 	}
@@ -417,11 +419,7 @@ func walkMediaObject(m *MediaObject, cb refCallback) {
 	if m == nil {
 		return
 	}
-	walkNotes(m.NoteXRefs, m.Notes, cb)
-	// SharedNoteXRefs holds the same SNOTE pointers as NoteXRefs. AllNotes
-	// appends any entry not already in NoteXRefs, so remapping one and not
-	// the other makes the dedup check fail and surfaces the stale pointer as
-	// a second, foreign note.
+	walkNotes(m.NoteXRefs, cb)
 	walkStrings(m.SharedNoteXRefs, cb)
 	walkCitations(m.SourceCitations, cb)
 	walkChangeDate(m.ChangeDate, cb)
@@ -435,7 +433,7 @@ func walkSubmitter(s *Submitter, cb refCallback) {
 	if s == nil {
 		return
 	}
-	walkNotes(s.NoteXRefs, s.Notes, cb)
+	walkNotes(s.NoteXRefs, cb)
 	for _, t := range s.Tags {
 		walkTag(t, cb)
 	}
@@ -456,7 +454,8 @@ func walkEvent(e *Event, cb refCallback) {
 	if e == nil {
 		return
 	}
-	walkNotes(e.NoteXRefs, e.Notes, cb)
+	walkNotes(e.NoteXRefs, cb)
+	walkPlaceDetail(e.PlaceDetail, cb)
 	walkCitations(e.SourceCitations, cb)
 	walkMediaLinks(e.Media, cb)
 	walkAssociations(e.Associations, cb)
@@ -466,7 +465,8 @@ func walkAttribute(a *Attribute, cb refCallback) {
 	if a == nil {
 		return
 	}
-	walkNotes(a.NoteXRefs, a.Notes, cb)
+	walkNotes(a.NoteXRefs, cb)
+	walkPlaceDetail(a.PlaceDetail, cb)
 	walkCitations(a.SourceCitations, cb)
 	walkMediaLinks(a.Media, cb)
 	walkAssociations(a.Associations, cb)
@@ -478,7 +478,7 @@ func walkCitations(citations []*SourceCitation, cb refCallback) {
 			continue
 		}
 		cb(&sc.SourceXRef)
-		walkNotes(sc.NoteXRefs, sc.Notes, cb)
+		walkNotes(sc.NoteXRefs, cb)
 	}
 }
 
@@ -490,23 +490,14 @@ func walkStrings(ss []string, cb refCallback) {
 	}
 }
 
-// walkNotes visits both halves of a structure's note storage: the
-// pointer-only NoteXRefs slice and the legacy Notes slice, which
-// interleaves pointers with inline text.
-//
-// Both must be walked, not just one. The two hold the same logical
-// pointers, and the encoder treats disagreement between them as a
-// caller edit rather than as corruption (see recordNotesToEncode) --
-// so remapping only Notes leaves the stale NoteXRefs to win, silently
-// emitting a dangling pointer. Visiting a pointer twice is harmless:
-// Subset accumulates into a set, and Apply's rewrite is a map lookup.
+// walkNotes visits a structure's note pointers: the NoteXRefs slice,
+// which holds shared-note pointers and nothing else.
 //
 // InlineNotes is deliberately absent. It holds note text, never a
 // pointer, and an XRef-shaped string there is payload rather than a
 // reference.
-func walkNotes(noteXRefs, notes []string, cb refCallback) {
+func walkNotes(noteXRefs []string, cb refCallback) {
 	walkStrings(noteXRefs, cb)
-	walkStrings(notes, cb)
 }
 
 // walkAssociations visits an ASSO structure's pointer to the associated
@@ -517,7 +508,7 @@ func walkAssociations(assocs []*Association, cb refCallback) {
 			continue
 		}
 		cb(&a.IndividualXRef)
-		walkStrings(a.Notes, cb)
+		walkNotes(a.NoteXRefs, cb)
 		walkCitations(a.SourceCitations, cb)
 	}
 }
@@ -529,7 +520,7 @@ func walkLDSOrdinances(ords []*LDSOrdinance, cb refCallback) {
 			continue
 		}
 		cb(&ord.FamilyXRef)
-		walkNotes(ord.NoteXRefs, ord.Notes, cb)
+		walkNotes(ord.NoteXRefs, cb)
 	}
 }
 
@@ -538,7 +529,7 @@ func walkChangeDate(cd *ChangeDate, cb refCallback) {
 	if cd == nil {
 		return
 	}
-	walkNotes(cd.NoteXRefs, cd.Notes, cb)
+	walkNotes(cd.NoteXRefs, cb)
 }
 
 func walkMediaLinks(links []*MediaLink, cb refCallback) {
@@ -547,5 +538,15 @@ func walkMediaLinks(links []*MediaLink, cb refCallback) {
 			continue
 		}
 		cb(&ml.MediaXRef)
+		walkStrings(ml.NoteXRefs, cb)
 	}
+}
+
+// walkPlaceDetail visits the note pointers on a PLAC structure. A place holds
+// no other reference, but its NOTE subordinates can point at shared notes.
+func walkPlaceDetail(p *PlaceDetail, cb refCallback) {
+	if p == nil {
+		return
+	}
+	walkStrings(p.NoteXRefs, cb)
 }

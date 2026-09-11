@@ -36,14 +36,6 @@ type Individual struct {
 	// (1 NOTE <text> form, including CONT/CONC continuations).
 	InlineNotes []string
 
-	// Notes is deprecated: use NoteXRefs and InlineNotes instead. It is kept
-	// for backward compatibility and populated during decode with the inline
-	// note text and shared-note XRefs interleaved in their original GEDCOM
-	// order (not the NoteXRefs-then-InlineNotes order of the split fields).
-	//
-	// Deprecated: use NoteXRefs and InlineNotes.
-	Notes []string
-
 	// Media are references to media objects with optional crop/title
 	Media []*MediaLink
 
@@ -156,6 +148,13 @@ type FamilyLink struct {
 	// Pedigree is the pedigree linkage type (e.g., "birth", "adopted", "foster", "sealing")
 	// Empty string if not specified. Preserves original casing from GEDCOM.
 	Pedigree string
+
+	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
+	NoteXRefs []string
+
+	// InlineNotes are note text values written directly on this family link
+	// (NOTE <text> form, including CONT/CONC continuations).
+	InlineNotes []string
 }
 
 // Association represents a link to an associated individual with a role.
@@ -177,8 +176,12 @@ type Association struct {
 	// Allows citing sources for the association relationship itself.
 	SourceCitations []*SourceCitation
 
-	// Notes are note references for this association
-	Notes []string
+	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
+	NoteXRefs []string
+
+	// InlineNotes are note text values written directly on this association
+	// (NOTE <text> form, including CONT/CONC continuations).
+	InlineNotes []string
 }
 
 // Attribute represents a personal attribute.
@@ -263,14 +266,6 @@ type Attribute struct {
 	// InlineNotes are note text values written directly on this attribute
 	// (NOTE <text> form, including CONT/CONC continuations).
 	InlineNotes []string
-
-	// Notes is deprecated: use NoteXRefs and InlineNotes instead. It is kept
-	// for backward compatibility and populated during decode with the inline
-	// note text and shared-note XRefs interleaved in their original GEDCOM
-	// order (not the NoteXRefs-then-InlineNotes order of the split fields).
-	//
-	// Deprecated: use NoteXRefs and InlineNotes.
-	Notes []string
 }
 
 // PlaceName returns PlaceDetail.Name, or "" when no place is recorded.

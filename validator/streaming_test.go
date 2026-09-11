@@ -786,8 +786,8 @@ func TestStreamingValidator_NoteReferences(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{})
 
 	ind := &gedcom.Individual{
-		XRef:  "@I1@",
-		Notes: []string{"@N1@", "@N999@"}, // Second is orphaned
+		XRef:      "@I1@",
+		NoteXRefs: []string{"@N1@", "@N999@"}, // Second is orphaned
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind})
 	sv.ValidateRecord(&gedcom.Record{XRef: "@N1@", Type: gedcom.RecordTypeNote, Entity: &gedcom.Note{XRef: "@N1@"}})
@@ -800,6 +800,55 @@ func TestStreamingValidator_NoteReferences(t *testing.T) {
 
 	if issues[0].Details["reference_type"] != "NOTE" {
 		t.Errorf("Expected reference_type NOTE, got %s", issues[0].Details["reference_type"])
+	}
+}
+
+// TestStreamingValidator_InlineNotesAreNotReferences pins the fix that came with
+// the removal of the deprecated Notes field (#473). The collectors used to read
+// that field, which interleaved shared-note pointers with inline note text and
+// fed every non-empty entry into usedXRefs without a pointer test -- so a record
+// carrying ordinary note prose was reported as an orphaned NOTE reference to a
+// record whose XRef was the prose itself. Reading NoteXRefs, which the decoder
+// fills only with pointer-shaped values, removes the false positive.
+//
+// Without this test the old behaviour could return unnoticed: every other case
+// in this file uses pointer-shaped values, so none of them can tell the two
+// apart.
+func TestStreamingValidator_InlineNotesAreNotReferences(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		record *gedcom.Record
+	}{
+		{
+			name: "individual",
+			record: &gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{
+				XRef:        "@I1@",
+				InlineNotes: []string{"Born at home, per the family bible."},
+			}},
+		},
+		{
+			name: "family",
+			record: &gedcom.Record{XRef: "@F1@", Type: gedcom.RecordTypeFamily, Entity: &gedcom.Family{
+				XRef:        "@F1@",
+				InlineNotes: []string{"Married twice; second record not found."},
+			}},
+		},
+		{
+			name: "source",
+			record: &gedcom.Record{XRef: "@S1@", Type: gedcom.RecordTypeSource, Entity: &gedcom.Source{
+				XRef:        "@S1@",
+				InlineNotes: []string{"Transcribed from a photocopy."},
+			}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			sv := NewStreamingValidator(StreamingOptions{})
+			sv.ValidateRecord(tc.record)
+
+			if issues := sv.Finalize(); len(issues) != 0 {
+				t.Errorf("inline note text produced %d issue(s), want 0: %v", len(issues), issues)
+			}
+		})
 	}
 }
 
@@ -851,8 +900,8 @@ func TestStreamingValidator_FamilyNoteReferences(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{})
 
 	fam := &gedcom.Family{
-		XRef:  "@F1@",
-		Notes: []string{"@N999@"}, // Orphaned note
+		XRef:      "@F1@",
+		NoteXRefs: []string{"@N999@"}, // Orphaned note
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@F1@", Type: gedcom.RecordTypeFamily, Entity: fam})
 
@@ -891,8 +940,8 @@ func TestStreamingValidator_SourceNoteReferences(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{})
 
 	src := &gedcom.Source{
-		XRef:  "@S1@",
-		Notes: []string{"@N999@"}, // Orphaned note
+		XRef:      "@S1@",
+		NoteXRefs: []string{"@N999@"}, // Orphaned note
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@S1@", Type: gedcom.RecordTypeSource, Entity: src})
 

@@ -194,12 +194,12 @@ func (sv *StreamingValidator) validateIndividual(ind *gedcom.Individual) []Issue
 	}
 
 	// Collect NOTE references
-	for i, noteXRef := range ind.Notes {
+	for i, noteXRef := range ind.NoteXRefs {
 		if noteXRef != "" {
 			sv.usedXRefs[noteXRef] = append(sv.usedXRefs[noteXRef], usageLocation{
 				RecordXRef: ind.XRef,
 				Context:    "NOTE",
-				Field:      fmt.Sprintf("Notes[%d]", i),
+				Field:      fmt.Sprintf("NoteXRefs[%d]", i),
 				Index:      i,
 			})
 		}
@@ -270,12 +270,12 @@ func (sv *StreamingValidator) validateFamily(fam *gedcom.Family) []Issue {
 	}
 
 	// Collect NOTE references
-	for i, noteXRef := range fam.Notes {
+	for i, noteXRef := range fam.NoteXRefs {
 		if noteXRef != "" {
 			sv.usedXRefs[noteXRef] = append(sv.usedXRefs[noteXRef], usageLocation{
 				RecordXRef: fam.XRef,
 				Context:    "NOTE",
-				Field:      fmt.Sprintf("Notes[%d]", i),
+				Field:      fmt.Sprintf("NoteXRefs[%d]", i),
 				Index:      i,
 			})
 		}
@@ -297,12 +297,12 @@ func (sv *StreamingValidator) collectSourceReferences(src *gedcom.Source) {
 	}
 
 	// Collect NOTE references
-	for i, noteXRef := range src.Notes {
+	for i, noteXRef := range src.NoteXRefs {
 		if noteXRef != "" {
 			sv.usedXRefs[noteXRef] = append(sv.usedXRefs[noteXRef], usageLocation{
 				RecordXRef: src.XRef,
 				Context:    "NOTE",
-				Field:      fmt.Sprintf("Notes[%d]", i),
+				Field:      fmt.Sprintf("NoteXRefs[%d]", i),
 				Index:      i,
 			})
 		}

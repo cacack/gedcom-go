@@ -7,69 +7,40 @@ import (
 	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
-// TestRecordNotesToEncode verifies the encoder prefers the order-preserving
-// legacy Notes slice whenever it is populated (keeping round-trips lossless),
-// and only combines the split NoteXRefs/InlineNotes fields (XRefs first, then
-// inline text) when Notes is empty.
+// TestRecordNotesToEncode verifies the encoder emits shared-note XRef pointers
+// first, then inline note text.
 func TestRecordNotesToEncode(t *testing.T) {
 	tests := []struct {
 		name      string
 		noteXRefs []string
 		inline    []string
-		notes     []string
 		want      []string
 	}{
 		{
-			name:  "uses legacy Notes when split fields empty",
-			notes: []string{"@N1@", "inline text"},
-			want:  []string{"@N1@", "inline text"},
-		},
-		{
-			name:      "legacy Notes preserves original interleaved order",
-			noteXRefs: []string{"@N1@", "@N2@"},
-			inline:    []string{"first inline", "second inline"},
-			notes:     []string{"@N1@", "first inline", "@N2@", "second inline"},
-			want:      []string{"@N1@", "first inline", "@N2@", "second inline"},
-		},
-		{
-			name:      "edited split fields override stale legacy Notes",
-			noteXRefs: []string{"@N1@"},
-			inline:    []string{"edited inline"},
-			notes:     []string{"@N1@", "original inline"},
-			want:      []string{"@N1@", "edited inline"},
-		},
-		{
-			name:      "added xref not in legacy Notes encodes from split fields",
-			noteXRefs: []string{"@N1@", "@N2@"},
-			inline:    []string{"first inline"},
-			notes:     []string{"@N1@", "first inline"},
-			want:      []string{"@N1@", "@N2@", "first inline"},
-		},
-		{
-			name:      "combines split fields when legacy Notes empty",
+			name:      "xrefs precede inline text",
 			noteXRefs: []string{"@N1@", "@N2@"},
 			inline:    []string{"first inline", "second inline"},
 			want:      []string{"@N1@", "@N2@", "first inline", "second inline"},
 		},
 		{
-			name:      "only xrefs populated, no legacy",
+			name:      "only xrefs populated",
 			noteXRefs: []string{"@N1@"},
 			want:      []string{"@N1@"},
 		},
 		{
-			name:   "only inline populated, no legacy",
+			name:   "only inline populated",
 			inline: []string{"just inline"},
 			want:   []string{"just inline"},
 		},
 		{
-			name: "all empty returns nil legacy",
-			want: nil,
+			name: "all empty returns an empty slice",
+			want: []string{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := recordNotesToEncode(tt.noteXRefs, tt.inline, tt.notes)
+			got := recordNotesToEncode(tt.noteXRefs, tt.inline)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("recordNotesToEncode() = %#v, want %#v", got, tt.want)
 			}
@@ -148,20 +119,72 @@ func TestRecordTypesNoteSplit(t *testing.T) {
 	}
 }
 
-// TestNoteOrderPreservedFromLegacy confirms that when the legacy Notes slice is
-// populated (as it always is for decoded documents), the encoder emits notes in
-// that original interleaved order rather than reordering xrefs ahead of inline
-// text. This guards the lossless round-trip of interleaved record notes.
-func TestNoteOrderPreservedFromLegacy(t *testing.T) {
-	indi := &gedcom.Individual{
-		NoteXRefs:   []string{"@N1@", "@N2@"},
-		InlineNotes: []string{"inline text"},
-		Notes:       []string{"@N1@", "inline text", "@N2@"},
+// TestSubstructureTypesNoteSplit confirms the five substructures split in
+// issue #472 emit NOTE tags for both the XRef pointer and inline text.
+func TestSubstructureTypesNoteSplit(t *testing.T) {
+	want := []string{"@N1@", "An inline note"}
+
+	ml := &gedcom.MediaLink{MediaXRef: "@O1@", NoteXRefs: []string{"@N1@"},
+		InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(mediaLinkToTags(ml, 1, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("mediaLinkToTags() NOTE values = %#v, want %#v", got, want)
 	}
 
-	got := noteTagValues(individualToTags(indi, nil))
-	want := []string{"@N1@", "inline text", "@N2@"}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("individualToTags() NOTE order = %#v, want %#v", got, want)
+	fl := &gedcom.FamilyLink{FamilyXRef: "@F1@", NoteXRefs: []string{"@N1@"},
+		InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(familyLinkToTags(fl, 1, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("familyLinkToTags() NOTE values = %#v, want %#v", got, want)
+	}
+
+	pd := &gedcom.PlaceDetail{Name: "Springfield", NoteXRefs: []string{"@N1@"},
+		InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(placeToTags(pd, 2, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("placeToTags() NOTE values = %#v, want %#v", got, want)
+	}
+
+	as := &gedcom.Association{IndividualXRef: "@I2@", NoteXRefs: []string{"@N1@"},
+		InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(associationToTags(as, 1, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("associationToTags() NOTE values = %#v, want %#v", got, want)
+	}
+
+	rl := &gedcom.SourceRepositoryLink{XRef: "@R1@", NoteXRefs: []string{"@N1@"},
+		InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(sourceRepositoryLinkToTags(rl, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("sourceRepositoryLinkToTags() NOTE values = %#v, want %#v", got, want)
+	}
+}
+
+// TestSourceRepositoryLinkSplitNotesKeepREPO guards the degenerate-link skip in
+// sourceRepositoryLinkToTags: a link whose only content is a split note must
+// still emit its REPO line, or the note has nowhere to hang.
+func TestSourceRepositoryLinkSplitNotesKeepREPO(t *testing.T) {
+	link := &gedcom.SourceRepositoryLink{InlineNotes: []string{"An inline note"}}
+
+	tags := sourceRepositoryLinkToTags(link, nil)
+	if len(tags) == 0 || tags[0].Tag != "REPO" {
+		t.Fatalf("sourceRepositoryLinkToTags() = %#v, want a leading REPO tag", tags)
+	}
+	if got := noteTagValues(tags); !reflect.DeepEqual(got, []string{"An inline note"}) {
+		t.Errorf("NOTE values = %#v, want %#v", got, []string{"An inline note"})
+	}
+}
+
+// TestMediaObjectToTagsWritesSharedNotePointers pins that partitioning
+// MediaObject's two pointer slices (#499) did not cost the writer a note. SNOTE
+// pointers used to reach mediaObjectToTags via NoteXRefs, which the decoder
+// also filled; now they arrive only in SharedNoteXRefs, and the writer reads
+// both. They are still written as NOTE, which is what came out before the
+// partition -- the 7.0 SNOTE form is issue #471.
+func TestMediaObjectToTagsWritesSharedNotePointers(t *testing.T) {
+	media := &gedcom.MediaObject{
+		NoteXRefs:       []string{"@N1@"},
+		SharedNoteXRefs: []string{"@S1@"},
+		InlineNotes:     []string{"An inline note"},
+	}
+
+	want := []string{"@N1@", "@S1@", "An inline note"}
+	if got := noteTagValues(mediaObjectToTags(media, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("mediaObjectToTags() NOTE values = %#v, want %#v", got, want)
 	}
 }

@@ -18,14 +18,6 @@ type Repository struct {
 	// (1 NOTE <text> form, including CONT/CONC continuations).
 	InlineNotes []string
 
-	// Notes is deprecated: use NoteXRefs and InlineNotes instead. It is kept
-	// for backward compatibility and populated during decode with the inline
-	// note text and shared-note XRefs interleaved in their original GEDCOM
-	// order (not the NoteXRefs-then-InlineNotes order of the split fields).
-	//
-	// Deprecated: use NoteXRefs and InlineNotes.
-	Notes []string
-
 	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
 	// Links this record to external systems like FamilySearch, Ancestry, etc.
 	ExternalIDs []*ExternalID
@@ -87,8 +79,13 @@ type SourceRepositoryLink struct {
 	// wins (last-writer-wins); CallNumbers still retains both entries.
 	CallNumberMedia map[string]string
 
-	// Notes carries NOTE subordinates of the REPO link (not the source).
-	Notes []string
+	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@")
+	// carried by NOTE subordinates of the REPO link (not the source).
+	NoteXRefs []string
+
+	// InlineNotes are note text values written directly on the REPO link
+	// (NOTE <text> form, including CONT/CONC continuations).
+	InlineNotes []string
 }
 
 // Address represents a physical or digital address.

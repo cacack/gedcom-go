@@ -448,7 +448,7 @@ func TestIndividualClone(t *testing.T) {
 			XRef:             "@I1@",
 			Sex:              "M",
 			SpouseInFamilies: []string{"@F1@"},
-			Notes:            []string{"@N1@"},
+			NoteXRefs:        []string{"@N1@"},
 			RefNumber:        "123",
 			UID:              "uid-123",
 			FamilySearchID:   "FSID",
@@ -514,7 +514,7 @@ func TestFamilyClone(t *testing.T) {
 			Husband:         "@I1@",
 			Wife:            "@I2@",
 			Children:        []string{"@I3@"},
-			Notes:           []string{"@N1@"},
+			NoteXRefs:       []string{"@N1@"},
 			RefNumber:       "456",
 			UID:             "uid-456",
 			Events:          []*Event{{Type: "MARR", Date: "1 JAN 1920"}},
@@ -560,7 +560,7 @@ func TestSourceClone(t *testing.T) {
 			Author:      "Test Author",
 			Publication: "Publisher",
 			Text:        "Source text",
-			Notes:       []string{"@N1@"},
+			NoteXRefs:   []string{"@N1@"},
 			RefNumber:   "789",
 			UID:         "uid-789",
 			RepositoryLink: &SourceRepositoryLink{
@@ -569,7 +569,7 @@ func TestSourceClone(t *testing.T) {
 				CallNumbers:     []string{"MS-1234"},
 				MediaType:       "Manuscript",
 				CallNumberMedia: map[string]string{"MS-1234": "Manuscript"},
-				Notes:           []string{"Held in archives"},
+				InlineNotes:     []string{"Held in archives"},
 			},
 			Media:        []*MediaLink{{MediaXRef: "@M1@"}},
 			ChangeDate:   &ChangeDate{Date: "1 JAN 2024"},
@@ -634,7 +634,7 @@ func TestCloneEvent(t *testing.T) {
 			Restriction:     "none",
 			UID:             "event-uid",
 			SortDate:        "19000101",
-			Notes:           []string{"@N1@"},
+			NoteXRefs:       []string{"@N1@"},
 			Phone:           []string{"123-456"},
 			Email:           []string{"test@example.com"},
 			Fax:             []string{"123-789"},
@@ -767,7 +767,7 @@ func TestMediaObjectClone(t *testing.T) {
 	t.Run("copies all fields", func(t *testing.T) {
 		original := &MediaObject{
 			XRef:        "@M1@",
-			Notes:       []string{"@N1@"},
+			NoteXRefs:   []string{"@N1@"},
 			RefNumbers:  []string{"REF1"},
 			Restriction: "none",
 			UIDs:        []string{"uid-1"},
@@ -812,14 +812,14 @@ func TestSubmitterClone(t *testing.T) {
 
 	t.Run("copies all fields", func(t *testing.T) {
 		original := &Submitter{
-			XRef:     "@SUBM1@",
-			Name:     "Test",
-			Address:  &Address{Line1: "1 Main St"},
-			Phone:    []string{"555-1212"},
-			Email:    []string{"a@b.c"},
-			Language: []string{"en"},
-			Notes:    []string{"@N1@"},
-			Tags:     []*Tag{{Tag: "CUSTOM"}},
+			XRef:      "@SUBM1@",
+			Name:      "Test",
+			Address:   &Address{Line1: "1 Main St"},
+			Phone:     []string{"555-1212"},
+			Email:     []string{"a@b.c"},
+			Language:  []string{"en"},
+			NoteXRefs: []string{"@N1@"},
+			Tags:      []*Tag{{Tag: "CUSTOM"}},
 		}
 
 		copied := original.Clone()
@@ -950,7 +950,7 @@ func TestCloneAssociationWithCitations(t *testing.T) {
 		IndividualXRef: "@I2@",
 		Role:           "Witness",
 		Phrase:         "witness to the event",
-		Notes:          []string{"Note 1", "Note 2"},
+		InlineNotes:    []string{"Note 1", "Note 2"},
 		SourceCitations: []*SourceCitation{
 			{SourceXRef: "@S1@", Page: "Page 10"},
 			{SourceXRef: "@S2@", Page: "Page 20"},
@@ -964,8 +964,8 @@ func TestCloneAssociationWithCitations(t *testing.T) {
 	if copied.Role != original.Role || copied.Phrase != original.Phrase {
 		t.Errorf("Role/Phrase mismatch")
 	}
-	if len(copied.Notes) != len(original.Notes) {
-		t.Errorf("Notes len = %d, want %d", len(copied.Notes), len(original.Notes))
+	if len(copied.InlineNotes) != len(original.InlineNotes) {
+		t.Errorf("InlineNotes len = %d, want %d", len(copied.InlineNotes), len(original.InlineNotes))
 	}
 	if len(copied.SourceCitations) != len(original.SourceCitations) {
 		t.Errorf("SourceCitations len = %d, want %d", len(copied.SourceCitations), len(original.SourceCitations))
@@ -1148,19 +1148,19 @@ func TestRepositoryClone(t *testing.T) {
 
 	t.Run("deep copies address and notes", func(t *testing.T) {
 		original := &Repository{
-			XRef:    "@R1@",
-			Name:    "Repo",
-			Address: &Address{Line1: "1 Main St"},
-			Notes:   []string{"@N1@"},
-			Tags:    []*Tag{{Tag: "CUSTOM"}},
+			XRef:      "@R1@",
+			Name:      "Repo",
+			Address:   &Address{Line1: "1 Main St"},
+			NoteXRefs: []string{"@N1@"},
+			Tags:      []*Tag{{Tag: "CUSTOM"}},
 		}
 		copied := original.Clone()
 		if copied.Address == original.Address {
 			t.Error("Address should be deep copied")
 		}
-		copied.Notes[0] = "modified"
-		if original.Notes[0] == "modified" {
-			t.Error("Notes was not deep copied")
+		copied.NoteXRefs[0] = "modified"
+		if original.NoteXRefs[0] == "modified" {
+			t.Error("NoteXRefs was not deep copied")
 		}
 	})
 }
@@ -1236,3 +1236,91 @@ func createFullTestDocument() *Document {
 // intPtr returns a pointer to v, for building optional integer fields such as
 // SourceCitation.Quality in test fixtures.
 func intPtr(v int) *int { return &v }
+
+// TestCloneNoteSlicesAreDeepCopied pins deep-copy independence for the note
+// slices added to five substructures in #472. A length comparison -- the shape
+// several tests in this file use -- is satisfied by a shared backing array, so
+// a clone that assigned `copied.NoteXRefs = src.NoteXRefs` would pass every
+// other assertion here while letting a write through one document corrupt
+// another. TestCloneCompleteness does not cover it either: it proves a field
+// arrives, not that it is independent.
+func TestCloneNoteSlicesAreDeepCopied(t *testing.T) {
+	original := &Individual{
+		XRef: "@I1@",
+		Media: []*MediaLink{{
+			MediaXRef:   "@O1@",
+			NoteXRefs:   []string{"@N1@"},
+			InlineNotes: []string{"media link note"},
+		}},
+		ChildInFamilies: []FamilyLink{{
+			FamilyXRef:  "@F1@",
+			NoteXRefs:   []string{"@N2@"},
+			InlineNotes: []string{"family link note"},
+		}},
+		Associations: []*Association{{
+			IndividualXRef: "@I2@",
+			NoteXRefs:      []string{"@N3@"},
+			InlineNotes:    []string{"association note"},
+		}},
+		Events: []*Event{{
+			Type: EventBirth,
+			PlaceDetail: &PlaceDetail{
+				NoteXRefs:   []string{"@N4@"},
+				InlineNotes: []string{"place note"},
+			},
+		}},
+	}
+
+	copied := original.Clone()
+
+	copied.Media[0].NoteXRefs[0] = "modified"
+	copied.Media[0].InlineNotes[0] = "modified"
+	copied.ChildInFamilies[0].NoteXRefs[0] = "modified"
+	copied.ChildInFamilies[0].InlineNotes[0] = "modified"
+	copied.Associations[0].NoteXRefs[0] = "modified"
+	copied.Associations[0].InlineNotes[0] = "modified"
+	copied.Events[0].PlaceDetail.NoteXRefs[0] = "modified"
+	copied.Events[0].PlaceDetail.InlineNotes[0] = "modified"
+
+	for _, tc := range []struct {
+		field string
+		got   string
+	}{
+		{"MediaLink.NoteXRefs", original.Media[0].NoteXRefs[0]},
+		{"MediaLink.InlineNotes", original.Media[0].InlineNotes[0]},
+		{"FamilyLink.NoteXRefs", original.ChildInFamilies[0].NoteXRefs[0]},
+		{"FamilyLink.InlineNotes", original.ChildInFamilies[0].InlineNotes[0]},
+		{"Association.NoteXRefs", original.Associations[0].NoteXRefs[0]},
+		{"Association.InlineNotes", original.Associations[0].InlineNotes[0]},
+		{"PlaceDetail.NoteXRefs", original.Events[0].PlaceDetail.NoteXRefs[0]},
+		{"PlaceDetail.InlineNotes", original.Events[0].PlaceDetail.InlineNotes[0]},
+	} {
+		if tc.got == "modified" {
+			t.Errorf("%s shares its backing array with the clone", tc.field)
+		}
+	}
+}
+
+// TestCloneSourceRepositoryLinkNotesAreDeepCopied covers the fifth carrier from
+// #472, which hangs off Source rather than Individual.
+func TestCloneSourceRepositoryLinkNotesAreDeepCopied(t *testing.T) {
+	original := &Source{
+		XRef: "@S1@",
+		RepositoryLink: &SourceRepositoryLink{
+			XRef:        "@R1@",
+			NoteXRefs:   []string{"@N1@"},
+			InlineNotes: []string{"repo link note"},
+		},
+	}
+
+	copied := original.Clone()
+	copied.RepositoryLink.NoteXRefs[0] = "modified"
+	copied.RepositoryLink.InlineNotes[0] = "modified"
+
+	if original.RepositoryLink.NoteXRefs[0] == "modified" {
+		t.Error("SourceRepositoryLink.NoteXRefs shares its backing array with the clone")
+	}
+	if original.RepositoryLink.InlineNotes[0] == "modified" {
+		t.Error("SourceRepositoryLink.InlineNotes shares its backing array with the clone")
+	}
+}

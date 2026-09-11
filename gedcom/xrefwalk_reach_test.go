@@ -25,11 +25,10 @@ import (
 // resolution to the other document's record.
 //
 // NoteXRefs is the subtle half: it was walked nowhere at all, for any type,
-// since the note split was introduced. It stayed harmless only because the
-// legacy Notes slice carries the same pointers and is walked, so a remap
-// still fixed the value the encoder happened to read. Once the encoder began
-// preferring the split fields when the two disagree, remapping one and not
-// the other made the stale copy win.
+// when the note split was introduced. It stayed harmless only while the
+// legacy Notes slice carried the same pointers and was walked. That slice is
+// gone (#473), so NoteXRefs is the only copy -- miss it and the pointer is
+// never remapped at all.
 
 // fullyPopulated builds one record of each entity type with an XRef-shaped
 // value in every pointer-bearing field the walker is expected to reach. Add
@@ -40,15 +39,22 @@ func fullyPopulatedRecords() []*Record {
 		return &SourceCitation{
 			SourceXRef: x,
 			NoteXRefs:  []string{"@CITE_NX@"},
-			Notes:      []string{"@CITE_NOTE@"},
 		}
 	}
 	assoc := func(x string) *Association {
 		return &Association{
 			IndividualXRef:  x,
-			Notes:           []string{"@ASSOC_NOTE@"},
+			NoteXRefs:       []string{"@ASSOC_NX@"},
 			SourceCitations: []*SourceCitation{cite("@ASSOC_SOUR@")},
 		}
+	}
+	// medialink and place carry note pointers of their own (#472), so the
+	// fixture plants one in each rather than reusing a bare MediaXRef.
+	medialink := func(x, nx string) *MediaLink {
+		return &MediaLink{MediaXRef: x, NoteXRefs: []string{nx}}
+	}
+	place := func(prefix string) *PlaceDetail {
+		return &PlaceDetail{Name: "Anytown", NoteXRefs: []string{"@" + prefix + "_PLAC_NX@"}}
 	}
 	// rawTags stands in for the Record.Tags backstop. walkTag visits both
 	// Tag.XRef and Tag.Value, and this is the path that keeps Subset's
@@ -62,46 +68,43 @@ func fullyPopulatedRecords() []*Record {
 			Type:            "NCHI",
 			Value:           "3",
 			SourceCitations: []*SourceCitation{cite("@" + prefix + "_ATTR_SOUR@")},
-			Media:           []*MediaLink{{MediaXRef: "@" + prefix + "_ATTR_OBJE@"}},
+			PlaceDetail:     place(prefix + "_ATTR"),
+			Media:           []*MediaLink{medialink("@"+prefix+"_ATTR_OBJE@", "@"+prefix+"_ATTR_OBJE_NX@")},
 			Associations:    []*Association{assoc("@" + prefix + "_ATTR_ASSO@")},
 			NoteXRefs:       []string{"@" + prefix + "_ATTR_NX@"},
-			Notes:           []string{"@" + prefix + "_ATTR_NOTE@"},
 		}
 	}
 	event := func(prefix string) *Event {
 		return &Event{
 			Type:            "BIRT",
 			SourceCitations: []*SourceCitation{cite("@" + prefix + "_EV_SOUR@")},
-			Media:           []*MediaLink{{MediaXRef: "@" + prefix + "_EV_OBJE@"}},
+			PlaceDetail:     place(prefix + "_EV"),
+			Media:           []*MediaLink{medialink("@"+prefix+"_EV_OBJE@", "@"+prefix+"_EV_OBJE_NX@")},
 			Associations:    []*Association{assoc("@" + prefix + "_EV_ASSO@")},
 			NoteXRefs:       []string{"@" + prefix + "_EV_NX@"},
-			Notes:           []string{"@" + prefix + "_EV_NOTE@"},
 		}
 	}
 	chg := func(prefix string) *ChangeDate {
 		return &ChangeDate{
 			Date:      "1 JAN 2020",
 			NoteXRefs: []string{"@" + prefix + "_CHAN_NX@"},
-			Notes:     []string{"@" + prefix + "_CHAN_NOTE@"},
 		}
 	}
 	ord := func(prefix string) *LDSOrdinance {
 		return &LDSOrdinance{
 			FamilyXRef: "@" + prefix + "_ORD_FAMC@",
 			NoteXRefs:  []string{"@" + prefix + "_ORD_NX@"},
-			Notes:      []string{"@" + prefix + "_ORD_NOTE@"},
 		}
 	}
 
 	indi := &Individual{
 		XRef:             "@I1@",
-		ChildInFamilies:  []FamilyLink{{FamilyXRef: "@I_FAMC@"}},
+		ChildInFamilies:  []FamilyLink{{FamilyXRef: "@I_FAMC@", NoteXRefs: []string{"@I_FAMC_NX@"}}},
 		SpouseInFamilies: []string{"@I_FAMS@"},
 		NoteXRefs:        []string{"@I_NX@"},
-		Notes:            []string{"@I_NOTE@"},
 		Associations:     []*Association{assoc("@I_ASSO@")},
 		SourceCitations:  []*SourceCitation{cite("@I_SOUR@")},
-		Media:            []*MediaLink{{MediaXRef: "@I_OBJE@"}},
+		Media:            []*MediaLink{medialink("@I_OBJE@", "@I_OBJE_NX@")},
 		Events:           []*Event{event("I")},
 		Attributes:       []*Attribute{attr("I")},
 		LDSOrdinances:    []*LDSOrdinance{ord("I")},
@@ -116,9 +119,8 @@ func fullyPopulatedRecords() []*Record {
 		Wife:            "@F_WIFE@",
 		Children:        []string{"@F_CHIL@"},
 		NoteXRefs:       []string{"@F_NX@"},
-		Notes:           []string{"@F_NOTE@"},
 		SourceCitations: []*SourceCitation{cite("@F_SOUR@")},
-		Media:           []*MediaLink{{MediaXRef: "@F_OBJE@"}},
+		Media:           []*MediaLink{medialink("@F_OBJE@", "@F_OBJE_NX@")},
 		Events:          []*Event{event("F")},
 		Attributes:      []*Attribute{attr("F")},
 		LDSOrdinances:   []*LDSOrdinance{ord("F")},
@@ -128,20 +130,19 @@ func fullyPopulatedRecords() []*Record {
 	}
 
 	src := &Source{
-		XRef:           "@S1@",
-		RepositoryLink: &SourceRepositoryLink{XRef: "@S_REPO@", Notes: []string{"@S_REPO_NOTE@"}},
-		NoteXRefs:      []string{"@S_NX@"},
-		Notes:          []string{"@S_NOTE@"},
-		Media:          []*MediaLink{{MediaXRef: "@S_OBJE@"}},
-		ChangeDate:     chg("S"),
-		CreationDate:   chg("SCREA"),
-		Tags:           rawTags("S"),
+		XRef: "@S1@",
+		RepositoryLink: &SourceRepositoryLink{XRef: "@S_REPO@",
+			NoteXRefs: []string{"@S_REPO_NX@"}},
+		NoteXRefs:    []string{"@S_NX@"},
+		Media:        []*MediaLink{medialink("@S_OBJE@", "@S_OBJE_NX@")},
+		ChangeDate:   chg("S"),
+		CreationDate: chg("SCREA"),
+		Tags:         rawTags("S"),
 	}
 
 	obje := &MediaObject{
 		XRef:            "@M1@",
 		NoteXRefs:       []string{"@M_NX@"},
-		Notes:           []string{"@M_NOTE@"},
 		SourceCitations: []*SourceCitation{cite("@M_SOUR@")},
 		ChangeDate:      chg("M"),
 		CreationDate:    chg("MCREA"),
@@ -150,9 +151,9 @@ func fullyPopulatedRecords() []*Record {
 	}
 
 	repo := &Repository{XRef: "@R1@", NoteXRefs: []string{"@R_NX@"},
-		Notes: []string{"@R_NOTE@"}, Tags: rawTags("R")}
+		Tags: rawTags("R")}
 	subm := &Submitter{XRef: "@U1@", NoteXRefs: []string{"@U_NX@"},
-		Notes: []string{"@U_NOTE@"}, Tags: rawTags("U")}
+		Tags: rawTags("U")}
 	snote := &SharedNote{
 		XRef:            "@N1@",
 		SourceCitations: []*SourceCitation{cite("@N_SOUR@")},

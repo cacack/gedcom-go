@@ -41,7 +41,7 @@ func buildRichFixture() *gedcom.Document {
 	add("@I1@", gedcom.RecordTypeIndividual, &gedcom.Individual{
 		XRef:             "@I1@",
 		SpouseInFamilies: []string{"@F1@"},
-		Notes:            []string{"@N1@"},
+		NoteXRefs:        []string{"@N1@"},
 		SourceCitations:  []*gedcom.SourceCitation{{SourceXRef: "@S1@"}},
 		Media:            []*gedcom.MediaLink{{MediaXRef: "@M1@"}},
 		Events: []*gedcom.Event{
@@ -60,11 +60,11 @@ func buildRichFixture() *gedcom.Document {
 		ChildInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
 	})
 	add("@F1@", gedcom.RecordTypeFamily, &gedcom.Family{
-		XRef:     "@F1@",
-		Husband:  "@I1@",
-		Wife:     "@I2@",
-		Children: []string{"@I3@"},
-		Notes:    []string{"@N2@"},
+		XRef:      "@F1@",
+		Husband:   "@I1@",
+		Wife:      "@I2@",
+		Children:  []string{"@I3@"},
+		NoteXRefs: []string{"@N2@"},
 	})
 
 	add("@N1@", gedcom.RecordTypeNote, &gedcom.Note{XRef: "@N1@", Text: "Note 1"})
@@ -194,8 +194,8 @@ func TestRemapXRefs_PrefixTransformUpdatesAllRecordsAndReferences(t *testing.T) 
 	if len(f1.Children) != 1 || f1.Children[0] != "@A_I3@" {
 		t.Errorf("F1.Children = %v, want [@A_I3@]", f1.Children)
 	}
-	if len(f1.Notes) != 1 || f1.Notes[0] != "@A_N2@" {
-		t.Errorf("F1.Notes = %v, want [@A_N2@]", f1.Notes)
+	if len(f1.NoteXRefs) != 1 || f1.NoteXRefs[0] != "@A_N2@" {
+		t.Errorf("F1.NoteXRefs = %v, want [@A_N2@]", f1.NoteXRefs)
 	}
 
 	i1 := out.GetIndividual("@A_I1@")
@@ -205,8 +205,8 @@ func TestRemapXRefs_PrefixTransformUpdatesAllRecordsAndReferences(t *testing.T) 
 	if len(i1.SpouseInFamilies) != 1 || i1.SpouseInFamilies[0] != "@A_F1@" {
 		t.Errorf("I1.SpouseInFamilies = %v, want [@A_F1@]", i1.SpouseInFamilies)
 	}
-	if len(i1.Notes) != 1 || i1.Notes[0] != "@A_N1@" {
-		t.Errorf("I1.Notes = %v, want [@A_N1@]", i1.Notes)
+	if len(i1.NoteXRefs) != 1 || i1.NoteXRefs[0] != "@A_N1@" {
+		t.Errorf("I1.NoteXRefs = %v, want [@A_N1@]", i1.NoteXRefs)
 	}
 	if len(i1.SourceCitations) != 1 || i1.SourceCitations[0].SourceXRef != "@A_S1@" {
 		t.Errorf("I1.SourceCitations[0].SourceXRef = %q, want @A_S1@", i1.SourceCitations[0].SourceXRef)

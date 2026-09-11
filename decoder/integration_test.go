@@ -1237,8 +1237,8 @@ func TestGrampsRealExport(t *testing.T) {
 	}
 
 	// Notes are stored as references to root-level NOTE records.
-	if len(ind.Notes) == 0 || !strings.HasPrefix(ind.Notes[0], "@N") {
-		t.Errorf("Individual @I0001@ Notes = %v, want a reference to a root-level NOTE record", ind.Notes)
+	if len(ind.NoteXRefs) == 0 || !strings.HasPrefix(ind.NoteXRefs[0], "@N") {
+		t.Errorf("Individual @I0001@ NoteXRefs = %v, want a reference to a root-level NOTE record", ind.NoteXRefs)
 	}
 
 	// Gramps emits a header COPR copyright tag.

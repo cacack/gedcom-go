@@ -519,8 +519,8 @@ func TestEncodeSourceRepositoryLink(t *testing.T) {
 	if link.CallNumberMedia["MS-1234"] != "Manuscript" {
 		t.Errorf("link.CallNumberMedia[MS-1234] = %q, want %q", link.CallNumberMedia["MS-1234"], "Manuscript")
 	}
-	if len(link.Notes) != 1 || link.Notes[0] != "Held in archives" {
-		t.Errorf("link.Notes = %v, want [Held in archives]", link.Notes)
+	if len(link.InlineNotes) != 1 || link.InlineNotes[0] != "Held in archives" {
+		t.Errorf("link.InlineNotes = %v, want [Held in archives]", link.InlineNotes)
 	}
 }
 
@@ -1830,7 +1830,7 @@ func TestRoundtripComplexIndividual(t *testing.T) {
 							Cause:           "Natural",
 							Age:             "0y",
 							Agency:          "Family records",
-							Notes:           []string{"Birth note"},
+							InlineNotes:     []string{"Birth note"},
 							SourceCitations: []*gedcom.SourceCitation{
 								{
 									SourceXRef: "@S1@",
@@ -1851,7 +1851,7 @@ func TestRoundtripComplexIndividual(t *testing.T) {
 					ChildInFamilies:  []gedcom.FamilyLink{{FamilyXRef: "@F1@", Pedigree: "birth"}},
 					SpouseInFamilies: []string{"@F2@"},
 					Associations: []*gedcom.Association{
-						{IndividualXRef: "@I2@", Role: "GODP", Notes: []string{"Godfather"}},
+						{IndividualXRef: "@I2@", Role: "GODP", InlineNotes: []string{"Godfather"}},
 					},
 					LDSOrdinances: []*gedcom.LDSOrdinance{
 						{Type: "BAPL", Date: "1 JAN 1900", Temple: "SLAKE", Status: "COMPLETED"},
@@ -1859,7 +1859,7 @@ func TestRoundtripComplexIndividual(t *testing.T) {
 					SourceCitations: []*gedcom.SourceCitation{
 						{SourceXRef: "@S1@", Page: "Entire file"},
 					},
-					Notes:        []string{"Famous composer"},
+					InlineNotes:  []string{"Famous composer"},
 					Media:        []*gedcom.MediaLink{{MediaXRef: "@O1@", Title: "Portrait"}},
 					ChangeDate:   &gedcom.ChangeDate{Date: "1 JAN 2024", Time: "12:00:00"},
 					CreationDate: &gedcom.ChangeDate{Date: "1 JAN 2020"},
