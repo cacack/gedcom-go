@@ -178,6 +178,56 @@ integer** — a config file, a database column, a JSON payload — must remap it
 because a stored `0` meant Relaxed under v2 and means Normal under v3. There is
 no compiler signal for this.
 
+### `MediaObject.NoteXRefs` and `.SharedNoteXRefs` no longer overlap
+
+**Nothing announces this one.** Both fields keep their name and their
+`[]string` type, so the compiler is silent and `make api-check` reports no
+entry at all. Unlike the `Notes` removal below, which is a compile error
+everywhere it bites, a clean build tells you nothing about whether this one
+affects you — read the call sites.
+
+| v2 | v3 |
+|----|----|
+| `NoteXRefs` held `NOTE` **and** `SNOTE` pointers | `NoteXRefs` holds `NOTE` pointers only |
+| `SharedNoteXRefs` repeated the `SNOTE` pointers already in `NoteXRefs` | `SharedNoteXRefs` holds the `SNOTE` pointers, and is now the only field that does |
+
+The decoder used to append every `SNOTE` pointer to *both* slices, so the two
+overlapped and their concatenation listed every shared note twice. In v3 they
+partition a media object's note pointers: disjoint, and together complete.
+`MediaObject` is the only type with a `SharedNoteXRefs` field, so nothing else
+is affected.
+
+Two caller shapes need attention. Reading `NoteXRefs` alone:
+
+```go
+// v2 — this saw shared-note pointers too
+for _, x := range obj.NoteXRefs { /* NOTE and SNOTE pointers */ }
+
+// v3 — read both, or the SNOTE pointers are silently lost
+for _, x := range obj.NoteXRefs       { use(doc.GetNote(x)) }
+for _, x := range obj.SharedNoteXRefs { use(doc.GetSharedNote(x)) }
+```
+
+And concatenating the two:
+
+```go
+// v2 — the concatenation double-counted every shared note, so callers deduped
+all := dedupe(append(slices.Clone(obj.NoteXRefs), obj.SharedNoteXRefs...))
+
+// v3 — keep the concatenation, delete the dedupe
+all := append(slices.Clone(obj.NoteXRefs), obj.SharedNoteXRefs...)
+```
+
+**Delete the dedupe rather than changing which slices you read.** The
+duplication it removed no longer exists, so all it can discard now is a
+*genuine* repeat — the same note pointed at twice by one media object.
+
+`obj.AllNotes(doc)` is unaffected: it returns the same notes as before, once
+each. The dedupe it used to run internally existed only to undo the
+duplication, and is gone for the same reason. Encoder output is unchanged as
+well, so decode-then-encode still writes the same bytes. Only code that reads
+the two fields directly needs a change.
+
 ## Renames
 
 ### `Individual.ParentalFamilies` / `SpouseFamilies`
@@ -233,8 +283,11 @@ migrate before upgrading. **Be on `v2.5.0` first.** The place accessors and the
 encoder fix that goes with them postdate `v2.4.0` and were released in `v2.5.0`
 specifically so these migrations can be staged; against `v2.4.0` or earlier the
 replacement does not exist, and the compile break and the behaviour change arrive
-together. `v2.5.0` also carries a `// Deprecated:` marker on every symbol listed
+together. `v2.5.0` also carries a `// Deprecated:` marker on almost every symbol listed
 here, so your tooling will point at the call sites that still need attention.
+Three note fields are the exception — `Event.Notes`, `Association.Notes` and
+`SourceRepositoryLink.Notes`, whose replacement fields exist only in v3. See
+below.
 
 | Removed | Replacement |
 |---------|-------------|
@@ -538,14 +591,73 @@ lost, and a decoded record still re-encodes byte-for-byte from `Record.Tags`;
 it is the typed-model path — a hand-built document, or one whose `Tags` you
 cleared — where the `NOTE` lines come out grouped.
 
+#### Which of the thirteen you can migrate before upgrading
+
+Only nine of the thirteen `Notes` fields ever shipped in a v2 release, so those
+are the only ones a v2 codebase can be reading. `Attribute`, `SourceCitation`,
+`LDSOrdinance` and `ChangeDate` never carried one in v2 — their `Notes` existed
+only inside the v3 line, alongside the split pair that replaced it.
+
+Of the nine, six can be converted while still on `v2.5.0`, which carries both
+the replacement pair and a `// Deprecated:` marker on the old field:
+`Individual`, `Family`, `Source`, `Repository`, `Submitter` and `MediaObject`.
+
+The other three — **`Event.Notes`, `Association.Notes` and
+`SourceRepositoryLink.Notes`** — have no staged path. `v2.5.0` has the field
+but not the `NoteXRefs` / `InlineNotes` pair that supersedes it, so the field
+carries no deprecation marker there and your tooling will not flag it. For
+these three the compile break and its replacement arrive together at the
+upgrade.
+
+`Event` at least gains `AllNotes(doc)` in v3; `Association` and
+`SourceRepositoryLink` do not.
+
+#### `Association.Notes` in particular
+
+`Association` is the likeliest of the three to bite. It is a substructure, so
+nothing about it changed in v2 and no call site has had reason to move; it has
+no `AllNotes` to fall back on; and the field it loses is the only note accessor
+it ever had.
+
+```go
+// v2
+for _, n := range assoc.Notes { /* pointers and text, interleaved */ }
+
+// v3
+for _, x := range assoc.NoteXRefs   { /* pointers to NOTE/SNOTE records */ }
+for _, t := range assoc.InlineNotes { /* note text */ }
+```
+
+`Association` and `SourceRepositoryLink` have no `AllNotes(doc)`. Both are
+substructures, and the line the API draws is that record-level types plus
+`Event` and `Attribute` carry the resolver while substructures do not — v3
+does not add one to either. Read the two fields and resolve a pointer with
+`doc.GetNote(x)` or `doc.GetSharedNote(x)`.
+
+#### Known downstream call sites
+
+`my-family` has already moved its `Source`, `Individual` and `Repository` reads
+to `InlineNotes`, but `Association` was never split before v3, so its two sites
+are untouched and will not compile:
+
+| Site | v2 | v3 |
+|------|----|----|
+| `internal/gedcom/importer.go:1362` (read) | `assoc.Notes` | `assoc.NoteXRefs` and `assoc.InlineNotes` |
+| `internal/gedcom/exporter.go:772` (write) | `Notes: notes` | `InlineNotes:` for text, `NoteXRefs:` for pointers |
+
+Line numbers are as of the survey that produced this guide; re-grep before
+relying on them.
+
 ## Checking your upgrade
 
 `make api-check` in this repository reports the full apidiff between the last
 release and `main`, including constant value changes. For your own code, the
 compiler catches every removal and rename on this page. It does **not** catch
-the value changes — the inverted boolean, the renumbered constant, and the
-`*int` retype, whose compile error has a mechanical fix that can be wrong (see
-below).
+the value changes — the inverted boolean, the renumbered constant, the `*int`
+retype (whose compile error has a mechanical fix that can be wrong), or the
+`MediaObject` note-pointer partition, which changes no signature at all and so
+produces no build error anywhere. A clean build is not evidence that those
+four are done.
 
 See [`docs/governance/policies/api-stability.md`](../governance/policies/api-stability.md)
 for what the project treats as a breaking change, including the semantic breaks
