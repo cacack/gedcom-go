@@ -3161,13 +3161,13 @@ func TestParseMediaObject_FullMetadata(t *testing.T) {
 		t.Errorf("media.SharedNoteXRefs[0] = %s, want @N1@", media.SharedNoteXRefs[0])
 	}
 
-	// The SNOTE pointer is routed through the split-note path alongside the
-	// inline NOTE text.
+	// The inline NOTE text lands in InlineNotes. NoteXRefs stays empty: the
+	// only pointer here is an SNOTE, and the two pointer slices partition.
 	if len(media.InlineNotes) != 1 {
 		t.Errorf("len(media.InlineNotes) = %d, want 1", len(media.InlineNotes))
 	}
-	if len(media.NoteXRefs) != 1 || media.NoteXRefs[0] != "@N1@" {
-		t.Errorf("media.NoteXRefs = %#v, want [@N1@]", media.NoteXRefs)
+	if len(media.NoteXRefs) != 0 {
+		t.Errorf("media.NoteXRefs = %#v, want empty", media.NoteXRefs)
 	}
 
 	if len(media.SourceCitations) != 1 {

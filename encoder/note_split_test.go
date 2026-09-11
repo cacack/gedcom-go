@@ -169,3 +169,22 @@ func TestSourceRepositoryLinkSplitNotesKeepREPO(t *testing.T) {
 		t.Errorf("NOTE values = %#v, want %#v", got, []string{"An inline note"})
 	}
 }
+
+// TestMediaObjectToTagsWritesSharedNotePointers pins that partitioning
+// MediaObject's two pointer slices (#499) did not cost the writer a note. SNOTE
+// pointers used to reach mediaObjectToTags via NoteXRefs, which the decoder
+// also filled; now they arrive only in SharedNoteXRefs, and the writer reads
+// both. They are still written as NOTE, which is what came out before the
+// partition -- the 7.0 SNOTE form is issue #471.
+func TestMediaObjectToTagsWritesSharedNotePointers(t *testing.T) {
+	media := &gedcom.MediaObject{
+		NoteXRefs:       []string{"@N1@"},
+		SharedNoteXRefs: []string{"@S1@"},
+		InlineNotes:     []string{"An inline note"},
+	}
+
+	want := []string{"@N1@", "@S1@", "An inline note"}
+	if got := noteTagValues(mediaObjectToTags(media, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("mediaObjectToTags() NOTE values = %#v, want %#v", got, want)
+	}
+}

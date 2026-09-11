@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
 // recordNotes is the common shape of the split note fields populated by
@@ -116,13 +118,16 @@ func TestDecodeRecordNoteSplit(t *testing.T) {
 			},
 		},
 		{
-			name: "MediaObject routes NOTE and SNOTE through split path",
+			// MediaObject is the one record type that keeps SNOTE pointers out
+			// of NoteXRefs: they go to SharedNoteXRefs instead (#499), so only
+			// the NOTE pointer shows up here.
+			name: "MediaObject keeps SNOTE out of NoteXRefs",
 			got: func() recordNotes {
 				m := doc.GetMediaObject("@O1@")
 				return recordNotes{m.NoteXRefs, m.InlineNotes}
 			}(),
 			want: recordNotes{
-				xrefs:  []string{"@N1@", "@N1@"},
+				xrefs:  []string{"@N1@"},
 				inline: []string{"Inline media note"},
 			},
 		},
@@ -139,8 +144,8 @@ func TestDecodeRecordNoteSplit(t *testing.T) {
 		})
 	}
 
-	// A media SNOTE is also tracked in SharedNoteXRefs (the GEDCOM 7.0 form used
-	// for version detection) in addition to the split-note path.
+	// A media SNOTE lands in SharedNoteXRefs (the GEDCOM 7.0 form used for
+	// version detection) and nowhere else.
 	if got, want := doc.GetMediaObject("@O1@").SharedNoteXRefs, []string{"@N1@"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("MediaObject SharedNoteXRefs = %#v, want %#v", got, want)
 	}
@@ -307,5 +312,84 @@ func TestMediaLinkNoteNotReportedUnknown(t *testing.T) {
 	m := res.Document.GetIndividual("@I1@").Media[0]
 	if want := []string{""}; !reflect.DeepEqual(m.InlineNotes, want) {
 		t.Errorf("MediaLink InlineNotes = %#v, want %#v", m.InlineNotes, want)
+	}
+}
+
+// TestMediaObjectNotePointersPartition guards the invariant issue #499
+// established: a MediaObject's NoteXRefs holds NOTE pointers only and its
+// SharedNoteXRefs holds SNOTE pointers only, so the two partition. Before the
+// change the decoder put every SNOTE pointer in both, and AllNotes ran an
+// O(n^2) dedup to undo it; a caller who trusted the doc comment and
+// concatenated the slices saw every shared note twice.
+func TestMediaObjectNotePointersPartition(t *testing.T) {
+	const input = `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 CHAR UTF-8
+0 @N1@ NOTE A NOTE record
+0 @S1@ SNOTE An SNOTE record
+0 @O1@ OBJE
+1 FILE photo.jpg
+2 FORM image/jpeg
+1 NOTE Inline media note
+1 NOTE @N1@
+1 SNOTE @S1@
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	media := doc.GetMediaObject("@O1@")
+	if media == nil {
+		t.Fatal("GetMediaObject(@O1@) returned nil")
+	}
+
+	if want := []string{"@N1@"}; !reflect.DeepEqual(media.NoteXRefs, want) {
+		t.Errorf("NoteXRefs = %#v, want %#v (no SNOTE pointer)", media.NoteXRefs, want)
+	}
+	if want := []string{"@S1@"}; !reflect.DeepEqual(media.SharedNoteXRefs, want) {
+		t.Errorf("SharedNoteXRefs = %#v, want %#v", media.SharedNoteXRefs, want)
+	}
+
+	// Every note, once: the inline text, then each pointer resolved in field
+	// order. AllNotes no longer dedups, so a re-introduced overlap fails here.
+	want := []string{"Inline media note", "A NOTE record", "An SNOTE record"}
+	if got := media.AllNotes(doc); !reflect.DeepEqual(got, want) {
+		t.Errorf("AllNotes() = %#v, want %#v", got, want)
+	}
+}
+
+// TestMediaSharedNoteStillRequiresGEDCOM7 guards the reason #499 partitioned
+// the two slices rather than merging them into one. Document.RequiresGEDCOM7
+// reads len(MediaObject.SharedNoteXRefs) > 0 as its SNOTE-on-media signal; a
+// merged slice would leave no way to tell a NOTE pointer from an SNOTE pointer
+// and the signal would have no substitute.
+//
+// The media record is lifted into a document of its own because an SNOTE
+// *record* is itself a 7.0-only signal -- leaving it in would prove nothing
+// about the pointer.
+func TestMediaSharedNoteStillRequiresGEDCOM7(t *testing.T) {
+	const input = `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 CHAR UTF-8
+0 @S1@ SNOTE An SNOTE record
+0 @O1@ OBJE
+1 FILE photo.jpg
+2 FORM image/jpeg
+1 SNOTE @S1@
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	mediaOnly := &gedcom.Document{Records: []*gedcom.Record{doc.XRefMap["@O1@"]}}
+	if !mediaOnly.RequiresGEDCOM7() {
+		t.Error("RequiresGEDCOM7() = false, want true for a media object carrying only an SNOTE pointer")
+	}
+	if got := mediaOnly.MinimumVersion(); got != gedcom.Version70 {
+		t.Errorf("MinimumVersion() = %v, want %v", got, gedcom.Version70)
 	}
 }

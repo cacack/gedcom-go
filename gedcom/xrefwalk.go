@@ -420,10 +420,6 @@ func walkMediaObject(m *MediaObject, cb refCallback) {
 		return
 	}
 	walkNotes(m.NoteXRefs, cb)
-	// SharedNoteXRefs holds the same SNOTE pointers as NoteXRefs. AllNotes
-	// appends any entry not already in NoteXRefs, so remapping one and not
-	// the other makes the dedup check fail and surfaces the stale pointer as
-	// a second, foreign note.
 	walkStrings(m.SharedNoteXRefs, cb)
 	walkCitations(m.SourceCitations, cb)
 	walkChangeDate(m.ChangeDate, cb)

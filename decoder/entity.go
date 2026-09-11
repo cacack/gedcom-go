@@ -1467,11 +1467,9 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 		case "NOTE":
 			media.NoteXRefs, media.InlineNotes = appendRecordNote(record.Tags, i, media.NoteXRefs, media.InlineNotes)
 		case "SNOTE":
-			// Route shared-note pointers through the split-note path so they
-			// reach the typed NoteXRefs API and survive re-encode. Also track
-			// them in SharedNoteXRefs, which records the GEDCOM 7.0 SNOTE form
-			// used for version detection.
-			media.NoteXRefs, media.InlineNotes = appendRecordNote(record.Tags, i, media.NoteXRefs, media.InlineNotes)
+			// SharedNoteXRefs holds the GEDCOM 7.0 SNOTE pointers and NoteXRefs
+			// the NOTE ones, so the two partition (#499). A caller wanting every
+			// note pointer concatenates them; nothing needs deduping.
 			media.SharedNoteXRefs = append(media.SharedNoteXRefs, tagToken(tag.Value))
 		case "SOUR":
 			cite := parseSourceCitation(record.Tags, i, tag.Level, collector)

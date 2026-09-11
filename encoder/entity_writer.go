@@ -575,8 +575,15 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 		tags = append(tags, mediaFileToTags(file, 1)...)
 	}
 
-	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(media.NoteXRefs, media.InlineNotes) {
+	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long).
+	// NoteXRefs and SharedNoteXRefs partition this record's note pointers
+	// (#499), so they concatenate without deduping. SNOTE pointers are still
+	// written as NOTE, which is what the writer emitted before the partition --
+	// teaching it the 7.0 SNOTE form is issue #471.
+	noteXRefs := make([]string, 0, len(media.NoteXRefs)+len(media.SharedNoteXRefs))
+	noteXRefs = append(noteXRefs, media.NoteXRefs...)
+	noteXRefs = append(noteXRefs, media.SharedNoteXRefs...)
+	for _, note := range recordNotesToEncode(noteXRefs, media.InlineNotes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
 	}
 
