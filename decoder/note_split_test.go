@@ -393,3 +393,48 @@ func TestMediaSharedNoteStillRequiresGEDCOM7(t *testing.T) {
 		t.Errorf("MinimumVersion() = %v, want %v", got, gedcom.Version70)
 	}
 }
+
+// TestMediaObjectNonPointerSNOTEKeepsItsText pins the classification the #499
+// partition depends on. SNOTE is pointer-only in the 7.0 spec, but a lenient
+// decoder still meets "1 SNOTE some text" in the wild, and an entry in
+// SharedNoteXRefs that resolves to no record is dropped without trace by
+// allNotes (gedcom/notes.go). Filing an unclassified value there therefore
+// loses it from the typed model entirely -- notes silently disappearing is the
+// opposite of the Lossless Representation principle, so the pointer test in
+// parseMediaObject is load-bearing rather than cosmetic.
+func TestMediaObjectNonPointerSNOTEKeepsItsText(t *testing.T) {
+	const input = `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 CHAR UTF-8
+0 @O1@ OBJE
+1 FILE photo.jpg
+2 FORM image/jpeg
+1 SNOTE this is not a pointer
+2 CONT second line
+0 TRLR`
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	media := doc.GetMediaObject("@O1@")
+	if media == nil {
+		t.Fatal("GetMediaObject(@O1@) = nil")
+	}
+
+	// The value is not a pointer, so it must not sit in a pointer-only slice.
+	if len(media.SharedNoteXRefs) != 0 {
+		t.Errorf("SharedNoteXRefs = %q, want empty: a non-pointer value belongs in InlineNotes", media.SharedNoteXRefs)
+	}
+	want := "this is not a pointer\nsecond line"
+	if len(media.InlineNotes) != 1 || media.InlineNotes[0] != want {
+		t.Errorf("InlineNotes = %q, want [%q] with the CONT folded in", media.InlineNotes, want)
+	}
+
+	// The whole point: the text still reaches a caller.
+	all := media.AllNotes(doc)
+	if len(all) != 1 || all[0] != want {
+		t.Errorf("AllNotes() = %q, want [%q] -- the note text was lost", all, want)
+	}
+}

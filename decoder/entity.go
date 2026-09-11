@@ -1470,7 +1470,19 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 			// SharedNoteXRefs holds the GEDCOM 7.0 SNOTE pointers and NoteXRefs
 			// the NOTE ones, so the two partition (#499). A caller wanting every
 			// note pointer concatenates them; nothing needs deduping.
-			media.SharedNoteXRefs = append(media.SharedNoteXRefs, tagToken(tag.Value))
+			//
+			// The pointer test is what keeps SharedNoteXRefs holding only what
+			// its name promises. SNOTE is pointer-only in the 7.0 spec, but a
+			// lenient decoder still meets "1 SNOTE some text" in the wild, and
+			// an unresolvable entry here is dropped without trace by AllNotes
+			// (see allNotes in gedcom/notes.go). Route a non-pointer value
+			// through appendRecordNote instead, which files it as inline text
+			// with its CONT/CONC continuations folded in.
+			if ptr := tagToken(tag.Value); gedcom.IsPointerXRef(ptr) {
+				media.SharedNoteXRefs = append(media.SharedNoteXRefs, ptr)
+			} else {
+				media.NoteXRefs, media.InlineNotes = appendRecordNote(record.Tags, i, media.NoteXRefs, media.InlineNotes)
+			}
 		case "SOUR":
 			cite := parseSourceCitation(record.Tags, i, tag.Level, collector)
 			media.SourceCitations = append(media.SourceCitations, cite)

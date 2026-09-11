@@ -1236,3 +1236,91 @@ func createFullTestDocument() *Document {
 // intPtr returns a pointer to v, for building optional integer fields such as
 // SourceCitation.Quality in test fixtures.
 func intPtr(v int) *int { return &v }
+
+// TestCloneNoteSlicesAreDeepCopied pins deep-copy independence for the note
+// slices added to five substructures in #472. A length comparison -- the shape
+// several tests in this file use -- is satisfied by a shared backing array, so
+// a clone that assigned `copied.NoteXRefs = src.NoteXRefs` would pass every
+// other assertion here while letting a write through one document corrupt
+// another. TestCloneCompleteness does not cover it either: it proves a field
+// arrives, not that it is independent.
+func TestCloneNoteSlicesAreDeepCopied(t *testing.T) {
+	original := &Individual{
+		XRef: "@I1@",
+		Media: []*MediaLink{{
+			MediaXRef:   "@O1@",
+			NoteXRefs:   []string{"@N1@"},
+			InlineNotes: []string{"media link note"},
+		}},
+		ChildInFamilies: []FamilyLink{{
+			FamilyXRef:  "@F1@",
+			NoteXRefs:   []string{"@N2@"},
+			InlineNotes: []string{"family link note"},
+		}},
+		Associations: []*Association{{
+			IndividualXRef: "@I2@",
+			NoteXRefs:      []string{"@N3@"},
+			InlineNotes:    []string{"association note"},
+		}},
+		Events: []*Event{{
+			Type: EventBirth,
+			PlaceDetail: &PlaceDetail{
+				NoteXRefs:   []string{"@N4@"},
+				InlineNotes: []string{"place note"},
+			},
+		}},
+	}
+
+	copied := original.Clone()
+
+	copied.Media[0].NoteXRefs[0] = "modified"
+	copied.Media[0].InlineNotes[0] = "modified"
+	copied.ChildInFamilies[0].NoteXRefs[0] = "modified"
+	copied.ChildInFamilies[0].InlineNotes[0] = "modified"
+	copied.Associations[0].NoteXRefs[0] = "modified"
+	copied.Associations[0].InlineNotes[0] = "modified"
+	copied.Events[0].PlaceDetail.NoteXRefs[0] = "modified"
+	copied.Events[0].PlaceDetail.InlineNotes[0] = "modified"
+
+	for _, tc := range []struct {
+		field string
+		got   string
+	}{
+		{"MediaLink.NoteXRefs", original.Media[0].NoteXRefs[0]},
+		{"MediaLink.InlineNotes", original.Media[0].InlineNotes[0]},
+		{"FamilyLink.NoteXRefs", original.ChildInFamilies[0].NoteXRefs[0]},
+		{"FamilyLink.InlineNotes", original.ChildInFamilies[0].InlineNotes[0]},
+		{"Association.NoteXRefs", original.Associations[0].NoteXRefs[0]},
+		{"Association.InlineNotes", original.Associations[0].InlineNotes[0]},
+		{"PlaceDetail.NoteXRefs", original.Events[0].PlaceDetail.NoteXRefs[0]},
+		{"PlaceDetail.InlineNotes", original.Events[0].PlaceDetail.InlineNotes[0]},
+	} {
+		if tc.got == "modified" {
+			t.Errorf("%s shares its backing array with the clone", tc.field)
+		}
+	}
+}
+
+// TestCloneSourceRepositoryLinkNotesAreDeepCopied covers the fifth carrier from
+// #472, which hangs off Source rather than Individual.
+func TestCloneSourceRepositoryLinkNotesAreDeepCopied(t *testing.T) {
+	original := &Source{
+		XRef: "@S1@",
+		RepositoryLink: &SourceRepositoryLink{
+			XRef:        "@R1@",
+			NoteXRefs:   []string{"@N1@"},
+			InlineNotes: []string{"repo link note"},
+		},
+	}
+
+	copied := original.Clone()
+	copied.RepositoryLink.NoteXRefs[0] = "modified"
+	copied.RepositoryLink.InlineNotes[0] = "modified"
+
+	if original.RepositoryLink.NoteXRefs[0] == "modified" {
+		t.Error("SourceRepositoryLink.NoteXRefs shares its backing array with the clone")
+	}
+	if original.RepositoryLink.InlineNotes[0] == "modified" {
+		t.Error("SourceRepositoryLink.InlineNotes shares its backing array with the clone")
+	}
+}

@@ -186,9 +186,15 @@ Example decode:
 Becomes `Note.Text`: `"First line\nSecond line with more text"`
 
 The same folding now applies to notes on substructures, not only to the `NOTE`
-record. `Event`, `Attribute`, `SourceCitation`, `LDSOrdinance` and `ChangeDate`
-each expose `NoteXRefs` (pointers to `NOTE`/`SNOTE` records) and `InlineNotes`
-(text, with `CONT`/`CONC` folded).
+record. Ten substructures expose `NoteXRefs` (pointers to `NOTE`/`SNOTE`
+records) and `InlineNotes` (text, with `CONT`/`CONC` folded):
+
+| Substructure | Split since |
+|---|---|
+| `Event`, `Attribute`, `SourceCitation`, `LDSOrdinance`, `ChangeDate` | v2.4.0 |
+| `MediaLink`, `FamilyLink`, `PlaceDetail`, `Association`, `SourceRepositoryLink` | v3.0.0 |
+
+`FEATURES.md` carries the authoritative list; this table is a convenience.
 
 **Behaviour change.** An event note previously received the raw `NOTE` value
 with no folding, so a multi-line event note read back as its first line only;
@@ -196,6 +202,12 @@ with no folding, so a multi-line event note read back as its first line only;
 is also no longer reported as an unknown tag; it lands in `NoteXRefs`. Notes on
 `SourceCitation`, `LDSOrdinance` and `ChangeDate` were previously dropped
 entirely and are now kept.
+
+**Behaviour change in v3.0.0.** Notes on the five substructures in the second
+row were previously dropped from the typed model as well — a `NOTE` under an
+inline `OBJE` was reported as an unknown tag, and notes on `ASSO`, `PLAC`,
+`FAMC` and `REPO` links had nowhere typed to go. They are now kept. Reading
+them from `Record.Tags` is no longer necessary.
 
 Re-encoded (may differ from original):
 ```

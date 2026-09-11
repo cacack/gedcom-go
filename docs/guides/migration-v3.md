@@ -222,11 +222,26 @@ all := append(slices.Clone(obj.NoteXRefs), obj.SharedNoteXRefs...)
 duplication it removed no longer exists, so all it can discard now is a
 *genuine* repeat — the same note pointed at twice by one media object.
 
-`obj.AllNotes(doc)` is unaffected: it returns the same notes as before, once
-each. The dedupe it used to run internally existed only to undo the
-duplication, and is gone for the same reason. Encoder output is unchanged as
-well, so decode-then-encode still writes the same bytes. Only code that reads
-the two fields directly needs a change.
+`obj.AllNotes(doc)` returns the same notes as before, once each. The dedupe it
+used to run internally existed only to undo the duplication, and is gone for
+the same reason.
+
+Encoder output is unchanged **for a decoded document re-encoded from its
+`Record.Tags`**, which is the common case — the raw tags win when non-empty, so
+the typed writers are not consulted at all and decode-then-encode still writes
+the same bytes. Two qualifications apply on the typed path (a hand-built
+document, or one whose `Tags` you cleared):
+
+- The encoder writes `NoteXRefs` before `SharedNoteXRefs`, so a record whose
+  source had `SNOTE` ahead of `NOTE` re-encodes with the two reordered.
+- A `MediaObject` you carried across from v2 — persisted, serialized to JSON, or
+  copied out of a v2 decode — holds each SNOTE pointer in *both* slices, because
+  that is what the v2 decoder produced. Nothing detects this, and the dedupe that
+  used to absorb it is gone, so it now yields a duplicate note. **Drop the
+  duplicates once when you migrate such a value**; a freshly decoded document is
+  already correct.
+
+Only code that reads the two fields directly needs a change.
 
 ## Renames
 
@@ -275,6 +290,37 @@ agree, so migrate these reads there rather than at upgrade time.
 `Details["position"]` is **not** removed. It is a byte offset within a field's
 value, not a source line, and `CodeBannedControlCharacter` now carries both:
 `LineNumber` for the line, `Details["position"]` for the offset within it.
+
+### `StreamingValidator` reports fewer `ORPHANED_NOTE` issues
+
+No code change is needed for this one. It is listed because it changes the
+issues a document produces, which a caller may have snapshotted or suppressed.
+
+`StreamingValidator` collected note references from the deprecated `Notes`
+slice. That slice interleaved shared-note pointers with inline note *text*, and
+collection applied no pointer test — so every non-empty entry became a
+reference to look up. A record carrying ordinary note prose was therefore
+reported as an orphaned reference to a record whose XRef was the prose itself:
+
+```
+0 @I1@ INDI
+1 NOTE Born at home, per the family bible.
+```
+
+In v2 that produces an `ORPHANED_NOTE` issue. In v3 it produces none, because
+collection reads `NoteXRefs`, which the decoder fills only with pointer-shaped
+values. Genuine dangling pointers are still reported exactly as before.
+
+Two consequences:
+
+- A caller suppressing `ORPHANED_NOTE` wholesale to work around the noise can
+  stop, and will start seeing the real ones.
+- A test asserting an exact issue count on a document with inline notes will
+  need its expected value lowered.
+
+`Issue.Details["field"]` also now reads `NoteXRefs[N]` rather than `Notes[N]`
+for these issues. Code matching that string on a `"Notes["` prefix should match
+`"NoteXRefs["` instead.
 
 ## Straight removals
 
