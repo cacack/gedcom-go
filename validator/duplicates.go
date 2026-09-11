@@ -144,6 +144,17 @@ func NewDuplicateDetector(config *DuplicateConfig) *DuplicateDetector {
 	return &DuplicateDetector{config: *config}
 }
 
+// candidate carries an individual alongside the normalized names used to
+// compare it. The keys are derived once per individual during grouping rather
+// than re-derived for every pair: normalizeName runs a Unicode NFD transform
+// chain, and doing that inside the O(n^2) pair loop dominated the cost of
+// FindDuplicates on large documents (#529).
+type candidate struct {
+	ind     *gedcom.Individual
+	surname string
+	given   string
+}
+
 // FindDuplicates analyzes all individuals in the document and returns potential duplicates.
 // The algorithm groups individuals by normalized surname for efficiency, then compares
 // pairs within each surname group.
@@ -181,17 +192,32 @@ func (d *DuplicateDetector) FindDuplicates(doc *gedcom.Document) []DuplicatePair
 	return duplicates
 }
 
-// buildSurnameGroups groups individuals by their normalized surname.
-// Individuals without surnames are grouped under an empty string key.
-func (d *DuplicateDetector) buildSurnameGroups(individuals []*gedcom.Individual) map[string][]*gedcom.Individual {
-	groups := make(map[string][]*gedcom.Individual)
+// buildSurnameGroups groups individuals by their normalized surname, carrying
+// each one's normalized given name along so comparePair never re-derives either.
+//
+// Individuals with no surname are omitted rather than collected under an empty
+// key. compareSurnames rejects an empty surname outright, so no pair drawn from
+// such a bucket could ever match however the detector is configured. Excluding
+// them at the point the key is computed keeps that rule in one place, and skips
+// both the pairwise sweep over them and the given-name normalization that would
+// otherwise be computed only to be discarded (#529).
+func (d *DuplicateDetector) buildSurnameGroups(individuals []*gedcom.Individual) map[string][]candidate {
+	groups := make(map[string][]candidate)
 
 	for _, ind := range individuals {
 		surname := d.extractSurname(ind)
 		if d.config.NormalizeNames {
 			surname = normalizeName(surname)
 		}
-		groups[surname] = append(groups[surname], ind)
+		if surname == "" {
+			continue
+		}
+
+		given := extractGivenName(ind)
+		if d.config.NormalizeNames {
+			given = normalizeName(given)
+		}
+		groups[surname] = append(groups[surname], candidate{ind: ind, surname: surname, given: given})
 	}
 
 	return groups
@@ -252,23 +278,20 @@ func extractGivenFromFull(fullName string) string {
 	return strings.TrimSpace(fullName[:idx])
 }
 
-// comparePair compares two individuals and returns a DuplicatePair if they match.
+// comparePair compares two candidates and returns a DuplicatePair if they match.
+// Both already carry their normalized surname and given name from
+// buildSurnameGroups; deriving them here instead would repeat the work once per
+// pair rather than once per individual.
 //
 //nolint:gocyclo // Complexity is appropriate for comparison logic
-func (d *DuplicateDetector) comparePair(ind1, ind2 *gedcom.Individual) (DuplicatePair, bool) {
+func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) {
 	var confidence float64
 	var reasons []string
 
-	// Get surnames
-	surname1 := d.extractSurname(ind1)
-	surname2 := d.extractSurname(ind2)
-	if d.config.NormalizeNames {
-		surname1 = normalizeName(surname1)
-		surname2 = normalizeName(surname2)
-	}
+	ind1, ind2 := c1.ind, c2.ind
 
 	// Check surname match
-	surnameMatch := compareSurnames(surname1, surname2, d.config.RequireExactSurname)
+	surnameMatch := compareSurnames(c1.surname, c2.surname, d.config.RequireExactSurname)
 	if !surnameMatch {
 		return DuplicatePair{}, false
 	}
@@ -277,15 +300,7 @@ func (d *DuplicateDetector) comparePair(ind1, ind2 *gedcom.Individual) (Duplicat
 	confidence += 0.3
 	reasons = append(reasons, "exact surname match")
 
-	// Get and compare given names
-	given1 := extractGivenName(ind1)
-	given2 := extractGivenName(ind2)
-	if d.config.NormalizeNames {
-		given1 = normalizeName(given1)
-		given2 = normalizeName(given2)
-	}
-
-	givenSimilarity := compareGivenNames(given1, given2, d.config.MinNameSimilarity)
+	givenSimilarity := compareGivenNames(c1.given, c2.given, d.config.MinNameSimilarity)
 	if givenSimilarity < d.config.MinNameSimilarity {
 		return DuplicatePair{}, false
 	}

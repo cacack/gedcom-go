@@ -51,8 +51,21 @@ jobs:
     # behind and left the root package, converter and gedcom/testing ungated
     # (#430). examples/ and specs/ are excluded from the coverage thresholds by
     # .testcoverage.yml, not here.
+    # -timeout is explicit rather than left to Go's 10m default: a quadratic
+    # regression in the validator silently grew until it crossed that default on
+    # macOS runners, and the failure read as an unexplained panic rather than a
+    # budget being exceeded (#529). State the budget so a future breach names
+    # itself.
+    #
+    # It must stay strictly below this job's timeout-minutes (15). go test's own
+    # timeout panics with the offending test name and a goroutine dump; a job
+    # cancellation says only that the job was cancelled. If the two budgets were
+    # equal the runner would always win -- the job clock also covers checkout,
+    # setup-go and `go mod verify` -- and the diagnosable failure would never be
+    # reached. Note -timeout applies per package binary, so the job cap remains
+    # the backstop for an aggregate overrun across ./...
     - name: Run tests
-      run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+      run: go test -v -race -timeout 10m -coverprofile=coverage.out -covermode=atomic ./...
       shell: bash
 
     - name: Upload coverage to Codecov
@@ -68,7 +81,9 @@ jobs:
   coverage:
     name: Coverage Check
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # 15 rather than 10 so the `go test -timeout 10m` below fires first and names
+    # the offending test; see the note on the Test job's Run tests step (#529).
+    timeout-minutes: 15
     steps:
     - name: Harden Runner
       uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
@@ -84,8 +99,10 @@ jobs:
         go-version: '1.26'
         cache: true
 
+    # Same explicit budget as the Test job, for the same reason (#529): this job
+    # runs the identical suite, so it needs the identical diagnosable failure.
     - name: Generate coverage
-      run: go test -coverprofile=coverage.out -covermode=atomic ./...
+      run: go test -timeout 10m -coverprofile=coverage.out -covermode=atomic ./...
 
     # Thresholds and exclusions both come from .testcoverage.yml. They used to
     # be inline here, which meant the action never read that file and its
