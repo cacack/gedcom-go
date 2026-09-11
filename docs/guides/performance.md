@@ -124,6 +124,40 @@ Line ending format has negligible impact (<1% overhead for CRLF vs LF).
 
 **Key Insight**: Zero allocations when no errors found!
 
+### Duplicate Detection
+
+`DuplicateDetector.FindDuplicates` is the most expensive validator, and
+`Validator.ValidateAll` runs it unconditionally. Its cost is driven by the size
+of each *surname group*, not by the document size directly: individuals are
+blocked by normalized surname, and only pairs within a group are compared.
+
+On the scale fixture (203,154 individuals, 55,801 non-empty surname groups):
+
+| Metric | Value |
+|---|---|
+| Candidate pairs compared | ~3.1M |
+| Time | ~1.1 s |
+| Pairs returned | 86,235 |
+
+Blocking is what makes this tractable — the fixture's surnames spread across
+tens of thousands of buckets, so no single bucket is large. Two consequences
+follow:
+
+- **Individuals with no surname are excluded entirely.** They share no surname
+  with each other, so no pair among them could match; comparing them would be
+  pure waste. On this fixture that skips ~4,950 individuals and ~12.3M pairs.
+- **Cost is quadratic within a bucket.** A document where many individuals share
+  one surname degrades to O(k²) over that group. Natural data rarely does this;
+  adversarial input can. See
+  [#530](https://github.com/cacack/gedcom-go/issues/530) — if you validate
+  untrusted GEDCOM files, bound document size at your own layer for now.
+
+Reproduce with:
+
+```bash
+go test ./validator -bench BenchmarkFindDuplicates -run '^$' -benchmem
+```
+
 ## Streaming APIs Performance
 
 The streaming APIs provide memory-efficient alternatives for very large files. Two memory metrics matter:
