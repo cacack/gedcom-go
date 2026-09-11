@@ -263,7 +263,7 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 
 	// Family links as child (level 1) - FAMC
 	for i := range indi.ChildInFamilies {
-		tags = append(tags, familyLinkToTags(&indi.ChildInFamilies[i], 1)...)
+		tags = append(tags, familyLinkToTags(&indi.ChildInFamilies[i], 1, opts)...)
 	}
 
 	// Family links as spouse (level 1) - FAMS
@@ -288,7 +288,7 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 
 	// Media links (level 1) - OBJE
 	for _, media := range indi.Media {
-		tags = append(tags, mediaLinkToTags(media, 1)...)
+		tags = append(tags, mediaLinkToTags(media, 1, opts)...)
 	}
 
 	// Change date (level 1) - CHAN
@@ -376,7 +376,7 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 
 	// Media links (level 1) - OBJE
 	for _, media := range fam.Media {
-		tags = append(tags, mediaLinkToTags(media, 1)...)
+		tags = append(tags, mediaLinkToTags(media, 1, opts)...)
 	}
 
 	// Change date (level 1) - CHAN
@@ -442,7 +442,7 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 
 	// Media links (level 1) - OBJE
 	for _, media := range src.Media {
-		tags = append(tags, mediaLinkToTags(media, 1)...)
+		tags = append(tags, mediaLinkToTags(media, 1, opts)...)
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
@@ -476,23 +476,24 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	return tags
 }
 
+// repositoryLinkIsDegenerate reports whether a link carries neither pointer,
+// inline name, nor any subordinate data. Encoding one would emit a meaningless
+// bare `1 REPO` that round-trips as an empty inline repository.
+func repositoryLinkIsDegenerate(link *gedcom.SourceRepositoryLink) bool {
+	hasInlineName := link.Inline != nil && link.Inline.Name != ""
+	hasNotes := len(link.Notes) > 0 || len(link.NoteXRefs) > 0 || len(link.InlineNotes) > 0
+	return link.XRef == "" && !hasInlineName && len(link.CallNumbers) == 0 && !hasNotes
+}
+
 // sourceRepositoryLinkToTags converts a SourceRepositoryLink to GEDCOM tags,
 // emitting the REPO pointer (or inline NAME) plus CALN (with optional MEDI) and
 // NOTE subordinates.
 func sourceRepositoryLinkToTags(link *gedcom.SourceRepositoryLink, opts *EncodeOptions) []*gedcom.Tag {
-	if link == nil {
+	if link == nil || repositoryLinkIsDegenerate(link) {
 		return nil
 	}
 
 	var tags []*gedcom.Tag
-
-	// A degenerate link with neither pointer, inline name, nor any
-	// subordinate data would emit a meaningless bare `1 REPO` that round-trips
-	// as an empty inline repository. Skip it entirely.
-	hasInlineName := link.Inline != nil && link.Inline.Name != ""
-	if link.XRef == "" && !hasInlineName && len(link.CallNumbers) == 0 && len(link.Notes) == 0 {
-		return nil
-	}
 
 	if link.XRef != "" {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REPO", Value: link.XRef})
@@ -517,7 +518,7 @@ func sourceRepositoryLinkToTags(link *gedcom.SourceRepositoryLink, opts *EncodeO
 	}
 
 	// Per-link notes (level 2) - NOTE (with CONT/CONC for multiline/long).
-	for _, note := range link.Notes {
+	for _, note := range recordNotesToEncode(link.NoteXRefs, link.InlineNotes, link.Notes) {
 		tags = append(tags, textToTags(note, 2, "NOTE", opts)...)
 	}
 
@@ -780,7 +781,7 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 	// is "", so gating on Name would drop the line and any MAP children with
 	// it.
 	if d.placeDetail != nil {
-		tags = append(tags, placeToTags(d.placeDetail, level)...)
+		tags = append(tags, placeToTags(d.placeDetail, level, opts)...)
 	}
 
 	if d.typeDetail != "" {
@@ -853,7 +854,7 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 
 	// Media links
 	for _, media := range d.media {
-		tags = append(tags, mediaLinkToTags(media, level)...)
+		tags = append(tags, mediaLinkToTags(media, level, opts)...)
 	}
 
 	return tags
@@ -1041,7 +1042,7 @@ func addressToTags(addr *gedcom.Address, level int) []*gedcom.Tag {
 // valueless PLAC line carrying only its subordinates, which is what a bare
 // "2 PLAC" line decodes to. A nil detail means no place was recorded and
 // writes nothing.
-func placeToTags(detail *gedcom.PlaceDetail, level int) []*gedcom.Tag {
+func placeToTags(detail *gedcom.PlaceDetail, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if detail == nil {
 		return nil
 	}
@@ -1056,6 +1057,11 @@ func placeToTags(detail *gedcom.PlaceDetail, level int) []*gedcom.Tag {
 	// Coordinates via MAP
 	if detail.Coordinates != nil {
 		tags = append(tags, coordinatesToTags(detail.Coordinates, level+1)...)
+	}
+
+	// Notes - NOTE (with CONT/CONC for multiline/long)
+	for _, note := range recordNotesToEncode(detail.NoteXRefs, detail.InlineNotes, nil) {
+		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
 	return tags
@@ -1125,7 +1131,7 @@ func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions
 }
 
 // familyLinkToTags converts a FamilyLink to GEDCOM tags at the specified level.
-func familyLinkToTags(link *gedcom.FamilyLink, level int) []*gedcom.Tag {
+func familyLinkToTags(link *gedcom.FamilyLink, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if link == nil {
 		return nil
 	}
@@ -1138,6 +1144,11 @@ func familyLinkToTags(link *gedcom.FamilyLink, level int) []*gedcom.Tag {
 	// Subordinate tags at level+1
 	if link.Pedigree != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PEDI", Value: link.Pedigree})
+	}
+
+	// Notes - NOTE (with CONT/CONC for multiline/long)
+	for _, note := range recordNotesToEncode(link.NoteXRefs, link.InlineNotes, nil) {
+		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
 	return tags
@@ -1171,7 +1182,7 @@ func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions
 	}
 
 	// Notes (with CONT/CONC for multiline/long)
-	for _, note := range assoc.Notes {
+	for _, note := range recordNotesToEncode(assoc.NoteXRefs, assoc.InlineNotes, assoc.Notes) {
 		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
@@ -1208,7 +1219,7 @@ func changeDateToTags(cd *gedcom.ChangeDate, level int, tagName string, opts *En
 }
 
 // mediaLinkToTags converts a MediaLink to GEDCOM tags at the specified level.
-func mediaLinkToTags(link *gedcom.MediaLink, level int) []*gedcom.Tag {
+func mediaLinkToTags(link *gedcom.MediaLink, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if link == nil {
 		return nil
 	}
@@ -1225,6 +1236,11 @@ func mediaLinkToTags(link *gedcom.MediaLink, level int) []*gedcom.Tag {
 
 	if link.Title != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TITL", Value: link.Title})
+	}
+
+	// Notes - NOTE (with CONT/CONC for multiline/long)
+	for _, note := range recordNotesToEncode(link.NoteXRefs, link.InlineNotes, nil) {
+		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
 	return tags

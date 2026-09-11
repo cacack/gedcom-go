@@ -327,6 +327,7 @@ func walkIndividual(i *Individual, cb refCallback) {
 	}
 	for k := range i.ChildInFamilies {
 		cb(&i.ChildInFamilies[k].FamilyXRef)
+		walkStrings(i.ChildInFamilies[k].NoteXRefs, cb)
 	}
 	for k := range i.SpouseInFamilies {
 		cb(&i.SpouseInFamilies[k])
@@ -384,7 +385,7 @@ func walkSource(s *Source, cb refCallback) {
 	}
 	walkNotes(s.NoteXRefs, s.Notes, cb)
 	if s.RepositoryLink != nil {
-		walkStrings(s.RepositoryLink.Notes, cb)
+		walkNotes(s.RepositoryLink.NoteXRefs, s.RepositoryLink.Notes, cb)
 	}
 	walkMediaLinks(s.Media, cb)
 	walkChangeDate(s.ChangeDate, cb)
@@ -457,6 +458,7 @@ func walkEvent(e *Event, cb refCallback) {
 		return
 	}
 	walkNotes(e.NoteXRefs, e.Notes, cb)
+	walkPlaceDetail(e.PlaceDetail, cb)
 	walkCitations(e.SourceCitations, cb)
 	walkMediaLinks(e.Media, cb)
 	walkAssociations(e.Associations, cb)
@@ -467,6 +469,7 @@ func walkAttribute(a *Attribute, cb refCallback) {
 		return
 	}
 	walkNotes(a.NoteXRefs, a.Notes, cb)
+	walkPlaceDetail(a.PlaceDetail, cb)
 	walkCitations(a.SourceCitations, cb)
 	walkMediaLinks(a.Media, cb)
 	walkAssociations(a.Associations, cb)
@@ -517,7 +520,7 @@ func walkAssociations(assocs []*Association, cb refCallback) {
 			continue
 		}
 		cb(&a.IndividualXRef)
-		walkStrings(a.Notes, cb)
+		walkNotes(a.NoteXRefs, a.Notes, cb)
 		walkCitations(a.SourceCitations, cb)
 	}
 }
@@ -547,5 +550,15 @@ func walkMediaLinks(links []*MediaLink, cb refCallback) {
 			continue
 		}
 		cb(&ml.MediaXRef)
+		walkStrings(ml.NoteXRefs, cb)
 	}
+}
+
+// walkPlaceDetail visits the note pointers on a PLAC structure. A place holds
+// no other reference, but its NOTE subordinates can point at shared notes.
+func walkPlaceDetail(p *PlaceDetail, cb refCallback) {
+	if p == nil {
+		return
+	}
+	walkStrings(p.NoteXRefs, cb)
 }

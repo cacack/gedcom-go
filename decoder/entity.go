@@ -333,8 +333,13 @@ func parseFamilyLink(tags []*gedcom.Tag, famcIdx int, collector *diagnosticColle
 			switch tag.Tag {
 			case "PEDI":
 				famLink.Pedigree = tag.Value
-			case "STAT", "NOTE", "SNOTE":
-				// Known tags not yet parsed into typed fields
+			case "NOTE", "SNOTE":
+				// FamilyLink has no legacy combined Notes slice, so the third
+				// return value is discarded.
+				famLink.NoteXRefs, famLink.InlineNotes, _ = appendRecordNote(
+					tags, i, famLink.NoteXRefs, famLink.InlineNotes, nil)
+			case "STAT":
+				// Known tag not yet parsed into a typed field
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -367,7 +372,8 @@ func parseAssociation(tags []*gedcom.Tag, assoIdx int, collector *diagnosticColl
 			case "PHRASE":
 				assoc.Phrase = tag.Value
 			case "NOTE", "SNOTE":
-				assoc.Notes = append(assoc.Notes, tag.Value)
+				assoc.NoteXRefs, assoc.InlineNotes, assoc.Notes = appendRecordNote(
+					tags, i, assoc.NoteXRefs, assoc.InlineNotes, assoc.Notes)
 			case "SOUR":
 				cite := parseSourceCitation(tags, i, tag.Level, collector)
 				assoc.SourceCitations = append(assoc.SourceCitations, cite)
@@ -741,7 +747,12 @@ func parsePlaceDetail(tags []*gedcom.Tag, placIdx, baseLevel int, collector *dia
 				place.Form = tag.Value
 			case "MAP":
 				place.Coordinates = parseCoordinates(tags, i, tag.Level, collector)
-			case "FONE", "ROMN", "TRAN", "NOTE", "SNOTE", "EXID", "LANG":
+			case "NOTE", "SNOTE":
+				// PlaceDetail has no legacy combined Notes slice, so the third
+				// return value is discarded.
+				place.NoteXRefs, place.InlineNotes, _ = appendRecordNote(
+					tags, i, place.NoteXRefs, place.InlineNotes, nil)
+			case "FONE", "ROMN", "TRAN", "EXID", "LANG":
 				// Known tags not yet parsed into typed fields
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
@@ -1075,7 +1086,8 @@ func parseSourceRepositoryLink(tags []*gedcom.Tag, repoIdx int, collector *diagn
 				link.CallNumberMedia[tag.Value] = medi
 			}
 		case "NOTE", "SNOTE":
-			link.Notes = append(link.Notes, tag.Value)
+			link.NoteXRefs, link.InlineNotes, link.Notes = appendRecordNote(
+				tags, i, link.NoteXRefs, link.InlineNotes, link.Notes)
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
 				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -1579,6 +1591,13 @@ func parseMediaLink(tags []*gedcom.Tag, objeIdx, baseLevel int, collector *diagn
 				link.Crop = parseCropRegion(tags, i, tag.Level, collector)
 			case "TITL":
 				link.Title = tag.Value
+			case "NOTE", "SNOTE":
+				// MediaLink has no legacy combined Notes slice, so the third
+				// return value is discarded. Before #472 this fell through to
+				// default and every OBJE-level NOTE was reported as an unknown
+				// tag (#470).
+				link.NoteXRefs, link.InlineNotes, _ = appendRecordNote(
+					tags, i, link.NoteXRefs, link.InlineNotes, nil)
 			case "FILE":
 				// Known tag for inline media references
 			default:

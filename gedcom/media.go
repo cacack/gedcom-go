@@ -44,6 +44,13 @@ type MediaLink struct {
 	// MediaXRef is the pointer to the OBJE record (e.g., "@O1@")
 	MediaXRef string
 
+	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
+	NoteXRefs []string
+
+	// InlineNotes are note text values written directly on this media link
+	// (NOTE <text> form, including CONT/CONC continuations).
+	InlineNotes []string
+
 	// Title is an optional title that overrides the FILE's TITL
 	Title string
 }

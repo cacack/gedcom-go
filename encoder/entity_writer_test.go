@@ -1293,7 +1293,7 @@ func TestFamilyLinkToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := familyLinkToTags(tt.link, tt.level)
+			tags := familyLinkToTags(tt.link, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -1438,7 +1438,7 @@ func TestMediaLinkToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := mediaLinkToTags(tt.link, tt.level)
+			tags := mediaLinkToTags(tt.link, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -1649,7 +1649,7 @@ func TestPlaceToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := formatTags(placeToTags(tt.detail, tt.level))
+			got := formatTags(placeToTags(tt.detail, tt.level, nil))
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("placeToTags() = %#v, want %#v", got, tt.want)
 			}
@@ -4927,14 +4927,24 @@ func TestEntityBuiltEventDetailEncodes(t *testing.T) {
 }
 
 // decodedNoteFixture is the input for the two tests below: every substructure
-// that gained note fields in issue #447, plus the NCHI attribute of #448.
+// that gained note fields in issue #447, plus the NCHI attribute of #448 and
+// the five substructures split in issue #472.
 const decodedNoteFixture = `0 HEAD
 1 GEDC
 2 VERS 7.0
 0 @I1@ INDI
 1 NAME John /Doe/
+1 FAMC @F1@
+2 NOTE FamilyLink note
+1 ASSO @I2@
+2 ROLE WITN
+2 NOTE Association note
 1 BIRT
 2 DATE 1900
+2 PLAC Springfield
+3 NOTE Place note
+2 OBJE @M1@
+3 NOTE MediaLink note
 2 NOTE Event note
 2 SNOTE @N1@
 1 OCCU Blacksmith
@@ -4949,12 +4959,20 @@ const decodedNoteFixture = `0 HEAD
 1 CHAN
 2 DATE 1 JAN 2020
 2 NOTE Change note
+0 @I2@ INDI
+1 NAME Jane /Roe/
 0 @F1@ FAM
 1 HUSB @I1@
 1 NCHI 3
 2 DATE 1910
 0 @S1@ SOUR
 1 TITL A Source
+1 REPO @R1@
+2 NOTE Repository link note
+0 @R1@ REPO
+1 NAME A Repository
+0 @M1@ OBJE
+1 FILE photo.jpg
 0 @N1@ SNOTE Shared note
 0 TRLR
 `
@@ -5005,6 +5023,20 @@ func TestDecodedNotesEncodeOnce(t *testing.T) {
 		{"LDSOrdinance", "2 NOTE Ordinance note"},
 		{"ChangeDate", "2 NOTE Change note"},
 	}
+	// The five substructures split in issue #472. They have no legacy Notes
+	// companion, so a writer that emits both halves of the split would
+	// duplicate the line here too.
+	once = append(once, []struct {
+		site string
+		line string
+	}{
+		{"FamilyLink", "2 NOTE FamilyLink note"},
+		{"Association", "2 NOTE Association note"},
+		{"PlaceDetail", "3 NOTE Place note"},
+		{"MediaLink", "3 NOTE MediaLink note"},
+		{"SourceRepositoryLink", "2 NOTE Repository link note"},
+	}...)
+
 	for _, w := range once {
 		if got := countLine(out, w.line); got != 1 {
 			t.Errorf("%s wrote %q %d times, want 1:\n%s", w.site, w.line, got, out)
@@ -5031,6 +5063,27 @@ func TestDecodedNotesEncodeOnce(t *testing.T) {
 	}
 	if want := []string{"Attribute note", "@N1@"}; !reflect.DeepEqual(indi.Attributes[0].Notes, want) {
 		t.Errorf("re-decoded attribute Notes = %v, want %v", indi.Attributes[0].Notes, want)
+	}
+
+	// The #472 substructures round-trip into their split fields.
+	if want := []string{"FamilyLink note"}; !reflect.DeepEqual(indi.ChildInFamilies[0].InlineNotes, want) {
+		t.Errorf("re-decoded FamilyLink InlineNotes = %v, want %v", indi.ChildInFamilies[0].InlineNotes, want)
+	}
+	if want := []string{"Association note"}; !reflect.DeepEqual(indi.Associations[0].InlineNotes, want) {
+		t.Errorf("re-decoded Association InlineNotes = %v, want %v", indi.Associations[0].InlineNotes, want)
+	}
+	if want := []string{"Place note"}; !reflect.DeepEqual(indi.Events[0].PlaceDetail.InlineNotes, want) {
+		t.Errorf("re-decoded PlaceDetail InlineNotes = %v, want %v", indi.Events[0].PlaceDetail.InlineNotes, want)
+	}
+	if want := []string{"MediaLink note"}; !reflect.DeepEqual(indi.Events[0].Media[0].InlineNotes, want) {
+		t.Errorf("re-decoded MediaLink InlineNotes = %v, want %v", indi.Events[0].Media[0].InlineNotes, want)
+	}
+	src := redoc.GetSource("@S1@")
+	if src == nil || src.RepositoryLink == nil {
+		t.Fatal("GetSource(@S1@) returned no repository link after entity encode")
+	}
+	if want := []string{"Repository link note"}; !reflect.DeepEqual(src.RepositoryLink.InlineNotes, want) {
+		t.Errorf("re-decoded REPO link InlineNotes = %v, want %v", src.RepositoryLink.InlineNotes, want)
 	}
 }
 

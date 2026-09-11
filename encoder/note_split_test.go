@@ -165,3 +165,56 @@ func TestNoteOrderPreservedFromLegacy(t *testing.T) {
 		t.Errorf("individualToTags() NOTE order = %#v, want %#v", got, want)
 	}
 }
+
+// TestSubstructureTypesNoteSplit confirms the five substructures split in
+// issue #472 emit NOTE tags for both the XRef pointer and inline text when
+// built with only the split fields. MediaLink, FamilyLink and PlaceDetail have
+// no legacy Notes companion at all, so the split fields are their only source.
+func TestSubstructureTypesNoteSplit(t *testing.T) {
+	want := []string{"@N1@", "An inline note"}
+
+	ml := &gedcom.MediaLink{MediaXRef: "@O1@", NoteXRefs: []string{"@N1@"},
+		InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(mediaLinkToTags(ml, 1, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("mediaLinkToTags() NOTE values = %#v, want %#v", got, want)
+	}
+
+	fl := &gedcom.FamilyLink{FamilyXRef: "@F1@", NoteXRefs: []string{"@N1@"},
+		InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(familyLinkToTags(fl, 1, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("familyLinkToTags() NOTE values = %#v, want %#v", got, want)
+	}
+
+	pd := &gedcom.PlaceDetail{Name: "Springfield", NoteXRefs: []string{"@N1@"},
+		InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(placeToTags(pd, 2, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("placeToTags() NOTE values = %#v, want %#v", got, want)
+	}
+
+	as := &gedcom.Association{IndividualXRef: "@I2@", NoteXRefs: []string{"@N1@"},
+		InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(associationToTags(as, 1, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("associationToTags() NOTE values = %#v, want %#v", got, want)
+	}
+
+	rl := &gedcom.SourceRepositoryLink{XRef: "@R1@", NoteXRefs: []string{"@N1@"},
+		InlineNotes: []string{"An inline note"}}
+	if got := noteTagValues(sourceRepositoryLinkToTags(rl, nil)); !reflect.DeepEqual(got, want) {
+		t.Errorf("sourceRepositoryLinkToTags() NOTE values = %#v, want %#v", got, want)
+	}
+}
+
+// TestSourceRepositoryLinkSplitNotesKeepREPO guards the degenerate-link skip in
+// sourceRepositoryLinkToTags: a link whose only content is a split note must
+// still emit its REPO line, or the note has nowhere to hang.
+func TestSourceRepositoryLinkSplitNotesKeepREPO(t *testing.T) {
+	link := &gedcom.SourceRepositoryLink{InlineNotes: []string{"An inline note"}}
+
+	tags := sourceRepositoryLinkToTags(link, nil)
+	if len(tags) == 0 || tags[0].Tag != "REPO" {
+		t.Fatalf("sourceRepositoryLinkToTags() = %#v, want a leading REPO tag", tags)
+	}
+	if got := noteTagValues(tags); !reflect.DeepEqual(got, []string{"An inline note"}) {
+		t.Errorf("NOTE values = %#v, want %#v", got, []string{"An inline note"})
+	}
+}

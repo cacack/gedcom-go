@@ -179,10 +179,10 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 832 | 83.4% | 1113 | 84.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 838 | 84.0% | 1117 | 84.9% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 78 | 7.8% | 92 | 7.0% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
-| raw (flagged) | 21 | 2.1% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
+| raw (accepted) | 74 | 7.4% | 88 | 6.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 67 | 6.7% | 98 | 7.4% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
@@ -193,9 +193,9 @@ pairs under it reach the typed model.
 
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
-| `FAM` | 202 / 254 | 269 / 324 |
+| `FAM` | 206 / 254 | 271 / 324 |
 | `HEAD` | 5 / 28 | 8 / 33 |
-| `INDI` | 583 / 625 | 783 / 855 |
+| `INDI` | 585 / 625 | 785 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 5 / 12 | 10 / 13 |
 | `REPO` | 13 / 17 | 16 / 21 |
@@ -321,8 +321,8 @@ Measured at `INDI.FAMC` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `PEDI` | `CHILD_TO_FAMILY_LINK.FAMC.PEDI` | typed | typed | `{0:M}` in 5.5; `{0:1}` in 5.5.1 |
 | `STAT` | `CHILD_TO_FAMILY_LINK.FAMC.STAT` | — | raw (accepted) | `{0:1}` |
 
@@ -2064,8 +2064,8 @@ Measured at `FAM.OBJE` in 5.5, 5.5.1.
 |-----|-----------|--------|--------|-------------|
 | `FILE` | `MULTIMEDIA_LINK.OBJE#2.FILE` | raw (accepted) | raw (accepted) | `{1:1}` in 5.5; `{1:M}` in 5.5.1 |
 | `FORM` | `MULTIMEDIA_LINK.OBJE#2.FORM` | raw (flagged) | — | `{1:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (flagged) | — | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (flagged) | — | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | — | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | — | `{0:M}` |
 | `TITL` | `MULTIMEDIA_LINK.OBJE#2.TITL` | typed | typed | `{0:1}` |
 
 ### `MULTIMEDIA_LINK.OBJE#2.FILE`
@@ -2249,8 +2249,8 @@ Measured at `FAM.ANUL.PLAC` in 5.5, 5.5.1.
 | `FONE` | `PLACE_STRUCTURE.PLAC.FONE` | — | raw (accepted) | `{0:M}` |
 | `FORM` | `PLACE_STRUCTURE.PLAC.FORM` | typed | typed | `{0:1}` |
 | `MAP` | `PLACE_STRUCTURE.PLAC.MAP` | — | typed | `{0:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `ROMN` | `PLACE_STRUCTURE.PLAC.ROMN` | — | raw (accepted) | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | raw (flagged) | — | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | raw (flagged) | — | `{0:M}` |

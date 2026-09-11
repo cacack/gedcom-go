@@ -122,8 +122,10 @@ func (i *Individual) Clone() *Individual {
 		copied.ChildInFamilies = make([]FamilyLink, len(i.ChildInFamilies))
 		for k, link := range i.ChildInFamilies {
 			copied.ChildInFamilies[k] = FamilyLink{
-				FamilyXRef: link.FamilyXRef,
-				Pedigree:   link.Pedigree,
+				FamilyXRef:  link.FamilyXRef,
+				Pedigree:    link.Pedigree,
+				NoteXRefs:   cloneStringSlice(link.NoteXRefs),
+				InlineNotes: cloneStringSlice(link.InlineNotes),
 			}
 		}
 	}
@@ -303,6 +305,8 @@ func cloneSourceRepositoryLink(link *SourceRepositoryLink) *SourceRepositoryLink
 		XRef:        link.XRef,
 		CallNumbers: cloneStringSlice(link.CallNumbers),
 		MediaType:   link.MediaType,
+		NoteXRefs:   cloneStringSlice(link.NoteXRefs),
+		InlineNotes: cloneStringSlice(link.InlineNotes),
 		Notes:       cloneStringSlice(link.Notes),
 	}
 
@@ -543,6 +547,8 @@ func cloneAssociation(a *Association) *Association {
 		IndividualXRef: a.IndividualXRef,
 		Role:           a.Role,
 		Phrase:         a.Phrase,
+		NoteXRefs:      cloneStringSlice(a.NoteXRefs),
+		InlineNotes:    cloneStringSlice(a.InlineNotes),
 		Notes:          cloneStringSlice(a.Notes),
 	}
 
@@ -692,8 +698,10 @@ func clonePlaceDetail(p *PlaceDetail) *PlaceDetail {
 	}
 
 	copied := &PlaceDetail{
-		Name: p.Name,
-		Form: p.Form,
+		Name:        p.Name,
+		Form:        p.Form,
+		NoteXRefs:   cloneStringSlice(p.NoteXRefs),
+		InlineNotes: cloneStringSlice(p.InlineNotes),
 	}
 
 	if p.Coordinates != nil {
@@ -775,8 +783,10 @@ func cloneMediaLink(ml *MediaLink) *MediaLink {
 	}
 
 	copied := &MediaLink{
-		MediaXRef: ml.MediaXRef,
-		Title:     ml.Title,
+		MediaXRef:   ml.MediaXRef,
+		NoteXRefs:   cloneStringSlice(ml.NoteXRefs),
+		InlineNotes: cloneStringSlice(ml.InlineNotes),
+		Title:       ml.Title,
 	}
 
 	if ml.Crop != nil {

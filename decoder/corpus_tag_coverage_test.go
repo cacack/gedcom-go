@@ -61,6 +61,10 @@ import (
 //
 // 4 + 3 + 2 = 9. No tag appears in two groups: RELI was flagged only under
 // events (DEAT, MARR) in this corpus, never under an attribute.
+//
+// #472 removed a tenth entry: NOTE, whose only remaining occurrences were the
+// MULTIMEDIA_LINK subtag of an inline OBJE (#470). parseMediaLink now decodes
+// it. 25 - 1 = 24.
 var unhandledTags = map[string]string{
 	// Standard tags. These are the actionable entries.
 	"RIN":   "standard 5.5.1 record ID; no typed access (#441) and unrecognized in every context",
@@ -69,7 +73,6 @@ var unhandledTags = map[string]string{
 	"CONC":  "continuation mechanic, unrecognized in some contexts",
 	"CONT":  "continuation mechanic, unrecognized in some contexts",
 	"NAME":  "standard; unrecognized in some contexts",
-	"NOTE":  "standard 5.5 MULTIMEDIA_LINK subtag; every remaining occurrence is under an inline OBJE (#470)",
 	"SOUR":  "standard; unrecognized in some contexts",
 	"ALIA":  "standard; #375 fixed level 1 on INDI, still unrecognized at level 2",
 	"FAMC":  "standard; unrecognized in some contexts",

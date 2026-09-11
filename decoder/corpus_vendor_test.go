@@ -113,7 +113,15 @@ func TestCorpusVendorFiles(t *testing.T) {
 			// This file contains no FACT line at all -- the 13 were always
 			// false positives on other attribute tags, which is why #402 had
 			// to be its own issue.
-			diags: map[string]int{CodeUnknownTag: 42},
+			//
+			// 42 -> 0 for issue #472: parseMediaLink now decodes NOTE into
+			// MediaLink.NoteXRefs/InlineNotes instead of letting it fall
+			// through to default. 42 - 42 NOTE = 0, measured from the
+			// diagnostic histogram rather than assumed: all 42 really were
+			// the `2 NOTE` under `1 OBJE` path (#470), so nothing remains.
+			// The entry is dropped rather than set to 0 because the table
+			// asserts len(hist) == len(tt.diags).
+			diags: map[string]int{},
 		},
 		{
 			path:        "../testdata/edge-cases/mhftb8-export.ged",

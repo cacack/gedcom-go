@@ -27,6 +27,7 @@ import (
 func carrierTypeNames() map[string]bool {
 	return map[string]bool{
 		"*gedcom.ChangeDate":           true,
+		"*gedcom.PlaceDetail":          true,
 		"*gedcom.SourceRepositoryLink": true,
 		"[]*gedcom.Association":        true,
 		"[]*gedcom.Attribute":          true,
@@ -163,7 +164,7 @@ func fieldExists(path string) bool {
 		Individual{}, Family{}, Source{}, MediaObject{}, Repository{},
 		Submitter{}, SharedNote{}, Note{}, Event{}, Attribute{},
 		SourceCitation{}, Association{}, LDSOrdinance{}, ChangeDate{},
-		MediaLink{}, FamilyLink{}, SourceRepositoryLink{},
+		MediaLink{}, FamilyLink{}, SourceRepositoryLink{}, PlaceDetail{},
 	} {
 		rt := reflect.TypeOf(probe)
 		if rt.Name() != typeName {

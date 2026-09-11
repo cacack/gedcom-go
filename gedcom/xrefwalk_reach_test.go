@@ -46,9 +46,18 @@ func fullyPopulatedRecords() []*Record {
 	assoc := func(x string) *Association {
 		return &Association{
 			IndividualXRef:  x,
+			NoteXRefs:       []string{"@ASSOC_NX@"},
 			Notes:           []string{"@ASSOC_NOTE@"},
 			SourceCitations: []*SourceCitation{cite("@ASSOC_SOUR@")},
 		}
+	}
+	// medialink and place carry note pointers of their own (#472), so the
+	// fixture plants one in each rather than reusing a bare MediaXRef.
+	medialink := func(x, nx string) *MediaLink {
+		return &MediaLink{MediaXRef: x, NoteXRefs: []string{nx}}
+	}
+	place := func(prefix string) *PlaceDetail {
+		return &PlaceDetail{Name: "Anytown", NoteXRefs: []string{"@" + prefix + "_PLAC_NX@"}}
 	}
 	// rawTags stands in for the Record.Tags backstop. walkTag visits both
 	// Tag.XRef and Tag.Value, and this is the path that keeps Subset's
@@ -62,7 +71,8 @@ func fullyPopulatedRecords() []*Record {
 			Type:            "NCHI",
 			Value:           "3",
 			SourceCitations: []*SourceCitation{cite("@" + prefix + "_ATTR_SOUR@")},
-			Media:           []*MediaLink{{MediaXRef: "@" + prefix + "_ATTR_OBJE@"}},
+			PlaceDetail:     place(prefix + "_ATTR"),
+			Media:           []*MediaLink{medialink("@"+prefix+"_ATTR_OBJE@", "@"+prefix+"_ATTR_OBJE_NX@")},
 			Associations:    []*Association{assoc("@" + prefix + "_ATTR_ASSO@")},
 			NoteXRefs:       []string{"@" + prefix + "_ATTR_NX@"},
 			Notes:           []string{"@" + prefix + "_ATTR_NOTE@"},
@@ -72,7 +82,8 @@ func fullyPopulatedRecords() []*Record {
 		return &Event{
 			Type:            "BIRT",
 			SourceCitations: []*SourceCitation{cite("@" + prefix + "_EV_SOUR@")},
-			Media:           []*MediaLink{{MediaXRef: "@" + prefix + "_EV_OBJE@"}},
+			PlaceDetail:     place(prefix + "_EV"),
+			Media:           []*MediaLink{medialink("@"+prefix+"_EV_OBJE@", "@"+prefix+"_EV_OBJE_NX@")},
 			Associations:    []*Association{assoc("@" + prefix + "_EV_ASSO@")},
 			NoteXRefs:       []string{"@" + prefix + "_EV_NX@"},
 			Notes:           []string{"@" + prefix + "_EV_NOTE@"},
@@ -95,13 +106,13 @@ func fullyPopulatedRecords() []*Record {
 
 	indi := &Individual{
 		XRef:             "@I1@",
-		ChildInFamilies:  []FamilyLink{{FamilyXRef: "@I_FAMC@"}},
+		ChildInFamilies:  []FamilyLink{{FamilyXRef: "@I_FAMC@", NoteXRefs: []string{"@I_FAMC_NX@"}}},
 		SpouseInFamilies: []string{"@I_FAMS@"},
 		NoteXRefs:        []string{"@I_NX@"},
 		Notes:            []string{"@I_NOTE@"},
 		Associations:     []*Association{assoc("@I_ASSO@")},
 		SourceCitations:  []*SourceCitation{cite("@I_SOUR@")},
-		Media:            []*MediaLink{{MediaXRef: "@I_OBJE@"}},
+		Media:            []*MediaLink{medialink("@I_OBJE@", "@I_OBJE_NX@")},
 		Events:           []*Event{event("I")},
 		Attributes:       []*Attribute{attr("I")},
 		LDSOrdinances:    []*LDSOrdinance{ord("I")},
@@ -118,7 +129,7 @@ func fullyPopulatedRecords() []*Record {
 		NoteXRefs:       []string{"@F_NX@"},
 		Notes:           []string{"@F_NOTE@"},
 		SourceCitations: []*SourceCitation{cite("@F_SOUR@")},
-		Media:           []*MediaLink{{MediaXRef: "@F_OBJE@"}},
+		Media:           []*MediaLink{medialink("@F_OBJE@", "@F_OBJE_NX@")},
 		Events:          []*Event{event("F")},
 		Attributes:      []*Attribute{attr("F")},
 		LDSOrdinances:   []*LDSOrdinance{ord("F")},
@@ -128,14 +139,15 @@ func fullyPopulatedRecords() []*Record {
 	}
 
 	src := &Source{
-		XRef:           "@S1@",
-		RepositoryLink: &SourceRepositoryLink{XRef: "@S_REPO@", Notes: []string{"@S_REPO_NOTE@"}},
-		NoteXRefs:      []string{"@S_NX@"},
-		Notes:          []string{"@S_NOTE@"},
-		Media:          []*MediaLink{{MediaXRef: "@S_OBJE@"}},
-		ChangeDate:     chg("S"),
-		CreationDate:   chg("SCREA"),
-		Tags:           rawTags("S"),
+		XRef: "@S1@",
+		RepositoryLink: &SourceRepositoryLink{XRef: "@S_REPO@",
+			NoteXRefs: []string{"@S_REPO_NX@"}, Notes: []string{"@S_REPO_NOTE@"}},
+		NoteXRefs:    []string{"@S_NX@"},
+		Notes:        []string{"@S_NOTE@"},
+		Media:        []*MediaLink{medialink("@S_OBJE@", "@S_OBJE_NX@")},
+		ChangeDate:   chg("S"),
+		CreationDate: chg("SCREA"),
+		Tags:         rawTags("S"),
 	}
 
 	obje := &MediaObject{
