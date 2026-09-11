@@ -257,7 +257,7 @@ func TestDecodePartialRecoveryUpToInvalidByte(t *testing.T) {
 		t.Errorf("individual names = %+v, want the complete NAME line", indis[0].Names)
 	}
 	// The truncated NOTE is dropped rather than kept as "Fr".
-	if got := len(indis[0].Notes); got != 0 {
+	if got := len(indis[0].NoteXRefs) + len(indis[0].InlineNotes); got != 0 {
 		t.Errorf("individual has %d notes, want 0 (the truncated line must not be kept)", got)
 	}
 	for _, d := range result.Diagnostics {

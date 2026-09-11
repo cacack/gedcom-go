@@ -34,7 +34,7 @@ func buildRichFixture() *Document {
 	add("@I1@", RecordTypeIndividual, &Individual{
 		XRef:             "@I1@",
 		SpouseInFamilies: []string{"@F1@"},
-		Notes:            []string{"@N1@"},
+		NoteXRefs:        []string{"@N1@"},
 		SourceCitations:  []*SourceCitation{{SourceXRef: "@S1@"}},
 		Media:            []*MediaLink{{MediaXRef: "@M1@"}},
 		Events: []*Event{
@@ -50,11 +50,11 @@ func buildRichFixture() *Document {
 		ChildInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}},
 	})
 	add("@F1@", RecordTypeFamily, &Family{
-		XRef:     "@F1@",
-		Husband:  "@I1@",
-		Wife:     "@I2@",
-		Children: []string{"@I3@"},
-		Notes:    []string{"@N2@"},
+		XRef:      "@F1@",
+		Husband:   "@I1@",
+		Wife:      "@I2@",
+		Children:  []string{"@I3@"},
+		NoteXRefs: []string{"@N2@"},
 	})
 
 	add("@N1@", RecordTypeNote, &Note{XRef: "@N1@", Text: "Note 1"})
@@ -158,7 +158,7 @@ func TestSubset_DanglingReferenceReturnsError(t *testing.T) {
 	doc := buildRichFixture()
 	// Mutate one record to reference a non-existent xref.
 	ind := doc.GetIndividual("@I1@")
-	ind.Notes = append(ind.Notes, "@MISSING@")
+	ind.NoteXRefs = append(ind.NoteXRefs, "@MISSING@")
 
 	_, err := doc.Subset([]string{"@I1@"})
 	if err == nil {
@@ -260,7 +260,7 @@ func TestSubset_DoesNotMutateSource(t *testing.T) {
 	doc := buildRichFixture()
 	originalLen := len(doc.Records)
 	originalXRefMapLen := len(doc.XRefMap)
-	originalI1Notes := append([]string(nil), doc.GetIndividual("@I1@").Notes...)
+	originalI1Notes := append([]string(nil), doc.GetIndividual("@I1@").NoteXRefs...)
 
 	sub, err := doc.Subset([]string{"@I1@"})
 	if err != nil {
@@ -273,8 +273,8 @@ func TestSubset_DoesNotMutateSource(t *testing.T) {
 	if len(doc.XRefMap) != originalXRefMapLen {
 		t.Errorf("source XRefMap length changed: got %d, want %d", len(doc.XRefMap), originalXRefMapLen)
 	}
-	if !reflect.DeepEqual(doc.GetIndividual("@I1@").Notes, originalI1Notes) {
-		t.Error("source @I1@.Notes was mutated")
+	if !reflect.DeepEqual(doc.GetIndividual("@I1@").NoteXRefs, originalI1Notes) {
+		t.Error("source @I1@.NoteXRefs was mutated")
 	}
 
 	// Mutate the subset and verify source is independent.
@@ -384,7 +384,8 @@ func TestSubset_NilSourceHeaderProducesEmptyHeader(t *testing.T) {
 }
 
 func TestSubset_InlineNoteShapedLikeXRefIsIgnored(t *testing.T) {
-	// Individual.Notes can hold either a "@N1@" pointer or inline text.
+	// Individual.NoteXRefs holds "@N1@"-shaped pointers, but nothing stops a
+	// caller putting note text there.
 	// Inline text that accidentally has the @...@ shape (rare but
 	// possible — e.g., a UID-style identifier inside note text) must
 	// not cause spurious ErrUnknownXRef.
@@ -396,7 +397,7 @@ func TestSubset_InlineNoteShapedLikeXRefIsIgnored(t *testing.T) {
 	// be a real bug to silently drop). The whitespace case is the one
 	// flagged in review.
 	ind := doc.GetIndividual("@I1@")
-	ind.Notes = append(ind.Notes, "@inline note with spaces@")
+	ind.NoteXRefs = append(ind.NoteXRefs, "@inline note with spaces@")
 
 	if _, err := doc.Subset([]string{"@I1@"}); err != nil {
 		t.Fatalf("inline note shaped like @...@ with internal whitespace must be ignored, got error: %v", err)

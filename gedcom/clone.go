@@ -102,7 +102,6 @@ func (i *Individual) Clone() *Individual {
 		XRef:             i.XRef,
 		Sex:              i.Sex,
 		SpouseInFamilies: cloneStringSlice(i.SpouseInFamilies),
-		Notes:            cloneStringSlice(i.Notes),
 		NoteXRefs:        cloneStringSlice(i.NoteXRefs),
 		InlineNotes:      cloneStringSlice(i.InlineNotes),
 		RefNumber:        i.RefNumber,
@@ -190,7 +189,6 @@ func (f *Family) Clone() *Family {
 		Husband:     f.Husband,
 		Wife:        f.Wife,
 		Children:    cloneStringSlice(f.Children),
-		Notes:       cloneStringSlice(f.Notes),
 		NoteXRefs:   cloneStringSlice(f.NoteXRefs),
 		InlineNotes: cloneStringSlice(f.InlineNotes),
 		RefNumber:   f.RefNumber,
@@ -252,7 +250,6 @@ func (s *Source) Clone() *Source {
 		Author:      s.Author,
 		Publication: s.Publication,
 		Text:        s.Text,
-		Notes:       cloneStringSlice(s.Notes),
 		NoteXRefs:   cloneStringSlice(s.NoteXRefs),
 		InlineNotes: cloneStringSlice(s.InlineNotes),
 		RefNumber:   s.RefNumber,
@@ -286,7 +283,6 @@ func (r *Repository) Clone() *Repository {
 		XRef:        r.XRef,
 		Name:        r.Name,
 		Address:     cloneAddress(r.Address),
-		Notes:       cloneStringSlice(r.Notes),
 		NoteXRefs:   cloneStringSlice(r.NoteXRefs),
 		InlineNotes: cloneStringSlice(r.InlineNotes),
 		ExternalIDs: cloneExternalIDs(r.ExternalIDs),
@@ -307,7 +303,6 @@ func cloneSourceRepositoryLink(link *SourceRepositoryLink) *SourceRepositoryLink
 		MediaType:   link.MediaType,
 		NoteXRefs:   cloneStringSlice(link.NoteXRefs),
 		InlineNotes: cloneStringSlice(link.InlineNotes),
-		Notes:       cloneStringSlice(link.Notes),
 	}
 
 	if link.Inline != nil {
@@ -346,7 +341,6 @@ func (m *MediaObject) Clone() *MediaObject {
 
 	copied := &MediaObject{
 		XRef:            m.XRef,
-		Notes:           cloneStringSlice(m.Notes),
 		NoteXRefs:       cloneStringSlice(m.NoteXRefs),
 		InlineNotes:     cloneStringSlice(m.InlineNotes),
 		SharedNoteXRefs: cloneStringSlice(m.SharedNoteXRefs),
@@ -390,7 +384,6 @@ func (s *Submitter) Clone() *Submitter {
 		Phone:       cloneStringSlice(s.Phone),
 		Email:       cloneStringSlice(s.Email),
 		Language:    cloneStringSlice(s.Language),
-		Notes:       cloneStringSlice(s.Notes),
 		NoteXRefs:   cloneStringSlice(s.NoteXRefs),
 		InlineNotes: cloneStringSlice(s.InlineNotes),
 		ExternalIDs: cloneExternalIDs(s.ExternalIDs),
@@ -549,7 +542,6 @@ func cloneAssociation(a *Association) *Association {
 		Phrase:         a.Phrase,
 		NoteXRefs:      cloneStringSlice(a.NoteXRefs),
 		InlineNotes:    cloneStringSlice(a.InlineNotes),
-		Notes:          cloneStringSlice(a.Notes),
 	}
 
 	if a.SourceCitations != nil {
@@ -580,7 +572,6 @@ func cloneEvent(e *Event) *Event {
 		UID:                  e.UID,
 		SortDate:             e.SortDate,
 		IsNegative:           e.IsNegative,
-		Notes:                cloneStringSlice(e.Notes),
 		NoteXRefs:            cloneStringSlice(e.NoteXRefs),
 		InlineNotes:          cloneStringSlice(e.InlineNotes),
 		Phone:                cloneStringSlice(e.Phone),
@@ -633,7 +624,6 @@ func cloneAttribute(a *Attribute) *Attribute {
 		Restriction:          a.Restriction,
 		UID:                  a.UID,
 		SortDate:             a.SortDate,
-		Notes:                cloneStringSlice(a.Notes),
 		NoteXRefs:            cloneStringSlice(a.NoteXRefs),
 		InlineNotes:          cloneStringSlice(a.InlineNotes),
 		Phone:                cloneStringSlice(a.Phone),
@@ -740,7 +730,6 @@ func cloneSourceCitation(sc *SourceCitation) *SourceCitation {
 	copied := &SourceCitation{
 		SourceXRef:  sc.SourceXRef,
 		Page:        sc.Page,
-		Notes:       cloneStringSlice(sc.Notes),
 		NoteXRefs:   cloneStringSlice(sc.NoteXRefs),
 		InlineNotes: cloneStringSlice(sc.InlineNotes),
 	}
@@ -841,7 +830,6 @@ func cloneLDSOrdinance(ord *LDSOrdinance) *LDSOrdinance {
 		Place:       ord.Place,
 		Status:      ord.Status,
 		FamilyXRef:  ord.FamilyXRef,
-		Notes:       cloneStringSlice(ord.Notes),
 		NoteXRefs:   cloneStringSlice(ord.NoteXRefs),
 		InlineNotes: cloneStringSlice(ord.InlineNotes),
 	}
@@ -854,7 +842,6 @@ func cloneChangeDate(cd *ChangeDate) *ChangeDate {
 	return &ChangeDate{
 		Date:        cd.Date,
 		Time:        cd.Time,
-		Notes:       cloneStringSlice(cd.Notes),
 		NoteXRefs:   cloneStringSlice(cd.NoteXRefs),
 		InlineNotes: cloneStringSlice(cd.InlineNotes),
 	}

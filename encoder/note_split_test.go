@@ -7,69 +7,40 @@ import (
 	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
-// TestRecordNotesToEncode verifies the encoder prefers the order-preserving
-// legacy Notes slice whenever it is populated (keeping round-trips lossless),
-// and only combines the split NoteXRefs/InlineNotes fields (XRefs first, then
-// inline text) when Notes is empty.
+// TestRecordNotesToEncode verifies the encoder emits shared-note XRef pointers
+// first, then inline note text.
 func TestRecordNotesToEncode(t *testing.T) {
 	tests := []struct {
 		name      string
 		noteXRefs []string
 		inline    []string
-		notes     []string
 		want      []string
 	}{
 		{
-			name:  "uses legacy Notes when split fields empty",
-			notes: []string{"@N1@", "inline text"},
-			want:  []string{"@N1@", "inline text"},
-		},
-		{
-			name:      "legacy Notes preserves original interleaved order",
-			noteXRefs: []string{"@N1@", "@N2@"},
-			inline:    []string{"first inline", "second inline"},
-			notes:     []string{"@N1@", "first inline", "@N2@", "second inline"},
-			want:      []string{"@N1@", "first inline", "@N2@", "second inline"},
-		},
-		{
-			name:      "edited split fields override stale legacy Notes",
-			noteXRefs: []string{"@N1@"},
-			inline:    []string{"edited inline"},
-			notes:     []string{"@N1@", "original inline"},
-			want:      []string{"@N1@", "edited inline"},
-		},
-		{
-			name:      "added xref not in legacy Notes encodes from split fields",
-			noteXRefs: []string{"@N1@", "@N2@"},
-			inline:    []string{"first inline"},
-			notes:     []string{"@N1@", "first inline"},
-			want:      []string{"@N1@", "@N2@", "first inline"},
-		},
-		{
-			name:      "combines split fields when legacy Notes empty",
+			name:      "xrefs precede inline text",
 			noteXRefs: []string{"@N1@", "@N2@"},
 			inline:    []string{"first inline", "second inline"},
 			want:      []string{"@N1@", "@N2@", "first inline", "second inline"},
 		},
 		{
-			name:      "only xrefs populated, no legacy",
+			name:      "only xrefs populated",
 			noteXRefs: []string{"@N1@"},
 			want:      []string{"@N1@"},
 		},
 		{
-			name:   "only inline populated, no legacy",
+			name:   "only inline populated",
 			inline: []string{"just inline"},
 			want:   []string{"just inline"},
 		},
 		{
-			name: "all empty returns nil legacy",
-			want: nil,
+			name: "all empty returns an empty slice",
+			want: []string{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := recordNotesToEncode(tt.noteXRefs, tt.inline, tt.notes)
+			got := recordNotesToEncode(tt.noteXRefs, tt.inline)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("recordNotesToEncode() = %#v, want %#v", got, tt.want)
 			}
@@ -148,28 +119,8 @@ func TestRecordTypesNoteSplit(t *testing.T) {
 	}
 }
 
-// TestNoteOrderPreservedFromLegacy confirms that when the legacy Notes slice is
-// populated (as it always is for decoded documents), the encoder emits notes in
-// that original interleaved order rather than reordering xrefs ahead of inline
-// text. This guards the lossless round-trip of interleaved record notes.
-func TestNoteOrderPreservedFromLegacy(t *testing.T) {
-	indi := &gedcom.Individual{
-		NoteXRefs:   []string{"@N1@", "@N2@"},
-		InlineNotes: []string{"inline text"},
-		Notes:       []string{"@N1@", "inline text", "@N2@"},
-	}
-
-	got := noteTagValues(individualToTags(indi, nil))
-	want := []string{"@N1@", "inline text", "@N2@"}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("individualToTags() NOTE order = %#v, want %#v", got, want)
-	}
-}
-
 // TestSubstructureTypesNoteSplit confirms the five substructures split in
-// issue #472 emit NOTE tags for both the XRef pointer and inline text when
-// built with only the split fields. MediaLink, FamilyLink and PlaceDetail have
-// no legacy Notes companion at all, so the split fields are their only source.
+// issue #472 emit NOTE tags for both the XRef pointer and inline text.
 func TestSubstructureTypesNoteSplit(t *testing.T) {
 	want := []string{"@N1@", "An inline note"}
 

@@ -448,7 +448,7 @@ func TestIndividualClone(t *testing.T) {
 			XRef:             "@I1@",
 			Sex:              "M",
 			SpouseInFamilies: []string{"@F1@"},
-			Notes:            []string{"@N1@"},
+			NoteXRefs:        []string{"@N1@"},
 			RefNumber:        "123",
 			UID:              "uid-123",
 			FamilySearchID:   "FSID",
@@ -514,7 +514,7 @@ func TestFamilyClone(t *testing.T) {
 			Husband:         "@I1@",
 			Wife:            "@I2@",
 			Children:        []string{"@I3@"},
-			Notes:           []string{"@N1@"},
+			NoteXRefs:       []string{"@N1@"},
 			RefNumber:       "456",
 			UID:             "uid-456",
 			Events:          []*Event{{Type: "MARR", Date: "1 JAN 1920"}},
@@ -560,7 +560,7 @@ func TestSourceClone(t *testing.T) {
 			Author:      "Test Author",
 			Publication: "Publisher",
 			Text:        "Source text",
-			Notes:       []string{"@N1@"},
+			NoteXRefs:   []string{"@N1@"},
 			RefNumber:   "789",
 			UID:         "uid-789",
 			RepositoryLink: &SourceRepositoryLink{
@@ -569,7 +569,7 @@ func TestSourceClone(t *testing.T) {
 				CallNumbers:     []string{"MS-1234"},
 				MediaType:       "Manuscript",
 				CallNumberMedia: map[string]string{"MS-1234": "Manuscript"},
-				Notes:           []string{"Held in archives"},
+				InlineNotes:     []string{"Held in archives"},
 			},
 			Media:        []*MediaLink{{MediaXRef: "@M1@"}},
 			ChangeDate:   &ChangeDate{Date: "1 JAN 2024"},
@@ -634,7 +634,7 @@ func TestCloneEvent(t *testing.T) {
 			Restriction:     "none",
 			UID:             "event-uid",
 			SortDate:        "19000101",
-			Notes:           []string{"@N1@"},
+			NoteXRefs:       []string{"@N1@"},
 			Phone:           []string{"123-456"},
 			Email:           []string{"test@example.com"},
 			Fax:             []string{"123-789"},
@@ -767,7 +767,7 @@ func TestMediaObjectClone(t *testing.T) {
 	t.Run("copies all fields", func(t *testing.T) {
 		original := &MediaObject{
 			XRef:        "@M1@",
-			Notes:       []string{"@N1@"},
+			NoteXRefs:   []string{"@N1@"},
 			RefNumbers:  []string{"REF1"},
 			Restriction: "none",
 			UIDs:        []string{"uid-1"},
@@ -812,14 +812,14 @@ func TestSubmitterClone(t *testing.T) {
 
 	t.Run("copies all fields", func(t *testing.T) {
 		original := &Submitter{
-			XRef:     "@SUBM1@",
-			Name:     "Test",
-			Address:  &Address{Line1: "1 Main St"},
-			Phone:    []string{"555-1212"},
-			Email:    []string{"a@b.c"},
-			Language: []string{"en"},
-			Notes:    []string{"@N1@"},
-			Tags:     []*Tag{{Tag: "CUSTOM"}},
+			XRef:      "@SUBM1@",
+			Name:      "Test",
+			Address:   &Address{Line1: "1 Main St"},
+			Phone:     []string{"555-1212"},
+			Email:     []string{"a@b.c"},
+			Language:  []string{"en"},
+			NoteXRefs: []string{"@N1@"},
+			Tags:      []*Tag{{Tag: "CUSTOM"}},
 		}
 
 		copied := original.Clone()
@@ -950,7 +950,7 @@ func TestCloneAssociationWithCitations(t *testing.T) {
 		IndividualXRef: "@I2@",
 		Role:           "Witness",
 		Phrase:         "witness to the event",
-		Notes:          []string{"Note 1", "Note 2"},
+		InlineNotes:    []string{"Note 1", "Note 2"},
 		SourceCitations: []*SourceCitation{
 			{SourceXRef: "@S1@", Page: "Page 10"},
 			{SourceXRef: "@S2@", Page: "Page 20"},
@@ -964,8 +964,8 @@ func TestCloneAssociationWithCitations(t *testing.T) {
 	if copied.Role != original.Role || copied.Phrase != original.Phrase {
 		t.Errorf("Role/Phrase mismatch")
 	}
-	if len(copied.Notes) != len(original.Notes) {
-		t.Errorf("Notes len = %d, want %d", len(copied.Notes), len(original.Notes))
+	if len(copied.InlineNotes) != len(original.InlineNotes) {
+		t.Errorf("InlineNotes len = %d, want %d", len(copied.InlineNotes), len(original.InlineNotes))
 	}
 	if len(copied.SourceCitations) != len(original.SourceCitations) {
 		t.Errorf("SourceCitations len = %d, want %d", len(copied.SourceCitations), len(original.SourceCitations))
@@ -1148,19 +1148,19 @@ func TestRepositoryClone(t *testing.T) {
 
 	t.Run("deep copies address and notes", func(t *testing.T) {
 		original := &Repository{
-			XRef:    "@R1@",
-			Name:    "Repo",
-			Address: &Address{Line1: "1 Main St"},
-			Notes:   []string{"@N1@"},
-			Tags:    []*Tag{{Tag: "CUSTOM"}},
+			XRef:      "@R1@",
+			Name:      "Repo",
+			Address:   &Address{Line1: "1 Main St"},
+			NoteXRefs: []string{"@N1@"},
+			Tags:      []*Tag{{Tag: "CUSTOM"}},
 		}
 		copied := original.Clone()
 		if copied.Address == original.Address {
 			t.Error("Address should be deep copied")
 		}
-		copied.Notes[0] = "modified"
-		if original.Notes[0] == "modified" {
-			t.Error("Notes was not deep copied")
+		copied.NoteXRefs[0] = "modified"
+		if original.NoteXRefs[0] == "modified" {
+			t.Error("NoteXRefs was not deep copied")
 		}
 	})
 }

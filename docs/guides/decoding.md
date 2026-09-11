@@ -188,16 +188,14 @@ Becomes `Note.Text`: `"First line\nSecond line with more text"`
 The same folding now applies to notes on substructures, not only to the `NOTE`
 record. `Event`, `Attribute`, `SourceCitation`, `LDSOrdinance` and `ChangeDate`
 each expose `NoteXRefs` (pointers to `NOTE`/`SNOTE` records) and `InlineNotes`
-(text, with `CONT`/`CONC` folded), plus the deprecated interleaved
-`Notes []string`.
+(text, with `CONT`/`CONC` folded).
 
-**Behaviour change.** `Event.Notes` previously received the raw `NOTE` value
+**Behaviour change.** An event note previously received the raw `NOTE` value
 with no folding, so a multi-line event note read back as its first line only;
-it now carries the whole folded text. A `SNOTE` pointer on an event is also no
-longer reported as an unknown tag, so an event carrying both `NOTE` and `SNOTE`
-has two `Notes` entries where it previously had one. Notes on `SourceCitation`,
-`LDSOrdinance` and `ChangeDate` were previously dropped entirely and are now
-kept.
+`InlineNotes` now carries the whole folded text. A `SNOTE` pointer on an event
+is also no longer reported as an unknown tag; it lands in `NoteXRefs`. Notes on
+`SourceCitation`, `LDSOrdinance` and `ChangeDate` were previously dropped
+entirely and are now kept.
 
 Re-encoded (may differ from original):
 ```

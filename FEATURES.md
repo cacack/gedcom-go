@@ -319,7 +319,7 @@ for _, event := range individual.Events {
 | Type | The event type that did not occur (MARR, DEAT, DIV, etc.) |
 | Date | Optional date range when non-event was known |
 | SourceCitations | Evidence supporting the negative assertion |
-| Notes | Notes explaining the negative assertion |
+| NoteXRefs / InlineNotes | Notes explaining the negative assertion |
 
 Supported on: Individual events (NO MARR, NO DEAT, NO NATU, NO EMIG, etc.) and Family events (NO DIV, NO ANUL)
 
@@ -478,11 +478,10 @@ mutated.
 - Text content with continuation
 - Split note fields on note-bearing records (Individual, Family, Source,
   Repository, Submitter, MediaObject) and on the note-bearing substructures
-  (Event, Attribute, SourceCitation, LDSOrdinance, ChangeDate): `NoteXRefs`
-  holds XRef pointers to shared NOTE/SNOTE records, `InlineNotes` holds note
-  text written directly on the structure, with `CONT`/`CONC` folded. The legacy
-  `Notes []string` field is deprecated (kept for backward compatibility,
-  populated in original GEDCOM order).
+  (Event, Attribute, SourceCitation, LDSOrdinance, ChangeDate, Association,
+  SourceRepositoryLink, MediaLink, FamilyLink, PlaceDetail): `NoteXRefs` holds
+  XRef pointers to shared NOTE/SNOTE records, `InlineNotes` holds note text
+  written directly on the structure, with `CONT`/`CONC` folded.
 - `AllNotes(doc)` helper returns inline note text plus the resolved text of
   any shared notes referenced by XRef; also available on `Event` and
   `Attribute`

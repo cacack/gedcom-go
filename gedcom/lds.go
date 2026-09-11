@@ -52,12 +52,4 @@ type LDSOrdinance struct {
 	// InlineNotes are note text values written directly on this ordinance
 	// (NOTE <text> form, including CONT/CONC continuations).
 	InlineNotes []string
-
-	// Notes is deprecated: use NoteXRefs and InlineNotes instead. It is kept
-	// for backward compatibility and populated during decode with the inline
-	// note text and shared-note XRefs interleaved in their original GEDCOM
-	// order (not the NoteXRefs-then-InlineNotes order of the split fields).
-	//
-	// Deprecated: use NoteXRefs and InlineNotes.
-	Notes []string
 }

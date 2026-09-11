@@ -83,11 +83,12 @@ func xrefwalkFullDocument() *Document {
 			{FamilyXRef: "@F-CHILD@"},
 		},
 		SpouseInFamilies: []string{"@F-SPOUSE@"},
-		Notes:            []string{"@N-IND@", "inline note text"},
+		NoteXRefs:        []string{"@N-IND@"},
+		InlineNotes:      []string{"inline note text"},
 		Associations: []*Association{
 			{
 				IndividualXRef: "@I-ASSOC@",
-				Notes:          []string{"@N-ASSOC@"},
+				NoteXRefs:      []string{"@N-ASSOC@"},
 				SourceCitations: []*SourceCitation{
 					{SourceXRef: "@S-ASSOC@"},
 				},
@@ -104,7 +105,7 @@ func xrefwalkFullDocument() *Document {
 		},
 		Events: []*Event{
 			{
-				Notes: []string{"@N-EVENT@"},
+				NoteXRefs: []string{"@N-EVENT@"},
 				SourceCitations: []*SourceCitation{
 					{SourceXRef: "@S-EVENT@"},
 				},
@@ -134,11 +135,11 @@ func xrefwalkFullDocument() *Document {
 	}
 
 	family := &Family{
-		XRef:     "@F1@",
-		Husband:  "@I-HUSB@",
-		Wife:     "@I-WIFE@",
-		Children: []string{"@I-CHILD1@", "@I-CHILD2@"},
-		Notes:    []string{"@N-FAM@"},
+		XRef:      "@F1@",
+		Husband:   "@I-HUSB@",
+		Wife:      "@I-WIFE@",
+		Children:  []string{"@I-CHILD1@", "@I-CHILD2@"},
+		NoteXRefs: []string{"@N-FAM@"},
 		SourceCitations: []*SourceCitation{
 			{SourceXRef: "@S-FAM@"},
 		},
@@ -147,7 +148,7 @@ func xrefwalkFullDocument() *Document {
 		},
 		Events: []*Event{
 			{
-				Notes: []string{"@N-FAM-EVENT@"},
+				NoteXRefs: []string{"@N-FAM-EVENT@"},
 			},
 		},
 		LDSOrdinances: []*LDSOrdinance{
@@ -161,7 +162,7 @@ func xrefwalkFullDocument() *Document {
 	source := &Source{
 		XRef:           "@S1@",
 		RepositoryLink: &SourceRepositoryLink{XRef: "@R-SRC@"},
-		Notes:          []string{"@N-SRC@"},
+		NoteXRefs:      []string{"@N-SRC@"},
 		Media: []*MediaLink{
 			{MediaXRef: "@M-SRC@"},
 		},
@@ -171,8 +172,8 @@ func xrefwalkFullDocument() *Document {
 	}
 
 	repo := &Repository{
-		XRef:  "@R1@",
-		Notes: []string{"@N-REPO@"},
+		XRef:      "@R1@",
+		NoteXRefs: []string{"@N-REPO@"},
 		Tags: []*Tag{
 			{Tag: "_R", XRef: "@T-REPO@"},
 		},
@@ -186,8 +187,8 @@ func xrefwalkFullDocument() *Document {
 	}
 
 	media := &MediaObject{
-		XRef:  "@M1@",
-		Notes: []string{"@N-MEDIA@"},
+		XRef:      "@M1@",
+		NoteXRefs: []string{"@N-MEDIA@"},
 		SourceCitations: []*SourceCitation{
 			{SourceXRef: "@S-MEDIA@"},
 		},
@@ -197,8 +198,8 @@ func xrefwalkFullDocument() *Document {
 	}
 
 	submitter := &Submitter{
-		XRef:  "@U1@",
-		Notes: []string{"@N-SUBM@"},
+		XRef:      "@U1@",
+		NoteXRefs: []string{"@N-SUBM@"},
 		Tags: []*Tag{
 			{Tag: "_U", Value: "@T-SUBM@"},
 		},
@@ -323,7 +324,7 @@ func TestVisit_SkipsVoidAndNonPointer(t *testing.T) {
 	individual := &Individual{
 		XRef:             "@I1@",
 		SpouseInFamilies: []string{"@VOID@", "inline note text", "", "@F-REAL@"},
-		Notes:            []string{"@VOID@", "literal text", "@N-REAL@"},
+		NoteXRefs:        []string{"@VOID@", "literal text", "@N-REAL@"},
 	}
 	rec := &Record{XRef: "@I1@", Type: RecordTypeIndividual, Entity: individual}
 

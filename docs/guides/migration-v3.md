@@ -246,6 +246,7 @@ here, so your tooling will point at the call sites that still need attention.
 | `gedcom/testing.WithHeaderTagComparison()` | none needed — delete the argument. Header tags have been compared unconditionally since v2 |
 | `version.IsValidVersion(v)` | `v.IsValid()` — the same switch, as a method on `gedcom.Version` |
 | `gedcom.Event.Tags` | `Record.Tags` — the single store for an event's raw tags |
+| The deprecated `Notes []string` on 13 types | `NoteXRefs` + `InlineNotes`, or `AllNotes(doc)` where it exists — see below, the ordering changes |
 | `gedcom.Event.Place` | `Event.PlaceName()` to read, `Event.SetPlaceName(name)` to write |
 | `gedcom.Attribute.Place` | `Attribute.PlaceName()` to read, `Attribute.SetPlaceName(name)` to write |
 | `validator.PlaceConsistencyValidator`, `validator.NewPlaceConsistencyValidator()`, `validator.CodePlaceCarrierMismatch` | none needed — the check compared two place carriers and there is now one. Never shipped in a tagged release |
@@ -502,6 +503,40 @@ One behaviour improves silently: `Visit` and `Document.Subset` no longer write
 to the `Source` they traverse. In v2 they re-synced `RepositoryRef` from
 `RepositoryLink.XRef` on every walk, which blanked a caller-set value on a
 document with an inline repository.
+
+### The deprecated `Notes` slices in detail
+
+Thirteen types carried a `Notes []string` next to the `NoteXRefs` /
+`InlineNotes` pair that superseded it: `Individual`, `Family`, `Source`,
+`Repository`, `Submitter`, `MediaObject`, `Event`, `Attribute`,
+`SourceCitation`, `LDSOrdinance`, `ChangeDate`, `Association` and
+`SourceRepositoryLink`. All thirteen are gone.
+
+```go
+// v2 — one slice, and no way to tell a pointer from prose without re-testing
+for _, n := range indi.Notes {
+    if gedcom.IsPointerXRef(n) { /* shared note */ } else { /* inline text */ }
+}
+
+// v3 — the kinds are separate fields
+for _, x := range indi.NoteXRefs { /* pointers to NOTE/SNOTE records */ }
+for _, t := range indi.InlineNotes { /* note text, CONT/CONC already folded */ }
+
+// v3 — or let the library resolve the pointers for you
+for _, text := range indi.AllNotes(doc) { /* inline text + resolved shared notes */ }
+```
+
+`AllNotes(doc)` is defined on the six record types plus `Event` and
+`Attribute`. The other five are substructures; read their two fields directly,
+and resolve a pointer with `doc.GetNote(x)` or `doc.GetSharedNote(x)`.
+
+**The order changes.** `Notes` interleaved pointers and text in original GEDCOM
+order; the split fields group by kind, and the encoder writes every pointer
+ahead of every inline note. A structure whose source file read `NOTE text` then
+`NOTE @N1@` re-encodes from the typed model with the pointer first. Nothing is
+lost, and a decoded record still re-encodes byte-for-byte from `Record.Tags`;
+it is the typed-model path — a hand-built document, or one whose `Tags` you
+cleared — where the `NOTE` lines come out grouped.
 
 ## Checking your upgrade
 

@@ -11,13 +11,11 @@ import (
 type recordNotes struct {
 	xrefs  []string
 	inline []string
-	legacy []string
 }
 
 // TestDecodeRecordNoteSplit verifies that record-level NOTE tags are split into
 // NoteXRefs (pointer-shaped values) and InlineNotes (text values, with CONT/CONC
-// folded), while the deprecated combined Notes slice preserves the original
-// order for backward compatibility. It covers every note-bearing record type.
+// folded). It covers every note-bearing record type.
 func TestDecodeRecordNoteSplit(t *testing.T) {
 	const input = `0 HEAD
 1 GEDC
@@ -66,72 +64,66 @@ func TestDecodeRecordNoteSplit(t *testing.T) {
 			name: "Individual splits inline, xref, and CONT/CONC",
 			got: func() recordNotes {
 				i := doc.GetIndividual("@I1@")
-				return recordNotes{i.NoteXRefs, i.InlineNotes, i.Notes}
+				return recordNotes{i.NoteXRefs, i.InlineNotes}
 			}(),
 			want: recordNotes{
 				xrefs:  []string{"@N1@"},
 				inline: []string{"Inline individual note", "Multi line note\nsecond linecontinued"},
-				legacy: []string{"Inline individual note", "@N1@", "Multi line note\nsecond linecontinued"},
 			},
 		},
 		{
 			name: "Family xref before inline preserves order",
 			got: func() recordNotes {
 				f := doc.GetFamily("@F1@")
-				return recordNotes{f.NoteXRefs, f.InlineNotes, f.Notes}
+				return recordNotes{f.NoteXRefs, f.InlineNotes}
 			}(),
 			want: recordNotes{
 				xrefs:  []string{"@N1@"},
 				inline: []string{"Inline family note"},
-				legacy: []string{"@N1@", "Inline family note"},
 			},
 		},
 		{
 			name: "Source inline before xref",
 			got: func() recordNotes {
 				s := doc.GetSource("@S1@")
-				return recordNotes{s.NoteXRefs, s.InlineNotes, s.Notes}
+				return recordNotes{s.NoteXRefs, s.InlineNotes}
 			}(),
 			want: recordNotes{
 				xrefs:  []string{"@N1@"},
 				inline: []string{"Inline source note"},
-				legacy: []string{"Inline source note", "@N1@"},
 			},
 		},
 		{
 			name: "Repository routes NOTE and SNOTE xrefs through split path",
 			got: func() recordNotes {
 				r := doc.GetRepository("@R1@")
-				return recordNotes{r.NoteXRefs, r.InlineNotes, r.Notes}
+				return recordNotes{r.NoteXRefs, r.InlineNotes}
 			}(),
 			want: recordNotes{
 				xrefs:  []string{"@N1@", "@N1@"},
 				inline: nil,
-				legacy: []string{"@N1@", "@N1@"},
 			},
 		},
 		{
 			name: "Submitter inline only",
 			got: func() recordNotes {
 				s := doc.GetSubmitter("@SUB1@")
-				return recordNotes{s.NoteXRefs, s.InlineNotes, s.Notes}
+				return recordNotes{s.NoteXRefs, s.InlineNotes}
 			}(),
 			want: recordNotes{
 				xrefs:  nil,
 				inline: []string{"Inline submitter note"},
-				legacy: []string{"Inline submitter note"},
 			},
 		},
 		{
 			name: "MediaObject routes NOTE and SNOTE through split path",
 			got: func() recordNotes {
 				m := doc.GetMediaObject("@O1@")
-				return recordNotes{m.NoteXRefs, m.InlineNotes, m.Notes}
+				return recordNotes{m.NoteXRefs, m.InlineNotes}
 			}(),
 			want: recordNotes{
 				xrefs:  []string{"@N1@", "@N1@"},
 				inline: []string{"Inline media note"},
-				legacy: []string{"Inline media note", "@N1@", "@N1@"},
 			},
 		},
 	}
@@ -144,9 +136,6 @@ func TestDecodeRecordNoteSplit(t *testing.T) {
 			if !reflect.DeepEqual(tt.got.inline, tt.want.inline) {
 				t.Errorf("InlineNotes = %#v, want %#v", tt.got.inline, tt.want.inline)
 			}
-			if !reflect.DeepEqual(tt.got.legacy, tt.want.legacy) {
-				t.Errorf("Notes = %#v, want %#v", tt.got.legacy, tt.want.legacy)
-			}
 		})
 	}
 
@@ -158,8 +147,7 @@ func TestDecodeRecordNoteSplit(t *testing.T) {
 }
 
 // TestDecodeSubstructureNoteSplit covers the five substructures given note
-// fields by issue #472. Three of them (MediaLink, FamilyLink, PlaceDetail) have
-// no legacy combined Notes slice, so only the split fields are asserted.
+// fields by issue #472.
 //
 // The MediaLink case uses a padded pointer ("NOTE  @N1@"), which is the shape
 // #426 preserves and which a naive pointer test on the raw value would
@@ -222,10 +210,10 @@ func TestDecodeSubstructureNoteSplit(t *testing.T) {
 		want recordNotes
 	}{
 		{
-			name: "FamilyLink splits inline and xref, no legacy slice",
+			name: "FamilyLink splits inline and xref",
 			got: func() recordNotes {
 				l := indi.ChildInFamilies[0]
-				return recordNotes{l.NoteXRefs, l.InlineNotes, nil}
+				return recordNotes{l.NoteXRefs, l.InlineNotes}
 			}(),
 			want: recordNotes{
 				xrefs:  []string{"@N1@"},
@@ -233,22 +221,21 @@ func TestDecodeSubstructureNoteSplit(t *testing.T) {
 			},
 		},
 		{
-			name: "Association keeps legacy order alongside the split",
+			name: "Association splits inline and xref",
 			got: func() recordNotes {
 				a := indi.Associations[0]
-				return recordNotes{a.NoteXRefs, a.InlineNotes, a.Notes}
+				return recordNotes{a.NoteXRefs, a.InlineNotes}
 			}(),
 			want: recordNotes{
 				xrefs:  []string{"@N1@"},
 				inline: []string{"Association note"},
-				legacy: []string{"@N1@", "Association note"},
 			},
 		},
 		{
 			name: "MediaLink trims a padded pointer and folds CONT",
 			got: func() recordNotes {
 				m := indi.Media[0]
-				return recordNotes{m.NoteXRefs, m.InlineNotes, nil}
+				return recordNotes{m.NoteXRefs, m.InlineNotes}
 			}(),
 			want: recordNotes{
 				xrefs:  []string{"@N1@"},
@@ -259,7 +246,7 @@ func TestDecodeSubstructureNoteSplit(t *testing.T) {
 			name: "PlaceDetail routes NOTE and SNOTE through the split path",
 			got: func() recordNotes {
 				p := indi.Events[0].PlaceDetail
-				return recordNotes{p.NoteXRefs, p.InlineNotes, nil}
+				return recordNotes{p.NoteXRefs, p.InlineNotes}
 			}(),
 			want: recordNotes{
 				xrefs:  []string{"@N1@"},
@@ -267,16 +254,14 @@ func TestDecodeSubstructureNoteSplit(t *testing.T) {
 			},
 		},
 		{
-			name: "SourceRepositoryLink keeps legacy order alongside the split",
+			name: "SourceRepositoryLink splits inline and xref",
 			got: recordNotes{
 				src.RepositoryLink.NoteXRefs,
 				src.RepositoryLink.InlineNotes,
-				src.RepositoryLink.Notes,
 			},
 			want: recordNotes{
 				xrefs:  []string{"@N1@"},
 				inline: []string{"Repository link note"},
-				legacy: []string{"@N1@", "Repository link note"},
 			},
 		},
 	}
@@ -288,9 +273,6 @@ func TestDecodeSubstructureNoteSplit(t *testing.T) {
 			}
 			if !reflect.DeepEqual(tt.got.inline, tt.want.inline) {
 				t.Errorf("InlineNotes = %#v, want %#v", tt.got.inline, tt.want.inline)
-			}
-			if !reflect.DeepEqual(tt.got.legacy, tt.want.legacy) {
-				t.Errorf("Notes = %#v, want %#v", tt.got.legacy, tt.want.legacy)
 			}
 		})
 	}

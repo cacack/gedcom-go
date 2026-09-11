@@ -1606,8 +1606,8 @@ func TestEmptyAssociation(t *testing.T) {
 	if assoc.Role != "" {
 		t.Errorf("Role = %s, want empty", assoc.Role)
 	}
-	if len(assoc.Notes) != 0 {
-		t.Errorf("len(Notes) = %d, want 0", len(assoc.Notes))
+	if got := len(assoc.NoteXRefs) + len(assoc.InlineNotes); got != 0 {
+		t.Errorf("assoc note count = %d, want 0", got)
 	}
 }
 
@@ -2669,11 +2669,11 @@ func TestSubmitterParsing(t *testing.T) {
 	}
 
 	// Test notes
-	if len(subm1.Notes) != 1 {
-		t.Fatalf("len(subm1.Notes) = %d, want 1", len(subm1.Notes))
+	if len(subm1.InlineNotes) != 1 {
+		t.Fatalf("len(subm1.InlineNotes) = %d, want 1", len(subm1.InlineNotes))
 	}
-	if subm1.Notes[0] != "Submitter note" {
-		t.Errorf("subm1.Notes[0] = %s, want 'Submitter note'", subm1.Notes[0])
+	if subm1.InlineNotes[0] != "Submitter note" {
+		t.Errorf("subm1.InlineNotes[0] = %s, want 'Submitter note'", subm1.InlineNotes[0])
 	}
 
 	// Test second submitter (minimal)
@@ -2781,11 +2781,11 @@ func TestRepositoryParsing(t *testing.T) {
 	}
 
 	// Test notes
-	if len(repo1.Notes) != 1 {
-		t.Fatalf("len(repo1.Notes) = %d, want 1", len(repo1.Notes))
+	if len(repo1.InlineNotes) != 1 {
+		t.Fatalf("len(repo1.InlineNotes) = %d, want 1", len(repo1.InlineNotes))
 	}
-	if repo1.Notes[0] != "Great resource for genealogy research" {
-		t.Errorf("repo1.Notes[0] = %s, want 'Great resource for genealogy research'", repo1.Notes[0])
+	if repo1.InlineNotes[0] != "Great resource for genealogy research" {
+		t.Errorf("repo1.InlineNotes[0] = %s, want 'Great resource for genealogy research'", repo1.InlineNotes[0])
 	}
 
 	// Test second repository
@@ -3161,10 +3161,10 @@ func TestParseMediaObject_FullMetadata(t *testing.T) {
 		t.Errorf("media.SharedNoteXRefs[0] = %s, want @N1@", media.SharedNoteXRefs[0])
 	}
 
-	// Notes holds the inline NOTE text plus the SNOTE pointer (routed through
-	// the split-note path), interleaved in original order.
-	if len(media.Notes) != 2 {
-		t.Errorf("len(media.Notes) = %d, want 2", len(media.Notes))
+	// The SNOTE pointer is routed through the split-note path alongside the
+	// inline NOTE text.
+	if len(media.InlineNotes) != 1 {
+		t.Errorf("len(media.InlineNotes) = %d, want 1", len(media.InlineNotes))
 	}
 	if len(media.NoteXRefs) != 1 || media.NoteXRefs[0] != "@N1@" {
 		t.Errorf("media.NoteXRefs = %#v, want [@N1@]", media.NoteXRefs)
@@ -3569,8 +3569,8 @@ func TestSourceRepositoryLinkDecoding(t *testing.T) {
 		t.Errorf("link.CallNumberMedia should not contain 'Roll 42' (no MEDI)")
 	}
 	wantNotes := []string{"Held in archives, advance booking required"}
-	if !reflect.DeepEqual(link.Notes, wantNotes) {
-		t.Errorf("link.Notes = %v, want %v", link.Notes, wantNotes)
+	if !reflect.DeepEqual(link.InlineNotes, wantNotes) {
+		t.Errorf("link.InlineNotes = %v, want %v", link.InlineNotes, wantNotes)
 	}
 
 }
@@ -3928,8 +3928,8 @@ func TestParseAssociationWithPhraseAndSource(t *testing.T) {
 	if assoc.Role != "OTHER" {
 		t.Errorf("Role = %s, want OTHER", assoc.Role)
 	}
-	if len(assoc.Notes) != 1 || assoc.Notes[0] != "Note text" {
-		t.Errorf("Notes = %v, want ['Note text']", assoc.Notes)
+	if len(assoc.InlineNotes) != 1 || assoc.InlineNotes[0] != "Note text" {
+		t.Errorf("InlineNotes = %v, want ['Note text']", assoc.InlineNotes)
 	}
 	if len(assoc.SourceCitations) != 2 {
 		t.Fatalf("len(SourceCitations) = %d, want 2", len(assoc.SourceCitations))
@@ -4930,11 +4930,11 @@ func TestNOTagWithSubordinates(t *testing.T) {
 	}
 
 	// Check subordinates
-	if len(event.Notes) != 1 {
-		t.Fatalf("len(Notes) = %d, want 1", len(event.Notes))
+	if len(event.InlineNotes) != 1 {
+		t.Fatalf("len(InlineNotes) = %d, want 1", len(event.InlineNotes))
 	}
-	if event.Notes[0] != "Note text about naturalization" {
-		t.Errorf("Notes[0] = %q, want 'Note text about naturalization'", event.Notes[0])
+	if event.InlineNotes[0] != "Note text about naturalization" {
+		t.Errorf("InlineNotes[0] = %q, want 'Note text about naturalization'", event.InlineNotes[0])
 	}
 
 	if len(event.SourceCitations) != 1 {
@@ -5054,11 +5054,8 @@ func TestNOTagFamilyWithSubordinates(t *testing.T) {
 		t.Errorf("Events[0].Date = %q, want 'FROM 1700 TO 1800'", divEvent.Date)
 	}
 
-	// Check subordinates on NO DIV. The SNOTE pointer joins the inline NOTE
-	// in the legacy Notes slice and lands in NoteXRefs (issue #447).
-	if len(divEvent.Notes) != 2 {
-		t.Fatalf("len(Notes) = %d, want 2", len(divEvent.Notes))
-	}
+	// Check subordinates on NO DIV. The SNOTE pointer lands in NoteXRefs and
+	// the inline NOTE in InlineNotes (issue #447).
 	if len(divEvent.InlineNotes) != 1 || divEvent.InlineNotes[0] != "Note text" {
 		t.Errorf("InlineNotes = %q, want [\"Note text\"]", divEvent.InlineNotes)
 	}
@@ -5316,9 +5313,6 @@ func TestEventDetailAssociationReligionSharedNote(t *testing.T) {
 	if want := []string{"@N1@"}; !reflect.DeepEqual(event.NoteXRefs, want) {
 		t.Errorf("NoteXRefs = %v, want %v", event.NoteXRefs, want)
 	}
-	if want := []string{"Inline note", "@N1@"}; !reflect.DeepEqual(event.Notes, want) {
-		t.Errorf("Notes = %v, want %v", event.Notes, want)
-	}
 }
 
 // TestEventInlineNoteFoldsContinuation pins the behaviour change from routing
@@ -5343,9 +5337,6 @@ func TestEventInlineNoteFoldsContinuation(t *testing.T) {
 	want := "First line\nSecond line continued"
 	if len(event.InlineNotes) != 1 || event.InlineNotes[0] != want {
 		t.Errorf("InlineNotes = %q, want [%q]", event.InlineNotes, want)
-	}
-	if len(event.Notes) != 1 || event.Notes[0] != want {
-		t.Errorf("Notes = %q, want [%q]", event.Notes, want)
 	}
 }
 
@@ -5457,7 +5448,6 @@ func TestAttributeEventDetail(t *testing.T) {
 		{"Website", attr.Website, []string{"https://example.com"}},
 		{"NoteXRefs", attr.NoteXRefs, []string{"@N1@"}},
 		{"InlineNotes", attr.InlineNotes, []string{"Inline note"}},
-		{"Notes", attr.Notes, []string{"Inline note", "@N1@"}},
 	}
 	for _, f := range sliceFields {
 		if !reflect.DeepEqual(f.got, f.want) {
@@ -5692,9 +5682,6 @@ func TestSubstructureNotesSplit(t *testing.T) {
 	wantCite := []string{"Citation note\nsecond line"}
 	if got := indi.SourceCitations[0].InlineNotes; !reflect.DeepEqual(got, wantCite) {
 		t.Errorf("SourceCitations[0].InlineNotes = %v, want %v", got, wantCite)
-	}
-	if got := indi.SourceCitations[0].Notes; !reflect.DeepEqual(got, wantCite) {
-		t.Errorf("SourceCitations[0].Notes = %v, want %v", got, wantCite)
 	}
 	if got, want := indi.LDSOrdinances[0].InlineNotes, []string{"Ordinance note"}; !reflect.DeepEqual(got, want) {
 		t.Errorf("LDSOrdinances[0].InlineNotes = %v, want %v", got, want)

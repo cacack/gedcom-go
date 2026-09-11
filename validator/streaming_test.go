@@ -786,8 +786,8 @@ func TestStreamingValidator_NoteReferences(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{})
 
 	ind := &gedcom.Individual{
-		XRef:  "@I1@",
-		Notes: []string{"@N1@", "@N999@"}, // Second is orphaned
+		XRef:      "@I1@",
+		NoteXRefs: []string{"@N1@", "@N999@"}, // Second is orphaned
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind})
 	sv.ValidateRecord(&gedcom.Record{XRef: "@N1@", Type: gedcom.RecordTypeNote, Entity: &gedcom.Note{XRef: "@N1@"}})
@@ -851,8 +851,8 @@ func TestStreamingValidator_FamilyNoteReferences(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{})
 
 	fam := &gedcom.Family{
-		XRef:  "@F1@",
-		Notes: []string{"@N999@"}, // Orphaned note
+		XRef:      "@F1@",
+		NoteXRefs: []string{"@N999@"}, // Orphaned note
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@F1@", Type: gedcom.RecordTypeFamily, Entity: fam})
 
@@ -891,8 +891,8 @@ func TestStreamingValidator_SourceNoteReferences(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{})
 
 	src := &gedcom.Source{
-		XRef:  "@S1@",
-		Notes: []string{"@N999@"}, // Orphaned note
+		XRef:      "@S1@",
+		NoteXRefs: []string{"@N999@"}, // Orphaned note
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@S1@", Type: gedcom.RecordTypeSource, Entity: src})
 
