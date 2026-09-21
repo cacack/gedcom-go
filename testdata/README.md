@@ -398,6 +398,11 @@ Files with intentional errors for testing error handling and validation:
   - Original work (issue #301)
 - **level-over-99.ged** - Levels 100 and 101, both past the two-digit level ceiling; each is rejected with an INVALID_LEVEL diagnostic (issue #379)
   - Original work (issue #301)
+- **coordinates.ged** - PLAC MAP with a non-finite `LATI` (`Nnan`) and a hex-float
+  `LONG` (`E0x1p3`); each is reported with an INVALID_VALUE diagnostic while the raw
+  text is preserved in the typed model. A second individual carries a well-formed MAP
+  that must stay quiet.
+  - Original work (issue #504)
 
 ## Usage Guidelines
 

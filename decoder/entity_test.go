@@ -5690,3 +5690,321 @@ func TestSubstructureNotesSplit(t *testing.T) {
 		t.Errorf("ChangeDate.InlineNotes = %v, want %v", got, want)
 	}
 }
+
+// TestMalformedCoordinateDiagnostic pins issue #504's decoder half: a LATI or
+// LONG value that gedcom.ParseCoordinate rejects is reported as INVALID_VALUE
+// at decode time instead of lying dormant until some caller reaches AsDecimal.
+// The raw text must survive into the typed model regardless (ADR 0003) -- the
+// diagnostic is the signal, not a dropped value, so asserting only the
+// diagnostic misses half the contract.
+func TestMalformedCoordinateDiagnostic(t *testing.T) {
+	f, err := os.Open("../testdata/malformed/coordinates.ged")
+	if err != nil {
+		t.Fatalf("Failed to open test file: %v", err)
+	}
+	defer f.Close()
+
+	result, err := DecodeWithDiagnostics(f, nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+
+	// Lines 20 and 21 are the LATI/LONG lines of @I1@'s MAP in the fixture.
+	wantDiags := []struct {
+		tag   string
+		value string
+		line  int
+	}{
+		{tag: "LATI", value: "Nnan", line: 20},
+		{tag: "LONG", value: "E0x1p3", line: 21},
+	}
+	for _, want := range wantDiags {
+		found := false
+		for _, d := range result.Diagnostics {
+			if d.Code != CodeInvalidValue || !strings.Contains(d.Message, want.tag) {
+				continue
+			}
+			found = true
+			if d.Severity != SeverityWarning {
+				t.Errorf("%s diagnostic Severity = %v, want %v", want.tag, d.Severity, SeverityWarning)
+			}
+			if d.Context != want.value {
+				t.Errorf("%s diagnostic Context = %q, want %q", want.tag, d.Context, want.value)
+			}
+			if d.Line != want.line {
+				t.Errorf("%s diagnostic Line = %d, want %d", want.tag, d.Line, want.line)
+			}
+			if !strings.Contains(d.Message, want.value) {
+				t.Errorf("%s diagnostic Message = %q, want it to name %q", want.tag, d.Message, want.value)
+			}
+			break
+		}
+		if !found {
+			t.Errorf("no %s diagnostic with code %s, got: %v", want.tag, CodeInvalidValue, result.Diagnostics)
+		}
+	}
+
+	// Lossless: the rejected text is still in the typed model.
+	indi := result.Document.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+	coords := indi.Events[0].PlaceDetail.Coordinates
+	if coords == nil {
+		t.Fatal("@I1@ birth PlaceDetail.Coordinates is nil, want non-nil")
+	}
+	if coords.Latitude != "Nnan" {
+		t.Errorf("Coordinates.Latitude = %q, want %q", coords.Latitude, "Nnan")
+	}
+	if coords.Longitude != "E0x1p3" {
+		t.Errorf("Coordinates.Longitude = %q, want %q", coords.Longitude, "E0x1p3")
+	}
+
+	// @I2@ in the same fixture is well-formed and must stay quiet: exactly the
+	// two diagnostics above, no more.
+	invalid := 0
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeInvalidValue {
+			invalid++
+		}
+	}
+	if invalid != len(wantDiags) {
+		t.Errorf("INVALID_VALUE diagnostics = %d, want %d: %v", invalid, len(wantDiags), result.Diagnostics)
+	}
+}
+
+// TestCoordinateDiagnosticQuietCases covers the values that must NOT produce a
+// diagnostic: well-formed pairs, and an empty LATI/LONG (an absent value is a
+// separate concern from a malformed one). A swapped axis is NOT quiet -- see
+// TestSwappedAxisCoordinateDiagnostic.
+func TestCoordinateDiagnosticQuietCases(t *testing.T) {
+	tests := []struct {
+		name string
+		lati string
+		long string
+	}{
+		{name: "well-formed", lati: "N42.3601", long: "W71.0589"},
+		{name: "integer degrees", lati: "S0", long: "E180"},
+		{name: "lowercase directions", lati: "n42.3601", long: "w71.0589"},
+		{name: "empty values", lati: "", long: ""},
+		{name: "empty latitude only", lati: "", long: "W71.0589"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 BIRT
+2 PLAC Somewhere
+3 MAP
+4 LATI ` + tt.lati + `
+4 LONG ` + tt.long + `
+0 TRLR
+`
+			result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+			if err != nil {
+				t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+			}
+			for _, d := range result.Diagnostics {
+				if d.Code == CodeInvalidValue {
+					t.Errorf("unexpected INVALID_VALUE diagnostic: %+v", d)
+				}
+			}
+
+			indi := result.Document.GetIndividual("@I1@")
+			if indi == nil {
+				t.Fatal("GetIndividual(@I1@) returned nil")
+			}
+			coords := indi.Events[0].PlaceDetail.Coordinates
+			if coords == nil {
+				t.Fatal("birth PlaceDetail.Coordinates is nil, want non-nil")
+			}
+			if coords.Latitude != tt.lati {
+				t.Errorf("Coordinates.Latitude = %q, want %q", coords.Latitude, tt.lati)
+			}
+			if coords.Longitude != tt.long {
+				t.Errorf("Coordinates.Longitude = %q, want %q", coords.Longitude, tt.long)
+			}
+		})
+	}
+}
+
+// TestSwappedAxisCoordinateDiagnostic pins that a coordinate whose direction
+// letter belongs to the other axis is reported at decode time. Each component
+// is a well-formed coordinate on its own, so ParseCoordinate alone cannot see
+// the defect -- only the axis-aware ParseLatitude/ParseLongitude can. Without
+// this the value stays silent all the way through a consumer that parses one
+// component at a time and never reaches Coordinates.AsDecimal.
+func TestSwappedAxisCoordinateDiagnostic(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 BIRT
+2 PLAC Somewhere
+3 MAP
+4 LATI E42.3601
+4 LONG N71.0589
+0 TRLR
+`
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+
+	wantDiags := []struct {
+		line  int
+		tag   string
+		value string
+	}{
+		{line: 8, tag: "LATI", value: "E42.3601"},
+		{line: 9, tag: "LONG", value: "N71.0589"},
+	}
+
+	invalid := 0
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeInvalidValue {
+			invalid++
+		}
+	}
+	if invalid != len(wantDiags) {
+		t.Errorf("INVALID_VALUE diagnostics = %d, want %d: %v", invalid, len(wantDiags), result.Diagnostics)
+	}
+
+	// Each wanted diagnostic must actually be present. Counting alone would let
+	// a line-attribution regression through: two diagnostics on the wrong lines
+	// still total two, and every content assertion below would be skipped.
+	for _, want := range wantDiags {
+		found := false
+		for _, d := range result.Diagnostics {
+			if d.Code != CodeInvalidValue || d.Line != want.line {
+				continue
+			}
+			found = true
+			if !strings.Contains(d.Message, want.tag) {
+				t.Errorf("line %d message = %q, want it to name %s", d.Line, d.Message, want.tag)
+			}
+			if !strings.Contains(d.Message, "direction") {
+				t.Errorf("line %d message = %q, want it to name the direction problem", d.Line, d.Message)
+			}
+			if d.Context != want.value {
+				t.Errorf("line %d context = %q, want %q", d.Line, d.Context, want.value)
+			}
+		}
+		if !found {
+			t.Errorf("no INVALID_VALUE diagnostic on line %d for %s: %v", want.line, want.tag, result.Diagnostics)
+		}
+	}
+
+	// Lossless: the raw text survives regardless of the diagnostic (ADR 0003).
+	indi := result.Document.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("GetIndividual(@I1@) returned nil")
+	}
+	coords := indi.Events[0].PlaceDetail.Coordinates
+	if coords == nil {
+		t.Fatal("birth PlaceDetail.Coordinates is nil, want non-nil")
+	}
+	if coords.Latitude != "E42.3601" {
+		t.Errorf("Coordinates.Latitude = %q, want %q", coords.Latitude, "E42.3601")
+	}
+	if coords.Longitude != "N71.0589" {
+		t.Errorf("Coordinates.Longitude = %q, want %q", coords.Longitude, "N71.0589")
+	}
+}
+
+// TestOutOfRangeCoordinateDiagnostic pins the third decode-time check. A value
+// can be well-formed and on the right axis and still be impossible; because the
+// decoder validates through ParseLatitude/ParseLongitude rather than
+// ParseCoordinate, the range comes with it. This is the check most likely to
+// fire on real data, so it is documented as a diagnostic-count change in
+// docs/governance/policies/api-stability.md.
+func TestOutOfRangeCoordinateDiagnostic(t *testing.T) {
+	tests := []struct {
+		name    string
+		lati    string
+		long    string
+		wantTag string
+	}{
+		{name: "latitude above 90", lati: "N95", long: "W71.0589", wantTag: "LATI"},
+		{name: "latitude below -90", lati: "S90.5", long: "W71.0589", wantTag: "LATI"},
+		{name: "longitude above 180", lati: "N42.3601", long: "E181", wantTag: "LONG"},
+		{name: "longitude below -180", lati: "N42.3601", long: "W180.0001", wantTag: "LONG"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 BIRT
+2 PLAC Somewhere
+3 MAP
+4 LATI ` + tt.lati + `
+4 LONG ` + tt.long + `
+0 TRLR
+`
+			result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+			if err != nil {
+				t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+			}
+
+			found := false
+			for _, d := range result.Diagnostics {
+				if d.Code != CodeInvalidValue {
+					continue
+				}
+				found = true
+				if !strings.Contains(d.Message, tt.wantTag) {
+					t.Errorf("message = %q, want it to name %s", d.Message, tt.wantTag)
+				}
+				if !strings.Contains(d.Message, "out of range") {
+					t.Errorf("message = %q, want it to name the range problem", d.Message)
+				}
+			}
+			if !found {
+				t.Errorf("no INVALID_VALUE diagnostic: %v", result.Diagnostics)
+			}
+
+			// Warnings only: an out-of-range coordinate must not fail the decode.
+			if result.Diagnostics.HasErrors() {
+				t.Errorf("HasErrors() = true, want false: %v", result.Diagnostics)
+			}
+		})
+	}
+}
+
+// TestBoundaryCoordinatesAreQuiet guards the other side of the range check:
+// the extremes are valid coordinates and must not warn.
+func TestBoundaryCoordinatesAreQuiet(t *testing.T) {
+	for _, tt := range []struct{ lati, long string }{
+		{lati: "N90", long: "E180"},
+		{lati: "S90", long: "W180"},
+	} {
+		t.Run(tt.lati+"/"+tt.long, func(t *testing.T) {
+			input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 BIRT
+2 PLAC Somewhere
+3 MAP
+4 LATI ` + tt.lati + `
+4 LONG ` + tt.long + `
+0 TRLR
+`
+			result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+			if err != nil {
+				t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+			}
+			for _, d := range result.Diagnostics {
+				if d.Code == CodeInvalidValue {
+					t.Errorf("unexpected INVALID_VALUE diagnostic: %+v", d)
+				}
+			}
+		})
+	}
+}
