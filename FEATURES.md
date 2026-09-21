@@ -975,6 +975,26 @@ Typed detection for all GEDCOM reference types:
 issues := v.FindOrphanedReferences(doc)
 ```
 
+**Note Pointer Validation:**
+
+`MediaObject.NoteXRefs` (NOTE pointers) and `.SharedNoteXRefs` (SNOTE pointers)
+partition a record's note pointers and never overlap. A hand-built or migrated
+media object can still list the same pointer in both, which duplicates the note
+in `AllNotes` and on typed-path re-encode.
+
+Only that overlap is reported, and only for media objects. A pointer repeated
+*within* one slice is not a violation — the file named the note twice, and
+reproducing it is lossless representation working as intended. No other entity
+splits `NOTE` from `SNOTE`, so no other entity carries this invariant.
+
+| Error Code | Severity | Description |
+|------------|----------|-------------|
+| OVERLAPPING_NOTE_POINTERS | Warning | Media object lists the same note pointer in both NoteXRefs and SharedNoteXRefs |
+
+```go
+issues := v.ValidateNotePointers(doc)
+```
+
 **Duplicate Detection:**
 
 Configurable matching based on name similarity and date proximity:
