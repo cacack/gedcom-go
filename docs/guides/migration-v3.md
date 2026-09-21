@@ -472,6 +472,95 @@ Two consequences:
 for these issues. Code matching that string on a `"Notes["` prefix should match
 `"NoteXRefs["` instead.
 
+### Coordinate values must be plain decimals
+
+No code change is needed unless you stored coordinates that were never valid.
+It is listed because a value that used to parse now returns an error.
+
+`ParseCoordinate` handed the numeric part straight to `strconv.ParseFloat`,
+whose syntax is far wider than a GEDCOM coordinate. The direction letter was
+consumed first, so the wider spellings only leaked when they followed one:
+
+| Input | v2 | v3 |
+|-------|----|----|
+| `"Nnan"` | `NaN`, no error | error |
+| `"Ninf"`, `"Einf"`, `"Ninfinity"` | `+Inf`, no error | error |
+| `"N0x1p3"` | `8` | error |
+| `"N1e2"` | `100` | error |
+| `"N1_0.5"` | `10.5` | error |
+
+`AsDecimal` was worse, because its range check could not catch what got
+through. `NaN < -90` and `NaN > 90` are both false, so a `NaN` passed every
+guard:
+
+```go
+c := gedcom.Coordinates{Latitude: "Nnan", Longitude: "Enan"}
+lat, long, err := c.AsDecimal()
+// v2: NaN, NaN, nil  -- a success return outside the documented range
+// v3: 0, 0, error
+```
+
+A caller that checked `err` and trusted the values was already writing correct
+code and needs no change; it now gets the guarantee it was relying on, which is
+that a `nil` error means both values are finite and in range. A caller that
+stored one of the spellings above has data to fix — the value was never a
+GEDCOM coordinate.
+
+The value after the direction letter is now an unsigned decimal number: digits
+with at most one decimal point. `"N.5"` and `"N5."` still parse, as before.
+
+### Decoding now reports bad coordinates
+
+No code change is needed for this one. It is listed because it changes the
+diagnostics a document produces, which a caller may have snapshotted.
+
+Before v3.0.0, `LATI` and `LONG` received **no** decode-time validation — a
+malformed coordinate stayed silent until some caller happened to parse it.
+Decoding now checks each one and emits an `INVALID_VALUE` warning naming the
+offending line when it fails:
+
+| Check | Example that warns |
+|-------|--------------------|
+| Value syntax | `4 LATI Nnan`, `4 LONG E0x1p3` |
+| Axis direction | `4 LATI E42.3601` (E/W on a latitude) |
+| Range | `4 LATI N95` (beyond `[-90, 90]`) |
+
+The axis and range checks are the ones most likely to fire on real data — they
+are ordinary data-entry mistakes, not the pathological spellings above. A
+caller that asserts an exact issue count, or that suppresses `INVALID_VALUE`
+wholesale, should expect more diagnostics on documents containing them.
+
+The raw text is still preserved on the record (ADR 0003), and these are
+warnings: `HasErrors` counts only errors, so no document that decoded before
+fails to decode now.
+
+These checks run **at decode time only**. A coordinate you already extracted
+and persisted is not revalidated — nothing re-reads it — so the warning that
+would have flagged it never fires for stored data. If you keep raw coordinate
+text and re-parse it on read, that read path is where a previously-accepted
+spelling now starts returning an error, and it is worth logging the failure
+rather than treating it as "no coordinate": before this change the same value
+returned a number, so a silent skip is a behaviour change you will not
+otherwise see. Reading with `ParseLatitude`/`ParseLongitude` rather than
+`ParseCoordinate` also catches an axis swap in that stored data, which no
+amount of decode-time checking can reach retroactively.
+
+### New: `ParseLatitude` and `ParseLongitude`
+
+Additive, but worth knowing about if you parse coordinates one component at a
+time. `ParseCoordinate` accepts any direction letter by design — a lone
+component carries no information about which axis it belongs to — so it returns
+a value for `ParseCoordinate("E42.3601")` even when that is a latitude.
+
+`Coordinates.AsDecimal` has always enforced the axis, but only for a complete
+pair. If you parse components separately, use the axis-aware entry points
+instead and the check comes with them:
+
+```go
+lat, err := gedcom.ParseLatitude(rawLat)   // rejects E/W, enforces [-90, 90]
+long, err := gedcom.ParseLongitude(rawLong) // rejects N/S, enforces [-180, 180]
+```
+
 ## Straight removals
 
 Each of these is superseded by something that already exists in v2, so you can

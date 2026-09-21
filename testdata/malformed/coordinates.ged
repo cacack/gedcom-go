@@ -1,0 +1,29 @@
+0 HEAD
+1 SOUR gedcom-go
+2 VERS 1.0.0
+2 NAME gedcom-go test suite
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE Malformed coordinate test file.
+2 CONT Original work for issue #504. @I1@ carries a PLAC MAP whose LATI is a
+2 CONT non-finite literal and whose LONG is a hexadecimal float literal;
+2 CONT neither is a GEDCOM coordinate, so each must produce an INVALID_VALUE
+2 CONT diagnostic while the raw text survives into the typed model.
+2 CONT @I2@ carries a well-formed MAP that must stay quiet.
+0 @I1@ INDI
+1 NAME Malformed /Coordinates/
+1 BIRT
+2 PLAC Nowhere
+3 MAP
+4 LATI Nnan
+4 LONG E0x1p3
+0 @I2@ INDI
+1 NAME Valid /Coordinates/
+1 BIRT
+2 PLAC Boston, Massachusetts, USA
+3 MAP
+4 LATI N42.3601
+4 LONG W71.0589
+0 TRLR

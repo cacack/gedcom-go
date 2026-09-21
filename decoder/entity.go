@@ -786,8 +786,10 @@ func parseCoordinates(tags []*gedcom.Tag, mapIdx, baseLevel int, collector *diag
 			switch tag.Tag {
 			case "LATI":
 				coords.Latitude = tag.Value
+				validateCoordinate(tag, gedcom.ParseLatitude, collector)
 			case "LONG":
 				coords.Longitude = tag.Value
+				validateCoordinate(tag, gedcom.ParseLongitude, collector)
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -797,6 +799,23 @@ func parseCoordinates(tags []*gedcom.Tag, mapIdx, baseLevel int, collector *diag
 	}
 
 	return coords
+}
+
+// validateCoordinate records a diagnostic when a LATI or LONG value is present
+// but parse rejects it. The raw value is retained by the caller either way
+// (ADR 0003): the diagnostic is the signal, not a dropped value.
+//
+// parse is gedcom.ParseLatitude or gedcom.ParseLongitude, so a swapped axis
+// ("LATI E42.3601") is reported here rather than staying silent until some
+// caller reaches Coordinates.AsDecimal — which a caller parsing one component
+// at a time never does.
+func validateCoordinate(tag *gedcom.Tag, parse func(string) (float64, error), collector *diagnosticCollector) {
+	if tag.Value == "" {
+		return
+	}
+	if _, err := parse(tag.Value); err != nil {
+		collector.addInvalidValue(tag.LineNumber, tag.Tag, tag.Value, err.Error())
+	}
 }
 
 // parseAttribute extracts an attribute from tags starting at attrIdx.

@@ -99,9 +99,9 @@ specifications define different structure sets — 7.0 defines the most, and muc
 of what it added is what this library has yet to type — so the shares rank the
 work left per version, not the versions.
 
-**Re-encoding.** Not byte-for-byte, and this is measured too. Of 99 corpus
-fixtures, 5 do not survive decode and encode at all; of the 94 that do, 86
-reproduce their header byte for byte and 83 reproduce their record body.
+**Re-encoding.** Not byte-for-byte, and this is measured too. Of 100 corpus
+fixtures, 5 do not survive decode and encode at all; of the 95 that do, 87
+reproduce their header byte for byte and 84 reproduce their record body.
 `byte_roundtrip_test.go` names the reason behind every exception. What remains
 in the body count is not a defect but a limit of byte comparison itself: a
 source that was not UTF-8 has been transcoded, so its bytes cannot match
@@ -660,7 +660,7 @@ unaffected by any of the above.
 
 ### Coordinate Conversion
 
-Convert GEDCOM-format coordinates (direction-prefixed, e.g. `N42.3601`) to signed decimal degrees:
+Convert GEDCOM-format coordinates (direction-prefixed, e.g. `N42.3601`) to signed decimal degrees. A coordinate is a direction letter (`N`/`S` for latitude, `E`/`W` for longitude, case-insensitive) followed by an unsigned decimal number — digits with at most one decimal point, so `N.5` and `N5.` both parse. Surrounding whitespace is ignored.
 
 ```go
 // place.Coordinates is *Coordinates and is nil when the place has no MAP tag.
@@ -672,11 +672,35 @@ if !place.Coordinates.IsEmpty() {
     lat, long, err := place.Coordinates.AsDecimal()
 }
 
-// Single component (pure format conversion, no range/axis check).
-lat, err := gedcom.ParseCoordinate("N42.3601")  // 42.3601
+// Single component, axis known: direction + range enforced.
+lat, err := gedcom.ParseLatitude("N42.3601")    // 42.3601
+_, err = gedcom.ParseLatitude("E42.3601")       // error: latitude must use N/S
+long, err := gedcom.ParseLongitude("W71.0589")  // -71.0589
+
+// Single component, axis unknown: pure format conversion, no range/axis check.
+lat, err = gedcom.ParseCoordinate("N42.3601")   // 42.3601
+_, err = gedcom.ParseCoordinate("N-42.3601")    // error: value must be unsigned
 ```
 
 `AsDecimal` returns `(0, 0, nil)` when the pair is empty (nil receiver or both components blank) and an error when only one is present. Valid coordinates at the origin (`N0`/`E0`) also return `(0, 0, nil)` — use `IsEmpty` to distinguish the absent case.
+
+The sign is carried by the direction letter, so an explicitly signed value such as `N-42.3601` is rejected rather than silently inverted. Only plain decimals parse: numeric spellings that `strconv.ParseFloat` would otherwise accept — `NaN`, infinities (`inf`, `infinity`), hexadecimal float literals (`0x1p3`), exponent notation (`1e2`) and Go underscore separators (`1_000`) — are all errors. A `nil` error from `AsDecimal` therefore guarantees both values are finite and within `[-90, 90]` and `[-180, 180]`.
+
+`ParseCoordinate` accepts any direction letter by design: a lone component carries no information about which axis it belongs to, so it cannot tell a latitude from a longitude. When the axis is known, prefer `ParseLatitude` or `ParseLongitude` — they add exactly the direction and range check that `AsDecimal` applies to a complete pair.
+
+Decoding reports bad coordinates rather than deferring them. Wherever the decoder builds a typed `PlaceDetail` — event and attribute `PLAC` structures — a `MAP` whose `LATI` or `LONG` fails any of the three checks produces an `INVALID_VALUE` warning naming the offending line:
+
+| Check | Example that warns |
+|-------|--------------------|
+| Value syntax | `4 LATI Nnan`, `4 LONG E0x1p3` |
+| Axis direction | `4 LATI E42.3601` (E/W on a latitude) |
+| Range | `4 LATI N95` (beyond `[-90, 90]`) |
+
+The raw text is preserved on the record regardless (ADR 0003), so the warning is the signal, not a dropped value. Decoding never fails on one — these are warnings, and `HasErrors` counts only errors.
+
+Before v3.0.0 `LATI` and `LONG` received no decode-time validation at all, so a document with out-of-range or axis-swapped coordinates produces warnings it did not produce before. Callers asserting on exact diagnostic counts should expect this.
+
+`LDSOrdinance.Place` is a scalar with no `PlaceDetail` twin, so an ordinance `PLAC` carries no typed `MAP` and is not checked.
 
 ## Address Structure
 
