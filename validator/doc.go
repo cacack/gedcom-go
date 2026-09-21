@@ -43,7 +43,9 @@
 //
 // # Quality Reports
 //
-// Generate comprehensive data quality reports:
+// Combine validation issues with completeness statistics. The report runs a
+// subset of the checks -- see [Validator.QualityReport] -- so prefer ValidateAll
+// when the issue set must be complete:
 //
 //	v := validator.New()
 //	report := v.QualityReport(doc)

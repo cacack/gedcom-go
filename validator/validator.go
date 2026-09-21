@@ -119,6 +119,7 @@ type Validator struct {
 	header       *HeaderValidator
 	xref         *XRefValidator
 	encoding     *EncodingValidator
+	notes        *NoteValidator
 }
 
 // New creates a new Validator with default configuration.
@@ -228,6 +229,14 @@ func (v *Validator) getEncodingValidator() *EncodingValidator {
 		v.encoding = NewEncodingValidator()
 	}
 	return v.encoding
+}
+
+// getNoteValidator returns the note validator, creating it lazily if needed.
+func (v *Validator) getNoteValidator() *NoteValidator {
+	if v.notes == nil {
+		v.notes = NewNoteValidator()
+	}
+	return v.notes
 }
 
 // Validate validates a GEDCOM document and returns any validation errors.
@@ -370,6 +379,9 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	// Run XRef length validation
 	allIssues = append(allIssues, v.getXRefValidator().ValidateXRefs(doc)...)
 
+	// Run note pointer validation
+	allIssues = append(allIssues, v.getNoteValidator().ValidateNotePointers(doc)...)
+
 	// Run duplicate detection and convert to issues
 	for _, pair := range v.getDuplicateDetector().FindDuplicates(doc) {
 		allIssues = append(allIssues, pair.ToIssue())
@@ -446,8 +458,28 @@ func (v *Validator) ValidateEncoding(doc *gedcom.Document) []Issue {
 	return v.filterByStrictness(issues)
 }
 
-// QualityReport generates a comprehensive data quality report for the document.
-// The report includes all validation results and data completeness statistics.
+// ValidateNotePointers checks note-pointer invariants on media object records.
+// A media object's NoteXRefs and SharedNoteXRefs partition its note pointers, so a
+// pointer listed in both is reported. Media objects are the only records checked --
+// no other entity splits NOTE from SNOTE, so no other entity has this invariant to
+// violate. See [NoteValidator] for why the shape occurs, what is out of scope, and
+// what each issue carries.
+func (v *Validator) ValidateNotePointers(doc *gedcom.Document) []Issue {
+	if doc == nil {
+		return nil
+	}
+	issues := v.getNoteValidator().ValidateNotePointers(doc)
+	return v.filterByStrictness(issues)
+}
+
+// QualityReport generates a data quality report for the document, combining
+// validation issues with data completeness statistics.
+//
+// The report covers date logic, cross-references, duplicates, custom tags and
+// completeness. It is not the full issue set: the header, XRef-length, encoding
+// and note-pointer checks run only under [Validator.ValidateAll], so a caller
+// reading QualityReport's counts alone can see a clean report for a document
+// ValidateAll flags. Use ValidateAll when completeness of the issue set matters.
 func (v *Validator) QualityReport(doc *gedcom.Document) *QualityReport {
 	if doc == nil {
 		return &QualityReport{

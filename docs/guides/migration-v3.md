@@ -222,6 +222,24 @@ all := append(slices.Clone(obj.NoteXRefs), obj.SharedNoteXRefs...)
 duplication it removed no longer exists, so all it can discard now is a
 *genuine* repeat — the same note pointed at twice by one media object.
 
+If you carry media objects that predate the partition — persisted, serialized and
+rehydrated, or copied out of a v2 decode — you do not have to audit them by hand.
+The validator reports the v2 shape as `OVERLAPPING_NOTE_POINTERS`, a warning
+raised once per pointer listed in both slices:
+
+```go
+issues := validator.New().ValidateNotePointers(doc) // or ValidateAll(doc)
+```
+
+It reports the *overlap* only. The genuine repeat above — one slice naming the
+same note twice — is not reported, because it is not a violated invariant: the
+file said it twice. Nor is it a v2-only signal; a current decode raises the same
+warning for an `OBJE` carrying both `NOTE @N1@` and `SNOTE @N1@`.
+
+Run it through the document-level validator shown above. `StreamingValidator`
+handles individual, family and source records only, so it never reports this
+code — auditing a large file that way gives a false all-clear.
+
 `obj.AllNotes(doc)` returns the same notes as before, once each. The dedupe it
 used to run internally existed only to undo the duplication, and is gone for
 the same reason.

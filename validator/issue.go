@@ -141,6 +141,14 @@ const (
 	CodeBannedControlCharacter = "BANNED_CONTROL_CHARACTER"
 )
 
+// Error codes for note pointer validation.
+const (
+	// CodeOverlappingNotePointers indicates a media object lists the same note
+	// pointer in both NoteXRefs and SharedNoteXRefs, which are documented to
+	// partition a record's note pointers and never overlap.
+	CodeOverlappingNotePointers = "OVERLAPPING_NOTE_POINTERS"
+)
+
 // Issue represents a validation finding with severity, context, and actionable information.
 type Issue struct {
 	// Severity indicates the importance level of this issue.
