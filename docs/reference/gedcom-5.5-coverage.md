@@ -179,11 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 840 | 84.2% | 1119 | 85.0% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 841 | 84.3% | 1120 | 85.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 74 | 7.4% | 88 | 6.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 65 | 6.5% | 96 | 7.3% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 64 | 6.4% | 95 | 7.2% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -194,7 +194,7 @@ pairs under it reach the typed model.
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
 | `FAM` | 206 / 254 | 271 / 324 |
-| `HEAD` | 5 / 28 | 8 / 33 |
+| `HEAD` | 6 / 28 | 9 / 33 |
 | `INDI` | 587 / 625 | 787 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 5 / 12 | 10 / 13 |
@@ -774,7 +774,7 @@ Measured at `HEAD` in 5.5, 5.5.1.
 | `NOTE` | `HEADER.HEAD.NOTE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
 | `PLAC` | `HEADER.HEAD.PLAC` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
 | `SOUR` | `HEADER.HEAD.SOUR` | typed | typed | `{1:1}` |
-| `SUBM` | `HEADER.HEAD.SUBM` | raw (undiagnosed) | raw (undiagnosed) | `{1:1}` |
+| `SUBM` | `HEADER.HEAD.SUBM` | typed | typed | `{1:1}` |
 | `SUBN` | `HEADER.HEAD.SUBN` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
 
 ### `HEADER.HEAD.CHAR`

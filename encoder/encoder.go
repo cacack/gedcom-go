@@ -221,31 +221,71 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 		version = opts.TargetVersion
 	}
 
-	if version != "" {
+	writeGedc := func() error {
+		if version == "" {
+			return nil
+		}
 		if _, err := fmt.Fprintf(w, "1 GEDC%s", opts.effectiveLineEnding()); err != nil {
 			return err
 		}
-		if _, err := fmt.Fprintf(w, "2 VERS %s%s", version, opts.effectiveLineEnding()); err != nil {
-			return err
-		}
+		_, err := fmt.Fprintf(w, "2 VERS %s%s", version, opts.effectiveLineEnding())
+		return err
 	}
 
 	// Declared only when the header declares one at all: GEDCOM 7.0 removed
 	// CHAR, and synthesizing one there would add a line the source never had.
-	if header.Encoding != "" {
-		if _, err := fmt.Fprintf(w, "1 CHAR %s%s", writtenEncoding, opts.effectiveLineEnding()); err != nil {
-			return err
+	writeChar := func() error {
+		if header.Encoding == "" {
+			return nil
 		}
+		_, err := fmt.Fprintf(w, "1 CHAR %s%s", writtenEncoding, opts.effectiveLineEnding())
+		return err
 	}
 
-	if header.SourceSystem != "" {
-		if _, err := fmt.Fprintf(w, "1 SOUR %s%s", header.SourceSystem, opts.effectiveLineEnding()); err != nil {
-			return err
+	writeSour := func() error {
+		if header.SourceSystem == "" {
+			return nil
 		}
+		_, err := fmt.Fprintf(w, "1 SOUR %s%s", header.SourceSystem, opts.effectiveLineEnding())
+		return err
 	}
 
-	if header.Language != "" {
-		if _, err := fmt.Fprintf(w, "1 LANG %s%s", header.Language, opts.effectiveLineEnding()); err != nil {
+	// The pointer is written verbatim: whatever the caller put in the field is
+	// the pointer the document's SUBM record is keyed by, and re-delimiting it
+	// would break that link rather than repair it.
+	writeSubm := func() error {
+		if header.Submitter == "" {
+			return nil
+		}
+		_, err := fmt.Fprintf(w, "1 SUBM %s%s", header.Submitter, opts.effectiveLineEnding())
+		return err
+	}
+
+	writeLang := func() error {
+		if header.Language == "" {
+			return nil
+		}
+		_, err := fmt.Fprintf(w, "1 LANG %s%s", header.Language, opts.effectiveLineEnding())
+		return err
+	}
+
+	// Order is version-dependent because the two grammars disagree about where
+	// GEDC sits: 5.5/5.5.1 open the header with SOUR and declare GEDC late
+	// (SOUR, DEST, DATE, SUBM, SUBN, FILE, COPR, GEDC, CHAR, LANG, ...), while
+	// 7.0 requires GEDC first so a reader learns the version before anything
+	// else. Unknown or absent versions take the 5.5 order, which is what
+	// 5.5-era readers expect and what a 7.0 reader tolerates anyway.
+	//
+	// CHAR has no place in the 7.0 grammar at all, so its position there is
+	// arbitrary; it is kept in the sequence so a hand-built header that sets
+	// Encoding still gets the line it asked for.
+	writes := []func() error{writeSour, writeSubm, writeGedc, writeChar, writeLang}
+	if version == gedcom.Version70 {
+		writes = []func() error{writeGedc, writeSour, writeSubm, writeChar, writeLang}
+	}
+
+	for _, write := range writes {
+		if err := write(); err != nil {
 			return err
 		}
 	}

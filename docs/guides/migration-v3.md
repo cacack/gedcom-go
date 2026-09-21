@@ -76,6 +76,62 @@ defaulted to 248), this makes a bare `&encoder.EncodeOptions{}` lossless in
 full: every field's zero value is now the safe one.
 
 
+### `Document.Subset` always includes the header's submitter
+
+| v2 | v3 |
+|----|----|
+| Submitter included only if a seeded record referenced it | Submitter always pulled into the closure |
+| `Subset(nil)` returned a document with zero records | `Subset(nil)` returns the submitter record, plus anything it references |
+| `Header.Submitter` cleared unless already in the closure | `Header.Submitter` preserved whenever it resolves to a `SUBM` record |
+
+A subset's header used to be able to name a submitter the subset did not
+contain, so the pointer was dropped to keep the result self-contained. v3 keeps
+the pointer and carries the record instead, which is the other way to stay
+self-contained and the one that loses nothing.
+
+The consequence is that **every** subset gains a record. If you assert on
+`len(sub.Records)`, add one for the submitter. If you used `Subset(nil)` as an
+idiom for "empty document with the header", build the document directly instead:
+
+```go
+// v2 idiom
+shell, _ := doc.Subset(nil)
+
+// v3 equivalent
+shell := &gedcom.Document{Header: doc.Header.Clone(), XRefMap: map[string]*gedcom.Record{}}
+```
+
+Two narrower changes ride along. A header pointer naming a record that is not a
+`SUBM` is now treated as unresolvable and cleared, where v2 would have pulled
+that unrelated record in. And a value that is not pointer-shaped — notably
+7.0's `@VOID@` — is carried through rather than cleared, so the typed field and
+the raw `1 SUBM` tag no longer disagree.
+
+**Privacy:** a submitter record carries whatever `Address`, `Phone` and `Email`
+the source recorded. Those details are now in every extract. If you subset in
+order to share a branch with someone, clear or replace the submitter record
+first.
+
+
+### `encoder` writes hand-built header fields in grammar order
+
+| v2 | v3 |
+|----|----|
+| `GEDC, CHAR, SOUR, LANG` | `SOUR, SUBM, GEDC, CHAR, LANG` (5.5/5.5.1) |
+| | `GEDC, SOUR, SUBM, CHAR, LANG` (7.0) |
+| A hand-built `Header.Submitter` emitted no `1 SUBM` line | `1 SUBM` is emitted |
+
+This affects only documents with no raw `Header.Tags` — anything you decoded is
+written from its tags and is byte-identical to v2. For a header you assembled in
+memory, v2's order violated the 5.5 grammar, and a `Submitter` you set was
+silently dropped.
+
+Because SOUR, CHAR and LANG move relative to each other, the bytes change for
+every hand-built header, including one that sets no `Submitter`. If you have
+golden files or byte-equality assertions over encoder output for hand-built
+documents, regenerate them.
+
+
 ### `converter.ConvertOptions.PreserveUnknownTags` split in two
 
 The old field's name was wrong: it never preserved anything. Nothing is dropped

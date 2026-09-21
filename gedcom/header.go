@@ -22,7 +22,15 @@ type Header struct {
 	// Copyright notice (optional)
 	Copyright string
 
-	// Submitter reference (optional)
+	// Submitter is the cross-reference pointer to the SUBM record that
+	// names whoever produced the file, in "@U1@" form (optional).
+	//
+	// The value is interpreted and written verbatim: the encoder emits
+	// whatever string is here without checking its shape, so a value that
+	// is not a well-formed pointer produces invalid GEDCOM. Readers that
+	// resolve it -- Document.GetSubmitter, Document.Subset -- treat a
+	// value they cannot resolve to a SUBM record as absent rather than
+	// reporting it.
 	Submitter string
 
 	// AncestryTreeID is the Ancestry.com tree identifier from HEAD.SOUR._TREE.

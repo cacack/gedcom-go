@@ -339,3 +339,147 @@ func TestHeaderEncodeDoesNotMutateDocument(t *testing.T) {
 		t.Errorf("GEDC.VERS tag mutated in the source document: %q", got)
 	}
 }
+
+// assertLineOrder checks that each line appears in out, in the order given.
+// Containment alone cannot catch a grammar violation: every field being present
+// is exactly what the encoder did before it emitted them in a legal order.
+func assertLineOrder(t *testing.T, out string, lines ...string) {
+	t.Helper()
+
+	prev := -1
+	for _, line := range lines {
+		i := strings.Index(out, line)
+		if i < 0 {
+			t.Errorf("output missing %q:\n%s", line, out)
+			continue
+		}
+		if i < prev {
+			t.Errorf("%q appears out of grammar order:\n%s", line, out)
+		}
+		prev = i
+	}
+}
+
+// TestHeaderFieldsSubmitterAndOrder covers the hand-built path (issue #503).
+// Header.Submitter had no writer at all there, so a document assembled in
+// memory could set the field the validator requires for 5.5/5.5.1 and still
+// encode to a header without it. Order is asserted alongside it because the
+// same path emitted its other fields in an order no GEDCOM grammar allows.
+func TestHeaderFieldsSubmitterAndOrder(t *testing.T) {
+	t.Run("5.5.1 leads with SOUR and declares GEDC late", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{
+				Version:      gedcom.Version551,
+				Encoding:     gedcom.EncodingUTF8,
+				SourceSystem: "TestSystem",
+				Submitter:    "@U1@",
+				Language:     "English",
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+
+		assertLineOrder(t, buf.String(),
+			"0 HEAD",
+			"1 SOUR TestSystem",
+			"1 SUBM @U1@",
+			"1 GEDC",
+			"2 VERS 5.5.1",
+			"1 CHAR UTF-8",
+			"1 LANG English",
+		)
+	})
+
+	t.Run("7.0 leads with GEDC", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{
+				Version:      gedcom.Version70,
+				SourceSystem: "TestSystem",
+				Submitter:    "@U1@",
+				Language:     "en",
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+
+		out := buf.String()
+		assertLineOrder(t, out,
+			"0 HEAD",
+			"1 GEDC",
+			"2 VERS 7.0",
+			"1 SOUR TestSystem",
+			"1 SUBM @U1@",
+			"1 LANG en",
+		)
+		// Encoding is unset, so the CHAR guard still suppresses a tag 7.0
+		// removed.
+		if strings.Contains(out, "1 CHAR") {
+			t.Errorf("7.0 header declared a CHAR the document never had:\n%s", out)
+		}
+	})
+
+	t.Run("no submitter emits no SUBM", func(t *testing.T) {
+		doc := &gedcom.Document{
+			Header: &gedcom.Header{
+				Version:      gedcom.Version551,
+				SourceSystem: "TestSystem",
+			},
+		}
+
+		var buf bytes.Buffer
+		if err := Encode(&buf, doc); err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+
+		if strings.Contains(buf.String(), "SUBM") {
+			t.Errorf("synthesized a SUBM the header never had:\n%s", buf.String())
+		}
+	})
+}
+
+// TestHeaderTagsSubmitterRoundTrip pins the decoded path for the same field.
+// Header.Tags is authoritative when encoding, so a header SUBM survives
+// byte-identically through writeHeaderTags whether or not the typed
+// Header.Submitter field is populated -- this test holds either way, and is
+// here so #503's fix to the typed field cannot be mistaken for the reason a
+// decoded document round-trips.
+func TestHeaderTagsSubmitterRoundTrip(t *testing.T) {
+	const input = "0 HEAD\n" +
+		"1 SOUR TestApp\n" +
+		"1 SUBM @U1@\n" +
+		"1 GEDC\n" +
+		"2 VERS 5.5.1\n" +
+		"1 CHAR UTF-8\n" +
+		"0 @U1@ SUBM\n" +
+		"1 NAME Tester\n" +
+		"0 TRLR\n"
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	// Compare the HEAD block alone: the records that follow are a different
+	// path's concern.
+	head := func(s string) string {
+		if i := strings.Index(s, "\n0 @"); i > 0 {
+			return s[:i+1]
+		}
+		return s
+	}
+
+	if got, want := head(buf.String()), head(input); got != want {
+		t.Errorf("header did not round-trip byte-identically:\ngot:\n%s\nwant:\n%s", got, want)
+	}
+}

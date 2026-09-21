@@ -581,7 +581,19 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 
 	// Tags: h1's clone already has the doc1 tags; append the doc2 tags that
 	// do not collide with them.
-	tagConflicts := appendNonCollidingHeaderTags(out, h2)
+	//
+	// A typed Submitter occupies the SUBM slot even when doc1 carries no raw
+	// tag for it. Without that, a hand-built doc1 (typed field set, Tags
+	// empty) merged with a decoded doc2 appends doc2's "1 SUBM" unopposed --
+	// and because the encoder writes a header from Tags whenever they are
+	// non-empty, the encoded file would name doc2's submitter while
+	// out.Submitter still named doc1's. The doc1-wins rule would invert on
+	// the way to disk, with no conflict reported.
+	occupied := make(map[string]bool)
+	if h1.Submitter != "" {
+		occupied["SUBM"] = true
+	}
+	tagConflicts := appendNonCollidingHeaderTags(out, h2, occupied)
 	conflicts = append(conflicts, tagConflicts...)
 
 	return out, conflicts
@@ -594,8 +606,15 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 // A skipped structure takes its whole subtree with it: Header.Tags is a flat,
 // level-encoded list, so dropping a parent and keeping its children would
 // re-parent them under whatever structure precedes them in the output.
-func appendNonCollidingHeaderTags(out, h2 *gedcom.Header) []HeaderConflict {
-	present := make(map[string]bool)
+//
+// occupied names level-1 structures out already carries in a typed field
+// rather than a raw tag, so a document assembled in memory defends its header
+// against doc2's tags the same way a decoded one does.
+func appendNonCollidingHeaderTags(out, h2 *gedcom.Header, occupied map[string]bool) []HeaderConflict {
+	present := make(map[string]bool, len(occupied))
+	for tag := range occupied {
+		present[tag] = true
+	}
 	for _, t := range out.Tags {
 		if t != nil && t.Level == 1 {
 			present[t.Tag] = true
