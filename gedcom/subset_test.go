@@ -87,17 +87,26 @@ func TestSubset_NilDocument(t *testing.T) {
 	}
 }
 
+// An empty seed set is not an empty document: the header's own submitter
+// pointer still has to resolve inside the result, so that record comes
+// along. This pins the deliberate change to the older guarantee.
 func TestSubset_EmptySeeds(t *testing.T) {
 	doc := buildRichFixture()
 	sub, err := doc.Subset(nil)
 	if err != nil {
 		t.Fatalf("Subset(nil seeds) errored: %v", err)
 	}
-	if len(sub.Records) != 0 {
-		t.Errorf("Subset(empty) records = %d, want 0", len(sub.Records))
-	}
 	if sub.Header == nil {
-		t.Error("Subset(empty) header should be carried over, got nil")
+		t.Fatal("Subset(empty) header should be carried over, got nil")
+	}
+	if len(sub.Records) != 1 {
+		t.Errorf("Subset(empty) records = %d, want 1 (the header submitter)", len(sub.Records))
+	}
+	if sub.GetSubmitter("@SUBM1@") == nil {
+		t.Error("Subset(empty) should carry the header's submitter record")
+	}
+	if sub.Header.Submitter != "@SUBM1@" {
+		t.Errorf("Subset(empty) Header.Submitter = %q, want @SUBM1@", sub.Header.Submitter)
 	}
 }
 
@@ -186,7 +195,9 @@ func TestSubset_ClosureContainsExpectedRecords(t *testing.T) {
 		t.Fatalf("Subset errored: %v", err)
 	}
 
-	want := []string{"@I1@", "@F1@", "@I2@", "@I3@", "@N1@", "@N2@", "@S1@", "@S2@", "@R1@", "@M1@"}
+	// @SUBM1@ is not reachable from @I1@; it is in the closure because the
+	// source header points at it.
+	want := []string{"@I1@", "@F1@", "@I2@", "@I3@", "@N1@", "@N2@", "@S1@", "@S2@", "@R1@", "@M1@", "@SUBM1@"}
 	got := make([]string, 0, len(sub.Records))
 	for _, rec := range sub.Records {
 		got = append(got, rec.XRef)
@@ -208,26 +219,172 @@ func TestSubset_UnreferencedRecordsExcluded(t *testing.T) {
 		if rec.XRef == "@I99@" {
 			t.Error("unreferenced @I99@ should not be in subset")
 		}
-		if rec.XRef == "@SUBM1@" {
-			t.Error("unreferenced @SUBM1@ should not be in subset (header pointer alone doesn't pull it in)")
-		}
 	}
 }
 
-func TestSubset_HeaderSubmitterClearedWhenSubmitterNotInClosure(t *testing.T) {
+// The header's submitter is pulled into the closure even though nothing
+// the caller seeded reaches it, so both the typed field and the raw
+// "1 SUBM" tag survive and the result stays self-contained.
+func TestSubset_HeaderSubmitterPulledIntoClosure(t *testing.T) {
 	doc := buildRichFixture()
+	doc.Header.Tags = []*Tag{{Level: 1, Tag: "SUBM", Value: "@SUBM1@"}}
+
 	sub, err := doc.Subset([]string{"@I1@"})
 	if err != nil {
 		t.Fatalf("Subset errored: %v", err)
 	}
-	if sub.Header.Submitter != "" {
-		t.Errorf("Subset Header.Submitter = %q, want empty (SUBM1 not in closure)", sub.Header.Submitter)
+	if sub.Header.Submitter != "@SUBM1@" {
+		t.Errorf("Subset Header.Submitter = %q, want @SUBM1@", sub.Header.Submitter)
+	}
+	if sub.GetSubmitter("@SUBM1@") == nil {
+		t.Error("submitter record @SUBM1@ should be in the subset")
+	}
+	var rawSUBM *Tag
+	for _, tag := range sub.Header.Tags {
+		if tag.Tag == "SUBM" {
+			rawSUBM = tag
+		}
+	}
+	if rawSUBM == nil {
+		t.Fatal(`raw "1 SUBM" header tag should survive the subset`)
+	} else if rawSUBM.Value != "@SUBM1@" {
+		t.Errorf("raw SUBM tag Value = %q, want @SUBM1@", rawSUBM.Value)
 	}
 	if sub.Header.Version != Version70 {
 		t.Errorf("Header.Version = %v, want %v", sub.Header.Version, Version70)
 	}
 	if sub.Header.Encoding != EncodingUTF8 {
 		t.Errorf("Header.Encoding = %v, want %v", sub.Header.Encoding, EncodingUTF8)
+	}
+}
+
+// A header pointing at a submitter the source does not contain is the
+// source's defect, not the caller's: Subset degrades quietly, clearing
+// the pointer and dropping the raw tag rather than returning
+// ErrUnknownXRef.
+func TestSubset_DanglingHeaderSubmitterIsIgnored(t *testing.T) {
+	doc := buildRichFixture()
+	doc.Header.Submitter = "@NOSUCH@"
+	doc.Header.Tags = []*Tag{{Level: 1, Tag: "SUBM", Value: "@NOSUCH@"}}
+
+	sub, err := doc.Subset([]string{"@I1@"})
+	if err != nil {
+		t.Fatalf("dangling header submitter must not error, got: %v", err)
+	}
+	if sub.Header.Submitter != "" {
+		t.Errorf("Subset Header.Submitter = %q, want empty", sub.Header.Submitter)
+	}
+	for _, tag := range sub.Header.Tags {
+		if tag.Tag == "SUBM" {
+			t.Error("raw SUBM tag pointing outside the closure should be dropped")
+		}
+	}
+}
+
+// Nothing to resolve means nothing to add: an absent or non-pointer
+// Submitter leaves the closure exactly as the seeds define it.
+//
+// A value that is not pointer-shaped is still carried through to the
+// result, because subsetHeader drops only pointers that fall outside the
+// closure -- the same rule the raw tag follows. "@VOID@" is the case that
+// matters: it is 7.0's sentinel for a deliberately void pointer, the raw
+// "1 SUBM @VOID@" tag survives, and clearing the typed field would leave
+// the subset's model claiming no submitter for a header that still
+// encodes one.
+func TestSubset_HeaderSubmitterWithoutPointerIsNoOp(t *testing.T) {
+	for _, subm := range []string{"", "garbage", "@VOID@"} {
+		t.Run(subm, func(t *testing.T) {
+			doc := buildRichFixture()
+			doc.Header.Submitter = subm
+
+			sub, err := doc.Subset([]string{"@S1@"})
+			if err != nil {
+				t.Fatalf("Subset errored: %v", err)
+			}
+			if sub.Header.Submitter != subm {
+				t.Errorf("Header.Submitter = %q, want %q", sub.Header.Submitter, subm)
+			}
+			if len(sub.Records) != 2 {
+				t.Errorf("records = %d, want 2 (@S1@ and @R1@ only)", len(sub.Records))
+			}
+		})
+	}
+}
+
+// The typed field and the raw tag must agree about the same header line.
+// "@VOID@" is the one value the two predicates used to disagree on: the
+// tag survived while the field was cleared.
+func TestSubset_VoidHeaderSubmitterKeepsFieldAndTagInStep(t *testing.T) {
+	doc := buildRichFixture()
+	doc.Header.Submitter = "@VOID@"
+	doc.Header.Tags = []*Tag{{Level: 1, Tag: "SUBM", Value: "@VOID@"}}
+
+	sub, err := doc.Subset([]string{"@I1@"})
+	if err != nil {
+		t.Fatalf("Subset errored: %v", err)
+	}
+
+	var tagValue string
+	for _, tag := range sub.Header.Tags {
+		if tag.Level == 1 && tag.Tag == "SUBM" {
+			tagValue = tag.Value
+		}
+	}
+	if tagValue != sub.Header.Submitter {
+		t.Errorf("raw SUBM tag = %q but Header.Submitter = %q; the two must name the same thing",
+			tagValue, sub.Header.Submitter)
+	}
+	if sub.Header.Submitter != "@VOID@" {
+		t.Errorf("Header.Submitter = %q, want @VOID@ carried through", sub.Header.Submitter)
+	}
+}
+
+// A header SUBM that resolves to a record of the wrong type is not a
+// submitter, so it must not drag that record -- or anything it
+// references -- into a subset whose seeds have nothing to do with it.
+func TestSubset_HeaderSubmitterNamingWrongRecordTypeIsIgnored(t *testing.T) {
+	doc := buildRichFixture()
+	doc.Header.Submitter = "@I99@" // an INDI, not a SUBM
+	doc.Header.Tags = []*Tag{{Level: 1, Tag: "SUBM", Value: "@I99@"}}
+
+	sub, err := doc.Subset([]string{"@S1@"})
+	if err != nil {
+		t.Fatalf("Subset errored: %v", err)
+	}
+
+	if _, ok := sub.XRefMap["@I99@"]; ok {
+		t.Error("@I99@ is an INDI, not a submitter; it must not be pulled into the closure")
+	}
+	if sub.Header.Submitter != "" {
+		t.Errorf("Header.Submitter = %q, want empty for an unresolvable submitter pointer",
+			sub.Header.Submitter)
+	}
+	for _, tag := range sub.Header.Tags {
+		if tag.Tag == "SUBM" {
+			t.Error("raw SUBM tag pointing outside the closure should be dropped")
+		}
+	}
+}
+
+// The submitter joins the walk queue, not just the closure map, so
+// records it references are pulled in too.
+func TestSubset_HeaderSubmitterTransitiveRefsIncluded(t *testing.T) {
+	doc := buildRichFixture()
+	subm, ok := doc.GetRecord("@SUBM1@").GetSubmitter()
+	if !ok {
+		t.Fatal("fixture @SUBM1@ is not a submitter")
+	}
+	subm.NoteXRefs = []string{"@N3@"}
+	note := &Record{XRef: "@N3@", Type: RecordTypeNote, Entity: &Note{XRef: "@N3@", Text: "Submitter note"}}
+	doc.Records = append(doc.Records, note)
+	doc.XRefMap["@N3@"] = note
+
+	sub, err := doc.Subset(nil)
+	if err != nil {
+		t.Fatalf("Subset errored: %v", err)
+	}
+	if sub.GetRecord("@N3@") == nil {
+		t.Error("note referenced by the header's submitter should be in the closure")
 	}
 }
 
@@ -312,7 +469,8 @@ func TestSubset_NonIndividualSeedWorks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Subset errored: %v", err)
 	}
-	want := map[string]bool{"@S1@": true, "@R1@": true}
+	// @SUBM1@ rides along from the header, not from the @S1@ seed.
+	want := map[string]bool{"@S1@": true, "@R1@": true, "@SUBM1@": true}
 	if len(sub.Records) != len(want) {
 		t.Fatalf("Subset(@S1@) = %d records, want %d", len(sub.Records), len(want))
 	}

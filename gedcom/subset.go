@@ -47,11 +47,26 @@ func (e *UnknownXRefError) Is(target error) bool {
 // SourceSystem, Date, Language, Copyright, AncestryTreeID, and Schema
 // from it. When the source's Header is nil, an empty *Header is
 // returned so callers can safely access sub.Header.Version without a
-// nil check. The Submitter pointer is preserved only when the
-// referenced submitter record is in the closure; otherwise it is
-// cleared. Raw header Tags are copied except for any tag whose XRef
-// field points at a record not in the closure, which is dropped to
-// keep the result self-contained.
+// nil check. The Submitter pointer names part of the document's own
+// structure rather than something the caller asked for, so the
+// submitter record it points at is always pulled into the closure and
+// the pointer is preserved. Only a pointer that resolves to an actual
+// SUBM record is followed: one that names a different record type, or
+// resolves to nothing, is cleared rather than reported, since that is
+// the source's defect and not the caller's. A value that is not
+// pointer-shaped at all -- notably the 7.0 "@VOID@" sentinel -- is
+// carried through unchanged, matching what happens to the raw tag.
+//
+// Note that the submitter record carries whatever Address, Phone and
+// Email the source file recorded for the person who produced it. Every
+// subset therefore includes those contact details, even when the seeds
+// are unrelated to them and even when seeds is empty. Callers extracting
+// a branch to share with someone else should clear or replace the
+// submitter record if that is not wanted.
+//
+// Raw header Tags are copied except for any tag whose XRef field points
+// at a record not in the closure, which is dropped to keep the result
+// self-contained.
 //
 // Subset operates in strict mode for seeds: each seed must have the
 // @xref@ pointer shape and must resolve to a record in the source,
@@ -59,7 +74,9 @@ func (e *UnknownXRefError) Is(target error) bool {
 // strings, the @VOID@ sentinel, and malformed seeds all error rather
 // than being silently dropped, so caller mistakes surface immediately.
 // Duplicate seed XRefs are deduplicated silently. A nil or empty
-// seeds slice produces an empty document with the carried-over header.
+// seeds slice produces a document with the carried-over header and,
+// because the header must stay self-contained, the submitter record
+// that header names plus anything it references.
 //
 // Strict mode also applies during the closure walk: any reference
 // followed from an included record that does not resolve returns an
@@ -109,8 +126,9 @@ func (d *Document) Subset(xrefs []string) (*Document, error) {
 }
 
 // subsetClosure computes the transitive set of XRefs reachable from
-// xrefs. Returns an error if any seed or transitive reference cannot
-// be resolved.
+// xrefs, plus the record named by the source header's Submitter
+// pointer. Returns an error if any seed or transitive reference cannot
+// be resolved; an unresolvable header submitter is skipped instead.
 func (d *Document) subsetClosure(xrefs []string) (map[string]bool, error) {
 	closure := make(map[string]bool, len(xrefs))
 	queue := make([]string, 0, len(xrefs))
@@ -124,6 +142,27 @@ func (d *Document) subsetClosure(xrefs []string) (map[string]bool, error) {
 		}
 		closure[seed] = true
 		queue = append(queue, seed)
+	}
+
+	// The header's SUBM pointer is part of the document's own structure,
+	// not the caller's request, so a subset must carry the record it
+	// names -- otherwise the result's header points outside itself. A
+	// dangling pointer here is the source's defect, not the caller's, so
+	// it is skipped rather than reported; subsetHeader then clears the
+	// field. Seeding the queue (rather than the map alone) lets the walk
+	// below follow the submitter's own references.
+	// GetSubmitter, not GetRecord: the pointer is only followed when it
+	// actually names a SUBM record. A header whose SUBM names something
+	// else -- a vendor bug, or a hand-edited file -- would otherwise pull
+	// that unrelated record, and everything it references, into every
+	// subset taken from the document, including ones whose seeds have
+	// nothing to do with it.
+	if d.Header != nil {
+		subm := d.Header.Submitter
+		if IsPointerXRef(subm) && !closure[subm] && d.GetSubmitter(subm) != nil {
+			closure[subm] = true
+			queue = append(queue, subm)
+		}
 	}
 
 	var walkErr error
@@ -157,7 +196,9 @@ func (d *Document) subsetClosure(xrefs []string) (map[string]bool, error) {
 // subsetHeader builds the header for a subset document. Version,
 // encoding, and similar file-level metadata are preserved. The
 // Submitter pointer is kept only when the referenced submitter is in
-// the closure. When the source has no header, an empty *Header is
+// the closure -- subsetClosure puts it there whenever it resolves, so
+// in practice only a dangling header pointer is cleared. When the
+// source has no header, an empty *Header is
 // returned (never nil) so callers can rely on sub.Header being usable.
 func subsetHeader(src *Document, closure map[string]bool) *Header {
 	if src.Header == nil {
@@ -172,7 +213,15 @@ func subsetHeader(src *Document, closure map[string]bool) *Header {
 		Copyright:      src.Header.Copyright,
 		AncestryTreeID: src.Header.AncestryTreeID,
 	}
-	if src.Header.Submitter != "" && closure[src.Header.Submitter] {
+	// Mirrors the raw-tag rule below exactly: a pointer outside the closure
+	// is dropped, anything else is carried through. The two predicates have
+	// to agree, or the typed model and the tags disagree about the same
+	// header line -- "@VOID@" is the reachable case, since IsPointerXRef
+	// excludes the 7.0 void sentinel, so the tag is kept and clearing the
+	// field here would say "no submitter" about a header that still encodes
+	// one.
+	if src.Header.Submitter != "" &&
+		(!IsPointerXRef(src.Header.Submitter) || closure[src.Header.Submitter]) {
 		h.Submitter = src.Header.Submitter
 	}
 	for _, tag := range src.Header.Tags {

@@ -68,9 +68,9 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [840 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (84.2%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,119 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (85.0%) | Most common format |
-| GEDCOM 7.0 | Every readable line preserved | [1,238 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (89.1%) | Latest standard |
+| GEDCOM 5.5 | Every readable line preserved | [841 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (84.3%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,120 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (85.1%) | Most common format |
+| GEDCOM 7.0 | Every readable line preserved | [1,239 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (89.2%) | Latest standard |
 
 - Automatic version detection from header
 - Heuristic-based detection for malformed headers
@@ -88,8 +88,8 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,238 of 7.0's structures reach the typed model, 840 of
-5.5's, and 1,119 of 5.5.1's.
+document built for it: 1,239 of 7.0's structures reach the typed model, 841 of
+5.5's, and 1,120 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -370,8 +370,18 @@ sub, err := doc.Subset(doc.Descendants("@I1@"))
 
 - Header carries Version, Encoding, SourceSystem, Date, Language,
   Copyright, AncestryTreeID, and Schema from the source
-- `Header.Submitter` pointer kept only when the submitter record is in
-  the closure
+- `Header.Submitter` is always carried across: the submitter record it
+  names (and anything that record references) is pulled into the
+  closure, even for an empty seed set. Only a pointer that resolves to
+  an actual `SUBM` record is followed — one naming a different record
+  type, or nothing at all, is cleared rather than reported as an error.
+  A value that is not pointer-shaped, such as 7.0's `@VOID@` sentinel,
+  is carried through unchanged so the typed field and the raw tag agree
+- **Privacy note:** the submitter record carries whatever `Address`,
+  `Phone` and `Email` the source file recorded for whoever produced it.
+  Every subset therefore includes those contact details, even when the
+  seeds are unrelated. Clear or replace the submitter record before
+  sharing an extract if that is not wanted
 - Raw header tags with XRef fields are filtered: kept only when the
   pointer target is in the closure
 - Strict mode: unknown seeds and dangling references during closure

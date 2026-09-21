@@ -375,6 +375,11 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 			doc.Header.Language = line.Value
 		case "COPR":
 			doc.Header.Copyright = line.Value
+		case "SUBM":
+			// Level 1 only: the header's own pointer to the submitter record.
+			if line.Level == 1 {
+				doc.Header.Submitter = line.Value
+			}
 		case "_TREE":
 			// Ancestry.com tree identifier (subordinate of SOUR)
 			if inSour && line.Level == 2 {
