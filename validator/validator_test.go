@@ -3,6 +3,8 @@ package validator
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1338,4 +1340,235 @@ func TestApplyMaxErrorsHelper(t *testing.T) {
 			t.Errorf("Expected %d issues, got %d", len(issues), len(result))
 		}
 	})
+}
+
+// --- Bounded duplicate detection wiring (#530) -------------------------------
+
+// duplicateLimitCap is the MaxGroupSize the tests below configure. It is small
+// so that duplicateAndLimitDocument can cross it with a handful of records
+// instead of a thousand.
+const duplicateLimitCap = 3
+
+// duplicateAndLimitDocument builds a document carrying all three of the signals
+// the SkipDuplicateDetection tests have to tell apart:
+//
+//   - a matching duplicate pair (POTENTIAL_DUPLICATE, Info),
+//   - a surname group past duplicateLimitCap (DUPLICATE_DETECTION_LIMITED,
+//     Warning),
+//   - a death before birth, which belongs to an entirely different validator
+//     (DEATH_BEFORE_BIRTH, Error) and must survive the duplicate opt-out. It is
+//     what distinguishes "duplicate detection was skipped" from "ValidateAll
+//     stopped working".
+func duplicateAndLimitDocument() *gedcom.Document {
+	var individuals []*gedcom.Individual
+
+	// The duplicate pair: identical names, same birth year, same sex.
+	for _, xref := range []string{"@D1@", "@D2@"} {
+		ind := makeIndividual(xref, 1900, 0)
+		ind.Names = []*gedcom.PersonalName{{Given: "John", Surname: "Ashworth"}}
+		ind.Sex = "M"
+		individuals = append(individuals, ind)
+	}
+
+	// The oversized group. Given names are distinct, so it is the skip that
+	// removes these from the results rather than a failed comparison.
+	for i := 0; i <= duplicateLimitCap; i++ {
+		individuals = append(individuals, &gedcom.Individual{
+			XRef:  fmt.Sprintf("@B%d@", i),
+			Names: []*gedcom.PersonalName{{Given: "P" + strconv.Itoa(i), Surname: "Bellwether"}},
+			Sex:   "F",
+		})
+	}
+
+	other := makeIndividual("@X1@", 1950, 1940)
+	other.Names = []*gedcom.PersonalName{{Given: "Mallory", Surname: "Quintrell"}}
+	individuals = append(individuals, other)
+
+	return makeDocument(individuals, nil)
+}
+
+// duplicateLimitOptions returns validator options whose duplicate cap is small
+// enough for duplicateAndLimitDocument's Bellwether group to cross it.
+func duplicateLimitOptions(strictness Strictness, skipDuplicates bool) *ValidateOptions {
+	duplicates := DefaultDuplicateConfig()
+	duplicates.MaxGroupSize = duplicateLimitCap
+
+	return &ValidateOptions{
+		Strictness:             strictness,
+		Duplicates:             &duplicates,
+		SkipDuplicateDetection: skipDuplicates,
+	}
+}
+
+// codeCounts tallies issues by code so a test can assert on presence and
+// absence in one place.
+func codeCounts(issues []Issue) map[string]int {
+	counts := make(map[string]int, len(issues))
+	for _, issue := range issues {
+		counts[issue.Code]++
+	}
+	return counts
+}
+
+// TestValidateAll_SkipDuplicateDetection covers the opt-out from the most
+// expensive validator. Skipping must remove BOTH duplicate signals -- the pairs
+// and the notice that some groups were not swept -- because a limit warning
+// from an analysis the caller deliberately turned off would be noise. Every
+// other validator has to keep running, which the death-before-birth error pins.
+//
+// StrictnessStrict is required to see POTENTIAL_DUPLICATE at all: it is Info.
+func TestValidateAll_SkipDuplicateDetection(t *testing.T) {
+	doc := duplicateAndLimitDocument()
+
+	// Baseline first, so the absences below are the option's doing and not a
+	// fixture that never produced the signals.
+	baseline := codeCounts(NewWithOptions(duplicateLimitOptions(StrictnessStrict, false)).ValidateAll(doc))
+	if baseline[CodePotentialDuplicate] == 0 {
+		t.Fatal("fixture produced no POTENTIAL_DUPLICATE; the skip assertion would be vacuous")
+	}
+	if baseline[CodeDuplicateDetectionLimited] != 1 {
+		t.Fatalf("fixture produced %d limit issues, want 1; the skip assertion would be vacuous",
+			baseline[CodeDuplicateDetectionLimited])
+	}
+	if baseline[CodeDeathBeforeBirth] == 0 {
+		t.Fatal("fixture produced no DEATH_BEFORE_BIRTH; the 'other validators still run' " +
+			"assertion would be vacuous")
+	}
+
+	skipped := codeCounts(NewWithOptions(duplicateLimitOptions(StrictnessStrict, true)).ValidateAll(doc))
+	if got := skipped[CodePotentialDuplicate]; got != 0 {
+		t.Errorf("SkipDuplicateDetection still emitted %d POTENTIAL_DUPLICATE issue(s)", got)
+	}
+	if got := skipped[CodeDuplicateDetectionLimited]; got != 0 {
+		t.Errorf("SkipDuplicateDetection still emitted %d DUPLICATE_DETECTION_LIMITED issue(s): "+
+			"a limit notice for an analysis the caller turned off is noise", got)
+	}
+	if got, want := skipped[CodeDeathBeforeBirth], baseline[CodeDeathBeforeBirth]; got != want {
+		t.Errorf("DEATH_BEFORE_BIRTH count = %d with the duplicate opt-out, want %d: "+
+			"the option must not disturb any other validator", got, want)
+	}
+}
+
+// TestFindPotentialDuplicates_IgnoresSkipOption pins the deliberate asymmetry:
+// SkipDuplicateDetection removes duplicate detection from the ValidateAll
+// sweep, but calling FindPotentialDuplicates IS the request for duplicates, and
+// returning none would be surprising rather than helpful.
+func TestFindPotentialDuplicates_IgnoresSkipOption(t *testing.T) {
+	doc := duplicateAndLimitDocument()
+	v := NewWithOptions(duplicateLimitOptions(StrictnessStrict, true))
+
+	if pairs := v.FindPotentialDuplicates(doc); len(pairs) == 0 {
+		t.Error("FindPotentialDuplicates returned no pairs under SkipDuplicateDetection; " +
+			"the option governs ValidateAll, not an explicit request")
+	}
+}
+
+// TestValidateAll_LimitIssueSeverityRouting guards the Warning-not-Info
+// decision on DUPLICATE_DETECTION_LIMITED.
+//
+// The default strictness reports errors and warnings, so a Warning reaches a
+// caller who configured nothing -- which is the point: silence there would let
+// "no duplicates found" be read as "none exist". Demoting it to Info would make
+// the StrictnessNormal half of this test fail. StrictnessRelaxed asks for errors
+// only and is expected to drop it, which is what proves the issue is travelling
+// through the severity filter rather than bypassing it.
+func TestValidateAll_LimitIssueSeverityRouting(t *testing.T) {
+	doc := duplicateAndLimitDocument()
+
+	normal := codeCounts(NewWithOptions(duplicateLimitOptions(StrictnessNormal, false)).ValidateAll(doc))
+	if got := normal[CodeDuplicateDetectionLimited]; got != 1 {
+		t.Errorf("StrictnessNormal reported %d limit issues, want 1: an incomplete sweep must "+
+			"reach a caller who configured nothing", got)
+	}
+	// Info-level duplicate pairs are filtered out at this strictness, so the
+	// warning above is genuinely the only duplicate signal that survives.
+	if got := normal[CodePotentialDuplicate]; got != 0 {
+		t.Errorf("StrictnessNormal reported %d POTENTIAL_DUPLICATE issues, want 0 (Info)", got)
+	}
+
+	relaxed := codeCounts(NewWithOptions(duplicateLimitOptions(StrictnessRelaxed, false)).ValidateAll(doc))
+	if got := relaxed[CodeDuplicateDetectionLimited]; got != 0 {
+		t.Errorf("StrictnessRelaxed reported %d limit issues, want 0: relaxed means errors only", got)
+	}
+}
+
+// TestValidateAll_LimitIssueSurvivesMaxErrors guards the ordering that makes
+// the completeness notice trustworthy.
+//
+// filterByStrictness ends in applyMaxErrors, which truncates by POSITION, not
+// by severity -- it returns issues[:MaxErrors]. While the limit issue was
+// appended after every other validator's output it was therefore the first
+// issue dropped, and the caller most likely to set MaxErrors is precisely the
+// hardened caller the group cap exists for. Losing it hands them "no
+// duplicates" when the truth is "not everything was compared", which is the
+// exact misreading the Warning severity was chosen to prevent.
+//
+// MaxErrors is set to 1 so the assertion is unambiguous: exactly one issue
+// comes back, and it has to be this one.
+func TestValidateAll_LimitIssueSurvivesMaxErrors(t *testing.T) {
+	doc := duplicateAndLimitDocument()
+
+	opts := duplicateLimitOptions(StrictnessStrict, false)
+	opts.MaxErrors = 1
+
+	issues := NewWithOptions(opts).ValidateAll(doc)
+	if len(issues) != 1 {
+		t.Fatalf("MaxErrors=1 returned %d issues, want 1", len(issues))
+	}
+	if issues[0].Code != CodeDuplicateDetectionLimited {
+		t.Errorf("MaxErrors=1 kept %s, want %s: a meta-issue about the completeness of "+
+			"the results must outrank the results themselves",
+			issues[0].Code, CodeDuplicateDetectionLimited)
+	}
+
+	// Without a cap the same document yields more than one issue, so the
+	// assertion above is really testing truncation order and not a document
+	// that happens to produce a single issue.
+	uncapped := NewWithOptions(duplicateLimitOptions(StrictnessStrict, false)).ValidateAll(doc)
+	if len(uncapped) < 2 {
+		t.Fatalf("fixture produced %d issues without MaxErrors; the truncation test is vacuous",
+			len(uncapped))
+	}
+}
+
+// TestFindPotentialDuplicatesReport covers the Validator-level report accessor.
+//
+// Before it existed, FindPotentialDuplicates' doc comment pointed callers at
+// DuplicateDetector.FindDuplicatesReport to discover a suppressed sweep -- but
+// Validator exposes no detector, so following that advice meant rebuilding one
+// from the same options by hand. This asserts the report is reachable without
+// leaving the abstraction, and that it agrees with the slice-returning method.
+func TestFindPotentialDuplicatesReport(t *testing.T) {
+	doc := duplicateAndLimitDocument()
+	v := NewWithOptions(duplicateLimitOptions(StrictnessNormal, false))
+
+	report := v.FindPotentialDuplicatesReport(doc)
+
+	if len(report.LimitIssues) != 1 {
+		t.Fatalf("got %d limit issues, want 1: the oversized group must be reported",
+			len(report.LimitIssues))
+	}
+	if code := report.LimitIssues[0].Code; code != CodeDuplicateDetectionLimited {
+		t.Errorf("limit issue code = %s, want %s", code, CodeDuplicateDetectionLimited)
+	}
+	if got, want := len(report.Pairs), len(v.FindPotentialDuplicates(doc)); got != want {
+		t.Errorf("report carried %d pairs, FindPotentialDuplicates returned %d: the two "+
+			"must describe the same sweep", got, want)
+	}
+	if len(report.Pairs) == 0 {
+		t.Error("fixture produced no pairs; the agreement check above is vacuous")
+	}
+
+	// The skip option is deliberately ignored here, exactly as it is by
+	// FindPotentialDuplicates -- asking for duplicates is an explicit request.
+	skipped := NewWithOptions(duplicateLimitOptions(StrictnessNormal, true)).
+		FindPotentialDuplicatesReport(doc)
+	if len(skipped.Pairs) != len(report.Pairs) {
+		t.Errorf("SkipDuplicateDetection changed the report (%d pairs vs %d); it must apply "+
+			"to the ValidateAll sweep only", len(skipped.Pairs), len(report.Pairs))
+	}
+
+	if got := New().FindPotentialDuplicatesReport(nil); got.Pairs != nil || got.LimitIssues != nil {
+		t.Error("nil document must yield a zero report")
+	}
 }

@@ -127,9 +127,10 @@ Line ending format has negligible impact (<1% overhead for CRLF vs LF).
 ### Duplicate Detection
 
 `DuplicateDetector.FindDuplicates` is the most expensive validator, and
-`Validator.ValidateAll` runs it unconditionally. Its cost is driven by the size
-of each *surname group*, not by the document size directly: individuals are
-blocked by normalized surname, and only pairs within a group are compared.
+`Validator.ValidateAll` runs it unless `ValidateOptions.SkipDuplicateDetection`
+is set. Its cost is driven by the size of each *surname group*, not by the
+document size directly: individuals are blocked by normalized surname, and only
+pairs within a group are compared.
 
 On the scale fixture (203,154 individuals, 55,801 non-empty surname groups):
 
@@ -146,17 +147,79 @@ follow:
 - **Individuals with no surname are excluded entirely.** They share no surname
   with each other, so no pair among them could match; comparing them would be
   pure waste. On this fixture that skips ~4,950 individuals and ~12.3M pairs.
-- **Cost is quadratic within a bucket.** A document where many individuals share
-  one surname degrades to O(k²) over that group. Natural data rarely does this;
-  adversarial input can. See
-  [#530](https://github.com/cacack/gedcom-go/issues/530) — if you validate
-  untrusted GEDCOM files, bound document size at your own layer for now.
+- **Cost is quadratic within a bucket, so the bucket is capped.** A document
+  where many individuals share one surname would degrade to O(k²) over that
+  group. Natural data rarely does this; adversarial input can, because the input
+  controls the surnames. `DuplicateConfig.MaxGroupSize` bounds it — see below.
+
+Synthetic duplicate-heavy fixture, measured on the environment above with
+`-count=3`:
+
+| Individuals | Time/Op | Memory | Allocations |
+|---|---|---|---|
+| 100 | 0.23 ms | 1.5 MB | 2.3K |
+| 1000 | 8.5 ms | 19 MB | 128K |
+| 5000 | 152 ms | 205 MB | 3.0M |
 
 Reproduce with:
 
 ```bash
-go test ./validator -bench BenchmarkFindDuplicates -run '^$' -benchmem
+go test ./validator -bench BenchmarkFindDuplicates -run '^$' -benchmem -count=3
 ```
+
+#### Bounding Untrusted Input
+
+Two knobs control the worst case, so callers validating untrusted uploads do not
+have to bound document size at their own layer:
+
+| Knob | Default | Effect |
+|---|---|---|
+| `DuplicateConfig.MaxGroupSize` | `validator.DefaultMaxGroupSize` (1000) | Any normalized-surname group larger than the cap is skipped whole, never truncated |
+| `ValidateOptions.SkipDuplicateDetection` | `false` | Drops duplicate detection from the `ValidateAll` sweep. `QualityReport` and `FindPotentialDuplicates` still run it — they are explicit requests — bounded by `MaxGroupSize` |
+
+`MaxGroupSize` is tri-state, and zero does **not** mean unlimited:
+
+| Value | Meaning |
+|---|---|
+| `0` | Use `DefaultMaxGroupSize` (1000) |
+| negative (`validator.UnlimitedGroupSize`) | No cap — compare every group however large |
+| positive | Use that value |
+
+A partial struct literal such as `&validator.DuplicateConfig{MinConfidence: 0.7}`
+leaves the field at zero, so it stays bounded rather than silently opting back
+into unbounded work. Opting out has to be explicit, and `UnlimitedGroupSize`
+exists so it reads as a decision rather than a magic `-1`.
+
+The cap turns the worst case from quadratic into linear in document size. With
+*n* individuals, the pair count is bounded by:
+
+```
+worst case = n × MaxGroupSize / 2 pair comparisons
+```
+
+At the default that is 500 × *n*, whatever the surnames are: a 100,000-individual
+upload cannot exceed ~50M comparisons. For scale, the fixture row above compares
+~3.1M pairs in ~1.1 s.
+
+Skipping is reported rather than silent. When any group exceeds the cap, the
+detector emits **one** aggregate `DUPLICATE_DETECTION_LIMITED` issue at Warning
+severity, with details for the number of groups and individuals skipped, the
+largest group, the resolved cap, and a sample of surnames. It surfaces through
+`Validator.ValidateAll` and `Validator.QualityReport`, and through
+`DuplicateDetector.FindDuplicatesReport` as `DuplicateReport.LimitIssues`.
+`FindDuplicates` returns pairs only, so use the report form when you need to know
+whether the sweep was complete — an empty result from a capped document means
+"unknown", not "none".
+
+The default is set from the corpus: the largest normalized-surname group anywhere
+in `testdata/` is **519**, in the scale fixture (203,154 individuals, 55,801
+groups); the next largest anywhere is 70. A cap of 1000 leaves roughly 2x
+headroom over the worst real-world observation, and running the whole corpus
+through the detector at the default produces zero `DUPLICATE_DETECTION_LIMITED`
+issues — the cap costs real data nothing.
+
+See [ADR 0009](../decisions/0009-bounded-duplicate-detection.md) for the
+alternatives considered and why the cap is per-group rather than global.
 
 ## Streaming APIs Performance
 
@@ -310,6 +373,11 @@ Stream validator memory scales with unique cross-references (needed for orphan-r
 1. **Set Timeouts**: Use `context` for long-running operations
 2. **Limit File Sizes**: Prevent DoS attacks with `io.LimitReader`
 3. **Memory Profiling**: Monitor for memory leaks
+4. **Bound Duplicate Detection**: It is capped by default
+   (`DuplicateConfig.MaxGroupSize` = 1000), so validation stays linear in
+   document size. Lower the cap, or set
+   `ValidateOptions.SkipDuplicateDetection` to drop the costliest validator from
+   `ValidateAll` — see [Bounding Untrusted Input](#bounding-untrusted-input)
 
 ## Running Benchmarks
 

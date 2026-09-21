@@ -39,9 +39,16 @@ type QualityReport struct {
 	Info     []Issue `json:"info"`
 
 	// Issues by category
-	DateLogicIssues    []Issue `json:"date_logic_issues"`
-	ReferenceIssues    []Issue `json:"reference_issues"`
-	DuplicateIssues    []Issue `json:"duplicate_issues"`
+	DateLogicIssues []Issue `json:"date_logic_issues"`
+	ReferenceIssues []Issue `json:"reference_issues"`
+
+	// DuplicateIssues holds one CodePotentialDuplicate issue per candidate
+	// pair, and may additionally hold a single CodeDuplicateDetectionLimited
+	// issue reporting surname groups that DuplicateConfig.MaxGroupSize
+	// suppressed. Count pairs by filtering on CodePotentialDuplicate rather
+	// than taking len() of this slice.
+	DuplicateIssues []Issue `json:"duplicate_issues"`
+
 	CompletenessIssues []Issue `json:"completeness_issues"`
 	CustomTagIssues    []Issue `json:"custom_tag_issues"`
 
@@ -243,11 +250,15 @@ func (a *QualityAnalyzer) runReferenceValidator(doc *gedcom.Document, report *Qu
 }
 
 // runDuplicateDetector runs duplicate detection and converts results to issues.
+// Any limit issues join the pairs in DuplicateIssues so aggregateIssues routes
+// them into Warnings: a report that silently dropped the notice would present a
+// partial sweep as a complete one.
 func (a *QualityAnalyzer) runDuplicateDetector(doc *gedcom.Document, report *QualityReport) {
-	pairs := a.duplicates.FindDuplicates(doc)
-	for _, pair := range pairs {
+	result := a.duplicates.FindDuplicatesReport(doc)
+	for _, pair := range result.Pairs {
 		report.DuplicateIssues = append(report.DuplicateIssues, pair.ToIssue())
 	}
+	report.DuplicateIssues = append(report.DuplicateIssues, result.LimitIssues...)
 }
 
 // runTagValidator runs custom tag validation if a tag validator is configured.

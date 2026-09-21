@@ -317,10 +317,18 @@ opts := &gedcomgo.ValidateOptions{
     Duplicates: &validator.DuplicateConfig{
         RequireExactSurname: true,
         MinNameSimilarity:   0.8,
+        MaxGroupSize:        1000, // skip surname groups larger than this
     },
 }
 issues := gedcomgo.ValidateAllWithOptions(doc, opts)
 ```
+
+`MaxGroupSize` bounds the cost of duplicate detection on untrusted input; zero
+means the default (1000), not unlimited. Set
+`ValidateOptions.SkipDuplicateDetection` to drop duplicate detection from
+`ValidateAll` entirely. See
+[performance](docs/guides/performance.md#bounding-untrusted-input) for the
+worst-case bound.
 
 ### Custom Encoder Options
 

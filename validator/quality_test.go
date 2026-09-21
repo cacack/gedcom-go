@@ -1044,3 +1044,34 @@ func TestQualityReportIncludesCustomTagIssues(t *testing.T) {
 		t.Error("expected INVALID_TAG_VALUE issue in Errors slice")
 	}
 }
+
+// TestQualityAnalyzer_Analyze_DuplicateLimitReachesWarnings covers the quality
+// report's half of the bounded-detection wiring (#530).
+//
+// The limit issue rides in DuplicateIssues rather than in a field of its own,
+// which is what lets the existing aggregateIssues severity routing carry it
+// into Warnings with no other change. Both halves are asserted because a report
+// that dropped the notice would present a partial sweep as a complete one --
+// the exact misreading the issue exists to prevent -- and a caller reading only
+// the severity buckets would never learn otherwise.
+func TestQualityAnalyzer_Analyze_DuplicateLimitReachesWarnings(t *testing.T) {
+	config := DefaultDuplicateConfig()
+	config.MaxGroupSize = duplicateLimitCap
+	a := NewQualityAnalyzer(WithDuplicateConfig(&config))
+
+	report := a.Analyze(duplicateAndLimitDocument())
+
+	if got := codeCounts(report.DuplicateIssues)[CodeDuplicateDetectionLimited]; got != 1 {
+		t.Errorf("DuplicateIssues holds %d DUPLICATE_DETECTION_LIMITED issues, want 1", got)
+	}
+	if got := codeCounts(report.Warnings)[CodeDuplicateDetectionLimited]; got != 1 {
+		t.Errorf("Warnings holds %d DUPLICATE_DETECTION_LIMITED issues, want 1: the notice "+
+			"must survive severity aggregation, not just sit in its category", got)
+	}
+	// The pairs the sweep did find are still reported alongside it, so the
+	// notice is an addition to the analysis rather than a replacement for it.
+	if got := codeCounts(report.DuplicateIssues)[CodePotentialDuplicate]; got == 0 {
+		t.Error("DuplicateIssues holds no POTENTIAL_DUPLICATE; the limit issue displaced " +
+			"the pairs that were successfully compared")
+	}
+}

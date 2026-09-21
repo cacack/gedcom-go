@@ -1,6 +1,11 @@
 package validator
 
 import (
+	"fmt"
+	"math"
+	"sort"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v2/gedcom"
@@ -26,6 +31,13 @@ func TestDefaultDuplicateConfig(t *testing.T) {
 	}
 	if config.MinConfidence != 0.7 {
 		t.Errorf("MinConfidence = %v, want 0.7", config.MinConfidence)
+	}
+	// The default is spelled out rather than left at the zero value so that a
+	// config built from this function and one built as a partial literal are
+	// bounded by the same number (#530).
+	if config.MaxGroupSize != DefaultMaxGroupSize {
+		t.Errorf("MaxGroupSize = %d, want DefaultMaxGroupSize (%d)",
+			config.MaxGroupSize, DefaultMaxGroupSize)
 	}
 }
 
@@ -1281,4 +1293,365 @@ func searchSubstring(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// --- Bounded duplicate detection (#530) --------------------------------------
+
+// singleSurnameSurname is the one surname singleSurnameDocument uses. The limit
+// Issue reports the NORMALIZED group key, so tests assert on its lowercase form.
+const singleSurnameSurname = "Ashworth"
+
+// singleSurnameDocument builds a document whose individuals all share one
+// surname: a single normalized-surname group of size n, which is exactly the
+// shape DuplicateConfig.MaxGroupSize exists to bound (#530).
+//
+// Two fixture properties are load-bearing and easy to break:
+//
+//   - Given names are "P" plus the decimal index, so none of the incidental
+//     pairs can match. Two four-character names differing in one character
+//     score 1-1/4 = 0.75, below MinNameSimilarity; even the 0.8 that a
+//     five-character pair can reach yields confidence 0.3+0.24+0.1 = 0.64,
+//     below MinConfidence. Without that guarantee an accidental match would
+//     make the pair counts below meaningless.
+//   - The final two individuals share a given name, a birth year and a sex,
+//     planting exactly ONE matching pair (confidence 0.9). A "the cap did not
+//     fire" assertion needs a nonzero pair count, or it would pass just as
+//     happily against a detector that compared nothing at all.
+func singleSurnameDocument(n int) *gedcom.Document {
+	individuals := make([]*gedcom.Individual, 0, n)
+
+	for i := 0; i < n; i++ {
+		ind := &gedcom.Individual{
+			XRef:  "@I" + strconv.Itoa(i) + "@",
+			Names: []*gedcom.PersonalName{{Given: "P" + strconv.Itoa(i), Surname: singleSurnameSurname}},
+			Sex:   "M",
+		}
+		if n >= 2 && i >= n-2 {
+			ind.Names[0].Given = "P" + strconv.Itoa(n-2)
+			ind.Events = []*gedcom.Event{{Type: gedcom.EventBirth, ParsedDate: makeYearDate(1850)}}
+		}
+		individuals = append(individuals, ind)
+	}
+
+	return makeDocument(individuals, nil)
+}
+
+// oversizedGroupsDocument builds `groups` surname groups of `perGroup`
+// individuals each, so any cap below perGroup skips every one of them. It
+// exercises the aggregate limit Issue over more groups than that Issue is
+// willing to name.
+func oversizedGroupsDocument(groups, perGroup int) *gedcom.Document {
+	individuals := make([]*gedcom.Individual, 0, groups*perGroup)
+
+	for g := 0; g < groups; g++ {
+		surname := "Surname" + string(rune('A'+g))
+		for i := 0; i < perGroup; i++ {
+			individuals = append(individuals, &gedcom.Individual{
+				XRef:  fmt.Sprintf("@I%d_%d@", g, i),
+				Names: []*gedcom.PersonalName{{Given: "P" + strconv.Itoa(i), Surname: surname}},
+				Sex:   "M",
+			})
+		}
+	}
+
+	return makeDocument(individuals, nil)
+}
+
+// issueFingerprint renders an Issue's code, message and details in a fixed
+// order so two runs over the same input can be compared byte for byte.
+func issueFingerprint(issue *Issue) string {
+	keys := make([]string, 0, len(issue.Details))
+	for k := range issue.Details {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var b strings.Builder
+	b.WriteString(issue.Code)
+	b.WriteString("|")
+	b.WriteString(issue.Message)
+	for _, k := range keys {
+		b.WriteString("|" + k + "=" + issue.Details[k])
+	}
+	return b.String()
+}
+
+// TestMaxGroupSize_TriState pins the resolver's three cases. The rule is
+// deliberately NOT the Go zero-value convention, and the deviation is the whole
+// protection (see the MaxGroupSize field comment and
+// docs/decisions/0009-bounded-duplicate-detection.md): opting out of the cap has
+// to be explicit, so only a negative value means unlimited.
+func TestMaxGroupSize_TriState(t *testing.T) {
+	tests := []struct {
+		name       string
+		configured int
+		want       int
+	}{
+		{"zero resolves to the default, not to unlimited", 0, DefaultMaxGroupSize},
+		{"negative means unlimited", -1, math.MaxInt},
+		{"a large negative is still just unlimited", -9999, math.MaxInt},
+		{"positive is taken as given", 7, 7},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := NewDuplicateDetector(&DuplicateConfig{MaxGroupSize: tt.configured})
+			if got := d.maxGroupSize(); got != tt.want {
+				t.Errorf("maxGroupSize() = %d for MaxGroupSize=%d, want %d",
+					got, tt.configured, tt.want)
+			}
+		})
+	}
+
+	// A nil config is the documented "give me the defaults" path, so it must
+	// land on the cap rather than on the zero value's raw meaning.
+	if got := NewDuplicateDetector(nil).maxGroupSize(); got != DefaultMaxGroupSize {
+		t.Errorf("maxGroupSize() = %d for a nil config, want %d", got, DefaultMaxGroupSize)
+	}
+}
+
+// TestFindDuplicatesReport_CapFires covers the bound doing its job: a surname
+// group past the cap is skipped whole and reported.
+//
+// There is deliberately no timing assertion here. The saving is real -- nothing
+// in the group is compared at all -- but wall-clock thresholds are flaky on
+// shared CI, and the observable contract is the empty Pairs plus the Issue, not
+// the clock.
+func TestFindDuplicatesReport_CapFires(t *testing.T) {
+	const n = DefaultMaxGroupSize + 1
+	doc := singleSurnameDocument(n)
+
+	report := NewDuplicateDetector(nil).FindDuplicatesReport(doc)
+
+	// The group is skipped whole, not truncated, so even the planted pair at
+	// the end of the fixture goes unreported. Truncating would depend on record
+	// order and make a partial result indistinguishable from a complete one.
+	if len(report.Pairs) != 0 {
+		t.Errorf("got %d pairs from a skipped group, want 0", len(report.Pairs))
+	}
+
+	// One aggregate issue, never one per group: the output has to stay bounded
+	// however many oversized groups a hostile document contains.
+	if len(report.LimitIssues) != 1 {
+		t.Fatalf("got %d limit issues, want exactly 1", len(report.LimitIssues))
+	}
+	issue := report.LimitIssues[0]
+
+	if issue.Code != CodeDuplicateDetectionLimited {
+		t.Errorf("Code = %q, want %q", issue.Code, CodeDuplicateDetectionLimited)
+	}
+	// Warning, not Info: at the default strictness a caller must learn that the
+	// sweep was incomplete, or "no duplicates found" reads as "none exist".
+	if issue.Severity != SeverityWarning {
+		t.Errorf("Severity = %v, want SeverityWarning", issue.Severity)
+	}
+
+	wantDetails := map[string]string{
+		"skipped_groups":      "1",
+		"skipped_individuals": strconv.Itoa(n),
+		"largest_group":       strconv.Itoa(n),
+		// The RESOLVED ceiling, not the raw config field, because that is the
+		// number that actually governed the decision.
+		"max_group_size": strconv.Itoa(DefaultMaxGroupSize),
+		// Normalized, because the normalized surname is the group key that was
+		// skipped.
+		"surnames": strings.ToLower(singleSurnameSurname),
+	}
+	for key, want := range wantDetails {
+		if got := issue.Details[key]; got != want {
+			t.Errorf("Details[%q] = %q, want %q", key, got, want)
+		}
+	}
+}
+
+// TestFindDuplicatesReport_CapDoesNotFire covers the other side of the
+// boundary: a group exactly at the cap is compared in full, exactly as it was
+// before #530. The comparison is `>`, not `>=`, and this is what pins that.
+func TestFindDuplicatesReport_CapDoesNotFire(t *testing.T) {
+	doc := singleSurnameDocument(DefaultMaxGroupSize)
+
+	report := NewDuplicateDetector(nil).FindDuplicatesReport(doc)
+
+	if len(report.LimitIssues) != 0 {
+		t.Errorf("a group exactly at the cap was skipped: %d limit issue(s), want 0",
+			len(report.LimitIssues))
+	}
+	if len(report.Pairs) != 1 {
+		t.Errorf("got %d pairs, want the 1 planted duplicate", len(report.Pairs))
+	}
+
+	// FindDuplicates is now a thin wrapper over FindDuplicatesReport. Its
+	// signature did not change, so callers predating #530 must still see the
+	// same slice.
+	if pairs := NewDuplicateDetector(nil).FindDuplicates(doc); len(pairs) != len(report.Pairs) {
+		t.Errorf("FindDuplicates returned %d pairs, FindDuplicatesReport %d; they must agree",
+			len(pairs), len(report.Pairs))
+	}
+}
+
+// TestFindDuplicatesReport_NegativeIsUnlimited covers the explicit opt-out: a
+// caller who asks for an unbounded sweep gets one, with no limit issue, and
+// finds the duplicate the capped run above could not see.
+func TestFindDuplicatesReport_NegativeIsUnlimited(t *testing.T) {
+	doc := singleSurnameDocument(DefaultMaxGroupSize + 1)
+
+	config := DefaultDuplicateConfig()
+	config.MaxGroupSize = -1
+	report := NewDuplicateDetector(&config).FindDuplicatesReport(doc)
+
+	if len(report.LimitIssues) != 0 {
+		t.Errorf("unlimited detection still reported %d limit issue(s), want 0",
+			len(report.LimitIssues))
+	}
+	if len(report.Pairs) != 1 {
+		t.Errorf("got %d pairs, want the 1 planted duplicate -- an unlimited sweep "+
+			"must compare the oversized group", len(report.Pairs))
+	}
+}
+
+// TestFindDuplicatesReport_PartialLiteralIsStillCapped guards the deliberate
+// zero-value decision.
+//
+// &DuplicateConfig{MinConfidence: 0.7} leaves MaxGroupSize at zero without the
+// caller ever thinking about it. Zero therefore resolves to DefaultMaxGroupSize
+// and NOT to unlimited -- a departure from the Go convention, and from the
+// MaxErrors precedent elsewhere in this package, made on purpose. If someone
+// later "fixes" zero to mean unlimited, THIS TEST MUST FAIL LOUDLY: that change
+// would silently reopen the unbounded quadratic sweep for every caller who
+// writes a partial struct literal, which is the whole of #530.
+func TestFindDuplicatesReport_PartialLiteralIsStillCapped(t *testing.T) {
+	doc := singleSurnameDocument(DefaultMaxGroupSize + 1)
+
+	report := NewDuplicateDetector(&DuplicateConfig{MinConfidence: 0.7}).FindDuplicatesReport(doc)
+
+	if len(report.LimitIssues) != 1 {
+		t.Fatalf("a partial config literal left detection uncapped: %d limit issues, want 1",
+			len(report.LimitIssues))
+	}
+	want := strconv.Itoa(DefaultMaxGroupSize)
+	if got := report.LimitIssues[0].Details["max_group_size"]; got != want {
+		t.Errorf("Details[max_group_size] = %q, want %q: an unset field must report the "+
+			"default that actually governed the skip", got, want)
+	}
+}
+
+// TestFindDuplicatesReport_LimitIssueIsDeterministic pins the surname sample's
+// ordering and truncation.
+//
+// The sample is drawn from a map, and Go randomizes map iteration order, so an
+// unsorted sample would make the same document emit a different Issue on every
+// run -- a real regression class that breaks anyone diffing or golden-testing
+// validation output, and one a single-run assertion cannot see. The cap is set
+// small so nothing is compared: the behavior under test is the sample, not the
+// sweep.
+func TestFindDuplicatesReport_LimitIssueIsDeterministic(t *testing.T) {
+	const groups = 8 // more than maxSkippedSurnamesReported, so truncation runs
+	const perGroup = 4
+
+	doc := oversizedGroupsDocument(groups, perGroup)
+	config := DefaultDuplicateConfig()
+	config.MaxGroupSize = perGroup - 1
+
+	var first string
+	for run := 0; run < 20; run++ {
+		report := NewDuplicateDetector(&config).FindDuplicatesReport(doc)
+		if len(report.LimitIssues) != 1 {
+			t.Fatalf("run %d: got %d limit issues, want 1", run, len(report.LimitIssues))
+		}
+
+		got := issueFingerprint(&report.LimitIssues[0])
+		if run == 0 {
+			first = got
+			continue
+		}
+		if got != first {
+			t.Fatalf("run %d emitted a different issue:\n got %s\nwant %s", run, got, first)
+		}
+	}
+
+	issue := NewDuplicateDetector(&config).FindDuplicatesReport(doc).LimitIssues[0]
+
+	// Every group is skipped and accounted for...
+	if got, want := issue.Details["skipped_groups"], strconv.Itoa(groups); got != want {
+		t.Errorf("Details[skipped_groups] = %q, want %q", got, want)
+	}
+	if got, want := issue.Details["skipped_individuals"], strconv.Itoa(groups*perGroup); got != want {
+		t.Errorf("Details[skipped_individuals] = %q, want %q", got, want)
+	}
+	// ...but only the first five surnames are named. The detail is a sample for
+	// diagnosis, not an inventory: an adversary can manufacture one oversized
+	// group per MaxGroupSize individuals, so the message must not grow with them.
+	wantSample := "surnamea, surnameb, surnamec, surnamed, surnamee"
+	if got := issue.Details["surnames"]; got != wantSample {
+		t.Errorf("Details[surnames] = %q, want %q (sorted, truncated to %d)",
+			got, wantSample, maxSkippedSurnamesReported)
+	}
+}
+
+// TestCompareGivenNames_EarlyExitEquivalence is the standing proof that the
+// length-based early exit in compareGivenNames (#530) cannot change any
+// duplicate the library reports.
+//
+// The exit skips the Levenshtein DP when an upper bound on the achievable
+// similarity already falls below the caller's threshold, and returns that bound
+// instead of the exact value. That is only legitimate because of two
+// properties, both asserted here for every case:
+//
+//   - The returned value is either exactly what the full computation returns,
+//     or it is below minSimilarity while the exact value is below it too. Since
+//     the only consumer, comparePair, asks `givenSimilarity < MinNameSimilarity`,
+//     the accept/reject verdict is identical either way.
+//   - The returned value never UNDERSTATES the exact similarity. A bound that
+//     dipped below the true value could reject a pair that ought to match.
+//
+// Passing minSimilarity <= 0 disables the exit, which is how the exact value is
+// obtained here without reaching around the function under test.
+func TestCompareGivenNames_EarlyExitEquivalence(t *testing.T) {
+	tests := []struct {
+		name          string
+		g1, g2        string
+		minSimilarity float64
+	}{
+		{"identical", "john", "john", 0.8},
+		{"empty operand", "", "john", 0.8},
+		{"equal lengths, clears the threshold", "john", "joan", 0.5},
+		{"equal lengths, fails the threshold", "john", "mary", 0.8},
+		{"wildly different lengths", "jo", "bartholomew", 0.8},
+		{"wildly different lengths, reversed", "bartholomew", "jo", 0.8},
+		// Rune count and byte count diverge from here down: the bound counts
+		// runes to match the DP, over stringSimilarity's own byte denominator.
+		{"accented, same rune count", "jose", "josé", 0.8},
+		{"accented, different rune count", "josé", "jo", 0.8},
+		{"multibyte, exit does not fire", "日本語", "京都", 0.8},
+		{"multibyte, exit fires", "日本語である", "京", 0.8},
+		{"emoji, rune and byte counts diverge", "jo🙂", "jo", 0.8},
+		// 1 - |5-3|/5 = 0.6 exactly, and the exit tests `<`, so this one must
+		// NOT fire and the exact value must come back...
+		{"threshold boundary, exit must not fire", "abcde", "abc", 0.6},
+		// ...while a hair above the same bound it must.
+		{"threshold boundary, exit fires", "abcde", "abc", 0.61},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := compareGivenNames(tt.g1, tt.g2, tt.minSimilarity)
+			exact := compareGivenNames(tt.g1, tt.g2, 0)
+
+			if got != exact && !(got < tt.minSimilarity && exact < tt.minSimilarity) {
+				t.Errorf("compareGivenNames(%q, %q, %v) = %v but the exact similarity is %v: "+
+					"the early exit changed a reported value",
+					tt.g1, tt.g2, tt.minSimilarity, got, exact)
+			}
+			if got < exact {
+				t.Errorf("compareGivenNames(%q, %q, %v) = %v, below the exact similarity %v: "+
+					"the bound must never understate", tt.g1, tt.g2, tt.minSimilarity, got, exact)
+			}
+			// Whatever path was taken, the accept/reject decision comparePair
+			// makes must be the one the exact value would have produced.
+			if (got < tt.minSimilarity) != (exact < tt.minSimilarity) {
+				t.Errorf("compareGivenNames(%q, %q, %v) = %v flips the accept/reject verdict "+
+					"against the exact %v", tt.g1, tt.g2, tt.minSimilarity, got, exact)
+			}
+		})
+	}
 }

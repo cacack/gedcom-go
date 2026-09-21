@@ -138,6 +138,7 @@ Key design decisions are documented in `docs/decisions/`:
 | 0006 | Line continuation handling (CONT/CONC) |
 | 0007 | Error transparency (line numbers, context, never panic) |
 | 0008 | Validator architecture (pluggable, configurable) |
+| 0009 | Bounded duplicate detection (per-group cap, skip whole) |
 
 ### Workflow for New Ideas
 
