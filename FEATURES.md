@@ -43,7 +43,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 |-----------|--------------|--------------------|--------------|
 | Decode | `decoder.DecodeOptions` | `gedcomgo.DecodeWithOptions` | `Context`, `StrictMode`, `OnProgress`, `TotalSize` |
 | Encode | `encoder.EncodeOptions` | `gedcomgo.EncodeWithOptions` | `LineEnding`, `MaxLineLength`, `DisableLineWrap`, `TargetVersion`, `DropUnknownTags` |
-| Validate | `validator.ValidateOptions` | `gedcomgo.ValidateAllWithOptions` | `Strictness`, `MaxErrors`, `SkipRules`, `DateLogic`, `Duplicates`, `TagRegistry`, `ValidateCustomTags`, `SkipEncodingValidation` |
+| Validate | `validator.ValidateOptions` | `gedcomgo.ValidateAllWithOptions` | `Strictness`, `MaxErrors`, `SkipRules`, `DateLogic`, `Duplicates`, `TagRegistry`, `ValidateCustomTags`, `SkipEncodingValidation`, `SkipDuplicateDetection` |
 
 `gedcomgo.DefaultDecodeOptions()`, `DefaultEncodeOptions()`, and `DefaultValidateOptions()` return populated defaults you can tweak. `validator.ValidateOptions` is an alias for the original `validator.ValidatorConfig`; both names work interchangeably. The basic `[]error` validation path has its own configurable entry point, `gedcomgo.ValidateWithOptions(doc, opts)`, alongside the comprehensive `ValidateAllWithOptions`.
 
@@ -1039,6 +1039,7 @@ config := &validator.DuplicateConfig{
     MinNameSimilarity:   0.8,
     MaxBirthYearDiff:    2,
     MinConfidence:       0.7,
+    MaxGroupSize:        1000, // per-surname-group ceiling
 }
 v := validator.NewWithConfig(&validator.ValidatorConfig{Duplicates: config})
 pairs := v.FindPotentialDuplicates(doc)
@@ -1047,6 +1048,10 @@ for _, pair := range pairs {
         pair.Individual1.XRef, pair.Individual2.XRef, pair.Confidence*100)
 }
 ```
+
+Comparison is quadratic within a surname group, and the input controls the surnames, so `MaxGroupSize` bounds it: any normalized-surname group larger than the cap is skipped whole and reported as one `DUPLICATE_DETECTION_LIMITED` warning (available as `DuplicateReport.LimitIssues` from `FindDuplicatesReport`, and included in `ValidateAll` and `QualityReport` output). The field is tri-state and **zero is not unlimited** — `0` selects `validator.DefaultMaxGroupSize` (1000), a negative value disables the cap, and a positive value is used as given, so a partial config literal stays bounded. `ValidateOptions.SkipDuplicateDetection` drops duplicate detection from the `ValidateAll` sweep; `QualityReport`, `FindPotentialDuplicates` and `FindPotentialDuplicatesReport` still run it, bounded by `MaxGroupSize`. See [performance](docs/guides/performance.md#bounding-untrusted-input) for the worst-case bound and [ADR 0009](docs/decisions/0009-bounded-duplicate-detection.md) for the rationale.
+
+Two notes for callers upgrading. `DUPLICATE_DETECTION_LIMITED` is a `Warning`, so unlike the `Info`-level `POTENTIAL_DUPLICATE` it appears at the default `StrictnessNormal` — a document with an oversized surname group gains a warning where duplicate detection previously contributed nothing at that strictness. Suppress it like any other code via `ValidateOptions.SkipRules`; a rule skipping `POTENTIAL_DUPLICATE` does **not** cover it. It also lands in `QualityReport.DuplicateIssues` (JSON `duplicate_issues`) alongside the pairs, so count pairs by filtering on `POTENTIAL_DUPLICATE` rather than taking the length of that slice.
 
 **Quality Report:**
 

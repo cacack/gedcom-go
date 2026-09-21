@@ -9,14 +9,40 @@ package validator
 
 import (
 	"fmt"
+	"math"
+	"sort"
+	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/cacack/gedcom-go/v2/gedcom"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
 )
+
+// DefaultMaxGroupSize is the default per-surname-group ceiling applied by
+// duplicate detection.
+//
+// The value is derived from the testdata corpus: the largest normalized-surname
+// group anywhere in it is 519, in testdata/gedcom-5.5.1/longsword.ged (203,154
+// individuals, 55,801 groups); the next largest is 70. 1000 therefore leaves
+// roughly 2x headroom over the worst real-world observation while still bounding
+// the quadratic pair sweep on a hostile document.
+const DefaultMaxGroupSize = 1000
+
+// UnlimitedGroupSize disables the per-surname-group ceiling when assigned to
+// [DuplicateConfig.MaxGroupSize], restoring the unbounded pre-#530 sweep.
+//
+// It exists because the field's zero value means "use DefaultMaxGroupSize", not
+// "no limit" — the opposite of the MaxErrors convention elsewhere in this
+// package. Reaching for a named constant makes opting out deliberate and
+// greppable rather than a guessed magic number.
+//
+// Only use it on input you control; on attacker-supplied documents it reopens
+// the quadratic blowup described in docs/decisions/0009-bounded-duplicate-detection.md.
+const UnlimitedGroupSize = -1
 
 // DuplicateConfig contains configuration options for duplicate detection.
 type DuplicateConfig struct {
@@ -46,6 +72,29 @@ type DuplicateConfig struct {
 	// Range: 0.0 to 1.0
 	// Default: 0.7
 	MinConfidence float64
+
+	// MaxGroupSize bounds how large a single normalized-surname group may be
+	// before duplicate detection skips it. Comparison within a group is
+	// quadratic in its size, and the surnames in a document are attacker
+	// controlled, so an unbounded sweep turns a small upload into minutes of
+	// CPU (#530).
+	//
+	// The semantics are deliberately tri-state rather than following the Go
+	// zero-value convention:
+	//
+	//	0        use DefaultMaxGroupSize (1000)
+	//	negative no cap; compare every group however large ([UnlimitedGroupSize])
+	//	positive use that value
+	//
+	// Zero does NOT mean unlimited. A caller writing a partial struct literal
+	// such as &DuplicateConfig{MinConfidence: 0.7} leaves this field zero
+	// without intending to, and must stay protected rather than silently opt
+	// back into unbounded work. That is a departure both from the usual Go
+	// convention and from the MaxErrors precedent elsewhere in this package,
+	// where zero means "no limit"; opting out here has to be explicit.
+	//
+	// Default: DefaultMaxGroupSize
+	MaxGroupSize int
 }
 
 // DefaultDuplicateConfig returns a DuplicateConfig with default values.
@@ -57,6 +106,7 @@ func DefaultDuplicateConfig() DuplicateConfig {
 		MaxBirthYearDiff:    2,
 		RequireBirthDate:    false,
 		MinConfidence:       0.7,
+		MaxGroupSize:        DefaultMaxGroupSize,
 	}
 }
 
@@ -155,54 +205,183 @@ type candidate struct {
 	given   string
 }
 
+// maxGroupSize resolves DuplicateConfig.MaxGroupSize to the ceiling to compare
+// group sizes against. It is the single home of the tri-state rule documented on
+// the field: negative means unlimited, zero means the default, positive is taken
+// as given.
+//
+// The unlimited case returns math.MaxInt rather than a sentinel so every call
+// site stays a plain `len(group) > limit` with no special case to forget.
+func (d *DuplicateDetector) maxGroupSize() int {
+	switch {
+	case d.config.MaxGroupSize < 0:
+		return math.MaxInt
+	case d.config.MaxGroupSize == 0:
+		return DefaultMaxGroupSize
+	default:
+		return d.config.MaxGroupSize
+	}
+}
+
+// DuplicateReport carries the result of duplicate detection along with any
+// issues describing where the analysis was deliberately incomplete.
+//
+// The two are returned together because a caller cannot interpret Pairs without
+// knowing whether the whole document was actually examined: an empty Pairs from
+// a fully swept document means "no duplicates", while an empty Pairs from a
+// document whose only large surname group was skipped means "unknown".
+type DuplicateReport struct {
+	// Pairs contains the potential duplicates found.
+	Pairs []DuplicatePair
+
+	// LimitIssues describes any analysis that was skipped, for example a
+	// surname group exceeding DuplicateConfig.MaxGroupSize. Empty when the
+	// entire document was compared.
+	LimitIssues []Issue
+}
+
 // FindDuplicates analyzes all individuals in the document and returns potential duplicates.
 // The algorithm groups individuals by normalized surname for efficiency, then compares
 // pairs within each surname group.
+//
+// Complexity is O(Σ kᵢ²) over the surname groups, which
+// DuplicateConfig.MaxGroupSize bounds to O(n · MaxGroupSize / 2) pair
+// comparisons. Groups larger than that cap are skipped entirely; use
+// FindDuplicatesReport to learn when that happened.
 func (d *DuplicateDetector) FindDuplicates(doc *gedcom.Document) []DuplicatePair {
+	return d.FindDuplicatesReport(doc).Pairs
+}
+
+// FindDuplicatesReport analyzes all individuals in the document and returns
+// potential duplicates together with any issues describing skipped analysis.
+//
+// Complexity is O(Σ kᵢ²) over the surname groups, which
+// DuplicateConfig.MaxGroupSize bounds to O(n · MaxGroupSize / 2) pair
+// comparisons. Any group larger than the cap is skipped whole and reported in
+// DuplicateReport.LimitIssues.
+func (d *DuplicateDetector) FindDuplicatesReport(doc *gedcom.Document) DuplicateReport {
 	if doc == nil {
-		return nil
+		return DuplicateReport{}
 	}
 
 	individuals := doc.Individuals()
 	if len(individuals) < 2 {
-		return nil
+		return DuplicateReport{}
 	}
 
 	// Build surname groups for efficient comparison
 	surnameGroups := d.buildSurnameGroups(individuals)
 
 	var duplicates []DuplicatePair
+	limit := d.maxGroupSize()
+	var skipped skippedGroups
 
 	// Compare pairs within each surname group
-	for _, group := range surnameGroups {
+	for surname, group := range surnameGroups {
 		if len(group) < 2 {
 			continue
 		}
 
+		// An oversized group is skipped whole rather than truncated to the
+		// first `limit` members. Truncation depends on record order, so the
+		// same document in a different order would yield different pairs, and
+		// the partial result would be indistinguishable from a complete one.
+		if len(group) > limit {
+			skipped.record(surname, len(group))
+			continue
+		}
+
+		// Derived only now that the group is known to be compared: see
+		// buildCandidates on why this is not done during grouping.
+		candidates := d.buildCandidates(surname, group)
+
 		// Compare all pairs within the group
-		for i := 0; i < len(group); i++ {
-			for j := i + 1; j < len(group); j++ {
-				if pair, ok := d.comparePair(group[i], group[j]); ok {
+		for i := 0; i < len(candidates); i++ {
+			for j := i + 1; j < len(candidates); j++ {
+				if pair, ok := d.comparePair(candidates[i], candidates[j]); ok {
 					duplicates = append(duplicates, pair)
 				}
 			}
 		}
 	}
 
-	return duplicates
+	report := DuplicateReport{Pairs: duplicates}
+	if skipped.groups > 0 {
+		report.LimitIssues = []Issue{skipped.toIssue(limit)}
+	}
+	return report
 }
 
-// buildSurnameGroups groups individuals by their normalized surname, carrying
-// each one's normalized given name along so comparePair never re-derives either.
+// maxSkippedSurnamesReported caps how many surnames the limit Issue names. The
+// detail is a sample for diagnosis, not an inventory; an adversary can create
+// up to n/MaxGroupSize oversized groups, so the message length must not scale
+// with them.
+const maxSkippedSurnamesReported = 5
+
+// skippedGroups accumulates the surname groups that exceeded the cap so a
+// single aggregate Issue can describe all of them.
+type skippedGroups struct {
+	groups      int
+	individuals int
+	largest     int
+	surnames    []string
+}
+
+// record notes one skipped group of the given surname key and size.
+//
+// The surname is the group key, which is normalized (lowercased, diacritics
+// folded) only when DuplicateConfig.NormalizeNames is set — so it is not
+// necessarily the surname as it appears in the source document. The "surnames"
+// detail on the emitted Issue carries the same caveat.
+func (s *skippedGroups) record(surname string, size int) {
+	s.groups++
+	s.individuals += size
+	s.largest = max(s.largest, size)
+	s.surnames = append(s.surnames, surname)
+}
+
+// toIssue renders the accumulated skips as one Issue.
+//
+// One aggregate issue is emitted rather than one per group so the output stays
+// bounded regardless of how many oversized groups a document contains. The
+// severity is Warning, deliberately louder than the Info carried by
+// POTENTIAL_DUPLICATE: a caller running at the default strictness has to learn
+// that the analysis was incomplete, since a quiet Info would let "no duplicates
+// found" be read as "none exist".
+func (s *skippedGroups) toIssue(limit int) Issue {
+	// Map iteration order is randomized, so the sample must be sorted to keep
+	// the emitted Issue identical across runs of the same document.
+	sort.Strings(s.surnames)
+	sample := s.surnames
+	if len(sample) > maxSkippedSurnamesReported {
+		sample = sample[:maxSkippedSurnamesReported]
+	}
+
+	message := fmt.Sprintf(
+		"Duplicate detection skipped %d surname group(s) totaling %d individuals "+
+			"because they exceed MaxGroupSize=%d; some duplicates may be unreported",
+		s.groups, s.individuals, limit)
+
+	return NewIssue(SeverityWarning, CodeDuplicateDetectionLimited, message, "").
+		WithDetail("skipped_groups", strconv.Itoa(s.groups)).
+		WithDetail("skipped_individuals", strconv.Itoa(s.individuals)).
+		WithDetail("largest_group", strconv.Itoa(s.largest)).
+		WithDetail("max_group_size", strconv.Itoa(limit)).
+		WithDetail("surnames", strings.Join(sample, ", "))
+}
+
+// buildSurnameGroups groups individuals by their normalized surname.
 //
 // Individuals with no surname are omitted rather than collected under an empty
 // key. compareSurnames rejects an empty surname outright, so no pair drawn from
 // such a bucket could ever match however the detector is configured. Excluding
 // them at the point the key is computed keeps that rule in one place, and skips
-// both the pairwise sweep over them and the given-name normalization that would
-// otherwise be computed only to be discarded (#529).
-func (d *DuplicateDetector) buildSurnameGroups(individuals []*gedcom.Individual) map[string][]candidate {
-	groups := make(map[string][]candidate)
+// the pairwise sweep over them entirely (#529).
+//
+// Only the surname is normalized here. Given names are normalized later, per
+// group, by buildCandidates — see the note there for why that split matters.
+func (d *DuplicateDetector) buildSurnameGroups(individuals []*gedcom.Individual) map[string][]*gedcom.Individual {
+	groups := make(map[string][]*gedcom.Individual)
 
 	for _, ind := range individuals {
 		surname := d.extractSurname(ind)
@@ -213,14 +392,40 @@ func (d *DuplicateDetector) buildSurnameGroups(individuals []*gedcom.Individual)
 			continue
 		}
 
+		groups[surname] = append(groups[surname], ind)
+	}
+
+	return groups
+}
+
+// buildCandidates derives the comparison keys for one surname group, pairing
+// each individual with its normalized given name. Every member of a group
+// shares the group's surname key, so that value is passed in rather than
+// re-derived per individual.
+//
+// This runs once per individual in a group that will actually be compared,
+// never per pair: normalizeName runs a Unicode NFD transform chain, and doing
+// that inside the O(k²) pair loop dominated the cost of detection on large
+// documents (#529).
+//
+// It is deliberately called after the MaxGroupSize check rather than during
+// grouping. On the adversarial shape the cap exists to defend against — every
+// individual sharing one surname — the whole group is skipped, so normalizing
+// its given names up front would run a transform chain per individual only to
+// discard every result. Deferring keeps that work proportional to the set
+// actually compared rather than to the size of the input (#530).
+func (d *DuplicateDetector) buildCandidates(surname string, individuals []*gedcom.Individual) []candidate {
+	candidates := make([]candidate, 0, len(individuals))
+
+	for _, ind := range individuals {
 		given := extractGivenName(ind)
 		if d.config.NormalizeNames {
 			given = normalizeName(given)
 		}
-		groups[surname] = append(groups[surname], candidate{ind: ind, surname: surname, given: given})
+		candidates = append(candidates, candidate{ind: ind, surname: surname, given: given})
 	}
 
-	return groups
+	return candidates
 }
 
 // extractSurname extracts the surname from an individual's primary name.
@@ -394,14 +599,40 @@ func compareSurnames(s1, s2 string, exact bool) bool {
 // compareGivenNames compares two given names and returns a similarity score.
 // Returns 0.0 if either name is empty.
 // Returns 1.0 for exact match, otherwise returns string similarity.
-// The minSimilarity parameter is reserved for future use (e.g., early exit optimization).
-func compareGivenNames(g1, g2 string, _ float64) float64 {
+//
+// minSimilarity is the caller's acceptance threshold and enables an early exit:
+// when a length-based upper bound on the achievable similarity already falls
+// below it, the O(n·m) Levenshtein DP is skipped. In exactly that case the
+// returned value is that upper bound rather than the exact similarity — it is
+// guaranteed to be below minSimilarity, which is all the caller's comparison
+// needs. Pass minSimilarity <= 0 to always compute the exact value.
+func compareGivenNames(g1, g2 string, minSimilarity float64) float64 {
 	if g1 == "" || g2 == "" {
 		return 0.0
 	}
 
 	if g1 == g2 {
 		return 1.0
+	}
+
+	// Early exit. Levenshtein distance is at least the difference in length, so
+	// 1 - |runeLen1-runeLen2|/maxLen is an upper bound on what stringSimilarity
+	// can return. Names that cannot possibly clear the threshold skip the DP.
+	//
+	// The mixed units are deliberate, not an oversight: the numerator counts
+	// RUNES to match levenshteinDistance's rune-based DP, while the denominator
+	// is stringSimilarity's own BYTE-based maxLen. Using the same denominator as
+	// the function being bounded is what makes the bound sound — the true value
+	// is 1 - runeDistance/byteMaxLen, and runeDistance >= |runeLen1-runeLen2|,
+	// so this expression is >= the true similarity for every input, multibyte
+	// names included. Normalizing both sides to runes (or both to bytes) would
+	// change the comparison and break that guarantee.
+	if minSimilarity > 0 {
+		maxLen := max(len(g1), len(g2))
+		upperBound := 1.0 - float64(absInt(utf8.RuneCountInString(g1)-utf8.RuneCountInString(g2)))/float64(maxLen)
+		if upperBound < minSimilarity {
+			return upperBound
+		}
 	}
 
 	return stringSimilarity(g1, g2)

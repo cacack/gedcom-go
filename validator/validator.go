@@ -71,6 +71,18 @@ type ValidatorConfig struct {
 	// Default: false (encoding validation enabled).
 	SkipEncodingValidation bool
 
+	// SkipDuplicateDetection disables duplicate detection, the most expensive
+	// validator.
+	//
+	// It applies to the [Validator.ValidateAll] sweep only. Asking for
+	// duplicates explicitly still runs detection, so
+	// [Validator.FindPotentialDuplicates], [Validator.FindPotentialDuplicatesReport]
+	// and [Validator.QualityReport] are unaffected — they remain bounded by
+	// DuplicateConfig.MaxGroupSize instead.
+	//
+	// Default: false (duplicate detection enabled).
+	SkipDuplicateDetection bool
+
 	// MaxErrors limits the number of issues collected during validation.
 	// When set to a positive value, validation stops after this many issues.
 	// Default: 0 (unlimited - collect all issues).
@@ -382,9 +394,18 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	// Run note pointer validation
 	allIssues = append(allIssues, v.getNoteValidator().ValidateNotePointers(doc)...)
 
-	// Run duplicate detection and convert to issues
-	for _, pair := range v.getDuplicateDetector().FindDuplicates(doc) {
-		allIssues = append(allIssues, pair.ToIssue())
+	// Run duplicate detection and convert to issues, unless it was skipped.
+	// LimitIssues report any surname group that exceeded MaxGroupSize, so the
+	// caller can tell "no duplicates" from "not everything was compared". They
+	// are held back and prepended below rather than appended here — see the
+	// note at the prepend.
+	var limitIssues []Issue
+	if v.config == nil || !v.config.SkipDuplicateDetection {
+		report := v.getDuplicateDetector().FindDuplicatesReport(doc)
+		for _, pair := range report.Pairs {
+			allIssues = append(allIssues, pair.ToIssue())
+		}
+		limitIssues = report.LimitIssues
 	}
 
 	// Run custom tag validation if a registry is configured
@@ -395,6 +416,17 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	// Run encoding validation (GEDCOM 7.0 specific)
 	if v.config == nil || !v.config.SkipEncodingValidation {
 		allIssues = append(allIssues, v.getEncodingValidator().Validate(doc)...)
+	}
+
+	// Put the "detection was incomplete" notice first. filterByStrictness ends
+	// in applyMaxErrors, which truncates by position rather than severity, so
+	// an issue appended last is the first one dropped. Losing this particular
+	// issue hands the caller "no duplicates" when the truth is "not everything
+	// was compared" — and the caller who sets MaxErrors is exactly the hardened
+	// caller the cap exists for. A meta-issue about the completeness of the
+	// results has to outrank the results themselves.
+	if len(limitIssues) > 0 {
+		allIssues = append(limitIssues, allIssues...)
 	}
 
 	// Filter by strictness
@@ -439,11 +471,35 @@ func (v *Validator) ValidateCustomTags(doc *gedcom.Document) []Issue {
 
 // FindPotentialDuplicates detects potential duplicate individuals based on
 // name similarity and birth date proximity.
+//
+// It deliberately ignores ValidateOptions.SkipDuplicateDetection: that option
+// removes duplicate detection from the ValidateAll sweep, whereas calling this
+// method is an explicit request for duplicates, and returning none would be
+// surprising. DuplicateConfig.MaxGroupSize still applies, so oversized surname
+// groups are skipped here as well; use [Validator.FindPotentialDuplicatesReport]
+// to learn when that happened.
 func (v *Validator) FindPotentialDuplicates(doc *gedcom.Document) []DuplicatePair {
 	if doc == nil {
 		return nil
 	}
 	return v.getDuplicateDetector().FindDuplicates(doc)
+}
+
+// FindPotentialDuplicatesReport is [Validator.FindPotentialDuplicates] plus the
+// issues describing any analysis that DuplicateConfig.MaxGroupSize suppressed.
+//
+// It exists so a caller working through a configured Validator can tell an
+// empty result from an incomplete one without reaching past the abstraction to
+// rebuild a [DuplicateDetector] from the same options by hand.
+//
+// Like FindPotentialDuplicates it ignores ValidateOptions.SkipDuplicateDetection,
+// and unlike [Validator.ValidateAll] it applies neither Strictness nor
+// MaxErrors filtering — the report is returned whole.
+func (v *Validator) FindPotentialDuplicatesReport(doc *gedcom.Document) DuplicateReport {
+	if doc == nil {
+		return DuplicateReport{}
+	}
+	return v.getDuplicateDetector().FindDuplicatesReport(doc)
 }
 
 // ValidateEncoding validates GEDCOM 7.0 encoding requirements.

@@ -41,6 +41,11 @@
 //	refIssues := v.FindOrphanedReferences(doc)  // Find broken references
 //	duplicates := v.FindPotentialDuplicates(doc) // Find potential duplicates
 //
+// Duplicate detection skips any surname group larger than
+// [DuplicateConfig.MaxGroupSize]. Use [Validator.FindPotentialDuplicatesReport]
+// instead of [Validator.FindPotentialDuplicates] to tell an empty result from
+// an incomplete one.
+//
 // # Quality Reports
 //
 // Combine validation issues with completeness statistics. The report runs a
@@ -66,6 +71,7 @@
 //   - TagRegistry            — definitions for custom (underscore) tags
 //   - ValidateCustomTags     — enable custom-tag validation against registry
 //   - SkipEncodingValidation — disable GEDCOM 7.0 encoding checks
+//   - SkipDuplicateDetection — drop duplicate detection from the ValidateAll sweep
 //
 // Example combining strictness with skip rules:
 //
