@@ -1328,7 +1328,7 @@ func TestEncodeRoundtripNewFeatures(t *testing.T) {
 	// Attributes
 	attrTypes := make(map[string]bool)
 	for _, attr := range indi.Attributes {
-		attrTypes[attr.Type] = true
+		attrTypes[string(attr.Type)] = true
 	}
 	for _, exp := range []string{"OCCU", "CAST", "EDUC", "RELI"} {
 		if !attrTypes[exp] {

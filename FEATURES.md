@@ -582,22 +582,22 @@ an event.
 
 ## Attributes
 
-| Tag | Attribute | Notes |
-|-----|-----------|-------|
-| OCCU | Occupation | With DATE for periods |
-| RESI | Residence | Modeled as an Event (lands in `Events`, not `Attributes`); with ADDR structure |
-| EDUC | Education | |
-| RELI | Religion | |
-| TITL | Title | Nobility, professional |
-| NATI | Nationality | |
-| CAST | Caste | |
-| DSCR | Physical Description | |
-| IDNO | ID Number | |
-| SSN | Social Security Number | |
-| NCHI | Number of Children | |
-| NMR | Number of Marriages | |
-| PROP | Property | |
-| FACT | Generic Fact | INDI and FAM; its meaning is the TYPE (5.5.1+) |
+| Tag | Attribute | Constant | Notes |
+|-----|-----------|----------|-------|
+| OCCU | Occupation | `AttributeOccupation` | With DATE for periods |
+| RESI | Residence | `EventResidence` | Modeled as an Event (lands in `Events`, not `Attributes`); with ADDR structure |
+| EDUC | Education | `AttributeEducation` | |
+| RELI | Religion | `AttributeReligion` | |
+| TITL | Title | `AttributeTitle` | Nobility, professional |
+| NATI | Nationality | `AttributeNationality` | |
+| CAST | Caste | `AttributeCaste` | |
+| DSCR | Physical Description | `AttributePhysicalDescription` | |
+| IDNO | ID Number | `AttributeIDNumber` | |
+| SSN | Social Security Number | `AttributeSSN` | |
+| NCHI | Number of Children | `AttributeNumberOfChildren` | |
+| NMR | Number of Marriages | `AttributeNumberOfMarriages` | |
+| PROP | Property | `AttributeProperty` | |
+| FACT | Generic Fact | `AttributeFact` | INDI and FAM; its meaning is the TYPE (5.5.1+) |
 
 Each attribute's subordinate `TYPE` lands in `Attribute.TypeDetail`, alongside
 the full `EVENT_DETAIL` set listed under Events — `gedcom.Attribute` carries the

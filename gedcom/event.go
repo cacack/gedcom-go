@@ -18,8 +18,6 @@ const (
 	EventChristening EventType = "CHR"
 	// EventAdoption represents an adoption event.
 	EventAdoption EventType = "ADOP"
-	// EventOccupation represents an occupation event.
-	EventOccupation EventType = "OCCU"
 	// EventResidence represents a residence event.
 	EventResidence EventType = "RESI"
 	// EventImmigration represents an immigration event.

@@ -490,7 +490,7 @@ func TestIndividualAttributes(t *testing.T) {
 	// Check each attribute type and value
 	attrMap := make(map[string]string)
 	for _, attr := range indi.Attributes {
-		attrMap[attr.Type] = attr.Value
+		attrMap[string(attr.Type)] = attr.Value
 	}
 
 	for attrType, expectedValue := range expectedAttrs {
@@ -624,7 +624,7 @@ func TestAttributeTypeDetail(t *testing.T) {
 
 	for i, exp := range want {
 		attr := indi.Attributes[i]
-		if attr.Type != exp.attrType {
+		if string(attr.Type) != exp.attrType {
 			t.Errorf("Attributes[%d].Type = %q, want %q", i, attr.Type, exp.attrType)
 		}
 		if attr.Value != exp.value {
@@ -1265,8 +1265,8 @@ func TestMaximal70Individual(t *testing.T) {
 	attrTypes := make(map[string]bool)
 	attrTypeDetails := make(map[string]string)
 	for _, attr := range indi.Attributes {
-		attrTypes[attr.Type] = true
-		attrTypeDetails[attr.Type] = attr.TypeDetail
+		attrTypes[string(attr.Type)] = true
+		attrTypeDetails[string(attr.Type)] = attr.TypeDetail
 	}
 	expectedAttrs := []string{"CAST", "DSCR", "EDUC", "IDNO", "NATI", "OCCU", "RELI", "SSN", "TITL", "FACT"}
 	for _, exp := range expectedAttrs {
@@ -2421,9 +2421,9 @@ func TestFamilyStatisticsAttributes(t *testing.T) {
 	attrDates := make(map[string]string)
 	attrPlaces := make(map[string]string)
 	for _, attr := range indi1.Attributes {
-		attrMap[attr.Type] = attr.Value
-		attrDates[attr.Type] = attr.Date
-		attrPlaces[attr.Type] = attr.PlaceName()
+		attrMap[string(attr.Type)] = attr.Value
+		attrDates[string(attr.Type)] = attr.Date
+		attrPlaces[string(attr.Type)] = attr.PlaceName()
 	}
 
 	// Test NCHI (Number of Children)
@@ -2467,7 +2467,7 @@ func TestFamilyStatisticsAttributes(t *testing.T) {
 
 	attrMap2 := make(map[string]string)
 	for _, attr := range indi2.Attributes {
-		attrMap2[attr.Type] = attr.Value
+		attrMap2[string(attr.Type)] = attr.Value
 	}
 
 	if nchi, ok := attrMap2["NCHI"]; !ok {
