@@ -47,7 +47,7 @@ func TestMalformedFilesFromTestData(t *testing.T) {
 		{
 			name:        "invalid level",
 			path:        "../testdata/malformed/invalid-level.ged",
-			shouldError: false, // Parser accepts any level < 100
+			shouldError: false, // Lenient Decode clamps the level-99 jump rather than failing
 			description: "File with unusually deep nesting (level 99)",
 		},
 		{
@@ -89,6 +89,7 @@ func TestMalformedFilesFromTestData(t *testing.T) {
 // Test that decoder surfaces the parser's structured *ParseError so
 // callers get ADR-007's guarantees — a line number, the offending
 // content, and the underlying cause — rather than an opaque string.
+// Strict mode is where a syntax error is returned rather than recovered.
 func TestDecoderErrorMessages(t *testing.T) {
 	tests := []struct {
 		name string
@@ -145,7 +146,7 @@ func TestDecoderErrorMessages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := Decode(strings.NewReader(tt.input))
+			_, err := DecodeWithOptions(strings.NewReader(tt.input), &DecodeOptions{StrictMode: true})
 			if err == nil {
 				t.Fatal("Expected error but got none")
 			}

@@ -304,6 +304,10 @@ func TestMyGEDCOM(t *testing.T) {
 `CheckRoundTrip` is the non-test equivalent, returning a `*RoundTripReport`
 that lists each difference.
 
+Both decode in strict mode, so a malformed line fails the check with its
+`*parser.ParseError` instead of being recovered. Lenient recovery would rewrite
+the input before the comparison and hide the loss.
+
 `Header.Tags` are compared unconditionally. They were gated behind
 `WithHeaderTagComparison()` while the encoder rebuilt `HEAD` from a few scalar
 fields; that option was removed in v3.

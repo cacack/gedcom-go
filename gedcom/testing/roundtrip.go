@@ -42,6 +42,11 @@ func AssertRoundTrip(t *testing.T, input []byte, opts ...Option) {
 //  3. Decodes the encoded result
 //  4. Compares the two documents semantically
 //
+// Both decodes use strict mode (decoder.DecodeOptions.StrictMode), so a
+// malformed line is returned as an error rather than recovered. Lenient
+// recovery rewrites or drops lines, and a round-trip check that accepted it
+// would compare the recovered document with itself and report no loss.
+//
 // Example:
 //
 //	report, err := gedcomtesting.CheckRoundTrip(file)
@@ -60,7 +65,7 @@ func CheckRoundTrip(input io.Reader, opts ...Option) (*RoundTripReport, error) {
 	_ = applyOptions(opts...)
 
 	// Step 1: Decode original
-	originalDoc, err := decoder.Decode(input)
+	originalDoc, err := decoder.DecodeWithOptions(input, strictDecode())
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +77,7 @@ func CheckRoundTrip(input io.Reader, opts ...Option) (*RoundTripReport, error) {
 	}
 
 	// Step 3: Decode the encoded result
-	roundTrippedDoc, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+	roundTrippedDoc, err := decoder.DecodeWithOptions(bytes.NewReader(buf.Bytes()), strictDecode())
 	if err != nil {
 		return nil, err
 	}
@@ -82,4 +87,11 @@ func CheckRoundTrip(input io.Reader, opts ...Option) (*RoundTripReport, error) {
 	compareDocuments(originalDoc, roundTrippedDoc, report)
 
 	return report, nil
+}
+
+// strictDecode returns the decode options CheckRoundTrip uses for both passes.
+func strictDecode() *decoder.DecodeOptions {
+	opts := decoder.DefaultOptions()
+	opts.StrictMode = true
+	return opts
 }

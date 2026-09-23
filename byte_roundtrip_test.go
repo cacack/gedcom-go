@@ -95,15 +95,19 @@ var bodyKnownBad = map[string]string{
 	"testdata/edge-cases/indented-lines.ged": "leading whitespace on the line is stripped by recovery",
 	"testdata/edge-cases/mhftb8-export.ged":  "double space after level is normalized by recovery",
 	"testdata/malformed/missing-header.ged":  "synthesized header shifts the record block",
+
+	// Recovered rather than rejected since Decode honours StrictMode's lenient
+	// default (#490). Each line below is rewritten or dropped by that recovery.
+	"testdata/malformed/blank-lines.ged":            "empty line is skipped by recovery",
+	"testdata/malformed/invalid-level.ged":          "over-jumped level is clamped by recovery",
+	"testdata/malformed/level-jump-skip.ged":        "over-jumped level is clamped by recovery",
+	"testdata/malformed/level-jump-subordinate.ged": "over-jumped level is clamped by recovery",
+	"testdata/malformed/level-over-99.ged":          "level 100 line is skipped by recovery",
 }
 
 // undecodable lists fixtures that do not survive decode or encode at all, so
 // there are no bytes to compare. Kept explicit so the count cannot drift.
 var undecodable = map[string]string{
-	"testdata/edge-cases/xref-case.ged":          "xref contains a space",
-	"testdata/malformed/blank-lines.ged":         "empty line",
-	"testdata/malformed/level-over-99.ged":       "level 100 exceeds maximum",
-	"testdata/malformed/unterminated-xref.ged":   "xref missing closing @",
 	"testdata/encoding/ibmpc-cp437-broskeep.ged": "invalid byte for the declared encoding",
 }
 

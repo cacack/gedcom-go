@@ -15,11 +15,14 @@ type DecodeOptions struct {
 	// Context allows cancellation and timeout control
 	Context context.Context
 
-	// StrictMode controls how parsing errors are handled.
+	// StrictMode controls how parsing errors are handled. It has the same
+	// meaning for [DecodeWithOptions] and [DecodeWithDiagnostics]; [Decode]
+	// uses the default (false). The entry points differ only in what they
+	// return: DecodeWithDiagnostics also returns the diagnostics.
 	//
 	// When StrictMode is true:
 	//   - Parsing fails immediately on the first syntax error
-	//   - The error is returned from Decode/DecodeWithOptions
+	//   - The error is returned with a nil document or result
 	//   - Use for files that must be fully valid or rejected
 	//
 	// When StrictMode is false (default):
