@@ -100,12 +100,12 @@ of what it added is what this library has yet to type — so the shares rank the
 work left per version, not the versions.
 
 **Re-encoding.** Not byte-for-byte, and this is measured too. Of 100 corpus
-fixtures, 5 do not survive decode and encode at all; of the 95 that do, 87
-reproduce their header byte for byte and 84 reproduce their record body.
+fixtures, 1 do not survive decode and encode at all; of the 99 that do, 91
+reproduce their header byte for byte and 83 reproduce their record body.
 `byte_roundtrip_test.go` names the reason behind every exception. What remains
 in the body count is not a defect but a limit of byte comparison itself: a
 source that was not UTF-8 has been transcoded, so its bytes cannot match
-whatever the encoder does, and three malformed fixtures are rewritten by lenient
+whatever the encoder does, and eight fixtures with malformed lines are rewritten by lenient
 recovery rather than preserved — a difference kept on the list so that the
 decision to accept it stays explicit.
 

@@ -2,11 +2,13 @@ package testing
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v2/parser"
 )
 
 // validMinimalGEDCOM is a minimal valid GEDCOM 5.5.1 file.
@@ -146,6 +148,25 @@ func TestCheckRoundTrip_InvalidGEDCOM(t *testing.T) {
 			}
 			t.Logf("report: %s", report.String())
 		})
+	}
+}
+
+// TestCheckRoundTrip_RejectsMalformedInput guards against lenient recovery
+// masking loss: a line the decoder would skip must fail the check, not vanish
+// from both sides of the comparison.
+func TestCheckRoundTrip_RejectsMalformedInput(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\nX BAD LINE\n0 TRLR\n"
+
+	report, err := CheckRoundTrip(strings.NewReader(input))
+	if err == nil {
+		t.Fatalf("expected an error for a malformed line, got report: %v", report)
+	}
+	var parseErr *parser.ParseError
+	if !errors.As(err, &parseErr) {
+		t.Fatalf("error = %T (%v), want *parser.ParseError", err, err)
+	}
+	if parseErr.Line != 5 {
+		t.Errorf("ParseError.Line = %d, want 5", parseErr.Line)
 	}
 }
 

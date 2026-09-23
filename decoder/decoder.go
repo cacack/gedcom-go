@@ -1,7 +1,6 @@
 package decoder
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -25,67 +24,29 @@ type DecodeResult struct {
 }
 
 // Decode parses a GEDCOM file from an io.Reader and returns a Document.
-// This is a convenience function that uses default options.
+// This is a convenience function that uses default options, so it decodes in
+// lenient mode: malformed lines are recovered from or skipped rather than
+// failing the decode. Use [DecodeWithOptions] with StrictMode set to fail on
+// the first syntax error, or [DecodeWithDiagnostics] to see what was recovered.
 func Decode(r io.Reader) (*gedcom.Document, error) {
 	return DecodeWithOptions(r, DefaultOptions())
 }
 
 // DecodeWithOptions parses a GEDCOM file with custom options.
+//
+// It behaves exactly like [DecodeWithDiagnostics] and returns that result's
+// Document; the only difference is that diagnostics are discarded. In
+// particular, [DecodeOptions.StrictMode] means the same thing here: when false
+// (the default), a document is returned with a nil error even if malformed
+// lines were recovered from or skipped. A non-nil error is returned alongside
+// a non-nil document when an I/O failure interrupts a lenient parse after some
+// lines were read, or when no valid lines could be parsed at all.
 func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, error) {
-	if opts == nil {
-		opts = DefaultOptions()
-	}
-
-	// Check context cancellation before starting
-	if opts.Context != nil {
-		select {
-		case <-opts.Context.Done():
-			return nil, opts.Context.Err()
-		default:
-		}
-	}
-
-	// Wrap reader with UTF-8 validation
-	validatedReader := charset.NewReader(r)
-
-	// Wrap with progress tracking if callback provided
-	finalReader := validatedReader
-	if opts.OnProgress != nil {
-		finalReader = &progressReader{
-			reader:    validatedReader,
-			totalSize: opts.TotalSize,
-			callback:  opts.OnProgress,
-		}
-	}
-
-	// Parse all lines
-	p := parser.NewParser()
-	lines, err := p.Parse(finalReader)
-	if err != nil {
-		// Preserve charset errors in the error message
+	res, err := decode(r, opts, false)
+	if res == nil {
 		return nil, err
 	}
-
-	// Check context after parsing
-	if opts.Context != nil {
-		select {
-		case <-opts.Context.Done():
-			return nil, opts.Context.Err()
-		default:
-		}
-	}
-
-	// Detect GEDCOM version
-	detectedVersion := version.DetectVersion(lines)
-
-	// Build document from lines
-	// Pass nil collector for existing API (no diagnostics collection)
-	doc := buildDocument(lines, detectedVersion, nil)
-
-	// Convert raw tags to proper entity types
-	populateEntities(doc, nil)
-
-	return doc, nil
+	return res.Document, err
 }
 
 // DecodeWithDiagnostics parses a GEDCOM file and returns both the document and any diagnostics.
@@ -99,15 +60,25 @@ func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, erro
 //     callers can still recover the partial document. Callers should inspect
 //     both the returned *DecodeResult and error rather than discarding the
 //     result on err != nil
-//   - An error is returned with a nil *DecodeResult only when no valid lines
-//     could be parsed at all
+//   - If no valid lines could be parsed at all, an empty document is returned
+//     together with an error wrapping the first *parser.ParseError
+//   - An error is returned with a nil *DecodeResult only when an I/O failure
+//     occurs before any line was read
 //
 // In strict mode (StrictMode=true):
 //   - Parsing fails on the first error (current behavior)
 //   - Diagnostics will be empty on success
+func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, error) {
+	return decode(r, opts, true)
+}
+
+// decode is the single decode pipeline behind every entry point. collect
+// controls only whether entity-level diagnostics are gathered; the document
+// produced is identical either way, so callers that discard diagnostics skip
+// the cost of building them.
 //
 //nolint:gocyclo // Lenient mode handling requires additional branches
-func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, error) {
+func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, error) {
 	if opts == nil {
 		opts = DefaultOptions()
 	}
@@ -143,6 +114,9 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 	// path (so the partial document gets level-jump normalization and entity
 	// population) and surface fatalErr alongside the result at the end.
 	var fatalErr error
+	// firstParseErr is the first line-level error a lenient parse recovered
+	// from, kept so a parse that recovers nothing can still report it.
+	var firstParseErr *parser.ParseError
 
 	if opts.StrictMode {
 		// Strict mode: use existing Parse behavior
@@ -161,6 +135,9 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 
 		// Convert parse errors to diagnostics
 		diagnostics = convertParseErrors(parseErrors)
+		if len(parseErrors) > 0 {
+			firstParseErr = parseErrors[0]
+		}
 
 		if fe != nil {
 			if len(parsedLines) == 0 {
@@ -184,12 +161,15 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 		}
 	}
 
+	// Detect GEDCOM version
+	detectedVersion := version.DetectVersion(lines)
+
 	// Check if we have any data to work with
 	if len(lines) == 0 {
 		// No valid lines parsed - return empty document with diagnostics
 		doc := &gedcom.Document{
 			XRefMap: make(map[string]*gedcom.Record),
-			Header:  &gedcom.Header{},
+			Header:  &gedcom.Header{Version: detectedVersion},
 			Trailer: &gedcom.Trailer{},
 		}
 		result := &DecodeResult{
@@ -197,21 +177,19 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 			Diagnostics: diagnostics,
 		}
 
-		// If we had diagnostics, return an error indicating parsing failed
-		if len(diagnostics) > 0 {
-			return result, errors.New("no valid GEDCOM lines could be parsed")
+		// If lines were rejected, report the first one so callers keep the
+		// structured *parser.ParseError (ADR 0007).
+		if firstParseErr != nil {
+			return result, fmt.Errorf("no valid GEDCOM lines could be parsed: %w", firstParseErr)
 		}
 
 		// Empty input is valid
 		return result, nil
 	}
 
-	// Detect GEDCOM version
-	detectedVersion := version.DetectVersion(lines)
-
 	// Create a collector for entity-level diagnostics if in lenient mode
 	var collector *diagnosticCollector
-	if !opts.StrictMode {
+	if !opts.StrictMode && collect {
 		collector = &diagnosticCollector{
 			lenient: true,
 		}

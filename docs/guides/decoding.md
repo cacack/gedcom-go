@@ -2,6 +2,11 @@
 
 This document describes the strict vs lenient decoding behavior of gedcom-go, helping you predict what happens when parsing messy vendor GEDCOMs.
 
+`DecodeOptions.StrictMode` means the same thing for every entry point. `Decode`,
+`DecodeWithOptions` and `DecodeWithDiagnostics` differ only in what they return:
+`DecodeWithDiagnostics` also returns the diagnostics. `Decode` takes no options
+and always decodes in lenient mode, the default.
+
 ## Strict Mode
 
 Enable strict mode when you need files to be fully valid or rejected entirely:
@@ -27,7 +32,6 @@ if err != nil {
 | Invalid level number | `XYZ NAME John` (non-numeric level) |
 | Missing tag | `0 @I1@` (XRef without tag) |
 | Malformed XRef | `0 @BAD XREF@ INDI` (space inside the identifier), `0 @I1 INDI` (no closing `@`) |
-| Invalid level jump | Level 0 to level 2 (skipping level 1) |
 | Empty lines | Blank lines in the GEDCOM stream |
 
 ### When to Use Strict Mode
@@ -39,7 +43,11 @@ if err != nil {
 
 ## Lenient Mode (Default)
 
-Lenient mode continues parsing after errors, collecting diagnostics:
+Lenient mode continues parsing after errors. `Decode` and `DecodeWithOptions`
+return the recovered document with a nil error; use `DecodeWithDiagnostics` to
+see what was recovered. An error still accompanies the document when no line
+could be parsed at all (it wraps the first `*parser.ParseError`) or when a read
+fails partway through:
 
 ```go
 result, err := decoder.DecodeWithDiagnostics(r, nil)
@@ -246,9 +254,9 @@ Tags with empty values are preserved: `1 BIRT` becomes `1 BIRT` (not `1 BIRT ` w
 
 | Function | Strict Mode | Lenient Mode |
 |----------|-------------|--------------|
-| `Decode(r)` | N/A | Default behavior, no diagnostics access |
-| `DecodeWithOptions(r, opts)` | `opts.StrictMode=true` | `opts.StrictMode=false` (no diagnostics) |
-| `DecodeWithDiagnostics(r, opts)` | Returns error on first issue | Returns `DecodeResult` with diagnostics |
+| `Decode(r)` | N/A — use `DecodeWithOptions` | Always; no diagnostics |
+| `DecodeWithOptions(r, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns document, no diagnostics |
+| `DecodeWithDiagnostics(r, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns `DecodeResult` with diagnostics |
 
 ## Related Documentation
 

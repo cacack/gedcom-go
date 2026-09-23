@@ -1,6 +1,6 @@
 # Migrating from v2 to v3
 
-v3.0.0 removes API that v2 had already marked superseded, and fixes three
+v3.0.0 removes API that v2 had already marked superseded, and fixes four
 option fields whose zero value did the opposite of what their documentation
 promised. Most migrations are a deletion.
 
@@ -316,6 +316,62 @@ document, or one whose `Tags` you cleared):
   already correct.
 
 Only code that reads the two fields directly needs a change.
+
+### `DecodeOptions.StrictMode` governs every decode entry point
+
+In v2 only `DecodeWithDiagnostics` read `StrictMode`. `Decode` and
+`DecodeWithOptions` ignored it and always failed on the first malformed line —
+the opposite of what the field's documentation promised. v3 honours it
+everywhere, and `Decode` uses the default (`StrictMode: false`).
+
+For `Decode(r)` and `DecodeWithOptions` with `StrictMode: false`:
+
+| Input | v2 | v3 |
+|----|----|----|
+| Some lines malformed (skipped by recovery) | `nil, err` | document, `nil` |
+| Level jump, e.g. `1 BIRT` then `3 DATE` | document with the original levels, `nil` | document with the level clamped to `2`, `nil` |
+| Every line malformed | `nil, *parser.ParseError` | empty document, error wrapping the first `*parser.ParseError` |
+| Read or charset failure after some lines | `nil, err` | partial document, `err` |
+
+`DecodeWithOptions` with `StrictMode: true` behaves exactly as v2's `Decode`
+did in every row, and `DecodeWithDiagnostics` is unchanged.
+
+No signature changed, so the build passes and `make api-check` is clean. Three
+things change silently:
+
+- An error branch you relied on stops firing.
+- A document can now arrive together with an error; check `err` before trusting
+  the document, not `doc != nil`.
+- The level-jump row is the easiest to miss. v2 already returned no error for
+  it, so a caller who never saw an error from it is still affected: the tree
+  shape now differs from the source. `DecodeWithDiagnostics` reports each
+  clamp as `CodeBadLevelJump`.
+
+The every-line-malformed error still unwraps to the parser's structured error
+(`errors.As(err, &parseErr)` works); only its message gains a prefix.
+
+If you depended on `Decode` or `DecodeWithOptions` rejecting malformed input or
+preserving level jumps, ask for strict mode explicitly:
+
+```go
+// v3 — fail on the first malformed line, as v2's Decode did
+doc, err := decoder.DecodeWithOptions(r, &decoder.DecodeOptions{StrictMode: true})
+```
+
+A lenient decode returns a nil error even when it recovered from or skipped
+lines. Use `DecodeWithDiagnostics` to see what was recovered.
+
+#### Known downstream call sites
+
+- my-family `internal/gedcom/exporter.go` (`encodeDowngraded`) re-decodes its
+  own encoder output with `decoder.Decode` and treats an error as an export
+  failure. Under v3 a malformed line in that output would be recovered
+  silently rather than fail the export; switch the call to `StrictMode: true`
+  to keep the check.
+- This library's own `gedcom/testing.CheckRoundTrip` and `AssertRoundTrip`
+  were switched to strict decoding for both passes, so they keep failing on
+  malformed input. Lenient recovery would otherwise rewrite the input before
+  the comparison and report no loss.
 
 ## Retypes
 
@@ -940,9 +996,10 @@ release and `main`, including constant value changes. For your own code, the
 compiler catches every removal and rename on this page, and every site that
 *names a field* of a retyped value. It does **not** catch the value changes —
 the inverted boolean, the renumbered constant, the `*int` retype (whose compile
-error has a mechanical fix that can be wrong), or the `MediaObject`
-note-pointer partition, which changes no signature at all and so produces no
-build error anywhere. A clean build is not evidence that those four are done.
+error has a mechanical fix that can be wrong), the `MediaObject`
+note-pointer partition, or `Decode` and `DecodeWithOptions` honouring
+`StrictMode`. The last two change no signature at all and so produce no build
+error anywhere. A clean build is not evidence that those five are done.
 
 Nor does it catch a retyped slice that a call site only prints, marshals, or
 measures: `SpouseInFamilies` changes shape for `%v`, `encoding/json` and

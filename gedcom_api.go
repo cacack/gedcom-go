@@ -126,16 +126,20 @@ const (
 )
 
 // Decode parses a GEDCOM file from an io.Reader and returns a Document.
-// This is the simplest way to parse a GEDCOM file using default options.
+// This is the simplest way to parse a GEDCOM file using default options,
+// which decode leniently: malformed lines are recovered from or skipped
+// rather than failing the decode.
 //
-// For custom options (progress callbacks, context cancellation), use
-// [DecodeWithOptions].
+// For custom options (strict mode, progress callbacks, context cancellation),
+// use [DecodeWithOptions].
 func Decode(r io.Reader) (*Document, error) {
 	return decoder.Decode(r)
 }
 
 // DecodeWithOptions parses a GEDCOM file with the given options.
-// If opts is nil, default options are used.
+// If opts is nil, default options are used. [DecodeOptions.StrictMode] means
+// the same thing here as in [DecodeWithDiagnostics]; this function returns the
+// document and discards the diagnostics.
 func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*Document, error) {
 	return decoder.DecodeWithOptions(r, opts)
 }
