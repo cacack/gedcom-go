@@ -145,7 +145,7 @@ func checkFamilyDetailFixture(t *testing.T, doc *gedcom.Document) {
 		t.Errorf("RESI Phone = %v, want %v", resi.Phone, want)
 	}
 
-	nchi := findFamilyAttribute(fam, "NCHI")
+	nchi := findFamilyAttribute(fam, gedcom.AttributeNumberOfChildren)
 	if nchi == nil {
 		t.Fatal("FAM.NCHI did not reach Family.Attributes")
 	}
@@ -160,7 +160,7 @@ func checkFamilyDetailFixture(t *testing.T, doc *gedcom.Document) {
 		t.Errorf("NumberOfChildren() = %q, want %q", fam.NumberOfChildren(), "3")
 	}
 
-	fact := findFamilyAttribute(fam, "FACT")
+	fact := findFamilyAttribute(fam, gedcom.AttributeFact)
 	if fact == nil {
 		t.Fatal("FAM.FACT did not reach Family.Attributes")
 	}
@@ -186,14 +186,14 @@ func checkAttributeDetailFixture(t *testing.T, doc *gedcom.Document) {
 	}
 
 	want := []struct {
-		attrType   string
+		attrType   gedcom.AttributeType
 		value      string
 		typeDetail string
 		agency     string
 		cause      string
 	}{
-		{"OCCU", "Blacksmith", "Trade", "Guild of Smiths", "Apprenticeship"},
-		{"FACT", "Purple Heart", "Award", "US Army", "Wounded in action"},
+		{gedcom.AttributeOccupation, "Blacksmith", "Trade", "Guild of Smiths", "Apprenticeship"},
+		{gedcom.AttributeFact, "Purple Heart", "Award", "US Army", "Wounded in action"},
 	}
 	for _, w := range want {
 		attr := findAttribute(indi.Attributes, w.attrType)
@@ -225,11 +225,11 @@ func findFamilyEvent(fam *gedcom.Family, typ gedcom.EventType) *gedcom.Event {
 	return nil
 }
 
-func findFamilyAttribute(fam *gedcom.Family, typ string) *gedcom.Attribute {
+func findFamilyAttribute(fam *gedcom.Family, typ gedcom.AttributeType) *gedcom.Attribute {
 	return findAttribute(fam.Attributes, typ)
 }
 
-func findAttribute(attrs []*gedcom.Attribute, typ string) *gedcom.Attribute {
+func findAttribute(attrs []*gedcom.Attribute, typ gedcom.AttributeType) *gedcom.Attribute {
 	for _, attr := range attrs {
 		if attr.Type == typ {
 			return attr

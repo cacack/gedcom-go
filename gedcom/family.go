@@ -82,7 +82,7 @@ func (f *Family) NumberOfChildren() string {
 		return ""
 	}
 	for _, attr := range f.Attributes {
-		if attr != nil && attr.Type == "NCHI" {
+		if attr != nil && attr.Type == AttributeNumberOfChildren {
 			return attr.Value
 		}
 	}
@@ -94,8 +94,8 @@ func (f *Family) NumberOfChildren() string {
 // intact. It is a no-op on a nil Family.
 //
 // This keeps the write typed and discoverable. Without it the only way to set a
-// child count would be to append &Attribute{Type: "NCHI"} by hand, which
-// requires knowing the raw GEDCOM tag name.
+// child count would be to find or append &Attribute{Type: AttributeNumberOfChildren}
+// by hand.
 //
 // Note that on a *decoded* family this changes the typed model only. Record.Tags
 // is authoritative on encode, so edit the NCHI tag there (or clear Tags) to
@@ -105,12 +105,12 @@ func (f *Family) SetNumberOfChildren(value string) {
 		return
 	}
 	for _, attr := range f.Attributes {
-		if attr != nil && attr.Type == "NCHI" {
+		if attr != nil && attr.Type == AttributeNumberOfChildren {
 			attr.Value = value
 			return
 		}
 	}
-	f.Attributes = append(f.Attributes, &Attribute{Type: "NCHI", Value: value})
+	f.Attributes = append(f.Attributes, &Attribute{Type: AttributeNumberOfChildren, Value: value})
 }
 
 // HusbandIndividual returns the Individual record for the husband.

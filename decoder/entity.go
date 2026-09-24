@@ -821,7 +821,7 @@ func validateCoordinate(tag *gedcom.Tag, parse func(string) (float64, error), co
 // parseAttribute extracts an attribute from tags starting at attrIdx.
 func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string, collector *diagnosticCollector) *gedcom.Attribute {
 	attr := &gedcom.Attribute{
-		Type:  attrTag,
+		Type:  gedcom.AttributeType(attrTag),
 		Value: tags[attrIdx].Value,
 	}
 

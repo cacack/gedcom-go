@@ -875,7 +875,7 @@ func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*
 	}
 
 	// Attribute tag (OCCU, EDUC, etc.) with value
-	tags := []*gedcom.Tag{{Level: level, Tag: attr.Type, Value: attr.Value}}
+	tags := []*gedcom.Tag{{Level: level, Tag: string(attr.Type), Value: attr.Value}}
 
 	// Subordinate tags at level+1
 	return append(tags, eventDetailToTags(&eventDetail{

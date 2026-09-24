@@ -449,6 +449,46 @@ can gain a large number of warnings on input that decoded quietly before. No
 data is lost either way: the raw tags were preserved in v2 and still are. If you
 surface diagnostics to end users, check the volume before shipping the upgrade.
 
+### `Attribute.Type` is now `AttributeType`
+
+| v2 | v3 |
+|----|----|
+| `Type string` — the raw GEDCOM tag | `Type AttributeType` — the same tag, as a defined string type |
+
+The value is unchanged; only the static type moves. `Attribute` now has named
+constants the way `Event` has `EventType`, so an occupation can be found by
+name rather than by a raw tag — see `EventOccupation` under Straight removals.
+
+| Constant | Tag | Constant | Tag |
+|----------|-----|----------|-----|
+| `AttributeOccupation` | `OCCU` | `AttributeReligion` | `RELI` |
+| `AttributeCaste` | `CAST` | `AttributeNumberOfChildren` | `NCHI` |
+| `AttributePhysicalDescription` | `DSCR` | `AttributeNumberOfMarriages` | `NMR` |
+| `AttributeEducation` | `EDUC` | `AttributeProperty` | `PROP` |
+| `AttributeIDNumber` | `IDNO` | `AttributeFact` | `FACT` |
+| `AttributeNationality` | `NATI` | | |
+| `AttributeSSN` | `SSN` | | |
+| `AttributeTitle` | `TITL` | | |
+
+**Most call sites keep compiling.** An untyped literal converts implicitly, so
+`attr.Type == "OCCU"`, `case "EDUC":` and `&gedcom.Attribute{Type: "NCHI"}` are
+all still valid; switch them to the constants at your leisure. The build breaks
+only where a value crosses between a `string` variable and the field:
+
+| v2 | v3 |
+|----|----|
+| `var tag string = attr.Type` | `tag := string(attr.Type)` |
+| `attr.Type == tagVar` (a `string`) | `attr.Type == gedcom.AttributeType(tagVar)` |
+| `&gedcom.Attribute{Type: tagVar}` | `&gedcom.Attribute{Type: gedcom.AttributeType(tagVar)}` |
+| `m[attr.Type]` with `m map[string]T` | `m[string(attr.Type)]`, or key the map by `AttributeType` |
+
+Every one of those is a compile error, and the conversion is the whole fix — it
+changes no value. Output does not change either: `%v`, `encoding/json` and
+`text/template` render the field exactly as before.
+
+`AttributeType` does not exist in `v2.5.0`, so this retype cannot be staged;
+the conversions above arrive with the upgrade.
+
 ## Renames
 
 ### `Individual.ParentalFamilies` / `SpouseFamilies`
@@ -644,6 +684,7 @@ below.
 | `gedcom.Event.Place` | `Event.PlaceName()` to read, `Event.SetPlaceName(name)` to write |
 | `gedcom.Attribute.Place` | `Attribute.PlaceName()` to read, `Attribute.SetPlaceName(name)` to write |
 | `validator.PlaceConsistencyValidator`, `validator.NewPlaceConsistencyValidator()`, `validator.CodePlaceCarrierMismatch` | none needed — the check compared two place carriers and there is now one. Never shipped in a tagged release |
+| `gedcom.EventOccupation` | `gedcom.AttributeOccupation`, matched over `Individual.Attributes` — see below, the v2 constant never matched an ordinary `OCCU` |
 
 ```go
 // v2
@@ -985,6 +1026,65 @@ are untouched and will not compile:
 |------|----|----|
 | `internal/gedcom/importer.go:1362` (read) | `assoc.Notes` | `assoc.NoteXRefs` and `assoc.InlineNotes` |
 | `internal/gedcom/exporter.go:772` (write) | `Notes: notes` | `InlineNotes:` for text, `NoteXRefs:` for pointers |
+
+Line numbers are as of the survey that produced this guide; re-grep before
+relying on them.
+
+### `EventOccupation` in detail
+
+`EventOccupation` was a trap rather than a superseded name. The decoder routes
+`1 OCCU` to `Individual.Attributes`, never to `Events`, so a loop over
+`indi.Events` comparing against it did not match an ordinary occupation in any
+file. The code compiled, ran, and found nothing.
+
+```go
+// v2 — never matches a decoded "1 OCCU"
+for _, ev := range indi.Events {
+    if ev.Type == gedcom.EventOccupation { use(ev.Description) }
+}
+
+// v3 — occupations are attributes
+for _, attr := range indi.Attributes {
+    if attr.Type == gedcom.AttributeOccupation { use(attr.Value) }
+}
+```
+
+If your code already picks `OCCU` out of `Individual.Tags`, it has been
+working all along; delete the dead event branch rather than adding this loop
+beside it, or you will read each occupation twice.
+
+The one input that did land in `Events` is a GEDCOM 7 negative assertion.
+`1 NO OCCU` decodes to `Event{Type: "OCCU", IsNegative: true}` — the `NO` line's
+value becomes the event type — and it still does in v3. If you handle "no known
+occupation", keep that branch, keyed on `IsNegative` so it cannot be mistaken
+for an occupation:
+
+```go
+for _, ev := range indi.Events {
+    if ev.IsNegative && ev.Type == "OCCU" { /* asserted: no occupation */ }
+}
+```
+
+The attribute loop can be written while still on v2, comparing
+`attr.Type == "OCCU"` — the literal keeps compiling after the upgrade, when you
+can switch it to the constant. `v2.5.0` carries no `// Deprecated:` marker on
+`EventOccupation`, so grep for it rather than relying on tooling.
+
+#### Known downstream call sites
+
+`my-family` matches `EventOccupation` while ranging over `indi.Events` at two
+sites, both dead for ordinary `OCCU` lines — they only ever fired on `NO OCCU`.
+Its occupation import still works: `extractAttributesFromIndividual` reads
+`OCCU` from `indi.Tags` a few lines further down. So **do not** add an
+`indi.Attributes` loop beside that one — both would fire and every occupation
+would be imported twice. A third site stops compiling because of the
+`Attribute.Type` retype.
+
+| Site | v2 | v3 |
+|------|----|----|
+| `internal/gedcom/importer.go:989` (`extractCitationsFromIndividual`) | `EventOccupation` case over `indi.Events` | delete the case, or key it on `IsNegative && Type == "OCCU"` if `NO OCCU` citations should keep their occupation fact type. Citations on real occupations live on `Attribute.SourceCitations`, which this function never read |
+| `internal/gedcom/importer.go:1260-1265` (`extractAttributesFromIndividual`) | `EventOccupation` case over `indi.Events` | delete the case — occupations already arrive via the `indi.Tags` loop. Alternatively move the whole function to `indi.Attributes` and drop the `OCCU`/`EDUC`/`RELI`/`TITL` cases from the `Tags` loop; never both |
+| `internal/gedcom/exporter.go:935-936` (`toGedcomAttribute`) | `&gedcom.Attribute{Type: tagName}` with `tagName string` | `gedcom.AttributeType(tagName)`, or have `mapFactTypeToGedcomTag` return `AttributeType` |
 
 Line numbers are as of the survey that produced this guide; re-grep before
 relying on them.

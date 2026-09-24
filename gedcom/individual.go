@@ -186,10 +186,47 @@ type Association struct {
 	InlineNotes []string
 }
 
+// AttributeType represents the type of a personal or family attribute.
+//
+// These are the tags the decoder routes to Individual.Attributes (and, for
+// NCHI and FACT, to Family.Attributes). OCCU is an attribute, not an event:
+// an occupation is found in Attributes, never in Events.
+type AttributeType string
+
+const (
+	// AttributeOccupation represents an occupation (OCCU) attribute.
+	AttributeOccupation AttributeType = "OCCU"
+	// AttributeCaste represents a caste (CAST) attribute.
+	AttributeCaste AttributeType = "CAST"
+	// AttributePhysicalDescription represents a physical description (DSCR) attribute.
+	AttributePhysicalDescription AttributeType = "DSCR"
+	// AttributeEducation represents an education (EDUC) attribute.
+	AttributeEducation AttributeType = "EDUC"
+	// AttributeIDNumber represents an identification number (IDNO) attribute.
+	AttributeIDNumber AttributeType = "IDNO"
+	// AttributeNationality represents a nationality (NATI) attribute.
+	AttributeNationality AttributeType = "NATI"
+	// AttributeSSN represents a social security number (SSN) attribute.
+	AttributeSSN AttributeType = "SSN"
+	// AttributeTitle represents a nobility or other title (TITL) attribute.
+	AttributeTitle AttributeType = "TITL"
+	// AttributeReligion represents a religious affiliation (RELI) attribute.
+	AttributeReligion AttributeType = "RELI"
+	// AttributeNumberOfChildren represents a number of children (NCHI) attribute.
+	AttributeNumberOfChildren AttributeType = "NCHI"
+	// AttributeNumberOfMarriages represents a number of marriages (NMR) attribute.
+	AttributeNumberOfMarriages AttributeType = "NMR"
+	// AttributeProperty represents a property or possessions (PROP) attribute.
+	AttributeProperty AttributeType = "PROP"
+	// AttributeFact represents a generic fact (FACT) attribute.
+	AttributeFact AttributeType = "FACT"
+)
+
 // Attribute represents a personal attribute.
 type Attribute struct {
-	// Type is the attribute type (e.g., "OCCU" for occupation, "EDUC" for education)
-	Type string
+	// Type is the attribute type (e.g., AttributeOccupation, AttributeEducation).
+	// See the AttributeType constants.
+	Type AttributeType
 
 	// Value is the attribute value
 	Value string
