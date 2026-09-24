@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0](https://github.com/cacack/gedcom-go/compare/v2.4.0...v3.0.0) (2026-09-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **gedcom:** gedcom.EventOccupation is removed; use gedcom.AttributeOccupation over Individual.Attributes. Attribute.Type is now gedcom.AttributeType.
+* **decoder:** Decode and DecodeWithOptions (StrictMode false, the default) now recover from malformed lines instead of returning nil, err; level jumps are clamped rather than kept; and a document can arrive with an error when no line parses or a read fails partway. Set StrictMode: true on DecodeWithOptions to keep v2 behaviour. See docs/guides/migration-v3.md. Downstream, my-family's internal/gedcom/exporter.go re-decode should switch to StrictMode: true.
+* **gedcom:** input that ParseCoordinate and Coordinates.AsDecimal previously accepted now returns an error. "Nnan" was NaN with a nil error; "N1e2" was 100; "N0x1p3" was 8; "N1_0.5" was 10.5. All now error. apidiff reports nothing, since no signature changed -- make api-check is clean for these symbols and lists ParseLatitude/ParseLongitude as compatible additions. A caller that checked the error and trusted the value was already correct and needs no change; it now gets the guarantee it was relying on. A caller that stored one of these spellings has data to fix -- the value was never a GEDCOM coordinate. Recorded in docs/governance/policies/api-stability.md with migration notes in docs/guides/migration-v3.md.
+* **gedcom:** Document.Subset always includes the header's submitter record, so every subset gains a record -- including Subset(nil), which previously returned an empty document. The submitter record carries any Address, Phone and Email the source recorded, so those contact details are now present in every extract. The encoder also writes hand-built header fields in grammar order, changing the bytes for any hand-built header even when no Submitter is set. make api-check reports none of this: no signature changes. See docs/guides/migration-v3.md and the semantic-break table in docs/governance/policies/api-stability.md.
+* **gedcom:** Individual.SpouseInFamilies changes from []string to []FamilyLink. A range loop needs link.FamilyXRef. A site that only prints or marshals the slice still compiles but changes output, so grep for the field as well as building; see docs/guides/migration-v3.md.
+* **gedcom:** gedcom.MediaObject.NoteXRefs no longer contains SNOTE pointers; they appear only in SharedNoteXRefs. make api-check reports nothing for this change and adds no entry to its incompatible-changes list -- both fields keep their name and []string type, and only the values they carry change meaning. That is exactly the semantic break the API stability policy's Semantic Breaks section exists to record, and the entry is added there. A caller reading NoteXRefs alone must now also read SharedNoteXRefs; a caller who concatenated the two and deduped must stop deduping, because the slices are disjoint and a dedup would now discard a genuine repeat. MediaObject.AllNotes follows both and needs no change.
+* **gedcom:** the deprecated `Notes []string` field is removed from `Individual`, `Family`, `Source`, `Repository`, `Submitter`, `MediaObject`, `Event`, `Attribute`, `SourceCitation`, `LDSOrdinance`, `ChangeDate`, `Association` and `SourceRepositoryLink`. Read `NoteXRefs` (pointers to NOTE/SNOTE records) and `InlineNotes` (note text, CONT/CONC folded), or `AllNotes(doc)` where it is defined. Encoding from the typed model now writes every pointer ahead of every inline note rather than preserving the original interleaved order. See docs/guides/migration-v3.md.
+* **gedcom:** gedcom.MediaLink, gedcom.FamilyLink and gedcom.PlaceDetail are no longer comparable with ==. Each gained NoteXRefs and InlineNotes []string fields, and a struct containing a slice cannot be compared. Code that compared these values directly, or used them as map keys, must compare the fields it cares about instead. gedcom.Association and gedcom.SourceRepositoryLink already held slices and are unaffected.
+* **gedcom:** gedcom.Event.Place and gedcom.Attribute.Place are removed, as are validator.PlaceConsistencyValidator, validator.NewPlaceConsistencyValidator and validator.CodePlaceCarrierMismatch. Read a place with PlaceName() and write one with SetPlaceName(); see docs/guides/migration-v3.md.
+* **gedcom:** `gedcom.Event.Tags` is removed. Custom event subtags live on `Record.Tags`, which is authoritative on encode.
+* **version:** `version.IsValidVersion(v)` is removed -- use `v.IsValid()`. `version.DetectVersion` returns `gedcom.Version` only; drop the error result.
+* **validator:** validator.Issue.Details no longer carries a "line_number" key. Replace strconv.Atoi(issue.Details["line_number"]) with issue.LineNumber. make api-check is clean -- a map key appears in no signature, so apidiff cannot see it disappear and a caller reading the key silently gets "" rather than a compile error. Listed accordingly in the Semantic Breaks section of the API stability policy.
+* **gedcom:** gedcom.Family.NumberOfChildren changes from a string field to a method pair. Replace reads with fam.NumberOfChildren() and writes with fam.SetNumberOfChildren(v). On a decoded family, edit the NCHI entry in Record.Tags to change encoded output.
+* **gedcom:** gedcom.SourceCitation.Quality changes from int to *int. Replace `cite.Quality` with a nil check plus dereference, and `Quality: 3` with a pointer to 3. nil now means "no QUAY tag"; a pointer to 0 means a real QUAY 0, which v2 could not represent.
+* **gedcom:** gedcom.Note.Continuation and gedcom.Note.FullText() are removed. Put the whole body in Note.Text with embedded newlines and let the encoder split it into CONT/CONC -- which also enforces MaxLineLength and prevents an embedded newline forging a record, neither of which a hand split does. Replace note.FullText() with note.Text.
+* **converter:** converter.ConvertOptions.PreserveUnknownTags is replaced by ReportPreservedTags and MapEXIDToVendorTags. Set both true where the old field was true; omit both where it was false. A wholly zero &ConvertOptions{} now behaves as DefaultOptions() rather than as all-false.
+* **gedcom:** Individual.ParentalFamilies is renamed to FamiliesAsChild and Individual.SpouseFamilies to FamiliesAsSpouse. A caller who had the two transposed will see corrected results, with no compiler signal that the behaviour changed.
+* **encoder:** encoder.EncodeOptions.LineEnding now defaults to "\n" when empty. A caller who relied on the empty string producing output with no line separators -- which was unparseable GEDCOM -- gets "\n" instead.
+* **validator:** validator.Strictness constants are renumbered. Old: Relaxed=0, Normal=1, Strict=2. New: Normal=0, Relaxed=1, Strict=2. Callers who named the constants are unaffected. A Strictness integer persisted to a config file, database column or API payload changes meaning on upgrade and must be remapped.
+* **encoder:** encoder.EncodeOptions.PreserveUnknownTags is replaced by DropUnknownTags with the opposite sense. Delete `PreserveUnknownTags: true` from options literals — it is now the default; set `DropUnknownTags: true` only where dropping was actually wanted.
+* **decoder:** decoder.DecodeOptions.MaxNestingDepth and gedcom/testing.WithHeaderTagComparison are removed. Delete the field assignment and delete the argument respectively; neither did anything.
+* **gedcom:** Source.RepositoryRef and Source.Repository are removed. Use SourceRepositoryLink instead: RepositoryRef -> RepositoryLink.XRef, Repository -> RepositoryLink.Inline.
+* **decoder:** gedcom.ChangeDate, gedcom.LDSOrdinance and gedcom.SourceCitation gained []string note fields and are therefore no longer comparable with ==. Callers comparing these by value must compare the fields they care about instead; pointer comparison is unaffected, and the API hands all three out as pointers.
+
+### Features
+
+* **converter:** split PreserveUnknownTags and fix the zero value ([62a9bd6](https://github.com/cacack/gedcom-go/commit/62a9bd66f36f7060c095550f4e62cfd28f3eb950))
+* **decoder:** decode full EVENT_DETAIL on events, attributes and family attributes ([fd7a09c](https://github.com/cacack/gedcom-go/commit/fd7a09c27d633a099aceca25a43c4314833ee2e0))
+* **decoder:** honour StrictMode in every decode entry point ([1c876cd](https://github.com/cacack/gedcom-go/commit/1c876cd88423567612d560867e65718cf7110cf3)), closes [#490](https://github.com/cacack/gedcom-go/issues/490)
+* **decoder:** honour the two published "will be removed in v3" markers ([01872c7](https://github.com/cacack/gedcom-go/commit/01872c7d0bc420e207d6105c9d560bc6d24c0253))
+* **encoder:** invert PreserveUnknownTags to DropUnknownTags ([9721eb1](https://github.com/cacack/gedcom-go/commit/9721eb1bdb77831866a8ededd8b8bac465ff1987))
+* **gedcom:** add nil-safe PlaceName accessors on Event and Attribute ([4f5f0cb](https://github.com/cacack/gedcom-go/commit/4f5f0cb5c9e9128fa5cbdb2cb84b7f49903954a0)), closes [#506](https://github.com/cacack/gedcom-go/issues/506)
+* **gedcom:** partition MediaObject NoteXRefs and SharedNoteXRefs ([1633407](https://github.com/cacack/gedcom-go/commit/16334075335f6001eb30c617eaea0816afa9b5a5)), closes [#499](https://github.com/cacack/gedcom-go/issues/499)
+* **gedcom:** promote SpouseInFamilies to []FamilyLink ([6bb2de0](https://github.com/cacack/gedcom-go/commit/6bb2de088ba00460556dc638704da0975c40a9c7)), closes [#534](https://github.com/cacack/gedcom-go/issues/534)
+* **gedcom:** remove Event.Tags, which no code path read or wrote ([5be5b45](https://github.com/cacack/gedcom-go/commit/5be5b455b5e75df159abc5ac09b8b277b1b17f22)), closes [#492](https://github.com/cacack/gedcom-go/issues/492)
+* **gedcom:** remove EventOccupation and add AttributeType constant set ([92bde0d](https://github.com/cacack/gedcom-go/commit/92bde0d9f21d5750c778e1c23412d0292aa160c7)), closes [#484](https://github.com/cacack/gedcom-go/issues/484)
+* **gedcom:** remove Note.Continuation and Note.FullText() ([f38b128](https://github.com/cacack/gedcom-go/commit/f38b12859ca828792f63791ddb03450448d9a87f))
+* **gedcom:** remove Source.RepositoryRef and Source.Repository ([2d0effb](https://github.com/cacack/gedcom-go/commit/2d0effbac9845791822cf816fa7b95c4ff8576f8)), closes [#476](https://github.com/cacack/gedcom-go/issues/476)
+* **gedcom:** remove the deprecated Notes fields ([9c13e11](https://github.com/cacack/gedcom-go/commit/9c13e11a905a6dfb12e36129fdef85cb679b9251))
+* **gedcom:** remove the legacy Event.Place and Attribute.Place scalars ([09aabd3](https://github.com/cacack/gedcom-go/commit/09aabd3aea5ae93e1b6b04a5a120260d367cd238)), closes [#483](https://github.com/cacack/gedcom-go/issues/483)
+* **gedcom:** rename ParentalFamilies/SpouseFamilies to state the role ([c8c1499](https://github.com/cacack/gedcom-go/commit/c8c1499bee0c3e9ecb39b9691746d7ccf75402c8))
+* **gedcom:** replace Family.NumberOfChildren with an accessor pair ([409106b](https://github.com/cacack/gedcom-go/commit/409106b2c984d26a2b85af4a70b3bb3ce42ca6cf))
+* **gedcom:** retype SourceCitation.Quality from int to *int ([7cd1782](https://github.com/cacack/gedcom-go/commit/7cd17828f82ae8c26c8850acf1c51d123fd64703))
+* **gedcom:** split notes on MediaLink, FamilyLink, PlaceDetail, Association and SourceRepositoryLink ([62fb04d](https://github.com/cacack/gedcom-go/commit/62fb04d83fc054b6506197d8966c8ebfb92c030b)), closes [#472](https://github.com/cacack/gedcom-go/issues/472) [#470](https://github.com/cacack/gedcom-go/issues/470)
+* **validator:** add Issue.LineNumber and populate it where the line is known ([b3130d6](https://github.com/cacack/gedcom-go/commit/b3130d60222b1b2cf772fdf4016e0c33b87598ae))
+* **validator:** bound duplicate detection on adversarial input ([7a2a0a7](https://github.com/cacack/gedcom-go/commit/7a2a0a75eb28ee73b523853ccd910933ee852358)), closes [#530](https://github.com/cacack/gedcom-go/issues/530)
+* **validator:** flag events whose two place carriers disagree ([29d849a](https://github.com/cacack/gedcom-go/commit/29d849a43c5f8f1fa94ea91ec333356898ab6241)), closes [#519](https://github.com/cacack/gedcom-go/issues/519)
+* **validator:** remove the line_number Details key now LineNumber exists ([5e4bb44](https://github.com/cacack/gedcom-go/commit/5e4bb44e7bd83d273ac7d2c7033a194ae36bd66f))
+* **validator:** renumber Strictness so the zero value is Normal ([5dea800](https://github.com/cacack/gedcom-go/commit/5dea800ef569d74c284f76af829cb34075a81fc6))
+* **validator:** report overlapping media object note pointers ([64811b6](https://github.com/cacack/gedcom-go/commit/64811b6499f7d4a2fc897b38ab96061d432c7a58)), closes [#536](https://github.com/cacack/gedcom-go/issues/536)
+* **version:** remove IsValidVersion and DetectVersion's always-nil error ([52e253d](https://github.com/cacack/gedcom-go/commit/52e253db0ec8b724c20b44e765edae9dceedc683)), closes [#488](https://github.com/cacack/gedcom-go/issues/488)
+
+
+### Bug Fixes
+
+* **decoder:** keep the text of a non-pointer SNOTE on a media record ([581aa7a](https://github.com/cacack/gedcom-go/commit/581aa7a3a8abcf368cae1611829ec0fbaf98951c))
+* **encoder:** default LineEnding so a bare EncodeOptions really is lossless ([e69637e](https://github.com/cacack/gedcom-go/commit/e69637e8b2911137816b56016318a7ae5067046a)), closes [#486](https://github.com/cacack/gedcom-go/issues/486)
+* **encoder:** emit PLAC when only PlaceDetail is set ([d860eee](https://github.com/cacack/gedcom-go/commit/d860eee526586c21c144480571f0d74c4f3471c7)), closes [#505](https://github.com/cacack/gedcom-go/issues/505)
+* **gedcom:** populate Header.Submitter from HEAD.SUBM ([4fc7a5f](https://github.com/cacack/gedcom-go/commit/4fc7a5fbb5f2537deae07e3101d4a6ecbd6b5ca0)), closes [#503](https://github.com/cacack/gedcom-go/issues/503) [#479](https://github.com/cacack/gedcom-go/issues/479)
+* **gedcom:** reject non-finite and non-decimal coordinate values ([47649f6](https://github.com/cacack/gedcom-go/commit/47649f69016bdcad199aff8fa34917e78998afd2)), closes [#504](https://github.com/cacack/gedcom-go/issues/504) [#479](https://github.com/cacack/gedcom-go/issues/479)
+* **validator:** carry the record's line number, and stop overriding zero options ([e06bac9](https://github.com/cacack/gedcom-go/commit/e06bac9d820cee465186a3432ffc0d454071c8a1))
+
+
+### Performance Improvements
+
+* **validator:** hoist name normalization out of duplicate pair loop ([6e99f5f](https://github.com/cacack/gedcom-go/commit/6e99f5fb6f2cf5a5aa04d5319a2468bb82aabb09)), closes [#529](https://github.com/cacack/gedcom-go/issues/529)
+
 ## [2.4.0](https://github.com/cacack/gedcom-go/compare/v2.3.1...v2.4.0) (2026-08-24)
 
 
