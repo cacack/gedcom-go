@@ -24,7 +24,7 @@
 
 package validator
 
-import "github.com/cacack/gedcom-go/v2/gedcom"
+import "github.com/cacack/gedcom-go/v3/gedcom"
 
 // AncestryRegistry returns a TagRegistry containing common Ancestry.com custom tags.
 //

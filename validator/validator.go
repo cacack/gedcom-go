@@ -1,7 +1,7 @@
 package validator
 
 import (
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // Strictness defines the level of validation strictness.

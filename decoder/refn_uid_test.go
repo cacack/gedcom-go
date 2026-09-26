@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // Issue #554: REFN and UID repeat, and the decoder used to assign rather than

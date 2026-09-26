@@ -3,7 +3,7 @@ package converter
 import (
 	"fmt"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // Convert converts a GEDCOM document to the target version using default options.

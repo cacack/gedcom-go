@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
-	"github.com/cacack/gedcom-go/v2/parser"
+	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/parser"
 )
 
 // strictModeFixture carries both kinds of problem StrictMode governs: a level

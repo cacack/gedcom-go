@@ -3,7 +3,7 @@ package decoder
 import (
 	"fmt"
 
-	"github.com/cacack/gedcom-go/v2/parser"
+	"github.com/cacack/gedcom-go/v3/parser"
 )
 
 // normalizeLevelJumps detects malformed indentation in real-world GEDCOM exports

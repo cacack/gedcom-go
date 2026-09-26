@@ -3,7 +3,7 @@ package validator
 import (
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // TestNewDuplicateDetector_PartialLiteralGetsDefaults pins #555: a struct

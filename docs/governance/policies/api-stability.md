@@ -351,7 +351,16 @@ Before release-please is allowed to cut the major:
         known data loss and a no-op option until v4; the maintainer accepted
         removing them unmarked. Each has its own migration-guide entry.
 - [ ] The consumer has migrated against that tag with no other change
-- [ ] The module path is bumped to the new major ([#516](https://github.com/cacack/gedcom-go/issues/516))
+- [ ] The module path is bumped to the new major
+      ([#516](https://github.com/cacack/gedcom-go/issues/516)). This step is
+      **not optional** for any major release: tagging `vN.0.0` against a
+      `/v(N-1)` path makes the release unreachable through `go get`, and
+      consumers on `/v(N-1)@latest` never see it. Land it as the **last PR
+      before the release-please PR merges** — it rewrites every import, so
+      landing it earlier conflicts with every open branch.
+      `scripts/check-module-path.sh` (CI and `make preflight`) warns while
+      breaking commits are pending on the old path, accepts the bumped path
+      once they are, and fails on any other mismatch.
 
 ## Stability Note
 

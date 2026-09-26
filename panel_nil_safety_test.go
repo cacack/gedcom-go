@@ -3,7 +3,7 @@ package gedcomgo
 import (
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // nil_safety_test.go drives every nil shape through the facade on a fixture

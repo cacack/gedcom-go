@@ -3,7 +3,7 @@ package converter
 import (
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // A nil header converted to the version it already defaults to took the

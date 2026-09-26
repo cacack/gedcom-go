@@ -114,7 +114,7 @@ jobs:
       with:
         config: .testcoverage.yml
         profile: coverage.out
-        local-prefix: github.com/cacack/gedcom-go/v2
+        local-prefix: github.com/cacack/gedcom-go/v3
 
     - name: Per-package coverage report
       run: |
@@ -123,7 +123,7 @@ jobs:
         echo "| Package | Coverage | Status |"
         echo "|---------|----------|--------|"
         for pkg in charset decoder encoder gedcom merge parser validator version; do
-          COV=$(go tool cover -func=coverage.out | grep "github.com/cacack/gedcom-go/v2/$pkg" | tail -1 | awk '{print $3}')
+          COV=$(go tool cover -func=coverage.out | grep "github.com/cacack/gedcom-go/v3/$pkg" | tail -1 | awk '{print $3}')
           PCT=$(echo "$COV" | sed 's/%//')
           if (( $(echo "$PCT >= 85.0" | bc -l) )); then
             echo "| $pkg | $COV | ✅ |"

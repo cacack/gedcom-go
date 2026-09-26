@@ -13,7 +13,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // facadeDoc builds the all-shapes document, or its nil-free twin. Both come

@@ -3,7 +3,7 @@ package converter
 import (
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // findTag returns the first tag in the record with the given name, or nil.

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/charset"
-	"github.com/cacack/gedcom-go/v2/parser"
+	"github.com/cacack/gedcom-go/v3/charset"
+	"github.com/cacack/gedcom-go/v3/parser"
 )
 
 // T064: Test missing cross-reference targets

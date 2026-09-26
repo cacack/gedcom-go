@@ -4,8 +4,8 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/cacack/gedcom-go/badge)](https://scorecard.dev/viewer/?uri=github.com/cacack/gedcom-go)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12809/badge)](https://www.bestpractices.dev/projects/12809)
 [![codecov](https://codecov.io/gh/cacack/gedcom-go/graph/badge.svg)](https://codecov.io/gh/cacack/gedcom-go)
-[![Go Report Card](https://goreportcard.com/badge/github.com/cacack/gedcom-go/v2)](https://goreportcard.com/report/github.com/cacack/gedcom-go/v2)
-[![GoDoc](https://pkg.go.dev/badge/github.com/cacack/gedcom-go/v2.svg)](https://pkg.go.dev/github.com/cacack/gedcom-go/v2)
+[![Go Report Card](https://goreportcard.com/badge/github.com/cacack/gedcom-go/v3)](https://goreportcard.com/report/github.com/cacack/gedcom-go/v3)
+[![GoDoc](https://pkg.go.dev/badge/github.com/cacack/gedcom-go/v3.svg)](https://pkg.go.dev/github.com/cacack/gedcom-go/v3)
 [![Release](https://img.shields.io/github/v/release/cacack/gedcom-go)](https://github.com/cacack/gedcom-go/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/cacack/gedcom-go)](https://github.com/cacack/gedcom-go)
@@ -49,7 +49,7 @@ Full compatibility matrix: [docs/governance/policies/compatibility.md](docs/gove
 ## Installation
 
 ```bash
-go get github.com/cacack/gedcom-go/v2
+go get github.com/cacack/gedcom-go/v3
 ```
 
 ## Requirements
@@ -63,7 +63,7 @@ This library tracks Go's [release policy](https://go.dev/doc/devel/release#polic
 The library provides a simple, single-import API for common operations. Import with an alias for cleaner code:
 
 ```go
-import gedcomgo "github.com/cacack/gedcom-go/v2"
+import gedcomgo "github.com/cacack/gedcom-go/v3"
 ```
 
 ### Parse a GEDCOM File
@@ -76,7 +76,7 @@ import (
     "log"
     "os"
 
-    gedcomgo "github.com/cacack/gedcom-go/v2"
+    gedcomgo "github.com/cacack/gedcom-go/v3"
 )
 
 func main() {
@@ -127,10 +127,10 @@ For files too large to materialize in memory (10k+ individuals, exports from maj
 import (
     "os"
 
-    "github.com/cacack/gedcom-go/v2/charset"
-    "github.com/cacack/gedcom-go/v2/encoder"
-    "github.com/cacack/gedcom-go/v2/gedcom"
-    "github.com/cacack/gedcom-go/v2/parser"
+    "github.com/cacack/gedcom-go/v3/charset"
+    "github.com/cacack/gedcom-go/v3/encoder"
+    "github.com/cacack/gedcom-go/v3/gedcom"
+    "github.com/cacack/gedcom-go/v3/parser"
 )
 
 // Streaming parse — iterate level-0 records without building a Document.
@@ -261,7 +261,7 @@ To opt into strict parsing (fail on the first syntax error, no diagnostics colle
   - [`examples/query`](examples/query) - Navigating and querying genealogy data
   - [`examples/validate`](examples/validate) - Validating GEDCOM files
   - [`examples/stream`](examples/stream) - Streaming parse and encode for very large files
-- **API Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go/v2](https://pkg.go.dev/github.com/cacack/gedcom-go/v2)
+- **API Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go/v3](https://pkg.go.dev/github.com/cacack/gedcom-go/v3)
 - **GEDCOM 7.0 Coverage**: [docs/reference/gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) - What this library does with every structure the 7.0 standard defines, derived by decoding rather than estimated
 - **GEDCOM 5.5/5.5.1 Coverage**: [docs/reference/gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md) - The same for both 5.5 versions, transcribed from the specifications' Lineage-Linked Grammar
 - **Vendor Extensions**: [docs/guides/vendor-extensions.md](docs/guides/vendor-extensions.md) - Vendor-specific tag support (`_APID`, `_FSFTID`, etc.)
@@ -282,10 +282,10 @@ Option types — `DecodeOptions`, `EncodeOptions`, `ValidateOptions` — are re-
 
 ```go
 import (
-    "github.com/cacack/gedcom-go/v2/decoder"
-    "github.com/cacack/gedcom-go/v2/encoder"
-    "github.com/cacack/gedcom-go/v2/validator"
-    "github.com/cacack/gedcom-go/v2/converter"
+    "github.com/cacack/gedcom-go/v3/decoder"
+    "github.com/cacack/gedcom-go/v3/encoder"
+    "github.com/cacack/gedcom-go/v3/validator"
+    "github.com/cacack/gedcom-go/v3/converter"
 )
 ```
 

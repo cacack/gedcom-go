@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/charset"
-	"github.com/cacack/gedcom-go/v2/parser"
+	"github.com/cacack/gedcom-go/v3/charset"
+	"github.com/cacack/gedcom-go/v3/parser"
 )
 
 // BenchmarkDecodeMinimal benchmarks parsing a minimal GEDCOM file (~170 bytes)
