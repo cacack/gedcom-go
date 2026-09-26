@@ -1097,6 +1097,55 @@ func TestCloneSourceCitationFull(t *testing.T) {
 	}
 }
 
+// TestCloneSourceCitationDataText checks that every SourceText entry is copied
+// into its own allocation, in order, and that a nil entry stays nil (#497).
+func TestCloneSourceCitationDataText(t *testing.T) {
+	original := &SourceCitation{
+		SourceXRef: "@S1@",
+		Data: &SourceCitationData{
+			Date: "1 JAN 1900",
+			Text: []*SourceText{
+				{Value: "First", MIME: "text/plain", Language: "en"},
+				nil,
+				{Value: "Third"},
+			},
+		},
+	}
+
+	copied := cloneSourceCitation(original)
+	if copied.Data == original.Data {
+		t.Fatal("Data should be a deep copy, not a shared pointer")
+	}
+	if copied.Data.Date != "1 JAN 1900" {
+		t.Errorf("Data.Date = %q", copied.Data.Date)
+	}
+	if len(copied.Data.Text) != 3 {
+		t.Fatalf("len(Data.Text) = %d, want 3", len(copied.Data.Text))
+	}
+	if copied.Data.Text[1] != nil {
+		t.Errorf("Data.Text[1] = %+v, want nil", copied.Data.Text[1])
+	}
+	for _, k := range []int{0, 2} {
+		if copied.Data.Text[k] == original.Data.Text[k] {
+			t.Errorf("Data.Text[%d] should be a deep copy, not a shared pointer", k)
+		}
+		if *copied.Data.Text[k] != *original.Data.Text[k] {
+			t.Errorf("Data.Text[%d] = %+v, want %+v", k, *copied.Data.Text[k], *original.Data.Text[k])
+		}
+	}
+
+	original.Data.Text[0].Value = "Modified"
+	if copied.Data.Text[0].Value == "Modified" {
+		t.Error("mutating the original's SourceText reached the copy")
+	}
+
+	// A DATA block with no TEXT stays nil rather than becoming an empty slice.
+	empty := cloneSourceCitation(&SourceCitation{Data: &SourceCitationData{Date: "x"}})
+	if empty.Data.Text != nil {
+		t.Errorf("Data.Text = %#v, want nil", empty.Data.Text)
+	}
+}
+
 func TestCloneLDSOrdinanceFull(t *testing.T) {
 	original := &LDSOrdinance{
 		Type:       "BAPL",

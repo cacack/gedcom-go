@@ -179,11 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 842 | 84.4% | 1121 | 85.2% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 844 | 84.6% | 1123 | 85.3% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 74 | 7.4% | 88 | 6.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 63 | 6.3% | 94 | 7.1% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 61 | 6.1% | 92 | 7.0% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -193,7 +193,7 @@ pairs under it reach the typed model.
 
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
-| `FAM` | 206 / 254 | 271 / 324 |
+| `FAM` | 208 / 254 | 273 / 324 |
 | `HEAD` | 7 / 28 | 10 / 33 |
 | `INDI` | 587 / 625 | 787 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
@@ -2360,8 +2360,8 @@ Measured at `FAM.SOUR.DATA.TEXT` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `CONC` | `SOURCE_CITATION.SOUR.DATA.TEXT.CONC` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `CONT` | `SOURCE_CITATION.SOUR.DATA.TEXT.CONT` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
+| `CONC` | `SOURCE_CITATION.SOUR.DATA.TEXT.CONC` | typed | typed | `{0:M}` |
+| `CONT` | `SOURCE_CITATION.SOUR.DATA.TEXT.CONT` | typed | typed | `{0:M}` |
 
 ### `SOURCE_CITATION.SOUR.EVEN`
 

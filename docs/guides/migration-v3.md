@@ -559,6 +559,85 @@ The string field does not exist in `v2.5.0`, so this retype cannot be staged.
 - None known. my-family is not checked out here; the issue (#495) records that
   `Header` appears once in my-family and nothing there reads `Header.Date`.
 
+### `SourceCitationData.Text` is now `[]*SourceText`
+
+| v2 | v3 |
+|----|----|
+| `Text string` — the last `DATA.TEXT` line's value | `Text []*SourceText` — one entry per `DATA.TEXT`, in document order |
+
+`TEXT` under a citation's `DATA` is repeatable (`{0:M}`) in 5.5, 5.5.1 and 7.0,
+but v2 kept a single string and overwrote it on each repeat, so a citation
+quoting two passages reached the typed model with only the last one. Each entry
+is now a `SourceText`:
+
+| Field | GEDCOM | Notes |
+|-------|--------|-------|
+| `Value` | `TEXT` payload | `CONT` lines folded in, joined with `"\n"`; `CONC` concatenated with no separator |
+| `MIME` | `TEXT.MIME` (7.0) | empty when absent |
+| `Language` | `TEXT.LANG` (7.0) | empty when absent |
+
+Reading the text:
+
+```go
+// v2
+if cite.Data != nil && cite.Data.Text != "" { use(cite.Data.Text) }
+
+// v3 — every passage
+if cite.Data != nil {
+	for _, t := range cite.Data.Text { use(t.Value) }
+}
+
+// v3 — the first passage only, when one is all you can display
+if cite.Data != nil && len(cite.Data.Text) > 0 { use(cite.Data.Text[0].Value) }
+```
+
+Note that `Text[0]` is the *first* `TEXT` line, where v2 held the *last*. For a
+citation with a single `TEXT` — the usual case — they are the same line.
+
+Writing it:
+
+| v2 | v3 |
+|----|----|
+| `&gedcom.SourceCitationData{Text: s}` | `&gedcom.SourceCitationData{Text: []*gedcom.SourceText{{Value: s}}}` |
+| `data.Text = ""` (no text) | `data.Text = nil` |
+
+The encoder writes every non-nil entry in slice order, each `Value` split into
+`TEXT` + `CONT`/`CONC`, followed by its `MIME` and `LANG`. An entry whose
+`Value` is empty still writes a bare `TEXT` line, because on decode that is what
+produced it; leave an entry out, rather than blanking it, to write nothing.
+
+**The value changes too, not just the type.** v2 never folded `CONT`/`CONC`
+into this field, so a multi-line passage read back as its first line only
+(#442). v3 folds them, so code that re-joined continuation lines from
+`Record.Tags` itself should read `Value` instead, or it will double them.
+
+**What the compiler does not catch.** Every site that compares `Text` to a
+string or assigns one is a compile error. As with `SpouseInFamilies`, a site
+that only prints, marshals (`encoding/json`, `encoding/gob`) or templates the
+field keeps compiling and changes shape:
+
+```text
+v2: "Birth record shows..."
+v3: [{"Value":"Birth record shows...","MIME":"","Language":""}]
+```
+
+`SourceCitationData` is also no longer comparable, so `*a == *b` on two values,
+or using one as a map key, stops compiling; compare the fields instead.
+
+**Expect more decode diagnostics on some files.** v2 never visited anything
+under `DATA.TEXT`. v3 types `CONT`, `CONC`, `MIME` and `LANG` there; any other
+tag that is not `_`-prefixed now yields an `UNKNOWN_TAG` warning. The raw tags
+are preserved either way.
+
+`SourceText` does not exist in `v2.5.0`, so this retype cannot be staged.
+
+#### Known downstream call sites
+
+my-family is not checked out alongside this change, so its call sites were not
+re-surveyed. The survey behind issue #497 found `SourceCitationData` once in
+its hot path and **no** `.Data.Text` access, so no change is expected there;
+re-grep for `Data.Text` and `SourceCitationData{` before relying on that.
+
 ## Renames
 
 ### `Individual.ParentalFamilies` / `SpouseFamilies`
@@ -1172,11 +1251,11 @@ note-pointer partition, or `Decode` and `DecodeWithOptions` honouring
 error anywhere. A clean build is not evidence that those five are done.
 
 Nor does it catch a retyped slice that a call site only prints, marshals, or
-measures: `SpouseInFamilies` changes shape for `%v`, `encoding/json` and
-`text/template` without ever failing to compile. Grep for the field name
-alongside building; the Retypes entry above lists the shapes to look for. The
-same holds for `Header.Date`, whose printed and JSON form changes from a zero
-timestamp to the date text.
+measures: `SpouseInFamilies` and `SourceCitationData.Text` change shape for
+`%v`, `encoding/json` and `text/template` without ever failing to compile.
+Grep for the field name alongside building; the Retypes entry above lists the
+shapes to look for. The same holds for `Header.Date`, whose printed and JSON
+form changes from a zero timestamp to the date text.
 
 See [`docs/governance/policies/api-stability.md`](../governance/policies/api-stability.md)
 for what the project treats as a breaking change, including the semantic breaks

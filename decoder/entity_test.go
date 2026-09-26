@@ -431,8 +431,8 @@ func TestSourceCitationStructure(t *testing.T) {
 	if cite.Data.Date != "15 JAN 1850" {
 		t.Errorf("Data.Date = %s, want '15 JAN 1850'", cite.Data.Date)
 	}
-	if cite.Data.Text != "Birth record shows..." {
-		t.Errorf("Data.Text = %s, want 'Birth record shows...'", cite.Data.Text)
+	if len(cite.Data.Text) != 1 || cite.Data.Text[0].Value != "Birth record shows..." {
+		t.Errorf("Data.Text = %+v, want one entry 'Birth record shows...'", cite.Data.Text)
 	}
 }
 

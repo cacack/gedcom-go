@@ -67,8 +67,29 @@ type SourceCitationData struct {
 	// Date is the date extracted from the source
 	Date string
 
-	// Text is the quoted text from the source
-	Text string
+	// Text holds the passages quoted from the source, one entry per DATA.TEXT
+	// line in document order. TEXT is repeatable ({0:M}) under a citation's
+	// DATA in every GEDCOM version, so a citation quoting two passages carries
+	// two entries. nil means the DATA block had no TEXT.
+	Text []*SourceText
+}
+
+// SourceText is one TEXT substructure of a source citation's DATA block: a
+// verbatim passage copied from the source, with the optional GEDCOM 7.0 MIME
+// and LANG qualifiers that describe it.
+type SourceText struct {
+	// Value is the passage (the TEXT tag payload). Multi-line text carried by
+	// CONT continuation lines is folded in on decode, joined with "\n"; CONC
+	// continuations are concatenated with no separator.
+	Value string
+
+	// MIME is the media type of Value (TEXT.MIME, GEDCOM 7.0), e.g.
+	// "text/plain" or "text/html". Empty when absent.
+	MIME string
+
+	// Language is the BCP 47 language tag of Value (TEXT.LANG, GEDCOM 7.0),
+	// e.g. "en" or "de". Empty when absent.
+	Language string
 }
 
 // SourceCitation represents a citation of a source with location and quality information.
