@@ -205,6 +205,23 @@ Commit message guidelines:
 - Limit first line to 72 characters
 - Reference issues and pull requests when relevant
 
+#### Breaking changes
+
+Mark a breaking library change with `!` after the type (`feat(gedcom)!:`,
+`fix(decoder)!:`) and a `BREAKING CHANGE:` footer that tells a caller how to
+migrate. Add an entry to the release's migration guide as well (for v3,
+[`docs/guides/migration-v3.md`](docs/guides/migration-v3.md)).
+
+`make api-check` flags signature changes, but **a clean run does not mean a
+change is compatible**. A change that alters behaviour or the meaning of a value
+without touching a signature — a constant renumbered, a function newly returning
+an error on the same input, different contents in an exported field or map key,
+a zero value that now means something else — is a *semantic break*. It needs the
+`!`, the footer and the guide entry just the same, and because no tool will ask
+for them, the commit body must say why the change is breaking. See
+[Semantic Breaks](docs/governance/policies/api-stability.md#semantic-breaks) in
+the API stability policy for the full process and the known cases.
+
 ### 6. Push and Create Pull Request
 
 ```bash
