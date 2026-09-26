@@ -170,6 +170,10 @@ jobs:
 
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        # check-module-path.sh derives the next release's major from the
+        # newest tag in HEAD's history and the commits since it.
+        fetch-depth: 0
 
     - name: Set up Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -188,10 +192,8 @@ jobs:
     - name: Run go vet
       run: go vet ./...
 
-    - name: Check module path matches latest tag major
-      run: |
-        git fetch --tags --depth=1 origin
-        ./scripts/check-module-path.sh
+    - name: Check module path matches the next release's major
+      run: ./scripts/check-module-path.sh
 
   # Dependency review - blocks PRs introducing vulnerable dependencies
   dependency-review:
