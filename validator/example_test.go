@@ -1,6 +1,7 @@
 package validator_test
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -8,13 +9,17 @@ import (
 	"github.com/cacack/gedcom-go/v2/validator"
 )
 
-// Example demonstrates basic document validation.
+// Example demonstrates basic document validation. Each error Validate
+// returns is a *validator.Issue.
 func Example() {
+	// GEDCOM 7.0, where the header SUBM is optional.
 	gedcomData := `0 HEAD
 1 GEDC
-2 VERS 5.5
+2 VERS 7.0
 0 @I1@ INDI
 1 NAME John /Smith/
+1 ASSO @I404@
+2 ROLE GODP
 0 @F1@ FAM
 1 HUSB @I1@
 1 WIFE @I999@
@@ -23,16 +28,23 @@ func Example() {
 	doc, _ := decoder.Decode(strings.NewReader(gedcomData))
 
 	v := validator.New()
-	errors := v.Validate(doc)
+	errs := v.Validate(doc)
 
-	if len(errors) > 0 {
-		fmt.Printf("Found %d validation errors\n", len(errors))
-	} else {
-		fmt.Println("No validation errors")
+	fmt.Printf("Found %d validation errors\n", len(errs))
+	for _, err := range errs {
+		fmt.Println(err)
+	}
+
+	var issue *validator.Issue
+	if len(errs) > 0 && errors.As(errs[len(errs)-1], &issue) {
+		fmt.Printf("%s at line %d\n", issue.Code, issue.LineNumber)
 	}
 
 	// Output:
-	// Found 1 validation errors
+	// Found 2 validation errors
+	// [ERROR] ORPHANED_WIFE: WIFE reference to non-existent individual @I999@ (@F1@ -> @I999@) [line 10]
+	// [ERROR] BROKEN_XREF: ASSO reference to non-existent record @I404@ (@I1@ -> @I404@) [line 6]
+	// BROKEN_XREF at line 6
 }
 
 // ExampleNew shows creating a validator with default options.
@@ -41,15 +53,15 @@ func ExampleNew() {
 
 	gedcomData := `0 HEAD
 1 GEDC
-2 VERS 5.5
+2 VERS 7.0
 0 @I1@ INDI
 1 NAME Alice /Johnson/
 0 TRLR`
 
 	doc, _ := decoder.Decode(strings.NewReader(gedcomData))
 
-	errors := v.Validate(doc)
-	fmt.Printf("Validation errors: %d\n", len(errors))
+	errs := v.Validate(doc)
+	fmt.Printf("Validation errors: %d\n", len(errs))
 
 	// Output:
 	// Validation errors: 0

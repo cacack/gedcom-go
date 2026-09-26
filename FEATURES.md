@@ -13,7 +13,7 @@ import gedcomgo "github.com/cacack/gedcom-go/v2"
 
 doc, err := gedcomgo.Decode(file)           // Parse GEDCOM
 err = gedcomgo.Encode(writer, doc)          // Write GEDCOM
-errors := gedcomgo.Validate(doc)            // Basic validation
+errs := gedcomgo.Validate(doc)              // Validation as []error (*Issue elements)
 issues := gedcomgo.ValidateAll(doc)         // Comprehensive validation
 converted, report, err := gedcomgo.Convert(doc, gedcomgo.Version70)  // Version conversion
 ```
@@ -23,7 +23,7 @@ converted, report, err := gedcomgo.Convert(doc, gedcomgo.Version70)  // Version 
 | `Decode(r)` | Parse GEDCOM file with default options |
 | `DecodeWithDiagnostics(r)` | Parse with error collection for lenient mode |
 | `Encode(w, doc)` | Write GEDCOM file with default options |
-| `Validate(doc)` | Basic structural validation (returns `[]error`) |
+| `Validate(doc)` | `ValidateAll` as `[]error`; each element is a `*validator.Issue` |
 | `ValidateAll(doc)` | Comprehensive validation with severity levels (returns `[]Issue`) |
 | `Convert(doc, version)` | Convert between GEDCOM versions |
 
@@ -45,7 +45,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | Encode | `encoder.EncodeOptions` | `gedcomgo.EncodeWithOptions` | `LineEnding`, `MaxLineLength`, `DisableLineWrap`, `TargetVersion`, `DropUnknownTags` |
 | Validate | `validator.ValidateOptions` | `gedcomgo.ValidateAllWithOptions` | `Strictness`, `MaxErrors`, `SkipRules`, `DateLogic`, `Duplicates`, `TagRegistry`, `ValidateCustomTags`, `SkipEncodingValidation`, `SkipDuplicateDetection` |
 
-`gedcomgo.DefaultDecodeOptions()`, `DefaultEncodeOptions()`, and `DefaultValidateOptions()` return populated defaults you can tweak. `validator.ValidateOptions` is an alias for the original `validator.ValidatorConfig`; both names work interchangeably. The basic `[]error` validation path has its own configurable entry point, `gedcomgo.ValidateWithOptions(doc, opts)`, alongside the comprehensive `ValidateAllWithOptions`.
+`gedcomgo.DefaultDecodeOptions()`, `DefaultEncodeOptions()`, and `DefaultValidateOptions()` return populated defaults you can tweak. `validator.ValidateOptions` is an alias for the original `validator.ValidatorConfig`; both names work interchangeably. The `[]error` validation path has its own configurable entry point, `gedcomgo.ValidateWithOptions(doc, opts)`, alongside `ValidateAllWithOptions`; both run the same checks and honour every `ValidateOptions` field, including `MaxErrors` and `SkipRules`.
 
 ## Lenient Parsing & Diagnostics
 
@@ -967,7 +967,8 @@ silently.
 - Valid line format (level, tag, value, xref)
 - Proper hierarchy (levels increment by 1)
 - Required tags present (HEAD, TRLR)
-- Valid cross-references
+- Valid cross-references: every pointer in a record's raw tags must name an existing record (`BROKEN_XREF`, with the pointing line; the typed `ORPHANED_*` codes cover FAMC/FAMS/SOUR/HUSB/WIFE/CHIL)
+- Individuals with no NAME (`MISSING_REQUIRED_FIELD`, warning) and families with no HUSB/WIFE/CHIL (`EMPTY_FAMILY`, warning), each with the record's line
 
 ### Version-Specific Validation
 - Tag validity per GEDCOM version
@@ -1005,7 +1006,7 @@ for _, issue := range issues {
 
 **Orphaned Reference Detection:**
 
-Typed detection for all GEDCOM reference types:
+Typed detection for all GEDCOM reference types, each issue carrying the line of the pointing tag when the record was decoded:
 
 | Error Code | Reference Type | Description |
 |------------|----------------|-------------|

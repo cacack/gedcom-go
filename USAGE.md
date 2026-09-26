@@ -560,7 +560,10 @@ if person != nil {
 
 ## Validation
 
-### Basic Validation
+### Validation as Errors
+
+`Validate` runs the same checks as `ValidateAll` and returns the findings as
+`[]error`. At the default strictness that includes warnings as well as errors.
 
 ```go
 import "github.com/cacack/gedcom-go/v2/validator"
@@ -569,13 +572,13 @@ import "github.com/cacack/gedcom-go/v2/validator"
 v := validator.New()
 
 // Validate document
-errors := v.Validate(doc)
+errs := v.Validate(doc)
 
-if len(errors) == 0 {
+if len(errs) == 0 {
     fmt.Println("✓ Validation passed!")
 } else {
-    fmt.Printf("Found %d validation errors:\n", len(errors))
-    for _, err := range errors {
+    fmt.Printf("Found %d validation issues:\n", len(errs))
+    for _, err := range errs {
         fmt.Printf("  - %v\n", err)
     }
 }
@@ -583,20 +586,22 @@ if len(errors) == 0 {
 
 ### Working with Validation Errors
 
-Validation errors include detailed information:
+Every element `Validate` returns is a `*validator.Issue`:
 
 ```go
-for _, err := range errors {
-    if verr, ok := err.(*validator.ValidationError); ok {
-        fmt.Printf("Code: %s\n", verr.Code)
-        fmt.Printf("Message: %s\n", verr.Message)
+for _, err := range errs {
+    var issue *validator.Issue
+    if errors.As(err, &issue) {
+        fmt.Printf("Severity: %s\n", issue.Severity)
+        fmt.Printf("Code: %s\n", issue.Code) // compare against validator.Code* constants
+        fmt.Printf("Message: %s\n", issue.Message)
 
-        if verr.Line > 0 {
-            fmt.Printf("Line: %d\n", verr.Line)
+        if issue.LineNumber > 0 {
+            fmt.Printf("Line: %d\n", issue.LineNumber)
         }
 
-        if verr.XRef != "" {
-            fmt.Printf("XRef: %s\n", verr.XRef)
+        if issue.RecordXRef != "" {
+            fmt.Printf("XRef: %s\n", issue.RecordXRef)
         }
     }
 }
@@ -605,19 +610,18 @@ for _, err := range errors {
 ### Grouping Validation Errors
 
 ```go
-// Group errors by code
-errorsByCode := make(map[string][]error)
-for _, err := range errors {
-    code := "UNKNOWN"
-    if verr, ok := err.(*validator.ValidationError); ok {
-        code = verr.Code
+// Group issues by code
+issuesByCode := make(map[string][]*validator.Issue)
+for _, err := range errs {
+    var issue *validator.Issue
+    if errors.As(err, &issue) {
+        issuesByCode[issue.Code] = append(issuesByCode[issue.Code], issue)
     }
-    errorsByCode[code] = append(errorsByCode[code], err)
 }
 
 // Display summary
-for code, errs := range errorsByCode {
-    fmt.Printf("%s: %d occurrences\n", code, len(errs))
+for code, issues := range issuesByCode {
+    fmt.Printf("%s: %d occurrences\n", code, len(issues))
 }
 ```
 
@@ -996,7 +1000,7 @@ Performance characteristics on Apple M2 (from actual benchmarks):
 2. **Reuse Validators**: Create one validator instance per document:
    ```go
    v := validator.New()
-   errors := v.Validate(doc)
+   errs := v.Validate(doc)
    ```
 
 3. **Use Buffered Readers**: For network streams or slow I/O, use buffering:
@@ -1077,9 +1081,9 @@ When creating GEDCOM files programmatically, always validate:
 doc := createDocument()
 
 v := validator.New()
-errors := v.Validate(doc)
-if len(errors) > 0 {
-    log.Fatalf("Created invalid GEDCOM: %v", errors)
+errs := v.Validate(doc)
+if len(errs) > 0 {
+    log.Fatalf("Created invalid GEDCOM: %v", errs)
 }
 
 encoder.Encode(f, doc)

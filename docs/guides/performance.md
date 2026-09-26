@@ -362,7 +362,7 @@ Stream validator memory scales with unique cross-references (needed for orphan-r
    ```go
    v := validator.New()
    for _, doc := range documents {
-       errors := v.Validate(doc)
+       errs := v.Validate(doc)
    }
    ```
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -12,13 +13,49 @@ import (
 	"github.com/cacack/gedcom-go/v2/gedcom"
 )
 
+// structureCodes are the three codes the record-structure checks report. The
+// tests below that exercise those checks on 5.5 fixtures without a SUBM ignore
+// every other code (notably MISSING_SUBM) rather than build full headers.
+var structureCodes = map[string]bool{
+	CodeBrokenXRef:           true,
+	CodeMissingRequiredField: true,
+	CodeEmptyFamily:          true,
+}
+
+// issuesFromErrors unwraps each Validate element to its *Issue, failing the
+// test on any element that is not one.
+func issuesFromErrors(t *testing.T, errs []error) []*Issue {
+	t.Helper()
+	out := make([]*Issue, 0, len(errs))
+	for _, e := range errs {
+		var issue *Issue
+		if !errors.As(e, &issue) {
+			t.Fatalf("Validate element %T (%v) is not a *Issue", e, e)
+		}
+		out = append(out, issue)
+	}
+	return out
+}
+
+// structureIssues returns the Validate results that carry a structure code.
+func structureIssues(t *testing.T, errs []error) []*Issue {
+	t.Helper()
+	var out []*Issue
+	for _, issue := range issuesFromErrors(t, errs) {
+		if structureCodes[issue.Code] {
+			out = append(out, issue)
+		}
+	}
+	return out
+}
+
 func TestValidateBrokenXRef(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
 2 VERS 5.5
 0 @I1@ INDI
 1 NAME John Smith
-1 FAMS @F999@
+1 ASSO @I999@
 0 TRLR`
 
 	doc, err := decoder.Decode(strings.NewReader(input))
@@ -26,24 +63,94 @@ func TestValidateBrokenXRef(t *testing.T) {
 		t.Fatalf("Decode() error = %v", err)
 	}
 
-	v := New()
-	errs := v.Validate(doc)
-
-	if len(errs) == 0 {
-		t.Fatal("Expected validation errors for broken XRef")
+	got := structureIssues(t, New().Validate(doc))
+	if len(got) != 1 {
+		t.Fatalf("structure issues = %v, want exactly one BROKEN_XREF", got)
 	}
+	issue := got[0]
+	if issue.Code != CodeBrokenXRef || issue.Severity != SeverityError {
+		t.Errorf("issue = %v, want SeverityError %s", issue, CodeBrokenXRef)
+	}
+	if issue.LineNumber != 6 {
+		t.Errorf("LineNumber = %d, want 6 (the ASSO line)", issue.LineNumber)
+	}
+	if issue.RecordXRef != "@I1@" || issue.RelatedXRef != "@I999@" {
+		t.Errorf("RecordXRef/RelatedXRef = %q/%q, want @I1@/@I999@", issue.RecordXRef, issue.RelatedXRef)
+	}
+	if issue.Details["tag"] != "ASSO" {
+		t.Errorf("Details[tag] = %q, want ASSO", issue.Details["tag"])
+	}
+	// ADR 0007: an issue carrying both an XRef and a line prints both.
+	if s := issue.Error(); !strings.Contains(s, "@I1@") || !strings.Contains(s, "[line 6]") {
+		t.Errorf("Error() = %q, want both the XRef and the line", s)
+	}
+}
 
-	found := false
-	for _, e := range errs {
-		var valErr *ValidationError
-		if errors.As(e, &valErr) && valErr.Code == "BROKEN_XREF" {
-			found = true
-			t.Logf("Found expected error: %v", e)
+// TestValidateBrokenXRef_NotDoubleReported pins that a pointer the typed
+// reference checks cover is reported once, under its ORPHANED_* code, and not
+// again as BROKEN_XREF; while the same pointer on a record without a typed
+// entity -- which the typed checks cannot see -- is reported as BROKEN_XREF.
+func TestValidateBrokenXRef_NotDoubleReported(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME John Smith
+1 FAMS @F999@
+1 FAMC @F998@
+1 SOUR @S999@
+0 @F1@ FAM
+1 HUSB @I998@
+1 WIFE @I997@
+1 CHIL @I996@
+0 TRLR`
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	all := New().ValidateAll(doc)
+	if n := len(FilterByCode(all, CodeBrokenXRef)); n != 0 {
+		t.Errorf("BROKEN_XREF count = %d, want 0 (typed ORPHANED_* checks cover these)", n)
+	}
+	for _, code := range []string{CodeOrphanedFAMS, CodeOrphanedFAMC, CodeOrphanedSOUR, CodeOrphanedHUSB, CodeOrphanedWIFE, CodeOrphanedCHIL} {
+		if n := len(FilterByCode(all, code)); n != 1 {
+			t.Errorf("%s count = %d, want 1", code, n)
 		}
 	}
 
-	if !found {
-		t.Error("Expected BROKEN_XREF error")
+	// Strip the typed entities: the same raw pointers are now uncovered.
+	for _, r := range doc.Records {
+		r.Entity = nil
+	}
+	broken := FilterByCode(New().ValidateAll(doc), CodeBrokenXRef)
+	if len(broken) != 6 {
+		t.Errorf("BROKEN_XREF count without entities = %d, want 6: %v", len(broken), broken)
+	}
+}
+
+// TestValidateBrokenXRef_NonPointers pins the values the rule does not treat as
+// pointers: the 7.0 @VOID@ sentinel, CONT/CONC text, escaped and
+// whitespace-bearing values, and nested pointers that resolve.
+func TestValidateBrokenXRef_NonPointers(t *testing.T) {
+	note := &gedcom.Record{XRef: "@N1@", Type: gedcom.RecordTypeNote, LineNumber: 1, Tags: []*gedcom.Tag{
+		nil,
+		{Level: 1, Tag: "CONT", Value: "@X1@", LineNumber: 2},
+		{Level: 1, Tag: "CONC", Value: "@X2@", LineNumber: 3},
+		{Level: 1, Tag: "SOUR", Value: "@VOID@", LineNumber: 4},
+		{Level: 1, Tag: "NOTE", Value: "@not a pointer@", LineNumber: 5},
+		{Level: 1, Tag: "NOTE", Value: "@@X3@", LineNumber: 6},
+		{Level: 2, Tag: "SOUR", Value: " @N1@ ", LineNumber: 7},
+		{Level: 2, Tag: "SOUR", Value: " @S1@ ", LineNumber: 8},
+	}}
+	doc := &gedcom.Document{
+		Records: []*gedcom.Record{nil, note},
+		XRefMap: map[string]*gedcom.Record{"@N1@": note},
+	}
+
+	got := validateBrokenXRefs(doc)
+	if len(got) != 1 || got[0].RelatedXRef != "@S1@" || got[0].LineNumber != 8 {
+		t.Errorf("validateBrokenXRefs = %v, want only the trimmed @S1@ on line 8", got)
 	}
 }
 
@@ -53,6 +160,8 @@ func TestValidateMissingName(t *testing.T) {
 2 VERS 5.5
 0 @I1@ INDI
 1 SEX M
+1 ASSO @I1@
+2 NAME Not a name of I1
 0 TRLR`
 
 	doc, err := decoder.Decode(strings.NewReader(input))
@@ -60,33 +169,271 @@ func TestValidateMissingName(t *testing.T) {
 		t.Fatalf("Decode() error = %v", err)
 	}
 
-	v := New()
-	errs := v.Validate(doc)
+	got := structureIssues(t, New().Validate(doc))
+	if len(got) != 1 {
+		t.Fatalf("structure issues = %v, want exactly one MISSING_REQUIRED_FIELD", got)
+	}
+	issue := got[0]
+	if issue.Code != CodeMissingRequiredField || issue.Severity != SeverityWarning {
+		t.Errorf("issue = %v, want SeverityWarning %s", issue, CodeMissingRequiredField)
+	}
+	if issue.LineNumber != 4 || issue.RecordXRef != "@I1@" || issue.Details["field"] != "NAME" {
+		t.Errorf("issue = %+v, want line 4, @I1@, field NAME", issue)
+	}
+	if s := issue.Error(); !strings.Contains(s, "@I1@") || !strings.Contains(s, "[line 4]") {
+		t.Errorf("Error() = %q, want both the XRef and the line", s)
+	}
+}
 
-	if len(errs) == 0 {
-		t.Fatal("Expected validation errors for missing NAME")
+// TestValidateRecordStructure_TypedEntityOnly pins that a record built in code
+// with a typed entity and no raw Tags is judged by the entity, which is what
+// the encoder writes for it.
+func TestValidateRecordStructure_TypedEntityOnly(t *testing.T) {
+	doc := &gedcom.Document{Records: []*gedcom.Record{
+		nil,
+		{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{
+			XRef:  "@I1@",
+			Names: []*gedcom.PersonalName{{Full: "John /Doe/"}},
+		}},
+		{XRef: "@F1@", Type: gedcom.RecordTypeFamily, Entity: &gedcom.Family{XRef: "@F1@", Husband: "@I1@"}},
+		{XRef: "@F2@", Type: gedcom.RecordTypeFamily, Entity: &gedcom.Family{XRef: "@F2@", Children: []string{"@I1@"}}},
+		{XRef: "@I2@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{XRef: "@I2@"}},
+		{XRef: "@F3@", Type: gedcom.RecordTypeFamily, Entity: &gedcom.Family{XRef: "@F3@"}},
+	}}
+
+	got := validateRecordStructure(doc)
+	if len(got) != 2 || got[0].RecordXRef != "@I2@" || got[1].RecordXRef != "@F3@" {
+		t.Errorf("validateRecordStructure = %v, want only @I2@ and @F3@", got)
+	}
+}
+
+// structureRulesFixture raises each record-structure code on a known line:
+// BROKEN_XREF on lines 14 (ASSO) and 18 (nested SOUR), MISSING_REQUIRED_FIELD
+// on line 19 (@I2@) and EMPTY_FAMILY on line 21 (@F1@), whose event-level
+// "2 HUSB" is an age structure rather than a member.
+const structureRulesFixture = `0 HEAD
+1 SOUR gedcom-go
+1 SUBM @U1@
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 NOTE Record-structure rule fixture: BROKEN_XREF, MISSING_REQUIRED_FIELD and EMPTY_FAMILY, each on a known line.
+0 @U1@ SUBM
+1 NAME Test Submitter
+0 @I1@ INDI
+1 NAME John /Doe/
+1 SEX M
+1 ASSO @I404@
+2 RELA Godfather
+1 BIRT
+2 DATE 1 JAN 1900
+2 SOUR @S404@
+0 @I2@ INDI
+1 SEX F
+0 @F1@ FAM
+1 MARR
+2 HUSB
+3 AGE 25
+0 TRLR
+`
+
+// TestValidateStructureRules_LineNumbersFromFixture asserts, per ADR 0007,
+// that every issue the three record-structure rules raise on a decoded
+// fixture carries a non-zero line number, and that the rendered error shows
+// it alongside the XRef.
+func TestValidateStructureRules_LineNumbersFromFixture(t *testing.T) {
+	doc, err := decoder.Decode(strings.NewReader(structureRulesFixture))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
 	}
 
-	found := false
-	for _, e := range errs {
-		var valErr *ValidationError
-		if errors.As(e, &valErr) && valErr.Code == "MISSING_REQUIRED_FIELD" {
-			found = true
-			t.Logf("Found expected error: %v", e)
+	got := structureIssues(t, New().Validate(doc))
+	var lines []int
+	for _, issue := range got {
+		lines = append(lines, issue.LineNumber)
+	}
+	if want := []int{14, 18, 19, 21}; !slices.Equal(lines, want) {
+		t.Errorf("structure issue lines = %v, want %v", lines, want)
+	}
+	seen := map[string]int{}
+	for _, issue := range got {
+		seen[issue.Code]++
+		if issue.LineNumber <= 0 {
+			t.Errorf("%s on %s has LineNumber %d, want > 0", issue.Code, issue.RecordXRef, issue.LineNumber)
+			continue
+		}
+		want := fmt.Sprintf("[line %d]", issue.LineNumber)
+		if s := issue.Error(); !strings.Contains(s, want) || !strings.Contains(s, issue.RecordXRef) {
+			t.Errorf("Error() = %q, want both %s and %q", s, issue.RecordXRef, want)
 		}
 	}
+	for code := range structureCodes {
+		if seen[code] == 0 {
+			t.Errorf("fixture raised no %s; the line-number assertion is vacuous for it", code)
+		}
+	}
+}
 
-	if !found {
-		t.Error("Expected MISSING_REQUIRED_FIELD error")
+// pointerLinesFixture raises every ORPHANED_* code on a known line, repeats a
+// broken CHIL so each occurrence must get its own line, and carries two
+// level-1 HUSB lines of which the typed Family.Husband keeps only the last.
+const pointerLinesFixture = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Doe/
+1 FAMC @F404@
+1 FAMS @F405@
+1 SOUR @S404@
+0 @F1@ FAM
+1 HUSB @I8@
+1 HUSB @I9@
+1 WIFE @I7@
+1 CHIL @I6@
+1 CHIL @I6@
+0 TRLR
+`
+
+// TestValidate_BrokenPointerLineNumbers asserts, per ADR 0007, that every
+// broken level-1 pointer -- reported as ORPHANED_* through the typed entity or
+// as BROKEN_XREF otherwise -- carries the line of the pointing tag, is
+// reported exactly once, and renders that line in Error().
+func TestValidate_BrokenPointerLineNumbers(t *testing.T) {
+	doc, err := decoder.Decode(strings.NewReader(pointerLinesFixture))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	type finding struct {
+		code, related string
+		line          int
+	}
+	var got []finding
+	for _, issue := range issuesFromErrors(t, New().Validate(doc)) {
+		if issue.Code != CodeBrokenXRef && !strings.HasPrefix(issue.Code, "ORPHANED_") {
+			continue
+		}
+		got = append(got, finding{issue.Code, issue.RelatedXRef, issue.LineNumber})
+		if want := fmt.Sprintf("[line %d]", issue.LineNumber); !strings.Contains(issue.Error(), want) {
+			t.Errorf("Error() = %q, want it to contain %q", issue.Error(), want)
+		}
+	}
+	want := []finding{
+		{CodeOrphanedFAMC, "@F404@", 6},
+		{CodeOrphanedFAMS, "@F405@", 7},
+		{CodeOrphanedSOUR, "@S404@", 8},
+		{CodeBrokenXRef, "@I8@", 10},
+		{CodeOrphanedHUSB, "@I9@", 11},
+		{CodeOrphanedWIFE, "@I7@", 12},
+		{CodeOrphanedCHIL, "@I6@", 13},
+		{CodeOrphanedCHIL, "@I6@", 14},
+	}
+	byLine := func(a, b finding) int { return a.line - b.line }
+	slices.SortFunc(got, byLine)
+	if !slices.Equal(got, want) {
+		t.Errorf("broken pointer findings =\n  %v\nwant\n  %v", got, want)
+	}
+}
+
+// TestValidate_DuplicateXRefPointerLines pins that, when two records share
+// an XRef (the decoder keeps both, and XRefMap only the last), each record's
+// broken pointer carries its own record's line rather than the last
+// duplicate's.
+func TestValidate_DuplicateXRefPointerLines(t *testing.T) {
+	const input = `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME A
+1 FAMS @F9@
+0 @I1@ INDI
+1 NAME B
+1 FAMS @F9@
+0 TRLR
+`
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	var lines []int
+	for _, issue := range issuesFromErrors(t, New().Validate(doc)) {
+		if issue.Code == CodeBrokenXRef || strings.HasPrefix(issue.Code, "ORPHANED_") {
+			if issue.Code != CodeOrphanedFAMS || issue.RelatedXRef != "@F9@" {
+				t.Errorf("unexpected pointer finding %v", issue)
+				continue
+			}
+			lines = append(lines, issue.LineNumber)
+		}
+	}
+	slices.Sort(lines)
+	if want := []int{6, 9}; !slices.Equal(lines, want) {
+		t.Errorf("ORPHANED_FAMS lines = %v, want %v", lines, want)
+	}
+}
+
+// TestValidate_RepeatedBrokenHUSB pins that a raw pointer repeated more often
+// than the typed entity holds it is still reported: Family.Husband holds @I9@
+// once, so the first HUSB line is ORPHANED_HUSB and the second BROKEN_XREF.
+func TestValidate_RepeatedBrokenHUSB(t *testing.T) {
+	const input = `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @F1@ FAM
+1 HUSB @I9@
+1 HUSB @I9@
+0 TRLR
+`
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	type finding struct {
+		code string
+		line int
+	}
+	var got []finding
+	for _, issue := range issuesFromErrors(t, New().Validate(doc)) {
+		if issue.Code == CodeBrokenXRef || strings.HasPrefix(issue.Code, "ORPHANED_") {
+			got = append(got, finding{issue.Code, issue.LineNumber})
+		}
+	}
+	slices.SortFunc(got, func(a, b finding) int { return a.line - b.line })
+	want := []finding{{CodeOrphanedHUSB, 5}, {CodeBrokenXRef, 6}}
+	if !slices.Equal(got, want) {
+		t.Errorf("findings = %v, want %v", got, want)
+	}
+}
+
+// TestReferenceValidator_LineNumberWithoutRawTags pins that an entity built
+// in code, with no raw tags to look up, still reports its orphaned pointer,
+// with LineNumber 0.
+func TestReferenceValidator_LineNumberWithoutRawTags(t *testing.T) {
+	fam := &gedcom.Family{XRef: "@F1@", Husband: "@I404@"}
+	doc := &gedcom.Document{
+		Records: []*gedcom.Record{{XRef: "@F1@", Type: gedcom.RecordTypeFamily, Entity: fam}},
+		XRefMap: map[string]*gedcom.Record{},
+	}
+	doc.XRefMap["@F1@"] = doc.Records[0]
+
+	got := NewReferenceValidator().Validate(doc)
+	if len(got) != 1 || got[0].Code != CodeOrphanedHUSB || got[0].LineNumber != 0 {
+		t.Errorf("Validate() = %v, want one ORPHANED_HUSB with LineNumber 0", got)
 	}
 }
 
 func TestValidateValidFile(t *testing.T) {
 	input := `0 HEAD
+1 SUBM @U1@
 1 GEDC
 2 VERS 5.5
+0 @U1@ SUBM
+1 NAME Tester
 0 @I1@ INDI
 1 NAME John /Smith/
+1 FAMS @F1@
 0 @F1@ FAM
 1 HUSB @I1@
 0 TRLR`
@@ -105,78 +452,48 @@ func TestValidateValidFile(t *testing.T) {
 			t.Logf("  - %v", err)
 		}
 	}
+	if errs == nil {
+		t.Error("Validate returned nil, want an empty non-nil slice")
+	}
 }
 
-// TestValidationErrorFormatting tests the Error() method of ValidationError
-func TestValidationErrorFormatting(t *testing.T) {
-	tests := []struct {
-		name string
-		err  ValidationError
-		want string
-	}{
-		{
-			name: "with XRef only",
-			err:  ValidationError{Code: "ERR1", Message: "test error", XRef: "@I1@"},
-			want: "[ERR1] test error (XRef: @I1@)",
-		},
-		{
-			name: "with Line only",
-			err:  ValidationError{Code: "ERR2", Message: "test error", Line: 42},
-			want: "[ERR2] line 42: test error",
-		},
-		{
-			name: "with both XRef and Line (XRef takes precedence)",
-			err:  ValidationError{Code: "ERR3", Message: "test error", XRef: "@I1@", Line: 42},
-			want: "[ERR3] test error (XRef: @I1@)",
-		},
-		{
-			name: "minimal error (code and message only)",
-			err:  ValidationError{Code: "ERR4", Message: "test error"},
-			want: "[ERR4] test error",
-		},
-		{
-			name: "with complex message",
-			err:  ValidationError{Code: "BROKEN_XREF", Message: "cross-reference @F999@ not found", XRef: "@I1@"},
-			want: "[BROKEN_XREF] cross-reference @F999@ not found (XRef: @I1@)",
-		},
-		{
-			name: "with line number and detailed message",
-			err:  ValidationError{Code: "MISSING_REQUIRED", Message: "required tag NAME missing", Line: 15},
-			want: "[MISSING_REQUIRED] line 15: required tag NAME missing",
-		},
+// TestValidate_MatchesValidateAll pins that Validate is ValidateAll in the
+// []error shape under every option that filters results.
+func TestValidate_MatchesValidateAll(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 ASSO @I999@
+1 BIRT
+2 DATE 1 JAN 1900
+1 DEAT
+2 DATE 1 JAN 1800
+0 @F1@ FAM
+0 TRLR`
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.err.Error()
-			if got != tt.want {
-				t.Errorf("ValidationError.Error() = %q, want %q", got, tt.want)
+	for _, opts := range []*ValidateOptions{
+		nil,
+		{Strictness: StrictnessRelaxed},
+		{Strictness: StrictnessStrict},
+		{MaxErrors: 2},
+		{SkipRules: []string{CodeBrokenXRef, CodeMissingSUBM}},
+	} {
+		v := NewWithOptions(opts)
+		issues := v.ValidateAll(doc)
+		got := issuesFromErrors(t, v.Validate(doc))
+		if len(got) != len(issues) || len(got) == 0 {
+			t.Fatalf("opts %+v: Validate len = %d, ValidateAll len = %d", opts, len(got), len(issues))
+		}
+		for i := range issues {
+			if got[i].Code != issues[i].Code || got[i].LineNumber != issues[i].LineNumber {
+				t.Errorf("opts %+v [%d]: Validate %v, ValidateAll %v", opts, i, got[i], issues[i])
 			}
-		})
-	}
-}
-
-// TestValidationErrorImplementsError verifies ValidationError implements error interface
-func TestValidationErrorImplementsError(t *testing.T) {
-	var _ error = &ValidationError{}
-
-	err := &ValidationError{
-		Code:    "TEST",
-		Message: "test message",
-		Line:    10,
-		XRef:    "@I1@",
-	}
-
-	errStr := err.Error()
-	if errStr == "" {
-		t.Error("Error() should return non-empty string")
-	}
-
-	if !strings.Contains(errStr, "TEST") {
-		t.Error("Error() should contain error code")
-	}
-	if !strings.Contains(errStr, "test message") {
-		t.Error("Error() should contain error message")
+		}
 	}
 }
 
@@ -196,7 +513,24 @@ func TestValidateFamilyEdgeCases(t *testing.T) {
 0 @F1@ FAM
 0 TRLR`,
 			expectError: true,
-			errorCode:   "EMPTY_FAMILY",
+			errorCode:   CodeEmptyFamily,
+		},
+		{
+			// "2 HUSB" under an event is the husband's age structure, not a
+			// member of the family.
+			name: "family with only event-level HUSB/WIFE",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @F1@ FAM
+1 MARR
+2 HUSB
+3 AGE 25
+2 WIFE
+3 AGE 22
+0 TRLR`,
+			expectError: true,
+			errorCode:   CodeEmptyFamily,
 		},
 		{
 			name: "family with only children",
@@ -261,32 +595,17 @@ func TestValidateFamilyEdgeCases(t *testing.T) {
 				t.Fatalf("Decode() error = %v", err)
 			}
 
-			v := New()
-			errs := v.Validate(doc)
+			got := structureIssues(t, New().Validate(doc))
 
 			if tt.expectError {
-				if len(errs) == 0 {
-					t.Fatal("Expected validation error but got none")
+				if len(got) != 1 || got[0].Code != tt.errorCode {
+					t.Fatalf("structure issues = %v, want exactly one %s", got, tt.errorCode)
 				}
-
-				found := false
-				for _, e := range errs {
-					var valErr *ValidationError
-					if errors.As(e, &valErr) && valErr.Code == tt.errorCode {
-						found = true
-						t.Logf("Found expected error: %v", e)
-						break
-					}
+				if got[0].LineNumber <= 0 {
+					t.Errorf("LineNumber = %d, want the FAM line", got[0].LineNumber)
 				}
-
-				if !found {
-					t.Errorf("Expected error code %q, got errors: %v", tt.errorCode, errs)
-				}
-			} else if len(errs) != 0 {
-				t.Errorf("Expected no validation errors, got %d errors:", len(errs))
-				for _, e := range errs {
-					t.Logf("  - %v", e)
-				}
+			} else if len(got) != 0 {
+				t.Errorf("Expected no structure issues, got %v", got)
 			}
 		})
 	}
@@ -885,7 +1204,7 @@ func TestLazyInitialization(t *testing.T) {
 func TestValidateBackwardCompatibility(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
-2 VERS 5.5
+2 VERS 7.0
 0 @I1@ INDI
 1 NAME John /Smith/
 0 @F1@ FAM

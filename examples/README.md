@@ -99,51 +99,47 @@ Found 25 families:
 
 **Location**: [`validate/main.go`](validate/main.go)
 
-**What it does**: Demonstrates comprehensive GEDCOM validation with error categorization and reporting. Shows how to:
+**What it does**: Demonstrates comprehensive GEDCOM validation with issue categorization and reporting. Shows how to:
 - Validate GEDCOM files against specification rules
-- Group validation errors by error code
-- Display detailed error information with line numbers and context
+- Recover the `*validator.Issue` behind each returned error with `errors.As`
+- Group validation issues by code
+- Display severity, line numbers and context
 - Generate validation reports
 
 **How to run**:
 ```bash
 cd examples/validate
-go run main.go ../../testdata/gedcom-5.5/minimal.ged
+go run main.go ../../testdata/gedcom-7.0/minimal70.ged
 ```
 
 **Example output** (valid file):
 ```
-Validating GEDCOM File: ../../testdata/gedcom-5.5/minimal.ged
-Version: 5.5
-Encoding: UTF-8
+Validating GEDCOM File: ../../testdata/gedcom-7.0/minimal70.ged
+Version: 7.0
+Encoding: 
 
 ✅ Validation passed!
-No errors found.
+No issues found.
 ```
 
-**Example output** (invalid file):
+**Example output** (file with a broken reference):
 ```
-Validating GEDCOM File: malformed.ged
+Validating GEDCOM File: ../../testdata/malformed/invalid-xref.ged
 Version: 5.5
-Encoding: UTF-8
+Encoding: 
 
-❌ Validation failed with 12 error(s):
+❌ Validation found 2 issue(s):
 
-Error Code: MISSING_REQUIRED_TAG (5 occurrence(s))
-  - Required tag NAME missing in record @I1@ (line 15, XRef: @I1@)
-  - Required tag SEX missing in record @I2@ (line 25, XRef: @I2@)
-  - Required tag DATE missing in BIRT event (line 18, XRef: @I1@)
-  ... and 2 more
+Code: MISSING_SUBM (1 occurrence(s))
+  - GEDCOM 5.5 requires SUBM reference in header (WARNING)
 
-Error Code: INVALID_XREF (3 occurrence(s))
-  - Invalid cross-reference @I99@ (line 42)
-  - Cross-reference @F5@ not found (line 55)
-  ... and 1 more
+Code: ORPHANED_FAMC (1 occurrence(s))
+  - FAMC reference to non-existent family @F999@ (ERROR, line 6, XRef: @I1@)
 
 === Summary ===
-Total Records: 20
-Total Errors: 12
-Error Types: 4
+Total Records: 1
+Total Issues: 2
+Issue Codes: 2
 ```
 
 **Use cases**:
@@ -279,7 +275,7 @@ cd parse && go run main.go ../../testdata/gedcom-5.5/minimal.ged && cd ..
 cd query && go run main.go ../../testdata/gedcom-5.5/royal92.ged && cd ..
 
 # Run validate example
-cd validate && go run main.go ../../testdata/gedcom-5.5/minimal.ged && cd ..
+cd validate && go run main.go ../../testdata/gedcom-7.0/minimal70.ged && cd ..
 
 # Run stream example (streaming parse + streaming encode)
 cd stream && go run main.go ../../testdata/gedcom-5.5/pres2020.ged /tmp/streamed.ged && cd ..

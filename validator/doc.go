@@ -4,27 +4,32 @@
 // different GEDCOM versions (5.5, 5.5.1, 7.0). It checks for structural
 // correctness, required fields, and valid cross-references.
 //
-// The validator provides two APIs:
+// [Validator.ValidateAll] runs every document-wide check and returns []Issue,
+// each finding carrying a severity, a Code* constant, the affected record and,
+// where the check has one, the source line. [Validator.Validate] returns the
+// same findings as []error, each element a *Issue.
 //
-//   - Validate() - Original API returning []error for backward compatibility
-//   - ValidateAll() - Enhanced API returning []Issue with severity levels
+// # Usage
 //
-// # Basic Usage
-//
-// For simple validation returning errors:
+// For validation returning errors:
 //
 //	doc, _ := decoder.Decode(reader)
 //	v := validator.New()
-//	errors := v.Validate(doc)
-//	if len(errors) > 0 {
-//	    for _, err := range errors {
-//	        fmt.Printf("%v\n", err)
+//	errs := v.Validate(doc)
+//	for _, err := range errs {
+//	    fmt.Printf("%v\n", err)
+//	}
+//
+// Recover the structured finding from an error with errors.As:
+//
+//	for _, err := range errs {
+//	    var issue *validator.Issue
+//	    if errors.As(err, &issue) && issue.Code == validator.CodeBrokenXRef {
+//	        fmt.Printf("broken pointer at line %d\n", issue.LineNumber)
 //	    }
 //	}
 //
-// # Enhanced Validation
-//
-// For detailed validation with severity levels:
+// Or work with Issues directly:
 //
 //	v := validator.New()
 //	issues := v.ValidateAll(doc)
@@ -60,7 +65,8 @@
 // # Options
 //
 // Use [NewWithOptions] together with [ValidateOptions] to customize validation
-// behavior. [ValidatorConfig] is retained as a backward-compatible alias.
+// behavior. Every option applies to Validate and ValidateAll alike.
+// [ValidatorConfig] is retained as a backward-compatible alias.
 // Call [DefaultOptions] for a populated starting point.
 //
 //   - Strictness             — StrictnessRelaxed | StrictnessNormal (default) | StrictnessStrict

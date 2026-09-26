@@ -100,10 +100,10 @@ func main() {
 ### Validate a Document
 
 ```go
-// Basic validation (returns []error)
-errors := gedcomgo.Validate(doc)
+// Validation as []error (each element is a *validator.Issue)
+errs := gedcomgo.Validate(doc)
 
-// Comprehensive validation with severity levels (returns []Issue)
+// The same findings as []Issue, with severity levels
 issues := gedcomgo.ValidateAll(doc)
 for _, issue := range issues {
     fmt.Printf("[%s] %s\n", issue.Severity, issue.Message)

@@ -9,9 +9,15 @@ import (
 // Validation issues are added to the report.
 // Returns nil - validation issues are informational and don't fail conversion.
 //
+// It runs the validator's full sweep at the default strictness, less
+// duplicate detection, the most expensive check: potential duplicates are
+// SeverityInfo, which the default strictness drops, and its only warning,
+// DUPLICATE_DETECTION_LIMITED, is about the check itself and meaningless when
+// the check is skipped.
+//
 //nolint:unparam // error return kept for potential future validation failures
 func validateConverted(doc *gedcom.Document, report *gedcom.ConversionReport) error {
-	v := validator.New()
+	v := validator.NewWithOptions(&validator.ValidateOptions{SkipDuplicateDetection: true})
 	errs := v.Validate(doc)
 
 	// Convert errors to strings for report
