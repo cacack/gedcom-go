@@ -10,9 +10,11 @@ compiler cannot tell you — the value mapping.
 
 **Upgrade to `v2.5.0` before you start.** It is the last v2 minor, and it exists
 to make this migration a staged one: it carries the replacements that postdate
-`v2.4.0` and marks every symbol v3 removes as `// Deprecated:`, so your tooling
-lists the call sites and each one can be converted, tested and shipped while
-still on v2. What is left at the v3 upgrade is then the module path and the
+`v2.4.0` and marks almost every symbol v3 removes as `// Deprecated:`, so your
+tooling lists the call sites and each one can be converted, tested and shipped
+while still on v2. Four exceptions, listed under
+[Straight removals](#straight-removals), carry no marker and must be found by
+grep. What is left at the v3 upgrade is then the module path and the
 changes that genuinely have no v2 form.
 
 > **Read the value mappings, not just the names.** Several changes on this page
@@ -638,6 +640,77 @@ re-surveyed. The survey behind issue #497 found `SourceCitationData` once in
 its hot path and **no** `.Data.Text` access, so no change is expected there;
 re-grep for `Data.Text` and `SourceCitationData{` before relying on that.
 
+## Types that are no longer comparable
+
+Six structs gained `[]string` note fields in v3, and a struct that holds a slice
+cannot be compared with `==`:
+
+| Type | Gained | By |
+|------|--------|----|
+| `gedcom.ChangeDate` | `NoteXRefs`, `InlineNotes` | [#447](https://github.com/cacack/gedcom-go/issues/447) |
+| `gedcom.LDSOrdinance` | `NoteXRefs`, `InlineNotes` | [#447](https://github.com/cacack/gedcom-go/issues/447) |
+| `gedcom.SourceCitation` | `NoteXRefs`, `InlineNotes` | [#447](https://github.com/cacack/gedcom-go/issues/447) |
+| `gedcom.FamilyLink` | `NoteXRefs`, `InlineNotes` | [#472](https://github.com/cacack/gedcom-go/issues/472) |
+| `gedcom.MediaLink` | `NoteXRefs`, `InlineNotes` | [#472](https://github.com/cacack/gedcom-go/issues/472) |
+| `gedcom.PlaceDetail` | `NoteXRefs`, `InlineNotes` | [#472](https://github.com/cacack/gedcom-go/issues/472) |
+
+No field was removed or renamed; the new fields carry `NOTE` / `SNOTE`
+subordinates that v2 dropped. What is lost is value comparison of the struct as
+a whole. **Pointer comparison is unaffected**, and five of the six are handed
+out as pointers (`*ChangeDate`, `[]*SourceCitation`, and so on), so
+`ev.PlaceDetail == nil` and `a.ChangeDate == b.ChangeDate` still compile and
+mean what they did. `FamilyLink` is the one held by value, in
+`Individual.ChildInFamilies` and `Individual.SpouseInFamilies`, so it is the
+likeliest to be compared directly.
+
+These are compile errors, so the build hands you the list:
+
+| v2 | v3 |
+|----|----|
+| `*a == *b`, `link == other` | compare the fields you mean, e.g. `a.Name == b.Name && a.Form == b.Form` |
+| `slices.Contains(ind.ChildInFamilies, link)`, `slices.Index(...)` | `slices.ContainsFunc(ind.ChildInFamilies, func(l gedcom.FamilyLink) bool { return l.FamilyXRef == link.FamilyXRef })` |
+| `map[gedcom.FamilyLink]T`, `map[gedcom.PlaceDetail]T` | key by the identifying field — `FamilyXRef` for a link, `Name` for a place — or by pointer |
+| a generic `func F[T comparable]` instantiated with one of these | instantiate with the key field instead |
+
+`SourceCitationData` also stops being comparable in v3, because its `Text`
+field becomes a slice; see
+[its Retypes entry](#sourcecitationdatatext-is-now-sourcetext). The replacements
+above apply to it the same way.
+
+`reflect.DeepEqual` still works on all six and now also compares the notes; use
+it only where "same notes too" is what you mean.
+
+**One case is not a compile error.** A value stored in an `any` (or any other
+interface) still compiles when compared or used as a map key, and **panics at
+run time** in v3:
+
+```go
+var seen = map[any]bool{}
+seen[ind.ChildInFamilies[0]] = true // v2: fine. v3: panic: runtime error: hash of unhashable type gedcom.FamilyLink
+
+var a, b any = *ev1.PlaceDetail, *ev2.PlaceDetail
+_ = a == b // v2: fine. v3: panic: runtime error: comparing uncomparable type gedcom.PlaceDetail
+```
+
+A generic cache, a dedup set typed `map[any]struct{}`, or a test helper that
+compares `interface{}` values can all hit this. Grep for the six type names
+where they flow into `any` as well as building.
+
+None of the six changes can be staged on `v2.5.0` — the note fields do not exist
+there — but the replacement comparisons above all compile against v2, so they
+can be written ahead of the upgrade.
+
+`Transliteration` is not on this list: it stays comparable in v3.0.0. It is
+expected to lose `==` in a later major; see
+[Accepted Future Breaks](../governance/policies/api-stability.md#accepted-future-breaks).
+
+### Known downstream call sites
+
+`my-family` was not surveyed for this entry — it is not checked out where this
+guide was assembled. Grep it for `==` over these six types, for them used as map
+keys or in `slices.Contains` / `slices.Index`, and for them passed into `any`,
+before upgrading.
+
 ## Renames
 
 ### `Individual.ParentalFamilies` / `SpouseFamilies`
@@ -813,13 +886,24 @@ migrate before upgrading. **Be on `v2.5.0` first.** The place accessors and the
 encoder fix that goes with them postdate `v2.4.0` and were released in `v2.5.0`
 specifically so these migrations can be staged; against `v2.4.0` or earlier the
 replacement does not exist, and the compile break and the behaviour change arrive
-together. `v2.5.0` also carries a `// Deprecated:` marker on almost every symbol listed
-here, so your tooling will point at the call sites that still need attention.
-Three note fields are the exception — `Event.Notes`, `Association.Notes` and
-`SourceRepositoryLink.Notes`, whose replacement fields exist only in v3. See
-below. `Address.Phone`, `.Email` and `.Website` are a second exception: their
-replacement on `Repository` exists only in v3 and they carry no marker in
-`v2.5.0` either — see [their own entry](#addressphone-email-and-website-in-detail).
+together. `v2.5.0` also carries a `// Deprecated:` marker on almost every
+symbol listed here, so your tooling will point at the call sites that still need
+attention.
+Seven symbols are the exception. Three note fields — `Event.Notes`,
+`Association.Notes` and `SourceRepositoryLink.Notes` — carry no marker because
+their replacement fields exist only in v3. `Address.Phone`, `.Email` and
+`.Website` are in the same position: their replacement on `Repository` exists
+only in v3 (see [their own entry](#addressphone-email-and-website-in-detail)).
+`EventOccupation` carries no marker either. See below; grep for those seven
+rather than relying on tooling.
+
+**On `v2.4.0` or earlier your tooling flags only a few of these.** The markers
+there cover the six record-level `Notes` fields, `Note.Continuation`,
+`DecodeOptions.MaxNestingDepth` and `WithHeaderTagComparison`; every other
+marker first shipped in `v2.5.0`. `Event.Place` and `Attribute.Place` in
+particular carried only a prose "kept for backward compatibility" comment
+through `v2.4.0`, which `go vet`, `staticcheck` and IDEs do not surface. If you
+skip `v2.5.0`, this page is the only warning you get for them.
 
 | Removed | Replacement |
 |---------|-------------|
@@ -970,7 +1054,9 @@ exported file -- it makes the quality analyzer report missing places for records
 that have them.
 
 `LDSOrdinance.Place` is a different field with no `PlaceDetail` twin. It is
-unchanged in v3, so leave those call sites alone.
+unchanged in v3, so leave those call sites alone. The difference is a recorded
+decision, not an oversight — see
+[Accepted Asymmetries](../governance/policies/api-stability.md#accepted-asymmetries).
 
 ### `Family.NumberOfChildren` is now a method
 
@@ -1335,8 +1421,13 @@ converters loses nothing there.
 
 ## Checking your upgrade
 
-`make api-check` in this repository reports the full apidiff between the last
-release and `main`, including constant value changes. For your own code, the
+`make api-check` in this repository reports the apidiff between `main` and the
+most recent release tag reachable from it, including constant value changes.
+That tag is the nearest one in `main`'s history, and `v2.5.0` was cut from a
+release branch, so the comparison is currently against `v2.4.0`: symbols
+deprecated in `v2.5.0` and removed in v3 show up as removals, and symbols
+that `v2.5.0` added and v3 keeps show up as additions rather than as
+unchanged. For your own code, the
 compiler catches every removal and rename on this page, and every site that
 *names a field* of a retyped value. It does **not** catch the value changes —
 the inverted boolean, the renumbered constant, the `*int` retype (whose compile
@@ -1351,6 +1442,10 @@ measures: `SpouseInFamilies` and `SourceCitationData.Text` change shape for
 Grep for the field name alongside building; the Retypes entry above lists the
 shapes to look for. The same holds for `Header.Date`, whose printed and JSON
 form changes from a zero timestamp to the date text.
+
+Nor does it catch a value of one of the six
+[no-longer-comparable types](#types-that-are-no-longer-comparable) compared or
+hashed through an `any`. That compiles and panics at run time.
 
 See [`docs/governance/policies/api-stability.md`](../governance/policies/api-stability.md)
 for what the project treats as a breaking change, including the semantic breaks

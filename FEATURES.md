@@ -660,7 +660,9 @@ empty name on an event that has no carrier is therefore a no-op; to clear a plac
 that is already recorded, assign `PlaceDetail = nil`.
 
 `LDSOrdinance.Place` is a separate scalar with no `PlaceDetail` twin and is
-unaffected by any of the above.
+unaffected by any of the above. That asymmetry is deliberate; see
+[Accepted Asymmetries](docs/governance/policies/api-stability.md#accepted-asymmetries)
+for what it costs and why closing it later would be additive.
 
 ### Coordinate Conversion
 

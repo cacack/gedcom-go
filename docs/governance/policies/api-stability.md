@@ -14,6 +14,10 @@ gedcom-go follows [Semantic Versioning](https://semver.org/):
 
 CI automatically detects breaking API changes using [apidiff](https://pkg.go.dev/golang.org/x/exp/cmd/apidiff). PRs with breaking changes must declare them via conventional commits (`feat!:`, `fix!:`, or `BREAKING CHANGE:` footer). This ensures release-please correctly bumps the major version.
 
+The gate is a floor, not a verdict: it compares signatures, so a change that
+alters behaviour without altering a signature passes it clean. See
+[Semantic Breaks](#semantic-breaks).
+
 ## What Constitutes a Breaking Change
 
 ### Breaking (Requires Major Version Bump)
@@ -53,12 +57,32 @@ than assuming either way. What it can never see is a change to which code
 paths consult an unchanged field, or to what a function does with unchanged
 inputs.
 
+**A clean `make api-check` is not evidence that a change is compatible.** It
+is evidence only that no exported signature, type property (such as
+comparability) or constant value changed. A reviewer must not treat a green
+gate as sufficient: the question to ask of every change is whether a caller's
+existing code, on the data it already holds, now gets a different answer.
+The shapes to look for, each with an in-repo instance from the table below:
+
+- **A constant renumbered** — `validator.Strictness`. (`apidiff` does flag
+  this one; it is listed because the incompatibility is in stored values, which
+  no tool sees.)
+- **A function starting or ceasing to return an error on the same input** —
+  `Decode` honouring `StrictMode`; `ParseCoordinate` rejecting non-decimal
+  spellings.
+- **The contents of an exported map key, slice or field changing** —
+  `Issue.Details["line_number"]` removed; `MediaObject.NoteXRefs` and
+  `SharedNoteXRefs` partitioning; `Document.Subset` returning an extra record.
+- **A zero value changing meaning** — an empty `EncodeOptions.LineEnding` now
+  meaning `"\n"`.
+
 Because the compiler gives the caller no signal at all, a semantic break
 requires:
 
 1. A major version, exactly like a signature break.
-2. An explicit `BREAKING CHANGE:` footer. State in the commit body whether
-   `make api-check` flags it, so a reader is not left guessing.
+2. An explicit `BREAKING CHANGE:` footer. State in the commit body why the
+   change is breaking and whether `make api-check` flags it, so a reader is not
+   left guessing.
 3. A migration note giving the old-to-new mapping in full — a caller cannot
    diff their way to it.
 
@@ -77,6 +101,128 @@ Known members of this category:
 | `ParseCoordinate` and `Coordinates.AsDecimal` reject non-decimal coordinate values ([#504](https://github.com/cacack/gedcom-go/issues/504)) | v3.0.0 | A bug fix, listed here because input that previously returned a value now returns an error, on data a caller may have stored. The numeric part is now an unsigned plain decimal; the wider `strconv.ParseFloat` syntax is refused. `AsDecimal` on `{Latitude: "Nnan", Longitude: "Enan"}` was `(NaN, NaN, nil)` — a success return outside the documented range, since `NaN` fails both range comparisons — and is now an error. `"N1e2"` was `100`, `"N0x1p3"` was `8`, `"N1_0.5"` was `10.5`; all three now error. `apidiff` reports nothing: no signature changed. A caller who checked the error and trusted the value was already correct and needs no change; one who stored a non-decimal spelling must fix the data. |
 | Decoding reports bad `MAP` coordinates ([#504](https://github.com/cacack/gedcom-go/issues/504)) | v3.0.0 | Same category as the `ORPHANED_NOTE` row below: it changes the diagnostics a document produces, which a caller may have snapshotted or suppressed. `LATI` and `LONG` previously received no decode-time validation at all. Each is now checked for value syntax, axis direction (`LATI` must use N/S, `LONG` E/W) and range, and a failure emits an `INVALID_VALUE` warning naming the line. The axis and range checks are the ones likely to fire on real data — ordinary data-entry mistakes rather than the pathological spellings in the row above. These are warnings, so `HasErrors` is unaffected and nothing that decoded before fails to decode now; the raw text is still preserved on the record (ADR 0003). |
 | Inline note text no longer reported as an orphaned `NOTE` reference ([#473](https://github.com/cacack/gedcom-go/issues/473)) | v3.0.0 | A bug fix, listed here because it changes issue counts a caller may have snapshotted. `StreamingValidator` collected note references from the deprecated `Notes` slice, which interleaved pointers with inline text and applied no pointer test — so a record carrying ordinary note prose was reported as an orphaned reference to a record whose XRef was the prose itself. Collection now reads `NoteXRefs`, which holds only pointer-shaped values. Callers who suppressed `ORPHANED_NOTE` wholesale, or who assert on issue counts, will see fewer issues. |
+
+## Accepted Future Breaks
+
+A break recorded here has already been judged worth its cost. When the change
+that causes it lands, it still needs everything any break needs — a major
+release, a `BREAKING CHANGE:` footer, a migration-guide entry — but it does
+**not** need to re-argue whether it should happen. Being breaking is not, on
+its own, a reason to abandon or dilute the work named in an entry.
+
+The register exists because the cheapest time to take a break is inside a
+major release that is already breaking, and the obvious shortcut — adding
+exported fields early just to spend the window — is ruled out: an exported
+field the decoder does not populate is dead surface, the speculative API that
+[CONSTITUTION.md](../../../CONSTITUTION.md#anti-patterns-to-avoid) warns
+against. When the justifying work cannot land in the current major, the break
+is recorded here instead.
+
+| Break | Arrives with | Recorded | Why it is accepted |
+|-------|--------------|----------|--------------------|
+| `gedcom.Transliteration` stops being comparable with `==` | [#453](https://github.com/cacack/gedcom-go/issues/453) — typed decoding of 5.5.1 `FONE` / `ROMN` onto `PersonalName.Transliterations` | v3.0.0 cycle ([#501](https://github.com/cacack/gedcom-go/issues/501)) | See below. |
+
+### `Transliteration` loses `==` when #453 lands
+
+`Transliteration` is comparable today, and nothing about the type itself needs
+that to change: every `NAME-TRAN` substructure is typed, and the 5.5.1 name
+pieces it mirrors are `{0:1}`. The pressure comes from #453. 5.5.1's `FONE` and
+`ROMN` are accepted and dropped today, and #453 maps both onto
+`PersonalName.Transliterations` — onto this type. `FONE` and `ROMN` admit
+`NOTE {0:M}` and `SOUR {0:M}` plus a required `TYPE` naming the scheme, so a
+lossless mapping gives `Transliteration` at least `SourceCitations` and the
+`NoteXRefs` / `InlineNotes` pair. A struct holding a slice cannot be compared,
+so the type loses `==` — and use as a map key — the day #453 lands.
+
+The maintainer decision ([#501](https://github.com/cacack/gedcom-go/issues/501))
+was not to schedule #453 into v3.0.0, so this break falls to a later major. It
+is accepted there because:
+
+- #453 is a fidelity fix for 5.5.1, the most common GEDCOM format in the wild.
+  Nothing about the feature is breaking; only the comparability side effect is.
+  Gating it on "too breaking" would defer lossless decoding of real files for a
+  purely mechanical reason.
+- No known downstream call site depends on it: the my-family index surveyed
+  for #501 has no use of `Transliteration`, and the type predates the version
+  my-family pins, so the absence is genuine non-use rather than a version
+  artefact.
+- The alternatives were judged worse. Adding the note fields during v3 and
+  leaving `SourceCitations` and the scheme field for later would take the same
+  break twice. Adding empty fields with no decoder support would be dead
+  surface.
+
+Consequently `Transliteration` gains **no** exported field in v3.0.0 that the
+decoder does not populate. #453 adds its fields together with the decoding and
+encoding that fill them.
+
+## Accepted Asymmetries
+
+An asymmetry recorded here is a deliberate difference between API shapes that
+look like they should match. Recording it stops the difference being "fixed"
+as a drive-by, and states in advance what closing it later would cost.
+
+### `LDSOrdinance.Place` stays a scalar with no `PlaceDetail` twin
+
+v3.0.0 removed `Event.Place` and `Attribute.Place`, leaving `PlaceDetail` as the
+sole place carrier on events and attributes. `LDSOrdinance.Place` is the one
+place carrier left as a bare `string`, and it stays that way in v3.0.0
+([#523](https://github.com/cacack/gedcom-go/issues/523)).
+
+| Carrier | Typed place | Encoder writes `PLAC` when |
+|---------|-------------|----------------------------|
+| `Event`, `Attribute` | `PlaceDetail *PlaceDetail` | `PlaceDetail != nil` — a valueless `PLAC` survives |
+| `LDSOrdinance` | `Place string` | `Place != ""` — a valueless `PLAC` does not |
+
+What the asymmetry costs, stated so a reader can judge it:
+
+- **Grammar.** In 5.5 and 5.5.1 an ordinance `PLAC` is
+  `PLACE_LIVING_ORDINANCE`, a bare value with no subordinates, so the scalar is
+  a complete model. GEDCOM 7.0 reuses the general `PLAC` structure there, which
+  admits `FORM`, `LANG`, `TRAN`, `MAP`, `EXID` and `NOTE`. The 7.0 coverage
+  report lists each structure's substructures once, at its first occurrence
+  under an event, so its "typed" status for `PLAC`'s children describes events
+  and attributes, not ordinances.
+- **Decode → encode** is unaffected. `Record.Tags` preserves an ordinance's raw
+  `PLAC` line and everything under it, and the encoder writes from those tags.
+- **The entity-rebuild path** — a hand-built document, or one reconstructed
+  from typed fields — loses what the scalar cannot hold: subordinates of an
+  ordinance `PLAC`, and a `PLAC` line with no value. The decoder reads only an
+  ordinance's direct children, so these subordinates produce no
+  `UNKNOWN_TAG` diagnostic either; the raw tags are the only record of them.
+
+It is accepted because nothing is lost on the ordinary decode → encode path,
+the scalar is already a complete model for 5.5 and 5.5.1, and no corpus
+evidence or downstream request yet shows structure under an ordinance `PLAC`.
+The cost is confined to typed-model access and entity rebuild.
+
+**Closing it later can be additive — but only if `Place` stays
+authoritative.** Adding `PlaceDetail *PlaceDetail` to `LDSOrdinance` adds a
+field, and `LDSOrdinance` already holds slices and is not comparable, so a new
+pointer field costs nothing further there. The field is not what makes it safe
+for a minor release; the encoder's behaviour is. The decoder would fill both
+carriers from the same line, so a caller who decodes, edits `ord.Place` and
+re-encodes through the entity path must still see the edit written — and a
+caller who *clears* `ord.Place` must still see the line disappear, as it does
+today. That holds only if `Place` is authoritative for presence as well as
+value: the encoder writes `PLAC` only when `Place != ""`, takes the line value
+from `Place`, and takes only the subordinates (`FORM`, `MAP`, and so on) from
+`PlaceDetail`. Any rule that emits `PLAC` while `Place` is empty — for example
+`Place != "" || PlaceDetail != nil` — changes the result of clearing `Place` on
+a decoded ordinance and is itself a semantic break. Keeping the two in sync
+through accessors does not help either: `LDSOrdinance` has no accessors today,
+and callers assign the field directly. This is close to, but not the same as,
+how v2's `Event` behaved while it carried both: the v2.5.0 encoder preferred
+the `Place` scalar when both were set, but fell back to `PlaceDetail.Name` when
+the scalar was empty.
+
+Making the encoder prefer `PlaceDetail` over an edited `Place` would be a
+[semantic break](#semantic-breaks): a change to which code path consults an
+unchanged field, invisible to `make api-check`, and it would need a major
+release. So would *removing* the `Place` scalar afterwards, staged through
+`// Deprecated:` like `Event.Place` was. What should trigger any of this is
+evidence per [CONSTITUTION.md](../../../CONSTITUTION.md#what-counts-as-evidence):
+real files carrying subordinates under an ordinance `PLAC`, or a downstream
+request.
 
 ## Stability Guarantees
 
