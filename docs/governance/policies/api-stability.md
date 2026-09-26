@@ -177,6 +177,14 @@ Before release-please is allowed to cut the major:
 - [ ] Every removed exported symbol shipped a `// Deprecated:` marker in a
       released minor — a map key or a retyped field cannot carry one, so it gets
       a godoc note and a guide entry instead
+      - **Named exception (v3.0.0):** `gedcom.Address.Phone`, `.Email` and
+        `.Website` ([#494](https://github.com/cacack/gedcom-go/issues/494))
+        shipped no marker in `v2.5.0`, and their replacement
+        (`Repository.Phone`, `.Email`, `.Fax`, `.Website`,
+        [#508](https://github.com/cacack/gedcom-go/issues/508)) exists only in
+        v3. The maintainer accepted removing them anyway; the
+        [migration guide](../../guides/migration-v3.md#addressphone-email-and-website-in-detail)
+        records the exception and the upgrade path.
 - [ ] The consumer has migrated against that tag with no other change
 - [ ] The module path is bumped to the new major ([#516](https://github.com/cacack/gedcom-go/issues/516))
 

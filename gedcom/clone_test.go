@@ -1214,6 +1214,25 @@ func TestRepositoryClone(t *testing.T) {
 			t.Error("NoteXRefs was not deep copied")
 		}
 	})
+
+	t.Run("deep copies contact slices", func(t *testing.T) {
+		original := &Repository{
+			XRef:    "@R1@",
+			Phone:   []string{"p1", "p2"},
+			Email:   []string{"e1"},
+			Fax:     []string{"f1"},
+			Website: []string{"w1"},
+		}
+		copied := original.Clone()
+		copied.Phone[1] = "x"
+		copied.Email[0] = "x"
+		copied.Fax[0] = "x"
+		copied.Website[0] = "x"
+		if original.Phone[1] != "p2" || original.Email[0] != "e1" ||
+			original.Fax[0] != "f1" || original.Website[0] != "w1" {
+			t.Errorf("contact slices share backing storage with original: %+v", original)
+		}
+	})
 }
 
 func TestNoteClone(t *testing.T) {

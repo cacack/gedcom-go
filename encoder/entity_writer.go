@@ -549,6 +549,10 @@ func repositoryToTags(repo *gedcom.Repository, opts *EncodeOptions) []*gedcom.Ta
 		tags = append(tags, addressToTags(repo.Address, 1)...)
 	}
 
+	// Contact details (level 1) - PHON, EMAIL, FAX, WWW, in ADDRESS_STRUCTURE
+	// grammar order after ADDR.
+	tags = append(tags, contactTags(repo.Phone, repo.Email, repo.Fax, repo.Website, 1)...)
+
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	// Emitted before NOTE to match GEDCOM 7 structure order (IDENTIFIER_STRUCTURE
 	// precedes NOTE_STRUCTURE) and the placement used by the other record writers.
@@ -776,18 +780,7 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 	}
 
 	// Contact info
-	for _, phone := range d.phone {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "PHON", Value: phone})
-	}
-	for _, email := range d.email {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "EMAIL", Value: email})
-	}
-	for _, fax := range d.fax {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "FAX", Value: fax})
-	}
-	for _, www := range d.website {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "WWW", Value: www})
-	}
+	tags = append(tags, contactTags(d.phone, d.email, d.fax, d.website, level)...)
 
 	if d.restriction != "" {
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "RESN", Value: d.restriction})
@@ -971,6 +964,26 @@ func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int, opts *
 		}
 	}
 
+	return tags
+}
+
+// contactTags writes the ADDRESS_STRUCTURE contact siblings of ADDR -- PHON,
+// EMAIL, FAX and WWW -- at the given level, in grammar order, one line per
+// entry.
+func contactTags(phone, email, fax, website []string, level int) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+	for _, v := range phone {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "PHON", Value: v})
+	}
+	for _, v := range email {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "EMAIL", Value: v})
+	}
+	for _, v := range fax {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "FAX", Value: v})
+	}
+	for _, v := range website {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "WWW", Value: v})
+	}
 	return tags
 }
 

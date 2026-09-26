@@ -817,7 +817,9 @@ together. `v2.5.0` also carries a `// Deprecated:` marker on almost every symbol
 here, so your tooling will point at the call sites that still need attention.
 Three note fields are the exception — `Event.Notes`, `Association.Notes` and
 `SourceRepositoryLink.Notes`, whose replacement fields exist only in v3. See
-below.
+below. `Address.Phone`, `.Email` and `.Website` are a second exception: their
+replacement on `Repository` exists only in v3 and they carry no marker in
+`v2.5.0` either — see [their own entry](#addressphone-email-and-website-in-detail).
 
 | Removed | Replacement |
 |---------|-------------|
@@ -834,6 +836,7 @@ below.
 | `gedcom.Attribute.Place` | `Attribute.PlaceName()` to read, `Attribute.SetPlaceName(name)` to write |
 | `validator.PlaceConsistencyValidator`, `validator.NewPlaceConsistencyValidator()`, `validator.CodePlaceCarrierMismatch` | none needed — the check compared two place carriers and there is now one. Never shipped in a tagged release |
 | `gedcom.EventOccupation` | `gedcom.AttributeOccupation`, matched over `Individual.Attributes` — see below, the v2 constant never matched an ordinary `OCCU` |
+| `gedcom.Address.Phone`, `.Email`, `.Website` | `Repository.Phone`, `.Email`, `.Website` — each now a `[]string`, plus a new `Repository.Fax`. No v2 form and no `// Deprecated:` marker; see below |
 
 ```go
 // v2
@@ -1237,6 +1240,98 @@ would be imported twice. A third site stops compiling because of the
 
 Line numbers are as of the survey that produced this guide; re-grep before
 relying on them.
+
+### `Address.Phone`, `.Email` and `.Website` in detail
+
+| v2 | v3 |
+|----|----|
+| `repo.Address.Phone string` | `repo.Phone []string` |
+| `repo.Address.Email string` | `repo.Email []string` |
+| `repo.Address.Website string` | `repo.Website []string` |
+| — (`FAX` was raw-only) | `repo.Fax []string` |
+
+`PHON`, `EMAIL`, `FAX` and `WWW` are siblings of `ADDR` in the GEDCOM grammar,
+not parts of it, and each may appear up to three times. v2 stored a
+repository's contact details as scalars on its `Address`, overwriting on each
+repeat, so a repository with two phone numbers reached the typed model with
+only the last one. v3 keeps them on the `Repository`, one entry per line in
+document order. `Address` is left holding exactly the seven `{0:1}` fields of
+the `ADDR` structure, and is now guaranteed comparable with `==` by a
+compile-time assertion.
+
+```go
+// v2
+phone := ""
+if repo.Address != nil {
+    phone = repo.Address.Phone
+}
+
+// v3 — the field is a slice, so check the length before indexing
+phone := ""
+if len(repo.Phone) > 0 {
+    phone = repo.Phone[0]
+}
+```
+
+```go
+// v2
+repo.Address = &gedcom.Address{City: "Salt Lake City", Phone: "(801) 240-2584"}
+
+// v3
+repo.Address = &gedcom.Address{City: "Salt Lake City"}
+repo.Phone = []string{"(801) 240-2584"}
+```
+
+Three behaviour changes come with the move, none of which the compiler reports:
+
+- **`repo.Address` can now be nil where it was not.** v2 allocated an
+  `Address` for a repository that had a `PHON`, `EMAIL` or `WWW` line and no
+  `ADDR`, just to hold the contact field. v3 leaves `Address` nil in that
+  case. Code that used `repo.Address != nil` as "this repository has contact
+  details" must test the four slices as well.
+- **Hand-built repositories now write their contact details.** The v2 encoder
+  never emitted `Address.Phone`, `.Email` or `.Website` for any owner, so a
+  typed-model repository (one with no `Record.Tags`) silently lost them on
+  encode. v3 writes every entry of all four slices after `ADDR`, in grammar
+  order. A decoded record still re-encodes from `Record.Tags` and is unchanged.
+- **On any other owner these fields were always empty.** The decoder only ever
+  populated them on a repository. On an `Event`, `Attribute` or `Submitter`
+  address they were `""` in every decoded document; the real values have been
+  in `Event.Phone`, `Attribute.Phone`, `Submitter.Phone` (and their `Email`,
+  `Fax`, `Website` siblings where they exist) all along. A read of
+  `ev.Address.Phone` is dead code: delete it, or read `ev.Phone` if the
+  intent was the event's contact number.
+
+`Submitter` is unchanged in v3: it keeps `Phone` and `Email` as slices, and its
+`FAX` and `WWW` lines remain available only through `Record.Tags`.
+
+**No deprecation marker — a documented exception.** v3 removes symbols that
+`v2.5.0` marked `// Deprecated:`. These three fields were not marked, and
+their replacement on `Repository` does not exist in any v2 release, so there is
+no staged path: the compile break and the replacement arrive together at the
+upgrade, and your tooling will not have flagged the call sites in advance. The
+maintainer accepted removing them in v3 regardless, because the only
+alternative was carrying three misleading fields through all of v3. Grep for
+`.Phone`, `.Email` and `.Website` on `Address` values rather than relying on
+tooling. The exception is recorded in the
+[pre-major release checklist](../governance/policies/api-stability.md#pre-major-release-checklist).
+
+#### Known downstream call sites
+
+`my-family` is not checked out alongside this repository, so these sites come
+from the survey recorded in
+[#494](https://github.com/cacack/gedcom-go/issues/494), not from a fresh grep.
+Re-grep before relying on them.
+
+| Site | v2 | v3 |
+|------|----|----|
+| `internal/gedcom/importer.go:1242-1244` (`convertGedcomAddress`) | copies `Address.Phone`, `.Email`, `.Website` into scalar `domain.Address` fields | read `repo.Phone[0]` etc. with a length check, in the repository importer rather than the shared address converter |
+| `internal/gedcom/exporter.go:922-924` (`convertDomainAddressToGedcom`) | writes the three fields back | delete the three assignments from the shared converter |
+| `internal/gedcom/exporter.go:1237-1245` (`toGedcomRepository`) | relies on the shared converter to carry phone/email/website | new logic: peel the three values off `domain.Address` and set `repo.Phone`, `.Email`, `.Website` as one-element slices when non-empty |
+
+The shared converters are also called for submitter and event addresses. On
+those the three fields were always empty (see above), so dropping them from the
+converters loses nothing there.
 
 ## Checking your upgrade
 

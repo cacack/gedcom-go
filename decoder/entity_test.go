@@ -2770,14 +2770,14 @@ func TestRepositoryParsing(t *testing.T) {
 	}
 
 	// Test contact information
-	if repo1.Address.Phone != "(801) 240-2584" {
-		t.Errorf("repo1.Address.Phone = %s, want '(801) 240-2584'", repo1.Address.Phone)
+	if want := []string{"(801) 240-2584"}; !reflect.DeepEqual(repo1.Phone, want) {
+		t.Errorf("repo1.Phone = %q, want %q", repo1.Phone, want)
 	}
-	if repo1.Address.Email != "fhl@familysearch.org" {
-		t.Errorf("repo1.Address.Email = %s, want 'fhl@familysearch.org'", repo1.Address.Email)
+	if want := []string{"fhl@familysearch.org"}; !reflect.DeepEqual(repo1.Email, want) {
+		t.Errorf("repo1.Email = %q, want %q", repo1.Email, want)
 	}
-	if repo1.Address.Website != "https://www.familysearch.org" {
-		t.Errorf("repo1.Address.Website = %s, want 'https://www.familysearch.org'", repo1.Address.Website)
+	if want := []string{"https://www.familysearch.org"}; !reflect.DeepEqual(repo1.Website, want) {
+		t.Errorf("repo1.Website = %q, want %q", repo1.Website, want)
 	}
 
 	// Test notes

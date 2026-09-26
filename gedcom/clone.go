@@ -272,6 +272,10 @@ func (r *Repository) Clone() *Repository {
 		XRef:        r.XRef,
 		Name:        r.Name,
 		Address:     cloneAddress(r.Address),
+		Phone:       cloneStringSlice(r.Phone),
+		Email:       cloneStringSlice(r.Email),
+		Fax:         cloneStringSlice(r.Fax),
+		Website:     cloneStringSlice(r.Website),
 		NoteXRefs:   cloneStringSlice(r.NoteXRefs),
 		InlineNotes: cloneStringSlice(r.InlineNotes),
 		ExternalIDs: cloneExternalIDs(r.ExternalIDs),
@@ -697,18 +701,8 @@ func cloneAddress(a *Address) *Address {
 	if a == nil {
 		return nil
 	}
-	return &Address{
-		Line1:      a.Line1,
-		Line2:      a.Line2,
-		Line3:      a.Line3,
-		City:       a.City,
-		State:      a.State,
-		PostalCode: a.PostalCode,
-		Country:    a.Country,
-		Phone:      a.Phone,
-		Email:      a.Email,
-		Website:    a.Website,
-	}
+	copied := *a
+	return &copied
 }
 
 func cloneSourceCitation(sc *SourceCitation) *SourceCitation {

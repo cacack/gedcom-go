@@ -1299,22 +1299,16 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 			repo.Address = parseEventAddress(record.Tags, i, tag.Level, collector)
 
 		case "PHON":
-			if repo.Address == nil {
-				repo.Address = &gedcom.Address{}
-			}
-			repo.Address.Phone = tag.Value
+			repo.Phone = append(repo.Phone, tag.Value)
 
 		case "EMAIL":
-			if repo.Address == nil {
-				repo.Address = &gedcom.Address{}
-			}
-			repo.Address.Email = tag.Value
+			repo.Email = append(repo.Email, tag.Value)
+
+		case "FAX":
+			repo.Fax = append(repo.Fax, tag.Value)
 
 		case "WWW":
-			if repo.Address == nil {
-				repo.Address = &gedcom.Address{}
-			}
-			repo.Address.Website = tag.Value
+			repo.Website = append(repo.Website, tag.Value)
 
 		case "NOTE", "SNOTE":
 			repo.NoteXRefs, repo.InlineNotes = appendRecordNote(record.Tags, i, repo.NoteXRefs, repo.InlineNotes)
@@ -1322,7 +1316,7 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "EXID":
 			repo.ExternalIDs = append(repo.ExternalIDs, parseExternalID(record.Tags, i))
 
-		case "CHAN", "REFN", "UID", "FAX":
+		case "CHAN", "REFN", "UID":
 			// Known tags not yet parsed into typed fields
 
 		default:
