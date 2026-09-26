@@ -413,6 +413,32 @@ func TestSubset_HeaderSubmitterPreservedWhenInClosure(t *testing.T) {
 	}
 }
 
+// TestSubset_HeaderScalarFieldsCarriedAcross pins the Subset doc's promise
+// that the file-level header fields, Date included (#495), reach the subset.
+func TestSubset_HeaderScalarFieldsCarriedAcross(t *testing.T) {
+	doc := buildRichFixture()
+	doc.Header.SourceSystem = "TestSystem"
+	doc.Header.Date = "7 AUG 2026"
+	doc.Header.Language = "English"
+	doc.Header.Copyright = "(c) 2026"
+	doc.Header.AncestryTreeID = "tree123"
+
+	sub, err := doc.Subset([]string{"@I1@"})
+	if err != nil {
+		t.Fatalf("Subset errored: %v", err)
+	}
+	got, want := sub.Header, doc.Header
+	if got.Version != want.Version || got.Encoding != want.Encoding ||
+		got.SourceSystem != want.SourceSystem || got.Date != want.Date ||
+		got.Language != want.Language || got.Copyright != want.Copyright ||
+		got.AncestryTreeID != want.AncestryTreeID {
+		t.Errorf("Subset header = %+v, want scalar fields of %+v", got, want)
+	}
+	if sub.Schema == nil || sub.Schema.TagMappings["_TEST"] == "" {
+		t.Error("Subset should carry the source Schema")
+	}
+}
+
 func TestSubset_DoesNotMutateSource(t *testing.T) {
 	doc := buildRichFixture()
 	originalLen := len(doc.Records)

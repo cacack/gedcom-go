@@ -4,7 +4,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/cacack/gedcom-go/v2/gedcom"
 	"github.com/cacack/gedcom-go/v2/merge"
@@ -191,19 +190,19 @@ func TestCombine_Doc1NilHeader(t *testing.T) {
 }
 
 // TestCombine_AdoptsDoc2DateWhenDoc1HasNone covers the header Date
-// promotion branch: doc1 has a zero Date, doc2 has one.
+// promotion branch: doc1 has an empty Date, doc2 has one.
 func TestCombine_AdoptsDoc2DateWhenDoc1HasNone(t *testing.T) {
 	doc1 := docWith(indRec("@I1@"))
 	doc2 := docWith(indRec("@I2@"))
-	want := time.Date(2020, 1, 2, 0, 0, 0, 0, time.UTC)
+	want := "2 JAN 2020"
 	doc2.Header.Date = want
 
 	out, _, err := merge.Combine(doc1, doc2, merge.CombineOptions{})
 	if err != nil {
 		t.Fatalf("Combine returned error: %v", err)
 	}
-	if !out.Header.Date.Equal(want) {
-		t.Errorf("Date = %v, want %v (adopted from doc2)", out.Header.Date, want)
+	if out.Header.Date != want {
+		t.Errorf("Date = %q, want %q (adopted from doc2)", out.Header.Date, want)
 	}
 }
 

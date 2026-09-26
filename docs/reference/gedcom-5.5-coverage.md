@@ -179,11 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 841 | 84.3% | 1120 | 85.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 842 | 84.4% | 1121 | 85.2% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 74 | 7.4% | 88 | 6.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 64 | 6.4% | 95 | 7.2% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 63 | 6.3% | 94 | 7.1% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -194,7 +194,7 @@ pairs under it reach the typed model.
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
 | `FAM` | 206 / 254 | 271 / 324 |
-| `HEAD` | 6 / 28 | 9 / 33 |
+| `HEAD` | 7 / 28 | 10 / 33 |
 | `INDI` | 587 / 625 | 787 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 5 / 12 | 10 / 13 |
@@ -766,7 +766,7 @@ Measured at `HEAD` in 5.5, 5.5.1.
 |-----|-----------|--------|--------|-------------|
 | `CHAR` | `HEADER.HEAD.CHAR` | typed | typed | `{1:1}` |
 | `COPR` | `HEADER.HEAD.COPR` | typed | typed | `{0:1}` |
-| `DATE` | `HEADER.HEAD.DATE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `DATE` | `HEADER.HEAD.DATE` | typed | typed | `{0:1}` |
 | `DEST` | `HEADER.HEAD.DEST` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
 | `FILE` | `HEADER.HEAD.FILE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
 | `GEDC` | `HEADER.HEAD.GEDC` | raw (undiagnosed) | typed | `{1:1}` |

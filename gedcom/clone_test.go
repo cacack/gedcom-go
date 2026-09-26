@@ -2,7 +2,6 @@ package gedcom
 
 import (
 	"testing"
-	"time"
 )
 
 func TestDocumentClone(t *testing.T) {
@@ -116,7 +115,7 @@ func TestHeaderClone(t *testing.T) {
 			Version:        Version551,
 			Encoding:       EncodingUTF8,
 			SourceSystem:   "TestSystem",
-			Date:           time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+			Date:           "1 JAN 2024",
 			Language:       "English",
 			Copyright:      "(c) 2024",
 			Submitter:      "@SUBM1@",
@@ -139,6 +138,9 @@ func TestHeaderClone(t *testing.T) {
 		}
 		if copied.SourceSystem != original.SourceSystem {
 			t.Errorf("SourceSystem = %v, want %v", copied.SourceSystem, original.SourceSystem)
+		}
+		if copied.Date != original.Date {
+			t.Errorf("Date = %q, want %q", copied.Date, original.Date)
 		}
 		if len(copied.Tags) != len(original.Tags) {
 			t.Errorf("Tags length = %d, want %d", len(copied.Tags), len(original.Tags))

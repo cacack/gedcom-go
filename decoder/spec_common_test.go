@@ -580,12 +580,14 @@ func specRender(sb *strings.Builder, v reflect.Value, depth int) {
 		}
 		specRender(sb, v.Elem(), depth+1)
 	case reflect.Struct:
-		// A struct with no exported fields at all -- time.Time is the one in
-		// this model, behind Header.Date -- would render as an empty {} for
-		// every value it can hold, making a typed field permanently invisible.
-		// Formatting it is the only way to see inside. Structs that merely have
-		// all their fields skipped are not this case and must keep rendering
-		// empty, or the skip would not skip.
+		// A struct with no exported fields at all -- such as time.Time, which
+		// sat behind Header.Date until #495 retyped it to string -- would
+		// render as an empty {} for every value it can hold, making a typed
+		// field permanently invisible. Formatting it is the only way to see
+		// inside. The model has none today; the guard stays so one added later
+		// is not silently reported as raw. Structs that merely have all their
+		// fields skipped are not this case and must keep rendering empty, or
+		// the skip would not skip.
 		if !specHasExportedField(v.Type()) {
 			fmt.Fprintf(sb, "%v", v.Interface())
 			return

@@ -117,9 +117,10 @@ first.
 
 | v2 | v3 |
 |----|----|
-| `GEDC, CHAR, SOUR, LANG` | `SOUR, SUBM, GEDC, CHAR, LANG` (5.5/5.5.1) |
-| | `GEDC, SOUR, SUBM, CHAR, LANG` (7.0) |
+| `GEDC, CHAR, SOUR, LANG` | `SOUR, DATE, SUBM, GEDC, CHAR, LANG` (5.5/5.5.1) |
+| | `GEDC, SOUR, DATE, SUBM, CHAR, LANG` (7.0) |
 | A hand-built `Header.Submitter` emitted no `1 SUBM` line | `1 SUBM` is emitted |
+| `Header.Date` was a `time.Time` and emitted no `1 DATE` line | `1 DATE` is emitted verbatim when non-empty (see [`Header.Date` is now `string`](#headerdate-is-now-string)) |
 
 This affects only documents with no raw `Header.Tags` — anything you decoded is
 written from its tags and is byte-identical to v2. For a header you assembled in
@@ -488,6 +489,75 @@ changes no value. Output does not change either: `%v`, `encoding/json` and
 
 `AttributeType` does not exist in `v2.5.0`, so this retype cannot be staged;
 the conversions above arrive with the upgrade.
+
+### `Header.Date` is now `string`
+
+| v2 | v3 |
+|----|----|
+| `Date time.Time` — never populated; always the zero value | `Date string` — `HEAD.DATE` verbatim, e.g. `"7 AUG 2026"`; `""` when the header has none |
+
+In v2 the decoder never read `HEAD.DATE` into this field and the encoder never
+wrote it, so every decoded document carried `0001-01-01 00:00:00 +0000 UTC` — a
+plausible-looking timestamp that meant nothing. v3 keeps it the way every other
+GEDCOM date in the model is kept (`Event.Date`, `ChangeDate.Date`, …): the raw
+`DATE_EXACT` string, so it round-trips losslessly (ADR 0001). The decoder
+populates it, and a hand-built header with no `Tags` now gets a `1 DATE` line
+(see [the header-order entry](#encoder-writes-hand-built-header-fields-in-grammar-order)).
+
+Parse it if you want a structured value:
+
+```go
+// v2
+t := doc.Header.Date // always the zero time.Time
+
+// v3
+if doc.Header.Date != "" {
+    d, err := gedcom.ParseDate(doc.Header.Date) // *gedcom.Date
+    if err == nil {
+        if t, err := d.ToTime(); err == nil { // Gregorian, complete dates only
+            _ = t
+        }
+    }
+}
+```
+
+| v2 call site | v3 |
+|----|----|
+| `h.Date.IsZero()` | `h.Date == ""` |
+| `h.Date.Format(layout)` | `h.Date` as written, or `ParseDate` then format the `*Date` |
+| `h.Date.Equal(u)` | `h.Date == s` — compares the text, which is what the file said |
+| `Header{Date: time.Now()}` | `Header{Date: strings.ToUpper(time.Now().Format("2 Jan 2006"))}` |
+
+**`HEAD.DATE.TIME` has no typed field.** It stays in `Header.Tags`, which is
+what a decoded header is encoded from, so it round-trips byte-identically. A
+header you build in memory (no `Tags`) has nowhere to put a time and is written
+with `1 DATE` alone.
+
+**Every site that uses the value as a `time.Time` is a compile error.** Sites
+that only print or serialise it do not break: `%v` changes from
+`0001-01-01 00:00:00 +0000 UTC` to the date text, and `encoding/json` from
+`"0001-01-01T00:00:00Z"` to the date text or `""`. Since v2 only ever held the
+zero value there, no real data is lost by the change — but grep for
+`Header.Date` as well as building.
+
+`merge.Combine` keeps doc1's `Date` when it has one, and a doc1 `Date` now
+blocks doc2's raw `1 DATE` structure from the merged `Tags` the way a doc1
+`Submitter` blocks doc2's `1 SUBM`, reported as a `Tags.DATE` header conflict.
+When doc1's `Date` exists only in the typed field (a hand-built header) and the
+merged `Tags` are non-empty, `Combine` also inserts a `1 DATE` for it into
+`Tags` in grammar order, so the encoded file carries the date `Header.Date`
+names rather than none.
+
+Hand-built `Header.Date` values are written through the same line-break
+handling as every other value: an embedded newline becomes a `2 CONT` line
+under `1 DATE`, never a new GEDCOM line.
+
+The string field does not exist in `v2.5.0`, so this retype cannot be staged.
+
+#### Known downstream call sites
+
+- None known. my-family is not checked out here; the issue (#495) records that
+  `Header` appears once in my-family and nothing there reads `Header.Date`.
 
 ## Renames
 
@@ -1104,7 +1174,9 @@ error anywhere. A clean build is not evidence that those five are done.
 Nor does it catch a retyped slice that a call site only prints, marshals, or
 measures: `SpouseInFamilies` changes shape for `%v`, `encoding/json` and
 `text/template` without ever failing to compile. Grep for the field name
-alongside building; the Retypes entry above lists the shapes to look for.
+alongside building; the Retypes entry above lists the shapes to look for. The
+same holds for `Header.Date`, whose printed and JSON form changes from a zero
+timestamp to the date text.
 
 See [`docs/governance/policies/api-stability.md`](../governance/policies/api-stability.md)
 for what the project treats as a breaking change, including the semantic breaks

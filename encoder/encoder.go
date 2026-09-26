@@ -250,6 +250,19 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 		return err
 	}
 
+	// Written verbatim, like every other GEDCOM date: the field holds the
+	// DATE_EXACT string as read or as the caller set it. It goes through
+	// writeValue rather than a bare Fprintf so a line break in a hand-built
+	// value (say, one taken from user input) becomes a CONT line instead of
+	// starting a new GEDCOM line -- a raw "\n0 @X@ INDI" would otherwise
+	// inject a record into the file.
+	writeDate := func() error {
+		if header.Date == "" {
+			return nil
+		}
+		return writeValue(w, 1, "", "DATE", header.Date, opts)
+	}
+
 	// The pointer is written verbatim: whatever the caller put in the field is
 	// the pointer the document's SUBM record is keyed by, and re-delimiting it
 	// would break that link rather than repair it.
@@ -273,15 +286,17 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 	// GEDC sits: 5.5/5.5.1 open the header with SOUR and declare GEDC late
 	// (SOUR, DEST, DATE, SUBM, SUBN, FILE, COPR, GEDC, CHAR, LANG, ...), while
 	// 7.0 requires GEDC first so a reader learns the version before anything
-	// else. Unknown or absent versions take the 5.5 order, which is what
-	// 5.5-era readers expect and what a 7.0 reader tolerates anyway.
+	// else (GEDC, SCHMA, SOUR, DEST, DATE, SUBM, COPR, LANG, ...). Both put
+	// DATE between SOUR and SUBM. Unknown or absent versions take the 5.5
+	// order, which is what 5.5-era readers expect and what a 7.0 reader
+	// tolerates anyway.
 	//
 	// CHAR has no place in the 7.0 grammar at all, so its position there is
 	// arbitrary; it is kept in the sequence so a hand-built header that sets
 	// Encoding still gets the line it asked for.
-	writes := []func() error{writeSour, writeSubm, writeGedc, writeChar, writeLang}
+	writes := []func() error{writeSour, writeDate, writeSubm, writeGedc, writeChar, writeLang}
 	if version == gedcom.Version70 {
-		writes = []func() error{writeGedc, writeSour, writeSubm, writeChar, writeLang}
+		writes = []func() error{writeGedc, writeSour, writeDate, writeSubm, writeChar, writeLang}
 	}
 
 	for _, write := range writes {
