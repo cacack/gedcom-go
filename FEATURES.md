@@ -68,8 +68,8 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [842 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (84.4%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,121 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (85.2%) | Most common format |
+| GEDCOM 5.5 | Every readable line preserved | [844 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (84.6%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,123 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (85.3%) | Most common format |
 | GEDCOM 7.0 | Every readable line preserved | [1,240 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (89.3%) | Latest standard |
 
 - Automatic version detection from header
@@ -88,8 +88,8 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,240 of 7.0's structures reach the typed model, 842 of
-5.5's, and 1,121 of 5.5.1's.
+document built for it: 1,240 of 7.0's structures reach the typed model, 844 of
+5.5's, and 1,123 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -614,7 +614,9 @@ At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
 - Referenced citations (via @SOUR@ xref)
 - PAGE - Specific location in source
 - QUAY - Quality/certainty assessment (0-3)
-- DATA - Citation data with DATE and TEXT
+- DATA - Citation data with DATE and every repeated TEXT
+  (`SourceCitationData.Text []*SourceText`, in document order), each with
+  CONT/CONC folded into `Value` and GEDCOM 7.0 `MIME`/`LANG` typed
 - Notes on citations
 
 ## Place Structure

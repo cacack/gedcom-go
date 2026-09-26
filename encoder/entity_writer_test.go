@@ -1068,7 +1068,7 @@ func TestSourceCitationToTags(t *testing.T) {
 				SourceXRef: "@S1@",
 				Data: &gedcom.SourceCitationData{
 					Date: "1 JAN 1900",
-					Text: "Original text",
+					Text: []*gedcom.SourceText{{Value: "Original text"}},
 				},
 			},
 			level:    2,
@@ -1713,6 +1713,40 @@ func TestCoordinatesToTags(t *testing.T) {
 	}
 }
 
+// TestSourceCitationDataToTagsOrder pins the exact line sequence for repeated
+// TEXT (#497): every entry in order, CONT and MIME/LANG one level below TEXT,
+// an empty Value still written (the entry records that a TEXT line existed),
+// and a nil entry skipped.
+func TestSourceCitationDataToTagsOrder(t *testing.T) {
+	data := &gedcom.SourceCitationData{
+		Date: "1 JAN 1900",
+		Text: []*gedcom.SourceText{
+			{Value: "One\nTwo", MIME: "text/plain"},
+			nil,
+			{Value: ""},
+			{Value: "Drei", Language: "de"},
+		},
+	}
+	want := []string{
+		"3 DATA ",
+		"4 DATE 1 JAN 1900",
+		"4 TEXT One",
+		"5 CONT Two",
+		"5 MIME text/plain",
+		"4 TEXT ",
+		"4 TEXT Drei",
+		"5 LANG de",
+	}
+	tags := sourceCitationDataToTags(data, 3, nil)
+	got := make([]string, len(tags))
+	for i, tag := range tags {
+		got[i] = strconv.Itoa(tag.Level) + " " + tag.Tag + " " + tag.Value
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("sourceCitationDataToTags lines:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
 func TestSourceCitationDataToTags(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1738,10 +1772,18 @@ func TestSourceCitationDataToTags(t *testing.T) {
 			name: "full data",
 			data: &gedcom.SourceCitationData{
 				Date: "1 JAN 1900",
-				Text: "Original text from source",
+				Text: []*gedcom.SourceText{{Value: "Original text from source"}},
 			},
 			level:    3,
 			contains: []string{"DATA", "DATE", "TEXT"},
+		},
+		{
+			name: "text with MIME and LANG",
+			data: &gedcom.SourceCitationData{
+				Text: []*gedcom.SourceText{{Value: "Passage", MIME: "text/plain", Language: "en"}},
+			},
+			level:    3,
+			contains: []string{"DATA", "TEXT", "MIME", "LANG"},
 		},
 	}
 
@@ -2131,7 +2173,7 @@ func TestMultilineNoteEncoding(t *testing.T) {
 	// Test SourceCitationData TEXT
 	t.Run("source citation data with multiline text", func(t *testing.T) {
 		data := &gedcom.SourceCitationData{
-			Text: "Citation text\nwith more info",
+			Text: []*gedcom.SourceText{{Value: "Citation text\nwith more info"}},
 		}
 
 		tags := sourceCitationDataToTags(data, 3, nil)

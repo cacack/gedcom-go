@@ -955,9 +955,20 @@ func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int, opts *
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: data.Date})
 	}
 
-	// Text (with CONT/CONC for multiline/long)
-	if data.Text != "" {
-		tags = append(tags, textToTags(data.Text, level+1, "TEXT", opts)...)
+	// Text: every entry, in order. Each Value goes through textToTags so a
+	// multi-line passage splits into TEXT + CONT/CONC rather than writing an
+	// embedded newline onto the TEXT line (which would forge GEDCOM lines).
+	for _, text := range data.Text {
+		if text == nil {
+			continue
+		}
+		tags = append(tags, textToTags(text.Value, level+1, "TEXT", opts)...)
+		if text.MIME != "" {
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "MIME", Value: text.MIME})
+		}
+		if text.Language != "" {
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "LANG", Value: text.Language})
+		}
 	}
 
 	return tags

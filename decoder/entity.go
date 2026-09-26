@@ -482,7 +482,9 @@ func parseSourceCitationData(tags []*gedcom.Tag, dataIdx, baseLevel int, collect
 			case "DATE":
 				data.Date = tag.Value
 			case "TEXT":
-				data.Text = tag.Value
+				// TEXT is {0:M}: append, never overwrite, so every passage
+				// survives in document order (issue #497).
+				data.Text = append(data.Text, parseSourceText(tags, i, collector))
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -492,6 +494,53 @@ func parseSourceCitationData(tags []*gedcom.Tag, dataIdx, baseLevel int, collect
 	}
 
 	return data
+}
+
+// parseSourceText extracts one DATA.TEXT substructure of a source citation
+// starting at textIdx. CONT/CONC continuation lines fold into Value (issue
+// #442), and the GEDCOM 7.0 MIME and LANG qualifiers are typed.
+func parseSourceText(tags []*gedcom.Tag, textIdx int, collector *diagnosticCollector) *gedcom.SourceText {
+	baseLevel := tags[textIdx].Level
+	text := &gedcom.SourceText{Value: tags[textIdx].Value}
+
+	// The builder is seeded lazily, on the first CONT/CONC: most TEXT lines
+	// have no continuation, and reusing tag.Value for them saves a copy and an
+	// allocation per citation (measured by BenchmarkDecodeCitationHeavy).
+	// text.Value is assigned once after the loop to keep folding O(n).
+	var b strings.Builder
+	folded := false
+
+	for i := textIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level != baseLevel+1 {
+			continue
+		}
+		switch tag.Tag {
+		case "CONT", "CONC":
+			if !folded {
+				b.WriteString(text.Value)
+				folded = true
+			}
+			foldContinuation(&b, tag)
+		case "MIME":
+			text.MIME = tag.Value
+		case "LANG":
+			text.Language = tag.Value
+		default:
+			if !strings.HasPrefix(tag.Tag, "_") {
+				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+			}
+		}
+	}
+
+	if folded {
+		text.Value = b.String()
+	}
+
+	return text
 }
 
 // eventDetail is a writable view over the GEDCOM EVENT_DETAIL substructures

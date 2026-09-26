@@ -71,7 +71,21 @@ func sampleEntities() []struct {
 				{Full: "John /Smith/", Given: "John", Surname: "Smith"},
 			},
 			Events: []*gedcom.Event{
-				{Type: "BIRT", Date: "5 AUG 1901", PlaceDetail: &gedcom.PlaceDetail{Name: "Boston, Massachusetts"}},
+				{
+					Type: "BIRT", Date: "5 AUG 1901", PlaceDetail: &gedcom.PlaceDetail{Name: "Boston, Massachusetts"},
+					// Repeated, multi-line DATA.TEXT: the {0:M} shape #497
+					// retyped Text to, with the CONT fold #442 asked for.
+					SourceCitations: []*gedcom.SourceCitation{{
+						SourceXRef: "@S1@",
+						Data: &gedcom.SourceCitationData{
+							Date: "6 AUG 1901",
+							Text: []*gedcom.SourceText{
+								{Value: "Born to John and Mary Smith.\nEntry 412."},
+								{Value: "Baptised the same day."},
+							},
+						},
+					}},
+				},
 			},
 			Attributes: []*gedcom.Attribute{
 				{Type: "OCCU", Value: "Carpenter"},

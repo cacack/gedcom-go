@@ -733,7 +733,16 @@ func cloneSourceCitation(sc *SourceCitation) *SourceCitation {
 	if sc.Data != nil {
 		copied.Data = &SourceCitationData{
 			Date: sc.Data.Date,
-			Text: sc.Data.Text,
+		}
+		if sc.Data.Text != nil {
+			copied.Data.Text = make([]*SourceText, len(sc.Data.Text))
+			for k, t := range sc.Data.Text {
+				if t == nil {
+					continue
+				}
+				text := *t
+				copied.Data.Text[k] = &text
+			}
 		}
 	}
 

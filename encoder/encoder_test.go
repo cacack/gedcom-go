@@ -1319,8 +1319,8 @@ func TestEncodeRoundtripNewFeatures(t *testing.T) {
 		}
 		if cite.Data == nil {
 			t.Error("Birth citation Data is nil")
-		} else if cite.Data.Text != "Original birth record entry" {
-			t.Errorf("Birth citation Data.Text = %s, want 'Original birth record entry'", cite.Data.Text)
+		} else if len(cite.Data.Text) != 1 || cite.Data.Text[0].Value != "Original birth record entry" {
+			t.Errorf("Birth citation Data.Text = %+v, want one entry 'Original birth record entry'", cite.Data.Text)
 		}
 		break
 	}
@@ -1838,7 +1838,7 @@ func TestRoundtripComplexIndividual(t *testing.T) {
 									Quality:    intPtr(3),
 									Data: &gedcom.SourceCitationData{
 										Date: "17 DEC 1770",
-										Text: "Birth entry",
+										Text: []*gedcom.SourceText{{Value: "Birth entry"}},
 									},
 								},
 							},
