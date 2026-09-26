@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/decoder"
-	"github.com/cacack/gedcom-go/v2/gedcom"
-	"github.com/cacack/gedcom-go/v2/merge"
+	"github.com/cacack/gedcom-go/v3/decoder"
+	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/merge"
 )
 
 // Header.Submitter was never populated by the decoder before issue #503, so

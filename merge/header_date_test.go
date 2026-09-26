@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/decoder"
-	"github.com/cacack/gedcom-go/v2/encoder"
-	"github.com/cacack/gedcom-go/v2/gedcom"
-	"github.com/cacack/gedcom-go/v2/merge"
+	"github.com/cacack/gedcom-go/v3/decoder"
+	"github.com/cacack/gedcom-go/v3/encoder"
+	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/merge"
 )
 
 // dateGED is a 5.5.1 document whose header carries a transmission date with a

@@ -244,7 +244,7 @@ placement (and value pattern, where applicable) of common vendor tags. A
 registry turns "unknown custom tag" warnings into informed validation.
 
 ```go
-import "github.com/cacack/gedcom-go/v2/validator"
+import "github.com/cacack/gedcom-go/v3/validator"
 
 // Validate against a single vendor's known tags:
 registry := validator.AncestryRegistry()

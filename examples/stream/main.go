@@ -26,10 +26,10 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/cacack/gedcom-go/v2/charset"
-	"github.com/cacack/gedcom-go/v2/encoder"
-	"github.com/cacack/gedcom-go/v2/gedcom"
-	"github.com/cacack/gedcom-go/v2/parser"
+	"github.com/cacack/gedcom-go/v3/charset"
+	"github.com/cacack/gedcom-go/v3/encoder"
+	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/parser"
 )
 
 const individualCount = 1000

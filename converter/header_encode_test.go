@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/encoder"
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/encoder"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // The encoder writes a decoded document's header from Header.Tags, so setting

@@ -324,7 +324,7 @@ preflight: ## Run all CI checks locally before pushing
 	fi
 	@echo "✓ go.mod is tidy"
 	@echo ""
-	@echo "→ [2/9] Checking module path matches latest tag major..."
+	@echo "→ [2/9] Checking module path matches the next release's major..."
 	@./scripts/check-module-path.sh
 	@echo ""
 	@echo "→ [3/9] Checking formatting..."

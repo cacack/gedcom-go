@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
-	"github.com/cacack/gedcom-go/v2/merge"
+	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/merge"
 )
 
 // indRec builds a minimal individual record at the given XRef. These

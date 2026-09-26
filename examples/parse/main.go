@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/cacack/gedcom-go/v2/decoder"
-	"github.com/cacack/gedcom-go/v2/validator"
+	"github.com/cacack/gedcom-go/v3/decoder"
+	"github.com/cacack/gedcom-go/v3/validator"
 )
 
 func main() {

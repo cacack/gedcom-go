@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // TagValidator validates custom (underscore-prefixed) tags against a registry.

@@ -14,9 +14,9 @@ The GEDCOM specification has evolved through multiple versions, each with differ
 
 ```go
 import (
-    "github.com/cacack/gedcom-go/v2/converter"
-    "github.com/cacack/gedcom-go/v2/decoder"
-    "github.com/cacack/gedcom-go/v2/gedcom"
+    "github.com/cacack/gedcom-go/v3/converter"
+    "github.com/cacack/gedcom-go/v3/decoder"
+    "github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // Load a GEDCOM 5.5 file

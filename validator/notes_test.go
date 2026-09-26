@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // newNoteTestDocument builds a document holding one media object record with the

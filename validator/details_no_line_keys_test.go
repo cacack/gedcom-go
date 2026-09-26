@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/decoder"
+	"github.com/cacack/gedcom-go/v3/decoder"
 )
 
 // TestNoIssueCarriesLineNumberDetailKey walks the whole testdata corpus and

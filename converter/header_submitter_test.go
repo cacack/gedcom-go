@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/converter"
-	"github.com/cacack/gedcom-go/v2/decoder"
-	"github.com/cacack/gedcom-go/v2/encoder"
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/converter"
+	"github.com/cacack/gedcom-go/v3/decoder"
+	"github.com/cacack/gedcom-go/v3/encoder"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // The converter does not transform HEAD.SUBM -- the pointer means the same

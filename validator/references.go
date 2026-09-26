@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // ReferenceType represents the type of cross-reference being validated.

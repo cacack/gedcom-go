@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cacack/gedcom-go/v2/encoder"
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/encoder"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // Example demonstrates basic GEDCOM document encoding.

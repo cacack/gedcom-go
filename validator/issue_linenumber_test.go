@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/decoder"
+	"github.com/cacack/gedcom-go/v3/decoder"
 )
 
 // TestIssueLineNumberIsPopulated covers the LineNumber field added in #509.

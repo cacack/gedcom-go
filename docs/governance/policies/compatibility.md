@@ -293,7 +293,7 @@ and compares the two documents recursively — records, values and subordinate
 tags, ignoring only `LineNumber`:
 
 ```go
-import gedcomtesting "github.com/cacack/gedcom-go/v2/gedcom/testing"
+import gedcomtesting "github.com/cacack/gedcom-go/v3/gedcom/testing"
 
 func TestMyGEDCOM(t *testing.T) {
     data, _ := os.ReadFile("family.ged")

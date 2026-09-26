@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/charset"
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/charset"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // Tests for real-world vendor exports vendored from the D-Jeffrey/gedcom-samples

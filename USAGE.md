@@ -80,7 +80,7 @@ The main record types you'll encounter:
 Install the library using `go get`:
 
 ```bash
-go get github.com/cacack/gedcom-go/v2
+go get github.com/cacack/gedcom-go/v3
 ```
 
 Requirements:
@@ -99,7 +99,7 @@ import (
     "log"
     "os"
 
-    "github.com/cacack/gedcom-go/v2/decoder"
+    "github.com/cacack/gedcom-go/v3/decoder"
 )
 
 func main() {
@@ -130,7 +130,7 @@ func main() {
 The `decoder` package provides the high-level API for parsing GEDCOM files:
 
 ```go
-import "github.com/cacack/gedcom-go/v2/decoder"
+import "github.com/cacack/gedcom-go/v3/decoder"
 
 // Simple decoding
 f, _ := os.Open("family.ged")
@@ -150,7 +150,7 @@ For more control, use `DecodeWithOptions`:
 import (
     "context"
     "time"
-    "github.com/cacack/gedcom-go/v2/decoder"
+    "github.com/cacack/gedcom-go/v3/decoder"
 )
 
 opts := &decoder.DecodeOptions{
@@ -571,7 +571,7 @@ if person != nil {
 `[]error`. At the default strictness that includes warnings as well as errors.
 
 ```go
-import "github.com/cacack/gedcom-go/v2/validator"
+import "github.com/cacack/gedcom-go/v3/validator"
 
 // Create validator
 v := validator.New()
@@ -636,8 +636,8 @@ for code, issues := range issuesByCode {
 
 ```go
 import (
-    "github.com/cacack/gedcom-go/v2/encoder"
-    "github.com/cacack/gedcom-go/v2/gedcom"
+    "github.com/cacack/gedcom-go/v3/encoder"
+    "github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // Create document
@@ -765,7 +765,7 @@ fmt.Println(doc.Header.Encoding)  // Original encoding
 ANSEL is a legacy character encoding used in older GEDCOM files:
 
 ```go
-import "github.com/cacack/gedcom-go/v2/charset"
+import "github.com/cacack/gedcom-go/v3/charset"
 
 // The charset package handles ANSEL decoding automatically
 // when used through the decoder
@@ -779,7 +779,7 @@ fmt.Println(string(utf8Text))  // "À"
 ### Validating UTF-8
 
 ```go
-import "github.com/cacack/gedcom-go/v2/charset"
+import "github.com/cacack/gedcom-go/v3/charset"
 
 text := "Hello, world!"
 if !charset.IsValidUTF8([]byte(text)) {
@@ -811,7 +811,7 @@ if err != nil {
 For more detailed error information, use the parser directly:
 
 ```go
-import "github.com/cacack/gedcom-go/v2/parser"
+import "github.com/cacack/gedcom-go/v3/parser"
 
 p := parser.New(f)
 for {
@@ -874,7 +874,7 @@ case <-time.After(10 * time.Second):
 For very large GEDCOM files, use the lower-level parser to avoid loading everything into memory:
 
 ```go
-import "github.com/cacack/gedcom-go/v2/parser"
+import "github.com/cacack/gedcom-go/v3/parser"
 
 f, _ := os.Open("large.ged")
 defer f.Close()
@@ -1163,6 +1163,6 @@ family := doc.GetFamily("@F1@")
 ## See Also
 
 - [Examples](examples/) - Working code examples
-- [API Documentation](https://pkg.go.dev/github.com/cacack/gedcom-go/v2) - Complete package documentation
+- [API Documentation](https://pkg.go.dev/github.com/cacack/gedcom-go/v3) - Complete package documentation
 - [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute to the project
 - [README.md](README.md) - Project overview

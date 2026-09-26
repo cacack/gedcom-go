@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/decoder"
+	"github.com/cacack/gedcom-go/v3/decoder"
 )
 
 // The tests below decode real GEDCOM bytes instead of hand-assembling a

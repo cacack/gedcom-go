@@ -1,6 +1,6 @@
 package converter
 
-import "github.com/cacack/gedcom-go/v2/gedcom"
+import "github.com/cacack/gedcom-go/v3/gedcom"
 
 // transformHeader updates the header for the target version.
 func transformHeader(doc *gedcom.Document, targetVersion gedcom.Version, report *gedcom.ConversionReport) {

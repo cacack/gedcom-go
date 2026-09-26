@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // The converter must never panic on a nil (ADR 0007). A decoded document never

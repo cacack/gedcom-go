@@ -29,7 +29,7 @@ package validator
 import (
 	"fmt"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // NoteValidator checks note-pointer invariants on typed entities.

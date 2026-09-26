@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // T031: Write integration tests for full document parsing

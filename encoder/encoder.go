@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // ErrNilDocument is returned when there is no document to encode. A nil

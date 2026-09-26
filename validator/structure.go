@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // validateBrokenXRefs reports every pointer-shaped raw tag value that names

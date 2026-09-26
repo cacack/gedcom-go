@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // The encoder must never panic on a nil (ADR 0007). A decoded document never

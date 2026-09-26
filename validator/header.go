@@ -9,7 +9,7 @@ package validator
 import (
 	"fmt"
 
-	"github.com/cacack/gedcom-go/v2/gedcom"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
 // HeaderValidator validates GEDCOM header requirements.
