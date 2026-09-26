@@ -14,11 +14,8 @@ import (
 func TestDefaultDuplicateConfig(t *testing.T) {
 	config := DefaultDuplicateConfig()
 
-	if !config.RequireExactSurname {
-		t.Error("RequireExactSurname should default to true")
-	}
-	if !config.NormalizeNames {
-		t.Error("NormalizeNames should default to true")
+	if config.DisableNameNormalization {
+		t.Error("DisableNameNormalization should default to false")
 	}
 	if config.MinNameSimilarity != 0.8 {
 		t.Errorf("MinNameSimilarity = %v, want 0.8", config.MinNameSimilarity)
@@ -320,62 +317,24 @@ func TestLevenshteinDistance(t *testing.T) {
 
 func TestCompareSurnames(t *testing.T) {
 	tests := []struct {
-		name  string
-		s1    string
-		s2    string
-		exact bool
-		want  bool
+		name string
+		s1   string
+		s2   string
+		want bool
 	}{
-		{
-			name:  "exact match - exact mode",
-			s1:    "smith",
-			s2:    "smith",
-			exact: true,
-			want:  true,
-		},
-		{
-			name:  "different - exact mode",
-			s1:    "smith",
-			s2:    "jones",
-			exact: true,
-			want:  false,
-		},
-		{
-			name:  "exact match - non-exact mode",
-			s1:    "smith",
-			s2:    "smith",
-			exact: false,
-			want:  true,
-		},
-		{
-			name:  "empty first",
-			s1:    "",
-			s2:    "smith",
-			exact: true,
-			want:  false,
-		},
-		{
-			name:  "empty second",
-			s1:    "smith",
-			s2:    "",
-			exact: true,
-			want:  false,
-		},
-		{
-			name:  "both empty",
-			s1:    "",
-			s2:    "",
-			exact: true,
-			want:  false,
-		},
+		{name: "exact match", s1: "smith", s2: "smith", want: true},
+		{name: "different", s1: "smith", s2: "jones", want: false},
+		{name: "empty first", s1: "", s2: "smith", want: false},
+		{name: "empty second", s1: "smith", s2: "", want: false},
+		{name: "both empty", s1: "", s2: "", want: false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := compareSurnames(tt.s1, tt.s2, tt.exact)
+			got := compareSurnames(tt.s1, tt.s2)
 			if got != tt.want {
-				t.Errorf("compareSurnames(%q, %q, %v) = %v, want %v",
-					tt.s1, tt.s2, tt.exact, got, tt.want)
+				t.Errorf("compareSurnames(%q, %q) = %v, want %v",
+					tt.s1, tt.s2, got, tt.want)
 			}
 		})
 	}
@@ -602,7 +561,7 @@ func TestFindDuplicates_SimilarGivenName(t *testing.T) {
 	config.MinNameSimilarity = 0.7
 	config.MinConfidence = 0.6
 
-	detector := NewDuplicateDetector(&config)
+	detector := NewDuplicateDetector(config)
 	duplicates := detector.FindDuplicates(doc)
 
 	if len(duplicates) != 1 {
@@ -774,7 +733,7 @@ func TestFindDuplicates_MissingBirthDates(t *testing.T) {
 	// Test with RequireBirthDate = true
 	config := DefaultDuplicateConfig()
 	config.RequireBirthDate = true
-	detector = NewDuplicateDetector(&config)
+	detector = NewDuplicateDetector(config)
 	duplicates = detector.FindDuplicates(doc)
 
 	if len(duplicates) != 0 {
@@ -802,7 +761,7 @@ func TestFindDuplicates_ConfigThresholds(t *testing.T) {
 	// High confidence threshold should reject matches
 	config := DefaultDuplicateConfig()
 	config.MinConfidence = 0.99
-	detector := NewDuplicateDetector(&config)
+	detector := NewDuplicateDetector(config)
 	duplicates := detector.FindDuplicates(doc)
 
 	if len(duplicates) != 0 {
@@ -811,11 +770,31 @@ func TestFindDuplicates_ConfigThresholds(t *testing.T) {
 
 	// Low confidence threshold should accept matches
 	config.MinConfidence = 0.3
-	detector = NewDuplicateDetector(&config)
+	detector = NewDuplicateDetector(config)
 	duplicates = detector.FindDuplicates(doc)
 
 	if len(duplicates) != 1 {
 		t.Errorf("Expected 1 duplicate with low confidence threshold, got %d", len(duplicates))
+	}
+}
+
+// TestResolveThreshold_NaN pins that a NaN threshold selects the default
+// rather than passing through, where it would compare false against every
+// score and silently disable the gate.
+func TestResolveThreshold_NaN(t *testing.T) {
+	if got := resolveThreshold(math.NaN(), defaultMinConfidence); got != defaultMinConfidence {
+		t.Errorf("resolveThreshold(NaN) = %v, want %v", got, defaultMinConfidence)
+	}
+
+	detector := NewDuplicateDetector(&DuplicateConfig{
+		MinNameSimilarity: math.NaN(),
+		MinConfidence:     math.NaN(),
+	})
+	if detector.config.MinNameSimilarity != defaultMinNameSimilarity {
+		t.Errorf("MinNameSimilarity = %v, want %v", detector.config.MinNameSimilarity, defaultMinNameSimilarity)
+	}
+	if detector.config.MinConfidence != defaultMinConfidence {
+		t.Errorf("MinConfidence = %v, want %v", detector.config.MinConfidence, defaultMinConfidence)
 	}
 }
 
@@ -942,8 +921,8 @@ func TestFindDuplicates_NoNormalization(t *testing.T) {
 	}
 
 	config := DefaultDuplicateConfig()
-	config.NormalizeNames = false
-	detector := NewDuplicateDetector(&config)
+	config.DisableNameNormalization = true
+	detector := NewDuplicateDetector(config)
 	duplicates := detector.FindDuplicates(doc)
 
 	// Without normalization, DOE != Doe so they're in different groups
@@ -956,7 +935,7 @@ func TestFindDuplicates_NoNormalizationStillMatches(t *testing.T) {
 	// The companion to TestFindDuplicates_NoNormalization: with normalization
 	// off, names that already agree must still match. Grouping and comparison
 	// read the same precomputed keys, so this pins both halves to the same
-	// NormalizeNames setting -- a match here proves the flag is honoured on the
+	// DisableNameNormalization setting -- a match here proves the flag is honoured on the
 	// matching path, not just the rejecting one.
 	// Sex matches too: surname (0.3) plus given name (0.3) alone total 0.6,
 	// which sits under the default MinConfidence of 0.7.
@@ -979,8 +958,8 @@ func TestFindDuplicates_NoNormalizationStillMatches(t *testing.T) {
 	}
 
 	config := DefaultDuplicateConfig()
-	config.NormalizeNames = false
-	detector := NewDuplicateDetector(&config)
+	config.DisableNameNormalization = true
+	detector := NewDuplicateDetector(config)
 	duplicates := detector.FindDuplicates(doc)
 
 	if len(duplicates) != 1 {
@@ -1497,7 +1476,7 @@ func TestFindDuplicatesReport_NegativeIsUnlimited(t *testing.T) {
 
 	config := DefaultDuplicateConfig()
 	config.MaxGroupSize = -1
-	report := NewDuplicateDetector(&config).FindDuplicatesReport(doc)
+	report := NewDuplicateDetector(config).FindDuplicatesReport(doc)
 
 	if len(report.LimitIssues) != 0 {
 		t.Errorf("unlimited detection still reported %d limit issue(s), want 0",
@@ -1554,7 +1533,7 @@ func TestFindDuplicatesReport_LimitIssueIsDeterministic(t *testing.T) {
 
 	var first string
 	for run := 0; run < 20; run++ {
-		report := NewDuplicateDetector(&config).FindDuplicatesReport(doc)
+		report := NewDuplicateDetector(config).FindDuplicatesReport(doc)
 		if len(report.LimitIssues) != 1 {
 			t.Fatalf("run %d: got %d limit issues, want 1", run, len(report.LimitIssues))
 		}
@@ -1569,7 +1548,7 @@ func TestFindDuplicatesReport_LimitIssueIsDeterministic(t *testing.T) {
 		}
 	}
 
-	issue := NewDuplicateDetector(&config).FindDuplicatesReport(doc).LimitIssues[0]
+	issue := NewDuplicateDetector(config).FindDuplicatesReport(doc).LimitIssues[0]
 
 	// Every group is skipped and accounted for...
 	if got, want := issue.Details["skipped_groups"], strconv.Itoa(groups); got != want {

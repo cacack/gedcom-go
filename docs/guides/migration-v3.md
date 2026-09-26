@@ -1,7 +1,7 @@
 # Migrating from v2 to v3
 
-v3.0.0 removes API that v2 had already marked superseded, and fixes four
-option fields whose zero value did the opposite of what their documentation
+v3.0.0 removes API that v2 had already marked superseded, and fixes option
+fields whose zero value did the opposite of what their documentation
 promised. Most migrations are a deletion.
 
 This guide is written as v3 is assembled, so it grows with each breaking change
@@ -375,6 +375,86 @@ lines. Use `DecodeWithDiagnostics` to see what was recovered.
   were switched to strict decoding for both passes, so they keep failing on
   malformed input. Lenient recovery would otherwise rewrite the input before
   the comparison and report no loss.
+
+### `validator.DuplicateConfig` zero values now mean the defaults
+
+In v2 a partial literal such as `&validator.DuplicateConfig{MinConfidence: 0.9}`
+silently switched off name normalization and the given-name gate, because only
+`MaxGroupSize` treated zero as "use the default". In v3 every field does, so a
+partial literal changes only the fields it names.
+
+**Name normalization is inverted.** `NormalizeNames` is gone; its opposite
+`DisableNameNormalization` takes its place, so the zero value normalizes.
+
+| v2 | v3 |
+|----|----|
+| `NormalizeNames: true` | **omit the field** — it is now the default |
+| `NormalizeNames: false`, written out | `DisableNameNormalization: true` |
+| `NormalizeNames` omitted from a literal (so `false`) | **omit the field** — you now get normalization, which is what the field documented; add `DisableNameNormalization: true` only if you relied on case- and accent-sensitive grouping |
+
+Renaming the identifier while keeping `true` turns normalization *off*:
+`"Smith"` and `"smith"` land in different surname groups and never pair.
+
+**Numeric thresholds default from zero.** `MinNameSimilarity`,
+`MinConfidence` and `MaxBirthYearDiff` follow the rule `MaxGroupSize` already
+used: `0` selects the default, a negative value is an explicit zero, and a
+positive value is used as given. The new untyped constant
+`validator.ZeroThreshold` (`-1`) names the negative case.
+
+| Field | v2 value | v2 meaning | v3 spelling of the same meaning |
+|-------|----------|------------|---------------------------------|
+| `MinNameSimilarity` | `0` (set or omitted) | no given-name gate | `ZeroThreshold` |
+| `MinConfidence` | `0` (set or omitted) | report every pair that passes the gates | `ZeroThreshold` |
+| `MaxBirthYearDiff` | `0` (set or omitted) | only an identical birth year earns credit | `ZeroThreshold` |
+| any of the three | `0` in v3 | — | the default: `0.8`, `0.7` and `2` respectively |
+| any of the three | positive | used as given | unchanged |
+
+If you wrote a partial literal, you almost certainly wanted the v3 behaviour
+and need to do nothing. Only a literal that set one of these fields to `0` *on
+purpose* needs `ZeroThreshold`.
+
+```go
+// v2 — the partial literal quietly ran with normalization off and no name gate
+cfg := &validator.DuplicateConfig{MinConfidence: 0.9}
+
+// v3 — the same literal now keeps every other default
+cfg := &validator.DuplicateConfig{MinConfidence: 0.9}
+
+// v3 — the v2 behaviour, spelled out
+cfg := &validator.DuplicateConfig{
+    MinConfidence:            0.9,
+    MinNameSimilarity:        validator.ZeroThreshold,
+    MaxBirthYearDiff:         validator.ZeroThreshold,
+    DisableNameNormalization: true,
+}
+```
+
+**`RequireExactSurname` is removed.** It was never honoured: surnames always
+had to match exactly (after normalization) whichever way it was set. Delete the
+field; behaviour does not change.
+
+**`DefaultDuplicateConfig()` returns `*DuplicateConfig`**, like
+`DefaultDateLogicConfig()` and every `DefaultOptions()` in the library. The
+compiler flags each call site; drop the `&`:
+
+```go
+// v2
+cfg := validator.DefaultDuplicateConfig()
+cfg.MinConfidence = 0.9
+v := validator.NewWithConfig(&validator.ValidatorConfig{Duplicates: &cfg})
+
+// v3
+cfg := validator.DefaultDuplicateConfig()
+cfg.MinConfidence = 0.9
+v := validator.NewWithConfig(&validator.ValidatorConfig{Duplicates: cfg})
+```
+
+#### Known downstream call sites
+
+my-family is not checked out alongside this repository, so its use of
+`DuplicateConfig` has not been audited. Search it for `DuplicateConfig`,
+`NormalizeNames`, `RequireExactSurname` and `DefaultDuplicateConfig` and apply
+the tables above.
 
 ## Retypes
 
@@ -922,6 +1002,7 @@ skip `v2.5.0`, this page is the only warning you get for them.
 | `gedcom.EventOccupation` | `gedcom.AttributeOccupation`, matched over `Individual.Attributes` — see below, the v2 constant never matched an ordinary `OCCU` |
 | `gedcom.Address.Phone`, `.Email`, `.Website` | `Repository.Phone`, `.Email`, `.Website` — each now a `[]string`, plus a new `Repository.Fax`. No v2 form and no `// Deprecated:` marker; see below |
 | `validator.ValidationError` | `*validator.Issue`, which every element of `Validate`'s `[]error` now is — see below, `Validate` also returns more findings |
+| `validator.DuplicateConfig.RequireExactSurname` | none needed — delete the field. It was never read: surnames always had to match exactly. See [`DuplicateConfig` zero values](#validatorduplicateconfig-zero-values-now-mean-the-defaults) |
 
 ```go
 // v2
@@ -1511,14 +1592,18 @@ That tag is the nearest one in `main`'s history, and `v2.5.0` was cut from a
 release branch, so the comparison is currently against `v2.4.0`: symbols
 deprecated in `v2.5.0` and removed in v3 show up as removals, and symbols
 that `v2.5.0` added and v3 keeps show up as additions rather than as
-unchanged. For your own code, the
-compiler catches every removal and rename on this page, and every site that
+unchanged. For your own code, the compiler catches every removal and rename on this page, and every site that
 *names a field* of a retyped value. It does **not** catch the value changes —
 the inverted boolean, the renumbered constant, the `*int` retype (whose compile
 error has a mechanical fix that can be wrong), the `MediaObject`
-note-pointer partition, or `Decode` and `DecodeWithOptions` honouring
-`StrictMode`. The last two change no signature at all and so produce no build
-error anywhere. A clean build is not evidence that those five are done.
+note-pointer partition, `Decode` and `DecodeWithOptions` honouring
+`StrictMode`, or `DuplicateConfig`'s zero thresholds and unset normalization
+now selecting their defaults. A literal that sets `MinNameSimilarity`,
+`MinConfidence` or `MaxBirthYearDiff` to `0` on purpose still compiles but now
+gets the default gate, and a partial literal that left `NormalizeNames` unset
+now normalizes. The `MediaObject` partition, `StrictMode` and the
+`DuplicateConfig` zero values change no signature at all and so produce no build
+error anywhere. A clean build is not evidence that those are done.
 
 Nor does it catch a retyped slice that a call site only prints, marshals, or
 measures: `SpouseInFamilies` and `SourceCitationData.Text` change shape for

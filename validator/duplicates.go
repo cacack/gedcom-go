@@ -44,22 +44,63 @@ const DefaultMaxGroupSize = 1000
 // the quadratic blowup described in docs/decisions/0009-bounded-duplicate-detection.md.
 const UnlimitedGroupSize = -1
 
-// DuplicateConfig contains configuration options for duplicate detection.
-type DuplicateConfig struct {
-	// RequireExactSurname requires surnames to match exactly (after normalization).
-	// Default: true
-	RequireExactSurname bool
+// ZeroThreshold requests an effective value of exactly zero when assigned to
+// [DuplicateConfig.MinNameSimilarity], [DuplicateConfig.MinConfidence] or
+// [DuplicateConfig.MaxBirthYearDiff].
+//
+// It exists because those fields' zero value means "use the default", so that a
+// partial struct literal such as &DuplicateConfig{MinConfidence: 0.9} keeps the
+// other thresholds in force (#555). A literal 0 therefore cannot express "no
+// threshold"; any negative value does, and this named constant makes that
+// deliberate and greppable, in the same way [UnlimitedGroupSize] does for
+// [DuplicateConfig.MaxGroupSize]. The constant is untyped, so it assigns to both
+// the float64 and the int fields.
+//
+// Its effect per field:
+//
+//	MinNameSimilarity  no given-name gate; any pair of given names is accepted
+//	MinConfidence      every pair that passes the other gates is reported
+//	MaxBirthYearDiff   only an identical birth year earns birth-date credit
+const ZeroThreshold = -1
 
-	// NormalizeNames enables name normalization (trim, lowercase, remove accents).
-	// Default: true
-	NormalizeNames bool
+// Default thresholds applied by duplicate detection when the corresponding
+// DuplicateConfig field is left zero.
+const (
+	defaultMinNameSimilarity = 0.8
+	defaultMaxBirthYearDiff  = 2
+	defaultMinConfidence     = 0.7
+)
+
+// DuplicateConfig contains configuration options for duplicate detection.
+//
+// Every field's zero value is the default, so a partial struct literal such as
+// &DuplicateConfig{MinConfidence: 0.9} changes only the field it names. The
+// numeric fields therefore reserve negative values for "explicitly zero" or
+// "unlimited" — see [ZeroThreshold] and [UnlimitedGroupSize].
+type DuplicateConfig struct {
+	// DisableNameNormalization turns off name normalization (trim, lowercase,
+	// remove accents) before surnames are grouped and given names compared.
+	// With it set, "Smith" and "smith" land in different surname groups.
+	// Default: false (names are normalized)
+	DisableNameNormalization bool
 
 	// MinNameSimilarity is the minimum similarity threshold for given name comparison.
 	// Range: 0.0 to 1.0, where 1.0 is exact match.
+	//
+	//	0        use the default (0.8)
+	//	negative no threshold; any given names are accepted ([ZeroThreshold])
+	//	positive use that value
+	//
 	// Default: 0.8
 	MinNameSimilarity float64
 
-	// MaxBirthYearDiff is the maximum allowed difference in birth years.
+	// MaxBirthYearDiff is the maximum difference in birth years that still earns
+	// partial birth-date credit. An identical birth year always earns full credit.
+	//
+	//	0        use the default (2)
+	//	negative only an identical birth year earns credit ([ZeroThreshold])
+	//	positive use that value
+	//
 	// Default: 2
 	MaxBirthYearDiff int
 
@@ -70,6 +111,11 @@ type DuplicateConfig struct {
 
 	// MinConfidence is the minimum overall confidence score for a match.
 	// Range: 0.0 to 1.0
+	//
+	//	0        use the default (0.7)
+	//	negative no threshold; report every pair that passes the other gates ([ZeroThreshold])
+	//	positive use that value
+	//
 	// Default: 0.7
 	MinConfidence float64
 
@@ -97,16 +143,36 @@ type DuplicateConfig struct {
 	MaxGroupSize int
 }
 
-// DefaultDuplicateConfig returns a DuplicateConfig with default values.
-func DefaultDuplicateConfig() DuplicateConfig {
-	return DuplicateConfig{
-		RequireExactSurname: true,
-		NormalizeNames:      true,
-		MinNameSimilarity:   0.8,
-		MaxBirthYearDiff:    2,
-		RequireBirthDate:    false,
-		MinConfidence:       0.7,
-		MaxGroupSize:        DefaultMaxGroupSize,
+// DefaultDuplicateConfig returns a new *DuplicateConfig with default values,
+// matching DefaultDateLogicConfig and the DefaultOptions constructors.
+//
+// The result spells every default out explicitly; it is equivalent to a zero
+// &DuplicateConfig{}, since each zero field selects the same default.
+func DefaultDuplicateConfig() *DuplicateConfig {
+	return &DuplicateConfig{
+		DisableNameNormalization: false,
+		MinNameSimilarity:        defaultMinNameSimilarity,
+		MaxBirthYearDiff:         defaultMaxBirthYearDiff,
+		RequireBirthDate:         false,
+		MinConfidence:            defaultMinConfidence,
+		MaxGroupSize:             DefaultMaxGroupSize,
+	}
+}
+
+// resolveThreshold applies the zero-means-default, negative-means-zero rule
+// shared by the numeric DuplicateConfig thresholds. NaN is treated like zero
+// and selects the default: left as NaN it would compare false against every
+// score and so silently disable the gate.
+func resolveThreshold[T int | float64](value, def T) T {
+	switch {
+	case math.IsNaN(float64(value)):
+		return def
+	case value < 0:
+		return 0
+	case value == 0:
+		return def
+	default:
+		return value
 	}
 }
 
@@ -186,12 +252,21 @@ type DuplicateDetector struct {
 
 // NewDuplicateDetector creates a new DuplicateDetector with the given configuration.
 // If config is nil, default configuration is used.
+//
+// The detector keeps its own copy of config, so later changes to the caller's
+// struct have no effect. Zero thresholds are resolved to their defaults and
+// negative ones to zero at this point, as documented on [DuplicateConfig]
+// (a NaN threshold is treated like zero);
+// MaxGroupSize is resolved on use by maxGroupSize.
 func NewDuplicateDetector(config *DuplicateConfig) *DuplicateDetector {
 	if config == nil {
-		defaultConfig := DefaultDuplicateConfig()
-		config = &defaultConfig
+		config = DefaultDuplicateConfig()
 	}
-	return &DuplicateDetector{config: *config}
+	resolved := *config
+	resolved.MinNameSimilarity = resolveThreshold(config.MinNameSimilarity, defaultMinNameSimilarity)
+	resolved.MaxBirthYearDiff = resolveThreshold(config.MaxBirthYearDiff, defaultMaxBirthYearDiff)
+	resolved.MinConfidence = resolveThreshold(config.MinConfidence, defaultMinConfidence)
+	return &DuplicateDetector{config: resolved}
 }
 
 // candidate carries an individual alongside the normalized names used to
@@ -330,7 +405,7 @@ type skippedGroups struct {
 // record notes one skipped group of the given surname key and size.
 //
 // The surname is the group key, which is normalized (lowercased, diacritics
-// folded) only when DuplicateConfig.NormalizeNames is set — so it is not
+// folded) unless DuplicateConfig.DisableNameNormalization is set — so it is not
 // necessarily the surname as it appears in the source document. The "surnames"
 // detail on the emitted Issue carries the same caveat.
 func (s *skippedGroups) record(surname string, size int) {
@@ -385,7 +460,7 @@ func (d *DuplicateDetector) buildSurnameGroups(individuals []*gedcom.Individual)
 
 	for _, ind := range individuals {
 		surname := d.extractSurname(ind)
-		if d.config.NormalizeNames {
+		if !d.config.DisableNameNormalization {
 			surname = normalizeName(surname)
 		}
 		if surname == "" {
@@ -419,7 +494,7 @@ func (d *DuplicateDetector) buildCandidates(surname string, individuals []*gedco
 
 	for _, ind := range individuals {
 		given := extractGivenName(ind)
-		if d.config.NormalizeNames {
+		if !d.config.DisableNameNormalization {
 			given = normalizeName(given)
 		}
 		candidates = append(candidates, candidate{ind: ind, surname: surname, given: given})
@@ -496,7 +571,7 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 	ind1, ind2 := c1.ind, c2.ind
 
 	// Check surname match
-	surnameMatch := compareSurnames(c1.surname, c2.surname, d.config.RequireExactSurname)
+	surnameMatch := compareSurnames(c1.surname, c2.surname)
 	if !surnameMatch {
 		return DuplicatePair{}, false
 	}
@@ -581,18 +656,15 @@ func normalizeName(name string) string {
 	return result
 }
 
-// compareSurnames compares two surnames.
-// If exact is true, returns true only for exact match.
-// If exact is false, returns true for any non-empty comparison.
-func compareSurnames(s1, s2 string, exact bool) bool {
+// compareSurnames reports whether two surname keys match: both non-empty and
+// equal. Keys are already normalized unless DisableNameNormalization is set.
+// Candidates are only ever compared within one surname group, so equality is
+// the grouping rule restated; there is no fuzzy surname mode.
+func compareSurnames(s1, s2 string) bool {
 	if s1 == "" || s2 == "" {
 		// Can't match if either surname is missing
 		return false
 	}
-	if exact {
-		return s1 == s2
-	}
-	// Non-exact mode: just require non-empty surnames that were grouped together
 	return s1 == s2
 }
 

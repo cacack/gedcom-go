@@ -403,7 +403,7 @@ func TestDuplicateCapPreservesCorpusResults(t *testing.T) {
 
 	unlimited := DefaultDuplicateConfig()
 	unlimited.MaxGroupSize = -1
-	uncapped := NewDuplicateDetector(&unlimited).FindDuplicatesReport(doc)
+	uncapped := NewDuplicateDetector(unlimited).FindDuplicatesReport(doc)
 
 	if len(capped.LimitIssues) != 0 {
 		t.Errorf("the default cap of %d fired on real data: %s",
@@ -551,7 +551,7 @@ func BenchmarkFindDuplicatesAdversarial(b *testing.B) {
 		config *DuplicateConfig
 	}{
 		{"capped", nil}, // nil -> DefaultDuplicateConfig, i.e. what callers get
-		{"uncapped", &unlimited},
+		{"uncapped", unlimited},
 	}
 
 	for _, variant := range variants {

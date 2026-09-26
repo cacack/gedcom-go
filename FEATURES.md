@@ -1047,11 +1047,10 @@ Configurable matching based on name similarity and date proximity:
 
 ```go
 config := &validator.DuplicateConfig{
-    RequireExactSurname: true,
-    MinNameSimilarity:   0.8,
-    MaxBirthYearDiff:    2,
-    MinConfidence:       0.7,
-    MaxGroupSize:        1000, // per-surname-group ceiling
+    MinNameSimilarity: 0.8,
+    MaxBirthYearDiff:  2,
+    MinConfidence:     0.7,
+    MaxGroupSize:      1000, // per-surname-group ceiling
 }
 v := validator.NewWithConfig(&validator.ValidatorConfig{Duplicates: config})
 pairs := v.FindPotentialDuplicates(doc)
@@ -1060,6 +1059,8 @@ for _, pair := range pairs {
         pair.Individual1.XRef, pair.Individual2.XRef, pair.Confidence*100)
 }
 ```
+
+Every field's zero value is its default, so a partial literal such as `&validator.DuplicateConfig{MinConfidence: 0.9}` keeps the other thresholds and name normalization in force. `MinNameSimilarity`, `MinConfidence` and `MaxBirthYearDiff` treat `0` as "use the default" (0.8, 0.7 and 2) and any negative value — spelled `validator.ZeroThreshold` — as an explicit zero. Name normalization (trim, lowercase, accent folding) is on unless `DisableNameNormalization` is set. `DefaultDuplicateConfig()` returns a `*DuplicateConfig` with every default spelled out.
 
 Comparison is quadratic within a surname group, and the input controls the surnames, so `MaxGroupSize` bounds it: any normalized-surname group larger than the cap is skipped whole and reported as one `DUPLICATE_DETECTION_LIMITED` warning (available as `DuplicateReport.LimitIssues` from `FindDuplicatesReport`, and included in `ValidateAll` and `QualityReport` output). The field is tri-state and **zero is not unlimited** — `0` selects `validator.DefaultMaxGroupSize` (1000), a negative value disables the cap, and a positive value is used as given, so a partial config literal stays bounded. `ValidateOptions.SkipDuplicateDetection` drops duplicate detection from the `ValidateAll` sweep; `QualityReport`, `FindPotentialDuplicates` and `FindPotentialDuplicatesReport` still run it, bounded by `MaxGroupSize`. See [performance](docs/guides/performance.md#bounding-untrusted-input) for the worst-case bound and [ADR 0009](docs/decisions/0009-bounded-duplicate-detection.md) for the rationale.
 

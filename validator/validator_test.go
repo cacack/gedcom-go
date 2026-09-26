@@ -1151,11 +1151,9 @@ func TestConfigWithCustomDuplicates(t *testing.T) {
 	// With high similarity threshold, should not match
 	config := &ValidatorConfig{
 		Duplicates: &DuplicateConfig{
-			RequireExactSurname: true,
-			NormalizeNames:      true,
-			MinNameSimilarity:   0.99, // Very high threshold
-			MaxBirthYearDiff:    2,
-			MinConfidence:       0.9,
+			MinNameSimilarity: 0.99, // Very high threshold
+			MaxBirthYearDiff:  2,
+			MinConfidence:     0.9,
 		},
 	}
 	v := NewWithConfig(config)
@@ -1714,7 +1712,7 @@ func duplicateLimitOptions(strictness Strictness, skipDuplicates bool) *Validate
 
 	return &ValidateOptions{
 		Strictness:             strictness,
-		Duplicates:             &duplicates,
+		Duplicates:             duplicates,
 		SkipDuplicateDetection: skipDuplicates,
 	}
 }
