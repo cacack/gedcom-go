@@ -467,8 +467,10 @@ mutated.
 
 - Cross-reference ID (`@S1@`)
 - Title, author, publication info
-- Structured repository link (`RepositoryLink`) carrying call numbers (CALN),
-  media type (MEDI), and per-link notes (NOTE) — by XRef or inline by name
+- Every repository link (`RepositoryLinks`, one per `REPO`) — by XRef or inline
+  by name — with its per-link notes (NOTE/SNOTE) and its call numbers
+  (`CallNumbers`), each CALN keeping its own MEDI media type and 7.0 MEDI
+  PHRASE
 - Notes and multimedia
 
 ### Repositories (REPO)
@@ -1441,16 +1443,32 @@ Sources support both XRef references and inline repository definitions:
 
 ```go
 // XRef reference to separate repository record
-source.RepositoryLink = &gedcom.SourceRepositoryLink{XRef: "@R1@"}
+source.RepositoryLinks = []*gedcom.SourceRepositoryLink{{XRef: "@R1@"}}
 // Encodes as: 1 REPO @R1@
 
 // Inline repository definition (no separate record needed)
-source.RepositoryLink = &gedcom.SourceRepositoryLink{
+source.RepositoryLinks = []*gedcom.SourceRepositoryLink{{
     Inline: &gedcom.InlineRepository{Name: "State Archives"},
-}
+}}
 // Encodes as:
 // 1 REPO
 // 2 NAME State Archives
+
+// Several links, each call number paired with its own media type
+source.RepositoryLinks = []*gedcom.SourceRepositoryLink{
+    {XRef: "@R1@", CallNumbers: []*gedcom.CallNumber{
+        {Value: "MS-1234", MediaType: "MANUSCRIPT"},
+        {Value: "MS-1234", MediaType: "FILM"},
+    }},
+    {XRef: "@R2@"},
+}
+// Encodes as:
+// 1 REPO @R1@
+// 2 CALN MS-1234
+// 3 MEDI MANUSCRIPT
+// 2 CALN MS-1234
+// 3 MEDI FILM
+// 1 REPO @R2@
 ```
 
 Useful for sources imported from GEDCOM files where repository names are stored inline rather than as separate records.

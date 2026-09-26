@@ -210,7 +210,7 @@ func TestDecodeSubstructureNoteSplit(t *testing.T) {
 		t.Fatal("GetIndividual(@I1@) returned nil")
 	}
 	src := doc.GetSource("@S1@")
-	if src == nil || src.RepositoryLink == nil {
+	if src == nil || len(src.RepositoryLinks) != 1 {
 		t.Fatal("GetSource(@S1@) returned no repository link")
 	}
 
@@ -282,8 +282,8 @@ func TestDecodeSubstructureNoteSplit(t *testing.T) {
 		{
 			name: "SourceRepositoryLink splits inline and xref",
 			got: recordNotes{
-				src.RepositoryLink.NoteXRefs,
-				src.RepositoryLink.InlineNotes,
+				src.RepositoryLinks[0].NoteXRefs,
+				src.RepositoryLinks[0].InlineNotes,
 			},
 			want: recordNotes{
 				xrefs:  []string{"@N1@"},

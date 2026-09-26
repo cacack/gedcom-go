@@ -131,8 +131,11 @@ func fullyPopulatedRecords() []*Record {
 
 	src := &Source{
 		XRef: "@S1@",
-		RepositoryLink: &SourceRepositoryLink{XRef: "@S_REPO@",
-			NoteXRefs: []string{"@S_REPO_NX@"}},
+		RepositoryLinks: []*SourceRepositoryLink{
+			{XRef: "@S_REPO@", NoteXRefs: []string{"@S_REPO_NX@"}},
+			// A second link: every REPO link must be walked, not only the first.
+			{XRef: "@S_REPO2@", NoteXRefs: []string{"@S_REPO2_NX@"}},
+		},
 		NoteXRefs:    []string{"@S_NX@"},
 		Media:        []*MediaLink{medialink("@S_OBJE@", "@S_OBJE_NX@")},
 		ChangeDate:   chg("S"),

@@ -26,17 +26,17 @@ import (
 // of it is untested.
 func carrierTypeNames() map[string]bool {
 	return map[string]bool{
-		"*gedcom.ChangeDate":           true,
-		"*gedcom.PlaceDetail":          true,
-		"*gedcom.SourceRepositoryLink": true,
-		"[]*gedcom.Association":        true,
-		"[]*gedcom.Attribute":          true,
-		"[]*gedcom.Event":              true,
-		"[]*gedcom.LDSOrdinance":       true,
-		"[]*gedcom.MediaLink":          true,
-		"[]*gedcom.SourceCitation":     true,
-		"[]gedcom.FamilyLink":          true,
-		"[]*gedcom.Tag":                true,
+		"*gedcom.ChangeDate":             true,
+		"*gedcom.PlaceDetail":            true,
+		"[]*gedcom.SourceRepositoryLink": true,
+		"[]*gedcom.Association":          true,
+		"[]*gedcom.Attribute":            true,
+		"[]*gedcom.Event":                true,
+		"[]*gedcom.LDSOrdinance":         true,
+		"[]*gedcom.MediaLink":            true,
+		"[]*gedcom.SourceCitation":       true,
+		"[]gedcom.FamilyLink":            true,
+		"[]*gedcom.Tag":                  true,
 	}
 }
 

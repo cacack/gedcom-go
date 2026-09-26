@@ -3454,17 +3454,17 @@ func TestSourceInlineRepositoryDecoding(t *testing.T) {
 	if src1.Title != "Test Source" {
 		t.Errorf("src1.Title = %s, want 'Test Source'", src1.Title)
 	}
-	if src1.RepositoryLink == nil {
-		t.Fatal("src1.RepositoryLink is nil, want non-nil")
+	if len(src1.RepositoryLinks) != 1 {
+		t.Fatalf("len(src1.RepositoryLinks) = %d, want 1", len(src1.RepositoryLinks))
 	}
-	if src1.RepositoryLink.XRef != "" {
-		t.Errorf("src1.RepositoryLink.XRef = %s, want empty", src1.RepositoryLink.XRef)
+	if src1.RepositoryLinks[0].XRef != "" {
+		t.Errorf("src1.RepositoryLinks[0].XRef = %s, want empty", src1.RepositoryLinks[0].XRef)
 	}
-	if src1.RepositoryLink.Inline == nil {
-		t.Fatal("src1.RepositoryLink.Inline is nil, want non-nil")
+	if src1.RepositoryLinks[0].Inline == nil {
+		t.Fatal("src1.RepositoryLinks[0].Inline is nil, want non-nil")
 	}
-	if src1.RepositoryLink.Inline.Name != "State Archives" {
-		t.Errorf("src1.RepositoryLink.Inline.Name = %s, want 'State Archives'", src1.RepositoryLink.Inline.Name)
+	if src1.RepositoryLinks[0].Inline.Name != "State Archives" {
+		t.Errorf("src1.RepositoryLinks[0].Inline.Name = %s, want 'State Archives'", src1.RepositoryLinks[0].Inline.Name)
 	}
 
 	// Test source with XRef repository
@@ -3472,14 +3472,14 @@ func TestSourceInlineRepositoryDecoding(t *testing.T) {
 	if src2 == nil {
 		t.Fatal("Source @S2@ not found")
 	}
-	if src2.RepositoryLink == nil {
-		t.Fatal("src2.RepositoryLink is nil, want non-nil")
+	if len(src2.RepositoryLinks) != 1 {
+		t.Fatalf("len(src2.RepositoryLinks) = %d, want 1", len(src2.RepositoryLinks))
 	}
-	if src2.RepositoryLink.XRef != "@R1@" {
-		t.Errorf("src2.RepositoryLink.XRef = %s, want '@R1@'", src2.RepositoryLink.XRef)
+	if src2.RepositoryLinks[0].XRef != "@R1@" {
+		t.Errorf("src2.RepositoryLinks[0].XRef = %s, want '@R1@'", src2.RepositoryLinks[0].XRef)
 	}
-	if src2.RepositoryLink.Inline != nil {
-		t.Errorf("src2.RepositoryLink.Inline should be nil when XRef is present")
+	if src2.RepositoryLinks[0].Inline != nil {
+		t.Errorf("src2.RepositoryLinks[0].Inline should be nil when XRef is present")
 	}
 
 	// Test source with no repository
@@ -3487,8 +3487,8 @@ func TestSourceInlineRepositoryDecoding(t *testing.T) {
 	if src3 == nil {
 		t.Fatal("Source @S3@ not found")
 	}
-	if src3.RepositoryLink != nil {
-		t.Errorf("src3.RepositoryLink should be nil")
+	if src3.RepositoryLinks != nil {
+		t.Errorf("src3.RepositoryLinks = %+v, want nil", src3.RepositoryLinks)
 	}
 }
 
@@ -3512,11 +3512,11 @@ func TestSourceInlineRepositoryRoundtrip(t *testing.T) {
 	if src == nil {
 		t.Fatal("Source not found")
 	}
-	if src.RepositoryLink == nil || src.RepositoryLink.Inline == nil {
-		t.Fatal("RepositoryLink.Inline is nil after decode")
+	if len(src.RepositoryLinks) != 1 || src.RepositoryLinks[0].Inline == nil {
+		t.Fatal("RepositoryLinks[0].Inline is nil after decode")
 	}
-	if src.RepositoryLink.Inline.Name != "County Archives" {
-		t.Errorf("RepositoryLink.Inline.Name = %s, want 'County Archives'", src.RepositoryLink.Inline.Name)
+	if src.RepositoryLinks[0].Inline.Name != "County Archives" {
+		t.Errorf("RepositoryLinks[0].Inline.Name = %s, want 'County Archives'", src.RepositoryLinks[0].Inline.Name)
 	}
 }
 
@@ -3545,28 +3545,19 @@ func TestSourceRepositoryLinkDecoding(t *testing.T) {
 		t.Fatal("Source @S1@ not found")
 	}
 
-	link := src.RepositoryLink
-	if link == nil {
-		t.Fatal("src.RepositoryLink is nil, want non-nil")
+	if len(src.RepositoryLinks) != 1 {
+		t.Fatalf("len(src.RepositoryLinks) = %d, want 1", len(src.RepositoryLinks))
 	}
+	link := src.RepositoryLinks[0]
 	if link.XRef != "@R1@" {
 		t.Errorf("link.XRef = %q, want %q", link.XRef, "@R1@")
 	}
 	if link.Inline != nil {
 		t.Errorf("link.Inline = %+v, want nil for XRef link", link.Inline)
 	}
-	wantCALN := []string{"MS-1234", "Roll 42"}
-	if !reflect.DeepEqual(link.CallNumbers, wantCALN) {
-		t.Errorf("link.CallNumbers = %v, want %v", link.CallNumbers, wantCALN)
-	}
-	if link.MediaType != "Manuscript" {
-		t.Errorf("link.MediaType = %q, want %q", link.MediaType, "Manuscript")
-	}
-	if got := link.CallNumberMedia["MS-1234"]; got != "Manuscript" {
-		t.Errorf("link.CallNumberMedia[MS-1234] = %q, want %q", got, "Manuscript")
-	}
-	if _, ok := link.CallNumberMedia["Roll 42"]; ok {
-		t.Errorf("link.CallNumberMedia should not contain 'Roll 42' (no MEDI)")
+	wantCALN := []string{"MS-1234|Manuscript|", "Roll 42||"}
+	if got := callNumberTriples(link.CallNumbers); !reflect.DeepEqual(got, wantCALN) {
+		t.Errorf("link.CallNumbers = %q, want %q", got, wantCALN)
 	}
 	wantNotes := []string{"Held in archives, advance booking required"}
 	if !reflect.DeepEqual(link.InlineNotes, wantNotes) {
@@ -3597,18 +3588,18 @@ func TestSourceRepositoryLinkInlineDecoding(t *testing.T) {
 	if src == nil {
 		t.Fatal("Source @S1@ not found")
 	}
-	link := src.RepositoryLink
-	if link == nil {
-		t.Fatal("src.RepositoryLink is nil, want non-nil")
+	if len(src.RepositoryLinks) != 1 {
+		t.Fatalf("len(src.RepositoryLinks) = %d, want 1", len(src.RepositoryLinks))
 	}
+	link := src.RepositoryLinks[0]
 	if link.XRef != "" {
 		t.Errorf("link.XRef = %q, want empty", link.XRef)
 	}
 	if link.Inline == nil || link.Inline.Name != "State Archives" {
 		t.Errorf("link.Inline = %+v, want Name 'State Archives'", link.Inline)
 	}
-	if !reflect.DeepEqual(link.CallNumbers, []string{"PR-99"}) {
-		t.Errorf("link.CallNumbers = %v, want [PR-99]", link.CallNumbers)
+	if got, want := callNumberTriples(link.CallNumbers), []string{"PR-99||"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("link.CallNumbers = %q, want %q", got, want)
 	}
 
 }
@@ -3635,10 +3626,10 @@ func TestSourceRepositoryLinkMalformedXRefAndName(t *testing.T) {
 	if src == nil {
 		t.Fatal("Source @S1@ not found")
 	}
-	link := src.RepositoryLink
-	if link == nil {
-		t.Fatal("src.RepositoryLink is nil, want non-nil")
+	if len(src.RepositoryLinks) != 1 {
+		t.Fatalf("len(src.RepositoryLinks) = %d, want 1", len(src.RepositoryLinks))
 	}
+	link := src.RepositoryLinks[0]
 	if link.XRef != "@R1@" {
 		t.Errorf("link.XRef = %q, want %q", link.XRef, "@R1@")
 	}
@@ -3648,8 +3639,8 @@ func TestSourceRepositoryLinkMalformedXRefAndName(t *testing.T) {
 }
 
 // TestSourceRepositoryLinkDuplicateCALN verifies that duplicate CALN strings
-// with differing MEDI subordinates retain both call numbers in the slice while
-// CallNumberMedia collapses to last-writer-wins.
+// with differing MEDI subordinates keep their own CALN/MEDI pairing (#553).
+// v2 keyed MEDI by the CALN text, so the later MEDI overwrote the earlier.
 func TestSourceRepositoryLinkDuplicateCALN(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
@@ -3667,12 +3658,10 @@ func TestSourceRepositoryLinkDuplicateCALN(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	link := doc.GetSource("@S1@").RepositoryLink
-	if !reflect.DeepEqual(link.CallNumbers, []string{"Box 1", "Box 1"}) {
-		t.Errorf("link.CallNumbers = %v, want [Box 1, Box 1]", link.CallNumbers)
-	}
-	if got := link.CallNumberMedia["Box 1"]; got != "Photo" {
-		t.Errorf("link.CallNumberMedia[Box 1] = %q, want last-writer-wins %q", got, "Photo")
+	link := doc.GetSource("@S1@").RepositoryLinks[0]
+	want := []string{"Box 1|Manuscript|", "Box 1|Photo|"}
+	if got := callNumberTriples(link.CallNumbers); !reflect.DeepEqual(got, want) {
+		t.Errorf("link.CallNumbers = %q, want %q", got, want)
 	}
 }
 

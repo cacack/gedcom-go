@@ -154,6 +154,54 @@ func TestValidateBrokenXRef_NonPointers(t *testing.T) {
 	}
 }
 
+// TestValidateEveryRepositoryLinkXRef guards #553 on both validation paths: a
+// source whose middle REPO link of three dangles must be reported by the batch
+// Validate and by the streaming validator. v2's typed model kept only the last
+// REPO link, so the streaming path could not see the others.
+func TestValidateEveryRepositoryLinkXRef(t *testing.T) {
+	input := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL Parish Register
+1 REPO @R1@
+1 REPO @R998@
+1 REPO @R1@
+0 @R1@ REPO
+1 NAME Archive
+0 TRLR`
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	var broken []string
+	for _, e := range New().Validate(doc) {
+		var issue *Issue
+		if errors.As(e, &issue) && issue.Code == CodeBrokenXRef {
+			broken = append(broken, fmt.Sprintf("%s line %d", issue.RelatedXRef, issue.LineNumber))
+		}
+	}
+	if len(broken) != 1 || broken[0] != "@R998@ line 7" {
+		t.Errorf("batch BROKEN_XREF = %q, want one for @R998@ on line 7", broken)
+	}
+
+	sv := NewStreamingValidator(StreamingOptions{})
+	for _, rec := range doc.Records {
+		sv.ValidateRecord(rec)
+	}
+	var orphaned []string
+	for _, iss := range sv.Finalize() {
+		if iss.Details["reference_type"] == "REPO" {
+			orphaned = append(orphaned, iss.RelatedXRef+" "+iss.Details["field"])
+		}
+	}
+	if len(orphaned) != 1 || orphaned[0] != "@R998@ RepositoryLinks[1].XRef" {
+		t.Errorf("streaming orphaned REPO = %q, want [@R998@ RepositoryLinks[1].XRef]", orphaned)
+	}
+}
+
 func TestValidateMissingName(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
