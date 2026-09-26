@@ -285,11 +285,11 @@ func TestSourceToTags(t *testing.T) {
 		{
 			name: "full source",
 			src: &gedcom.Source{
-				Title:          "County Records",
-				Author:         "Jane Historian",
-				Publication:    "Published 2000",
-				Text:           "Source text content",
-				RepositoryLink: &gedcom.SourceRepositoryLink{XRef: "@R1@"},
+				Title:           "County Records",
+				Author:          "Jane Historian",
+				Publication:     "Published 2000",
+				Text:            "Source text content",
+				RepositoryLinks: []*gedcom.SourceRepositoryLink{{XRef: "@R1@"}},
 			},
 			contains: []string{"TITL", "AUTH", "PUBL", "TEXT", "REPO"},
 		},
@@ -316,8 +316,8 @@ func TestSourceToTags(t *testing.T) {
 		{
 			name: "source with inline repository",
 			src: &gedcom.Source{
-				Title:          "Source with inline repo",
-				RepositoryLink: &gedcom.SourceRepositoryLink{Inline: &gedcom.InlineRepository{Name: "State Archives"}},
+				Title:           "Source with inline repo",
+				RepositoryLinks: []*gedcom.SourceRepositoryLink{{Inline: &gedcom.InlineRepository{Name: "State Archives"}}},
 			},
 			contains: []string{"TITL", "REPO", "NAME"},
 		},
@@ -351,10 +351,10 @@ func TestSourceInlineRepositoryEncoding(t *testing.T) {
 			name: "repository XRef takes precedence",
 			src: &gedcom.Source{
 				Title: "Test Source",
-				RepositoryLink: &gedcom.SourceRepositoryLink{
+				RepositoryLinks: []*gedcom.SourceRepositoryLink{{
 					XRef:   "@R1@",
 					Inline: &gedcom.InlineRepository{Name: "Should be ignored"},
-				},
+				}},
 			},
 			expectRepoTag:   true,
 			expectRepoValue: "@R1@",
@@ -363,8 +363,8 @@ func TestSourceInlineRepositoryEncoding(t *testing.T) {
 		{
 			name: "inline repository when no XRef",
 			src: &gedcom.Source{
-				Title:          "Test Source",
-				RepositoryLink: &gedcom.SourceRepositoryLink{Inline: &gedcom.InlineRepository{Name: "State Archives"}},
+				Title:           "Test Source",
+				RepositoryLinks: []*gedcom.SourceRepositoryLink{{Inline: &gedcom.InlineRepository{Name: "State Archives"}}},
 			},
 			expectRepoTag:   true,
 			expectRepoValue: "",
@@ -381,8 +381,8 @@ func TestSourceInlineRepositoryEncoding(t *testing.T) {
 		{
 			name: "no repository when inline repo has empty name",
 			src: &gedcom.Source{
-				Title:          "Test Source",
-				RepositoryLink: &gedcom.SourceRepositoryLink{Inline: &gedcom.InlineRepository{Name: ""}},
+				Title:           "Test Source",
+				RepositoryLinks: []*gedcom.SourceRepositoryLink{{Inline: &gedcom.InlineRepository{Name: ""}}},
 			},
 			expectRepoTag: false,
 		},
@@ -5157,11 +5157,11 @@ func TestDecodedNotesEncodeOnce(t *testing.T) {
 		t.Errorf("re-decoded MediaLink InlineNotes = %v, want %v", indi.Events[0].Media[0].InlineNotes, want)
 	}
 	src := redoc.GetSource("@S1@")
-	if src == nil || src.RepositoryLink == nil {
+	if src == nil || len(src.RepositoryLinks) != 1 {
 		t.Fatal("GetSource(@S1@) returned no repository link after entity encode")
 	}
-	if want := []string{"Repository link note"}; !reflect.DeepEqual(src.RepositoryLink.InlineNotes, want) {
-		t.Errorf("re-decoded REPO link InlineNotes = %v, want %v", src.RepositoryLink.InlineNotes, want)
+	if want := []string{"Repository link note"}; !reflect.DeepEqual(src.RepositoryLinks[0].InlineNotes, want) {
+		t.Errorf("re-decoded REPO link InlineNotes = %v, want %v", src.RepositoryLinks[0].InlineNotes, want)
 	}
 }
 

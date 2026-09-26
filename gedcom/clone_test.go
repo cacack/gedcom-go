@@ -1,6 +1,7 @@
 package gedcom
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -565,13 +566,17 @@ func TestSourceClone(t *testing.T) {
 			NoteXRefs:   []string{"@N1@"},
 			RefNumber:   "789",
 			UID:         "uid-789",
-			RepositoryLink: &SourceRepositoryLink{
-				XRef:            "@R1@",
-				Inline:          &InlineRepository{Name: "Inline Repo"},
-				CallNumbers:     []string{"MS-1234"},
-				MediaType:       "Manuscript",
-				CallNumberMedia: map[string]string{"MS-1234": "Manuscript"},
-				InlineNotes:     []string{"Held in archives"},
+			RepositoryLinks: []*SourceRepositoryLink{
+				{
+					XRef:   "@R1@",
+					Inline: &InlineRepository{Name: "Inline Repo"},
+					CallNumbers: []*CallNumber{
+						{Value: "MS-1234", MediaType: "Manuscript"},
+						{Value: "MS-1234", MediaType: "OTHER", MediaPhrase: "Microfiche copy"},
+					},
+					InlineNotes: []string{"Held in archives"},
+				},
+				{XRef: "@R2@"},
 			},
 			Media:        []*MediaLink{{MediaXRef: "@M1@"}},
 			ChangeDate:   &ChangeDate{Date: "1 JAN 2024"},
@@ -586,33 +591,58 @@ func TestSourceClone(t *testing.T) {
 		if copied.Title != original.Title {
 			t.Errorf("Title = %v, want %v", copied.Title, original.Title)
 		}
-		if copied.RepositoryLink.Inline == original.RepositoryLink.Inline {
-			t.Error("RepositoryLink.Inline should have different pointer")
+		if !reflect.DeepEqual(copied.RepositoryLinks, original.RepositoryLinks) {
+			t.Errorf("RepositoryLinks = %+v, want %+v", copied.RepositoryLinks, original.RepositoryLinks)
 		}
-		if copied.RepositoryLink.Inline.Name != original.RepositoryLink.Inline.Name {
-			t.Errorf("RepositoryLink.Inline.Name = %v, want %v", copied.RepositoryLink.Inline.Name, original.RepositoryLink.Inline.Name)
+		if len(copied.RepositoryLinks) != 2 {
+			t.Fatalf("len(RepositoryLinks) = %d, want 2", len(copied.RepositoryLinks))
 		}
-		if copied.RepositoryLink == original.RepositoryLink {
-			t.Error("RepositoryLink should have different pointer")
+		cl, ol := copied.RepositoryLinks[0], original.RepositoryLinks[0]
+		if cl == ol {
+			t.Error("RepositoryLinks[0] should have different pointer")
 		}
-		if copied.RepositoryLink.XRef != original.RepositoryLink.XRef {
-			t.Errorf("RepositoryLink.XRef = %v, want %v", copied.RepositoryLink.XRef, original.RepositoryLink.XRef)
+		if cl.Inline == ol.Inline {
+			t.Error("RepositoryLinks[0].Inline should have different pointer")
 		}
-		// Mutating the copy's maps/slices must not affect the original.
-		copied.RepositoryLink.CallNumberMedia["MS-1234"] = "changed"
-		if original.RepositoryLink.CallNumberMedia["MS-1234"] != "Manuscript" {
-			t.Error("RepositoryLink.CallNumberMedia map shares backing storage with original")
+		if copied.RepositoryLinks[1] == original.RepositoryLinks[1] {
+			t.Error("RepositoryLinks[1] should have different pointer")
 		}
-		copied.RepositoryLink.CallNumbers[0] = "changed"
-		if original.RepositoryLink.CallNumbers[0] != "MS-1234" {
-			t.Error("RepositoryLink.CallNumbers slice shares backing storage with original")
+		// Mutating the copy's slices and call numbers must not affect the original.
+		if cl.CallNumbers[1] == ol.CallNumbers[1] {
+			t.Error("CallNumbers[1] should have different pointer")
+		}
+		cl.CallNumbers[1].MediaPhrase = "changed"
+		if ol.CallNumbers[1].MediaPhrase != "Microfiche copy" {
+			t.Error("CallNumber shares storage with original")
+		}
+		cl.CallNumbers[0] = &CallNumber{Value: "changed"}
+		if ol.CallNumbers[0].Value != "MS-1234" {
+			t.Error("RepositoryLinks[0].CallNumbers slice shares backing storage with original")
+		}
+		copied.RepositoryLinks[1] = nil
+		if original.RepositoryLinks[1] == nil {
+			t.Error("RepositoryLinks slice shares backing storage with original")
 		}
 	})
 
-	t.Run("nil RepositoryLink clones to nil", func(t *testing.T) {
+	t.Run("nil RepositoryLinks clones to nil", func(t *testing.T) {
 		original := &Source{XRef: "@S2@"}
-		if original.Clone().RepositoryLink != nil {
-			t.Error("nil RepositoryLink should clone to nil")
+		if original.Clone().RepositoryLinks != nil {
+			t.Error("nil RepositoryLinks should clone to nil")
+		}
+	})
+
+	t.Run("nil entries survive", func(t *testing.T) {
+		original := &Source{
+			XRef: "@S3@",
+			RepositoryLinks: []*SourceRepositoryLink{
+				nil,
+				{XRef: "@R1@", CallNumbers: []*CallNumber{nil, {Value: "C1"}}},
+			},
+		}
+		copied := original.Clone()
+		if !reflect.DeepEqual(copied.RepositoryLinks, original.RepositoryLinks) {
+			t.Errorf("RepositoryLinks = %+v, want %+v", copied.RepositoryLinks, original.RepositoryLinks)
 		}
 	})
 }
@@ -1389,21 +1419,21 @@ func TestCloneNoteSlicesAreDeepCopied(t *testing.T) {
 func TestCloneSourceRepositoryLinkNotesAreDeepCopied(t *testing.T) {
 	original := &Source{
 		XRef: "@S1@",
-		RepositoryLink: &SourceRepositoryLink{
+		RepositoryLinks: []*SourceRepositoryLink{{
 			XRef:        "@R1@",
 			NoteXRefs:   []string{"@N1@"},
 			InlineNotes: []string{"repo link note"},
-		},
+		}},
 	}
 
 	copied := original.Clone()
-	copied.RepositoryLink.NoteXRefs[0] = "modified"
-	copied.RepositoryLink.InlineNotes[0] = "modified"
+	copied.RepositoryLinks[0].NoteXRefs[0] = "modified"
+	copied.RepositoryLinks[0].InlineNotes[0] = "modified"
 
-	if original.RepositoryLink.NoteXRefs[0] == "modified" {
+	if original.RepositoryLinks[0].NoteXRefs[0] == "modified" {
 		t.Error("SourceRepositoryLink.NoteXRefs shares its backing array with the clone")
 	}
-	if original.RepositoryLink.InlineNotes[0] == "modified" {
+	if original.RepositoryLinks[0].InlineNotes[0] == "modified" {
 		t.Error("SourceRepositoryLink.InlineNotes shares its backing array with the clone")
 	}
 }

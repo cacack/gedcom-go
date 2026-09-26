@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -506,18 +507,16 @@ func TestEncodeSourceRepositoryLink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("re-decode error = %v\noutput:\n%s", err, output)
 	}
-	link := doc2.GetSource("@S1@").RepositoryLink
-	if link == nil {
-		t.Fatalf("RepositoryLink nil after roundtrip\noutput:\n%s", output)
+	links := doc2.GetSource("@S1@").RepositoryLinks
+	if len(links) != 1 {
+		t.Fatalf("len(RepositoryLinks) = %d after roundtrip, want 1\noutput:\n%s", len(links), output)
 	}
+	link := links[0]
 	if link.XRef != "@R1@" {
 		t.Errorf("link.XRef = %q, want %q", link.XRef, "@R1@")
 	}
-	if len(link.CallNumbers) != 1 || link.CallNumbers[0] != "MS-1234" {
-		t.Errorf("link.CallNumbers = %v, want [MS-1234]", link.CallNumbers)
-	}
-	if link.CallNumberMedia["MS-1234"] != "Manuscript" {
-		t.Errorf("link.CallNumberMedia[MS-1234] = %q, want %q", link.CallNumberMedia["MS-1234"], "Manuscript")
+	if want := []*gedcom.CallNumber{{Value: "MS-1234", MediaType: "Manuscript"}}; !reflect.DeepEqual(link.CallNumbers, want) {
+		t.Errorf("link.CallNumbers = %+v, want [{MS-1234 Manuscript}]", link.CallNumbers)
 	}
 	if len(link.InlineNotes) != 1 || link.InlineNotes[0] != "Held in archives" {
 		t.Errorf("link.InlineNotes = %v, want [Held in archives]", link.InlineNotes)
@@ -560,7 +559,7 @@ func TestEncodeSourceRepositoryLinkInline(t *testing.T) {
 }
 
 // TestEncodeSourceRepositoryLinkDegenerate verifies that a non-nil but empty
-// RepositoryLink (no XRef, no inline name, no subordinates) emits no REPO tag
+// repository link (no XRef, no inline name, no subordinates) emits no REPO tag
 // rather than a meaningless bare `1 REPO` (Issue #289).
 func TestEncodeSourceRepositoryLinkDegenerate(t *testing.T) {
 	doc := &gedcom.Document{
@@ -570,9 +569,13 @@ func TestEncodeSourceRepositoryLinkDegenerate(t *testing.T) {
 				Type: gedcom.RecordTypeSource,
 				XRef: "@S1@",
 				Entity: &gedcom.Source{
-					XRef:           "@S1@",
-					Title:          "Parish Register",
-					RepositoryLink: &gedcom.SourceRepositoryLink{},
+					XRef:  "@S1@",
+					Title: "Parish Register",
+					RepositoryLinks: []*gedcom.SourceRepositoryLink{
+						{},
+						nil,
+						{CallNumbers: []*gedcom.CallNumber{nil}},
+					},
 				},
 			},
 		},
@@ -583,7 +586,39 @@ func TestEncodeSourceRepositoryLinkDegenerate(t *testing.T) {
 		t.Fatalf("Encode() error = %v", err)
 	}
 	if strings.Contains(buf.String(), "REPO") {
-		t.Errorf("degenerate RepositoryLink should emit no REPO tag\noutput:\n%s", buf.String())
+		t.Errorf("degenerate repository link should emit no REPO tag\noutput:\n%s", buf.String())
+	}
+}
+
+// TestEncodeSourceRepositoryLinkCallNumberOnly verifies that a link carrying
+// only call numbers -- no XRef, no inline name, no notes -- is not treated as
+// degenerate: it writes a bare inline REPO holding its CALN lines, skipping nil
+// entries, so the call numbers are not lost.
+func TestEncodeSourceRepositoryLinkCallNumberOnly(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: "5.5.1"},
+		Records: []*gedcom.Record{
+			{
+				Type: gedcom.RecordTypeSource,
+				XRef: "@S1@",
+				Entity: &gedcom.Source{
+					XRef:  "@S1@",
+					Title: "Parish Register",
+					RepositoryLinks: []*gedcom.SourceRepositoryLink{
+						{CallNumbers: []*gedcom.CallNumber{nil, {Value: "MS-1", MediaType: "BOOK"}}},
+					},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	want := "1 REPO\n2 CALN MS-1\n3 MEDI BOOK\n"
+	if got := strings.ReplaceAll(buf.String(), "\r\n", "\n"); !strings.Contains(got, want) {
+		t.Errorf("call-number-only link should encode as\n%s\noutput:\n%s", want, got)
 	}
 }
 

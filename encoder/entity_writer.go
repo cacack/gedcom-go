@@ -395,9 +395,9 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 		tags = append(tags, textToTags(src.Text, 1, "TEXT", opts)...)
 	}
 
-	// Repository link (level 1) - REPO
-	if src.RepositoryLink != nil {
-		tags = append(tags, sourceRepositoryLinkToTags(src.RepositoryLink, opts)...)
+	// Repository links (level 1) - REPO, one per link
+	for _, link := range src.RepositoryLinks {
+		tags = append(tags, sourceRepositoryLinkToTags(link, opts)...)
 	}
 
 	// Media links (level 1) - OBJE
@@ -442,12 +442,23 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 func repositoryLinkIsDegenerate(link *gedcom.SourceRepositoryLink) bool {
 	hasInlineName := link.Inline != nil && link.Inline.Name != ""
 	hasNotes := len(link.NoteXRefs) > 0 || len(link.InlineNotes) > 0
-	return link.XRef == "" && !hasInlineName && len(link.CallNumbers) == 0 && !hasNotes
+	return link.XRef == "" && !hasInlineName && !hasCallNumber(link.CallNumbers) && !hasNotes
+}
+
+// hasCallNumber reports whether calns holds at least one non-nil entry, i.e.
+// whether encoding the link would write any CALN line.
+func hasCallNumber(calns []*gedcom.CallNumber) bool {
+	for _, caln := range calns {
+		if caln != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // sourceRepositoryLinkToTags converts a SourceRepositoryLink to GEDCOM tags,
-// emitting the REPO pointer (or inline NAME) plus CALN (with optional MEDI) and
-// NOTE subordinates.
+// emitting the REPO pointer (or inline NAME) plus CALN (each with its optional
+// MEDI and MEDI.PHRASE) and NOTE subordinates.
 func sourceRepositoryLinkToTags(link *gedcom.SourceRepositoryLink, opts *EncodeOptions) []*gedcom.Tag {
 	if link == nil || repositoryLinkIsDegenerate(link) {
 		return nil
@@ -464,16 +475,20 @@ func sourceRepositoryLinkToTags(link *gedcom.SourceRepositoryLink, opts *EncodeO
 		}
 	}
 
-	// Call numbers (level 2) - CALN, each with an optional MEDI (level 3).
+	// Call numbers (level 2) - CALN, each with an optional MEDI (level 3)
+	// and, under MEDI, an optional PHRASE (level 4, GEDCOM 7.0).
 	for _, caln := range link.CallNumbers {
-		tags = append(tags, &gedcom.Tag{Level: 2, Tag: "CALN", Value: caln})
-		medi := link.CallNumberMedia[caln]
-		if medi == "" && len(link.CallNumbers) == 1 {
-			// Single CALN: fall back to the flat MediaType field.
-			medi = link.MediaType
+		if caln == nil {
+			continue
 		}
-		if medi != "" {
-			tags = append(tags, &gedcom.Tag{Level: 3, Tag: "MEDI", Value: medi})
+		tags = append(tags, &gedcom.Tag{Level: 2, Tag: "CALN", Value: caln.Value})
+		// A PHRASE has no other parent than MEDI, so a phrase set without a
+		// media type still writes a valueless MEDI to carry it.
+		if caln.MediaType != "" || caln.MediaPhrase != "" {
+			tags = append(tags, &gedcom.Tag{Level: 3, Tag: "MEDI", Value: caln.MediaType})
+		}
+		if caln.MediaPhrase != "" {
+			tags = append(tags, &gedcom.Tag{Level: 4, Tag: "PHRASE", Value: caln.MediaPhrase})
 		}
 	}
 

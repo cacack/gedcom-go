@@ -1080,7 +1080,7 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "TEXT":
 			src.Text = tag.Value
 		case "REPO":
-			src.RepositoryLink = parseSourceRepositoryLink(record.Tags, i, collector)
+			src.RepositoryLinks = append(src.RepositoryLinks, parseSourceRepositoryLink(record.Tags, i, collector))
 		case "NOTE", "SNOTE":
 			src.NoteXRefs, src.InlineNotes = appendRecordNote(record.Tags, i, src.NoteXRefs, src.InlineNotes)
 		case "OBJE":
@@ -1146,20 +1146,7 @@ func parseSourceRepositoryLink(tags []*gedcom.Tag, repoIdx int, collector *diagn
 				link.Inline.Name = tag.Value
 			}
 		case "CALN":
-			link.CallNumbers = append(link.CallNumbers, tag.Value)
-			// MEDI is a subordinate of CALN at baseLevel+2.
-			if medi := findSubordinate(tags, i, "MEDI"); medi != "" {
-				if link.MediaType == "" {
-					link.MediaType = medi
-				}
-				if link.CallNumberMedia == nil {
-					link.CallNumberMedia = make(map[string]string)
-				}
-				// Duplicate CALN strings collapse to last-writer-wins here; the
-				// CallNumbers slice retains every entry. See the CallNumberMedia
-				// doc comment in gedcom/repository.go.
-				link.CallNumberMedia[tag.Value] = medi
-			}
+			link.CallNumbers = append(link.CallNumbers, parseCallNumber(tags, i))
 		case "NOTE", "SNOTE":
 			link.NoteXRefs, link.InlineNotes = appendRecordNote(
 				tags, i, link.NoteXRefs, link.InlineNotes)
@@ -1173,9 +1160,32 @@ func parseSourceRepositoryLink(tags []*gedcom.Tag, repoIdx int, collector *diagn
 	return link
 }
 
+// parseCallNumber extracts one CALN entry of a REPO link, starting at calnIdx,
+// together with its MEDI media type and (GEDCOM 7.0) the PHRASE under MEDI.
+// MEDI and PHRASE are the only substructures any supported GEDCOM version
+// defines under CALN, each 0:1; the first of each is typed, and anything else
+// stays in the raw tags.
+func parseCallNumber(tags []*gedcom.Tag, calnIdx int) *gedcom.CallNumber {
+	caln := &gedcom.CallNumber{Value: tags[calnIdx].Value}
+	if mediIdx := findSubordinateIndex(tags, calnIdx, "MEDI"); mediIdx >= 0 {
+		caln.MediaType = tags[mediIdx].Value
+		caln.MediaPhrase = findSubordinate(tags, mediIdx, "PHRASE")
+	}
+	return caln
+}
+
 // findSubordinate returns the value of the first direct child tag of the tag at
 // parentIdx that matches name, or "" if none exists.
 func findSubordinate(tags []*gedcom.Tag, parentIdx int, name string) string {
+	if idx := findSubordinateIndex(tags, parentIdx, name); idx >= 0 {
+		return tags[idx].Value
+	}
+	return ""
+}
+
+// findSubordinateIndex returns the index of the first direct child tag of the
+// tag at parentIdx that matches name, or -1 if none exists.
+func findSubordinateIndex(tags []*gedcom.Tag, parentIdx int, name string) int {
 	parentLevel := tags[parentIdx].Level
 	for i := parentIdx + 1; i < len(tags); i++ {
 		tag := tags[i]
@@ -1183,10 +1193,10 @@ func findSubordinate(tags []*gedcom.Tag, parentIdx int, name string) string {
 			break
 		}
 		if tag.Level == parentLevel+1 && tag.Tag == name {
-			return tag.Value
+			return i
 		}
 	}
-	return ""
+	return -1
 }
 
 // parseChangeDate extracts a change date structure from tags starting at chanIdx.

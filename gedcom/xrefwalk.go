@@ -382,12 +382,16 @@ func walkSource(s *Source, cb refCallback) {
 	if s == nil {
 		return
 	}
-	if s.RepositoryLink != nil {
-		cb(&s.RepositoryLink.XRef)
+	for _, link := range s.RepositoryLinks {
+		if link != nil {
+			cb(&link.XRef)
+		}
 	}
 	walkNotes(s.NoteXRefs, cb)
-	if s.RepositoryLink != nil {
-		walkNotes(s.RepositoryLink.NoteXRefs, cb)
+	for _, link := range s.RepositoryLinks {
+		if link != nil {
+			walkNotes(link.NoteXRefs, cb)
+		}
 	}
 	walkMediaLinks(s.Media, cb)
 	walkChangeDate(s.ChangeDate, cb)

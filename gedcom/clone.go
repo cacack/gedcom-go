@@ -246,7 +246,12 @@ func (s *Source) Clone() *Source {
 		ExternalIDs: cloneExternalIDs(s.ExternalIDs),
 	}
 
-	copied.RepositoryLink = cloneSourceRepositoryLink(s.RepositoryLink)
+	if s.RepositoryLinks != nil {
+		copied.RepositoryLinks = make([]*SourceRepositoryLink, len(s.RepositoryLinks))
+		for k, link := range s.RepositoryLinks {
+			copied.RepositoryLinks[k] = cloneSourceRepositoryLink(link)
+		}
+	}
 
 	if s.Media != nil {
 		copied.Media = make([]*MediaLink, len(s.Media))
@@ -292,8 +297,6 @@ func cloneSourceRepositoryLink(link *SourceRepositoryLink) *SourceRepositoryLink
 
 	copied := &SourceRepositoryLink{
 		XRef:        link.XRef,
-		CallNumbers: cloneStringSlice(link.CallNumbers),
-		MediaType:   link.MediaType,
 		NoteXRefs:   cloneStringSlice(link.NoteXRefs),
 		InlineNotes: cloneStringSlice(link.InlineNotes),
 	}
@@ -302,10 +305,13 @@ func cloneSourceRepositoryLink(link *SourceRepositoryLink) *SourceRepositoryLink
 		copied.Inline = &InlineRepository{Name: link.Inline.Name}
 	}
 
-	if link.CallNumberMedia != nil {
-		copied.CallNumberMedia = make(map[string]string, len(link.CallNumberMedia))
-		for k, v := range link.CallNumberMedia {
-			copied.CallNumberMedia[k] = v
+	if link.CallNumbers != nil {
+		copied.CallNumbers = make([]*CallNumber, len(link.CallNumbers))
+		for k, caln := range link.CallNumbers {
+			if caln != nil {
+				cp := *caln
+				copied.CallNumbers[k] = &cp
+			}
 		}
 	}
 

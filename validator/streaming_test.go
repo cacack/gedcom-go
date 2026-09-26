@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"testing"
 
@@ -880,8 +881,8 @@ func TestStreamingValidator_SourceRepositoryReference(t *testing.T) {
 	sv := NewStreamingValidator(StreamingOptions{})
 
 	src := &gedcom.Source{
-		XRef:           "@S1@",
-		RepositoryLink: &gedcom.SourceRepositoryLink{XRef: "@R999@"}, // Orphaned repository reference
+		XRef:            "@S1@",
+		RepositoryLinks: []*gedcom.SourceRepositoryLink{{XRef: "@R999@"}}, // Orphaned repository reference
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@S1@", Type: gedcom.RecordTypeSource, Entity: src})
 
@@ -893,6 +894,44 @@ func TestStreamingValidator_SourceRepositoryReference(t *testing.T) {
 
 	if issues[0].Details["reference_type"] != "REPO" {
 		t.Errorf("Expected reference_type REPO, got %s", issues[0].Details["reference_type"])
+	}
+}
+
+// TestStreamingValidator_EveryRepositoryLinkChecked guards #553: a dangling
+// pointer in any REPO link must be reported, not only in the last one, and
+// the issue's field must name that link's own index.
+func TestStreamingValidator_EveryRepositoryLinkChecked(t *testing.T) {
+	sv := NewStreamingValidator(StreamingOptions{})
+
+	src := &gedcom.Source{
+		XRef: "@S1@",
+		RepositoryLinks: []*gedcom.SourceRepositoryLink{
+			{XRef: "@R1@"}, // resolves
+			nil,
+			{Inline: &gedcom.InlineRepository{Name: "By name"}}, // no pointer
+			{XRef: "@R998@"}, // orphaned, neither first nor last
+			{XRef: "@R1@"},   // resolves
+			{XRef: "@R997@"}, // orphaned, last
+		},
+	}
+	sv.ValidateRecord(&gedcom.Record{XRef: "@S1@", Type: gedcom.RecordTypeSource, Entity: src})
+	sv.ValidateRecord(&gedcom.Record{XRef: "@R1@", Type: gedcom.RecordTypeRepository, Entity: &gedcom.Repository{XRef: "@R1@"}})
+
+	issues := sv.Finalize()
+
+	if len(issues) != 2 {
+		t.Fatalf("Expected 2 issues for the orphaned REPO links, got %d: %+v", len(issues), issues)
+	}
+	got := map[string]string{}
+	for _, iss := range issues {
+		got[iss.RelatedXRef] = iss.Details["field"]
+	}
+	want := map[string]string{
+		"@R998@": "RepositoryLinks[3].XRef",
+		"@R997@": "RepositoryLinks[5].XRef",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("orphaned REPO fields = %v, want %v", got, want)
 	}
 }
 

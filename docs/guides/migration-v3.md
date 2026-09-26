@@ -720,6 +720,128 @@ re-surveyed. The survey behind issue #497 found `SourceCitationData` once in
 its hot path and **no** `.Data.Text` access, so no change is expected there;
 re-grep for `Data.Text` and `SourceCitationData{` before relying on that.
 
+### `Source.RepositoryLink` is now `RepositoryLinks`, and each call number keeps its media type
+
+| v2 | v3 |
+|----|----|
+| `Source.RepositoryLink *SourceRepositoryLink` — one link | `Source.RepositoryLinks []*SourceRepositoryLink` — one per `REPO` line, in file order |
+| `SourceRepositoryLink.CallNumbers []string` | `SourceRepositoryLink.CallNumbers []*CallNumber` |
+| `SourceRepositoryLink.MediaType string` | removed — `CallNumbers[i].MediaType` |
+| `SourceRepositoryLink.CallNumberMedia map[string]string` | removed — `CallNumbers[i].MediaType` |
+| (not modelled) | `CallNumbers[i].MediaPhrase` — the GEDCOM 7.0 `PHRASE` under `MEDI` |
+
+Unlike the other entries here, the field is renamed as well as retyped, and
+two fields go away. A grep for `RepositoryLink\b` (the old name, without the
+`s`), `CallNumberMedia` and `.MediaType` on a link finds every site.
+
+`CallNumber` is `{Value, MediaType, MediaPhrase string}`: one `CALN` line, its
+`MEDI`, and that `MEDI`'s `PHRASE`. Those are the only substructures 5.5, 5.5.1
+or 7.0 define under `CALN`.
+
+A source can carry any number of `REPO` links (5.5.1 and 7.0 both say `0:M`),
+but v2 held one, and the decoder overwrote it on every `REPO` line. **The last
+link won**; every earlier link was gone from the typed model together with its
+call numbers and notes. Inside a link, `CallNumberMedia` was keyed by call-number
+text, so several `CALN`s with the same text but different `MEDI` collapsed to
+one pairing. `maximal70.ged` loses its whole first link and nine of the ten
+pairings on its second in v2. Every `REPO` link now decodes, and the encoder,
+`Document.Subset`, `merge.RemapXRefs`, `Clone` and the streaming validator all
+visit each one.
+
+```go
+// v2
+if link := src.RepositoryLink; link != nil {
+    use(link.XRef)
+    for _, caln := range link.CallNumbers {
+        medi := link.CallNumberMedia[caln]
+        record(caln, medi)
+    }
+}
+
+// v3
+for _, link := range src.RepositoryLinks {
+    use(link.XRef)
+    for _, caln := range link.CallNumbers {
+        record(caln.Value, caln.MediaType)
+    }
+}
+```
+
+**Range over the links; do not replace `RepositoryLink` with
+`RepositoryLinks[0]`.** That is the fix the compiler invites, and it goes wrong
+two ways:
+
+- It panics on a source with no `REPO` line. v2's `RepositoryLink` was `nil`
+  there, and a `nil` check guarded it; the v3 guard is
+  `len(src.RepositoryLinks) > 0`.
+- It reads the other end of the list. v2 held the **last** `REPO` line;
+  `RepositoryLinks[0]` is the **first**. They agree for a source with one link
+  and differ for every source with more — exactly the sources v2 was losing
+  data on.
+
+If one link is genuinely all you want, choose it deliberately:
+`RepositoryLinks[len(RepositoryLinks)-1]` reproduces v2's pick exactly.
+
+Writing is the same shape. A hand-built source that assigned one link assigns a
+slice of one:
+
+```go
+// v2
+src.RepositoryLink = &gedcom.SourceRepositoryLink{
+    XRef:            "@R1@",
+    CallNumbers:     []string{"MS-1234"},
+    CallNumberMedia: map[string]string{"MS-1234": "MANUSCRIPT"},
+}
+
+// v3
+src.RepositoryLinks = []*gedcom.SourceRepositoryLink{{
+    XRef:        "@R1@",
+    CallNumbers: []*gedcom.CallNumber{{Value: "MS-1234", MediaType: "MANUSCRIPT"}},
+}}
+```
+
+Value mapping for the removed call-number fields, where a v2 value has to be
+recovered from v3:
+
+| v2 read | v3 equivalent |
+|---------|---------------|
+| `link.CallNumbers[i]` | `link.CallNumbers[i].Value` |
+| `link.CallNumberMedia[text]` | the `MediaType` of the **last** `CallNumbers` entry whose `Value` is `text` and whose `MediaType` is non-empty — v2 was last-writer-wins. Prefer reading each entry's own `MediaType` |
+| `link.MediaType` | the `MediaType` of the **first** `CallNumbers` entry whose `MediaType` is non-empty |
+
+On a write, v2's encoder fell back to `MediaType` only for a single-`CALN` link;
+set `MediaType` on each `CallNumber` instead. A `MediaPhrase` is written as
+`PHRASE` under `MEDI`; a phrase with no media type still writes a valueless
+`MEDI` line so the `PHRASE` has a parent.
+
+**Every site that names a field is a compile error**, including every read of
+`RepositoryLink`, `MediaType` or `CallNumberMedia`. **A clean build still does
+not prove you found them all:** code that only prints or marshals
+`link.CallNumbers` keeps compiling and changes shape (`%v` prints pointers, and
+`encoding/json` gives objects rather than strings). `len(link.CallNumbers)` is
+unchanged — one entry per `CALN` line, as before.
+
+**Expect more `ORPHANED_REPO` issues from `StreamingValidator`.** It read only
+the one typed link, so a dangling pointer on any earlier `REPO` line was never
+reported; now each link is checked. The issue's `Details["field"]` reads
+`RepositoryLinks[N].XRef` rather than `RepositoryLink.XRef`, where `N` is the
+link's position in `RepositoryLinks`. Code matching that string should match
+the `"RepositoryLinks["` prefix.
+The batch `Validator.Validate` already checked every `REPO` line through the raw
+tags, so its output does not change.
+
+Neither `RepositoryLinks` nor `CallNumber` exists in `v2.5.0`, so this retype
+cannot be staged. If you moved off `RepositoryRef` / `Repository` onto
+`RepositoryLink` while on v2 (see Straight removals), that code moves again
+here.
+
+#### Known downstream call sites
+
+`my-family` was not checked out when this entry was written, so its call sites
+were not surveyed. Grep it for `RepositoryLink`, `CallNumberMedia`, and
+`MediaType` read off a repository link (`Files[i].MediaType` on a media object is
+a different field and is unchanged) before upgrading.
+
 ## Types that are no longer comparable
 
 Six structs gained `[]string` note fields in v3, and a struct that holds a slice
@@ -985,10 +1107,15 @@ particular carried only a prose "kept for backward compatibility" comment
 through `v2.4.0`, which `go vet`, `staticcheck` and IDEs do not surface. If you
 skip `v2.5.0`, this page is the only warning you get for them.
 
+`Source.RepositoryRef` and `Source.Repository` stage in two steps: on `v2.5.0`
+they move to `RepositoryLink.XRef` and `RepositoryLink.Inline`, and at the
+upgrade `RepositoryLink` becomes the `RepositoryLinks` slice — see
+[its Retypes entry](#sourcerepositorylink-is-now-repositorylinks-and-each-call-number-keeps-its-media-type).
+
 | Removed | Replacement |
 |---------|-------------|
-| `gedcom.Source.RepositoryRef` | `Source.RepositoryLink.XRef` |
-| `gedcom.Source.Repository` | `Source.RepositoryLink.Inline` |
+| `gedcom.Source.RepositoryRef` | `Source.RepositoryLinks[0].XRef` — guard with `len(src.RepositoryLinks) > 0`, and read the Retypes entry: v2 held the *last* `REPO` line, `[0]` is the *first* |
+| `gedcom.Source.Repository` | `Source.RepositoryLinks[0].Inline` — same guard and caveat |
 | `gedcom.Note.Continuation` | put the whole body in `Note.Text`, newlines included |
 | `gedcom.Note.FullText()` | `Note.Text` |
 | `decoder.DecodeOptions.MaxNestingDepth` | none needed — the field was never read. The ceiling is fixed at `parser.MaxNestingDepth-1` (99) by the grammar's two-digit level field |
@@ -1010,14 +1137,16 @@ src.RepositoryRef = "@R1@"
 src.Repository = &gedcom.InlineRepository{Name: "State Archives"}
 
 // v3
-src.RepositoryLink = &gedcom.SourceRepositoryLink{XRef: "@R1@"}
-src.RepositoryLink = &gedcom.SourceRepositoryLink{
+src.RepositoryLinks = []*gedcom.SourceRepositoryLink{{XRef: "@R1@"}}
+src.RepositoryLinks = []*gedcom.SourceRepositoryLink{{
     Inline: &gedcom.InlineRepository{Name: "State Archives"},
-}
+}}
 ```
 
-`SourceRepositoryLink` also carries the call numbers, media type, and per-link
-notes that the flat fields could not represent, so it is a strict superset.
+`SourceRepositoryLink` also carries the call numbers (each with its own media
+type) and per-link notes that the flat fields could not represent, and
+`RepositoryLinks` holds every `REPO` line where the flat fields held the last,
+so it is a strict superset.
 
 ```go
 // v2 — two carriers for one fact, written apart
@@ -1595,22 +1724,24 @@ that `v2.5.0` added and v3 keeps show up as additions rather than as
 unchanged. For your own code, the compiler catches every removal and rename on this page, and every site that
 *names a field* of a retyped value. It does **not** catch the value changes —
 the inverted boolean, the renumbered constant, the `*int` retype (whose compile
-error has a mechanical fix that can be wrong), the `MediaObject`
-note-pointer partition, `Decode` and `DecodeWithOptions` honouring
-`StrictMode`, or `DuplicateConfig`'s zero thresholds and unset normalization
-now selecting their defaults. A literal that sets `MinNameSimilarity`,
-`MinConfidence` or `MaxBirthYearDiff` to `0` on purpose still compiles but now
-gets the default gate, and a partial literal that left `NormalizeNames` unset
-now normalizes. The `MediaObject` partition, `StrictMode` and the
-`DuplicateConfig` zero values change no signature at all and so produce no build
-error anywhere. A clean build is not evidence that those are done.
+error has a mechanical fix that can be wrong), the `RepositoryLinks` retype
+(whose tempting `[0]` fix reads the first link where v2 held the last), the
+`MediaObject` note-pointer partition, `Decode` and `DecodeWithOptions`
+honouring `StrictMode`, or `DuplicateConfig`'s zero thresholds and unset
+normalization now selecting their defaults. A literal that sets
+`MinNameSimilarity`, `MinConfidence` or `MaxBirthYearDiff` to `0` on purpose
+still compiles but now gets the default gate, and a partial literal that left
+`NormalizeNames` unset now normalizes. The `MediaObject` partition, `StrictMode`
+and the `DuplicateConfig` zero values change no signature at all and so produce
+no build error anywhere. A clean build is not evidence that those are done.
 
 Nor does it catch a retyped slice that a call site only prints, marshals, or
-measures: `SpouseInFamilies` and `SourceCitationData.Text` change shape for
-`%v`, `encoding/json` and `text/template` without ever failing to compile.
-Grep for the field name alongside building; the Retypes entry above lists the
-shapes to look for. The same holds for `Header.Date`, whose printed and JSON
-form changes from a zero timestamp to the date text.
+measures: `SpouseInFamilies`, `SourceCitationData.Text` and
+`SourceRepositoryLink.CallNumbers` change shape for `%v`, `encoding/json` and
+`text/template` without ever failing to compile. Grep for the field names
+alongside building; the Retypes entries above list the shapes to look for. The
+same holds for `Header.Date`, whose printed and JSON form changes from a zero
+timestamp to the date text.
 
 Nor does it catch a value of one of the six
 [no-longer-comparable types](#types-that-are-no-longer-comparable) compared or

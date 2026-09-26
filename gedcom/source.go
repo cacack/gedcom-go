@@ -17,11 +17,13 @@ type Source struct {
 	// Text is the actual text from the source
 	Text string
 
-	// RepositoryLink is the source's repository link. It carries the
-	// repository pointer (XRef), any inline repository definition (Inline),
-	// and the call number(s), media type, and per-link notes that the REPO
-	// substructure can hold.
-	RepositoryLink *SourceRepositoryLink
+	// RepositoryLinks are the source's repository links, one per REPO
+	// substructure, in source order. Each carries the repository pointer
+	// (XRef) or an inline repository definition (Inline), plus the call
+	// numbers (each with its media type) and per-link notes that the REPO
+	// substructure can hold. GEDCOM 5.5.1 and 7.0 allow any number of REPO
+	// links on a source record.
+	RepositoryLinks []*SourceRepositoryLink
 
 	// Media are references to media objects with optional crop/title
 	Media []*MediaLink

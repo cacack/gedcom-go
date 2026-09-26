@@ -447,8 +447,13 @@ for _, source := range sources {
         fmt.Printf("  Publisher: %s\n", source.Publisher)
     }
 
-    if source.RepositoryLink != nil && source.RepositoryLink.XRef != "" {
-        fmt.Printf("  Repository: %s\n", source.RepositoryLink.XRef)
+    for _, link := range source.RepositoryLinks {
+        if link.XRef != "" {
+            fmt.Printf("  Repository: %s\n", link.XRef)
+        }
+        for _, caln := range link.CallNumbers {
+            fmt.Printf("    Call number: %s (%s)\n", caln.Value, caln.MediaType)
+        }
     }
 }
 ```

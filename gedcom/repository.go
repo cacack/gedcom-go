@@ -58,10 +58,11 @@ type InlineRepository struct {
 	Name string
 }
 
-// SourceRepositoryLink is a Source's reference to a Repository, with per-link
-// metadata (call numbers, media type, notes). It models the REPO substructure
-// of a SOUR record, which can carry CALN (call number), MEDI (media type), and
-// NOTE subordinates in addition to the repository pointer itself.
+// SourceRepositoryLink is one of a Source's references to a Repository, with
+// per-link metadata (call numbers with their media types, notes). It models a
+// REPO substructure of a SOUR record, which can carry CALN (call number, each
+// with an optional MEDI media type) and NOTE/SNOTE subordinates in addition to
+// the repository pointer itself.
 type SourceRepositoryLink struct {
 	// XRef is the repository pointer, e.g. "@R1@". XRef and Inline are
 	// mutually exclusive: when XRef is non-empty, Inline is nil (the decoder
@@ -73,27 +74,11 @@ type SourceRepositoryLink struct {
 	// separate repository record).
 	Inline *InlineRepository
 
-	// CallNumbers holds CALN values (multiple allowed per GEDCOM spec).
-	CallNumbers []string
-
-	// MediaType is the MEDI subordinate of the first CALN that carries one
-	// (manuscript, photo, etc.). When multiple CALNs have differing MEDI
-	// values, use CallNumberMedia to recover the per-CALN pairing.
-	//
-	// The encoder only round-trips MediaType faithfully for a single-CALN
-	// link (it is emitted as that CALN's MEDI when CallNumberMedia has no
-	// entry for it). For multi-CALN links the encoder relies on
-	// CallNumberMedia; a MediaType set without a matching CallNumberMedia
-	// entry is not written out.
-	MediaType string
-
-	// CallNumberMedia indexes MEDI values by their parent CALN, when CALN and
-	// MEDI need to stay paired. Empty when no MEDI subordinates exist.
-	//
-	// Keyed by the CALN string value. If a record carries two CALN entries
-	// with identical text but different MEDI subordinates, the later MEDI
-	// wins (last-writer-wins); CallNumbers still retains both entries.
-	CallNumberMedia map[string]string
+	// CallNumbers holds the link's CALN entries in source order, each with
+	// its own MEDI media type (multiple CALNs are allowed per GEDCOM spec,
+	// and each CALN carries at most one MEDI). Two CALNs with the same text
+	// but different MEDI values stay separate entries.
+	CallNumbers []*CallNumber
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@")
 	// carried by NOTE subordinates of the REPO link (not the source).
@@ -102,6 +87,29 @@ type SourceRepositoryLink struct {
 	// InlineNotes are note text values written directly on the REPO link
 	// (NOTE <text> form, including CONT/CONC continuations).
 	InlineNotes []string
+}
+
+// CallNumber is one CALN entry of a source's repository link, together with
+// the MEDI media type subordinate to it. It models
+//
+//	n CALN <Text>
+//	  +1 MEDI <Enum>      (0:1)
+//	     +2 PHRASE <Text> (0:1, GEDCOM 7.0)
+//
+// MEDI and PHRASE are the only substructures GEDCOM 5.5, 5.5.1 and 7.0 define
+// under CALN.
+type CallNumber struct {
+	// Value is the call number text (the CALN line value). It may be empty:
+	// a CALN line with no value can still carry a MEDI.
+	Value string
+
+	// MediaType is the MEDI value (book, manuscript, VIDEO, etc.), stored as
+	// written. Empty when the CALN has no MEDI subordinate.
+	MediaType string
+
+	// MediaPhrase is the free-text PHRASE under MEDI (GEDCOM 7.0), typically
+	// used with MEDI OTHER to describe the medium. Empty when absent.
+	MediaPhrase string
 }
 
 // Address represents the ADDR structure: a postal address and its ADR1-3,

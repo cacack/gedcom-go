@@ -160,9 +160,12 @@ func xrefwalkFullDocument() *Document {
 	}
 
 	source := &Source{
-		XRef:           "@S1@",
-		RepositoryLink: &SourceRepositoryLink{XRef: "@R-SRC@"},
-		NoteXRefs:      []string{"@N-SRC@"},
+		XRef: "@S1@",
+		RepositoryLinks: []*SourceRepositoryLink{
+			{XRef: "@R-SRC@"},
+			{XRef: "@R-SRC2@", NoteXRefs: []string{"@N-SRC-REPO2@"}},
+		},
+		NoteXRefs: []string{"@N-SRC@"},
 		Media: []*MediaLink{
 			{MediaXRef: "@M-SRC@"},
 		},
@@ -269,7 +272,7 @@ func xrefwalkExpectedRefs() []string {
 		"@N-FAM@", "@S-FAM@", "@M-FAM@",
 		"@N-FAM-EVENT@", "@F-FAM-LDS@", "@T-FAM@",
 		// Source record
-		"@R-SRC@", "@N-SRC@", "@M-SRC@", "@T-SRC@",
+		"@R-SRC@", "@R-SRC2@", "@N-SRC-REPO2@", "@N-SRC@", "@M-SRC@", "@T-SRC@",
 		// Repository record
 		"@N-REPO@", "@T-REPO@",
 		// Note record
@@ -445,8 +448,14 @@ func TestApply_RewritesEverything(t *testing.T) {
 		t.Errorf("Family.Children[1] = %q", got)
 	}
 	src := doc.Records[2].Entity.(*Source)
-	if got := src.RepositoryLink.XRef; got != "@R-SRC@X" {
-		t.Errorf("Source.RepositoryLink.XRef = %q", got)
+	if got := src.RepositoryLinks[0].XRef; got != "@R-SRC@X" {
+		t.Errorf("Source.RepositoryLinks[0].XRef = %q", got)
+	}
+	if got := src.RepositoryLinks[1].XRef; got != "@R-SRC2@X" {
+		t.Errorf("Source.RepositoryLinks[1].XRef = %q", got)
+	}
+	if got := src.RepositoryLinks[1].NoteXRefs[0]; got != "@N-SRC-REPO2@X" {
+		t.Errorf("Source.RepositoryLinks[1].NoteXRefs[0] = %q", got)
 	}
 	if got := src.Tags[0].Value; got != "@T-SRC@X" {
 		t.Errorf("Source.Tags[0].Value = %q", got)
@@ -624,18 +633,18 @@ func TestApply_NilTypedEntity(t *testing.T) {
 func TestVisitDoesNotMutateSource(t *testing.T) {
 	link := &SourceRepositoryLink{
 		Inline:      &InlineRepository{Name: "State Archives"},
-		CallNumbers: []string{"MS-1234"},
+		CallNumbers: []*CallNumber{{Value: "MS-1234"}},
 	}
-	src := &Source{XRef: "@S1@", Title: "Inline-only source", RepositoryLink: link}
+	src := &Source{XRef: "@S1@", Title: "Inline-only source", RepositoryLinks: []*SourceRepositoryLink{link}}
 	rec := &Record{XRef: "@S1@", Type: RecordTypeSource, Entity: src}
 
 	Visit(rec, func(string) {})
 
 	if link.XRef != "" {
-		t.Errorf("Visit wrote RepositoryLink.XRef = %q, want it untouched", link.XRef)
+		t.Errorf("Visit wrote RepositoryLinks[0].XRef = %q, want it untouched", link.XRef)
 	}
 	if link.Inline == nil || link.Inline.Name != "State Archives" {
-		t.Errorf("Visit altered RepositoryLink.Inline = %+v", link.Inline)
+		t.Errorf("Visit altered RepositoryLinks[0].Inline = %+v", link.Inline)
 	}
 
 	doc := &Document{Records: []*Record{rec}, XRefMap: map[string]*Record{"@S1@": rec}}
@@ -643,6 +652,6 @@ func TestVisitDoesNotMutateSource(t *testing.T) {
 		t.Fatalf("Subset: %v", err)
 	}
 	if link.XRef != "" {
-		t.Errorf("Subset wrote RepositoryLink.XRef = %q, want it untouched", link.XRef)
+		t.Errorf("Subset wrote RepositoryLinks[0].XRef = %q, want it untouched", link.XRef)
 	}
 }
