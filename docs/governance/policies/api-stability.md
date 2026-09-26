@@ -201,12 +201,19 @@ field, and `LDSOrdinance` already holds slices and is not comparable, so a new
 pointer field costs nothing further there. The field is not what makes it safe
 for a minor release; the encoder's behaviour is. The decoder would fill both
 carriers from the same line, so a caller who decodes, edits `ord.Place` and
-re-encodes through the entity path must still see the edit written. That holds
-if the encoder writes `PLAC` when `Place != "" || PlaceDetail != nil`, takes the
-line value from `Place`, and takes only the subordinates (`FORM`, `MAP`, and so
-on) from `PlaceDetail` — or if the two are kept in sync through accessors. This
-is how v2's `Event` behaved while it carried both: the v2.5.0 encoder preferred
-the `Place` scalar when both were set.
+re-encodes through the entity path must still see the edit written — and a
+caller who *clears* `ord.Place` must still see the line disappear, as it does
+today. That holds only if `Place` is authoritative for presence as well as
+value: the encoder writes `PLAC` only when `Place != ""`, takes the line value
+from `Place`, and takes only the subordinates (`FORM`, `MAP`, and so on) from
+`PlaceDetail`. Any rule that emits `PLAC` while `Place` is empty — for example
+`Place != "" || PlaceDetail != nil` — changes the result of clearing `Place` on
+a decoded ordinance and is itself a semantic break. Keeping the two in sync
+through accessors does not help either: `LDSOrdinance` has no accessors today,
+and callers assign the field directly. This is close to, but not the same as,
+how v2's `Event` behaved while it carried both: the v2.5.0 encoder preferred
+the `Place` scalar when both were set, but fell back to `PlaceDetail.Name` when
+the scalar was empty.
 
 Making the encoder prefer `PlaceDetail` over an edited `Place` would be a
 [semantic break](#semantic-breaks): a change to which code path consults an

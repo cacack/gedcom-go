@@ -886,8 +886,9 @@ migrate before upgrading. **Be on `v2.5.0` first.** The place accessors and the
 encoder fix that goes with them postdate `v2.4.0` and were released in `v2.5.0`
 specifically so these migrations can be staged; against `v2.4.0` or earlier the
 replacement does not exist, and the compile break and the behaviour change arrive
-together. `v2.5.0` also carries a `// Deprecated:` marker on almost every symbol listed
-here, so your tooling will point at the call sites that still need attention.
+together. `v2.5.0` also carries a `// Deprecated:` marker on almost every
+symbol listed here, so your tooling will point at the call sites that still need
+attention.
 Seven symbols are the exception. Three note fields — `Event.Notes`,
 `Association.Notes` and `SourceRepositoryLink.Notes` — carry no marker because
 their replacement fields exist only in v3. `Address.Phone`, `.Email` and
@@ -1424,8 +1425,9 @@ converters loses nothing there.
 most recent release tag reachable from it, including constant value changes.
 That tag is the nearest one in `main`'s history, and `v2.5.0` was cut from a
 release branch, so the comparison is currently against `v2.4.0`: symbols
-deprecated in `v2.5.0` and removed in v3 show up as removals, while symbols
-that `v2.5.0` added and v3 keeps do not appear at all. For your own code, the
+deprecated in `v2.5.0` and removed in v3 show up as removals, and symbols
+that `v2.5.0` added and v3 keeps show up as additions rather than as
+unchanged. For your own code, the
 compiler catches every removal and rename on this page, and every site that
 *names a field* of a retyped value. It does **not** catch the value changes —
 the inverted boolean, the renumbered constant, the `*int` retype (whose compile
