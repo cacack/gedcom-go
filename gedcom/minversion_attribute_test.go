@@ -15,7 +15,7 @@ func TestRequiresGEDCOM7_AttributeMarkers(t *testing.T) {
 		name string
 		attr *Attribute
 	}{
-		{"UID on an attribute", &Attribute{Type: "OCCU", UID: "abc"}},
+		{"UID on an attribute", &Attribute{Type: "OCCU", UIDs: []string{"abc"}}},
 		{"SDATE on an attribute", &Attribute{Type: "OCCU", SortDate: "1900-01-01"}},
 		{"ASSO with PHRASE on an attribute", &Attribute{
 			Type:         "OCCU",

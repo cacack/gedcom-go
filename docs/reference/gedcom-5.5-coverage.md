@@ -179,11 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 844 | 84.6% | 1124 | 85.4% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 848 | 85.0% | 1128 | 85.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 74 | 7.4% | 87 | 6.6% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 61 | 6.1% | 92 | 7.0% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 57 | 5.7% | 88 | 6.7% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -193,13 +193,13 @@ pairs under it reach the typed model.
 
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
-| `FAM` | 208 / 254 | 273 / 324 |
+| `FAM` | 209 / 254 | 274 / 324 |
 | `HEAD` | 7 / 28 | 10 / 33 |
-| `INDI` | 587 / 625 | 787 / 855 |
+| `INDI` | 588 / 625 | 788 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
-| `OBJE` | 5 / 12 | 10 / 13 |
+| `OBJE` | 6 / 12 | 11 / 13 |
 | `REPO` | 13 / 17 | 17 / 21 |
-| `SOUR` | 16 / 34 | 16 / 34 |
+| `SOUR` | 17 / 34 | 17 / 34 |
 | `SUBM` | 5 / 10 | 8 / 15 |
 | `SUBN` | 0 / 8 | 0 / 11 |
 | `TRLR` | 0 / 1 | 0 / 1 |
@@ -756,7 +756,7 @@ Measured at `FAM.REFN` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `TYPE` | `FAM_RECORD.FAM.REFN.TYPE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `TYPE` | `FAM_RECORD.FAM.REFN.TYPE` | typed | typed | `{0:1}` |
 
 ### `HEADER.HEAD`
 
@@ -1946,7 +1946,7 @@ Measured at `INDI.REFN` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `TYPE` | `INDIVIDUAL_RECORD.INDI.REFN.TYPE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `TYPE` | `INDIVIDUAL_RECORD.INDI.REFN.TYPE` | typed | typed | `{0:1}` |
 
 ### `LDS_INDIVIDUAL_ORDINANCE.BAPL`
 
@@ -2134,7 +2134,7 @@ Measured at `OBJE.REFN` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `TYPE` | `MULTIMEDIA_RECORD.OBJE.REFN.TYPE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `TYPE` | `MULTIMEDIA_RECORD.OBJE.REFN.TYPE` | typed | typed | `{0:1}` |
 
 ### `NOTE_RECORD.NOTE`
 
@@ -2436,7 +2436,7 @@ Measured at `SOUR.REFN` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `TYPE` | `SOURCE_RECORD.SOUR.REFN.TYPE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `TYPE` | `SOURCE_RECORD.SOUR.REFN.TYPE` | typed | typed | `{0:1}` |
 
 ### `SOURCE_RECORD.SOUR.TEXT`
 

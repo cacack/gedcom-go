@@ -54,7 +54,7 @@ func recordRequiresGEDCOM7(rec *Record) bool {
 	case *Family:
 		return familyRequiresGEDCOM7(e)
 	case *Source:
-		return len(e.ExternalIDs) > 0 || e.CreationDate != nil || e.UID != "" ||
+		return len(e.ExternalIDs) > 0 || e.CreationDate != nil || len(e.UIDs) > 0 ||
 			mediaLinksRequireGEDCOM7(e.Media)
 	case *MediaObject:
 		return mediaObjectRequiresGEDCOM7(e)
@@ -96,7 +96,7 @@ func individualRequiresGEDCOM7(i *Individual) bool {
 	// version guard, so a record carrying one cannot honestly be labelled
 	// 5.5.1. Same argument as eventRequiresGEDCOM7 and
 	// attributeRequiresGEDCOM7 make one level down.
-	if len(i.ExternalIDs) > 0 || i.CreationDate != nil || i.UID != "" ||
+	if len(i.ExternalIDs) > 0 || i.CreationDate != nil || len(i.UIDs) > 0 ||
 		mediaLinksRequireGEDCOM7(i.Media) {
 		return true
 	}
@@ -125,7 +125,7 @@ func familyRequiresGEDCOM7(f *Family) bool {
 	if f == nil {
 		return false
 	}
-	if len(f.ExternalIDs) > 0 || f.CreationDate != nil || f.UID != "" ||
+	if len(f.ExternalIDs) > 0 || f.CreationDate != nil || len(f.UIDs) > 0 ||
 		mediaLinksRequireGEDCOM7(f.Media) {
 		return true
 	}
@@ -150,7 +150,7 @@ func eventRequiresGEDCOM7(ev *Event) bool {
 	// UID is checked here for the same reason attributeRequiresGEDCOM7
 	// checks it: both come from the one shared EVENT_DETAIL parse, so a
 	// rule that held for one and not the other would be arbitrary.
-	if ev.IsNegative || ev.SortDate != "" || ev.UID != "" {
+	if ev.IsNegative || ev.SortDate != "" || len(ev.UIDs) > 0 {
 		return true
 	}
 	// An ASSO on an event is 7.0-only by position: 5.5 and 5.5.1 define
@@ -172,7 +172,7 @@ func attributeRequiresGEDCOM7(at *Attribute) bool {
 	if at == nil {
 		return false
 	}
-	if at.UID != "" || at.SortDate != "" {
+	if len(at.UIDs) > 0 || at.SortDate != "" {
 		return true
 	}
 	// As on an event, an ASSO under an attribute has no 5.5.1 position.

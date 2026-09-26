@@ -106,11 +106,11 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 1241 | 89.3% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1242 | 89.4% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 74 | 5.3% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 9 | 0.6% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 65 | 4.7% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 64 | 4.6% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
 ### By top-level structure
 
@@ -119,7 +119,7 @@ The structure each pair is nested under at level 0.
 | Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |
 |---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|
 | `INDI` | 873 | 829 | 0 | 27 | 3 | 14 |
-| `FAM` | 392 | 332 | 0 | 37 | 0 | 23 |
+| `FAM` | 392 | 333 | 0 | 37 | 0 | 22 |
 | `SOUR` | 29 | 18 | 0 | 2 | 0 | 9 |
 | `HEAD` | 27 | 11 | 0 | 0 | 0 | 16 |
 | `REPO` | 21 | 17 | 0 | 3 | 1 | 0 |
@@ -743,7 +743,7 @@ Substructures of `REFN`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `TYPE` | `TYPE` | raw (undiagnosed) |
+| `TYPE` | `TYPE` | typed |
 
 ### `FAM.RESI`
 
