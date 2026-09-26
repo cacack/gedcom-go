@@ -338,6 +338,18 @@ Before release-please is allowed to cut the major:
         before upgrading. The
         [migration guide](../../guides/migration-v3.md#validationerror-in-detail)
         records the exception and the upgrade path.
+      - **Named exception (v3.0.0):** the changes the pre-release API audit
+        brought into v3 —
+        [#553](https://github.com/cacack/gedcom-go/issues/553)
+        (`Source.RepositoryLink`, `SourceRepositoryLink.MediaType`,
+        `.CallNumberMedia`), [#554](https://github.com/cacack/gedcom-go/issues/554)
+        (scalar `RefNumber`/`UID` on `Individual`, `Family`, `Source`, `Event`)
+        and [#555](https://github.com/cacack/gedcom-go/issues/555)
+        (`DuplicateConfig.RequireExactSurname`, `.NormalizeNames`) — shipped no
+        marker in `v2.5.0`, which predates the audit, and their replacements
+        exist only in v3. Deferring them would have meant publishing v3 with
+        known data loss and a no-op option until v4; the maintainer accepted
+        removing them unmarked. Each has its own migration-guide entry.
 - [ ] The consumer has migrated against that tag with no other change
 - [ ] The module path is bumped to the new major ([#516](https://github.com/cacack/gedcom-go/issues/516))
 

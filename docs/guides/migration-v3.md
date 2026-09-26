@@ -1187,6 +1187,15 @@ only in v3 (see [their own entry](#addressphone-email-and-website-in-detail)).
 `EventOccupation` and `validator.ValidationError` carry no marker either. See
 below; grep for those eight rather than relying on tooling.
 
+The three changes the pre-release API audit added to v3 carry no marker for the
+same reason — their replacements exist only in v3: `Source.RepositoryLink`,
+`SourceRepositoryLink.MediaType` and `.CallNumberMedia`
+([`RepositoryLinks`](#sourcerepositorylink-is-now-repositorylinks-and-each-call-number-keeps-its-media-type));
+the scalar `RefNumber` and `UID` fields on `Individual`, `Family`, `Source` and
+`Event` ([`REFN` and `UID` are now slices](#refn-and-uid-are-now-slices)); and
+`DuplicateConfig.RequireExactSurname` and `.NormalizeNames`
+([`DuplicateConfig` zero values](#validatorduplicateconfig-zero-values-now-mean-the-defaults)).
+
 **On `v2.4.0` or earlier your tooling flags only a few of these.** The markers
 there cover the six record-level `Notes` fields, `Note.Continuation`,
 `DecodeOptions.MaxNestingDepth` and `WithHeaderTagComparison`; every other
