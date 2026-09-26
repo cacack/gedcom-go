@@ -452,8 +452,8 @@ func TestIndividualClone(t *testing.T) {
 			Sex:              "M",
 			SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}},
 			NoteXRefs:        []string{"@N1@"},
-			RefNumber:        "123",
-			UID:              "uid-123",
+			RefNumbers:       []RefNumber{{Value: "123", Type: "user"}, {Value: "123b"}},
+			UIDs:             []string{"uid-123", "uid-123-2"},
 			FamilySearchID:   "FSID",
 			Names:            []*PersonalName{{Full: "John /Doe/"}},
 			ChildInFamilies:  []FamilyLink{{FamilyXRef: "@F2@", Pedigree: "birth"}},
@@ -494,6 +494,20 @@ func TestIndividualClone(t *testing.T) {
 		if len(copied.ExternalIDs) != 1 || copied.ExternalIDs[0] == original.ExternalIDs[0] {
 			t.Error("ExternalIDs should be deep copied")
 		}
+		if !reflect.DeepEqual(copied.RefNumbers, original.RefNumbers) {
+			t.Errorf("RefNumbers = %v, want %v", copied.RefNumbers, original.RefNumbers)
+		}
+		copied.RefNumbers[0].Value = "changed"
+		if original.RefNumbers[0].Value != "123" {
+			t.Error("RefNumbers should be deep copied")
+		}
+		if !reflect.DeepEqual(copied.UIDs, original.UIDs) {
+			t.Errorf("UIDs = %v, want %v", copied.UIDs, original.UIDs)
+		}
+		copied.UIDs[0] = "changed"
+		if original.UIDs[0] != "uid-123" {
+			t.Error("UIDs should be deep copied")
+		}
 		if copied.ChangeDate == original.ChangeDate {
 			t.Error("ChangeDate should have different pointer")
 		}
@@ -518,8 +532,8 @@ func TestFamilyClone(t *testing.T) {
 			Wife:            "@I2@",
 			Children:        []string{"@I3@"},
 			NoteXRefs:       []string{"@N1@"},
-			RefNumber:       "456",
-			UID:             "uid-456",
+			RefNumbers:      []RefNumber{{Value: "456", Type: "user"}, {Value: "456b"}},
+			UIDs:            []string{"uid-456", "uid-456-2"},
 			Events:          []*Event{{Type: "MARR", Date: "1 JAN 1920"}},
 			SourceCitations: []*SourceCitation{{SourceXRef: "@S1@"}},
 			Media:           []*MediaLink{{MediaXRef: "@M1@"}},
@@ -545,6 +559,8 @@ func TestFamilyClone(t *testing.T) {
 		if len(copied.Events) != len(original.Events) {
 			t.Errorf("Events length = %d, want %d", len(copied.Events), len(original.Events))
 		}
+		assertRefNumbersUnaliased(t, "Family", original.RefNumbers, copied.RefNumbers)
+		assertUIDsUnaliased(t, "Family", original.UIDs, copied.UIDs)
 	})
 }
 
@@ -564,8 +580,8 @@ func TestSourceClone(t *testing.T) {
 			Publication: "Publisher",
 			Text:        "Source text",
 			NoteXRefs:   []string{"@N1@"},
-			RefNumber:   "789",
-			UID:         "uid-789",
+			RefNumbers:  []RefNumber{{Value: "789", Type: "user"}, {Value: "789b"}},
+			UIDs:        []string{"uid-789", "uid-789-2"},
 			RepositoryLinks: []*SourceRepositoryLink{
 				{
 					XRef:   "@R1@",
@@ -623,6 +639,8 @@ func TestSourceClone(t *testing.T) {
 		if original.RepositoryLinks[1] == nil {
 			t.Error("RepositoryLinks slice shares backing storage with original")
 		}
+		assertRefNumbersUnaliased(t, "Source", original.RefNumbers, copied.RefNumbers)
+		assertUIDsUnaliased(t, "Source", original.UIDs, copied.UIDs)
 	})
 
 	t.Run("nil RepositoryLinks clones to nil", func(t *testing.T) {
@@ -664,7 +682,7 @@ func TestCloneEvent(t *testing.T) {
 			Age:             "0y",
 			Agency:          "Hospital",
 			Restriction:     "none",
-			UID:             "event-uid",
+			UIDs:            []string{"event-uid", "event-uid-2"},
 			SortDate:        "19000101",
 			NoteXRefs:       []string{"@N1@"},
 			Phone:           []string{"123-456"},
@@ -700,6 +718,7 @@ func TestCloneEvent(t *testing.T) {
 		if copied.Address == original.Address {
 			t.Error("Address should have different pointer")
 		}
+		assertUIDsUnaliased(t, "Event", original.UIDs, copied.UIDs)
 	})
 }
 
@@ -800,7 +819,7 @@ func TestMediaObjectClone(t *testing.T) {
 		original := &MediaObject{
 			XRef:        "@M1@",
 			NoteXRefs:   []string{"@N1@"},
-			RefNumbers:  []string{"REF1"},
+			RefNumbers:  []RefNumber{{Value: "REF1", Type: "user"}},
 			Restriction: "none",
 			UIDs:        []string{"uid-1"},
 			Files: []*MediaFile{
@@ -831,6 +850,8 @@ func TestMediaObjectClone(t *testing.T) {
 		if len(copied.Files[0].Translations) != len(original.Files[0].Translations) {
 			t.Errorf("Translations length = %d, want %d", len(copied.Files[0].Translations), len(original.Files[0].Translations))
 		}
+		assertRefNumbersUnaliased(t, "MediaObject", original.RefNumbers, copied.RefNumbers)
+		assertUIDsUnaliased(t, "MediaObject", original.UIDs, copied.UIDs)
 	})
 }
 
@@ -1017,9 +1038,11 @@ func TestCloneAttributeWithCitations(t *testing.T) {
 		TypeDetail:      "Trade",
 		ParsedDate:      &Date{Original: "1900", Year: 1900},
 		SourceCitations: []*SourceCitation{{SourceXRef: "@S1@", Page: "Page 5"}},
+		UIDs:            []string{"attr-uid", "attr-uid-2"},
 	}
 
 	copied := cloneAttribute(original)
+	assertUIDsUnaliased(t, "Attribute", original.UIDs, copied.UIDs)
 	if copied.Type != original.Type || copied.Value != original.Value || copied.Date != original.Date || copied.PlaceName() != original.PlaceName() {
 		t.Error("Field mismatch")
 	}
@@ -1435,5 +1458,39 @@ func TestCloneSourceRepositoryLinkNotesAreDeepCopied(t *testing.T) {
 	}
 	if original.RepositoryLinks[0].InlineNotes[0] == "modified" {
 		t.Error("SourceRepositoryLink.InlineNotes shares its backing array with the clone")
+	}
+}
+
+// assertRefNumbersUnaliased checks that a clone's RefNumbers equal the
+// original's and that writing to the copy leaves the original untouched.
+func assertRefNumbersUnaliased(t *testing.T, name string, original, copied []RefNumber) {
+	t.Helper()
+	if len(original) == 0 {
+		t.Fatalf("%s: fixture has no RefNumbers", name)
+	}
+	if !reflect.DeepEqual(copied, original) {
+		t.Errorf("%s RefNumbers = %+v, want %+v", name, copied, original)
+	}
+	want := original[0].Value
+	copied[0].Value = want + "-changed"
+	if original[0].Value != want {
+		t.Errorf("%s RefNumbers shares backing storage with original", name)
+	}
+}
+
+// assertUIDsUnaliased checks that a clone's UIDs equal the original's and
+// that writing to the copy leaves the original untouched.
+func assertUIDsUnaliased(t *testing.T, name string, original, copied []string) {
+	t.Helper()
+	if len(original) == 0 {
+		t.Fatalf("%s: fixture has no UIDs", name)
+	}
+	if !reflect.DeepEqual(copied, original) {
+		t.Errorf("%s UIDs = %v, want %v", name, copied, original)
+	}
+	want := original[0]
+	copied[0] = want + "-changed"
+	if original[0] != want {
+		t.Errorf("%s UIDs shares backing storage with original", name)
 	}
 }

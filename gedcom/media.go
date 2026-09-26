@@ -76,8 +76,9 @@ type MediaObject struct {
 	// (1 NOTE <text> form, including CONT/CONC continuations).
 	InlineNotes []string
 
-	// RefNumbers are user reference numbers (REFN tag, can have multiple)
-	RefNumbers []string
+	// RefNumbers are user reference numbers (REFN tags, repeatable), each
+	// with its optional TYPE, in file order.
+	RefNumbers []RefNumber
 
 	// SharedNoteXRefs are cross-references to shared note records (SNOTE tags,
 	// GEDCOM 7.0). Disjoint from NoteXRefs, which holds the NOTE-tag pointers.

@@ -19,10 +19,11 @@ changes that genuinely have no v2 form.
 
 > **Read the value mappings, not just the names.** Several changes on this page
 > alter what a value *means* — a boolean inverts, a constant is renumbered, an
-> empty string stops meaning "empty", and an `int` becomes a `*int` so that zero
-> stops meaning absent. Where the change is a rename, the mechanical fix (rename
-> the identifier, keep the value) can produce working code with the opposite
-> behaviour and no error.
+> empty string stops meaning "empty", an `int` becomes a `*int` so that zero
+> stops meaning absent, and a scalar that held the *last* repeated value
+> becomes a slice whose index 0 is the *first*. Where the change is a rename,
+> the mechanical fix (rename the identifier, keep the value) can produce
+> working code with the opposite behaviour and no error.
 
 ## Module path
 
@@ -841,6 +842,93 @@ here.
 were not surveyed. Grep it for `RepositoryLink`, `CallNumberMedia`, and
 `MediaType` read off a repository link (`Files[i].MediaType` on a media object is
 a different field and is unchanged) before upgrading.
+
+### `REFN` and `UID` are now slices
+
+Unlike the other entries in this section, this one changes the field names
+(`RefNumber` becomes `RefNumbers`, `UID` becomes `UIDs`) as well as their
+types, and which occurrence a single-value read returns (see below).
+
+`REFN` and `UID` repeat in both 5.5.1 (`INDI.REFN`, `FAM.REFN` and `SOUR.REFN`
+are `{0:M}`) and 7.0 (`UID {0:M}` on records and in event and attribute
+detail), but v2 typed them as single strings where it typed them at all. The
+decoder assigned instead of appending, so only the **last** occurrence reached
+the typed model. `REFN.TYPE` was not typed anywhere. v3 keeps every
+occurrence in file order and types `TYPE` in a new
+`gedcom.RefNumber{Value, Type string}`.
+
+| v2 | v3 |
+|----|----|
+| `Individual.RefNumber string` | `Individual.RefNumbers []RefNumber` |
+| `Family.RefNumber string` | `Family.RefNumbers []RefNumber` |
+| `Source.RefNumber string` | `Source.RefNumbers []RefNumber` |
+| `MediaObject.RefNumbers []string` | `MediaObject.RefNumbers []RefNumber` |
+| `Individual.UID string` | `Individual.UIDs []string` |
+| `Family.UID string` | `Family.UIDs []string` |
+| `Source.UID string` | `Source.UIDs []string` |
+| `Event.UID string` | `Event.UIDs []string` |
+| — | `Attribute.UIDs []string` (new; no released v2 field) |
+
+`MediaObject.UIDs` was already a `[]string` and is unchanged. `Attribute` had
+no typed `UID` in any v2 release; v3 adds it as a slice from the start.
+`MediaObject` already kept every `REFN`; it is retyped only so that all four
+record types carry the same element type, and so its `TYPE` is typed too.
+
+```go
+// v2
+ref := ind.RefNumber
+uid := ev.UID
+ind.RefNumber = "1234"
+
+// v3
+if len(ind.RefNumbers) > 0 { ref = ind.RefNumbers[0].Value }
+if len(ev.UIDs) > 0 { uid = ev.UIDs[0] }
+ind.RefNumbers = []gedcom.RefNumber{{Value: "1234"}}
+// MediaObject: for _, r := range m.RefNumbers { use(r.Value) } // was use(r)
+```
+
+**The obvious rewrite changes which value you get.** v2's scalar held the
+**last** `REFN` or `UID` in the record; `RefNumbers[0]` and `UIDs[0]` are the
+**first**. On a record with one occurrence — nearly every file in the corpus —
+they are the same. On a record with several they are not: `maximal70.ged`'s
+`@I1@` carries `REFN 1` then `REFN 10`, and v2 reported `"10"` where
+`RefNumbers[0].Value` is `"1"`. Code that must reproduce v2 exactly reads the
+last element (`s[len(s)-1]`); code that wants "the" identifier should decide
+which one it means, or range over all of them.
+
+**Writes that set one value now write exactly the slice you give.** Assigning
+`UIDs: []string{x}` on a hand-built record writes one `UID` line; the entity
+encoder writes every element in order, with each `RefNumber.Type` as a
+`2 TYPE` subordinate when it is non-empty. A decoded record's output is still
+governed by `Record.Tags` (see its doc comment), so raw-tag round trips are
+unchanged — they already kept every line.
+
+**A clean build is not proof you found every site.** As with
+`SpouseInFamilies`, anything that passes the field as a whole — `fmt` verbs,
+`any` hand-offs, templates, `encoding/json` — keeps compiling and changes shape:
+
+```text
+v2: "RefNumber":"1234","UID":"abc"
+v3: "RefNumbers":[{"Value":"1234","Type":""}],"UIDs":["abc"]
+```
+
+Emptiness checks change form: `x.UID != ""` becomes `len(x.UIDs) > 0`, with
+one difference. An empty `REFN` or `UID` line decodes to an element with an
+empty value rather than to "absent", so `len > 0` is true for it where v2's
+`!= ""` was false. Code that must treat such a line as absent checks the
+element's value as well.
+
+`REFN` and `UID` on `Repository`, `Note`, `SharedNote` and `Submitter` records
+were never typed and are not typed now; they stay in `Record.Tags`.
+
+`RefNumber` does not exist in `v2.5.0`, so this retype cannot be staged.
+
+#### Known downstream call sites
+
+my-family is not checked out alongside this change, so its call sites were not
+audited. Grep it for `RefNumber`, `.UID` and `RefNumbers` before upgrading; any
+read of the scalar fields is a compile error, and any read of
+`MediaObject.RefNumbers` elements as strings is one too.
 
 ## Types that are no longer comparable
 
@@ -1727,8 +1815,11 @@ the inverted boolean, the renumbered constant, the `*int` retype (whose compile
 error has a mechanical fix that can be wrong), the `RepositoryLinks` retype
 (whose tempting `[0]` fix reads the first link where v2 held the last), the
 `MediaObject` note-pointer partition, `Decode` and `DecodeWithOptions`
-honouring `StrictMode`, or `DuplicateConfig`'s zero thresholds and unset
-normalization now selecting their defaults. A literal that sets
+honouring `StrictMode`, `DuplicateConfig`'s zero thresholds and unset
+normalization now selecting their defaults, or index 0 of `RefNumbers`, `UIDs`
+and `SourceCitationData.Text` now being the first occurrence where v2's scalar
+held the last (`MediaObject.RefNumbers` and `.UIDs` were already slices in v2
+and already started at the first occurrence). A literal that sets
 `MinNameSimilarity`, `MinConfidence` or `MaxBirthYearDiff` to `0` on purpose
 still compiles but now gets the default gate, and a partial literal that left
 `NormalizeNames` unset now normalizes. The `MediaObject` partition, `StrictMode`
@@ -1736,12 +1827,12 @@ and the `DuplicateConfig` zero values change no signature at all and so produce
 no build error anywhere. A clean build is not evidence that those are done.
 
 Nor does it catch a retyped slice that a call site only prints, marshals, or
-measures: `SpouseInFamilies`, `SourceCitationData.Text` and
-`SourceRepositoryLink.CallNumbers` change shape for `%v`, `encoding/json` and
-`text/template` without ever failing to compile. Grep for the field names
-alongside building; the Retypes entries above list the shapes to look for. The
-same holds for `Header.Date`, whose printed and JSON form changes from a zero
-timestamp to the date text.
+measures: `SpouseInFamilies`, `SourceCitationData.Text`,
+`SourceRepositoryLink.CallNumbers`, `RefNumbers` and `UIDs` change shape for
+`%v`, `encoding/json` and `text/template` without ever failing to compile. Grep
+for the field names alongside building; the Retypes entries above list the
+shapes to look for. The same holds for `Header.Date`, whose printed and JSON
+form changes from a zero timestamp to the date text.
 
 Nor does it catch a value of one of the six
 [no-longer-comparable types](#types-that-are-no-longer-comparable) compared or

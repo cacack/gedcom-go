@@ -261,15 +261,11 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 		tags = append(tags, changeDateToTags(indi.CreationDate, 1, "CREA", opts)...)
 	}
 
-	// Reference number (level 1) - REFN
-	if indi.RefNumber != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REFN", Value: indi.RefNumber})
-	}
+	// Reference numbers (level 1) - REFN, each with its optional TYPE
+	tags = append(tags, refNumbersToTags(indi.RefNumbers)...)
 
-	// UID (level 1)
-	if indi.UID != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "UID", Value: indi.UID})
-	}
+	// UIDs (level 1)
+	tags = append(tags, uidsToTags(indi.UIDs, 1)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(indi.ExternalIDs, 1)...)
@@ -349,15 +345,11 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 		tags = append(tags, changeDateToTags(fam.CreationDate, 1, "CREA", opts)...)
 	}
 
-	// Reference number (level 1) - REFN
-	if fam.RefNumber != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REFN", Value: fam.RefNumber})
-	}
+	// Reference numbers (level 1) - REFN, each with its optional TYPE
+	tags = append(tags, refNumbersToTags(fam.RefNumbers)...)
 
-	// UID (level 1)
-	if fam.UID != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "UID", Value: fam.UID})
-	}
+	// UIDs (level 1)
+	tags = append(tags, uidsToTags(fam.UIDs, 1)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(fam.ExternalIDs, 1)...)
@@ -420,15 +412,11 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 		tags = append(tags, changeDateToTags(src.CreationDate, 1, "CREA", opts)...)
 	}
 
-	// Reference number (level 1) - REFN
-	if src.RefNumber != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REFN", Value: src.RefNumber})
-	}
+	// Reference numbers (level 1) - REFN, each with its optional TYPE
+	tags = append(tags, refNumbersToTags(src.RefNumbers)...)
 
-	// UID (level 1)
-	if src.UID != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "UID", Value: src.UID})
-	}
+	// UIDs (level 1)
+	tags = append(tags, uidsToTags(src.UIDs, 1)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(src.ExternalIDs, 1)...)
@@ -621,15 +609,11 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 		tags = append(tags, changeDateToTags(media.CreationDate, 1, "CREA", opts)...)
 	}
 
-	// Reference numbers (level 1) - REFN
-	for _, refn := range media.RefNumbers {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REFN", Value: refn})
-	}
+	// Reference numbers (level 1) - REFN, each with its optional TYPE
+	tags = append(tags, refNumbersToTags(media.RefNumbers)...)
 
 	// UIDs (level 1)
-	for _, uid := range media.UIDs {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "UID", Value: uid})
-	}
+	tags = append(tags, uidsToTags(media.UIDs, 1)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(media.ExternalIDs, 1)...)
@@ -740,7 +724,7 @@ type eventDetail struct {
 	fax                  []string
 	website              []string
 	restriction          string
-	uid                  string
+	uids                 []string
 	sortDate             string
 	associations         []*gedcom.Association
 	noteXRefs            []string
@@ -801,9 +785,7 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "RESN", Value: d.restriction})
 	}
 
-	if d.uid != "" {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "UID", Value: d.uid})
-	}
+	tags = append(tags, uidsToTags(d.uids, level)...)
 
 	if d.sortDate != "" {
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "SDATE", Value: d.sortDate})
@@ -866,7 +848,7 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 		fax:                  event.Fax,
 		website:              event.Website,
 		restriction:          event.Restriction,
-		uid:                  event.UID,
+		uids:                 event.UIDs,
 		sortDate:             event.SortDate,
 		associations:         event.Associations,
 		noteXRefs:            event.NoteXRefs,
@@ -899,7 +881,7 @@ func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*
 		fax:                  attr.Fax,
 		website:              attr.Website,
 		restriction:          attr.Restriction,
-		uid:                  attr.UID,
+		uids:                 attr.UIDs,
 		sortDate:             attr.SortDate,
 		associations:         attr.Associations,
 		noteXRefs:            attr.NoteXRefs,
@@ -1430,6 +1412,30 @@ func sharedNoteTranslationToTags(tran *gedcom.SharedNoteTranslation, level int, 
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "LANG", Value: tran.Language})
 	}
 
+	return tags
+}
+
+// refNumbersToTags converts record-level reference numbers to level-1 REFN
+// tags, each followed by its level-2 TYPE subordinate when set. Every entry is
+// written, in order, so repeated REFN values survive a round trip.
+func refNumbersToTags(refNumbers []gedcom.RefNumber) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+	for _, refn := range refNumbers {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REFN", Value: refn.Value})
+		if refn.Type != "" {
+			tags = append(tags, &gedcom.Tag{Level: 2, Tag: "TYPE", Value: refn.Type})
+		}
+	}
+	return tags
+}
+
+// uidsToTags converts unique identifiers to UID tags at the given level, in
+// order.
+func uidsToTags(uids []string, level int) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+	for _, uid := range uids {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "UID", Value: uid})
+	}
 	return tags
 }
 

@@ -105,8 +105,8 @@ func (i *Individual) Clone() *Individual {
 		SpouseInFamilies: cloneFamilyLinks(i.SpouseInFamilies),
 		NoteXRefs:        cloneStringSlice(i.NoteXRefs),
 		InlineNotes:      cloneStringSlice(i.InlineNotes),
-		RefNumber:        i.RefNumber,
-		UID:              i.UID,
+		RefNumbers:       cloneRefNumbers(i.RefNumbers),
+		UIDs:             cloneStringSlice(i.UIDs),
 		FamilySearchID:   i.FamilySearchID,
 		ExternalIDs:      cloneExternalIDs(i.ExternalIDs),
 	}
@@ -180,8 +180,8 @@ func (f *Family) Clone() *Family {
 		Children:    cloneStringSlice(f.Children),
 		NoteXRefs:   cloneStringSlice(f.NoteXRefs),
 		InlineNotes: cloneStringSlice(f.InlineNotes),
-		RefNumber:   f.RefNumber,
-		UID:         f.UID,
+		RefNumbers:  cloneRefNumbers(f.RefNumbers),
+		UIDs:        cloneStringSlice(f.UIDs),
 		ExternalIDs: cloneExternalIDs(f.ExternalIDs),
 	}
 
@@ -241,8 +241,8 @@ func (s *Source) Clone() *Source {
 		Text:        s.Text,
 		NoteXRefs:   cloneStringSlice(s.NoteXRefs),
 		InlineNotes: cloneStringSlice(s.InlineNotes),
-		RefNumber:   s.RefNumber,
-		UID:         s.UID,
+		RefNumbers:  cloneRefNumbers(s.RefNumbers),
+		UIDs:        cloneStringSlice(s.UIDs),
 		ExternalIDs: cloneExternalIDs(s.ExternalIDs),
 	}
 
@@ -343,7 +343,7 @@ func (m *MediaObject) Clone() *MediaObject {
 		NoteXRefs:       cloneStringSlice(m.NoteXRefs),
 		InlineNotes:     cloneStringSlice(m.InlineNotes),
 		SharedNoteXRefs: cloneStringSlice(m.SharedNoteXRefs),
-		RefNumbers:      cloneStringSlice(m.RefNumbers),
+		RefNumbers:      cloneRefNumbers(m.RefNumbers),
 		Restriction:     m.Restriction,
 		UIDs:            cloneStringSlice(m.UIDs),
 		ExternalIDs:     cloneExternalIDs(m.ExternalIDs),
@@ -568,7 +568,7 @@ func cloneEvent(e *Event) *Event {
 		Agency:               e.Agency,
 		ReligiousAffiliation: e.ReligiousAffiliation,
 		Restriction:          e.Restriction,
-		UID:                  e.UID,
+		UIDs:                 cloneStringSlice(e.UIDs),
 		SortDate:             e.SortDate,
 		IsNegative:           e.IsNegative,
 		NoteXRefs:            cloneStringSlice(e.NoteXRefs),
@@ -621,7 +621,7 @@ func cloneAttribute(a *Attribute) *Attribute {
 		Agency:               a.Agency,
 		ReligiousAffiliation: a.ReligiousAffiliation,
 		Restriction:          a.Restriction,
-		UID:                  a.UID,
+		UIDs:                 cloneStringSlice(a.UIDs),
 		SortDate:             a.SortDate,
 		NoteXRefs:            cloneStringSlice(a.NoteXRefs),
 		InlineNotes:          cloneStringSlice(a.InlineNotes),
@@ -881,6 +881,17 @@ func cloneFamilyLinks(links []FamilyLink) []FamilyLink {
 			InlineNotes: cloneStringSlice(link.InlineNotes),
 		}
 	}
+	return copied
+}
+
+// cloneRefNumbers returns a copy of s. RefNumber holds only strings, so a
+// shallow element copy is a deep copy.
+func cloneRefNumbers(s []RefNumber) []RefNumber {
+	if s == nil {
+		return nil
+	}
+	copied := make([]RefNumber, len(s))
+	copy(copied, s)
 	return copied
 }
 

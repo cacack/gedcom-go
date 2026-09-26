@@ -2194,13 +2194,13 @@ func TestRecordMetadata(t *testing.T) {
 	}
 
 	// Test REFN (reference number)
-	if indi.RefNumber != "12345" {
-		t.Errorf("Individual.RefNumber = %s, want '12345'", indi.RefNumber)
+	if firstRefNumber(indi.RefNumbers) != "12345" {
+		t.Errorf("firstRefNumber(Individual.RefNumbers) = %s, want '12345'", firstRefNumber(indi.RefNumbers))
 	}
 
 	// Test UID (unique identifier)
-	if indi.UID != "12345678-1234-1234-1234-123456789012" {
-		t.Errorf("Individual.UID = %s, want '12345678-1234-1234-1234-123456789012'", indi.UID)
+	if firstString(indi.UIDs) != "12345678-1234-1234-1234-123456789012" {
+		t.Errorf("firstString(Individual.UIDs) = %s, want '12345678-1234-1234-1234-123456789012'", firstString(indi.UIDs))
 	}
 
 	// Test Family metadata
@@ -2219,12 +2219,12 @@ func TestRecordMetadata(t *testing.T) {
 		t.Errorf("Family.ChangeDate.Time = %s, want '14:20:15'", fam.ChangeDate.Time)
 	}
 
-	if fam.RefNumber != "FAM-001" {
-		t.Errorf("Family.RefNumber = %s, want 'FAM-001'", fam.RefNumber)
+	if firstRefNumber(fam.RefNumbers) != "FAM-001" {
+		t.Errorf("firstRefNumber(Family.RefNumbers) = %s, want 'FAM-001'", firstRefNumber(fam.RefNumbers))
 	}
 
-	if fam.UID != "abcdef12-3456-7890-abcd-ef1234567890" {
-		t.Errorf("Family.UID = %s, want 'abcdef12-3456-7890-abcd-ef1234567890'", fam.UID)
+	if firstString(fam.UIDs) != "abcdef12-3456-7890-abcd-ef1234567890" {
+		t.Errorf("firstString(Family.UIDs) = %s, want 'abcdef12-3456-7890-abcd-ef1234567890'", firstString(fam.UIDs))
 	}
 
 	// Test Source metadata
@@ -2250,12 +2250,12 @@ func TestRecordMetadata(t *testing.T) {
 		t.Errorf("Source.CreationDate.Date = %s, want '1 JAN 2019'", src.CreationDate.Date)
 	}
 
-	if src.RefNumber != "SRC-999" {
-		t.Errorf("Source.RefNumber = %s, want 'SRC-999'", src.RefNumber)
+	if firstRefNumber(src.RefNumbers) != "SRC-999" {
+		t.Errorf("firstRefNumber(Source.RefNumbers) = %s, want 'SRC-999'", firstRefNumber(src.RefNumbers))
 	}
 
-	if src.UID != "fedcba98-7654-3210-fedc-ba9876543210" {
-		t.Errorf("Source.UID = %s, want 'fedcba98-7654-3210-fedc-ba9876543210'", src.UID)
+	if firstString(src.UIDs) != "fedcba98-7654-3210-fedc-ba9876543210" {
+		t.Errorf("firstString(Source.UIDs) = %s, want 'fedcba98-7654-3210-fedc-ba9876543210'", firstString(src.UIDs))
 	}
 }
 
@@ -2325,11 +2325,11 @@ func TestMetadataEdgeCases(t *testing.T) {
 	if indi1.CreationDate != nil {
 		t.Errorf("@I1@ CreationDate = %v, want nil", indi1.CreationDate)
 	}
-	if indi1.RefNumber != "" {
-		t.Errorf("@I1@ RefNumber = %s, want empty", indi1.RefNumber)
+	if len(indi1.RefNumbers) != 0 {
+		t.Errorf("@I1@ RefNumbers = %+v, want none", indi1.RefNumbers)
 	}
-	if indi1.UID != "" {
-		t.Errorf("@I1@ UID = %s, want empty", indi1.UID)
+	if len(indi1.UIDs) != 0 {
+		t.Errorf("@I1@ UIDs = %v, want none", indi1.UIDs)
 	}
 
 	// Individual with only REFN
@@ -2337,11 +2337,11 @@ func TestMetadataEdgeCases(t *testing.T) {
 	if indi2 == nil {
 		t.Fatal("@I2@ not found")
 	}
-	if indi2.RefNumber != "ONLY-REFN" {
-		t.Errorf("@I2@ RefNumber = %s, want 'ONLY-REFN'", indi2.RefNumber)
+	if firstRefNumber(indi2.RefNumbers) != "ONLY-REFN" {
+		t.Errorf("@I2@ RefNumber = %s, want 'ONLY-REFN'", firstRefNumber(indi2.RefNumbers))
 	}
-	if indi2.UID != "" {
-		t.Errorf("@I2@ UID = %s, want empty", indi2.UID)
+	if len(indi2.UIDs) != 0 {
+		t.Errorf("@I2@ UIDs = %v, want none", indi2.UIDs)
 	}
 
 	// Individual with only UID
@@ -2349,11 +2349,11 @@ func TestMetadataEdgeCases(t *testing.T) {
 	if indi3 == nil {
 		t.Fatal("@I3@ not found")
 	}
-	if indi3.UID != "only-uid-value" {
-		t.Errorf("@I3@ UID = %s, want 'only-uid-value'", indi3.UID)
+	if firstString(indi3.UIDs) != "only-uid-value" {
+		t.Errorf("@I3@ UID = %s, want 'only-uid-value'", firstString(indi3.UIDs))
 	}
-	if indi3.RefNumber != "" {
-		t.Errorf("@I3@ RefNumber = %s, want empty", indi3.RefNumber)
+	if len(indi3.RefNumbers) != 0 {
+		t.Errorf("@I3@ RefNumbers = %+v, want none", indi3.RefNumbers)
 	}
 
 	// Individual with CHAN but no DATE subordinate
@@ -2550,8 +2550,8 @@ func TestEventAdministrativeTags(t *testing.T) {
 	if birth.Restriction != "confidential" {
 		t.Errorf("Event.Restriction = %s, want 'confidential'", birth.Restriction)
 	}
-	if birth.UID != "12345678-1234-1234-1234-123456789012" {
-		t.Errorf("Event.UID = %s, want '12345678-1234-1234-1234-123456789012'", birth.UID)
+	if firstString(birth.UIDs) != "12345678-1234-1234-1234-123456789012" {
+		t.Errorf("firstString(Event.UIDs) = %s, want '12345678-1234-1234-1234-123456789012'", firstString(birth.UIDs))
 	}
 	if birth.SortDate != "1900-01-01" {
 		t.Errorf("Event.SortDate = %s, want '1900-01-01'", birth.SortDate)
@@ -2565,8 +2565,8 @@ func TestEventAdministrativeTags(t *testing.T) {
 	if death.Restriction != "privacy" {
 		t.Errorf("Event.Restriction = %s, want 'privacy'", death.Restriction)
 	}
-	if death.UID != "" {
-		t.Errorf("Event.UID = %s, want empty", death.UID)
+	if len(death.UIDs) != 0 {
+		t.Errorf("Event.UIDs = %v, want none", death.UIDs)
 	}
 	if death.SortDate != "" {
 		t.Errorf("Event.SortDate = %s, want empty", death.SortDate)
@@ -3146,6 +3146,13 @@ func TestParseMediaObject_FullMetadata(t *testing.T) {
 
 	if len(media.RefNumbers) != 2 {
 		t.Errorf("len(media.RefNumbers) = %d, want 2", len(media.RefNumbers))
+	} else {
+		if r := media.RefNumbers[0]; r.Value != "1" || r.Type != "User-generated identifier" {
+			t.Errorf("media.RefNumbers[0] = %+v, want {1 User-generated identifier}", r)
+		}
+		if r := media.RefNumbers[1]; r.Value != "10" || r.Type != "" {
+			t.Errorf("media.RefNumbers[1] = %+v, want {10 }", r)
+		}
 	}
 
 	if len(media.UIDs) != 1 {
@@ -5401,7 +5408,7 @@ func TestAttributeEventDetail(t *testing.T) {
 		{"Agency", attr.Agency, "Guild of Smiths"},
 		{"ReligiousAffiliation", attr.ReligiousAffiliation, "Methodist"},
 		{"Restriction", attr.Restriction, "confidential"},
-		{"UID", attr.UID, "12345"},
+		{"UID", firstString(attr.UIDs), "12345"},
 		{"SortDate", attr.SortDate, "1880-01-01"},
 	}
 	for _, f := range strFields {

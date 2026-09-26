@@ -161,8 +161,9 @@ type Event struct {
 	// Common values: "confidential", "locked", "privacy" (or combinations)
 	Restriction string
 
-	// UID is a unique identifier for the event (UID subordinate)
-	UID string
+	// UIDs are unique identifiers for the event (UID subordinates,
+	// repeatable in GEDCOM 7.0), in file order.
+	UIDs []string
 
 	// SortDate is the date used for sorting events (SDATE subordinate, GEDCOM 7.0)
 	// Typically in ISO 8601 format (e.g., "1900-01-01")

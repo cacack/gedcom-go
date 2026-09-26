@@ -171,10 +171,10 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			indi.CreationDate = parseChangeDate(record.Tags, i, collector)
 
 		case "REFN":
-			indi.RefNumber = tag.Value
+			indi.RefNumbers = append(indi.RefNumbers, parseRefNumber(record.Tags, i))
 
 		case "UID":
-			indi.UID = tag.Value
+			indi.UIDs = append(indi.UIDs, tag.Value)
 
 		case "_FSFTID":
 			// A leading "@@" is the escaped form of a literal leading "@" (see
@@ -400,6 +400,14 @@ func parseAssociation(tags []*gedcom.Tag, assoIdx int, collector *diagnosticColl
 	return assoc
 }
 
+// parseRefNumber parses a REFN tag with its optional TYPE subordinate.
+func parseRefNumber(tags []*gedcom.Tag, refnIdx int) gedcom.RefNumber {
+	return gedcom.RefNumber{
+		Value: tags[refnIdx].Value,
+		Type:  findSubordinate(tags, refnIdx, "TYPE"),
+	}
+}
+
 // parseExternalID parses an EXID tag with optional TYPE subordinate.
 func parseExternalID(tags []*gedcom.Tag, exidIdx int) *gedcom.ExternalID {
 	baseLevel := tags[exidIdx].Level
@@ -565,7 +573,7 @@ type eventDetail struct {
 	fax             *[]string
 	website         *[]string
 	restriction     *string
-	uid             *string
+	uids            *[]string
 	sortDate        *string
 	sourceCitations *[]*gedcom.SourceCitation
 	media           *[]*gedcom.MediaLink
@@ -589,7 +597,7 @@ func eventDetailOf(e *gedcom.Event) eventDetail {
 		fax:             &e.Fax,
 		website:         &e.Website,
 		restriction:     &e.Restriction,
-		uid:             &e.UID,
+		uids:            &e.UIDs,
 		sortDate:        &e.SortDate,
 		sourceCitations: &e.SourceCitations,
 		media:           &e.Media,
@@ -614,7 +622,7 @@ func eventDetailOfAttribute(a *gedcom.Attribute) eventDetail {
 		fax:             &a.Fax,
 		website:         &a.Website,
 		restriction:     &a.Restriction,
-		uid:             &a.UID,
+		uids:            &a.UIDs,
 		sortDate:        &a.SortDate,
 		sourceCitations: &a.SourceCitations,
 		media:           &a.Media,
@@ -672,7 +680,7 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 	case "RESN":
 		*detail.restriction = tag.Value
 	case "UID":
-		*detail.uid = tag.Value
+		*detail.uids = append(*detail.uids, tag.Value)
 	case "SDATE":
 		*detail.sortDate = tag.Value
 	case "SOUR":
@@ -1031,10 +1039,10 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			fam.CreationDate = parseChangeDate(record.Tags, i, collector)
 
 		case "REFN":
-			fam.RefNumber = tag.Value
+			fam.RefNumbers = append(fam.RefNumbers, parseRefNumber(record.Tags, i))
 
 		case "UID":
-			fam.UID = tag.Value
+			fam.UIDs = append(fam.UIDs, tag.Value)
 
 		case "EXID":
 			fam.ExternalIDs = append(fam.ExternalIDs, parseExternalID(record.Tags, i))
@@ -1091,9 +1099,9 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "CREA":
 			src.CreationDate = parseChangeDate(record.Tags, i, collector)
 		case "REFN":
-			src.RefNumber = tag.Value
+			src.RefNumbers = append(src.RefNumbers, parseRefNumber(record.Tags, i))
 		case "UID":
-			src.UID = tag.Value
+			src.UIDs = append(src.UIDs, tag.Value)
 		case "EXID":
 			src.ExternalIDs = append(src.ExternalIDs, parseExternalID(record.Tags, i))
 		case "DATA", "ABBR":
@@ -1577,7 +1585,7 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 		case "CREA":
 			media.CreationDate = parseChangeDate(record.Tags, i, collector)
 		case "REFN":
-			media.RefNumbers = append(media.RefNumbers, tag.Value)
+			media.RefNumbers = append(media.RefNumbers, parseRefNumber(record.Tags, i))
 		case "UID":
 			media.UIDs = append(media.UIDs, tag.Value)
 		case "RESN":

@@ -48,11 +48,13 @@ type Individual struct {
 	// CreationDate is when the record was created (CREA tag, GEDCOM 7.0)
 	CreationDate *ChangeDate
 
-	// RefNumber is the user reference number (REFN tag)
-	RefNumber string
+	// RefNumbers are user reference numbers (REFN tags, repeatable), each
+	// with its optional TYPE, in file order.
+	RefNumbers []RefNumber
 
-	// UID is the unique identifier (UID tag)
-	UID string
+	// UIDs are unique identifiers (UID tags, repeatable in GEDCOM 7.0), in
+	// file order.
+	UIDs []string
 
 	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
 	// Links this record to external systems like FamilySearch, Ancestry, etc.
@@ -282,8 +284,9 @@ type Attribute struct {
 	// Common values: "confidential", "locked", "privacy" (or combinations)
 	Restriction string
 
-	// UID is a unique identifier for the attribute (UID subordinate)
-	UID string
+	// UIDs are unique identifiers for the attribute (UID subordinates,
+	// repeatable in GEDCOM 7.0), in file order.
+	UIDs []string
 
 	// SortDate is the date used for sorting attributes (SDATE subordinate, GEDCOM 7.0)
 	// Typically in ISO 8601 format (e.g., "1900-01-01")
