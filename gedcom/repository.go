@@ -8,8 +8,24 @@ type Repository struct {
 	// Name is the repository name
 	Name string
 
-	// Address is the physical address
+	// Address is the physical address (ADDR).
 	Address *Address
+
+	// Phone holds the repository's phone numbers (PHON, {0:3}), in document
+	// order. PHON is a sibling of ADDR in ADDRESS_STRUCTURE, not part of it.
+	Phone []string
+
+	// Email holds the repository's email addresses (EMAIL, {0:3}, GEDCOM
+	// 5.5.1+), in document order.
+	Email []string
+
+	// Fax holds the repository's fax numbers (FAX, {0:3}, GEDCOM 5.5.1+), in
+	// document order.
+	Fax []string
+
+	// Website holds the repository's web addresses (WWW, {0:3}, GEDCOM
+	// 5.5.1+), in document order.
+	Website []string
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
 	NoteXRefs []string
@@ -88,7 +104,16 @@ type SourceRepositoryLink struct {
 	InlineNotes []string
 }
 
-// Address represents a physical or digital address.
+// Address represents the ADDR structure: a postal address and its ADR1-3,
+// CITY, STAE, POST and CTRY subordinates, each {0:1}.
+//
+// The contact tags PHON, EMAIL, FAX and WWW are siblings of ADDR in the
+// GEDCOM grammar, not part of it, and are {0:3}. They are typed as []string
+// fields on the structure that owns the address: Repository, Event and
+// Attribute (all four), and Submitter (Phone and Email).
+//
+// Address is comparable with ==; a compile-time assertion in this package
+// keeps it that way.
 type Address struct {
 	// Line1 is the first address line
 	Line1 string
@@ -110,13 +135,8 @@ type Address struct {
 
 	// Country is the country name
 	Country string
-
-	// Phone is the phone number (optional)
-	Phone string
-
-	// Email is the email address (optional)
-	Email string
-
-	// Website is the website URL (optional)
-	Website string
 }
+
+// Address must stay comparable: every subordinate of ADDR is {0:1}, so no
+// field needs a slice or map. Adding one makes this line fail to compile.
+var _ = map[Address]struct{}{}

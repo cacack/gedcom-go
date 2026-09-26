@@ -179,9 +179,9 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 844 | 84.6% | 1123 | 85.3% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 844 | 84.6% | 1124 | 85.4% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 74 | 7.4% | 88 | 6.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 74 | 7.4% | 87 | 6.6% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 61 | 6.1% | 92 | 7.0% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
@@ -198,7 +198,7 @@ pairs under it reach the typed model.
 | `INDI` | 587 / 625 | 787 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 5 / 12 | 10 / 13 |
-| `REPO` | 13 / 17 | 16 / 21 |
+| `REPO` | 13 / 17 | 17 / 21 |
 | `SOUR` | 16 / 34 | 16 / 34 |
 | `SUBM` | 5 / 10 | 8 / 15 |
 | `SUBN` | 0 / 8 | 0 / 11 |
@@ -2289,7 +2289,7 @@ Measured at `REPO` in 5.5, 5.5.1.
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
 | `CHAN` | `CHANGE_DATE.CHAN` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (accepted) | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
 | `NAME` | `REPOSITORY_RECORD.REPO.NAME` | typed | typed | `{0:1}` in 5.5; `{1:1}` in 5.5.1 |
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |

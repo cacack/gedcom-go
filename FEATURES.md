@@ -69,8 +69,8 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
 | GEDCOM 5.5 | Every readable line preserved | [844 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (84.6%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,123 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (85.3%) | Most common format |
-| GEDCOM 7.0 | Every readable line preserved | [1,240 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (89.3%) | Latest standard |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,124 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (85.4%) | Most common format |
+| GEDCOM 7.0 | Every readable line preserved | [1,241 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (89.3%) | Latest standard |
 
 - Automatic version detection from header
 - Heuristic-based detection for malformed headers
@@ -88,8 +88,8 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,240 of 7.0's structures reach the typed model, 844 of
-5.5's, and 1,123 of 5.5.1's.
+document built for it: 1,241 of 7.0's structures reach the typed model, 844 of
+5.5's, and 1,124 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -475,6 +475,8 @@ mutated.
 
 - Cross-reference ID (`@R1@`)
 - Name and address
+- Contact details as ordered slices, every repeat kept (each is `{0:3}`):
+  `Phone` (PHON), `Email` (EMAIL), `Fax` (FAX) and `Website` (WWW)
 - Notes
 
 ### Submitters (SUBM)
@@ -711,11 +713,16 @@ Before v3.0.0 `LATI` and `LONG` received no decode-time validation at all, so a 
 - STAE - State/Province
 - POST - Postal code
 - CTRY - Country
-- PHON - Phone numbers
-- EMAIL - Email addresses
-- WWW - Web URLs
+`gedcom.Address` holds exactly these seven `{0:1}` fields and is comparable
+with `==`.
 
-(`FAX` is captured on events, not on the address structure.)
+The contact tags PHON, EMAIL, FAX and WWW are siblings of ADDR in the
+grammar, not part of it, and each is `{0:3}`. They are typed on the owning
+structure as `[]string` fields named `Phone`, `Email`, `Fax` and `Website`:
+
+- `Event` and `Attribute` — all four
+- `Repository` — all four
+- `Submitter` — `Phone` and `Email` (FAX and WWW are kept in `Record.Tags`)
 
 ## Name Structure
 
@@ -1381,7 +1388,7 @@ Full support for encoding typed entities back to GEDCOM format:
 | Individual | Names, sex, events, attributes, family links, associations, LDS ordinances, citations, notes, media |
 | Family | Spouse/child refs, events, LDS ordinances, citations, notes, media |
 | Source | Title, author, publication, text, repository ref/inline, notes, media |
-| Repository | Name, address, notes |
+| Repository | Name, address, contact info (phone, email, fax, website), notes |
 | Submitter | Name, address, contact info, languages |
 | Note | Text with continuation lines |
 | MediaObject | Files, formats, translations, citations |
