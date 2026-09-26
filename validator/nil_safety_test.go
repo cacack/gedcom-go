@@ -193,10 +193,17 @@ func TestSubValidators_SkipNils(t *testing.T) {
 func TestValidate_NilHeader(t *testing.T) {
 	doc := nilSafetyDoc(func(d *gedcom.Document) { d.Header = nil })
 
-	// Validate never reads the header, so it must report exactly as before.
-	want := New().Validate(nilSafetyDoc(nil))
-	if got := New().Validate(doc); !reflect.DeepEqual(got, want) {
-		t.Errorf("Validate() with nil header = %v, want %v", got, want)
+	// Validate is ValidateAll in the []error shape, so a nil header must yield
+	// exactly what ValidateAll reports for it.
+	want := New().ValidateAll(doc)
+	got := New().Validate(doc)
+	if len(got) != len(want) || len(want) == 0 {
+		t.Fatalf("Validate() with nil header = %v, want the %d ValidateAll issues %v", got, len(want), want)
+	}
+	for i := range want {
+		if got[i].Error() != want[i].Error() {
+			t.Errorf("Validate()[%d] with nil header = %v, want %v", i, got[i], want[i])
+		}
 	}
 
 	// ValidateAll's header-independent checks still run; the version-gated ones

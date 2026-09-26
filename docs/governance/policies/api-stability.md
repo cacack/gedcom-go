@@ -331,6 +331,13 @@ Before release-please is allowed to cut the major:
         v3. The maintainer accepted removing them anyway; the
         [migration guide](../../guides/migration-v3.md#addressphone-email-and-website-in-detail)
         records the exception and the upgrade path.
+      - **Named exception (v3.0.0):** `validator.ValidationError`
+        ([#500](https://github.com/cacack/gedcom-go/issues/500)) shipped no
+        marker in `v2.5.0`; its replacement, `*validator.Issue` from
+        `ValidateAll`, has existed throughout v2, so callers can stage the move
+        before upgrading. The
+        [migration guide](../../guides/migration-v3.md#validationerror-in-detail)
+        records the exception and the upgrade path.
 - [ ] The consumer has migrated against that tag with no other change
 - [ ] The module path is bumped to the new major ([#516](https://github.com/cacack/gedcom-go/issues/516))
 

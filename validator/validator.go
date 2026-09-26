@@ -1,28 +1,8 @@
 package validator
 
 import (
-	"fmt"
-
 	"github.com/cacack/gedcom-go/v2/gedcom"
 )
-
-// ValidationError represents a validation error with error code, message, line number, and optional cross-reference.
-type ValidationError struct {
-	Code    string
-	Message string
-	Line    int
-	XRef    string
-}
-
-func (e *ValidationError) Error() string {
-	if e.XRef != "" {
-		return fmt.Sprintf("[%s] %s (XRef: %s)", e.Code, e.Message, e.XRef)
-	}
-	if e.Line > 0 {
-		return fmt.Sprintf("[%s] line %d: %s", e.Code, e.Line, e.Message)
-	}
-	return fmt.Sprintf("[%s] %s", e.Code, e.Message)
-}
 
 // Strictness defines the level of validation strictness.
 type Strictness int
@@ -121,7 +101,6 @@ func NewWithOptions(opts *ValidateOptions) *Validator {
 
 // Validator validates GEDCOM documents against specification rules.
 type Validator struct {
-	errors       []error
 	config       *ValidatorConfig
 	dateLogic    *DateLogicValidator
 	references   *ReferenceValidator
@@ -148,7 +127,6 @@ func NewWithConfig(config *ValidatorConfig) *Validator {
 		}
 	}
 	return &Validator{
-		errors: make([]error, 0),
 		config: config,
 	}
 }
@@ -251,127 +229,30 @@ func (v *Validator) getNoteValidator() *NoteValidator {
 	return v.notes
 }
 
-// Validate validates a GEDCOM document and returns any validation errors.
+// Validate validates a GEDCOM document and returns its issues as errors.
+//
+// It is [Validator.ValidateAll] in the error-interface shape: the same checks,
+// the same options and the same order, with every element of the result a
+// *[Issue]. Every [ValidateOptions] field applies exactly as it does to
+// ValidateAll -- Strictness selects the severities, SkipRules drops codes and
+// MaxErrors caps the count -- so at the default StrictnessNormal the result
+// holds warnings as well as errors. Use [errors.As] with a *Issue target to
+// recover the Severity, Code, RecordXRef and LineNumber.
+//
+// The result is never nil; a nil document yields an empty slice.
 func (v *Validator) Validate(doc *gedcom.Document) []error {
-	v.errors = make([]error, 0)
-
-	if doc == nil {
-		return v.errors
+	issues := v.ValidateAll(doc)
+	errs := make([]error, len(issues))
+	for i := range issues {
+		errs[i] = &issues[i]
 	}
-
-	// Validate cross-references
-	v.validateXRefs(doc)
-
-	// Validate records
-	v.validateRecords(doc)
-
-	return v.errors
+	return errs
 }
 
-// validateXRefs checks that all cross-references are valid.
-func (v *Validator) validateXRefs(doc *gedcom.Document) {
-	// Track all XRef usages
-	usedXRefs := make(map[string]bool)
-
-	// Scan all records for XRef usage
-	for _, record := range doc.Records {
-		if record == nil {
-			continue
-		}
-		for _, tag := range record.Tags {
-			if tag == nil {
-				continue
-			}
-			// Check if value looks like an XRef
-			if len(tag.Value) > 2 && tag.Value[0] == '@' && tag.Value[len(tag.Value)-1] == '@' {
-				xref := tag.Value
-				usedXRefs[xref] = true
-
-				// Verify the XRef exists
-				if doc.XRefMap[xref] == nil {
-					v.errors = append(v.errors, &ValidationError{
-						Code:    "BROKEN_XREF",
-						Message: fmt.Sprintf("Reference to non-existent record %s", xref),
-						Line:    tag.LineNumber,
-					})
-				}
-			}
-		}
-	}
-}
-
-// validateRecords validates individual records.
-func (v *Validator) validateRecords(doc *gedcom.Document) {
-	for _, record := range doc.Records {
-		if record == nil {
-			continue
-		}
-		switch record.Type {
-		case gedcom.RecordTypeIndividual:
-			v.validateIndividual(record)
-		case gedcom.RecordTypeFamily:
-			v.validateFamily(record)
-		}
-	}
-}
-
-// validateIndividual validates an individual record.
-func (v *Validator) validateIndividual(record *gedcom.Record) {
-	if record == nil {
-		return
-	}
-
-	// Check for required NAME tag
-	hasName := false
-	for _, tag := range record.Tags {
-		if tag == nil {
-			continue
-		}
-		if tag.Tag == "NAME" {
-			hasName = true
-			break
-		}
-	}
-
-	if !hasName {
-		v.errors = append(v.errors, &ValidationError{
-			Code:    "MISSING_REQUIRED_FIELD",
-			Message: "Individual record missing required NAME tag",
-			XRef:    record.XRef,
-		})
-	}
-}
-
-// validateFamily validates a family record.
-func (v *Validator) validateFamily(record *gedcom.Record) {
-	if record == nil {
-		return
-	}
-
-	// Family records should have at least one spouse or child
-	hasMembers := false
-	for _, tag := range record.Tags {
-		if tag == nil {
-			continue
-		}
-		if tag.Tag == "HUSB" || tag.Tag == "WIFE" || tag.Tag == "CHIL" {
-			hasMembers = true
-			break
-		}
-	}
-
-	if !hasMembers {
-		v.errors = append(v.errors, &ValidationError{
-			Code:    "EMPTY_FAMILY",
-			Message: "Family record has no members (no HUSB, WIFE, or CHIL tags)",
-			XRef:    record.XRef,
-		})
-	}
-}
-
-// ValidateAll returns comprehensive validation as Issues with severity levels.
-// This is the enhanced API that provides more detail than Validate().
-// Issues are filtered based on the configured Strictness level.
+// ValidateAll runs every document-wide check and returns the findings as
+// Issues with severity levels. Issues are filtered by the configured
+// Strictness and SkipRules and then capped at MaxErrors.
+// [Validator.Validate] returns the same result as []error.
 func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	if doc == nil {
 		return nil
@@ -387,6 +268,10 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 
 	// Run reference validation
 	allIssues = append(allIssues, v.getReferenceValidator().Validate(doc)...)
+
+	// Run raw-pointer and record-structure validation
+	allIssues = append(allIssues, validateBrokenXRefs(doc)...)
+	allIssues = append(allIssues, validateRecordStructure(doc)...)
 
 	// Run XRef length validation
 	allIssues = append(allIssues, v.getXRefValidator().ValidateXRefs(doc)...)
@@ -532,10 +417,11 @@ func (v *Validator) ValidateNotePointers(doc *gedcom.Document) []Issue {
 // validation issues with data completeness statistics.
 //
 // The report covers date logic, cross-references, duplicates, custom tags and
-// completeness. It is not the full issue set: the header, XRef-length, encoding
-// and note-pointer checks run only under [Validator.ValidateAll], so a caller
-// reading QualityReport's counts alone can see a clean report for a document
-// ValidateAll flags. Use ValidateAll when completeness of the issue set matters.
+// completeness. It is not the full issue set: the header, broken-pointer,
+// record-structure, XRef-length, encoding and note-pointer checks run only
+// under [Validator.ValidateAll], so a caller reading QualityReport's counts
+// alone can see a clean report for a document ValidateAll flags. Use
+// ValidateAll when completeness of the issue set matters.
 func (v *Validator) QualityReport(doc *gedcom.Document) *QualityReport {
 	if doc == nil {
 		return &QualityReport{

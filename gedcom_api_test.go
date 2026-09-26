@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -307,8 +308,10 @@ func TestValidate(t *testing.T) {
 		wantErrors bool
 	}{
 		{
+			// testGedcomMinimal has no header SUBM, which Validate reports as
+			// a MISSING_SUBM warning; this fixture adds one.
 			name:       "valid document",
-			input:      testGedcomMinimal,
+			input:      testGedcomValid,
 			wantErrors: false,
 		},
 		{
@@ -332,6 +335,109 @@ func TestValidate(t *testing.T) {
 			}
 		})
 	}
+}
+
+// testGedcomValid is a 5.5.1 document on which Validate reports nothing at
+// the default strictness.
+const testGedcomValid = `0 HEAD
+1 SOUR TestSoftware
+1 SUBM @U1@
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @U1@ SUBM
+1 NAME Tester
+0 @I1@ INDI
+1 NAME John /Doe/
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Jane /Smith/
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+0 TRLR
+`
+
+// testGedcomThreeIssues reports, at the default strictness, one issue of each
+// of the three record-structure codes, in this order: BROKEN_XREF (line 9),
+// MISSING_REQUIRED_FIELD (line 8) and EMPTY_FAMILY (line 10).
+const testGedcomThreeIssues = `0 HEAD
+1 SOUR TestSoftware
+1 SUBM @U1@
+1 GEDC
+2 VERS 5.5.1
+0 @U1@ SUBM
+1 NAME Tester
+0 @I1@ INDI
+1 ASSO @I999@
+0 @F1@ FAM
+0 TRLR
+`
+
+// TestValidateWithOptionsHonoursOptions pins that the []error facade applies
+// MaxErrors and SkipRules (and Strictness) exactly as ValidateAllWithOptions
+// does, and that each element is a *validator.Issue.
+func TestValidateWithOptionsHonoursOptions(t *testing.T) {
+	doc, err := Decode(strings.NewReader(testGedcomThreeIssues))
+	if err != nil {
+		t.Fatalf("setup Decode() failed: %v", err)
+	}
+
+	codes := func(errs []error) []string {
+		t.Helper()
+		var out []string
+		for _, e := range errs {
+			var issue *validator.Issue
+			if !errors.As(e, &issue) {
+				t.Fatalf("element %T (%v) is not a *validator.Issue", e, e)
+			}
+			out = append(out, issue.Code)
+		}
+		return out
+	}
+
+	all := codes(ValidateWithOptions(doc, nil))
+	want := []string{validator.CodeBrokenXRef, validator.CodeMissingRequiredField, validator.CodeEmptyFamily}
+	if !slices.Equal(all, want) {
+		t.Fatalf("ValidateWithOptions(nil) codes = %v, want %v", all, want)
+	}
+
+	t.Run("MaxErrors", func(t *testing.T) {
+		got := codes(ValidateWithOptions(doc, &ValidateOptions{MaxErrors: 2}))
+		if !slices.Equal(got, want[:2]) {
+			t.Errorf("MaxErrors=2 codes = %v, want %v", got, want[:2])
+		}
+	})
+
+	t.Run("SkipRules", func(t *testing.T) {
+		got := codes(ValidateWithOptions(doc, &ValidateOptions{SkipRules: []string{validator.CodeMissingRequiredField}}))
+		wantSkipped := []string{validator.CodeBrokenXRef, validator.CodeEmptyFamily}
+		if !slices.Equal(got, wantSkipped) {
+			t.Errorf("SkipRules codes = %v, want %v", got, wantSkipped)
+		}
+	})
+
+	t.Run("Strictness", func(t *testing.T) {
+		got := codes(ValidateWithOptions(doc, &ValidateOptions{Strictness: validator.StrictnessRelaxed}))
+		if !slices.Equal(got, want[:1]) {
+			t.Errorf("StrictnessRelaxed codes = %v, want %v (errors only)", got, want[:1])
+		}
+	})
+
+	t.Run("MatchesValidateAllWithOptions", func(t *testing.T) {
+		opts := &ValidateOptions{MaxErrors: 2, SkipRules: []string{validator.CodeBrokenXRef}}
+		errs := ValidateWithOptions(doc, opts)
+		issues := ValidateAllWithOptions(doc, opts)
+		if len(errs) != len(issues) {
+			t.Fatalf("len = %d, ValidateAllWithOptions len = %d", len(errs), len(issues))
+		}
+		for i := range issues {
+			if errs[i].Error() != issues[i].Error() {
+				t.Errorf("[%d] = %q, want %q", i, errs[i].Error(), issues[i].Error())
+			}
+		}
+	})
 }
 
 func TestValidateMatchesDirectCall(t *testing.T) {

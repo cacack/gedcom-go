@@ -9,6 +9,7 @@ package validator
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cacack/gedcom-go/v2/gedcom"
 )
@@ -56,14 +57,21 @@ func (v *ReferenceValidator) Validate(doc *gedcom.Document) []Issue {
 
 	var issues []Issue
 
-	// Check individual references
-	for _, ind := range doc.Individuals() {
-		issues = append(issues, v.checkIndividualReferences(doc, ind)...)
-	}
-
-	// Check family references
-	for _, fam := range doc.Families() {
-		issues = append(issues, v.checkFamilyReferences(doc, fam)...)
+	// Walk the records, not doc.Individuals()/Families(), so each entity's
+	// pointer lines come from the record it was decoded from. The decoder
+	// does not reject duplicate XRefs and XRefMap keeps only the last record
+	// per XRef, so a lookup through XRefMap would give every duplicate the
+	// last one's lines (ADR 0007).
+	for _, record := range doc.Records {
+		if record == nil {
+			continue
+		}
+		if ind, ok := record.GetIndividual(); ok {
+			issues = append(issues, v.checkIndividualReferences(doc, record, ind)...)
+		}
+		if fam, ok := record.GetFamily(); ok {
+			issues = append(issues, v.checkFamilyReferences(doc, record, fam)...)
+		}
 	}
 
 	return issues
@@ -71,8 +79,10 @@ func (v *ReferenceValidator) Validate(doc *gedcom.Document) []Issue {
 
 // checkIndividualReferences validates all cross-references within an individual record.
 // This includes FAMC (child-in-family), FAMS (spouse-in-family), and SOUR references.
-func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, ind *gedcom.Individual) []Issue {
+func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, record *gedcom.Record, ind *gedcom.Individual) []Issue {
 	var issues []Issue
+
+	lines := newPointerLines(record)
 
 	// Check FAMC references (ChildInFamilies)
 	for i, link := range ind.ChildInFamilies {
@@ -86,6 +96,7 @@ func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, ind
 				fmt.Sprintf("FAMC reference to non-existent family %s", link.FamilyXRef),
 				ind.XRef,
 			).WithRelatedXRef(link.FamilyXRef).
+				WithLineNumber(lines.next("FAMC", link.FamilyXRef)).
 				WithDetail("reference_type", string(RefTypeFAMC)).
 				WithDetail("field", fmt.Sprintf("ChildInFamilies[%d]", i))
 			issues = append(issues, issue)
@@ -104,6 +115,7 @@ func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, ind
 				fmt.Sprintf("FAMS reference to non-existent family %s", link.FamilyXRef),
 				ind.XRef,
 			).WithRelatedXRef(link.FamilyXRef).
+				WithLineNumber(lines.next("FAMS", link.FamilyXRef)).
 				WithDetail("reference_type", string(RefTypeFAMS)).
 				WithDetail("field", fmt.Sprintf("SpouseInFamilies[%d]", i))
 			issues = append(issues, issue)
@@ -122,6 +134,7 @@ func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, ind
 				fmt.Sprintf("SOUR reference to non-existent source %s", citation.SourceXRef),
 				ind.XRef,
 			).WithRelatedXRef(citation.SourceXRef).
+				WithLineNumber(lines.next("SOUR", citation.SourceXRef)).
 				WithDetail("reference_type", string(RefTypeSOUR)).
 				WithDetail("field", fmt.Sprintf("SourceCitations[%d]", i))
 			issues = append(issues, issue)
@@ -133,8 +146,9 @@ func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, ind
 
 // checkFamilyReferences validates all cross-references within a family record.
 // This includes HUSB, WIFE, and CHIL references.
-func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, fam *gedcom.Family) []Issue {
+func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, record *gedcom.Record, fam *gedcom.Family) []Issue {
 	var issues []Issue
+	lines := newPointerLines(record)
 
 	// Check HUSB reference
 	if fam.Husband != "" {
@@ -145,6 +159,7 @@ func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, fam *ge
 				fmt.Sprintf("HUSB reference to non-existent individual %s", fam.Husband),
 				fam.XRef,
 			).WithRelatedXRef(fam.Husband).
+				WithLineNumber(lines.next("HUSB", fam.Husband)).
 				WithDetail("reference_type", string(RefTypeHUSB)).
 				WithDetail("field", "Husband")
 			issues = append(issues, issue)
@@ -160,6 +175,7 @@ func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, fam *ge
 				fmt.Sprintf("WIFE reference to non-existent individual %s", fam.Wife),
 				fam.XRef,
 			).WithRelatedXRef(fam.Wife).
+				WithLineNumber(lines.next("WIFE", fam.Wife)).
 				WithDetail("reference_type", string(RefTypeWIFE)).
 				WithDetail("field", "Wife")
 			issues = append(issues, issue)
@@ -178,6 +194,7 @@ func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, fam *ge
 				fmt.Sprintf("CHIL reference to non-existent individual %s", childXRef),
 				fam.XRef,
 			).WithRelatedXRef(childXRef).
+				WithLineNumber(lines.next("CHIL", childXRef)).
 				WithDetail("reference_type", string(RefTypeCHIL)).
 				WithDetail("field", fmt.Sprintf("Children[%d]", i))
 			issues = append(issues, issue)
@@ -185,6 +202,41 @@ func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, fam *ge
 	}
 
 	return issues
+}
+
+// pointerLines finds the source line of a typed pointer by looking up the
+// level-1 raw tag it was decoded from. The typed entities carry no line
+// numbers, but the record's raw Tags do (ADR 0003, ADR 0007).
+type pointerLines struct {
+	record *gedcom.Record
+	seen   map[string]int // tag + "\x00" + xref -> occurrences already matched
+}
+
+// newPointerLines returns a line finder over record, the record the checked
+// entity was decoded from, which must be non-nil. Do not look the record up by
+// XRef: with duplicate XRefs, doc.XRefMap holds only the last one.
+func newPointerLines(record *gedcom.Record) *pointerLines {
+	return &pointerLines{record: record, seen: map[string]int{}}
+}
+
+// next returns the line number of the next unmatched level-1 tag named tag
+// whose trimmed value is xref, so repeated pointers (two CHIL lines naming the
+// same child) each get their own line. It returns 0 when the record has no
+// such raw tag, as for an entity built in code.
+func (p *pointerLines) next(tag, xref string) int {
+	key := tag + "\x00" + xref
+	skip := p.seen[key]
+	p.seen[key]++
+	for _, t := range p.record.Tags {
+		if t == nil || t.Level != 1 || t.Tag != tag || strings.TrimSpace(t.Value) != xref {
+			continue
+		}
+		if skip == 0 {
+			return t.LineNumber
+		}
+		skip--
+	}
+	return 0
 }
 
 // ReferenceReport provides statistics about cross-references in a document.

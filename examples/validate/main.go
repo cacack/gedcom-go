@@ -2,6 +2,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -38,59 +39,49 @@ func main() {
 	fmt.Printf("Version: %s\n", doc.Header.Version)
 	fmt.Printf("Encoding: %s\n\n", doc.Header.Encoding)
 
-	// Validate the document
+	// Validate the document. Every element Validate returns is a
+	// *validator.Issue, so errors.As recovers its code, severity and location.
 	v := validator.New()
-	errors := v.Validate(doc)
+	errs := v.Validate(doc)
 
 	// Display results
-	if len(errors) == 0 {
+	if len(errs) == 0 {
 		fmt.Println("✅ Validation passed!")
-		fmt.Println("No errors found.")
+		fmt.Println("No issues found.")
 		return
 	}
 
-	fmt.Printf("❌ Validation failed with %d error(s):\n\n", len(errors))
+	fmt.Printf("❌ Validation found %d issue(s):\n\n", len(errs))
 
-	// Group errors by code
-	errorsByCode := make(map[string][]error)
-	for _, err := range errors {
-		// Try to get the code from ValidationError
-		code := "UNKNOWN"
-		if verr, ok := err.(*validator.ValidationError); ok {
-			code = verr.Code
+	// Group issues by code
+	issuesByCode := make(map[string][]*validator.Issue)
+	for _, err := range errs {
+		var issue *validator.Issue
+		if !errors.As(err, &issue) {
+			continue
 		}
-		errorsByCode[code] = append(errorsByCode[code], err)
+		issuesByCode[issue.Code] = append(issuesByCode[issue.Code], issue)
 	}
 
-	// Display errors grouped by code
-	for code, errs := range errorsByCode {
-		fmt.Printf("Error Code: %s (%d occurrence(s))\n", code, len(errs))
+	// Display issues grouped by code
+	for code, issues := range issuesByCode {
+		fmt.Printf("Code: %s (%d occurrence(s))\n", code, len(issues))
 
 		// Show first 3 examples
-		for i, err := range errs {
+		for i, issue := range issues {
 			if i >= 3 {
-				fmt.Printf("  ... and %d more\n", len(errs)-3)
+				fmt.Printf("  ... and %d more\n", len(issues)-3)
 				break
 			}
 
-			// Display error message
-			if verr, ok := err.(*validator.ValidationError); ok {
-				details := []string{}
-				if verr.Line > 0 {
-					details = append(details, fmt.Sprintf("line %d", verr.Line))
-				}
-				if verr.XRef != "" {
-					details = append(details, fmt.Sprintf("XRef: %s", verr.XRef))
-				}
-
-				if len(details) > 0 {
-					fmt.Printf("  - %s (%s)\n", verr.Message, strings.Join(details, ", "))
-				} else {
-					fmt.Printf("  - %s\n", verr.Message)
-				}
-			} else {
-				fmt.Printf("  - %v\n", err)
+			details := []string{issue.Severity.String()}
+			if issue.LineNumber > 0 {
+				details = append(details, fmt.Sprintf("line %d", issue.LineNumber))
 			}
+			if issue.RecordXRef != "" {
+				details = append(details, fmt.Sprintf("XRef: %s", issue.RecordXRef))
+			}
+			fmt.Printf("  - %s (%s)\n", issue.Message, strings.Join(details, ", "))
 		}
 		fmt.Println()
 	}
@@ -98,8 +89,8 @@ func main() {
 	// Summary
 	fmt.Println("=== Summary ===")
 	fmt.Printf("Total Records: %d\n", len(doc.Records))
-	fmt.Printf("Total Errors: %d\n", len(errors))
-	fmt.Printf("Error Types: %d\n", len(errorsByCode))
+	fmt.Printf("Total Issues: %d\n", len(errs))
+	fmt.Printf("Issue Codes: %d\n", len(issuesByCode))
 
 	// Exit with error code if validation failed
 	os.Exit(1)

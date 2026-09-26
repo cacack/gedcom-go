@@ -1,8 +1,8 @@
-// issue.go provides enhanced validation issue types with severity levels and rich context.
+// issue.go provides the validation Issue type with severity levels and rich context.
 //
-// The Issue type complements the existing ValidationError type, providing more detailed
-// information for data quality validation including severity classification, error codes,
-// and contextual details for actionable diagnostics.
+// Issue is the single finding type of this package: every check reports one, with a
+// severity classification, a Code* constant and contextual details for actionable
+// diagnostics. Issue implements error, and Validator.Validate returns *Issue values.
 
 package validator
 
@@ -80,6 +80,28 @@ const (
 
 	// CodeOrphanedSOUR indicates a SOUR reference points to a non-existent source.
 	CodeOrphanedSOUR = "ORPHANED_SOUR"
+
+	// CodeBrokenXRef indicates a pointer in a record's raw tags names no record
+	// in the document. It carries SeverityError, the line of the pointing tag,
+	// the missing pointer as RelatedXRef and the tag name under Details["tag"].
+	//
+	// It covers every pointer the typed Orphaned* checks do not: those are
+	// reported under their own code instead, never under both.
+	CodeBrokenXRef = "BROKEN_XREF"
+)
+
+// Error codes for record structure validation.
+const (
+	// CodeMissingRequiredField indicates an individual record has no NAME.
+	// It carries SeverityWarning -- the GEDCOM specifications allow an
+	// individual with no name, but a nameless person is rarely intended -- the
+	// line of the record, and the missing tag under Details["field"].
+	CodeMissingRequiredField = "MISSING_REQUIRED_FIELD"
+
+	// CodeEmptyFamily indicates a family record has no HUSB, WIFE or CHIL. It
+	// carries SeverityWarning, as the specifications allow such a family, and
+	// the line of the record.
+	CodeEmptyFamily = "EMPTY_FAMILY"
 )
 
 // Error codes for duplicate detection.
@@ -187,8 +209,8 @@ type Issue struct {
 	// (date logic, duplicate detection) or the document as a whole (a missing
 	// header SUBM) have no single line to point at, and the typed Header
 	// fields are not attributed to one. Codes raised while walking raw tags --
-	// the custom-tag and control-character checks, and the XRef-length check
-	// -- do carry it.
+	// the custom-tag and control-character checks, the XRef-length check, and
+	// the broken-pointer and record-structure checks -- do carry it.
 	//
 	// Do not read 0 as "line 1".
 	LineNumber int

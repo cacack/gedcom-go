@@ -889,13 +889,13 @@ replacement does not exist, and the compile break and the behaviour change arriv
 together. `v2.5.0` also carries a `// Deprecated:` marker on almost every
 symbol listed here, so your tooling will point at the call sites that still need
 attention.
-Seven symbols are the exception. Three note fields — `Event.Notes`,
+Eight symbols are the exception. Three note fields — `Event.Notes`,
 `Association.Notes` and `SourceRepositoryLink.Notes` — carry no marker because
 their replacement fields exist only in v3. `Address.Phone`, `.Email` and
 `.Website` are in the same position: their replacement on `Repository` exists
 only in v3 (see [their own entry](#addressphone-email-and-website-in-detail)).
-`EventOccupation` carries no marker either. See below; grep for those seven
-rather than relying on tooling.
+`EventOccupation` and `validator.ValidationError` carry no marker either. See
+below; grep for those eight rather than relying on tooling.
 
 **On `v2.4.0` or earlier your tooling flags only a few of these.** The markers
 there cover the six record-level `Notes` fields, `Note.Continuation`,
@@ -921,6 +921,7 @@ skip `v2.5.0`, this page is the only warning you get for them.
 | `validator.PlaceConsistencyValidator`, `validator.NewPlaceConsistencyValidator()`, `validator.CodePlaceCarrierMismatch` | none needed — the check compared two place carriers and there is now one. Never shipped in a tagged release |
 | `gedcom.EventOccupation` | `gedcom.AttributeOccupation`, matched over `Individual.Attributes` — see below, the v2 constant never matched an ordinary `OCCU` |
 | `gedcom.Address.Phone`, `.Email`, `.Website` | `Repository.Phone`, `.Email`, `.Website` — each now a `[]string`, plus a new `Repository.Fax`. No v2 form and no `// Deprecated:` marker; see below |
+| `validator.ValidationError` | `*validator.Issue`, which every element of `Validate`'s `[]error` now is — see below, `Validate` also returns more findings |
 
 ```go
 // v2
@@ -1419,6 +1420,89 @@ The shared converters are also called for submitter and event addresses. On
 those the three fields were always empty (see above), so dropping them from the
 converters loses nothing there.
 
+### `ValidationError` in detail
+
+`Validator.Validate` (and the facade's `gedcomgo.Validate` and
+`ValidateWithOptions`) still returns `[]error`, but it is now
+`ValidateAll` in that shape: the same checks, the same options, the same
+order, with every element a `*validator.Issue`. `ValidationError` is gone.
+
+| v2 | v3 |
+|----|----|
+| `err.(*validator.ValidationError)` | `var issue *validator.Issue; errors.As(err, &issue)` |
+| `verr.Code` | `issue.Code` |
+| `verr.Message` | `issue.Message` |
+| `verr.Line` | `issue.LineNumber` |
+| `verr.XRef` | `issue.RecordXRef` (for `BROKEN_XREF`, the missing target is `issue.RelatedXRef`) |
+| `"BROKEN_XREF"` | `validator.CodeBrokenXRef` |
+| `"MISSING_REQUIRED_FIELD"` | `validator.CodeMissingRequiredField` |
+| `"EMPTY_FAMILY"` | `validator.CodeEmptyFamily` |
+
+The code strings are unchanged, so a `SkipRules` entry or a stored code keeps
+matching. A type assertion on `*validator.ValidationError` stops compiling; a
+bare `err.(validator.Issue)` compiles but never matches, since the elements are
+pointers.
+
+What changes without a compile error is **what `Validate` returns**:
+
+- **Many more findings.** v2's `Validate` ran three rules and read none of its
+  options. v3's runs every `ValidateAll` check — header `SUBM`, date logic,
+  `ORPHANED_*` references, XRef length, note pointers, duplicates, encoding —
+  so a document v2 passed can now fail. At the default `StrictnessNormal` the
+  result includes warnings; use `StrictnessRelaxed` for errors only.
+- **Options now apply.** `Strictness`, `MaxErrors`, `SkipRules` and every other
+  `ValidateOptions` field affect `Validate` exactly as they affect
+  `ValidateAll`; v2's `Validate` read none of them.
+- **Severities.** `BROKEN_XREF` is `SeverityError`. `MISSING_REQUIRED_FIELD`
+  and `EMPTY_FAMILY` are `SeverityWarning` — both are legal per the GEDCOM
+  specifications — so `StrictnessRelaxed` drops them.
+- **Different code for the six typed pointers, no double reports.** A broken
+  level-1 `FAMC`, `FAMS` or `SOUR` on an individual, or `HUSB`, `WIFE` or
+  `CHIL` on a family, which v2's `Validate` reported as `BROKEN_XREF`, is now
+  reported once as its `ORPHANED_*` code (`ORPHANED_FAMC`, … `ORPHANED_CHIL`),
+  not also as `BROKEN_XREF`, and still carries the pointing tag's line. Code
+  that matched `BROKEN_XREF` for these must also match the `ORPHANED_*` codes.
+  A raw pointer the typed entity does not hold — the first of two level-1
+  `HUSB` lines in a malformed family — is still reported as `BROKEN_XREF`.
+  `BROKEN_XREF` covers every other raw pointer (`ASSO`, `NOTE`, nested `SOUR`,
+  `OBJE`, …) and ignores the 7.0 `@VOID@` sentinel and `CONT`/`CONC` text.
+- **Only level-1 tags count.** `MISSING_REQUIRED_FIELD` looks for a level-1
+  `NAME`; `EMPTY_FAMILY` for a level-1 `HUSB`, `WIFE` or `CHIL`. v2 matched at
+  any level, so a family whose only "member" was a `2 HUSB` age structure under
+  an event passed. A record built in code with a typed entity and no raw tags
+  is judged by the entity.
+- **Line numbers and text.** All three codes, and the `ORPHANED_*` codes, now
+  carry `LineNumber` (the pointing tag, or the record's level-0 line) for a
+  decoded document; an entity built in code has no source line and reports 0.
+  `Error()` renders in the `Issue` format,
+  `[SEVERITY] CODE: message (@XREF@[ -> @RELATED@]) [line N]` — the
+  `-> @RELATED@` part appears whenever the issue names a target, as every
+  `BROKEN_XREF` and `ORPHANED_*` does — printing both the XRef and the line
+  where v2 printed only the XRef. Code that parses the error text must be
+  updated.
+
+`ValidateAll` itself gains the three codes, so a caller of `ValidateAll` also
+sees new findings — up to one per individual without a `NAME` and one per
+family without members.
+
+`converter`'s post-conversion validation goes through `Validate`, so
+`ConversionReport.ValidationIssues` now lists the full `ValidateAll` set (less
+duplicate detection, which it skips) in the `Issue` string format.
+
+There is no v2 form of this change: v2's `Validate` cannot return `*Issue`, and
+`v2.5.0` carries no `// Deprecated:` marker on `ValidationError`. To stage it,
+move to `ValidateAll` while still on v2 — it returns `[]Issue` there too —
+bearing in mind that v2's `ValidateAll` does not yet report the three codes
+above.
+
+#### Known downstream call sites
+
+None expected: my-family calls `NewWithOptions`, `QualityReport` and
+`ValidateAll`, never `Validate` or `ValidationError`, per the survey in #500.
+my-family is not checked out for this change, so that was not re-verified;
+re-grep for `ValidationError` and `.Validate(` before relying on it. Its
+`ValidateAll` results will include the three new codes.
+
 ## Checking your upgrade
 
 `make api-check` in this repository reports the apidiff between `main` and the
@@ -1446,6 +1530,10 @@ form changes from a zero timestamp to the date text.
 Nor does it catch a value of one of the six
 [no-longer-comparable types](#types-that-are-no-longer-comparable) compared or
 hashed through an `any`. That compiles and panics at run time.
+
+Nor does it catch `Validator.Validate` returning a different set of findings:
+code that only prints or counts its `[]error` compiles unchanged and sees more
+of them. See the `ValidationError` entry above.
 
 See [`docs/governance/policies/api-stability.md`](../governance/policies/api-stability.md)
 for what the project treats as a breaking change, including the semantic breaks

@@ -137,24 +137,17 @@ func TestQualityAnalyzer_NilEventElement(t *testing.T) {
 	}
 }
 
-// primaryName, validateIndividual and validateFamily each guard an argument the
-// public path already filters. The guards are defensive, so only a direct call
-// reaches them -- and a guard no test can enter is a guard no test can defend.
+// primaryName guards an argument the public path already filters. The guard
+// is defensive, so only a direct call reaches it -- and a guard no test can
+// enter is a guard no test can defend.
 func TestNilArgumentGuards(t *testing.T) {
 	if got := primaryName(nil); got != nil {
 		t.Errorf("primaryName(nil) = %#v, want nil", got)
 	}
-
-	v := New()
-	v.validateIndividual(nil)
-	v.validateFamily(nil)
-	if len(v.errors) != 0 {
-		t.Errorf("nil records produced %d error(s), want 0", len(v.errors))
-	}
 }
 
-// A nil tag on a family record reaches validateFamily's own loop, which is a
-// different loop from the individual one the record/tag fixtures exercise.
+// A nil tag on a family record reaches familyHasMembers' own loop, which is a
+// different path from the individual one the record/tag fixtures exercise.
 func TestValidate_NilTagOnFamilyRecord(t *testing.T) {
 	build := func(tags []*gedcom.Tag) *gedcom.Document {
 		return panelDoc(&gedcom.Record{XRef: "@F1@", Type: gedcom.RecordTypeFamily, Tags: tags})

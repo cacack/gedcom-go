@@ -176,29 +176,35 @@ func EncodeWithOptions(w io.Writer, doc *Document, opts *EncodeOptions) error {
 	return encoder.EncodeWithOptions(w, doc, opts)
 }
 
-// Validate validates a GEDCOM document and returns any validation errors.
-// This performs basic structural validation including cross-reference checks
-// and required field validation.
+// Validate validates a GEDCOM document with default options and returns its
+// issues as errors. It is [ValidateAll] in the error-interface shape: the same
+// checks and the same results, each element a *[Issue], so errors.As recovers
+// the code, severity and line number. At the default strictness the result
+// holds warnings as well as errors.
 //
-// For comprehensive validation with severity levels, use [ValidateAll].
 // For custom validation configuration (strictness, MaxErrors, SkipRules),
 // use [ValidateWithOptions] or [ValidateAllWithOptions].
 func Validate(doc *Document) []error {
 	return validator.New().Validate(doc)
 }
 
-// ValidateWithOptions validates a GEDCOM document with the given options
-// and returns any validation errors. If opts is nil, default options are used.
+// ValidateWithOptions validates a GEDCOM document with the given options and
+// returns its issues as errors, each element a *[Issue]. If opts is nil,
+// default options are used.
 //
-// Note: [ValidateOptions.MaxErrors] and [ValidateOptions.SkipRules] only
-// affect [ValidateAllWithOptions]; the legacy []error API ignores them.
+// Every [ValidateOptions] field applies, exactly as it does to
+// [ValidateAllWithOptions]: Strictness selects the severities returned,
+// SkipRules drops the listed codes, MaxErrors caps the count, and the
+// remaining fields configure or disable individual checks. No field is
+// ignored.
 func ValidateWithOptions(doc *Document, opts *ValidateOptions) []error {
 	return validator.NewWithOptions(opts).Validate(doc)
 }
 
-// ValidateAll returns comprehensive validation as Issues with severity levels.
-// This is the enhanced API that provides more detail than [Validate], including
-// date logic validation, reference checking, and quality analysis.
+// ValidateAll returns every validation finding as Issues with severity levels:
+// header, date logic, cross-reference, record structure, XRef length, note
+// pointer, duplicate and encoding checks. [Validate] returns the same result
+// as []error.
 //
 // Issues are categorized by severity: Error, Warning, and Info.
 // For custom validation configuration (strictness, thresholds, skip rules),
