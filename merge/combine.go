@@ -564,11 +564,12 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 	out := h1.Clone()
 	conflicts := mergeScalarHeaderFields(out, h1, h2)
 
-	// Date: prefer h1's. If h1 has a zero Date and h2 has one,
-	// adopt h2's silently. (We don't record a conflict for Date
-	// because the timestamps will essentially always differ; it
-	// would be noise.)
-	if h1.Date.IsZero() && !h2.Date.IsZero() {
+	// Date: prefer h1's. If h1 has no Date and h2 has one, adopt h2's
+	// silently. No typed "Date" conflict is recorded, because transmission
+	// dates will essentially always differ and it would be noise; a doc2
+	// "1 DATE" structure dropped from the raw Tags below is still reported,
+	// as "Tags.DATE", like any other colliding header structure.
+	if h1.Date == "" && h2.Date != "" {
 		out.Date = h2.Date
 	}
 
@@ -589,14 +590,67 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 	// non-empty, the encoded file would name doc2's submitter while
 	// out.Submitter still named doc1's. The doc1-wins rule would invert on
 	// the way to disk, with no conflict reported.
+	//
+	// Date is the same case: a typed doc1 Date must keep doc2's "1 DATE" out,
+	// or the encoded header would carry doc2's date under doc1's field.
 	occupied := make(map[string]bool)
 	if h1.Submitter != "" {
 		occupied["SUBM"] = true
 	}
+	if h1.Date != "" {
+		occupied["DATE"] = true
+	}
 	tagConflicts := appendNonCollidingHeaderTags(out, h2, occupied)
 	conflicts = append(conflicts, tagConflicts...)
 
+	// Keeping doc2's DATE out is only half of doc1 winning: once out.Tags is
+	// non-empty the encoder writes the header from Tags alone, so a date that
+	// lives only in doc1's typed field would vanish from the file. Give it a
+	// raw line of its own so the encoded header says what out.Date says.
+	if h1.Date != "" && !hasLevel1HeaderTag(h1.Tags, "DATE") && len(out.Tags) > 0 {
+		insertHeaderDateTag(out, h1.Date)
+	}
+
 	return out, conflicts
+}
+
+// hasLevel1HeaderTag reports whether tags carries a level-1 structure named name.
+func hasLevel1HeaderTag(tags []*gedcom.Tag, name string) bool {
+	for _, t := range tags {
+		if t != nil && t.Level == 1 && t.Tag == name {
+			return true
+		}
+	}
+	return false
+}
+
+// insertHeaderDateTag inserts a "1 DATE value" structure into out.Tags at the
+// position the header grammar gives it: after SOUR/DEST (and, in 7.0, after
+// GEDC/SCHMA, which open the header), before the first structure the grammar
+// places after DATE. With none of those present it goes last. Inserting only
+// in front of a level-1 tag keeps every existing subtree intact.
+func insertHeaderDateTag(out *gedcom.Header, value string) {
+	after := map[string]bool{
+		"SUBM": true, "SUBN": true, "FILE": true, "COPR": true,
+		"CHAR": true, "LANG": true, "PLAC": true, "NOTE": true,
+	}
+	// 5.5/5.5.1 declare GEDC late, after DATE; 7.0 puts it first.
+	if out.Version != gedcom.Version70 {
+		after["GEDC"] = true
+	}
+
+	at := len(out.Tags)
+	for i, t := range out.Tags {
+		if t != nil && t.Level == 1 && after[t.Tag] {
+			at = i
+			break
+		}
+	}
+
+	tag := &gedcom.Tag{Level: 1, Tag: "DATE", Value: value}
+	out.Tags = append(out.Tags, nil)
+	copy(out.Tags[at+1:], out.Tags[at:])
+	out.Tags[at] = tag
 }
 
 // appendNonCollidingHeaderTags appends h2's header structures to out, skipping

@@ -1,7 +1,5 @@
 package gedcom
 
-import "time"
-
 // Header contains metadata about the GEDCOM file.
 type Header struct {
 	// Version is the GEDCOM specification version
@@ -13,8 +11,15 @@ type Header struct {
 	// SourceSystem identifies the software that created the file
 	SourceSystem string
 
-	// Date is when the file was created
-	Date time.Time
+	// Date is the transmission date from HEAD.DATE, verbatim as the file
+	// wrote it (for example "7 AUG 2026"). It is a GEDCOM DATE_EXACT value,
+	// kept as a string so it round-trips losslessly like every other date in
+	// this package (see ADR 0001); call ParseDate for a structured value.
+	//
+	// HEAD.DATE.TIME has no typed field: it is kept in Tags with the rest of
+	// the header, which is what a decoded document is encoded from. A header
+	// built in memory, with no Tags, gets "1 DATE" and no TIME line.
+	Date string
 
 	// Language is the primary language used in the file (optional)
 	Language string

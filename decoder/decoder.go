@@ -349,6 +349,12 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 			// "1 CHAR  UTF-8" would otherwise be reported invalid for a file
 			// charset detection reads perfectly well. See #426.
 			doc.Header.Encoding = gedcom.Encoding(tagToken(line.Value))
+		case "DATE":
+			// Level 1 only: HEAD.SOUR.DATA.DATE is the source data's
+			// publication date, not the file's transmission date.
+			if line.Level == 1 {
+				doc.Header.Date = line.Value
+			}
 		case "LANG":
 			doc.Header.Language = line.Value
 		case "COPR":

@@ -483,3 +483,221 @@ func TestHeaderTagsSubmitterRoundTrip(t *testing.T) {
 		t.Errorf("header did not round-trip byte-identically:\ngot:\n%s\nwant:\n%s", got, want)
 	}
 }
+
+// TestHeaderFieldsDate covers the hand-built path for Header.Date (#495): the
+// field is written verbatim as "1 DATE", between SOUR and SUBM in both the
+// 5.5.1 and 7.0 grammars, and omitted when empty.
+func TestHeaderFieldsDate(t *testing.T) {
+	encode := func(t *testing.T, h *gedcom.Header) string {
+		t.Helper()
+		var buf bytes.Buffer
+		if err := Encode(&buf, &gedcom.Document{Header: h}); err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+		return buf.String()
+	}
+
+	t.Run("5.5.1 places DATE after SOUR, before SUBM", func(t *testing.T) {
+		out := encode(t, &gedcom.Header{
+			Version:      gedcom.Version551,
+			Encoding:     gedcom.EncodingUTF8,
+			SourceSystem: "TestSystem",
+			Date:         "7 AUG 2026",
+			Submitter:    "@U1@",
+		})
+		assertLineOrder(t, out,
+			"0 HEAD",
+			"1 SOUR TestSystem",
+			"1 DATE 7 AUG 2026",
+			"1 SUBM @U1@",
+			"1 GEDC",
+			"2 VERS 5.5.1",
+			"1 CHAR UTF-8",
+		)
+	})
+
+	t.Run("7.0 places DATE after SOUR, before SUBM", func(t *testing.T) {
+		out := encode(t, &gedcom.Header{
+			Version:      gedcom.Version70,
+			SourceSystem: "TestSystem",
+			Date:         "7 AUG 2026",
+			Submitter:    "@U1@",
+		})
+		assertLineOrder(t, out,
+			"0 HEAD",
+			"1 GEDC",
+			"2 VERS 7.0",
+			"1 SOUR TestSystem",
+			"1 DATE 7 AUG 2026",
+			"1 SUBM @U1@",
+		)
+	})
+
+	t.Run("value is written verbatim", func(t *testing.T) {
+		// Not a well-formed DATE_EXACT: the encoder does not normalize it.
+		out := encode(t, &gedcom.Header{Version: gedcom.Version551, Date: "abt 1 jan 2000"})
+		if !strings.Contains(out, "\n1 DATE abt 1 jan 2000\n") {
+			t.Errorf("DATE not written verbatim:\n%s", out)
+		}
+	})
+
+	t.Run("line break in Date cannot inject a line", func(t *testing.T) {
+		// A hand-built Date taken from user input must not be able to start
+		// a new GEDCOM line: the break becomes a CONT under DATE instead.
+		out := encode(t, &gedcom.Header{Version: gedcom.Version551, Date: "1 JAN 2000\n0 @X@ INDI"})
+		for _, line := range strings.Split(out, "\n") {
+			if strings.HasPrefix(line, "0 @X@") {
+				t.Fatalf("Date injected a level-0 record:\n%s", out)
+			}
+		}
+		if !strings.Contains(out, "\n1 DATE 1 JAN 2000\n2 CONT 0 @X@ INDI\n") {
+			t.Errorf("line break not written as CONT:\n%s", out)
+		}
+		doc, err := decoder.Decode(strings.NewReader(out))
+		if err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if _, ok := doc.XRefMap["@X@"]; ok {
+			t.Error("injected @X@ record decoded from the encoded header")
+		}
+	})
+
+	t.Run("empty Date emits no DATE", func(t *testing.T) {
+		out := encode(t, &gedcom.Header{Version: gedcom.Version551, SourceSystem: "TestSystem"})
+		if strings.Contains(out, "DATE") {
+			t.Errorf("synthesized a DATE the header never had:\n%s", out)
+		}
+	})
+
+	t.Run("hand-built Date survives encode and decode", func(t *testing.T) {
+		out := encode(t, &gedcom.Header{Version: gedcom.Version551, Date: "7 AUG 2026"})
+		doc, err := decoder.Decode(strings.NewReader(out))
+		if err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if doc.Header.Date != "7 AUG 2026" {
+			t.Errorf("Header.Date = %q, want %q", doc.Header.Date, "7 AUG 2026")
+		}
+	})
+}
+
+// TestHeaderDateRoundTrip is the #495 regression: a header carrying
+// "1 DATE" with a "2 TIME" subordinate decodes Header.Date verbatim and
+// re-encodes byte-identically, TIME included. TIME has no typed field; it
+// survives through Header.Tags.
+func TestHeaderDateRoundTrip(t *testing.T) {
+	versions := []struct {
+		name  string
+		input string
+	}{
+		{"5.5", "0 HEAD\n" +
+			"1 SOUR TestApp\n" +
+			"1 DATE 7 AUG 2026\n" +
+			"2 TIME 12:34:56\n" +
+			"1 GEDC\n" +
+			"2 VERS 5.5\n" +
+			"2 FORM LINEAGE-LINKED\n" +
+			"1 CHAR UTF-8\n" +
+			"0 TRLR\n"},
+		{"5.5.1", "0 HEAD\n" +
+			"1 SOUR TestApp\n" +
+			"2 DATA Source Data\n" +
+			"3 DATE 1 JAN 1999\n" +
+			"1 DATE 7 AUG 2026\n" +
+			"2 TIME 12:34:56.78\n" +
+			"1 GEDC\n" +
+			"2 VERS 5.5.1\n" +
+			"2 FORM LINEAGE-LINKED\n" +
+			"1 CHAR UTF-8\n" +
+			"0 TRLR\n"},
+		{"7.0", "0 HEAD\n" +
+			"1 GEDC\n" +
+			"2 VERS 7.0\n" +
+			"1 SOUR TestApp\n" +
+			"2 DATA Source Data\n" +
+			"3 DATE 1 JAN 1999\n" +
+			"1 DATE 7 AUG 2026\n" +
+			"2 TIME 12:34:56Z\n" +
+			"0 TRLR\n"},
+	}
+
+	for _, tc := range versions {
+		t.Run(tc.name, func(t *testing.T) {
+			doc, err := decoder.Decode(strings.NewReader(tc.input))
+			if err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if doc.Header.Date != "7 AUG 2026" {
+				t.Errorf("Header.Date = %q, want %q", doc.Header.Date, "7 AUG 2026")
+			}
+
+			var buf bytes.Buffer
+			if err := Encode(&buf, doc); err != nil {
+				t.Fatalf("encode: %v", err)
+			}
+			if got := buf.String(); got != tc.input {
+				t.Errorf("header did not round-trip byte-identically:\ngot:\n%s\nwant:\n%s", got, tc.input)
+			}
+
+			again, err := decoder.Decode(strings.NewReader(buf.String()))
+			if err != nil {
+				t.Fatalf("re-decode: %v", err)
+			}
+			if again.Header.Date != doc.Header.Date {
+				t.Errorf("re-decoded Header.Date = %q, want %q", again.Header.Date, doc.Header.Date)
+			}
+		})
+	}
+}
+
+// TestHeaderDateIgnoresSourceDataDate pins the decoder's level-1 guard: the
+// HEAD.SOUR.DATA.DATE publication date is not the transmission date, whether
+// it comes after HEAD.DATE (where it would overwrite it) or is the only DATE
+// in the header (where it would be adopted).
+func TestHeaderDateIgnoresSourceDataDate(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"after HEAD.DATE", "0 HEAD\n" +
+			"1 DATE 7 AUG 2026\n" +
+			"1 SOUR TestApp\n" +
+			"2 DATA Source Data\n" +
+			"3 DATE 1 JAN 1999\n" +
+			"1 GEDC\n" +
+			"2 VERS 5.5.1\n" +
+			"2 FORM LINEAGE-LINKED\n" +
+			"1 CHAR UTF-8\n" +
+			"0 TRLR\n", "7 AUG 2026"},
+		{"only DATE in header", "0 HEAD\n" +
+			"1 SOUR TestApp\n" +
+			"2 DATA Source Data\n" +
+			"3 DATE 1 JAN 1999\n" +
+			"1 GEDC\n" +
+			"2 VERS 5.5.1\n" +
+			"2 FORM LINEAGE-LINKED\n" +
+			"1 CHAR UTF-8\n" +
+			"0 TRLR\n", ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			doc, err := decoder.Decode(strings.NewReader(tc.input))
+			if err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if doc.Header.Date != tc.want {
+				t.Errorf("Header.Date = %q, want %q", doc.Header.Date, tc.want)
+			}
+
+			var buf bytes.Buffer
+			if err := Encode(&buf, doc); err != nil {
+				t.Fatalf("encode: %v", err)
+			}
+			if got := buf.String(); got != tc.input {
+				t.Errorf("header did not round-trip byte-identically:\ngot:\n%s\nwant:\n%s", got, tc.input)
+			}
+		})
+	}
+}

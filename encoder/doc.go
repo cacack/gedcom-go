@@ -66,13 +66,13 @@
 // anything.
 //
 // A decoded document carries every header sub-tag in Tags, and those tags are
-// what gets written — so SCHMA, SUBM, DEST, COPR, the SOUR subtree and header
-// notes all survive a round-trip. The typed scalar fields (Version, Encoding,
-// SourceSystem, Language) are NOT consulted on this path. Setting
-// doc.Header.SourceSystem on a decoded document and encoding it does not change
-// the output; edit the corresponding entry in doc.Header.Tags instead. This is
-// the trade the library makes for a lossless header: what was read is what is
-// written.
+// what gets written — so SCHMA, SUBM, DEST, DATE (with its TIME), COPR, the
+// SOUR subtree and header notes all survive a round-trip. The typed scalar
+// fields (Version, Encoding, SourceSystem, Date, Language, Submitter) are NOT
+// consulted on this path. Setting doc.Header.SourceSystem on a decoded
+// document and encoding it does not change the output; edit the corresponding
+// entry in doc.Header.Tags instead. This is the trade the library makes for a
+// lossless header: what was read is what is written.
 //
 // A document assembled in memory has no tags, so its header is built from those
 // typed fields instead.
