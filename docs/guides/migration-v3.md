@@ -10,9 +10,11 @@ compiler cannot tell you — the value mapping.
 
 **Upgrade to `v2.5.0` before you start.** It is the last v2 minor, and it exists
 to make this migration a staged one: it carries the replacements that postdate
-`v2.4.0` and marks every symbol v3 removes as `// Deprecated:`, so your tooling
-lists the call sites and each one can be converted, tested and shipped while
-still on v2. What is left at the v3 upgrade is then the module path and the
+`v2.4.0` and marks almost every symbol v3 removes as `// Deprecated:`, so your
+tooling lists the call sites and each one can be converted, tested and shipped
+while still on v2. Four exceptions, listed under
+[Straight removals](#straight-removals), carry no marker and must be found by
+grep. What is left at the v3 upgrade is then the module path and the
 changes that genuinely have no v2 form.
 
 > **Read the value mappings, not just the names.** Several changes on this page
@@ -702,7 +704,7 @@ can be written ahead of the upgrade.
 expected to lose `==` in a later major; see
 [Accepted Future Breaks](../governance/policies/api-stability.md#accepted-future-breaks).
 
-#### Known downstream call sites
+### Known downstream call sites
 
 `my-family` was not surveyed for this entry — it is not checked out where this
 guide was assembled. Grep it for `==` over these six types, for them used as map
@@ -1418,8 +1420,12 @@ converters loses nothing there.
 
 ## Checking your upgrade
 
-`make api-check` in this repository reports the full apidiff between the last
-release and `main`, including constant value changes. For your own code, the
+`make api-check` in this repository reports the apidiff between `main` and the
+most recent release tag reachable from it, including constant value changes.
+That tag is the nearest one in `main`'s history, and `v2.5.0` was cut from a
+release branch, so the comparison is currently against `v2.4.0`: symbols
+deprecated in `v2.5.0` and removed in v3 show up as removals, while symbols
+that `v2.5.0` added and v3 keeps do not appear at all. For your own code, the
 compiler catches every removal and rename on this page, and every site that
 *names a field* of a retyped value. It does **not** catch the value changes —
 the inverted boolean, the renumbered constant, the `*int` retype (whose compile

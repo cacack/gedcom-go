@@ -61,8 +61,8 @@ inputs.
 is evidence only that no exported signature, type property (such as
 comparability) or constant value changed. A reviewer must not treat a green
 gate as sufficient: the question to ask of every change is whether a caller's
-existing code, on the data it already holds, now gets a different answer. The shapes to look for, each with an
-in-repo instance from the table below:
+existing code, on the data it already holds, now gets a different answer.
+The shapes to look for, each with an in-repo instance from the table below:
 
 - **A constant renumbered** — `validator.Strictness`. (`apidiff` does flag
   this one; it is listed because the incompatibility is in stored values, which
@@ -80,8 +80,9 @@ Because the compiler gives the caller no signal at all, a semantic break
 requires:
 
 1. A major version, exactly like a signature break.
-2. An explicit `BREAKING CHANGE:` footer. State in the commit body whether
-   `make api-check` flags it, so a reader is not left guessing.
+2. An explicit `BREAKING CHANGE:` footer. State in the commit body why the
+   change is breaking and whether `make api-check` flags it, so a reader is not
+   left guessing.
 3. A migration note giving the old-to-new mapping in full — a caller cannot
    diff their way to it.
 
@@ -194,14 +195,25 @@ the scalar is already a complete model for 5.5 and 5.5.1, and no corpus
 evidence or downstream request yet shows structure under an ordinance `PLAC`.
 The cost is confined to typed-model access and entity rebuild.
 
-**Closing it later is additive.** Adding `PlaceDetail *PlaceDetail` to
-`LDSOrdinance`, populated by the decoder and preferred by the encoder when
-non-nil, adds a field and changes no existing signature, so it can ship in a
-minor release. `LDSOrdinance` already holds slices and is not comparable, so a
-new pointer field costs nothing further there. Only *removing* the `Place`
-scalar afterwards would be breaking, and that would need a major release of its
-own, staged through `// Deprecated:` like `Event.Place` was. What should trigger
-it is evidence per [CONSTITUTION.md](../../../CONSTITUTION.md#what-counts-as-evidence):
+**Closing it later can be additive — but only if `Place` stays
+authoritative.** Adding `PlaceDetail *PlaceDetail` to `LDSOrdinance` adds a
+field, and `LDSOrdinance` already holds slices and is not comparable, so a new
+pointer field costs nothing further there. The field is not what makes it safe
+for a minor release; the encoder's behaviour is. The decoder would fill both
+carriers from the same line, so a caller who decodes, edits `ord.Place` and
+re-encodes through the entity path must still see the edit written. That holds
+if the encoder writes `PLAC` when `Place != "" || PlaceDetail != nil`, takes the
+line value from `Place`, and takes only the subordinates (`FORM`, `MAP`, and so
+on) from `PlaceDetail` — or if the two are kept in sync through accessors. This
+is how v2's `Event` behaved while it carried both: the v2.5.0 encoder preferred
+the `Place` scalar when both were set.
+
+Making the encoder prefer `PlaceDetail` over an edited `Place` would be a
+[semantic break](#semantic-breaks): a change to which code path consults an
+unchanged field, invisible to `make api-check`, and it would need a major
+release. So would *removing* the `Place` scalar afterwards, staged through
+`// Deprecated:` like `Event.Place` was. What should trigger any of this is
+evidence per [CONSTITUTION.md](../../../CONSTITUTION.md#what-counts-as-evidence):
 real files carrying subordinates under an ordinance `PLAC`, or a downstream
 request.
 
