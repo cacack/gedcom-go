@@ -315,16 +315,17 @@ opts := &gedcomgo.ValidateOptions{
     MaxErrors:  100,
     SkipRules:  []string{"W001"},
     Duplicates: &validator.DuplicateConfig{
-        RequireExactSurname: true,
-        MinNameSimilarity:   0.8,
-        MaxGroupSize:        1000, // skip surname groups larger than this
+        MinNameSimilarity: 0.9,  // unset fields keep their defaults
+        MaxGroupSize:      1000, // skip surname groups larger than this
     },
 }
 issues := gedcomgo.ValidateAllWithOptions(doc, opts)
 ```
 
-`MaxGroupSize` bounds the cost of duplicate detection on untrusted input; zero
-means the default (1000), not unlimited. Set
+Every `DuplicateConfig` field's zero value is its default, so a partial literal
+changes only what it names; use `validator.ZeroThreshold` for an explicit zero
+threshold. `MaxGroupSize` bounds the cost of duplicate detection on untrusted
+input; zero means the default (1000), not unlimited. Set
 `ValidateOptions.SkipDuplicateDetection` to drop duplicate detection from
 `ValidateAll` entirely. See
 [performance](docs/guides/performance.md#bounding-untrusted-input) for the

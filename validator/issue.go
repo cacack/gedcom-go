@@ -116,7 +116,7 @@ const (
 	// Unlike CodePotentialDuplicate this carries SeverityWarning and no
 	// RecordXRef: it describes the completeness of the analysis rather than a
 	// finding about any one record. Its "surnames" detail samples the group
-	// keys, which are normalized when DuplicateConfig.NormalizeNames is set and
+	// keys, which are normalized unless DuplicateConfig.DisableNameNormalization is set and
 	// so need not match the source document verbatim.
 	CodeDuplicateDetectionLimited = "DUPLICATE_DETECTION_LIMITED"
 )

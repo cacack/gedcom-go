@@ -81,6 +81,19 @@ func TestNewQualityAnalyzer(t *testing.T) {
 		if a.duplicates.config.MinConfidence != 0.9 {
 			t.Errorf("MinConfidence = %f, want 0.9", a.duplicates.config.MinConfidence)
 		}
+		// The fields this partial literal leaves zero take their defaults
+		// rather than disabling their checks (#555).
+		if a.duplicates.config.MinNameSimilarity != defaultMinNameSimilarity {
+			t.Errorf("MinNameSimilarity = %f, want default %f",
+				a.duplicates.config.MinNameSimilarity, defaultMinNameSimilarity)
+		}
+		if a.duplicates.config.MaxBirthYearDiff != defaultMaxBirthYearDiff {
+			t.Errorf("MaxBirthYearDiff = %d, want default %d",
+				a.duplicates.config.MaxBirthYearDiff, defaultMaxBirthYearDiff)
+		}
+		if a.duplicates.config.DisableNameNormalization {
+			t.Error("DisableNameNormalization = true, want false")
+		}
 	})
 
 	t.Run("with multiple options", func(t *testing.T) {
@@ -97,6 +110,10 @@ func TestNewQualityAnalyzer(t *testing.T) {
 		}
 		if a.duplicates.config.MinConfidence != 0.8 {
 			t.Errorf("MinConfidence = %f, want 0.8", a.duplicates.config.MinConfidence)
+		}
+		if a.duplicates.config.MinNameSimilarity != defaultMinNameSimilarity {
+			t.Errorf("MinNameSimilarity = %f, want default %f",
+				a.duplicates.config.MinNameSimilarity, defaultMinNameSimilarity)
 		}
 	})
 }
@@ -1057,7 +1074,7 @@ func TestQualityReportIncludesCustomTagIssues(t *testing.T) {
 func TestQualityAnalyzer_Analyze_DuplicateLimitReachesWarnings(t *testing.T) {
 	config := DefaultDuplicateConfig()
 	config.MaxGroupSize = duplicateLimitCap
-	a := NewQualityAnalyzer(WithDuplicateConfig(&config))
+	a := NewQualityAnalyzer(WithDuplicateConfig(config))
 
 	report := a.Analyze(duplicateAndLimitDocument())
 
