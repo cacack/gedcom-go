@@ -301,17 +301,24 @@ allIssues := validator.ValidateAll(doc)
 
 GEDCOM 7.0 negative assertions record that an event did NOT occur - explicit statements like "never married" or "no death record found." This is different from simply having no information about an event.
 
+Negative assertions decode into `Individual.Events` and `Family.Events` alongside the events that happened, with `IsNegative` set. Two helpers on both types separate them, so a reader that treats events as facts cannot pick up a `NO` by accident:
+
 ```go
-// Check for negative assertions
-for _, event := range individual.Events {
-    if event.IsNegative {
-        fmt.Printf("NO %s", event.Type)  // "NO MARR"
-        if event.Date != "" {
-            fmt.Printf(" during %s", event.Date)
-        }
+// Events that happened (NO assertions and nil entries left out)
+for _, event := range individual.OccurredEvents() {
+    fmt.Println(event.Type, event.Date)
+}
+
+// Negative assertions only
+for _, event := range individual.NegativeAssertions() {
+    fmt.Printf("NO %s", event.Type)  // "NO MARR"
+    if event.Date != "" {
+        fmt.Printf(" during %s", event.Date)
     }
 }
 ```
+
+The library's own readers skip negative assertions: `BirthEvent`, `DeathEvent`, `BirthDate` and `DeathDate`; the date-logic rules (`DEATH_BEFORE_BIRTH`, `MARRIAGE_BEFORE_BIRTH`, lifespan and parent-age checks) and the quality report's completeness counts; and duplicate detection's birth-date comparison. Converting to GEDCOM 5.5 or 5.5.1, which have no `NO` structure, drops every negative assertion (the `NO` line and its subordinates, and the negated event from the typed model) and reports it as data loss. Code that ranges over `Events` directly must check `IsNegative` or use the helpers.
 
 | Field | Description |
 |-------|-------------|
@@ -1727,6 +1734,10 @@ Convenience methods for accessing parsed events and dates on individuals:
 | `DeathEvent()` | `*Event` | First death event (nil if none) |
 | `BirthDate()` | `*Date` | Parsed birth date (nil if no event or no date) |
 | `DeathDate()` | `*Date` | Parsed death date (nil if no event or no date) |
+| `OccurredEvents()` | `[]*Event` | Events that happened: `Events` without negative assertions or nil entries (also on `Family`) |
+| `NegativeAssertions()` | `[]*Event` | GEDCOM 7.0 `NO <EVENT>` assertions only (also on `Family`) |
+
+The birth and death accessors skip GEDCOM 7.0 negative assertions: a `NO DEAT` is not a death, so `DeathEvent()` never returns one. See [Negative Assertions (NO)](#negative-assertions-no).
 
 ```go
 // Access birth and death events directly

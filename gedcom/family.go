@@ -14,7 +14,12 @@ type Family struct {
 	// Children are XRefs to child individuals
 	Children []string
 
-	// Events contains family events (marriage, divorce, etc.)
+	// Events contains family events (marriage, divorce, etc.) in file order.
+	//
+	// It also holds GEDCOM 7.0 negative assertions (n NO <EVENT>), decoded as
+	// events with IsNegative set: a record that an event did NOT happen, not a
+	// fact that it did. Use OccurredEvents for the events that happened and
+	// NegativeAssertions for the NO assertions.
 	Events []*Event
 
 	// Attributes contains family attributes (NCHI, FACT).
@@ -69,6 +74,29 @@ type Family struct {
 // do not resolve are skipped. Returns nil when there are no notes.
 func (f *Family) AllNotes(doc *Document) []string {
 	return allNotes(doc, f.InlineNotes, f.NoteXRefs)
+}
+
+// OccurredEvents returns the events recorded as having happened: Events in file
+// order, without nil entries and without GEDCOM 7.0 negative assertions
+// (IsNegative). It returns nil when there are none, and is safe on a nil
+// receiver. The returned slice is new; the events are shared with Events.
+func (f *Family) OccurredEvents() []*Event {
+	if f == nil {
+		return nil
+	}
+	return filterEvents(f.Events, false)
+}
+
+// NegativeAssertions returns the GEDCOM 7.0 negative assertions (n NO <EVENT>)
+// recorded on this family -- the events with IsNegative set, in file order.
+// Each one states that the event did not happen, optionally within its DATE
+// period. It returns nil when there are none, and is safe on a nil receiver.
+// The returned slice is new; the events are shared with Events.
+func (f *Family) NegativeAssertions() []*Event {
+	if f == nil {
+		return nil
+	}
+	return filterEvents(f.Events, true)
 }
 
 // NumberOfChildren returns the value of the NCHI entry in Attributes, or "" if

@@ -331,12 +331,10 @@ func (a *QualityAnalyzer) calculateCompleteness(individuals []*gedcom.Individual
 	}
 }
 
-// hasPlace checks if an individual has any event with a place.
+// hasPlace checks if an individual has any event with a place. Negative
+// assertions (NO <EVENT>) are skipped: they record events that did not happen.
 func (a *QualityAnalyzer) hasPlace(ind *gedcom.Individual) bool {
-	for _, event := range ind.Events {
-		if event == nil {
-			continue
-		}
+	for _, event := range ind.OccurredEvents() {
 		if event.PlaceName() != "" {
 			return true
 		}

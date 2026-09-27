@@ -192,6 +192,9 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 //
 //nolint:unparam // error return kept for API consistency with other converters
 func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+	// Drop negative assertions first, so no later transform reports a change
+	// to text inside a NO block that is then removed.
+	dropNegativeAssertions(doc, report, gedcom.Version55)
 	if opts.MapEXIDToVendorTags {
 		transformEXIDToVendorTags(doc, report, gedcom.Version55)
 	}
@@ -214,6 +217,9 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 //
 //nolint:unparam // error return kept for API consistency with other converters
 func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+	// Drop negative assertions first, so no later transform reports a change
+	// to text inside a NO block that is then removed.
+	dropNegativeAssertions(doc, report, gedcom.Version551)
 	if opts.MapEXIDToVendorTags {
 		transformEXIDToVendorTags(doc, report, gedcom.Version551)
 	}
@@ -283,7 +289,9 @@ func record551Tags(doc *gedcom.Document, report *gedcom.ConversionReport) {
 
 // record70DataLoss records data loss for GEDCOM 7.0-specific features.
 func record70DataLoss(doc *gedcom.Document, report *gedcom.ConversionReport, targetVersion gedcom.Version) {
-	tags70 := []string{"EXID", "NO", "TRAN", "PHRASE", "UID", "CREA", "SNOTE"}
+	// NO is not listed: dropNegativeAssertions removes negative assertions
+	// and reports them itself, before this sweep runs.
+	tags70 := []string{"EXID", "TRAN", "PHRASE", "UID", "CREA", "SNOTE"}
 	found := make(map[string][]string)
 
 	for _, record := range doc.Records {

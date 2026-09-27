@@ -125,12 +125,20 @@ When converting between versions, media types are automatically mapped:
 | Feature | Reason |
 |---------|--------|
 | EXID tags | External identifiers not supported |
-| NO tags | Negative assertions not supported |
+| NO tags | Negative assertions not supported; removed from the output (the `NO` line and its subordinates, and the negated event from `Individual.Events` / `Family.Events`) |
 | TRAN tags | Translation records not supported |
 | PHRASE tags | Phrase annotations not supported |
 | UID tags | Unique identifiers not supported in 5.x |
 | CREA tags | Creation date not supported |
 | SNOTE tags | Shared notes not supported |
+
+Only the converter's 7.0 downgrade removes negative assertions. The encoder
+writes a negated event as `1 NO <EVENT>` whatever the header version, so a
+document built in code with `IsNegative` events and a 5.5/5.5.1 header, or a
+5.5.1 -> 5.5 conversion of a document that carries `NO`, still produces `NO`
+lines. For a document built in code, set `Events` to `OccurredEvents()` on
+each individual and family before encoding for a 5.x target; a decoded 5.x
+document encodes from `Record.Tags`, so remove its level-1 `NO` tags there.
 
 ### 5.5.1 -> 5.5
 

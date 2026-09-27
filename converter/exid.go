@@ -78,7 +78,7 @@ func transformEXIDToVendorTags(doc *gedcom.Document, report *gedcom.ConversionRe
 // untouched (and allocates nothing) when the record carries no level-1 EXID.
 func rewriteEXIDTags(record *gedcom.Record, report *gedcom.ConversionReport, targetVersion gedcom.Version) (rewritten []*gedcom.Tag, converted int) {
 	tags := record.Tags
-	if !hasLevel1EXID(tags) {
+	if !hasLevel1Tag(tags, "EXID") {
 		return tags, 0
 	}
 
@@ -127,17 +127,6 @@ func rewriteEXIDTags(record *gedcom.Record, report *gedcom.ConversionReport, tar
 		i = j - 1
 	}
 	return out, count
-}
-
-// hasLevel1EXID reports whether the tags include a top-level EXID, used as a
-// cheap presence check so rewriteEXIDTags allocates only when there is work.
-func hasLevel1EXID(tags []*gedcom.Tag) bool {
-	for _, t := range tags {
-		if t != nil && t.Level == 1 && t.Tag == "EXID" {
-			return true
-		}
-	}
-	return false
 }
 
 // isConvertibleFamilySearchEXID reports whether an EXID block (block[0] is the
