@@ -457,6 +457,30 @@ my-family is not checked out alongside this repository, so its use of
 `NormalizeNames`, `RequireExactSurname` and `DefaultDuplicateConfig` and apply
 the tables above.
 
+### Negative assertions are no longer read as events
+
+A GEDCOM 7.0 negative assertion (`1 NO DEAT`, optionally with a `DATE`
+period) records that an event did **not** happen. It decodes into
+`Individual.Events` / `Family.Events` as an ordinary `Event` with
+`IsNegative: true` — unchanged in v3 — but several library readers ignored the
+flag and treated it as the event itself. They now skip it. No signature
+changed, so nothing fails to compile; the answers differ for any document
+carrying `NO` lines:
+
+| Reader | v2 on `1 NO DEAT` / `2 DATE FROM 1900 TO 1910` | v3 |
+|--------|------------------------------------------------|----|
+| `Individual.BirthEvent`, `DeathEvent` | the first `BIRT`/`DEAT` event, negated or not | the first one that is not negated; `nil` when only a `NO` exists |
+| `Individual.BirthDate`, `DeathDate` | the `NO` event's date period | the date of the first non-negated event, or `nil` |
+| `validator` date logic (`DEATH_BEFORE_BIRTH`, `MARRIAGE_BEFORE_BIRTH`, `IMPOSSIBLE_AGE`, `CHILD_BEFORE_PARENT`, `UNREASONABLE_PARENT_AGE`) | fired on a negated death, birth or marriage — e.g. an `ERROR` for "death before birth" on a person merely asserted *not* to have died before birth | negated events are ignored |
+| `validator.QualityReport` | a `NO BIRT`/`NO DEAT` counted toward `IndividualsWithBirthDate`/`IndividualsWithDeathDate` (suppressing `MISSING_BIRTH_DATE`), and a place under a `NO` event toward `IndividualsWithPlaces` | not counted |
+| `validator` duplicate detection | compared a `NO BIRT` period as a birth year | compares only a real birth |
+| `converter` 7.0 → 5.5 / 5.5.1 | reported `NO tags` as data loss but still wrote `1 NO DEAT` into the output, which is invalid 5.x | drops the `NO` line and its subordinates from `Record.Tags` and the negated event from the typed model, and reports it; a document built in code (no raw tags) is now reported too, so with `StrictDataLoss` it now fails where v2 converted it |
+
+If you relied on `DeathEvent()` returning a `NO DEAT`, read
+`indi.NegativeAssertions()` instead. Code of your own that ranges over
+`Events` and treats each entry as something that happened should switch to
+`OccurredEvents()` or test `IsNegative`.
+
 ## Retypes
 
 A field keeps its name and its meaning but changes its type. The build fails
@@ -1606,10 +1630,16 @@ occupation", keep that branch, keyed on `IsNegative` so it cannot be mistaken
 for an occupation:
 
 ```go
-for _, ev := range indi.Events {
-    if ev.IsNegative && ev.Type == "OCCU" { /* asserted: no occupation */ }
+for _, ev := range indi.NegativeAssertions() {
+    if ev.Type == "OCCU" { /* asserted: no occupation */ }
 }
 ```
+
+`NegativeAssertions()` (and its complement `OccurredEvents()`, on both
+`Individual` and `Family`) is new in v3; on v2, range over `indi.Events` and
+test `ev.IsNegative` yourself. See
+[Negative assertions are no longer read as events](#negative-assertions-are-no-longer-read-as-events)
+for the library readers that now skip them.
 
 The attribute loop can be written while still on v2, comparing
 `attr.Type == "OCCU"` — the literal keeps compiling after the upgrade, when you

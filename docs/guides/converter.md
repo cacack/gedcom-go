@@ -125,7 +125,7 @@ When converting between versions, media types are automatically mapped:
 | Feature | Reason |
 |---------|--------|
 | EXID tags | External identifiers not supported |
-| NO tags | Negative assertions not supported |
+| NO tags | Negative assertions not supported; removed from the output (the `NO` line and its subordinates, and the negated event from `Individual.Events` / `Family.Events`) |
 | TRAN tags | Translation records not supported |
 | PHRASE tags | Phrase annotations not supported |
 | UID tags | Unique identifiers not supported in 5.x |
