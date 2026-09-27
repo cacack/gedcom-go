@@ -125,6 +125,40 @@ func TestFamilyOccurredEventsAndNegativeAssertions(t *testing.T) {
 	}
 }
 
+// TestBirthDeathAccessors_SkipNegativeAssertions pins that a NO BIRT / NO DEAT
+// is never returned as the birth or death: it records that the event did NOT
+// happen, so returning it (or its DATE period) would report the opposite.
+func TestBirthDeathAccessors_SkipNegativeAssertions(t *testing.T) {
+	doc := decodeNegativeAssertion70(t)
+
+	john := doc.GetIndividual("@I1@")
+	if john == nil {
+		t.Fatal("@I1@ not decoded")
+	}
+	if got := john.DeathEvent(); got != nil {
+		t.Errorf("DeathEvent() = %+v, want nil for an individual with only NO DEAT", got)
+	}
+	if got := john.DeathDate(); got != nil {
+		t.Errorf("DeathDate() = %q, want nil for an individual with only NO DEAT", got.Original)
+	}
+	if got := john.BirthDate(); got == nil || got.Year != 1920 {
+		t.Errorf("BirthDate() = %v, want the 1920 birth", got)
+	}
+
+	// NO BIRT precedes the real BIRT in file order: the accessor must look past it.
+	jane := doc.GetIndividual("@I2@")
+	if jane == nil {
+		t.Fatal("@I2@ not decoded")
+	}
+	birth := jane.BirthEvent()
+	if birth == nil || birth.IsNegative {
+		t.Fatalf("BirthEvent() = %+v, want the positive BIRT", birth)
+	}
+	if got := jane.BirthDate(); got == nil || got.Year != 1921 {
+		t.Errorf("BirthDate() = %v, want the 1921 birth, not the NO BIRT period", got)
+	}
+}
+
 func TestNegativeAssertions_DecodedSnippet(t *testing.T) {
 	doc := decodeNegativeAssertion70(t)
 

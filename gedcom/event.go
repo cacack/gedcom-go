@@ -249,3 +249,14 @@ func filterEvents(events []*Event, negative bool) []*Event {
 	}
 	return out
 }
+
+// firstOccurredEvent returns the first non-nil, non-negated event of the given
+// type, or nil when there is none.
+func firstOccurredEvent(events []*Event, eventType EventType) *Event {
+	for _, event := range events {
+		if event != nil && !event.IsNegative && event.Type == eventType {
+			return event
+		}
+	}
+	return nil
+}

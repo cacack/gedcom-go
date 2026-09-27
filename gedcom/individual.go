@@ -382,23 +382,15 @@ func (i *Individual) NegativeAssertions() []*Event {
 }
 
 // BirthEvent returns the first birth event for this individual, or nil if none found.
+// A negative assertion (NO BIRT, IsNegative) is not a birth event and is skipped.
 func (i *Individual) BirthEvent() *Event {
-	for _, event := range i.Events {
-		if event != nil && event.Type == EventBirth {
-			return event
-		}
-	}
-	return nil
+	return firstOccurredEvent(i.Events, EventBirth)
 }
 
 // DeathEvent returns the first death event for this individual, or nil if none found.
+// A negative assertion (NO DEAT, IsNegative) is not a death event and is skipped.
 func (i *Individual) DeathEvent() *Event {
-	for _, event := range i.Events {
-		if event != nil && event.Type == EventDeath {
-			return event
-		}
-	}
-	return nil
+	return firstOccurredEvent(i.Events, EventDeath)
 }
 
 // BirthDate returns the parsed birth date for this individual, or nil if no birth event
