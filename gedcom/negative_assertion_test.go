@@ -223,3 +223,22 @@ func TestNegativeAssertions_Maximal70(t *testing.T) {
 		}
 	}
 }
+
+// TestBirthDeathAccessors_NilIndividual pins that the accessors, like the
+// OccurredEvents/NegativeAssertions helpers, never panic on a nil receiver
+// (ADR 0007).
+func TestBirthDeathAccessors_NilIndividual(t *testing.T) {
+	var ind *gedcom.Individual
+	if got := ind.BirthEvent(); got != nil {
+		t.Errorf("nil.BirthEvent() = %+v, want nil", got)
+	}
+	if got := ind.DeathEvent(); got != nil {
+		t.Errorf("nil.DeathEvent() = %+v, want nil", got)
+	}
+	if got := ind.BirthDate(); got != nil {
+		t.Errorf("nil.BirthDate() = %v, want nil", got)
+	}
+	if got := ind.DeathDate(); got != nil {
+		t.Errorf("nil.DeathDate() = %v, want nil", got)
+	}
+}
