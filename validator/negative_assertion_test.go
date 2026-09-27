@@ -156,3 +156,40 @@ func TestQuality_SkipsNegativeAssertions_Maximal70(t *testing.T) {
 			got.IndividualsWithDeathDate, base.IndividualsWithDeathDate)
 	}
 }
+
+// TestStreaming_SkipsNegativeAssertions pins the streaming path: a NO DEAT
+// whose period precedes the birth is not a death, so StreamingValidator must
+// not report DEATH_BEFORE_BIRTH for it. The control asserts the same period
+// as a real death and expects the issue.
+func TestStreaming_SkipsNegativeAssertions(t *testing.T) {
+	run := func(t *testing.T, input string) []Issue {
+		t.Helper()
+		doc, err := decoder.Decode(strings.NewReader(input))
+		if err != nil {
+			t.Fatalf("Decode() error = %v", err)
+		}
+		sv := NewStreamingValidator(StreamingOptions{})
+		var issues []Issue
+		for _, rec := range doc.Records {
+			issues = append(issues, sv.ValidateRecord(rec)...)
+		}
+		return append(issues, sv.Finalize()...)
+	}
+	count := func(issues []Issue) int {
+		n := 0
+		for _, iss := range issues {
+			if iss.Code == CodeDeathBeforeBirth {
+				n++
+			}
+		}
+		return n
+	}
+	const negated = "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 BIRT\n2 DATE 1 JAN 1920\n1 NO DEAT\n2 DATE FROM 1900 TO 1910\n0 TRLR\n"
+	if n := count(run(t, negated)); n != 0 {
+		t.Errorf("streaming DEATH_BEFORE_BIRTH for NO DEAT = %d, want 0", n)
+	}
+	control := strings.Replace(negated, "1 NO DEAT\n2 DATE FROM 1900 TO 1910", "1 DEAT\n2 DATE 1 JAN 1905", 1)
+	if n := count(run(t, control)); n != 1 {
+		t.Errorf("streaming DEATH_BEFORE_BIRTH for a real 1905 death = %d, want 1", n)
+	}
+}
