@@ -207,9 +207,10 @@ func (v *DateLogicValidator) checkMarriageBeforeBirth(doc *gedcom.Document, ind 
 			continue
 		}
 
-		// Look for marriage event
-		for _, event := range fam.Events {
-			if event == nil || event.Type != gedcom.EventMarriage {
+		// Look for marriage events. A negative assertion (NO MARR) records a
+		// marriage that did not happen, so its date says nothing about birth.
+		for _, event := range fam.OccurredEvents() {
+			if event.Type != gedcom.EventMarriage {
 				continue
 			}
 
