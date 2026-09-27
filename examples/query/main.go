@@ -50,9 +50,11 @@ func main() {
 			if ind.Sex != "" {
 				fmt.Printf(" (%s)", ind.Sex)
 			}
-			// Show birth year if available
-			for _, event := range ind.Events {
-				if event.Type == "BIRT" && event.Date != "" {
+			// Show birth date if available. OccurredEvents skips GEDCOM 7.0
+			// negative assertions (NO BIRT), which record a birth that did
+			// not happen.
+			for _, event := range ind.OccurredEvents() {
+				if event.Type == gedcom.EventBirth && event.Date != "" {
 					fmt.Printf(" - Born: %s", event.Date)
 					break
 				}
@@ -76,16 +78,29 @@ func main() {
 			}
 			fmt.Printf("  Sex: %s\n", person.Sex)
 
-			// Show events
-			if len(person.Events) > 0 {
+			// Show events. Events also holds GEDCOM 7.0 negative assertions
+			// (NO <EVENT>, IsNegative), which record that an event did NOT
+			// happen; OccurredEvents leaves them out, so they are listed
+			// separately below instead of being printed as facts.
+			if events := person.OccurredEvents(); len(events) > 0 {
 				fmt.Println("  Events:")
-				for _, event := range person.Events {
+				for _, event := range events {
 					fmt.Printf("    %s", event.Type)
 					if event.Date != "" {
 						fmt.Printf(": %s", event.Date)
 					}
 					if place := event.PlaceName(); place != "" {
 						fmt.Printf(" at %s", place)
+					}
+					fmt.Println()
+				}
+			}
+			if negated := person.NegativeAssertions(); len(negated) > 0 {
+				fmt.Println("  Did not happen (negative assertions):")
+				for _, event := range negated {
+					fmt.Printf("    NO %s", event.Type)
+					if event.Date != "" {
+						fmt.Printf(": %s", event.Date)
 					}
 					fmt.Println()
 				}
