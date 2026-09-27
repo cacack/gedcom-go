@@ -258,6 +258,36 @@ either is evidence per
 [CONSTITUTION.md](../../../CONSTITUTION.md#what-counts-as-evidence): real
 5.5 files that repeat `PEDI`, or a downstream request.
 
+### GEDCOM 7.0 negative assertions stay in `Events`
+
+A 7.0 negative assertion (`NO <EVEN>`, the `NON_EVENT_STRUCTURE`) is decoded
+into `Individual.Events` or `Family.Events` as an `Event` with `IsNegative`
+set, next to the events that did happen. The spec models it as a separate
+structure: its only substructures are `DATE` — whose payload is a *period* in
+which the event did **not** occur — `NOTE`, `SNOTE` and `SOUR`. Keeping it in
+`Events` was the deliberate design when negative assertions were added
+([#121](https://github.com/cacack/gedcom-go/issues/121)), and moving it into
+its own type and slice was reconsidered and **not** taken for v3.0.0.
+
+What the asymmetry costs: a caller that ranges over `Events` without checking
+`IsNegative` treats "did not die between 1900 and 1910" as a death. The
+library's own readers — `BirthEvent`, `DeathEvent`, the date-logic and quality
+validators, the converter's 5.x output — skip or drop negated events, and
+`OccurredEvents()` / `NegativeAssertions()` give callers the filtered views
+directly. Nothing is lost: the `NO` line, its period and its citations
+round-trip.
+
+It is not split out in v3.0.0 because every harm the pre-release audit
+reproduced was in library readers and is fixed without changing the shape,
+and the only corpus file that uses `NO` is the spec exerciser `maximal70.ged`.
+Moving `NO` out of `Events` would itself be a [semantic break](#semantic-breaks)
+— the contents of an exported slice change — and removing `IsNegative` would be
+a field removal, so it can only happen in a major release. What should trigger
+it is evidence per
+[CONSTITUTION.md](../../../CONSTITUTION.md#what-counts-as-evidence): vendor
+files that use `NO`, or a downstream consumer misreading negated events despite
+the helpers.
+
 ## Stability Guarantees
 
 ### Stable (Full Compatibility Promise)
