@@ -192,13 +192,15 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 //
 //nolint:unparam // error return kept for API consistency with other converters
 func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+	// Drop negative assertions first, so no later transform reports a change
+	// to text inside a NO block that is then removed.
+	dropNegativeAssertions(doc, report, gedcom.Version55)
 	if opts.MapEXIDToVendorTags {
 		transformEXIDToVendorTags(doc, report, gedcom.Version55)
 	}
 	transformTextForVersion(doc, gedcom.Version55, report)
 	transformMediaTypes(doc, gedcom.Version55, report)
 	transformHeader(doc, gedcom.Version55, report)
-	dropNegativeAssertions(doc, report, gedcom.Version55)
 	record70DataLoss(doc, report, gedcom.Version55)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
@@ -215,13 +217,15 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 //
 //nolint:unparam // error return kept for API consistency with other converters
 func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+	// Drop negative assertions first, so no later transform reports a change
+	// to text inside a NO block that is then removed.
+	dropNegativeAssertions(doc, report, gedcom.Version551)
 	if opts.MapEXIDToVendorTags {
 		transformEXIDToVendorTags(doc, report, gedcom.Version551)
 	}
 	transformTextForVersion(doc, gedcom.Version551, report)
 	transformMediaTypes(doc, gedcom.Version551, report)
 	transformHeader(doc, gedcom.Version551, report)
-	dropNegativeAssertions(doc, report, gedcom.Version551)
 	record70DataLoss(doc, report, gedcom.Version551)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
