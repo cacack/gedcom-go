@@ -11,7 +11,12 @@ type Individual struct {
 	// Sex is the person's sex (M, F, X, U for unknown)
 	Sex string
 
-	// Events contains life events (birth, death, marriage, etc.)
+	// Events contains life events (birth, death, marriage, etc.) in file order.
+	//
+	// It also holds GEDCOM 7.0 negative assertions (n NO <EVENT>), decoded as
+	// events with IsNegative set: a record that an event did NOT happen, not a
+	// fact that it did. Use OccurredEvents for the events that happened and
+	// NegativeAssertions for the NO assertions.
 	Events []*Event
 
 	// Attributes contains personal attributes (occupation, education, etc.)
@@ -351,6 +356,29 @@ func (a *Attribute) SetPlaceName(name string) {
 // do not resolve are skipped. Returns nil when there are no notes.
 func (a *Attribute) AllNotes(doc *Document) []string {
 	return allNotes(doc, a.InlineNotes, a.NoteXRefs)
+}
+
+// OccurredEvents returns the events recorded as having happened: Events in file
+// order, without nil entries and without GEDCOM 7.0 negative assertions
+// (IsNegative). It returns nil when there are none, and is safe on a nil
+// receiver. The returned slice is new; the events are shared with Events.
+func (i *Individual) OccurredEvents() []*Event {
+	if i == nil {
+		return nil
+	}
+	return filterEvents(i.Events, false)
+}
+
+// NegativeAssertions returns the GEDCOM 7.0 negative assertions (n NO <EVENT>)
+// recorded on this individual -- the events with IsNegative set, in file order.
+// Each one states that the event did not happen, optionally within its DATE
+// period. It returns nil when there are none, and is safe on a nil receiver.
+// The returned slice is new; the events are shared with Events.
+func (i *Individual) NegativeAssertions() []*Event {
+	if i == nil {
+		return nil
+	}
+	return filterEvents(i.Events, true)
 }
 
 // BirthEvent returns the first birth event for this individual, or nil if none found.

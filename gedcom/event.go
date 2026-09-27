@@ -173,6 +173,9 @@ type Event struct {
 	// When true, it means the event did NOT occur (e.g., NO MARR = never married).
 	// The NO tag is used to record explicit conclusions from research that an event
 	// did not happen, which is different from simply having no information.
+	// Negated events share Individual.Events and Family.Events with the events
+	// that happened; OccurredEvents and NegativeAssertions on either type
+	// separate the two.
 	IsNegative bool
 
 	// SourceCitations are source citations with page/quality details
@@ -233,4 +236,16 @@ func (e *Event) SetPlaceName(name string) {
 // do not resolve are skipped. Returns nil when there are no notes.
 func (e *Event) AllNotes(doc *Document) []string {
 	return allNotes(doc, e.InlineNotes, e.NoteXRefs)
+}
+
+// filterEvents returns the non-nil events whose IsNegative equals negative, in
+// order, or nil when none match.
+func filterEvents(events []*Event, negative bool) []*Event {
+	var out []*Event
+	for _, event := range events {
+		if event != nil && event.IsNegative == negative {
+			out = append(out, event)
+		}
+	}
+	return out
 }
