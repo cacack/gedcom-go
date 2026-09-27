@@ -224,6 +224,39 @@ evidence per [CONSTITUTION.md](../../../CONSTITUTION.md#what-counts-as-evidence)
 real files carrying subordinates under an ordinance `PLAC`, or a downstream
 request.
 
+### `FamilyLink.Pedigree` stays a scalar
+
+GEDCOM 5.5 defines `CHILD_TO_FAMILY_LINK.FAMC.PEDI` as `{0:M}`
+(`testdata/spec/gedcom-5.5/cardinalities.tsv`); 5.5.1 and 7.0 both narrow it to
+`{0:1}`. `FamilyLink.Pedigree` is a `string`, and on a 5.5 file that repeats
+`PEDI` under one `FAMC` the decoder keeps the last value in the typed field.
+Retyping it to `[]string` was proposed for v3 (audit item BW-21, and the scope
+amendment on [#472](https://github.com/cacack/gedcom-go/issues/472)) and was
+**declined** before v3.0.0 was tagged.
+
+What the asymmetry costs:
+
+- **Decode → encode** is unaffected: `Record.Tags` keeps every `PEDI` line and
+  the encoder writes from those tags, so a round trip and `converter.Convert`
+  preserve all of them.
+- **The typed model and the entity-rebuild path** see one pedigree per link on
+  such a file.
+- No file in the test corpus repeats `PEDI` under a single `FAMC`; the evidence
+  is the 1996 grammar alone.
+
+It is declined because a slice would make every 5.5.1 and 7.0 caller — nearly
+all real files — index `Pedigree[0]` behind a length check for a value that can
+occur only once, to model a repeat that no observed file uses.
+
+**Closing it later is additive.** A `Pedigrees []string` field (every `PEDI` in
+order) can be added in a minor release alongside the scalar, with `Pedigree`
+keeping the value it holds today; removing the scalar afterwards would follow
+the normal deprecate-then-remove path. A diagnostic for a repeated `PEDI` —
+which is invalid in 5.5.1 and 7.0 — is likewise additive. What should trigger
+either is evidence per
+[CONSTITUTION.md](../../../CONSTITUTION.md#what-counts-as-evidence): real
+5.5 files that repeat `PEDI`, or a downstream request.
+
 ## Stability Guarantees
 
 ### Stable (Full Compatibility Promise)
