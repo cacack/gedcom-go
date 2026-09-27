@@ -198,6 +198,7 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 	transformTextForVersion(doc, gedcom.Version55, report)
 	transformMediaTypes(doc, gedcom.Version55, report)
 	transformHeader(doc, gedcom.Version55, report)
+	dropNegativeAssertions(doc, report, gedcom.Version55)
 	record70DataLoss(doc, report, gedcom.Version55)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
@@ -220,6 +221,7 @@ func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 	transformTextForVersion(doc, gedcom.Version551, report)
 	transformMediaTypes(doc, gedcom.Version551, report)
 	transformHeader(doc, gedcom.Version551, report)
+	dropNegativeAssertions(doc, report, gedcom.Version551)
 	record70DataLoss(doc, report, gedcom.Version551)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
@@ -283,7 +285,9 @@ func record551Tags(doc *gedcom.Document, report *gedcom.ConversionReport) {
 
 // record70DataLoss records data loss for GEDCOM 7.0-specific features.
 func record70DataLoss(doc *gedcom.Document, report *gedcom.ConversionReport, targetVersion gedcom.Version) {
-	tags70 := []string{"EXID", "NO", "TRAN", "PHRASE", "UID", "CREA", "SNOTE"}
+	// NO is not listed: dropNegativeAssertions removes negative assertions
+	// and reports them itself, before this sweep runs.
+	tags70 := []string{"EXID", "TRAN", "PHRASE", "UID", "CREA", "SNOTE"}
 	found := make(map[string][]string)
 
 	for _, record := range doc.Records {
