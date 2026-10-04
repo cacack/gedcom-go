@@ -107,7 +107,7 @@ make test
 # Check test coverage (requires 85%+)
 make test-coverage
 
-# Run all CI checks locally before pushing
+# Run CI's code checks locally before pushing
 make preflight
 
 # Run benchmarks
@@ -156,7 +156,7 @@ make lint
 # Run security scanners (gosec, govulncheck)
 make security
 
-# Check for breaking API changes vs latest release
+# Check for undeclared breaking API changes vs latest release
 make api-check
 
 # Run all checks (fmt, vet, test)
@@ -365,12 +365,12 @@ For details on critical paths and testing patterns, see [docs/testing.md](docs/t
 
 1. **Before Submitting**
 
-   Run the preflight checks to mirror CI locally:
+   Run CI's code checks locally:
    ```bash
    make preflight
    ```
 
-   This runs all 8 CI checks: tidy, format, vet, lint, tests (with race detector), coverage thresholds, example builds, and security scans.
+   This runs 10 checks: tidy, module path, format, vet, lint, tests (with race detector), coverage thresholds, example builds, security scans (gosec, govulncheck), and API compatibility. It does not run CI's PR title, commit type and dependency review checks, or its additional security scanners (gitleaks, Trivy, osv-scanner, Semgrep).
 
    Additionally:
    - Update documentation if needed

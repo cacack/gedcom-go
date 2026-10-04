@@ -284,39 +284,17 @@ watch-test: ## Watch for changes and run tests (requires entr)
 	@echo "Watching for changes..."
 	@find . -name "*.go" | entr -c make test
 
-api-check: ## Check for breaking API changes against latest release
-	@echo "Checking API compatibility..."
-	@APIDIFF=$$(command -v apidiff || echo "$$HOME/go/bin/apidiff"); \
-	if [ ! -x "$$APIDIFF" ]; then APIDIFF="$$(go env GOPATH)/bin/apidiff"; fi; \
-	if [ ! -x "$$APIDIFF" ]; then echo "apidiff not found. Run 'make install-tools'" && exit 1; fi; \
-	LATEST_TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo ""); \
-	if [ -z "$$LATEST_TAG" ]; then \
-		echo "✓ No release tags found, skipping API compatibility check"; \
-		exit 0; \
-	fi; \
-	echo "Comparing against $$LATEST_TAG..."; \
-	OLD_DIR=$$(mktemp -d); \
-	trap "rm -rf '$$OLD_DIR'" EXIT; \
-	git clone --depth 1 --branch "$$LATEST_TAG" . "$$OLD_DIR" --quiet 2>/dev/null; \
-	API_FILE=$$(mktemp); \
-	(cd "$$OLD_DIR" && go mod download -x 2>/dev/null && $$APIDIFF -m -w "$$API_FILE" .) 2>/dev/null; \
-	RESULT=$$($$APIDIFF -m "$$API_FILE" . 2>&1) || true; \
-	rm -f "$$API_FILE"; \
-	if echo "$$RESULT" | grep -q "Incompatible changes:"; then \
-		echo "⚠️  Breaking API changes detected:"; \
-		echo "$$RESULT"; \
-		exit 1; \
-	else \
-		echo "✓ No breaking API changes"; \
-		if [ -n "$$RESULT" ]; then echo ""; echo "Compatible changes:"; echo "$$RESULT"; fi; \
-	fi
+api-check: ## Check for undeclared breaking API changes against the latest release on this major line
+	@./scripts/check-api-compat.sh
 
-preflight: ## Run all CI checks locally before pushing
+preflight: ## Run CI's code checks locally before pushing (not PR title, commit type, dependency review, or CI-only scanners)
 	@echo "═══════════════════════════════════════════════"
-	@echo "  Running preflight checks (mirrors CI)"
+	@echo "  Running preflight checks (CI's code checks;"
+	@echo "  not run: PR title, commit type, dependency"
+	@echo "  review, gitleaks/trivy/osv/semgrep scanners)"
 	@echo "═══════════════════════════════════════════════"
 	@echo ""
-	@echo "→ [1/9] Tidying go.mod..."
+	@echo "→ [1/10] Tidying go.mod..."
 	@$(GOMOD) tidy
 	@if [ -n "$$(git status --porcelain go.mod go.sum)" ]; then \
 		echo "✗ go.mod/go.sum changed after tidy"; \
@@ -324,10 +302,10 @@ preflight: ## Run all CI checks locally before pushing
 	fi
 	@echo "✓ go.mod is tidy"
 	@echo ""
-	@echo "→ [2/9] Checking module path matches the next release's major..."
+	@echo "→ [2/10] Checking module path matches the next release's major..."
 	@./scripts/check-module-path.sh
 	@echo ""
-	@echo "→ [3/9] Checking formatting..."
+	@echo "→ [3/10] Checking formatting..."
 	@UNFORMATTED=$$(gofmt -l .); \
 	if [ -n "$$UNFORMATTED" ]; then \
 		echo "✗ Files not formatted:"; \
@@ -336,18 +314,18 @@ preflight: ## Run all CI checks locally before pushing
 	fi
 	@echo "✓ Code is formatted"
 	@echo ""
-	@echo "→ [4/9] Running go vet..."
+	@echo "→ [4/10] Running go vet..."
 	@$(GOVET) ./...
 	@echo "✓ No vet issues"
 	@echo ""
-	@echo "→ [5/9] Linting..."
+	@echo "→ [5/10] Linting..."
 	@$(MAKE) --no-print-directory lint
 	@echo ""
-	@echo "→ [6/9] Running tests with race detector..."
+	@echo "→ [6/10] Running tests with race detector..."
 	@$(GOTEST) -race -timeout $(GOTEST_TIMEOUT) ./...
 	@echo "✓ Tests passed"
 	@echo ""
-	@echo "→ [7/9] Checking coverage thresholds..."
+	@echo "→ [7/10] Checking coverage thresholds..."
 	@$(GOTEST) -timeout $(GOTEST_TIMEOUT) -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./... > /dev/null
 	@GO_TEST_COVERAGE=$$(command -v go-test-coverage || echo "$$HOME/go/bin/go-test-coverage"); \
 	if [ ! -x "$$GO_TEST_COVERAGE" ]; then GO_TEST_COVERAGE="$$(go env GOPATH)/bin/go-test-coverage"; fi; \
@@ -355,14 +333,14 @@ preflight: ## Run all CI checks locally before pushing
 	$$GO_TEST_COVERAGE --config=.testcoverage.yml --profile=$(COVERAGE_FILE)
 	@echo "✓ Coverage thresholds met"
 	@echo ""
-	@echo "→ [8/9] Building examples..."
+	@echo "→ [8/10] Building examples..."
 	@$(GOBUILD) -o /dev/null ./examples/parse
 	@$(GOBUILD) -o /dev/null ./examples/encode
 	@$(GOBUILD) -o /dev/null ./examples/query
 	@$(GOBUILD) -o /dev/null ./examples/validate
 	@echo "✓ Examples build"
 	@echo ""
-	@echo "→ [9/9] Running security scans..."
+	@echo "→ [9/10] Running security scans..."
 	@GOSEC=$$(command -v gosec || echo "$$HOME/go/bin/gosec"); \
 	if [ ! -x "$$GOSEC" ]; then GOSEC="$$(go env GOPATH)/bin/gosec"; fi; \
 	if [ ! -x "$$GOSEC" ]; then echo "gosec not found. Run 'make install-tools'" && exit 1; fi; \
@@ -372,6 +350,9 @@ preflight: ## Run all CI checks locally before pushing
 	if [ ! -x "$$GOVULNCHECK" ]; then echo "govulncheck not found. Run 'make install-tools'" && exit 1; fi; \
 	$$GOVULNCHECK ./...
 	@echo "✓ Security scans passed"
+	@echo ""
+	@echo "→ [10/10] Checking API compatibility..."
+	@./scripts/check-api-compat.sh
 	@echo ""
 	@echo "═══════════════════════════════════════════════"
 	@echo "  ✓ All preflight checks passed!"
