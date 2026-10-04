@@ -16,8 +16,13 @@
 #   - apidiff errors                       -> fail, showing its output
 #   - baseline module path differs         -> skip (distinct modules under SIV)
 #   - compatible changes only              -> pass, listing them
-#   - incompatible, declared since baseline -> pass, listing them
+#   - incompatible, declared since baseline -> deprecation gate, listing them
 #   - incompatible, not declared           -> fail
+#
+# The deprecation gate (internal/cmd/checkdeprecated) passes only if every
+# incompatible change removes a symbol that carried a "Deprecated:" paragraph
+# in the baseline, or is listed in scripts/api-compat-allowlist.txt with a
+# migration-guide anchor that resolves. That file's header documents its format.
 #
 # "Declared" means a commit in "$TAG"..HEAD (i.e. HEAD --not $TAG, so it also
 # works when the tag is not an ancestor) carries a conventional-commit breaking
@@ -31,6 +36,12 @@ set -euo pipefail
 # Conventional-commit breaking markers: "type(scope)!:" subjects or a
 # "BREAKING CHANGE:" / "BREAKING-CHANGE:" footer.
 BREAKING_RE='^[a-z]+(\([^)]*\))?!:|^BREAKING[ -]CHANGE:'
+
+# Changes the deprecation gate accepts without a Deprecated: marker.
+ALLOWLIST=scripts/api-compat-allowlist.txt
+
+# apidiff's notice for each internal/ package it skips.
+SKIP_NOTE='^Ignoring internal package '
 
 module_path() {
   awk '/^module / {print $2}' "$1"
@@ -110,13 +121,17 @@ main() {
     exit 0
   fi
 
-  (cd "$old_dir" && go mod download && "$apidiff" -m -w "$api_file" .)
+  # apidiff notes on stderr each internal package it skips; that is not an
+  # API change, so drop it from what is shown.
+  (cd "$old_dir" && go mod download && "$apidiff" -m -w "$api_file" .) 2>&1 |
+    { grep -v "$SKIP_NOTE" || true; }
   go mod download
 
   set +e
   out=$("$apidiff" -m "$api_file" . 2>&1)
   status=$?
   set -e
+  out=$(grep -v "$SKIP_NOTE" <<<"$out" || true)
 
   # Here-strings, not pipes: grep -q exiting early would SIGPIPE the writer
   # and pipefail would turn a match into a failure.
@@ -143,8 +158,14 @@ main() {
   if grep -qE "$BREAKING_RE" <<<"$commits"; then
     echo "✓ Breaking change properly declared in commit message"
     echo "  Release-please will bump major version"
-    # Deprecation gate hook: every declared incompatible change must also have
-    # shipped a Deprecated: marker or be allowlisted. Invoked here (#557).
+    echo ""
+    # Deprecation gate (#557): every declared incompatible change must also
+    # have shipped a Deprecated: marker in $tag, or be allowlisted.
+    if ! go run ./internal/cmd/checkdeprecated -baseline "$old_dir" \
+      -module "$old_module" -allowlist "$ALLOWLIST" <<<"$out"; then
+      error "Breaking API changes not covered by a Deprecated: marker or $ALLOWLIST"
+      exit 1
+    fi
     exit 0
   fi
 
