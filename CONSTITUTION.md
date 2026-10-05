@@ -79,11 +79,11 @@ This does **not** relax the bar against speculation. "Someone might want this" i
 
 | Phase | Focus | Milestone(s) | Principle |
 |-------|-------|--------------|-----------|
-| **Phase 1 (Now)** | Real-world compatibility & API polish | `v2.1.0`, `v2.2.0` | Nail the Basics First |
-| **Phase 2 (Near-term)** | Document manipulation | `v2.3.0` | Respect the Data |
-| **Phase 3 (Future)** | Advanced features & formats | _(unscheduled)_ | Start Small, Ship Often |
+| **Phase 1 (Now)** | Real-world compatibility, API polish & correctness | `Write-path fidelity`, `Honest conversion reports`, `Read-path correctness`, `Validator accuracy`, `Spec coverage: typed access`, `Test rigor` | Nail the Basics First |
+| **Phase 2 (Partly shipped)** | Document manipulation | _(none open)_ | Respect the Data |
+| **Phase 3 (Future)** | Advanced features & formats | `Phase 3: features` (unscheduled) | Start Small, Ship Often |
 
-Phase 3 is not yet milestoned. Issue-backed candidate: GEDZip archive support ([#127](https://github.com/cacack/gedcom-go/issues/127)). Pre-issue ideas live in [IDEAS.md](IDEAS.md) (fluent builder API, JSON struct tags, BOM output option).
+Milestones are named by theme, not version: release-please derives the version from commit types. Phase 1 began with the closed `v2.1.0` and `v2.2.0` milestones. Phase 2's merge half shipped in v2.0.0 as the `merge` package; the remaining diff work ([#36](https://github.com/cacack/gedcom-go/issues/36)) is tracked under `Phase 3: features` with GEDZip ([#127](https://github.com/cacack/gedcom-go/issues/127)), export and the CLI. Pre-issue ideas live in [IDEAS.md](IDEAS.md) (fluent builder API, JSON struct tags, BOM output option).
 
 ---
 
