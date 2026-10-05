@@ -37,7 +37,12 @@ type RawRecord struct {
 	// Lines contains all parsed lines belonging to this record, including the level-0 line
 	Lines []*Line
 
-	// ByteOffset is the starting byte position of this record in the file
+	// ByteOffset is the starting byte position of this record. [LazyParser]
+	// iterators report it as an absolute offset in the file; [Records],
+	// [NewRecordIterator], [RecordsWithOffset] and [NewRecordIteratorWithOffset]
+	// report it relative to the start of the reader they are given. For a
+	// reader wrapped with charset.NewReader that means bytes of the decoded
+	// stream, which are not positions in the original file.
 	ByteOffset int64
 
 	// ByteLength is the total number of bytes for this record
@@ -51,14 +56,15 @@ type RecordIterator struct {
 	parser     *Parser
 	current    *RawRecord
 	pending    *Line // Buffered line that belongs to next record
-	pendingLen int   // Byte length of pending line
+	pendingPos int64 // Byte offset where the pending line starts
 	err        error
-	byteOffset int64
-	lineEnding int // Track typical line ending size (1 for LF/CR, 2 for CRLF)
+	byteOffset int64 // Bytes consumed so far, including any pending line
 }
 
 // NewRecordIterator creates a new RecordIterator that reads from the given reader.
 // The reader should already be wrapped with charset.NewReader() for encoding normalization.
+// Record ByteOffset values are relative to the start of r; use the
+// [LazyParser] iterators for offsets that are absolute in a seekable file.
 //
 // Lines longer than [MaxLineBytes] cause iteration to abort with an error
 // rather than allocating unboundedly. Spec-compliant GEDCOM lines never
@@ -68,6 +74,12 @@ type RecordIterator struct {
 // fragment is dropped and [RecordIterator.Err] reports the reader error. See
 // [lineScanner.Truncated].
 func NewRecordIterator(r io.Reader) *RecordIterator {
+	return newRecordIteratorAt(r, 0)
+}
+
+// newRecordIteratorAt is [NewRecordIterator] for a reader positioned base
+// bytes into the file, so ByteOffset values stay file-relative.
+func newRecordIteratorAt(r io.Reader, base int64) *RecordIterator {
 	scanner := newLineScanner(r)
 	// Explicit buffer with documented ceiling; default bufio.Scanner cap is
 	// 64 KiB which can be too small for files containing embedded BLOBs.
@@ -76,7 +88,7 @@ func NewRecordIterator(r io.Reader) *RecordIterator {
 	return &RecordIterator{
 		scanner:    scanner,
 		parser:     NewParser(),
-		lineEnding: 1, // Conservative default
+		byteOffset: base,
 	}
 }
 
@@ -87,6 +99,8 @@ func (it *RecordIterator) Next() bool {
 		return false
 	}
 
+	// ByteOffset starts at the next unread line; a buffered level-0 line
+	// overrides it below.
 	record := &RawRecord{
 		ByteOffset: it.byteOffset,
 		Lines:      make([]*Line, 0, recordLinesInitialCap),
@@ -97,9 +111,8 @@ func (it *RecordIterator) Next() bool {
 		record.XRef = it.pending.XRef
 		record.Type = it.pending.Tag
 		record.Lines = append(record.Lines, it.pending)
-		record.ByteOffset = it.byteOffset - int64(it.pendingLen)
+		record.ByteOffset = it.pendingPos
 		it.pending = nil
-		it.pendingLen = 0
 	} else if !it.scanNextLine(record) {
 		// Read first line of record
 		return false
@@ -113,7 +126,8 @@ func (it *RecordIterator) Next() bool {
 			break
 		}
 		text := it.scanner.Text()
-		lineLen := len(it.scanner.Bytes()) + it.lineEnding
+		lineStart := it.byteOffset
+		it.byteOffset += int64(it.scanner.Consumed())
 
 		line, err := it.parser.ParseLine(text)
 		if err != nil {
@@ -124,12 +138,11 @@ func (it *RecordIterator) Next() bool {
 		if line.Level == 0 {
 			// This line belongs to next record - buffer it
 			it.pending = line
-			it.pendingLen = lineLen
+			it.pendingPos = lineStart
 			break
 		}
 
 		record.Lines = append(record.Lines, line)
-		it.byteOffset += int64(lineLen)
 	}
 
 	if err := it.scanner.Err(); err != nil {
@@ -137,8 +150,13 @@ func (it *RecordIterator) Next() bool {
 		return false
 	}
 
-	// Calculate byte length
-	record.ByteLength = it.byteOffset - record.ByteOffset
+	// The record ends where the buffered level-0 line (which belongs to the
+	// next record) starts, or at the last byte consumed.
+	end := it.byteOffset
+	if it.pending != nil {
+		end = it.pendingPos
+	}
+	record.ByteLength = end - record.ByteOffset
 
 	// Empty record means we've reached EOF without any lines
 	if len(record.Lines) == 0 {
@@ -166,7 +184,7 @@ func (it *RecordIterator) scanNextLine(record *RawRecord) bool {
 	}
 
 	text := it.scanner.Text()
-	lineLen := len(it.scanner.Bytes()) + it.lineEnding
+	it.byteOffset += int64(it.scanner.Consumed())
 
 	line, err := it.parser.ParseLine(text)
 	if err != nil {
@@ -177,7 +195,6 @@ func (it *RecordIterator) scanNextLine(record *RawRecord) bool {
 	record.XRef = line.XRef
 	record.Type = line.Tag
 	record.Lines = append(record.Lines, line)
-	it.byteOffset += int64(lineLen)
 
 	return true
 }
@@ -194,8 +211,11 @@ func (it *RecordIterator) Err() error {
 	return it.err
 }
 
-// RecordIteratorWithOffset creates a RecordIterator that tracks accurate byte offsets.
-// This is used when building an index and needs precise offset tracking.
+// RecordIteratorWithOffset iterates records like [RecordIterator], reporting
+// the same ByteOffset and ByteLength values (relative to the start of the
+// reader). [LazyParser.BuildIndex] uses it. It counts line terminators
+// independently of [RecordIterator], so the two must agree;
+// TestRecordIterators_ExactByteOffsets enforces that.
 type RecordIteratorWithOffset struct {
 	reader  *bufio.Reader
 	parser  *Parser
@@ -212,7 +232,8 @@ type lineWithPos struct {
 	byteLen int64
 }
 
-// NewRecordIteratorWithOffset creates an iterator with accurate byte offset tracking.
+// NewRecordIteratorWithOffset creates a [RecordIteratorWithOffset]. Record
+// ByteOffset values are relative to the start of r.
 func NewRecordIteratorWithOffset(r io.Reader) *RecordIteratorWithOffset {
 	return &RecordIteratorWithOffset{
 		reader: bufio.NewReader(r),
@@ -394,6 +415,8 @@ func (it *RecordIteratorWithOffset) Err() error {
 // for streaming GEDCOM record processing. The reader should already be wrapped
 // with charset.NewReader() for encoding normalization. Lines longer than
 // [MaxLineBytes] cause iteration to abort with [bufio.ErrTooLong].
+// Record ByteOffset values are relative to the start of r; use
+// [LazyParser.Records] for offsets that are absolute in a seekable file.
 //
 // Early termination is supported — breaking from the loop will stop iteration:
 //
@@ -406,8 +429,14 @@ func (it *RecordIteratorWithOffset) Err() error {
 //	    }
 //	}
 func Records(r io.Reader) iter.Seq2[*RawRecord, error] {
+	return recordsAt(r, 0)
+}
+
+// recordsAt is [Records] for a reader positioned base bytes into the file,
+// so ByteOffset values stay file-relative.
+func recordsAt(r io.Reader, base int64) iter.Seq2[*RawRecord, error] {
 	return func(yield func(*RawRecord, error) bool) {
-		it := NewRecordIterator(r)
+		it := newRecordIteratorAt(r, base)
 		for it.Next() {
 			if !yield(it.Record(), nil) {
 				return // consumer broke out of loop
@@ -419,13 +448,14 @@ func Records(r io.Reader) iter.Seq2[*RawRecord, error] {
 	}
 }
 
-// RecordsWithOffset returns an iterator over GEDCOM records with accurate byte offset tracking.
+// RecordsWithOffset returns an iterator over GEDCOM records with byte offsets.
 // It yields (*RawRecord, nil) for each successfully parsed record.
 // On parse error, it yields (nil, error) — exactly once — and stops iteration.
 // When err is non-nil, record is nil; always check err before dereferencing record.
 //
-// This is the range-over-func equivalent of [RecordIteratorWithOffset], providing
-// precise ByteOffset and ByteLength values suitable for building file indexes.
+// This is the range-over-func equivalent of [RecordIteratorWithOffset]. Its
+// ByteOffset and ByteLength values match [Records] and are relative to the
+// start of r.
 // The reader should already be wrapped with charset.NewReader() for encoding normalization.
 // Lines longer than [MaxLineBytes] cause iteration to abort with [ErrLineTooLong].
 //

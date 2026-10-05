@@ -1559,7 +1559,7 @@ if err := it.Err(); err != nil {
 | `RawRecord.XRef` | Cross-reference ID (e.g., "@I1@") |
 | `RawRecord.Type` | Record type tag (INDI, FAM, SOUR, etc.) |
 | `RawRecord.Lines` | All parsed lines for this record |
-| `RawRecord.ByteOffset` | Starting byte position in file |
+| `RawRecord.ByteOffset` | Starting byte position: absolute in the file for `LazyParser` iterators, relative to the start of the reader for `Records`/`NewRecordIterator` |
 | `RawRecord.ByteLength` | Total bytes for this record |
 
 ### Record Index

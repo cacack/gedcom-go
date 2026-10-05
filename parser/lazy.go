@@ -22,7 +22,10 @@ type LazyParser struct {
 }
 
 // NewLazyParser creates a new LazyParser from an io.ReadSeeker.
-// The reader must support seeking for indexed access operations.
+// The reader must support seeking for indexed access operations and for
+// [LazyParser.IterateFrom], [LazyParser.RecordsFrom] and their *All forms.
+// [LazyParser.Iterate] and [LazyParser.Records] also stream from readers that
+// cannot seek, such as a pipe.
 func NewLazyParser(rs io.ReadSeeker) *LazyParser {
 	return &LazyParser{
 		rs: rs,
@@ -167,27 +170,50 @@ func (p *LazyParser) readRecordAt(entry IndexEntry) (*RawRecord, error) {
 // Iterate returns a RecordIterator for streaming through records.
 // The iterator starts from the current position of the reader.
 // For full file iteration, seek to the beginning first.
+//
+// Record ByteOffset values are absolute offsets in the file, measured from the
+// reader's position when Iterate is called; don't move the reader (for
+// example with FindRecord) before iteration finishes. If the reader cannot
+// report its position, offsets are relative to where reading starts.
 func (p *LazyParser) Iterate() *RecordIterator {
-	return NewRecordIterator(p.rs)
+	return newRecordIteratorAt(p.rs, p.streamBase())
+}
+
+// streamBase returns the reader's current position as the base for absolute
+// offsets, or 0 when the reader cannot report it (a pipe, for example), in
+// which case offsets are relative to where reading starts.
+func (p *LazyParser) streamBase() int64 {
+	pos, err := p.rs.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return 0
+	}
+	return pos
 }
 
 // IterateFrom seeks to the given byte offset and returns an iterator.
 // This allows resuming iteration from a known position.
+// Record ByteOffset values are absolute offsets in the file.
 func (p *LazyParser) IterateFrom(offset int64) (*RecordIterator, error) {
-	if _, err := p.rs.Seek(offset, io.SeekStart); err != nil {
+	pos, err := p.rs.Seek(offset, io.SeekStart)
+	if err != nil {
 		return nil, fmt.Errorf("seeking to offset: %w", err)
 	}
 
-	return NewRecordIterator(p.rs), nil
+	return newRecordIteratorAt(p.rs, pos), nil
 }
 
 // IterateAll seeks to the beginning and returns an iterator for all records.
+// Record ByteOffset values are absolute offsets in the file.
 func (p *LazyParser) IterateAll() (*RecordIterator, error) {
 	return p.IterateFrom(0)
 }
 
 // Records returns an iterator over records from the current position using
 // Go 1.23 range-over-func. This is the range-over-func equivalent of [Iterate].
+//
+// Record ByteOffset values are absolute offsets in the file, measured from the
+// reader's position when iteration starts. If the reader cannot report its
+// position, offsets are relative to where reading starts.
 //
 // Usage:
 //
@@ -198,12 +224,15 @@ func (p *LazyParser) IterateAll() (*RecordIterator, error) {
 //	    // process record
 //	}
 func (p *LazyParser) Records() iter.Seq2[*RawRecord, error] {
-	return Records(p.rs)
+	return func(yield func(*RawRecord, error) bool) {
+		recordsAt(p.rs, p.streamBase())(yield)
+	}
 }
 
 // RecordsFrom seeks to the given byte offset and returns an iterator over
 // records using Go 1.23 range-over-func. This is the range-over-func
-// equivalent of [IterateFrom].
+// equivalent of [IterateFrom]. Record ByteOffset values are absolute offsets
+// in the file.
 //
 // If seeking fails, the error is yielded as the first iteration result.
 //
@@ -217,24 +246,18 @@ func (p *LazyParser) Records() iter.Seq2[*RawRecord, error] {
 //	}
 func (p *LazyParser) RecordsFrom(offset int64) iter.Seq2[*RawRecord, error] {
 	return func(yield func(*RawRecord, error) bool) {
-		if _, err := p.rs.Seek(offset, io.SeekStart); err != nil {
+		pos, err := p.rs.Seek(offset, io.SeekStart)
+		if err != nil {
 			yield(nil, fmt.Errorf("seeking to offset: %w", err))
 			return
 		}
-		for record, err := range Records(p.rs) {
-			if !yield(record, err) {
-				return
-			}
-			if err != nil {
-				return
-			}
-		}
+		recordsAt(p.rs, pos)(yield)
 	}
 }
 
 // AllRecords seeks to the beginning and returns an iterator over all records
 // using Go 1.23 range-over-func. This is the range-over-func equivalent
-// of [IterateAll].
+// of [IterateAll]. Record ByteOffset values are absolute offsets in the file.
 //
 // Usage:
 //

@@ -965,3 +965,104 @@ func TestLazyParser_ReadErrorOutranksTruncatedTail(t *testing.T) {
 		t.Errorf("FindRecordByType() error = %v, want the reader error, not a syntax error about the fragment", err)
 	}
 }
+
+// Every LazyParser entry point reports offsets that are absolute in the file,
+// whatever the line endings (issue #502).
+func TestLazyParser_AbsoluteByteOffsets(t *testing.T) {
+	for _, v := range offsetVariants {
+		t.Run(v.name, func(t *testing.T) {
+			input, want := buildOffsetFixture(v.term)
+			newLP := func() *LazyParser { return NewLazyParser(newStringReadSeeker(input)) }
+
+			t.Run("IterateAll", func(t *testing.T) {
+				it, err := newLP().IterateAll()
+				if err != nil {
+					t.Fatal(err)
+				}
+				assertRecordSlices(t, input, collectIterator(t, it), want)
+			})
+			t.Run("AllRecords", func(t *testing.T) {
+				assertRecordSlices(t, input, collectSeq(t, newLP().AllRecords()), want)
+			})
+			t.Run("Iterate", func(t *testing.T) {
+				lp := newLP()
+				if _, err := lp.rs.Seek(0, io.SeekStart); err != nil {
+					t.Fatal(err)
+				}
+				assertRecordSlices(t, input, collectIterator(t, lp.Iterate()), want)
+			})
+			t.Run("Records", func(t *testing.T) {
+				assertRecordSlices(t, input, collectSeq(t, newLP().Records()), want)
+			})
+		})
+	}
+}
+
+// Starting from the 3rd record yields the same offsets as a full iteration
+// does from that record on, whether the start is a seek by LazyParser or by
+// the caller.
+func TestLazyParser_FromThirdRecord_AbsoluteByteOffsets(t *testing.T) {
+	for _, v := range offsetVariants {
+		t.Run(v.name, func(t *testing.T) {
+			input, want := buildOffsetFixture(v.term)
+			full := collectSeq(t, Records(strings.NewReader(input)))
+			assertRecordSlices(t, input, full, want)
+			start := full[2].ByteOffset
+			newLP := func() *LazyParser { return NewLazyParser(newStringReadSeeker(input)) }
+
+			check := func(t *testing.T, got []*RawRecord) {
+				t.Helper()
+				assertRecordSlices(t, input, got, want[2:])
+				for i, rec := range got {
+					f := full[i+2]
+					if rec.ByteOffset != f.ByteOffset || rec.ByteLength != f.ByteLength {
+						t.Errorf("record %d (%s): (%d,%d), full iteration (%d,%d)",
+							i+2, rec.Type, rec.ByteOffset, rec.ByteLength, f.ByteOffset, f.ByteLength)
+					}
+				}
+			}
+
+			t.Run("IterateFrom", func(t *testing.T) {
+				it, err := newLP().IterateFrom(start)
+				if err != nil {
+					t.Fatal(err)
+				}
+				check(t, collectIterator(t, it))
+			})
+			t.Run("RecordsFrom", func(t *testing.T) {
+				check(t, collectSeq(t, newLP().RecordsFrom(start)))
+			})
+			t.Run("Iterate after manual seek", func(t *testing.T) {
+				lp := newLP()
+				if _, err := lp.rs.Seek(start, io.SeekStart); err != nil {
+					t.Fatal(err)
+				}
+				check(t, collectIterator(t, lp.Iterate()))
+			})
+			t.Run("Records after manual seek", func(t *testing.T) {
+				lp := newLP()
+				if _, err := lp.rs.Seek(start, io.SeekStart); err != nil {
+					t.Fatal(err)
+				}
+				check(t, collectSeq(t, lp.Records()))
+			})
+		})
+	}
+}
+
+// A reader that cannot report its position (a pipe, for example) still
+// streams through Iterate and Records, with offsets relative to where
+// reading starts.
+func TestLazyParser_IterateRecords_NonSeekable(t *testing.T) {
+	input, want := buildOffsetFixture(offsetTerm("CRLF"))
+	newLP := func() *LazyParser {
+		return NewLazyParser(&errorSeeker{Reader: strings.NewReader(input)})
+	}
+
+	t.Run("Iterate", func(t *testing.T) {
+		assertRecordSlices(t, input, collectIterator(t, newLP().Iterate()), want)
+	})
+	t.Run("Records", func(t *testing.T) {
+		assertRecordSlices(t, input, collectSeq(t, newLP().Records()), want)
+	})
+}
