@@ -478,6 +478,10 @@ type lineScanner struct {
 	// unterminated records whether the most recent token was emitted by the
 	// at-EOF fall-through, i.e. with no line terminator after it.
 	unterminated bool
+
+	// consumed is the number of input bytes the most recent token occupied,
+	// terminator included.
+	consumed int
 }
 
 // newLineScanner wraps r in a scanner that splits GEDCOM lines.
@@ -505,10 +509,20 @@ func (s *lineScanner) Truncated() bool {
 	return s.unterminated && s.Err() != nil
 }
 
+// Consumed reports the number of input bytes the token just returned by Scan
+// occupied, terminator included: the line's length plus 0, 1 or 2 for no
+// terminator, LF or CR, or CRLF. Summed over every token it equals the number
+// of bytes read, so callers can track byte offsets without guessing at line
+// ending widths. It is meaningful only after Scan returned true.
+func (s *lineScanner) Consumed() int {
+	return s.consumed
+}
+
 // split is the [bufio.SplitFunc] backing lineScanner. It is based on
 // bufio.ScanLines but adds CR-only support.
 func (s *lineScanner) split(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	s.unterminated = false
+	s.consumed = 0
 
 	if atEOF && len(data) == 0 {
 		return 0, nil, nil
@@ -518,6 +532,7 @@ func (s *lineScanner) split(data []byte, atEOF bool) (advance int, token []byte,
 	for i := 0; i < len(data); i++ {
 		if data[i] == '\n' {
 			// Found LF - this could be standalone or part of CRLF
+			s.consumed = i + 1
 			return i + 1, data[0:i], nil
 		}
 		if data[i] == '\r' {
@@ -525,9 +540,11 @@ func (s *lineScanner) split(data []byte, atEOF bool) (advance int, token []byte,
 			if i+1 < len(data) {
 				if data[i+1] == '\n' {
 					// CRLF - return line without either terminator
+					s.consumed = i + 2
 					return i + 2, data[0:i], nil
 				}
 				// CR alone - return line
+				s.consumed = i + 1
 				return i + 1, data[0:i], nil
 			}
 			// CR at end of data - need more data to determine if CRLF
@@ -535,6 +552,7 @@ func (s *lineScanner) split(data []byte, atEOF bool) (advance int, token []byte,
 				return 0, nil, nil
 			}
 			// At EOF with CR - treat as line ending
+			s.consumed = i + 1
 			return i + 1, data[0:i], nil
 		}
 	}
@@ -544,6 +562,7 @@ func (s *lineScanner) split(data []byte, atEOF bool) (advance int, token []byte,
 	// rather than because the input ran out, this token is a fragment.
 	if atEOF {
 		s.unterminated = true
+		s.consumed = len(data)
 		return len(data), data, nil
 	}
 

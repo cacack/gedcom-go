@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"iter"
 	"strings"
 	"testing"
 )
@@ -875,4 +876,168 @@ func TestRecordIterator_ReadErrorOutranksTruncatedTail(t *testing.T) {
 			}
 		})
 	}
+}
+
+// offsetFixtureRecords is a multi-record document used by the byte-offset
+// tests, one slice of lines (without terminators) per record.
+var offsetFixtureRecords = [][]string{
+	{"0 HEAD", "1 SOUR TEST", "2 VERS 1.0", "1 GEDC", "2 VERS 5.5.1", "1 CHAR UTF-8"},
+	{"0 @I1@ INDI", "1 NAME John /Smith/", "1 SEX M", "1 BIRT", "2 DATE 1 JAN 1900", "1 FAMS @F1@"},
+	{"0 @I2@ INDI", "1 NAME Jane /Doe/", "1 SEX F", "1 FAMS @F1@"},
+	{"0 @F1@ FAM", "1 HUSB @I1@", "1 WIFE @I2@"},
+	{"0 TRLR"},
+}
+
+// offsetVariant chooses the terminator for line i of n lines in total.
+type offsetVariant struct {
+	name string
+	term func(i, n int) string
+}
+
+var offsetVariants = []offsetVariant{
+	{"LF", func(int, int) string { return "\n" }},
+	{"CRLF", func(int, int) string { return "\r\n" }},
+	{"CR", func(int, int) string { return "\r" }},
+	{"mixed", func(i, _ int) string { return []string{"\n", "\r\n", "\r"}[i%3] }},
+	{"no trailing newline", func(i, n int) string {
+		if i == n-1 {
+			return ""
+		}
+		return "\n"
+	}},
+}
+
+// offsetTerm returns the terminator function of the named offsetVariant.
+func offsetTerm(name string) func(i, n int) string {
+	for _, v := range offsetVariants {
+		if v.name == name {
+			return v.term
+		}
+	}
+	panic("unknown offset variant " + name)
+}
+
+// buildOffsetFixture renders offsetFixtureRecords with term's line endings.
+// It returns the full input and the exact bytes of each record, terminators
+// included.
+func buildOffsetFixture(term func(i, n int) string) (input string, records []string) {
+	n := 0
+	for _, rec := range offsetFixtureRecords {
+		n += len(rec)
+	}
+	var all strings.Builder
+	i := 0
+	for _, rec := range offsetFixtureRecords {
+		var b strings.Builder
+		for _, line := range rec {
+			b.WriteString(line)
+			b.WriteString(term(i, n))
+			i++
+		}
+		records = append(records, b.String())
+		all.WriteString(b.String())
+	}
+	return all.String(), records
+}
+
+// assertRecordSlices checks that each record's ByteOffset and ByteLength
+// describe exactly the bytes in want, relative to input.
+func assertRecordSlices(t *testing.T, input string, got []*RawRecord, want []string) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("got %d records, want %d", len(got), len(want))
+	}
+	for i, rec := range got {
+		start, end := rec.ByteOffset, rec.ByteOffset+rec.ByteLength
+		if start < 0 || rec.ByteLength < 0 || end > int64(len(input)) {
+			t.Errorf("record %d (%s): offset %d length %d out of range for %d-byte input",
+				i, rec.Type, rec.ByteOffset, rec.ByteLength, len(input))
+			continue
+		}
+		if s := input[start:end]; s != want[i] {
+			t.Errorf("record %d (%s): input[%d:%d] = %q, want %q", i, rec.Type, start, end, s, want[i])
+		}
+	}
+}
+
+func collectIterator(t *testing.T, it *RecordIterator) []*RawRecord {
+	t.Helper()
+	var out []*RawRecord
+	for it.Next() {
+		out = append(out, it.Record())
+	}
+	if err := it.Err(); err != nil {
+		t.Fatalf("iteration error: %v", err)
+	}
+	return out
+}
+
+func collectSeq(t *testing.T, seq iter.Seq2[*RawRecord, error]) []*RawRecord {
+	t.Helper()
+	var out []*RawRecord
+	for rec, err := range seq {
+		if err != nil {
+			t.Fatalf("iteration error: %v", err)
+		}
+		out = append(out, rec)
+	}
+	return out
+}
+
+// Every iterator must report offsets and lengths that slice out exactly one
+// record, whatever the line endings (issue #502).
+func TestRecordIterators_ExactByteOffsets(t *testing.T) {
+	for _, v := range offsetVariants {
+		t.Run(v.name, func(t *testing.T) {
+			input, want := buildOffsetFixture(v.term)
+
+			plain := collectIterator(t, NewRecordIterator(strings.NewReader(input)))
+			seq := collectSeq(t, Records(strings.NewReader(input)))
+			withOffset := collectSeq(t, RecordsWithOffset(strings.NewReader(input)))
+
+			t.Run("NewRecordIterator", func(t *testing.T) { assertRecordSlices(t, input, plain, want) })
+			t.Run("Records", func(t *testing.T) { assertRecordSlices(t, input, seq, want) })
+			t.Run("RecordsWithOffset", func(t *testing.T) { assertRecordSlices(t, input, withOffset, want) })
+
+			if len(plain) != len(withOffset) {
+				t.Fatalf("NewRecordIterator yielded %d records, RecordsWithOffset %d", len(plain), len(withOffset))
+			}
+			for i := range plain {
+				if plain[i].ByteOffset != withOffset[i].ByteOffset || plain[i].ByteLength != withOffset[i].ByteLength {
+					t.Errorf("record %d: NewRecordIterator (%d,%d) != RecordsWithOffset (%d,%d)", i,
+						plain[i].ByteOffset, plain[i].ByteLength, withOffset[i].ByteOffset, withOffset[i].ByteLength)
+				}
+			}
+		})
+	}
+}
+
+// The same document in LF and CRLF differs by one byte per preceding line.
+func TestRecordIterator_CRLFOffsetsShiftByLineCount(t *testing.T) {
+	lfInput, _ := buildOffsetFixture(offsetTerm("LF"))
+	crlfInput, _ := buildOffsetFixture(offsetTerm("CRLF"))
+
+	lf := collectIterator(t, NewRecordIterator(strings.NewReader(lfInput)))
+	crlf := collectIterator(t, NewRecordIterator(strings.NewReader(crlfInput)))
+	if len(lf) != len(crlf) {
+		t.Fatalf("LF yielded %d records, CRLF %d", len(lf), len(crlf))
+	}
+
+	linesBefore := int64(0)
+	for i := range lf {
+		if diff := crlf[i].ByteOffset - lf[i].ByteOffset; diff != linesBefore {
+			t.Errorf("record %d (%s): CRLF offset - LF offset = %d, want %d", i, lf[i].Type, diff, linesBefore)
+		}
+		linesBefore += int64(len(offsetFixtureRecords[i]))
+	}
+}
+
+// newRecordIteratorAt reports offsets relative to the file, not the reader.
+func TestNewRecordIteratorAt_BaseOffset(t *testing.T) {
+	input, want := buildOffsetFixture(offsetTerm("CRLF"))
+	const prefix = "XXXXXXX"
+	file := prefix + input
+
+	got := collectIterator(t, newRecordIteratorAt(strings.NewReader(input), int64(len(prefix))))
+	assertRecordSlices(t, file, got, want)
 }

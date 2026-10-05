@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"testing"
@@ -1207,6 +1208,58 @@ func TestParseWithOptions_MatchesParseBehavior(t *testing.T) {
 			lines1[i].Value != lines2[i].Value ||
 			lines1[i].XRef != lines2[i].XRef {
 			t.Errorf("Line %d mismatch", i)
+		}
+	}
+}
+
+// Test lineScanner.Consumed reports each token's byte width, terminator
+// included, so the widths sum to the input length (#502).
+func TestLineScannerConsumed(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  []int
+	}{
+		{name: "LF", input: "0 HEAD\n1 GEDC\n", want: []int{7, 7}},
+		{name: "CRLF", input: "0 HEAD\r\n1 GEDC\r\n", want: []int{8, 8}},
+		{name: "CR", input: "0 HEAD\r1 GEDC\r", want: []int{7, 7}},
+		{name: "mixed", input: "0 HEAD\r\n1 GEDC\n2 VERS\r0 TRLR\r\n", want: []int{8, 7, 7, 8}},
+		{name: "no trailing newline", input: "0 HEAD\n0 TRLR", want: []int{7, 6}},
+		{name: "empty lines", input: "\n\r\n\r", want: []int{1, 2, 1}},
+	}
+
+	readers := []struct {
+		name string
+		wrap func(string) io.Reader
+	}{
+		{name: "whole", wrap: func(s string) io.Reader { return strings.NewReader(s) }},
+		// One byte per read splits every CRLF pair across reads.
+		{name: "one byte", wrap: func(s string) io.Reader { return iotest.OneByteReader(strings.NewReader(s)) }},
+	}
+
+	for _, tt := range tests {
+		for _, r := range readers {
+			t.Run(tt.name+"/"+r.name, func(t *testing.T) {
+				s := newLineScanner(r.wrap(tt.input))
+				var got []int
+				sum := 0
+				for s.Scan() {
+					got = append(got, s.Consumed())
+					sum += s.Consumed()
+				}
+				if err := s.Err(); err != nil {
+					t.Fatalf("unexpected scan error: %v", err)
+				}
+				if sum != len(tt.input) {
+					t.Errorf("sum of Consumed() = %d, want %d", sum, len(tt.input))
+				}
+				if fmt.Sprint(got) != fmt.Sprint(tt.want) {
+					t.Errorf("Consumed() per token = %v, want %v", got, tt.want)
+				}
+				if c := s.Consumed(); c != 0 {
+					t.Errorf("Consumed() after scan ended = %d, want 0", c)
+				}
+			})
 		}
 	}
 }
