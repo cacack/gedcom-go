@@ -1,0 +1,24 @@
+Incompatible changes:
+- RootFunc: removed
+- ./a/b.X: removed
+- ./gedcom.(*ProbeType).ProbeMethod: removed
+- ./gedcom.Embedder.A: removed
+- ./gedcom.Embedder.ProbeCmp: removed
+- ./gedcom.GroupedVar: removed
+- ./gedcom.Mentions: removed
+- ./gedcom.OldA: removed
+- ./gedcom.OtherVar: removed
+- ./gedcom.PlainFunc: removed
+- ./gedcom.ProbeCmp.A: changed from int to []int
+- ./gedcom.ProbeCmp: old is comparable, new is not
+- ./gedcom.ProbeConst: value changed from 1 to 2
+- ./gedcom.ProbeFunc: removed
+- ./gedcom.ProbeIface.Gone: removed
+- ./gedcom.ProbeType.Gone: removed
+- ./gedcom.ProbeType.Legacy: removed
+- ./gedcom.ProbeType.ProbeVal: removed
+- ./gedcom.ProbeType.Retyped: changed from string to int
+- ./gedcom.ProbeType.Undeprecated: removed
+- package example.com/probe/v3/gone: removed
+Compatible changes:
+- ./gedcom.Added: added

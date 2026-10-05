@@ -1,0 +1,27 @@
+# API compatibility allowlist for the deprecation gate (#557).
+#
+# scripts/check-api-compat.sh runs the gate when a branch declares a breaking
+# change. Every incompatible change apidiff reports against the baseline
+# release must then either remove a symbol that carried a "// Deprecated:"
+# paragraph in that release, or be listed here. Retypes, comparability losses
+# and constant value changes can only pass by being listed here.
+#
+# Format: one entry per line, two whitespace-separated fields:
+#
+#   <symbol>  <migration guide path>#<heading anchor>
+#
+# <symbol> is the text before ": " on apidiff's line, copied verbatim, e.g.
+#   ./gedcom.Address.Phone            (field or value-receiver method)
+#   ./gedcom.(*Document).Subset       (pointer-receiver method)
+#   ./validator.Strictness            (package-level symbol)
+#   package github.com/.../v3/old     (a whole removed package)
+# The guide path is relative to the repository root; the anchor must equal
+# the GitHub-style slug of a heading in that guide (lowercase; letters,
+# digits, hyphens and underscores kept; spaces become hyphens; everything
+# else dropped), e.g.
+#   ./gedcom.Header.Date  docs/guides/migration-v4.md#headerdate-is-now-string
+#
+# An entry whose guide or heading does not exist fails the gate; an entry
+# matching no incompatible change only warns. Blank lines and lines starting
+# with # are ignored. Remove entries once their major release ships: the next
+# cycle compares against that release.

@@ -25,7 +25,7 @@ This installs pre-commit hooks that enforce:
 | Command | Description |
 |---------|-------------|
 | `make test` | Run all tests (with race detector) |
-| `make preflight` | Run all CI checks locally before pushing |
+| `make preflight` | Run CI's code checks locally before pushing (not PR title, commit type, dependency review) |
 | `make test-coverage` | Run tests with per-package coverage report |
 | `make fmt` | Format code |
 | `make vet` | Run go vet |

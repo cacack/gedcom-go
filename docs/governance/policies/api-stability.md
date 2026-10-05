@@ -386,7 +386,15 @@ Before release-please is allowed to cut the major:
 - [ ] Every such replacement is in a **published tag**, not merely merged
 - [ ] Every removed exported symbol shipped a `// Deprecated:` marker in a
       released minor — a map key or a retyped field cannot carry one, so it gets
-      a godoc note and a guide entry instead
+      a godoc note and a guide entry instead. `scripts/check-api-compat.sh`
+      enforces this on every branch that declares a breaking change: each
+      incompatible change apidiff reports must remove a symbol that carried a
+      `Deprecated:` paragraph in the baseline release, or be listed in
+      [`scripts/api-compat-allowlist.txt`](../../../scripts/api-compat-allowlist.txt)
+      with a migration-guide heading that exists. Retypes, lost comparability
+      and changed constant values can only pass through the allowlist. The
+      exceptions below predate the gate and are kept as history; the baseline
+      is now v3.0.0, so they are not in the allowlist
       - **Named exception (v3.0.0):** `gedcom.Address.Phone`, `.Email` and
         `.Website` ([#494](https://github.com/cacack/gedcom-go/issues/494))
         shipped no marker in `v2.5.0`, and their replacement
