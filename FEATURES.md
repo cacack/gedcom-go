@@ -857,12 +857,14 @@ err := date.Validate()
 
 Full parsing support for historical calendars used in genealogical records:
 
-| Calendar | Escape Sequence | Month Codes |
-|----------|-----------------|-------------|
-| Gregorian | `@#DGREGORIAN@` (default) | JAN, FEB, MAR, APR, MAY, JUN, JUL, AUG, SEP, OCT, NOV, DEC |
-| Julian | `@#DJULIAN@` | JAN, FEB, MAR, APR, MAY, JUN, JUL, AUG, SEP, OCT, NOV, DEC |
-| Hebrew | `@#DHEBREW@` | TSH, CSH, KSL, TVT, SHV, ADR, ADS, NSN, IYR, SVN, TMZ, AAV, ELL |
-| French Republican | `@#DFRENCH R@` | VEND, BRUM, FRIM, NIVO, PLUV, VENT, GERM, FLOR, PRAI, MESS, THER, FRUC, COMP |
+| Calendar | 5.5.x Escape | 7.0 Keyword | Month Codes |
+|----------|--------------|-------------|-------------|
+| Gregorian | `@#DGREGORIAN@` (default) | `GREGORIAN` (default) | JAN, FEB, MAR, APR, MAY, JUN, JUL, AUG, SEP, OCT, NOV, DEC |
+| Julian | `@#DJULIAN@` | `JULIAN` | JAN, FEB, MAR, APR, MAY, JUN, JUL, AUG, SEP, OCT, NOV, DEC |
+| Hebrew | `@#DHEBREW@` | `HEBREW` | TSH, CSH, KSL, TVT, SHV, ADR, ADS, NSN, IYR, SVN, TMZ, AAV, ELL |
+| French Republican | `@#DFRENCH R@` | `FRENCH_R` | VEND, BRUM, FRIM, NIVO, PLUV, VENT, GERM, FLOR, PRAI, MESS, THER, FRUC, COMP |
+
+`ParseDate` accepts either form regardless of file version, anywhere an escape is accepted. The 7.0 keywords are case-sensitive, as the 7.0 grammar specifies. Extension calendars (`_XXX`) are not recognized: such a date fails to parse, keeps its raw value, and is reported as `INVALID_VALUE`.
 
 ```go
 // Parse a Hebrew calendar date
@@ -876,6 +878,10 @@ date, _ := gedcom.ParseDate("@#DFRENCH R@ 1 VEND 1")
 date.Calendar  // CalendarFrenchRepublican
 date.Month     // 1 (Vendémiaire)
 date.Year      // 1 (Year I of the Republic)
+
+// GEDCOM 7 writes the calendar as a bare keyword
+date, _ := gedcom.ParseDate("JULIAN 1 JAN 1750")
+date.Calendar  // CalendarJulian
 
 // The escape is part of <date>, so it follows the modifier keyword
 date, _ := gedcom.ParseDate("ABT @#DJULIAN@ MAR 1066")

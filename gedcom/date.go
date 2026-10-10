@@ -201,6 +201,7 @@ var frenchMonthNames = map[string]int{
 //   - "FROM 1880 TO 1920" -> date period
 //   - "21 FEB 1750/51" -> dual dating
 //   - "44 BC" -> B.C. date
+//   - "@#DJULIAN@ 1 JAN 1750" or "JULIAN 1 JAN 1750" -> Julian calendar (5.5.x escape or 7.0 keyword)
 //   - "(unknown)" -> date phrase
 func ParseDate(s string) (*Date, error) {
 	if s == "" {
@@ -265,9 +266,26 @@ func ParseDate(s string) (*Date, error) {
 	return date, nil
 }
 
-// parseCalendarEscape parses a calendar escape sequence like @#DJULIAN@
-// and returns the calendar type and the remaining string.
+// gedcom7Calendars maps the GEDCOM 7 calendar keywords to calendars. The 7.0
+// grammar spells them case-sensitively, so lookups use the field as written.
+// Extension calendars (_XXX) are not recognized.
+var gedcom7Calendars = map[string]Calendar{
+	"GREGORIAN": CalendarGregorian,
+	"JULIAN":    CalendarJulian,
+	"HEBREW":    CalendarHebrew,
+	"FRENCH_R":  CalendarFrenchRepublican,
+}
+
+// parseCalendarEscape parses a leading calendar marker and returns the calendar
+// type and the remaining string. It accepts both the GEDCOM 5.5.x escape form
+// (e.g. @#DJULIAN@) and the GEDCOM 7 keyword form (e.g. JULIAN).
 func parseCalendarEscape(s string) (Calendar, string, bool) {
+	if first, rest, _ := strings.Cut(s, " "); first != "" {
+		if calendar, ok := gedcom7Calendars[first]; ok {
+			return calendar, strings.TrimSpace(rest), true
+		}
+	}
+
 	if !strings.HasPrefix(s, "@#D") {
 		return CalendarGregorian, s, false
 	}
