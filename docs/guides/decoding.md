@@ -117,6 +117,22 @@ fmt.Println(result.Diagnostics.String())
 - Maximizing data recovery from corrupt files
 - Production systems where some data is better than none
 
+## Line Length Limit
+
+Every line-reading path — `decoder.Decode` and its variants, `parser.Parse`,
+`parser.ParseWithOptions`, the streaming iterators, and `LazyParser` index
+building and `FindRecord` — accepts a single line of up to
+`parser.MaxLineBytes` (1 MiB). GEDCOM 7 sets no line-length limit, so long
+`SNOTE` text or embedded data on one line is valid; the ceiling exists only to
+stop hostile or corrupt input from exhausting memory.
+
+A longer line is not a syntax problem but a read failure, so it fails the whole
+read in both strict and lenient mode — it is never skipped or recorded as a
+diagnostic. The error wraps `bufio.ErrTooLong`, except from the
+offset-reporting iterators (`RecordIteratorWithOffset`, `RecordsWithOffset`)
+and `LazyParser.BuildIndex`, which wrap `parser.ErrLineTooLong`; test for it
+with `errors.Is`.
+
 ## Round-trip Expectations
 
 When encoding a decoded document back to GEDCOM format, here's what to expect.

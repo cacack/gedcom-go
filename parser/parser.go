@@ -484,9 +484,11 @@ type lineScanner struct {
 	consumed int
 }
 
-// newLineScanner wraps r in a scanner that splits GEDCOM lines.
+// newLineScanner wraps r in a scanner that splits GEDCOM lines no longer than
+// [MaxLineBytes]; a longer line fails the scan with [bufio.ErrTooLong].
 func newLineScanner(r io.Reader) *lineScanner {
 	s := &lineScanner{Scanner: bufio.NewScanner(r)}
+	s.Buffer(make([]byte, 0, 4096), MaxLineBytes)
 	s.Split(s.split)
 	return s
 }
