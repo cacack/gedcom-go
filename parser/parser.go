@@ -486,9 +486,13 @@ type lineScanner struct {
 
 // newLineScanner wraps r in a scanner that splits GEDCOM lines no longer than
 // [MaxLineBytes]; a longer line fails the scan with [bufio.ErrTooLong].
+//
+// The limit counts content only, matching readGEDCOMLine, so split enforces it
+// itself. The buffer leaves two bytes beyond it for a CRLF terminator, or for
+// the byte after a CR that decides whether the CR starts a CRLF pair.
 func newLineScanner(r io.Reader) *lineScanner {
 	s := &lineScanner{Scanner: bufio.NewScanner(r)}
-	s.Buffer(make([]byte, 0, 4096), MaxLineBytes)
+	s.Buffer(make([]byte, 0, 4096), MaxLineBytes+2)
 	s.Split(s.split)
 	return s
 }
@@ -532,6 +536,10 @@ func (s *lineScanner) split(data []byte, atEOF bool) (advance int, token []byte,
 
 	// Look for CR or LF
 	for i := 0; i < len(data); i++ {
+		if i > MaxLineBytes {
+			// No terminator within MaxLineBytes of content.
+			return 0, nil, bufio.ErrTooLong
+		}
 		if data[i] == '\n' {
 			// Found LF - this could be standalone or part of CRLF
 			s.consumed = i + 1
@@ -563,6 +571,9 @@ func (s *lineScanner) split(data []byte, atEOF bool) (advance int, token []byte,
 	// followed it, so record that: if the scan ended because the reader failed
 	// rather than because the input ran out, this token is a fragment.
 	if atEOF {
+		if len(data) > MaxLineBytes {
+			return 0, nil, bufio.ErrTooLong
+		}
 		s.unterminated = true
 		s.consumed = len(data)
 		return len(data), data, nil

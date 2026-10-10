@@ -122,7 +122,7 @@ fmt.Println(result.Diagnostics.String())
 Every line-reading path — `decoder.Decode` and its variants, `parser.Parse`,
 `parser.ParseWithOptions`, the streaming iterators, and `LazyParser` index
 building and `FindRecord` — accepts a single line of up to
-`parser.MaxLineBytes` (1 MiB). GEDCOM 7 sets no line-length limit, so long
+`parser.MaxLineBytes` (1 MiB), not counting its line terminator. GEDCOM 7 sets no line-length limit, so long
 `SNOTE` text or embedded data on one line is valid; the ceiling exists only to
 stop hostile or corrupt input from exhausting memory.
 
