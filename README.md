@@ -183,6 +183,8 @@ func writeStreamed(path string, records []*gedcom.Record) (err error) {
 }
 ```
 
+`charset.NewReader` reads only the header (at most 64 KiB) to detect the encoding, then streams the rest. If you already know the encoding, `charset.NewReaderWithEncoding(f, charset.EncodingUTF8)` skips detection.
+
 On a 1.1MB / 2,322-individual file, streaming parse holds **~17%** of the heap that batch decode retains after the call returns (and ~54% of the cumulative allocations). See [`examples/stream`](examples/stream/main.go) for the full pattern and [docs/guides/performance.md](docs/guides/performance.md#streaming-apis-performance) for benchmark details.
 
 ### Convert Between Versions

@@ -303,6 +303,8 @@ Stream validator memory scales with unique cross-references (needed for orphan-r
 | Random access needed | LazyParser with index |
 | Single-pass processing | RecordIterator |
 
+Encoding detection in `charset.NewReader` reads only the header (at most 64 KiB) before streaming starts, and replays those bytes. When the encoding is known in advance, `charset.NewReaderWithEncoding` skips detection.
+
 ## Performance Recommendations
 
 ### For Large Files (>10 MB)
