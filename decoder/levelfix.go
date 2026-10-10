@@ -32,9 +32,7 @@ func normalizeLevelJumps(lines []*parser.Line, collector *diagnosticCollector) {
 	prev := 0
 	for _, line := range lines {
 		if line.Level > prev+1 {
-			if collector != nil {
-				collector.addBadLevelJump(line.LineNumber, line.Level, prev, line.Tag)
-			}
+			collector.addBadLevelJump(line.LineNumber, line.Level, prev, line.Tag)
 			line.Level = prev + 1
 		}
 		prev = line.Level

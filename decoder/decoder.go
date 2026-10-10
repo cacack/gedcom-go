@@ -207,7 +207,6 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// that reports them keeps them, but every decode needs the version it
 	// carries.
 	collector := &diagnosticCollector{
-		lenient: !opts.StrictMode,
 		version: xrefVersion,
 		discard: opts.StrictMode || !collect,
 	}

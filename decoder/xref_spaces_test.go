@@ -92,6 +92,7 @@ func TestSpacedXRef70(t *testing.T) {
 			lines = append(lines, d.Line)
 		}
 	}
+	// spacedXRefDoc line 8 is "0 @I 1@ INDI" and line 12 "0 @N 1@ NOTE ...".
 	if want := []int{8, 12}; !slices.Equal(lines, want) {
 		t.Errorf("INVALID_XREF lines = %v, want %v", lines, want)
 	}
@@ -113,6 +114,7 @@ func TestSpacedXRef551StrictOtherErrors(t *testing.T) {
 	data := strings.Replace(spacedXRefDoc("5.5.1"), "1 NAME Example\n", "1 NAME Example\nbad line\n", 1)
 	_, err := DecodeWithDiagnostics(strings.NewReader(data), &DecodeOptions{StrictMode: true})
 	var pe *parser.ParseError
+	// "bad line" is inserted after line 14 ("1 NAME Example"), so it is line 15.
 	if !errors.As(err, &pe) || pe.Line != 15 {
 		t.Errorf("strict decode error = %v, want a parse error on line 15", err)
 	}

@@ -35,7 +35,6 @@ func tagToken(s string) string {
 // nothing and knows no version.
 type diagnosticCollector struct {
 	diagnostics Diagnostics
-	lenient     bool
 
 	// version is the GEDCOM version the document's header declares, or ""
 	// when it declares none this package recognizes.
