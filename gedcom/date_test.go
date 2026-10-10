@@ -589,6 +589,76 @@ func TestDate_Compare_NilDates(t *testing.T) {
 	}
 }
 
+// TestParseDate_GEDCOM7CalendarKeywords covers #581: GEDCOM 7 names the
+// calendar with a bare keyword inside each date production, where 5.5.x used
+// an @#D escape. Keywords are case-sensitive per the 7.0 grammar.
+func TestParseDate_GEDCOM7CalendarKeywords(t *testing.T) {
+	tests := []struct {
+		input       string
+		wantCal     Calendar
+		wantDay     int
+		wantMonth   int
+		wantYear    int
+		wantMod     DateModifier
+		wantEndCal  Calendar
+		wantEndYear int
+		wantBC      bool
+	}{
+		{input: "GREGORIAN 1 JAN 1900", wantCal: CalendarGregorian, wantDay: 1, wantMonth: 1, wantYear: 1900},
+		{input: "JULIAN 1 JAN 1750", wantCal: CalendarJulian, wantDay: 1, wantMonth: 1, wantYear: 1750},
+		{input: "HEBREW 1 TSH 5785", wantCal: CalendarHebrew, wantDay: 1, wantMonth: 1, wantYear: 5785},
+		{input: "FRENCH_R 1 VEND 1", wantCal: CalendarFrenchRepublican, wantDay: 1, wantMonth: 1, wantYear: 1},
+		{input: "JULIAN 44 BCE", wantCal: CalendarJulian, wantYear: 44, wantBC: true},
+		{input: "ABT JULIAN MAR 1066", wantCal: CalendarJulian, wantMonth: 3, wantYear: 1066, wantMod: ModifierAbout},
+		{
+			input: "BET JULIAN 1 JAN 1700 AND GREGORIAN 1 JAN 1800", wantCal: CalendarJulian,
+			wantDay: 1, wantMonth: 1, wantYear: 1700, wantMod: ModifierBetween,
+			wantEndCal: CalendarGregorian, wantEndYear: 1800,
+		},
+		{
+			input: "FROM HEBREW 1 TSH 5785 TO HEBREW 1 NSN 5785", wantCal: CalendarHebrew,
+			wantDay: 1, wantMonth: 1, wantYear: 5785, wantMod: ModifierFromTo,
+			wantEndCal: CalendarHebrew, wantEndYear: 5785,
+		},
+		{
+			// The second date inherits the first date's calendar. This deviates
+			// from the 7.0 grammar, where an unmarked date is Gregorian.
+			input: "BET JULIAN 1 JAN 1700 AND 1 JAN 1800", wantCal: CalendarJulian,
+			wantDay: 1, wantMonth: 1, wantYear: 1700, wantMod: ModifierBetween,
+			wantEndCal: CalendarJulian, wantEndYear: 1800,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) unexpected error = %v", tt.input, err)
+			}
+			if date.Calendar != tt.wantCal || date.Day != tt.wantDay || date.Month != tt.wantMonth ||
+				date.Year != tt.wantYear || date.Modifier != tt.wantMod || date.IsBC != tt.wantBC {
+				t.Errorf("ParseDate(%q) = %+v", tt.input, date)
+			}
+			if tt.wantEndYear != 0 {
+				if date.EndDate == nil {
+					t.Fatal("EndDate = nil")
+				}
+				if date.EndDate.Calendar != tt.wantEndCal || date.EndDate.Year != tt.wantEndYear {
+					t.Errorf("EndDate = %+v, want calendar %v year %d", date.EndDate, tt.wantEndCal, tt.wantEndYear)
+				}
+			}
+		})
+	}
+
+	// Lowercase or misspelled keywords are not GEDCOM 7 calendars and stay invalid.
+	// A bare keyword has no date to parse.
+	for _, input := range []string{"julian 1 JAN 1750", "Gregorian 1 JAN 1900", "FRENCH R 1 VEND 1", "JULIAN"} {
+		if _, err := ParseDate(input); err == nil {
+			t.Errorf("ParseDate(%q) expected error, got nil", input)
+		}
+	}
+}
+
 // TestParseDate_CalendarEscapeEdgeCases tests edge cases for calendar escape parsing
 func TestParseDate_CalendarEscapeEdgeCases(t *testing.T) {
 	tests := []struct {
