@@ -2,11 +2,22 @@ package parser
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 )
+
+// ErrXRefContainsSpace is wrapped by the [ParseError] reported for an XRef
+// identifier containing a space. Such an identifier is invalid in GEDCOM 7.0
+// but valid in 5.5 and 5.5.1, so a caller that knows the document's version
+// can match this with errors.Is to tell the two apart.
+//
+// [Parser.Parse] stops at the first error and discards the recovered lines,
+// so it rejects such a line whatever the version; a version-aware caller uses
+// [Parser.ParseWithOptions] in lenient mode, which keeps the recovered line.
+var ErrXRefContainsSpace = errors.New("xref contains a space")
 
 // MaxNestingDepth is the number of nesting levels accepted, derived from the
 // GEDCOM grammar rather than from any resource limit: the level field is at
@@ -31,6 +42,16 @@ type ParseOptions struct {
 	// When reached, parsing continues but errors are no longer collected.
 	// A value of 0 means unlimited errors will be collected.
 	MaxErrors int
+
+	// TolerateOnly, if set, limits lenient mode to errors matching it with
+	// errors.Is (such as [ErrXRefContainsSpace]): parsing stops after
+	// collecting the first error that does not match, and the lines and
+	// errors so far are returned with a nil fatal error. It lets a caller
+	// that can accept only some errors fail fast on the rest. The stopping
+	// error is recorded even when MaxErrors has been reached. TolerateOnly
+	// applies only when Lenient is true; strict mode already stops on the
+	// first error.
+	TolerateOnly error
 }
 
 // NewParser creates a new Parser instance.
@@ -56,13 +77,14 @@ func (p *Parser) Reset() {
 //	1 NAME John /Smith/
 //	2 GIVN John
 //
-// Two malformed XRef shapes violate the GEDCOM grammar: an identifier
-// containing a space (e.g. "0 @NoTe ref@ NOTE text") and, at level 0, an
-// identifier with no closing "@" at all (e.g. "0 @I1 INDI"). Such a line is
-// reported as an error, but the recovered Line is returned alongside it so
-// lenient callers can keep the record instead of dropping it; see
-// [parseSpacedXRef] and [parseUnterminatedXRef]. A returned Line is therefore
-// not proof that the line was well formed — check the error too.
+// Two XRef shapes are reported as errors: an identifier containing a space
+// (e.g. "0 @NoTe ref@ NOTE text"), which GEDCOM 7.0 forbids but 5.5 and 5.5.1
+// allow, and, at level 0, an identifier with no closing "@" at all (e.g.
+// "0 @I1 INDI"), which no version allows. The recovered Line is returned
+// alongside the error so lenient callers can keep the record instead of
+// dropping it; see [parseSpacedXRef] and [parseUnterminatedXRef]. A returned
+// Line is therefore not proof that the line was well formed — check the error
+// too.
 func (p *Parser) ParseLine(input string) (*Line, error) {
 	p.lineNumber++
 
@@ -255,24 +277,34 @@ func splitUnterminatedXRef(level int, xrefField, line string) (xref, rest string
 }
 
 // parseSpacedXRef parses a line whose XRef contains a space, as located by
-// [splitSpacedXRef]. The GEDCOM grammar forbids spaces inside an XRef, so the
-// line is always reported as an error: strict callers reject the file, lenient
-// callers record an INVALID_XREF diagnostic.
+// [splitSpacedXRef].
+//
+// Whether that is valid depends on the GEDCOM version: the 7.0 Xref grammar
+// has no space, while 5.5 and 5.5.1 list the space among pointer characters
+// (see gedcom.IsPointerXRefForVersion). The parser does not know the version,
+// so the line is always reported, with an error wrapping
+// [ErrXRefContainsSpace]; a caller that knows the version decides whether it
+// stands. The decoder discards it for 5.5 and 5.5.1 documents and, for 7.0,
+// rejects the file in strict mode or records an INVALID_XREF diagnostic in
+// lenient mode.
 //
 // The recovered Line is returned alongside the error so lenient callers can
 // keep the record. Dropping the line instead would lose the record and
 // silently reparent its subordinate lines onto the preceding record.
 //
-// The identifier is kept verbatim, spaces included, so nothing is lost; note
-// that re-encoding such a document reproduces a line this parser rejects in
-// strict mode.
+// The identifier is kept verbatim, spaces included, so nothing is lost and
+// re-encoding reproduces the input line.
 func (p *Parser) parseSpacedXRef(level int, line, xref, rest string) (*Line, error) {
 	fields := strings.Fields(rest)
 	if len(fields) == 0 {
 		return nil, newParseError(p.lineNumber, "line with xref must have a tag", line)
 	}
-	return p.recoverXRefLine(level, xref, rest, fields[0]),
-		newParseError(p.lineNumber, "xref contains a space: "+xref, line)
+	return p.recoverXRefLine(level, xref, rest, fields[0]), &ParseError{
+		Line:    p.lineNumber,
+		Message: "xref contains a space: " + xref,
+		Context: line,
+		Err:     ErrXRefContainsSpace,
+	}
 }
 
 // parseUnterminatedXRef parses a level-0 line whose XRef has no closing "@",
@@ -438,14 +470,19 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 				}
 			}
 
-			// Only collect if under MaxErrors limit (0 = unlimited)
-			if opts.MaxErrors == 0 || len(parseErrors) < opts.MaxErrors {
-				parseErrors = append(parseErrors, parseErr)
-			}
 			// A recovered line (e.g. an XRef containing a space) is kept so the
 			// record survives; otherwise the problematic line is skipped.
 			if line != nil {
 				lines = append(lines, line)
+			}
+			// The error that stops parsing is always recorded, even past
+			// MaxErrors, so truncated lines never come back without a cause.
+			if opts.TolerateOnly != nil && !errors.Is(parseErr, opts.TolerateOnly) {
+				return lines, append(parseErrors, parseErr), nil
+			}
+			// Only collect if under MaxErrors limit (0 = unlimited)
+			if opts.MaxErrors == 0 || len(parseErrors) < opts.MaxErrors {
+				parseErrors = append(parseErrors, parseErr)
 			}
 			continue
 		}
