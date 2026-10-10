@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"bufio"
 	"errors"
 	"os"
 	"strings"
@@ -343,4 +344,41 @@ func TestANSELErrorReportsPhysicalLine(t *testing.T) {
 			t.Errorf("ParseError.Line = %d, want 1", parseErr.Line)
 		}
 	})
+}
+
+// longSNOTEInput is a GEDCOM 7 file whose shared note is one line of n bytes
+// of payload. GEDCOM 7 has no line-length limit, so this is valid input.
+func longSNOTEInput(n int) string {
+	return "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @N1@ SNOTE " +
+		strings.Repeat("x", n) + "\n0 TRLR\n"
+}
+
+// TestDecode_LineAboveScannerDefault verifies that a line longer than
+// bufio.Scanner's 64 KiB default decodes (issue #578).
+func TestDecode_LineAboveScannerDefault(t *testing.T) {
+	const n = 70 << 10
+	doc, err := Decode(strings.NewReader(longSNOTEInput(n)))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	rec := doc.XRefMap["@N1@"]
+	if rec == nil {
+		t.Fatal("record @N1@ not found")
+	}
+	if got := len(rec.Value); got != n {
+		t.Errorf("SNOTE value length = %d, want %d", got, n)
+	}
+}
+
+// TestDecode_LineAboveMaxLineBytes verifies that a line longer than
+// parser.MaxLineBytes fails with an error, not a panic, in both modes.
+func TestDecode_LineAboveMaxLineBytes(t *testing.T) {
+	input := longSNOTEInput(parser.MaxLineBytes + 1)
+
+	if _, err := Decode(strings.NewReader(input)); !errors.Is(err, bufio.ErrTooLong) {
+		t.Errorf("Decode() error = %v, want bufio.ErrTooLong", err)
+	}
+	if _, err := DecodeWithDiagnostics(strings.NewReader(input), nil); !errors.Is(err, bufio.ErrTooLong) {
+		t.Errorf("DecodeWithDiagnostics() error = %v, want bufio.ErrTooLong", err)
+	}
 }

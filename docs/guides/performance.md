@@ -378,6 +378,9 @@ Stream validator memory scales with unique cross-references (needed for orphan-r
    document size. Lower the cap, or set
    `ValidateOptions.SkipDuplicateDetection` to drop the costliest validator from
    `ValidateAll` — see [Bounding Untrusted Input](#bounding-untrusted-input)
+5. **Per-Line Ceiling**: Every parse path rejects a single line longer than
+   `parser.MaxLineBytes` (1 MiB), so one line cannot force an unbounded buffer
+   — see [Line Length Limit](decoding.md#line-length-limit)
 
 ## Running Benchmarks
 

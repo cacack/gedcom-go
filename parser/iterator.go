@@ -12,12 +12,14 @@ import (
 // [Records] surface the same condition via [bufio.ErrTooLong].
 var ErrLineTooLong = errors.New("gedcom-go/parser: line exceeds MaxLineBytes")
 
-// MaxLineBytes is the maximum length of a single GEDCOM line accepted by the
-// streaming iterators. The GEDCOM 5.5.1 spec recommends a 255-byte limit;
-// real-world files routinely exceed it (CONC/CONT chains, embedded BLOB
-// data), so we use a generous 1 MiB ceiling. A line longer than this aborts
-// the iterator with an error rather than allocating unboundedly — preventing
-// hostile or corrupt input from exhausting memory.
+// MaxLineBytes is the maximum length of a single GEDCOM line, excluding its
+// CR, LF or CRLF terminator, accepted by every line-reading path: [Parser.Parse], [Parser.ParseWithOptions] (and so the
+// decoder), the streaming iterators, and [LazyParser] index building and
+// indexed reads. The GEDCOM 5.5.1 spec recommends a 255-byte limit and
+// GEDCOM 7 sets none; real-world files routinely exceed 255 bytes (long
+// SNOTE text, embedded BLOB data), so we use a generous 1 MiB ceiling. A line
+// longer than this fails with an error rather than allocating unboundedly —
+// preventing hostile or corrupt input from exhausting memory.
 const MaxLineBytes = 1 << 20 // 1 MiB
 
 // recordLinesInitialCap is a hint for the initial capacity of RawRecord.Lines.
@@ -81,9 +83,6 @@ func NewRecordIterator(r io.Reader) *RecordIterator {
 // bytes into the file, so ByteOffset values stay file-relative.
 func newRecordIteratorAt(r io.Reader, base int64) *RecordIterator {
 	scanner := newLineScanner(r)
-	// Explicit buffer with documented ceiling; default bufio.Scanner cap is
-	// 64 KiB which can be too small for files containing embedded BLOBs.
-	scanner.Buffer(make([]byte, 0, 4096), MaxLineBytes)
 
 	return &RecordIterator{
 		scanner:    scanner,
@@ -284,7 +283,7 @@ func trimLineEnding(b []byte) []byte {
 
 // readGEDCOMLine reads bytes until a line terminator (CR, LF, or CRLF).
 // Returns the line including the terminator(s). Aborts with ErrLineTooLong
-// if the line exceeds [MaxLineBytes] before a terminator is reached.
+// if the line's content, excluding the terminator, exceeds [MaxLineBytes].
 func readGEDCOMLine(r *bufio.Reader) ([]byte, error) {
 	// Pre-size to cover typical GEDCOM lines (255-byte spec recommendation)
 	// without intermediate reallocations.
@@ -299,10 +298,10 @@ func readGEDCOMLine(r *bufio.Reader) ([]byte, error) {
 			return nil, err
 		}
 
-		line = append(line, b)
-		if len(line) > MaxLineBytes {
+		if b != '\n' && b != '\r' && len(line) == MaxLineBytes {
 			return nil, ErrLineTooLong
 		}
+		line = append(line, b)
 
 		if b == '\n' {
 			return line, nil
