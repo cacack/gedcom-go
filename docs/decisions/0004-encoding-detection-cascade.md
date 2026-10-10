@@ -96,7 +96,7 @@ Recognized values: `UTF-8`, `UNICODE`, `ANSEL`, `ANSI`, `ASCII`, `UTF-16`
 ### Negative
 
 - Undeclared ANSEL files may be misread (rare, legacy)
-- Requires buffering to peek at header (minimal overhead)
+- Requires buffering to peek at header (bounded: stops at the first record after HEAD, at most 64 KiB)
 
 ## Implementation
 

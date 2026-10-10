@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"os"
 	"strings"
 	"testing"
+	"testing/iotest"
 )
 
 // errorReader returns an error on read
@@ -1041,6 +1043,119 @@ func TestDetectEncodingFromHeader_ReadError(t *testing.T) {
 
 	if r != nil {
 		t.Errorf("DetectEncodingFromHeader() reader should be nil on error")
+	}
+}
+
+// TestNewReader_BoundedHeaderProbe is the issue #577 repro: wrapping a large
+// UTF-8 file must not read it to EOF before the caller asks for any bytes.
+func TestNewReader_BoundedHeaderProbe(t *testing.T) {
+	data := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @N1@ SNOTE " +
+		strings.Repeat("x", 200<<10) + "\n0 TRLR\n"
+	src := &countingReader{data: []byte(data)}
+
+	r := NewReader(src)
+	if src.pos > headerProbeLimit {
+		t.Errorf("NewReader() read %d of %d bytes before the first Read, want <= %d",
+			src.pos, len(data), headerProbeLimit)
+	}
+
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	if string(got) != data {
+		t.Errorf("NewReader() did not replay the probed bytes intact (got %d bytes, want %d)", len(got), len(data))
+	}
+}
+
+// TestDetectEncodingFromHeader_ProbeLimit covers a header with no following
+// record: the probe stops at headerProbeLimit and the rest stays unread.
+func TestDetectEncodingFromHeader_ProbeLimit(t *testing.T) {
+	data := "0 HEAD\n1 NOTE " + strings.Repeat("x", 2*headerProbeLimit) + "\n"
+	src := &countingReader{data: []byte(data)}
+
+	r, encoding, err := DetectEncodingFromHeader(src)
+	if err != nil {
+		t.Fatalf("DetectEncodingFromHeader() error = %v", err)
+	}
+	if encoding != EncodingUnknown {
+		t.Errorf("DetectEncodingFromHeader() encoding = %v, want %v", encoding, EncodingUnknown)
+	}
+	if src.pos > headerProbeLimit {
+		t.Errorf("DetectEncodingFromHeader() read %d bytes, want <= %d", src.pos, headerProbeLimit)
+	}
+
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	if string(got) != data {
+		t.Errorf("DetectEncodingFromHeader() did not preserve all bytes (got %d, want %d)", len(got), len(data))
+	}
+}
+
+// TestDetectEncodingFromHeader_CharBeyondFirstKilobyte covers a CHAR line that
+// a long header pushes past the old 1000-byte search window (issue #577).
+func TestDetectEncodingFromHeader_CharBeyondFirstKilobyte(t *testing.T) {
+	data := "0 HEAD\n1 NOTE first\n" +
+		strings.Repeat("2 CONT "+strings.Repeat("n", 72)+"\n", 30) +
+		"1 CHAR ANSEL\n0 @I1@ INDI\n1 CHAR UTF-8\n0 TRLR\n"
+
+	// One byte per Read exercises the probe's incremental scan.
+	r, encoding, err := DetectEncodingFromHeader(iotest.OneByteReader(strings.NewReader(data)))
+	if err != nil {
+		t.Fatalf("DetectEncodingFromHeader() error = %v", err)
+	}
+	if encoding != EncodingANSEL {
+		t.Errorf("DetectEncodingFromHeader() encoding = %v, want %v", encoding, EncodingANSEL)
+	}
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	if string(got) != data {
+		t.Errorf("DetectEncodingFromHeader() data = %q, want %q", got, data)
+	}
+}
+
+// TestDetectEncodingFromHeader_TortureFixture pins the real-world case: this
+// vendor fixture declares "1 CHAR ANSEL" about 2.6 KiB into its header.
+func TestDetectEncodingFromHeader_TortureFixture(t *testing.T) {
+	f, err := os.Open("../testdata/edge-cases/vendor-customtags-torture.ged")
+	if err != nil {
+		t.Fatalf("Open() error = %v", err)
+	}
+	defer f.Close()
+
+	_, encoding, err := DetectEncodingFromHeader(f)
+	if err != nil {
+		t.Fatalf("DetectEncodingFromHeader() error = %v", err)
+	}
+	if encoding != EncodingANSEL {
+		t.Errorf("DetectEncodingFromHeader() encoding = %v, want %v", encoding, EncodingANSEL)
+	}
+}
+
+// TestDetectEncodingFromHeader_ErrorAfterProbe checks that a read failure in
+// the unprobed remainder surfaces from the returned reader, not from detection.
+func TestDetectEncodingFromHeader_ErrorAfterProbe(t *testing.T) {
+	testErr := errors.New("read error")
+	head := "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n"
+	src := io.MultiReader(strings.NewReader(head), &errorReader{err: testErr})
+
+	r, encoding, err := DetectEncodingFromHeader(src)
+	if err != nil {
+		t.Fatalf("DetectEncodingFromHeader() error = %v", err)
+	}
+	if encoding != EncodingUTF8 {
+		t.Errorf("DetectEncodingFromHeader() encoding = %v, want %v", encoding, EncodingUTF8)
+	}
+	got, err := io.ReadAll(r)
+	if !errors.Is(err, testErr) {
+		t.Errorf("ReadAll() error = %v, want %v", err, testErr)
+	}
+	if string(got) != head {
+		t.Errorf("ReadAll() data = %q, want %q", got, head)
 	}
 }
 
