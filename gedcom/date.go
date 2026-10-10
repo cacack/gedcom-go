@@ -203,6 +203,9 @@ var frenchMonthNames = map[string]int{
 //   - "44 BC" -> B.C. date
 //   - "@#DJULIAN@ 1 JAN 1750" or "JULIAN 1 JAN 1750" -> Julian calendar (5.5.x escape or 7.0 keyword)
 //   - "(unknown)" -> date phrase
+//
+// Both calendar forms are accepted regardless of the document's GEDCOM version;
+// ParseDate does not check version conformance.
 func ParseDate(s string) (*Date, error) {
 	if s == "" {
 		return nil, fmt.Errorf("empty date string")

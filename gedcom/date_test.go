@@ -589,7 +589,6 @@ func TestDate_Compare_NilDates(t *testing.T) {
 	}
 }
 
-// TestParseDate_CalendarEscapeEdgeCases tests edge cases for calendar escape parsing
 // TestParseDate_GEDCOM7CalendarKeywords covers #581: GEDCOM 7 names the
 // calendar with a bare keyword inside each date production, where 5.5.x used
 // an @#D escape. Keywords are case-sensitive per the 7.0 grammar.
@@ -621,6 +620,13 @@ func TestParseDate_GEDCOM7CalendarKeywords(t *testing.T) {
 			wantDay: 1, wantMonth: 1, wantYear: 5785, wantMod: ModifierFromTo,
 			wantEndCal: CalendarHebrew, wantEndYear: 5785,
 		},
+		{
+			// The second date inherits the first date's calendar. This deviates
+			// from the 7.0 grammar, where an unmarked date is Gregorian.
+			input: "BET JULIAN 1 JAN 1700 AND 1 JAN 1800", wantCal: CalendarJulian,
+			wantDay: 1, wantMonth: 1, wantYear: 1700, wantMod: ModifierBetween,
+			wantEndCal: CalendarJulian, wantEndYear: 1800,
+		},
 	}
 
 	for _, tt := range tests {
@@ -644,14 +650,16 @@ func TestParseDate_GEDCOM7CalendarKeywords(t *testing.T) {
 		})
 	}
 
-	// Lowercase keywords are not GEDCOM 7 calendars and stay invalid.
-	for _, input := range []string{"julian 1 JAN 1750", "Gregorian 1 JAN 1900", "FRENCH R 1 VEND 1"} {
+	// Lowercase or misspelled keywords are not GEDCOM 7 calendars and stay invalid.
+	// A bare keyword has no date to parse.
+	for _, input := range []string{"julian 1 JAN 1750", "Gregorian 1 JAN 1900", "FRENCH R 1 VEND 1", "JULIAN"} {
 		if _, err := ParseDate(input); err == nil {
 			t.Errorf("ParseDate(%q) expected error, got nil", input)
 		}
 	}
 }
 
+// TestParseDate_CalendarEscapeEdgeCases tests edge cases for calendar escape parsing
 func TestParseDate_CalendarEscapeEdgeCases(t *testing.T) {
 	tests := []struct {
 		input   string
