@@ -91,6 +91,7 @@ func (e *UnknownXRefError) Is(target error) bool {
 // pointer-shaped references. Depending on the parser, custom or vendor
 // tags may surface an XRef in either field; following both ensures that
 // vendor-extension references are not silently dropped from the subset.
+// Spaced GEDCOM 5.5/5.5.1 pointers ("@N 1@") are not followed yet (issue #591).
 func (d *Document) Subset(xrefs []string) (*Document, error) {
 	if d == nil {
 		return nil, errors.New("subset: source document is nil")
