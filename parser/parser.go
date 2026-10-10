@@ -47,7 +47,10 @@ type ParseOptions struct {
 	// errors.Is (such as [ErrXRefContainsSpace]): parsing stops after
 	// collecting the first error that does not match, and the lines and
 	// errors so far are returned with a nil fatal error. It lets a caller
-	// that can accept only some errors fail fast on the rest.
+	// that can accept only some errors fail fast on the rest. The stopping
+	// error is recorded even when MaxErrors has been reached. TolerateOnly
+	// applies only when Lenient is true; strict mode already stops on the
+	// first error.
 	TolerateOnly error
 }
 
@@ -467,17 +470,19 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 				}
 			}
 
-			// Only collect if under MaxErrors limit (0 = unlimited)
-			if opts.MaxErrors == 0 || len(parseErrors) < opts.MaxErrors {
-				parseErrors = append(parseErrors, parseErr)
-			}
 			// A recovered line (e.g. an XRef containing a space) is kept so the
 			// record survives; otherwise the problematic line is skipped.
 			if line != nil {
 				lines = append(lines, line)
 			}
+			// The error that stops parsing is always recorded, even past
+			// MaxErrors, so truncated lines never come back without a cause.
 			if opts.TolerateOnly != nil && !errors.Is(parseErr, opts.TolerateOnly) {
-				return lines, parseErrors, nil
+				return lines, append(parseErrors, parseErr), nil
+			}
+			// Only collect if under MaxErrors limit (0 = unlimited)
+			if opts.MaxErrors == 0 || len(parseErrors) < opts.MaxErrors {
+				parseErrors = append(parseErrors, parseErr)
 			}
 			continue
 		}

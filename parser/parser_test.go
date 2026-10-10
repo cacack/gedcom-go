@@ -1285,3 +1285,24 @@ func TestParseWithOptions_TolerateOnly(t *testing.T) {
 		t.Errorf("lines = %v, want only the recovered line 1", lines)
 	}
 }
+
+// TestParseWithOptions_TolerateOnlyPastMaxErrors verifies that the error that
+// stops parsing is returned even when MaxErrors is already reached, so the
+// truncated lines never come back without a cause.
+func TestParseWithOptions_TolerateOnlyPastMaxErrors(t *testing.T) {
+	input := "0 @I 1@ INDI\ninvalid1\n0 TRLR\n"
+	lines, parseErrors, fatalErr := NewParser().ParseWithOptions(strings.NewReader(input), &ParseOptions{
+		Lenient:      true,
+		MaxErrors:    1,
+		TolerateOnly: ErrXRefContainsSpace,
+	})
+	if fatalErr != nil {
+		t.Fatalf("unexpected fatal error: %v", fatalErr)
+	}
+	if len(parseErrors) != 2 || parseErrors[1].Line != 2 {
+		t.Fatalf("parseErrors = %v, want the tolerated line 1 and the stopping line 2", parseErrors)
+	}
+	if len(lines) != 1 {
+		t.Errorf("lines = %v, want only the recovered line 1", lines)
+	}
+}
