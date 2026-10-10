@@ -649,9 +649,29 @@ func indexFoldASCII(s, substr string) int {
 }
 
 // Validate checks if the date is semantically valid (e.g., no day overflow like Feb 30).
+// For ranges (BET...AND) and periods (FROM...TO), both the start date and EndDate
+// are checked independently; the first error is returned, and an error in the end
+// date is prefixed with "invalid end date". A partial or non-Gregorian endpoint is
+// skipped without skipping the other one.
 // Returns nil for partial dates (day, month, or year is 0) or non-Gregorian calendars.
+// Gregorian dates are checked on the proleptic Gregorian calendar using astronomical
+// years (1 BCE = year 0, a leap year), matching the calendar conversions; error
+// messages report the era year as written.
 // Uses stdlib time.Date() to detect invalid dates via normalization.
 func (d *Date) Validate() error {
+	if err := d.validateDay(); err != nil {
+		return err
+	}
+	if d.EndDate != nil {
+		if err := d.EndDate.validateDay(); err != nil {
+			return fmt.Errorf("invalid end date: %w", err)
+		}
+	}
+	return nil
+}
+
+// validateDay checks a single date (ignoring EndDate) for day overflow.
+func (d *Date) validateDay() error {
 	// Skip validation for partial dates
 	if d.Day == 0 || d.Month == 0 || d.Year == 0 {
 		return nil
@@ -663,18 +683,23 @@ func (d *Date) Validate() error {
 	}
 
 	// Use time.Date to check if the date normalizes (indicating overflow)
-	t := time.Date(d.Year, time.Month(d.Month), d.Day, 0, 0, 0, 0, time.UTC)
+	year := AstronomicalYear(d.Year, d.IsBC)
+	t := time.Date(year, time.Month(d.Month), d.Day, 0, 0, 0, 0, time.UTC)
 
 	// If the date normalized to a different day or month, it's invalid
 	if t.Day() != d.Day || int(t.Month()) != d.Month {
-		// Build informative error message
+		// Build informative error message using the era year as written
 		monthName := getMonthName(d.Month)
-		daysInMonth := getDaysInMonth(d.Month, d.Year)
+		daysInMonth := getDaysInMonth(d.Month, year)
+		eraYear := strconv.Itoa(d.Year)
+		if d.IsBC {
+			eraYear += " BCE"
+		}
 
 		if d.Day > daysInMonth {
-			return fmt.Errorf("invalid date: %s has %d days in %d, got day %d", monthName, daysInMonth, d.Year, d.Day)
+			return fmt.Errorf("invalid date: %s has %d days in %s, got day %d", monthName, daysInMonth, eraYear, d.Day)
 		}
-		return fmt.Errorf("invalid date: %d %s %d", d.Day, monthName, d.Year)
+		return fmt.Errorf("invalid date: %d %s %s", d.Day, monthName, eraYear)
 	}
 
 	return nil
@@ -692,7 +717,7 @@ func getMonthName(month int) string {
 	return monthNames[month]
 }
 
-// getDaysInMonth returns the number of days in a month for a given year.
+// getDaysInMonth returns the number of days in a month for a given astronomical year.
 func getDaysInMonth(month, year int) int {
 	// Use time.Date with day 0 of next month to get last day of current month
 	t := time.Date(year, time.Month(month)+1, 0, 0, 0, 0, 0, time.UTC)
