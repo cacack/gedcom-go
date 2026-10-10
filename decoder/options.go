@@ -21,7 +21,11 @@ type DecodeOptions struct {
 	// return: DecodeWithDiagnostics also returns the diagnostics.
 	//
 	// When StrictMode is true:
-	//   - Parsing fails immediately on the first syntax error
+	//   - Parsing fails on the first syntax error that stands. It stops
+	//     reading there, except that an XRef containing a space is decided
+	//     only once the header is known: GEDCOM 5.5 and 5.5.1 allow one, so
+	//     it is not an error in a document whose header declares either
+	//     version, and the first such XRef is the error otherwise
 	//   - The error is returned with a nil document or result
 	//   - Use for files that must be fully valid or rejected
 	//
@@ -31,7 +35,8 @@ type DecodeOptions struct {
 	//   - Level-jump lines (e.g., `1 BIRT` then `4 DATE`) are clamped to
 	//     prevLevel+1 and preserved as recovery, not skipped; a
 	//     CodeBadLevelJump diagnostic is emitted (SeverityWarning)
-	//   - An XRef containing a space (e.g. `0 @NoTe ref@ NOTE text`), or a
+	//   - An XRef containing a space (e.g. `0 @NoTe ref@ NOTE text`) in a
+	//     document whose header does not declare GEDCOM 5.5 or 5.5.1, or a
 	//     level-0 XRef with no closing `@` (e.g. `0 @I1 INDI`), is recovered
 	//     verbatim and the record is preserved; a CodeInvalidXRef diagnostic
 	//     is emitted (SeverityError, since the identifier itself is not

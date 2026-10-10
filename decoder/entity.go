@@ -28,17 +28,17 @@ func tagToken(s string) string {
 	return strings.TrimSpace(s)
 }
 
-// diagnosticCollector accumulates diagnostics during entity population.
-// It is nil-safe: all methods check for nil receiver before acting.
-//
-// Because it already reaches every parse function, it also carries the
-// document's GEDCOM version, which decides what counts as a pointer; see
-// isPointer.
+// diagnosticCollector is the parse context threaded through entity
+// population. It accumulates diagnostics and, because it already reaches every
+// parse function, also carries the GEDCOM version that decides what counts as
+// a pointer; see isPointer. Its methods accept a nil receiver, which collects
+// nothing and knows no version.
 type diagnosticCollector struct {
 	diagnostics Diagnostics
 	lenient     bool
 
-	// version is the document's GEDCOM version.
+	// version is the GEDCOM version the document's header declares, or ""
+	// when it declares none this package recognizes.
 	version gedcom.Version
 
 	// discard drops diagnostics instead of accumulating them, for a decode
@@ -46,10 +46,16 @@ type diagnosticCollector struct {
 	discard bool
 }
 
-// add appends a diagnostic to the collector if the collector is non-nil and
-// not discarding.
+// collecting reports whether diagnostics added to c are kept. Helpers check
+// it before building a diagnostic, so a decode that discards them does not
+// pay for formatting each one.
+func (c *diagnosticCollector) collecting() bool {
+	return c != nil && !c.discard
+}
+
+// add appends a diagnostic to the collector if it is collecting.
 func (c *diagnosticCollector) add(d Diagnostic) {
-	if c != nil && !c.discard {
+	if c.collecting() {
 		c.diagnostics = append(c.diagnostics, d)
 	}
 }
@@ -68,7 +74,7 @@ func (c *diagnosticCollector) isPointer(s string) bool {
 
 // addUnknownTag records an unknown tag diagnostic.
 func (c *diagnosticCollector) addUnknownTag(lineNumber int, tag, context string) {
-	if c != nil {
+	if c.collecting() {
 		c.add(NewDiagnostic(
 			lineNumber,
 			SeverityWarning,
@@ -81,7 +87,7 @@ func (c *diagnosticCollector) addUnknownTag(lineNumber int, tag, context string)
 
 // addInvalidValue records an invalid value diagnostic.
 func (c *diagnosticCollector) addInvalidValue(lineNumber int, tag, value, reason string) {
-	if c != nil {
+	if c.collecting() {
 		c.add(NewDiagnostic(
 			lineNumber,
 			SeverityWarning,
@@ -1598,7 +1604,7 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 			// (see allNotes in gedcom/notes.go). Route a non-pointer value
 			// through appendRecordNote instead, which files it as inline text
 			// with its CONT/CONC continuations folded in.
-			if ptr := tagToken(tag.Value); gedcom.IsPointerXRef(ptr) {
+			if ptr := tagToken(tag.Value); collector.isPointer(ptr) {
 				media.SharedNoteXRefs = append(media.SharedNoteXRefs, ptr)
 			} else {
 				media.NoteXRefs, media.InlineNotes = appendRecordNote(record.Tags, i, media.NoteXRefs, media.InlineNotes, collector)

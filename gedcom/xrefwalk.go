@@ -19,6 +19,8 @@ type refCallback func(*string)
 // interior @ characters. Per the GEDCOM spec, a literal @ inside a value
 // is escaped as @@; an un-escaped interior @ means the value either
 // straddles two XRefs or is malformed, so it is not a valid pointer.
+// This is the GEDCOM 7.0 grammar; [IsPointerXRefForVersion] also accepts the
+// spaced identifiers GEDCOM 5.5 and 5.5.1 allow.
 func IsPointerXRef(s string) bool {
 	if len(s) < 3 || s[0] != '@' || s[len(s)-1] != '@' {
 		return false

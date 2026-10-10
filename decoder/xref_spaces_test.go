@@ -117,3 +117,69 @@ func TestSpacedXRef551StrictOtherErrors(t *testing.T) {
 		t.Errorf("strict decode error = %v, want a parse error on line 15", err)
 	}
 }
+
+// TestSpacedXRefUndeclaredVersion pins that the 5.5 grammar applies only when
+// the header declares it: a version that is guessed, because the header is
+// missing, has no VERS, or names one not recognized, keeps the 7.0 rejection.
+func TestSpacedXRefUndeclaredVersion(t *testing.T) {
+	body := "0 @I 1@ INDI\n1 NOTE @N 1@\n0 @N 1@ NOTE Shared note\n0 TRLR\n"
+	tests := map[string]string{
+		"unrecognized VERS": "0 HEAD\n1 GEDC\n2 VERS 7.0.14\n" + body,
+		"no VERS":           "0 HEAD\n1 SOUR EXAMPLE\n" + body,
+		"no header":         body,
+	}
+	for name, data := range tests {
+		t.Run(name, func(t *testing.T) {
+			_, err := DecodeWithDiagnostics(strings.NewReader(data), &DecodeOptions{StrictMode: true})
+			if !errors.Is(err, parser.ErrXRefContainsSpace) {
+				t.Errorf("strict decode error = %v, want %v", err, parser.ErrXRefContainsSpace)
+			}
+			result, err := DecodeWithDiagnostics(strings.NewReader(data), nil)
+			if err != nil {
+				t.Fatalf("lenient decode: %v", err)
+			}
+			person := result.Document.GetIndividual("@I 1@")
+			if person == nil {
+				t.Fatal("individual @I 1@ not recovered")
+			}
+			if len(person.NoteXRefs) != 0 {
+				t.Errorf("NoteXRefs = %q, want none", person.NoteXRefs)
+			}
+		})
+	}
+}
+
+// TestSpacedXRef551Level1 pins that a spaced identifier on a level-1 line is
+// accepted like any other identifier in 5.5.1, and kept verbatim.
+func TestSpacedXRef551Level1(t *testing.T) {
+	data := strings.Replace(spacedXRefDoc("5.5.1"), "1 NAME Alex /Example/\n", "1 NAME Alex /Example/\n1 @X 1@ NOTE x\n", 1)
+	result, err := DecodeWithDiagnostics(strings.NewReader(data), &DecodeOptions{StrictMode: true})
+	if err != nil {
+		t.Fatalf("strict decode: %v", err)
+	}
+	var found bool
+	for _, tag := range result.Document.GetIndividual("@I 1@").Tags {
+		found = found || (tag.XRef == "@X 1@" && tag.Tag == "NOTE")
+	}
+	if !found {
+		t.Error("level-1 NOTE with XRef @X 1@ not kept")
+	}
+}
+
+// TestSpacedSNOTEUnderOBJE551 pins that a spaced SNOTE pointer on a media
+// object follows the declared version's grammar, so it stays in
+// SharedNoteXRefs (#499) rather than landing in NoteXRefs.
+func TestSpacedSNOTEUnderOBJE551(t *testing.T) {
+	data := strings.Replace(spacedXRefDoc("5.5.1"), "0 TRLR\n", "0 @O1@ OBJE\n1 SNOTE @N 1@\n0 TRLR\n", 1)
+	doc, err := Decode(strings.NewReader(data))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	media := doc.GetMediaObject("@O1@")
+	if media == nil {
+		t.Fatal("media object @O1@ not found")
+	}
+	if want := []string{"@N 1@"}; !slices.Equal(media.SharedNoteXRefs, want) || len(media.NoteXRefs) != 0 {
+		t.Errorf("SharedNoteXRefs = %q, NoteXRefs = %q; want %q and none", media.SharedNoteXRefs, media.NoteXRefs, want)
+	}
+}

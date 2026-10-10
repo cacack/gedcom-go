@@ -1266,3 +1266,22 @@ func TestLineScannerConsumed(t *testing.T) {
 		}
 	}
 }
+
+// TestParseWithOptions_TolerateOnly verifies that lenient parsing stops after
+// the first error not matching TolerateOnly, having collected the ones that do.
+func TestParseWithOptions_TolerateOnly(t *testing.T) {
+	input := "0 @I 1@ INDI\ninvalid1\ninvalid2\n0 TRLR\n"
+	lines, parseErrors, fatalErr := NewParser().ParseWithOptions(strings.NewReader(input), &ParseOptions{
+		Lenient:      true,
+		TolerateOnly: ErrXRefContainsSpace,
+	})
+	if fatalErr != nil {
+		t.Fatalf("unexpected fatal error: %v", fatalErr)
+	}
+	if len(parseErrors) != 2 || parseErrors[0].Line != 1 || parseErrors[1].Line != 2 {
+		t.Fatalf("parseErrors = %v, want errors on lines 1 and 2", parseErrors)
+	}
+	if len(lines) != 1 || lines[0].XRef != "@I 1@" {
+		t.Errorf("lines = %v, want only the recovered line 1", lines)
+	}
+}

@@ -13,6 +13,10 @@ import (
 // identifier containing a space. Such an identifier is invalid in GEDCOM 7.0
 // but valid in 5.5 and 5.5.1, so a caller that knows the document's version
 // can match this with errors.Is to tell the two apart.
+//
+// [Parser.Parse] stops at the first error and discards the recovered lines,
+// so it rejects such a line whatever the version; a version-aware caller uses
+// [Parser.ParseWithOptions] in lenient mode, which keeps the recovered line.
 var ErrXRefContainsSpace = errors.New("xref contains a space")
 
 // MaxNestingDepth is the number of nesting levels accepted, derived from the
@@ -38,6 +42,13 @@ type ParseOptions struct {
 	// When reached, parsing continues but errors are no longer collected.
 	// A value of 0 means unlimited errors will be collected.
 	MaxErrors int
+
+	// TolerateOnly, if set, limits lenient mode to errors matching it with
+	// errors.Is (such as [ErrXRefContainsSpace]): parsing stops after
+	// collecting the first error that does not match, and the lines and
+	// errors so far are returned with a nil fatal error. It lets a caller
+	// that can accept only some errors fail fast on the rest.
+	TolerateOnly error
 }
 
 // NewParser creates a new Parser instance.
@@ -464,6 +475,9 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 			// record survives; otherwise the problematic line is skipped.
 			if line != nil {
 				lines = append(lines, line)
+			}
+			if opts.TolerateOnly != nil && !errors.Is(parseErr, opts.TolerateOnly) {
+				return lines, parseErrors, nil
 			}
 			continue
 		}

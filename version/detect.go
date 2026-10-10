@@ -22,6 +22,15 @@ func DetectVersion(lines []*parser.Line) gedcom.Version {
 	return detectFromTags(lines)
 }
 
+// DeclaredVersion returns the version the GEDCOM header declares
+// (HEAD -> GEDC -> VERS), or "" when there is no such declaration or it names
+// a version this package does not recognize. Unlike [DetectVersion] it never
+// guesses, so a caller can apply a version-specific rule only to a document
+// that asked for it.
+func DeclaredVersion(lines []*parser.Line) gedcom.Version {
+	return detectFromHeader(lines)
+}
+
 // detectFromHeader looks for the version in the GEDCOM header.
 // Header structure:
 //

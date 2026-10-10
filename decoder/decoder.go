@@ -68,7 +68,7 @@ func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, erro
 //     occurs before any line was read
 //
 // In strict mode (StrictMode=true):
-//   - Parsing fails on the first error (current behavior)
+//   - Parsing fails on the first error that stands (see [DecodeOptions.StrictMode])
 //   - Diagnostics will be empty on success
 func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, error) {
 	return decode(r, opts, true)
@@ -123,15 +123,25 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// Both modes parse leniently: whether an XRef containing a space is an
 	// error depends on the GEDCOM version, which is only known once the
 	// header has been parsed (#579). Strict mode then fails on the first
-	// error that stands.
-	parsedLines, parseErrors, fe := p.ParseWithOptions(finalReader, &parser.ParseOptions{
+	// error that stands. It stops at the first error of any other kind,
+	// which stands whatever the version, so a garbage input is not read and
+	// buffered in full before being rejected.
+	parseOpts := &parser.ParseOptions{
 		Lenient:   true,
 		MaxErrors: 0, // Collect all errors
-	})
+	}
+	if opts.StrictMode {
+		parseOpts.TolerateOnly = parser.ErrXRefContainsSpace
+	}
+	parsedLines, parseErrors, fe := p.ParseWithOptions(finalReader, parseOpts)
 
 	// Detect GEDCOM version
 	detectedVersion := version.DetectVersion(parsedLines)
-	parseErrors = dropPermittedXRefErrors(parsedLines, parseErrors, detectedVersion)
+	// The identifier grammar follows only the version the header declares:
+	// a guessed version (no header, or an unrecognized VERS such as 7.0.14)
+	// must not relax it to the 5.5 grammar.
+	xrefVersion := version.DeclaredVersion(parsedLines)
+	parseErrors = dropPermittedXRefErrors(parsedLines, parseErrors, xrefVersion)
 
 	if opts.StrictMode {
 		if len(parseErrors) > 0 {
@@ -198,7 +208,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// carries.
 	collector := &diagnosticCollector{
 		lenient: !opts.StrictMode,
-		version: detectedVersion,
+		version: xrefVersion,
 		discard: opts.StrictMode || !collect,
 	}
 
@@ -514,7 +524,7 @@ func buildRecords(doc *gedcom.Document, lines []*parser.Line, collector *diagnos
 // SeverityError, not SeverityWarning: the line is not a valid header or trailer,
 // so the file is wrong even though the decoder keeps the data as a record.
 func (c *diagnosticCollector) addXRefOnStructuralLine(line *parser.Line) {
-	if c == nil {
+	if !c.collecting() {
 		return
 	}
 	// Context is the offending line reconstructed from its parsed fields, the

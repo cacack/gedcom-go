@@ -195,3 +195,33 @@ func TestDetectVersion(t *testing.T) {
 		})
 	}
 }
+
+// TestDeclaredVersion verifies that only a recognized header declaration
+// counts, with no tag-based guess.
+func TestDeclaredVersion(t *testing.T) {
+	header := func(vers string) []*parser.Line {
+		return []*parser.Line{
+			{Level: 0, Tag: "HEAD"},
+			{Level: 1, Tag: "GEDC"},
+			{Level: 2, Tag: "VERS", Value: vers},
+		}
+	}
+	tests := []struct {
+		name  string
+		lines []*parser.Line
+		want  gedcom.Version
+	}{
+		{"5.5.1", header("5.5.1"), gedcom.Version551},
+		{"7.0", header("7.0"), gedcom.Version70},
+		{"unrecognized", header("7.0.14"), ""},
+		{"no GEDC", []*parser.Line{{Level: 0, Tag: "HEAD"}, {Level: 1, Tag: "SOUR"}}, ""},
+		{"no header", []*parser.Line{{Level: 0, Tag: "INDI"}, {Level: 1, Tag: "EMAIL"}}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := DeclaredVersion(tt.lines); got != tt.want {
+				t.Errorf("DeclaredVersion() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

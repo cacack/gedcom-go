@@ -48,7 +48,7 @@ func normalizeLevelJumps(lines []*parser.Line, collector *diagnosticCollector) {
 // recovery — the document is built correctly and remains usable. Reserve
 // SeverityError for diagnostics where data was lost.
 func (c *diagnosticCollector) addBadLevelJump(lineNumber, origLevel, prevLevel int, tag string) {
-	if c == nil {
+	if !c.collecting() {
 		return
 	}
 	c.add(NewDiagnostic(
