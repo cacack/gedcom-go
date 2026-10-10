@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1](https://github.com/cacack/gedcom-go/compare/v3.0.0...v3.0.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* **parser:** apply MaxLineBytes to every line scanner ([331f1b2](https://github.com/cacack/gedcom-go/commit/331f1b2a9d4a2cbbe77d175eec9b60c96378b03a)), closes [#578](https://github.com/cacack/gedcom-go/issues/578)
+* **parser:** count MaxLineBytes as line content on every path ([86f5187](https://github.com/cacack/gedcom-go/commit/86f5187eb14e479e12bc28fe3d88f78cb2a7c963)), closes [#578](https://github.com/cacack/gedcom-go/issues/578)
+* **parser:** report exact byte offsets from RecordIterator and LazyParser iterators ([2138fa1](https://github.com/cacack/gedcom-go/commit/2138fa1d50102e558cd1645ac10b972e133fed19)), closes [#502](https://github.com/cacack/gedcom-go/issues/502)
+
 ## [3.0.0](https://github.com/cacack/gedcom-go/compare/v2.4.0...v3.0.0) (2026-09-27)
 
 
