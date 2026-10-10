@@ -1961,3 +1961,64 @@ func TestNewReader_NoValidPrefixToDeliver(t *testing.T) {
 		t.Errorf("error at line %d, column %d; want line 1, column 1", utf8Err.Line, utf8Err.Column)
 	}
 }
+
+// TestDetectEncodingFromHeader_CharAfterHeaderIgnored pins the header bound:
+// a CHAR line after the first level-0 record is not part of the header.
+func TestDetectEncodingFromHeader_CharAfterHeaderIgnored(t *testing.T) {
+	data := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 CHAR ANSEL\n0 TRLR\n"
+
+	r, encoding, err := DetectEncodingFromHeader(strings.NewReader(data))
+	if err != nil {
+		t.Fatalf("DetectEncodingFromHeader() error = %v", err)
+	}
+	if encoding != EncodingUnknown {
+		t.Errorf("DetectEncodingFromHeader() encoding = %v, want %v", encoding, EncodingUnknown)
+	}
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	if string(got) != data {
+		t.Errorf("DetectEncodingFromHeader() data = %q, want %q", got, data)
+	}
+}
+
+// recoveringReader fails once after its first chunk, then resumes, the way a
+// retrying network reader might.
+type recoveringReader struct {
+	chunks []string
+	err    error
+	failed bool
+}
+
+func (r *recoveringReader) Read(p []byte) (int, error) {
+	if len(r.chunks) == 0 {
+		return 0, io.EOF
+	}
+	if len(r.chunks) == 1 && !r.failed {
+		r.failed = true
+		return 0, r.err
+	}
+	n := copy(p, r.chunks[0])
+	if r.chunks[0] = r.chunks[0][n:]; r.chunks[0] == "" {
+		r.chunks = r.chunks[1:]
+	}
+	return n, nil
+}
+
+// TestNewReader_ProbeErrorReplaysPrefix checks that a read error mid-header
+// surfaces after the already-probed bytes, rather than the fallback silently
+// resuming from the middle of the header once the source recovers.
+func TestNewReader_ProbeErrorReplaysPrefix(t *testing.T) {
+	testErr := errors.New("transient read error")
+	prefix := "0 HEAD\n1 GEDC\n"
+	src := &recoveringReader{chunks: []string{prefix, "2 VERS 5.5.1\n0 TRLR\n"}, err: testErr}
+
+	got, err := io.ReadAll(NewReader(src))
+	if !errors.Is(err, testErr) {
+		t.Errorf("ReadAll() error = %v, want %v", err, testErr)
+	}
+	if string(got) != prefix {
+		t.Errorf("ReadAll() data = %q, want %q", got, prefix)
+	}
+}

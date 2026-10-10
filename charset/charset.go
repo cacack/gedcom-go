@@ -87,19 +87,27 @@ func NewReader(r io.Reader) io.Reader {
 	}
 
 	// Check header for CHAR declaration
-	headerReader, headerEnc, err := DetectEncodingFromHeader(detectedReader)
+	probe, headerLen, err := probeHeader(detectedReader)
 	if err != nil {
-		// If header detection fails, fall back to UTF-8 validation
+		// If header detection fails, fall back to UTF-8 validation of the
+		// bytes already probed, then report the read error in place so the
+		// consumed prefix is neither lost nor silently skipped.
 		return &utf8Reader{
-			reader: detectedReader,
+			reader: io.MultiReader(bytes.NewReader(probe), errReader{err: err}),
 			line:   1,
 			column: 1,
 		}
 	}
 
 	// Use detected encoding (or UTF-8 if unknown)
-	return NewReaderWithEncoding(headerReader, headerEnc)
+	headerReader := io.MultiReader(bytes.NewReader(probe), detectedReader)
+	return NewReaderWithEncoding(headerReader, charEncoding(probe[:headerLen]))
 }
+
+// errReader is an io.Reader that always returns err.
+type errReader struct{ err error }
+
+func (r errReader) Read([]byte) (int, error) { return 0, r.err }
 
 type utf8Reader struct {
 	reader     io.Reader
@@ -484,8 +492,15 @@ func DetectEncodingFromHeader(r io.Reader) (io.Reader, Encoding, error) {
 		return nil, EncodingUnknown, err
 	}
 
+	// Replay the probed bytes ahead of the unread remainder
+	return io.MultiReader(bytes.NewReader(probe), r), charEncoding(probe[:headerLen]), nil
+}
+
+// charEncoding returns the encoding declared by the first CHAR tag in header,
+// or EncodingUnknown if there is none or its value is not recognized.
+func charEncoding(header []byte) Encoding {
 	encoding := EncodingUnknown
-	matches := charTagPattern.FindSubmatch(probe[:headerLen])
+	matches := charTagPattern.FindSubmatch(header)
 	if len(matches) >= 2 {
 		charValue := strings.ToUpper(string(matches[1]))
 		switch charValue {
@@ -507,21 +522,20 @@ func DetectEncodingFromHeader(r io.Reader) (io.Reader, Encoding, error) {
 			encoding = EncodingLATIN1
 		}
 	}
-
-	// Replay the probed bytes ahead of the unread remainder
-	return io.MultiReader(bytes.NewReader(probe), r), encoding, nil
+	return encoding
 }
 
 // probeHeader reads r until the header is complete (see
 // DetectEncodingFromHeader) and returns the bytes read along with the length
-// of the header within them.
+// of the header within them. On a read error it returns the bytes read before
+// the error, so a caller can still replay them.
 func probeHeader(r io.Reader) (probe []byte, headerLen int, err error) {
 	chunk := make([]byte, headerProbeChunk)
 	for len(probe) < headerProbeLimit {
 		n, readErr := r.Read(chunk[:min(len(chunk), headerProbeLimit-len(probe))])
 		probe = append(probe, chunk[:n]...)
 		if readErr != nil && readErr != io.EOF {
-			return nil, 0, readErr
+			return probe, 0, readErr
 		}
 		if end := headerEnd(probe); end >= 0 {
 			return probe, end, nil
