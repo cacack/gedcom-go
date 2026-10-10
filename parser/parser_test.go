@@ -881,6 +881,9 @@ func TestParseWithOptions_LenientKeepsRecoveredXRef(t *testing.T) {
 	if parseErrors[0].Line != 2 || !strings.Contains(parseErrors[0].Message, "xref contains a space") {
 		t.Errorf("Parse error = %v, want a spaced-xref error on line 2", parseErrors[0])
 	}
+	if !errors.Is(parseErrors[0], ErrXRefContainsSpace) {
+		t.Errorf("Parse error = %v, want it to wrap ErrXRefContainsSpace", parseErrors[0])
+	}
 
 	// All four lines survive, with the malformed record recovered in place so
 	// the CONT line still attaches to it.

@@ -31,6 +31,23 @@ func IsPointerXRef(s string) bool {
 	return !strings.ContainsAny(s[1:len(s)-1], " \t\n\r@")
 }
 
+// IsPointerXRefForVersion reports whether s is an XRef pointer under the
+// identifier grammar of GEDCOM version v.
+//
+// GEDCOM 5.5 and 5.5.1 list the space (0x20) among the pointer characters, so
+// for those versions s may also contain spaces after its first character
+// ("@N 1@"); every other rule of [IsPointerXRef] still applies, and s must be
+// the whole pointer, so "@N 1@ see" is not one. For GEDCOM 7.0, whose Xref
+// grammar has no space, and for any other version it is [IsPointerXRef].
+func IsPointerXRefForVersion(s string, v Version) bool {
+	if (v == Version55 || v == Version551) && len(s) >= 3 && s[1] != ' ' {
+		// A space is an ordinary identifier character here, so it cannot
+		// make s ambiguous; test the rest of the shape without it.
+		return IsPointerXRef(strings.ReplaceAll(s, " ", "_"))
+	}
+	return IsPointerXRef(s)
+}
+
 // EscapeLeadingAt escapes a leading "@" in a line value as "@@", per the GEDCOM
 // convention that a literal leading "@" in a value must be doubled so it is not
 // read as the start of a cross-reference pointer or escape token. Only the

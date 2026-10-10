@@ -655,3 +655,37 @@ func TestVisitDoesNotMutateSource(t *testing.T) {
 		t.Errorf("Subset wrote RepositoryLinks[0].XRef = %q, want it untouched", link.XRef)
 	}
 }
+
+func TestIsPointerXRefForVersion(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		ver  Version
+		want bool
+	}{
+		// GEDCOM 5.5 and 5.5.1 list the space among pointer characters (#579).
+		{"5.5.1 spaced", "@N 1@", Version551, true},
+		{"5.5 spaced", "@I 1@", Version55, true},
+		{"5.5.1 several spaces", "@NoTe ref x@", Version551, true},
+		{"5.5.1 plain", "@I1@", Version551, true},
+		{"5.5.1 leading space", "@ N1@", Version551, false},
+		{"5.5.1 only a space", "@ @", Version551, false},
+		{"5.5.1 tab", "@N\t1@", Version551, false},
+		{"5.5.1 interior at", "@N 1@ and @N2@", Version551, false},
+		{"5.5.1 trailing text", "@N 1@ see", Version551, false},
+		{"5.5.1 void", "@VOID@", Version551, false},
+		{"5.5.1 text", "Shared note", Version551, false},
+		// GEDCOM 7.0 and an unknown version keep IsPointerXRef's rule.
+		{"7.0 spaced", "@N 1@", Version70, false},
+		{"7.0 plain", "@N1@", Version70, true},
+		{"unknown spaced", "@N 1@", "", false},
+		{"unknown plain", "@N1@", "", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := IsPointerXRefForVersion(tc.in, tc.ver); got != tc.want {
+				t.Errorf("IsPointerXRefForVersion(%q, %q) = %v, want %v", tc.in, tc.ver, got, tc.want)
+			}
+		})
+	}
+}
