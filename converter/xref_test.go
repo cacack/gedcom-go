@@ -1,12 +1,13 @@
 package converter
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
-func TestNormalizeXRefsToUppercase(t *testing.T) {
+func TestNormalizeXRefsForV7(t *testing.T) {
 	tests := []struct {
 		name       string
 		inputXRefs []string
@@ -102,7 +103,7 @@ func TestBuildXRefMapping(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			doc := createDocWithXRefs(tt.inputXRefs)
-			mapping := buildXRefMapping(doc)
+			mapping, _ := buildXRefMapping(doc)
 
 			if len(mapping) != tt.wantCount {
 				t.Errorf("Mapping count = %d, want %d", len(mapping), tt.wantCount)
@@ -146,7 +147,7 @@ func TestBuildXRefMappingV7(t *testing.T) {
 	doc.Header.Submitter = "@sub mitter@"
 	doc.Records[1].Tags = []*gedcom.Tag{{Level: 1, Tag: "NOTE", Value: "@n1@"}, {Level: 1, Tag: "NOTE", Value: "@i1@"}}
 
-	got := buildXRefMapping(doc)
+	got, dangling := buildXRefMapping(doc)
 	want := map[string]string{
 		"@I 1@":        "@I_1_2@",
 		"@i_1@":        "@I_1_3@",
@@ -162,6 +163,78 @@ func TestBuildXRefMappingV7(t *testing.T) {
 		if got[k] != v {
 			t.Errorf("mapping[%q] = %q, want %q", k, got[k], v)
 		}
+	}
+	if len(dangling) != 2 || dangling[0] != "@sub mitter@" || dangling[1] != "@n1@" {
+		t.Errorf("dangling = %q, want [@sub mitter@ @n1@]", dangling)
+	}
+}
+
+// TestBuildXRefMappingDanglingNoFalseJoin pins that a dangling pointer joins a
+// record only when it differs from the record's XRef by case alone; otherwise
+// it gets a fresh identifier rather than resolving to an unrelated record.
+func TestBuildXRefMappingDanglingNoFalseJoin(t *testing.T) {
+	doc := createDocWithXRefs([]string{"@I_1@", "@I 2@", "@i1@", "@NoTe ref@"})
+	doc.Records[0].Tags = []*gedcom.Tag{
+		{Level: 1, Tag: "ASSO", Value: "@I-1@"},      // sanitizes onto valid @I_1@
+		{Level: 1, Tag: "ASSO", Value: "@i_2@"},      // sanitizes onto renamed @I 2@
+		{Level: 1, Tag: "ASSO", Value: "@i1_2@"},     // sanitizes onto suffixed @i1@
+		{Level: 1, Tag: "NOTE", Value: "@note ref@"}, // spaced: not visited (#591)
+		{Level: 1, Tag: "ASSO", Value: "@i_1@"},      // case-only match of @I_1@
+	}
+	doc.Header.Tags = []*gedcom.Tag{{Level: 1, Tag: "SUBN", Value: "@sn1@"}}
+
+	got, dangling := buildXRefMapping(doc)
+	want := map[string]string{
+		"@I 2@":      "@I_2@",
+		"@i1@":       "@I1@",
+		"@NoTe ref@": "@NOTE_REF@",
+		"@sn1@":      "@SN1@",
+		"@I-1@":      "@I_1_2@",
+		"@i_2@":      "@I_2_2@",
+		"@i1_2@":     "@I1_2@",
+		"@i_1@":      "@I_1@",
+	}
+	if len(got) != len(want) {
+		t.Errorf("mapping = %v, want %v", got, want)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("mapping[%q] = %q, want %q", k, got[k], v)
+		}
+	}
+	if len(dangling) != 5 {
+		t.Errorf("dangling = %q, want 5 entries", dangling)
+	}
+}
+
+// TestBuildXRefMappingAvoidsVoid pins that a rewritten XRef never becomes
+// @VOID@, the GEDCOM 7.0 null pointer.
+func TestBuildXRefMappingAvoidsVoid(t *testing.T) {
+	doc := createDocWithXRefs([]string{"@void@", "@Void@"})
+	got, _ := buildXRefMapping(doc)
+	if got["@void@"] != "@VOID_2@" || got["@Void@"] != "@VOID_3@" {
+		t.Errorf("mapping = %v, want @void@ -> @VOID_2@, @Void@ -> @VOID_3@", got)
+	}
+}
+
+// TestBuildXRefMappingManyCollisions pins that suffix search stays linear
+// when many XRefs sanitize to the same identifier.
+func TestBuildXRefMappingManyCollisions(t *testing.T) {
+	const n = 20000
+	xrefs := make([]string, n)
+	for i := range xrefs {
+		xrefs[i] = "@I" + string(rune(0x4e00+i)) + "@" // all sanitize to @I_@
+	}
+	got, _ := buildXRefMapping(createDocWithXRefs(xrefs))
+	seen := make(map[string]bool, n)
+	for _, v := range got {
+		if seen[v] {
+			t.Fatalf("duplicate target %q", v)
+		}
+		seen[v] = true
+	}
+	if len(got) != n || got[xrefs[n-1]] != "@I__"+strconv.Itoa(n)+"@" {
+		t.Errorf("len = %d, last = %q", len(got), got[xrefs[n-1]])
 	}
 }
 

@@ -98,7 +98,9 @@ func TestConvertSpacedXRefsYieldValidV7(t *testing.T) {
 		input     string
 		wantNotes int
 	}{
+		// @NoTe@ and @NoTe ref@ records, plus the dangling header SUBM @test@.
 		{"xref-case.ged", string(xrefCase), 3},
+		// Records @U 1@, @I 1@ (suffixed past @I_1@), @F 1@ and @N 1@.
 		{"uppercase spaced", spacedUppercase551, 4},
 	}
 	for _, tt := range tests {
