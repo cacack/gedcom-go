@@ -833,6 +833,8 @@ func (d *Date) Compare(other *Date) int {
 // ToTime converts the date to a time.Time value.
 // Returns an error if the date is incomplete (missing day, month, or year)
 // or if the calendar is not Gregorian.
+// B.C. dates use astronomical year numbering via AstronomicalYear, so the
+// result's Year() is 0 for 1 BCE and -43 for 44 BCE (proleptic Gregorian).
 func (d *Date) ToTime() (time.Time, error) {
 	if d.Calendar != CalendarGregorian {
 		return time.Time{}, fmt.Errorf("ToTime only supports Gregorian calendar, got %s", d.Calendar)
@@ -848,7 +850,7 @@ func (d *Date) ToTime() (time.Time, error) {
 		return time.Time{}, fmt.Errorf("incomplete date: day is missing")
 	}
 
-	return time.Date(d.Year, time.Month(d.Month), d.Day, 0, 0, 0, 0, time.UTC), nil
+	return time.Date(AstronomicalYear(d.Year, d.IsBC), time.Month(d.Month), d.Day, 0, 0, 0, 0, time.UTC), nil
 }
 
 // String returns the original GEDCOM date string.
@@ -1023,6 +1025,8 @@ func (d *Date) IsEqual(other *Date) bool {
 // YearsBetween calculates the number of years between two dates.
 // For complete Gregorian dates, uses exact calculation via time.Time.
 // For partial dates or non-Gregorian calendars, uses simple year subtraction.
+// Both paths count BCE years astronomically (see AstronomicalYear), so there is
+// no year zero between 1 BCE and 1 CE.
 // Returns error if both dates don't have years (insufficient data).
 // Always returns absolute value (no negative years).
 func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
@@ -1056,7 +1060,7 @@ func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
 	}
 
 	// Fall back to year subtraction for partial dates or non-Gregorian calendars
-	yearDiff := d1.Year - d2.Year
+	yearDiff := AstronomicalYear(d1.Year, d1.IsBC) - AstronomicalYear(d2.Year, d2.IsBC)
 	if yearDiff < 0 {
 		yearDiff = -yearDiff
 	}

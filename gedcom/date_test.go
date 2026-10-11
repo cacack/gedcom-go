@@ -378,6 +378,10 @@ func TestDate_ToTime(t *testing.T) {
 		{"1 JAN 1900", time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{"1850", time.Time{}, true},     // Incomplete: no month/day
 		{"JAN 1900", time.Time{}, true}, // Incomplete: no day
+		// BCE dates use astronomical years (1 BCE = year 0, 44 BCE = year -43)
+		{"1 JAN 1 BCE", time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
+		{"15 MAR 44 BCE", time.Date(-43, 3, 15, 0, 0, 0, 0, time.UTC), false},
+		{"29 FEB 1 BCE", time.Date(0, 2, 29, 0, 0, 0, 0, time.UTC), false}, // Year 0 is a leap year
 	}
 
 	for _, tt := range tests {
@@ -2641,6 +2645,35 @@ func TestYearsBetween(t *testing.T) {
 			date2:     "25 DEC 2020",
 			wantYears: 0,
 			wantExact: true,
+		},
+		{
+			// No year 0 between 44 BCE and 1 CE: 44 years, not 43
+			name:      "BCE to CE across year zero",
+			date1:     "15 MAR 44 BCE",
+			date2:     "15 MAR 1",
+			wantYears: 44,
+			wantExact: true,
+		},
+		{
+			name:      "partial BCE to CE across year zero",
+			date1:     "44 BCE",
+			date2:     "1",
+			wantYears: 44,
+			wantExact: false,
+		},
+		{
+			name:      "partial BCE to later CE",
+			date1:     "44 BCE",
+			date2:     "10",
+			wantYears: 53,
+			wantExact: false,
+		},
+		{
+			name:      "partial BCE to BCE",
+			date1:     "44 BCE",
+			date2:     "10 BCE",
+			wantYears: 34,
+			wantExact: false,
 		},
 		{
 			name:      "exactly 10 years",
