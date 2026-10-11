@@ -1261,6 +1261,10 @@ func (d *Date) IsEqual(other *Date) bool {
 // For complete Gregorian dates, uses exact calculation via time.Time.
 // For partial dates, non-Gregorian calendars, or dates ToTime rejects (such as
 // a nonexistent day like 31 FEB), uses simple year subtraction.
+// Dates in different calendars are both first converted to Gregorian through
+// their Julian Day Number (see ToGregorian), so a Hebrew birth against a
+// Gregorian death counts Gregorian years, exactly when both dates are complete.
+// Dates in the same calendar are counted in that calendar's years.
 // Both paths count BCE years astronomically (see AstronomicalYear), so there is
 // no year zero between 1 BCE and 1 CE.
 // A dual date is first read in New Style, as Compare reads it, so
@@ -1274,6 +1278,17 @@ func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
 		return 0, false, fmt.Errorf("insufficient date information")
 	}
 	d1, d2 = d1.inNewStyle(), d2.inNewStyle()
+
+	// Dates in different calendars are counted on one scale: both in Gregorian,
+	// converted through their Julian Day Number.
+	if d1.Calendar != d2.Calendar {
+		if d1, err = d1.toGregorianComponents(); err != nil {
+			return 0, false, err
+		}
+		if d2, err = d2.toGregorianComponents(); err != nil {
+			return 0, false, err
+		}
+	}
 
 	// Try exact calculation for complete Gregorian dates
 	t1, err1 := d1.ToTime()

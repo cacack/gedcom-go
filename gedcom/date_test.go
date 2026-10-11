@@ -2872,13 +2872,14 @@ func TestYearsBetween(t *testing.T) {
 			wantExact: false,
 		},
 
-		// Cross-calendar - year subtraction (can't use ToTime)
+		// Cross-calendar - converted to Gregorian first (#618):
+		// 25 DEC 1700 Julian is 5 JAN 1701 Gregorian
 		{
 			name:      "Julian vs Gregorian",
 			date1:     "@#DJULIAN@ 25 DEC 1700",
 			date2:     "25 DEC 1750",
-			wantYears: 50,
-			wantExact: false,
+			wantYears: 49,
+			wantExact: true,
 		},
 
 		// BC dates

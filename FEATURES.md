@@ -947,7 +947,8 @@ earliest, latest, ok := date.Bounds()
 
 // Calculate years between dates
 years, exact, err := gedcom.YearsBetween(birthDate, deathDate)
-// exact is true if both dates are complete (day/month/year); dual dates count in New Style
+// exact is true if both dates are complete (day/month/year); dual dates count in New Style;
+// dates in different calendars are converted to Gregorian first (Hebrew 1 TSH 5660 to 1 JAN 1950 is 50)
 
 // Convert to time.Time (complete, valid Gregorian dates only; 31 FEB errors; BCE uses astronomical years, 44 BCE -> -43)
 t, err := date.ToTime()
@@ -1118,7 +1119,7 @@ for _, pair := range pairs {
 }
 ```
 
-Every field's zero value is its default, so a partial literal such as `&validator.DuplicateConfig{MinConfidence: 0.9}` keeps the other thresholds and name normalization in force. `MinNameSimilarity`, `MinConfidence` and `MaxBirthYearDiff` treat `0` as "use the default" (0.8, 0.7 and 2) and any negative value — spelled `validator.ZeroThreshold` — as an explicit zero. Name normalization (trim, lowercase, accent folding) is on unless `DisableNameNormalization` is set. `DefaultDuplicateConfig()` returns a `*DuplicateConfig` with every default spelled out. Birth years are compared as astronomical years, so 44 BCE and 44 CE are 87 years apart and 1 BCE and 1 CE are one year apart; a birth date with no real year (a phrase, year 0, `0 BC`) earns no birth-year credit.
+Every field's zero value is its default, so a partial literal such as `&validator.DuplicateConfig{MinConfidence: 0.9}` keeps the other thresholds and name normalization in force. `MinNameSimilarity`, `MinConfidence` and `MaxBirthYearDiff` treat `0` as "use the default" (0.8, 0.7 and 2) and any negative value — spelled `validator.ZeroThreshold` — as an explicit zero. Name normalization (trim, lowercase, accent folding) is on unless `DisableNameNormalization` is set. `DefaultDuplicateConfig()` returns a `*DuplicateConfig` with every default spelled out. Birth years are compared as astronomical years, so 44 BCE and 44 CE are 87 years apart and 1 BCE and 1 CE are one year apart; a birth date with no real year (a phrase, year 0, `0 BC`) earns no birth-year credit. Birth dates in different calendars are both converted to Gregorian through their Julian Day Number before their years are compared, so Hebrew 5660 and Gregorian 1899 are the same year while Hebrew 1900 and Gregorian 1900 are not; two dates in the same calendar compare their own years.
 
 Comparison is quadratic within a surname group, and the input controls the surnames, so `MaxGroupSize` bounds it: any normalized-surname group larger than the cap is skipped whole and reported as one `DUPLICATE_DETECTION_LIMITED` warning (available as `DuplicateReport.LimitIssues` from `FindDuplicatesReport`, and included in `ValidateAll` and `QualityReport` output). The field is tri-state and **zero is not unlimited** — `0` selects `validator.DefaultMaxGroupSize` (1000), a negative value disables the cap, and a positive value is used as given, so a partial config literal stays bounded. `ValidateOptions.SkipDuplicateDetection` drops duplicate detection from the `ValidateAll` sweep; `QualityReport`, `FindPotentialDuplicates` and `FindPotentialDuplicatesReport` still run it, bounded by `MaxGroupSize`. See [performance](docs/guides/performance.md#bounding-untrusted-input) for the worst-case bound and [ADR 0009](docs/decisions/0009-bounded-duplicate-detection.md) for the rationale.
 

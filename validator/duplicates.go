@@ -96,7 +96,8 @@ type DuplicateConfig struct {
 
 	// MaxBirthYearDiff is the maximum difference in birth years that still earns
 	// partial birth-date credit. An identical birth year always earns full credit.
-	// Years are compared astronomically, so 1 BCE and 1 CE are one year apart.
+	// Years are compared astronomically, so 1 BCE and 1 CE are one year apart,
+	// and dates in different calendars are compared as Gregorian years.
 	//
 	//	0        use the default (2)
 	//	negative only an identical birth year earns credit ([ZeroThreshold])
@@ -602,11 +603,7 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 		return DuplicatePair{}, false
 	}
 
-	// Compare astronomical years so 44 BCE and 44 CE are 87 years apart. A date
-	// without a real year (a phrase, "0", "0 BC", a negative year) earns no credit.
-	if birthDate1 != nil && birthDate2 != nil && hasRealYear(birthDate1) && hasRealYear(birthDate2) {
-		yearDiff := absInt(gedcom.AstronomicalYear(birthDate1.Year, birthDate1.IsBC) -
-			gedcom.AstronomicalYear(birthDate2.Year, birthDate2.IsBC))
+	if yearDiff, ok := birthYearsApart(birthDate1, birthDate2); ok {
 		if yearDiff == 0 {
 			confidence += 0.2
 			reasons = append(reasons, "same birth year")
@@ -785,6 +782,28 @@ func levenshteinDistance(s1, s2 string) int {
 	}
 
 	return prev[len2]
+}
+
+// birthYearsApart returns how many years apart two birth dates fall. Years
+// are compared astronomically, so 44 BCE and 44 CE are 87 years apart. Dates
+// in different calendars are first converted to Gregorian through their Julian
+// Day Number, so Hebrew 5660 and Gregorian 1899 are the same year while Hebrew
+// 1900 and Gregorian 1900 are not. ok is false, and the dates earn no credit,
+// when either is missing, has no real year (a phrase, "0", "0 BC", a negative
+// year) or cannot be converted.
+func birthYearsApart(d1, d2 *gedcom.Date) (years int, ok bool) {
+	if d1 == nil || d2 == nil || !hasRealYear(d1) || !hasRealYear(d2) {
+		return 0, false
+	}
+	if d1.Calendar != d2.Calendar {
+		var err1, err2 error
+		d1, err1 = d1.ToGregorian()
+		d2, err2 = d2.ToGregorian()
+		if err1 != nil || err2 != nil {
+			return 0, false
+		}
+	}
+	return absInt(gedcom.AstronomicalYear(d1.Year, d1.IsBC) - gedcom.AstronomicalYear(d2.Year, d2.IsBC)), true
 }
 
 // hasRealYear reports whether d carries a year of 1 or more, the domain
