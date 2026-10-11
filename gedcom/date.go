@@ -834,8 +834,11 @@ func defaultToOne(val int) int {
 // (Julian Day Number) for accurate cross-calendar comparison.
 //
 // A dual date is read in New Style, as Bounds reads it: "11 FEB 1731/32"
-// compares equal to 11 FEB 1732. A dual date Bounds cannot place on one side
-// of 25 March ("1731/32", "MAR 1731/32") is read in Year, its earliest reading.
+// compares equal to 11 FEB 1732. A dual date whose New Style year is unknown
+// is read in Year, its earliest reading: one that does not say which side of
+// 25 March it falls on ("1731/32", "MAR 1731/32"), whose DualYear is not the
+// following year, or that is not Gregorian or Julian. So "MAR 1731/32" sorts
+// as March 1731 while "1 MAR 1731/32" sorts as March 1732.
 //
 // Compare ignores Modifier, so it gives a sort order, not proof that one date
 // precedes another; see Bounds for that.
@@ -1258,8 +1261,10 @@ func (d *Date) IsEqual(other *Date) bool {
 // For partial dates, non-Gregorian calendars, or dates ToTime rejects (such as
 // a nonexistent day like 31 FEB), uses simple year subtraction.
 // Both paths count BCE years astronomically (see AstronomicalYear), so there is
-// no year zero between 1 BCE and 1 CE, and read a dual date in New Style as
-// Compare does, so "11 FEB 1731/32" counts from 1732.
+// no year zero between 1 BCE and 1 CE.
+// A dual date is first read in New Style, as Compare reads it, so
+// "11 FEB 1731/32" counts from 1732; one whose New Style year is unknown
+// counts from Year.
 // Returns error if both dates don't have years (insufficient data).
 // Always returns absolute value (no negative years).
 func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
