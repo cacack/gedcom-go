@@ -473,10 +473,6 @@ const headerProbeChunk = 4 << 10
 // Matches: "1 CHAR ANSEL", "1 CHAR UTF-8", "1 CHAR ASCII", etc.
 var charTagPattern = regexp.MustCompile(`(?i)[\r\n]1\s+CHAR\s+(\S+)`)
 
-// level0LinePattern matches the line break that begins a level-0 line, which
-// marks the end of the header once the HEAD line itself has been passed.
-var level0LinePattern = regexp.MustCompile(`[\r\n][ \t]*0[ \t]`)
-
 // DetectEncodingFromHeader peeks at the GEDCOM header to find the CHAR tag.
 // It returns a reader that replays every byte of r, the detected encoding,
 // and any error encountered while probing.
@@ -531,13 +527,14 @@ func charEncoding(header []byte) Encoding {
 // the error, so a caller can still replay them.
 func probeHeader(r io.Reader) (probe []byte, headerLen int, err error) {
 	chunk := make([]byte, headerProbeChunk)
+	var scan headerScanner
 	for len(probe) < headerProbeLimit {
 		n, readErr := r.Read(chunk[:min(len(chunk), headerProbeLimit-len(probe))])
 		probe = append(probe, chunk[:n]...)
 		if readErr != nil && readErr != io.EOF {
 			return probe, 0, readErr
 		}
-		if end := headerEnd(probe); end >= 0 {
+		if end := scan.headerEnd(probe); end >= 0 {
 			return probe, end, nil
 		}
 		if readErr == io.EOF {
@@ -547,16 +544,63 @@ func probeHeader(r io.Reader) (probe []byte, headerLen int, err error) {
 	return probe, len(probe), nil
 }
 
-// headerEnd returns the offset of the first level-0 line after the HEAD line,
-// or -1 if data does not contain one yet. Leading blank lines are skipped so
+// headerScanState is where a headerScanner is within the current line.
+type headerScanState int
+
+const (
+	scanLeadingBlank headerScanState = iota // before the HEAD line
+	scanInLine                              // past the start of a line that is not level 0
+	scanLineStart                           // after a line break, in optional leading blanks
+	scanLevelZero                           // after a line break, blanks and a '0'
+)
+
+// headerScanner finds the end of the header in a probe that grows across
+// reads. It keeps its place between calls and examines only the bytes appended
+// since the last one, so a probe filled one byte per Read costs linear work.
+type headerScanner struct {
+	pos       int             // offset of the next byte to examine
+	state     headerScanState // position within the current line
+	lineBreak int             // offset of the line break that began the current line
+}
+
+// headerEnd returns the offset of the line break that begins the first level-0
+// line after the HEAD line, or -1 if data does not contain one yet. data must
+// extend the data given to earlier calls. Leading blank lines are skipped so
 // the HEAD line itself is never mistaken for the end of the header.
-func headerEnd(data []byte) int {
-	start := len(data) - len(bytes.TrimLeft(data, " \t\r\n"))
-	loc := level0LinePattern.FindIndex(data[start:])
-	if loc == nil {
-		return -1
+func (s *headerScanner) headerEnd(data []byte) int {
+	for ; s.pos < len(data); s.pos++ {
+		if s.step(data[s.pos]) {
+			return s.lineBreak
+		}
 	}
-	return start + loc[0]
+	return -1
+}
+
+// step advances the scan past c, which must be the byte at s.pos (s.pos is
+// recorded as lineBreak), and reports whether c completes the start of a
+// level-0 line. Case order matters: line breaks are handled first, and the
+// blank cases rely on the earlier state-specific cases having been ruled out.
+func (s *headerScanner) step(c byte) bool {
+	blank := c == ' ' || c == '\t'
+	switch {
+	case c == '\r' || c == '\n':
+		if s.state != scanLeadingBlank {
+			s.state, s.lineBreak = scanLineStart, s.pos
+		}
+	case s.state == scanLeadingBlank:
+		if !blank {
+			s.state = scanInLine
+		}
+	case s.state == scanLevelZero && blank:
+		return true
+	case s.state == scanLineStart && c == '0':
+		s.state = scanLevelZero
+	case s.state == scanLineStart && blank:
+		// Blanks before the level number: stay in scanLineStart.
+	default:
+		s.state = scanInLine
+	}
+	return false
 }
 
 // NewReaderWithEncoding wraps a reader with the specified encoding converter.
