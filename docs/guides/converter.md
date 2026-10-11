@@ -101,10 +101,11 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar keywords (`JULIAN`) converted to escapes (`@#DJULIAN@`) |
 | Header update | `VERSION_DOWNGRADE` | Header version updated |
 
-Every conversion sets the header's `GEDC.VERS` to the target version. A `GEDC`
-with no `VERS` gets one added under it (the first `GEDC` if there are several), keeping its other children (`FORM` is
-kept for 5.5 and 5.5.1 targets but dropped for 7.0, which removed it). A header
-with no `GEDC` gets one added.
+Every conversion sets the header's `GEDC.VERS` to the target version, rewriting
+any existing `VERS` under any `GEDC`. If no `GEDC` has a `VERS`, one is added
+under the first `GEDC`, keeping its other children (`FORM` is kept for 5.5 and
+5.5.1 targets but dropped for 7.0, which removed it). A header with no `GEDC`
+gets one added.
 
 ## Media Type Mappings
 

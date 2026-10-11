@@ -2,6 +2,7 @@ package converter_test
 
 import (
 	"bytes"
+	"slices"
 	"strings"
 	"testing"
 
@@ -46,15 +47,31 @@ func TestConvertHeaderGEDC(t *testing.T) {
 			if tt.source != "" {
 				doc.Header.Version = tt.source
 			}
-			inputTags := len(doc.Header.Tags)
+			// Snapshot each tag's pointer and contents: an in-place
+			// slices.Insert on a shared backing array would shift elements
+			// without changing the input's length.
+			type tagSnap struct {
+				ptr   *gedcom.Tag
+				level int
+				tag   string
+				value string
+			}
+			snap := func(tags []*gedcom.Tag) []tagSnap {
+				out := make([]tagSnap, len(tags))
+				for i, tg := range tags {
+					out[i] = tagSnap{tg, tg.Level, tg.Tag, tg.Value}
+				}
+				return out
+			}
+			inputTags := snap(doc.Header.Tags)
 
 			got, _, err := converter.Convert(doc, tt.target)
 			if err != nil {
 				t.Fatalf("Convert: %v", err)
 			}
 
-			if n := len(doc.Header.Tags); n != inputTags {
-				t.Errorf("Convert mutated the input header: %d tags, want %d", n, inputTags)
+			if after := snap(doc.Header.Tags); !slices.Equal(after, inputTags) {
+				t.Errorf("Convert mutated the input header:\n got %+v\nwant %+v", after, inputTags)
 			}
 
 			var buf bytes.Buffer
