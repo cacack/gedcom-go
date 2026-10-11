@@ -126,7 +126,7 @@ func TestSpacedXRef551StrictOtherErrors(t *testing.T) {
 func TestSpacedXRefUndeclaredVersion(t *testing.T) {
 	body := "0 @I 1@ INDI\n1 NOTE @N 1@\n0 @N 1@ NOTE Shared note\n0 TRLR\n"
 	tests := map[string]string{
-		"unrecognized VERS": "0 HEAD\n1 GEDC\n2 VERS 7.0.14\n" + body,
+		"unrecognized VERS": "0 HEAD\n1 GEDC\n2 VERS 7.1\n" + body,
 		"no VERS":           "0 HEAD\n1 SOUR EXAMPLE\n" + body,
 		"no header":         body,
 	}

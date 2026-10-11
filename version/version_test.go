@@ -64,6 +64,15 @@ func TestDetectVersion(t *testing.T) {
 			want: gedcom.Version70,
 		},
 		{
+			name: "detect 7.0 patch version from header",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "VERS", Value: "7.0.14"},
+			},
+			want: gedcom.Version70,
+		},
+		{
 			name: "detect with extra whitespace in version",
 			lines: []*parser.Line{
 				{Level: 0, Tag: "HEAD"},
@@ -213,7 +222,9 @@ func TestDeclaredVersion(t *testing.T) {
 	}{
 		{"5.5.1", header("5.5.1"), gedcom.Version551},
 		{"7.0", header("7.0"), gedcom.Version70},
-		{"unrecognized", header("7.0.14"), ""},
+		{"7.0 patch", header("7.0.14"), gedcom.Version70},
+		{"7.0 patch 1", header("7.0.1"), gedcom.Version70},
+		{"unrecognized", header("7.1"), ""},
 		{"no GEDC", []*parser.Line{{Level: 0, Tag: "HEAD"}, {Level: 1, Tag: "SOUR"}}, ""},
 		{"no header", []*parser.Line{{Level: 0, Tag: "INDI"}, {Level: 1, Tag: "EMAIL"}}, ""},
 		// A level-0 HEAD with an XRef is a record, not the header (#579).
@@ -247,5 +258,35 @@ func TestDetectVersionXRefHead(t *testing.T) {
 	}
 	if got := DetectVersion(lines); got != gedcom.Version551 {
 		t.Errorf("DetectVersion() = %q, want %q", got, gedcom.Version551)
+	}
+}
+
+// TestParseVersionStringPatch pins that VERS 7.0.N is GEDCOM 7.0 for any
+// non-negative integer N, and that malformed values stay unrecognized (#587).
+func TestParseVersionStringPatch(t *testing.T) {
+	tests := map[string]gedcom.Version{
+		"7.0.0":    gedcom.Version70,
+		"7.0.1":    gedcom.Version70,
+		"7.0.14":   gedcom.Version70,
+		"7.0.999":  gedcom.Version70,
+		" 7.0.14 ": gedcom.Version70,
+		"7.0.":     "",
+		"7.0.x":    "",
+		"7.0.-1":   "",
+		"7.0.+1":   "",
+		"7.0.1a":   "",
+		"7.0.1.2":  "",
+		"7.0. 1":   "",
+		"7.0.١":    "", // non-ASCII digit
+		"7.1":      "",
+		"7.1.0":    "",
+		"7":        "",
+	}
+	for value, want := range tests {
+		t.Run(value, func(t *testing.T) {
+			if got := parseVersionString(value); got != want {
+				t.Errorf("parseVersionString(%q) = %q, want %q", value, got, want)
+			}
+		})
 	}
 }
