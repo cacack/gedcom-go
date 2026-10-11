@@ -273,6 +273,9 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	allIssues = append(allIssues, validateBrokenXRefs(doc)...)
 	allIssues = append(allIssues, validateRecordStructure(doc)...)
 
+	// Run date validity validation (dates that do not exist, e.g. 31 FEB)
+	allIssues = append(allIssues, validateDates(doc)...)
+
 	// Run XRef length validation
 	allIssues = append(allIssues, v.getXRefValidator().ValidateXRefs(doc)...)
 
@@ -418,7 +421,8 @@ func (v *Validator) ValidateNotePointers(doc *gedcom.Document) []Issue {
 //
 // The report covers date logic, cross-references, duplicates, custom tags and
 // completeness. It is not the full issue set: the header, broken-pointer,
-// record-structure, XRef-length, encoding and note-pointer checks run only
+// record-structure, date-validity, XRef-length, encoding and note-pointer
+// checks run only
 // under [Validator.ValidateAll], so a caller reading QualityReport's counts
 // alone can see a clean report for a document ValidateAll flags. Use
 // ValidateAll when completeness of the issue set matters.
