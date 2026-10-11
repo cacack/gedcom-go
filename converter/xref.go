@@ -10,9 +10,19 @@ import (
 // v7XRefReason explains every XRef rewrite in the conversion report.
 const v7XRefReason = "GEDCOM 7.0 requires XRefs to use only uppercase letters, digits and underscore (@[A-Z0-9_]+@)"
 
+// v7NullXRef is the GEDCOM 7.0 null pointer. GEDCOM 5.5 and 5.5.1 do not
+// reserve it, so a record may be named @VOID@ there.
+const v7NullXRef = "@VOID@"
+
+// v7NullXRefReason explains the rewrite of a record named @VOID@.
+const v7NullXRefReason = "GEDCOM 7.0 reserves @VOID@ as the null pointer, so a record cannot use it as its XRef"
+
 // normalizeXRefsForV7 rewrites every XRef that is not a valid GEDCOM 7.0
 // Xref (@[A-Z0-9_]+@) and every pointer to it. GEDCOM 5.5 and 5.5.1 allow
-// lowercase letters, spaces and other characters that 7.0 rejects.
+// lowercase letters, spaces and other characters that 7.0 rejects. A record
+// named @VOID@, an ordinary 5.5/5.5.1 identifier but the 7.0 null pointer, is
+// rewritten too, so its pointers do not become null; a @VOID@ pointer no
+// record defines is left as the null pointer.
 //
 // A record's XRef is uppercased with each other invalid character replaced by
 // "_"; if that identifier is already taken by a record or by a pointer no
@@ -43,12 +53,16 @@ func applyV7XRefMapping(doc *gedcom.Document, mapping map[string]string, danglin
 			continue
 		}
 		if newXRef, ok := mapping[record.XRef]; ok {
+			reason := v7XRefReason
+			if record.XRef == v7NullXRef {
+				reason = v7NullXRefReason
+			}
 			path := BuildRecordPath(string(record.Type), record.XRef)
 			report.AddNormalized(gedcom.ConversionNote{
 				Path:     path,
 				Original: record.XRef,
 				Result:   newXRef,
-				Reason:   v7XRefReason,
+				Reason:   reason,
 			})
 		}
 	}
@@ -73,9 +87,9 @@ func applyV7XRefMapping(doc *gedcom.Document, mapping map[string]string, danglin
 	})
 }
 
-// buildXRefMapping maps each XRef that is not a valid GEDCOM 7.0 Xref to a
-// valid one, as described on normalizeXRefsForV7, and also returns the
-// mapped pointers that no record defines. Valid XRefs are not included.
+// buildXRefMapping maps each XRef that is not a valid GEDCOM 7.0 Xref, and a
+// record XRef of @VOID@, to a valid one, as described on normalizeXRefsForV7, and also returns the
+// mapped pointers that no record defines. Other valid XRefs are not included.
 // Records and pointers are visited in document order, so the result is
 // deterministic.
 func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling []string) {
@@ -112,7 +126,7 @@ func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling
 	}
 
 	for _, record := range doc.Records {
-		if record == nil || record.XRef == "" || isV7XRef(record.XRef) {
+		if record == nil || record.XRef == "" || (isV7XRef(record.XRef) && record.XRef != v7NullXRef) {
 			continue
 		}
 		if _, done := mapping[record.XRef]; done {
@@ -140,7 +154,7 @@ func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling
 // case-only join, each record XRef keyed by its ASCII-uppercased form (the
 // first record wins).
 func indexRecordXRefs(doc *gedcom.Document) (taken map[string]bool, byUpper map[string]string) {
-	taken = map[string]bool{"@VOID@": true}
+	taken = map[string]bool{v7NullXRef: true}
 	byUpper = make(map[string]string)
 	for _, record := range doc.Records {
 		if record == nil || record.XRef == "" {
