@@ -42,6 +42,8 @@ func Convert(doc *gedcom.Document, targetVersion gedcom.Version) (*gedcom.Docume
 
 Converts a document to the target version using default options. The original document is not modified; a deep copy is created for conversion.
 
+When the document is already at the target version, it is returned as-is and the report is empty. The exception is 7.0 → 7.0: XRefs the 7.0 grammar rejects (`0 @i 2@ INDI`) are normalized on a copy exactly as in [XRef normalization](#upgrade-to-gedcom-70), pointers included, and each rename is a `Normalized` note, so converting to 7.0 always yields valid 7.0 identifiers. No other transformation runs. A dangling pointer containing a space (`1 NOTE @X 9@`) is not a pointer under the 7.0 grammar a 7.0 header declares, so it is left as-is. A 7.0 → 7.0 call therefore returns the input itself when nothing needs renaming and a copy otherwise, so do not rely on the result's pointer identity.
+
 ### ConvertWithOptions
 
 ```go
@@ -49,6 +51,8 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 ```
 
 Converts a document with custom options for fine-grained control over the conversion process.
+
+A document already at the target version is handled as described under [Convert](#convert); the options do not apply on that path.
 
 ### ConvertOptions
 
