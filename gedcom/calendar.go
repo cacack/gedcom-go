@@ -320,23 +320,22 @@ func JDNToFrench(jdn int) (year, month, day int) {
 	// Days since epoch (0 = first day of year 1)
 	daysSinceEpoch := jdn - epoch
 
-	// Find the exact year by counting forward from epoch
+	// Estimate the year from the mean Gregorian year (146097 days per 400
+	// years, the rule IsFrenchLeapYear follows), then correct it against
+	// FrenchToJDN. The cost does not depend on jdn. A jdn before the epoch
+	// stays in year 1, with a negative day count.
 	year = 1
-	daysAccumulated := 0
-	for {
-		yearLength := 365
-		if IsFrenchLeapYear(year) {
-			yearLength = 366
+	if daysSinceEpoch > 0 {
+		const daysPer400Years = 146097
+		year = daysSinceEpoch/daysPer400Years*400 + daysSinceEpoch%daysPer400Years*400/daysPer400Years + 1
+		for year > 1 && FrenchToJDN(year, 1, 1) > jdn {
+			year--
 		}
-
-		if daysAccumulated+yearLength > daysSinceEpoch {
-			// Found the year
-			break
+		for FrenchToJDN(year+1, 1, 1) <= jdn {
+			year++
 		}
-
-		daysAccumulated += yearLength
-		year++
 	}
+	daysAccumulated := FrenchToJDN(year, 1, 1) - epoch
 
 	// Days remaining in this year (0-based)
 	dayInYear := daysSinceEpoch - daysAccumulated

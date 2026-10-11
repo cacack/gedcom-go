@@ -117,6 +117,8 @@ func TestDate_Bounds_NotOK(t *testing.T) {
 		{"Adar II in a common Hebrew year", mustParse(t, "@#DHEBREW@ ADS 5785")},
 		{"day in Adar II in a common Hebrew year", mustParse(t, "@#DHEBREW@ 1 ADS 5785")},
 		{"negative day", &Date{Year: 1850, Month: 3, Day: -1}},
+		{"negative month", &Date{Year: 1850, Month: -1}},
+		{"negative Julian month", &Date{Year: 1850, Month: -1, Calendar: CalendarJulian}},
 		{"year beyond the range", &Date{Year: maxBoundsYear + 1}},
 		{"B.C. year beyond the range", &Date{Year: -maxBoundsYear - 1}},
 		{"huge French year", &Date{Year: math.MaxInt, Calendar: CalendarFrenchRepublican}},

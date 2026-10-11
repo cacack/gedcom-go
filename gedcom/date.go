@@ -993,7 +993,7 @@ const maxBoundsYear = 1_000_000
 // month or day the calendar does not have that year, such as 31 FEB or Adar II
 // in a common Hebrew year.
 func (d *Date) boundsInYear(year int) (earliest, latest int, ok bool) {
-	if year == 0 || year < -maxBoundsYear || year > maxBoundsYear {
+	if year == 0 || year < -maxBoundsYear || year > maxBoundsYear || d.Month < 0 {
 		return 0, 0, false
 	}
 	lastMonth := 13 // Hebrew and French Republican
