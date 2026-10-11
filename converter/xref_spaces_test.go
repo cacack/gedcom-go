@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -398,5 +399,122 @@ func TestConvertDanglingSpacedPointerTo70(t *testing.T) {
 		if !v7XRef.MatchString(ref) {
 			t.Errorf("output holds %q, invalid in 7.0:\n%s", ref, out)
 		}
+	}
+}
+
+// convertTo70Output decodes a GEDCOM source leniently, converts it to 7.0 and
+// returns the converted document and its encoded text.
+func convertTo70Output(t *testing.T, input string) (converted *gedcom.Document, out string) {
+	t.Helper()
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	converted, _, err = converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, converted); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	return converted, buf.String()
+}
+
+// noteValues returns the value of each level-1 NOTE line of record xref, in
+// order.
+func noteValues(doc *gedcom.Document, xref string) []string {
+	var got []string
+	if r := doc.GetRecord(xref); r != nil {
+		for _, tag := range r.Tags {
+			if tag.Level == 1 && tag.Tag == "NOTE" {
+				got = append(got, tag.Value)
+			}
+		}
+	}
+	return got
+}
+
+// TestConvertSpacedPointerCollisionsTo70 pins how a rewritten spaced
+// identifier avoids an existing one, whether the spaced side is the dangling
+// pointer or the defined record (#591), and that inline text which only
+// looks like a pointer is left alone.
+func TestConvertSpacedPointerCollisionsTo70(t *testing.T) {
+	const header = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n"
+	tests := []struct {
+		name      string
+		body      string
+		notesOf   string   // record whose NOTE values are checked
+		wantNotes []string // exact NOTE values after conversion
+		wantXRefs []string // exact record XRefs after conversion, in order
+	}{
+		{
+			name:      "dangling spaced pointer beside defined underscore record",
+			body:      "0 @I1@ INDI\n1 NOTE @X 9@\n1 NOTE @X_9@\n0 @X_9@ NOTE defined\n",
+			notesOf:   "@I1@",
+			wantNotes: []string{"@X_9_2@", "@X_9@"},
+			wantXRefs: []string{"@I1@", "@X_9@"},
+		},
+		{
+			name:      "defined spaced record beside dangling underscore pointer",
+			body:      "0 @I1@ INDI\n1 NOTE @X 9@\n1 NOTE @X_9@\n0 @X 9@ NOTE defined\n",
+			notesOf:   "@I1@",
+			wantNotes: []string{"@X_9_2@", "@X_9@"},
+			wantXRefs: []string{"@I1@", "@X_9_2@"},
+		},
+		{
+			name:      "inline text with escaped at sign",
+			body:      "0 @I1@ INDI\n1 NOTE @@home run 5@\n",
+			notesOf:   "@I1@",
+			wantNotes: []string{"@@home run 5@"},
+			wantXRefs: []string{"@I1@"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			converted, out := convertTo70Output(t, header+tt.body+"0 TRLR\n")
+			var xrefs []string
+			for _, r := range converted.Records {
+				xrefs = append(xrefs, r.XRef)
+			}
+			if !slices.Equal(xrefs, tt.wantXRefs) {
+				t.Errorf("record XRefs = %q, want %q\n%s", xrefs, tt.wantXRefs, out)
+			}
+			if got := noteValues(converted, tt.notesOf); !slices.Equal(got, tt.wantNotes) {
+				t.Errorf("%s NOTE values = %q, want %q\n%s", tt.notesOf, got, tt.wantNotes, out)
+			}
+		})
+	}
+}
+
+// TestConvertUndeclaredSpacedPointerUnchanged pins the decision behind
+// undefinedPointers: with no declared GEDC.VERS the spaced-pointer grammar is
+// never relaxed, so a dangling spaced pointer is left as-is while a defined
+// spaced record XRef is still renamed (#591).
+func TestConvertUndeclaredSpacedPointerUnchanged(t *testing.T) {
+	const input = `0 HEAD
+1 GEDC
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NOTE @N 1@
+1 NOTE @X 9@
+0 @N 1@ NOTE defined
+0 TRLR
+`
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if doc.Header.DeclaredVersion != "" {
+		t.Fatalf("DeclaredVersion = %q, want none", doc.Header.DeclaredVersion)
+	}
+	converted, out := convertTo70Output(t, input)
+	if converted.GetRecord("@N_1@") == nil {
+		t.Errorf("defined @N 1@ not renamed to @N_1@:\n%s", out)
+	}
+	want := []string{"@N_1@", "@X 9@"}
+	if got := noteValues(converted, "@I1@"); !slices.Equal(got, want) {
+		t.Errorf("@I1@ NOTE values = %q, want %q\n%s", got, want, out)
 	}
 }
