@@ -261,14 +261,15 @@ func TestDetectVersionXRefHead(t *testing.T) {
 	}
 }
 
-// TestParseVersionStringPatch pins that VERS 7.0.N is GEDCOM 7.0 for any
-// non-negative integer N, and that malformed values stay unrecognized (#587).
+// TestParseVersionStringPatch pins that VERS 7.0.N is GEDCOM 7.0 when N is one
+// or more ASCII digits (leading zeros accepted), and that malformed values stay unrecognized (#587).
 func TestParseVersionStringPatch(t *testing.T) {
 	tests := map[string]gedcom.Version{
 		"7.0.0":    gedcom.Version70,
 		"7.0.1":    gedcom.Version70,
 		"7.0.14":   gedcom.Version70,
 		"7.0.999":  gedcom.Version70,
+		"7.0.01":   gedcom.Version70, // leading zeros accepted deliberately
 		" 7.0.14 ": gedcom.Version70,
 		"7.0.":     "",
 		"7.0.x":    "",

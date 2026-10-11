@@ -11,6 +11,8 @@ import (
 // It first tries to find the version in the header (HEAD -> GEDC -> VERS).
 // If not found, it falls back to tag-based heuristics.
 // Returns Version55 as the default if detection fails.
+// A GEDCOM 7 patch version (VERS 7.0.N) is reported as [gedcom.Version70];
+// the exact VERS value stays in the decoded header's raw Tags.
 func DetectVersion(lines []*parser.Line) gedcom.Version {
 	// Try to detect from header first
 	version := detectFromHeader(lines, false)
@@ -28,6 +30,7 @@ func DetectVersion(lines []*parser.Line) gedcom.Version {
 // guesses, so a caller can apply a version-specific rule only to a document
 // that asked for it. Only the real header counts: the GEDCOM grammar gives HEAD
 // no identifier, so a `0 @X1@ HEAD` record is ignored, as the decoder does.
+// A GEDCOM 7 patch version (VERS 7.0.N) is reported as [gedcom.Version70].
 func DeclaredVersion(lines []*parser.Line) gedcom.Version {
 	return detectFromHeader(lines, true)
 }

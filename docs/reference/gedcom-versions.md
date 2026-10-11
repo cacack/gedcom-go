@@ -226,7 +226,7 @@ This library auto-detects the GEDCOM version by:
 2. Extracting version from the `VERS` tag value (`5.5`, `5.5.1`, `7.0`, or a GEDCOM 7 patch version `7.0.N`, which counts as 7.0)
 3. If missing/ambiguous, analyzing tag names against version-specific lists
 
-The detected version is stored in `Document.Header.GedcomVersion`.
+The detected version is stored in `Document.Header.Version`; a `7.0.N` patch version is normalized to `7.0` there, and the exact `VERS` value is kept in `Header.Tags`.
 
 ## Related Documentation
 
