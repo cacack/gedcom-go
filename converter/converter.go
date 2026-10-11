@@ -7,6 +7,13 @@ import (
 )
 
 // Convert converts a GEDCOM document to the target version using default options.
+//
+// When the document is already at the target version, nothing is converted
+// and the document is returned as-is, with one exception: a 7.0 document
+// converted to 7.0 has any XRef the 7.0 grammar rejects (such as "@i 2@")
+// rewritten, together with the pointers to it, on a copy, and each rename is
+// recorded in the report as for a 5.5.x -> 7.0 upgrade. A dangling pointer
+// that 7.0 does not read as a pointer (one with a space) is left unchanged.
 func Convert(doc *gedcom.Document, targetVersion gedcom.Version) (*gedcom.Document, *gedcom.ConversionReport, error) {
 	return ConvertWithOptions(doc, targetVersion, DefaultOptions())
 }
@@ -48,18 +55,29 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 	// either -- a nil header has to behave exactly like that empty twin. The
 	// materialisation goes on a shallow copy, because the caller's document is
 	// an input, not ours to mutate.
+	//
+	// The one exception is 7.0: XRefs its grammar rejects are normalized as on
+	// the 5.5.x -> 7.0 paths (on a deep copy), so converting to 7.0 always
+	// yields valid 7.0 identifiers.
 	if sourceVersion == targetVersion {
-		converted := doc
-		if converted.Header == nil {
-			shallow := *doc
-			shallow.Header = &gedcom.Header{}
-			converted = &shallow
-		}
-		return converted, &gedcom.ConversionReport{
+		report := &gedcom.ConversionReport{
 			SourceVersion: sourceVersion,
 			TargetVersion: targetVersion,
 			Success:       true,
-		}, nil
+		}
+		converted := doc
+		if targetVersion == gedcom.Version70 {
+			if mapping, _ := buildXRefMapping(doc); len(mapping) > 0 {
+				converted = doc.Clone()
+				normalizeXRefsForV7(converted, report)
+			}
+		}
+		if converted.Header == nil {
+			shallow := *converted
+			shallow.Header = &gedcom.Header{}
+			converted = &shallow
+		}
+		return converted, report, nil
 	}
 
 	// Deep copy to avoid mutating original
