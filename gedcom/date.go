@@ -2,6 +2,7 @@ package gedcom
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -890,6 +891,126 @@ func (d *Date) Compare(other *Date) int {
 	return compareInts(d1, d2)
 }
 
+// Bounds returns the earliest and latest day the date can denote, as Julian
+// Day Numbers (see GregorianToJDN), so bounds from any calendar compare
+// directly. Unlike Compare, which reads a partial date as its first day and
+// ignores modifiers and DualYear, Bounds covers every reading of the date:
+//   - A partial date spans its whole month or year: "1503" runs from
+//     1 JAN 1503 to 31 DEC 1503.
+//   - ABT, CAL, EST and INT dates are bounded by the period they name; Bounds
+//     does not guess how far "about" reaches.
+//   - BEF and TO have no earliest day and AFT and FROM no latest; the open end
+//     is math.MinInt or math.MaxInt. The named date itself is included, so
+//     "BEF 1850" ends on 31 DEC 1850.
+//   - BET...AND and FROM...TO run from the earlier endpoint's earliest day to
+//     the later endpoint's latest.
+//   - A dual date is read in New Style: "11 FEB 1731/32" is 11 FEB 1732, since
+//     DualYear applies from 1 January to 24 March and Year from 25 March. A
+//     dual date that does not say which side of 25 March it falls on ("1731/32",
+//     "MAR 1731/32"), whose DualYear is not the year following Year (see
+//     Validate), or that is not Gregorian or Julian, spans both readings.
+//
+// ok is false when the date or a range's end date has no year, the date is a
+// phrase, or its calendar is unknown.
+//
+// One date is provably before another when its latest day is before the
+// other's earliest: aLatest < bEarliest holds on every reading of both.
+func (d *Date) Bounds() (earliest, latest int, ok bool) {
+	if d == nil || d.IsPhrase {
+		return 0, 0, false
+	}
+	earliest, latest, ok = d.endpointBounds()
+	if !ok {
+		return 0, 0, false
+	}
+	switch d.Modifier {
+	case ModifierBefore, ModifierTo:
+		return math.MinInt, latest, true
+	case ModifierAfter, ModifierFrom:
+		return earliest, math.MaxInt, true
+	case ModifierBetween, ModifierFromTo:
+		if d.EndDate == nil {
+			return 0, 0, false
+		}
+		endEarliest, endLatest, ok := d.EndDate.endpointBounds()
+		if !ok {
+			return 0, 0, false
+		}
+		return min(earliest, endEarliest), max(latest, endLatest), true
+	}
+	return earliest, latest, true
+}
+
+// endpointBounds bounds a single date, ignoring Modifier and EndDate. A dual
+// date whose New Style year is unknown spans both of its years.
+func (d *Date) endpointBounds() (earliest, latest int, ok bool) {
+	if d.DualYear == 0 {
+		return d.boundsInYear(d.Year)
+	}
+	if year, known := d.newStyleYear(); known {
+		return d.boundsInYear(year)
+	}
+	earliest, latest, ok = d.boundsInYear(d.Year)
+	dualEarliest, dualLatest, dualOK := d.boundsInYear(d.DualYear)
+	return min(earliest, dualEarliest), max(latest, dualLatest), ok && dualOK
+}
+
+// newStyleYear returns the year a dual date falls in when the year starts on
+// 1 January: DualYear from 1 January to 24 March, Year from 25 March. known is
+// false when the date does not say which side of 25 March it falls on, its
+// DualYear is not the following year, or it is not Gregorian or Julian.
+func (d *Date) newStyleYear() (year int, known bool) {
+	if d.validateDualYear() != nil || (d.Calendar != CalendarGregorian && d.Calendar != CalendarJulian) {
+		return 0, false
+	}
+	switch {
+	case d.Month == 1 || d.Month == 2 || (d.Month == 3 && d.Day >= 1 && d.Day <= 24):
+		return d.DualYear, true
+	case d.Month > 3 || (d.Month == 3 && d.Day >= 25):
+		return d.Year, true
+	}
+	return 0, false
+}
+
+// boundsInYear bounds the date's day and month, or its whole month or year
+// when those are 0, within year on the date's calendar.
+func (d *Date) boundsInYear(year int) (earliest, latest int, ok bool) {
+	if year == 0 {
+		return 0, 0, false
+	}
+	lastMonth := 13 // Hebrew and French Republican
+	if d.Calendar == CalendarGregorian || d.Calendar == CalendarJulian {
+		year = AstronomicalYear(year, d.IsBC)
+		lastMonth = 12
+	}
+
+	switch {
+	case d.Month == 0:
+		earliest, err := calendarToJDN(d.Calendar, year, 1, 1)
+		if err != nil {
+			return 0, 0, false
+		}
+		next, _ := calendarToJDN(d.Calendar, year+1, 1, 1)
+		return earliest, next - 1, true
+	case d.Day == 0:
+		nextYear, nextMonth := year, d.Month+1
+		if nextMonth > lastMonth {
+			nextYear, nextMonth = year+1, 1
+		}
+		earliest, err := calendarToJDN(d.Calendar, year, d.Month, 1)
+		if err != nil {
+			return 0, 0, false
+		}
+		next, _ := calendarToJDN(d.Calendar, nextYear, nextMonth, 1)
+		return earliest, next - 1, true
+	}
+	day, err := calendarToJDN(d.Calendar, year, d.Month, d.Day)
+	if err != nil {
+		return 0, 0, false
+	}
+	return day, day, true
+}
+
 // ToTime converts the date to a time.Time value.
 // Returns an error if the date is incomplete (missing day, month, or year),
 // if the calendar is not Gregorian, or if the day does not exist in that
@@ -941,27 +1062,30 @@ func (d *Date) toJDN() (int, error) {
 		month = 1
 	}
 
-	// Convert GEDCOM year to astronomical year for BC dates
-	astroYear := AstronomicalYear(d.Year, d.IsBC)
-
-	// Convert based on calendar system
-	var jdn int
-	switch d.Calendar {
-	case CalendarGregorian:
-		jdn = GregorianToJDN(astroYear, month, day)
-	case CalendarJulian:
-		jdn = JulianToJDN(astroYear, month, day)
-	case CalendarHebrew:
-		// For Hebrew calendar, need to handle GEDCOM month numbering
-		// GEDCOM uses Tishrei=1, but we need to convert the month correctly
-		jdn = HebrewToJDN(d.Year, month, day)
-	case CalendarFrenchRepublican:
-		jdn = FrenchToJDN(d.Year, month, day)
-	default:
-		return 0, fmt.Errorf("unsupported calendar: %s", d.Calendar)
+	// Gregorian and Julian dates count B.C. years astronomically
+	year := d.Year
+	if d.Calendar == CalendarGregorian || d.Calendar == CalendarJulian {
+		year = AstronomicalYear(d.Year, d.IsBC)
 	}
+	return calendarToJDN(d.Calendar, year, month, day)
+}
 
-	return jdn, nil
+// calendarToJDN converts a day on cal to a Julian Day Number. year is
+// astronomical for the Gregorian and Julian calendars (see AstronomicalYear)
+// and as written for the others. Hebrew months use GEDCOM numbering.
+func calendarToJDN(cal Calendar, year, month, day int) (int, error) {
+	switch cal {
+	case CalendarGregorian:
+		return GregorianToJDN(year, month, day), nil
+	case CalendarJulian:
+		return JulianToJDN(year, month, day), nil
+	case CalendarHebrew:
+		return HebrewToJDN(year, month, day), nil
+	case CalendarFrenchRepublican:
+		return FrenchToJDN(year, month, day), nil
+	default:
+		return 0, fmt.Errorf("unsupported calendar: %s", cal)
+	}
 }
 
 // ToGregorian converts the date to the Gregorian calendar.
