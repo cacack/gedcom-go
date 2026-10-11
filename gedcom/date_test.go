@@ -2655,6 +2655,27 @@ func TestYearsBetween(t *testing.T) {
 			wantExact: true,
 		},
 		{
+			name:      "partial BCE to CE across year zero",
+			date1:     "44 BCE",
+			date2:     "1",
+			wantYears: 44,
+			wantExact: false,
+		},
+		{
+			name:      "partial BCE to later CE",
+			date1:     "44 BCE",
+			date2:     "10",
+			wantYears: 53,
+			wantExact: false,
+		},
+		{
+			name:      "partial BCE to BCE",
+			date1:     "44 BCE",
+			date2:     "10 BCE",
+			wantYears: 34,
+			wantExact: false,
+		},
+		{
 			name:      "exactly 10 years",
 			date1:     "1 JAN 2010",
 			date2:     "1 JAN 2020",

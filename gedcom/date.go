@@ -1025,6 +1025,8 @@ func (d *Date) IsEqual(other *Date) bool {
 // YearsBetween calculates the number of years between two dates.
 // For complete Gregorian dates, uses exact calculation via time.Time.
 // For partial dates or non-Gregorian calendars, uses simple year subtraction.
+// Both paths count BCE years astronomically (see AstronomicalYear), so there is
+// no year zero between 1 BCE and 1 CE.
 // Returns error if both dates don't have years (insufficient data).
 // Always returns absolute value (no negative years).
 func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
@@ -1058,7 +1060,7 @@ func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
 	}
 
 	// Fall back to year subtraction for partial dates or non-Gregorian calendars
-	yearDiff := d1.Year - d2.Year
+	yearDiff := AstronomicalYear(d1.Year, d1.IsBC) - AstronomicalYear(d2.Year, d2.IsBC)
 	if yearDiff < 0 {
 		yearDiff = -yearDiff
 	}
