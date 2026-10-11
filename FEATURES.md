@@ -99,8 +99,8 @@ specifications define different structure sets — 7.0 defines the most, and muc
 of what it added is what this library has yet to type — so the shares rank the
 work left per version, not the versions.
 
-**Re-encoding.** Not byte-for-byte, and this is measured too. Of 100 corpus
-fixtures, 1 do not survive decode and encode at all; of the 99 that do, 91
+**Re-encoding.** Not byte-for-byte, and this is measured too. Of 101 corpus
+fixtures, 1 do not survive decode and encode at all; of the 100 that do, 92
 reproduce their header byte for byte and 83 reproduce their record body.
 `byte_roundtrip_test.go` names the reason behind every exception. What remains
 in the body count is not a defect but a limit of byte comparison itself: a
@@ -338,7 +338,7 @@ Supported on: Individual events (NO MARR, NO DEAT, NO NATU, NO EMIG, etc.) and F
 | ASCII | Full | Subset of UTF-8 |
 | LATIN1 (ISO-8859-1) | Full | Converted to UTF-8 |
 | UTF-16 LE/BE | Full | With BOM detection |
-| ANSEL | Full | With combining diacritical reordering |
+| ANSEL | Full | With combining diacritical reordering; a mark with no base character stays on the line it came from |
 
 ## Document Operations
 

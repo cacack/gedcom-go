@@ -54,6 +54,10 @@ type anselReader struct {
 //   - ASCII passthrough (0x00-0x7F)
 //   - Extended Latin character mapping (0xA1-0xC8)
 //   - Combining diacritical reordering (0xE0-0xFE placed after base character)
+//   - Combining marks with no base before a line terminator or end of stream,
+//     emitted before the terminator, so they attach to the last character on
+//     their line. The reader does not know GEDCOM structure, so this applies
+//     even when the mark's base starts a following CONC line.
 func newAnselReader(r io.Reader) io.Reader {
 	return &anselReader{
 		reader:  r,
@@ -195,14 +199,18 @@ func (r *anselReader) processByte(b byte) error {
 		return &ErrInvalidANSEL{Line: r.line, Column: r.column, Byte: b}
 	}
 
+	// A line terminator is never a base character. Marks pending before one
+	// have no base on their line, so flush them before it, as at end of stream;
+	// otherwise they would open the next line and break its level (#431).
+	if b == '\n' || b == '\r' {
+		r.flushPendingCombining()
+	}
+
 	// Emit base character as UTF-8
 	r.emitRune(baseRune)
 
 	// Emit any pending combining marks (now AFTER the base character)
-	for _, combining := range r.pending {
-		r.emitRune(combining)
-	}
-	r.pending = r.pending[:0] // Clear the buffer
+	r.flushPendingCombining()
 
 	r.advance(b)
 
@@ -239,8 +247,8 @@ func (r *anselReader) emitRune(ru rune) {
 }
 
 // flushPendingCombining emits any remaining combining marks as standalone characters.
-// This handles the edge case where combining marks appear at the end of the stream
-// without a following base character.
+// This handles the edge case where combining marks appear at the end of a line or
+// of the stream without a following base character.
 func (r *anselReader) flushPendingCombining() {
 	for _, combining := range r.pending {
 		r.emitRune(combining)

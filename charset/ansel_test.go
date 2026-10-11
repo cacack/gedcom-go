@@ -319,6 +319,36 @@ func TestNewAnselReader_TrailingCombining(t *testing.T) {
 	}
 }
 
+// A combining mark with no base character before a line terminator is
+// malformed ANSEL. It must be flushed before the terminator, as it is at end of
+// stream, so it stays on the line it came from. Treating the terminator as its
+// base emitted the mark at the head of the next line, breaking that line's
+// level number (issue #431).
+func TestNewAnselReader_CombiningBeforeLineEnd(t *testing.T) {
+	for _, sep := range []struct{ name, sep string }{
+		{"LF", "\n"},
+		{"CRLF", "\r\n"},
+		{"CR", "\r"},
+	} {
+		t.Run(sep.name, func(t *testing.T) {
+			for _, tc := range []struct{ name, marks, want string }{
+				{"one mark", "\xE2", "\u0301"},
+				{"stacked marks", "\xE2\xE3", "\u0301\u0302"},
+			} {
+				input := "1 NOTE AB" + tc.marks + sep.sep + "0 TRLR" + sep.sep
+				got, err := io.ReadAll(newAnselReader(strings.NewReader(input)))
+				if err != nil {
+					t.Fatalf("%s: ReadAll() error = %v", tc.name, err)
+				}
+				want := "1 NOTE AB" + tc.want + sep.sep + "0 TRLR" + sep.sep
+				if string(got) != want {
+					t.Errorf("%s: got %q, want %q", tc.name, got, want)
+				}
+			}
+		})
+	}
+}
+
 func TestNewAnselReader_UndefinedExtendedLatin(t *testing.T) {
 	// 0xAF, 0xBB are undefined in the extended Latin range
 	// Note: 0xBE, 0xBF are LDS extensions now mapped to Unicode squares
