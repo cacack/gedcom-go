@@ -135,12 +135,12 @@ keyword. Converting to or from 7.0 rewrites each one:
 A calendar belongs to each date, so both endpoints of a range or period are
 translated (`BET @#DJULIAN@ 1700 AND @#DGREGORIAN@ 1710` becomes
 `BET JULIAN 1700 AND GREGORIAN 1710`); date phrase text in parentheses is left
-alone. Every `DATE` and `SDATE` value in `Record.Tags` is rewritten, as is
+alone. Every `DATE` and `SDATE` value in `Record.Tags` and `Header.Tags` (such
+as `HEAD.SOUR.DATA.DATE`) is rewritten, as are `Header.Date` and
 `Date`/`SortDate` on individual and family events, attributes and LDS
 ordinances (with `ParsedDate.Original` kept in step), and the `Data.Date` of
 source citations on individual, family, media and shared note records and on
 their events, attributes and associations. Each rewrite is a Normalized note.
-The header's dates are not rewritten.
 
 A calendar with no standard equivalent -- a 5.x escape such as `@#DROMAN@` or
 `@#DUNKNOWN@`, or a 7.0 extension calendar such as `_MAYAN` -- is left

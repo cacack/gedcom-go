@@ -32,7 +32,9 @@ var calendarKeywordToEscape = map[string]string{
 //
 // Both representations are rewritten, so the result does not depend on which
 // one the encoder writes from:
-//   - record.Tags: every DATE and SDATE value, the form a decoded document carries;
+//   - record.Tags and doc.Header.Tags: every DATE and SDATE value, the form a
+//     decoded document carries;
+//   - the header's typed Date (HEAD.DATE);
 //   - the entity: Date and SortDate on the events, attributes and LDS
 //     ordinances of individuals and families, with ParsedDate.Original kept in
 //     step (the parsed calendar itself is unchanged), and the DATA.DATE of
@@ -44,11 +46,16 @@ var calendarKeywordToEscape = map[string]string{
 // calendar such as _MAYAN) is left unchanged and reported as a Preserved note.
 func transformDateCalendars(doc *gedcom.Document, targetVersion gedcom.Version, report *gedcom.ConversionReport) {
 	t := &calendarTranslator{target: targetVersion, report: report}
+	if header := doc.Header; header != nil {
+		t.translateTags(header.Tags, "HEAD", "")
+		// Reported only when the encoder writes it: see the record loop below.
+		t.translate(&header.Date, nil, len(header.Tags) == 0, datePath{recordType: "HEAD", tags: []string{"DATE"}})
+	}
 	for _, record := range doc.Records {
 		if record == nil {
 			continue
 		}
-		t.translateTags(record)
+		t.translateTags(record.Tags, string(record.Type), record.XRef)
 		// Changes are reported from the representation the encoder writes:
 		// record.Tags whenever it is non-empty, the entity only otherwise
 		// (encoder.writeRecord). The entity is still rewritten when Tags exist,
@@ -92,11 +99,11 @@ func (p datePath) String() string {
 	return BuildNestedPath(p.recordType, p.xref, p.tags...)
 }
 
-// translateTags rewrites the DATE and SDATE values in record.Tags, reporting
-// each against the path of tag names leading to it.
-func (t *calendarTranslator) translateTags(record *gedcom.Record) {
+// translateTags rewrites the DATE and SDATE values in the tags of a record or
+// the header, reporting each against the path of tag names leading to it.
+func (t *calendarTranslator) translateTags(tags []*gedcom.Tag, recordType, xref string) {
 	var path []string // tag names by level, starting at level 1
-	for _, tag := range record.Tags {
+	for _, tag := range tags {
 		if tag == nil || tag.Level < 1 {
 			continue
 		}
@@ -104,7 +111,7 @@ func (t *calendarTranslator) translateTags(record *gedcom.Record) {
 		if tag.Tag != "DATE" && tag.Tag != "SDATE" {
 			continue
 		}
-		t.translate(&tag.Value, nil, true, datePath{string(record.Type), record.XRef, path})
+		t.translate(&tag.Value, nil, true, datePath{recordType, xref, path})
 	}
 }
 
