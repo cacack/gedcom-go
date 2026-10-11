@@ -169,7 +169,9 @@ func endpointError(d *gedcom.Date) error {
 		return d.Validate()
 	}
 	yearOnly := *d
-	yearOnly.Day = 0 // a partial date, so Validate checks only the dual year
+	// Clearing Day makes a partial date, whose day Validate does not check
+	// (a documented contract), so only the dual year is checked here.
+	yearOnly.Day = 0
 	if err := yearOnly.Validate(); err != nil {
 		return err
 	}

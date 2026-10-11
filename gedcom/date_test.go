@@ -907,6 +907,9 @@ func TestDate_Validate(t *testing.T) {
 		{"dual year 4-digit not following", "1750/1749", true, "dual year 1749 does not follow 1750"},
 		{"dual year BC not following", "45/46 BC", true, "dual year 46 does not follow 45"},
 		{"dual year not following in range end", "BET 1750/51 AND 1760/53", true, "invalid end date"},
+		{"dual year BC suffix with no earlier year", "100/00 BC", true, "dual year 100 does not follow 100"},
+		{"dual year checked on non-Gregorian partial", "@#DJULIAN@ MAR 1750/53", true, "dual year 1753 does not follow 1750"},
+		{"dual year checked before day", "31 FEB 1750/53", true, "dual year 1753 does not follow 1750"},
 	}
 
 	for _, tt := range tests {
@@ -1217,6 +1220,10 @@ func TestParseDate_DualYearWithBC_Suffix(t *testing.T) {
 		{"101/00 BC", 101, 100},
 		{"145/44 BC", 145, 144},
 		{"45/0044 BC", 45, 44},
+		// No year above 0 ends in the suffix, so primary's leading digits are
+		// kept (not 0, which would read as no dual year) and Validate reports it.
+		{"100/00 BC", 100, 100},
+		{"10/0 BC", 10, 10},
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
@@ -1229,6 +1236,47 @@ func TestParseDate_DualYearWithBC_Suffix(t *testing.T) {
 					date.Year, date.DualYear, date.IsBC, tt.wantYear, tt.wantDualYear)
 			}
 		})
+	}
+}
+
+// TestDate_Validate_PartialSkipsDay pins the contract validator.endpointError
+// relies on: clearing Day leaves only the dual-year check.
+func TestDate_Validate_PartialSkipsDay(t *testing.T) {
+	full := &Date{Calendar: CalendarGregorian, Year: 1723, DualYear: 1724, Month: 2, Day: 29}
+	if err := full.Validate(); err == nil {
+		t.Fatal("29 FEB 1723 should fail the Gregorian day check")
+	}
+	partial := *full
+	partial.Day = 0
+	if err := partial.Validate(); err != nil {
+		t.Errorf("Validate() with Day cleared = %v, want nil", err)
+	}
+	partial.DualYear = 1725
+	if err := partial.Validate(); err == nil {
+		t.Error("Validate() with Day cleared should still report dual year 1725")
+	}
+}
+
+// TestDate_ToGregorian_DualYearCopied documents that ToGregorian copies
+// DualYear as written, so a conversion that changes Year leaves a DualYear
+// that Validate reports.
+func TestDate_ToGregorian_DualYearCopied(t *testing.T) {
+	date, err := ParseDate("@#DJULIAN@ 25 DEC 1750/51")
+	if err != nil {
+		t.Fatalf("ParseDate error = %v", err)
+	}
+	if err := date.Validate(); err != nil {
+		t.Fatalf("Validate() on source = %v, want nil", err)
+	}
+	greg, err := date.ToGregorian()
+	if err != nil {
+		t.Fatalf("ToGregorian error = %v", err)
+	}
+	if greg.Year != 1751 || greg.DualYear != 1751 {
+		t.Errorf("Year, DualYear = %d, %d, want 1751, 1751", greg.Year, greg.DualYear)
+	}
+	if err := greg.Validate(); err == nil {
+		t.Error("Validate() on converted date should report the copied dual year")
 	}
 }
 

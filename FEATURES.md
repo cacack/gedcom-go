@@ -1039,8 +1039,9 @@ in `Details`, the tag holding the date (`tag`, e.g. `BIRT`), its path below the 
 `FEB 1900`) and non-Gregorian calendars are not checked for their day. A dual-dated (Old Style)
 value such as `29 FEB 1723/24` is checked only against the longest its month can be,
 so its leap day passes but `30 FEB 1723/24` is reported. A dual year that is not the
-year following the first, such as `1750/53` or `1850/1860`, is reported too; a one- or
-two-digit dual year resolves forward, so `1699/00` is 1699 and 1700. A record built in code, with no raw tags, is checked
+year following the first, such as `1750/53` or `1850/1860`, is reported too, even on a
+partial or non-Gregorian date. A one- or two-digit dual year resolves forward, so
+`1699/00` is 1699 and 1700. A record built in code, with no raw tags, is checked
 through its typed events, attributes and LDS ordinances; those issues carry line 0 and
 a `path` of just `<TYPE>.DATE`. `ValidateDateLogic`, `QualityReport` and the streaming
 validator do not run this check.
