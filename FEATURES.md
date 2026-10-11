@@ -852,6 +852,8 @@ err := date.Validate()
 - Only Gregorian dates are validated; non-Gregorian calendars return nil
 - Detects invalid day/month combinations (Feb 30, Jun 31)
 - Handles leap years correctly (Feb 29 2000 valid, 1900 invalid)
+- Checks both endpoints of ranges and periods (`BET 1900 AND 31 FEB 1901` is invalid)
+- BCE dates use the proleptic Gregorian calendar with astronomical years (1 BCE = year 0, so Feb 29 1 BCE is valid and Feb 29 4 BCE is not)
 
 ### Calendar Systems
 

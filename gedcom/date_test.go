@@ -806,6 +806,18 @@ func TestDate_Validate(t *testing.T) {
 		{"invalid Apr 31", "31 APR 2020", true, "April has 30 days"},
 		{"invalid Sep 31", "31 SEP 2020", true, "September has 30 days"},
 		{"invalid Nov 31", "31 NOV 2020", true, "November has 30 days"},
+
+		// BCE dates use astronomical years (1 BCE = 0, 4 BCE = -3)
+		{"valid Feb 29 1 BCE", "29 FEB 1 BCE", false, ""},
+		{"invalid Feb 29 4 BCE", "29 FEB 4 BCE", true, "February has 28 days in 4"},
+		{"valid Feb 29 5 BCE", "29 FEB 5 BCE", false, ""},
+
+		// Ranges and periods validate both endpoints
+		{"valid range", "BET 1 JAN 1900 AND 28 FEB 1901", false, ""},
+		{"invalid range end", "BET 1 JAN 1900 AND 31 FEB 1901", true, "invalid end date"},
+		{"invalid period end", "FROM 1 JAN 1900 TO 31 FEB 1901", true, "invalid end date"},
+		{"invalid range end with partial start", "BET 1900 AND 31 FEB 1901", true, "February has 28 days in 1901"},
+		{"invalid range start", "BET 31 FEB 1900 AND 1 JAN 1901", true, "February has 28 days in 1900"},
 	}
 
 	for _, tt := range tests {
