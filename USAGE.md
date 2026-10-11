@@ -760,7 +760,13 @@ fmt.Println(doc.Header.Encoding)  // Original encoding
 ANSEL is a legacy character encoding used in older GEDCOM files:
 
 ```go
-import "github.com/cacack/gedcom-go/v3/charset"
+import (
+    "bytes"
+    "fmt"
+    "io"
+
+    "github.com/cacack/gedcom-go/v3/charset"
+)
 
 // The charset package handles ANSEL decoding automatically
 // when used through the decoder
@@ -769,7 +775,7 @@ import "github.com/cacack/gedcom-go/v3/charset"
 anselText := []byte{0xE1, 0x41}  // ANSEL for "À" (combining grave precedes the base letter)
 r := charset.NewReaderWithEncoding(bytes.NewReader(anselText), charset.EncodingANSEL)
 utf8Text, _ := io.ReadAll(r)
-fmt.Println(string(utf8Text))  // "À"
+fmt.Println(string(utf8Text))  // "À", decomposed as "A\u0300" (no NFC), so it is != "\u00C0"
 ```
 
 ### Validating UTF-8
@@ -807,7 +813,12 @@ if err != nil {
 For more detailed error information, use the parser directly:
 
 ```go
-import "github.com/cacack/gedcom-go/v3/parser"
+import (
+    "errors"
+    "fmt"
+
+    "github.com/cacack/gedcom-go/v3/parser"
+)
 
 p := parser.NewParser()
 lines, err := p.Parse(f)

@@ -3,10 +3,20 @@ package gedcomgo
 // USAGE.md's examples are fragments, not programs, so they cannot be compiled
 // as they stand. What drifts in them is the API they name: a renamed function,
 // or a struct literal setting a field that never existed (#405). This checks
-// every pkg.Name reference to one of this module's packages, and every field
-// key in a pkg.Type{...} literal, against the package source.
+// every pkg.Name reference to one of this module's packages, and the top-level
+// field keys of each pkg.Type{...} literal whose type is a struct declared in
+// that package (directly or through a same-package alias), against the package
+// source.
+//
+// Limits, since there is no type information:
+//   - selectors on values (x.Field, x.Method()) are not checked;
+//   - keys of nested literals, and literals of non-struct types, are skipped;
+//   - a local identifier named like a package (version := ...; version.Foo) is
+//     taken for the package and flagged: rename the variable in USAGE.md;
+//   - only blocks fenced exactly as ```go are scanned.
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/scanner"
@@ -31,40 +41,85 @@ type packageAPI struct {
 }
 
 func TestUsageDocNamesExist(t *testing.T) {
-	apis := make(map[string]packageAPI, len(usageDocPackages))
-	for _, pkg := range usageDocPackages {
-		apis[pkg] = loadPackageAPI(t, pkg)
-	}
-
+	apis := loadUsageDocAPIs(t)
 	blocks := regexp.MustCompile("(?s)```go\n(.*?)```").FindAllStringSubmatch(readFile(t, "USAGE.md"), -1)
 	if len(blocks) == 0 {
 		t.Fatal("USAGE.md has no ```go blocks; update this test if the format changed")
 	}
-
 	for _, block := range blocks {
-		toks := scanGo(block[1])
-		for i := 0; i+2 < len(toks); i++ {
-			if toks[i].tok != token.IDENT || toks[i+1].tok != token.PERIOD || toks[i+2].tok != token.IDENT {
-				continue
+		for _, problem := range checkUsageSource(block[1], apis) {
+			t.Error("USAGE.md " + problem)
+		}
+	}
+}
+
+// TestCheckUsageSource shows the check catches each kind of drift, and does
+// not flag what it should not.
+func TestCheckUsageSource(t *testing.T) {
+	apis := loadUsageDocAPIs(t)
+	tests := []struct {
+		name string
+		src  string
+		want []string
+	}{
+		{"valid", "opts := &decoder.DecodeOptions{Context: ctx, StrictMode: true}\ndoc, err := decoder.DecodeWithOptions(f, opts)", nil},
+		{"missing name", "decoder.DecodeFast(f)", []string{"references decoder.DecodeFast, which does not exist"}},
+		{"bad field", "decoder.DecodeOptions{MaxLineLength: 10}", []string{"sets decoder.DecodeOptions{MaxLineLength: ...}, which is not a field"}},
+		{"bad field after newline", "decoder.DecodeOptions{\n\tContext: ctx,\n\tBogus: 1,\n}", []string{"sets decoder.DecodeOptions{Bogus: ...}, which is not a field"}},
+		{"nested literal keys skipped", "decoder.DecodeOptions{Context: f(struct{ Bogus int }{Bogus: 1})}", nil},
+		{"alias resolved", "validator.ValidateOptions{Bogus: 1}", []string{"sets validator.ValidateOptions{Bogus: ...}, which is not a field"}},
+		{"chained selector skipped", "x.decoder.Bogus", nil},
+		{"other package skipped", "fmt.Bogus()", nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkUsageSource(tt.src, apis)
+			if strings.Join(got, "\n") != strings.Join(tt.want, "\n") {
+				t.Errorf("checkUsageSource(%q) = %q, want %q", tt.src, got, tt.want)
 			}
-			api, ok := apis[toks[i].lit]
-			if !ok || (i > 0 && toks[i-1].tok == token.PERIOD) {
-				continue
-			}
-			name := toks[i+2].lit
-			if !api.names[name] {
-				t.Errorf("USAGE.md references %s.%s, which does not exist", toks[i].lit, name)
-				continue
-			}
-			if i+3 < len(toks) && toks[i+3].tok == token.LBRACE {
-				for _, key := range literalKeys(toks[i+3:]) {
-					if fields, isStruct := api.fields[name]; isStruct && !fields[key] {
-						t.Errorf("USAGE.md sets %s.%s{%s: ...}, which is not a field", toks[i].lit, name, key)
-					}
-				}
+		})
+	}
+}
+
+func loadUsageDocAPIs(t *testing.T) map[string]packageAPI {
+	t.Helper()
+	apis := make(map[string]packageAPI, len(usageDocPackages))
+	for _, pkg := range usageDocPackages {
+		apis[pkg] = loadPackageAPI(t, pkg)
+	}
+	return apis
+}
+
+// checkUsageSource returns a description of each reference in a code fragment
+// to API that apis does not have.
+func checkUsageSource(src string, apis map[string]packageAPI) []string {
+	var problems []string
+	toks := scanGo(src)
+	for i := 0; i+2 < len(toks); i++ {
+		if toks[i].tok != token.IDENT || toks[i+1].tok != token.PERIOD || toks[i+2].tok != token.IDENT {
+			continue
+		}
+		pkg := toks[i].lit
+		api, ok := apis[pkg]
+		if !ok || (i > 0 && toks[i-1].tok == token.PERIOD) {
+			continue
+		}
+		name := toks[i+2].lit
+		if !api.names[name] {
+			problems = append(problems, fmt.Sprintf("references %s.%s, which does not exist", pkg, name))
+			continue
+		}
+		fields, isStruct := api.fields[name]
+		if !isStruct || i+3 >= len(toks) || toks[i+3].tok != token.LBRACE {
+			continue
+		}
+		for _, key := range literalKeys(toks[i+3:]) {
+			if !fields[key] {
+				problems = append(problems, fmt.Sprintf("sets %s.%s{%s: ...}, which is not a field", pkg, name, key))
 			}
 		}
 	}
+	return problems
 }
 
 type goToken struct {
@@ -120,6 +175,7 @@ func loadPackageAPI(t *testing.T, dir string) packageAPI {
 	if err != nil || len(paths) == 0 {
 		t.Fatalf("no Go sources in %s: %v", dir, err)
 	}
+	aliases := map[string]string{}
 	fset := token.NewFileSet()
 	for _, path := range paths {
 		if strings.HasSuffix(path, "_test.go") {
@@ -144,8 +200,13 @@ func loadPackageAPI(t *testing.T, dir string) packageAPI {
 					switch s := spec.(type) {
 					case *ast.TypeSpec:
 						api.names[s.Name.Name] = true
-						if st, ok := s.Type.(*ast.StructType); ok {
-							api.fields[s.Name.Name] = structFields(st)
+						switch typ := s.Type.(type) {
+						case *ast.StructType:
+							api.fields[s.Name.Name] = structFields(typ)
+						case *ast.Ident:
+							if s.Assign.IsValid() {
+								aliases[s.Name.Name] = typ.Name
+							}
 						}
 					case *ast.ValueSpec:
 						for _, n := range s.Names {
@@ -154,6 +215,11 @@ func loadPackageAPI(t *testing.T, dir string) packageAPI {
 					}
 				}
 			}
+		}
+	}
+	for alias, target := range aliases {
+		if fields, ok := api.fields[target]; ok {
+			api.fields[alias] = fields
 		}
 	}
 	return api
