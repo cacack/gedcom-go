@@ -35,13 +35,13 @@ var calendarKeywordToEscape = map[string]string{
 //   - record.Tags: every DATE and SDATE value, the form a decoded document carries;
 //   - the entity: Date and SortDate on the events, attributes and LDS
 //     ordinances of individuals and families, with ParsedDate.Original kept in
-//     step (the parsed calendar itself is unchanged).
+//     step (the parsed calendar itself is unchanged), and the DATA.DATE of
+//     every source citation on individual, family, media and shared note
+//     records, their events, attributes and associations.
 //
 // Each rewrite is reported as a Normalized note. A calendar with no standard
 // equivalent (an escape such as @#DROMAN@ or @#DUNKNOWN@, or a 7.0 extension
 // calendar such as _MAYAN) is left unchanged and reported as a Preserved note.
-// Changes are reported from record.Tags when the record has any, and from the
-// entity otherwise, so a date is not reported twice.
 func transformDateCalendars(doc *gedcom.Document, targetVersion gedcom.Version, report *gedcom.ConversionReport) {
 	t := &calendarTranslator{target: targetVersion, report: report}
 	for _, record := range doc.Records {
@@ -49,6 +49,12 @@ func transformDateCalendars(doc *gedcom.Document, targetVersion gedcom.Version, 
 			continue
 		}
 		t.translateTags(record)
+		// Changes are reported from the representation the encoder writes:
+		// record.Tags whenever it is non-empty, the entity only otherwise
+		// (encoder.writeRecord). The entity is still rewritten when Tags exist,
+		// so the two stay consistent, but reporting it too would count each
+		// date twice; a date held only by the entity of a record with Tags is
+		// never written, so it has nothing to report.
 		t.translateEntity(record, len(record.Tags) == 0)
 	}
 
@@ -69,6 +75,23 @@ type calendarTranslator struct {
 	count  int
 }
 
+// datePath locates a date for reporting: the record it belongs to and the tag
+// names leading to it. The report path is built only when a note is added.
+type datePath struct {
+	recordType string
+	xref       string
+	tags       []string
+}
+
+// at returns p extended by tags, without sharing p's backing array.
+func (p datePath) at(tags ...string) datePath {
+	return datePath{recordType: p.recordType, xref: p.xref, tags: append(p.tags[:len(p.tags):len(p.tags)], tags...)}
+}
+
+func (p datePath) String() string {
+	return BuildNestedPath(p.recordType, p.xref, p.tags...)
+}
+
 // translateTags rewrites the DATE and SDATE values in record.Tags, reporting
 // each against the path of tag names leading to it.
 func (t *calendarTranslator) translateTags(record *gedcom.Record) {
@@ -81,47 +104,83 @@ func (t *calendarTranslator) translateTags(record *gedcom.Record) {
 		if tag.Tag != "DATE" && tag.Tag != "SDATE" {
 			continue
 		}
-		t.translate(&tag.Value, nil, true, BuildNestedPath(string(record.Type), record.XRef, path...))
+		t.translate(&tag.Value, nil, true, datePath{string(record.Type), record.XRef, path})
 	}
 }
 
-// translateEntity rewrites the dates on an individual's or family's events,
-// attributes and LDS ordinances. Other record types carry no such dates.
+// translateEntity rewrites the typed dates of an individual, family, media or
+// shared note record. Other record types carry no calendar dates.
 func (t *calendarTranslator) translateEntity(record *gedcom.Record, report bool) {
-	var events []*gedcom.Event
-	var attributes []*gedcom.Attribute
-	var ordinances []*gedcom.LDSOrdinance
+	base := datePath{recordType: string(record.Type), xref: record.XRef}
 	if ind, ok := record.GetIndividual(); ok && ind != nil {
-		events, attributes, ordinances = ind.Events, ind.Attributes, ind.LDSOrdinances
+		t.translateCitations(ind.SourceCitations, report, base)
+		t.translateAssociations(ind.Associations, report, base)
+		t.translateFacts(ind.Events, ind.Attributes, ind.LDSOrdinances, report, base)
 	} else if fam, ok := record.GetFamily(); ok && fam != nil {
-		events, attributes, ordinances = fam.Events, fam.Attributes, fam.LDSOrdinances
-	} else {
-		return
+		t.translateCitations(fam.SourceCitations, report, base)
+		t.translateFacts(fam.Events, fam.Attributes, fam.LDSOrdinances, report, base)
+	} else if media, ok := record.GetMediaObject(); ok && media != nil {
+		t.translateCitations(media.SourceCitations, report, base)
+	} else if snote, ok := record.GetSharedNote(); ok && snote != nil {
+		t.translateCitations(snote.SourceCitations, report, base)
 	}
+}
 
-	recordType := string(record.Type)
+// translateFacts rewrites the dates on events, attributes and LDS ordinances,
+// and on the citations and associations beneath them.
+func (t *calendarTranslator) translateFacts(events []*gedcom.Event, attributes []*gedcom.Attribute, ordinances []*gedcom.LDSOrdinance, report bool, base datePath) {
 	for _, e := range events {
 		if e != nil {
-			t.translate(&e.Date, e.ParsedDate, report, BuildNestedPath(recordType, record.XRef, string(e.Type), "DATE"))
-			t.translate(&e.SortDate, nil, report, BuildNestedPath(recordType, record.XRef, string(e.Type), "SDATE"))
+			at := base.at(string(e.Type))
+			t.translateDated(&e.Date, &e.SortDate, e.ParsedDate, report, at)
+			t.translateCitations(e.SourceCitations, report, at)
+			t.translateAssociations(e.Associations, report, at)
 		}
 	}
 	for _, a := range attributes {
 		if a != nil {
-			t.translate(&a.Date, a.ParsedDate, report, BuildNestedPath(recordType, record.XRef, string(a.Type), "DATE"))
-			t.translate(&a.SortDate, nil, report, BuildNestedPath(recordType, record.XRef, string(a.Type), "SDATE"))
+			at := base.at(string(a.Type))
+			t.translateDated(&a.Date, &a.SortDate, a.ParsedDate, report, at)
+			t.translateCitations(a.SourceCitations, report, at)
+			t.translateAssociations(a.Associations, report, at)
 		}
 	}
 	for _, o := range ordinances {
 		if o != nil {
-			t.translate(&o.Date, o.ParsedDate, report, BuildNestedPath(recordType, record.XRef, string(o.Type), "DATE"))
+			t.translateDated(&o.Date, nil, o.ParsedDate, report, base.at(string(o.Type)))
+		}
+	}
+}
+
+// translateDated rewrites a fact's DATE and, when sortDate is non-nil, its SDATE.
+func (t *calendarTranslator) translateDated(date, sortDate *string, parsed *gedcom.Date, report bool, at datePath) {
+	t.translate(date, parsed, report, at.at("DATE"))
+	if sortDate != nil {
+		t.translate(sortDate, nil, report, at.at("SDATE"))
+	}
+}
+
+// translateCitations rewrites each citation's DATA.DATE.
+func (t *calendarTranslator) translateCitations(citations []*gedcom.SourceCitation, report bool, at datePath) {
+	for _, c := range citations {
+		if c != nil && c.Data != nil {
+			t.translate(&c.Data.Date, nil, report, at.at("SOUR", "DATA", "DATE"))
+		}
+	}
+}
+
+// translateAssociations rewrites the citation dates beneath each association.
+func (t *calendarTranslator) translateAssociations(associations []*gedcom.Association, report bool, at datePath) {
+	for _, a := range associations {
+		if a != nil {
+			t.translateCitations(a.SourceCitations, report, at.at("ASSO"))
 		}
 	}
 }
 
 // translate rewrites *value in place, keeping parsed (when non-nil) in step,
 // and reports the change at path when report is set.
-func (t *calendarTranslator) translate(value *string, parsed *gedcom.Date, report bool, path string) {
+func (t *calendarTranslator) translate(value *string, parsed *gedcom.Date, report bool, path datePath) {
 	original := *value
 	result, unknown := translateDateCalendars(original, t.target)
 	*value = result
@@ -138,11 +197,11 @@ func (t *calendarTranslator) translate(value *string, parsed *gedcom.Date, repor
 		if t.target != gedcom.Version70 {
 			reason = "GEDCOM 5.x writes calendars as @#D...@ escapes instead of keywords"
 		}
-		t.report.AddNormalized(gedcom.ConversionNote{Path: path, Original: original, Result: result, Reason: reason})
+		t.report.AddNormalized(gedcom.ConversionNote{Path: path.String(), Original: original, Result: result, Reason: reason})
 	}
 	if unknown {
 		t.report.AddPreserved(gedcom.ConversionNote{
-			Path:     path,
+			Path:     path.String(),
 			Original: original,
 			Result:   result,
 			Reason:   "Calendar has no GEDCOM " + t.target.String() + " equivalent; left unchanged",
@@ -152,10 +211,15 @@ func (t *calendarTranslator) translate(value *string, parsed *gedcom.Date, repor
 
 // translateDateCalendars returns value with its calendar syntax rewritten for
 // targetVersion, and whether it holds a calendar with no standard equivalent.
-// Text inside parentheses (a date phrase) is copied unchanged.
+// Text inside parentheses (a date phrase) is copied unchanged. A phrase ends
+// at its first ')': neither GEDCOM grammar nests parentheses, so the text after
+// a nested ')' is treated as outside the phrase.
 func translateDateCalendars(value string, targetVersion gedcom.Version) (result string, unknown bool) {
 	rewrite := keywordsToEscapes
 	if targetVersion == gedcom.Version70 {
+		if !strings.Contains(value, "@#D") {
+			return value, false // fast path: no escape to rewrite
+		}
 		rewrite = escapesToKeywords
 	}
 

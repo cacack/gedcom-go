@@ -137,13 +137,17 @@ translated (`BET @#DJULIAN@ 1700 AND @#DGREGORIAN@ 1710` becomes
 `BET JULIAN 1700 AND GREGORIAN 1710`); date phrase text in parentheses is left
 alone. Every `DATE` and `SDATE` value in `Record.Tags` is rewritten, as is
 `Date`/`SortDate` on individual and family events, attributes and LDS
-ordinances (with `ParsedDate.Original` kept in step). Each rewrite is a
-Normalized note.
+ordinances (with `ParsedDate.Original` kept in step), and the `Data.Date` of
+source citations on individual, family, media and shared note records and on
+their events, attributes and associations. Each rewrite is a Normalized note.
+The header's dates are not rewritten.
 
 A calendar with no standard equivalent -- a 5.x escape such as `@#DROMAN@` or
 `@#DUNKNOWN@`, or a 7.0 extension calendar such as `_MAYAN` -- is left
 unchanged and reported as a Preserved note, so the output may not be valid in
-the target version for that date.
+the target version for that date. This is not data loss, so `StrictDataLoss`
+does not reject it: check `report.Preserved` for these notes when the output
+must conform to the target version.
 
 ## Data Loss Reference
 

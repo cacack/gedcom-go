@@ -118,8 +118,9 @@ func TestConvertDateUnknownCalendarReported(t *testing.T) {
 			if raw != tt.value || event.Date != tt.value {
 				t.Errorf("unknown calendar rewritten: raw %q, Event.Date %q, want %q", raw, event.Date, tt.value)
 			}
-			if !hasNote(report.Preserved, tt.value, tt.value) {
-				t.Errorf("no Preserved note for %q in %+v", tt.value, report.Preserved)
+			if len(report.Preserved) != 1 || report.Preserved[0].Path != "Individual @I1@ > BIRT > DATE" ||
+				!hasNote(report.Preserved, tt.value, tt.value) {
+				t.Errorf("want one Preserved note for %q at the BIRT DATE, got %+v", tt.value, report.Preserved)
 			}
 			if hasTransformation(report, "DATE_CALENDAR_CONVERTED") {
 				t.Error("unknown calendar counted as converted")
@@ -181,8 +182,85 @@ func TestConvertDateCalendarFamilyEntity(t *testing.T) {
 			t.Errorf("%s = %q, want %q", name, pair[0], pair[1])
 		}
 	}
-	if len(report.Normalized) != 4 {
-		t.Errorf("Normalized notes = %d, want 4: %+v", len(report.Normalized), report.Normalized)
+	assertNotePaths(t, report.Normalized, []string{
+		"Family @F1@ > MARR > DATE",
+		"Family @F1@ > MARR > SDATE",
+		"Family @F1@ > NCHI > DATE",
+		"Family @F1@ > SLGS > DATE",
+	})
+}
+
+// TestConvertDateCalendarCitationEntity covers the typed citation DATA.DATE
+// values of a document built in code, which the encoder writes from the entity.
+func TestConvertDateCalendarCitationEntity(t *testing.T) {
+	cite := func() []*gedcom.SourceCitation {
+		return []*gedcom.SourceCitation{{SourceXRef: "@S1@", Data: &gedcom.SourceCitationData{Date: "@#DJULIAN@ 1700"}}}
+	}
+	ind := &gedcom.Individual{
+		XRef:            "@I1@",
+		SourceCitations: cite(),
+		Associations:    []*gedcom.Association{{IndividualXRef: "@I2@", SourceCitations: cite()}},
+		Events:          []*gedcom.Event{{Type: gedcom.EventBirth, SourceCitations: cite()}},
+		Attributes:      []*gedcom.Attribute{{Type: gedcom.AttributeOccupation, Value: "Smith", SourceCitations: cite()}},
+	}
+	fam := &gedcom.Family{XRef: "@F1@", SourceCitations: cite()}
+	media := &gedcom.MediaObject{XRef: "@M1@", SourceCitations: cite()}
+	snote := &gedcom.SharedNote{XRef: "@N1@", Text: "note", SourceCitations: cite()}
+	records := []*gedcom.Record{
+		{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind},
+		{XRef: "@F1@", Type: gedcom.RecordTypeFamily, Entity: fam},
+		{XRef: "@M1@", Type: gedcom.RecordTypeMedia, Entity: media},
+		{XRef: "@N1@", Type: gedcom.RecordTypeSharedNote, Entity: snote},
+	}
+	doc := &gedcom.Document{Header: &gedcom.Header{Version: gedcom.Version551}, Records: records, XRefMap: map[string]*gedcom.Record{}}
+	for _, r := range records {
+		doc.XRefMap[r.XRef] = r
+	}
+
+	got, report, err := converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	outInd, _ := got.GetRecord("@I1@").GetIndividual()
+	outFam, _ := got.GetRecord("@F1@").GetFamily()
+	outMedia, _ := got.GetRecord("@M1@").GetMediaObject()
+	outNote, _ := got.GetRecord("@N1@").GetSharedNote()
+	for name, c := range map[string]*gedcom.SourceCitation{
+		"individual":  outInd.SourceCitations[0],
+		"association": outInd.Associations[0].SourceCitations[0],
+		"event":       outInd.Events[0].SourceCitations[0],
+		"attribute":   outInd.Attributes[0].SourceCitations[0],
+		"family":      outFam.SourceCitations[0],
+		"media":       outMedia.SourceCitations[0],
+		"shared note": outNote.SourceCitations[0],
+	} {
+		if c.Data.Date != "JULIAN 1700" {
+			t.Errorf("%s citation DATA.DATE = %q, want %q", name, c.Data.Date, "JULIAN 1700")
+		}
+	}
+	assertNotePaths(t, report.Normalized, []string{
+		"Individual @I1@ > SOUR > DATA > DATE",
+		"Individual @I1@ > ASSO > SOUR > DATA > DATE",
+		"Individual @I1@ > BIRT > SOUR > DATA > DATE",
+		"Individual @I1@ > OCCU > SOUR > DATA > DATE",
+		"Family @F1@ > SOUR > DATA > DATE",
+		"MediaObject @M1@ > SOUR > DATA > DATE",
+		"SNOTE @N1@ > SOUR > DATA > DATE",
+	})
+	if text := encode(t, got); strings.Contains(text, "@#D") {
+		t.Errorf("7.0 output still carries a 5.5.x calendar escape:\n%s", text)
+	}
+}
+
+// assertNotePaths fails unless notes carry exactly the paths want, in order.
+func assertNotePaths(t *testing.T, notes []gedcom.ConversionNote, want []string) {
+	t.Helper()
+	got := make([]string, len(notes))
+	for i, n := range notes {
+		got[i] = n.Path
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("note paths:\ngot  %q\nwant %q", got, want)
 	}
 }
 
