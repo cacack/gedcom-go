@@ -96,6 +96,7 @@ type DuplicateConfig struct {
 
 	// MaxBirthYearDiff is the maximum difference in birth years that still earns
 	// partial birth-date credit. An identical birth year always earns full credit.
+	// Years are compared astronomically, so 1 BCE and 1 CE are one year apart.
 	//
 	//	0        use the default (2)
 	//	negative only an identical birth year earns credit ([ZeroThreshold])
@@ -602,7 +603,9 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 	}
 
 	if birthDate1 != nil && birthDate2 != nil {
-		yearDiff := absInt(birthDate1.Year - birthDate2.Year)
+		// Compare astronomical years so 44 BCE and 44 CE are 87 years apart.
+		yearDiff := absInt(gedcom.AstronomicalYear(birthDate1.Year, birthDate1.IsBC) -
+			gedcom.AstronomicalYear(birthDate2.Year, birthDate2.IsBC))
 		if yearDiff == 0 {
 			confidence += 0.2
 			reasons = append(reasons, "same birth year")
