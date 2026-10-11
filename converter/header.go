@@ -1,6 +1,10 @@
 package converter
 
-import "github.com/cacack/gedcom-go/v3/gedcom"
+import (
+	"slices"
+
+	"github.com/cacack/gedcom-go/v3/gedcom"
+)
 
 // transformHeader updates the header for the target version.
 func transformHeader(doc *gedcom.Document, targetVersion gedcom.Version, report *gedcom.ConversionReport) {
@@ -43,8 +47,9 @@ func updateVersionTag(header *gedcom.Header, targetVersion gedcom.Version) {
 
 	inGEDC := false
 	updated := false
+	gedcIndex := -1
 
-	for _, tag := range header.Tags {
+	for i, tag := range header.Tags {
 		// A nil tag has no level to read; it also cannot open or close a GEDC
 		// structure, so the surrounding context carries across it unchanged.
 		if tag == nil {
@@ -53,6 +58,9 @@ func updateVersionTag(header *gedcom.Header, targetVersion gedcom.Version) {
 
 		if tag.Level <= 1 {
 			inGEDC = tag.Level == 1 && tag.Tag == "GEDC"
+			if inGEDC && gedcIndex < 0 {
+				gedcIndex = i
+			}
 		}
 
 		if inGEDC && tag.Level == 2 && tag.Tag == "VERS" {
@@ -65,12 +73,22 @@ func updateVersionTag(header *gedcom.Header, targetVersion gedcom.Version) {
 		return
 	}
 
+	vers := &gedcom.Tag{Level: 2, Tag: "VERS", Value: targetVersion.String()}
+
+	// GEDC without VERS is common in sloppy exports. VERS goes under the GEDC
+	// already there, first among its children, so the header keeps a single
+	// GEDC and whatever else it carried (FORM, for 5.x targets).
+	if gedcIndex >= 0 {
+		header.Tags = slices.Insert(header.Tags, gedcIndex+1, vers)
+		return
+	}
+
 	// Some 5.5 files carry no GEDC block at all (royal92.ged is one). A
 	// conversion has to leave the target version stated somewhere the encoder
 	// will write it, so the structure is added rather than assumed.
 	header.Tags = append(header.Tags,
 		&gedcom.Tag{Level: 1, Tag: "GEDC"},
-		&gedcom.Tag{Level: 2, Tag: "VERS", Value: targetVersion.String()},
+		vers,
 	)
 }
 
