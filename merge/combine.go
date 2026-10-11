@@ -733,7 +733,15 @@ func mergeScalarHeaderFields(out, h1, h2 *gedcom.Header) []HeaderConflict {
 		// Promoting doc2's when doc1 declares none keeps doc2's spaced
 		// 5.5/5.5.1 pointers recognized in the combined document (#591);
 		// checkHeaderCompat has already required the two Versions to agree.
-		{"DeclaredVersion", string(h1.DeclaredVersion), string(h2.DeclaredVersion), func() { out.DeclaredVersion = h2.DeclaredVersion }},
+		// It is promoted only when doc1 has no raw "1 GEDC": otherwise doc1's
+		// GEDC (with an unrecognized or missing VERS) wins in Tags, doc2's is
+		// dropped, and the field would claim a version the encoded header
+		// does not declare.
+		{"DeclaredVersion", string(h1.DeclaredVersion), string(h2.DeclaredVersion), func() {
+			if !hasLevel1HeaderTag(h1.Tags, "GEDC") {
+				out.DeclaredVersion = h2.DeclaredVersion
+			}
+		}},
 		{"Encoding", string(h1.Encoding), string(h2.Encoding), func() { out.Encoding = h2.Encoding }},
 		{"SourceSystem", h1.SourceSystem, h2.SourceSystem, func() { out.SourceSystem = h2.SourceSystem }},
 		{"Language", h1.Language, h2.Language, func() { out.Language = h2.Language }},

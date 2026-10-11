@@ -115,3 +115,67 @@ func TestCombine_SpacedXRefDoc1Undeclared(t *testing.T) {
 		t.Error("Subset did not follow the spaced pointer @N 1@")
 	}
 }
+
+// TestCombine_DeclaredVersionNotPromotedOverDoc1GEDC pins that doc2's
+// DeclaredVersion is not promoted when doc1 carries its own raw GEDC with an
+// unrecognized VERS: doc1's GEDC wins in the encoded header, so the field
+// must not claim doc2's version (#591).
+func TestCombine_DeclaredVersionNotPromotedOverDoc1GEDC(t *testing.T) {
+	doc1, err := decoder.Decode(strings.NewReader(spacedXRefDoc("5.5.5")))
+	if err != nil {
+		t.Fatalf("Decode doc1: %v", err)
+	}
+	if doc1.Header.DeclaredVersion != "" {
+		t.Fatalf("doc1 DeclaredVersion = %q, want empty", doc1.Header.DeclaredVersion)
+	}
+	doc1.Header.Version = gedcom.Version551 // make the Versions agree regardless of the guess
+	doc2, err := decoder.Decode(strings.NewReader(spacedXRefDoc("5.5.1")))
+	if err != nil {
+		t.Fatalf("Decode doc2: %v", err)
+	}
+	out, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{CollisionStrategy: merge.PrefixDoc2, Prefix: "B_"})
+	if err != nil {
+		t.Fatalf("Combine: %v", err)
+	}
+	if out.Header.DeclaredVersion != "" {
+		t.Errorf("DeclaredVersion = %q, want empty (doc1's GEDC wins)", out.Header.DeclaredVersion)
+	}
+	var gedcConflict bool
+	for _, c := range report.HeaderConflicts {
+		if c.Field == "Tags.GEDC" {
+			gedcConflict = true
+		}
+	}
+	if !gedcConflict {
+		t.Errorf("HeaderConflicts = %+v, want a Tags.GEDC conflict", report.HeaderConflicts)
+	}
+}
+
+// TestCombine_DeclaredVersionConflict pins that two differing declared
+// versions keep doc1's and record a DeclaredVersion conflict.
+func TestCombine_DeclaredVersionConflict(t *testing.T) {
+	doc1 := &gedcom.Document{
+		Header:  &gedcom.Header{Version: gedcom.Version551, DeclaredVersion: gedcom.Version55},
+		XRefMap: map[string]*gedcom.Record{},
+	}
+	doc2 := &gedcom.Document{
+		Header:  &gedcom.Header{Version: gedcom.Version551, DeclaredVersion: gedcom.Version551},
+		XRefMap: map[string]*gedcom.Record{},
+	}
+	out, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{})
+	if err != nil {
+		t.Fatalf("Combine: %v", err)
+	}
+	if out.Header.DeclaredVersion != gedcom.Version55 {
+		t.Errorf("DeclaredVersion = %q, want %q", out.Header.DeclaredVersion, gedcom.Version55)
+	}
+	var found bool
+	for _, c := range report.HeaderConflicts {
+		if c.Field == "DeclaredVersion" && c.Doc1 == "5.5" && c.Doc2 == "5.5.1" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("HeaderConflicts = %+v, want a DeclaredVersion conflict", report.HeaderConflicts)
+	}
+}
