@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0](https://github.com/cacack/gedcom-go/compare/v3.0.0...v3.1.0) (2026-10-11)
+
+
+### Bug Fixes
+
+* **charset:** document scanner step contract and test probe wiring ([413cafa](https://github.com/cacack/gedcom-go/commit/413cafa0b25a619ad8893171fb6cd60d504b1314)), closes [#592](https://github.com/cacack/gedcom-go/issues/592)
+* **charset:** keep a read error that arrives with the 3rd BOM byte ([56c8096](https://github.com/cacack/gedcom-go/commit/56c8096bd76c44bd35518be54d5b8aa87fd5906a)), closes [#593](https://github.com/cacack/gedcom-go/issues/593)
+* **charset:** keep bytes read before a BOM-detection read error ([52b6a85](https://github.com/cacack/gedcom-go/commit/52b6a853cbc5d47f58c1497d74d881b1834d0bf0)), closes [#593](https://github.com/cacack/gedcom-go/issues/593)
+* **charset:** probe only the header when detecting encoding ([5c5e2c1](https://github.com/cacack/gedcom-go/commit/5c5e2c146ffdd123ba155e7c87c6fde87837c437)), closes [#577](https://github.com/cacack/gedcom-go/issues/577)
+* **charset:** replay probed header bytes when the probe read fails ([40c62e5](https://github.com/cacack/gedcom-go/commit/40c62e5cbb989847bc20d2be084ef7bc71d2da74)), closes [#577](https://github.com/cacack/gedcom-go/issues/577)
+* **charset:** scan the header probe incrementally ([d7a2cb8](https://github.com/cacack/gedcom-go/commit/d7a2cb810295b0709c98deb24d964b1a64e7d511)), closes [#592](https://github.com/cacack/gedcom-go/issues/592)
+* **charset:** validate the bytes read while checking for a UTF-8 BOM ([5642df1](https://github.com/cacack/gedcom-go/commit/5642df1e72750ae24e6c565ff4c7629f7aefa9c5)), closes [#593](https://github.com/cacack/gedcom-go/issues/593)
+* **converter:** add VERS under an existing GEDC instead of a second GEDC ([61b1a39](https://github.com/cacack/gedcom-go/commit/61b1a3980561882fe005b221149bd5b428808d0d)), closes [#602](https://github.com/cacack/gedcom-go/issues/602)
+* **converter:** build the 7.0 -&gt; 7.0 XRef mapping once and pin its contract ([7a5c95a](https://github.com/cacack/gedcom-go/commit/7a5c95a02793f2de9b26c4db2ddab6947190a1a8)), closes [#604](https://github.com/cacack/gedcom-go/issues/604)
+* **converter:** find spaced 5.5.1 pointers when rewriting XRefs for 7.0 ([ede7599](https://github.com/cacack/gedcom-go/commit/ede7599b2a47f5e9a2a51c178a6f86fd569b910f)), closes [#591](https://github.com/cacack/gedcom-go/issues/591)
+* **converter:** keep @VOID@ as the null pointer in a 7.0 source ([04da14d](https://github.com/cacack/gedcom-go/commit/04da14ddb268e34d239ab1f6f8da6fe750476479)), closes [#603](https://github.com/cacack/gedcom-go/issues/603)
+* **converter:** keep dangling XRef rewrites from joining unrelated records ([55557f6](https://github.com/cacack/gedcom-go/commit/55557f6707de54e2631dad45a8cff2b45f56dae9)), closes [#590](https://github.com/cacack/gedcom-go/issues/590)
+* **converter:** normalize invalid xrefs when converting 7.0 to 7.0 ([eea52d9](https://github.com/cacack/gedcom-go/commit/eea52d9a90f51e9ee97829484fa6eb7379a7e47e)), closes [#604](https://github.com/cacack/gedcom-go/issues/604)
+* **converter:** pin XRef rewriting alongside calendar translation ([f3df888](https://github.com/cacack/gedcom-go/commit/f3df88816bd319145463e19aab6f4fcc96392d36)), closes [#590](https://github.com/cacack/gedcom-go/issues/590)
+* **converter:** rename a 5.5.1 record named @VOID@ when converting to 7.0 ([928f478](https://github.com/cacack/gedcom-go/commit/928f4783726f902cc3ec5f868a74fd408175ce0a)), closes [#603](https://github.com/cacack/gedcom-go/issues/603)
+* **converter:** reserve valid dangling pointers when rewriting XRefs ([b74f7af](https://github.com/cacack/gedcom-go/commit/b74f7af39121c82c415ff56871f2de838eed814d)), closes [#590](https://github.com/cacack/gedcom-go/issues/590)
+* **converter:** rewrite XRefs invalid in GEDCOM 7.0, not just uppercase them ([52ef167](https://github.com/cacack/gedcom-go/commit/52ef1675a486baeca0ea189f387ab94de451dd05)), closes [#590](https://github.com/cacack/gedcom-go/issues/590)
+* **converter:** translate calendar syntax in header DATE values ([3d650bd](https://github.com/cacack/gedcom-go/commit/3d650bd3aa67067778f580834acf7f0071988292)), closes [#605](https://github.com/cacack/gedcom-go/issues/605)
+* **converter:** translate citation dates and tighten calendar reporting ([ba1e9cd](https://github.com/cacack/gedcom-go/commit/ba1e9cd5e02b91da0f745535ea8a4885f3937243)), closes [#589](https://github.com/cacack/gedcom-go/issues/589)
+* **converter:** translate DATE calendar syntax between 5.5.x and 7.0 ([5af1456](https://github.com/cacack/gedcom-go/commit/5af1456ad3ab7eb399a53299539170b7b1ea2627)), closes [#589](https://github.com/cacack/gedcom-go/issues/589)
+* **decoder:** accept spaced identifiers in GEDCOM 5.5 and 5.5.1 ([66acea3](https://github.com/cacack/gedcom-go/commit/66acea3ef6eb80df71a9fda094aa638a00c1c8dd)), closes [#579](https://github.com/cacack/gedcom-go/issues/579)
+* **decoder:** relax xref grammar only for a declared 5.5/5.5.1 header ([93b08a6](https://github.com/cacack/gedcom-go/commit/93b08a6424755e74172b6f96942b42ab97581eeb)), closes [#579](https://github.com/cacack/gedcom-go/issues/579)
+* **gedcom:** accept GEDCOM 7 calendar keywords in ParseDate ([442a246](https://github.com/cacack/gedcom-go/commit/442a24651bba5a95ef97886cfe1ac3b74c974184)), closes [#581](https://github.com/cacack/gedcom-go/issues/581)
+* **gedcom:** count BCE years astronomically in YearsBetween fallback ([09708f0](https://github.com/cacack/gedcom-go/commit/09708f0651ad708eafd8cbbc484e5a72cda518ec)), closes [#588](https://github.com/cacack/gedcom-go/issues/588)
+* **gedcom:** document version-agnostic calendar parsing and pin keyword edge cases ([0190b19](https://github.com/cacack/gedcom-go/commit/0190b19cfdc754432fe1d43f0fa17f74c8dff932)), closes [#581](https://github.com/cacack/gedcom-go/issues/581)
+* **gedcom:** honor a @VOID@ mapping key at pointer sites outside GEDCOM 7.0 ([2ba988e](https://github.com/cacack/gedcom-go/commit/2ba988e5935e5653b3fe911a6dddb7923f405285)), closes [#603](https://github.com/cacack/gedcom-go/issues/603)
+* **gedcom:** recognize 5.5.1 spaced pointers in validator, merge and subset ([eaea05c](https://github.com/cacack/gedcom-go/commit/eaea05c5b2f5463a456184fb82ed838da13a2537)), closes [#591](https://github.com/cacack/gedcom-go/issues/591)
+* **gedcom:** reject nonexistent days in Date.ToTime ([4ac3cd2](https://github.com/cacack/gedcom-go/commit/4ac3cd2b4315ec364dac6e023caae2ab62d183c6)), closes [#601](https://github.com/cacack/gedcom-go/issues/601)
+* **gedcom:** rewrite spaced pointers in Apply and classify without allocating ([e334ecd](https://github.com/cacack/gedcom-go/commit/e334ecdc15b55a39c2c8c20877d4f24d121509c4)), closes [#579](https://github.com/cacack/gedcom-go/issues/579)
+* **gedcom:** share the @VOID@ constant and document Apply's version gate ([86b17db](https://github.com/cacack/gedcom-go/commit/86b17db4c3e726738522182aeac9e6a22521ec1a)), closes [#603](https://github.com/cacack/gedcom-go/issues/603)
+* **gedcom:** use astronomical years for BCE dates in Date.ToTime ([28f2af7](https://github.com/cacack/gedcom-go/commit/28f2af732cee192e8ec0c30f0dc3192a980c0d78)), closes [#588](https://github.com/cacack/gedcom-go/issues/588)
+* **gedcom:** validate range end dates and BCE leap years in Date.Validate ([f946b08](https://github.com/cacack/gedcom-go/commit/f946b0877093273ed8edf0598617a50424b983fa)), closes [#580](https://github.com/cacack/gedcom-go/issues/580)
+* **merge:** carry doc2's declared version into Combine when doc1 has none ([7fbeb87](https://github.com/cacack/gedcom-go/commit/7fbeb872d701b99f4b8b5b68fcccadf3448b52b7)), closes [#591](https://github.com/cacack/gedcom-go/issues/591)
+* **merge:** keep DeclaredVersion in step with doc1's raw GEDC in Combine ([49f5aa7](https://github.com/cacack/gedcom-go/commit/49f5aa7c07c72ab340378d8272d9e63954ac8dfa)), closes [#591](https://github.com/cacack/gedcom-go/issues/591)
+* **parser:** always record the error that stops TolerateOnly parsing ([ac585cd](https://github.com/cacack/gedcom-go/commit/ac585cd6ab9f2f5ead6980adb86db95c49268373)), closes [#579](https://github.com/cacack/gedcom-go/issues/579)
+* **parser:** apply MaxLineBytes to every line scanner ([331f1b2](https://github.com/cacack/gedcom-go/commit/331f1b2a9d4a2cbbe77d175eec9b60c96378b03a)), closes [#578](https://github.com/cacack/gedcom-go/issues/578)
+* **parser:** count MaxLineBytes as line content on every path ([86f5187](https://github.com/cacack/gedcom-go/commit/86f5187eb14e479e12bc28fe3d88f78cb2a7c963)), closes [#578](https://github.com/cacack/gedcom-go/issues/578)
+* **parser:** report exact byte offsets from RecordIterator and LazyParser iterators ([2138fa1](https://github.com/cacack/gedcom-go/commit/2138fa1d50102e558cd1645ac10b972e133fed19)), closes [#502](https://github.com/cacack/gedcom-go/issues/502)
+* **validator:** compare duplicate birth years astronomically ([33b066f](https://github.com/cacack/gedcom-go/commit/33b066f3200dedc76211530712649fd651016b48)), closes [#606](https://github.com/cacack/gedcom-go/issues/606)
+* **validator:** give duplicate birth-year credit only to real years ([d2b8695](https://github.com/cacack/gedcom-go/commit/d2b8695de472cd6ca184f4a8301942b61696f152)), closes [#606](https://github.com/cacack/gedcom-go/issues/606)
+* **validator:** give malformed "0 BC" birth years no year credit ([abed4c2](https://github.com/cacack/gedcom-go/commit/abed4c28edcd8c3264ddf884497bbb1d8cd811df)), closes [#606](https://github.com/cacack/gedcom-go/issues/606)
+* **validator:** report dates that do not exist, such as 31 FEB ([abf3525](https://github.com/cacack/gedcom-go/commit/abf35258c3083a86b7ca26bae472bb4402b8bb34)), closes [#613](https://github.com/cacack/gedcom-go/issues/613)
+* **validator:** skip dual-dated dates in the INVALID_DATE check ([220df9d](https://github.com/cacack/gedcom-go/commit/220df9d52bd9ada1926a291de960d96e66dbdb8e)), closes [#613](https://github.com/cacack/gedcom-go/issues/613)
+* **validator:** still report impossible days on dual-dated dates ([03bfbbb](https://github.com/cacack/gedcom-go/commit/03bfbbb1cd5159b079f860acc92b6091dfc10a3f)), closes [#613](https://github.com/cacack/gedcom-go/issues/613)
+* **version:** detect GEDCOM 7 patch versions (VERS 7.0.N) as 7.0 ([f94c9f2](https://github.com/cacack/gedcom-go/commit/f94c9f29cac05186e2755ad37041208c934e0863)), closes [#587](https://github.com/cacack/gedcom-go/issues/587)
+* **version:** document 7.0.N normalization and pin leading-zero patch ([efdbca5](https://github.com/cacack/gedcom-go/commit/efdbca54b3cecc155113d8a6bac2ffebc207b99c)), closes [#587](https://github.com/cacack/gedcom-go/issues/587)
+* **version:** ignore a HEAD record with an XRef in DeclaredVersion ([cea0889](https://github.com/cacack/gedcom-go/commit/cea08894f6e6669afd468eabe7df7b4d6a9dee21)), closes [#579](https://github.com/cacack/gedcom-go/issues/579)
+
+
+### Documentation
+
+* allow conformance fixes in minor releases and list v3.1.0 changes ([b8e6480](https://github.com/cacack/gedcom-go/commit/b8e64800801058eb5f18b85ade31d8954ab59bec))
+
 ## [3.0.0](https://github.com/cacack/gedcom-go/compare/v2.4.0...v3.0.0) (2026-09-27)
 
 
