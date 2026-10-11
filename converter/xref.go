@@ -15,10 +15,11 @@ const v7XRefReason = "GEDCOM 7.0 requires XRefs to use only uppercase letters, d
 // lowercase letters, spaces and other characters that 7.0 rejects.
 //
 // A record's XRef is uppercased with each other invalid character replaced by
-// "_"; if that identifier is already taken (or is the 7.0 null pointer
-// @VOID@), a numeric suffix ("_2", "_3", ...) keeps it unique. A pointer to
-// an undefined XRef that differs only in case from a record's XRef (@test@
-// for @TEST@) is joined to that record; any other undefined pointer gets a
+// "_"; if that identifier is already taken by a record or by a pointer no
+// record defines (or is the 7.0 null pointer @VOID@), a numeric suffix ("_2",
+// "_3", ...) keeps it unique. A pointer to an undefined XRef that differs
+// only in ASCII case from a record's XRef (@test@ for @TEST@) is joined to
+// that record; any other undefined pointer gets a
 // fresh identifier the same way a record does, so it stays dangling rather
 // than resolving to an unrelated record. Each rewrite is recorded as a
 // Normalized note.
@@ -71,20 +72,20 @@ func normalizeXRefsForV7(doc *gedcom.Document, report *gedcom.ConversionReport) 
 func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling []string) {
 	mapping = make(map[string]string)
 
-	// Valid identifiers keep their name, so a rewritten one must avoid them
-	// and the 7.0 null pointer.
-	taken := map[string]bool{"@VOID@": true}
-	byUpper := make(map[string]string) // uppercased XRef -> first record XRef
-	for _, record := range doc.Records {
-		if record == nil || record.XRef == "" {
+	taken, byUpper := indexRecordXRefs(doc)
+
+	// A valid pointer that no record defines also keeps its name, so it is
+	// reserved too; otherwise a rewritten record could take it over. One that
+	// differs only in case from a record is left free, so that record's
+	// rewrite joins it.
+	undefined := undefinedPointers(doc)
+	for _, ref := range undefined {
+		if !isV7XRef(ref) {
+			dangling = append(dangling, ref)
 			continue
 		}
-		if isV7XRef(record.XRef) {
-			taken[record.XRef] = true
-		}
-		upper := strings.ToUpper(record.XRef)
-		if _, ok := byUpper[upper]; !ok {
-			byUpper[upper] = record.XRef
+		if _, ok := byUpper[ref]; !ok {
+			taken[ref] = true
 		}
 	}
 
@@ -111,9 +112,8 @@ func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling
 		mapping[record.XRef] = assign(record.XRef)
 	}
 
-	dangling = danglingXRefs(doc)
 	for _, ref := range dangling {
-		if def, ok := byUpper[strings.ToUpper(ref)]; ok {
+		if def, ok := byUpper[asciiUpper(ref)]; ok {
 			if newDef, renamed := mapping[def]; renamed {
 				def = newDef
 			}
@@ -126,12 +126,33 @@ func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling
 	return mapping, dangling
 }
 
-// danglingXRefs returns, in document order and without duplicates, each
-// pointer that is not a valid GEDCOM 7.0 Xref and that no record defines.
-// Pointers are found with gedcom.Visit and in the header's submitter and
-// tags; like Visit, header tags are matched with the 7.0 pointer grammar, so
-// spaced pointers are not found yet (issue #591).
-func danglingXRefs(doc *gedcom.Document) []string {
+// indexRecordXRefs returns the identifiers a rewrite must avoid (valid record
+// XRefs, which keep their name, and the 7.0 null pointer @VOID@) and, for the
+// case-only join, each record XRef keyed by its ASCII-uppercased form (the
+// first record wins).
+func indexRecordXRefs(doc *gedcom.Document) (taken map[string]bool, byUpper map[string]string) {
+	taken = map[string]bool{"@VOID@": true}
+	byUpper = make(map[string]string)
+	for _, record := range doc.Records {
+		if record == nil || record.XRef == "" {
+			continue
+		}
+		if isV7XRef(record.XRef) {
+			taken[record.XRef] = true
+		}
+		upper := asciiUpper(record.XRef)
+		if _, ok := byUpper[upper]; !ok {
+			byUpper[upper] = record.XRef
+		}
+	}
+	return taken, byUpper
+}
+
+// undefinedPointers returns, in document order and without duplicates, each
+// pointer that no record defines. Pointers are found with gedcom.Visit and in
+// the header's submitter and tags; like Visit, header tags are matched with
+// the 7.0 pointer grammar, so spaced pointers are not found yet (issue #591).
+func undefinedPointers(doc *gedcom.Document) []string {
 	var refs []string
 	seen := make(map[string]bool) // defined XRefs and refs already added
 	for _, record := range doc.Records {
@@ -140,7 +161,7 @@ func danglingXRefs(doc *gedcom.Document) []string {
 		}
 	}
 	add := func(ref string) {
-		if ref == "" || seen[ref] || isV7XRef(ref) {
+		if ref == "" || seen[ref] {
 			return
 		}
 		seen[ref] = true
@@ -186,7 +207,7 @@ func isV7XRefChar(c rune) bool {
 // toV7XRefBody uppercases the identifier between xref's @ delimiters and
 // replaces each character GEDCOM 7.0 does not allow with "_".
 func toV7XRefBody(xref string) string {
-	body := strings.ToUpper(strings.TrimSuffix(strings.TrimPrefix(xref, "@"), "@"))
+	body := asciiUpper(strings.TrimSuffix(strings.TrimPrefix(xref, "@"), "@"))
 	if body == "" {
 		return "_"
 	}
@@ -196,4 +217,16 @@ func toV7XRefBody(xref string) string {
 		}
 		return '_'
 	}, body)
+}
+
+// asciiUpper uppercases only ASCII letters. strings.ToUpper would also map
+// characters such as dotless i (U+0131) onto ASCII letters, joining XRefs
+// that differ by more than case.
+func asciiUpper(s string) string {
+	return strings.Map(func(c rune) rune {
+		if c >= 'a' && c <= 'z' {
+			return c - 'a' + 'A'
+		}
+		return c
+	}, s)
 }

@@ -260,3 +260,46 @@ func TestNormalizeXRefsForV7ReportsDanglingPointer(t *testing.T) {
 		t.Errorf("Normalized = %+v, want one @test@ -> @TEST@ note", report.Normalized)
 	}
 }
+
+// TestBuildXRefMappingReservesValidDangling pins that a rewritten record never
+// takes the name of a valid pointer no record defines, which would make that
+// dangling pointer resolve to an unrelated record. A valid pointer differing
+// only in case from a record still joins that record's rewrite.
+func TestBuildXRefMappingReservesValidDangling(t *testing.T) {
+	doc := createDocWithXRefs([]string{"@I-1@", "@a-b@", "@test@"})
+	doc.Records[0].Tags = []*gedcom.Tag{
+		{Level: 1, Tag: "ASSO", Value: "@I_1@"},   // valid, undefined
+		{Level: 1, Tag: "ASSO", Value: "@I_1_2@"}, // valid, undefined: next candidate
+		{Level: 1, Tag: "ASSO", Value: "@TEST@"},  // case-only match of @test@
+	}
+	doc.Header.Tags = []*gedcom.Tag{{Level: 1, Tag: "SUBN", Value: "@A_B@"}}
+
+	got, dangling := buildXRefMapping(doc)
+	want := map[string]string{
+		"@I-1@":  "@I_1_3@",
+		"@a-b@":  "@A_B_2@",
+		"@test@": "@TEST@",
+	}
+	if len(got) != len(want) || len(dangling) != 0 {
+		t.Errorf("mapping = %v, dangling = %q, want %v and none", got, dangling, want)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("mapping[%q] = %q, want %q", k, got[k], v)
+		}
+	}
+}
+
+// TestBuildXRefMappingASCIICaseFold pins that the case-only join folds ASCII
+// letters only: dotless i (U+0131) uppercases to I under Unicode rules but is
+// not a case variant of it here.
+func TestBuildXRefMappingASCIICaseFold(t *testing.T) {
+	doc := createDocWithXRefs([]string{"@I1@", "@ı1@"})
+	got, _ := buildXRefMapping(doc)
+	if got["@ı1@"] != "@_1@" {
+		t.Errorf("mapping = %v, want @ı1@ -> @_1@", got)
+	}
+	if asciiUpper("aıſz") != "AıſZ" {
+		t.Errorf("asciiUpper folded non-ASCII letters")
+	}
+}
