@@ -5,12 +5,14 @@ package gedcomgo
 // or a struct literal setting a field that never existed (#405). This checks
 // every pkg.Name reference to one of this module's packages, and the top-level
 // field keys of each pkg.Type{...} literal whose type is a struct declared in
-// that package (directly or through a same-package alias), against the package
-// source.
+// that package (directly or through a chain of same-package aliases), against
+// the package source.
 //
 // Limits, since there is no type information:
 //   - selectors on values (x.Field, x.Method()) are not checked;
 //   - keys of nested literals, and literals of non-struct types, are skipped;
+//   - so are literals of defined types (type A B) and of aliases to another
+//     package's or a generic type (type A = pkg.B, type A = G[int]);
 //   - a local identifier named like a package (version := ...; version.Foo) is
 //     taken for the package and flagged: rename the variable in USAGE.md;
 //   - only blocks fenced exactly as ```go are scanned.
@@ -88,6 +90,22 @@ func loadUsageDocAPIs(t *testing.T) map[string]packageAPI {
 		apis[pkg] = loadPackageAPI(t, pkg)
 	}
 	return apis
+}
+
+// TestResolveAliasFields shows an alias of an alias gets the struct's fields
+// whatever order the map is walked in.
+func TestResolveAliasFields(t *testing.T) {
+	for range 20 { // map order is random; repeat to cover both orders
+		s := map[string]bool{"F": true}
+		fields := map[string]map[string]bool{"S": s}
+		resolveAliasFields(fields, map[string]string{"A": "B", "B": "S", "X": "Missing"})
+		if !fields["A"]["F"] || !fields["B"]["F"] {
+			t.Fatalf("alias chain not resolved: %v", fields)
+		}
+		if _, ok := fields["X"]; ok {
+			t.Fatalf("alias to unknown type got fields: %v", fields)
+		}
+	}
 }
 
 // checkUsageSource returns a description of each reference in a code fragment
@@ -217,12 +235,26 @@ func loadPackageAPI(t *testing.T, dir string) packageAPI {
 			}
 		}
 	}
+	resolveAliasFields(api.fields, aliases)
+	return api
+}
+
+// resolveAliasFields gives each alias the fields of the struct it names,
+// following alias chains (A = B, B = S) to the end. A cycle cannot occur in
+// compiling Go, but the hop limit keeps a malformed map from looping.
+func resolveAliasFields(fields map[string]map[string]bool, aliases map[string]string) {
 	for alias, target := range aliases {
-		if fields, ok := api.fields[target]; ok {
-			api.fields[alias] = fields
+		for hops := 0; hops < len(aliases); hops++ {
+			next, ok := aliases[target]
+			if !ok {
+				break
+			}
+			target = next
+		}
+		if f, ok := fields[target]; ok {
+			fields[alias] = f
 		}
 	}
-	return api
 }
 
 func structFields(st *ast.StructType) map[string]bool {
