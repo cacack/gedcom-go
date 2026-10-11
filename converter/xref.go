@@ -11,7 +11,8 @@ import (
 const v7XRefReason = "GEDCOM 7.0 requires XRefs to use only uppercase letters, digits and underscore (@[A-Z0-9_]+@)"
 
 // v7NullXRef is the GEDCOM 7.0 null pointer. GEDCOM 5.5 and 5.5.1 do not
-// reserve it, so a record may be named @VOID@ there.
+// reserve it, so a record may be named @VOID@ there. It must match the
+// null pointer gedcom.Apply recognizes (gedcom's unexported nullXRef).
 const v7NullXRef = "@VOID@"
 
 // v7NullXRefReason explains the rewrite of a record named @VOID@.
@@ -88,8 +89,9 @@ func applyV7XRefMapping(doc *gedcom.Document, mapping map[string]string, danglin
 }
 
 // buildXRefMapping maps each XRef that is not a valid GEDCOM 7.0 Xref, and a
-// record XRef of @VOID@, to a valid one, as described on normalizeXRefsForV7, and also returns the
-// mapped pointers that no record defines. Other valid XRefs are not included.
+// record XRef of @VOID@, to a valid one, as described on
+// normalizeXRefsForV7, and also returns the mapped pointers that no record
+// defines. Other valid XRefs are not included.
 // Records and pointers are visited in document order, so the result is
 // deterministic.
 func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling []string) {

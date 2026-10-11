@@ -747,24 +747,34 @@ func TestIsPointerXRefForVersion_NoAlloc(t *testing.T) {
 // TestApply_VoidMappingKey pins issue #603: a mapping entry for @VOID@
 // rewrites @VOID@ references in a document that is not GEDCOM 7.0, where
 // @VOID@ is an ordinary identifier, but never in a 7.0 document, where it is
-// the null pointer.
+// the null pointer. Every reference site walked by rewriteRef is checked:
+// typed entity fields, raw Tag.Value and Tag.XRef, and header tags.
 func TestApply_VoidMappingKey(t *testing.T) {
 	for _, tt := range []struct {
-		name    string
-		version Version
-		want    string
+		name   string
+		header *Header
+		want   string
 	}{
-		{"5.5.1", Version551, "@VOID_2@"},
-		{"no version", "", "@VOID_2@"},
-		{"7.0", Version70, "@VOID@"},
+		{"5.5.1", &Header{Version: Version551}, "@VOID_2@"},
+		{"no version", &Header{}, "@VOID_2@"},
+		{"nil header", nil, "@VOID_2@"},
+		{"7.0", &Header{Version: Version70}, "@VOID@"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			ind := &Record{
 				XRef: "@I1@", Type: RecordTypeIndividual,
 				Entity: &Individual{XRef: "@I1@", NoteXRefs: []string{"@VOID@"}},
-				Tags:   []*Tag{{Level: 1, Tag: "NOTE", Value: "@VOID@"}},
+				Tags: []*Tag{
+					{Level: 1, Tag: "NOTE", Value: "@VOID@"},
+					{Level: 1, Tag: "SNOTE", XRef: "@VOID@"},
+				},
 			}
-			doc := &Document{Header: &Header{Version: tt.version}, Records: []*Record{ind}}
+			var hdrTag *Tag
+			if tt.header != nil {
+				hdrTag = &Tag{Level: 1, Tag: "NOTE", Value: "@VOID@"}
+				tt.header.Tags = []*Tag{hdrTag}
+			}
+			doc := &Document{Header: tt.header, Records: []*Record{ind}}
 
 			Apply(doc, map[string]string{"@VOID@": "@VOID_2@"})
 
@@ -772,7 +782,13 @@ func TestApply_VoidMappingKey(t *testing.T) {
 				t.Errorf("NoteXRefs[0] = %q, want %q", got, tt.want)
 			}
 			if got := ind.Tags[0].Value; got != tt.want {
-				t.Errorf("raw NOTE tag = %q, want %q", got, tt.want)
+				t.Errorf("raw NOTE tag value = %q, want %q", got, tt.want)
+			}
+			if got := ind.Tags[1].XRef; got != tt.want {
+				t.Errorf("raw SNOTE tag XRef = %q, want %q", got, tt.want)
+			}
+			if hdrTag != nil && hdrTag.Value != tt.want {
+				t.Errorf("header NOTE tag value = %q, want %q", hdrTag.Value, tt.want)
 			}
 		})
 	}
