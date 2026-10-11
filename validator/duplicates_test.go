@@ -709,11 +709,14 @@ func TestFindDuplicates_BCEBirthYears(t *testing.T) {
 	tests := []struct {
 		name         string
 		date1, date2 string
-		wantSameYear bool
+		maxYearDiff  int
+		wantReason   string // the birth-year reason expected; "" means none
 	}{
-		{name: "44 BCE vs 44 CE", date1: "44 BC", date2: "44", wantSameYear: false},
-		{name: "44 BCE vs 44 BCE", date1: "1 JAN 44 BC", date2: "15 MAR 44 BC", wantSameYear: true},
-		{name: "1 BCE vs 1 CE within range", date1: "1 BC", date2: "1", wantSameYear: false},
+		{name: "44 BCE vs 44 CE outside default range", date1: "44 BC", date2: "44", wantReason: ""},
+		{name: "44 BCE vs 44 CE are 87 years apart", date1: "44 BC", date2: "44", maxYearDiff: 100, wantReason: "birth year within 87 years"},
+		{name: "44 BCE vs 44 BCE", date1: "1 JAN 44 BC", date2: "15 MAR 44 BC", wantReason: "same birth year"},
+		{name: "1 BCE vs 1 CE within range", date1: "1 BC", date2: "1", wantReason: "birth year within 1 years"},
+		{name: "malformed 0 BC earns no year credit", date1: "0 BC", date2: "1", wantReason: ""},
 	}
 
 	for _, tt := range tests {
@@ -739,19 +742,19 @@ func TestFindDuplicates_BCEBirthYears(t *testing.T) {
 				},
 			}
 
-			duplicates := NewDuplicateDetector(nil).FindDuplicates(doc)
+			duplicates := NewDuplicateDetector(&DuplicateConfig{MaxBirthYearDiff: tt.maxYearDiff}).FindDuplicates(doc)
 			if len(duplicates) != 1 {
 				t.Fatalf("Expected 1 duplicate pair, got %d", len(duplicates))
 			}
 
-			gotSameYear := false
+			gotReason := ""
 			for _, reason := range duplicates[0].MatchReasons {
-				if reason == "same birth year" {
-					gotSameYear = true
+				if reason == "same birth year" || strings.HasPrefix(reason, "birth year within") {
+					gotReason = reason
 				}
 			}
-			if gotSameYear != tt.wantSameYear {
-				t.Errorf("same birth year = %v, want %v (reasons %v)", gotSameYear, tt.wantSameYear, duplicates[0].MatchReasons)
+			if gotReason != tt.wantReason {
+				t.Errorf("birth-year reason = %q, want %q (reasons %v)", gotReason, tt.wantReason, duplicates[0].MatchReasons)
 			}
 		})
 	}
