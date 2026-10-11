@@ -96,6 +96,7 @@ type DuplicateConfig struct {
 
 	// MaxBirthYearDiff is the maximum difference in birth years that still earns
 	// partial birth-date credit. An identical birth year always earns full credit.
+	// Years are compared astronomically, so 1 BCE and 1 CE are one year apart.
 	//
 	//	0        use the default (2)
 	//	negative only an identical birth year earns credit ([ZeroThreshold])
@@ -601,8 +602,11 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 		return DuplicatePair{}, false
 	}
 
-	if birthDate1 != nil && birthDate2 != nil {
-		yearDiff := absInt(birthDate1.Year - birthDate2.Year)
+	// Compare astronomical years so 44 BCE and 44 CE are 87 years apart. A date
+	// without a real year (a phrase, "0", "0 BC", a negative year) earns no credit.
+	if birthDate1 != nil && birthDate2 != nil && hasRealYear(birthDate1) && hasRealYear(birthDate2) {
+		yearDiff := absInt(gedcom.AstronomicalYear(birthDate1.Year, birthDate1.IsBC) -
+			gedcom.AstronomicalYear(birthDate2.Year, birthDate2.IsBC))
 		if yearDiff == 0 {
 			confidence += 0.2
 			reasons = append(reasons, "same birth year")
@@ -781,6 +785,12 @@ func levenshteinDistance(s1, s2 string) int {
 	}
 
 	return prev[len2]
+}
+
+// hasRealYear reports whether d carries a year of 1 or more, the domain
+// gedcom.AstronomicalYear assumes. Phrase-only dates parse with Year 0.
+func hasRealYear(d *gedcom.Date) bool {
+	return !d.IsPhrase && d.Year >= 1
 }
 
 // absInt returns the absolute value of an integer.

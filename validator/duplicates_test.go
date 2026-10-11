@@ -703,6 +703,66 @@ func TestFindDuplicates_SameBirthYear(t *testing.T) {
 	}
 }
 
+// TestFindDuplicates_BCEBirthYears pins that birth years are compared as
+// astronomical years: 44 BCE and 44 CE are 87 years apart, not the same year.
+func TestFindDuplicates_BCEBirthYears(t *testing.T) {
+	tests := []struct {
+		name         string
+		date1, date2 string
+		maxYearDiff  int
+		wantReason   string // the birth-year reason expected; "" means none
+	}{
+		{name: "44 BCE vs 44 CE outside default range", date1: "44 BC", date2: "44", wantReason: ""},
+		{name: "44 BCE vs 44 CE are 87 years apart", date1: "44 BC", date2: "44", maxYearDiff: 100, wantReason: "birth year within 87 years"},
+		{name: "44 BCE vs 44 BCE", date1: "1 JAN 44 BC", date2: "15 MAR 44 BC", wantReason: "same birth year"},
+		{name: "1 BCE vs 1 CE within range", date1: "1 BC", date2: "1", wantReason: "birth year within 1 years"},
+		{name: "malformed 0 BC earns no year credit", date1: "0 BC", date2: "1", wantReason: ""},
+		{name: "CE year 0 earns no year credit", date1: "0", date2: "1 BC", wantReason: ""},
+		{name: "negative CE year earns no year credit", date1: "-43", date2: "44 BC", wantReason: ""},
+		{name: "phrase-only dates earn no year credit", date1: "(unknown)", date2: "(unknown)", wantReason: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			newInd := func(xref, date string) *gedcom.Individual {
+				parsed, err := gedcom.ParseDate(date)
+				if err != nil {
+					t.Fatalf("ParseDate(%q): %v", date, err)
+				}
+				return &gedcom.Individual{
+					XRef:   xref,
+					Names:  []*gedcom.PersonalName{{Full: "Gaius /Julius/"}},
+					Sex:    "M",
+					Events: []*gedcom.Event{{Type: gedcom.EventBirth, ParsedDate: parsed}},
+				}
+			}
+			ind1 := newInd("@I1@", tt.date1)
+			ind2 := newInd("@I2@", tt.date2)
+			doc := &gedcom.Document{
+				Records: []*gedcom.Record{
+					{XRef: ind1.XRef, Type: gedcom.RecordTypeIndividual, Entity: ind1},
+					{XRef: ind2.XRef, Type: gedcom.RecordTypeIndividual, Entity: ind2},
+				},
+			}
+
+			duplicates := NewDuplicateDetector(&DuplicateConfig{MaxBirthYearDiff: tt.maxYearDiff}).FindDuplicates(doc)
+			if len(duplicates) != 1 {
+				t.Fatalf("Expected 1 duplicate pair, got %d", len(duplicates))
+			}
+
+			gotReason := ""
+			for _, reason := range duplicates[0].MatchReasons {
+				if reason == "same birth year" || strings.HasPrefix(reason, "birth year within") {
+					gotReason = reason
+				}
+			}
+			if gotReason != tt.wantReason {
+				t.Errorf("birth-year reason = %q, want %q (reasons %v)", gotReason, tt.wantReason, duplicates[0].MatchReasons)
+			}
+		})
+	}
+}
+
 func TestFindDuplicates_MissingBirthDates(t *testing.T) {
 	ind1 := &gedcom.Individual{
 		XRef:  "@I1@",
