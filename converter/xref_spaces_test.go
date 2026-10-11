@@ -165,3 +165,81 @@ func TestConvertSpacedXRefsYieldValidV7(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertSpacedXRefsAndCalendarsTo70 pins that XRef rewriting (#590) and
+// date calendar translation (#589) both apply in one 5.5.1 -> 7.0 conversion:
+// the output holds no spaced identifier and no calendar escape, both report
+// their transformations, and it decodes strictly as 7.0.
+func TestConvertSpacedXRefsAndCalendarsTo70(t *testing.T) {
+	const input = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I 1@ INDI
+1 NAME John /Doe/
+1 BIRT
+2 DATE @#DJULIAN@ 1 JAN 1700
+1 DEAT
+2 DATE BET @#DJULIAN@ 1750 AND @#DGREGORIAN@ 1760
+1 FAMS @F 1@
+0 @F 1@ FAM
+1 HUSB @I 1@
+1 MARR
+2 DATE @#DJULIAN@ 1720
+0 TRLR
+`
+	opts := decoder.DefaultOptions()
+	opts.StrictMode = true
+	doc, err := decoder.DecodeWithOptions(strings.NewReader(input), opts)
+	if err != nil {
+		t.Fatalf("strict decode 5.5.1: %v", err)
+	}
+
+	converted, report, err := converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	types := map[string]bool{}
+	for _, tr := range report.Transformations {
+		types[tr.Type] = true
+	}
+	for _, want := range []string{"XREF_UPPERCASE", "DATE_CALENDAR_CONVERTED"} {
+		if !types[want] {
+			t.Errorf("report lacks %s transformation: %+v", want, report.Transformations)
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, converted); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	out := buf.String()
+	for _, ref := range pointerish.FindAllString(out, -1) {
+		if !v7XRef.MatchString(ref) {
+			t.Errorf("output holds %q, invalid in 7.0:\n%s", ref, out)
+		}
+	}
+	for _, want := range []string{
+		"0 @I_1@ INDI",
+		"2 DATE JULIAN 1 JAN 1700",
+		"2 DATE BET JULIAN 1750 AND GREGORIAN 1760",
+		"2 DATE JULIAN 1720",
+		"1 HUSB @I_1@",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+
+	result, err := decoder.DecodeWithDiagnostics(strings.NewReader(out), opts)
+	if err != nil {
+		t.Fatalf("strict decode 7.0: %v\n%s", err, out)
+	}
+	for _, d := range result.Diagnostics {
+		t.Errorf("7.0 diagnostic: %s", d)
+	}
+	if fam := result.Document.GetFamily("@F_1@"); fam == nil || result.Document.GetIndividual(fam.Husband) == nil {
+		t.Errorf("@F_1@ HUSB does not resolve:\n%s", out)
+	}
+}
