@@ -710,3 +710,42 @@ invalid parser line
 		t.Error("Expected entity-level warning diagnostic")
 	}
 }
+
+// TestGEDCOM7CalendarKeywordsDecode is the #581 repro: GEDCOM 7 writes the
+// calendar as a bare keyword (GREGORIAN, JULIAN, HEBREW, FRENCH_R) rather than
+// a 5.5.x @#D escape. Each must decode to a typed date on the right calendar
+// with no INVALID_VALUE diagnostic.
+func TestGEDCOM7CalendarKeywordsDecode(t *testing.T) {
+	tests := []struct {
+		input string
+		want  gedcom.Calendar
+	}{
+		{"GREGORIAN 1 JAN 1900", gedcom.CalendarGregorian},
+		{"JULIAN 1 JAN 1750", gedcom.CalendarJulian},
+		{"HEBREW 1 TSH 5785", gedcom.CalendarHebrew},
+		{"FRENCH_R 1 VEND 1", gedcom.CalendarFrenchRepublican},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			input := "0 HEAD\n1 SOUR EXAMPLE\n1 GEDC\n2 VERS 7.0\n" +
+				"0 @I1@ INDI\n1 NAME Alex /Example/\n1 BIRT\n2 DATE " + tt.input + "\n0 TRLR\n"
+			result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+			if err != nil {
+				t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+			}
+			for _, d := range result.Diagnostics {
+				if d.Code == CodeInvalidValue {
+					t.Errorf("unexpected diagnostic: %v", d)
+				}
+			}
+			parsed := result.Document.GetIndividual("@I1@").Events[0].ParsedDate
+			if parsed == nil {
+				t.Fatal("ParsedDate = nil")
+			}
+			if parsed.Calendar != tt.want || parsed.Day != 1 || parsed.Month != 1 {
+				t.Errorf("ParsedDate = %+v, want calendar %v day 1 month 1", parsed, tt.want)
+			}
+		})
+	}
+}

@@ -21,7 +21,7 @@ Sections keep the numbering of the source research report; sections 10 (Best Pra
 - MMM = three-letter month abbreviation (uppercase)
 - YYYY = four-digit year
 
-**GEDCOM 7.0 Format**: Same as 5.5, but with stricter grammar enforcement
+**GEDCOM 7.0 Format**: Same `DD MMM YYYY` layout, with stricter grammar enforcement. A non-default calendar is named with a bare keyword (`JULIAN 25 DEC 1700`) rather than a 5.5.x `@#D` escape; see [section 5.1](#51-complete-grammar)
 
 **Month Abbreviations** (case-insensitive in practice):
 ```
@@ -139,7 +139,7 @@ DEC 2020
 
 ### 2.1 Calendar Escape Sequence
 
-**Format**: `@#DHEBREW@ <day> <month> <year>`
+**Format**: `@#DHEBREW@ <day> <month> <year>` (5.5/5.5.1); `HEBREW <day> <month> <year>` (7.0)
 
 **Example**:
 ```
@@ -201,7 +201,7 @@ Gregorian: 16 OCT 2025  →  Hebrew: 24 TSH 5786
 
 ### 3.1 Calendar Escape Sequence
 
-**Format**: `@#DFRENCH R@ <day> <month> <year>`
+**Format**: `@#DFRENCH R@ <day> <month> <year>` (5.5/5.5.1); `FRENCH_R <day> <month> <year>` (7.0)
 
 **Historical Context**:
 - Used: 22 September 1792 - 31 December 1805 (12 years)
@@ -277,7 +277,7 @@ Where:
 
 ### 4.1 Calendar Escape Sequence
 
-**Format**: `@#DJULIAN@ <day> <month> <year>`
+**Format**: `@#DJULIAN@ <day> <month> <year>` (5.5/5.5.1); `JULIAN <day> <month> <year>` (7.0)
 
 **Example**:
 ```
@@ -441,6 +441,10 @@ FROM JAN 1900 TO DEC 1905
 @#DHEBREW@ 13 CSH 5760
 @#DFRENCH R@ 15 VEND 3
 @#DGREGORIAN@ 1 JAN 2000     (explicit, though default)
+JULIAN 25 DEC 1700           (7.0 keyword form)
+HEBREW 13 CSH 5760
+FRENCH_R 15 VEND 3
+GREGORIAN 1 JAN 2000
 ```
 
 The escape is part of `<date>`, so it follows the modifier keyword and each
@@ -450,11 +454,16 @@ ABT @#DJULIAN@ MAR 1066
 BET @#DHEBREW@ 1 NSN 5700 AND @#DHEBREW@ 30 ELL 5700
 BET 1700 AND @#DJULIAN@ 1750    (start is Gregorian, end is Julian)
 FROM @#DJULIAN@ 1700 TO @#DJULIAN@ 1750
+BET JULIAN 1 JAN 1700 AND GREGORIAN 1 JAN 1800    (7.0 keywords)
 ```
 A date with no escape of its own inherits the calendar of the date before it,
 defaulting to Gregorian. Many vendors also write the escape ahead of the
 modifier (`@#DJULIAN@ ABT 15 MAR 44 BC`); gedcom-go accepts that form and treats
 the leading escape as the default for every `<date>` that follows.
+gedcom-go accepts the 7.0 keywords (case-sensitive, as the 7.0 grammar
+specifies) everywhere it accepts an escape, whatever the file's version.
+Extension calendars (`_XXX`) are not recognized and the date is reported as
+invalid, with its raw value preserved.
 
 **Interpreted Dates** (GEDCOM 5.5 only, removed in 7.0):
 ```
