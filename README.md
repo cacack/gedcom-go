@@ -388,6 +388,7 @@ This library follows [Semantic Versioning](https://semver.org/). We do not break
 ### What May Change
 
 - **Experimental features** (duplicate detection algorithms, quality report format) may evolve in minor versions
+- **Conformance fixes** that bring behaviour into line with the GEDCOM spec or documented contract may change results in minor versions; each is listed under [Behaviour changes in minor releases](docs/governance/policies/api-stability.md#behaviour-changes-in-minor-releases)
 
 ### GEDCOM Spec Evolution
 

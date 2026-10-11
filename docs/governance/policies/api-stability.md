@@ -86,6 +86,28 @@ requires:
 3. A migration note giving the old-to-new mapping in full — a caller cannot
    diff their way to it.
 
+#### Conformance fixes in minor releases
+
+One exception to the first requirement. A change that alters results on
+unchanged input MAY ship in a MINOR release — never a PATCH — when it brings
+behaviour into line with the GEDCOM specification or with the library's own
+documented contract (its godoc or FEATURES.md). The old behaviour was then a
+bug that a careful caller could not have relied on as intended; shipping the
+fix promptly is what
+[Honor the Standards](../../../CONSTITUTION.md#5-honor-the-standards) asks.
+It requires:
+
+1. A row in [Behaviour changes in minor releases](#behaviour-changes-in-minor-releases)
+   giving the old and new behaviour and what a caller must do.
+2. A commit body stating that the change is a conformance fix that changes
+   results, and naming that table.
+3. A `make api-check` that shows no incompatible signature changes.
+
+A change that alters what a value *means* by choice rather than to fix a bug —
+a renumbered constant, a new default for a zero value, a removed map key, a
+reinterpreted field — still requires a major, with everything listed above.
+When unsure, treat it as a major.
+
 Known members of this category:
 
 | Change | Release | Caller impact |
@@ -102,6 +124,26 @@ Known members of this category:
 | Decoding reports bad `MAP` coordinates ([#504](https://github.com/cacack/gedcom-go/issues/504)) | v3.0.0 | Same category as the `ORPHANED_NOTE` row below: it changes the diagnostics a document produces, which a caller may have snapshotted or suppressed. `LATI` and `LONG` previously received no decode-time validation at all. Each is now checked for value syntax, axis direction (`LATI` must use N/S, `LONG` E/W) and range, and a failure emits an `INVALID_VALUE` warning naming the line. The axis and range checks are the ones likely to fire on real data — ordinary data-entry mistakes rather than the pathological spellings in the row above. These are warnings, so `HasErrors` is unaffected and nothing that decoded before fails to decode now; the raw text is still preserved on the record (ADR 0003). |
 | GEDCOM 7.0 negative assertions (`NO <EVENT>`, `Event.IsNegative`) skipped by the library's event readers | v3.0.0 | A bug fix, listed here because accessor, validator and converter results change for existing callers with no signature change, so `apidiff` reports nothing. `Individual.BirthEvent`/`DeathEvent`/`BirthDate`/`DeathDate` no longer return a negated event or its date period (they return the first non-negated one, or nil). The date-logic rules no longer raise `DEATH_BEFORE_BIRTH`, `MARRIAGE_BEFORE_BIRTH` and the other date checks from a negated event, and the quality report no longer counts one toward its birth, death or place coverage. A 7.0 → 5.5/5.5.1 conversion now actually drops each `NO` (raw `Record.Tags` and the typed `Events` entry) instead of reporting it as lost while still writing it; a document built in code, with no raw tags, now has its negated events reported as data loss too, so `StrictDataLoss` fails on it where v2 succeeded. `Events` itself is unchanged and still holds negated events; the additive `OccurredEvents` and `NegativeAssertions` helpers separate them. See the [migration guide](../../guides/migration-v3.md#negative-assertions-are-no-longer-read-as-events). |
 | Inline note text no longer reported as an orphaned `NOTE` reference ([#473](https://github.com/cacack/gedcom-go/issues/473)) | v3.0.0 | A bug fix, listed here because it changes issue counts a caller may have snapshotted. `StreamingValidator` collected note references from the deprecated `Notes` slice, which interleaved pointers with inline text and applied no pointer test — so a record carrying ordinary note prose was reported as an orphaned reference to a record whose XRef was the prose itself. Collection now reads `NoteXRefs`, which holds only pointer-shaped values. Callers who suppressed `ORPHANED_NOTE` wholesale, or who assert on issue counts, will see fewer issues. |
+
+### Behaviour changes in minor releases
+
+Conformance fixes shipped under
+[Conformance fixes in minor releases](#conformance-fixes-in-minor-releases).
+No signature changed and `apidiff` reports none of them; each row says what a
+caller relying on the old behaviour now sees.
+
+| Change | Release | Caller impact |
+|--------|---------|---------------|
+| `parser.Parse`, `ParseWithOptions`, the decoder and `LazyParser.FindRecord` accept lines up to `MaxLineBytes` (1 MiB) ([#578](https://github.com/cacack/gedcom-go/issues/578)) | v3.1.0 | Lines between 64 KiB and 1 MiB, such as a long GEDCOM 7 `SNOTE`, previously failed with a scanner error; they now parse, and `FindRecord` can read back every record `BuildIndex` indexed. The limit counts content, not the line terminator. Lines over 1 MiB still error. |
+| `RecordIterator` and `LazyParser` iterators report exact byte offsets ([#502](https://github.com/cacack/gedcom-go/issues/502)) | v3.1.0 | `ByteOffset`/`ByteLength` previously drifted by the buffered level-0 line per record and by one byte per CRLF line. `LazyParser.Iterate`, `Records`, `IterateFrom` and `RecordsFrom` now report absolute file offsets, so a caller that added its own base after seeking must stop, or it double-counts. |
+| `charset.NewReader` and `DetectEncodingFromHeader` probe only the header ([#577](https://github.com/cacack/gedcom-go/issues/577), [#592](https://github.com/cacack/gedcom-go/issues/592), [#593](https://github.com/cacack/gedcom-go/issues/593)) | v3.1.0 | Detection previously read the whole input and searched only its first 1000 bytes for `CHAR`; it now reads the header (up to 64 KiB), so a `CHAR` declared later in a long header is honoured and changes the decoding of that file. A read error during the probe or BOM check is now surfaced after the bytes already read are replayed, where it was swallowed and those bytes dropped. `DetectBOM` returns a non-nil replay reader alongside its error; callers that check `err` first are unaffected. |
+| Spaced identifiers accepted in documents declaring GEDCOM 5.5 or 5.5.1 ([#579](https://github.com/cacack/gedcom-go/issues/579), [#591](https://github.com/cacack/gedcom-go/issues/591)) | v3.1.0 | Both grammars allow a space in an identifier. In a document whose header declares 5.5/5.5.1, `0 @I 1@ INDI` no longer fails `StrictMode` or emits `INVALID_XREF`, and a pointer such as `1 NOTE @N 1@` moves from `InlineNotes` to `NoteXRefs`. The new `Header.DeclaredVersion` records the declaration, and `Visit`, `Subset`, `merge` and the validator's broken-pointer check now follow such pointers. Undeclared and 7.0 documents keep the 7.0 rule. |
+| `gedcom.Date.Validate` checks range/period end dates and BCE leap years ([#580](https://github.com/cacack/gedcom-go/issues/580)) | v3.1.0 | `BET 1900 AND 31 FEB 1901` now returns an error prefixed "invalid end date" where it returned nil. BCE years are counted astronomically (1 BCE = year 0), so `29 FEB 1 BCE` is now valid and `29 FEB 4 BCE` is not. |
+| `gedcom.ParseDate` accepts GEDCOM 7 calendar keywords ([#581](https://github.com/cacack/gedcom-go/issues/581)) | v3.1.0 | `GREGORIAN`, `JULIAN`, `HEBREW` and `FRENCH_R` (case-sensitive) are accepted wherever an `@#D` escape is. Such dates previously failed, leaving `ParsedDate` nil and an `INVALID_VALUE` diagnostic; they now parse, and that diagnostic disappears. |
+| `VERS 7.0.N` detected as GEDCOM 7.0 ([#587](https://github.com/cacack/gedcom-go/issues/587)) | v3.1.0 | A spec-conformant patch version such as `7.0.14` was unrecognized and detection fell back to tag heuristics, typically yielding 5.5 and 5.5 decoding rules. It is now 7.0, and `Header.Version` is normalized to `"7.0"`; the raw value stays in `Header.Tags`. |
+| `gedcom.Date.ToTime` uses astronomical years and rejects nonexistent days ([#588](https://github.com/cacack/gedcom-go/issues/588), [#601](https://github.com/cacack/gedcom-go/issues/601)) | v3.1.0 | `1 JAN 44 BCE` now converts to year -43 where it gave AD 44, and `YearsBetween` counts across the BCE/CE boundary the same way. `31 FEB 1900` now returns an error where it silently rolled over to 3 March; `YearsBetween` then falls back to an inexact year count. |
+| `converter` produces valid output for the target version ([#589](https://github.com/cacack/gedcom-go/issues/589), [#590](https://github.com/cacack/gedcom-go/issues/590), [#602](https://github.com/cacack/gedcom-go/issues/602), [#603](https://github.com/cacack/gedcom-go/issues/603), [#604](https://github.com/cacack/gedcom-go/issues/604), [#605](https://github.com/cacack/gedcom-go/issues/605)) | v3.1.0 | Calendar escapes and keywords are translated in record and header dates. XRefs invalid in 7.0 are rewritten to collision-free identifiers (not just uppercased), including on a 7.0 → 7.0 conversion that previously returned the document unchanged and for a 5.5.x record named `@VOID@`. `VERS` is added under an existing `GEDC` instead of writing a second `GEDC`. Output bytes, identifiers and `ConversionReport` entries change; a caller holding converted identifiers should map them through the report. |
+| `validator` reports impossible dates and compares duplicate birth years astronomically ([#606](https://github.com/cacack/gedcom-go/issues/606), [#613](https://github.com/cacack/gedcom-go/issues/613)) | v3.1.0 | `ValidateAll` emits the new `INVALID_DATE` warning for a date such as `31 FEB 1900`, so issue counts can rise; skip it with `ValidateOptions.SkipRules`. Duplicate detection no longer scores 44 BCE and 44 CE as the same birth year, and a birth date with no real year earns no year credit, so some pairs' confidence drops. |
 
 ## Accepted Future Breaks
 
