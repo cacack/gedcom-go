@@ -153,20 +153,15 @@ import (
     "github.com/cacack/gedcom-go/v3/decoder"
 )
 
+// Set a timeout for parsing large files
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+
 opts := &decoder.DecodeOptions{
-    // Set a timeout for parsing large files
-    Context: func() context.Context {
-        ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-        // Don't forget to cancel when done
-        defer cancel()
-        return ctx
-    }(),
+    Context: ctx,
 
-    // Strict mode - fail on any validation errors
-    Strict: false,
-
-    // Maximum line length (default: 255 for GEDCOM 5.5/5.5.1, unlimited for 7.0)
-    MaxLineLength: 255,
+    // Strict mode - fail on the first parse error instead of recovering
+    StrictMode: false,
 }
 
 doc, err := decoder.DecodeWithOptions(f, opts)
@@ -349,8 +344,8 @@ for _, person := range doc.Individuals() {
         }
 
         // Source citations
-        for _, citation := range event.Citations {
-            fmt.Printf("  Source: %s\n", citation)
+        for _, citation := range event.SourceCitations {
+            fmt.Printf("  Source: %s (%s)\n", citation.SourceXRef, citation.Page)
         }
     }
 }
@@ -443,8 +438,8 @@ for _, source := range sources {
         fmt.Printf("  Author: %s\n", source.Author)
     }
 
-    if source.Publisher != "" {
-        fmt.Printf("  Publisher: %s\n", source.Publisher)
+    if source.Publication != "" {
+        fmt.Printf("  Publication: %s\n", source.Publication)
     }
 
     for _, link := range source.RepositoryLinks {
@@ -469,7 +464,7 @@ for _, repo := range repositories {
     fmt.Printf("  Name: %s\n", repo.Name)
 
     if repo.Address != nil {
-        fmt.Printf("  Address: %s\n", repo.Address.FullAddress)
+        fmt.Printf("  Address: %s\n", repo.Address.Line1)
         fmt.Printf("  City: %s\n", repo.Address.City)
         fmt.Printf("  Country: %s\n", repo.Address.Country)
     }
@@ -765,15 +760,22 @@ fmt.Println(doc.Header.Encoding)  // Original encoding
 ANSEL is a legacy character encoding used in older GEDCOM files:
 
 ```go
-import "github.com/cacack/gedcom-go/v3/charset"
+import (
+    "bytes"
+    "fmt"
+    "io"
+
+    "github.com/cacack/gedcom-go/v3/charset"
+)
 
 // The charset package handles ANSEL decoding automatically
 // when used through the decoder
 
 // For manual ANSEL handling:
-anselText := []byte{0xE0, 0x41}  // ANSEL for "À"
-utf8Text := charset.ANSELToUTF8(anselText)
-fmt.Println(string(utf8Text))  // "À"
+anselText := []byte{0xE1, 0x41}  // ANSEL for "À" (combining grave precedes the base letter)
+r := charset.NewReaderWithEncoding(bytes.NewReader(anselText), charset.EncodingANSEL)
+utf8Text, _ := io.ReadAll(r)
+fmt.Println(string(utf8Text))  // "À", decomposed as "A\u0300" (no NFC), so it is != "\u00C0"
 ```
 
 ### Validating UTF-8
@@ -782,7 +784,7 @@ fmt.Println(string(utf8Text))  // "À"
 import "github.com/cacack/gedcom-go/v3/charset"
 
 text := "Hello, world!"
-if !charset.IsValidUTF8([]byte(text)) {
+if !charset.ValidateString(text) {
     fmt.Println("Invalid UTF-8")
 }
 ```
@@ -811,22 +813,24 @@ if err != nil {
 For more detailed error information, use the parser directly:
 
 ```go
-import "github.com/cacack/gedcom-go/v3/parser"
+import (
+    "errors"
+    "fmt"
 
-p := parser.New(f)
-for {
-    line, err := p.ParseLine()
-    if err == io.EOF {
-        break
+    "github.com/cacack/gedcom-go/v3/parser"
+)
+
+p := parser.NewParser()
+lines, err := p.Parse(f)
+if err != nil {
+    var parseErr *parser.ParseError
+    if errors.As(err, &parseErr) {
+        fmt.Printf("Parse error at line %d: %s (%q)\n",
+            parseErr.Line, parseErr.Message, parseErr.Context)
     }
-    if err != nil {
-        if parseErr, ok := err.(*parser.ParseError); ok {
-            fmt.Printf("Parse error at line %d: %s\n",
-                parseErr.Line, parseErr.Message)
-        }
-    }
-    // Process line...
+    return
 }
+fmt.Printf("Parsed %d lines\n", len(lines))
 ```
 
 ### Validation Errors
@@ -844,8 +848,8 @@ ctx, cancel := context.WithCancel(context.Background())
 defer cancel()
 
 // Start parsing in a goroutine
-resultChan := make(chan *gedcom.Document)
-errorChan := make(chan error)
+resultChan := make(chan *gedcom.Document, 1)
+errorChan := make(chan error, 1)
 
 go func() {
     opts := &decoder.DecodeOptions{Context: ctx}
@@ -860,7 +864,7 @@ go func() {
 // Cancel if it takes too long
 select {
 case doc := <-resultChan:
-    fmt.Println("Parsing complete")
+    fmt.Printf("Parsing complete: %d records\n", len(doc.Records))
 case err := <-errorChan:
     fmt.Printf("Error: %v\n", err)
 case <-time.After(10 * time.Second):
@@ -874,25 +878,22 @@ case <-time.After(10 * time.Second):
 For very large GEDCOM files, use the lower-level parser to avoid loading everything into memory:
 
 ```go
-import "github.com/cacack/gedcom-go/v3/parser"
+import (
+    "github.com/cacack/gedcom-go/v3/charset"
+    "github.com/cacack/gedcom-go/v3/parser"
+)
 
 f, _ := os.Open("large.ged")
 defer f.Close()
 
-p := parser.New(f)
 individualCount := 0
 
-for {
-    line, err := p.ParseLine()
-    if err == io.EOF {
-        break
-    }
+// Records yields one level-0 record (with its subordinate lines) at a time
+for record, err := range parser.Records(charset.NewReader(f)) {
     if err != nil {
         log.Fatal(err)
     }
-
-    // Process lines one at a time
-    if line.Level == 0 && line.Tag == "INDI" {
+    if record.Type == "INDI" {
         individualCount++
     }
 }
