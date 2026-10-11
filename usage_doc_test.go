@@ -44,7 +44,7 @@ type packageAPI struct {
 
 func TestUsageDocNamesExist(t *testing.T) {
 	apis := loadUsageDocAPIs(t)
-	blocks := regexp.MustCompile("(?s)```go\n(.*?)```").FindAllStringSubmatch(readFile(t, "USAGE.md"), -1)
+	blocks := regexp.MustCompile("(?s)```go\r?\n(.*?)```").FindAllStringSubmatch(readFile(t, "USAGE.md"), -1)
 	if len(blocks) == 0 {
 		t.Fatal("USAGE.md has no ```go blocks; update this test if the format changed")
 	}
