@@ -831,8 +831,10 @@ func (d *Date) Compare(other *Date) int {
 }
 
 // ToTime converts the date to a time.Time value.
-// Returns an error if the date is incomplete (missing day, month, or year)
-// or if the calendar is not Gregorian.
+// Returns an error if the date is incomplete (missing day, month, or year),
+// if the calendar is not Gregorian, or if the day does not exist in that
+// month and year (e.g. 31 FEB 1900, 29 FEB 1900), using the same rule as
+// Validate; invalid dates are never rolled over into the following month.
 // B.C. dates use astronomical year numbering via AstronomicalYear, so the
 // result's Year() is 0 for 1 BCE and -43 for 44 BCE (proleptic Gregorian).
 func (d *Date) ToTime() (time.Time, error) {
@@ -848,6 +850,9 @@ func (d *Date) ToTime() (time.Time, error) {
 	}
 	if d.Day == 0 {
 		return time.Time{}, fmt.Errorf("incomplete date: day is missing")
+	}
+	if err := d.validateDay(); err != nil {
+		return time.Time{}, err
 	}
 
 	return time.Date(AstronomicalYear(d.Year, d.IsBC), time.Month(d.Month), d.Day, 0, 0, 0, 0, time.UTC), nil
@@ -1024,7 +1029,8 @@ func (d *Date) IsEqual(other *Date) bool {
 
 // YearsBetween calculates the number of years between two dates.
 // For complete Gregorian dates, uses exact calculation via time.Time.
-// For partial dates or non-Gregorian calendars, uses simple year subtraction.
+// For partial dates, non-Gregorian calendars, or dates ToTime rejects (such as
+// a nonexistent day like 31 FEB), uses simple year subtraction.
 // Both paths count BCE years astronomically (see AstronomicalYear), so there is
 // no year zero between 1 BCE and 1 CE.
 // Returns error if both dates don't have years (insufficient data).

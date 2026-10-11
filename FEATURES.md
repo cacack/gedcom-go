@@ -943,7 +943,7 @@ isEqual := date1.IsEqual(date2)
 years, exact, err := gedcom.YearsBetween(birthDate, deathDate)
 // exact is true if both dates are complete (day/month/year)
 
-// Convert to time.Time (complete Gregorian dates only; BCE uses astronomical years, 44 BCE -> -43)
+// Convert to time.Time (complete, valid Gregorian dates only; 31 FEB errors; BCE uses astronomical years, 44 BCE -> -43)
 t, err := date.ToTime()
 
 // Get original string
