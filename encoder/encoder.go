@@ -18,10 +18,11 @@ var ErrNilDocument = errors.New("document is nil")
 // ErrLineBreak is returned when a tag name or cross-reference identifier --
 // [gedcom.Tag].Tag, [gedcom.Tag].XRef, [gedcom.Record].Type,
 // [gedcom.Record].XRef or [gedcom.Header].Submitter, including a tag name
-// derived from a typed entity field such as [gedcom.Event].Type -- contains a line break (CR or LF). GEDCOM has no
-// way to spell one there, and writing it through would start a new physical
-// line that a reader could take for a record the caller never wrote. A line
-// break in a value is not an error: it is written as CONT.
+// derived from a typed entity field such as [gedcom.Event].Type -- contains a
+// line break (CR or LF). GEDCOM has no way to spell one there, and writing it
+// through would start a new physical line that a reader could take for a
+// record the caller never wrote. A line break in a value is not an error: it
+// is written as CONT.
 var ErrLineBreak = errors.New("line break in tag or cross-reference identifier")
 
 // Encode writes a GEDCOM document to a writer.

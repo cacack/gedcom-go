@@ -91,14 +91,23 @@
 //
 // A line break (CR, LF or CRLF) in a value is written as CONT lines, because
 // that is how GEDCOM spells one. This includes the hand-built header fields
-// written as values ([gedcom.Header].Version, SourceSystem, Date and Language). A tag name or cross-reference identifier has
-// no such form, so a line break in [gedcom.Tag].Tag, [gedcom.Tag].XRef,
-// [gedcom.Record].Type, [gedcom.Record].XRef or the [gedcom.Header].Submitter
-// pointer -- or in a typed entity field that becomes a tag name, such as
-// [gedcom.Event].Type -- makes Encode return [ErrLineBreak] instead of writing a line a reader could take for a record
-// the caller never wrote. Only line breaks are checked; other characters in
-// those fields are written verbatim, so a hand-built document is otherwise the
-// caller's to keep well formed. A decoded document never contains one.
+// written as values ([gedcom.Header].Version, SourceSystem, Date and
+// Language). The grammar allows no CONT under HEAD.SOUR, HEAD.LANG or
+// GEDC.VERS, so folding there only keeps the line break from starting a new
+// record: decoding the output again fills the typed field from the first line
+// alone, with the CONT kept in [gedcom.Header].Tags. Those fields hold
+// single-line tokens, so a caller filling them from external strings should
+// strip line breaks first.
+//
+// A tag name or cross-reference identifier has no CONT form, so a line break
+// in [gedcom.Tag].Tag, [gedcom.Tag].XRef, [gedcom.Record].Type,
+// [gedcom.Record].XRef or the [gedcom.Header].Submitter pointer -- or in a
+// typed entity field that becomes a tag name, such as [gedcom.Event].Type --
+// makes Encode return [ErrLineBreak] instead of writing a line a reader could
+// take for a record the caller never wrote. Only line breaks are checked;
+// other characters in those fields are written verbatim, so a hand-built
+// document is otherwise the caller's to keep well formed. A decoded document
+// never contains one.
 //
 // Lines already written when the error is found stay written, as with a write
 // error, so encode into a buffer when partial output must not reach the

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
@@ -133,6 +134,37 @@ func TestEncodeHeaderFieldsLineBreak(t *testing.T) {
 			err := Encode(&buf, &gedcom.Document{Header: &gedcom.Header{Submitter: "@U1@" + brk + forgedRecord}})
 			assertLineBreakRejected(t, err, buf.String())
 		})
+	}
+}
+
+// TestEncodeHeaderFoldedValueRoundTrip pins what the package doc promises for
+// a header value folded where the grammar allows no CONT: the re-decoded typed
+// field keeps only the first line, and the CONT survives in Header.Tags, so
+// no record is forged and nothing is lost.
+func TestEncodeHeaderFoldedValueRoundTrip(t *testing.T) {
+	var buf bytes.Buffer
+	doc := &gedcom.Document{Header: &gedcom.Header{Version: gedcom.Version551, SourceSystem: "App\n" + forgedRecord}}
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	got, err := decoder.Decode(&buf)
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	if got.Header.SourceSystem != "App" {
+		t.Errorf("SourceSystem = %q, want %q", got.Header.SourceSystem, "App")
+	}
+	if len(got.Families()) != 0 {
+		t.Errorf("decoded %d families, want 0 (forged record)", len(got.Families()))
+	}
+	var cont bool
+	for _, tag := range got.Header.Tags {
+		if tag.Tag == "CONT" && tag.Value == forgedRecord {
+			cont = true
+		}
+	}
+	if !cont {
+		t.Errorf("Header.Tags lost the CONT line: %+v", got.Header.Tags)
 	}
 }
 
