@@ -67,7 +67,7 @@ func TestParseSourceTextNoContinuationReusesValue(t *testing.T) {
 		{Level: 4, Tag: "TEXT", Value: "Only line"},
 		{Level: 4, Tag: "TEXT", Value: "Next"},
 	}
-	got := parseSourceText(tags, 0, &diagnosticCollector{lenient: true})
+	got := parseSourceText(tags, 0, &diagnosticCollector{})
 	if got.Value != "Only line" || got.MIME != "" || got.Language != "" {
 		t.Errorf("parseSourceText = %+v, want {Value: Only line}", *got)
 	}

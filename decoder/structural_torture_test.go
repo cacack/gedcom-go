@@ -2,6 +2,7 @@ package decoder
 
 import (
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -505,19 +506,17 @@ func TestStructuralTortureAtSign55(t *testing.T) {
 // Behavior documented here:
 //   - XRefMap lookup is exact (case-sensitive); @test@ does not find @TEST@.
 //     Whether pointers should match case-insensitively is an open decision.
-//   - An XRef containing a space (@NoTe ref@) is invalid GEDCOM: strict mode
-//     rejects the file, lenient mode recovers the full identifier and reports
-//     an INVALID_XREF diagnostic (issue #377).
+//   - An XRef containing a space (@NoTe ref@) is valid here: the fixture
+//     declares GEDCOM 5.5.1, whose grammar lists the space among pointer
+//     characters. Strict mode accepts the file, no INVALID_XREF is reported,
+//     and "1 NOTE @NoTe ref@" is a pointer to the record (issue #579). Only
+//     GEDCOM 7.0 forbids the space; see TestSpacedXRef70.
 func TestStructuralTortureXRefCase(t *testing.T) {
 	const path = "../testdata/edge-cases/xref-case.ged"
 
-	t.Run("strict mode rejects the spaced xref", func(t *testing.T) {
-		err := decodeFixtureStrict(t, path)
-		if err == nil {
-			t.Fatal("strict decode should reject an xref containing a space")
-		}
-		if !strings.Contains(err.Error(), "xref contains a space") {
-			t.Errorf("strict decode error = %v, want it to mention the spaced xref", err)
+	t.Run("strict mode accepts the spaced xref", func(t *testing.T) {
+		if err := decodeFixtureStrict(t, path); err != nil {
+			t.Fatalf("strict decode: %v", err)
 		}
 	})
 
@@ -552,21 +551,20 @@ func TestStructuralTortureXRefCase(t *testing.T) {
 			}
 		}
 
-		// And it is reported, never silently accepted.
-		var found bool
+		// Valid 5.5.1, so nothing is reported.
 		for _, d := range result.Diagnostics {
-			if d.Code == CodeInvalidXRef && d.Line == 13 {
-				found = true
-				if d.Severity != SeverityError {
-					t.Errorf("diagnostic severity = %v, want %v", d.Severity, SeverityError)
-				}
-				if !strings.Contains(d.Message, "@NoTe ref@") {
-					t.Errorf("diagnostic message = %q, want it to name the xref", d.Message)
-				}
+			if d.Code == CodeInvalidXRef {
+				t.Errorf("unexpected diagnostic: %v", d)
 			}
 		}
-		if !found {
-			t.Errorf("expected an %s diagnostic on line 13, got %v", CodeInvalidXRef, result.Diagnostics)
+
+		// And the pointer to it is recognised as one.
+		subm := doc.GetSubmitter("@TEST@")
+		if subm == nil {
+			t.Fatal("submitter @TEST@ should exist")
+		}
+		if want := []string{"@NoTe@", "@NoTe ref@"}; !slices.Equal(subm.NoteXRefs, want) {
+			t.Errorf("NoteXRefs = %q, want %q", subm.NoteXRefs, want)
 		}
 	})
 }

@@ -19,6 +19,8 @@ type refCallback func(*string)
 // interior @ characters. Per the GEDCOM spec, a literal @ inside a value
 // is escaped as @@; an un-escaped interior @ means the value either
 // straddles two XRefs or is malformed, so it is not a valid pointer.
+// This is the GEDCOM 7.0 grammar; [IsPointerXRefForVersion] also accepts the
+// spaced identifiers GEDCOM 5.5 and 5.5.1 allow.
 func IsPointerXRef(s string) bool {
 	if len(s) < 3 || s[0] != '@' || s[len(s)-1] != '@' {
 		return false
@@ -29,6 +31,34 @@ func IsPointerXRef(s string) bool {
 	// XRefs do not contain whitespace or interior @ by spec; inline text
 	// often contains both.
 	return !strings.ContainsAny(s[1:len(s)-1], " \t\n\r@")
+}
+
+// IsPointerXRefForVersion reports whether s is an XRef pointer under the
+// identifier grammar of GEDCOM version v.
+//
+// GEDCOM 5.5 and 5.5.1 list the space (0x20) among the pointer characters, so
+// for those versions s may also contain spaces after its first character
+// ("@N 1@"); every other rule of [IsPointerXRef] still applies, and s must be
+// the whole pointer, so "@N 1@ see" is not one. For GEDCOM 7.0, whose Xref
+// grammar has no space, and for any other version it is [IsPointerXRef].
+//
+// Pass the version the file's header declares, as the decoder does (see
+// version.DeclaredVersion). Document.Header.Version may instead be a guessed
+// version — version detection falls back to tag heuristics and then 5.5 — so
+// using it would apply the 5.5 grammar to files that never claimed it.
+func IsPointerXRefForVersion(s string, v Version) bool {
+	if v != Version55 && v != Version551 {
+		return IsPointerXRef(s)
+	}
+	if len(s) < 3 || s[0] != '@' || s[len(s)-1] != '@' || s[1] == ' ' {
+		return false
+	}
+	if s == "@VOID@" {
+		return false
+	}
+	// A space is an ordinary identifier character here, so it cannot make s
+	// ambiguous; every other XRef exclusion still applies.
+	return !strings.ContainsAny(s[1:len(s)-1], "\t\n\r@")
 }
 
 // EscapeLeadingAt escapes a leading "@" in a line value as "@@", per the GEDCOM
@@ -60,7 +90,9 @@ func UnescapeLeadingAt(s string) string {
 // Visit invokes visit for every pointer-shaped XRef reachable from r's
 // Entity and raw Tags. Definition sites (Record.XRef and entity XRef
 // fields) are not visited. Non-pointer-shaped values and the @VOID@
-// sentinel are filtered before reaching the callback.
+// sentinel are filtered before reaching the callback. Pointers are matched
+// with the GEDCOM 7.0 grammar ([IsPointerXRef]), so spaced GEDCOM 5.5/5.5.1
+// pointers ("@N 1@") are not visited yet (issue #591).
 func Visit(r *Record, visit func(string)) {
 	if r == nil || visit == nil {
 		return
@@ -106,18 +138,19 @@ func Apply(d *Document, mapping map[string]string) {
 	}
 	// rewriteRef is used by walkRecord, which traverses string fields
 	// like Individual.NoteXRefs and SourceCitation.SourceXRef that are
-	// pointer-typed by contract but hold plain strings. Guarding with
-	// IsPointerXRef ensures Apply only ever rewrites pointer-shaped
-	// values, never text that happens to match a mapping key.
+	// pointer-typed by contract but hold plain strings, and raw tag
+	// values. Only a whole value that is pointer-shaped under the most
+	// permissive grammar (GEDCOM 5.5.1, which allows spaces such as
+	// "@N 1@") is looked up, so inline text is never rewritten.
 	rewriteRef := func(p *string) {
-		if p == nil || !IsPointerXRef(*p) {
+		if p == nil || !IsPointerXRefForVersion(*p, Version551) {
 			return
 		}
 		rewrite(p)
 	}
 
 	applyToRecords(d.Records, mapping, rewrite, rewriteRef)
-	applyToHeader(d.Header, rewrite)
+	applyToHeader(d.Header, rewrite, rewriteRef)
 	d.XRefMap = remapXRefMap(d.XRefMap, mapping)
 }
 
@@ -139,15 +172,14 @@ func applyToRecords(records []*Record, mapping map[string]string, rewrite, rewri
 }
 
 // applyToHeader rewrites the Submitter pointer and walks every header
-// tag. Header tags go through walkTag which already filters by
-// IsPointerXRef, so the bare rewrite closure is sufficient.
-func applyToHeader(h *Header, rewrite refCallback) {
+// tag with rewriteRef, which filters out non-pointer tag values.
+func applyToHeader(h *Header, rewrite, rewriteRef refCallback) {
 	if h == nil {
 		return
 	}
 	rewrite(&h.Submitter)
 	for _, t := range h.Tags {
-		walkTag(t, rewrite)
+		walkTag(t, rewriteRef)
 	}
 }
 
@@ -283,22 +315,16 @@ func walkRecord(r *Record, cb refCallback) {
 // tag.XRef. Centralizing both here means raw closure references survive
 // remap, no matter which field the parser populated.
 //
-// Both fields are filtered through IsPointerXRef before reaching cb so
-// non-pointer values (empty strings, plain text like "John Smith",
-// @VOID@ sentinels) are never passed to the callback. This protects
-// Apply from accidentally rewriting non-pointer text that coincidentally
-// matches a mapping key, and short-circuits the empty-string case that
-// dominates real GEDCOM files.
+// Both fields are passed unfiltered, like every other walked field: the
+// callback decides which values are pointers (Visit uses IsPointerXRef;
+// Apply also accepts spaced GEDCOM 5.5/5.5.1 pointers that are mapping
+// keys), so plain text like "John Smith" is never acted on.
 func walkTag(t *Tag, cb refCallback) {
 	if t == nil {
 		return
 	}
-	if IsPointerXRef(t.XRef) {
-		cb(&t.XRef)
-	}
-	if IsPointerXRef(t.Value) {
-		cb(&t.Value)
-	}
+	cb(&t.XRef)
+	cb(&t.Value)
 }
 
 func walkEntity(entity interface{}, cb refCallback) {

@@ -881,6 +881,9 @@ func TestParseWithOptions_LenientKeepsRecoveredXRef(t *testing.T) {
 	if parseErrors[0].Line != 2 || !strings.Contains(parseErrors[0].Message, "xref contains a space") {
 		t.Errorf("Parse error = %v, want a spaced-xref error on line 2", parseErrors[0])
 	}
+	if !errors.Is(parseErrors[0], ErrXRefContainsSpace) {
+		t.Errorf("Parse error = %v, want it to wrap ErrXRefContainsSpace", parseErrors[0])
+	}
 
 	// All four lines survive, with the malformed record recovered in place so
 	// the CONT line still attaches to it.
@@ -1261,5 +1264,45 @@ func TestLineScannerConsumed(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TestParseWithOptions_TolerateOnly verifies that lenient parsing stops after
+// the first error not matching TolerateOnly, having collected the ones that do.
+func TestParseWithOptions_TolerateOnly(t *testing.T) {
+	input := "0 @I 1@ INDI\ninvalid1\ninvalid2\n0 TRLR\n"
+	lines, parseErrors, fatalErr := NewParser().ParseWithOptions(strings.NewReader(input), &ParseOptions{
+		Lenient:      true,
+		TolerateOnly: ErrXRefContainsSpace,
+	})
+	if fatalErr != nil {
+		t.Fatalf("unexpected fatal error: %v", fatalErr)
+	}
+	if len(parseErrors) != 2 || parseErrors[0].Line != 1 || parseErrors[1].Line != 2 {
+		t.Fatalf("parseErrors = %v, want errors on lines 1 and 2", parseErrors)
+	}
+	if len(lines) != 1 || lines[0].XRef != "@I 1@" {
+		t.Errorf("lines = %v, want only the recovered line 1", lines)
+	}
+}
+
+// TestParseWithOptions_TolerateOnlyPastMaxErrors verifies that the error that
+// stops parsing is returned even when MaxErrors is already reached, so the
+// truncated lines never come back without a cause.
+func TestParseWithOptions_TolerateOnlyPastMaxErrors(t *testing.T) {
+	input := "0 @I 1@ INDI\ninvalid1\n0 TRLR\n"
+	lines, parseErrors, fatalErr := NewParser().ParseWithOptions(strings.NewReader(input), &ParseOptions{
+		Lenient:      true,
+		MaxErrors:    1,
+		TolerateOnly: ErrXRefContainsSpace,
+	})
+	if fatalErr != nil {
+		t.Fatalf("unexpected fatal error: %v", fatalErr)
+	}
+	if len(parseErrors) != 2 || parseErrors[1].Line != 2 {
+		t.Fatalf("parseErrors = %v, want the tolerated line 1 and the stopping line 2", parseErrors)
+	}
+	if len(lines) != 1 {
+		t.Errorf("lines = %v, want only the recovered line 1", lines)
 	}
 }

@@ -15,7 +15,7 @@ func TestNormalizeLevelJumps_NoJumps(t *testing.T) {
 		{Level: 1, Tag: "NAME", Value: "Test", LineNumber: 5},
 		{Level: 0, Tag: "TRLR", LineNumber: 6},
 	}
-	collector := &diagnosticCollector{lenient: true}
+	collector := &diagnosticCollector{}
 
 	normalizeLevelJumps(lines, collector)
 
@@ -38,7 +38,7 @@ func TestNormalizeLevelJumps_PatternA_Skip(t *testing.T) {
 		{Level: 1, Tag: "BIRT", LineNumber: 2},
 		{Level: 4, Tag: "DATE", Value: "1 JAN 1900", LineNumber: 3},
 	}
-	collector := &diagnosticCollector{lenient: true}
+	collector := &diagnosticCollector{}
 
 	normalizeLevelJumps(lines, collector)
 
@@ -69,7 +69,7 @@ func TestNormalizeLevelJumps_PatternB_Subordinate(t *testing.T) {
 		{Level: 1, Tag: "DEAT", LineNumber: 4},
 		{Level: 3, Tag: "PLAC", Value: "London", LineNumber: 5},
 	}
-	collector := &diagnosticCollector{lenient: true}
+	collector := &diagnosticCollector{}
 
 	normalizeLevelJumps(lines, collector)
 
@@ -92,7 +92,7 @@ func TestNormalizeLevelJumps_CascadingJumps(t *testing.T) {
 		{Level: 4, Tag: "DATE", LineNumber: 3},
 		{Level: 7, Tag: "TIME", LineNumber: 4},
 	}
-	collector := &diagnosticCollector{lenient: true}
+	collector := &diagnosticCollector{}
 
 	normalizeLevelJumps(lines, collector)
 
@@ -116,7 +116,7 @@ func TestNormalizeLevelJumps_GoingUpIsValid(t *testing.T) {
 		{Level: 3, Tag: "TIME", LineNumber: 4},
 		{Level: 1, Tag: "DEAT", LineNumber: 5},
 	}
-	collector := &diagnosticCollector{lenient: true}
+	collector := &diagnosticCollector{}
 
 	normalizeLevelJumps(lines, collector)
 
@@ -142,7 +142,7 @@ func TestNormalizeLevelJumps_NilCollector(t *testing.T) {
 
 func TestNormalizeLevelJumps_EmptyInput(t *testing.T) {
 	normalizeLevelJumps(nil, nil)
-	normalizeLevelJumps([]*parser.Line{}, &diagnosticCollector{lenient: true})
+	normalizeLevelJumps([]*parser.Line{}, &diagnosticCollector{})
 }
 
 func TestNormalizeLevelJumps_LeadingJump(t *testing.T) {
@@ -150,7 +150,7 @@ func TestNormalizeLevelJumps_LeadingJump(t *testing.T) {
 	lines := []*parser.Line{
 		{Level: 3, Tag: "STRAY", LineNumber: 1},
 	}
-	collector := &diagnosticCollector{lenient: true}
+	collector := &diagnosticCollector{}
 
 	normalizeLevelJumps(lines, collector)
 

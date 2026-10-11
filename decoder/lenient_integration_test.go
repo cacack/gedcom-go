@@ -938,10 +938,13 @@ func TestDecodeWithDiagnostics_LevelJumpRecovery_MidRecordSubordinateSkip(t *tes
 // reports it, but buildRecords used to drop line.XRef when it built the
 // subordinate gedcom.Tag, so the identifier vanished from the document
 // entirely -- a Lossless Representation violation.
+//
+// The document is GEDCOM 7.0 because only its grammar forbids the space; 5.5
+// and 5.5.1 accept the identifier without a report (#579).
 func TestDecodeWithDiagnostics_SubordinateSpacedXRef(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
-2 VERS 5.5
+2 VERS 7.0
 0 @I2@ INDI
 1 @I 1@ NOTE some text
 1 NAME Valid /Person/

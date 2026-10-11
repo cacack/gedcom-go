@@ -1,8 +1,10 @@
 package decoder
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/charset"
@@ -66,7 +68,7 @@ func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, erro
 //     occurs before any line was read
 //
 // In strict mode (StrictMode=true):
-//   - Parsing fails on the first error (current behavior)
+//   - Parsing fails on the first error that stands (see [DecodeOptions.StrictMode])
 //   - Diagnostics will be empty on success
 func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, error) {
 	return decode(r, opts, true)
@@ -118,22 +120,39 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// from, kept so a parse that recovers nothing can still report it.
 	var firstParseErr *parser.ParseError
 
+	// Both modes parse leniently: whether an XRef containing a space is an
+	// error depends on the GEDCOM version, which is only known once the
+	// header has been parsed (#579). Strict mode then fails on the first
+	// error that stands. It stops at the first error of any other kind,
+	// which stands whatever the version, so a garbage input is not read and
+	// buffered in full before being rejected.
+	parseOpts := &parser.ParseOptions{
+		Lenient:   true,
+		MaxErrors: 0, // Collect all errors
+	}
 	if opts.StrictMode {
-		// Strict mode: use existing Parse behavior
-		parsedLines, err := p.Parse(finalReader)
-		if err != nil {
-			return nil, err
+		parseOpts.TolerateOnly = parser.ErrXRefContainsSpace
+	}
+	parsedLines, parseErrors, fe := p.ParseWithOptions(finalReader, parseOpts)
+
+	// Detect GEDCOM version
+	detectedVersion := version.DetectVersion(parsedLines)
+	// The identifier grammar follows only the version the header declares:
+	// a guessed version (no header, or an unrecognized VERS such as 7.0.14)
+	// must not relax it to the 5.5 grammar.
+	xrefVersion := version.DeclaredVersion(parsedLines)
+	parseErrors = dropPermittedXRefErrors(parsedLines, parseErrors, xrefVersion)
+
+	if opts.StrictMode {
+		if len(parseErrors) > 0 {
+			return nil, parseErrors[0]
+		}
+		if fe != nil {
+			return nil, fe
 		}
 		lines = parsedLines
 	} else {
-		// Lenient mode: collect errors and continue
-		parseOpts := &parser.ParseOptions{
-			Lenient:   true,
-			MaxErrors: 0, // Collect all errors
-		}
-		parsedLines, parseErrors, fe := p.ParseWithOptions(finalReader, parseOpts)
-
-		// Convert parse errors to diagnostics
+		// Lenient mode: convert parse errors to diagnostics and continue
 		diagnostics = convertParseErrors(parseErrors)
 		if len(parseErrors) > 0 {
 			firstParseErr = parseErrors[0]
@@ -161,9 +180,6 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 		}
 	}
 
-	// Detect GEDCOM version
-	detectedVersion := version.DetectVersion(lines)
-
 	// Check if we have any data to work with
 	if len(lines) == 0 {
 		// No valid lines parsed - return empty document with diagnostics
@@ -187,12 +203,12 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 		return result, nil
 	}
 
-	// Create a collector for entity-level diagnostics if in lenient mode
-	var collector *diagnosticCollector
-	if !opts.StrictMode && collect {
-		collector = &diagnosticCollector{
-			lenient: true,
-		}
+	// Create a collector for entity-level diagnostics. Only a lenient decode
+	// that reports them keeps them, but every decode needs the version it
+	// carries.
+	collector := &diagnosticCollector{
+		version: xrefVersion,
+		discard: opts.StrictMode || !collect,
 	}
 
 	// Lenient mode: recover from malformed indentation in real-world exports by
@@ -208,14 +224,34 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	populateEntities(doc, collector)
 
 	// Merge entity-level diagnostics with parser diagnostics
-	if collector != nil {
-		diagnostics = append(diagnostics, collector.diagnostics...)
-	}
+	diagnostics = append(diagnostics, collector.diagnostics...)
 
 	return &DecodeResult{
 		Document:    doc,
 		Diagnostics: diagnostics,
 	}, fatalErr
+}
+
+// dropPermittedXRefErrors removes from errs each parser.ErrXRefContainsSpace
+// error whose identifier is valid in version v, as decided by
+// gedcom.IsPointerXRefForVersion: GEDCOM 5.5 and 5.5.1 allow a space inside an
+// identifier, 7.0 does not (#579). The parser cannot make that call, because it
+// does not know the version; it reports every spaced identifier and keeps the
+// recovered line, so dropping the error is all that accepting one takes.
+func dropPermittedXRefErrors(lines []*parser.Line, errs []*parser.ParseError, v gedcom.Version) []*parser.ParseError {
+	var kept []*parser.ParseError
+	for _, pe := range errs {
+		if errors.Is(pe, parser.ErrXRefContainsSpace) {
+			// Lines are in input order, so the recovered line is found by
+			// its line number.
+			i, found := sort.Find(len(lines), func(i int) int { return pe.Line - lines[i].LineNumber })
+			if found && gedcom.IsPointerXRefForVersion(lines[i].XRef, v) {
+				continue
+			}
+		}
+		kept = append(kept, pe)
+	}
+	return kept
 }
 
 // convertParseErrors converts parser.ParseError instances to Diagnostics.
@@ -487,7 +523,7 @@ func buildRecords(doc *gedcom.Document, lines []*parser.Line, collector *diagnos
 // SeverityError, not SeverityWarning: the line is not a valid header or trailer,
 // so the file is wrong even though the decoder keeps the data as a record.
 func (c *diagnosticCollector) addXRefOnStructuralLine(line *parser.Line) {
-	if c == nil {
+	if !c.collecting() {
 		return
 	}
 	// Context is the offending line reconstructed from its parsed fields, the

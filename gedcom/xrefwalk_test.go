@@ -655,3 +655,91 @@ func TestVisitDoesNotMutateSource(t *testing.T) {
 		t.Errorf("Subset wrote RepositoryLinks[0].XRef = %q, want it untouched", link.XRef)
 	}
 }
+
+func TestIsPointerXRefForVersion(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		ver  Version
+		want bool
+	}{
+		// GEDCOM 5.5 and 5.5.1 list the space among pointer characters (#579).
+		{"5.5.1 spaced", "@N 1@", Version551, true},
+		{"5.5 spaced", "@I 1@", Version55, true},
+		{"5.5.1 several spaces", "@NoTe ref x@", Version551, true},
+		{"5.5.1 plain", "@I1@", Version551, true},
+		{"5.5.1 leading space", "@ N1@", Version551, false},
+		{"5.5.1 only a space", "@ @", Version551, false},
+		{"5.5.1 tab", "@N\t1@", Version551, false},
+		{"5.5.1 interior at", "@N 1@ and @N2@", Version551, false},
+		{"5.5.1 trailing text", "@N 1@ see", Version551, false},
+		{"5.5.1 void", "@VOID@", Version551, false},
+		{"5.5.1 text", "Shared note", Version551, false},
+		// GEDCOM 7.0 and an unknown version keep IsPointerXRef's rule.
+		{"7.0 spaced", "@N 1@", Version70, false},
+		{"7.0 plain", "@N1@", Version70, true},
+		{"unknown spaced", "@N 1@", "", false},
+		{"unknown plain", "@N1@", "", true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := IsPointerXRefForVersion(tc.in, tc.ver); got != tc.want {
+				t.Errorf("IsPointerXRefForVersion(%q, %q) = %v, want %v", tc.in, tc.ver, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestApply_SpacedMappingKey pins issue #579: a reference equal to a spaced
+// mapping key (a GEDCOM 5.5/5.5.1 identifier) is rewritten wherever it is the
+// whole value, while inline text and non-key values stay untouched.
+func TestApply_SpacedMappingKey(t *testing.T) {
+	note := &Record{XRef: "@N 1@", Type: RecordTypeNote, Entity: &Note{XRef: "@N 1@"}}
+	ind := &Record{
+		XRef: "@I1@", Type: RecordTypeIndividual,
+		Entity: &Individual{XRef: "@I1@", NoteXRefs: []string{"@N 1@", "@x y@"}},
+		Tags: []*Tag{
+			{Level: 1, Tag: "NOTE", Value: "@N 1@"},
+			{Level: 1, Tag: "NOTE", Value: "see @N 1@ here"},
+		},
+	}
+	header := &Header{Tags: []*Tag{{Level: 1, Tag: "NOTE", Value: "@N 1@"}}}
+	doc := &Document{
+		Header:  header,
+		Records: []*Record{note, ind},
+		XRefMap: map[string]*Record{"@N 1@": note, "@I1@": ind},
+	}
+
+	Apply(doc, map[string]string{"@N 1@": "@N_1@"})
+
+	if note.XRef != "@N_1@" || doc.XRefMap["@N_1@"] != note {
+		t.Errorf("definition not rewritten: XRef=%q", note.XRef)
+	}
+	refs := ind.Entity.(*Individual).NoteXRefs
+	if refs[0] != "@N_1@" || refs[1] != "@x y@" {
+		t.Errorf("NoteXRefs = %q, want [@N_1@ @x y@]", refs)
+	}
+	if v := ind.Tags[0].Value; v != "@N_1@" {
+		t.Errorf("raw pointer tag = %q, want @N_1@", v)
+	}
+	if v := ind.Tags[1].Value; v != "see @N 1@ here" {
+		t.Errorf("inline text rewritten to %q", v)
+	}
+	if v := header.Tags[0].Value; v != "@N_1@" {
+		t.Errorf("header pointer tag = %q, want @N_1@", v)
+	}
+}
+
+// TestIsPointerXRefForVersion_NoAlloc guards the per-value hot path: walking a
+// document classifies every tag value, most of which are plain text.
+func TestIsPointerXRefForVersion_NoAlloc(t *testing.T) {
+	values := []string{"A plain-text note with spaces", "@N 1@", "@I1@"}
+	allocs := testing.AllocsPerRun(100, func() {
+		for _, v := range values {
+			IsPointerXRefForVersion(v, Version551)
+		}
+	})
+	if allocs != 0 {
+		t.Errorf("IsPointerXRefForVersion allocated %v times per run, want 0", allocs)
+	}
+}
