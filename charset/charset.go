@@ -58,6 +58,11 @@ var _ interface{ ErrorLine() int } = (*ErrInvalidUTF8)(nil)
 // It first checks for a BOM (Byte Order Mark), then looks for a CHAR tag in the
 // GEDCOM header to determine the encoding. The input is converted to UTF-8 and validated.
 //
+// Detection reads only the header before returning (at most 64 KiB; see
+// DetectEncodingFromHeader) and replays those bytes, so the rest of the input
+// is streamed as the returned reader is read. When the encoding is already
+// known, NewReaderWithEncoding skips detection entirely.
+//
 // Supported encodings:
 //   - UTF-16 LE (BOM: 0xFF 0xFE) - Converted to UTF-8
 //   - UTF-16 BE (BOM: 0xFE 0xFF) - Converted to UTF-8
@@ -82,19 +87,27 @@ func NewReader(r io.Reader) io.Reader {
 	}
 
 	// Check header for CHAR declaration
-	headerReader, headerEnc, err := DetectEncodingFromHeader(detectedReader)
+	probe, headerLen, err := probeHeader(detectedReader)
 	if err != nil {
-		// If header detection fails, fall back to UTF-8 validation
+		// If header detection fails, fall back to UTF-8 validation of the
+		// bytes already probed, then report the read error in place so the
+		// consumed prefix is neither lost nor silently skipped.
 		return &utf8Reader{
-			reader: detectedReader,
+			reader: io.MultiReader(bytes.NewReader(probe), errReader{err: err}),
 			line:   1,
 			column: 1,
 		}
 	}
 
 	// Use detected encoding (or UTF-8 if unknown)
-	return NewReaderWithEncoding(headerReader, headerEnc)
+	headerReader := io.MultiReader(bytes.NewReader(probe), detectedReader)
+	return NewReaderWithEncoding(headerReader, charEncoding(probe[:headerLen]))
 }
+
+// errReader is an io.Reader that always returns err.
+type errReader struct{ err error }
+
+func (r errReader) Read([]byte) (int, error) { return 0, r.err }
 
 type utf8Reader struct {
 	reader     io.Reader
@@ -446,44 +459,48 @@ func newUTF16Reader(r io.Reader, bigEndian bool) io.Reader {
 	return transform.NewReader(r, decoder)
 }
 
-// headerPeekSize is the number of bytes to read when looking for the CHAR tag.
-// GEDCOM headers are typically small, so 1000 bytes should be sufficient.
-const headerPeekSize = 1000
+// headerProbeLimit caps how many bytes DetectEncodingFromHeader reads while
+// looking for the end of the GEDCOM header. Real headers are a few KiB at most;
+// the cap keeps an input with no record after HEAD from being read whole.
+const headerProbeLimit = 64 << 10
+
+// headerProbeChunk is the size of each read DetectEncodingFromHeader makes
+// while probing, so a short header costs one small read rather than the cap.
+const headerProbeChunk = 4 << 10
 
 // charTagPattern matches the GEDCOM CHAR tag that declares the character encoding.
 // Pattern handles both CR and LF line endings, and is case-insensitive.
 // Matches: "1 CHAR ANSEL", "1 CHAR UTF-8", "1 CHAR ASCII", etc.
 var charTagPattern = regexp.MustCompile(`(?i)[\r\n]1\s+CHAR\s+(\S+)`)
 
-// DetectEncodingFromHeader peeks at GEDCOM header to find the CHAR tag.
-// It returns a new reader with all bytes preserved, the detected encoding,
-// and any error encountered.
+// level0LinePattern matches the line break that begins a level-0 line, which
+// marks the end of the header once the HEAD line itself has been passed.
+var level0LinePattern = regexp.MustCompile(`[\r\n][ \t]*0[ \t]`)
+
+// DetectEncodingFromHeader peeks at the GEDCOM header to find the CHAR tag.
+// It returns a reader that replays every byte of r, the detected encoding,
+// and any error encountered while probing.
 //
-// If the CHAR tag is not found within the first headerPeekSize bytes,
-// EncodingUnknown is returned and the caller should assume UTF-8.
-//
-// Note: This function reads the entire remaining content to avoid issues with
-// multi-byte UTF-8 sequences being split at arbitrary boundaries.
+// Only the header is read: probing stops at the first level-0 line after
+// HEAD, at end of input, or after 64 KiB, whichever comes first. The CHAR tag
+// is searched for within that header; if it is not found, EncodingUnknown is
+// returned and the caller should assume UTF-8. The rest of r is not read until
+// the returned reader is, so a read error past the probe surfaces from it.
 func DetectEncodingFromHeader(r io.Reader) (io.Reader, Encoding, error) {
-	// Read all content to avoid splitting multi-byte UTF-8 sequences
-	allContent, err := io.ReadAll(r)
+	probe, headerLen, err := probeHeader(r)
 	if err != nil {
 		return nil, EncodingUnknown, err
 	}
 
-	// No data read
-	if len(allContent) == 0 {
-		return bytes.NewReader(nil), EncodingUnknown, nil
-	}
+	// Replay the probed bytes ahead of the unread remainder
+	return io.MultiReader(bytes.NewReader(probe), r), charEncoding(probe[:headerLen]), nil
+}
 
-	// Search for CHAR tag in the first headerPeekSize bytes (or less)
-	searchLen := headerPeekSize
-	if len(allContent) < searchLen {
-		searchLen = len(allContent)
-	}
-
+// charEncoding returns the encoding declared by the first CHAR tag in header,
+// or EncodingUnknown if there is none or its value is not recognized.
+func charEncoding(header []byte) Encoding {
 	encoding := EncodingUnknown
-	matches := charTagPattern.FindSubmatch(allContent[:searchLen])
+	matches := charTagPattern.FindSubmatch(header)
 	if len(matches) >= 2 {
 		charValue := strings.ToUpper(string(matches[1]))
 		switch charValue {
@@ -505,9 +522,41 @@ func DetectEncodingFromHeader(r io.Reader) (io.Reader, Encoding, error) {
 			encoding = EncodingLATIN1
 		}
 	}
+	return encoding
+}
 
-	// Return reader with all content
-	return bytes.NewReader(allContent), encoding, nil
+// probeHeader reads r until the header is complete (see
+// DetectEncodingFromHeader) and returns the bytes read along with the length
+// of the header within them. On a read error it returns the bytes read before
+// the error, so a caller can still replay them.
+func probeHeader(r io.Reader) (probe []byte, headerLen int, err error) {
+	chunk := make([]byte, headerProbeChunk)
+	for len(probe) < headerProbeLimit {
+		n, readErr := r.Read(chunk[:min(len(chunk), headerProbeLimit-len(probe))])
+		probe = append(probe, chunk[:n]...)
+		if readErr != nil && readErr != io.EOF {
+			return probe, 0, readErr
+		}
+		if end := headerEnd(probe); end >= 0 {
+			return probe, end, nil
+		}
+		if readErr == io.EOF {
+			break
+		}
+	}
+	return probe, len(probe), nil
+}
+
+// headerEnd returns the offset of the first level-0 line after the HEAD line,
+// or -1 if data does not contain one yet. Leading blank lines are skipped so
+// the HEAD line itself is never mistaken for the end of the header.
+func headerEnd(data []byte) int {
+	start := len(data) - len(bytes.TrimLeft(data, " \t\r\n"))
+	loc := level0LinePattern.FindIndex(data[start:])
+	if loc == nil {
+		return -1
+	}
+	return start + loc[0]
 }
 
 // NewReaderWithEncoding wraps a reader with the specified encoding converter.
