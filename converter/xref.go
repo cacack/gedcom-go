@@ -126,6 +126,10 @@ func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling
 		return candidate
 	}
 
+	// Keyed on Header.Version to match gedcom.Apply, which must use Version
+	// because the 5.5.x -> 7.0 paths stamp it only after normalizing. So a
+	// version guessed as 7.0 from tags (no VERS declared) counts as 7.0 here:
+	// a record named @VOID@ keeps its name and @VOID@ stays the null pointer.
 	voidIsNull := doc.Header != nil && doc.Header.Version == gedcom.Version70
 	for _, record := range doc.Records {
 		if record == nil || !recordNeedsV7XRef(record.XRef, voidIsNull) {

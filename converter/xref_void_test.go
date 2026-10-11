@@ -198,3 +198,45 @@ func TestConvertVoidIn70SourceIsNotRenamed(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertVoidInGuessed70SourceIsNotRenamed pins that the @VOID@ gate keys
+// on Header.Version, as gedcom.Apply does: a header with no VERS whose tags
+// (here SNOTE) make detection guess 7.0 is treated as a 7.0 source, so a
+// record named @VOID@ keeps its name.
+func TestConvertVoidInGuessed70SourceIsNotRenamed(t *testing.T) {
+	input := `0 HEAD
+1 CHAR UTF-8
+0 @VOID@ SNOTE hello
+0 @I1@ INDI
+1 NOTE @VOID@
+0 TRLR
+`
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if doc.Header.Version != gedcom.Version70 {
+		t.Fatalf("premise: detected version = %q, want guessed %q", doc.Header.Version, gedcom.Version70)
+	}
+
+	converted, report, err := converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	for _, n := range report.Normalized {
+		if n.Original == "@VOID@" {
+			t.Errorf("report renames @VOID@ to %q in a guessed 7.0 source", n.Result)
+		}
+	}
+	if converted.GetRecord("@VOID@") == nil {
+		t.Errorf("@VOID@ record renamed or dropped")
+	}
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, converted); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "0 @VOID@ SNOTE hello") || !strings.Contains(out, "0 @I1@ INDI\n1 NOTE @VOID@") {
+		t.Errorf("@VOID@ record or pointer not kept:\n%s", out)
+	}
+}
