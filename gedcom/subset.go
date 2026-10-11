@@ -43,12 +43,13 @@ func (e *UnknownXRefError) Is(target error) bool {
 // XRef remap as a separate step.
 //
 // Header policy: the returned document always has a non-nil Header.
-// When the source has a Header, the new one carries Version, Encoding,
-// SourceSystem, Date, Language, Copyright, AncestryTreeID, and Schema
-// from it. When the source's Header is nil, an empty *Header is
-// returned so callers can safely access sub.Header.Version without a
-// nil check. The Submitter pointer names part of the document's own
-// structure rather than something the caller asked for, so the
+// When the source has a Header, the new one carries Version,
+// DeclaredVersion, Encoding, SourceSystem, Date, Language, Copyright,
+// AncestryTreeID, and Schema from it. When the source's Header is nil,
+// an empty *Header is returned so callers can safely access
+// sub.Header.Version without a nil check. The Submitter pointer names
+// part of the document's own structure rather than something the
+// caller asked for, so the
 // submitter record it points at is always pulled into the closure and
 // the pointer is preserved. Only a pointer that resolves to an actual
 // SUBM record is followed: one that names a different record type, or
@@ -91,7 +92,10 @@ func (e *UnknownXRefError) Is(target error) bool {
 // pointer-shaped references. Depending on the parser, custom or vendor
 // tags may surface an XRef in either field; following both ensures that
 // vendor-extension references are not silently dropped from the subset.
-// Spaced GEDCOM 5.5/5.5.1 pointers ("@N 1@") are not followed yet (issue #591).
+//
+// Pointer shape follows the version the source declares
+// ([Document.IsPointerXRef]): in a GEDCOM 5.5 or 5.5.1 document a spaced
+// pointer such as "@N 1@" is a valid seed and is followed like any other.
 func (d *Document) Subset(xrefs []string) (*Document, error) {
 	if d == nil {
 		return nil, errors.New("subset: source document is nil")
@@ -138,7 +142,7 @@ func (d *Document) subsetClosure(xrefs []string) (map[string]bool, error) {
 		if closure[seed] {
 			continue
 		}
-		if !IsPointerXRef(seed) || d.GetRecord(seed) == nil {
+		if !d.IsPointerXRef(seed) || d.GetRecord(seed) == nil {
 			return nil, &UnknownXRefError{XRef: seed, IsSeed: true}
 		}
 		closure[seed] = true
@@ -160,7 +164,7 @@ func (d *Document) subsetClosure(xrefs []string) (map[string]bool, error) {
 	// nothing to do with it.
 	if d.Header != nil {
 		subm := d.Header.Submitter
-		if IsPointerXRef(subm) && !closure[subm] && d.GetSubmitter(subm) != nil {
+		if d.IsPointerXRef(subm) && !closure[subm] && d.GetSubmitter(subm) != nil {
 			closure[subm] = true
 			queue = append(queue, subm)
 		}
@@ -171,7 +175,7 @@ func (d *Document) subsetClosure(xrefs []string) (map[string]bool, error) {
 		if walkErr != nil {
 			return
 		}
-		if !IsPointerXRef(ref) || closure[ref] {
+		if !d.IsPointerXRef(ref) || closure[ref] {
 			return
 		}
 		if d.GetRecord(ref) == nil {
@@ -185,7 +189,7 @@ func (d *Document) subsetClosure(xrefs []string) (map[string]bool, error) {
 	// Every XRef in queue is already validated in closure, so the loop
 	// can fetch records directly without re-checking for nil.
 	for head := 0; head < len(queue); head++ {
-		Visit(d.XRefMap[queue[head]], visit)
+		VisitForVersion(d.XRefMap[queue[head]], d.declaredVersion(), visit)
 		if walkErr != nil {
 			return nil, walkErr
 		}
@@ -206,13 +210,14 @@ func subsetHeader(src *Document, closure map[string]bool) *Header {
 		return &Header{}
 	}
 	h := &Header{
-		Version:        src.Header.Version,
-		Encoding:       src.Header.Encoding,
-		SourceSystem:   src.Header.SourceSystem,
-		Date:           src.Header.Date,
-		Language:       src.Header.Language,
-		Copyright:      src.Header.Copyright,
-		AncestryTreeID: src.Header.AncestryTreeID,
+		Version:         src.Header.Version,
+		DeclaredVersion: src.Header.DeclaredVersion,
+		Encoding:        src.Header.Encoding,
+		SourceSystem:    src.Header.SourceSystem,
+		Date:            src.Header.Date,
+		Language:        src.Header.Language,
+		Copyright:       src.Header.Copyright,
+		AncestryTreeID:  src.Header.AncestryTreeID,
 	}
 	// Mirrors the raw-tag rule below exactly: a pointer outside the closure
 	// is dropped, anything else is carried through. The two predicates have
@@ -222,7 +227,7 @@ func subsetHeader(src *Document, closure map[string]bool) *Header {
 	// field here would say "no submitter" about a header that still encodes
 	// one.
 	if src.Header.Submitter != "" &&
-		(!IsPointerXRef(src.Header.Submitter) || closure[src.Header.Submitter]) {
+		(!src.IsPointerXRef(src.Header.Submitter) || closure[src.Header.Submitter]) {
 		h.Submitter = src.Header.Submitter
 	}
 	for _, tag := range src.Header.Tags {
@@ -236,7 +241,7 @@ func subsetHeader(src *Document, closure map[string]bool) *Header {
 		// field they populate for vendor tags). Drop the tag if its
 		// Value resolves to a record outside the closure so the subset
 		// stays self-contained.
-		if IsPointerXRef(tag.Value) && !closure[tag.Value] {
+		if src.IsPointerXRef(tag.Value) && !closure[tag.Value] {
 			continue
 		}
 		h.Tags = append(h.Tags, tag.Clone())

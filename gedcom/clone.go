@@ -39,15 +39,16 @@ func (h *Header) Clone() *Header {
 	}
 
 	return &Header{
-		Version:        h.Version,
-		Encoding:       h.Encoding,
-		SourceSystem:   h.SourceSystem,
-		Date:           h.Date,
-		Language:       h.Language,
-		Copyright:      h.Copyright,
-		Submitter:      h.Submitter,
-		AncestryTreeID: h.AncestryTreeID,
-		Tags:           CloneTags(h.Tags),
+		Version:         h.Version,
+		DeclaredVersion: h.DeclaredVersion,
+		Encoding:        h.Encoding,
+		SourceSystem:    h.SourceSystem,
+		Date:            h.Date,
+		Language:        h.Language,
+		Copyright:       h.Copyright,
+		Submitter:       h.Submitter,
+		AncestryTreeID:  h.AncestryTreeID,
+		Tags:            CloneTags(h.Tags),
 	}
 }
 

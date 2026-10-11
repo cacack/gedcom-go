@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/parser"
 )
 
@@ -183,5 +184,32 @@ func TestSpacedSNOTEUnderOBJE551(t *testing.T) {
 	}
 	if want := []string{"@N 1@"}; !slices.Equal(media.SharedNoteXRefs, want) || len(media.NoteXRefs) != 0 {
 		t.Errorf("SharedNoteXRefs = %q, NoteXRefs = %q; want %q and none", media.SharedNoteXRefs, media.NoteXRefs, want)
+	}
+}
+
+// TestDeclaredVersion pins that Header.DeclaredVersion records only the version
+// the header declares, never a guessed one (#591).
+func TestDeclaredVersion(t *testing.T) {
+	tests := []struct {
+		name string
+		data string
+		want gedcom.Version
+	}{
+		{"5.5.1", spacedXRefDoc("5.5.1"), gedcom.Version551},
+		{"7.0", spacedXRefDoc("7.0"), gedcom.Version70},
+		{"7.0 patch", spacedXRefDoc("7.0.14"), gedcom.Version70},
+		{"unrecognized", spacedXRefDoc("7.1"), ""},
+		{"no header", "0 @I1@ INDI\n1 NAME A /B/\n0 TRLR\n", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := DecodeWithDiagnostics(strings.NewReader(tt.data), nil)
+			if err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if got := result.Document.Header.DeclaredVersion; got != tt.want {
+				t.Errorf("DeclaredVersion = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }

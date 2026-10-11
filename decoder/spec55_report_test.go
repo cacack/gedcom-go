@@ -178,13 +178,12 @@ exactly what 5.5.1 later named `+"`FAMILY_EVENT_DETAIL`"+`.
   and separate work.
 - **A value the decoder would have chosen anyway is invisible.** The measurement
   is a difference between two decoded documents, so a line whose only typed
-  effect is a value the model already holds cannot be seen. 5.5 is where this
-  bites: the decoder falls back to 5.5 when a document states no version, so
-  removing the version statement from a 5.5 document changes nothing, and
-  `+"`HEAD`"+`, `+"`HEAD.GEDC`"+` and `+"`HEAD.GEDC.VERS`"+` read `+"`raw (undiagnosed)`"+` in 5.5 and
-  `+"`typed`"+` in 5.5.1. The difference between those two columns is the fallback,
-  not the decoder. `+"`TestSpec55VersionFallbackIsInvisible`"+` pins it so this note
-  cannot quietly stop being true.
+  effect is a value the model already holds cannot be seen. The version
+  statement would be such a line -- the decoder falls back to 5.5 when a
+  document states none -- but `+"`Header.DeclaredVersion`"+` records only a declared
+  version, so `+"`HEAD`"+`, `+"`HEAD.GEDC`"+` and `+"`HEAD.GEDC.VERS`"+` read `+"`typed`"+` in 5.5 as
+  in 5.5.1. `+"`TestSpec55VersionStatementIsVisible`"+` pins it so this note cannot
+  quietly stop being true.
 - **`+"`typed`"+` is not a claim of completeness.** It means the structure changed the
   typed model, not that every part of its payload was interpreted.
 - **Every payload is invented.** The grammar names a value type; it does not

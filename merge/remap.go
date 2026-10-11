@@ -14,7 +14,9 @@ import (
 // with the current XRef (e.g., "@I1@") and must return the new XRef
 // (e.g., "@A_I1@"). The returned XRef must:
 //
-//   - have the @xref@ pointer shape (gedcom.IsPointerXRef returns true)
+//   - have the @xref@ pointer shape under the version doc declares
+//     (doc.IsPointerXRef returns true; a GEDCOM 5.5/5.5.1 document allows
+//     spaces, such as "@N 1@")
 //   - not collide with another transform output in the same call
 //
 // Records with an empty XRef (records that have no definition site,
@@ -65,11 +67,11 @@ func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedco
 			continue
 		}
 		newXRef := transform(r.XRef)
-		if !gedcom.IsPointerXRef(newXRef) {
+		if !doc.IsPointerXRef(newXRef) {
 			return nil, nil, &RemapError{
 				Old:    r.XRef,
 				New:    newXRef,
-				Reason: "transform produced a malformed XRef (must satisfy gedcom.IsPointerXRef)",
+				Reason: "transform produced a malformed XRef (must satisfy Document.IsPointerXRef; spaces are allowed only when Header.DeclaredVersion is 5.5 or 5.5.1)",
 			}
 		}
 		if prevOld, dup := seenNew[newXRef]; dup {

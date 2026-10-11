@@ -149,10 +149,21 @@ func indexRecordXRefs(doc *gedcom.Document) (taken map[string]bool, byUpper map[
 }
 
 // undefinedPointers returns, in document order and without duplicates, each
-// pointer that no record defines. Pointers are found with gedcom.Visit and in
-// the header's submitter and tags; like Visit, header tags are matched with
-// the 7.0 pointer grammar, so spaced pointers are not found yet (issue #591).
+// pointer that no record defines. Pointers are found with
+// gedcom.VisitForVersion and in the header's submitter and tags, under the
+// grammar of the source's declared version (Document.IsPointerXRef), so a
+// spaced 5.5/5.5.1 pointer is found too.
 func undefinedPointers(doc *gedcom.Document) []string {
+	// Only a header-declared 5.5/5.5.1 version relaxes the grammar, never a
+	// guessed one (Header.Version), matching the decoder and
+	// Document.IsPointerXRef: guessing would turn text such as "@home office@"
+	// into a pointer. So without a declared version a dangling spaced pointer
+	// is not found here and is left unchanged; a defined spaced record XRef is
+	// still renamed, since its record is known to be one.
+	var declared gedcom.Version
+	if doc.Header != nil {
+		declared = doc.Header.DeclaredVersion
+	}
 	var refs []string
 	seen := make(map[string]bool) // defined XRefs and refs already added
 	for _, record := range doc.Records {
@@ -174,14 +185,14 @@ func undefinedPointers(doc *gedcom.Document) []string {
 				continue
 			}
 			for _, v := range []string{tag.XRef, tag.Value} {
-				if gedcom.IsPointerXRef(v) {
+				if doc.IsPointerXRef(v) {
 					add(v)
 				}
 			}
 		}
 	}
 	for _, record := range doc.Records {
-		gedcom.Visit(record, add)
+		gedcom.VisitForVersion(record, declared, add)
 	}
 	return refs
 }

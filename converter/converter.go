@@ -107,6 +107,9 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 		converted.Header = &gedcom.Header{}
 	}
 	converted.Header.Version = targetVersion
+	// The header now declares the target version (updateVersionTag), so its
+	// identifier grammar applies from here on.
+	converted.Header.DeclaredVersion = targetVersion
 
 	// Validate if requested
 	if opts.Validate {

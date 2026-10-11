@@ -40,7 +40,10 @@ func (x *XRefValidator) ValidateXRefs(doc *gedcom.Document) []Issue {
 	}
 
 	// No limit for GEDCOM 7.0+
-	// Use explicit check for 7.0 to handle unknown versions conservatively
+	// Use explicit check for 7.0 to handle unknown versions conservatively.
+	// The possibly guessed Header.Version is deliberate here: a 5.5-style
+	// length limit is advisory, unlike the pointer grammar, which follows
+	// Header.DeclaredVersion (see gedcom.Document.IsPointerXRef).
 	if doc.Header.Version == gedcom.Version70 {
 		return issues
 	}
