@@ -717,6 +717,9 @@ func TestFindDuplicates_BCEBirthYears(t *testing.T) {
 		{name: "44 BCE vs 44 BCE", date1: "1 JAN 44 BC", date2: "15 MAR 44 BC", wantReason: "same birth year"},
 		{name: "1 BCE vs 1 CE within range", date1: "1 BC", date2: "1", wantReason: "birth year within 1 years"},
 		{name: "malformed 0 BC earns no year credit", date1: "0 BC", date2: "1", wantReason: ""},
+		{name: "CE year 0 earns no year credit", date1: "0", date2: "1 BC", wantReason: ""},
+		{name: "negative CE year earns no year credit", date1: "-43", date2: "44 BC", wantReason: ""},
+		{name: "phrase-only dates earn no year credit", date1: "(unknown)", date2: "(unknown)", wantReason: ""},
 	}
 
 	for _, tt := range tests {

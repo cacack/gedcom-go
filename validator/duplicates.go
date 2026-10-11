@@ -602,9 +602,9 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 		return DuplicatePair{}, false
 	}
 
-	// Compare astronomical years so 44 BCE and 44 CE are 87 years apart. A BC
-	// year below 1 (e.g. "0 BC") has no astronomical year, so it earns no credit.
-	if birthDate1 != nil && birthDate2 != nil && validBCYear(birthDate1) && validBCYear(birthDate2) {
+	// Compare astronomical years so 44 BCE and 44 CE are 87 years apart. A date
+	// without a real year (a phrase, "0", "0 BC", a negative year) earns no credit.
+	if birthDate1 != nil && birthDate2 != nil && hasRealYear(birthDate1) && hasRealYear(birthDate2) {
 		yearDiff := absInt(gedcom.AstronomicalYear(birthDate1.Year, birthDate1.IsBC) -
 			gedcom.AstronomicalYear(birthDate2.Year, birthDate2.IsBC))
 		if yearDiff == 0 {
@@ -787,13 +787,13 @@ func levenshteinDistance(s1, s2 string) int {
 	return prev[len2]
 }
 
-// absInt returns the absolute value of an integer.
-// validBCYear reports whether d is not a BC date with a year below 1, the
-// domain gedcom.AstronomicalYear assumes for BC years.
-func validBCYear(d *gedcom.Date) bool {
-	return !d.IsBC || d.Year >= 1
+// hasRealYear reports whether d carries a year of 1 or more, the domain
+// gedcom.AstronomicalYear assumes. Phrase-only dates parse with Year 0.
+func hasRealYear(d *gedcom.Date) bool {
+	return !d.IsPhrase && d.Year >= 1
 }
 
+// absInt returns the absolute value of an integer.
 func absInt(n int) int {
 	if n < 0 {
 		return -n
