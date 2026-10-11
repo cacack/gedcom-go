@@ -2,6 +2,7 @@ package converter_test
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"regexp"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/encoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/validator"
 )
 
 // TestConvertSpacedXRefTo70 pins issue #579: uppercasing a mixed-case spaced
@@ -257,5 +259,144 @@ func TestConvertSetsDeclaredVersion(t *testing.T) {
 	}
 	if got.IsPointerXRef("@N 1@") {
 		t.Error("converted 7.0 document treats @N 1@ as a pointer")
+	}
+}
+
+// TestConvertUppercaseSpacedXRefsDeclare70 pins the item #591 deferred to
+// #590: a 5.5.1 -> 7.0 conversion both declares 7.0 and leaves no
+// already-uppercase spaced identifier behind, so every pointer resolves
+// under the 7.0 grammar -- in the document, for Visit, Subset and the
+// validator -- and the output strict-decodes as 7.0.
+func TestConvertUppercaseSpacedXRefsDeclare70(t *testing.T) {
+	const input = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I 1@ INDI
+1 NAME John /Doe/
+1 NOTE @N 1@
+1 ASSO @I 2@
+2 RELA Friend
+0 @I 2@ INDI
+1 NAME Jim /Roe/
+0 @N 1@ NOTE spaced
+0 TRLR
+`
+	opts := decoder.DefaultOptions()
+	opts.StrictMode = true
+	doc, err := decoder.DecodeWithOptions(strings.NewReader(input), opts)
+	if err != nil {
+		t.Fatalf("strict decode 5.5.1: %v", err)
+	}
+
+	converted, _, err := converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	if converted.Header.DeclaredVersion != gedcom.Version70 {
+		t.Errorf("DeclaredVersion = %q, want %q", converted.Header.DeclaredVersion, gedcom.Version70)
+	}
+
+	var xrefs []string
+	for _, r := range converted.Records {
+		if !v7XRef.MatchString(r.XRef) {
+			t.Errorf("record XRef %q is invalid in 7.0", r.XRef)
+		}
+		xrefs = append(xrefs, r.XRef)
+		visited := map[string]bool{}
+		gedcom.Visit(r, func(ref string) {
+			visited[ref] = true
+			if !converted.IsPointerXRef(ref) || converted.GetRecord(ref) == nil {
+				t.Errorf("%s: pointer %q does not resolve", r.XRef, ref)
+			}
+		})
+		if r.XRef == "@I_1@" && (len(visited) != 2 || !visited["@N_1@"] || !visited["@I_2@"]) {
+			t.Errorf("@I_1@ pointers visited = %v, want @N_1@ and @I_2@", visited)
+		}
+	}
+	if _, err := converted.Subset(xrefs); err != nil {
+		t.Errorf("Subset: %v", err)
+	}
+	for _, e := range validator.New().Validate(converted) {
+		var issue *validator.Issue
+		if errors.As(e, &issue) && issue.Code == validator.CodeBrokenXRef {
+			t.Errorf("validator: %v", issue)
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, converted); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	out := buf.String()
+	for _, ref := range pointerish.FindAllString(out, -1) {
+		if !v7XRef.MatchString(ref) {
+			t.Errorf("output holds %q, invalid in 7.0:\n%s", ref, out)
+		}
+	}
+	result, err := decoder.DecodeWithDiagnostics(strings.NewReader(out), opts)
+	if err != nil {
+		t.Fatalf("strict decode 7.0: %v\n%s", err, out)
+	}
+	for _, d := range result.Diagnostics {
+		t.Errorf("7.0 diagnostic: %s", d)
+	}
+	got := result.Document
+	if got.Header.Version != gedcom.Version70 || got.Header.DeclaredVersion != gedcom.Version70 {
+		t.Errorf("decoded version = %q/%q, want 7.0", got.Header.Version, got.Header.DeclaredVersion)
+	}
+	indi := got.GetIndividual("@I_1@")
+	if indi == nil || len(indi.NoteXRefs) != 1 || got.GetRecord(indi.NoteXRefs[0]) == nil {
+		t.Errorf("@I_1@ NOTE does not resolve after round trip:\n%s", out)
+	}
+}
+
+// TestConvertDanglingSpacedPointerTo70 pins that a spaced 5.5.1 pointer no
+// record defines, in a record or the header, is found under the source's
+// declared grammar (#591) and rewritten to a valid 7.0 identifier (#590)
+// rather than left in the output as an invalid one.
+func TestConvertDanglingSpacedPointerTo70(t *testing.T) {
+	const input = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+1 NOTE @H 1@
+0 @I1@ INDI
+1 NOTE @X 9@
+0 TRLR
+`
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("decode 5.5.1: %v", err)
+	}
+	converted, report, err := converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	rewritten := map[string]string{}
+	for _, n := range report.Normalized {
+		rewritten[n.Original] = n.Result
+	}
+	for orig, want := range map[string]string{"@H 1@": "@H_1@", "@X 9@": "@X_9@"} {
+		if rewritten[orig] != want {
+			t.Errorf("%s rewritten to %q, want %q", orig, rewritten[orig], want)
+		}
+	}
+
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, converted); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	out := buf.String()
+	for _, want := range []string{"1 NOTE @H_1@", "1 NOTE @X_9@"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	for _, ref := range pointerish.FindAllString(out, -1) {
+		if !v7XRef.MatchString(ref) {
+			t.Errorf("output holds %q, invalid in 7.0:\n%s", ref, out)
+		}
 	}
 }
