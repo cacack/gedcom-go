@@ -11,6 +11,7 @@ package validator
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
@@ -18,8 +19,8 @@ import (
 // validateDates reports every date in doc that gedcom.Date.Validate rejects,
 // as a CodeInvalidDate warning. Dates Validate skips by design -- partial
 // dates such as "FEB 1900" or "ABT 1900", and non-Gregorian calendars -- are
-// not reported, nor are dual-dated (Old Style) endpoints such as
-// "29 FEB 1723/24", nor a value ParseDate cannot parse at all (the decoder
+// not reported, nor a leap day on a dual-dated (Old Style) endpoint such
+// as "29 FEB 1723/24", nor a value ParseDate cannot parse at all (the decoder
 // already reports that as a diagnostic).
 //
 // Raw tags are walked where a record has them, so every DATE is checked --
@@ -137,21 +138,40 @@ func appendDateIssue(issues []Issue, recordXRef, holder, path string, date *gedc
 }
 
 // dateError is gedcom.Date.Validate, except that a dual-dated endpoint such
-// as 29 FEB 1723/24 is not checked. A dual year is Old Style: its January to
-// March fall in the second year, on the Julian calendar, so Validate's
-// Gregorian check against the first year would reject real leap days.
+// as 29 FEB 1723/24 is checked only against the longest its month can be. A
+// dual year is Old Style: its January to March fall in the second year, on the
+// Julian calendar, so Validate's Gregorian check against the first year would
+// reject real leap days. A day no year allows, such as 30 FEB 1723/24, is
+// still reported.
 func dateError(date *gedcom.Date) error {
 	start := *date
 	start.EndDate = nil
-	if start.DualYear == 0 {
-		if err := start.Validate(); err != nil {
-			return err
-		}
+	if err := endpointError(&start); err != nil {
+		return err
 	}
-	if end := date.EndDate; end != nil && end.DualYear == 0 {
-		if err := end.Validate(); err != nil {
+	if end := date.EndDate; end != nil {
+		if err := endpointError(end); err != nil {
 			return fmt.Errorf("invalid end date: %w", err)
 		}
+	}
+	return nil
+}
+
+// maxDaysInMonth is the longest each month (1-12) can be in any year.
+var maxDaysInMonth = [13]int{0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+
+// endpointError checks one date with no EndDate. A dual-dated Gregorian date
+// is checked against maxDaysInMonth; any other date goes to Validate, which
+// skips partial dates and non-Gregorian calendars.
+func endpointError(d *gedcom.Date) error {
+	if d.DualYear == 0 {
+		return d.Validate()
+	}
+	if d.Calendar != gedcom.CalendarGregorian || d.Month < 1 || d.Month > 12 || d.Day == 0 {
+		return nil
+	}
+	if longest := maxDaysInMonth[d.Month]; d.Day > longest {
+		return fmt.Errorf("invalid date: %s has at most %d days, got day %d", time.Month(d.Month), longest, d.Day)
 	}
 	return nil
 }

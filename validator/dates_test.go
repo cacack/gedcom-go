@@ -47,6 +47,9 @@ func TestInvalidDateReported(t *testing.T) {
 		{"LDS ordinance", []string{"1 BAPL", "2 DATE 31 APR 1900"}, "BAPL", "BAPL.DATE", 8},
 		{"nested citation", []string{"1 BIRT", "2 SOUR @S1@", "3 DATA", "4 DATE 31 JUN 1900"}, "DATA", "BIRT.SOUR.DATA.DATE", 10},
 		{"range end after dual-dated start", []string{"1 BIRT", "2 DATE BET 29 FEB 1723/24 AND 31 FEB 1725"}, "BIRT", "BIRT.DATE", 8},
+		{"dual-dated 30 FEB", []string{"1 BIRT", "2 DATE 30 FEB 1723/24"}, "BIRT", "BIRT.DATE", 8},
+		{"dual-dated 31 APR", []string{"1 BIRT", "2 DATE 31 APR 1723/24"}, "BIRT", "BIRT.DATE", 8},
+		{"dual-dated range end", []string{"1 BIRT", "2 DATE BET 1 JAN 1723/24 AND 32 JAN 1723/24"}, "BIRT", "BIRT.DATE", 8},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
