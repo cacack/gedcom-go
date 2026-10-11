@@ -46,6 +46,7 @@ func TestInvalidDateReported(t *testing.T) {
 		{"non-leap 29 FEB", []string{"1 OCCU Smith", "2 DATE 29 FEB 1900"}, "OCCU", "OCCU.DATE", 8},
 		{"LDS ordinance", []string{"1 BAPL", "2 DATE 31 APR 1900"}, "BAPL", "BAPL.DATE", 8},
 		{"nested citation", []string{"1 BIRT", "2 SOUR @S1@", "3 DATA", "4 DATE 31 JUN 1900"}, "DATA", "BIRT.SOUR.DATA.DATE", 10},
+		{"range end after dual-dated start", []string{"1 BIRT", "2 DATE BET 29 FEB 1723/24 AND 31 FEB 1725"}, "BIRT", "BIRT.DATE", 8},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -79,6 +80,8 @@ func TestInvalidDateNotReported(t *testing.T) {
 		"FEB 1900",
 		"BET 1900 AND 1901",
 		"@#DJULIAN@ 31 FEB 1900",
+		"29 FEB 1723/24",
+		"BET 1 JAN 1723/24 AND 29 FEB 1723/24",
 		"(sometime in spring)",
 		"not a date at all",
 	} {
@@ -124,12 +127,15 @@ func TestInvalidDateTypedEntity(t *testing.T) {
 		Events: []*gedcom.Event{{Type: gedcom.EventBirth, Date: "31 FEB 1900", ParsedDate: mustParse("31 FEB 1900")}},
 		Attributes: []*gedcom.Attribute{
 			{Type: gedcom.AttributeOccupation, Date: "29 FEB 2000", ParsedDate: mustParse("29 FEB 2000")},
+			{Type: gedcom.AttributeOccupation, Date: "31 JUN 1900", ParsedDate: mustParse("31 JUN 1900")},
 		},
 		LDSOrdinances: []*gedcom.LDSOrdinance{{Type: gedcom.LDSBaptism, Date: "BET 1900 AND 31 APR 1901", ParsedDate: mustParse("BET 1900 AND 31 APR 1901")}},
 	}
 	fam := &gedcom.Family{
-		XRef:   "@F1@",
-		Events: []*gedcom.Event{{Type: gedcom.EventMarriage, Date: "31 NOV 1920", ParsedDate: mustParse("31 NOV 1920")}},
+		XRef:          "@F1@",
+		Events:        []*gedcom.Event{{Type: gedcom.EventMarriage, Date: "31 NOV 1920", ParsedDate: mustParse("31 NOV 1920")}},
+		Attributes:    []*gedcom.Attribute{{Type: gedcom.AttributeCaste, Date: "30 FEB 1921", ParsedDate: mustParse("30 FEB 1921")}},
+		LDSOrdinances: []*gedcom.LDSOrdinance{{Type: gedcom.LDSSealingSpouse, Date: "31 SEP 1922", ParsedDate: mustParse("31 SEP 1922")}},
 	}
 	doc := &gedcom.Document{
 		Header: &gedcom.Header{Date: "31 SEP 2020"},
@@ -140,13 +146,21 @@ func TestInvalidDateTypedEntity(t *testing.T) {
 		},
 	}
 	got := validateDates(doc)
-	want := []struct{ xref, tag string }{{"", "HEAD"}, {"@I1@", "BIRT"}, {"@I1@", "BAPL"}, {"@F1@", "MARR"}}
+	want := []struct{ xref, tag string }{
+		{"", "HEAD"}, {"@I1@", "BIRT"}, {"@I1@", "OCCU"}, {"@I1@", "BAPL"},
+		{"@F1@", "MARR"}, {"@F1@", "CAST"}, {"@F1@", "SLGS"},
+	}
 	if len(got) != len(want) {
 		t.Fatalf("issues = %v, want %d", got, len(want))
 	}
 	for i, w := range want {
-		if got[i].RecordXRef != w.xref || got[i].Details["tag"] != w.tag {
-			t.Errorf("issue %d = %v, want %s %s", i, got[i], w.xref, w.tag)
+		wantPath := w.tag + ".DATE"
+		if w.tag == "HEAD" {
+			wantPath = "DATE"
+		}
+		if got[i].RecordXRef != w.xref || got[i].Details["tag"] != w.tag ||
+			got[i].Details["path"] != wantPath || got[i].LineNumber != 0 {
+			t.Errorf("issue %d = %v, want %s %s at path %s, line 0", i, got[i], w.xref, w.tag, wantPath)
 		}
 	}
 }

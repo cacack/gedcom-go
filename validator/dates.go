@@ -18,8 +18,9 @@ import (
 // validateDates reports every date in doc that gedcom.Date.Validate rejects,
 // as a CodeInvalidDate warning. Dates Validate skips by design -- partial
 // dates such as "FEB 1900" or "ABT 1900", and non-Gregorian calendars -- are
-// not reported, and neither is a value ParseDate cannot parse at all (the
-// decoder already reports that as a diagnostic).
+// not reported, nor are dual-dated (Old Style) endpoints such as
+// "29 FEB 1723/24", nor a value ParseDate cannot parse at all (the decoder
+// already reports that as a diagnostic).
 //
 // Raw tags are walked where a record has them, so every DATE is checked --
 // events, attributes, LDS ordinances, citations, CHAN -- and the issue
@@ -27,8 +28,10 @@ import (
 // "BIRT") and Details["path"] the tag path below the record (e.g.
 // "BIRT.SOUR.DATA.DATE"). A record with no Tags, built in code, is checked
 // through its typed entity's event, attribute and LDS ordinance ParsedDates
-// instead, mirroring how the encoder writes such a record from the entity.
-// The header is checked the same way, with an empty RecordXRef.
+// instead, mirroring how the encoder writes such a record from the entity;
+// those issues carry LineNumber 0 and a path of just "<TYPE>.DATE". Raw tags
+// are authoritative where present, as the encoder writes them verbatim. The
+// header is checked the same way, with an empty RecordXRef.
 func validateDates(doc *gedcom.Document) []Issue {
 	var issues []Issue
 	if doc.Header != nil {
@@ -112,12 +115,12 @@ func appendTypedDateIssues(issues []Issue, record *gedcom.Record) []Issue {
 }
 
 // appendDateIssue appends a CodeInvalidDate issue when date fails
-// gedcom.Date.Validate. A nil date is skipped.
+// dateError. A nil date is skipped.
 func appendDateIssue(issues []Issue, recordXRef, holder, path string, date *gedcom.Date, line int) []Issue {
 	if date == nil {
 		return issues
 	}
-	err := date.Validate()
+	err := dateError(date)
 	if err == nil {
 		return issues
 	}
@@ -131,4 +134,24 @@ func appendDateIssue(issues []Issue, recordXRef, holder, path string, date *gedc
 		WithDetail("tag", holder).
 		WithDetail("path", path).
 		WithDetail("value", date.Original))
+}
+
+// dateError is gedcom.Date.Validate, except that a dual-dated endpoint such
+// as 29 FEB 1723/24 is not checked. A dual year is Old Style: its January to
+// March fall in the second year, on the Julian calendar, so Validate's
+// Gregorian check against the first year would reject real leap days.
+func dateError(date *gedcom.Date) error {
+	start := *date
+	start.EndDate = nil
+	if start.DualYear == 0 {
+		if err := start.Validate(); err != nil {
+			return err
+		}
+	}
+	if end := date.EndDate; end != nil && end.DualYear == 0 {
+		if err := end.Validate(); err != nil {
+			return fmt.Errorf("invalid end date: %w", err)
+		}
+	}
+	return nil
 }

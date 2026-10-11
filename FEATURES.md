@@ -1036,7 +1036,11 @@ using `gedcom.Date.Validate`. Every `DATE` is checked: events, attributes, LDS
 ordinances, citations, `CHAN` and `HEAD.DATE`. Each issue carries the DATE line and,
 in `Details`, the tag holding the date (`tag`, e.g. `BIRT`), its path below the record
 (`path`, e.g. `BIRT.SOUR.DATA.DATE`) and the raw `value`. Partial dates (`ABT 1900`,
-`FEB 1900`) and non-Gregorian calendars are not checked.
+`FEB 1900`), non-Gregorian calendars and dual-dated (Old Style) values such as
+`29 FEB 1723/24` are not checked. A record built in code, with no raw tags, is checked
+through its typed events, attributes and LDS ordinances; those issues carry line 0 and
+a `path` of just `<TYPE>.DATE`. `ValidateDateLogic`, `QualityReport` and the streaming
+validator do not run this check.
 
 | Error Code | Severity | Description |
 |------------|----------|-------------|
