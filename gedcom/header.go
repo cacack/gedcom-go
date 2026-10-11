@@ -46,9 +46,10 @@ type Header struct {
 	// Submitter is the cross-reference pointer to the SUBM record that
 	// names whoever produced the file, in "@U1@" form (optional).
 	//
-	// The value is interpreted and written verbatim: the encoder emits
-	// whatever string is here without checking its shape, so a value that
-	// is not a well-formed pointer produces invalid GEDCOM. Readers that
+	// The value is interpreted and written verbatim: apart from rejecting a
+	// line break (encoder.ErrLineBreak), the encoder emits whatever string is
+	// here without checking its shape, so a value that is not a well-formed
+	// pointer produces invalid GEDCOM. Readers that
 	// resolve it -- Document.GetSubmitter, Document.Subset -- treat a
 	// value they cannot resolve to a SUBM record as absent rather than
 	// reporting it.

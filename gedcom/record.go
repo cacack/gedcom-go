@@ -33,11 +33,13 @@ const (
 // Records are the main entities in a GEDCOM file (individuals, families, sources, etc.).
 type Record struct {
 	// XRef is the cross-reference identifier (e.g., "@I1@", "@F1@").
-	// It cannot contain a line break; the encoder rejects one.
+	// It cannot contain a line break; the encoder rejects one
+	// (encoder.ErrLineBreak).
 	XRef string
 
 	// Type is the record type (INDI, FAM, SOUR, etc.).
-	// It cannot contain a line break; the encoder rejects one.
+	// It cannot contain a line break; the encoder rejects one
+	// (encoder.ErrLineBreak).
 	Type RecordType
 
 	// Value is the value from the level 0 line (used for NOTE records, etc.)

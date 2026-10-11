@@ -983,3 +983,14 @@ func TestConvert551To70MultilineNoteRoundTrips(t *testing.T) {
 		t.Errorf("note text after round trip = %q, want %q", got, "line1\nline2")
 	}
 }
+
+func TestEncodeLineBreakSentinel(t *testing.T) {
+	if !errors.Is(ErrLineBreak, encoder.ErrLineBreak) {
+		t.Error("ErrLineBreak is not the encoder package's sentinel")
+	}
+	doc := &Document{Header: &gedcom.Header{}, Records: []*gedcom.Record{{XRef: "@I1@\n0 @F9@ FAM", Type: gedcom.RecordTypeIndividual}}}
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); !errors.Is(err, ErrLineBreak) {
+		t.Errorf("Encode() error = %v, want ErrLineBreak", err)
+	}
+}

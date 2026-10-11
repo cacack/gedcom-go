@@ -96,6 +96,11 @@ var (
 	// ErrNilDocument is returned by Encode and EncodeWithOptions when doc is nil.
 	// See [encoder.ErrNilDocument].
 	ErrNilDocument = encoder.ErrNilDocument
+
+	// ErrLineBreak is returned by Encode and EncodeWithOptions when a tag
+	// name or cross-reference identifier contains a line break.
+	// See [encoder.ErrLineBreak].
+	ErrLineBreak = encoder.ErrLineBreak
 )
 
 // DefaultDecodeOptions returns the default decoding options.
@@ -161,7 +166,8 @@ func DecodeWithDiagnostics(r io.Reader) (*DecodeResult, error) {
 // For custom options (line endings, target version, line wrapping, custom-tag
 // preservation), use [EncodeWithOptions].
 //
-// Returns [ErrNilDocument] if doc is nil. See the [encoder] package
+// Returns [ErrNilDocument] if doc is nil, and an error wrapping [ErrLineBreak]
+// if a tag name or identifier contains a line break. See the [encoder] package
 // documentation for how nil values inside a document are handled.
 func Encode(w io.Writer, doc *Document) error {
 	return encoder.Encode(w, doc)
@@ -170,7 +176,8 @@ func Encode(w io.Writer, doc *Document) error {
 // EncodeWithOptions writes a GEDCOM document with the given options.
 // If opts is nil, default options are used.
 //
-// Returns [ErrNilDocument] if doc is nil. See the [encoder] package
+// Returns [ErrNilDocument] if doc is nil, and an error wrapping [ErrLineBreak]
+// if a tag name or identifier contains a line break. See the [encoder] package
 // documentation for how nil values inside a document are handled.
 func EncodeWithOptions(w io.Writer, doc *Document, opts *EncodeOptions) error {
 	return encoder.EncodeWithOptions(w, doc, opts)

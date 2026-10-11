@@ -14,7 +14,8 @@ type Tag struct {
 	Level int
 
 	// Tag is the GEDCOM tag name (e.g., "INDI", "NAME", "BIRT").
-	// It cannot contain a line break; the encoder rejects one.
+	// It cannot contain a line break; the encoder rejects one
+	// (encoder.ErrLineBreak).
 	Tag string
 
 	// Value is the optional value associated with the tag.

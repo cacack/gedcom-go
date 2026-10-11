@@ -93,3 +93,64 @@ func TestStreamEncoderRejectsLineBreakInXRef(t *testing.T) {
 func docWithRecord(record *gedcom.Record) *gedcom.Document {
 	return &gedcom.Document{Header: &gedcom.Header{}, Records: []*gedcom.Record{record}}
 }
+
+// TestEncodeHeaderFieldsLineBreak covers the hand-built header path, which
+// writes typed fields rather than raw tags: a line break in a value field
+// folds into CONT, and one in the Submitter pointer is rejected (issue #466).
+func TestEncodeHeaderFieldsLineBreak(t *testing.T) {
+	folded := map[string]struct {
+		header *gedcom.Header
+		opts   *EncodeOptions
+		want   string
+	}{
+		"Version": {&gedcom.Header{Version: gedcom.Version("5.5.1\n" + forgedRecord)}, nil,
+			"2 VERS 5.5.1\n3 CONT " + forgedRecord + "\n"},
+		"TargetVersion": {&gedcom.Header{}, &EncodeOptions{TargetVersion: gedcom.Version("5.5.1\n" + forgedRecord)},
+			"2 VERS 5.5.1\n3 CONT " + forgedRecord + "\n"},
+		"SourceSystem": {&gedcom.Header{SourceSystem: "App\n" + forgedRecord}, nil,
+			"1 SOUR App\n2 CONT " + forgedRecord + "\n"},
+		"Language": {&gedcom.Header{Language: "English\n" + forgedRecord}, nil,
+			"1 LANG English\n2 CONT " + forgedRecord + "\n"},
+	}
+	for name, tc := range folded {
+		t.Run(name, func(t *testing.T) {
+			var buf bytes.Buffer
+			if err := EncodeWithOptions(&buf, &gedcom.Document{Header: tc.header}, tc.opts); err != nil {
+				t.Fatalf("Encode() error = %v", err)
+			}
+			if !strings.Contains(buf.String(), tc.want) {
+				t.Errorf("output does not contain %q:\n%s", tc.want, buf.String())
+			}
+			if strings.Contains(buf.String(), "\n"+forgedRecord) {
+				t.Errorf("forged record reached the output:\n%s", buf.String())
+			}
+		})
+	}
+
+	for brkName, brk := range lineBreaks {
+		t.Run("Submitter/"+brkName, func(t *testing.T) {
+			var buf bytes.Buffer
+			err := Encode(&buf, &gedcom.Document{Header: &gedcom.Header{Submitter: "@U1@" + brk + forgedRecord}})
+			assertLineBreakRejected(t, err, buf.String())
+		})
+	}
+}
+
+// TestStreamEncoderRejectsLineBreakInHeader covers WriteHeader, and that the
+// error sticks: later calls return it rather than writing past the bad line.
+func TestStreamEncoderRejectsLineBreakInHeader(t *testing.T) {
+	var buf bytes.Buffer
+	enc := NewStreamEncoder(&buf)
+	err := enc.WriteHeader(&gedcom.Header{Tags: []*gedcom.Tag{{Level: 1, Tag: "SOUR\n" + forgedRecord, Value: "x"}}})
+	assertLineBreakRejected(t, err, buf.String())
+
+	if err := enc.WriteRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual}); !errors.Is(err, ErrLineBreak) {
+		t.Errorf("WriteRecord() after failed header error = %v, want ErrLineBreak", err)
+	}
+	if err := enc.Close(); !errors.Is(err, ErrLineBreak) {
+		t.Errorf("Close() error = %v, want ErrLineBreak", err)
+	}
+	if strings.Contains(buf.String(), "@I1@") || strings.Contains(buf.String(), "TRLR") {
+		t.Errorf("stream wrote past the failed header:\n%s", buf.String())
+	}
+}
