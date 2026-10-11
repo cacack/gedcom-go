@@ -25,6 +25,15 @@ const v7XRefReason = "GEDCOM 7.0 requires XRefs to use only uppercase letters, d
 // Normalized note.
 func normalizeXRefsForV7(doc *gedcom.Document, report *gedcom.ConversionReport) {
 	mapping, dangling := buildXRefMapping(doc)
+	applyV7XRefMapping(doc, mapping, dangling, report)
+}
+
+// applyV7XRefMapping applies a mapping from buildXRefMapping to doc and records
+// each rewrite in report; an empty mapping changes nothing. It is split from
+// normalizeXRefsForV7 so the 7.0 -> 7.0 path can build the mapping on the
+// caller's document, to decide whether a copy is needed at all, and apply it
+// to the copy without building it twice.
+func applyV7XRefMapping(doc *gedcom.Document, mapping map[string]string, dangling []string, report *gedcom.ConversionReport) {
 	if len(mapping) == 0 {
 		return
 	}

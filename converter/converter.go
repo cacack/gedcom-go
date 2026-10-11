@@ -14,11 +14,18 @@ import (
 // rewritten, together with the pointers to it, on a copy, and each rename is
 // recorded in the report as for a 5.5.x -> 7.0 upgrade. A dangling pointer
 // that 7.0 does not read as a pointer (one with a space) is left unchanged.
+// So a 7.0 -> 7.0 call returns the input itself when nothing needs renaming
+// and a copy otherwise; callers must not depend on the result being (or not
+// being) the same pointer as doc.
 func Convert(doc *gedcom.Document, targetVersion gedcom.Version) (*gedcom.Document, *gedcom.ConversionReport, error) {
 	return ConvertWithOptions(doc, targetVersion, DefaultOptions())
 }
 
 // ConvertWithOptions converts a GEDCOM document with custom options.
+//
+// A document already at the target version is handled as described on
+// [Convert], including the 7.0 -> 7.0 XRef normalization; opts does not
+// apply on that path (no validation or strict data-loss check runs).
 //
 // Behavior note: on a 7.0 -> 5.5/5.5.1 downgrade, a FamilySearch ARK EXID on an
 // individual is mapped to the vendor tag _FSFTID rather than being dropped (see
@@ -58,7 +65,9 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 	//
 	// The one exception is 7.0: XRefs its grammar rejects are normalized as on
 	// the 5.5.x -> 7.0 paths (on a deep copy), so converting to 7.0 always
-	// yields valid 7.0 identifiers.
+	// yields valid 7.0 identifiers. A 7.0 source always has a non-nil header
+	// (a nil one reads as 5.5 above), so the header materialisation never
+	// follows that copy; it copies converted, not doc, to keep it if it did.
 	if sourceVersion == targetVersion {
 		report := &gedcom.ConversionReport{
 			SourceVersion: sourceVersion,
@@ -67,9 +76,13 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 		}
 		converted := doc
 		if targetVersion == gedcom.Version70 {
-			if mapping, _ := buildXRefMapping(doc); len(mapping) > 0 {
+			// The mapping is built on the caller's document (read-only) so a
+			// document with nothing to rename is returned as the same pointer,
+			// without a deep copy. Clone keeps every record, pointer and the
+			// declared version, so the mapping applies to the copy unchanged.
+			if mapping, dangling := buildXRefMapping(doc); len(mapping) > 0 {
 				converted = doc.Clone()
-				normalizeXRefsForV7(converted, report)
+				applyV7XRefMapping(converted, mapping, dangling, report)
 			}
 		}
 		if converted.Header == nil {
