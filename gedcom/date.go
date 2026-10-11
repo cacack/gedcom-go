@@ -835,9 +835,10 @@ func defaultToOne(val int) int {
 //
 // A dual date is read in New Style, as Bounds reads it: "11 FEB 1731/32"
 // compares equal to 11 FEB 1732. A dual date whose New Style year is unknown
-// is read in Year, its earliest reading: one that does not say which side of
-// 25 March it falls on ("1731/32", "MAR 1731/32"), whose DualYear is not the
-// following year, or that is not Gregorian or Julian. So "MAR 1731/32" sorts
+// is read in Year (for a DualYear that follows Year, its earliest reading):
+// one that does not say which side of 25 March it falls on ("1731/32",
+// "MAR 1731/32"), whose DualYear is not the following year, or that is not
+// Gregorian or Julian. So "MAR 1731/32" sorts
 // as March 1731 while "1 MAR 1731/32" sorts as March 1732.
 //
 // Compare ignores Modifier, so it gives a sort order, not proof that one date
