@@ -833,6 +833,8 @@ func (d *Date) Compare(other *Date) int {
 // ToTime converts the date to a time.Time value.
 // Returns an error if the date is incomplete (missing day, month, or year)
 // or if the calendar is not Gregorian.
+// B.C. dates use astronomical year numbering via AstronomicalYear, so the
+// result's Year() is 0 for 1 BCE and -43 for 44 BCE (proleptic Gregorian).
 func (d *Date) ToTime() (time.Time, error) {
 	if d.Calendar != CalendarGregorian {
 		return time.Time{}, fmt.Errorf("ToTime only supports Gregorian calendar, got %s", d.Calendar)
@@ -848,7 +850,7 @@ func (d *Date) ToTime() (time.Time, error) {
 		return time.Time{}, fmt.Errorf("incomplete date: day is missing")
 	}
 
-	return time.Date(d.Year, time.Month(d.Month), d.Day, 0, 0, 0, 0, time.UTC), nil
+	return time.Date(AstronomicalYear(d.Year, d.IsBC), time.Month(d.Month), d.Day, 0, 0, 0, 0, time.UTC), nil
 }
 
 // String returns the original GEDCOM date string.
