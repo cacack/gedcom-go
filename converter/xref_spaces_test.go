@@ -243,3 +243,19 @@ func TestConvertSpacedXRefsAndCalendarsTo70(t *testing.T) {
 		t.Errorf("@F_1@ HUSB does not resolve:\n%s", out)
 	}
 }
+
+// TestConvertSetsDeclaredVersion pins that a converted document declares its
+// target version, so pointer recognition follows the new grammar (#591).
+func TestConvertSetsDeclaredVersion(t *testing.T) {
+	doc := &gedcom.Document{Header: &gedcom.Header{Version: gedcom.Version551, DeclaredVersion: gedcom.Version551}}
+	got, _, err := converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	if got.Header.DeclaredVersion != gedcom.Version70 {
+		t.Errorf("DeclaredVersion = %q, want %q", got.Header.DeclaredVersion, gedcom.Version70)
+	}
+	if got.IsPointerXRef("@N 1@") {
+		t.Error("converted 7.0 document treats @N 1@ as a pointer")
+	}
+}

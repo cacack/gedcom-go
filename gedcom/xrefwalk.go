@@ -61,6 +61,24 @@ func IsPointerXRefForVersion(s string, v Version) bool {
 	return !strings.ContainsAny(s[1:len(s)-1], "\t\n\r@")
 }
 
+// IsPointerXRef reports whether s is an XRef pointer under the identifier
+// grammar of the version d's header declares (Header.DeclaredVersion); see
+// [IsPointerXRefForVersion]. A document that declares no version -- one built
+// in code, or decoded from a file without a recognized GEDC.VERS -- uses the
+// GEDCOM 7.0 grammar of [IsPointerXRef], as does a nil d or Header.
+func (d *Document) IsPointerXRef(s string) bool {
+	return IsPointerXRefForVersion(s, d.declaredVersion())
+}
+
+// declaredVersion returns d's Header.DeclaredVersion, or "" for a nil d or
+// Header.
+func (d *Document) declaredVersion() Version {
+	if d == nil || d.Header == nil {
+		return ""
+	}
+	return d.Header.DeclaredVersion
+}
+
 // EscapeLeadingAt escapes a leading "@" in a line value as "@@", per the GEDCOM
 // convention that a literal leading "@" in a value must be doubled so it is not
 // read as the start of a cross-reference pointer or escape token. Only the
@@ -91,14 +109,22 @@ func UnescapeLeadingAt(s string) string {
 // Entity and raw Tags. Definition sites (Record.XRef and entity XRef
 // fields) are not visited. Non-pointer-shaped values and the @VOID@
 // sentinel are filtered before reaching the callback. Pointers are matched
-// with the GEDCOM 7.0 grammar ([IsPointerXRef]), so spaced GEDCOM 5.5/5.5.1
-// pointers ("@N 1@") are not visited yet (issue #591).
+// with the GEDCOM 7.0 grammar ([IsPointerXRef]); use [VisitForVersion] to
+// also visit the spaced pointers GEDCOM 5.5 and 5.5.1 allow ("@N 1@").
 func Visit(r *Record, visit func(string)) {
+	VisitForVersion(r, "", visit)
+}
+
+// VisitForVersion is [Visit] with pointers matched under the identifier
+// grammar of GEDCOM version v ([IsPointerXRefForVersion]). Pass the version
+// the document declares, Document.Header.DeclaredVersion, not the possibly
+// guessed Header.Version.
+func VisitForVersion(r *Record, v Version, visit func(string)) {
 	if r == nil || visit == nil {
 		return
 	}
 	cb := func(p *string) {
-		if p != nil && IsPointerXRef(*p) {
+		if p != nil && IsPointerXRefForVersion(*p, v) {
 			visit(*p)
 		}
 	}
@@ -316,9 +342,10 @@ func walkRecord(r *Record, cb refCallback) {
 // remap, no matter which field the parser populated.
 //
 // Both fields are passed unfiltered, like every other walked field: the
-// callback decides which values are pointers (Visit uses IsPointerXRef;
-// Apply also accepts spaced GEDCOM 5.5/5.5.1 pointers that are mapping
-// keys), so plain text like "John Smith" is never acted on.
+// callback decides which values are pointers (VisitForVersion uses
+// IsPointerXRefForVersion; Apply also accepts spaced GEDCOM 5.5/5.5.1
+// pointers that are mapping keys), so plain text like "John Smith" is never
+// acted on.
 func walkTag(t *Tag, cb refCallback) {
 	if t == nil {
 		return

@@ -5,6 +5,14 @@ type Header struct {
 	// Version is the GEDCOM specification version
 	Version Version
 
+	// DeclaredVersion is the version the header declares (HEAD.GEDC.VERS),
+	// set by the decoder and by the converter. It is empty when the file
+	// declares no version or one this package does not recognize, so unlike
+	// Version it is never a guess. It selects the identifier grammar
+	// Document.IsPointerXRef applies: GEDCOM 5.5 and 5.5.1 allow spaces in
+	// pointers ("@N 1@"); 7.0 and an empty value do not.
+	DeclaredVersion Version
+
 	// Encoding is the character encoding used in the file
 	Encoding Encoding
 

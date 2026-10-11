@@ -219,6 +219,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 
 	// Build document from lines
 	doc := buildDocument(lines, detectedVersion, collector)
+	doc.Header.DeclaredVersion = xrefVersion
 
 	// Convert raw tags to proper entity types
 	populateEntities(doc, collector)

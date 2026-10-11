@@ -30,7 +30,8 @@ import (
 //
 // CONT and CONC lines are text continuations, never pointers, and are skipped.
 // The GEDCOM 7.0 "@VOID@" sentinel is a deliberate null pointer, not a broken
-// one; see [gedcom.IsPointerXRef].
+// one. Pointer shape follows the version the document declares; see
+// [gedcom.Document.IsPointerXRef].
 func validateBrokenXRefs(doc *gedcom.Document) []Issue {
 	var issues []Issue
 	for _, record := range doc.Records {
@@ -48,7 +49,7 @@ func validateBrokenXRefs(doc *gedcom.Document) []Issue {
 				continue
 			}
 			xref := strings.TrimSpace(tag.Value)
-			if !gedcom.IsPointerXRef(xref) {
+			if !doc.IsPointerXRef(xref) {
 				continue
 			}
 			if doc.XRefMap[xref] != nil {

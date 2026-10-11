@@ -120,13 +120,12 @@ exactly what 5.5.1 later named `FAMILY_EVENT_DETAIL`.
   and separate work.
 - **A value the decoder would have chosen anyway is invisible.** The measurement
   is a difference between two decoded documents, so a line whose only typed
-  effect is a value the model already holds cannot be seen. 5.5 is where this
-  bites: the decoder falls back to 5.5 when a document states no version, so
-  removing the version statement from a 5.5 document changes nothing, and
-  `HEAD`, `HEAD.GEDC` and `HEAD.GEDC.VERS` read `raw (undiagnosed)` in 5.5 and
-  `typed` in 5.5.1. The difference between those two columns is the fallback,
-  not the decoder. `TestSpec55VersionFallbackIsInvisible` pins it so this note
-  cannot quietly stop being true.
+  effect is a value the model already holds cannot be seen. The version
+  statement would be such a line -- the decoder falls back to 5.5 when a
+  document states none -- but `Header.DeclaredVersion` records only a declared
+  version, so `HEAD`, `HEAD.GEDC` and `HEAD.GEDC.VERS` read `typed` in 5.5 as
+  in 5.5.1. `TestSpec55VersionStatementIsVisible` pins it so this note cannot
+  quietly stop being true.
 - **`typed` is not a claim of completeness.** It means the structure changed the
   typed model, not that every part of its payload was interpreted.
 - **Every payload is invented.** The grammar names a value type; it does not
@@ -179,11 +178,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 848 | 85.0% | 1128 | 85.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 851 | 85.3% | 1128 | 85.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 74 | 7.4% | 87 | 6.6% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 57 | 5.7% | 88 | 6.7% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 54 | 5.4% | 88 | 6.7% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -194,7 +193,7 @@ pairs under it reach the typed model.
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
 | `FAM` | 209 / 254 | 274 / 324 |
-| `HEAD` | 7 / 28 | 10 / 33 |
+| `HEAD` | 10 / 28 | 10 / 33 |
 | `INDI` | 588 / 625 | 788 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 6 / 12 | 11 / 13 |
@@ -259,7 +258,7 @@ Structures that appear at the top of a document.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `FAM` | `FAM_RECORD.FAM` | typed | typed | `{0:M}` |
-| `HEAD` | `HEADER.HEAD` | raw (undiagnosed) | typed | `{1:1}` |
+| `HEAD` | `HEADER.HEAD` | typed | typed | `{1:1}` |
 | `INDI` | `INDIVIDUAL_RECORD.INDI` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_RECORD.NOTE` | typed | typed | `{0:M}` |
 | `OBJE` | `MULTIMEDIA_RECORD.OBJE` | typed | typed | `{0:M}` |
@@ -769,7 +768,7 @@ Measured at `HEAD` in 5.5, 5.5.1.
 | `DATE` | `HEADER.HEAD.DATE` | typed | typed | `{0:1}` |
 | `DEST` | `HEADER.HEAD.DEST` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
 | `FILE` | `HEADER.HEAD.FILE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `GEDC` | `HEADER.HEAD.GEDC` | raw (undiagnosed) | typed | `{1:1}` |
+| `GEDC` | `HEADER.HEAD.GEDC` | typed | typed | `{1:1}` |
 | `LANG` | `HEADER.HEAD.LANG` | typed | typed | `{0:1}` |
 | `NOTE` | `HEADER.HEAD.NOTE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
 | `PLAC` | `HEADER.HEAD.PLAC` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
@@ -800,7 +799,7 @@ Measured at `HEAD.GEDC` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `FORM` | `HEADER.HEAD.GEDC.FORM` | raw (undiagnosed) | raw (undiagnosed) | `{1:1}` |
-| `VERS` | `HEADER.HEAD.GEDC.VERS` | raw (undiagnosed) | typed | `{1:1}` |
+| `VERS` | `HEADER.HEAD.GEDC.VERS` | typed | typed | `{1:1}` |
 
 ### `HEADER.HEAD.NOTE`
 

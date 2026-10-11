@@ -86,8 +86,8 @@ const (
 	// the missing pointer as RelatedXRef and the tag name under Details["tag"].
 	//
 	// It covers every pointer the typed Orphaned* checks do not: those are
-	// reported under their own code instead, never under both. Spaced GEDCOM
-	// 5.5/5.5.1 pointers ("@N 1@") are not checked yet (issue #591).
+	// reported under their own code instead, never under both. In a GEDCOM
+	// 5.5/5.5.1 document a spaced pointer ("@N 1@") is checked like any other.
 	CodeBrokenXRef = "BROKEN_XREF"
 )
 

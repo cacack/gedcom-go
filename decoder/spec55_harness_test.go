@@ -134,16 +134,16 @@ func spec55StatusOf(t *testing.T, measured map[string]map[specPair]specStatus,
 	return "", false
 }
 
-// TestSpec55VersionFallbackIsInvisible pins the one measurement limitation the
-// published report names in prose: the decoder falls back to 5.5 when a
-// document states no version, so removing a 5.5 document's version statement
-// changes nothing the typed model can show, and the header chain that carries
-// it reads unsupported in 5.5 while reading typed in 5.5.1.
+// TestSpec55VersionStatementIsVisible pins the note the published report makes
+// in prose: the decoder falls back to 5.5 when a document states no version,
+// which would hide a 5.5 document's version statement from the typed model,
+// but Header.DeclaredVersion records only a declared version, so the header
+// chain that carries it reads typed in 5.5 as in 5.5.1.
 //
-// If the fallback changes, or the decoder starts recording something else about
-// the header, this fails -- and the note in the report has to be rewritten
-// rather than left standing as a description of behaviour that has moved.
-func TestSpec55VersionFallbackIsInvisible(t *testing.T) {
+// If the decoder stops recording the declared version, this fails -- and the
+// note in the report has to be rewritten rather than left standing as a
+// description of behaviour that has moved.
+func TestSpec55VersionStatementIsVisible(t *testing.T) {
 	// The header record, the container, and the statement itself. The first is
 	// at level 0, so it has no superstructure.
 	chain := []struct{ superstructure, tag string }{
@@ -155,10 +155,10 @@ func TestSpec55VersionFallbackIsInvisible(t *testing.T) {
 
 	for _, link := range chain {
 		got55, ok := spec55StatusOf(t, measured, "5.5", link.superstructure, link.tag)
-		if ok && got55 != specRawUndiagnosed {
+		if ok && got55 != specTyped {
 			t.Errorf("5.5 %s.%s: got %s, want %s -- the report explains this column by "+
-				"the 5.5 fallback, so a different status means the explanation is stale",
-				link.superstructure, link.tag, got55, specRawUndiagnosed)
+				"Header.DeclaredVersion, so a different status means the explanation is stale",
+				link.superstructure, link.tag, got55, specTyped)
 		}
 		got551, ok := spec55StatusOf(t, measured, "5.5.1", link.superstructure, link.tag)
 		if ok && got551 != specTyped {
