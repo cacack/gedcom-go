@@ -7,8 +7,8 @@ import "fmt"
 // Returns an error with descriptive message if the death date is before the birth date.
 //
 // The order is IsBefore's, which reads a partial date as its first day and
-// ignores modifiers and dual years, so imprecise dates can fail without
-// proving anything; see Date.Bounds for what the dates prove.
+// ignores modifiers, so imprecise dates can fail without proving anything;
+// see Date.Bounds for what the dates prove.
 func ValidateBirthBeforeDeath(birth, death *Date) error {
 	if birth == nil || death == nil {
 		return nil // Can't validate without both dates

@@ -833,8 +833,16 @@ func defaultToOne(val int) int {
 // When comparing dates with different calendars, both dates are converted to JDN
 // (Julian Day Number) for accurate cross-calendar comparison.
 //
-// Compare ignores Modifier and DualYear, so it gives a sort order, not proof
-// that one date precedes another; see Bounds for that.
+// A dual date is read in New Style, as Bounds reads it: "11 FEB 1731/32"
+// compares equal to 11 FEB 1732. A dual date whose New Style year is unknown
+// is read in Year (for a DualYear that follows Year, its earliest reading):
+// one that does not say which side of 25 March it falls on ("1731/32",
+// "MAR 1731/32"), whose DualYear is not the following year, or that is not
+// Gregorian or Julian. So "MAR 1731/32" sorts
+// as March 1731 while "1 MAR 1731/32" sorts as March 1732.
+//
+// Compare ignores Modifier, so it gives a sort order, not proof that one date
+// precedes another; see Bounds for that.
 func (d *Date) Compare(other *Date) int {
 	if d == nil && other == nil {
 		return 0
@@ -845,6 +853,7 @@ func (d *Date) Compare(other *Date) int {
 	if other == nil {
 		return 1
 	}
+	d, other = d.inNewStyle(), other.inNewStyle()
 
 	// If calendars differ, convert both to JDN for comparison
 	if d.Calendar != other.Calendar {
@@ -897,7 +906,7 @@ func (d *Date) Compare(other *Date) int {
 // Bounds returns the earliest and latest day the date can denote, as Julian
 // Day Numbers (see GregorianToJDN), so bounds from any calendar compare
 // directly. Unlike Compare, which reads a partial date as its first day and
-// ignores modifiers and DualYear, Bounds covers every reading of the date:
+// ignores modifiers, Bounds covers every reading of the date:
 //   - A partial date spans its whole month or year: "1503" runs from
 //     1 JAN 1503 to 31 DEC 1503.
 //   - ABT, CAL, EST and INT dates are bounded by the period they name; Bounds
@@ -981,6 +990,23 @@ func (d *Date) newStyleYear() (year int, known bool) {
 		return d.Year, true
 	}
 	return 0, false
+}
+
+// inNewStyle returns d with Year set to its New Style year and DualYear
+// cleared, when d is a dual date whose New Style year is known (see
+// newStyleYear); otherwise it returns d itself. Compare and YearsBetween read
+// dates through it, so they order dual dates as Bounds does.
+func (d *Date) inNewStyle() *Date {
+	if d.DualYear == 0 {
+		return d
+	}
+	year, known := d.newStyleYear()
+	if !known {
+		return d
+	}
+	result := *d
+	result.Year, result.DualYear = year, 0
+	return &result
 }
 
 // maxBoundsYear is the largest year, before or after the epoch, that Bounds
@@ -1210,8 +1236,8 @@ func (d *Date) IsAfter(other *Date) bool {
 
 // IsBefore returns true if d is before other by Compare.
 // Returns false if either date is nil. It reads a partial date as its first
-// day and ignores modifiers and dual years; see Bounds to test whether d is
-// provably before other.
+// day and ignores modifiers; see Bounds to test whether d is provably before
+// other.
 func (d *Date) IsBefore(other *Date) bool {
 	if d == nil || other == nil {
 		return false
@@ -1237,6 +1263,9 @@ func (d *Date) IsEqual(other *Date) bool {
 // a nonexistent day like 31 FEB), uses simple year subtraction.
 // Both paths count BCE years astronomically (see AstronomicalYear), so there is
 // no year zero between 1 BCE and 1 CE.
+// A dual date is first read in New Style, as Compare reads it, so
+// "11 FEB 1731/32" counts from 1732; one whose New Style year is unknown
+// counts from Year.
 // Returns error if both dates don't have years (insufficient data).
 // Always returns absolute value (no negative years).
 func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
@@ -1244,6 +1273,7 @@ func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
 	if d1 == nil || d2 == nil || d1.Year == 0 || d2.Year == 0 {
 		return 0, false, fmt.Errorf("insufficient date information")
 	}
+	d1, d2 = d1.inNewStyle(), d2.inNewStyle()
 
 	// Try exact calculation for complete Gregorian dates
 	t1, err1 := d1.ToTime()
