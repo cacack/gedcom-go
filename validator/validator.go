@@ -273,6 +273,9 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	allIssues = append(allIssues, validateBrokenXRefs(doc)...)
 	allIssues = append(allIssues, validateRecordStructure(doc)...)
 
+	// Run date validity validation (dates that do not exist, e.g. 31 FEB)
+	allIssues = append(allIssues, validateDates(doc)...)
+
 	// Run XRef length validation
 	allIssues = append(allIssues, v.getXRefValidator().ValidateXRefs(doc)...)
 
@@ -320,7 +323,9 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 
 // ValidateDateLogic runs date logic validation and returns any issues found.
 // This checks for chronological impossibilities like death before birth,
-// children born before parents, and unreasonable ages.
+// children born before parents, and unreasonable ages. Dates that do not
+// exist on the calendar, such as 31 FEB 1900 (CodeInvalidDate), are reported
+// only by [Validator.ValidateAll].
 func (v *Validator) ValidateDateLogic(doc *gedcom.Document) []Issue {
 	if doc == nil {
 		return nil
@@ -418,8 +423,8 @@ func (v *Validator) ValidateNotePointers(doc *gedcom.Document) []Issue {
 //
 // The report covers date logic, cross-references, duplicates, custom tags and
 // completeness. It is not the full issue set: the header, broken-pointer,
-// record-structure, XRef-length, encoding and note-pointer checks run only
-// under [Validator.ValidateAll], so a caller reading QualityReport's counts
+// record-structure, date-validity, XRef-length, encoding and note-pointer
+// checks run only under [Validator.ValidateAll], so a caller reading QualityReport's counts
 // alone can see a clean report for a document ValidateAll flags. Use
 // ValidateAll when completeness of the issue set matters.
 func (v *Validator) QualityReport(doc *gedcom.Document) *QualityReport {

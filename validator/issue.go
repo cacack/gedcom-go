@@ -56,6 +56,12 @@ const (
 	// CodeImpossibleAge indicates an age that is biologically implausible (e.g., >120 years).
 	CodeImpossibleAge = "IMPOSSIBLE_AGE"
 
+	// CodeInvalidDate indicates a date that does not exist on its calendar,
+	// such as 31 FEB 1900 or 29 FEB 1900, including the end date of a range
+	// or period. Dates gedcom.Date.Validate skips (partial dates and
+	// non-Gregorian calendars) are not reported.
+	CodeInvalidDate = "INVALID_DATE"
+
 	// CodeUnreasonableParentAge indicates a parent's age at child's birth is implausible.
 	// Used when parent is too young (e.g., <12) or too old (e.g., mother >55, father >90).
 	CodeUnreasonableParentAge = "UNREASONABLE_PARENT_AGE"
