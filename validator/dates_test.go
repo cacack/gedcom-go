@@ -50,6 +50,8 @@ func TestInvalidDateReported(t *testing.T) {
 		{"dual-dated 30 FEB", []string{"1 BIRT", "2 DATE 30 FEB 1723/24"}, "BIRT", "BIRT.DATE", 8},
 		{"dual-dated 31 APR", []string{"1 BIRT", "2 DATE 31 APR 1723/24"}, "BIRT", "BIRT.DATE", 8},
 		{"dual-dated range end", []string{"1 BIRT", "2 DATE BET 1 JAN 1723/24 AND 32 JAN 1723/24"}, "BIRT", "BIRT.DATE", 8},
+		{"dual year not following", []string{"1 BIRT", "2 DATE 1750/53"}, "BIRT", "BIRT.DATE", 8},
+		{"dual-dated day with dual year not following", []string{"1 BIRT", "2 DATE 29 FEB 1723/1722"}, "BIRT", "BIRT.DATE", 8},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -85,6 +87,7 @@ func TestInvalidDateNotReported(t *testing.T) {
 		"@#DJULIAN@ 31 FEB 1900",
 		"29 FEB 1723/24",
 		"BET 1 JAN 1723/24 AND 29 FEB 1723/24",
+		"1 JAN 1699/00",
 		"(sometime in spring)",
 		"not a date at all",
 	} {

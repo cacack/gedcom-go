@@ -79,11 +79,11 @@ This does **not** relax the bar against speculation. "Someone might want this" i
 
 | Phase | Focus | Milestone(s) | Principle |
 |-------|-------|--------------|-----------|
-| **Phase 1 (Now)** | Real-world compatibility, API polish & correctness | `Write-path fidelity`, `Honest conversion reports`, `Read-path correctness`, `Validator accuracy`, `Spec coverage: typed access`, `Test rigor` | Nail the Basics First |
-| **Phase 2 (Partly shipped)** | Document manipulation | _(none open)_ | Respect the Data |
+| **Phase 1 (Now)** | Real-world compatibility, API polish & correctness | `Write-path fidelity`, `Honest conversion reports`, `Read-path correctness`, `Validator accuracy`, `Date semantics`, `Spec coverage: typed access`, `Test rigor` | Nail the Basics First |
+| **Phase 2 (Partly shipped)** | Document manipulation | `Manipulation correctness` | Respect the Data |
 | **Phase 3 (Future)** | Advanced features & formats | `Phase 3: features` (unscheduled) | Start Small, Ship Often |
 
-Milestones are named by theme, not version: release-please derives the version from commit types. Phase 1 began with the closed `v2.1.0` and `v2.2.0` milestones. Phase 2's merge half shipped in v2.0.0 as the `merge` package; the remaining diff work ([#36](https://github.com/cacack/gedcom-go/issues/36)) is tracked under `Phase 3: features` with GEDZip ([#127](https://github.com/cacack/gedcom-go/issues/127)), export and the CLI. Pre-issue ideas live in [IDEAS.md](IDEAS.md) (fluent builder API, JSON struct tags, BOM output option).
+Milestones are named by theme, not version: release-please derives the version from commit types. Phase 1 began with the closed `v2.1.0` and `v2.2.0` milestones. Phase 2's merge half shipped in v2.0.0 as the `merge` package, and `Manipulation correctness` hardens what shipped (merge, `Combine`, `RemapXRefs`, `Visit`, `Subset`, `Clone`) rather than adding to it; the remaining diff work ([#36](https://github.com/cacack/gedcom-go/issues/36)) is tracked under `Phase 3: features` with GEDZip ([#127](https://github.com/cacack/gedcom-go/issues/127)), export and the CLI. Pre-issue ideas live in [IDEAS.md](IDEAS.md) (fluent builder API, JSON struct tags, BOM output option).
 
 ---
 
