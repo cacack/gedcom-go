@@ -49,7 +49,7 @@ The question: how do we reliably determine which version rules to apply?
 2 VERS 7.0
 ```
 
-Parsed and trusted when present and valid.
+Parsed and trusted when present and valid. A GEDCOM 7 patch version (`7.0.N`, N all ASCII digits) counts as 7.0; malformed values such as `7.0.x` or `7.1` are not recognized: `DetectVersion` falls through to tag-based detection, while `DeclaredVersion` returns no version.
 
 ### Fallback: Tag-Based Detection
 

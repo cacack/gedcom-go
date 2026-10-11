@@ -138,7 +138,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// Detect GEDCOM version
 	detectedVersion := version.DetectVersion(parsedLines)
 	// The identifier grammar follows only the version the header declares:
-	// a guessed version (no header, or an unrecognized VERS such as 7.0.14)
+	// a guessed version (no header, or an unrecognized VERS such as 7.1)
 	// must not relax it to the 5.5 grammar.
 	xrefVersion := version.DeclaredVersion(parsedLines)
 	parseErrors = dropPermittedXRefErrors(parsedLines, parseErrors, xrefVersion)

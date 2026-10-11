@@ -258,6 +258,29 @@ func TestDecodeHeaderVersionFromGEDC(t *testing.T) {
 	}
 }
 
+// TestDecodeHeaderVersionPatch pins that a GEDCOM 7 patch version in
+// HEAD.GEDC.VERS decodes as 7.0 while the raw VERS value is preserved (#587).
+func TestDecodeHeaderVersionPatch(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 7.0.14\n0 TRLR\n"
+
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	if doc.Header.Version != gedcom.Version70 {
+		t.Errorf("Header.Version = %q, want %q", doc.Header.Version, gedcom.Version70)
+	}
+	var raw string
+	for _, tag := range doc.Header.Tags {
+		if tag.Tag == "VERS" {
+			raw = tag.Value
+		}
+	}
+	if raw != "7.0.14" {
+		t.Errorf("raw VERS = %q, want %q", raw, "7.0.14")
+	}
+}
+
 // Test header with all optional fields
 func TestDecodeHeaderComplete(t *testing.T) {
 	input := `0 HEAD

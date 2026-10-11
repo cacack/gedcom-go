@@ -72,7 +72,7 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 | GEDCOM 5.5.1 | Every readable line preserved | [1,128 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (85.7%) | Most common format |
 | GEDCOM 7.0 | Every readable line preserved | [1,242 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (89.4%) | Latest standard |
 
-- Automatic version detection from header
+- Automatic version detection from header (GEDCOM 7 patch versions such as `VERS 7.0.14` detect as 7.0)
 - Heuristic-based detection for malformed headers
 - Version-aware validation rules
 
