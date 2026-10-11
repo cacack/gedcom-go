@@ -135,21 +135,14 @@ type utf8Reader struct {
 	column     int
 	lastWasCR  bool // previous byte was CR, so a following LF completes one CRLF break
 	bomSkipped bool
-	buffer     []byte // Buffer for BOM bytes that need to be returned
-	bufPos     int    // Current position in buffer
 	pending    []byte // Incomplete UTF-8 sequence from previous read
 	complete   []byte // Complete UTF-8 bytes ready to return
-	err        error  // Sticky failure, surfaced once buffer and complete have drained
+	err        error  // Sticky failure, surfaced once complete has drained
 }
 
 func (u *utf8Reader) Read(p []byte) (n int, err error) {
 	if len(p) == 0 {
 		return 0, nil
-	}
-
-	// Return buffered BOM bytes first if any
-	if n, ok := u.readBuffered(p); ok {
-		return n, nil
 	}
 
 	// Return any complete bytes first
@@ -167,9 +160,7 @@ func (u *utf8Reader) Read(p []byte) (n int, err error) {
 
 	// Skip BOM on first read
 	if !u.bomSkipped {
-		if n, err := u.handleBOM(p); err != nil || n > 0 {
-			return n, err
-		}
+		u.handleBOM()
 	}
 
 	n, err = u.readAndProcess(p)
@@ -268,50 +259,23 @@ func (u *utf8Reader) processWorkBuffer(p, workBuf []byte, workN int) (int, error
 	return n, verr
 }
 
-func (u *utf8Reader) readBuffered(p []byte) (int, bool) {
-	if len(u.buffer) > 0 && u.bufPos < len(u.buffer) {
-		n := copy(p, u.buffer[u.bufPos:])
-		u.bufPos += n
-		if u.bufPos >= len(u.buffer) {
-			u.buffer = nil
-			u.bufPos = 0
-		}
-		return n, true
-	}
-	return 0, false
-}
-
-func (u *utf8Reader) handleBOM(p []byte) (int, error) {
+// handleBOM strips a leading UTF-8 BOM. Any other bytes read while looking for
+// one are replayed ahead of the rest of the source, so readAndProcess validates
+// and tracks them like any other input. A read error (or io.EOF) is replayed in
+// place of the source, so the failure is reported after those bytes rather
+// than resumed past.
+func (u *utf8Reader) handleBOM() {
 	u.bomSkipped = true
 	bom := make([]byte, 3)
 	n, err := readPrefix(u.reader, bom)
-	if err != nil && err != io.EOF {
-		// Sticky: deliver the bytes read before the failure, then report it
-		// rather than resuming the source past it.
-		u.err = err
-		if n == 0 {
-			return 0, err
-		}
-	}
-
-	// Check for UTF-8 BOM (0xEF 0xBB 0xBF)
 	if n == 3 && bytes.Equal(bom, []byte{0xEF, 0xBB, 0xBF}) {
-		return 0, u.err // BOM found and skipped; nil unless the read failed
+		n = 0 // BOM found and skipped
 	}
-
-	// No BOM, buffer these bytes to return
-	if n > 0 {
-		u.buffer = bom[:n]
-		u.bufPos = 0
-		copied := copy(p, u.buffer)
-		u.bufPos = copied
-		if u.bufPos >= len(u.buffer) {
-			u.buffer = nil
-			u.bufPos = 0
-		}
-		return copied, nil
+	rest := u.reader
+	if err != nil {
+		rest = errReader{err: err}
 	}
-	return 0, nil
+	u.reader = io.MultiReader(bytes.NewReader(bom[:n]), rest)
 }
 
 // validateAndTrack validates p as UTF-8 and advances the line/column cursor

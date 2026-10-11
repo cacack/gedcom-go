@@ -2138,3 +2138,52 @@ func TestNewReader_ShortProbeErrorReplaysPrefix(t *testing.T) {
 		t.Errorf("ReadAll() data = %q, want %q", got, "0")
 	}
 }
+
+// TestUTF8Reader_HandleBOMValidatesPrefix checks that the bytes handleBOM reads
+// while looking for a BOM are validated like the rest of the input: an invalid
+// prefix is rejected, and a character split across the prefix is kept whole.
+func TestUTF8Reader_HandleBOMValidatesPrefix(t *testing.T) {
+	testErr := errors.New("transient read error")
+	tests := []struct {
+		name    string
+		steps   []readStep
+		want    string
+		wantErr error
+	}{
+		{"character split across prefix", []readStep{{"ab\xC3\xA9cd", nil}}, "ab\xC3\xA9cd", nil},
+		{"invalid prefix", []readStep{{"\xFFabc", nil}}, "", &ErrInvalidUTF8{}},
+		{"UTF-16 BOM with read error", []readStep{{"\xFF\xFEa", testErr}, {"bc", nil}}, "", &ErrInvalidUTF8{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := io.ReadAll(newBOMCheckingUTF8Reader(&scriptedReader{steps: tt.steps}))
+			var invalid *ErrInvalidUTF8
+			switch {
+			case tt.wantErr == nil && err != nil:
+				t.Errorf("ReadAll() error = %v, want nil", err)
+			case tt.wantErr != nil && !errors.As(err, &invalid):
+				t.Errorf("ReadAll() error = %v, want *ErrInvalidUTF8", err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("ReadAll() data = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestNewReader_UTF16BOMReadErrorNotPassedRaw checks that a UTF-16 BOM read
+// together with an error reaches the caller as an encoding error, not as raw
+// bytes that were never validated.
+func TestNewReader_UTF16BOMReadErrorNotPassedRaw(t *testing.T) {
+	testErr := errors.New("transient read error")
+	src := &scriptedReader{steps: []readStep{{"\xFF\xFEa", testErr}, {"bc", nil}}}
+
+	got, err := io.ReadAll(NewReader(src))
+	var invalid *ErrInvalidUTF8
+	if !errors.As(err, &invalid) {
+		t.Errorf("ReadAll() error = %v, want *ErrInvalidUTF8", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("ReadAll() data = %q, want none", got)
+	}
+}
