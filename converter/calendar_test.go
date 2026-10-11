@@ -393,3 +393,113 @@ func hasNote(notes []gedcom.ConversionNote, original, result string) bool {
 	}
 	return false
 }
+
+const calendarHeaderGED = `0 HEAD
+1 SOUR X
+2 DATA D
+3 DATE @#DJULIAN@ 1 JAN 1700
+1 DATE @#DGREGORIAN@ 2 FEB 2000
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 TRLR
+`
+
+// TestConvertDateCalendarHeader covers header dates, which the encoder writes
+// from Header.Tags, converted to 7.0 and back.
+func TestConvertDateCalendarHeader(t *testing.T) {
+	src, err := decoder.Decode(strings.NewReader(calendarHeaderGED))
+	if err != nil {
+		t.Fatalf("decode 5.5.1: %v", err)
+	}
+
+	v7, report, err := converter.Convert(src, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert to 7.0: %v", err)
+	}
+	v7Text := encode(t, v7)
+	for _, want := range []string{"3 DATE JULIAN 1 JAN 1700", "1 DATE GREGORIAN 2 FEB 2000"} {
+		if !strings.Contains(v7Text, want) {
+			t.Errorf("7.0 output missing %q:\n%s", want, v7Text)
+		}
+	}
+	if strings.Contains(v7Text, "@#D") {
+		t.Errorf("7.0 output still carries a 5.5.x calendar escape:\n%s", v7Text)
+	}
+	if v7.Header.Date != "GREGORIAN 2 FEB 2000" {
+		t.Errorf("Header.Date = %q, want it kept in step with Tags", v7.Header.Date)
+	}
+	for _, n := range []gedcom.ConversionNote{
+		{Path: "Header > SOUR > DATA > DATE", Original: "@#DJULIAN@ 1 JAN 1700", Result: "JULIAN 1 JAN 1700"},
+		{Path: "Header > DATE", Original: "@#DGREGORIAN@ 2 FEB 2000", Result: "GREGORIAN 2 FEB 2000"},
+	} {
+		if !hasNoteAt(report.Normalized, n) {
+			t.Errorf("missing Normalized note %+v in %+v", n, report.Normalized)
+		}
+	}
+	if len(report.Normalized) != 2 || !hasTransformation(report, "DATE_CALENDAR_CONVERTED") {
+		t.Errorf("want two Normalized notes and a DATE_CALENDAR_CONVERTED transformation, got %+v / %+v", report.Normalized, report.Transformations)
+	}
+
+	back, _, err := converter.Convert(decodeClean(t, v7Text, gedcom.Version70), gedcom.Version551)
+	if err != nil {
+		t.Fatalf("Convert to 5.5.1: %v", err)
+	}
+	backText := encode(t, back)
+	for _, want := range []string{"3 DATE @#DJULIAN@ 1 JAN 1700", "1 DATE @#DGREGORIAN@ 2 FEB 2000"} {
+		if !strings.Contains(backText, want) {
+			t.Errorf("5.5.1 output missing %q:\n%s", want, backText)
+		}
+	}
+}
+
+// TestConvertDateCalendarHeaderTypedOnly covers a header built in code, whose
+// typed Date is the encoder's only write path.
+func TestConvertDateCalendarHeaderTypedOnly(t *testing.T) {
+	doc := calendarDoc(gedcom.Version551, "1700")
+	doc.Header.Date = "@#DJULIAN@ 1 JAN 1700"
+
+	got, report, err := converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	if got.Header.Date != "JULIAN 1 JAN 1700" {
+		t.Errorf("Header.Date = %q, want %q", got.Header.Date, "JULIAN 1 JAN 1700")
+	}
+	want := gedcom.ConversionNote{Path: "Header > DATE", Original: "@#DJULIAN@ 1 JAN 1700", Result: "JULIAN 1 JAN 1700"}
+	if len(report.Normalized) != 1 || !hasNoteAt(report.Normalized, want) {
+		t.Errorf("want one Normalized note %+v, got %+v", want, report.Normalized)
+	}
+}
+
+// TestConvertDateCalendarHeaderTagsWithoutDate covers a typed Date on a header
+// whose Tags carry no DATE: the encoder writes Tags only, so the Date is
+// rewritten to stay consistent but not reported.
+func TestConvertDateCalendarHeaderTagsWithoutDate(t *testing.T) {
+	doc := calendarDoc(gedcom.Version551, "1700")
+	doc.Header.Tags = []*gedcom.Tag{{Level: 1, Tag: "SOUR", Value: "TEST"}}
+	doc.Header.Date = "@#DJULIAN@ 1 JAN 1700"
+
+	got, report, err := converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	if got.Header.Date != "JULIAN 1 JAN 1700" {
+		t.Errorf("Header.Date = %q, want %q", got.Header.Date, "JULIAN 1 JAN 1700")
+	}
+	for _, n := range report.Normalized {
+		if strings.HasPrefix(n.Path, "Header") {
+			t.Errorf("unexpected header note %+v: the encoder does not write Header.Date", n)
+		}
+	}
+}
+
+func hasNoteAt(notes []gedcom.ConversionNote, want gedcom.ConversionNote) bool {
+	for _, n := range notes {
+		if n.Path == want.Path && n.Original == want.Original && n.Result == want.Result {
+			return true
+		}
+	}
+	return false
+}
