@@ -1458,6 +1458,8 @@ Full support for encoding typed entities back to GEDCOM format:
 | Note | Text with continuation lines |
 | MediaObject | Files, formats, translations, citations |
 
+A line break in a value is written as `CONT` lines. A line break in a tag name or identifier (`Tag.Tag`, `Tag.XRef`, `Record.Type`, `Record.XRef`, or an entity field that becomes a tag name such as `Event.Type`) has no GEDCOM spelling, so encoding returns `encoder.ErrLineBreak` rather than writing a line that could re-decode as a forged record.
+
 Nil values in a hand-built document are written as nothing instead of panicking: a nil element in any slice (a record, a tag, a name, an event, a citation) is skipped, a nil `Header` encodes as an empty one, and a nil `Document` returns `encoder.ErrNilDocument`. The same skip-rather-than-panic rule applies library-wide — see [ADR 0007](docs/decisions/0007-error-transparency.md#nil-values) for the full policy, and the `encoder` package documentation for what the encoder writes for each shape.
 
 ### Round-Trip Encoding

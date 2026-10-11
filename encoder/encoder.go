@@ -15,6 +15,15 @@ import (
 // "0 TRLR" of an empty document -- can be written for it.
 var ErrNilDocument = errors.New("document is nil")
 
+// ErrLineBreak is returned when a tag name or cross-reference identifier --
+// [gedcom.Tag].Tag, [gedcom.Tag].XRef, [gedcom.Record].Type or
+// [gedcom.Record].XRef, including a tag name derived from a typed entity field
+// such as [gedcom.Event].Type -- contains a line break (CR or LF). GEDCOM has no
+// way to spell one there, and writing it through would start a new physical
+// line that a reader could take for a record the caller never wrote. A line
+// break in a value is not an error: it is written as CONT.
+var ErrLineBreak = errors.New("line break in tag or cross-reference identifier")
+
 // Encode writes a GEDCOM document to a writer.
 //
 // Returns ErrNilDocument if doc is nil. See the package documentation for how
@@ -394,6 +403,16 @@ func writeTag(w io.Writer, tag *gedcom.Tag, opts *EncodeOptions) error {
 // for the level-0 line without allocating a Tag to describe a record it already
 // has.
 func writeValue(w io.Writer, level int, xref, tag, value string, opts *EncodeOptions) error {
+	// A tag name or identifier has no CONT form, so a line break in either is
+	// rejected rather than folded (issue #466). Checked here rather than in
+	// writeLine so a multi-line value pays for it once, not once per CONT.
+	if hasLineBreak(tag) {
+		return fmt.Errorf("level %d tag %q: %w", level, tag, ErrLineBreak)
+	}
+	if hasLineBreak(xref) {
+		return fmt.Errorf("level %d xref %q: %w", level, xref, ErrLineBreak)
+	}
+
 	// A value carrying line breaks has to be split back across CONT lines. The
 	// converter embeds newlines when it consolidates CONT for 7.0, and a
 	// hand-built Tag may hold them too; writing such a value inline would emit
@@ -436,6 +455,19 @@ func writeValue(w io.Writer, level int, xref, tag, value string, opts *EncodeOpt
 		}
 	}
 	return nil
+}
+
+// hasLineBreak reports whether s, a tag name or identifier, contains a CR or
+// LF. It runs twice for every line written, on strings that are almost always
+// a handful of bytes or empty, so it is a plain loop: two IndexByte calls cost
+// more in call overhead than scanning a four-byte tag does.
+func hasLineBreak(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\n' || s[i] == '\r' {
+			return true
+		}
+	}
+	return false
 }
 
 // splitValueLines splits a tag value on line breaks, returning at least one

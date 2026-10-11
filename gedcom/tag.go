@@ -3,11 +3,18 @@ package gedcom
 // Tag represents a GEDCOM tag-value pair with hierarchical level information.
 // Tags are the fundamental building blocks of GEDCOM files, representing
 // structured data in a hierarchical format.
+//
+// A Tag need not come from the decoder or a Clone: building one by hand is
+// supported. The encoder checks what it cannot write -- a line break in Tag or
+// XRef is an error (encoder.ErrLineBreak), and one in Value becomes CONT lines
+// -- but writes everything else verbatim, so a hand-built Tag is otherwise the
+// caller's to keep well formed.
 type Tag struct {
 	// Level is the hierarchical depth (0 for top-level records, 1+ for nested data)
 	Level int
 
-	// Tag is the GEDCOM tag name (e.g., "INDI", "NAME", "BIRT")
+	// Tag is the GEDCOM tag name (e.g., "INDI", "NAME", "BIRT").
+	// It cannot contain a line break; the encoder rejects one.
 	Tag string
 
 	// Value is the optional value associated with the tag.
@@ -23,7 +30,8 @@ type Tag struct {
 	// Normally present only on level-0 records, the tags other records can
 	// point at. It is also populated on a subordinate tag when the source
 	// line carried a malformed identifier the decoder recovered (e.g.
-	// "1 @I 1@ NOTE"), so that identifier is preserved verbatim.
+	// "1 @I 1@ NOTE"), so that identifier is preserved verbatim. It cannot
+	// contain a line break; the encoder rejects one.
 	XRef string
 
 	// LineNumber is the line number in the source file where this tag appears

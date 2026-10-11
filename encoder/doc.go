@@ -87,6 +87,22 @@
 // Version conversion belongs to the converter package, which updates the raw
 // header tags alongside the typed fields for exactly this reason.
 //
+// # Line Breaks
+//
+// A line break (CR, LF or CRLF) in a value is written as CONT lines, because
+// that is how GEDCOM spells one. A tag name or cross-reference identifier has
+// no such form, so a line break in [gedcom.Tag].Tag, [gedcom.Tag].XRef,
+// [gedcom.Record].Type or [gedcom.Record].XRef -- or in a typed entity field
+// that becomes a tag name, such as [gedcom.Event].Type -- makes Encode return
+// [ErrLineBreak] instead of writing a line a reader could take for a record
+// the caller never wrote. Only line breaks are checked; other characters in
+// those fields are written verbatim, so a hand-built document is otherwise the
+// caller's to keep well formed. A decoded document never contains one.
+//
+// Lines already written when the error is found stay written, as with a write
+// error, so encode into a buffer when partial output must not reach the
+// destination.
+//
 // # Nil Values
 //
 // A document assembled in memory can hold nils that a decoded one never does.
