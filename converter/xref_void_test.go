@@ -123,3 +123,78 @@ func TestConvertVoidRecordTo70(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertVoidIn70SourceIsNotRenamed pins that the #603 @VOID@ rename
+// applies only to 5.5/5.5.1 sources: in a 7.0 source @VOID@ is the null
+// pointer, so a 7.0 -> 7.0 conversion, which still normalizes invalid XRefs,
+// never renames it, even when a (non-conforming) record is named @VOID@.
+func TestConvertVoidIn70SourceIsNotRenamed(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name: "null pointer",
+			input: `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @i1@ INDI
+1 NOTE @VOID@
+0 TRLR
+`,
+		},
+		{
+			name: "record named @VOID@",
+			input: `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @VOID@ SNOTE hello
+0 @i1@ INDI
+1 NOTE @VOID@
+0 TRLR
+`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := decoder.Decode(strings.NewReader(tt.input))
+			if err != nil {
+				t.Fatalf("decode 7.0: %v", err)
+			}
+			hadVoidRecord := doc.GetRecord("@VOID@") != nil
+			converted, report, err := converter.Convert(doc, gedcom.Version70)
+			if err != nil {
+				t.Fatalf("Convert: %v", err)
+			}
+
+			var renamedI1 bool
+			for _, n := range report.Normalized {
+				if n.Original == "@VOID@" {
+					t.Errorf("report renames @VOID@ to %q in a 7.0 source", n.Result)
+				}
+				if n.Original == "@i1@" && n.Result == "@I1@" {
+					renamedI1 = true
+				}
+			}
+			if !renamedI1 {
+				t.Errorf("invalid @i1@ not renamed to @I1@: %+v", report.Normalized)
+			}
+
+			if (converted.GetRecord("@VOID@") != nil) != hadVoidRecord {
+				t.Errorf("@VOID@ record presence changed: had %v", hadVoidRecord)
+			}
+			indi := converted.GetIndividual("@I1@")
+			if indi == nil {
+				t.Fatalf("@I1@ not found after conversion")
+			}
+			var buf bytes.Buffer
+			if err := encoder.Encode(&buf, converted); err != nil {
+				t.Fatalf("Encode: %v", err)
+			}
+			out := buf.String()
+			if !strings.Contains(out, "0 @I1@ INDI\n1 NOTE @VOID@") {
+				t.Errorf("@I1@ NOTE @VOID@ null pointer not kept:\n%s", out)
+			}
+		})
+	}
+}

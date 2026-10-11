@@ -89,11 +89,10 @@ func applyV7XRefMapping(doc *gedcom.Document, mapping map[string]string, danglin
 }
 
 // buildXRefMapping maps each XRef that is not a valid GEDCOM 7.0 Xref, and a
-// record XRef of @VOID@, to a valid one, as described on
-// normalizeXRefsForV7, and also returns the mapped pointers that no record
-// defines. Other valid XRefs are not included.
-// Records and pointers are visited in document order, so the result is
-// deterministic.
+// record XRef of @VOID@ in a document that is not 7.0, to a valid one, as
+// described on normalizeXRefsForV7, and also returns the mapped pointers that
+// no record defines. Other valid XRefs are not included. Records and pointers
+// are visited in document order, so the result is deterministic.
 func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling []string) {
 	mapping = make(map[string]string)
 
@@ -127,8 +126,9 @@ func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling
 		return candidate
 	}
 
+	voidIsNull := doc.Header != nil && doc.Header.Version == gedcom.Version70
 	for _, record := range doc.Records {
-		if record == nil || record.XRef == "" || (isV7XRef(record.XRef) && record.XRef != v7NullXRef) {
+		if record == nil || !recordNeedsV7XRef(record.XRef, voidIsNull) {
 			continue
 		}
 		if _, done := mapping[record.XRef]; done {
@@ -149,6 +149,19 @@ func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling
 	}
 
 	return mapping, dangling
+}
+
+// recordNeedsV7XRef reports whether a record XRef must be renamed for 7.0:
+// it is not a valid 7.0 Xref, or it is @VOID@ in a 5.5/5.5.1 source. In a 7.0
+// source (the 7.0 -> 7.0 path) voidIsNull is true and @VOID@ is kept, since it
+// is the null pointer there and its pointers must not follow a rename. It is
+// keyed on Header.Version, as gedcom.Apply is, which the 5.5.x -> 7.0 paths
+// stamp only after normalizing.
+func recordNeedsV7XRef(xref string, voidIsNull bool) bool {
+	if xref == "" {
+		return false
+	}
+	return !isV7XRef(xref) || (xref == v7NullXRef && !voidIsNull)
 }
 
 // indexRecordXRefs returns the identifiers a rewrite must avoid (valid record
