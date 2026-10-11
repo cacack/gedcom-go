@@ -576,8 +576,10 @@ func (s *headerScanner) headerEnd(data []byte) int {
 	return -1
 }
 
-// step advances the scan past c, the byte at s.pos, and reports whether c
-// completes the start of a level-0 line.
+// step advances the scan past c, which must be the byte at s.pos (s.pos is
+// recorded as lineBreak), and reports whether c completes the start of a
+// level-0 line. Case order matters: line breaks are handled first, and the
+// blank cases rely on the earlier state-specific cases having been ruled out.
 func (s *headerScanner) step(c byte) bool {
 	blank := c == ' ' || c == '\t'
 	switch {
@@ -594,6 +596,7 @@ func (s *headerScanner) step(c byte) bool {
 	case s.state == scanLineStart && c == '0':
 		s.state = scanLevelZero
 	case s.state == scanLineStart && blank:
+		// Blanks before the level number: stay in scanLineStart.
 	default:
 		s.state = scanInLine
 	}

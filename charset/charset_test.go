@@ -1142,6 +1142,8 @@ func TestHeaderScanner_HeaderEnd(t *testing.T) {
 // headerProbeLimit and checks that each call examines only the appended byte,
 // so a reader returning tiny chunks costs linear rather than quadratic work
 // (issue #592). The inputs never end the header, forcing the full probe.
+// The scanner's pos is the proxy for work: headerEnd examines exactly the bytes
+// from pos onward, so each call must resume where the previous one stopped.
 func TestHeaderScanner_LinearWork(t *testing.T) {
 	tests := []struct {
 		name string
@@ -1171,6 +1173,26 @@ func TestHeaderScanner_LinearWork(t *testing.T) {
 				t.Errorf("headerEnd() examined %d bytes in total, want %d", examined, len(data))
 			}
 		})
+	}
+}
+
+// TestProbeHeader_OneByteReads drives probeHeader with a reader returning one
+// byte per Read over a header that never ends, checking that the scanner kept
+// across reads reports the whole bounded probe as header (issue #592).
+func TestProbeHeader_OneByteReads(t *testing.T) {
+	data := "0 HEAD\n" + strings.Repeat("1 NOTE x\r\n", headerProbeLimit/5)
+	probe, headerLen, err := probeHeader(iotest.OneByteReader(strings.NewReader(data)))
+	if err != nil {
+		t.Fatalf("probeHeader() error = %v", err)
+	}
+	if len(probe) != headerProbeLimit {
+		t.Fatalf("probeHeader() read %d bytes, want %d", len(probe), headerProbeLimit)
+	}
+	if headerLen != len(probe) {
+		t.Errorf("probeHeader() headerLen = %d, want %d", headerLen, len(probe))
+	}
+	if string(probe) != data[:headerProbeLimit] {
+		t.Errorf("probeHeader() probe does not match the input prefix")
 	}
 }
 
