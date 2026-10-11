@@ -23,6 +23,10 @@ import (
 // such as the implicit header) are skipped and contribute no mapping
 // entry.
 //
+// A record named @VOID@ (allowed in GEDCOM 5.5 and 5.5.1) is remapped like
+// any other, and so are its @VOID@ pointers unless Header.Version is 7.0,
+// where @VOID@ is the null pointer; see gedcom.Apply.
+//
 // On success, RemapXRefs returns:
 //
 //   - the remapped document (a deep copy of doc with all references

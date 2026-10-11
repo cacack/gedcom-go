@@ -582,3 +582,34 @@ func TestRemapXRefs_RecordsWithEmptyXRefAreSkipped(t *testing.T) {
 		t.Errorf("output should preserve 1 nil record (Clone fidelity), got %d", nilCount)
 	}
 }
+
+// TestRemapXRefs_RecordNamedVoid pins issue #603: in a GEDCOM 5.5.1 document,
+// where @VOID@ is an ordinary identifier, a record named @VOID@ is remapped
+// and its @VOID@ pointers follow it.
+func TestRemapXRefs_RecordNamedVoid(t *testing.T) {
+	note := &gedcom.Record{XRef: "@VOID@", Type: gedcom.RecordTypeNote, Entity: &gedcom.Note{XRef: "@VOID@"}}
+	ind := &gedcom.Record{
+		XRef: "@I1@", Type: gedcom.RecordTypeIndividual,
+		Entity: &gedcom.Individual{XRef: "@I1@", NoteXRefs: []string{"@VOID@"}},
+		Tags:   []*gedcom.Tag{{Level: 1, Tag: "NOTE", Value: "@VOID@"}},
+	}
+	doc := &gedcom.Document{
+		Header:  &gedcom.Header{Version: gedcom.Version551, DeclaredVersion: gedcom.Version551},
+		Records: []*gedcom.Record{note, ind},
+	}
+
+	out, _, err := merge.RemapXRefs(doc, func(old string) string { return "@A_" + old[1:] })
+	if err != nil {
+		t.Fatalf("RemapXRefs: %v", err)
+	}
+	if got := out.Records[0].XRef; got != "@A_VOID@" {
+		t.Errorf("note record XRef = %q, want @A_VOID@", got)
+	}
+	gotInd := out.Records[1]
+	if got := gotInd.Entity.(*gedcom.Individual).NoteXRefs[0]; got != "@A_VOID@" {
+		t.Errorf("NoteXRefs[0] = %q, want @A_VOID@", got)
+	}
+	if got := gotInd.Tags[0].Value; got != "@A_VOID@" {
+		t.Errorf("raw NOTE tag = %q, want @A_VOID@", got)
+	}
+}

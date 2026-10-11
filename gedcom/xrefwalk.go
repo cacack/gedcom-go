@@ -4,6 +4,10 @@ import (
 	"strings"
 )
 
+// nullXRef is the GEDCOM 7.0 null pointer. GEDCOM 5.5 and 5.5.1 do not
+// reserve it, so there it is an ordinary identifier.
+const nullXRef = "@VOID@"
+
 // refCallback is invoked for every string field that may hold an XRef
 // reference. Visit reads the pointee; Apply rewrites it in place.
 type refCallback func(*string)
@@ -25,7 +29,7 @@ func IsPointerXRef(s string) bool {
 	if len(s) < 3 || s[0] != '@' || s[len(s)-1] != '@' {
 		return false
 	}
-	if s == "@VOID@" {
+	if s == nullXRef {
 		return false
 	}
 	// XRefs do not contain whitespace or interior @ by spec; inline text
@@ -53,7 +57,7 @@ func IsPointerXRefForVersion(s string, v Version) bool {
 	if len(s) < 3 || s[0] != '@' || s[len(s)-1] != '@' || s[1] == ' ' {
 		return false
 	}
-	if s == "@VOID@" {
+	if s == nullXRef {
 		return false
 	}
 	// A space is an ordinary identifier character here, so it cannot make s
@@ -108,7 +112,9 @@ func UnescapeLeadingAt(s string) string {
 // Visit invokes visit for every pointer-shaped XRef reachable from r's
 // Entity and raw Tags. Definition sites (Record.XRef and entity XRef
 // fields) are not visited. Non-pointer-shaped values and the @VOID@
-// sentinel are filtered before reaching the callback. Pointers are matched
+// sentinel are filtered before reaching the callback, in every version;
+// [Apply] instead rewrites @VOID@ outside GEDCOM 7.0 when its mapping has a
+// "@VOID@" key. Pointers are matched
 // with the GEDCOM 7.0 grammar ([IsPointerXRef]); use [VisitForVersion] to
 // also visit the spaced pointers GEDCOM 5.5 and 5.5.1 allow ("@N 1@").
 func Visit(r *Record, visit func(string)) {
@@ -140,6 +146,15 @@ func VisitForVersion(r *Record, v Version, visit func(string)) {
 // Tag.XRef and Tag.Value), the Header.Submitter and Header tags, and the
 // keys of Document.XRefMap.
 //
+// "@VOID@" is the GEDCOM 7.0 null pointer, so in a document whose
+// Header.Version is 7.0 a @VOID@ reference is never rewritten. In any other
+// document, such as a 5.5/5.5.1 one where @VOID@ is an ordinary identifier,
+// a mapping entry for "@VOID@" rewrites its references like any other key.
+// This keys on Header.Version, not Header.DeclaredVersion, because the
+// converter renames a 5.5/5.5.1 record named @VOID@ before it stamps the
+// target version 7.0, whatever version the source file declared. [Visit]
+// and [VisitForVersion] still never report @VOID@, in any version.
+//
 // Apply mutates d in place. Most callers should reach for the higher-
 // level merge.RemapXRefs instead, which clones the document, validates
 // that the transform produces well-formed non-colliding XRefs, and
@@ -168,8 +183,19 @@ func Apply(d *Document, mapping map[string]string) {
 	// values. Only a whole value that is pointer-shaped under the most
 	// permissive grammar (GEDCOM 5.5.1, which allows spaces such as
 	// "@N 1@") is looked up, so inline text is never rewritten.
+	//
+	// @VOID@ is not pointer-shaped, so it is let through separately when the
+	// document is not GEDCOM 7.0, where it is not the null pointer.
+	voidIsNull := d.Header != nil && d.Header.Version == Version70
 	rewriteRef := func(p *string) {
-		if p == nil || !IsPointerXRefForVersion(*p, Version551) {
+		if p == nil {
+			return
+		}
+		if *p == nullXRef {
+			if voidIsNull {
+				return
+			}
+		} else if !IsPointerXRefForVersion(*p, Version551) {
 			return
 		}
 		rewrite(p)
