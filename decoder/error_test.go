@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -344,6 +345,38 @@ func TestANSELErrorReportsPhysicalLine(t *testing.T) {
 			t.Errorf("ParseError.Line = %d, want 1", parseErr.Line)
 		}
 	})
+}
+
+// A combining mark ending a line must stay on that line, end to end. It used
+// to be emitted after the newline, so the next line failed to parse at the
+// wrong line number, or, in lenient mode, was dropped (issue #431).
+func TestANSELCombiningBeforeLineEnd(t *testing.T) {
+	fixture, err := os.ReadFile("../testdata/encoding/ansel-trailing-combining.ged")
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+
+	for _, sep := range []struct{ name, sep string }{
+		{"LF", "\n"},
+		{"CRLF", "\r\n"},
+		{"CR", "\r"},
+	} {
+		t.Run(sep.name, func(t *testing.T) {
+			input := strings.ReplaceAll(string(fixture), "\n", sep.sep)
+			doc, err := DecodeWithOptions(strings.NewReader(input), &DecodeOptions{StrictMode: true})
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+			indi := doc.GetIndividual("@I1@")
+			if indi == nil {
+				t.Fatal("@I1@ not found")
+			}
+			want := []string{"AB\u0301", "second line"}
+			if !reflect.DeepEqual(indi.InlineNotes, want) {
+				t.Errorf("InlineNotes = %q, want %q", indi.InlineNotes, want)
+			}
+		})
+	}
 }
 
 // longSNOTEInput is a GEDCOM 7 file whose shared note is one line of n bytes

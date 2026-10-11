@@ -79,14 +79,15 @@ var bodyKnownBad = map[string]string{
 	// That is fixed; these fixtures now decode, re-encode and re-decode
 	// cleanly, and TestRoundTrip covers them. Only the byte-level comparison
 	// still cannot see it.
-	"testdata/encoding/ansel-lf.ged":                "non-UTF-8 source; payload transcoded",
-	"testdata/encoding/ansi-cp1252-ftm17.ged":       "non-UTF-8 source; payload transcoded",
-	"testdata/encoding/utf16be.ged":                 "non-UTF-8 source; payload transcoded",
-	"testdata/encoding/utf16le.ged":                 "non-UTF-8 source; payload transcoded",
-	"testdata/gedcom-5.5/torture-test/TGC551.ged":   "non-UTF-8 source; payload transcoded",
-	"testdata/gedcom-5.5/torture-test/TGC551LF.ged": "non-UTF-8 source; payload transcoded",
-	"testdata/gedcom-5.5/torture-test/TGC55C.ged":   "non-UTF-8 source; payload transcoded",
-	"testdata/gedcom-5.5/torture-test/TGC55CLF.ged": "non-UTF-8 source; payload transcoded",
+	"testdata/encoding/ansel-lf.ged":                 "non-UTF-8 source; payload transcoded",
+	"testdata/encoding/ansel-trailing-combining.ged": "non-UTF-8 source; payload transcoded",
+	"testdata/encoding/ansi-cp1252-ftm17.ged":        "non-UTF-8 source; payload transcoded",
+	"testdata/encoding/utf16be.ged":                  "non-UTF-8 source; payload transcoded",
+	"testdata/encoding/utf16le.ged":                  "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom-5.5/torture-test/TGC551.ged":    "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom-5.5/torture-test/TGC551LF.ged":  "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom-5.5/torture-test/TGC55C.ged":    "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom-5.5/torture-test/TGC55CLF.ged":  "non-UTF-8 source; payload transcoded",
 
 	// Lenient recovery rewrites the line rather than preserving it. Arguably
 	// correct — the input is malformed — but it is a real byte difference and

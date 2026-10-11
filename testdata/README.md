@@ -106,6 +106,9 @@ Testing various character encodings and special characters:
   - Thai: กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ
   - Symbols and emoji: ☺☻♠♣♥♦★☆♪♫✓✗✘
   - Tests multi-byte UTF-8, RTL text, complex scripts, combining marks
+- **ansel-trailing-combining.ged** (<1K) - Hand-written malformed ANSEL
+  - `1 NOTE AB` ends in a combining acute (0xE2) with no base character before the LF
+  - The mark must stay on its own line rather than corrupt the next one (issue #431)
 
 #### Gramps Encoding Tests
 Source: https://github.com/gramps-project/gramps/tree/master/data/tests
