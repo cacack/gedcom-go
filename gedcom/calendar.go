@@ -262,12 +262,12 @@ func FrenchToJDN(year, month, day int) int {
 	const epoch = 2375840
 
 	// Calculate days before the start of this year
-	// Count leap years before this year
+	// Year y is a leap year when Gregorian year 1792+y is (see IsFrenchLeapYear),
+	// so years 1 to year-1 hold the Gregorian leap years 1793 to 1791+year.
+	// Counting them in closed form keeps the cost independent of year.
 	leapDays := 0
-	for y := 1; y < year; y++ {
-		if IsFrenchLeapYear(y) {
-			leapDays++
-		}
+	if year > 1 {
+		leapDays = gregorianLeapYearsThrough(1791+year) - gregorianLeapYearsThrough(1792)
 	}
 	daysBeforeYear := (year-1)*365 + leapDays
 
@@ -284,6 +284,12 @@ func FrenchToJDN(year, month, day int) int {
 	// JDN = epoch + days before year + days in year - 1
 	// (subtract 1 because day 1 of year 1 should equal the epoch)
 	return epoch + daysBeforeYear + daysInYear - 1
+}
+
+// gregorianLeapYearsThrough counts the Gregorian leap years from 1 to year,
+// for year >= 0.
+func gregorianLeapYearsThrough(year int) int {
+	return year/4 - year/100 + year/400
 }
 
 // JDNToFrench converts a Julian Day Number to French Republican calendar date.

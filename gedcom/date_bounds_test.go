@@ -85,6 +85,15 @@ func TestDate_Bounds(t *testing.T) {
 	}
 }
 
+func mustParse(t *testing.T, s string) *Date {
+	t.Helper()
+	d, err := ParseDate(s)
+	if err != nil {
+		t.Fatalf("ParseDate(%q) error: %v", s, err)
+	}
+	return d
+}
+
 func TestDate_Bounds_NotOK(t *testing.T) {
 	phrase, err := ParseDate("(unknown)")
 	if err != nil {
@@ -103,6 +112,15 @@ func TestDate_Bounds_NotOK(t *testing.T) {
 		{"unknown calendar with day", &Date{Year: 1850, Month: 3, Day: 2, Calendar: Calendar(99)}},
 		{"between without end date", &Date{Year: 1850, Modifier: ModifierBetween}},
 		{"range with yearless end date", &Date{Year: 1850, Modifier: ModifierFromTo, EndDate: &Date{}}},
+		{"day past the end of the month", mustParse(t, "31 FEB 1850")},
+		{"sixth complementary day in a common year", mustParse(t, "@#DFRENCH R@ 6 COMP 8")},
+		{"Adar II in a common Hebrew year", mustParse(t, "@#DHEBREW@ ADS 5785")},
+		{"day in Adar II in a common Hebrew year", mustParse(t, "@#DHEBREW@ 1 ADS 5785")},
+		{"negative day", &Date{Year: 1850, Month: 3, Day: -1}},
+		{"year beyond the range", &Date{Year: maxBoundsYear + 1}},
+		{"B.C. year beyond the range", &Date{Year: -maxBoundsYear - 1}},
+		{"huge French year", &Date{Year: math.MaxInt, Calendar: CalendarFrenchRepublican}},
+		{"huge dual year", &Date{Year: 1850, DualYear: math.MaxInt}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

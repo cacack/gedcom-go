@@ -2,6 +2,7 @@ package gedcom
 
 import (
 	"testing"
+	"time"
 )
 
 // TestGregorianToJDN tests the Gregorian to JDN conversion with known reference dates.
@@ -1647,5 +1648,33 @@ func TestHebrewLeapYearAdarHandling(t *testing.T) {
 					leapYear, month, day, gotYear, gotMonth, gotDay)
 			}
 		}
+	}
+}
+
+// TestFrenchToJDN_LeapCount checks the closed-form leap-year count against
+// counting IsFrenchLeapYear year by year, across several Gregorian centuries.
+func TestFrenchToJDN_LeapCount(t *testing.T) {
+	const epoch = 2375840
+	leapDays := 0
+	for year := 1; year <= 2000; year++ {
+		want := epoch + (year-1)*365 + leapDays
+		if got := FrenchToJDN(year, 1, 1); got != want {
+			t.Fatalf("FrenchToJDN(%d, 1, 1) = %d, want %d", year, got, want)
+		}
+		if IsFrenchLeapYear(year) {
+			leapDays++
+		}
+	}
+}
+
+// TestFrenchToJDN_HugeYear guards against a cost that grows with the year:
+// a parsed date can carry any year.
+func TestFrenchToJDN_HugeYear(t *testing.T) {
+	start := time.Now()
+	if FrenchToJDN(1_000_000_000_000, 1, 1) <= 0 {
+		t.Error("FrenchToJDN with a huge year is not positive")
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Errorf("FrenchToJDN with a huge year took %v", elapsed)
 	}
 }

@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -58,6 +59,10 @@ func checkDateOrderIssues(t *testing.T, issues []Issue, code string, want *Sever
 	}
 	if issues[0].Severity != *want {
 		t.Errorf("Severity = %v, want %v (message %q)", issues[0].Severity, *want, issues[0].Message)
+	}
+	// Only an unproven ordering says "possibly before".
+	if possibly := strings.Contains(issues[0].Message, "possibly before"); possibly != (*want == SeverityWarning) {
+		t.Errorf("Message = %q, contains \"possibly before\" = %v, want %v", issues[0].Message, possibly, *want == SeverityWarning)
 	}
 }
 
@@ -126,7 +131,17 @@ func TestOrderSeverity_NoBounds(t *testing.T) {
 	if severity, found := orderSeverity(early, late); !found || severity != SeverityWarning {
 		t.Errorf("orderSeverity(early, late) = (%v, %v), want (%v, true)", severity, found, SeverityWarning)
 	}
-	if _, found := orderSeverity(late, early); found {
-		t.Error("orderSeverity(late, early) found = true, want false")
+	if severity, found := orderSeverity(late, early); found || severity != SeverityInfo {
+		t.Errorf("orderSeverity(late, early) = (%v, %v), want (%v, false)", severity, found, SeverityInfo)
+	}
+}
+
+// TestOrderSeverity_InvalidDay covers a date Bounds rejects, such as 31 FEB:
+// the order rests on Compare alone, so it is at most a WARNING.
+func TestOrderSeverity_InvalidDay(t *testing.T) {
+	a := mustParseDate(t, "31 FEB 1850")
+	b := mustParseDate(t, "1 MAR 1850")
+	if severity, found := orderSeverity(a, b); !found || severity != SeverityWarning {
+		t.Errorf("orderSeverity = (%v, %v), want (%v, true)", severity, found, SeverityWarning)
 	}
 }

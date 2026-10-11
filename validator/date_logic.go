@@ -243,7 +243,8 @@ func (v *DateLogicValidator) checkMarriageBeforeBirth(doc *gedcom.Document, ind 
 // is before b's earliest; see gedcom.Date.Bounds), and SeverityWarning when
 // Compare puts a first but the dates are too imprecise to prove it, as with
 // "1503" against "2 FEB 1503". found is false when a is not before b by
-// Compare, or the bounds prove it is not.
+// Compare, or the bounds prove it is not; severity is then SeverityInfo and
+// must be ignored.
 func orderSeverity(a, b *gedcom.Date) (severity Severity, found bool) {
 	aEarliest, aLatest, aOK := a.Bounds()
 	bEarliest, bLatest, bOK := b.Bounds()
@@ -251,14 +252,16 @@ func orderSeverity(a, b *gedcom.Date) (severity Severity, found bool) {
 		if aLatest < bEarliest {
 			return SeverityError, true
 		}
+		// Deliberately overrides Compare, which ignores DualYear: death
+		// 10 FEB 1731/32 is after birth 20 DEC 1731 though Compare puts it first.
 		if aEarliest >= bLatest {
-			return 0, false
+			return SeverityInfo, false
 		}
 	}
 	if a.IsBefore(b) {
 		return SeverityWarning, true
 	}
-	return 0, false
+	return SeverityInfo, false
 }
 
 // orderVerb phrases an ordering issue's message for its severity.

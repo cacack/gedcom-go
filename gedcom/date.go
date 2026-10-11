@@ -832,6 +832,9 @@ func defaultToOne(val int) int {
 //
 // When comparing dates with different calendars, both dates are converted to JDN
 // (Julian Day Number) for accurate cross-calendar comparison.
+//
+// Compare ignores Modifier and DualYear, so it gives a sort order, not proof
+// that one date precedes another; see Bounds for that.
 func (d *Date) Compare(other *Date) int {
 	if d == nil && other == nil {
 		return 0
@@ -911,10 +914,18 @@ func (d *Date) Compare(other *Date) int {
 //     Validate), or that is not Gregorian or Julian, spans both readings.
 //
 // ok is false when the date or a range's end date has no year, the date is a
-// phrase, or its calendar is unknown.
+// phrase, its calendar is unknown, it names a month or day the calendar does
+// not have that year (31 FEB 1850, Adar II in a common Hebrew year), or its
+// year is beyond 1,000,000. earliest and latest are meaningless when ok is
+// false.
+//
+// The open ends math.MinInt and math.MaxInt are sentinels: compare them, but
+// do not add to or subtract from them, which overflows.
 //
 // One date is provably before another when its latest day is before the
 // other's earliest: aLatest < bEarliest holds on every reading of both.
+// Compare and IsBefore can disagree with Bounds on partial, modified and dual
+// dates; use Bounds when the question is what the dates prove.
 func (d *Date) Bounds() (earliest, latest int, ok bool) {
 	if d == nil || d.IsPhrase {
 		return 0, 0, false
@@ -972,10 +983,17 @@ func (d *Date) newStyleYear() (year int, known bool) {
 	return 0, false
 }
 
+// maxBoundsYear is the largest year, before or after the epoch, that Bounds
+// places. Larger years are not genealogical dates, and keeping them out keeps
+// the day arithmetic from overflowing.
+const maxBoundsYear = 1_000_000
+
 // boundsInYear bounds the date's day and month, or its whole month or year
-// when those are 0, within year on the date's calendar.
+// when those are 0, within year on the date's calendar. ok is false for a
+// month or day the calendar does not have that year, such as 31 FEB or Adar II
+// in a common Hebrew year.
 func (d *Date) boundsInYear(year int) (earliest, latest int, ok bool) {
-	if year == 0 {
+	if year == 0 || year < -maxBoundsYear || year > maxBoundsYear {
 		return 0, 0, false
 	}
 	lastMonth := 13 // Hebrew and French Republican
@@ -984,29 +1002,26 @@ func (d *Date) boundsInYear(year int) (earliest, latest int, ok bool) {
 		lastMonth = 12
 	}
 
-	switch {
-	case d.Month == 0:
-		earliest, err := calendarToJDN(d.Calendar, year, 1, 1)
-		if err != nil {
-			return 0, 0, false
-		}
-		next, _ := calendarToJDN(d.Calendar, year+1, 1, 1)
-		return earliest, next - 1, true
-	case d.Day == 0:
-		nextYear, nextMonth := year, d.Month+1
-		if nextMonth > lastMonth {
-			nextYear, nextMonth = year+1, 1
-		}
-		earliest, err := calendarToJDN(d.Calendar, year, d.Month, 1)
-		if err != nil {
-			return 0, 0, false
-		}
-		next, _ := calendarToJDN(d.Calendar, nextYear, nextMonth, 1)
-		return earliest, next - 1, true
+	month, nextYear, nextMonth := d.Month, year, d.Month+1
+	if d.Month == 0 {
+		month, nextYear, nextMonth = 1, year+1, 1
+	} else if nextMonth > lastMonth {
+		nextYear, nextMonth = year+1, 1
 	}
-	day, err := calendarToJDN(d.Calendar, year, d.Month, d.Day)
+	start, err := calendarToJDN(d.Calendar, year, month, 1)
 	if err != nil {
 		return 0, 0, false
+	}
+	next, _ := calendarToJDN(d.Calendar, nextYear, nextMonth, 1)
+	if next <= start {
+		return 0, 0, false // a month the year does not have
+	}
+	if d.Month == 0 || d.Day == 0 {
+		return start, next - 1, true
+	}
+	day := start + d.Day - 1
+	if d.Day < 1 || day >= next {
+		return 0, 0, false // a day the month does not have
 	}
 	return day, day, true
 }
@@ -1193,8 +1208,10 @@ func (d *Date) IsAfter(other *Date) bool {
 	return d.Compare(other) > 0
 }
 
-// IsBefore returns true if d is before other.
-// Returns false if either date is nil.
+// IsBefore returns true if d is before other by Compare.
+// Returns false if either date is nil. It reads a partial date as its first
+// day and ignores modifiers and dual years; see Bounds to test whether d is
+// provably before other.
 func (d *Date) IsBefore(other *Date) bool {
 	if d == nil || other == nil {
 		return false

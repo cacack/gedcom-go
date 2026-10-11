@@ -5,6 +5,10 @@ import "fmt"
 // ValidateBirthBeforeDeath checks if a birth date is before or equal to a death date.
 // Returns nil if the birth date is before or equal to the death date, or if either date is nil.
 // Returns an error with descriptive message if the death date is before the birth date.
+//
+// The order is IsBefore's, which reads a partial date as its first day and
+// ignores modifiers and dual years, so imprecise dates can fail without
+// proving anything; see Date.Bounds for what the dates prove.
 func ValidateBirthBeforeDeath(birth, death *Date) error {
 	if birth == nil || death == nil {
 		return nil // Can't validate without both dates
