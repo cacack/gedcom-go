@@ -47,9 +47,10 @@ var calendarKeywordToEscape = map[string]string{
 func transformDateCalendars(doc *gedcom.Document, targetVersion gedcom.Version, report *gedcom.ConversionReport) {
 	t := &calendarTranslator{target: targetVersion, report: report}
 	if header := doc.Header; header != nil {
-		t.translateTags(header.Tags, "HEAD", "")
+		base := datePath{recordType: "HEAD"}
+		t.translateTags(header.Tags, base.recordType, base.xref)
 		// Reported only when the encoder writes it: see the record loop below.
-		t.translate(&header.Date, nil, len(header.Tags) == 0, datePath{recordType: "HEAD", tags: []string{"DATE"}})
+		t.translate(&header.Date, nil, len(header.Tags) == 0, base.at("DATE"))
 	}
 	for _, record := range doc.Records {
 		if record == nil {

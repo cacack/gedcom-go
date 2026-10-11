@@ -473,6 +473,28 @@ func TestConvertDateCalendarHeaderTypedOnly(t *testing.T) {
 	}
 }
 
+// TestConvertDateCalendarHeaderTagsWithoutDate covers a typed Date on a header
+// whose Tags carry no DATE: the encoder writes Tags only, so the Date is
+// rewritten to stay consistent but not reported.
+func TestConvertDateCalendarHeaderTagsWithoutDate(t *testing.T) {
+	doc := calendarDoc(gedcom.Version551, "1700")
+	doc.Header.Tags = []*gedcom.Tag{{Level: 1, Tag: "SOUR", Value: "TEST"}}
+	doc.Header.Date = "@#DJULIAN@ 1 JAN 1700"
+
+	got, report, err := converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	if got.Header.Date != "JULIAN 1 JAN 1700" {
+		t.Errorf("Header.Date = %q, want %q", got.Header.Date, "JULIAN 1 JAN 1700")
+	}
+	for _, n := range report.Normalized {
+		if strings.HasPrefix(n.Path, "Header") {
+			t.Errorf("unexpected header note %+v: the encoder does not write Header.Date", n)
+		}
+	}
+}
+
 func hasNoteAt(notes []gedcom.ConversionNote, want gedcom.ConversionNote) bool {
 	for _, n := range notes {
 		if n.Path == want.Path && n.Original == want.Original && n.Result == want.Result {
