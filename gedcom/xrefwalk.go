@@ -140,6 +140,11 @@ func VisitForVersion(r *Record, v Version, visit func(string)) {
 // Tag.XRef and Tag.Value), the Header.Submitter and Header tags, and the
 // keys of Document.XRefMap.
 //
+// "@VOID@" is the GEDCOM 7.0 null pointer, so in a document whose
+// Header.Version is 7.0 a @VOID@ reference is never rewritten. In any other
+// document, such as a 5.5/5.5.1 one where @VOID@ is an ordinary identifier,
+// a mapping entry for "@VOID@" rewrites its references like any other key.
+//
 // Apply mutates d in place. Most callers should reach for the higher-
 // level merge.RemapXRefs instead, which clones the document, validates
 // that the transform produces well-formed non-colliding XRefs, and
@@ -168,8 +173,15 @@ func Apply(d *Document, mapping map[string]string) {
 	// values. Only a whole value that is pointer-shaped under the most
 	// permissive grammar (GEDCOM 5.5.1, which allows spaces such as
 	// "@N 1@") is looked up, so inline text is never rewritten.
+	//
+	// @VOID@ is not pointer-shaped, so it is let through separately when the
+	// document is not GEDCOM 7.0, where it is not the null pointer.
+	voidIsNull := d.Header != nil && d.Header.Version == Version70
 	rewriteRef := func(p *string) {
-		if p == nil || !IsPointerXRefForVersion(*p, Version551) {
+		if p == nil {
+			return
+		}
+		if !IsPointerXRefForVersion(*p, Version551) && (voidIsNull || *p != "@VOID@") {
 			return
 		}
 		rewrite(p)
