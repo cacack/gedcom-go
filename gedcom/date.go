@@ -692,6 +692,8 @@ func (d *Date) Validate() error {
 }
 
 // validateDay checks a single date (ignoring EndDate) for day overflow.
+// ToTime also relies on it to reject dates that time.Date would roll over
+// (e.g. 31 FEB 1900 becoming 3 MAR 1900), so loosening this check loosens ToTime.
 func (d *Date) validateDay() error {
 	// Skip validation for partial dates
 	if d.Day == 0 || d.Month == 0 || d.Year == 0 {
