@@ -24,8 +24,9 @@ func TestConvertHeaderGEDC(t *testing.T) {
 		input  string
 		source gedcom.Version // overrides the decoder's fallback (5.5) when set
 		target gedcom.Version
-		// wantForm reports whether GEDC.FORM survives: 7.0 removed the
-		// structure, so the upgrade drops it (GEDC_FORM_REMOVED).
+		// wantForm reports whether GEDC.FORM is in the output: false for 7.0,
+		// which removed the structure (GEDC_FORM_REMOVED), and false when the
+		// input had no FORM to keep.
 		wantForm bool
 	}{
 		{"GEDC without VERS to 7.0", gedcNoVers, "", gedcom.Version70, false},
@@ -45,10 +46,15 @@ func TestConvertHeaderGEDC(t *testing.T) {
 			if tt.source != "" {
 				doc.Header.Version = tt.source
 			}
+			inputTags := len(doc.Header.Tags)
 
 			got, _, err := converter.Convert(doc, tt.target)
 			if err != nil {
 				t.Fatalf("Convert: %v", err)
+			}
+
+			if n := len(doc.Header.Tags); n != inputTags {
+				t.Errorf("Convert mutated the input header: %d tags, want %d", n, inputTags)
 			}
 
 			var buf bytes.Buffer
@@ -60,7 +66,11 @@ func TestConvertHeaderGEDC(t *testing.T) {
 			if n := strings.Count(out, "1 GEDC\n"); n != 1 {
 				t.Errorf("want exactly one GEDC, got %d:\n%s", n, out)
 			}
+			// VERS is GEDC's first child; a kept FORM follows it.
 			wantVers := "1 GEDC\n2 VERS " + tt.target.String() + "\n"
+			if tt.wantForm {
+				wantVers += "2 FORM LINEAGE-LINKED\n"
+			}
 			if !strings.Contains(out, wantVers) {
 				t.Errorf("want %q directly under GEDC:\n%s", wantVers, out)
 			}
