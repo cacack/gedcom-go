@@ -123,7 +123,13 @@ type Date struct {
 	// IsBC is true for B.C./BCE dates
 	IsBC bool
 
-	// DualYear is the second year for dual dating (e.g., 1751 from "1750/51")
+	// DualYear is the second year for dual dating (e.g., 1751 from "1750/51"),
+	// or 0 if none. A one- or two-digit suffix gives the last digits of the year
+	// that follows Year: "1699/00" is 1700, and on a B.C. date, where the following
+	// year is the smaller number, "100/99 BC" is 99. A longer suffix is taken as
+	// written. ParseDate accepts a suffix that is not the following year (e.g.
+	// "1750/53" gives 1753, "1750/1749" gives 1749) so the value is preserved;
+	// Validate reports it.
 	DualYear int
 
 	// Phrase contains the text for date phrases (e.g., "unknown" from "(unknown)")
@@ -532,7 +538,7 @@ func parseDateFields(fields []string, date *Date) error {
 
 // parseYearOnly parses a year-only date (possibly with dual year).
 func parseYearOnly(yearStr string, date *Date) error {
-	year, dualYear, err := parseYearWithDual(yearStr)
+	year, dualYear, err := parseYearWithDual(yearStr, date.IsBC)
 	if err != nil {
 		return err
 	}
@@ -547,7 +553,7 @@ func parseMonthYear(fields []string, date *Date) error {
 	if err != nil {
 		return err
 	}
-	year, dualYear, err := parseYearWithDual(fields[1])
+	year, dualYear, err := parseYearWithDual(fields[1], date.IsBC)
 	if err != nil {
 		return err
 	}
@@ -567,7 +573,7 @@ func parseDayMonthYear(fields []string, date *Date) error {
 	if err != nil {
 		return err
 	}
-	year, dualYear, err := parseYearWithDual(fields[2])
+	year, dualYear, err := parseYearWithDual(fields[2], date.IsBC)
 	if err != nil {
 		return err
 	}
@@ -604,8 +610,9 @@ func parseMonthForCalendar(s string, calendar Calendar) (int, error) {
 }
 
 // parseYearWithDual parses a year field that may contain dual dating (e.g., "1750/51" or "1750/1751").
-// Returns the primary year and dual year (0 if no dual year).
-func parseYearWithDual(s string) (primaryYear, dualYear int, err error) {
+// Returns the primary year and dual year (0 if no dual year). isBC selects the
+// direction in which a short suffix resolves; see Date.DualYear.
+func parseYearWithDual(s string, isBC bool) (primaryYear, dualYear int, err error) {
 	// Check for dual year format (year/year)
 	if strings.Contains(s, "/") {
 		parts := strings.Split(s, "/")
@@ -625,10 +632,8 @@ func parseYearWithDual(s string) (primaryYear, dualYear int, err error) {
 			return 0, 0, fmt.Errorf("invalid secondary year in dual date: %s", secondaryStr)
 		}
 
-		// If secondary year is 2 digits, infer century from primary year
 		if len(secondaryStr) <= 2 {
-			century := (primaryYear / 100) * 100
-			secondaryYear = century + secondaryYear
+			secondaryYear = followingYearEndingIn(primaryYear, secondaryYear, len(secondaryStr), isBC)
 		}
 
 		return primaryYear, secondaryYear, nil
@@ -640,6 +645,25 @@ func parseYearWithDual(s string) (primaryYear, dualYear int, err error) {
 		return 0, 0, fmt.Errorf("invalid year: %s", s)
 	}
 	return year, 0, nil
+}
+
+// followingYearEndingIn returns the nearest year after primary, in the
+// direction years run (downward for B.C.), whose last digits are suffix.
+// For example (1699, 0, 2) is 1700 and (100, 99, 2, B.C.) is 99. A B.C. suffix
+// with no earlier match, such as 45/46 BC, keeps primary's leading digits (46).
+func followingYearEndingIn(primary, suffix, digits int, isBC bool) int {
+	modulus := 10
+	if digits == 2 {
+		modulus = 100
+	}
+	year := primary - primary%modulus + suffix
+	if !isBC && year <= primary {
+		year += modulus
+	}
+	if isBC && year >= primary && year-modulus >= 0 {
+		year -= modulus
+	}
+	return year
 }
 
 // normalizeWhitespace normalizes multiple spaces/tabs to single spaces.
@@ -674,19 +698,45 @@ func indexFoldASCII(s, substr string) int {
 // are checked independently; the first error is returned, and an error in the end
 // date is prefixed with "invalid end date". A partial or non-Gregorian endpoint is
 // skipped without skipping the other one.
-// Returns nil for partial dates (day, month, or year is 0) or non-Gregorian calendars.
+// The day check is skipped for partial dates (day, month, or year is 0) and non-Gregorian calendars.
 // Gregorian dates are checked on the proleptic Gregorian calendar using astronomical
 // years (1 BCE = year 0, a leap year), matching the calendar conversions; error
 // messages report the era year as written.
 // Uses stdlib time.Date() to detect invalid dates via normalization.
+// On any calendar, and on a partial date, a DualYear that is not the year
+// following Year (e.g. "1750/53") is also an error.
 func (d *Date) Validate() error {
-	if err := d.validateDay(); err != nil {
+	if err := d.validateEndpoint(); err != nil {
 		return err
 	}
 	if d.EndDate != nil {
-		if err := d.EndDate.validateDay(); err != nil {
+		if err := d.EndDate.validateEndpoint(); err != nil {
 			return fmt.Errorf("invalid end date: %w", err)
 		}
+	}
+	return nil
+}
+
+// validateEndpoint checks a single date (ignoring EndDate): its dual year, then its day.
+func (d *Date) validateEndpoint() error {
+	if err := d.validateDualYear(); err != nil {
+		return err
+	}
+	return d.validateDay()
+}
+
+// validateDualYear checks that a DualYear is the year following Year,
+// which on a B.C. date is the smaller number.
+func (d *Date) validateDualYear() error {
+	if d.DualYear == 0 {
+		return nil
+	}
+	following := d.Year + 1
+	if d.IsBC {
+		following = d.Year - 1
+	}
+	if d.DualYear != following {
+		return fmt.Errorf("invalid date: dual year %d does not follow %d", d.DualYear, d.Year)
 	}
 	return nil
 }

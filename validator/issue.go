@@ -58,8 +58,9 @@ const (
 
 	// CodeInvalidDate indicates a date that does not exist on its calendar,
 	// such as 31 FEB 1900 or 29 FEB 1900, including the end date of a range
-	// or period. Dates gedcom.Date.Validate skips (partial dates and
-	// non-Gregorian calendars) are not reported.
+	// or period, or whose dual year is not the following year (1750/53).
+	// Days gedcom.Date.Validate skips (partial dates and non-Gregorian
+	// calendars) are not reported.
 	CodeInvalidDate = "INVALID_DATE"
 
 	// CodeUnreasonableParentAge indicates a parent's age at child's birth is implausible.

@@ -898,6 +898,15 @@ func TestDate_Validate(t *testing.T) {
 		{"invalid period end", "FROM 1 JAN 1900 TO 31 FEB 1901", true, "invalid end date"},
 		{"invalid range end with partial start", "BET 1900 AND 31 FEB 1901", true, "February has 28 days in 1901"},
 		{"invalid range start", "BET 31 FEB 1900 AND 1 JAN 1901", true, "February has 28 days in 1900"},
+
+		// A dual year must be the year following the primary year
+		{"valid dual year", "1750/51", false, ""},
+		{"valid dual year across century", "1 JAN 1699/00", false, ""},
+		{"valid dual year BC", "21 FEB 45/44 BC", false, ""},
+		{"dual year 2-digit not following", "1750/53", true, "dual year 1753 does not follow 1750"},
+		{"dual year 4-digit not following", "1750/1749", true, "dual year 1749 does not follow 1750"},
+		{"dual year BC not following", "45/46 BC", true, "dual year 46 does not follow 45"},
+		{"dual year not following in range end", "BET 1750/51 AND 1760/53", true, "invalid end date"},
 	}
 
 	for _, tt := range tests {
@@ -939,6 +948,16 @@ func TestParseDate_DualDating(t *testing.T) {
 		{"dual year only", "1750/51", 1750, 1751, 0, 0},
 		{"dual year 2-digit 1600s", "15 MAR 1640/41", 1640, 1641, 3, 15},
 		{"dual year 4-digit 1600s", "15 MAR 1640/1641", 1640, 1641, 3, 15},
+		{"dual year 2-digit decade", "1709/10", 1709, 1710, 0, 0},
+		{"dual year 2-digit crosses century", "1699/00", 1699, 1700, 0, 0},
+		{"dual year 2-digit crosses century full date", "1 JAN 1699/00", 1699, 1700, 1, 1},
+		{"dual year 2-digit crosses 1600", "1599/00", 1599, 1600, 0, 0},
+		{"dual year 4-digit crosses century", "1799/1800", 1799, 1800, 0, 0},
+		{"dual year 1-digit crosses decade", "1759/0", 1759, 1760, 0, 0},
+		// A suffix that is not the following year is kept as written (resolved
+		// forward for two digits) and reported by Validate, not ParseDate.
+		{"dual year 2-digit not following", "1750/53", 1750, 1753, 0, 0},
+		{"dual year 4-digit not following", "1750/1749", 1750, 1749, 0, 0},
 	}
 
 	for _, tt := range tests {
@@ -1182,6 +1201,34 @@ func TestParseDate_DualYearWithBC(t *testing.T) {
 	}
 	if !date.IsBC {
 		t.Error("IsBC = false, want true")
+	}
+}
+
+// TestParseDate_DualYearWithBC_Suffix tests that a two-digit dual suffix on a
+// B.C. date resolves to the following year, which is the smaller number.
+func TestParseDate_DualYearWithBC_Suffix(t *testing.T) {
+	tests := []struct {
+		input        string
+		wantYear     int
+		wantDualYear int
+	}{
+		{"45/44 BC", 45, 44},
+		{"100/99 BC", 100, 99},
+		{"101/00 BC", 101, 100},
+		{"145/44 BC", 145, 144},
+		{"45/0044 BC", 45, 44},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate(%q) error = %v", tt.input, err)
+			}
+			if date.Year != tt.wantYear || date.DualYear != tt.wantDualYear || !date.IsBC {
+				t.Errorf("Year, DualYear, IsBC = %d, %d, %v, want %d, %d, true",
+					date.Year, date.DualYear, date.IsBC, tt.wantYear, tt.wantDualYear)
+			}
+		})
 	}
 }
 

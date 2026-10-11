@@ -142,7 +142,7 @@ func appendDateIssue(issues []Issue, recordXRef, holder, path string, date *gedc
 // dual year is Old Style: its January to March fall in the second year, on the
 // Julian calendar, so Validate's Gregorian check against the first year would
 // reject real leap days. A day no year allows, such as 30 FEB 1723/24, is
-// still reported.
+// still reported, as is a dual year that is not the following year.
 func dateError(date *gedcom.Date) error {
 	start := *date
 	start.EndDate = nil
@@ -160,12 +160,18 @@ func dateError(date *gedcom.Date) error {
 // maxDaysInMonth is the longest each month (1-12) can be in any year.
 var maxDaysInMonth = [13]int{0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
 
-// endpointError checks one date with no EndDate. A dual-dated Gregorian date
-// is checked against maxDaysInMonth; any other date goes to Validate, which
-// skips partial dates and non-Gregorian calendars.
+// endpointError checks one date with no EndDate. A dual-dated date has its
+// dual year checked by Validate and, if Gregorian, its day checked against
+// maxDaysInMonth; any other date goes to Validate, which skips partial dates
+// and non-Gregorian calendars.
 func endpointError(d *gedcom.Date) error {
 	if d.DualYear == 0 {
 		return d.Validate()
+	}
+	yearOnly := *d
+	yearOnly.Day = 0 // a partial date, so Validate checks only the dual year
+	if err := yearOnly.Validate(); err != nil {
+		return err
 	}
 	if d.Calendar != gedcom.CalendarGregorian || d.Month < 1 || d.Month > 12 || d.Day == 0 {
 		return nil
