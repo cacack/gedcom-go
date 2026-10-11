@@ -139,7 +139,7 @@ func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version70, report)
 	transformDateCalendars(doc, gedcom.Version70, report)
-	normalizeXRefsToUppercase(doc, report)
+	normalizeXRefsForV7(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
 	if opts.ReportPreservedTags {
@@ -176,7 +176,7 @@ func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version70, report)
 	transformDateCalendars(doc, gedcom.Version70, report)
-	normalizeXRefsToUppercase(doc, report)
+	normalizeXRefsForV7(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
 	if opts.ReportPreservedTags {

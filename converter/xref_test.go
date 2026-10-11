@@ -44,7 +44,7 @@ func TestNormalizeXRefsToUppercase(t *testing.T) {
 			doc := createDocWithXRefs(tt.inputXRefs)
 			report := &gedcom.ConversionReport{}
 
-			normalizeXRefsToUppercase(doc, report)
+			normalizeXRefsForV7(doc, report)
 
 			for i, record := range doc.Records {
 				if record.XRef != tt.wantXRefs[i] {
@@ -138,4 +138,52 @@ func createDocWithXRefs(xrefs []string) *gedcom.Document {
 		}
 	}
 	return doc
+}
+
+func TestBuildXRefMappingV7(t *testing.T) {
+	doc := createDocWithXRefs([]string{"@I 1@", "@I_1@", "@i_1@", "@I1@", "@i1@", "@a-b.c@", "@I 1@"})
+	doc.XRefMap = nil // definitions must come from Records, not the map
+	doc.Header.Submitter = "@sub mitter@"
+	doc.Records[1].Tags = []*gedcom.Tag{{Level: 1, Tag: "NOTE", Value: "@n1@"}, {Level: 1, Tag: "NOTE", Value: "@i1@"}}
+
+	got := buildXRefMapping(doc)
+	want := map[string]string{
+		"@I 1@":        "@I_1_2@",
+		"@i_1@":        "@I_1_3@",
+		"@i1@":         "@I1_2@",
+		"@a-b.c@":      "@A_B_C@",
+		"@sub mitter@": "@SUB_MITTER@",
+		"@n1@":         "@N1@",
+	}
+	if len(got) != len(want) {
+		t.Errorf("mapping = %v, want %v", got, want)
+	}
+	for k, v := range want {
+		if got[k] != v {
+			t.Errorf("mapping[%q] = %q, want %q", k, got[k], v)
+		}
+	}
+}
+
+func TestToV7XRefBody(t *testing.T) {
+	for in, want := range map[string]string{"@@": "_", "@é x@": "__X", "@ok_1@": "OK_1"} {
+		if got := toV7XRefBody(in); got != want {
+			t.Errorf("toV7XRefBody(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestNormalizeXRefsForV7ReportsDanglingPointer(t *testing.T) {
+	doc := createDocWithXRefs([]string{"@TEST@"})
+	doc.Header.Submitter = "@test@"
+	report := &gedcom.ConversionReport{}
+
+	normalizeXRefsForV7(doc, report)
+
+	if doc.Header.Submitter != "@TEST@" {
+		t.Errorf("Submitter = %q, want @TEST@", doc.Header.Submitter)
+	}
+	if len(report.Normalized) != 1 || report.Normalized[0].Original != "@test@" || report.Normalized[0].Result != "@TEST@" {
+		t.Errorf("Normalized = %+v, want one @test@ -> @TEST@ note", report.Normalized)
+	}
 }

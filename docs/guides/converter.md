@@ -81,7 +81,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 |---------------|------|-------------|
 | CONC removal | `CONC_REMOVED` | Line continuations merged into single values |
 | CONT to newlines | `CONT_CONVERTED` | Continuation lines converted to embedded newlines |
-| XRef uppercase | `XREF_UPPERCASE` | All cross-references normalized to uppercase |
+| XRef normalization | `XREF_UPPERCASE` | Cross-references rewritten to the 7.0 form `@[A-Z0-9_]+@`: uppercased, other characters (such as 5.5.1 spaces) replaced by `_`, and a `_2`, `_3`, ... suffix added on collision; pointers follow, and each rewrite is a `Normalized` note |
 | Media types | `MEDIA_TYPE_MAPPED` | Legacy formats (JPG) converted to IANA (image/jpeg) |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar escapes (`@#DJULIAN@`) converted to keywords (`JULIAN`) |
 | Header update | `VERSION_UPGRADE` | Header version updated to 7.0 |

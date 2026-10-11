@@ -1,11 +1,15 @@
 package converter_test
 
 import (
+	"bytes"
 	"os"
+	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/converter"
 	"github.com/cacack/gedcom-go/v3/decoder"
+	"github.com/cacack/gedcom-go/v3/encoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
@@ -47,5 +51,115 @@ func TestConvertSpacedXRefTo70(t *testing.T) {
 		if tag.Tag == "NOTE" && got.GetRecord(tag.Value) == nil {
 			t.Errorf("raw NOTE tag value %q does not resolve", tag.Value)
 		}
+	}
+}
+
+// spacedUppercase551 has already-uppercase spaced identifiers, which plain
+// uppercasing leaves invalid in GEDCOM 7.0, and an identifier (@I_1@) that the
+// obvious rewrite of @I 1@ would collide with.
+const spacedUppercase551 = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 SUBM @U 1@
+0 @U 1@ SUBM
+1 NAME Submitter
+0 @I 1@ INDI
+1 NAME John /Doe/
+1 FAMS @F 1@
+0 @I_1@ INDI
+1 NAME Jane /Doe/
+1 FAMS @F 1@
+0 @F 1@ FAM
+1 HUSB @I 1@
+1 WIFE @I_1@
+1 NOTE @N 1@
+0 @N 1@ NOTE spaced
+0 TRLR
+`
+
+var (
+	v7XRef     = regexp.MustCompile(`^@[A-Z0-9_]+@$`)
+	pointerish = regexp.MustCompile(`@[^@]+@`)
+)
+
+// TestConvertSpacedXRefsYieldValidV7 pins issue #590: every 5.5.1 identifier
+// that is not a valid GEDCOM 7.0 Xref (spaces, lowercase) is rewritten to a
+// valid, collision-free one, its pointers follow, and the 7.0 output decodes
+// strictly with every pointer resolving.
+func TestConvertSpacedXRefsYieldValidV7(t *testing.T) {
+	xrefCase, err := os.ReadFile("../testdata/edge-cases/xref-case.ged")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name      string
+		input     string
+		wantNotes int
+	}{
+		{"xref-case.ged", string(xrefCase), 3},
+		{"uppercase spaced", spacedUppercase551, 4},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := decoder.DefaultOptions()
+			opts.StrictMode = true
+			doc, err := decoder.DecodeWithOptions(strings.NewReader(tt.input), opts)
+			if err != nil {
+				t.Fatalf("strict decode 5.5.1: %v", err)
+			}
+			records := len(doc.Records)
+
+			converted, report, err := converter.Convert(doc, gedcom.Version70)
+			if err != nil {
+				t.Fatalf("Convert: %v", err)
+			}
+			var notes int
+			for _, n := range report.Normalized {
+				if v7XRef.MatchString(n.Result) && !v7XRef.MatchString(n.Original) {
+					notes++
+				}
+			}
+			if notes != tt.wantNotes {
+				t.Errorf("XRef rewrite notes = %d, want %d: %+v", notes, tt.wantNotes, report.Normalized)
+			}
+
+			var buf bytes.Buffer
+			if err := encoder.Encode(&buf, converted); err != nil {
+				t.Fatalf("Encode: %v", err)
+			}
+			out := buf.String()
+			for _, ref := range pointerish.FindAllString(out, -1) {
+				if !v7XRef.MatchString(ref) {
+					t.Errorf("output holds invalid 7.0 xref %q:\n%s", ref, out)
+				}
+			}
+
+			result, err := decoder.DecodeWithDiagnostics(strings.NewReader(out), opts)
+			if err != nil {
+				t.Fatalf("strict decode 7.0: %v\n%s", err, out)
+			}
+			for _, d := range result.Diagnostics {
+				t.Errorf("7.0 diagnostic: %s", d)
+			}
+			got := result.Document
+			if got.Header.Version != gedcom.Version70 {
+				t.Errorf("version = %s, want 7.0", got.Header.Version)
+			}
+			if len(got.Records) != records {
+				t.Errorf("records = %d, want %d (an identifier collided)", len(got.Records), records)
+			}
+			if s := got.Header.Submitter; s != "" && got.GetRecord(s) == nil {
+				t.Errorf("header SUBM %q does not resolve", s)
+			}
+			for _, r := range got.Records {
+				gedcom.Visit(r, func(ref string) {
+					if got.GetRecord(ref) == nil {
+						t.Errorf("%s: pointer %q does not resolve\n%s", r.XRef, ref, out)
+					}
+				})
+			}
+		})
 	}
 }

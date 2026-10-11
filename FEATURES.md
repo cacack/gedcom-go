@@ -1324,7 +1324,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 |---------------|-----------|-------------|
 | CONC removal | Upgrade to 7.0 | Merges continuation tags into values |
 | CONT to newlines | Upgrade to 7.0 | Converts CONT tags to embedded newlines |
-| XRef uppercase | Upgrade to 7.0 | Normalizes cross-references |
+| XRef normalization | Upgrade to 7.0 | Rewrites cross-references to valid, collision-free 7.0 identifiers (uppercase, `_` for spaces and other invalid characters) |
 | Media types | Both | Maps between legacy (JPG) and IANA (image/jpeg) |
 | Date calendars | Both | Maps calendar escapes (`@#DJULIAN@`) to 7.0 keywords (`JULIAN`) and back, per date in ranges and periods; non-standard calendars are left unchanged and reported as Preserved |
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |
