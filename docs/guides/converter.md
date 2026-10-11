@@ -81,7 +81,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 |---------------|------|-------------|
 | CONC removal | `CONC_REMOVED` | Line continuations merged into single values |
 | CONT to newlines | `CONT_CONVERTED` | Continuation lines converted to embedded newlines |
-| XRef uppercase | `XREF_UPPERCASE` | All cross-references normalized to uppercase |
+| XRef normalization | `XREF_UPPERCASE` | Cross-references rewritten to the 7.0 form `@[A-Z0-9_]+@`: uppercased, other characters (such as 5.5.1 spaces) replaced by `_`, and a `_2`, `_3`, ... suffix added on collision with an existing record or pointer (never `@VOID@`); pointers follow, and each rewrite is a `Normalized` note. A pointer to an undefined XRef joins a record only when they differ by ASCII case alone, otherwise it gets its own identifier. `Count` includes rewritten dangling pointers |
 | Media types | `MEDIA_TYPE_MAPPED` | Legacy formats (JPG) converted to IANA (image/jpeg) |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar escapes (`@#DJULIAN@`) converted to keywords (`JULIAN`) |
 | Header update | `VERSION_UPGRADE` | Header version updated to 7.0 |
@@ -234,7 +234,7 @@ Success: true
 Transformations: 3
   - CONC_REMOVED: Consolidated CONC continuation tags into parent values (15 instances)
   - CONT_CONVERTED: Converted CONT tags to embedded newlines (42 instances)
-  - XREF_UPPERCASE: Normalized cross-references to uppercase (8 instances)
+  - XREF_UPPERCASE: Normalized XRefs to uppercase letters, digits and underscore (required for GEDCOM 7.0) (8 instances)
 ```
 
 ## Strict Mode
