@@ -46,7 +46,7 @@ These code paths handle core functionality where bugs would cause data loss or c
 |----------|--------------|----------------|
 | `ParseDate()` | Date interpretation | All formats from GEDCOM spec |
 | `Validate()` | Data integrity | Invalid dates, leap years, edge cases |
-| `Compare()` | Sorting/ordering | Partial dates, BC dates, ranges |
+| `Compare()` | Sorting/ordering | Partial dates, BC dates, ranges, dual years |
 | `Bounds()` | Provable ordering in date-logic validation | Partial dates, modifiers, ranges, dual years, calendars |
 | Dual dating | Historical accuracy | `1750/51` format |
 | BC dates | Chronological ordering | `44 BC`, comparison |

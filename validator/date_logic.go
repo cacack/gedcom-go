@@ -252,8 +252,8 @@ func orderSeverity(a, b *gedcom.Date) (severity Severity, found bool) {
 		if aLatest < bEarliest {
 			return SeverityError, true
 		}
-		// Deliberately overrides Compare, which ignores DualYear: death
-		// 10 FEB 1731/32 is after birth 20 DEC 1731 though Compare puts it first.
+		// The bounds prove a is not before b; checked ahead of IsBefore so
+		// the bounds decide whenever they can, whatever Compare's sort order.
 		if aEarliest >= bLatest {
 			return SeverityInfo, false
 		}

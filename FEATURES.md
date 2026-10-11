@@ -933,7 +933,7 @@ date.InterpretedFrom // original phrase captured from an INT date
 // Validate complete dates
 err := date.Validate()  // nil if valid
 
-// Compare dates for sorting
+// Compare dates for sorting (dual dates read in New Style: 11 FEB 1731/32 == 11 FEB 1732)
 result := date1.Compare(date2)  // -1, 0, or 1
 isAfter := date1.IsAfter(date2)
 isBefore := date1.IsBefore(date2)
@@ -947,7 +947,7 @@ earliest, latest, ok := date.Bounds()
 
 // Calculate years between dates
 years, exact, err := gedcom.YearsBetween(birthDate, deathDate)
-// exact is true if both dates are complete (day/month/year)
+// exact is true if both dates are complete (day/month/year); dual dates count in New Style
 
 // Convert to time.Time (complete, valid Gregorian dates only; 31 FEB errors; BCE uses astronomical years, 44 BCE -> -43)
 t, err := date.ToTime()
