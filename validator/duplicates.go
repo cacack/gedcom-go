@@ -96,8 +96,10 @@ type DuplicateConfig struct {
 
 	// MaxBirthYearDiff is the maximum difference in birth years that still earns
 	// partial birth-date credit. An identical birth year always earns full credit.
-	// Years are compared astronomically, so 1 BCE and 1 CE are one year apart,
-	// and dates in different calendars are compared as Gregorian years.
+	// Years are compared astronomically, so 1 BCE and 1 CE are one year apart.
+	// Dates in the same calendar compare Year as written; dates in different
+	// calendars are compared as the Gregorian years of their first days, reading
+	// a dual date in New Style.
 	//
 	//	0        use the default (2)
 	//	negative only an identical birth year earns credit ([ZeroThreshold])
@@ -785,25 +787,45 @@ func levenshteinDistance(s1, s2 string) int {
 }
 
 // birthYearsApart returns how many years apart two birth dates fall. Years
-// are compared astronomically, so 44 BCE and 44 CE are 87 years apart. Dates
-// in different calendars are first converted to Gregorian through their Julian
-// Day Number, so Hebrew 5660 and Gregorian 1899 are the same year while Hebrew
-// 1900 and Gregorian 1900 are not. ok is false, and the dates earn no credit,
-// when either is missing, has no real year (a phrase, "0", "0 BC", a negative
-// year) or cannot be converted.
+// are compared astronomically, so 44 BCE and 44 CE are 87 years apart. Two
+// dates in the same calendar compare Year as written, so a dual date counts
+// from its Old Style year. Dates in different calendars are each placed on
+// their first day and compared as Gregorian years (see gregorianStartYear), so
+// Hebrew 5660 and Gregorian 1899 are the same year while Hebrew 1900 and
+// Gregorian 1900 are not. This mirrors gedcom.YearsBetween, which converts
+// only when the calendars differ, but counts calendar years rather than
+// elapsed years. ok is false, and the dates earn no credit, when either is
+// missing, has no real year (a phrase, "0", "0 BC", a negative year) or
+// cannot be placed.
 func birthYearsApart(d1, d2 *gedcom.Date) (years int, ok bool) {
 	if d1 == nil || d2 == nil || !hasRealYear(d1) || !hasRealYear(d2) {
 		return 0, false
 	}
-	if d1.Calendar != d2.Calendar {
-		var err1, err2 error
-		d1, err1 = d1.ToGregorian()
-		d2, err2 = d2.ToGregorian()
-		if err1 != nil || err2 != nil {
-			return 0, false
-		}
+	if d1.Calendar == d2.Calendar {
+		return absInt(gedcom.AstronomicalYear(d1.Year, d1.IsBC) - gedcom.AstronomicalYear(d2.Year, d2.IsBC)), true
 	}
-	return absInt(gedcom.AstronomicalYear(d1.Year, d1.IsBC) - gedcom.AstronomicalYear(d2.Year, d2.IsBC)), true
+	y1, ok1 := gregorianStartYear(d1)
+	y2, ok2 := gregorianStartYear(d2)
+	if !ok1 || !ok2 {
+		return 0, false
+	}
+	return absInt(y1 - y2), true
+}
+
+// gregorianStartYear returns the astronomical Gregorian year of d's first day,
+// ignoring its modifier and any range end: a year-only or month-only date is
+// placed on the first day of its year or month, and a dual date is read in New
+// Style, as gedcom.Date.Bounds reads it. ok is false when Bounds cannot place
+// the date.
+func gregorianStartYear(d *gedcom.Date) (year int, ok bool) {
+	start := *d
+	start.Modifier, start.EndDate = gedcom.ModifierNone, nil
+	earliest, _, ok := start.Bounds()
+	if !ok {
+		return 0, false
+	}
+	year, _, _ = gedcom.JDNToGregorian(earliest)
+	return year, true
 }
 
 // hasRealYear reports whether d carries a year of 1 or more, the domain

@@ -102,3 +102,52 @@ func TestBirthYearsApart_Unconvertible(t *testing.T) {
 		t.Error("birthYearsApart(unknown calendar, Gregorian) ok = true, want false")
 	}
 }
+
+func TestBirthYearsApart_Years(t *testing.T) {
+	tests := []struct {
+		name         string
+		date1, date2 string
+		want         int
+	}{
+		{"Hebrew year-only placed on 1 Tishrei", "@#DHEBREW@ 5660", "1899", 0},
+		{"Julian late December is the next Gregorian year", "@#DJULIAN@ 25 DEC 1700", "1701", 0},
+		{"Julian dual date read in New Style", "@#DJULIAN@ 11 FEB 1731/32", "1732", 0},
+		{"Gregorian dual date read in New Style against Julian", "11 FEB 1731/32", "@#DJULIAN@ 1 JAN 1732", 0},
+		{"same-calendar dual date compares Year as written", "11 FEB 1731/32", "1732", 1},
+		{"modifier is ignored", "BEF @#DHEBREW@ 5660", "1899", 0},
+		{"range compares its start", "BET @#DHEBREW@ 5660 AND @#DHEBREW@ 5670", "1899", 0},
+		{"BCE Julian against Gregorian", "@#DJULIAN@ 15 MAR 44 B.C.", "44 B.C.", 0},
+		{"BCE and CE across calendars", "@#DJULIAN@ 15 MAR 44 B.C.", "44", 87},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d1, err := gedcom.ParseDate(tt.date1)
+			if err != nil {
+				t.Fatalf("ParseDate(%q): %v", tt.date1, err)
+			}
+			d2, err := gedcom.ParseDate(tt.date2)
+			if err != nil {
+				t.Fatalf("ParseDate(%q): %v", tt.date2, err)
+			}
+			for _, pair := range [][2]*gedcom.Date{{d1, d2}, {d2, d1}} {
+				got, ok := birthYearsApart(pair[0], pair[1])
+				if !ok || got != tt.want {
+					t.Errorf("birthYearsApart(%q, %q) = %d, %v; want %d, true", pair[0].Original, pair[1].Original, got, ok, tt.want)
+				}
+			}
+		})
+	}
+}
+
+// A range end that cannot be placed does not discard the start's year.
+func TestBirthYearsApart_UnplaceableRangeEnd(t *testing.T) {
+	start, err := gedcom.ParseDate("@#DHEBREW@ 5660")
+	if err != nil {
+		t.Fatal(err)
+	}
+	start.Modifier = gedcom.ModifierBetween
+	start.EndDate = &gedcom.Date{Year: 5670, Calendar: gedcom.Calendar(99)}
+	if got, ok := birthYearsApart(start, &gedcom.Date{Year: 1899}); !ok || got != 0 {
+		t.Errorf("birthYearsApart(range with unplaceable end, 1899) = %d, %v; want 0, true", got, ok)
+	}
+}

@@ -1,6 +1,9 @@
 package gedcom
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // Regression tests for #618: YearsBetween counts dates in different calendars
 // on one scale, so a Hebrew birth against a Gregorian death is a plausible age.
@@ -66,10 +69,10 @@ func TestYearsBetween_SameCalendarUnchanged(t *testing.T) {
 // difference.
 func TestYearsBetween_CrossCalendarUnconvertible(t *testing.T) {
 	unknown := &Date{Year: 1900, Calendar: Calendar(99)}
-	if _, _, err := YearsBetween(unknown, mustParse(t, "1950")); err == nil {
-		t.Error("YearsBetween(unknown calendar, Gregorian) error = nil, want error")
+	if _, _, err := YearsBetween(unknown, mustParse(t, "1950")); err == nil || !strings.HasPrefix(err.Error(), "first date: ") {
+		t.Errorf("YearsBetween(unknown calendar, Gregorian) error = %v, want one naming the first date", err)
 	}
-	if _, _, err := YearsBetween(mustParse(t, "1950"), unknown); err == nil {
-		t.Error("YearsBetween(Gregorian, unknown calendar) error = nil, want error")
+	if _, _, err := YearsBetween(mustParse(t, "1950"), unknown); err == nil || !strings.HasPrefix(err.Error(), "second date: ") {
+		t.Errorf("YearsBetween(Gregorian, unknown calendar) error = %v, want one naming the second date", err)
 	}
 }
