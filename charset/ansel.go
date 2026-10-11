@@ -55,7 +55,9 @@ type anselReader struct {
 //   - Extended Latin character mapping (0xA1-0xC8)
 //   - Combining diacritical reordering (0xE0-0xFE placed after base character)
 //   - Combining marks with no base before a line terminator or end of stream,
-//     emitted as-is, on the line they came from
+//     emitted before the terminator, so they attach to the last character on
+//     their line. The reader does not know GEDCOM structure, so this applies
+//     even when the mark's base starts a following CONC line.
 func newAnselReader(r io.Reader) io.Reader {
 	return &anselReader{
 		reader:  r,
@@ -208,10 +210,7 @@ func (r *anselReader) processByte(b byte) error {
 	r.emitRune(baseRune)
 
 	// Emit any pending combining marks (now AFTER the base character)
-	for _, combining := range r.pending {
-		r.emitRune(combining)
-	}
-	r.pending = r.pending[:0] // Clear the buffer
+	r.flushPendingCombining()
 
 	r.advance(b)
 

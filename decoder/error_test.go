@@ -379,6 +379,27 @@ func TestANSELCombiningBeforeLineEnd(t *testing.T) {
 	}
 }
 
+// The charset reader does not know GEDCOM structure, so a mark whose base
+// starts the next CONC line is flushed onto the previous line and attaches to
+// its last character once CONC folds the value. This pins that documented
+// behaviour (issue #431); the input used to fail strict decoding.
+func TestANSELCombiningSplitByCONC(t *testing.T) {
+	input := "0 HEAD\n1 CHAR ANSEL\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n" +
+		"0 @I1@ INDI\n1 NOTE abc\xE2\n2 CONC e\n0 TRLR\n"
+	doc, err := DecodeWithOptions(strings.NewReader(input), &DecodeOptions{StrictMode: true})
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("@I1@ not found")
+	}
+	want := []string{"abc\u0301e"}
+	if !reflect.DeepEqual(indi.InlineNotes, want) {
+		t.Errorf("InlineNotes = %q, want %q", indi.InlineNotes, want)
+	}
+}
+
 // longSNOTEInput is a GEDCOM 7 file whose shared note is one line of n bytes
 // of payload. GEDCOM 7 has no line-length limit, so this is valid input.
 func longSNOTEInput(n int) string {

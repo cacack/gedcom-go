@@ -331,14 +331,19 @@ func TestNewAnselReader_CombiningBeforeLineEnd(t *testing.T) {
 		{"CR", "\r"},
 	} {
 		t.Run(sep.name, func(t *testing.T) {
-			input := "1 NOTE AB\xE2" + sep.sep + "0 TRLR" + sep.sep
-			got, err := io.ReadAll(newAnselReader(strings.NewReader(input)))
-			if err != nil {
-				t.Fatalf("ReadAll() error = %v", err)
-			}
-			want := "1 NOTE AB\u0301" + sep.sep + "0 TRLR" + sep.sep
-			if string(got) != want {
-				t.Errorf("got %q, want %q", got, want)
+			for _, tc := range []struct{ name, marks, want string }{
+				{"one mark", "\xE2", "\u0301"},
+				{"stacked marks", "\xE2\xE3", "\u0301\u0302"},
+			} {
+				input := "1 NOTE AB" + tc.marks + sep.sep + "0 TRLR" + sep.sep
+				got, err := io.ReadAll(newAnselReader(strings.NewReader(input)))
+				if err != nil {
+					t.Fatalf("%s: ReadAll() error = %v", tc.name, err)
+				}
+				want := "1 NOTE AB" + tc.want + sep.sep + "0 TRLR" + sep.sep
+				if string(got) != want {
+					t.Errorf("%s: got %q, want %q", tc.name, got, want)
+				}
 			}
 		})
 	}
