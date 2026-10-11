@@ -759,8 +759,11 @@ func TestDetectBOM_ReadError(t *testing.T) {
 		t.Errorf("DetectBOM() encoding = %v, want %v", encoding, EncodingUnknown)
 	}
 
-	if r != nil {
-		t.Errorf("DetectBOM() reader should be nil on error")
+	if r == nil {
+		t.Fatal("DetectBOM() reader = nil, want reader replaying the error")
+	}
+	if _, err := r.Read(make([]byte, 1)); err != testErr {
+		t.Errorf("Read() error = %v, want %v", err, testErr)
 	}
 }
 
@@ -784,18 +787,12 @@ func TestNewReader_DetectBOMError(t *testing.T) {
 
 // Test helpers for simulating readers with specific failure modes
 type partialReader struct {
-	data      []byte
-	pos       int
-	fail      bool
-	failOnce  bool
-	failCount int
+	data []byte
+	pos  int
+	fail bool
 }
 
 func (r *partialReader) Read(p []byte) (n int, err error) {
-	if r.failOnce && r.failCount == 0 {
-		r.failCount++
-		return 0, errors.New("first read error")
-	}
 	if r.fail {
 		return 0, errors.New("forced error")
 	}
@@ -808,18 +805,17 @@ func (r *partialReader) Read(p []byte) (n int, err error) {
 	return n, nil
 }
 
-func TestNewReader_FallbackWithUTF8BOM(t *testing.T) {
-	// Test fallback path (non-DetectBOM) with UTF-8 BOM
-	// This tests the handleBOM function
+// newBOMCheckingUTF8Reader returns a utf8Reader that has not yet skipped a
+// BOM, so its first Read exercises handleBOM.
+func newBOMCheckingUTF8Reader(r io.Reader) *utf8Reader {
+	return &utf8Reader{reader: r, line: 1, column: 1}
+}
+
+func TestUTF8Reader_HandleBOMWithUTF8BOM(t *testing.T) {
 	input := append([]byte{0xEF, 0xBB, 0xBF}, []byte("Hello")...)
+	pr := &partialReader{data: input}
 
-	// Create a reader that fails on first read (triggers fallback)
-	// then works normally (so handleBOM can process the BOM)
-	pr := &partialReader{data: input, failOnce: true}
-
-	r := NewReader(pr)
-	// First read will trigger handleBOM in fallback path
-	got, err := io.ReadAll(r)
+	got, err := io.ReadAll(newBOMCheckingUTF8Reader(pr))
 	if err != nil && err != io.EOF {
 		t.Fatalf("ReadAll() error = %v", err)
 	}
@@ -830,13 +826,11 @@ func TestNewReader_FallbackWithUTF8BOM(t *testing.T) {
 	}
 }
 
-func TestNewReader_FallbackNoBOM(t *testing.T) {
-	// Test fallback path without BOM
+func TestUTF8Reader_HandleBOMNoBOM(t *testing.T) {
 	input := []byte("Hello World")
-	pr := &partialReader{data: input, failOnce: true}
+	pr := &partialReader{data: input}
 
-	r := NewReader(pr)
-	got, err := io.ReadAll(r)
+	got, err := io.ReadAll(newBOMCheckingUTF8Reader(pr))
 	if err != nil && err != io.EOF {
 		t.Fatalf("ReadAll() error = %v", err)
 	}
@@ -846,8 +840,8 @@ func TestNewReader_FallbackNoBOM(t *testing.T) {
 	}
 }
 
-func TestNewReader_FallbackShortFile(t *testing.T) {
-	// Test fallback path with file shorter than BOM
+func TestUTF8Reader_HandleBOMShortFile(t *testing.T) {
+	// File shorter than a BOM
 	tests := []struct {
 		name  string
 		input []byte
@@ -859,9 +853,8 @@ func TestNewReader_FallbackShortFile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pr := &partialReader{data: tt.input, failOnce: true}
-			r := NewReader(pr)
-			got, err := io.ReadAll(r)
+			pr := &partialReader{data: tt.input}
+			got, err := io.ReadAll(newBOMCheckingUTF8Reader(pr))
 			if err != nil && err != io.EOF {
 				t.Fatalf("ReadAll() error = %v", err)
 			}
@@ -1394,23 +1387,6 @@ func TestNewReader_UTF16_BOM_Takes_Precedence(t *testing.T) {
 	// Should decode as UTF-16 LE, ignoring the CHAR ANSEL tag
 	if string(got) != text {
 		t.Errorf("NewReader(UTF-16 with CHAR ANSEL) = %q, want %q", got, text)
-	}
-}
-
-func TestNewReader_HeaderDetectionError(t *testing.T) {
-	// Test that header detection errors are handled gracefully
-	// by using a reader that fails on first read but succeeds later
-	input := []byte("Hello World")
-	pr := &partialReader{data: input, failOnce: true}
-
-	r := NewReader(pr)
-	got, err := io.ReadAll(r)
-	if err != nil && err != io.EOF {
-		t.Fatalf("ReadAll() error = %v", err)
-	}
-
-	if !bytes.Equal(got, input) {
-		t.Errorf("NewReader() = %q, want %q", got, input)
 	}
 }
 
@@ -2122,5 +2098,194 @@ func TestNewReader_ProbeErrorReplaysPrefix(t *testing.T) {
 	}
 	if string(got) != prefix {
 		t.Errorf("ReadAll() data = %q, want %q", got, prefix)
+	}
+}
+
+// scriptedReader returns each step's data from successive Read calls, with the
+// step's error on the call that delivers its last byte, then io.EOF.
+type scriptedReader struct {
+	steps []readStep
+}
+
+type readStep struct {
+	data string
+	err  error
+}
+
+func (r *scriptedReader) Read(p []byte) (int, error) {
+	if len(r.steps) == 0 {
+		return 0, io.EOF
+	}
+	step := &r.steps[0]
+	n := copy(p, step.data)
+	if step.data = step.data[n:]; step.data != "" {
+		return n, nil
+	}
+	err := step.err
+	r.steps = r.steps[1:]
+	return n, err
+}
+
+// bomReadErrorCases fail within the first 3 bytes, where DetectBOM reads, then
+// let the source recover so a dropped prefix or swallowed error would show.
+func bomReadErrorCases(testErr error) []struct {
+	name       string
+	steps      []readStep
+	wantPrefix string
+} {
+	const rest = "HEAD\n0 TRLR\n"
+	return []struct {
+		name       string
+		steps      []readStep
+		wantPrefix string
+	}{
+		{"before any byte", []readStep{{"", testErr}, {"0 " + rest, nil}}, ""},
+		{"after 1 byte", []readStep{{"0", nil}, {"", testErr}, {" " + rest, nil}}, "0"},
+		{"after 2 bytes", []readStep{{"0 ", nil}, {"", testErr}, {rest, nil}}, "0 "},
+		{"bytes and error in one read", []readStep{{"0 ", testErr}, {rest, nil}}, "0 "},
+		{"error with the 3rd byte", []readStep{{"0 H", testErr}, {"EAD\n0 TRLR\n", nil}}, "0 H"},
+		{"error with the 3rd byte after 2", []readStep{{"0 ", nil}, {"H", testErr}, {"EAD\n0 TRLR\n", nil}}, "0 H"},
+	}
+}
+
+// TestDetectBOM_ReadErrorReplaysPrefix checks that DetectBOM's reader delivers
+// the bytes read before a read error, then the error itself.
+func TestDetectBOM_ReadErrorReplaysPrefix(t *testing.T) {
+	testErr := errors.New("transient read error")
+	for _, tt := range bomReadErrorCases(testErr) {
+		t.Run(tt.name, func(t *testing.T) {
+			r, encoding, err := DetectBOM(&scriptedReader{steps: tt.steps})
+			if !errors.Is(err, testErr) {
+				t.Errorf("DetectBOM() error = %v, want %v", err, testErr)
+			}
+			if encoding != EncodingUnknown {
+				t.Errorf("DetectBOM() encoding = %v, want %v", encoding, EncodingUnknown)
+			}
+			if r == nil {
+				t.Fatal("DetectBOM() reader = nil, want reader replaying the prefix")
+			}
+			got, err := io.ReadAll(r)
+			if !errors.Is(err, testErr) {
+				t.Errorf("ReadAll() error = %v, want %v", err, testErr)
+			}
+			if string(got) != tt.wantPrefix {
+				t.Errorf("ReadAll() data = %q, want %q", got, tt.wantPrefix)
+			}
+		})
+	}
+}
+
+// TestNewReader_BOMReadErrorReplaysPrefix checks that a read error during BOM
+// detection surfaces after the bytes already read, rather than the fallback
+// dropping them and silently resuming once the source recovers.
+func TestNewReader_BOMReadErrorReplaysPrefix(t *testing.T) {
+	testErr := errors.New("transient read error")
+	for _, tt := range bomReadErrorCases(testErr) {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := io.ReadAll(NewReader(&scriptedReader{steps: tt.steps}))
+			if !errors.Is(err, testErr) {
+				t.Errorf("ReadAll() error = %v, want %v", err, testErr)
+			}
+			if string(got) != tt.wantPrefix {
+				t.Errorf("ReadAll() data = %q, want %q", got, tt.wantPrefix)
+			}
+		})
+	}
+}
+
+// TestUTF8Reader_HandleBOMReadErrorReplaysPrefix checks that handleBOM delivers
+// the bytes read before a read error, then the error itself, and that the error
+// stays sticky even though the source recovers.
+func TestUTF8Reader_HandleBOMReadErrorReplaysPrefix(t *testing.T) {
+	testErr := errors.New("transient read error")
+	tests := []struct {
+		name       string
+		steps      []readStep
+		wantPrefix string
+	}{
+		{"before any byte", []readStep{{"", testErr}, {"0 HEAD\n", nil}}, ""},
+		{"after 2 bytes", []readStep{{"0 ", testErr}, {"HEAD\n", nil}}, "0 "},
+		{"error with the 3rd byte", []readStep{{"0 H", testErr}, {"EAD\n", nil}}, "0 H"},
+		{"error with a UTF-8 BOM", []readStep{{"\xEF\xBB\xBF", testErr}, {"0 HEAD\n", nil}}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newBOMCheckingUTF8Reader(&scriptedReader{steps: tt.steps})
+			got, err := io.ReadAll(r)
+			if !errors.Is(err, testErr) {
+				t.Errorf("ReadAll() error = %v, want %v", err, testErr)
+			}
+			if string(got) != tt.wantPrefix {
+				t.Errorf("ReadAll() data = %q, want %q", got, tt.wantPrefix)
+			}
+			if n, err := r.Read(make([]byte, 16)); n != 0 || !errors.Is(err, testErr) {
+				t.Errorf("Read() after error = (%d, %v), want (0, %v)", n, err, testErr)
+			}
+		})
+	}
+}
+
+// TestNewReader_ShortProbeErrorReplaysPrefix checks that a header probe
+// shorter than a BOM, left after DetectBOM strips one, is not dropped when the
+// read error behind it surfaces.
+func TestNewReader_ShortProbeErrorReplaysPrefix(t *testing.T) {
+	testErr := errors.New("transient read error")
+	src := &scriptedReader{steps: []readStep{{"\xEF\xBB\xBF0", nil}, {"", testErr}, {" HEAD\n", nil}}}
+
+	got, err := io.ReadAll(NewReader(src))
+	if !errors.Is(err, testErr) {
+		t.Errorf("ReadAll() error = %v, want %v", err, testErr)
+	}
+	if string(got) != "0" {
+		t.Errorf("ReadAll() data = %q, want %q", got, "0")
+	}
+}
+
+// TestUTF8Reader_HandleBOMValidatesPrefix checks that the bytes handleBOM reads
+// while looking for a BOM are validated like the rest of the input: an invalid
+// prefix is rejected, and a character split across the prefix is kept whole.
+func TestUTF8Reader_HandleBOMValidatesPrefix(t *testing.T) {
+	testErr := errors.New("transient read error")
+	tests := []struct {
+		name    string
+		steps   []readStep
+		want    string
+		wantErr error
+	}{
+		{"character split across prefix", []readStep{{"ab\xC3\xA9cd", nil}}, "ab\xC3\xA9cd", nil},
+		{"invalid prefix", []readStep{{"\xFFabc", nil}}, "", &ErrInvalidUTF8{}},
+		{"UTF-16 BOM with read error", []readStep{{"\xFF\xFEa", testErr}, {"bc", nil}}, "", &ErrInvalidUTF8{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := io.ReadAll(newBOMCheckingUTF8Reader(&scriptedReader{steps: tt.steps}))
+			var invalid *ErrInvalidUTF8
+			switch {
+			case tt.wantErr == nil && err != nil:
+				t.Errorf("ReadAll() error = %v, want nil", err)
+			case tt.wantErr != nil && !errors.As(err, &invalid):
+				t.Errorf("ReadAll() error = %v, want *ErrInvalidUTF8", err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("ReadAll() data = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestNewReader_UTF16BOMReadErrorNotPassedRaw checks that a UTF-16 BOM read
+// together with an error reaches the caller as an encoding error, not as raw
+// bytes that were never validated.
+func TestNewReader_UTF16BOMReadErrorNotPassedRaw(t *testing.T) {
+	testErr := errors.New("transient read error")
+	src := &scriptedReader{steps: []readStep{{"\xFF\xFEa", testErr}, {"bc", nil}}}
+
+	got, err := io.ReadAll(NewReader(src))
+	var invalid *ErrInvalidUTF8
+	if !errors.As(err, &invalid) {
+		t.Errorf("ReadAll() error = %v, want *ErrInvalidUTF8", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("ReadAll() data = %q, want none", got)
 	}
 }

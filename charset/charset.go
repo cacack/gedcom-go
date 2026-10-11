@@ -63,6 +63,9 @@ var _ interface{ ErrorLine() int } = (*ErrInvalidUTF8)(nil)
 // is streamed as the returned reader is read. When the encoding is already
 // known, NewReaderWithEncoding skips detection entirely.
 //
+// A read error during detection is not swallowed: the returned reader delivers
+// the bytes read before it and then returns the error.
+//
 // Supported encodings:
 //   - UTF-16 LE (BOM: 0xFF 0xFE) - Converted to UTF-8
 //   - UTF-16 BE (BOM: 0xFE 0xFF) - Converted to UTF-8
@@ -73,9 +76,11 @@ func NewReader(r io.Reader) io.Reader {
 	// First check for BOM (UTF-16, UTF-8 BOM)
 	detectedReader, bomEnc, err := DetectBOM(r)
 	if err != nil {
-		// If BOM detection fails, fall back to UTF-8 validation
+		// If BOM detection fails, fall back to UTF-8 validation of the
+		// replaying reader, which delivers the bytes already read and then
+		// reports the read error in place.
 		return &utf8Reader{
-			reader: r,
+			reader: detectedReader,
 			line:   1,
 			column: 1,
 		}
@@ -104,6 +109,21 @@ func NewReader(r io.Reader) io.Reader {
 	return NewReaderWithEncoding(headerReader, charEncoding(probe[:headerLen]))
 }
 
+// readPrefix reads from r until buf is full or a read returns an error. Unlike
+// io.ReadFull, it keeps an error returned alongside the bytes that fill buf, so
+// a failure on that read is never dropped. A clean end of input is io.EOF.
+func readPrefix(r io.Reader, buf []byte) (int, error) {
+	n := 0
+	for n < len(buf) {
+		m, err := r.Read(buf[n:])
+		n += m
+		if err != nil {
+			return n, err
+		}
+	}
+	return n, nil
+}
+
 // errReader is an io.Reader that always returns err.
 type errReader struct{ err error }
 
@@ -115,21 +135,14 @@ type utf8Reader struct {
 	column     int
 	lastWasCR  bool // previous byte was CR, so a following LF completes one CRLF break
 	bomSkipped bool
-	buffer     []byte // Buffer for BOM bytes that need to be returned
-	bufPos     int    // Current position in buffer
 	pending    []byte // Incomplete UTF-8 sequence from previous read
 	complete   []byte // Complete UTF-8 bytes ready to return
-	err        error  // Sticky read failure, surfaced once complete has drained
+	err        error  // Sticky failure, surfaced once complete has drained
 }
 
 func (u *utf8Reader) Read(p []byte) (n int, err error) {
 	if len(p) == 0 {
 		return 0, nil
-	}
-
-	// Return buffered BOM bytes first if any
-	if n, ok := u.readBuffered(p); ok {
-		return n, nil
 	}
 
 	// Return any complete bytes first
@@ -147,9 +160,7 @@ func (u *utf8Reader) Read(p []byte) (n int, err error) {
 
 	// Skip BOM on first read
 	if !u.bomSkipped {
-		if n, err := u.handleBOM(p); err != nil || n > 0 {
-			return n, err
-		}
+		u.handleBOM()
 	}
 
 	n, err = u.readAndProcess(p)
@@ -248,45 +259,23 @@ func (u *utf8Reader) processWorkBuffer(p, workBuf []byte, workN int) (int, error
 	return n, verr
 }
 
-func (u *utf8Reader) readBuffered(p []byte) (int, bool) {
-	if len(u.buffer) > 0 && u.bufPos < len(u.buffer) {
-		n := copy(p, u.buffer[u.bufPos:])
-		u.bufPos += n
-		if u.bufPos >= len(u.buffer) {
-			u.buffer = nil
-			u.bufPos = 0
-		}
-		return n, true
-	}
-	return 0, false
-}
-
-func (u *utf8Reader) handleBOM(p []byte) (int, error) {
+// handleBOM strips a leading UTF-8 BOM. Any other bytes read while looking for
+// one are replayed ahead of the rest of the source, so readAndProcess validates
+// and tracks them like any other input. A read error (or io.EOF) is replayed in
+// place of the source, so the failure is reported after those bytes rather
+// than resumed past.
+func (u *utf8Reader) handleBOM() {
 	u.bomSkipped = true
 	bom := make([]byte, 3)
-	n, err := io.ReadFull(u.reader, bom)
-	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
-		return 0, err
-	}
-
-	// Check for UTF-8 BOM (0xEF 0xBB 0xBF)
+	n, err := readPrefix(u.reader, bom)
 	if n == 3 && bytes.Equal(bom, []byte{0xEF, 0xBB, 0xBF}) {
-		return 0, nil // BOM found and skipped
+		n = 0 // BOM found and skipped
 	}
-
-	// No BOM, buffer these bytes to return
-	if n > 0 {
-		u.buffer = bom[:n]
-		u.bufPos = 0
-		copied := copy(p, u.buffer)
-		u.bufPos = copied
-		if u.bufPos >= len(u.buffer) {
-			u.buffer = nil
-			u.bufPos = 0
-		}
-		return copied, nil
+	rest := u.reader
+	if err != nil {
+		rest = errReader{err: err}
 	}
-	return 0, nil
+	u.reader = io.MultiReader(bytes.NewReader(bom[:n]), rest)
 }
 
 // validateAndTrack validates p as UTF-8 and advances the line/column cursor
@@ -396,15 +385,18 @@ func ValidateBytes(b []byte) bool {
 //   - UTF-8: 0xEF 0xBB 0xBF
 //
 // If no BOM is detected, the encoding is EncodingUnknown and all bytes are preserved.
+//
+// On a read error other than io.EOF, DetectBOM returns EncodingUnknown and the
+// error, along with a non-nil reader that replays the bytes read before the
+// error and then returns that error, so no consumed byte is lost.
 func DetectBOM(r io.Reader) (io.Reader, Encoding, error) {
 	// Read up to 3 bytes to check for BOM (max BOM length)
-	// Use ReadFull to ensure we get complete bytes or handle short reads properly
 	buf := make([]byte, 3)
-	n, err := io.ReadFull(r, buf)
+	n, err := readPrefix(r, buf)
 
 	// Handle read errors (but not EOF which is expected for small files)
-	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
-		return nil, EncodingUnknown, err
+	if err != nil && err != io.EOF {
+		return io.MultiReader(bytes.NewReader(buf[:n]), errReader{err: err}), EncodingUnknown, err
 	}
 
 	// No data read
