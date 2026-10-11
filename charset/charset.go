@@ -109,6 +109,21 @@ func NewReader(r io.Reader) io.Reader {
 	return NewReaderWithEncoding(headerReader, charEncoding(probe[:headerLen]))
 }
 
+// readPrefix reads from r until buf is full or a read returns an error. Unlike
+// io.ReadFull, it keeps an error returned alongside the bytes that fill buf, so
+// a failure on that read is never dropped. A clean end of input is io.EOF.
+func readPrefix(r io.Reader, buf []byte) (int, error) {
+	n := 0
+	for n < len(buf) {
+		m, err := r.Read(buf[n:])
+		n += m
+		if err != nil {
+			return n, err
+		}
+	}
+	return n, nil
+}
+
 // errReader is an io.Reader that always returns err.
 type errReader struct{ err error }
 
@@ -269,18 +284,19 @@ func (u *utf8Reader) readBuffered(p []byte) (int, bool) {
 func (u *utf8Reader) handleBOM(p []byte) (int, error) {
 	u.bomSkipped = true
 	bom := make([]byte, 3)
-	n, err := io.ReadFull(u.reader, bom)
-	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+	n, err := readPrefix(u.reader, bom)
+	if err != nil && err != io.EOF {
+		// Sticky: deliver the bytes read before the failure, then report it
+		// rather than resuming the source past it.
+		u.err = err
 		if n == 0 {
 			return 0, err
 		}
-		// Deliver the bytes read before the failure, then report it.
-		u.err = err
 	}
 
 	// Check for UTF-8 BOM (0xEF 0xBB 0xBF)
 	if n == 3 && bytes.Equal(bom, []byte{0xEF, 0xBB, 0xBF}) {
-		return 0, nil // BOM found and skipped
+		return 0, u.err // BOM found and skipped; nil unless the read failed
 	}
 
 	// No BOM, buffer these bytes to return
@@ -411,12 +427,11 @@ func ValidateBytes(b []byte) bool {
 // error and then returns that error, so no consumed byte is lost.
 func DetectBOM(r io.Reader) (io.Reader, Encoding, error) {
 	// Read up to 3 bytes to check for BOM (max BOM length)
-	// Use ReadFull to ensure we get complete bytes or handle short reads properly
 	buf := make([]byte, 3)
-	n, err := io.ReadFull(r, buf)
+	n, err := readPrefix(r, buf)
 
 	// Handle read errors (but not EOF which is expected for small files)
-	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+	if err != nil && err != io.EOF {
 		return io.MultiReader(bytes.NewReader(buf[:n]), errReader{err: err}), EncodingUnknown, err
 	}
 

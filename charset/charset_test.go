@@ -807,7 +807,7 @@ func (r *partialReader) Read(p []byte) (n int, err error) {
 
 // newBOMCheckingUTF8Reader returns a utf8Reader that has not yet skipped a
 // BOM, so its first Read exercises handleBOM.
-func newBOMCheckingUTF8Reader(r io.Reader) io.Reader {
+func newBOMCheckingUTF8Reader(r io.Reader) *utf8Reader {
 	return &utf8Reader{reader: r, line: 1, column: 1}
 }
 
@@ -2041,6 +2041,8 @@ func bomReadErrorCases(testErr error) []struct {
 		{"after 1 byte", []readStep{{"0", nil}, {"", testErr}, {" " + rest, nil}}, "0"},
 		{"after 2 bytes", []readStep{{"0 ", nil}, {"", testErr}, {rest, nil}}, "0 "},
 		{"bytes and error in one read", []readStep{{"0 ", testErr}, {rest, nil}}, "0 "},
+		{"error with the 3rd byte", []readStep{{"0 H", testErr}, {"EAD\n0 TRLR\n", nil}}, "0 H"},
+		{"error with the 3rd byte after 2", []readStep{{"0 ", nil}, {"H", testErr}, {"EAD\n0 TRLR\n", nil}}, "0 H"},
 	}
 }
 
@@ -2090,17 +2092,34 @@ func TestNewReader_BOMReadErrorReplaysPrefix(t *testing.T) {
 }
 
 // TestUTF8Reader_HandleBOMReadErrorReplaysPrefix checks that handleBOM delivers
-// the bytes read before a read error, then the error itself.
+// the bytes read before a read error, then the error itself, and that the error
+// stays sticky even though the source recovers.
 func TestUTF8Reader_HandleBOMReadErrorReplaysPrefix(t *testing.T) {
 	testErr := errors.New("transient read error")
-	src := &scriptedReader{steps: []readStep{{"0 ", testErr}, {"HEAD\n", nil}}}
-
-	got, err := io.ReadAll(newBOMCheckingUTF8Reader(src))
-	if !errors.Is(err, testErr) {
-		t.Errorf("ReadAll() error = %v, want %v", err, testErr)
+	tests := []struct {
+		name       string
+		steps      []readStep
+		wantPrefix string
+	}{
+		{"before any byte", []readStep{{"", testErr}, {"0 HEAD\n", nil}}, ""},
+		{"after 2 bytes", []readStep{{"0 ", testErr}, {"HEAD\n", nil}}, "0 "},
+		{"error with the 3rd byte", []readStep{{"0 H", testErr}, {"EAD\n", nil}}, "0 H"},
+		{"error with a UTF-8 BOM", []readStep{{"\xEF\xBB\xBF", testErr}, {"0 HEAD\n", nil}}, ""},
 	}
-	if string(got) != "0 " {
-		t.Errorf("ReadAll() data = %q, want %q", got, "0 ")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := newBOMCheckingUTF8Reader(&scriptedReader{steps: tt.steps})
+			got, err := io.ReadAll(r)
+			if !errors.Is(err, testErr) {
+				t.Errorf("ReadAll() error = %v, want %v", err, testErr)
+			}
+			if string(got) != tt.wantPrefix {
+				t.Errorf("ReadAll() data = %q, want %q", got, tt.wantPrefix)
+			}
+			if n, err := r.Read(make([]byte, 16)); n != 0 || !errors.Is(err, testErr) {
+				t.Errorf("Read() after error = (%d, %v), want (0, %v)", n, err, testErr)
+			}
+		})
 	}
 }
 
