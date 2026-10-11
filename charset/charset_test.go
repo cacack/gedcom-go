@@ -1094,6 +1094,86 @@ func TestDetectEncodingFromHeader_ProbeLimit(t *testing.T) {
 	}
 }
 
+// TestHeaderScanner_HeaderEnd covers line-boundary cases for the end of the
+// header, fed both whole and one byte per call so a line start split across
+// reads resolves the same way.
+func TestHeaderScanner_HeaderEnd(t *testing.T) {
+	tests := []struct {
+		name string
+		data string
+		want int
+	}{
+		{"LF", "0 HEAD\n1 CHAR UTF-8\n0 TRLR\n", 19},
+		{"CRLF", "0 HEAD\r\n1 CHAR UTF-8\r\n0 TRLR\r\n", 21},
+		{"CR only", "0 HEAD\r1 CHAR UTF-8\r0 TRLR\r", 19},
+		{"leading blank lines", "\r\n\n \t\n0 HEAD\n0 TRLR\n", 12},
+		{"indented level 0", "0 HEAD\n  \t0 TRLR\n", 6},
+		{"tab after level", "0 HEAD\n0\tTRLR\n", 6},
+		{"blank line before record", "0 HEAD\n\n0 TRLR\n", 7},
+		{"level 0 with no tag yet", "0 HEAD\n0", -1},
+		{"level 0 then line break", "0 HEAD\n0\n0 TRLR\n", 8},
+		{"level 01 is not level 0", "0 HEAD\n01 X\n0 TRLR\n", 11},
+		{"level 10 is not level 0", "0 HEAD\n10 X\n0 TRLR\n", 11},
+		{"zero mid line", "0 HEAD\n1 NOTE 0 x\n0 TRLR\n", 17},
+		{"HEAD only", "0 HEAD\n1 CHAR ANSEL\n", -1},
+		{"blank only", "\n \r\n\t", -1},
+		{"empty", "", -1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var whole headerScanner
+			if got := whole.headerEnd([]byte(tt.data)); got != tt.want {
+				t.Errorf("headerEnd(whole) = %d, want %d", got, tt.want)
+			}
+
+			var split headerScanner
+			got := -1
+			for i := 1; i <= len(tt.data) && got < 0; i++ {
+				got = split.headerEnd([]byte(tt.data[:i]))
+			}
+			if got != tt.want {
+				t.Errorf("headerEnd(one byte per call) = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestHeaderScanner_LinearWork grows a probe one byte per call up to
+// headerProbeLimit and checks that each call examines only the appended byte,
+// so a reader returning tiny chunks costs linear rather than quadratic work
+// (issue #592). The inputs never end the header, forcing the full probe.
+func TestHeaderScanner_LinearWork(t *testing.T) {
+	tests := []struct {
+		name string
+		data string
+	}{
+		{"long HEAD line", "0 HEAD " + strings.Repeat("x", headerProbeLimit)},
+		{"many lines", "0 HEAD\n" + strings.Repeat("1 NOTE x\r\n", headerProbeLimit/10)},
+		{"blank run after line break", "0 HEAD\n" + strings.Repeat(" ", headerProbeLimit)},
+		{"leading blanks", strings.Repeat("\r\n", headerProbeLimit/2)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := []byte(tt.data[:headerProbeLimit])
+			var s headerScanner
+			examined := 0
+			for i := 1; i <= len(data); i++ {
+				before := s.pos
+				if end := s.headerEnd(data[:i]); end >= 0 {
+					t.Fatalf("headerEnd() = %d at %d bytes, want -1", end, i)
+				}
+				examined += s.pos - before
+				if before != i-1 {
+					t.Fatalf("headerEnd() resumed at %d with %d bytes, want %d", before, i, i-1)
+				}
+			}
+			if examined != len(data) {
+				t.Errorf("headerEnd() examined %d bytes in total, want %d", examined, len(data))
+			}
+		})
+	}
+}
+
 // TestDetectEncodingFromHeader_CharBeyondFirstKilobyte covers a CHAR line that
 // a long header pushes past the old 1000-byte search window (issue #577).
 func TestDetectEncodingFromHeader_CharBeyondFirstKilobyte(t *testing.T) {
