@@ -2,15 +2,23 @@ package gedcom
 
 // Header contains metadata about the GEDCOM file.
 type Header struct {
-	// Version is the GEDCOM specification version
+	// Version is the GEDCOM specification version. The decoder guesses it
+	// from the file's tags when the header declares none, so do not use it
+	// for identifier-grammar decisions: use Document.IsPointerXRef, which
+	// reads DeclaredVersion.
 	Version Version
 
 	// DeclaredVersion is the version the header declares (HEAD.GEDC.VERS),
-	// set by the decoder and by the converter. It is empty when the file
+	// set by the decoder, by converter.Convert to a different version, and
+	// by merge.Combine when doc1 declares none. It is empty when the file
 	// declares no version or one this package does not recognize, so unlike
 	// Version it is never a guess. It selects the identifier grammar
 	// Document.IsPointerXRef applies: GEDCOM 5.5 and 5.5.1 allow spaces in
 	// pointers ("@N 1@"); 7.0 and an empty value do not.
+	//
+	// Setting Version does not set it: code that builds a Document must set
+	// DeclaredVersion itself to opt in to the 5.5/5.5.1 grammar, and code
+	// that rewrites the header's GEDC.VERS must update it to match.
 	DeclaredVersion Version
 
 	// Encoding is the character encoding used in the file

@@ -729,6 +729,11 @@ func mergeScalarHeaderFields(out, h1, h2 *gedcom.Header) []HeaderConflict {
 		set  func()
 	}{
 		{"Version", string(h1.Version), string(h2.Version), func() { out.Version = h2.Version }},
+		// DeclaredVersion selects the pointer grammar (Document.IsPointerXRef).
+		// Promoting doc2's when doc1 declares none keeps doc2's spaced
+		// 5.5/5.5.1 pointers recognized in the combined document (#591);
+		// checkHeaderCompat has already required the two Versions to agree.
+		{"DeclaredVersion", string(h1.DeclaredVersion), string(h2.DeclaredVersion), func() { out.DeclaredVersion = h2.DeclaredVersion }},
 		{"Encoding", string(h1.Encoding), string(h2.Encoding), func() { out.Encoding = h2.Encoding }},
 		{"SourceSystem", h1.SourceSystem, h2.SourceSystem, func() { out.SourceSystem = h2.SourceSystem }},
 		{"Language", h1.Language, h2.Language, func() { out.Language = h2.Language }},

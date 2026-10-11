@@ -82,3 +82,36 @@ func TestRemapXRefs_SpacedXRefUndeclared(t *testing.T) {
 		t.Errorf("RemapXRefs error = %v, want ErrInvalidRemap", err)
 	}
 }
+
+// TestCombine_SpacedXRefDoc1Undeclared pins that Combine keeps doc2's spaced
+// 5.5.1 pointers recognized when doc1 declares no version: the combined
+// header adopts doc2's DeclaredVersion, so Subset follows "@N 1@" (#591).
+func TestCombine_SpacedXRefDoc1Undeclared(t *testing.T) {
+	doc1 := &gedcom.Document{
+		Header:  &gedcom.Header{Version: gedcom.Version551},
+		XRefMap: map[string]*gedcom.Record{},
+	}
+	doc2, err := decoder.Decode(strings.NewReader(spacedXRefDoc("5.5.1")))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	out, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{})
+	if err != nil {
+		t.Fatalf("Combine: %v", err)
+	}
+	if out.Header.DeclaredVersion != gedcom.Version551 {
+		t.Errorf("DeclaredVersion = %q, want %q", out.Header.DeclaredVersion, gedcom.Version551)
+	}
+	for _, c := range report.HeaderConflicts {
+		if c.Field == "DeclaredVersion" {
+			t.Errorf("unexpected DeclaredVersion conflict %+v", c)
+		}
+	}
+	sub, err := out.Subset([]string{"@I1@"})
+	if err != nil {
+		t.Fatalf("Subset: %v", err)
+	}
+	if sub.GetNote("@N 1@") == nil {
+		t.Error("Subset did not follow the spaced pointer @N 1@")
+	}
+}

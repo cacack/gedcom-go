@@ -71,7 +71,7 @@ func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedco
 			return nil, nil, &RemapError{
 				Old:    r.XRef,
 				New:    newXRef,
-				Reason: "transform produced a malformed XRef (must satisfy Document.IsPointerXRef)",
+				Reason: "transform produced a malformed XRef (must satisfy Document.IsPointerXRef; spaces are allowed only when Header.DeclaredVersion is 5.5 or 5.5.1)",
 			}
 		}
 		if prevOld, dup := seenNew[newXRef]; dup {
