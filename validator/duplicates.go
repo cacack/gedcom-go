@@ -792,11 +792,13 @@ func levenshteinDistance(s1, s2 string) int {
 // from its Old Style year. Dates in different calendars are each placed on
 // their first day and compared as Gregorian years (see gregorianStartYear), so
 // Hebrew 5660 and Gregorian 1899 are the same year while Hebrew 1900 and
-// Gregorian 1900 are not. This mirrors gedcom.YearsBetween, which converts
-// only when the calendars differ, but counts calendar years rather than
-// elapsed years. ok is false, and the dates earn no credit, when either is
-// missing, has no real year (a phrase, "0", "0 BC", a negative year) or
-// cannot be placed.
+// Gregorian 1900 are not. Like gedcom.YearsBetween it converts only when the
+// calendars differ, but it counts calendar years rather than elapsed years,
+// and unlike YearsBetween it reads a same-calendar dual date in Old Style, so
+// Julian 11 FEB 1731/32 is one year from Julian 1732 but the same year as
+// Gregorian 1732. ok is false, and the dates earn no credit, when either is
+// missing, has no real year (a phrase, "0", "0 BC", a negative year) or its
+// year cannot be placed.
 func birthYearsApart(d1, d2 *gedcom.Date) (years int, ok bool) {
 	if d1 == nil || d2 == nil || !hasRealYear(d1) || !hasRealYear(d2) {
 		return 0, false
@@ -815,12 +817,22 @@ func birthYearsApart(d1, d2 *gedcom.Date) (years int, ok bool) {
 // gregorianStartYear returns the astronomical Gregorian year of d's first day,
 // ignoring its modifier and any range end: a year-only or month-only date is
 // placed on the first day of its year or month, and a dual date is read in New
-// Style, as gedcom.Date.Bounds reads it. ok is false when Bounds cannot place
-// the date.
+// Style, as gedcom.Date.Bounds reads it. A day or month the calendar does not
+// have, such as 31 FEB, is dropped, so the date is placed on the first day of
+// its month or year instead. ok is false when Bounds cannot place even the
+// year.
 func gregorianStartYear(d *gedcom.Date) (year int, ok bool) {
 	start := *d
 	start.Modifier, start.EndDate = gedcom.ModifierNone, nil
 	earliest, _, ok := start.Bounds()
+	if !ok {
+		start.Day = 0
+		earliest, _, ok = start.Bounds()
+	}
+	if !ok {
+		start.Month = 0
+		earliest, _, ok = start.Bounds()
+	}
 	if !ok {
 		return 0, false
 	}

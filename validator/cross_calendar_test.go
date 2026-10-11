@@ -118,6 +118,8 @@ func TestBirthYearsApart_Years(t *testing.T) {
 		{"range compares its start", "BET @#DHEBREW@ 5660 AND @#DHEBREW@ 5670", "1899", 0},
 		{"BCE Julian against Gregorian", "@#DJULIAN@ 15 MAR 44 B.C.", "44 B.C.", 0},
 		{"BCE and CE across calendars", "@#DJULIAN@ 15 MAR 44 B.C.", "44", 87},
+		{"invalid day placed on its month", "31 FEB 1850", "@#DJULIAN@ 1850", 0},
+		{"invalid Hebrew month placed on its year", "@#DHEBREW@ 1 ADS 5661", "1900", 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
