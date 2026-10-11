@@ -262,12 +262,12 @@ func FrenchToJDN(year, month, day int) int {
 	const epoch = 2375840
 
 	// Calculate days before the start of this year
-	// Count leap years before this year
+	// Year y is a leap year when Gregorian year 1792+y is (see IsFrenchLeapYear),
+	// so years 1 to year-1 hold the Gregorian leap years 1793 to 1791+year.
+	// Counting them in closed form keeps the cost independent of year.
 	leapDays := 0
-	for y := 1; y < year; y++ {
-		if IsFrenchLeapYear(y) {
-			leapDays++
-		}
+	if year > 1 {
+		leapDays = gregorianLeapYearsThrough(1791+year) - gregorianLeapYearsThrough(1792)
 	}
 	daysBeforeYear := (year-1)*365 + leapDays
 
@@ -284,6 +284,12 @@ func FrenchToJDN(year, month, day int) int {
 	// JDN = epoch + days before year + days in year - 1
 	// (subtract 1 because day 1 of year 1 should equal the epoch)
 	return epoch + daysBeforeYear + daysInYear - 1
+}
+
+// gregorianLeapYearsThrough counts the Gregorian leap years from 1 to year,
+// for year >= 0.
+func gregorianLeapYearsThrough(year int) int {
+	return year/4 - year/100 + year/400
 }
 
 // JDNToFrench converts a Julian Day Number to French Republican calendar date.
@@ -314,23 +320,22 @@ func JDNToFrench(jdn int) (year, month, day int) {
 	// Days since epoch (0 = first day of year 1)
 	daysSinceEpoch := jdn - epoch
 
-	// Find the exact year by counting forward from epoch
+	// Estimate the year from the mean Gregorian year (146097 days per 400
+	// years, the rule IsFrenchLeapYear follows), then correct it against
+	// FrenchToJDN. The cost does not depend on jdn. A jdn before the epoch
+	// stays in year 1, with a negative day count.
 	year = 1
-	daysAccumulated := 0
-	for {
-		yearLength := 365
-		if IsFrenchLeapYear(year) {
-			yearLength = 366
+	if daysSinceEpoch > 0 {
+		const daysPer400Years = 146097
+		year = daysSinceEpoch/daysPer400Years*400 + daysSinceEpoch%daysPer400Years*400/daysPer400Years + 1
+		for year > 1 && FrenchToJDN(year, 1, 1) > jdn {
+			year--
 		}
-
-		if daysAccumulated+yearLength > daysSinceEpoch {
-			// Found the year
-			break
+		for FrenchToJDN(year+1, 1, 1) <= jdn {
+			year++
 		}
-
-		daysAccumulated += yearLength
-		year++
 	}
+	daysAccumulated := FrenchToJDN(year, 1, 1) - epoch
 
 	// Days remaining in this year (0-based)
 	dayInYear := daysSinceEpoch - daysAccumulated

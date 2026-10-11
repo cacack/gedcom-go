@@ -939,6 +939,12 @@ isAfter := date1.IsAfter(date2)
 isBefore := date1.IsBefore(date2)
 isEqual := date1.IsEqual(date2)
 
+// Earliest and latest day a date can denote, as Julian Day Numbers: a partial
+// date spans its period, BEF/AFT/FROM/TO are open-ended (math.MinInt/MaxInt),
+// BET/FROM...TO span both endpoints, and dual dates read in New Style
+earliest, latest, ok := date.Bounds()
+// a is provably before b when aLatest < bEarliest
+
 // Calculate years between dates
 years, exact, err := gedcom.YearsBetween(birthDate, deathDate)
 // exact is true if both dates are complete (day/month/year)
@@ -1014,9 +1020,9 @@ Comprehensive data quality validation beyond structural correctness:
 
 | Check | Severity | Description |
 |-------|----------|-------------|
-| Death before birth | Error | Death date precedes birth date |
-| Child before parent | Error | Child born before parent |
-| Marriage before birth | Error | Marriage date before spouse's birth |
+| Death before birth | Error / Warning | Death date precedes birth date |
+| Child before parent | Error / Warning | Child born before parent |
+| Marriage before birth | Error / Warning | Marriage date before spouse's birth |
 | Impossible age | Warning | Age exceeds configurable maximum (default: 120) |
 | Unreasonable parent age | Warning | Parent age at child's birth outside normal range |
 
@@ -1027,6 +1033,12 @@ for _, issue := range issues {
     fmt.Printf("[%s] %s: %s\n", issue.Severity, issue.Code, issue.Message)
 }
 ```
+
+The three ordering checks are an Error only when `Date.Bounds` proves the order on every
+reading of both dates. When the dates are too imprecise to prove it — death `1503` against
+birth `2 FEB 1503`, or `AFT 1078` against `ABT 1090` — the same code is a Warning that
+says "possibly before". An approximate date (`ABT`, `CAL`, `EST`) is bounded by the
+period it names.
 
 **Date Validity:**
 

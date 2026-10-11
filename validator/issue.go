@@ -43,14 +43,21 @@ func (s Severity) String() string {
 }
 
 // Error codes for date logic validation.
+//
+// The three ordering codes (DEATH_BEFORE_BIRTH, CHILD_BEFORE_PARENT,
+// MARRIAGE_BEFORE_BIRTH) are SeverityError when gedcom.Date.Bounds proves the
+// order and SeverityWarning when the dates are too imprecise to prove it.
 const (
-	// CodeDeathBeforeBirth indicates a person's death date is before their birth date.
+	// CodeDeathBeforeBirth indicates a person's death date is before their birth
+	// date: proven at SeverityError, possible at SeverityWarning.
 	CodeDeathBeforeBirth = "DEATH_BEFORE_BIRTH"
 
-	// CodeChildBeforeParent indicates a child was born before their parent.
+	// CodeChildBeforeParent indicates a child was born before their parent:
+	// proven at SeverityError, possible at SeverityWarning.
 	CodeChildBeforeParent = "CHILD_BEFORE_PARENT"
 
-	// CodeMarriageBeforeBirth indicates a marriage occurred before one spouse was born.
+	// CodeMarriageBeforeBirth indicates a marriage occurred before one spouse was
+	// born: proven at SeverityError, possible at SeverityWarning.
 	CodeMarriageBeforeBirth = "MARRIAGE_BEFORE_BIRTH"
 
 	// CodeImpossibleAge indicates an age that is biologically implausible (e.g., >120 years).

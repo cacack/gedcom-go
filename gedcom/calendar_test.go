@@ -1,7 +1,9 @@
 package gedcom
 
 import (
+	"math"
 	"testing"
+	"time"
 )
 
 // TestGregorianToJDN tests the Gregorian to JDN conversion with known reference dates.
@@ -1647,5 +1649,73 @@ func TestHebrewLeapYearAdarHandling(t *testing.T) {
 					leapYear, month, day, gotYear, gotMonth, gotDay)
 			}
 		}
+	}
+}
+
+// TestFrenchToJDN_LeapCount checks the closed-form leap-year count against
+// counting IsFrenchLeapYear year by year, across several Gregorian centuries.
+func TestFrenchToJDN_LeapCount(t *testing.T) {
+	const epoch = 2375840
+	leapDays := 0
+	for year := 1; year <= 2000; year++ {
+		want := epoch + (year-1)*365 + leapDays
+		if got := FrenchToJDN(year, 1, 1); got != want {
+			t.Fatalf("FrenchToJDN(%d, 1, 1) = %d, want %d", year, got, want)
+		}
+		if IsFrenchLeapYear(year) {
+			leapDays++
+		}
+	}
+}
+
+// TestFrenchToJDN_HugeYear guards against a cost that grows with the year:
+// a parsed date can carry any year.
+func TestFrenchToJDN_HugeYear(t *testing.T) {
+	start := time.Now()
+	if FrenchToJDN(math.MaxInt/400, 1, 1) <= 0 {
+		t.Error("FrenchToJDN with a huge year is not positive")
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Errorf("FrenchToJDN with a huge year took %v", elapsed)
+	}
+}
+
+// TestJDNToFrench_YearBoundaries checks the closed-form year search at the
+// first and last day of every year across several Gregorian centuries.
+func TestJDNToFrench_YearBoundaries(t *testing.T) {
+	for year := 1; year <= 2000; year++ {
+		start := FrenchToJDN(year, 1, 1)
+		if y, m, d := JDNToFrench(start); y != year || m != 1 || d != 1 {
+			t.Fatalf("JDNToFrench(%d) = (%d, %d, %d), want (%d, 1, 1)", start, y, m, d, year)
+		}
+		if year == 1 {
+			continue
+		}
+		wantDay := 5
+		if IsFrenchLeapYear(year - 1) {
+			wantDay = 6
+		}
+		if y, m, d := JDNToFrench(start - 1); y != year-1 || m != 13 || d != wantDay {
+			t.Fatalf("JDNToFrench(%d) = (%d, %d, %d), want (%d, 13, %d)", start-1, y, m, d, year-1, wantDay)
+		}
+	}
+}
+
+// TestJDNToFrench_BeforeEpoch keeps a jdn before the epoch in year 1.
+func TestJDNToFrench_BeforeEpoch(t *testing.T) {
+	if y, m, d := JDNToFrench(2375840 - 1); y != 1 || m != 1 || d != 0 {
+		t.Errorf("JDNToFrench(epoch-1) = (%d, %d, %d), want (1, 1, 0)", y, m, d)
+	}
+}
+
+// TestJDNToFrench_HugeJDN guards against a cost that grows with jdn.
+func TestJDNToFrench_HugeJDN(t *testing.T) {
+	start := time.Now()
+	jdn := FrenchToJDN(math.MaxInt/1000, 1, 1)
+	if y, m, d := JDNToFrench(jdn); y != math.MaxInt/1000 || m != 1 || d != 1 {
+		t.Errorf("JDNToFrench(%d) = (%d, %d, %d), want (%d, 1, 1)", jdn, y, m, d, math.MaxInt/1000)
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Errorf("JDNToFrench with a huge jdn took %v", elapsed)
 	}
 }

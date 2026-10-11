@@ -116,7 +116,7 @@ func (v *DateLogicValidator) ValidateIndividual(doc *gedcom.Document, ind *gedco
 }
 
 // checkDeathBeforeBirth checks if an individual's death date is before their birth date.
-// Returns an Issue with Error severity if detected, nil otherwise.
+// Returns an Issue whose severity comes from orderSeverity if detected, nil otherwise.
 func (v *DateLogicValidator) checkDeathBeforeBirth(ind *gedcom.Individual) *Issue {
 	birthDate := ind.BirthDate()
 	deathDate := ind.DeathDate()
@@ -132,11 +132,11 @@ func (v *DateLogicValidator) checkDeathBeforeBirth(ind *gedcom.Individual) *Issu
 	}
 
 	// Check if death is before birth
-	if deathDate.IsBefore(birthDate) {
+	if severity, found := orderSeverity(deathDate, birthDate); found {
 		issue := NewIssue(
-			SeverityError,
+			severity,
 			CodeDeathBeforeBirth,
-			fmt.Sprintf("death date (%s) is before birth date (%s)", deathDate.Original, birthDate.Original),
+			fmt.Sprintf("death date (%s) is %s birth date (%s)", deathDate.Original, orderVerb(severity), birthDate.Original),
 			ind.XRef,
 		).
 			WithDetail("birth_date", birthDate.Original).
@@ -148,7 +148,7 @@ func (v *DateLogicValidator) checkDeathBeforeBirth(ind *gedcom.Individual) *Issu
 }
 
 // checkChildBeforeParent checks if an individual was born before any of their parents.
-// Returns Issues with Error severity for each impossible parent-child relationship.
+// Returns an Issue for each parent born after the child, with severity from orderSeverity.
 func (v *DateLogicValidator) checkChildBeforeParent(doc *gedcom.Document, ind *gedcom.Individual) []Issue {
 	if doc == nil {
 		return nil
@@ -169,11 +169,11 @@ func (v *DateLogicValidator) checkChildBeforeParent(doc *gedcom.Document, ind *g
 		}
 
 		// Child born before parent is impossible
-		if childBirth.IsBefore(parentBirth) {
+		if severity, found := orderSeverity(childBirth, parentBirth); found {
 			issue := NewIssue(
-				SeverityError,
+				severity,
 				CodeChildBeforeParent,
-				fmt.Sprintf("child born (%s) before parent born (%s)", childBirth.Original, parentBirth.Original),
+				fmt.Sprintf("child born (%s) %s parent born (%s)", childBirth.Original, orderVerb(severity), parentBirth.Original),
 				ind.XRef,
 			).
 				WithRelatedXRef(parent.XRef).
@@ -187,7 +187,7 @@ func (v *DateLogicValidator) checkChildBeforeParent(doc *gedcom.Document, ind *g
 }
 
 // checkMarriageBeforeBirth checks if an individual was married before they were born.
-// Returns Issues with Error severity for each impossible marriage.
+// Returns an Issue for each marriage dated before birth, with severity from orderSeverity.
 func (v *DateLogicValidator) checkMarriageBeforeBirth(doc *gedcom.Document, ind *gedcom.Individual) []Issue {
 	if doc == nil {
 		return nil
@@ -220,11 +220,11 @@ func (v *DateLogicValidator) checkMarriageBeforeBirth(doc *gedcom.Document, ind 
 			}
 
 			// Marriage before birth is impossible
-			if marriageDate.IsBefore(birthDate) {
+			if severity, found := orderSeverity(marriageDate, birthDate); found {
 				issue := NewIssue(
-					SeverityError,
+					severity,
 					CodeMarriageBeforeBirth,
-					fmt.Sprintf("marriage date (%s) is before birth date (%s)", marriageDate.Original, birthDate.Original),
+					fmt.Sprintf("marriage date (%s) is %s birth date (%s)", marriageDate.Original, orderVerb(severity), birthDate.Original),
 					ind.XRef,
 				).
 					WithRelatedXRef(fam.XRef).
@@ -236,6 +236,40 @@ func (v *DateLogicValidator) checkMarriageBeforeBirth(doc *gedcom.Document, ind 
 	}
 
 	return issues
+}
+
+// orderSeverity reports whether date a may fall before date b, and how
+// certain that is. It is SeverityError when the bounds prove it (a's latest day
+// is before b's earliest; see gedcom.Date.Bounds), and SeverityWarning when
+// Compare puts a first but the dates are too imprecise to prove it, as with
+// "1503" against "2 FEB 1503". found is false when a is not before b by
+// Compare, or the bounds prove it is not; severity is then SeverityInfo and
+// must be ignored.
+func orderSeverity(a, b *gedcom.Date) (severity Severity, found bool) {
+	aEarliest, aLatest, aOK := a.Bounds()
+	bEarliest, bLatest, bOK := b.Bounds()
+	if aOK && bOK {
+		if aLatest < bEarliest {
+			return SeverityError, true
+		}
+		// Deliberately overrides Compare, which ignores DualYear: death
+		// 10 FEB 1731/32 is after birth 20 DEC 1731 though Compare puts it first.
+		if aEarliest >= bLatest {
+			return SeverityInfo, false
+		}
+	}
+	if a.IsBefore(b) {
+		return SeverityWarning, true
+	}
+	return SeverityInfo, false
+}
+
+// orderVerb phrases an ordering issue's message for its severity.
+func orderVerb(severity Severity) string {
+	if severity == SeverityError {
+		return "before"
+	}
+	return "possibly before"
 }
 
 // checkReasonableAge checks if an individual's lifespan exceeds the maximum reasonable age.
