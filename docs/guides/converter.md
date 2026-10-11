@@ -83,6 +83,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | CONT to newlines | `CONT_CONVERTED` | Continuation lines converted to embedded newlines |
 | XRef uppercase | `XREF_UPPERCASE` | All cross-references normalized to uppercase |
 | Media types | `MEDIA_TYPE_MAPPED` | Legacy formats (JPG) converted to IANA (image/jpeg) |
+| Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar escapes (`@#DJULIAN@`) converted to keywords (`JULIAN`) |
 | Header update | `VERSION_UPGRADE` | Header version updated to 7.0 |
 
 ### Upgrade 5.5 to 5.5.1
@@ -97,6 +98,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 |---------------|------|-------------|
 | Newlines to CONT | `CONT_EXPANDED` | Embedded newlines expanded to CONT tags |
 | Media types | `MEDIA_TYPE_MAPPED` | IANA formats converted to legacy |
+| Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar keywords (`JULIAN`) converted to escapes (`@#DJULIAN@`) |
 | Header update | `VERSION_DOWNGRADE` | Header version updated |
 
 ## Media Type Mappings
@@ -117,6 +119,31 @@ When converting between versions, media types are automatically mapped:
 | AVI | video/x-msvideo |
 | PDF | application/pdf |
 | TXT, TEXT | text/plain |
+
+## Date Calendar Mappings
+
+GEDCOM 5.5/5.5.1 marks a date's calendar with an escape; GEDCOM 7.0 uses a
+keyword. Converting to or from 7.0 rewrites each one:
+
+| 5.5/5.5.1 escape | 7.0 keyword |
+|------------------|-------------|
+| `@#DGREGORIAN@` | `GREGORIAN` |
+| `@#DJULIAN@` | `JULIAN` |
+| `@#DHEBREW@` | `HEBREW` |
+| `@#DFRENCH R@` | `FRENCH_R` |
+
+A calendar belongs to each date, so both endpoints of a range or period are
+translated (`BET @#DJULIAN@ 1700 AND @#DGREGORIAN@ 1710` becomes
+`BET JULIAN 1700 AND GREGORIAN 1710`); date phrase text in parentheses is left
+alone. Every `DATE` and `SDATE` value in `Record.Tags` is rewritten, as is
+`Date`/`SortDate` on individual and family events, attributes and LDS
+ordinances (with `ParsedDate.Original` kept in step). Each rewrite is a
+Normalized note.
+
+A calendar with no standard equivalent -- a 5.x escape such as `@#DROMAN@` or
+`@#DUNKNOWN@`, or a 7.0 extension calendar such as `_MAYAN` -- is left
+unchanged and reported as a Preserved note, so the output may not be valid in
+the target version for that date.
 
 ## Data Loss Reference
 

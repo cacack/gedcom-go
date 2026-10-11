@@ -138,6 +138,7 @@ func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 //nolint:unparam // error return kept for API consistency with other converters
 func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version70, report)
+	transformDateCalendars(doc, gedcom.Version70, report)
 	normalizeXRefsToUppercase(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
@@ -174,6 +175,7 @@ func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 //nolint:unparam // error return kept for API consistency with other converters
 func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version70, report)
+	transformDateCalendars(doc, gedcom.Version70, report)
 	normalizeXRefsToUppercase(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
@@ -199,6 +201,7 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		transformEXIDToVendorTags(doc, report, gedcom.Version55)
 	}
 	transformTextForVersion(doc, gedcom.Version55, report)
+	transformDateCalendars(doc, gedcom.Version55, report)
 	transformMediaTypes(doc, gedcom.Version55, report)
 	transformHeader(doc, gedcom.Version55, report)
 	record70DataLoss(doc, report, gedcom.Version55)
@@ -224,6 +227,7 @@ func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 		transformEXIDToVendorTags(doc, report, gedcom.Version551)
 	}
 	transformTextForVersion(doc, gedcom.Version551, report)
+	transformDateCalendars(doc, gedcom.Version551, report)
 	transformMediaTypes(doc, gedcom.Version551, report)
 	transformHeader(doc, gedcom.Version551, report)
 	record70DataLoss(doc, report, gedcom.Version551)

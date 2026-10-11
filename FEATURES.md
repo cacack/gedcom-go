@@ -866,7 +866,7 @@ Full parsing support for historical calendars used in genealogical records:
 | Hebrew | `@#DHEBREW@` | `HEBREW` | TSH, CSH, KSL, TVT, SHV, ADR, ADS, NSN, IYR, SVN, TMZ, AAV, ELL |
 | French Republican | `@#DFRENCH R@` | `FRENCH_R` | VEND, BRUM, FRIM, NIVO, PLUV, VENT, GERM, FLOR, PRAI, MESS, THER, FRUC, COMP |
 
-`ParseDate` accepts either form regardless of file version, anywhere an escape is accepted. The 7.0 keywords are case-sensitive, as the 7.0 grammar specifies. Extension calendars (`_XXX`) are not recognized: such a date fails to parse, keeps its raw value, and is reported as `INVALID_VALUE`.
+`ParseDate` accepts either form regardless of file version, anywhere an escape is accepted. The 7.0 keywords are case-sensitive, as the 7.0 grammar specifies. Extension calendars (`_XXX`) are not recognized: such a date fails to parse, keeps its raw value, and is reported as `INVALID_VALUE`. The converter rewrites the four standard calendars between the two forms when converting to or from 7.0 (see [Version Conversion](#version-conversion)).
 
 ```go
 // Parse a Hebrew calendar date
@@ -1326,6 +1326,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | CONT to newlines | Upgrade to 7.0 | Converts CONT tags to embedded newlines |
 | XRef uppercase | Upgrade to 7.0 | Normalizes cross-references |
 | Media types | Both | Maps between legacy (JPG) and IANA (image/jpeg) |
+| Date calendars | Both | Maps calendar escapes (`@#DJULIAN@`) to 7.0 keywords (`JULIAN`) and back, per date in ranges and periods; non-standard calendars are left unchanged and reported as Preserved |
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |
 | FamilySearch ARK EXID → `_FSFTID` | Downgrade from 7.0 | Maps to the vendor tag instead of dropping the ID (when `MapEXIDToVendorTags`) |
 
