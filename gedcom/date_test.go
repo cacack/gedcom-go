@@ -382,6 +382,12 @@ func TestDate_ToTime(t *testing.T) {
 		{"1 JAN 1 BCE", time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC), false},
 		{"15 MAR 44 BCE", time.Date(-43, 3, 15, 0, 0, 0, 0, time.UTC), false},
 		{"29 FEB 1 BCE", time.Date(0, 2, 29, 0, 0, 0, 0, time.UTC), false}, // Year 0 is a leap year
+		{"29 FEB 2000", time.Date(2000, 2, 29, 0, 0, 0, 0, time.UTC), false},
+		// Nonexistent days error instead of rolling over into the next month
+		{"31 FEB 1900", time.Time{}, true},
+		{"29 FEB 1900", time.Time{}, true},  // Century not divisible by 400
+		{"29 FEB 4 BCE", time.Time{}, true}, // Astronomical year -3 is not a leap year
+		{"31 APR 2020", time.Time{}, true},
 	}
 
 	for _, tt := range tests {
@@ -2801,6 +2807,13 @@ func TestYearsBetween(t *testing.T) {
 			date1:   "2020",
 			date2:   "(unknown)",
 			wantErr: true,
+		}, {
+			// A nonexistent day cannot convert exactly, so fall back to years
+			name:      "nonexistent day falls back to year subtraction",
+			date1:     "31 FEB 1900",
+			date2:     "1 MAR 1950",
+			wantYears: 50,
+			wantExact: false,
 		},
 	}
 
