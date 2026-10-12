@@ -270,7 +270,9 @@ func orderSeverity(a, b *gedcom.Date) (severity Severity, found bool) {
 	return SeverityInfo, false
 }
 
-// isApproximate reports whether d carries an ABT, CAL or EST modifier.
+// isApproximate reports whether d carries an ABT, CAL or EST modifier. Only
+// the top-level Modifier is checked: the date grammar does not let ABT, CAL or
+// EST appear inside BET, FROM/TO, BEF or AFT, so ranges are never approximate.
 func isApproximate(d *gedcom.Date) bool {
 	switch d.Modifier {
 	case gedcom.ModifierAbout, gedcom.ModifierCalculated, gedcom.ModifierEstimated:
