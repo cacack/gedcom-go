@@ -119,6 +119,7 @@ vet: ## Run go vet
 	@echo "✓ No issues found"
 
 lint: ## Run golangci-lint (same rules and exclusions as CI)
+	@./scripts/check-lint-version.sh
 	@echo "Running golangci-lint..."
 	@GOLANGCI_LINT=$$(command -v golangci-lint || echo "$$HOME/go/bin/golangci-lint"); \
 	if [ ! -x "$$GOLANGCI_LINT" ]; then GOLANGCI_LINT="$$(go env GOPATH)/bin/golangci-lint"; fi; \
@@ -185,7 +186,7 @@ clean: ## Clean build artifacts and coverage files
 	@echo "✓ Cleaned"
 
 # Dev tool versions - update these when upgrading
-GOLANGCI_LINT_VERSION := v2.13.2
+GOLANGCI_LINT_VERSION := v2.14.0
 GOSEC_VERSION := v2.29.0
 GOVULNCHECK_VERSION := latest
 GO_TEST_COVERAGE_VERSION := latest

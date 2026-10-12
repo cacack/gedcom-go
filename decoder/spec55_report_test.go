@@ -489,7 +489,7 @@ func spec55Nesting(rows []*spec55Row) string {
 
 	parts := make([]string, 0, len(order))
 	for _, context := range order {
-		parts = append(parts, fmt.Sprintf("`%s` in %s",
+		parts = append(parts, fmt.Sprintf("%#q in %s",
 			context, strings.Join(byContext[context], ", ")))
 	}
 	return "Measured at " + strings.Join(parts, "; ") + "."

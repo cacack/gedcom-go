@@ -5,6 +5,8 @@
 # bumps the action's `uses:` SHA, not its `version:` input. Bump both by hand:
 #   Makefile                   GOLANGCI_LINT_VERSION
 #   .github/workflows/ci.yml   golangci-lint-action `version:`
+# scripts/check-lint-version.sh fails `make lint` and the CI lint job if they
+# disagree.
 version: "2"
 run:
   modules-download-mode: readonly
