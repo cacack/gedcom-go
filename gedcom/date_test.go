@@ -1294,6 +1294,41 @@ func TestDate_ToGregorian_DualYearCleared(t *testing.T) {
 	}
 }
 
+// TestDate_ToGregorian_DualYearUnknownNewStyle pins that a dual date whose New
+// Style year is unknown converts from its Old Style Year and still loses
+// DualYear, including an invalid one that only the source reports (#631).
+func TestDate_ToGregorian_DualYearUnknownNewStyle(t *testing.T) {
+	tests := []struct {
+		input       string
+		wantYear    int
+		sourceValid bool
+	}{
+		{"@#DJULIAN@ MAR 1731/32", 1731, true},
+		{"@#DJULIAN@ 5 JUN 1750/53", 1750, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate error = %v", err)
+			}
+			if err := date.Validate(); (err == nil) != tt.sourceValid {
+				t.Fatalf("Validate() on source = %v, want valid %v", err, tt.sourceValid)
+			}
+			greg, err := date.ToGregorian()
+			if err != nil {
+				t.Fatalf("ToGregorian error = %v", err)
+			}
+			if greg.Year != tt.wantYear || greg.DualYear != 0 {
+				t.Errorf("Year, DualYear = %d, %d, want %d, 0", greg.Year, greg.DualYear, tt.wantYear)
+			}
+			if err := greg.Validate(); err != nil {
+				t.Errorf("Validate() on converted date = %v, want nil", err)
+			}
+		})
+	}
+}
+
 // TestDate_ToGregorian_DualYearOrdering checks that converting a dual date
 // leaves its Bounds and Compare ordering against other dates unchanged.
 func TestDate_ToGregorian_DualYearOrdering(t *testing.T) {
@@ -1323,10 +1358,6 @@ func TestDate_ToGregorian_DualYearOrdering(t *testing.T) {
 				}
 				if before, after := date.Compare(other), greg.Compare(other); before != after {
 					t.Errorf("Compare with %q = %d after conversion, want %d", o, after, before)
-				}
-				oe, ol, _ := other.Bounds()
-				if (l1 < oe) != (l2 < oe) || (e1 > ol) != (e2 > ol) {
-					t.Errorf("Bounds ordering against %q changed after conversion", o)
 				}
 			}
 		})

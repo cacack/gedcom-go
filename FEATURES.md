@@ -980,7 +980,10 @@ Supports conversion from Julian, Hebrew, and French Republican calendars to
 Gregorian. Only the calendar-dependent fields change: the modifier, phrase and
 interpreted-date fields carry over unchanged. A dual date converts from its New
 Style year and loses its dual year (`@#DJULIAN@ 11 FEB 1731/32` becomes
-`22 FEB 1732`), so it orders as before and passes `Validate`. An endpoint too
+`22 FEB 1732`), so it orders as before and passes `Validate`. When the New
+Style year is unknown (`1731/32`, `MAR 1731/32`, or an invalid suffix such as
+`1750/53`) it converts from the Old Style year and still loses its dual year,
+so validate the source to catch an invalid one. An endpoint too
 incomplete to convert (year 0) fails the whole conversion rather than dropping
 silently.
 

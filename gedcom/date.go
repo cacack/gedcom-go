@@ -1144,12 +1144,19 @@ func calendarToJDN(cal Calendar, year, month, day int) (int, error) {
 // All non-calendar fields (Original, Modifier, Phrase, IsPhrase,
 // IsInterpreted, InterpretedFrom) are preserved from the source date.
 //
+// Original is the source text, not a rendering of the result: after
+// conversion it no longer matches Year, Month, Day or DualYear.
+//
 // A dual date is converted from its New Style year, as Bounds reads it
 // (@#DJULIAN@ 11 FEB 1731/32 is 11 FEB 1732 Julian, 22 FEB 1732 Gregorian),
 // and DualYear is cleared: a proleptic Gregorian date has no Old Style year.
-// When the New Style year is unknown (1731/32, MAR 1731/32), Year is
-// converted and DualYear still cleared, so the result no longer spans both
-// years. A Gregorian dual date is returned unchanged.
+// When the New Style year is unknown, because the date does not say which
+// side of 25 March it falls on (1731/32, MAR 1731/32) or its DualYear is not
+// the following year (1750/53), the result is converted from the Old Style
+// Year and DualYear is still cleared. Such a result covers only the Old
+// Style year, not both years the source Bounds spans, and an invalid
+// DualYear no longer fails Validate on it; validate the source to catch
+// that. A Gregorian dual date is returned unchanged.
 func (d *Date) ToGregorian() (*Date, error) {
 	result, err := d.toGregorianComponents()
 	if err != nil {
@@ -1170,7 +1177,8 @@ func (d *Date) ToGregorian() (*Date, error) {
 }
 
 // toGregorianComponents converts the date's own calendar components, ignoring
-// EndDate. ToGregorian handles the endpoint.
+// EndDate. ToGregorian handles the endpoint. It reads a dual date through
+// inNewStyle itself, so callers need not.
 func (d *Date) toGregorianComponents() (*Date, error) {
 	// If already Gregorian, return a copy
 	if d.Calendar == CalendarGregorian {
