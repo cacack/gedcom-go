@@ -1257,26 +1257,95 @@ func TestDate_Validate_PartialSkipsDay(t *testing.T) {
 	}
 }
 
-// TestDate_ToGregorian_DualYearCopied documents that ToGregorian copies
-// DualYear as written, so a conversion that changes Year leaves a DualYear
-// that Validate reports.
-func TestDate_ToGregorian_DualYearCopied(t *testing.T) {
-	date, err := ParseDate("@#DJULIAN@ 25 DEC 1750/51")
+// TestDate_ToGregorian_DualYearCleared pins that ToGregorian reads a dual date
+// in its New Style year and clears DualYear, so the result passes Validate and
+// orders as the source does (#631).
+func TestDate_ToGregorian_DualYearCleared(t *testing.T) {
+	tests := []struct {
+		input                  string
+		wantYear, wantM, wantD int
+	}{
+		{"@#DJULIAN@ 25 DEC 1750/51", 1751, 1, 5},
+		{"@#DJULIAN@ 11 FEB 1731/32", 1732, 2, 22},
+		{"@#DJULIAN@ FEB 1731/32", 1732, 2, 0},
+		{"@#DJULIAN@ 1750/51", 1750, 0, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			date, err := ParseDate(tt.input)
+			if err != nil {
+				t.Fatalf("ParseDate error = %v", err)
+			}
+			if err := date.Validate(); err != nil {
+				t.Fatalf("Validate() on source = %v, want nil", err)
+			}
+			greg, err := date.ToGregorian()
+			if err != nil {
+				t.Fatalf("ToGregorian error = %v", err)
+			}
+			if greg.Year != tt.wantYear || greg.Month != tt.wantM || greg.Day != tt.wantD || greg.DualYear != 0 {
+				t.Errorf("Year, Month, Day, DualYear = %d, %d, %d, %d, want %d, %d, %d, 0",
+					greg.Year, greg.Month, greg.Day, greg.DualYear, tt.wantYear, tt.wantM, tt.wantD)
+			}
+			if err := greg.Validate(); err != nil {
+				t.Errorf("Validate() on converted date = %v, want nil", err)
+			}
+		})
+	}
+}
+
+// TestDate_ToGregorian_DualYearOrdering checks that converting a dual date
+// leaves its Bounds and Compare ordering against other dates unchanged.
+func TestDate_ToGregorian_DualYearOrdering(t *testing.T) {
+	others := []string{"1 DEC 1731", "20 FEB 1732", "1 MAR 1732", "1 JAN 1751", "10 JAN 1751"}
+	for _, input := range []string{"@#DJULIAN@ 25 DEC 1750/51", "@#DJULIAN@ 11 FEB 1731/32"} {
+		t.Run(input, func(t *testing.T) {
+			date, err := ParseDate(input)
+			if err != nil {
+				t.Fatalf("ParseDate error = %v", err)
+			}
+			greg, err := date.ToGregorian()
+			if err != nil {
+				t.Fatalf("ToGregorian error = %v", err)
+			}
+			if c := date.Compare(greg); c != 0 {
+				t.Errorf("Compare(source, converted) = %d, want 0", c)
+			}
+			e1, l1, ok1 := date.Bounds()
+			e2, l2, ok2 := greg.Bounds()
+			if e1 != e2 || l1 != l2 || ok1 != ok2 {
+				t.Errorf("Bounds converted = %d, %d, %v, want %d, %d, %v", e2, l2, ok2, e1, l1, ok1)
+			}
+			for _, o := range others {
+				other, err := ParseDate(o)
+				if err != nil {
+					t.Fatalf("ParseDate(%q) error = %v", o, err)
+				}
+				if before, after := date.Compare(other), greg.Compare(other); before != after {
+					t.Errorf("Compare with %q = %d after conversion, want %d", o, after, before)
+				}
+				oe, ol, _ := other.Bounds()
+				if (l1 < oe) != (l2 < oe) || (e1 > ol) != (e2 > ol) {
+					t.Errorf("Bounds ordering against %q changed after conversion", o)
+				}
+			}
+		})
+	}
+}
+
+// TestDate_ToGregorian_GregorianDualYearKept pins that a date already in the
+// Gregorian calendar is returned as a copy, its DualYear unchanged.
+func TestDate_ToGregorian_GregorianDualYearKept(t *testing.T) {
+	date, err := ParseDate("11 FEB 1731/32")
 	if err != nil {
 		t.Fatalf("ParseDate error = %v", err)
-	}
-	if err := date.Validate(); err != nil {
-		t.Fatalf("Validate() on source = %v, want nil", err)
 	}
 	greg, err := date.ToGregorian()
 	if err != nil {
 		t.Fatalf("ToGregorian error = %v", err)
 	}
-	if greg.Year != 1751 || greg.DualYear != 1751 {
-		t.Errorf("Year, DualYear = %d, %d, want 1751, 1751", greg.Year, greg.DualYear)
-	}
-	if err := greg.Validate(); err == nil {
-		t.Error("Validate() on converted date should report the copied dual year")
+	if greg.Year != 1731 || greg.DualYear != 1732 {
+		t.Errorf("Year, DualYear = %d, %d, want 1731, 1732", greg.Year, greg.DualYear)
 	}
 }
 

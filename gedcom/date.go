@@ -131,7 +131,8 @@ type Date struct {
 	// written. ParseDate accepts a suffix that is not the following year (e.g.
 	// "1750/53" gives 1753, "1750/50" gives 1850, "1750/1749" gives 1749) so the
 	// value is preserved; Validate reports it. A B.C. dual year of 0 ("1/0 BC")
-	// cannot be represented and reads as no dual year.
+	// cannot be represented and reads as no dual year. ToGregorian clears it
+	// on a non-Gregorian date, converting from the New Style year.
 	DualYear int
 
 	// Phrase contains the text for date phrases (e.g., "unknown" from "(unknown)")
@@ -1140,11 +1141,15 @@ func calendarToJDN(cal Calendar, year, month, day int) (int, error) {
 // and a failure there fails the whole conversion rather than returning a
 // range that silently lost its endpoint.
 //
-// All non-calendar fields (Original, Modifier, DualYear, Phrase, IsPhrase,
+// All non-calendar fields (Original, Modifier, Phrase, IsPhrase,
 // IsInterpreted, InterpretedFrom) are preserved from the source date.
-// DualYear is copied as written, not converted, so when the conversion
-// changes Year it may no longer follow it and Validate on the result
-// reports it.
+//
+// A dual date is converted from its New Style year, as Bounds reads it
+// (@#DJULIAN@ 11 FEB 1731/32 is 11 FEB 1732 Julian, 22 FEB 1732 Gregorian),
+// and DualYear is cleared: a proleptic Gregorian date has no Old Style year.
+// When the New Style year is unknown (1731/32, MAR 1731/32), Year is
+// converted and DualYear still cleared, so the result no longer spans both
+// years. A Gregorian dual date is returned unchanged.
 func (d *Date) ToGregorian() (*Date, error) {
 	result, err := d.toGregorianComponents()
 	if err != nil {
@@ -1178,8 +1183,8 @@ func (d *Date) toGregorianComponents() (*Date, error) {
 		return nil, fmt.Errorf("cannot convert date to Gregorian: year is missing")
 	}
 
-	// Convert to JDN first
-	jdn, err := d.toJDN()
+	// Convert to JDN first, reading a dual date in its New Style year
+	jdn, err := d.inNewStyle().toJDN()
 	if err != nil {
 		return nil, err
 	}
@@ -1191,15 +1196,14 @@ func (d *Date) toGregorianComponents() (*Date, error) {
 	year, isBC := FromAstronomicalYear(astroYear)
 
 	// Create new date with Gregorian calendar. Only the calendar-dependent
-	// fields are recomputed; everything else carries over so the conversion
-	// stays lossless.
+	// fields are recomputed and DualYear is dropped; everything else carries
+	// over so the conversion stays lossless.
 	result := &Date{
 		Original:        d.Original, // Preserve original for lossless representation
 		Year:            year,
 		Calendar:        CalendarGregorian,
 		IsBC:            isBC,
 		Modifier:        d.Modifier,
-		DualYear:        d.DualYear,
 		Phrase:          d.Phrase,
 		IsPhrase:        d.IsPhrase,
 		IsInterpreted:   d.IsInterpreted,

@@ -977,8 +977,10 @@ g, err := r.ToGregorian()
 ```
 
 Supports conversion from Julian, Hebrew, and French Republican calendars to
-Gregorian. Only the calendar-dependent fields change: the modifier, dual year,
-phrase and interpreted-date fields carry over unchanged. An endpoint too
+Gregorian. Only the calendar-dependent fields change: the modifier, phrase and
+interpreted-date fields carry over unchanged. A dual date converts from its New
+Style year and loses its dual year (`@#DJULIAN@ 11 FEB 1731/32` becomes
+`22 FEB 1732`), so it orders as before and passes `Validate`. An endpoint too
 incomplete to convert (year 0) fails the whole conversion rather than dropping
 silently.
 
