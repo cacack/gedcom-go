@@ -1295,8 +1295,8 @@ func TestDate_ToGregorian_DualYearCleared(t *testing.T) {
 }
 
 // TestDate_ToGregorian_DualYearUnknownNewStyle pins that a dual date whose New
-// Style year is unknown converts from its Old Style Year and still loses
-// DualYear, including an invalid one that only the source reports (#631).
+// Style year is unknown, including a non-Julian one, converts from Year and
+// still loses DualYear, even an invalid one only the source reports (#631).
 func TestDate_ToGregorian_DualYearUnknownNewStyle(t *testing.T) {
 	tests := []struct {
 		input       string
@@ -1305,6 +1305,8 @@ func TestDate_ToGregorian_DualYearUnknownNewStyle(t *testing.T) {
 	}{
 		{"@#DJULIAN@ MAR 1731/32", 1731, true},
 		{"@#DJULIAN@ 5 JUN 1750/53", 1750, false},
+		{"@#DHEBREW@ 1 TSH 5660/61", 1899, true},
+		{"@#DFRENCH R@ 1 VEND 5/6", 1796, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {

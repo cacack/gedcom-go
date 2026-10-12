@@ -1151,12 +1151,13 @@ func calendarToJDN(cal Calendar, year, month, day int) (int, error) {
 // (@#DJULIAN@ 11 FEB 1731/32 is 11 FEB 1732 Julian, 22 FEB 1732 Gregorian),
 // and DualYear is cleared: a proleptic Gregorian date has no Old Style year.
 // When the New Style year is unknown, because the date does not say which
-// side of 25 March it falls on (1731/32, MAR 1731/32) or its DualYear is not
-// the following year (1750/53), the result is converted from the Old Style
-// Year and DualYear is still cleared. Such a result covers only the Old
-// Style year, not both years the source Bounds spans, and an invalid
-// DualYear no longer fails Validate on it; validate the source to catch
-// that. A Gregorian dual date is returned unchanged.
+// side of 25 March it falls on (1731/32, MAR 1731/32), its DualYear is not
+// the following year (1750/53), or it is not a Julian date
+// (@#DHEBREW@ 1 TSH 5660/61), the result is converted from Year and DualYear
+// is still cleared. Such a result covers only Year, not both years the
+// source Bounds spans, and an invalid DualYear no longer fails Validate on
+// it; validate the source to catch that. A Gregorian dual date is returned
+// unchanged.
 func (d *Date) ToGregorian() (*Date, error) {
 	result, err := d.toGregorianComponents()
 	if err != nil {
