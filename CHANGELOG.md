@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0](https://github.com/cacack/gedcom-go/compare/v3.1.0...v3.2.0) (2026-10-12)
+
+
+### Bug Fixes
+
+* **charset:** document ANSEL mark flush across CONC and dedupe emit loop ([cf21cb3](https://github.com/cacack/gedcom-go/commit/cf21cb3d46b8e1cffb3c896d6b4b7bb374ea242c)), closes [#431](https://github.com/cacack/gedcom-go/issues/431)
+* **charset:** keep ANSEL combining mark before line terminator on its line ([573949c](https://github.com/cacack/gedcom-go/commit/573949c9f1c56bd6005a32296fe085dc7f9435b1)), closes [#431](https://github.com/cacack/gedcom-go/issues/431)
+* **encoder:** guard hand-built header fields against line breaks ([c66814b](https://github.com/cacack/gedcom-go/commit/c66814bd638cbb5b6c5415da6508fe63c6c890e5)), closes [#466](https://github.com/cacack/gedcom-go/issues/466)
+* **encoder:** reject a line break in a tag name or identifier ([59ed5ae](https://github.com/cacack/gedcom-go/commit/59ed5aea047af4ccfce70480588c16fbe1d7d2ae)), closes [#466](https://github.com/cacack/gedcom-go/issues/466)
+* **gedcom:** bound Bounds to real days and make FrenchToJDN closed-form ([5e4225c](https://github.com/cacack/gedcom-go/commit/5e4225c680698ea280faf33427fb7100e6ccf43c)), closes [#566](https://github.com/cacack/gedcom-go/issues/566)
+* **gedcom:** clear DualYear when ToGregorian converts a dual date ([9ed5142](https://github.com/cacack/gedcom-go/commit/9ed514249d7b5408b840cd51bdda7cd8f4cc7654)), closes [#631](https://github.com/cacack/gedcom-go/issues/631)
+* **gedcom:** compare years across calendars via JDN ([df45b71](https://github.com/cacack/gedcom-go/commit/df45b714a00c8c5398d707aa323940d9b1bf6783)), closes [#618](https://github.com/cacack/gedcom-go/issues/618)
+* **gedcom:** keep B.C. dual year off 0 and document dual-year contracts ([7550bc2](https://github.com/cacack/gedcom-go/commit/7550bc20bc04c6a7055c4e1ff5cf8a58336d3718)), closes [#621](https://github.com/cacack/gedcom-go/issues/621)
+* **gedcom:** read dual dates in New Style in Compare and YearsBetween ([5572f6d](https://github.com/cacack/gedcom-go/commit/5572f6dcc3d33d1833c8d2816dbbd8e267715289)), closes [#563](https://github.com/cacack/gedcom-go/issues/563)
+* **gedcom:** reject negative months in Bounds and make JDNToFrench closed-form ([2d60428](https://github.com/cacack/gedcom-go/commit/2d60428f819a856c5179f14f709a70e4bc1ec05e)), closes [#566](https://github.com/cacack/gedcom-go/issues/566)
+* **gedcom:** resolve short dual-year suffixes to the following year ([7b41baf](https://github.com/cacack/gedcom-go/commit/7b41bafe5ca0136c532c0b2574b08a6289f48292)), closes [#621](https://github.com/cacack/gedcom-go/issues/621)
+* **validator:** cap approximate-date ordering checks at WARNING ([5b750c8](https://github.com/cacack/gedcom-go/commit/5b750c867d7e7dd8e232140214ffb5d4ea0902ea)), closes [#632](https://github.com/cacack/gedcom-go/issues/632)
+* **validator:** place cross-calendar birth dates with an invalid day on their month ([83ae670](https://github.com/cacack/gedcom-go/commit/83ae6700e7b27e2606c2351e619aa97a12bf907b)), closes [#618](https://github.com/cacack/gedcom-go/issues/618)
+* **validator:** raise date-ordering ERRORs only when the dates prove them ([ee72e9a](https://github.com/cacack/gedcom-go/commit/ee72e9ab129cd772028778e91f0e580ec19d1100)), closes [#566](https://github.com/cacack/gedcom-go/issues/566)
+* **validator:** read cross-calendar birth dates from their first day ([be5a921](https://github.com/cacack/gedcom-go/commit/be5a9212b83640b8788080c0c9665f1b39a7b563)), closes [#618](https://github.com/cacack/gedcom-go/issues/618)
+
+
+### Documentation
+
+* label v3.2.0 behaviour changes and release as 3.2.0 ([df7b351](https://github.com/cacack/gedcom-go/commit/df7b351aab65d02cd13cf77f6e452f0454b110b0))
+
 ## [3.1.0](https://github.com/cacack/gedcom-go/compare/v3.0.0...v3.1.0) (2026-10-11)
 
 
