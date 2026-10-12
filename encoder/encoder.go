@@ -15,6 +15,16 @@ import (
 // "0 TRLR" of an empty document -- can be written for it.
 var ErrNilDocument = errors.New("document is nil")
 
+// ErrLineBreak is returned when a tag name or cross-reference identifier --
+// [gedcom.Tag].Tag, [gedcom.Tag].XRef, [gedcom.Record].Type,
+// [gedcom.Record].XRef or [gedcom.Header].Submitter, including a tag name
+// derived from a typed entity field such as [gedcom.Event].Type -- contains a
+// line break (CR or LF). GEDCOM has no way to spell one there, and writing it
+// through would start a new physical line that a reader could take for a
+// record the caller never wrote. A line break in a value is not an error: it
+// is written as CONT.
+var ErrLineBreak = errors.New("line break in tag or cross-reference identifier")
+
 // Encode writes a GEDCOM document to a writer.
 //
 // Returns ErrNilDocument if doc is nil. See the package documentation for how
@@ -228,8 +238,7 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 		if _, err := fmt.Fprintf(w, "1 GEDC%s", opts.effectiveLineEnding()); err != nil {
 			return err
 		}
-		_, err := fmt.Fprintf(w, "2 VERS %s%s", version, opts.effectiveLineEnding())
-		return err
+		return writeValue(w, 2, "", "VERS", string(version), opts)
 	}
 
 	// Declared only when the header declares one at all: GEDCOM 7.0 removed
@@ -242,20 +251,20 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 		return err
 	}
 
+	// VERS, SOUR, DATE and LANG are values, so each goes through writeValue
+	// rather than a bare Fprintf: a line break in a hand-built value (say, one
+	// taken from user input) becomes a CONT line instead of starting a new
+	// GEDCOM line -- a raw "\n0 @X@ INDI" would otherwise inject a record into
+	// the file (issue #466).
 	writeSour := func() error {
 		if header.SourceSystem == "" {
 			return nil
 		}
-		_, err := fmt.Fprintf(w, "1 SOUR %s%s", header.SourceSystem, opts.effectiveLineEnding())
-		return err
+		return writeValue(w, 1, "", "SOUR", header.SourceSystem, opts)
 	}
 
 	// Written verbatim, like every other GEDCOM date: the field holds the
-	// DATE_EXACT string as read or as the caller set it. It goes through
-	// writeValue rather than a bare Fprintf so a line break in a hand-built
-	// value (say, one taken from user input) becomes a CONT line instead of
-	// starting a new GEDCOM line -- a raw "\n0 @X@ INDI" would otherwise
-	// inject a record into the file.
+	// DATE_EXACT string as read or as the caller set it.
 	writeDate := func() error {
 		if header.Date == "" {
 			return nil
@@ -265,21 +274,23 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 
 	// The pointer is written verbatim: whatever the caller put in the field is
 	// the pointer the document's SUBM record is keyed by, and re-delimiting it
-	// would break that link rather than repair it.
+	// would break that link rather than repair it. A pointer is an identifier,
+	// so like an XRef a line break in it has no CONT form and is rejected.
 	writeSubm := func() error {
 		if header.Submitter == "" {
 			return nil
 		}
-		_, err := fmt.Fprintf(w, "1 SUBM %s%s", header.Submitter, opts.effectiveLineEnding())
-		return err
+		if hasLineBreak(header.Submitter) {
+			return fmt.Errorf("level 1 SUBM pointer %q: %w", header.Submitter, ErrLineBreak)
+		}
+		return writeValue(w, 1, "", "SUBM", header.Submitter, opts)
 	}
 
 	writeLang := func() error {
 		if header.Language == "" {
 			return nil
 		}
-		_, err := fmt.Fprintf(w, "1 LANG %s%s", header.Language, opts.effectiveLineEnding())
-		return err
+		return writeValue(w, 1, "", "LANG", header.Language, opts)
 	}
 
 	// Order is version-dependent because the two grammars disagree about where
@@ -394,6 +405,16 @@ func writeTag(w io.Writer, tag *gedcom.Tag, opts *EncodeOptions) error {
 // for the level-0 line without allocating a Tag to describe a record it already
 // has.
 func writeValue(w io.Writer, level int, xref, tag, value string, opts *EncodeOptions) error {
+	// A tag name or identifier has no CONT form, so a line break in either is
+	// rejected rather than folded (issue #466). Checked here rather than in
+	// writeLine so a multi-line value pays for it once, not once per CONT.
+	if hasLineBreak(tag) {
+		return fmt.Errorf("level %d tag %q: %w", level, tag, ErrLineBreak)
+	}
+	if hasLineBreak(xref) {
+		return fmt.Errorf("level %d xref %q: %w", level, xref, ErrLineBreak)
+	}
+
 	// A value carrying line breaks has to be split back across CONT lines. The
 	// converter embeds newlines when it consolidates CONT for 7.0, and a
 	// hand-built Tag may hold them too; writing such a value inline would emit
@@ -436,6 +457,18 @@ func writeValue(w io.Writer, level int, xref, tag, value string, opts *EncodeOpt
 		}
 	}
 	return nil
+}
+
+// hasLineBreak reports whether s, a tag name or identifier, contains a CR or
+// LF. It runs twice per writeValue call, on strings that are almost always a
+// handful of bytes or empty, so a plain loop over both bytes is enough.
+func hasLineBreak(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\n' || s[i] == '\r' {
+			return true
+		}
+	}
+	return false
 }
 
 // splitValueLines splits a tag value on line breaks, returning at least one
