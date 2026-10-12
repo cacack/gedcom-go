@@ -48,7 +48,9 @@ func (s Severity) String() string {
 // MARRIAGE_BEFORE_BIRTH) are SeverityError when gedcom.Date.Bounds proves the
 // order and SeverityWarning when the dates are too imprecise to prove it, or
 // when either date is approximate (ABT, CAL or EST). An INT date counts as
-// exact. StrictnessRelaxed drops the SeverityWarning findings.
+// exact. Under StrictnessRelaxed, ValidateAll, ValidateDateLogic and
+// StreamingValidator drop the SeverityWarning findings; QualityReport ignores
+// Strictness and keeps them.
 const (
 	// CodeDeathBeforeBirth indicates a person's death date is before their birth
 	// date: proven at SeverityError, possible at SeverityWarning.
