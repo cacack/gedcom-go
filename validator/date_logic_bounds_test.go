@@ -33,6 +33,7 @@ var dateOrderCases = []dateOrderCase{
 	// #632: an ABT, CAL or EST date caps the ordering at WARNING, even when
 	// the bounds are disjoint; INT names an exact date and can still prove it.
 	{"ABT against a later ABT", "ABT 1849", "ABT 1850", severityPtr(SeverityWarning)},
+	{"exact against a later exact", "1849", "1850", severityPtr(SeverityError)},
 	{"exact against a later ABT", "1849", "ABT 1850", severityPtr(SeverityWarning)},
 	{"CAL against a later exact", "CAL 1849", "1850", severityPtr(SeverityWarning)},
 	{"exact against a far later EST", "1700", "EST 1900", severityPtr(SeverityWarning)},
