@@ -242,14 +242,20 @@ func (v *DateLogicValidator) checkMarriageBeforeBirth(doc *gedcom.Document, ind 
 // certain that is. It is SeverityError when the bounds prove it (a's latest day
 // is before b's earliest; see gedcom.Date.Bounds), and SeverityWarning when
 // Compare puts a first but the dates are too imprecise to prove it, as with
-// "1503" against "2 FEB 1503". found is false when a is not before b by
-// Compare, or the bounds prove it is not; severity is then SeverityInfo and
-// must be ignored.
+// "1503" against "2 FEB 1503". An approximate date (ABT, CAL or EST) on
+// either side caps it at SeverityWarning even when the bounds are disjoint,
+// since Bounds does not guess how far "about" reaches; INT names an exact
+// date and is not capped. found is false when a is not before b by Compare,
+// or the bounds prove it is not; severity is then SeverityInfo and must be
+// ignored.
 func orderSeverity(a, b *gedcom.Date) (severity Severity, found bool) {
 	aEarliest, aLatest, aOK := a.Bounds()
 	bEarliest, bLatest, bOK := b.Bounds()
 	if aOK && bOK {
 		if aLatest < bEarliest {
+			if isApproximate(a) || isApproximate(b) {
+				return SeverityWarning, true
+			}
 			return SeverityError, true
 		}
 		// The bounds prove a is not before b; checked ahead of IsBefore so
@@ -262,6 +268,16 @@ func orderSeverity(a, b *gedcom.Date) (severity Severity, found bool) {
 		return SeverityWarning, true
 	}
 	return SeverityInfo, false
+}
+
+// isApproximate reports whether d carries an ABT, CAL or EST modifier.
+func isApproximate(d *gedcom.Date) bool {
+	switch d.Modifier {
+	case gedcom.ModifierAbout, gedcom.ModifierCalculated, gedcom.ModifierEstimated:
+		return true
+	default:
+		return false
+	}
 }
 
 // orderVerb phrases an ordering issue's message for its severity.

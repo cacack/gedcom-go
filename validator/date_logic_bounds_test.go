@@ -30,6 +30,14 @@ var dateOrderCases = []dateOrderCase{
 	{"month against a day in that month", "MAR 1850", "15 MAR 1850", severityPtr(SeverityWarning)},
 	{"dual date read in New Style is later", "10 FEB 1731/32", "20 DEC 1731", nil},
 	{"dual date read in New Style proves order", "20 DEC 1731", "10 FEB 1731/32", severityPtr(SeverityError)},
+	// #632: an ABT, CAL or EST date caps the ordering at WARNING, even when
+	// the bounds are disjoint; INT names an exact date and can still prove it.
+	{"ABT against a later ABT", "ABT 1849", "ABT 1850", severityPtr(SeverityWarning)},
+	{"exact against a later ABT", "1849", "ABT 1850", severityPtr(SeverityWarning)},
+	{"CAL against a later exact", "CAL 1849", "1850", severityPtr(SeverityWarning)},
+	{"exact against a far later EST", "1700", "EST 1900", severityPtr(SeverityWarning)},
+	{"INT against a later exact", "INT 1849 (from a letter)", "1850", severityPtr(SeverityError)},
+	{"ABT in order", "ABT 1850", "ABT 1849", nil},
 	{"in order", "1950", "1940", nil},
 	{"same day", "2 FEB 1503", "2 FEB 1503", nil},
 }

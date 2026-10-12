@@ -1039,8 +1039,10 @@ for _, issue := range issues {
 The three ordering checks are an Error only when `Date.Bounds` proves the order on every
 reading of both dates. When the dates are too imprecise to prove it — death `1503` against
 birth `2 FEB 1503`, or `AFT 1078` against `ABT 1090` — the same code is a Warning that
-says "possibly before". An approximate date (`ABT`, `CAL`, `EST`) is bounded by the
-period it names.
+says "possibly before". An approximate date (`ABT`, `CAL`, `EST`) on either side caps
+the check at Warning, even when the periods the dates name do not overlap: death
+`ABT 1849` against birth `ABT 1850` is a Warning, while `1849` against `1850` is an
+Error. An interpreted date (`INT`) names an exact date and can still prove the order.
 
 **Date Validity:**
 
