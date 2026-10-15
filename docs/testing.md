@@ -6,9 +6,36 @@ This document defines testing requirements and critical paths that must have tes
 
 | Level | Threshold | Enforcement |
 |-------|-----------|-------------|
-| Per-package | ≥85% | Pre-commit hook, CI |
+| Per-package | ≥85% | Pre-push hook, CI |
 | Total | ≥85% | CI |
 | Critical paths | 100% | Code review |
+
+### What Coverage Measures
+
+Coverage is a floor, not a quality measure. It records which lines ran, not whether any assertion pins what they do. In [#462](https://github.com/cacack/gedcom-go/pull/462), `mergeHeaders` sat at 100% and `merge/roundtrip_test.go` already encoded the merged document. But the test asserted record count, XRef survival and validity, none of which looked at the header, so a `HEAD` carrying two `SOUR`, two `GEDC` and two `CHAR` was written out unnoticed. Assert the content of the result, not just how many there are.
+
+What has caught real defects is showing that a test fails without the change it covers. For a bug fix or behaviour change, revert the change, watch the named test fail, then restore it. For a new feature, stub out the new behaviour instead. Docs-only changes and pure refactors are exempt.
+
+### Cross-Package Tests
+
+Per-package coverage counts only tests in the same package. `header_writepath_test.go` in the root package runs `merge`, `converter` and `encoder` together on one document. None of that execution counts toward those packages' numbers.
+
+So a package with cross-package tests can look under-covered when it isn't. Don't "fix" it by duplicating behaviour in a weaker same-package test. To see the attributed number, pass `-coverpkg`:
+
+```bash
+go test -coverpkg=./converter -coverprofile=cross.out . ./converter
+go tool cover -func=cross.out
+```
+
+The `total:` line is the attributed figure: `converter`'s own tests plus the root-package tests. This is a reporting aid, not a threshold. The gate stays on per-package numbers.
+
+### Considered and Declined
+
+These alternatives were weighed and declined in [#409](https://github.com/cacack/gedcom-go/issues/409) (October 2026). If any is adopted later, update this section in the same change.
+
+- **Assertion-presence lint** (flag tests that only check `err`): every defect cited there had an assertion, but it compared counts. A lint would have passed all of them.
+- **Suite-wide mutation testing**: it adds a tool and slow runs. The per-change revert check above gives the same evidence where it matters.
+- **Patch-coverage threshold**: it is the same line-counting measure on a smaller window, and it would reward line-hitting tests for new code.
 
 ## Critical Paths (Must Have Tests)
 
@@ -150,7 +177,11 @@ When adding new functionality:
 - [ ] Error case tests with message validation
 - [ ] Integration test with real GEDCOM data (if applicable)
 - [ ] Benchmark test (if performance-sensitive)
-- [ ] Coverage ≥85% for the package
+The test items below also appear in the [PR template](../.github/pull_request_template.md). This section is the authoritative wording.
+
+- [ ] Each test for a bug fix or behaviour change was shown to fail without that change (N/A for docs and refactors)
+- [ ] Assertions check content, not just counts
+- [ ] Coverage ≥85% per package (a floor, not evidence of quality)
 
 ## Running Tests
 
@@ -186,3 +217,4 @@ If CI fails due to coverage:
 2. Identify uncovered lines with `go tool cover -html=coverage.out`
 3. Add tests for critical paths first
 4. Focus on branches (if/else) not just lines
+5. If the package is exercised from another package's tests, check the attributed number first (see [Cross-Package Tests](#cross-package-tests))

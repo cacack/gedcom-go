@@ -14,11 +14,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 make setup            # Downloads deps, installs tools, sets up hooks
 ```
 
-This installs pre-commit hooks that enforce:
-- gofmt formatting
-- go vet checks
-- golangci-lint (v2)
-- Per-package test coverage ≥85%
+This installs git hooks that enforce:
+- gofmt formatting, go vet, golangci-lint (v2) — pre-commit
+- Per-package test coverage ≥85% — pre-push
 
 ## Development Commands
 

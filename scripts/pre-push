@@ -29,7 +29,7 @@ fi
 
 # --- Coverage Threshold Check ---
 echo "→ Running tests with coverage..."
-go test -coverprofile=coverage.out -covermode=atomic ./charset ./decoder ./encoder ./gedcom ./parser ./validator ./version
+go test -coverprofile=coverage.out -covermode=atomic ./...
 
 echo "→ Checking coverage thresholds (85% per-package, 85% total)..."
 if ! "$GO_TEST_COVERAGE" --config=.testcoverage.yml --profile=coverage.out; then
