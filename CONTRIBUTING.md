@@ -299,7 +299,7 @@ Follow the official [Go Code Review Comments](https://github.com/golang/go/wiki/
 - **Target**: 90%+ coverage for core packages (parser, decoder, validator)
 - **Examples**: 0% is acceptable (examples are for demonstration)
 
-The pre-commit hook will block commits if any package falls below 85% coverage.
+The pre-push hook will block pushes if any package falls below 85% coverage.
 
 Check coverage:
 ```bash
@@ -381,36 +381,9 @@ For details on critical paths and testing patterns, see [docs/testing.md](docs/t
    - Add/update tests for your changes
 
 2. **Pull Request Description**
-   - Clearly describe what changes you made and why
-   - Reference any related issues
-   - Include screenshots for UI changes (if applicable)
-   - List any breaking changes
+   New PRs open with [`.github/pull_request_template.md`](.github/pull_request_template.md). Fill in each section and work through its checklist.
 
-3. **Example PR Template**
-   ```markdown
-   ## Description
-   Adds support for parsing GEDCOM 7.0 date formats including age calculations.
-
-   ## Changes
-   - Added `ParseDate7()` function in `parser/date.go`
-   - Added comprehensive tests with 95% coverage
-   - Updated documentation with examples
-
-   ## Related Issues
-   Fixes #42
-
-   ## Breaking Changes
-   None
-
-   ## Checklist
-   - [x] Tests pass locally
-   - [x] Code coverage ≥85%
-   - [x] Code formatted with `go fmt`
-   - [x] Documentation updated
-   - [x] No linter warnings
-   ```
-
-4. **Review Process**
+3. **Review Process**
    - Maintainers will review your PR
    - Address any feedback or requested changes
    - Once approved, a maintainer will merge your PR
