@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.3.0](https://github.com/cacack/gedcom-go/compare/v3.2.0...v3.3.0) (2026-10-15)
+
+
+### Features
+
+* **charset:** decode CHAR ANSI, LATIN1 and ISO-8859-1 as Windows-1252 ([59262d1](https://github.com/cacack/gedcom-go/commit/59262d18f0235f2158bc7ca637bc7e1c6105fc2a)), closes [#564](https://github.com/cacack/gedcom-go/issues/564)
+
 ## [3.2.0](https://github.com/cacack/gedcom-go/compare/v3.1.0...v3.2.0) (2026-10-12)
 
 
