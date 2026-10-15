@@ -122,7 +122,7 @@ jobs:
         echo ""
         echo "| Package | Coverage | Status |"
         echo "|---------|----------|--------|"
-        for pkg in charset decoder encoder gedcom merge parser validator version; do
+        for pkg in charset converter decoder encoder gedcom merge parser validator version; do
           COV=$(go tool cover -func=coverage.out | grep "github.com/cacack/gedcom-go/v3/$pkg" | tail -1 | awk '{print $3}')
           PCT=$(echo "$COV" | sed 's/%//')
           if (( $(echo "$PCT >= 85.0" | bc -l) )); then
