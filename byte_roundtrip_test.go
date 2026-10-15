@@ -81,6 +81,7 @@ var bodyKnownBad = map[string]string{
 	// still cannot see it.
 	"testdata/encoding/ansel-lf.ged":                 "non-UTF-8 source; payload transcoded",
 	"testdata/encoding/ansel-trailing-combining.ged": "non-UTF-8 source; payload transcoded",
+	"testdata/encoding/ansi-cp1252-c1-range.ged":     "non-UTF-8 source; payload transcoded",
 	"testdata/encoding/ansi-cp1252-ftm17.ged":        "non-UTF-8 source; payload transcoded",
 	"testdata/encoding/utf16be.ged":                  "non-UTF-8 source; payload transcoded",
 	"testdata/encoding/utf16le.ged":                  "non-UTF-8 source; payload transcoded",

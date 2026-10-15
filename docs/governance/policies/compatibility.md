@@ -13,7 +13,7 @@ The following table shows which genealogy software exports have been tested with
 | Legacy Family Tree | 10.0 (2025) | ✅ | Real export tested (vendored corpus); UTF-8+BOM, real-world junk DATE values tolerated with diagnostics |
 | Legacy Family Tree | 8.0 (2016) | ⚠️ | Older version; custom tags preserved (`_TODO`, `_UID`, `_PRIV`) |
 | Family Tree Maker | 22.2.5 (2016) | ⚠️ | Older version; Ancestry format with custom tags |
-| Family Tree Maker | 17.0 (2005) | ✅ | Real export tested (vendored corpus); `CHAR ANSI` with real Windows-1252 bytes converted correctly |
+| Family Tree Maker | 17.0 (2005) | ✅ | Real export tested (vendored corpus); `CHAR ANSI` decoded as Windows-1252; the export's high bytes (ñ, ó, £) convert correctly, and 0x80–0x9F punctuation, which this export lacks, is pinned by `encoding/ansi-cp1252-c1-range.ged` |
 | Family Historian | 6.2.2 | ⚠️ | Custom tags preserved (`_ATTR`, `_USED`, `_SHAN`, `_SHAR`) |
 | HEREDIS | 14 PC | ⚠️ | French locales work; non-standard PLAC FORM handled |
 | Gramps | 6.0.6 (2025) | ✅ | Real export tested; `CHAN` records, `TYPE birth`, note refs |

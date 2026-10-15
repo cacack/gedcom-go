@@ -36,7 +36,7 @@ func (e *EncodingValidator) Validate(doc *gedcom.Document) []Issue {
 // GEDCOM 7.0 requires UTF-8 exclusively. The following encodings are rejected:
 // - ANSEL
 // - UTF-16LE, UTF-16BE
-// - LATIN1 (ISO-8859-1)
+// - LATIN1 (ISO-8859-1; the charset package decodes it as Windows-1252)
 func (e *EncodingValidator) ValidateEncoding(doc *gedcom.Document) []Issue {
 	if doc == nil || doc.Header == nil {
 		return nil
