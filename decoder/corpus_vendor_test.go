@@ -549,6 +549,33 @@ func TestCorpusVendorCP1252Conversion(t *testing.T) {
 	}
 }
 
+// TestCorpusVendorCP1252C1Range decodes a CHAR ANSI file whose text uses
+// Windows-1252 bytes in 0x80-0x9F: curly quotes, dashes and the euro sign
+// must arrive as those characters, not as C1 controls, and the undefined byte
+// 0x81 must survive as U+0081 rather than U+FFFD (#564). The FTM 17 fixture
+// above has no byte in that range, so it cannot catch either defect.
+func TestCorpusVendorCP1252C1Range(t *testing.T) {
+	f := corpusOpen(t, "../testdata/encoding/ansi-cp1252-c1-range.ged")
+	defer f.Close()
+
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatal("@I1@ not decoded")
+	}
+	if len(indi.Names) != 1 || indi.Names[0].Full != "Seán /O’Brien/" {
+		t.Errorf("Names = %+v, want one name \"Seán /O’Brien/\"", indi.Names)
+	}
+	wantNote := "Lived 1850–1900; paid €20 for “the farm” — and \u0081kept\u0081."
+	if len(indi.InlineNotes) != 1 || indi.InlineNotes[0] != wantNote {
+		t.Errorf("InlineNotes = %q, want [%q]", indi.InlineNotes, wantNote)
+	}
+}
+
 // TestCorpusVendorCP437KnownFailure documents the decoder's current behavior
 // on the Brother's Keeper 5.2 export: CHAR IBMPC with a genuine CP437 byte
 // (0x82 'é' in "Frémont"). CP437 conversion is unsupported, so decoding fails

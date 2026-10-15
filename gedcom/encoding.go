@@ -13,7 +13,8 @@ const (
 	// EncodingASCII represents ASCII character encoding
 	EncodingASCII Encoding = "ASCII"
 
-	// EncodingLATIN1 represents Latin-1 (ISO-8859-1) character encoding
+	// EncodingLATIN1 represents a declared LATIN1 (ISO-8859-1) encoding. The
+	// charset package decodes it as Windows-1252, as it does ANSI and ISO-8859-1
 	EncodingLATIN1 Encoding = "LATIN1"
 
 	// EncodingUNICODE is an alias for UTF-8 used in some GEDCOM files

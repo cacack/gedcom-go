@@ -109,6 +109,9 @@ Testing various character encodings and special characters:
 - **ansel-trailing-combining.ged** (<1K) - Hand-written malformed ANSEL
   - `1 NOTE AB` ends in a combining acute (0xE2) with no base character before the LF
   - The mark must stay on its own line rather than corrupt the next one (issue #431)
+- **ansi-cp1252-c1-range.ged** (<1K) - Hand-written `CHAR ANSI` file using Windows-1252 bytes in 0x80–0x9F
+  - Curly apostrophe and quotes, en and em dash, euro sign, plus the undefined byte 0x81
+  - These must decode to those characters, not C1 controls, and 0x81 must survive as U+0081, not U+FFFD (issue #564)
 
 #### Gramps Encoding Tests
 Source: https://github.com/gramps-project/gramps/tree/master/data/tests
@@ -131,7 +134,7 @@ License: GPL-2.0 (data files used as test inputs)
 Real vintage exports vendored byte-identical (aside from submitter-contact redaction); see the D-Jeffrey/gedcom-samples attribution block below for source and license.
 
 - **ansi-cp1252-ftm17.ged** (213K) - FTM 17.0.0.440 export, `CHAR ANSI` with genuine Windows-1252 bytes (ñ, ó, £)
-  - Tests ANSI→Latin-1 conversion producing correct UTF-8
+  - Tests ANSI→UTF-8 conversion of bytes 0xA0–0xFF; it has no byte in 0x80–0x9F (see `ansi-cp1252-c1-range.ged`)
 - **ibmpc-cp437-broskeep.ged** (380K) - Brother's Keeper 5.2 export, `CHAR IBMPC` with a real CP437 byte (0x82 'é')
   - Known-unsupported encoding: strict decode fails by design; lenient mode recovers a partial document
   - Documents current behavior until CP437 support lands (`TestCorpusVendorCP437KnownFailure`)

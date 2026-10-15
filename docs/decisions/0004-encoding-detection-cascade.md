@@ -127,7 +127,7 @@ func NewReader(r io.Reader) (io.Reader, error) {
 | UTF-16 LE | `FF FE` | `UNICODE`, `UTF-16` | Windows common |
 | UTF-16 BE | `FE FF` | `UNICODE`, `UTF-16` | Rare |
 | ANSEL | - | `ANSEL` | Legacy genealogy |
-| LATIN1 | - | `ANSI` | European legacy |
+| LATIN1 | - | `ANSI`, `LATIN1`, `ISO-8859-1` | European legacy; decoded as Windows-1252 ([#564](https://github.com/cacack/gedcom-go/issues/564)) |
 | ASCII | - | `ASCII` | Subset of UTF-8 |
 
 ## References

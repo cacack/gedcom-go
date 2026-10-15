@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"testing/iotest"
+
+	"golang.org/x/text/transform"
 )
 
 // errorReader returns an error on read
@@ -1529,10 +1531,15 @@ func TestNewReaderWithEncoding_LATIN1(t *testing.T) {
 			want:  "München",
 		},
 		{
-			name: "LATIN1 boundary byte (0x80)",
-			// 0x80 in LATIN1 is U+0080 (control character)
+			name: "Windows-1252 euro sign (0x80)",
+			// 0x80 is U+20AC in Windows-1252, not the C1 control U+0080 (#564)
 			input: []byte{0x80},
-			want:  "\u0080",
+			want:  "€",
+		},
+		{
+			name:  "Windows-1252 apostrophe in a name (0x92)",
+			input: []byte("O\x92Brien"),
+			want:  "O\u2019Brien",
 		},
 		{
 			name: "LATIN1 max byte (0xFF)",
@@ -1552,6 +1559,95 @@ func TestNewReaderWithEncoding_LATIN1(t *testing.T) {
 
 			if string(got) != tt.want {
 				t.Errorf("NewReaderWithEncoding(LATIN1) = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestNewReaderWithEncoding_LATIN1_C1Range pins every byte in 0x80-0x9F.
+// Windows-1252 defines 27 of them; the other five keep their ISO-8859-1 code
+// points rather than becoming U+FFFD, so no input byte is lost (#564).
+func TestNewReaderWithEncoding_LATIN1_C1Range(t *testing.T) {
+	want := map[byte]rune{
+		0x80: '\u20AC', 0x81: '\u0081', 0x82: '\u201A', 0x83: '\u0192',
+		0x84: '\u201E', 0x85: '\u2026', 0x86: '\u2020', 0x87: '\u2021',
+		0x88: '\u02C6', 0x89: '\u2030', 0x8A: '\u0160', 0x8B: '\u2039',
+		0x8C: '\u0152', 0x8D: '\u008D', 0x8E: '\u017D', 0x8F: '\u008F',
+		0x90: '\u0090', 0x91: '\u2018', 0x92: '\u2019', 0x93: '\u201C',
+		0x94: '\u201D', 0x95: '\u2022', 0x96: '\u2013', 0x97: '\u2014',
+		0x98: '\u02DC', 0x99: '\u2122', 0x9A: '\u0161', 0x9B: '\u203A',
+		0x9C: '\u0153', 0x9D: '\u009D', 0x9E: '\u017E', 0x9F: '\u0178',
+	}
+	for b := 0x80; b <= 0x9F; b++ {
+		r := NewReaderWithEncoding(bytes.NewReader([]byte{byte(b)}), EncodingLATIN1)
+		got, err := io.ReadAll(r)
+		if err != nil {
+			t.Fatalf("byte %#02x: ReadAll() error = %v", b, err)
+		}
+		if w := string(want[byte(b)]); string(got) != w {
+			t.Errorf("byte %#02x decoded to %q, want %q", b, got, w)
+		}
+	}
+}
+
+// TestNewReader_LATIN1Labels checks that every header label routed to
+// EncodingLATIN1 decodes Windows-1252 punctuation (#564).
+func TestNewReader_LATIN1Labels(t *testing.T) {
+	for _, label := range []string{"ANSI", "LATIN1", "ISO-8859-1"} {
+		t.Run(label, func(t *testing.T) {
+			input := []byte("0 HEAD\n1 CHAR " + label + "\n0 @I1@ INDI\n1 NAME Sean /O\x92Brien/\n1 NOTE 1850\x961900 \x80\n0 TRLR\n")
+			got, err := io.ReadAll(NewReader(bytes.NewReader(input)))
+			if err != nil {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+			want := "0 HEAD\n1 CHAR " + label + "\n0 @I1@ INDI\n1 NAME Sean /O\u2019Brien/\n1 NOTE 1850\u20131900 €\n0 TRLR\n"
+			if string(got) != want {
+				t.Errorf("NewReader(CHAR %s) = %q, want %q", label, got, want)
+			}
+		})
+	}
+}
+
+// TestNewReaderWithEncoding_LATIN1_LongInput decodes more output than one
+// transform buffer holds, so the decoder must resume after ErrShortDst
+// without dropping or repeating a byte.
+func TestNewReaderWithEncoding_LATIN1_LongInput(t *testing.T) {
+	input := bytes.Repeat([]byte{'a', 0x80, 0xE9}, 5000)
+	r := NewReaderWithEncoding(&smallChunkReader{data: input, chunkSize: 7}, EncodingLATIN1)
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	want := strings.Repeat("a€é", 5000)
+	if string(got) == want {
+		return
+	}
+	i := 0
+	for i < len(got) && i < len(want) && got[i] == want[i] {
+		i++
+	}
+	t.Errorf("output differs at byte %d (got %d bytes, want %d)", i, len(got), len(want))
+}
+
+func TestWindows1252DecoderShortDst(t *testing.T) {
+	tests := []struct {
+		name               string
+		src                []byte
+		dstLen             int
+		wantNDst, wantNSrc int
+	}{
+		{"ASCII into empty dst", []byte("a"), 0, 0, 0},
+		{"3-byte rune into 2-byte dst", []byte{0x80}, 2, 0, 0},
+		{"stops before the rune that does not fit", []byte{'a', 0x80}, 3, 1, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			nDst, nSrc, err := windows1252Decoder{}.Transform(make([]byte, tt.dstLen), tt.src, true)
+			if !errors.Is(err, transform.ErrShortDst) {
+				t.Fatalf("err = %v, want ErrShortDst", err)
+			}
+			if nDst != tt.wantNDst || nSrc != tt.wantNSrc {
+				t.Errorf("Transform() = (%d, %d), want (%d, %d)", nDst, nSrc, tt.wantNDst, tt.wantNSrc)
 			}
 		})
 	}

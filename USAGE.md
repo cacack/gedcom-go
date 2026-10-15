@@ -739,7 +739,7 @@ The library supports multiple character encodings:
 - UTF-8 (recommended for new files)
 - ANSEL (legacy GEDCOM standard)
 - ASCII
-- LATIN1 (ISO-8859-1)
+- LATIN1, ANSI or ISO-8859-1 (decoded as Windows-1252)
 - UNICODE (UTF-16)
 
 ### Automatic Encoding Detection

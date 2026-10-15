@@ -8,7 +8,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 )
@@ -29,7 +28,9 @@ const (
 	EncodingANSEL
 	// EncodingASCII indicates ASCII encoding.
 	EncodingASCII
-	// EncodingLATIN1 indicates ISO-8859-1 (Latin-1) encoding.
+	// EncodingLATIN1 indicates a single-byte Latin encoding, declared as
+	// ANSI, LATIN1 or ISO-8859-1. It is decoded as Windows-1252, which matches
+	// ISO-8859-1 on every printable byte and is what ANSI files contain.
 	EncodingLATIN1
 )
 
@@ -600,7 +601,8 @@ func (s *headerScanner) step(c byte) bool {
 //
 // Supported encodings:
 //   - EncodingANSEL: ANSEL to UTF-8 conversion, then validation
-//   - EncodingLATIN1: ISO-8859-1 to UTF-8 conversion, then validation
+//   - EncodingLATIN1: Windows-1252 to UTF-8 conversion, then validation; the
+//     five bytes Windows-1252 leaves undefined keep their ISO-8859-1 code points
 //   - EncodingUTF16LE: UTF-16 LE to UTF-8 conversion, then validation
 //   - EncodingUTF16BE: UTF-16 BE to UTF-8 conversion, then validation
 //   - EncodingUTF8, EncodingASCII, EncodingUnknown: UTF-8 validation only
@@ -612,9 +614,8 @@ func NewReaderWithEncoding(r io.Reader, enc Encoding) io.Reader {
 		// ANSEL needs conversion to UTF-8
 		convertedReader = newAnselReader(r)
 	case EncodingLATIN1:
-		// LATIN1 (ISO-8859-1) needs conversion to UTF-8
-		decoder := charmap.ISO8859_1.NewDecoder()
-		convertedReader = transform.NewReader(r, decoder)
+		// ANSI, LATIN1 and ISO-8859-1 files are decoded as Windows-1252 (#564)
+		convertedReader = transform.NewReader(r, windows1252Decoder{})
 	case EncodingUTF16LE:
 		// UTF-16 LE needs conversion to UTF-8
 		convertedReader = newUTF16Reader(r, false)
