@@ -1,6 +1,10 @@
 package encoder
 
-import "github.com/cacack/gedcom-go/v3/gedcom"
+import (
+	"strings"
+
+	"github.com/cacack/gedcom-go/v3/gedcom"
+)
 
 // DefaultMaxLineLength is the recommended maximum line length for GEDCOM files.
 // GEDCOM spec recommends lines not exceed 255 characters total.
@@ -13,13 +17,15 @@ type EncodeOptions struct {
 	// Set to "" (the zero value) to use "\n".
 	LineEnding string
 
-	// MaxLineLength specifies the maximum length for line content before
-	// splitting with CONC tags. Default is 248 characters.
-	// Set to 0 to use the default value.
+	// MaxLineLength specifies the maximum length, in bytes, for line content
+	// before splitting with CONC tags. Default is 248. Set to 0 to use the
+	// default value. It has no effect on GEDCOM 7.0 output (TargetVersion, else
+	// the header's version), which removed CONC and is never split.
 	MaxLineLength int
 
 	// DisableLineWrap disables automatic CONC splitting for long lines.
-	// When true, lines exceeding MaxLineLength will not be split.
+	// When true, lines exceeding MaxLineLength will not be split. GEDCOM 7.0
+	// output is never split, so this only matters for 5.x.
 	DisableLineWrap bool
 
 	// TargetVersion specifies the GEDCOM version to target for output.
@@ -39,6 +45,13 @@ type EncodeOptions struct {
 	// "0 _EVDEF") is dropped in full -- writing the level-0 line while stripping
 	// its children would leave a stub that carries no data.
 	DropUnknownTags bool
+
+	// version is the GEDCOM version the records are being written as:
+	// TargetVersion when set, else the header's own version. It is never set by
+	// callers; EncodeWithOptions and StreamEncoder fill it on a private copy of
+	// the options once the header is known (see withVersion), so the record
+	// writers can tell 7.0 output, which has no CONC, from 5.x output.
+	version gedcom.Version
 }
 
 // DefaultOptions returns the default encoding options.
@@ -67,4 +80,24 @@ func (opts *EncodeOptions) effectiveMaxLineLength() int {
 		return DefaultMaxLineLength
 	}
 	return opts.MaxLineLength
+}
+
+// withVersion returns a copy of opts recording the version the records will
+// be written as: TargetVersion when set, else header's version. The caller's
+// options are never modified, so one EncodeOptions value can be shared across
+// documents of different versions.
+func (opts *EncodeOptions) withVersion(header *gedcom.Header) *EncodeOptions {
+	c := *opts
+	c.version = opts.TargetVersion
+	if c.version == "" && header != nil {
+		c.version = header.Version
+	}
+	return &c
+}
+
+// targetsV7 reports whether the output is GEDCOM 7.0, which removed CONC. A
+// hand-built header may spell the version with a patch level ("7.0.14"), so
+// any 7.x version counts.
+func (opts *EncodeOptions) targetsV7() bool {
+	return opts != nil && strings.HasPrefix(string(opts.version), "7.")
 }

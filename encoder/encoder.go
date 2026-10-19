@@ -51,6 +51,10 @@ func EncodeWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeOptions) e
 		return err
 	}
 
+	// Records are written knowing the effective version, which decides
+	// whether long values may be split with CONC (issue #565).
+	opts = opts.withVersion(doc.Header)
+
 	// Write records
 	for _, record := range doc.Records {
 		if err := writeRecord(w, record, opts); err != nil {

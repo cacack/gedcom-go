@@ -2,7 +2,7 @@ package encoder
 
 import (
 	"strconv"
-	"strings"
+	"unicode/utf8"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
@@ -11,8 +11,9 @@ import (
 // The first line becomes the primary tag at the specified level, and subsequent
 // lines become CONT (continuation) tags at level+1.
 //
-// When opts is provided and DisableLineWrap is false, lines exceeding
-// MaxLineLength are automatically split using CONC tags at word boundaries.
+// When opts is provided, DisableLineWrap is false and the output is not GEDCOM
+// 7.0, lines exceeding MaxLineLength are split using CONC tags (see
+// splitPoint for where each cut lands).
 //
 // Examples:
 //   - "Single line" -> [TAG value="Single line"]
@@ -75,10 +76,18 @@ func recordNotesToEncode(noteXRefs, inlineNotes []string) []string {
 
 // splitLineForLength splits a single line into segments that fit within MaxLineLength.
 // Returns a slice with at least one element (the original line if no splitting needed).
-// Attempts to split at word boundaries (spaces) when possible.
+//
+// Splitting only happens for 5.x output. GEDCOM 7.0 removed CONC and has no
+// line-length limit, so a 7.0 line is always returned whole: emitting CONC
+// there would produce a line 7.0 readers do not accept (issue #565).
+//
+// For 5.x, see splitPoint for where each cut lands.
 func splitLineForLength(line string, opts *EncodeOptions) []string {
 	// If line wrapping is disabled or line is short enough, return as-is
 	if opts != nil && opts.DisableLineWrap {
+		return []string{line}
+	}
+	if opts.targetsV7() {
 		return []string{line}
 	}
 
@@ -95,8 +104,7 @@ func splitLineForLength(line string, opts *EncodeOptions) []string {
 	remaining := line
 
 	for len(remaining) > maxLen {
-		// Find the best split point - prefer word boundary (space)
-		splitAt := findWordBoundary(remaining, maxLen)
+		splitAt := splitPoint(remaining, maxLen)
 
 		segments = append(segments, remaining[:splitAt])
 		remaining = remaining[splitAt:]
@@ -110,23 +118,42 @@ func splitLineForLength(line string, opts *EncodeOptions) []string {
 	return segments
 }
 
-// findWordBoundary finds the best position to split a line at or before maxLen.
-// Prefers splitting at a space (word boundary) but falls back to maxLen if no space found.
-func findWordBoundary(line string, maxLen int) int {
-	if len(line) <= maxLen {
-		return len(line)
+// splitPoint returns the byte offset at which to cut line so the first piece
+// is at most maxLen bytes. The caller guarantees len(line) > maxLen, and the
+// result is always in (0, len(line)], so every cut makes progress.
+//
+// GEDCOM 5.5.1 requires a CONC split to fall between two non-space
+// characters: readers that trim line values -- many do, since 5.5 never said
+// whether trailing whitespace is significant -- would otherwise drop one
+// space per split. Splitting at a word boundary, as this used to, put the
+// space at the end of every piece (issue #565). The cut also never falls
+// inside a multi-byte UTF-8 sequence, which would leave both lines holding
+// invalid UTF-8.
+//
+// The latest offset satisfying both rules wins, which keeps pieces as long as
+// possible. When no such offset exists within maxLen (a run of spaces longer
+// than the limit), the latest rune boundary is used instead: an edge space is
+// still lossless for this library's decoder, and an over-length line is the
+// only other option. When maxLen is smaller than the first rune, the cut goes
+// just after that rune.
+func splitPoint(line string, maxLen int) int {
+	fallback := 0
+	for i := min(maxLen, len(line)-1); i > 0; i-- {
+		if !utf8.RuneStart(line[i]) {
+			continue
+		}
+		if fallback == 0 {
+			fallback = i
+		}
+		if line[i] != ' ' && line[i-1] != ' ' {
+			return i
+		}
 	}
-
-	// Look for last space within the maxLen limit
-	lastSpace := strings.LastIndex(line[:maxLen], " ")
-
-	if lastSpace > 0 {
-		// Found a space - split after the space to keep space with first segment
-		return lastSpace + 1
+	if fallback > 0 {
+		return fallback
 	}
-
-	// No word boundary found, split at maxLen exactly
-	return maxLen
+	_, size := utf8.DecodeRuneInString(line)
+	return size
 }
 
 // entityToTags converts an entity to tags based on record type.

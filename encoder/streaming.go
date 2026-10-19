@@ -133,6 +133,9 @@ func (e *StreamEncoder) WriteHeader(h *gedcom.Header) error {
 		e.err = err
 		return err
 	}
+	// Records written after this need the effective version, which only the
+	// header supplies (issue #565).
+	e.options = e.options.withVersion(h)
 
 	e.state = stateHeaderWritten
 	return nil

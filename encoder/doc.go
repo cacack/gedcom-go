@@ -29,6 +29,7 @@
 //   - LineEnding          — "\n" (default) or "\r\n" (CRLF for legacy tooling)
 //   - MaxLineLength       — split long values with CONC when writing from typed
 //     entities (default: 248). Pre-built [gedcom.Tag] values are written verbatim.
+//     GEDCOM 7.0 output is never split: 7.0 removed CONC.
 //   - DisableLineWrap     — disable CONC splitting entirely
 //   - TargetVersion       — override the document's GEDCOM version in output
 //   - DropUnknownTags     — false (the zero value) keeps custom _UNDERSCORE

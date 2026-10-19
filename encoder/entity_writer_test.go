@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -2352,8 +2353,9 @@ func TestSplitLineForLength(t *testing.T) {
 	}
 }
 
-// TestFindWordBoundary tests the word boundary finding helper
-func TestFindWordBoundary(t *testing.T) {
+// TestSplitPoint tests where a 5.x CONC cut lands: between two non-space
+// characters and never inside a multi-byte rune (issue #565).
+func TestSplitPoint(t *testing.T) {
 	tests := []struct {
 		name     string
 		line     string
@@ -2361,44 +2363,104 @@ func TestFindWordBoundary(t *testing.T) {
 		expected int
 	}{
 		{
-			name:     "line shorter than max",
-			line:     "Short",
-			maxLen:   10,
-			expected: 5,
-		},
-		{
-			name:     "split at space",
-			line:     "Hello world this is a test",
-			maxLen:   15,
-			expected: 12, // After "Hello world "
-		},
-		{
-			name:     "no space found - split at max",
+			name:     "no space - split at max",
 			line:     "Supercalifragilisticexpialidocious",
 			maxLen:   10,
 			expected: 10,
 		},
 		{
-			name:     "space exactly at max",
-			line:     "12345678 x",
-			maxLen:   9,
-			expected: 9, // After "12345678 "
+			name:     "space at max - moves back to a non-space pair",
+			line:     "Hello world this is a test",
+			maxLen:   12, // offset 12 is 't', but offset 11 is the space before it
+			expected: 10, // "Hello worl" | "d this..."
 		},
 		{
-			name:     "multiple spaces - uses last one within limit",
-			line:     "one two three four",
-			maxLen:   14,
-			expected: 14, // After "one two three " (index 14 is right after the space)
+			name:     "space just before max - moves back",
+			line:     "12345678 x",
+			maxLen:   9,
+			expected: 7, // "1234567" | "8 x"
+		},
+		{
+			name:     "only spaces within limit - falls back to max",
+			line:     "a     b",
+			maxLen:   4,
+			expected: 4,
+		},
+		{
+			name:     "never inside a rune",
+			line:     "ab\u00e9\u00e9\u00e9", // é is two bytes
+			maxLen:   5,                      // offset 5 is inside the second é
+			expected: 4,
+		},
+		{
+			name:     "max smaller than first rune",
+			line:     "\u4e2d\u6587", // three bytes each
+			maxLen:   2,
+			expected: 3,
+		},
+		{
+			name:     "single rune longer than max",
+			line:     "\U0001F600",
+			maxLen:   1,
+			expected: 4,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := findWordBoundary(tt.line, tt.maxLen)
-			if result != tt.expected {
-				t.Errorf("findWordBoundary() = %d, want %d", result, tt.expected)
+			if result := splitPoint(tt.line, tt.maxLen); result != tt.expected {
+				t.Errorf("splitPoint(%q, %d) = %d, want %d", tt.line, tt.maxLen, result, tt.expected)
 			}
 		})
+	}
+}
+
+// TestSplitLineForLengthSegmentEdges checks every 5.x segment against the
+// rules splitPoint enforces, over text whose spaces land at every offset.
+//
+// Below a limit of 5 bytes this text has windows with no legal cut at all
+// ("f 中文" has no legal cut in its first 4 bytes), so the
+// space rule is only asserted from there up; the fallback must still be
+// lossless and valid UTF-8 at every limit.
+func TestSplitLineForLengthSegmentEdges(t *testing.T) {
+	line := strings.Repeat("Ann  B. \u00c5str\u00f6m of \u4e2d\u6587 town, ", 20)
+	for maxLen := 1; maxLen <= 40; maxLen++ {
+		segments := splitLineForLength(line, &EncodeOptions{MaxLineLength: maxLen})
+		if got := strings.Join(segments, ""); got != line {
+			t.Fatalf("maxLen %d: segments rejoin to %q, want %q", maxLen, got, line)
+		}
+		for i, seg := range segments {
+			if seg == "" {
+				t.Errorf("maxLen %d: segment %d is empty", maxLen, i)
+			}
+			if !utf8.ValidString(seg) {
+				t.Errorf("maxLen %d: segment %d %q is not valid UTF-8", maxLen, i, seg)
+			}
+			if maxLen < 5 {
+				continue
+			}
+			if len(seg) > maxLen {
+				t.Errorf("maxLen %d: segment %d is %d bytes", maxLen, i, len(seg))
+			}
+			if i > 0 && strings.HasPrefix(seg, " ") {
+				t.Errorf("maxLen %d: segment %d %q starts with a space", maxLen, i, seg)
+			}
+			if i < len(segments)-1 && strings.HasSuffix(seg, " ") {
+				t.Errorf("maxLen %d: segment %d %q ends with a space", maxLen, i, seg)
+			}
+		}
+	}
+}
+
+// TestSplitLineForLengthV7 checks that 7.0 output is never split: 7.0 has no
+// CONC (issue #565).
+func TestSplitLineForLengthV7(t *testing.T) {
+	line := strings.Repeat("word ", 100)
+	for _, v := range []gedcom.Version{gedcom.Version70, "7.0.14"} {
+		opts := (&EncodeOptions{MaxLineLength: 20}).withVersion(&gedcom.Header{Version: v})
+		if segments := splitLineForLength(line, opts); len(segments) != 1 {
+			t.Errorf("version %q: got %d segments, want 1", v, len(segments))
+		}
 	}
 }
 
