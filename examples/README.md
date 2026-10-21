@@ -373,10 +373,10 @@ go run main.go ../../testdata/gedcom-5.5/minimal.ged
 
 ### Import errors
 
-Ensure you're using Go 1.25 or later:
+Ensure you're using Go 1.26 or later:
 
 ```bash
-go version  # Should show 1.25 or higher
+go version  # Should show 1.26 or higher
 ```
 
 ### Module issues

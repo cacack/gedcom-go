@@ -84,7 +84,7 @@ go get github.com/cacack/gedcom-go/v3
 ```
 
 Requirements:
-- Go 1.25 or later
+- Go 1.26 or later
 - No external dependencies (uses only the Go standard library)
 
 ## Quick Start
