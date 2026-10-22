@@ -36,17 +36,7 @@ import (
 
 // entityKnownBad maps "Type.Field" to the issue responsible. Self-cleaning: an
 // entry that starts passing fails the test asking to be removed.
-var entityKnownBad = map[string]string{
-	// #442: the same defect #439 fixed on Note, one entity over — the decoder
-	// assigns the tag value and never folds in its CONT/CONC lines, so a
-	// multi-line value reads back as its first line alone. Title, Author and
-	// Publication are worse than Text on the way out too: Text goes through
-	// textToTags, they are written raw, so an embedded newline forges a line.
-	"Source.Text":        "#442 decoder drops CONT/CONC from Source.Text",
-	"Source.Title":       "#442 decoder drops CONT/CONC; encoder writes Title raw",
-	"Source.Author":      "#442 decoder drops CONT/CONC; encoder writes Author raw",
-	"Source.Publication": "#442 decoder drops CONT/CONC; encoder writes Publication raw",
-}
+var entityKnownBad = map[string]string{}
 
 // sampleEntities are populated by hand rather than by reflection. Reflection
 // fills fields with values that are not valid GEDCOM -- a Sex of "v12", a date
@@ -156,6 +146,29 @@ func encodeDecode(t *testing.T, xref string, typ gedcom.RecordType, entity inter
 		t.Fatalf("Decode of our own output: %v\n%s", err, buf.String())
 	}
 	return back
+}
+
+// TestCitationPageRoundTrip covers what TestEntityRoundTrip cannot: it compares
+// top-level fields only, so a citation nested in an event is never inspected.
+// A multi-line Page must come back whole (issue #442).
+func TestCitationPageRoundTrip(t *testing.T) {
+	const page = "Folio 12\nEntry 412"
+	ind := &gedcom.Individual{
+		XRef: "@I1@",
+		Events: []*gedcom.Event{{
+			Type:            "BIRT",
+			SourceCitations: []*gedcom.SourceCitation{{SourceXRef: "@S1@", Page: page}},
+		}},
+	}
+
+	back := encodeDecode(t, "@I1@", gedcom.RecordTypeIndividual, ind)
+	got := back.GetIndividual("@I1@")
+	if got == nil || len(got.Events) != 1 || len(got.Events[0].SourceCitations) != 1 {
+		t.Fatalf("expected one BIRT with one citation, got %+v", got)
+	}
+	if p := got.Events[0].SourceCitations[0].Page; p != page {
+		t.Errorf("SourceCitation.Page = %q, want %q", p, page)
+	}
 }
 
 // TestEntityRoundTrip asserts that a hand-built entity survives encode/decode.

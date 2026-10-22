@@ -5,16 +5,20 @@ type Source struct {
 	// XRef is the cross-reference identifier for this source
 	XRef string
 
-	// Title is the source title
+	// Title is the source title.
+	//
+	// Title, Author, Publication and Text are free text: CONT continuation
+	// lines are folded in on decode, joined with "\n", and CONC continuations
+	// are concatenated with no separator, so each can hold several lines.
 	Title string
 
-	// Author is the source author/originator
+	// Author is the source author/originator.
 	Author string
 
-	// Publication is publication information
+	// Publication is publication information.
 	Publication string
 
-	// Text is the actual text from the source
+	// Text is the actual text from the source.
 	Text string
 
 	// RepositoryLinks are the source's repository links, one per REPO
@@ -101,7 +105,9 @@ type SourceCitation struct {
 	// SourceXRef is the cross-reference to the source record (e.g., "@S1@")
 	SourceXRef string
 
-	// Page is the page or location within the source (e.g., "Page 42, Entry 103")
+	// Page is the page or location within the source (e.g., "Page 42, Entry 103").
+	// CONT continuation lines are folded in on decode, joined with "\n"; CONC
+	// continuations are concatenated with no separator.
 	Page string
 
 	// Quality is the evidence quality assessment (0-3 scale per GEDCOM spec).
