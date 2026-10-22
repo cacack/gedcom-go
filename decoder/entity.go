@@ -473,7 +473,7 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "PAGE":
-				cite.Page = tag.Value
+				cite.Page = foldedValue(tags, i)
 			case "QUAY":
 				// Parse quality as integer (0-3). QUAY 0 is a real assertion,
 				// so the pointer is set for every in-range value.
@@ -538,14 +538,10 @@ func parseSourceCitationData(tags []*gedcom.Tag, dataIdx, baseLevel int, collect
 // #442), and the GEDCOM 7.0 MIME and LANG qualifiers are typed.
 func parseSourceText(tags []*gedcom.Tag, textIdx int, collector *diagnosticCollector) *gedcom.SourceText {
 	baseLevel := tags[textIdx].Level
-	text := &gedcom.SourceText{Value: tags[textIdx].Value}
-
-	// The builder is seeded lazily, on the first CONT/CONC: most TEXT lines
-	// have no continuation, and reusing tag.Value for them saves a copy and an
-	// allocation per citation (measured by BenchmarkDecodeCitationHeavy).
-	// text.Value is assigned once after the loop to keep folding O(n).
-	var b strings.Builder
-	folded := false
+	// foldedValue reuses tag.Value when there is no continuation, which saves
+	// a copy and an allocation per citation (measured by
+	// BenchmarkDecodeCitationHeavy).
+	text := &gedcom.SourceText{Value: foldedValue(tags, textIdx)}
 
 	for i := textIdx + 1; i < len(tags); i++ {
 		tag := tags[i]
@@ -557,11 +553,7 @@ func parseSourceText(tags []*gedcom.Tag, textIdx int, collector *diagnosticColle
 		}
 		switch tag.Tag {
 		case "CONT", "CONC":
-			if !folded {
-				b.WriteString(text.Value)
-				folded = true
-			}
-			foldContinuation(&b, tag)
+			// Already folded into Value above.
 		case "MIME":
 			text.MIME = tag.Value
 		case "LANG":
@@ -571,10 +563,6 @@ func parseSourceText(tags []*gedcom.Tag, textIdx int, collector *diagnosticColle
 				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
 			}
 		}
-	}
-
-	if folded {
-		text.Value = b.String()
 	}
 
 	return text
@@ -1109,13 +1097,13 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 
 		switch tag.Tag {
 		case "TITL":
-			src.Title = tag.Value
+			src.Title = foldedValue(record.Tags, i)
 		case "AUTH":
-			src.Author = tag.Value
+			src.Author = foldedValue(record.Tags, i)
 		case "PUBL":
-			src.Publication = tag.Value
+			src.Publication = foldedValue(record.Tags, i)
 		case "TEXT":
-			src.Text = tag.Value
+			src.Text = foldedValue(record.Tags, i)
 		case "REPO":
 			src.RepositoryLinks = append(src.RepositoryLinks, parseSourceRepositoryLink(record.Tags, i, collector))
 		case "NOTE", "SNOTE":
@@ -1413,21 +1401,35 @@ func appendRecordNote(
 		return append(xrefs, ptr), inline
 	}
 
+	return xrefs, append(inline, foldedValue(tags, noteIdx))
+}
+
+// foldedValue returns the value of tags[idx] with its direct CONT/CONC
+// subordinates folded in (CONT joins with a newline, CONC concatenates). A
+// value with no continuation lines is returned as-is without allocating, so
+// single-line fields on hot paths such as citation PAGE cost nothing extra.
+func foldedValue(tags []*gedcom.Tag, idx int) string {
+	baseLevel := tags[idx].Level
 	var b strings.Builder
-	b.WriteString(tag.Value)
-	baseLevel := tag.Level
-	for i := noteIdx + 1; i < len(tags); i++ {
+	folded := false
+	for i := idx + 1; i < len(tags); i++ {
 		sub := tags[i]
 		if sub.Level <= baseLevel {
 			break
 		}
-		if sub.Level != baseLevel+1 {
+		if sub.Level != baseLevel+1 || (sub.Tag != "CONT" && sub.Tag != "CONC") {
 			continue
+		}
+		if !folded {
+			b.WriteString(tags[idx].Value)
+			folded = true
 		}
 		foldContinuation(&b, sub)
 	}
-	text := b.String()
-	return xrefs, append(inline, text)
+	if !folded {
+		return tags[idx].Value
+	}
+	return b.String()
 }
 
 // parseNote converts record tags to a Note entity.

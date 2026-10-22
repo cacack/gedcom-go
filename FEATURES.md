@@ -68,8 +68,8 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [851 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (85.3%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,128 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (85.7%) | Most common format |
+| GEDCOM 5.5 | Every readable line preserved | [859 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (86.1%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,136 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (86.3%) | Most common format |
 | GEDCOM 7.0 | Every readable line preserved | [1,242 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (89.4%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch versions such as `VERS 7.0.14` detect as 7.0)
@@ -88,8 +88,8 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,242 of 7.0's structures reach the typed model, 851 of
-5.5's, and 1,128 of 5.5.1's.
+document built for it: 1,242 of 7.0's structures reach the typed model, 859 of
+5.5's, and 1,136 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).

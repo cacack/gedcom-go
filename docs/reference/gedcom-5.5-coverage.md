@@ -178,11 +178,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 851 | 85.3% | 1128 | 85.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 859 | 86.1% | 1136 | 86.3% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 74 | 7.4% | 87 | 6.6% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 54 | 5.4% | 88 | 6.7% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 46 | 4.6% | 80 | 6.1% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -198,7 +198,7 @@ pairs under it reach the typed model.
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 6 / 12 | 11 / 13 |
 | `REPO` | 13 / 17 | 17 / 21 |
-| `SOUR` | 17 / 34 | 17 / 34 |
+| `SOUR` | 25 / 34 | 25 / 34 |
 | `SUBM` | 5 / 10 | 8 / 15 |
 | `SUBN` | 0 / 8 | 0 / 11 |
 | `TRLR` | 0 / 1 | 0 / 1 |
@@ -2397,8 +2397,8 @@ Measured at `SOUR.AUTH` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `CONC` | `SOURCE_RECORD.SOUR.AUTH.CONC` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `CONT` | `SOURCE_RECORD.SOUR.AUTH.CONT` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
+| `CONC` | `SOURCE_RECORD.SOUR.AUTH.CONC` | typed | typed | `{0:M}` |
+| `CONT` | `SOURCE_RECORD.SOUR.AUTH.CONT` | typed | typed | `{0:M}` |
 
 ### `SOURCE_RECORD.SOUR.DATA`
 
@@ -2426,8 +2426,8 @@ Measured at `SOUR.PUBL` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `CONC` | `SOURCE_RECORD.SOUR.PUBL.CONC` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `CONT` | `SOURCE_RECORD.SOUR.PUBL.CONT` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
+| `CONC` | `SOURCE_RECORD.SOUR.PUBL.CONC` | typed | typed | `{0:M}` |
+| `CONT` | `SOURCE_RECORD.SOUR.PUBL.CONT` | typed | typed | `{0:M}` |
 
 ### `SOURCE_RECORD.SOUR.REFN`
 
@@ -2443,8 +2443,8 @@ Measured at `SOUR.TEXT` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `CONC` | `SOURCE_RECORD.SOUR.TEXT.CONC` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `CONT` | `SOURCE_RECORD.SOUR.TEXT.CONT` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
+| `CONC` | `SOURCE_RECORD.SOUR.TEXT.CONC` | typed | typed | `{0:M}` |
+| `CONT` | `SOURCE_RECORD.SOUR.TEXT.CONT` | typed | typed | `{0:M}` |
 
 ### `SOURCE_RECORD.SOUR.TITL`
 
@@ -2452,8 +2452,8 @@ Measured at `SOUR.TITL` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `CONC` | `SOURCE_RECORD.SOUR.TITL.CONC` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `CONT` | `SOURCE_RECORD.SOUR.TITL.CONT` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
+| `CONC` | `SOURCE_RECORD.SOUR.TITL.CONC` | typed | typed | `{0:M}` |
+| `CONT` | `SOURCE_RECORD.SOUR.TITL.CONT` | typed | typed | `{0:M}` |
 
 ### `SOURCE_REPOSITORY_CITATION.REPO`
 
