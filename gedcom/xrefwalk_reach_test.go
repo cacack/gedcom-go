@@ -98,7 +98,12 @@ func fullyPopulatedRecords() []*Record {
 	}
 
 	indi := &Individual{
-		XRef:             "@I1@",
+		XRef: "@I1@",
+		Names: []*PersonalName{{
+			Full:            "John /Doe/",
+			NoteXRefs:       []string{"@I_NAME_NX@"},
+			SourceCitations: []*SourceCitation{cite("@I_NAME_SOUR@")},
+		}},
 		ChildInFamilies:  []FamilyLink{{FamilyXRef: "@I_FAMC@", NoteXRefs: []string{"@I_FAMC_NX@"}}},
 		SpouseInFamilies: []FamilyLink{{FamilyXRef: "@I_FAMS@", NoteXRefs: []string{"@I_FAMS_NX@"}}},
 		NoteXRefs:        []string{"@I_NX@"},

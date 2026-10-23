@@ -1374,6 +1374,12 @@ func intPtr(v int) *int { return &v }
 func TestCloneNoteSlicesAreDeepCopied(t *testing.T) {
 	original := &Individual{
 		XRef: "@I1@",
+		Names: []*PersonalName{{
+			Full:            "John /Doe/",
+			NoteXRefs:       []string{"@N6@"},
+			InlineNotes:     []string{"name note"},
+			SourceCitations: []*SourceCitation{{SourceXRef: "@S1@"}},
+		}},
 		Media: []*MediaLink{{
 			MediaXRef:   "@O1@",
 			NoteXRefs:   []string{"@N1@"},
@@ -1405,6 +1411,9 @@ func TestCloneNoteSlicesAreDeepCopied(t *testing.T) {
 
 	copied := original.Clone()
 
+	copied.Names[0].NoteXRefs[0] = "modified"
+	copied.Names[0].InlineNotes[0] = "modified"
+	copied.Names[0].SourceCitations[0].SourceXRef = "modified"
 	copied.Media[0].NoteXRefs[0] = "modified"
 	copied.Media[0].InlineNotes[0] = "modified"
 	copied.ChildInFamilies[0].NoteXRefs[0] = "modified"
@@ -1420,6 +1429,9 @@ func TestCloneNoteSlicesAreDeepCopied(t *testing.T) {
 		field string
 		got   string
 	}{
+		{"PersonalName.NoteXRefs", original.Names[0].NoteXRefs[0]},
+		{"PersonalName.InlineNotes", original.Names[0].InlineNotes[0]},
+		{"PersonalName.SourceCitations", original.Names[0].SourceCitations[0].SourceXRef},
 		{"MediaLink.NoteXRefs", original.Media[0].NoteXRefs[0]},
 		{"MediaLink.InlineNotes", original.Media[0].InlineNotes[0]},
 		{"FamilyLink.NoteXRefs (FAMC)", original.ChildInFamilies[0].NoteXRefs[0]},

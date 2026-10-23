@@ -198,7 +198,7 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 
 	// Names (level 1)
 	for _, name := range indi.Names {
-		tags = append(tags, nameToTags(name, 1)...)
+		tags = append(tags, nameToTags(name, 1, opts)...)
 	}
 
 	// Sex (level 1)
@@ -627,7 +627,7 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 }
 
 // nameToTags converts a PersonalName to GEDCOM tags at the specified level.
-func nameToTags(name *gedcom.PersonalName, level int) []*gedcom.Tag {
+func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if name == nil {
 		return nil
 	}
@@ -663,6 +663,16 @@ func nameToTags(name *gedcom.PersonalName, level int) []*gedcom.Tag {
 	// Transliterations (GEDCOM 7.0 TRAN tag)
 	for _, tran := range name.Transliterations {
 		tags = append(tags, transliterationToTags(tran, level+1)...)
+	}
+
+	// Source citations
+	for _, cite := range name.SourceCitations {
+		tags = append(tags, sourceCitationToTags(cite, level+1, opts)...)
+	}
+
+	// Notes (with CONT/CONC for multiline/long)
+	for _, note := range recordNotesToEncode(name.NoteXRefs, name.InlineNotes) {
+		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
 	return tags
