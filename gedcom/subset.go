@@ -55,7 +55,7 @@ func (e *UnknownXRefError) Is(target error) bool {
 // SUBM record is followed: one that names a different record type, or
 // resolves to nothing, is cleared rather than reported, since that is
 // the source's defect and not the caller's. A value that is not
-// pointer-shaped at all -- notably the 7.0 "@VOID@" sentinel -- is
+// pointer-shaped at all -- notably the 7.0 "@VOID@" null pointer -- is
 // carried through unchanged, matching what happens to the raw tag.
 //
 // Note that the submitter record carries whatever Address, Phone and
@@ -72,7 +72,7 @@ func (e *UnknownXRefError) Is(target error) bool {
 // Subset operates in strict mode for seeds: each seed must have the
 // @xref@ pointer shape and must resolve to a record in the source,
 // otherwise an error wrapping ErrUnknownXRef is returned. Empty
-// strings, the @VOID@ sentinel, and malformed seeds all error rather
+// strings, the 7.0 @VOID@ null pointer, and malformed seeds all error rather
 // than being silently dropped, so caller mistakes surface immediately.
 // Duplicate seed XRefs are deduplicated silently. A nil or empty
 // seeds slice produces a document with the carried-over header and,
@@ -81,9 +81,11 @@ func (e *UnknownXRefError) Is(target error) bool {
 //
 // Strict mode also applies during the closure walk: any reference
 // followed from an included record that does not resolve returns an
-// error wrapping ErrUnknownXRef. The GEDCOM 7.0 "@VOID@" sentinel is
-// silently skipped during the walk (it does not pull anything into
-// the closure and does not error). Inline note text and inline
+// error wrapping ErrUnknownXRef. In a document whose Header.Version is
+// GEDCOM 7.0, the "@VOID@" null pointer is silently skipped during the
+// walk (it does not pull anything into the closure and does not error);
+// in any other document it is an ordinary identifier (see below), so a
+// dangling "@VOID@" errors like any other. Inline note text and inline
 // citation values that do not have the @xref@ pointer shape are
 // likewise ignored during the walk.
 //
@@ -96,6 +98,9 @@ func (e *UnknownXRefError) Is(target error) bool {
 // Pointer shape follows the version the source declares
 // ([Document.IsPointerXRef]): in a GEDCOM 5.5 or 5.5.1 document a spaced
 // pointer such as "@N 1@" is a valid seed and is followed like any other.
+// "@VOID@" is the null pointer only when Header.Version is 7.0, the rule
+// [Apply] uses ([Document.IsRecordPointer]); in any other document it is an
+// ordinary identifier, so it is a valid seed and is followed like any other.
 func (d *Document) Subset(xrefs []string) (*Document, error) {
 	if d == nil {
 		return nil, errors.New("subset: source document is nil")
@@ -142,7 +147,7 @@ func (d *Document) subsetClosure(xrefs []string) (map[string]bool, error) {
 		if closure[seed] {
 			continue
 		}
-		if !d.IsPointerXRef(seed) || d.GetRecord(seed) == nil {
+		if !d.IsRecordPointer(seed) || d.GetRecord(seed) == nil {
 			return nil, &UnknownXRefError{XRef: seed, IsSeed: true}
 		}
 		closure[seed] = true
@@ -164,18 +169,23 @@ func (d *Document) subsetClosure(xrefs []string) (map[string]bool, error) {
 	// nothing to do with it.
 	if d.Header != nil {
 		subm := d.Header.Submitter
-		if d.IsPointerXRef(subm) && !closure[subm] && d.GetSubmitter(subm) != nil {
+		if d.IsRecordPointer(subm) && !closure[subm] && d.GetSubmitter(subm) != nil {
 			closure[subm] = true
 			queue = append(queue, subm)
 		}
 	}
 
 	var walkErr error
-	visit := func(ref string) {
+	// walkRecord rather than VisitForVersion: VisitForVersion takes one
+	// version, but @VOID@ keys on Header.Version and pointer shape on
+	// Header.DeclaredVersion, which IsRecordPointer combines. walkRecord
+	// never passes a nil p.
+	visit := func(p *string) {
 		if walkErr != nil {
 			return
 		}
-		if !d.IsPointerXRef(ref) || closure[ref] {
+		ref := *p
+		if !d.IsRecordPointer(ref) || closure[ref] {
 			return
 		}
 		if d.GetRecord(ref) == nil {
@@ -189,7 +199,7 @@ func (d *Document) subsetClosure(xrefs []string) (map[string]bool, error) {
 	// Every XRef in queue is already validated in closure, so the loop
 	// can fetch records directly without re-checking for nil.
 	for head := 0; head < len(queue); head++ {
-		VisitForVersion(d.XRefMap[queue[head]], d.declaredVersion(), visit)
+		walkRecord(d.XRefMap[queue[head]], visit)
 		if walkErr != nil {
 			return nil, walkErr
 		}
@@ -222,12 +232,12 @@ func subsetHeader(src *Document, closure map[string]bool) *Header {
 	// Mirrors the raw-tag rule below exactly: a pointer outside the closure
 	// is dropped, anything else is carried through. The two predicates have
 	// to agree, or the typed model and the tags disagree about the same
-	// header line -- "@VOID@" is the reachable case, since IsPointerXRef
-	// excludes the 7.0 void sentinel, so the tag is kept and clearing the
+	// header line -- "@VOID@" is the reachable case, since IsRecordPointer
+	// excludes the 7.0 null pointer, so the tag is kept and clearing the
 	// field here would say "no submitter" about a header that still encodes
 	// one.
 	if src.Header.Submitter != "" &&
-		(!src.IsPointerXRef(src.Header.Submitter) || closure[src.Header.Submitter]) {
+		(!src.IsRecordPointer(src.Header.Submitter) || closure[src.Header.Submitter]) {
 		h.Submitter = src.Header.Submitter
 	}
 	for _, tag := range src.Header.Tags {
@@ -241,7 +251,7 @@ func subsetHeader(src *Document, closure map[string]bool) *Header {
 		// field they populate for vendor tags). Drop the tag if its
 		// Value resolves to a record outside the closure so the subset
 		// stays self-contained.
-		if src.IsPointerXRef(tag.Value) && !closure[tag.Value] {
+		if src.IsRecordPointer(tag.Value) && !closure[tag.Value] {
 			continue
 		}
 		h.Tags = append(h.Tags, tag.Clone())

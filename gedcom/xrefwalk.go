@@ -74,6 +74,27 @@ func (d *Document) IsPointerXRef(s string) bool {
 	return IsPointerXRefForVersion(s, d.declaredVersion())
 }
 
+// IsRecordPointer reports whether s, read as a pointer value in d, names a
+// record identifier: [Document.IsPointerXRef], or "@VOID@" when d is not
+// GEDCOM 7.0. @VOID@ is the GEDCOM 7.0 null pointer but an ordinary
+// identifier in GEDCOM 5.5 and 5.5.1, and this uses the same version rule as
+// [Apply]: @VOID@ is the null pointer only when Header.Version is 7.0, so in
+// a document with no Header or no Header.Version it is an ordinary identifier.
+// [Document.Subset] and the validator's broken-pointer check use it.
+func (d *Document) IsRecordPointer(s string) bool {
+	if s == nullXRef {
+		return !d.voidIsNull()
+	}
+	return d.IsPointerXRef(s)
+}
+
+// voidIsNull reports whether @VOID@ is the null pointer in d: Header.Version
+// is GEDCOM 7.0. It keys on Header.Version, not Header.DeclaredVersion; see
+// [Apply].
+func (d *Document) voidIsNull() bool {
+	return d != nil && d.Header != nil && d.Header.Version == Version70
+}
+
 // declaredVersion returns d's Header.DeclaredVersion, or "" for a nil d or
 // Header.
 func (d *Document) declaredVersion() Version {
@@ -111,12 +132,11 @@ func UnescapeLeadingAt(s string) string {
 
 // Visit invokes visit for every pointer-shaped XRef reachable from r's
 // Entity and raw Tags. Definition sites (Record.XRef and entity XRef
-// fields) are not visited. Non-pointer-shaped values and the @VOID@
-// sentinel are filtered before reaching the callback, in every version;
-// [Apply] instead rewrites @VOID@ outside GEDCOM 7.0 when its mapping has a
-// "@VOID@" key. Pointers are matched
-// with the GEDCOM 7.0 grammar ([IsPointerXRef]); use [VisitForVersion] to
-// also visit the spaced pointers GEDCOM 5.5 and 5.5.1 allow ("@N 1@").
+// fields) are not visited. Non-pointer-shaped values and the GEDCOM 7.0
+// @VOID@ null pointer are filtered before reaching the callback. Pointers are
+// matched with the GEDCOM 7.0 grammar ([IsPointerXRef]); use
+// [VisitForVersion] to also visit the spaced pointers GEDCOM 5.5 and 5.5.1
+// allow ("@N 1@") and @VOID@, an ordinary identifier in those versions.
 func Visit(r *Record, visit func(string)) {
 	VisitForVersion(r, "", visit)
 }
@@ -125,12 +145,28 @@ func Visit(r *Record, visit func(string)) {
 // grammar of GEDCOM version v ([IsPointerXRefForVersion]). Pass the version
 // the document declares, Document.Header.DeclaredVersion, not the possibly
 // guessed Header.Version.
+//
+// @VOID@ is visited like any other pointer when v is GEDCOM 5.5 or 5.5.1,
+// where it is an ordinary identifier. For 7.0, and for any other v (which
+// selects the 7.0 grammar), it is the null pointer and is not visited.
+//
+// This differs from [Document.IsRecordPointer], the document-level rule
+// [Apply] also uses, when no version is known: v == "" (as [Visit] passes)
+// skips @VOID@, while a document with no Header.Version treats it as an
+// ordinary identifier. The two also read different fields: v is the declared
+// version, IsRecordPointer keys @VOID@ on Header.Version. To classify pointers
+// the way [Document.Subset] and the validator do, use
+// [Document.IsRecordPointer].
 func VisitForVersion(r *Record, v Version, visit func(string)) {
 	if r == nil || visit == nil {
 		return
 	}
+	voidIsOrdinary := v == Version55 || v == Version551
 	cb := func(p *string) {
-		if p != nil && IsPointerXRefForVersion(*p, v) {
+		if p == nil {
+			return
+		}
+		if IsPointerXRefForVersion(*p, v) || (voidIsOrdinary && *p == nullXRef) {
 			visit(*p)
 		}
 	}
@@ -152,8 +188,8 @@ func VisitForVersion(r *Record, v Version, visit func(string)) {
 // a mapping entry for "@VOID@" rewrites its references like any other key.
 // This keys on Header.Version, not Header.DeclaredVersion, because the
 // converter renames a 5.5/5.5.1 record named @VOID@ before it stamps the
-// target version 7.0, whatever version the source file declared. [Visit]
-// and [VisitForVersion] still never report @VOID@, in any version.
+// target version 7.0, whatever version the source file declared.
+// [Document.IsRecordPointer] applies the same rule.
 //
 // Apply mutates d in place. Most callers should reach for the higher-
 // level merge.RemapXRefs instead, which clones the document, validates
@@ -186,7 +222,7 @@ func Apply(d *Document, mapping map[string]string) {
 	//
 	// @VOID@ is not pointer-shaped, so it is let through separately when the
 	// document is not GEDCOM 7.0, where it is not the null pointer.
-	voidIsNull := d.Header != nil && d.Header.Version == Version70
+	voidIsNull := d.voidIsNull()
 	rewriteRef := func(p *string) {
 		if p == nil {
 			return

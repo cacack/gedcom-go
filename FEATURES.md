@@ -385,7 +385,7 @@ sub, err := doc.Subset(doc.Descendants("@I1@"))
   closure, even for an empty seed set. Only a pointer that resolves to
   an actual `SUBM` record is followed — one naming a different record
   type, or nothing at all, is cleared rather than reported as an error.
-  A value that is not pointer-shaped, such as 7.0's `@VOID@` sentinel,
+  A value that is not pointer-shaped, such as 7.0's `@VOID@` null pointer,
   is carried through unchanged so the typed field and the raw tag agree
 - **Privacy note:** the submitter record carries whatever `Address`,
   `Phone` and `Email` the source file recorded for whoever produced it.
@@ -396,7 +396,10 @@ sub, err := doc.Subset(doc.Descendants("@I1@"))
   pointer target is in the closure
 - Strict mode: unknown seeds and dangling references during closure
   walking return errors wrapping `gedcom.ErrUnknownXRef`
-- GEDCOM 7.0 `@VOID@` sentinel is skipped (not treated as a missing ref)
+- `@VOID@` is skipped as the null pointer (not treated as a missing ref)
+  only when `Header.Version` is 7.0, the rule `gedcom.Apply` uses
+  (`Document.IsRecordPointer`); in a 5.5/5.5.1 document it is an ordinary
+  identifier, followed like any other pointer and accepted as a seed
 - XRefs are preserved exactly — callers needing fresh IDs apply an
   XRef remap as a separate step
 
@@ -1011,7 +1014,7 @@ silently.
 - Valid line format (level, tag, value, xref)
 - Proper hierarchy (levels increment by 1)
 - Required tags present (HEAD, TRLR)
-- Valid cross-references: every pointer in a record's raw tags must name an existing record (`BROKEN_XREF`, with the pointing line; the typed `ORPHANED_*` codes cover FAMC/FAMS/SOUR/HUSB/WIFE/CHIL)
+- Valid cross-references: every pointer in a record's raw tags must name an existing record (`BROKEN_XREF`, with the pointing line; the typed `ORPHANED_*` codes cover FAMC/FAMS/SOUR/HUSB/WIFE/CHIL). `@VOID@` is exempt as the null pointer only when `Header.Version` is 7.0; in a 5.5/5.5.1 document a dangling `@VOID@` is reported
 - Individuals with no NAME (`MISSING_REQUIRED_FIELD`, warning) and families with no HUSB/WIFE/CHIL (`EMPTY_FAMILY`, warning), each with the record's line
 
 ### Version-Specific Validation
