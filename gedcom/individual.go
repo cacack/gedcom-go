@@ -113,6 +113,16 @@ type PersonalName struct {
 	// writing systems or scripts (GEDCOM 7.0 TRAN tag). Used to store the same
 	// name in different languages, scripts, or romanization systems.
 	Transliterations []*Transliteration
+
+	// SourceCitations are source citations documenting this name (NAME.SOUR).
+	SourceCitations []*SourceCitation
+
+	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
+	NoteXRefs []string
+
+	// InlineNotes are note text values written directly on this name
+	// (NOTE <text> form, including CONT/CONC continuations).
+	InlineNotes []string
 }
 
 // Transliteration represents an alternative representation of a name in a different

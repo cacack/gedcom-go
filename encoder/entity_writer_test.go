@@ -704,7 +704,7 @@ func TestNameToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := nameToTags(tt.pname, tt.level)
+			tags := nameToTags(tt.pname, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -2903,7 +2903,7 @@ func TestNameToTagsWithTransliterations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := nameToTags(tt.pname, tt.level)
+			tags := nameToTags(tt.pname, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -3021,7 +3021,7 @@ func TestNameToTagsTransliterationCount(t *testing.T) {
 		},
 	}
 
-	tags := nameToTags(pname, 1)
+	tags := nameToTags(pname, 1, nil)
 
 	// Count TRAN tags
 	tranCount := 0

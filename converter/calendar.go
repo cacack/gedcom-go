@@ -121,6 +121,11 @@ func (t *calendarTranslator) translateTags(tags []*gedcom.Tag, recordType, xref 
 func (t *calendarTranslator) translateEntity(record *gedcom.Record, report bool) {
 	base := datePath{recordType: string(record.Type), xref: record.XRef}
 	if ind, ok := record.GetIndividual(); ok && ind != nil {
+		for _, n := range ind.Names {
+			if n != nil {
+				t.translateCitations(n.SourceCitations, report, base.at("NAME"))
+			}
+		}
 		t.translateCitations(ind.SourceCitations, report, base)
 		t.translateAssociations(ind.Associations, report, base)
 		t.translateFacts(ind.Events, ind.Attributes, ind.LDSOrdinances, report, base)

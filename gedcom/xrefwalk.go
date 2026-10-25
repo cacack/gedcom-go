@@ -413,6 +413,9 @@ func walkIndividual(i *Individual, cb refCallback) {
 		cb(&i.SpouseInFamilies[k].FamilyXRef)
 		walkStrings(i.SpouseInFamilies[k].NoteXRefs, cb)
 	}
+	for _, n := range i.Names {
+		walkPersonalName(n, cb)
+	}
 	walkNotes(i.NoteXRefs, cb)
 	walkAssociations(i.Associations, cb)
 	walkCitations(i.SourceCitations, cb)
@@ -532,6 +535,14 @@ func walkSharedNote(s *SharedNote, cb refCallback) {
 	for _, t := range s.Tags {
 		walkTag(t, cb)
 	}
+}
+
+func walkPersonalName(n *PersonalName, cb refCallback) {
+	if n == nil {
+		return
+	}
+	walkNotes(n.NoteXRefs, cb)
+	walkCitations(n.SourceCitations, cb)
 }
 
 func walkEvent(e *Event, cb refCallback) {

@@ -198,6 +198,7 @@ func TestConvertDateCalendarCitationEntity(t *testing.T) {
 	}
 	ind := &gedcom.Individual{
 		XRef:            "@I1@",
+		Names:           []*gedcom.PersonalName{{Full: "John /Doe/", SourceCitations: cite()}},
 		SourceCitations: cite(),
 		Associations:    []*gedcom.Association{{IndividualXRef: "@I2@", SourceCitations: cite()}},
 		Events:          []*gedcom.Event{{Type: gedcom.EventBirth, SourceCitations: cite()}},
@@ -226,6 +227,7 @@ func TestConvertDateCalendarCitationEntity(t *testing.T) {
 	outMedia, _ := got.GetRecord("@M1@").GetMediaObject()
 	outNote, _ := got.GetRecord("@N1@").GetSharedNote()
 	for name, c := range map[string]*gedcom.SourceCitation{
+		"name":        outInd.Names[0].SourceCitations[0],
 		"individual":  outInd.SourceCitations[0],
 		"association": outInd.Associations[0].SourceCitations[0],
 		"event":       outInd.Events[0].SourceCitations[0],
@@ -239,6 +241,7 @@ func TestConvertDateCalendarCitationEntity(t *testing.T) {
 		}
 	}
 	assertNotePaths(t, report.Normalized, []string{
+		"Individual @I1@ > NAME > SOUR > DATA > DATE",
 		"Individual @I1@ > SOUR > DATA > DATE",
 		"Individual @I1@ > ASSO > SOUR > DATA > DATE",
 		"Individual @I1@ > BIRT > SOUR > DATA > DATE",

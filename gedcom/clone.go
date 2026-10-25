@@ -503,12 +503,21 @@ func clonePersonalName(n *PersonalName) *PersonalName {
 		Nickname:      n.Nickname,
 		SurnamePrefix: n.SurnamePrefix,
 		Type:          n.Type,
+		NoteXRefs:     cloneStringSlice(n.NoteXRefs),
+		InlineNotes:   cloneStringSlice(n.InlineNotes),
 	}
 
 	if n.Transliterations != nil {
 		copied.Transliterations = make([]*Transliteration, len(n.Transliterations))
 		for i, t := range n.Transliterations {
 			copied.Transliterations[i] = cloneTransliteration(t)
+		}
+	}
+
+	if n.SourceCitations != nil {
+		copied.SourceCitations = make([]*SourceCitation, len(n.SourceCitations))
+		for i, sc := range n.SourceCitations {
+			copied.SourceCitations[i] = cloneSourceCitation(sc)
 		}
 	}
 

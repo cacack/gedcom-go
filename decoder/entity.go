@@ -291,9 +291,14 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCol
 			case "TRAN":
 				tran := parseNameTransliteration(tags, i, collector)
 				name.Transliterations = append(name.Transliterations, tran)
-			case "SOUR", "NOTE", "SNOTE", "FONE", "ROMN":
-				// Known tags that we don't parse into typed fields (yet)
-				// SOUR/NOTE are common, FONE/ROMN are GEDCOM 5.5.1 phonetic/romanized variants
+			case "SOUR":
+				cite := parseSourceCitation(tags, i, tag.Level, collector)
+				name.SourceCitations = append(name.SourceCitations, cite)
+			case "NOTE", "SNOTE":
+				name.NoteXRefs, name.InlineNotes = appendRecordNote(
+					tags, i, name.NoteXRefs, name.InlineNotes, collector)
+			case "FONE", "ROMN":
+				// GEDCOM 5.5.1 phonetic/romanized variants, not yet typed (#453)
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)

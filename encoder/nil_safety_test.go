@@ -601,7 +601,7 @@ func TestToTagsWriters_NilArgument(t *testing.T) {
 		{"repositoryToTags", func() []*gedcom.Tag { return repositoryToTags(nil, opts) }},
 		{"mediaObjectToTags", func() []*gedcom.Tag { return mediaObjectToTags(nil, opts) }},
 		{"sharedNoteToTags", func() []*gedcom.Tag { return sharedNoteToTags(nil, opts) }},
-		{"nameToTags", func() []*gedcom.Tag { return nameToTags(nil, 1) }},
+		{"nameToTags", func() []*gedcom.Tag { return nameToTags(nil, 1, opts) }},
 		{"transliterationToTags", func() []*gedcom.Tag { return transliterationToTags(nil, 2) }},
 		{"eventToTags", func() []*gedcom.Tag { return eventToTags(nil, 1, opts) }},
 		{"attributeToTags", func() []*gedcom.Tag { return attributeToTags(nil, 1, opts) }},

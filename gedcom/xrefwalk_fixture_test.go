@@ -34,6 +34,7 @@ func carrierTypeNames() map[string]bool {
 		"[]*gedcom.Event":                true,
 		"[]*gedcom.LDSOrdinance":         true,
 		"[]*gedcom.MediaLink":            true,
+		"[]*gedcom.PersonalName":         true,
 		"[]*gedcom.SourceCitation":       true,
 		"[]gedcom.FamilyLink":            true,
 		"[]*gedcom.Tag":                  true,

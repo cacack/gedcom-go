@@ -171,6 +171,45 @@ func TestCitationPageRoundTrip(t *testing.T) {
 	}
 }
 
+// TestNameCitationsAndNotesRoundTrip is the PersonalName counterpart: its
+// citations and notes are nested too, so TestEntityRoundTrip never sees them
+// (issue #643).
+func TestNameCitationsAndNotesRoundTrip(t *testing.T) {
+	quality := 2
+	want := &gedcom.PersonalName{
+		Full: "Liutgarde /de Vermandois/",
+		SourceCitations: []*gedcom.SourceCitation{{
+			SourceXRef: "@S1@",
+			Page:       "Folio 12\nEntry 412",
+			Quality:    &quality,
+			Data:       &gedcom.SourceCitationData{Date: "6 AUG 1901"},
+			NoteXRefs:  []string{"@N1@"},
+		}},
+		NoteXRefs:   []string{"@N1@"},
+		InlineNotes: []string{"Spelling varies.\nSee also Leutgarde."},
+	}
+	ind := &gedcom.Individual{XRef: "@I1@", Names: []*gedcom.PersonalName{want}}
+
+	back := encodeDecode(t, "@I1@", gedcom.RecordTypeIndividual, ind)
+	got := back.GetIndividual("@I1@")
+	if got == nil || len(got.Names) != 1 {
+		t.Fatalf("expected one NAME, got %+v", got)
+	}
+	name := got.Names[0]
+	if !reflect.DeepEqual(name.NoteXRefs, want.NoteXRefs) {
+		t.Errorf("NoteXRefs = %#v, want %#v", name.NoteXRefs, want.NoteXRefs)
+	}
+	if !reflect.DeepEqual(name.InlineNotes, want.InlineNotes) {
+		t.Errorf("InlineNotes = %#v, want %#v", name.InlineNotes, want.InlineNotes)
+	}
+	if len(name.SourceCitations) != 1 {
+		t.Fatalf("SourceCitations = %d, want 1", len(name.SourceCitations))
+	}
+	if !reflect.DeepEqual(name.SourceCitations[0], want.SourceCitations[0]) {
+		t.Errorf("SourceCitations[0] = %+v, want %+v", name.SourceCitations[0], want.SourceCitations[0])
+	}
+}
+
 // TestEntityRoundTrip asserts that a hand-built entity survives encode/decode.
 func TestEntityRoundTrip(t *testing.T) {
 	seen := map[string]bool{}
