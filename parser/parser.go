@@ -326,17 +326,18 @@ func (p *Parser) parseSpacedXRef(level int, line, xref, rest string) (*Line, err
 // lenient callers keep the record; dropping a level-0 line would lose it and
 // silently reparent its subordinate lines onto the preceding record.
 //
-// Three spellings keep their pre-existing parse — the identifier stays the tag
-// — and are only reported: "0 @I1" with no tag to recover, and "0 @I1 HEAD" and
-// "0 @I1 TRLR", whose tags the decoder treats as structural rather than as a
-// record type. See the function body for why promoting those two loses data.
+// Only "0 @I1", with no tag to recover, keeps its pre-existing parse — the
+// identifier stays the tag — and is only reported. "0 @I1 HEAD" and
+// "0 @I1 TRLR" are recovered like any other tag, giving the same shape as the
+// well-formed "0 @X1@ HEAD": the decoder treats a level-0 HEAD/TRLR as
+// structural only when it has no XRef, so the line becomes an ordinary record
+// that keeps its subordinate lines and cannot overwrite the real header (#416).
 //
 // The identifier is kept verbatim, so "@I1" stays "@I1" and re-encoding a line
 // reproduces the input byte for byte — which also means the output still fails
-// this parser's own strict mode on re-read. That holds for every spelling
-// above: the reported-but-not-recovered ones keep the identifier in Tag and the
-// remainder in Value, and the encoder writes a level-0 Value, so "0 @I1 HEAD"
-// re-encodes unchanged too. Because
+// this parser's own strict mode on re-read. That holds for "0 @I1" too: it
+// keeps the identifier in Tag and the remainder in Value, and the encoder
+// writes a level-0 Value. Because
 // gedcom.IsPointerXRef requires both delimiters, an ordinary "@I1@" pointer
 // elsewhere in the file does not resolve to the recovered record: what this
 // recovery buys is the diagnostic and a correctly typed record, not pointer
@@ -345,17 +346,9 @@ func (p *Parser) parseUnterminatedXRef(level int, line, xref, rest string) (*Lin
 	err := newParseError(p.lineNumber, "xref is missing its closing @: "+xref, line)
 
 	fields := strings.Fields(rest)
-	if len(fields) == 0 || fields[0] == "HEAD" || fields[0] == "TRLR" {
-		// Either no tag follows ("0 @I1"), so there is no record type to
-		// recover, or the tag that would be recovered is HEAD/TRLR. The
-		// decoder keys the header block and the end of the previous record off
-		// a bare level-0 HEAD/TRLR tag, so promoting the tag out of
-		// "0 @I1 HEAD" would let a bogus second header overwrite the real
-		// one's typed fields, and promoting it out of "0 @I1 TRLR" would drop
-		// the line and its subordinates from the document — a Lossless
-		// Representation violation. Keep the parse these lines have always had
-		// — the identifier becomes the tag, the remainder the value — and
-		// report them.
+	if len(fields) == 0 {
+		// No tag follows ("0 @I1"), so there is no record type to recover.
+		// Keep the parse this line has always had and report it.
 		return p.xrefAsTagLine(level, xref, rest), err
 	}
 	return p.recoverXRefLine(level, xref, rest, fields[0]), err
@@ -364,8 +357,7 @@ func (p *Parser) parseUnterminatedXRef(level int, line, xref, rest string) (*Lin
 // xrefAsTagLine builds the Line kept for a reported level-0 line whose
 // record type is not recovered: the identifier becomes the tag and the
 // remainder the value. It serves lines with no tag ("0 @I1@", "0 @I 1@",
-// "0 @I1") and lines whose tag must not be promoted ("0 @I1 HEAD",
-// "0 @I1 TRLR"; see [parseUnterminatedXRef]). Keeping the line means the record
+// "0 @I1"). Keeping the line means the record
 // still owns its subordinate lines; dropping it would silently reparent them
 // onto the preceding record (#398).
 func (p *Parser) xrefAsTagLine(level int, xref, rest string) *Line {

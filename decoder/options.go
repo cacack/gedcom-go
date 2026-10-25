@@ -42,14 +42,15 @@ type DecodeOptions struct {
 	//     is emitted (SeverityError, since the identifier itself is not
 	//     spec-conformant). Verbatim means `@I1` is stored as `@I1`, which is
 	//     not pointer-shaped, so `@I1@` references elsewhere in the file do
-	//     not resolve to the recovered record. `0 @I1`, `0 @I1 HEAD` and
-	//     `0 @I1 TRLR` are reported but not recovered: they keep their
-	//     pre-existing parse, with the identifier as the tag
-	//   - A well-formed XRef on a level-0 HEAD or TRLR line (e.g.
-	//     `0 @X1@ HEAD`) is not the document's header or trailer — the GEDCOM
-	//     grammar gives neither tag an identifier — so the line becomes an
-	//     ordinary record with Type "HEAD"/"TRLR", keeping its subordinate
-	//     lines; a CodeInvalidXRef diagnostic is emitted (SeverityError)
+	//     not resolve to the recovered record. `0 @I1`, with no tag, is
+	//     reported but not recovered: it keeps its pre-existing parse, with
+	//     the identifier as the tag
+	//   - An XRef on a level-0 HEAD or TRLR line (e.g. `0 @X1@ HEAD`, or a
+	//     recovered `0 @I1 HEAD`) is not the document's header or trailer —
+	//     the GEDCOM grammar gives neither tag an identifier — so the line
+	//     becomes an ordinary record with Type "HEAD"/"TRLR", keeping its
+	//     subordinate lines; a CodeInvalidXRef diagnostic is emitted
+	//     (SeverityError), in addition to the one for a malformed identifier
 	//   - Diagnostics are collected for all issues encountered
 	//   - Use [DecodeWithDiagnostics] to access diagnostics
 	//   - A partial document is returned if any valid records exist
