@@ -248,16 +248,49 @@ func TestDeclaredVersion(t *testing.T) {
 	}
 }
 
-// TestDetectVersionXRefHead pins that DetectVersion, unlike DeclaredVersion,
-// still reads the version under a level-0 HEAD that carries an XRef.
+// TestDetectVersionXRefHead pins that a level-0 HEAD carrying an XRef is not
+// the header, so its GEDC/VERS never drives detection (#415), consistent with
+// the decoder (#396).
 func TestDetectVersionXRefHead(t *testing.T) {
-	lines := []*parser.Line{
+	bogus := []*parser.Line{
 		{Level: 0, XRef: "@X1@", Tag: "HEAD"},
 		{Level: 1, Tag: "GEDC"},
-		{Level: 2, Tag: "VERS", Value: "5.5.1"},
+		{Level: 2, Tag: "VERS", Value: "7.0"},
 	}
-	if got := DetectVersion(lines); got != gedcom.Version551 {
-		t.Errorf("DetectVersion() = %q, want %q", got, gedcom.Version551)
+	header := func(vers ...string) []*parser.Line {
+		lines := []*parser.Line{{Level: 0, Tag: "HEAD"}, {Level: 1, Tag: "SOUR", Value: "X"}}
+		if len(vers) > 0 {
+			lines = append(lines, &parser.Line{Level: 1, Tag: "GEDC"},
+				&parser.Line{Level: 2, Tag: "VERS", Value: vers[0]})
+		}
+		return lines
+	}
+	join := func(parts ...[]*parser.Line) []*parser.Line {
+		var out []*parser.Line
+		for _, p := range parts {
+			out = append(out, p...)
+		}
+		return out
+	}
+	tests := []struct {
+		name  string
+		lines []*parser.Line
+		want  gedcom.Version
+	}{
+		// The real header is silent: fall back to tag heuristics (5.5 default).
+		{"silent header", join(header(), bogus), gedcom.Version55},
+		// The real header declares a version: it wins either way.
+		{"declared header", join(header("5.5.1"), bogus), gedcom.Version551},
+		{"bogus before header", join(bogus, header("5.5.1")), gedcom.Version551},
+		// No real header at all: still not a declaration.
+		{"only xref HEAD", bogus, gedcom.Version55},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := DetectVersion(tt.lines); got != tt.want {
+				t.Errorf("DetectVersion() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }
 
