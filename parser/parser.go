@@ -133,7 +133,7 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 		if len(parts) < 3 {
 			err := newParseError(p.lineNumber, "line with xref must have a tag", line)
 			if level == 0 {
-				return p.taglessXRefLine(level, xref, ""), err
+				return p.xrefAsTagLine(level, xref, ""), err
 			}
 			return nil, err
 		}
@@ -305,7 +305,7 @@ func (p *Parser) parseSpacedXRef(level int, line, xref, rest string) (*Line, err
 	if len(fields) == 0 {
 		err := newParseError(p.lineNumber, "line with xref must have a tag", line)
 		if level == 0 {
-			return p.taglessXRefLine(level, xref, rest), err
+			return p.xrefAsTagLine(level, xref, rest), err
 		}
 		return nil, err
 	}
@@ -356,18 +356,19 @@ func (p *Parser) parseUnterminatedXRef(level int, line, xref, rest string) (*Lin
 		// Representation violation. Keep the parse these lines have always had
 		// — the identifier becomes the tag, the remainder the value — and
 		// report them.
-		return p.taglessXRefLine(level, xref, rest), err
+		return p.xrefAsTagLine(level, xref, rest), err
 	}
 	return p.recoverXRefLine(level, xref, rest, fields[0]), err
 }
 
-// taglessXRefLine builds the Line kept for a reported level-0 line whose
-// identifier cannot be recovered, chiefly because no tag follows it ("0 @I1@",
-// "0 @I 1@", "0 @I1"). The line keeps its pre-existing parse — the identifier
-// becomes the tag, the remainder the value — so the record still exists to own
-// its subordinate lines. Dropping it instead would silently reparent them onto
-// the preceding record (#398).
-func (p *Parser) taglessXRefLine(level int, xref, rest string) *Line {
+// xrefAsTagLine builds the Line kept for a reported level-0 line whose
+// record type is not recovered: the identifier becomes the tag and the
+// remainder the value. It serves lines with no tag ("0 @I1@", "0 @I 1@",
+// "0 @I1") and lines whose tag must not be promoted ("0 @I1 HEAD",
+// "0 @I1 TRLR"; see [parseUnterminatedXRef]). Keeping the line means the record
+// still owns its subordinate lines; dropping it would silently reparent them
+// onto the preceding record (#398).
+func (p *Parser) xrefAsTagLine(level int, xref, rest string) *Line {
 	return &Line{
 		Level:      level,
 		Tag:        xref,
