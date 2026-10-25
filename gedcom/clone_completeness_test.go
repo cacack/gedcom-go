@@ -41,6 +41,13 @@ var unfillable = map[string]string{
 	"Document.XRefMap": "aliases Records by design; identity is asserted by TestDocumentClone",
 }
 
+// cloneSharedByDesign maps "Type.field.path" to the reason a clone may
+// legitimately share that slice, map or pointer with its original. Every entry
+// is a live exception, self-cleaning like cloneKnownBad: delete it when the
+// sharing stops, and the test will say so. Empty: every reference field in
+// clone.go is copied.
+var cloneSharedByDesign = map[string]string{}
+
 var fixedTime = time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 
 // fillCounter gives every scalar a distinct value, so a clone that copies the
@@ -166,6 +173,68 @@ func diffFields(a, b reflect.Value, path string, out *[]string, depth int) {
 	}
 }
 
+// aliasedFields walks an original and its clone in parallel and appends the path
+// of every non-empty slice, map or non-nil pointer the clone shares with the
+// original. diffFields compares values, so an aliased slice is equal to itself
+// and passes there; this asserts identity (#474). Nil and empty slices are
+// skipped: they hold no backing array to share.
+func aliasedFields(a, b reflect.Value, path string, out *[]string, depth int) {
+	if depth > 8 {
+		return
+	}
+	if _, skip := unfillable[path]; skip {
+		return
+	}
+
+	switch a.Kind() {
+	case reflect.Pointer:
+		if a.IsNil() || b.IsNil() {
+			return
+		}
+		if a.Pointer() == b.Pointer() {
+			*out = append(*out, path)
+			return
+		}
+		aliasedFields(a.Elem(), b.Elem(), path, out, depth+1)
+	case reflect.Interface:
+		if a.IsNil() || b.IsNil() {
+			return
+		}
+		aliasedFields(a.Elem(), b.Elem(), path, out, depth+1)
+	case reflect.Slice:
+		if a.Len() == 0 || b.Len() == 0 {
+			return
+		}
+		if a.Pointer() == b.Pointer() {
+			*out = append(*out, path)
+			return
+		}
+		for i := 0; i < a.Len() && i < b.Len(); i++ {
+			aliasedFields(a.Index(i), b.Index(i), path, out, depth+1)
+		}
+	case reflect.Map:
+		if a.Len() == 0 || b.Len() == 0 {
+			return
+		}
+		if a.Pointer() == b.Pointer() {
+			*out = append(*out, path)
+			return
+		}
+		for _, k := range a.MapKeys() {
+			if bv := b.MapIndex(k); bv.IsValid() {
+				aliasedFields(a.MapIndex(k), bv, path, out, depth+1)
+			}
+		}
+	case reflect.Struct:
+		for i := 0; i < a.NumField(); i++ {
+			if a.Type().Field(i).PkgPath != "" {
+				continue
+			}
+			aliasedFields(a.Field(i), b.Field(i), path+"."+a.Type().Field(i).Name, out, depth+1)
+		}
+	}
+}
+
 // cloneFuncs lists every clone function of the shape func(*T) *T, which is all
 // of them except the four noted below.
 //
@@ -212,6 +281,7 @@ var cloneFuncs = []struct {
 
 func TestCloneCompleteness(t *testing.T) {
 	seen := map[string]bool{}
+	seenShared := map[string]bool{}
 
 	for _, tc := range cloneFuncs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -242,6 +312,17 @@ func TestCloneCompleteness(t *testing.T) {
 					_ = reason
 				}
 			}
+
+			var shared []string
+			aliasedFields(orig, cloned, tc.name, &shared, 0)
+			sort.Strings(shared)
+
+			for _, path := range shared {
+				seenShared[path] = true
+				if _, known := cloneSharedByDesign[path]; !known {
+					t.Errorf("Clone shares memory with the original (aliased, not copied): %s", path)
+				}
+			}
 		})
 	}
 
@@ -257,5 +338,43 @@ func TestCloneCompleteness(t *testing.T) {
 		sort.Strings(fixed)
 		t.Errorf("these fields now survive Clone; remove them from cloneKnownBad:\n  %s",
 			strings.Join(fixed, "\n  "))
+	}
+
+	var unshared []string
+	for path, reason := range cloneSharedByDesign {
+		if !seenShared[path] {
+			unshared = append(unshared, fmt.Sprintf("%s (was: %s)", path, reason))
+		}
+	}
+	if len(unshared) > 0 {
+		sort.Strings(unshared)
+		t.Errorf("these fields are no longer shared by Clone; remove them from cloneSharedByDesign:\n  %s",
+			strings.Join(unshared, "\n  "))
+	}
+}
+
+// TestAliasedFields pins the identity check itself: a shared backing array is
+// reported, while nil and empty slices -- which may legitimately share the
+// zero-length address -- are not.
+func TestAliasedFields(t *testing.T) {
+	shared := []string{"@N1@"}
+	tests := []struct {
+		name string
+		a, b *Individual
+		want []string
+	}{
+		{"nil slices", &Individual{}, &Individual{}, nil},
+		{"empty slices", &Individual{NoteXRefs: []string{}}, &Individual{NoteXRefs: make([]string, 0)}, nil},
+		{"distinct slices", &Individual{NoteXRefs: []string{"@N1@"}}, &Individual{NoteXRefs: []string{"@N1@"}}, nil},
+		{"shared slice", &Individual{NoteXRefs: shared}, &Individual{NoteXRefs: shared}, []string{"Individual.NoteXRefs"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got []string
+			aliasedFields(reflect.ValueOf(tt.a), reflect.ValueOf(tt.b), "Individual", &got, 0)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("aliasedFields = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
