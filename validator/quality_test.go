@@ -1109,6 +1109,25 @@ func TestQualityReport_RunsEveryValidateAllCheck(t *testing.T) {
 	doc70 := makeDocument(nil, nil)
 	doc70.Header = &gedcom.Header{Version: gedcom.Version70, Encoding: gedcom.EncodingANSEL}
 
+	// The remaining record-level checks: a raw ASSO pointer to no record, a
+	// family with no members, a date that does not exist, and a media object
+	// whose two note slices overlap.
+	named := &gedcom.Individual{XRef: "@I1@", Names: []*gedcom.PersonalName{{Full: "John /Doe/"}}}
+	docRecords := makeDocument([]*gedcom.Individual{named}, []*gedcom.Family{{XRef: "@F1@"}})
+	docRecords.Header = &gedcom.Header{Date: "31 FEB 1900"}
+	docRecords.XRefMap["@I1@"].Tags = []*gedcom.Tag{
+		{Level: 0, Tag: "INDI", XRef: "@I1@"},
+		{Level: 1, Tag: "NAME", Value: "John /Doe/"},
+		{Level: 1, Tag: "ASSO", Value: "@I99@"},
+	}
+	media := &gedcom.Record{XRef: "@M1@", Type: gedcom.RecordTypeMedia, Entity: &gedcom.MediaObject{
+		XRef: "@M1@", NoteXRefs: []string{"@N1@"}, SharedNoteXRefs: []string{"@N1@"},
+	}}
+	docRecords.Records = append(docRecords.Records, media)
+	docRecords.XRefMap["@M1@"] = media
+
+	// Between them the rows trigger every conformance check, so dropping any
+	// one from runConformanceChecks fails a row.
 	tests := []struct {
 		name      string
 		doc       *gedcom.Document
@@ -1116,6 +1135,8 @@ func TestQualityReport_RunsEveryValidateAllCheck(t *testing.T) {
 	}{
 		{"5.5.1 header, xref and nil element", doc551, []string{CodeMissingSUBM, CodeXRefTooLong, CodeNilElement}},
 		{"7.0 encoding", doc70, []string{CodeInvalidEncodingForVersion}},
+		{"pointer, structure, date and note", docRecords,
+			[]string{CodeBrokenXRef, CodeEmptyFamily, CodeInvalidDate, CodeOverlappingNotePointers}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -53,10 +53,9 @@ type QualityReport struct {
 	CustomTagIssues    []Issue `json:"custom_tag_issues"`
 
 	// ConformanceIssues holds the spec-conformance checks that
-	// [Validator.ValidateAll] also runs: header, broken pointers, record
-	// structure, nil elements, date validity, XRef length, note pointers and
-	// encoding. With them the report's counts cover the same issue set as
-	// ValidateAll.
+	// [Validator.ValidateAll] also runs and the categories above do not
+	// cover: the header, encoding and record-level checks. With them the
+	// report's counts cover the same issue set as ValidateAll.
 	ConformanceIssues []Issue `json:"conformance_issues"`
 
 	// Summary counts
@@ -283,16 +282,13 @@ func (a *QualityAnalyzer) runTagValidator(doc *gedcom.Document, report *QualityR
 
 // runConformanceChecks runs the spec-conformance checks that ValidateAll runs
 // and the record-quality validators above do not, so the report's counts are
-// not clean for a document ValidateAll flags.
+// not clean for a document ValidateAll flags. The record-level checks come
+// from recordChecks, which ValidateAll also calls; the header and encoding
+// checks mirror ValidateAll's own calls.
 func (a *QualityAnalyzer) runConformanceChecks(doc *gedcom.Document, report *QualityReport) {
 	var issues []Issue
 	issues = append(issues, NewHeaderValidator().ValidateHeader(doc)...)
-	issues = append(issues, validateBrokenXRefs(doc)...)
-	issues = append(issues, validateRecordStructure(doc)...)
-	issues = append(issues, validateNilElements(doc)...)
-	issues = append(issues, validateDates(doc)...)
-	issues = append(issues, NewXRefValidator().ValidateXRefs(doc)...)
-	issues = append(issues, NewNoteValidator().ValidateNotePointers(doc)...)
+	issues = append(issues, recordChecks(doc, NewXRefValidator(), NewNoteValidator())...)
 	issues = append(issues, NewEncodingValidator().Validate(doc)...)
 	report.ConformanceIssues = append(report.ConformanceIssues, issues...)
 }

@@ -249,6 +249,22 @@ func (v *Validator) Validate(doc *gedcom.Document) []error {
 	return errs
 }
 
+// recordChecks runs the record-level spec-conformance checks shared by
+// [Validator.ValidateAll] and [QualityAnalyzer.Analyze], so a check added here
+// reaches both: raw pointers, record structure, nil elements (which only a
+// hand-built document holds), date validity (dates that do not exist, e.g.
+// 31 FEB), XRef length and note pointers.
+func recordChecks(doc *gedcom.Document, xrefs *XRefValidator, notes *NoteValidator) []Issue {
+	var issues []Issue
+	issues = append(issues, validateBrokenXRefs(doc)...)
+	issues = append(issues, validateRecordStructure(doc)...)
+	issues = append(issues, validateNilElements(doc)...)
+	issues = append(issues, validateDates(doc)...)
+	issues = append(issues, xrefs.ValidateXRefs(doc)...)
+	issues = append(issues, notes.ValidateNotePointers(doc)...)
+	return issues
+}
+
 // ValidateAll runs every document-wide check and returns the findings as
 // Issues with severity levels. Issues are filtered by the configured
 // Strictness and SkipRules and then capped at MaxErrors.
@@ -269,21 +285,11 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	// Run reference validation
 	allIssues = append(allIssues, v.getReferenceValidator().Validate(doc)...)
 
-	// Run raw-pointer and record-structure validation
-	allIssues = append(allIssues, validateBrokenXRefs(doc)...)
-	allIssues = append(allIssues, validateRecordStructure(doc)...)
-
-	// Run nil-element validation (nils only a hand-built document holds)
-	allIssues = append(allIssues, validateNilElements(doc)...)
-
-	// Run date validity validation (dates that do not exist, e.g. 31 FEB)
-	allIssues = append(allIssues, validateDates(doc)...)
-
-	// Run XRef length validation
-	allIssues = append(allIssues, v.getXRefValidator().ValidateXRefs(doc)...)
-
-	// Run note pointer validation
-	allIssues = append(allIssues, v.getNoteValidator().ValidateNotePointers(doc)...)
+	// Run the record-level conformance checks. QualityAnalyzer.Analyze runs
+	// the same helper; a new check belongs there rather than here, and the
+	// header and encoding calls in this function have their counterparts in
+	// QualityAnalyzer.runConformanceChecks.
+	allIssues = append(allIssues, recordChecks(doc, v.getXRefValidator(), v.getNoteValidator())...)
 
 	// Run duplicate detection and convert to issues, unless it was skipped.
 	// LimitIssues report any surname group that exceeded MaxGroupSize, so the
