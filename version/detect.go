@@ -10,12 +10,14 @@ import (
 // DetectVersion detects the GEDCOM version from parsed lines.
 // It first tries to find the version in the header (HEAD -> GEDC -> VERS).
 // If not found, it falls back to tag-based heuristics.
+// Only the real header counts: a `0 @X1@ HEAD` record is ignored, as the
+// decoder does, so its GEDC/VERS never stands in for a silent header.
 // Returns Version55 as the default if detection fails.
 // A GEDCOM 7 patch version (VERS 7.0.N) is reported as [gedcom.Version70];
 // the exact VERS value stays in the decoded header's raw Tags.
 func DetectVersion(lines []*parser.Line) gedcom.Version {
 	// Try to detect from header first
-	version := detectFromHeader(lines, false)
+	version := detectFromHeader(lines)
 	if version != "" {
 		return version
 	}
@@ -32,7 +34,7 @@ func DetectVersion(lines []*parser.Line) gedcom.Version {
 // no identifier, so a `0 @X1@ HEAD` record is ignored, as the decoder does.
 // A GEDCOM 7 patch version (VERS 7.0.N) is reported as [gedcom.Version70].
 func DeclaredVersion(lines []*parser.Line) gedcom.Version {
-	return detectFromHeader(lines, true)
+	return detectFromHeader(lines)
 }
 
 // detectFromHeader looks for the version in the GEDCOM header.
@@ -42,13 +44,14 @@ func DeclaredVersion(lines []*parser.Line) gedcom.Version {
 //	1 GEDC
 //	2 VERS 5.5 (or 5.5.1, or 7.0, or a 7.0.N patch version)
 //
-// When realHeaderOnly is true, a level-0 HEAD carrying an XRef is not a header.
-func detectFromHeader(lines []*parser.Line, realHeaderOnly bool) gedcom.Version {
+// A level-0 HEAD carrying an XRef is not a header: the GEDCOM grammar gives
+// HEAD no identifier.
+func detectFromHeader(lines []*parser.Line) gedcom.Version {
 	inHead := false
 	inGedc := false
 
 	for _, line := range lines {
-		if version := processHeaderLine(line, &inHead, &inGedc, realHeaderOnly); version != "" {
+		if version := processHeaderLine(line, &inHead, &inGedc); version != "" {
 			return version
 		}
 	}
@@ -56,10 +59,10 @@ func detectFromHeader(lines []*parser.Line, realHeaderOnly bool) gedcom.Version 
 	return ""
 }
 
-func processHeaderLine(line *parser.Line, inHead, inGedc *bool, realHeaderOnly bool) gedcom.Version {
+func processHeaderLine(line *parser.Line, inHead, inGedc *bool) gedcom.Version {
 	// Handle level 0 tags
 	if line.Level == 0 {
-		return handleLevel0(line, inHead, realHeaderOnly)
+		return handleLevel0(line, inHead)
 	}
 
 	// Handle level 1 tags within HEAD
@@ -75,8 +78,8 @@ func processHeaderLine(line *parser.Line, inHead, inGedc *bool, realHeaderOnly b
 	return ""
 }
 
-func handleLevel0(line *parser.Line, inHead *bool, realHeaderOnly bool) gedcom.Version {
-	if line.Tag == "HEAD" && (!realHeaderOnly || line.XRef == "") {
+func handleLevel0(line *parser.Line, inHead *bool) gedcom.Version {
+	if line.Tag == "HEAD" && line.XRef == "" {
 		*inHead = true
 	} else {
 		*inHead = false

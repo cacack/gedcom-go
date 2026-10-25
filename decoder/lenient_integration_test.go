@@ -629,6 +629,32 @@ func TestDecodeWithDiagnostics_XRefOnStructuralLine(t *testing.T) {
 	}
 }
 
+// TestDecode_XRefHeadDoesNotSetVersion pins issue #415: a GEDC/VERS beneath
+// "0 @X1@ HEAD" is not the header's declaration, so it never sets
+// Header.Version — whether or not the real header declares one.
+func TestDecode_XRefHeadDoesNotSetVersion(t *testing.T) {
+	tests := []struct {
+		name   string
+		header string
+		want   gedcom.Version
+	}{
+		{name: "silent header", header: "0 HEAD\n1 SOUR RealVendor\n", want: gedcom.Version55},
+		{name: "declared header", header: "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n", want: gedcom.Version551},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := tt.header + "0 @X1@ HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n0 TRLR\n"
+			doc, err := Decode(strings.NewReader(input))
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+			if doc.Header.Version != tt.want {
+				t.Errorf("Header.Version = %q, want %q", doc.Header.Version, tt.want)
+			}
+		})
+	}
+}
+
 // TestDecode_StructuralLinesWithoutXRef guards the control case for issue #396:
 // a bare "0 HEAD" and "0 TRLR" stay structural, so an ordinary file is
 // completely unaffected by the XRef check.
