@@ -3,6 +3,7 @@ package gedcomgo
 import (
 	"bytes"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -237,6 +238,70 @@ func TestConvertedDocumentsReDecode(t *testing.T) {
 			if len(redecoded.Records) != len(converted.Records) {
 				t.Errorf("record count after re-decode = %d, want %d",
 					len(redecoded.Records), len(converted.Records))
+			}
+		})
+	}
+}
+
+// TestConvertedHeaderFollowsTargetGrammar pins #465 for every conversion
+// direction: the encoded HEAD lists its level-1 structures in the order the
+// target version's grammar gives them, and a 5.x target carries GEDC.FORM.
+//
+// The grammars are spelled out here rather than taken from the package that
+// implements them, so a mistake there cannot also be the test's expectation.
+func TestConvertedHeaderFollowsTargetGrammar(t *testing.T) {
+	grammar55 := []string{"SOUR", "DEST", "DATE", "SUBM", "SUBN", "FILE", "COPR", "GEDC", "CHAR", "LANG", "PLAC", "NOTE"}
+	grammar70 := []string{"GEDC", "SCHMA", "SOUR", "DEST", "DATE", "SUBM", "COPR", "LANG", "PLAC", "NOTE"}
+
+	tests := []struct {
+		fixture string
+		target  gedcom.Version
+	}{
+		{"testdata/gedcom-5.5/royal92.ged", gedcom.Version551},
+		{"testdata/gedcom-5.5/royal92.ged", gedcom.Version70},
+		{"testdata/gedcom-5.5.1/comprehensive.ged", gedcom.Version55},
+		{"testdata/gedcom-5.5.1/comprehensive.ged", gedcom.Version70},
+		{"testdata/gedcom-7.0/maximal70.ged", gedcom.Version55},
+		{"testdata/gedcom-7.0/maximal70.ged", gedcom.Version551},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.fixture+" to "+tt.target.String(), func(t *testing.T) {
+			doc := decodeFixture(t, tt.fixture)
+			converted, _, err := converter.ConvertWithOptions(doc, tt.target, converter.DefaultOptions())
+			if err != nil {
+				t.Fatalf("convert: %v", err)
+			}
+			head := encodeHead(t, converted)
+
+			grammar := grammar55
+			if tt.target == gedcom.Version70 {
+				grammar = grammar70
+			}
+			rank := func(tag string) int {
+				if tag == "SNOTE" {
+					tag = "NOTE"
+				}
+				if i := slices.Index(grammar, tag); i >= 0 {
+					return i
+				}
+				return len(grammar) // undefined structures belong after the rest
+			}
+
+			var order []string
+			for _, line := range strings.Split(head, "\n") {
+				if tag, ok := strings.CutPrefix(line, "1 "); ok {
+					tag, _, _ = strings.Cut(tag, " ")
+					order = append(order, tag)
+				}
+			}
+			if !slices.IsSortedFunc(order, func(a, b string) int { return rank(a) - rank(b) }) {
+				t.Errorf("level-1 HEAD order %v does not follow the %s grammar %v:\n%s", order, tt.target, grammar, head)
+			}
+
+			wantForm := tt.target != gedcom.Version70
+			if got := strings.Contains(head, "1 GEDC\n2 VERS "+tt.target.String()+"\n2 FORM LINEAGE-LINKED\n"); got != wantForm {
+				t.Errorf("GEDC.FORM after VERS = %v, want %v:\n%s", got, wantForm, head)
 			}
 		})
 	}

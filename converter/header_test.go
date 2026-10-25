@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -394,4 +395,90 @@ func TestTransformHeaderReport(t *testing.T) {
 			t.Error("Should have SCHMA data loss item")
 		}
 	})
+}
+
+// TestAddGEDCForm pins the FORM half of #465 at the unit level: FORM goes after
+// VERS, an existing FORM is kept wherever it is, and a header with no GEDC or no
+// raw tags is left alone.
+func TestAddGEDCForm(t *testing.T) {
+	form := func(tags []*gedcom.Tag) []string {
+		var out []string
+		for _, tag := range tags {
+			if tag == nil {
+				out = append(out, "<nil>")
+				continue
+			}
+			out = append(out, tag.Tag+" "+tag.Value)
+		}
+		return out
+	}
+
+	tests := []struct {
+		name      string
+		tags      []*gedcom.Tag
+		wantAdded bool
+		want      []string
+	}{
+		{
+			name: "added after VERS, before the next structure",
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "GEDC"}, nil, {Level: 2, Tag: "VERS", Value: "5.5"},
+				{Level: 1, Tag: "CHAR", Value: "UTF-8"},
+			},
+			wantAdded: true,
+			want:      []string{"GEDC ", "<nil>", "VERS 5.5", "FORM LINEAGE-LINKED", "CHAR UTF-8"},
+		},
+		{
+			name: "existing FORM kept",
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "GEDC"}, {Level: 2, Tag: "FORM", Value: "LINEAGE-LINKED"}, {Level: 2, Tag: "VERS", Value: "5.5"},
+			},
+			want: []string{"GEDC ", "FORM LINEAGE-LINKED", "VERS 5.5"},
+		},
+		{
+			name: "PLAC.FORM is not GEDC.FORM",
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "PLAC"}, {Level: 2, Tag: "FORM", Value: "City"},
+				{Level: 1, Tag: "GEDC"}, {Level: 2, Tag: "VERS", Value: "5.5"},
+			},
+			wantAdded: true,
+			want:      []string{"PLAC ", "FORM City", "GEDC ", "VERS 5.5", "FORM LINEAGE-LINKED"},
+		},
+		{
+			name: "no GEDC",
+			tags: []*gedcom.Tag{{Level: 1, Tag: "CHAR", Value: "UTF-8"}},
+			want: []string{"CHAR UTF-8"},
+		},
+		{name: "no tags"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			header := &gedcom.Header{Tags: tt.tags}
+			if got := addGEDCForm(header); got != tt.wantAdded {
+				t.Errorf("addGEDCForm = %v, want %v", got, tt.wantAdded)
+			}
+			if got := form(header.Tags); !slices.Equal(got, tt.want) {
+				t.Errorf("tags = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestTransformHeaderReportsGEDCFormAdded checks the report says when a
+// downgrade had to add GEDC.FORM, as it says when an upgrade removes it.
+func TestTransformHeaderReportsGEDCFormAdded(t *testing.T) {
+	doc := &gedcom.Document{Header: &gedcom.Header{Tags: []*gedcom.Tag{
+		{Level: 1, Tag: "GEDC"}, {Level: 2, Tag: "VERS", Value: "7.0"},
+	}}}
+	report := &gedcom.ConversionReport{}
+	transformHeader(doc, gedcom.Version551, report)
+
+	found := false
+	for _, tr := range report.Transformations {
+		found = found || tr.Type == "GEDC_FORM_ADDED"
+	}
+	if !found {
+		t.Errorf("no GEDC_FORM_ADDED transformation in %+v", report.Transformations)
+	}
 }

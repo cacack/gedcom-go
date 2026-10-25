@@ -1405,6 +1405,8 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | Date calendars | Both | Maps calendar escapes (`@#DJULIAN@`) to 7.0 keywords (`JULIAN`) and back, per date in ranges and periods; non-standard calendars are left unchanged and reported as Preserved |
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |
 | FamilySearch ARK EXID → `_FSFTID` | Downgrade from 7.0 | Maps to the vendor tag instead of dropping the ID (when `MapEXIDToVendorTags`) |
+| Header grammar order | Both | Level-1 `HEAD` structures, including any the conversion adds (`GEDC`, `CHAR`), are placed in the target version's grammar order (`GEDC` first for 7.0, after `COPR` for 5.x); structures the target grammar does not define go last, in source order |
+| `GEDC.FORM` | To 5.5/5.5.1 | `2 FORM LINEAGE-LINKED` added under `GEDC` when missing (`GEDC_FORM_ADDED`), as both versions require; removed on the way to 7.0 (`GEDC_FORM_REMOVED`) |
 
 ### API
 
@@ -1436,6 +1438,7 @@ See [docs/guides/converter.md](docs/guides/converter.md) for detailed documentat
 - Write valid GEDCOM files
 - Configurable line endings (LF, CRLF)
 - GEDCOM 5.5, 5.5.1, 7.0 output
+- Header written from the source's `Header.Tags` in source order, so a same-version re-encode is byte-identical; a `GEDC` the encoder has to add for `TargetVersion` is placed where the target grammar puts it, and a 5.5/5.5.1 `GEDC` it writes (added, or from a hand-built header) carries `FORM LINEAGE-LINKED`
 - UTF-8 output
 
 ### Streaming Encoder

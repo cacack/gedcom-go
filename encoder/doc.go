@@ -82,7 +82,10 @@
 //   - CHAR always declares UTF-8, because Encode always writes UTF-8 and
 //     converts nothing on the way out. A header echoing a source charset it no
 //     longer contains cannot be re-decoded.
-//   - GEDC.VERS follows TargetVersion when that option is set.
+//   - GEDC.VERS follows TargetVersion when that option is set. A header with
+//     no GEDC gets one, placed where the target version's grammar puts it
+//     rather than at the end; for 5.5 and 5.5.1 it carries FORM
+//     LINEAGE-LINKED, as does the GEDC of a hand-built 5.x header.
 //
 // Version conversion belongs to the converter package, which updates the raw
 // header tags alongside the typed fields for exactly this reason.
