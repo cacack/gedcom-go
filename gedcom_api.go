@@ -209,8 +209,8 @@ func ValidateWithOptions(doc *Document, opts *ValidateOptions) []error {
 }
 
 // ValidateAll returns every validation finding as Issues with severity levels:
-// header, date logic, cross-reference, record structure, XRef length, note
-// pointer, duplicate and encoding checks. [Validate] returns the same result
+// header, date logic, cross-reference, record structure, nil element, XRef
+// length, note pointer, duplicate and encoding checks. [Validate] returns the same result
 // as []error.
 //
 // Issues are categorized by severity: Error, Warning, and Info.

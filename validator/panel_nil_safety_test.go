@@ -9,7 +9,8 @@ import (
 // Guards for nil elements in an entity's slice fields. These readers are not a
 // range over Document.Records or Record.Tags -- one reads Names positionally,
 // two walk an event slice from a helper -- which is why nil_safety_test.go's
-// record-and-tag fixtures do not reach them.
+// record-and-tag fixtures do not reach them. NIL_ELEMENT, the one rule that
+// reports these nils, is skipped so the comparisons cover the rest.
 
 func panelInd(xref string, names []*gedcom.PersonalName, events []*gedcom.Event) *gedcom.Record {
 	return &gedcom.Record{
@@ -43,7 +44,7 @@ func aName() []*gedcom.PersonalName {
 // A nil element ahead of the real name must not be taken for the primary name.
 // Duplicate detection needs two individuals before it runs at all.
 func TestValidateAll_NilPersonalNameElement(t *testing.T) {
-	got := New().ValidateAll(panelDoc(
+	got := NewWithConfig(skipNilElements()).ValidateAll(panelDoc(
 		panelInd("@I1@", []*gedcom.PersonalName{nil, {Full: "Ada /Lovelace/"}}, nil),
 		panelInd("@I2@", aName(), nil),
 	))
@@ -107,7 +108,7 @@ func TestValidateAll_NilEventInFamilyEvents(t *testing.T) {
 	}
 
 	marriage := &gedcom.Event{Type: gedcom.EventMarriage, ParsedDate: &gedcom.Date{Year: 1890}}
-	got := New().ValidateAll(build([]*gedcom.Event{nil, marriage}))
+	got := NewWithConfig(skipNilElements()).ValidateAll(build([]*gedcom.Event{nil, marriage}))
 	want := New().ValidateAll(build([]*gedcom.Event{marriage}))
 	if len(want) == 0 {
 		t.Fatal("nil-free document reported no issues; the comparison would pass vacuously")
@@ -154,14 +155,14 @@ func TestValidate_NilTagOnFamilyRecord(t *testing.T) {
 	}
 	husband := &gedcom.Tag{Level: 1, Tag: "HUSB", Value: "@I1@"}
 
-	withNil := New().Validate(build([]*gedcom.Tag{nil, husband, nil}))
+	withNil := NewWithConfig(skipNilElements()).Validate(build([]*gedcom.Tag{nil, husband, nil}))
 	clean := New().Validate(build([]*gedcom.Tag{husband}))
 	if len(withNil) != len(clean) {
 		t.Errorf("Validate errors = %d, want %d (must match the nil-free document)", len(withNil), len(clean))
 	}
 
 	// A family whose only tags are nil has no members, exactly like an empty one.
-	onlyNils := New().Validate(build([]*gedcom.Tag{nil, nil}))
+	onlyNils := NewWithConfig(skipNilElements()).Validate(build([]*gedcom.Tag{nil, nil}))
 	empty := New().Validate(build(nil))
 	if len(onlyNils) != len(empty) {
 		t.Errorf("all-nil family errors = %d, want %d", len(onlyNils), len(empty))

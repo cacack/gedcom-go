@@ -129,7 +129,8 @@
 //     document to write at all.
 //
 // The skip is silent, so a clean encode is not proof that a document is
-// nil-free; callers that need to know should check before encoding. The
+// nil-free; callers that need to know should validate before encoding, which
+// reports each nil as validator.CodeNilElement. The
 // library-wide policy, and why a nil is skipped rather than reported, is in
 // docs/decisions/0007-error-transparency.md.
 package encoder

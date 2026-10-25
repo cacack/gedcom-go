@@ -9,8 +9,15 @@ import (
 
 // A document assembled in memory can hold a nil *Record, a nil *Tag, a typed-nil
 // Record.Entity or a nil Header -- shapes decoding never produces. The validator
-// must skip them silently rather than panic (ADR 0007). Reporting them is issue
-// #457's job, so a skipped nil must leave the results unchanged.
+// must not panic on them (ADR 0007). Only the NIL_ELEMENT rule reports them
+// (nil_elements_test.go); every other rule skips them, so with that rule
+// skipped a nil must leave the results unchanged.
+
+// skipNilElements configures a Validator that drops CodeNilElement, leaving
+// the results of every rule that is meant to skip nils.
+func skipNilElements() *ValidatorConfig {
+	return &ValidatorConfig{SkipRules: []string{CodeNilElement}}
+}
 
 // individualTags returns the INDI record's tags. Each call returns fresh
 // pointers so a case can build both documents it compares without sharing.
@@ -109,12 +116,14 @@ func extraRecords(typed bool) func(*gedcom.Document) {
 	}
 }
 
-// strictConfig enables every validator, so a comparison covers all of them.
+// strictConfig enables every validator but NIL_ELEMENT, so a comparison covers
+// all the rules that skip nils.
 func strictConfig() *ValidatorConfig {
 	return &ValidatorConfig{
 		Strictness:         StrictnessStrict,
 		TagRegistry:        DefaultVendorRegistry(),
 		ValidateCustomTags: true,
+		SkipRules:          []string{CodeNilElement},
 	}
 }
 
@@ -123,11 +132,11 @@ func strictConfig() *ValidatorConfig {
 func assertSameValidation(t *testing.T, withNils, clean *gedcom.Document) {
 	t.Helper()
 
-	wantErrs := New().Validate(clean)
+	wantErrs := NewWithConfig(skipNilElements()).Validate(clean)
 	if len(wantErrs) == 0 {
 		t.Fatal("nil-free document reported no errors; the comparison would pass vacuously")
 	}
-	if gotErrs := New().Validate(withNils); !reflect.DeepEqual(gotErrs, wantErrs) {
+	if gotErrs := NewWithConfig(skipNilElements()).Validate(withNils); !reflect.DeepEqual(gotErrs, wantErrs) {
 		t.Errorf("Validate() with nils = %v, want %v", gotErrs, wantErrs)
 	}
 
