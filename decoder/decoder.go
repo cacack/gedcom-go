@@ -383,11 +383,19 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 		// in headerSubstructures, or it is reported as UNKNOWN_TAG.
 		switch line.Tag {
 		case "CHAR":
+			// Level 1 only: HEAD.CHAR is the one charset declaration. It is
+			// the level charset detection reads and the level the encoder
+			// rewrites to UTF-8, so a CHAR nested deeper is neither honoured
+			// nor typed here; it stays in Header.Tags and is written back
+			// verbatim. See #464.
+			//
 			// tagToken, not line.Value: the encoding name is a token compared
 			// by exact string in validator/encoding.go, so a producer's
 			// "1 CHAR  UTF-8" would otherwise be reported invalid for a file
 			// charset detection reads perfectly well. See #426.
-			doc.Header.Encoding = gedcom.Encoding(tagToken(line.Value))
+			if line.Level == 1 {
+				doc.Header.Encoding = gedcom.Encoding(tagToken(line.Value))
+			}
 		case "DATE":
 			// Level 1 only: HEAD.SOUR.DATA.DATE is the source data's
 			// publication date, not the file's transmission date.
