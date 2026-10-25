@@ -11,6 +11,11 @@ import (
 
 // CollisionStrategy chooses how to handle XRef collisions between
 // doc1 and doc2 during Combine.
+//
+// PrefixDoc2 and RenumberDoc2 never rename a doc2 record whose XRef is not
+// pointer-shaped (Document.IsPointerXRef is false, such as a recovered
+// "@I1"); see RemapXRefs. If doc1 holds the same XRef, Combine returns a
+// collision error under every strategy.
 type CollisionStrategy int
 
 const (

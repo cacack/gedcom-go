@@ -1,7 +1,6 @@
 package merge_test
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -55,22 +54,32 @@ func TestRemapXRefs_SpacedXRef551(t *testing.T) {
 	}
 }
 
-// TestRemapXRefs_SpacedXRef70 pins that GEDCOM 7.0 still rejects a spaced
-// identifier as malformed.
+// TestRemapXRefs_SpacedXRef70 pins that GEDCOM 7.0 does not treat a spaced
+// identifier as a pointer: the record is skipped and keeps its XRef, while
+// the valid record beside it is still remapped (#397).
 func TestRemapXRefs_SpacedXRef70(t *testing.T) {
 	result, err := decoder.DecodeWithDiagnostics(strings.NewReader(spacedXRefDoc("7.0")), nil)
 	if err != nil {
 		t.Fatalf("DecodeWithDiagnostics: %v", err)
 	}
-	_, _, err = merge.RemapXRefs(result.Document, prefixA)
-	var re *merge.RemapError
-	if !errors.As(err, &re) || re.Old != "@N 1@" {
-		t.Errorf("RemapXRefs error = %v, want *RemapError for @N 1@", err)
+	out, mapping, err := merge.RemapXRefs(result.Document, prefixA)
+	if err != nil {
+		t.Fatalf("RemapXRefs: %v", err)
+	}
+	if _, ok := mapping["@N 1@"]; ok {
+		t.Errorf("mapping has entry for non-pointer @N 1@: %q", mapping)
+	}
+	if mapping["@I1@"] != "@A_I1@" {
+		t.Errorf("mapping[@I1@] = %q, want @A_I1@", mapping["@I1@"])
+	}
+	if out.GetNote("@N 1@") == nil {
+		t.Error("note @N 1@ missing or renamed")
 	}
 }
 
 // TestRemapXRefs_SpacedXRefUndeclared pins that a document built in code,
-// which declares no version, keeps the space-free grammar.
+// which declares no version, keeps the space-free grammar: the spaced
+// record is skipped rather than remapped (#397).
 func TestRemapXRefs_SpacedXRefUndeclared(t *testing.T) {
 	rec := &gedcom.Record{XRef: "@N 1@", Type: gedcom.RecordTypeNote, Entity: &gedcom.Note{XRef: "@N 1@"}}
 	doc := &gedcom.Document{
@@ -78,8 +87,15 @@ func TestRemapXRefs_SpacedXRefUndeclared(t *testing.T) {
 		Records: []*gedcom.Record{rec},
 		XRefMap: map[string]*gedcom.Record{rec.XRef: rec},
 	}
-	if _, _, err := merge.RemapXRefs(doc, prefixA); !errors.Is(err, merge.ErrInvalidRemap) {
-		t.Errorf("RemapXRefs error = %v, want ErrInvalidRemap", err)
+	out, mapping, err := merge.RemapXRefs(doc, prefixA)
+	if err != nil {
+		t.Fatalf("RemapXRefs: %v", err)
+	}
+	if len(mapping) != 0 {
+		t.Errorf("mapping = %q, want empty", mapping)
+	}
+	if out.Records[0].XRef != "@N 1@" {
+		t.Errorf("XRef = %q, want @N 1@", out.Records[0].XRef)
 	}
 }
 

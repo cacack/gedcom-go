@@ -436,7 +436,7 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 
 | Function | Description |
 |----------|-------------|
-| `merge.RemapXRefs(doc, transform)` | Pure XRef rewrite preserving referential integrity; original document unchanged |
+| `merge.RemapXRefs(doc, transform)` | Pure XRef rewrite preserving referential integrity; original document unchanged. Records whose XRef is not pointer-shaped (e.g. recovered from a malformed line) are left as-is |
 | `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `RenumberDoc2`) |
 
 `Combine` returns a `CombineReport` describing the XRefs that were
