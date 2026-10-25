@@ -353,25 +353,38 @@ func TestCloneCompleteness(t *testing.T) {
 	}
 }
 
-// TestAliasedFields pins the identity check itself: a shared backing array is
-// reported, while nil and empty slices -- which may legitimately share the
-// zero-length address -- are not.
+// TestAliasedFields pins the identity check itself: a shared backing array, map
+// or pointer is reported at its path, including one nested inside a slice
+// element or held in an interface, while nil and empty slices and maps -- which
+// may legitimately share the zero-length address -- are not.
 func TestAliasedFields(t *testing.T) {
 	shared := []string{"@N1@"}
+	sharedMap := map[string]string{"_X": "http://example.com/x"}
+	sharedDate := &ChangeDate{}
+	sharedInd := &Individual{}
 	tests := []struct {
 		name string
-		a, b *Individual
+		a, b any
 		want []string
 	}{
 		{"nil slices", &Individual{}, &Individual{}, nil},
 		{"empty slices", &Individual{NoteXRefs: []string{}}, &Individual{NoteXRefs: make([]string, 0)}, nil},
 		{"distinct slices", &Individual{NoteXRefs: []string{"@N1@"}}, &Individual{NoteXRefs: []string{"@N1@"}}, nil},
 		{"shared slice", &Individual{NoteXRefs: shared}, &Individual{NoteXRefs: shared}, []string{"Individual.NoteXRefs"}},
+		{"empty maps", &SchemaDefinition{TagMappings: map[string]string{}}, &SchemaDefinition{TagMappings: map[string]string{}}, nil},
+		{"distinct maps", &SchemaDefinition{TagMappings: map[string]string{"_X": "x"}}, &SchemaDefinition{TagMappings: map[string]string{"_X": "x"}}, nil},
+		{"shared map", &SchemaDefinition{TagMappings: sharedMap}, &SchemaDefinition{TagMappings: sharedMap}, []string{"SchemaDefinition.TagMappings"}},
+		{"nil pointers", &Individual{}, &Individual{ChangeDate: &ChangeDate{}}, nil},
+		{"distinct pointers", &Individual{ChangeDate: &ChangeDate{}}, &Individual{ChangeDate: &ChangeDate{}}, nil},
+		{"shared pointer", &Individual{ChangeDate: sharedDate}, &Individual{ChangeDate: sharedDate}, []string{"Individual.ChangeDate"}},
+		{"shared slice nested in element", &Individual{Events: []*Event{{Phone: shared}}}, &Individual{Events: []*Event{{Phone: shared}}}, []string{"Individual.Events.Phone"}},
+		{"shared pointer in interface", &Record{Entity: sharedInd}, &Record{Entity: sharedInd}, []string{"Record.Entity"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var got []string
-			aliasedFields(reflect.ValueOf(tt.a), reflect.ValueOf(tt.b), "Individual", &got, 0)
+			root := reflect.TypeOf(tt.a).Elem().Name()
+			aliasedFields(reflect.ValueOf(tt.a), reflect.ValueOf(tt.b), root, &got, 0)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("aliasedFields = %v, want %v", got, tt.want)
 			}
