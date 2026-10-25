@@ -80,6 +80,11 @@ type StreamEncoder struct {
 	options *EncodeOptions
 	state   encodeState
 	err     error // sticky error for early exit
+
+	// sharedNotes is the sharedNotePointers set. Only EncodeStreamingWithOptions
+	// has the whole document to build it from; a bare StreamEncoder leaves it
+	// nil, so every note pointer it writes stays NOTE.
+	sharedNotes *sharedNoteSet
 }
 
 // Errors returned by StreamEncoder for invalid state transitions.
@@ -169,7 +174,7 @@ func (e *StreamEncoder) WriteRecord(r *gedcom.Record) error {
 		return nil
 	}
 
-	if err := writeRecord(e.writer, r, e.options); err != nil {
+	if err := writeRecord(e.writer, r, e.options, e.sharedNotes); err != nil {
 		e.err = err
 		return err
 	}
@@ -280,6 +285,7 @@ func EncodeStreamingWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeO
 	}
 
 	enc := NewStreamEncoderWithOptions(w, opts)
+	enc.sharedNotes = sharedNotePointers(doc, enc.options)
 
 	if err := enc.WriteHeader(doc.Header); err != nil {
 		return fmt.Errorf("write header: %w", err)

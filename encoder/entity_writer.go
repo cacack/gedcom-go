@@ -64,7 +64,8 @@ func textToTags(value string, level int, tagName string, opts *EncodeOptions) []
 
 // recordNotesToEncode returns the NOTE values to emit for a structure, in the
 // order they are written: the shared-note XRef pointers first (emitted as
-// "NOTE @Nn@"), then the inline note text. Every writer that emits notes goes
+// "NOTE @Nn@"; writeRecord retags a 7.0 pointer to an SNOTE record as SNOTE,
+// see retagSharedNotePointers), then the inline note text. Every writer that emits notes goes
 // through here, so notes are resolved in exactly one place -- the invariant
 // TestDecodedNotesEncodeOnce asserts.
 func recordNotesToEncode(noteXRefs, inlineNotes []string) []string {
@@ -584,9 +585,8 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long).
 	// NoteXRefs and SharedNoteXRefs partition this record's note pointers
-	// (#499), so they concatenate without deduping. SNOTE pointers are still
-	// written as NOTE, which is what the writer emitted before the partition --
-	// teaching it the 7.0 SNOTE form is issue #471.
+	// (#499), so they concatenate without deduping. Both are written as NOTE
+	// here; writeRecord retags a 7.0 pointer to an SNOTE record as SNOTE (#471).
 	noteXRefs := make([]string, 0, len(media.NoteXRefs)+len(media.SharedNoteXRefs))
 	noteXRefs = append(noteXRefs, media.NoteXRefs...)
 	noteXRefs = append(noteXRefs, media.SharedNoteXRefs...)
