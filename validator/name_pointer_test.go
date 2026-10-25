@@ -29,7 +29,9 @@ func TestBrokenXRefUnderPersonalName(t *testing.T) {
 	for _, issue := range broken {
 		got[issue.RelatedXRef] = issue.LineNumber
 	}
-	if got["@S9@"] != 6 || got["@N9@"] != 7 || len(got) != 2 {
+	// len(broken) as well as len(got): the map would hide a pointer reported
+	// twice, once from the raw tags and once from the typed fields.
+	if got["@S9@"] != 6 || got["@N9@"] != 7 || len(got) != 2 || len(broken) != 2 {
 		t.Errorf("BROKEN_XREF = %v, want @S9@ on line 6 and @N9@ on line 7", broken)
 	}
 }
