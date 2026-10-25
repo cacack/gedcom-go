@@ -249,6 +249,22 @@ func (v *Validator) Validate(doc *gedcom.Document) []error {
 	return errs
 }
 
+// recordChecks runs the record-level spec-conformance checks shared by
+// [Validator.ValidateAll] and [QualityAnalyzer.Analyze], so a check added here
+// reaches both: raw pointers, record structure, nil elements (which only a
+// hand-built document holds), date validity (dates that do not exist, e.g.
+// 31 FEB), XRef length and note pointers.
+func recordChecks(doc *gedcom.Document, xrefs *XRefValidator, notes *NoteValidator) []Issue {
+	var issues []Issue
+	issues = append(issues, validateBrokenXRefs(doc)...)
+	issues = append(issues, validateRecordStructure(doc)...)
+	issues = append(issues, validateNilElements(doc)...)
+	issues = append(issues, validateDates(doc)...)
+	issues = append(issues, xrefs.ValidateXRefs(doc)...)
+	issues = append(issues, notes.ValidateNotePointers(doc)...)
+	return issues
+}
+
 // ValidateAll runs every document-wide check and returns the findings as
 // Issues with severity levels. Issues are filtered by the configured
 // Strictness and SkipRules and then capped at MaxErrors.
@@ -269,21 +285,11 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	// Run reference validation
 	allIssues = append(allIssues, v.getReferenceValidator().Validate(doc)...)
 
-	// Run raw-pointer and record-structure validation
-	allIssues = append(allIssues, validateBrokenXRefs(doc)...)
-	allIssues = append(allIssues, validateRecordStructure(doc)...)
-
-	// Run nil-element validation (nils only a hand-built document holds)
-	allIssues = append(allIssues, validateNilElements(doc)...)
-
-	// Run date validity validation (dates that do not exist, e.g. 31 FEB)
-	allIssues = append(allIssues, validateDates(doc)...)
-
-	// Run XRef length validation
-	allIssues = append(allIssues, v.getXRefValidator().ValidateXRefs(doc)...)
-
-	// Run note pointer validation
-	allIssues = append(allIssues, v.getNoteValidator().ValidateNotePointers(doc)...)
+	// Run the record-level conformance checks. QualityAnalyzer.Analyze runs
+	// the same helper; a new check belongs there rather than here, and the
+	// header and encoding calls in this function have their counterparts in
+	// QualityAnalyzer.runConformanceChecks.
+	allIssues = append(allIssues, recordChecks(doc, v.getXRefValidator(), v.getNoteValidator())...)
 
 	// Run duplicate detection and convert to issues, unless it was skipped.
 	// LimitIssues report any surname group that exceeded MaxGroupSize, so the
@@ -328,7 +334,7 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 // This checks for chronological impossibilities like death before birth,
 // children born before parents, and unreasonable ages. Dates that do not
 // exist on the calendar, such as 31 FEB 1900 (CodeInvalidDate), are reported
-// only by [Validator.ValidateAll].
+// only by [Validator.ValidateAll] and [Validator.QualityReport].
 func (v *Validator) ValidateDateLogic(doc *gedcom.Document) []Issue {
 	if doc == nil {
 		return nil
@@ -424,12 +430,12 @@ func (v *Validator) ValidateNotePointers(doc *gedcom.Document) []Issue {
 // QualityReport generates a data quality report for the document, combining
 // validation issues with data completeness statistics.
 //
-// The report covers date logic, cross-references, duplicates, custom tags and
-// completeness. It is not the full issue set: the header, broken-pointer,
-// record-structure, date-validity, XRef-length, encoding and note-pointer
-// checks run only under [Validator.ValidateAll], so a caller reading QualityReport's counts
-// alone can see a clean report for a document ValidateAll flags. Use
-// ValidateAll when completeness of the issue set matters.
+// The report runs the same checks as [Validator.ValidateAll] -- the
+// spec-conformance ones land in [QualityReport].ConformanceIssues -- so its
+// counts are not clean for a document ValidateAll flags. It differs from
+// ValidateAll in filtering, not coverage: it reports every severity and applies
+// none of Strictness, SkipRules, MaxErrors, SkipDuplicateDetection or
+// SkipEncodingValidation.
 func (v *Validator) QualityReport(doc *gedcom.Document) *QualityReport {
 	if doc == nil {
 		return &QualityReport{
@@ -440,6 +446,7 @@ func (v *Validator) QualityReport(doc *gedcom.Document) *QualityReport {
 			ReferenceIssues:    []Issue{},
 			DuplicateIssues:    []Issue{},
 			CompletenessIssues: []Issue{},
+			ConformanceIssues:  []Issue{},
 		}
 	}
 	return v.getQualityAnalyzer().Analyze(doc)

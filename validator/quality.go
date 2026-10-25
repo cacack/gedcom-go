@@ -52,6 +52,12 @@ type QualityReport struct {
 	CompletenessIssues []Issue `json:"completeness_issues"`
 	CustomTagIssues    []Issue `json:"custom_tag_issues"`
 
+	// ConformanceIssues holds the spec-conformance checks that
+	// [Validator.ValidateAll] also runs and the categories above do not
+	// cover: the header, encoding and record-level checks. With them the
+	// report's counts cover the same issue set as ValidateAll.
+	ConformanceIssues []Issue `json:"conformance_issues"`
+
 	// Summary counts
 	TotalIssues  int `json:"total_issues"`
 	ErrorCount   int `json:"error_count"`
@@ -196,7 +202,9 @@ func NewQualityAnalyzer(opts ...QualityOption) *QualityAnalyzer {
 	return a
 }
 
-// Analyze runs all validators and calculates completeness metrics for the document.
+// Analyze runs every check [Validator.ValidateAll] runs, plus completeness
+// metrics, and aggregates the issues by severity. Unlike ValidateAll it applies
+// no Strictness, SkipRules or MaxErrors filtering.
 func (a *QualityAnalyzer) Analyze(doc *gedcom.Document) *QualityReport {
 	report := &QualityReport{
 		Errors:             []Issue{},
@@ -207,6 +215,7 @@ func (a *QualityAnalyzer) Analyze(doc *gedcom.Document) *QualityReport {
 		DuplicateIssues:    []Issue{},
 		CompletenessIssues: []Issue{},
 		CustomTagIssues:    []Issue{},
+		ConformanceIssues:  []Issue{},
 	}
 
 	if doc == nil {
@@ -227,6 +236,7 @@ func (a *QualityAnalyzer) Analyze(doc *gedcom.Document) *QualityReport {
 	a.runReferenceValidator(doc, report)
 	a.runDuplicateDetector(doc, report)
 	a.runTagValidator(doc, report)
+	a.runConformanceChecks(doc, report)
 
 	// Calculate completeness metrics and generate completeness issues
 	a.calculateCompleteness(individuals, report)
@@ -268,6 +278,19 @@ func (a *QualityAnalyzer) runTagValidator(doc *gedcom.Document, report *QualityR
 	}
 	issues := a.tagValidator.Validate(doc)
 	report.CustomTagIssues = issues
+}
+
+// runConformanceChecks runs the spec-conformance checks that ValidateAll runs
+// and the record-quality validators above do not, so the report's counts are
+// not clean for a document ValidateAll flags. The record-level checks come
+// from recordChecks, which ValidateAll also calls; the header and encoding
+// checks mirror ValidateAll's own calls.
+func (a *QualityAnalyzer) runConformanceChecks(doc *gedcom.Document, report *QualityReport) {
+	var issues []Issue
+	issues = append(issues, NewHeaderValidator().ValidateHeader(doc)...)
+	issues = append(issues, recordChecks(doc, NewXRefValidator(), NewNoteValidator())...)
+	issues = append(issues, NewEncodingValidator().Validate(doc)...)
+	report.ConformanceIssues = append(report.ConformanceIssues, issues...)
 }
 
 // calculateCompleteness calculates data completeness metrics and generates completeness issues.
@@ -351,6 +374,7 @@ func (a *QualityAnalyzer) aggregateIssues(report *QualityReport) {
 	allIssues = append(allIssues, report.DuplicateIssues...)
 	allIssues = append(allIssues, report.CompletenessIssues...)
 	allIssues = append(allIssues, report.CustomTagIssues...)
+	allIssues = append(allIssues, report.ConformanceIssues...)
 
 	// Sort by severity (Errors first, then Warnings, then Info)
 	sort.Slice(allIssues, func(i, j int) bool {
