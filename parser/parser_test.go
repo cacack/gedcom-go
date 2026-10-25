@@ -305,42 +305,85 @@ func TestParseGEDCOM55(t *testing.T) {
 	}
 }
 
+// assertParsedLines fails unless Parse(input) succeeds and yields exactly want,
+// field by field.
+func assertParsedLines(t *testing.T, input string, want []Line) {
+	t.Helper()
+	lines, err := NewParser().Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	if len(lines) != len(want) {
+		t.Fatalf("Parse() returned %d lines, want %d", len(lines), len(want))
+	}
+	for i, got := range lines {
+		if *got != want[i] {
+			t.Errorf("line %d = %+v, want %+v", i+1, *got, want[i])
+		}
+	}
+}
+
+// TestParseGEDCOM551 pins the 5.5.1-only constructs the parser must pass
+// through for the decoder: CONC continuation (removed in 7.0), with the
+// leading space of its value preserved, and CONT.
 func TestParseGEDCOM551(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
 2 VERS 5.5.1
+1 CHAR ANSEL
 0 @I1@ INDI
 1 NAME Jane /Doe/
+1 NOTE First half
+2 CONC  second half
+2 CONT next line
+1 FAMC @F1@
 0 TRLR`
 
-	p := NewParser()
-	lines, err := p.Parse(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
-	}
-
-	if len(lines) == 0 {
-		t.Fatal("Parse() returned no lines")
-	}
+	assertParsedLines(t, input, []Line{
+		{Level: 0, Tag: "HEAD", LineNumber: 1},
+		{Level: 1, Tag: "GEDC", LineNumber: 2},
+		{Level: 2, Tag: "VERS", Value: "5.5.1", LineNumber: 3},
+		{Level: 1, Tag: "CHAR", Value: "ANSEL", LineNumber: 4},
+		{Level: 0, XRef: "@I1@", Tag: "INDI", LineNumber: 5},
+		{Level: 1, Tag: "NAME", Value: "Jane /Doe/", LineNumber: 6},
+		{Level: 1, Tag: "NOTE", Value: "First half", LineNumber: 7},
+		{Level: 2, Tag: "CONC", Value: " second half", LineNumber: 8},
+		{Level: 2, Tag: "CONT", Value: "next line", LineNumber: 9},
+		{Level: 1, Tag: "FAMC", Value: "@F1@", LineNumber: 10},
+		{Level: 0, Tag: "TRLR", LineNumber: 11},
+	})
 }
 
+// TestParseGEDCOM70 pins the 7.0-only constructs the parser must pass through
+// verbatim for the decoder to interpret: SCHMA/TAG extension declarations, a
+// documented extension tag, the @VOID@ null pointer, and an "@@" escaped
+// value (the parser does not unescape it).
 func TestParseGEDCOM70(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
 2 VERS 7.0
+1 SCHMA
+2 TAG _SKYPEID http://xmlns.com/foaf/0.1/skypeID
 0 @I1@ INDI
-1 NAME John Smith
+1 NAME John /Smith/
+1 FAMC @VOID@
+1 NOTE @@me on social
+1 _SKYPEID john.smith
 0 TRLR`
 
-	p := NewParser()
-	lines, err := p.Parse(strings.NewReader(input))
-	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
-	}
-
-	if len(lines) == 0 {
-		t.Fatal("Parse() returned no lines")
-	}
+	assertParsedLines(t, input, []Line{
+		{Level: 0, Tag: "HEAD", LineNumber: 1},
+		{Level: 1, Tag: "GEDC", LineNumber: 2},
+		{Level: 2, Tag: "VERS", Value: "7.0", LineNumber: 3},
+		{Level: 1, Tag: "SCHMA", LineNumber: 4},
+		{Level: 2, Tag: "TAG", Value: "_SKYPEID http://xmlns.com/foaf/0.1/skypeID", LineNumber: 5},
+		{Level: 0, XRef: "@I1@", Tag: "INDI", LineNumber: 6},
+		{Level: 1, Tag: "NAME", Value: "John /Smith/", LineNumber: 7},
+		{Level: 1, Tag: "FAMC", Value: "@VOID@", LineNumber: 8},
+		{Level: 1, Tag: "NOTE", Value: "@@me on social", LineNumber: 9},
+		{Level: 1, Tag: "_SKYPEID", Value: "john.smith", LineNumber: 10},
+		{Level: 0, Tag: "TRLR", LineNumber: 11},
+	})
 }
 
 // Test line number tracking

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/parser"
 )
 
 // T031: Write integration tests for full document parsing
@@ -203,20 +204,49 @@ func TestDecodeWithContext(t *testing.T) {
 }
 
 // Test strict mode
+// TestDecodeStrictMode pins StrictMode's contract on malformed input: the same
+// file is rejected with a *parser.ParseError naming the bad line when
+// StrictMode is true, and decodes (keeping the valid records) when it is false.
+// Inverting or ignoring the option fails one of the two subtests.
 func TestDecodeStrictMode(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
 2 VERS 5.5
+0 @I1@ INDI
+1 NAME John /Doe/
+X BIRT
 0 TRLR`
 
-	opts := &DecodeOptions{
-		StrictMode: true,
-	}
+	t.Run("strict rejects the malformed line", func(t *testing.T) {
+		doc, err := DecodeWithOptions(strings.NewReader(input), &DecodeOptions{StrictMode: true})
+		if err == nil {
+			t.Fatal("DecodeWithOptions(StrictMode: true) error = nil, want a parse error")
+		}
+		if doc != nil {
+			t.Errorf("DecodeWithOptions(StrictMode: true) doc = %+v, want nil on error", doc)
+		}
+		var pe *parser.ParseError
+		if !errors.As(err, &pe) {
+			t.Fatalf("error = %T (%v), want *parser.ParseError", err, err)
+		}
+		if pe.Line != 6 {
+			t.Errorf("ParseError.Line = %d, want 6 (the \"X BIRT\" line)", pe.Line)
+		}
+	})
 
-	_, err := DecodeWithOptions(strings.NewReader(input), opts)
-	if err != nil {
-		t.Fatalf("DecodeWithOptions() error = %v", err)
-	}
+	t.Run("lenient decodes past the malformed line", func(t *testing.T) {
+		doc, err := DecodeWithOptions(strings.NewReader(input), &DecodeOptions{StrictMode: false})
+		if err != nil {
+			t.Fatalf("DecodeWithOptions(StrictMode: false) error = %v, want nil", err)
+		}
+		indi := doc.GetIndividual("@I1@")
+		if indi == nil {
+			t.Fatal("individual @I1@ missing from lenient decode")
+		}
+		if len(indi.Names) != 1 || indi.Names[0].Full != "John /Doe/" {
+			t.Errorf("@I1@ Names = %+v, want exactly one NAME \"John /Doe/\"", indi.Names)
+		}
+	})
 }
 
 // Test header with SOUR at different levels
