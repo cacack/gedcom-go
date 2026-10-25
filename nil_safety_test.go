@@ -226,7 +226,8 @@ func TestFacade_Convert(t *testing.T) {
 }
 
 // withoutNilElements drops the NIL_ELEMENT entries from a conversion report's
-// validation issues.
+// validation issues. The converter formats each issue with Issue.String
+// ("[SEV] CODE: msg"), so the code followed by a colon matches only these.
 func withoutNilElements(issues []string) []string {
 	var kept []string
 	for _, issue := range issues {

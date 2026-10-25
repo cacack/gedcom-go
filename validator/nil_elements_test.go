@@ -52,6 +52,14 @@ func TestValidateAll_NilElementShapes(t *testing.T) {
 			want: []string{"Records[1]"},
 		},
 		{
+			name: "records sharing an XRef are named by index",
+			doc: &gedcom.Document{Records: []*gedcom.Record{
+				{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Tags: []*gedcom.Tag{nil}},
+				{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Tags: []*gedcom.Tag{{Tag: "NOTE"}, nil}},
+			}},
+			want: []string{"@I1@ Records[0].Tags[0]", "@I1@ Records[1].Tags[1]"},
+		},
+		{
 			name: "nil tag in a record",
 			doc: &gedcom.Document{Records: []*gedcom.Record{
 				{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Tags: []*gedcom.Tag{{Level: 1, Tag: "NAME"}, nil}},

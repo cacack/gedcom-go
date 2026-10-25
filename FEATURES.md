@@ -1120,7 +1120,7 @@ holding a typed nil pointer. The encoder and every other check skip such a nil
 silently, so `ValidateAll` reports each one. `Details["field"]` is the path to it —
 `Records[7]`, `Tags[3]`, `Entity`, `Entity.Events[2].SourceCitations[1]`,
 `Header.Tags[0]` — relative to the record named by `RecordXRef`, or prefixed with
-`Records[N]` for a record with no XRef. An unset optional field, a nil `Header` and a
+`Records[N]` for a record with no XRef or one whose XRef another record shares. An unset optional field, a nil `Header` and a
 record with no entity mean "absent" and are not reported. A decoded document never
 holds a nil, so this rule only ever fires on hand-built input; skip it with
 `ValidateOptions.SkipRules`.

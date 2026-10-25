@@ -31,14 +31,21 @@ import (
 //   - a nil element in any slice of a record, its entity or the header, at any
 //     depth ("Tags[3]", "Events[2].SourceCitations[1]", "Header.Tags[0]").
 //
-// RecordXRef is the record holding the nil. A record with no XRef is named by
-// its index instead, so the path still locates it ("Records[4].Names[0]").
+// RecordXRef is the record holding the nil. A record with no XRef, or with an
+// XRef another record shares, is also named by its index, so the path still
+// locates it ("Records[4].Names[0]").
 //
 // A nil pointer that is not a slice element -- an unset optional field such as
 // Event.ParsedDate, a nil Header, a Record with no Entity at all -- is not
 // reported: it is how a document says "absent", not a lost element.
 func validateNilElements(doc *gedcom.Document) []Issue {
 	w := &nilWalker{}
+	xrefCount := make(map[string]int, len(doc.Records))
+	for _, record := range doc.Records {
+		if record != nil && record.XRef != "" {
+			xrefCount[record.XRef]++
+		}
+	}
 	if doc.Header != nil {
 		w.walk(reflect.ValueOf(doc.Header).Elem(), "Header")
 	}
@@ -49,8 +56,8 @@ func validateNilElements(doc *gedcom.Document) []Issue {
 			w.report(path)
 			continue
 		}
-		if record.XRef != "" {
-			w.xref = record.XRef
+		w.xref = record.XRef
+		if record.XRef != "" && xrefCount[record.XRef] == 1 {
 			path = ""
 		}
 		w.walk(reflect.ValueOf(record).Elem(), path)
