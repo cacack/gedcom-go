@@ -143,7 +143,9 @@ func spec7Source(t *testing.T) map[string]string {
 //   - a shared literal. Every xsd:string payload used to be "text", so an ADR1
 //     carrying "text" under an ADDR carrying "text" left Address.Line1 unchanged
 //     -- the ADDR line seeds it and ADR1 overwrote it with the same string.
-//     Free-text payloads are therefore unique per structure.
+//     Free-text payloads are therefore unique per structure, and so are names,
+//     lists and file paths: PLAC-FORM and PLAC-TRAN used to repeat PLAC's
+//     "one, two", NAME-TRAN its NAME's name and FILE-TRAN its FILE's path.
 //   - a zero value. QUAY decodes to an int, and its enumeration's first member
 //     is "0", which is what the field holds anyway. Enumerations therefore take
 //     their last member rather than their first.
@@ -183,11 +185,11 @@ func (s *spec7Spec) payloadFor(structure string) string {
 		}
 		return "OTHER"
 	case spec7TermPrefix + "type-List#Text":
-		return "one, two"
+		return "one, " + spec7Term(structure)
 	case spec7TermPrefix + "type-Name":
-		return "John /Doe/"
+		return "John /Doe/ " + spec7Term(structure)
 	case spec7TermPrefix + "type-FilePath":
-		return "media/example.jpg"
+		return "media/" + spec7Term(structure) + ".jpg"
 	case spec7TermPrefix + "type-Date", spec7TermPrefix + "type-Date#exact":
 		return "1 JAN 2000"
 	case spec7TermPrefix + "type-Date#period":

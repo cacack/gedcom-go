@@ -772,11 +772,29 @@ func specProbesAreWellFormed(t *testing.T, graph *specGraph, form *specForm,
 			continue // reported by the coverage test
 		}
 		probe := form.probeFor(path)
+		label := name(pair)
+
+		// Two steps carrying the same payload can make the removed line
+		// redundant without either line being reproduced verbatim: the tags
+		// differ, but a parent that seeds a field with the value its child
+		// would set leaves the typed model unchanged. This is how ADR1 was
+		// wrong (#456 for the general form).
+		seen := map[string]string{}
+		for _, step := range path {
+			payload := form.value(step.structure)
+			if payload == "" {
+				continue
+			}
+			if other, dup := seen[payload]; dup {
+				t.Errorf("%s: %s and %s both carry %q, so the probe may measure nothing",
+					label, other, step.tag, payload)
+			}
+			seen[payload] = step.tag
+		}
 
 		with := strings.Split(strings.TrimSuffix(probe.with, "\n"), "\n")
 		without := strings.Split(strings.TrimSuffix(probe.without, "\n"), "\n")
 
-		label := name(pair)
 		if len(with) != len(without)+1 {
 			t.Errorf("%s: probe has %d lines, control has %d; expected exactly one more",
 				label, len(with), len(without))
