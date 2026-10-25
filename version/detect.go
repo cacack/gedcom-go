@@ -10,8 +10,9 @@ import (
 // DetectVersion detects the GEDCOM version from parsed lines.
 // It first tries to find the version in the header (HEAD -> GEDC -> VERS).
 // If not found, it falls back to tag-based heuristics.
-// Only the real header counts: a `0 @X1@ HEAD` record is ignored, as the
-// decoder does, so its GEDC/VERS never stands in for a silent header.
+// Only the real header counts: a GEDC/VERS beneath a `0 @X1@ HEAD` record is
+// not a declaration, as in the decoder, so it never stands in for a silent
+// header. Its lines still feed the tag heuristics, like any other record's.
 // Returns Version55 as the default if detection fails.
 // A GEDCOM 7 patch version (VERS 7.0.N) is reported as [gedcom.Version70];
 // the exact VERS value stays in the decoded header's raw Tags.
