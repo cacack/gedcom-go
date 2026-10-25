@@ -180,9 +180,9 @@ specification PDFs, which is described in
 |--------|------:|------:|------:|------:|---------|
 | typed | 863 | 86.5% | 1140 | 86.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 70 | 7.0% | 83 | 6.3% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 88 | 8.8% | 106 | 8.1% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 46 | 4.6% | 80 | 6.1% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 28 | 2.8% | 57 | 4.3% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -766,15 +766,15 @@ Measured at `HEAD` in 5.5, 5.5.1.
 | `CHAR` | `HEADER.HEAD.CHAR` | typed | typed | `{1:1}` |
 | `COPR` | `HEADER.HEAD.COPR` | typed | typed | `{0:1}` |
 | `DATE` | `HEADER.HEAD.DATE` | typed | typed | `{0:1}` |
-| `DEST` | `HEADER.HEAD.DEST` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `FILE` | `HEADER.HEAD.FILE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `DEST` | `HEADER.HEAD.DEST` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `FILE` | `HEADER.HEAD.FILE` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `GEDC` | `HEADER.HEAD.GEDC` | typed | typed | `{1:1}` |
 | `LANG` | `HEADER.HEAD.LANG` | typed | typed | `{0:1}` |
-| `NOTE` | `HEADER.HEAD.NOTE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `PLAC` | `HEADER.HEAD.PLAC` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `NOTE` | `HEADER.HEAD.NOTE` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `PLAC` | `HEADER.HEAD.PLAC` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `SOUR` | `HEADER.HEAD.SOUR` | typed | typed | `{1:1}` |
 | `SUBM` | `HEADER.HEAD.SUBM` | typed | typed | `{1:1}` |
-| `SUBN` | `HEADER.HEAD.SUBN` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `SUBN` | `HEADER.HEAD.SUBN` | raw (accepted) | raw (accepted) | `{0:1}` |
 
 ### `HEADER.HEAD.CHAR`
 
@@ -782,7 +782,7 @@ Measured at `HEAD.CHAR` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `VERS` | `HEADER.HEAD.CHAR.VERS` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `VERS` | `HEADER.HEAD.CHAR.VERS` | raw (accepted) | raw (accepted) | `{0:1}` |
 
 ### `HEADER.HEAD.DATE`
 
@@ -790,7 +790,7 @@ Measured at `HEAD.DATE` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `TIME` | `HEADER.HEAD.DATE.TIME` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `TIME` | `HEADER.HEAD.DATE.TIME` | raw (accepted) | raw (accepted) | `{0:1}` |
 
 ### `HEADER.HEAD.GEDC`
 
@@ -798,7 +798,7 @@ Measured at `HEAD.GEDC` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `FORM` | `HEADER.HEAD.GEDC.FORM` | raw (undiagnosed) | raw (undiagnosed) | `{1:1}` |
+| `FORM` | `HEADER.HEAD.GEDC.FORM` | raw (accepted) | raw (accepted) | `{1:1}` |
 | `VERS` | `HEADER.HEAD.GEDC.VERS` | typed | typed | `{1:1}` |
 
 ### `HEADER.HEAD.NOTE`
@@ -807,8 +807,8 @@ Measured at `HEAD.NOTE` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `CONC` | `HEADER.HEAD.NOTE.CONC` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `CONT` | `HEADER.HEAD.NOTE.CONT` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
+| `CONC` | `HEADER.HEAD.NOTE.CONC` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `CONT` | `HEADER.HEAD.NOTE.CONT` | raw (accepted) | raw (accepted) | `{0:M}` |
 
 ### `HEADER.HEAD.PLAC`
 
@@ -816,7 +816,7 @@ Measured at `HEAD.PLAC` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `FORM` | `HEADER.HEAD.PLAC.FORM` | raw (undiagnosed) | raw (undiagnosed) | `{1:1}` |
+| `FORM` | `HEADER.HEAD.PLAC.FORM` | raw (accepted) | raw (accepted) | `{1:1}` |
 
 ### `HEADER.HEAD.SOUR`
 
@@ -824,10 +824,10 @@ Measured at `HEAD.SOUR` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `CORP` | `HEADER.HEAD.SOUR.CORP` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `DATA` | `HEADER.HEAD.SOUR.DATA` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `NAME` | `HEADER.HEAD.SOUR.NAME` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `VERS` | `HEADER.HEAD.SOUR.VERS` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `CORP` | `HEADER.HEAD.SOUR.CORP` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `DATA` | `HEADER.HEAD.SOUR.DATA` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `NAME` | `HEADER.HEAD.SOUR.NAME` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `VERS` | `HEADER.HEAD.SOUR.VERS` | raw (accepted) | raw (accepted) | `{0:1}` |
 
 ### `HEADER.HEAD.SOUR.CORP`
 
@@ -835,11 +835,11 @@ Measured at `HEAD.SOUR.CORP` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (undiagnosed) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (undiagnosed) | `{0:3}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (undiagnosed) | raw (undiagnosed) | `{0:3}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (undiagnosed) | `{0:3}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (accepted) | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (accepted) | `{0:3}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (accepted) | raw (accepted) | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (accepted) | `{0:3}` |
 
 ### `HEADER.HEAD.SOUR.DATA`
 
@@ -848,7 +848,7 @@ Measured at `HEAD.SOUR.DATA` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `COPR` | `HEADER.HEAD.SOUR.DATA.COPR` | typed | typed | `{0:1}` |
-| `DATE` | `HEADER.HEAD.SOUR.DATA.DATE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `DATE` | `HEADER.HEAD.SOUR.DATA.DATE` | raw (accepted) | raw (accepted) | `{0:1}` |
 
 ### `HEADER.HEAD.SOUR.DATA.COPR`
 
@@ -856,8 +856,8 @@ Measured at `HEAD.SOUR.DATA.COPR` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `CONC` | `HEADER.HEAD.SOUR.DATA.COPR.CONC` | — | raw (undiagnosed) | `{0:M}` |
-| `CONT` | `HEADER.HEAD.SOUR.DATA.COPR.CONT` | — | raw (undiagnosed) | `{0:M}` |
+| `CONC` | `HEADER.HEAD.SOUR.DATA.COPR.CONC` | — | raw (accepted) | `{0:M}` |
+| `CONT` | `HEADER.HEAD.SOUR.DATA.COPR.CONT` | — | raw (accepted) | `{0:M}` |
 
 ### `INDIVIDUAL_ATTRIBUTE_STRUCTURE.CAST`
 

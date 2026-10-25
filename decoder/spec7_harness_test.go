@@ -67,8 +67,14 @@ func TestSpec7AnchorStatuses(t *testing.T) {
 		{
 			superstructure: "HEAD",
 			tag:            "DEST",
+			want:           specRawAccepted,
+			because:        "buildHeader knows DEST and has no typed field for it (issue #449)",
+		},
+		{
+			superstructure: "ord-STAT",
+			tag:            "DATE",
 			want:           specRawUndiagnosed,
-			because:        "buildHeader is given no diagnostic collector, so it reports nothing",
+			because:        "parseLDSOrdinance reads STAT's value and never its subordinates",
 		},
 	}
 

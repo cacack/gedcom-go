@@ -106,10 +106,9 @@ const (
 	// it.
 	//
 	// This does not mean the context is unparsed, and the harness cannot tell
-	// the two causes apart. buildHeader reads every header line and types four
-	// of them, yet buildDocument hands it no diagnosticCollector, so the whole
-	// header is undiagnosed (issue #449). A context no parser visits looks
-	// identical from out here (issue #448).
+	// the two causes apart: a context whose parser is handed no
+	// diagnosticCollector -- as the header's was until issue #449 -- looks
+	// identical from out here to a context no parser visits (issue #448).
 	specRawUndiagnosed specStatus = "raw (undiagnosed)"
 
 	// specPartial means the structure reaches the typed model and is still

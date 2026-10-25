@@ -84,9 +84,8 @@ that one line removed. It decodes both and reads three signals:
   Note what `+"`raw (undiagnosed)`"+` does *not* say. It does not mean the context is
   unparsed. Silence has two causes and this cannot tell them apart: a context no
   parser visits, and a context whose parser was never handed a diagnostic
-  collector. The header is the second kind — `+"`buildHeader`"+` reads every header line
-  and types four of them, but takes no collector, so all of `+"`HEAD`"+` is
-  `+"`raw (undiagnosed)`"+`.
+  collector. The header was the second kind until `+"`buildHeader`"+` was given one
+  ([#449](https://github.com/cacack/gedcom-go/issues/449)).
 
 Two things worth stating plainly. A `+"`raw`"+` status means there is no typed field
 for the structure, not that the structure is dropped: every line is kept in

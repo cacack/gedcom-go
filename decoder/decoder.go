@@ -307,7 +307,7 @@ func buildDocument(lines []*parser.Line, ver gedcom.Version, collector *diagnost
 	}
 
 	// Build header
-	buildHeader(doc, lines, ver)
+	buildHeader(doc, lines, ver, collector)
 
 	// Build records and XRefMap
 	buildRecords(doc, lines, collector)
@@ -315,10 +315,11 @@ func buildDocument(lines []*parser.Line, ver gedcom.Version, collector *diagnost
 	return doc
 }
 
-// buildHeader extracts header information from lines.
+// buildHeader extracts header information from lines, and reports unknown
+// header tags to collector (see reportUnknownHeaderTags).
 //
 //nolint:gocyclo // Header parsing requires handling many tag types
-func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version) {
+func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version, collector *diagnosticCollector) {
 	inHead := false
 	inSour := false
 
@@ -378,7 +379,8 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 			inSour = false
 		}
 
-		// Extract header fields
+		// Extract header fields. A header tag handled here must also be listed
+		// in headerSubstructures, or it is reported as UNKNOWN_TAG.
 		switch line.Tag {
 		case "CHAR":
 			// tagToken, not line.Value: the encoding name is a token compared
@@ -416,6 +418,66 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version)
 
 	// Detect vendor from source system
 	doc.Vendor = gedcom.DetectVendor(doc.Header.SourceSystem)
+
+	reportUnknownHeaderTags(doc.Header.Tags, collector)
+}
+
+// headerSubstructures lists, for each header context, the tags GEDCOM 5.5,
+// 5.5.1 and 7.0 define beneath it -- the union of the three, as the record
+// parsers accept any version's tags. A context is the dotted path of tags from
+// HEAD. Only the contexts listed here are checked: the subordinates of a
+// context absent from the map (a leaf such as HEAD.DEST, or a deep one such as
+// a 7.0 HEAD.NOTE's SOUR citation) are not reported.
+//
+// Every key's last tag is listed under its parent, so a path through an
+// unknown tag can never reach a checked context.
+var headerSubstructures = map[string]map[string]bool{
+	"HEAD": {
+		"SOUR": true, "DEST": true, "DATE": true, "SUBM": true, "SUBN": true,
+		"FILE": true, "COPR": true, "GEDC": true, "CHAR": true, "LANG": true,
+		"PLAC": true, "NOTE": true, "SNOTE": true, "SCHMA": true,
+	},
+	"HEAD.SOUR":           {"VERS": true, "NAME": true, "CORP": true, "DATA": true},
+	"HEAD.SOUR.CORP":      {"ADDR": true, "PHON": true, "EMAIL": true, "FAX": true, "WWW": true},
+	"HEAD.SOUR.CORP.ADDR": {"ADR1": true, "ADR2": true, "ADR3": true, "CITY": true, "STAE": true, "POST": true, "CTRY": true},
+	"HEAD.SOUR.DATA":      {"DATE": true, "COPR": true},
+	"HEAD.SOUR.DATA.DATE": {"TIME": true},
+	"HEAD.SOUR.DATA.COPR": {},
+	"HEAD.DATE":           {"TIME": true},
+	"HEAD.GEDC":           {"VERS": true, "FORM": true},
+	"HEAD.CHAR":           {"VERS": true},
+	"HEAD.PLAC":           {"FORM": true},
+	"HEAD.NOTE":           {"MIME": true, "LANG": true, "TRAN": true, "SOUR": true},
+	"HEAD.SCHMA":          {"TAG": true},
+}
+
+// reportUnknownHeaderTags reports each header tag that headerSubstructures
+// does not list under its context, as the record parsers do for theirs
+// (issue #449). Underscore-prefixed tags are extensions and are not reported
+// (ADR 0003). CONT and CONC are accepted in every checked context: they
+// continue a line's payload rather than add a substructure, and GEDCOM 7.0
+// allows CONT under any line. Only the unknown tag itself is reported, not its
+// subordinates. tags is Header.Tags, so its levels start at 1.
+func reportUnknownHeaderTags(tags []*gedcom.Tag, collector *diagnosticCollector) {
+	if !collector.collecting() {
+		return
+	}
+
+	// path[i] is the tag at level i on the way to the current line.
+	path := []string{"HEAD"}
+	for _, tag := range tags {
+		if tag.Level < 1 || tag.Level > len(path) {
+			continue
+		}
+		path = append(path[:tag.Level], tag.Tag)
+
+		known, checked := headerSubstructures[strings.Join(path[:tag.Level], ".")]
+		if !checked || known[tag.Tag] || tag.Tag == "CONT" || tag.Tag == "CONC" ||
+			strings.HasPrefix(tag.Tag, "_") {
+			continue
+		}
+		collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+	}
 }
 
 // parseSchemaTag parses TAG subordinates within a SCHMA structure.
