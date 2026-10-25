@@ -203,20 +203,10 @@ func writeGEDCVersion(w io.Writer, opts *EncodeOptions) error {
 	if err := writeTag(w, &gedcom.Tag{Level: 2, Tag: "VERS", Value: string(opts.TargetVersion)}, opts); err != nil {
 		return err
 	}
-	if !requiresGEDCForm(opts.TargetVersion) {
+	if !headergrammar.RequiresGEDCForm(opts.TargetVersion) {
 		return nil
 	}
-	return writeTag(w, &gedcom.Tag{Level: 2, Tag: "FORM", Value: gedcForm}, opts)
-}
-
-// gedcForm is the only GEDC.FORM value 5.5 and 5.5.1 define.
-const gedcForm = "LINEAGE-LINKED"
-
-// requiresGEDCForm reports whether version v's grammar requires GEDC.FORM.
-// 7.0 removed the structure; a version the library does not model is left
-// without one rather than guessed at.
-func requiresGEDCForm(v gedcom.Version) bool {
-	return v == gedcom.Version55 || v == gedcom.Version551
+	return writeTag(w, &gedcom.Tag{Level: 2, Tag: "FORM", Value: headergrammar.GEDCForm}, opts)
 }
 
 // hasVersionChild reports whether the GEDC tag at index i is followed by its
@@ -272,10 +262,10 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 		if err := writeValue(w, 2, "", "VERS", string(version), opts); err != nil {
 			return err
 		}
-		if !requiresGEDCForm(version) {
+		if !headergrammar.RequiresGEDCForm(version) {
 			return nil
 		}
-		_, err := fmt.Fprintf(w, "2 FORM %s%s", gedcForm, opts.effectiveLineEnding())
+		_, err := fmt.Fprintf(w, "2 FORM %s%s", headergrammar.GEDCForm, opts.effectiveLineEnding())
 		return err
 	}
 

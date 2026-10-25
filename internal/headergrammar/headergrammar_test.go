@@ -66,3 +66,18 @@ func TestSort(t *testing.T) {
 		t.Errorf("Sort(nil) = %v, want empty", got)
 	}
 }
+
+func TestRequiresGEDCForm(t *testing.T) {
+	cases := map[gedcom.Version]bool{
+		gedcom.Version55:  true,
+		gedcom.Version551: true,
+		gedcom.Version70:  false,
+		"":                false,
+		"9.9":             false,
+	}
+	for v, want := range cases {
+		if got := RequiresGEDCForm(v); got != want {
+			t.Errorf("RequiresGEDCForm(%q) = %v, want %v", v, got, want)
+		}
+	}
+}

@@ -25,10 +25,10 @@ func transformHeader(doc *gedcom.Document, targetVersion gedcom.Version, report 
 
 	// GEDC.FORM is required by 5.5 and 5.5.1. upgradeHeaderTo70 strips it on
 	// the way up; without this a downgrade never put it back (issue #465).
-	if targetVersion != gedcom.Version70 && addGEDCForm(doc.Header) {
+	if headergrammar.RequiresGEDCForm(targetVersion) && addGEDCForm(doc.Header) {
 		report.AddTransformation(gedcom.Transformation{
 			Type:        "GEDC_FORM_ADDED",
-			Description: "Added GEDC.FORM LINEAGE-LINKED (required by GEDCOM " + targetVersion.String() + ")",
+			Description: "Added GEDC.FORM " + headergrammar.GEDCForm + " (required by GEDCOM " + targetVersion.String() + ")",
 			Count:       1,
 		})
 	}
@@ -84,7 +84,7 @@ func addGEDCForm(header *gedcom.Header) bool {
 		return false
 	}
 	header.Tags = slices.Insert(header.Tags, insertAt,
-		&gedcom.Tag{Level: 2, Tag: "FORM", Value: "LINEAGE-LINKED"})
+		&gedcom.Tag{Level: 2, Tag: "FORM", Value: headergrammar.GEDCForm})
 	return true
 }
 

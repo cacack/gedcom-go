@@ -26,6 +26,17 @@ var order70 = []string{
 	"GEDC", "SCHMA", "SOUR", "DEST", "DATE", "SUBM", "COPR", "LANG", "PLAC", "NOTE", "SNOTE",
 }
 
+// GEDCForm is the only GEDC.FORM value 5.5 and 5.5.1 define.
+const GEDCForm = "LINEAGE-LINKED"
+
+// RequiresGEDCForm reports whether version v's grammar requires GEDC.FORM.
+// 7.0 removed the structure; a version the library does not model is left
+// without one rather than guessed at. The encoder and the converter both add
+// FORM, and must agree on when.
+func RequiresGEDCForm(v gedcom.Version) bool {
+	return v == gedcom.Version55 || v == gedcom.Version551
+}
+
 // Rank returns the position of the level-1 HEAD structure tag in version v's
 // grammar. A tag the grammar does not define -- an extension, or a structure
 // another version has -- ranks after every defined one. Any version other than
