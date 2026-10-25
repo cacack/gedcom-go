@@ -1474,6 +1474,8 @@ enc.Close()
 
 **Memory**: O(1) regardless of record count - suitable for generating files with millions of records.
 
+**Note pointers**: a record passed to `WriteRecord` is written without the rest of the document, so a note pointer cannot be resolved to an `SNOTE` record and is always written as `NOTE` (see [High-Level Type Encoding](#high-level-type-encoding)). `EncodeStreaming` has the whole document and writes pointers as `Encode` does.
+
 Convenience functions for streaming a complete document:
 
 ```go
@@ -1501,6 +1503,8 @@ Full support for encoding typed entities back to GEDCOM format:
 A line break in a value is written as `CONT` lines. A line break in a tag name or identifier (`Tag.Tag`, `Tag.XRef`, `Record.Type`, `Record.XRef`, `Header.Submitter`, or an entity field that becomes a tag name such as `Event.Type`) has no GEDCOM spelling, so encoding returns `encoder.ErrLineBreak` rather than writing a line that could re-decode as a forged record.
 
 Nil values in a hand-built document are written as nothing instead of panicking: a nil element in any slice (a record, a tag, a name, an event, a citation) is skipped, a nil `Header` encodes as an empty one, and a nil `Document` returns `encoder.ErrNilDocument`. The same skip-rather-than-panic rule applies library-wide — see [ADR 0007](docs/decisions/0007-error-transparency.md#nil-values) for the full policy, and the `encoder` package documentation for what the encoder writes for each shape.
+
+Note pointers (`NoteXRefs`, and `MediaObject.SharedNoteXRefs`) are written by what they point at. When the output is GEDCOM 7.0 (`TargetVersion`, or `Header.Version` when no target is set), a pointer to a document `SNOTE` record is written as `SNOTE @X@`; any other pointer -- to a `NOTE` record or to nothing -- stays `NOTE @X@`. A 5.5/5.5.1 output has no `SNOTE`, so every pointer is `NOTE`. This applies only to records encoded from their entities; a decoded record re-encodes from `Record.Tags` and keeps the tag it was read with.
 
 ### Round-Trip Encoding
 

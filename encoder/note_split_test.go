@@ -1,9 +1,12 @@
 package encoder
 
 import (
+	"bytes"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
@@ -181,8 +184,9 @@ func TestSourceRepositoryLinkSplitNotesKeepREPO(t *testing.T) {
 // MediaObject's two pointer slices (#499) did not cost the writer a note. SNOTE
 // pointers used to reach mediaObjectToTags via NoteXRefs, which the decoder
 // also filled; now they arrive only in SharedNoteXRefs, and the writer reads
-// both. They are still written as NOTE, which is what came out before the
-// partition -- the 7.0 SNOTE form is issue #471.
+// both. The writer emits every pointer as NOTE; choosing SNOTE for a 7.0
+// pointer to an SNOTE record is writeRecord's job (#471), pinned by
+// TestEncodeSharedNotePointerTag.
 func TestMediaObjectToTagsWritesSharedNotePointers(t *testing.T) {
 	media := &gedcom.MediaObject{
 		NoteXRefs:       []string{"@N1@"},
@@ -193,5 +197,260 @@ func TestMediaObjectToTagsWritesSharedNotePointers(t *testing.T) {
 	want := []string{"@N1@", "@S1@", "An inline note"}
 	if got := noteTagValues(mediaObjectToTags(media, nil)); !reflect.DeepEqual(got, want) {
 		t.Errorf("mediaObjectToTags() NOTE values = %#v, want %#v", got, want)
+	}
+}
+
+// sharedNotePointerDoc builds a document in Go whose individual points at an
+// SNOTE record (@S1@), a NOTE record (@N1@) and an XRef that resolves to
+// nothing (@X1@), both on the record and on an event substructure.
+func sharedNotePointerDoc(headerVersion gedcom.Version) *gedcom.Document {
+	xrefs := []string{"@S1@", "@N1@", "@X1@"}
+	return &gedcom.Document{
+		Header: &gedcom.Header{Version: headerVersion},
+		Records: []*gedcom.Record{
+			{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{
+				XRef:      "@I1@",
+				NoteXRefs: xrefs,
+				Events: []*gedcom.Event{{
+					Type:      gedcom.EventBirth,
+					Date:      "1900",
+					NoteXRefs: xrefs,
+				}},
+			}},
+			{XRef: "@S1@", Type: gedcom.RecordTypeSharedNote, Entity: &gedcom.SharedNote{XRef: "@S1@", Text: "Shared"}},
+			{XRef: "@N1@", Type: gedcom.RecordTypeNote, Entity: &gedcom.Note{XRef: "@N1@", Text: "Note"}},
+		},
+	}
+}
+
+// TestEncodeSharedNotePointerTag pins which tag a note pointer is written
+// with on the entity path (#471): SNOTE only when the output is GEDCOM 7.0 and
+// the pointer resolves to an SNOTE record; NOTE otherwise.
+func TestEncodeSharedNotePointerTag(t *testing.T) {
+	sevenO := []string{"1 SNOTE @S1@", "1 NOTE @N1@", "1 NOTE @X1@", "2 SNOTE @S1@", "2 NOTE @N1@", "2 NOTE @X1@"}
+	allNOTE := []string{"1 NOTE @S1@", "1 NOTE @N1@", "1 NOTE @X1@", "2 NOTE @S1@", "2 NOTE @N1@", "2 NOTE @X1@"}
+
+	tests := []struct {
+		name   string
+		header gedcom.Version
+		target gedcom.Version
+		want   []string
+	}{
+		{"target 7.0", "", gedcom.Version70, sevenO},
+		{"header 7.0, no target", gedcom.Version70, "", sevenO},
+		{"target 7.0 overrides 5.5.1 header", gedcom.Version551, gedcom.Version70, sevenO},
+		{"target 5.5.1", "", gedcom.Version551, allNOTE},
+		{"target 5.5", "", gedcom.Version55, allNOTE},
+		{"target 5.5.1 overrides 7.0 header", gedcom.Version70, gedcom.Version551, allNOTE},
+		{"no version", "", "", allNOTE},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := DefaultOptions()
+			opts.TargetVersion = tt.target
+			encoders := map[string]func(*bytes.Buffer, *gedcom.Document) error{
+				"EncodeWithOptions": func(b *bytes.Buffer, d *gedcom.Document) error { return EncodeWithOptions(b, d, opts) },
+				"EncodeStreamingWithOptions": func(b *bytes.Buffer, d *gedcom.Document) error {
+					return EncodeStreamingWithOptions(b, d, opts)
+				},
+			}
+			for name, encode := range encoders {
+				var buf bytes.Buffer
+				if err := encode(&buf, sharedNotePointerDoc(tt.header)); err != nil {
+					t.Fatalf("%s() error = %v", name, err)
+				}
+				out := buf.String()
+				for _, line := range tt.want {
+					if !strings.Contains(out, line+"\n") {
+						t.Errorf("%s output missing %q:\n%s", name, line, out)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestStreamEncoderKeepsNOTEPointers documents the streaming limit: a record
+// passed to WriteRecord is written without the rest of the document, so a
+// pointer cannot be resolved and stays NOTE even for 7.0. EncodeStreaming has
+// the document and resolves as Encode does (TestEncodeSharedNotePointerTag).
+func TestStreamEncoderKeepsNOTEPointers(t *testing.T) {
+	doc := sharedNotePointerDoc(gedcom.Version70)
+	var buf bytes.Buffer
+	enc := NewStreamEncoder(&buf)
+	if err := enc.WriteHeader(doc.Header); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range doc.Records {
+		if err := enc.WriteRecord(r); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := enc.WriteTrailer(); err != nil {
+		t.Fatal(err)
+	}
+	if err := enc.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "1 NOTE @S1@\n") {
+		t.Errorf("streamed output = %q, want 1 NOTE @S1@", buf.String())
+	}
+}
+
+// sharedNoteRoundTripFixture puts a pointer to an SNOTE record and one to a
+// NOTE record on every note-bearing structure the entity writers emit.
+const sharedNoteRoundTripFixture = `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John /Doe/
+2 SNOTE @S1@
+2 NOTE @N1@
+1 BIRT
+2 DATE 1900
+2 PLAC Springfield
+3 SNOTE @S1@
+3 NOTE @N1@
+2 OBJE @M1@
+3 SNOTE @S1@
+3 NOTE @N1@
+2 SNOTE @S1@
+2 NOTE @N1@
+1 OCCU Blacksmith
+2 SNOTE @S1@
+2 NOTE @N1@
+1 BAPL
+2 DATE 1 JAN 1990
+2 SNOTE @S1@
+2 NOTE @N1@
+1 FAMC @F1@
+2 SNOTE @S1@
+2 NOTE @N1@
+1 FAMS @F1@
+2 SNOTE @S1@
+2 NOTE @N1@
+1 ASSO @I2@
+2 ROLE WITN
+2 SNOTE @S1@
+2 NOTE @N1@
+1 SOUR @SR1@
+2 PAGE 12
+2 SNOTE @S1@
+2 NOTE @N1@
+1 SNOTE @S1@
+1 NOTE @N1@
+1 CHAN
+2 DATE 1 JAN 2020
+2 SNOTE @S1@
+2 NOTE @N1@
+0 @I2@ INDI
+1 NAME Jane /Roe/
+0 @F1@ FAM
+1 HUSB @I1@
+1 SNOTE @S1@
+1 NOTE @N1@
+0 @SR1@ SOUR
+1 TITL A Source
+1 REPO @R1@
+2 SNOTE @S1@
+2 NOTE @N1@
+1 SNOTE @S1@
+1 NOTE @N1@
+0 @R1@ REPO
+1 NAME A Repository
+1 SNOTE @S1@
+1 NOTE @N1@
+0 @M1@ OBJE
+1 FILE photo.jpg
+1 SNOTE @S1@
+1 NOTE @N1@
+0 @S1@ SNOTE Shared note
+0 @N1@ NOTE Plain note
+0 TRLR
+`
+
+// noteXRefsBySite collects the note pointers of every note-bearing structure
+// in doc, keyed by a label naming the structure.
+func noteXRefsBySite(doc *gedcom.Document) map[string][]string {
+	sites := map[string][]string{}
+	add := func(site string, xrefs []string) { sites[site] = xrefs }
+
+	indi := doc.GetIndividual("@I1@")
+	add("INDI", indi.NoteXRefs)
+	add("INDI.CHAN", indi.ChangeDate.NoteXRefs)
+	add("INDI.NAME", indi.Names[0].NoteXRefs)
+	add("INDI.BIRT", indi.Events[0].NoteXRefs)
+	add("INDI.BIRT.PLAC", indi.Events[0].PlaceDetail.NoteXRefs)
+	add("INDI.BIRT.OBJE", indi.Events[0].Media[0].NoteXRefs)
+	add("INDI.OCCU", indi.Attributes[0].NoteXRefs)
+	add("INDI.BAPL", indi.LDSOrdinances[0].NoteXRefs)
+	add("INDI.FAMC", indi.ChildInFamilies[0].NoteXRefs)
+	add("INDI.FAMS", indi.SpouseInFamilies[0].NoteXRefs)
+	add("INDI.ASSO", indi.Associations[0].NoteXRefs)
+	add("INDI.SOUR", indi.SourceCitations[0].NoteXRefs)
+	add("FAM", doc.GetFamily("@F1@").NoteXRefs)
+	src := doc.GetSource("@SR1@")
+	add("SOUR", src.NoteXRefs)
+	add("SOUR.REPO", src.RepositoryLinks[0].NoteXRefs)
+	add("REPO", doc.GetRepository("@R1@").NoteXRefs)
+	media := doc.GetMediaObject("@M1@")
+	add("OBJE", media.NoteXRefs)
+	add("OBJE shared", media.SharedNoteXRefs)
+	return sites
+}
+
+// TestSharedNotePointersRoundTrip7 asserts a 7.0 document encoded from its
+// entities re-decodes with the same note pointers on every structure (#471),
+// and that the SNOTE-record pointer is written as SNOTE wherever it occurs.
+func TestSharedNotePointersRoundTrip7(t *testing.T) {
+	doc, err := decoder.Decode(strings.NewReader(sharedNoteRoundTripFixture))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	want := noteXRefsBySite(doc)
+	for site, xrefs := range want {
+		if len(xrefs) == 0 {
+			t.Fatalf("fixture decoded no note pointers on %s", site)
+		}
+	}
+
+	out := encodeFromEntities(t, sharedNoteRoundTripFixture)
+	if strings.Contains(out, " NOTE @S1@\n") {
+		t.Errorf("SNOTE-record pointer written as NOTE:\n%s", out)
+	}
+
+	redoc, err := decoder.Decode(strings.NewReader(out))
+	if err != nil {
+		t.Fatalf("re-Decode() error = %v", err)
+	}
+	got := noteXRefsBySite(redoc)
+	for site, xrefs := range want {
+		if !reflect.DeepEqual(got[site], xrefs) {
+			t.Errorf("%s NoteXRefs = %v after round trip, want %v", site, got[site], xrefs)
+		}
+	}
+}
+
+// TestRetagLeavesCallerTagsUnchanged guards against the retag writing SNOTE
+// into the caller's document: SharedNote.Tags is passed through by the entity
+// writer, so a NOTE pointer there must be copied, not edited, when retagged.
+func TestRetagLeavesCallerTagsUnchanged(t *testing.T) {
+	preserved := &gedcom.Tag{Level: 1, Tag: "NOTE", Value: "@S2@"}
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version70},
+		Records: []*gedcom.Record{
+			{XRef: "@S1@", Type: gedcom.RecordTypeSharedNote, Entity: &gedcom.SharedNote{Text: "one", Tags: []*gedcom.Tag{preserved}}},
+			{XRef: "@S2@", Type: gedcom.RecordTypeSharedNote, Entity: &gedcom.SharedNote{Text: "two"}},
+		},
+	}
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	if !strings.Contains(buf.String(), "1 SNOTE @S2@\n") {
+		t.Errorf("pointer not written as SNOTE:\n%s", buf.String())
+	}
+	if preserved.Tag != "NOTE" {
+		t.Errorf("caller's preserved tag changed to %q, want NOTE", preserved.Tag)
 	}
 }

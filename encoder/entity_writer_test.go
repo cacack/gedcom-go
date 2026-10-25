@@ -5106,9 +5106,10 @@ func TestDecodedNotesEncodeOnce(t *testing.T) {
 		}
 	}
 
-	// The shared-note pointer appears under the event and the attribute, once
-	// each. It is written as NOTE rather than SNOTE — see issue #471.
-	if got := countLine(out, "2 NOTE @N1@"); got != 3 {
+	// The shared-note pointer appears under the event, the attribute and the
+	// spouse link, once each. @N1@ is an SNOTE record in a 7.0 document, so it
+	// is written as SNOTE (#471).
+	if got := countLine(out, "2 SNOTE @N1@"); got != 3 {
 		t.Errorf("shared-note pointer written %d times, want 3 (event + attribute + spouse link):\n%s", got, out)
 	}
 

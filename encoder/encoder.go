@@ -53,8 +53,9 @@ func EncodeWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeOptions) e
 	}
 
 	// Write records
+	sharedNotes := sharedNotePointers(doc, opts)
 	for _, record := range doc.Records {
-		if err := writeRecord(w, record, opts); err != nil {
+		if err := writeRecord(w, record, opts, sharedNotes); err != nil {
 			return err
 		}
 	}
@@ -347,7 +348,11 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 	return nil
 }
 
-func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error {
+// writeRecord writes record, from its preserved Tags when it has them and from
+// its Entity otherwise. sharedNotes is the set from sharedNotePointers: note
+// pointers in an entity-built record that resolve to one of these XRefs are
+// written as SNOTE rather than NOTE.
+func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions, sharedNotes *sharedNoteSet) error {
 	if record == nil {
 		return nil
 	}
@@ -378,7 +383,7 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions) error 
 	tags := record.Tags
 	value := record.Value
 	if len(tags) == 0 && record.Entity != nil {
-		tags = entityToTags(record, opts)
+		tags = retagSharedNotePointers(entityToTags(record, opts), sharedNotes)
 		if value == "" {
 			var contTags []*gedcom.Tag
 			value, contTags = entityRecordText(record, opts)
