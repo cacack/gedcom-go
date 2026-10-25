@@ -283,9 +283,10 @@ content-error contract they have never had — every caller would then have to
 handle a failure only a caller that built a nil can cause.
 
 Skipping is silent, deliberately. A nil usually means the code that built the
-document has a bug, and the library does not say so. Reporting nils belongs with
-the other diagnostics rather than as a new failure mode on the write path, and
-is tracked by issue #457 — silence here is a decision, not an oversight.
+document has a bug, but reporting it belongs with the other diagnostics rather
+than as a new failure mode on the write path. The validator's `NIL_ELEMENT`
+rule (`validator/nil_elements.go`, #457) is that report: run `ValidateAll`
+before encoding to find every nil the encoder would skip.
 
 The policy is library-wide: the encoder, `Record`'s `Is*`/`Get*`, `Document`'s
 lookup and collection accessors, the entity helpers that walk a slice field, the

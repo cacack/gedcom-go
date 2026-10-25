@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/validator"
 )
 
 // nil_safety_test.go drives every nil shape through the facade on a fixture
@@ -35,8 +36,10 @@ func TestFacade_ValidateAll_NilPersonalNameElement(t *testing.T) {
 		return doc
 	}
 
-	got := ValidateAll(build([]*gedcom.PersonalName{nil, {Full: "Ada /Lovelace/"}}))
-	want := ValidateAll(build([]*gedcom.PersonalName{{Full: "Ada /Lovelace/"}}))
+	// NIL_ELEMENT reports the nil itself; every other rule must skip it.
+	skipNils := &ValidateOptions{SkipRules: []string{validator.CodeNilElement}}
+	got := ValidateAllWithOptions(build([]*gedcom.PersonalName{nil, {Full: "Ada /Lovelace/"}}), skipNils)
+	want := ValidateAllWithOptions(build([]*gedcom.PersonalName{{Full: "Ada /Lovelace/"}}), skipNils)
 
 	if len(want) == 0 {
 		t.Fatal("nil-free document reported no issues; the comparison would pass vacuously")

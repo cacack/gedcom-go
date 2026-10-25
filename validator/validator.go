@@ -273,6 +273,9 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	allIssues = append(allIssues, validateBrokenXRefs(doc)...)
 	allIssues = append(allIssues, validateRecordStructure(doc)...)
 
+	// Run nil-element validation (nils only a hand-built document holds)
+	allIssues = append(allIssues, validateNilElements(doc)...)
+
 	// Run date validity validation (dates that do not exist, e.g. 31 FEB)
 	allIssues = append(allIssues, validateDates(doc)...)
 

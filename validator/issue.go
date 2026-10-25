@@ -201,6 +201,16 @@ const (
 	CodeOverlappingNotePointers = "OVERLAPPING_NOTE_POINTERS"
 )
 
+// Error codes for document construction.
+const (
+	// CodeNilElement indicates a nil where the document holds an element: a nil
+	// record, a nil element in a slice, or a Record.Entity holding a typed nil.
+	// Only a document built in code can hold one, and the encoder silently skips
+	// it, so it almost always marks a bug in the code that built the document.
+	// Details["field"] is the path to the nil, such as "Events[2].SourceCitations[1]".
+	CodeNilElement = "NIL_ELEMENT"
+)
+
 // Issue represents a validation finding with severity, context, and actionable information.
 type Issue struct {
 	// Severity indicates the importance level of this issue.

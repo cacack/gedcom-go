@@ -5,15 +5,18 @@ package gedcomgo
 // -- a nil *Record, a nil *Tag, a typed-nil Record.Entity, a nil element inside
 // an entity's slice field, and a nil Header -- goes through the whole facade,
 // and every result has to equal the result for the same document with the nils
-// removed. The per-package suites (gedcom, encoder, validator, converter) pin
+// removed -- except for the NIL_ELEMENT issues that report the nils (#457),
+// which are set aside before comparing. The per-package suites (gedcom, encoder, validator, converter) pin
 // the individual guards; this one proves they compose.
 
 import (
 	"bytes"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/validator"
 )
 
 // facadeDoc builds the all-shapes document, or its nil-free twin. Both come
@@ -141,26 +144,46 @@ func TestFacade_Encode(t *testing.T) {
 // TestFacade_Validate drives the nils through [Validate] and [ValidateAll].
 // Depends on validator's record, tag and header skips, and on Record.Get* not
 // handing a typed nil to the accessor-consuming rules.
+//
+// NIL_ELEMENT is the one rule that reports the nils rather than skipping them,
+// so the comparisons skip it, and the last subtest checks it did report them.
 func TestFacade_Validate(t *testing.T) {
+	skipNils := &ValidateOptions{SkipRules: []string{validator.CodeNilElement}}
+
 	t.Run("Validate", func(t *testing.T) {
-		want := Validate(facadeDoc(false))
+		want := ValidateWithOptions(facadeDoc(false), skipNils)
 		if len(want) == 0 {
 			t.Fatal("test setup: the nil-free document produced no errors, so the comparison is vacuous")
 		}
 
-		if got := Validate(facadeDoc(true)); !reflect.DeepEqual(got, want) {
+		if got := ValidateWithOptions(facadeDoc(true), skipNils); !reflect.DeepEqual(got, want) {
 			t.Errorf("Validate() with nils = %v, want %v", got, want)
 		}
 	})
 
 	t.Run("ValidateAll", func(t *testing.T) {
-		want := ValidateAll(facadeDoc(false))
+		want := ValidateAllWithOptions(facadeDoc(false), skipNils)
 		if len(want) == 0 {
 			t.Fatal("test setup: the nil-free document produced no issues, so the comparison is vacuous")
 		}
 
-		if got := ValidateAll(facadeDoc(true)); !reflect.DeepEqual(got, want) {
+		if got := ValidateAllWithOptions(facadeDoc(true), skipNils); !reflect.DeepEqual(got, want) {
 			t.Errorf("ValidateAll() with nils = %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("NIL_ELEMENT", func(t *testing.T) {
+		for _, issue := range ValidateAll(facadeDoc(false)) {
+			if issue.Code == validator.CodeNilElement {
+				t.Errorf("nil-free document reported %v", issue)
+			}
+		}
+		found := false
+		for _, issue := range ValidateAll(facadeDoc(true)) {
+			found = found || issue.Code == validator.CodeNilElement
+		}
+		if !found {
+			t.Errorf("ValidateAll() with nils reported no %s", validator.CodeNilElement)
 		}
 	})
 }
@@ -191,12 +214,28 @@ func TestFacade_Convert(t *testing.T) {
 			if got, want := mustEncode(t, gotDoc), mustEncode(t, wantDoc); got != want {
 				t.Errorf("Convert() with nils produced a different document\n got =\n%s\nwant =\n%s", got, want)
 			}
+			// The converted document still holds its nils, so its validation
+			// reports them; set those aside, as TestFacade_Validate does.
+			gotReport.ValidationIssues = withoutNilElements(gotReport.ValidationIssues)
 			if !reflect.DeepEqual(gotReport, wantReport) {
 				t.Errorf("Convert() with nils produced a different report\n got = %+v\nwant = %+v",
 					gotReport, wantReport)
 			}
 		})
 	}
+}
+
+// withoutNilElements drops the NIL_ELEMENT entries from a conversion report's
+// validation issues. The converter formats each issue with Issue.String
+// ("[SEV] CODE: msg"), so the code followed by a colon matches only these.
+func withoutNilElements(issues []string) []string {
+	var kept []string
+	for _, issue := range issues {
+		if !strings.Contains(issue, validator.CodeNilElement+":") {
+			kept = append(kept, issue)
+		}
+	}
+	return kept
 }
 
 // TestFacade_CollectionAccessors covers all eight collection accessors. Depends
