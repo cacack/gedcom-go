@@ -7,6 +7,10 @@ import (
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
+// voidXRef is the GEDCOM 7.0 null pointer. IsPointerXRef rejects it, but a
+// record may carry it as an ordinary identifier, so RemapXRefs never skips it.
+const voidXRef = "@VOID@"
+
 // RemapXRefs returns a new document with every XRef remapped by the
 // transform function. The input document is not modified.
 //
@@ -21,7 +25,12 @@ import (
 //
 // Records with an empty XRef (records that have no definition site,
 // such as the implicit header) are skipped and contribute no mapping
-// entry.
+// entry. So are records whose XRef is not pointer-shaped
+// (doc.IsPointerXRef returns false), such as "@I1" recovered from a
+// malformed "0 @I1 INDI" line: no pointer can name such a record, so it
+// keeps its XRef unchanged and the transform is not called for it. This
+// mirrors gedcom.Visit, which skips non-pointer values. A record named
+// @VOID@ is not skipped (see below).
 //
 // A record named @VOID@ (allowed in GEDCOM 5.5 and 5.5.1) is remapped like
 // any other, and so are its @VOID@ pointers unless Header.Version is 7.0,
@@ -67,7 +76,7 @@ func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedco
 	seenNew := make(map[string]string)
 
 	for _, r := range doc.Records {
-		if r == nil || r.XRef == "" {
+		if r == nil || (r.XRef != voidXRef && !doc.IsPointerXRef(r.XRef)) {
 			continue
 		}
 		newXRef := transform(r.XRef)
