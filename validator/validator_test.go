@@ -144,6 +144,7 @@ func TestValidateBrokenXRef_NonPointers(t *testing.T) {
 		{Level: 2, Tag: "SOUR", Value: " @S1@ ", LineNumber: 8},
 	}}
 	doc := &gedcom.Document{
+		Header:  &gedcom.Header{Version: gedcom.Version70},
 		Records: []*gedcom.Record{nil, note},
 		XRefMap: map[string]*gedcom.Record{"@N1@": note},
 	}
@@ -151,6 +152,35 @@ func TestValidateBrokenXRef_NonPointers(t *testing.T) {
 	got := validateBrokenXRefs(doc)
 	if len(got) != 1 || got[0].RelatedXRef != "@S1@" || got[0].LineNumber != 8 {
 		t.Errorf("validateBrokenXRefs = %v, want only the trimmed @S1@ on line 8", got)
+	}
+}
+
+// TestValidateBrokenXRef_Void pins issue #614: @VOID@ is an ordinary
+// identifier in GEDCOM 5.5/5.5.1, so a dangling @VOID@ pointer there is
+// broken, while in 7.0 it is the null pointer and is not reported.
+func TestValidateBrokenXRef_Void(t *testing.T) {
+	for _, tt := range []struct {
+		vers string
+		want int
+	}{
+		{"5.5", 1},
+		{"5.5.1", 1},
+		{"7.0", 0},
+	} {
+		t.Run(tt.vers, func(t *testing.T) {
+			input := "0 HEAD\n1 GEDC\n2 VERS " + tt.vers + "\n0 @I1@ INDI\n1 NOTE @VOID@\n0 TRLR"
+			doc, err := decoder.Decode(strings.NewReader(input))
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+			got := FilterByCode(New().ValidateAll(doc), CodeBrokenXRef)
+			if len(got) != tt.want {
+				t.Fatalf("BROKEN_XREF = %v, want %d", got, tt.want)
+			}
+			if tt.want == 1 && (got[0].RelatedXRef != "@VOID@" || got[0].LineNumber != 5) {
+				t.Errorf("BROKEN_XREF = %v, want @VOID@ on line 5", got[0])
+			}
+		})
 	}
 }
 
