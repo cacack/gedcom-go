@@ -93,3 +93,34 @@ func TestCombine_SharedNonPointerXRefCollides(t *testing.T) {
 		}
 	}
 }
+
+// TestCombine_VoidRecordInDoc2 pins that a 5.5.1 doc2 holding a record named
+// @VOID@ combines under PrefixDoc2 and RenumberDoc2: the strategies return
+// @VOID@ unchanged when it does not collide, and RemapXRefs accepts that.
+func TestCombine_VoidRecordInDoc2(t *testing.T) {
+	doc1, err := decoder.Decode(strings.NewReader(
+		"0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME One /Person/\n0 TRLR\n"))
+	if err != nil {
+		t.Fatalf("Decode doc1: %v", err)
+	}
+	doc2, err := decoder.Decode(strings.NewReader(
+		"0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Two /Person/\n1 NOTE @VOID@\n0 @VOID@ NOTE hi\n0 TRLR\n"))
+	if err != nil {
+		t.Fatalf("Decode doc2: %v", err)
+	}
+	if doc2.GetRecord("@VOID@") == nil {
+		t.Fatal("precondition: @VOID@ record missing from doc2")
+	}
+	for _, strategy := range []merge.CollisionStrategy{merge.PrefixDoc2, merge.RenumberDoc2} {
+		out, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{CollisionStrategy: strategy, Prefix: "B_"})
+		if err != nil {
+			t.Fatalf("Combine(strategy %d): %v", strategy, err)
+		}
+		if out.GetRecord("@VOID@") == nil {
+			t.Errorf("strategy %d: @VOID@ record missing", strategy)
+		}
+		if _, ok := report.RemappedXRefs["@VOID@"]; ok {
+			t.Errorf("strategy %d: @VOID@ reported as remapped: %q", strategy, report.RemappedXRefs)
+		}
+	}
+}

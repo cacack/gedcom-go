@@ -34,7 +34,9 @@ const voidXRef = "@VOID@"
 //
 // A record named @VOID@ (allowed in GEDCOM 5.5 and 5.5.1) is remapped like
 // any other, and so are its @VOID@ pointers unless Header.Version is 7.0,
-// where @VOID@ is the null pointer; see gedcom.Apply.
+// where @VOID@ is the null pointer; see gedcom.Apply. The transform may
+// return @VOID@ unchanged for it (an identity result is always accepted),
+// so Combine's strategies, which keep non-colliding XRefs as-is, succeed.
 //
 // On success, RemapXRefs returns:
 //
@@ -80,7 +82,9 @@ func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedco
 			continue
 		}
 		newXRef := transform(r.XRef)
-		if !doc.IsPointerXRef(newXRef) {
+		// An identity result is accepted unchecked: it renames nothing, and
+		// only @VOID@ can reach here without passing IsPointerXRef.
+		if newXRef != r.XRef && !doc.IsPointerXRef(newXRef) {
 			return nil, nil, &RemapError{
 				Old:    r.XRef,
 				New:    newXRef,
