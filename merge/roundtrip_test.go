@@ -143,3 +143,38 @@ func mustRoundtripDecode(t *testing.T, path string) *gedcom.Document {
 	}
 	return doc
 }
+
+// TestCombine_Roundtrip_MixedEncodings combines an ANSEL-declared file with a
+// UTF-8 one (#568). Both are UTF-8 in memory, so with IgnoreEncodingMismatch
+// the result encodes and decodes back with every record intact.
+func TestCombine_Roundtrip_MixedEncodings(t *testing.T) {
+	doc1 := mustRoundtripDecode(t, "../testdata/gedcom-5.5/royal92.ged")
+	doc2 := mustRoundtripDecode(t, "../testdata/edge-cases/vendor-paf5.ged")
+	if doc1.Header.Encoding != gedcom.EncodingANSEL || doc2.Header.Encoding != gedcom.EncodingUTF8 {
+		t.Fatalf("fixture encodings = %q, %q; want ANSEL, UTF-8", doc1.Header.Encoding, doc2.Header.Encoding)
+	}
+
+	if _, _, err := merge.Combine(doc1, doc2, merge.CombineOptions{CollisionStrategy: merge.RenumberDoc2}); err == nil {
+		t.Fatal("zero-value options should still refuse the encoding mismatch")
+	}
+
+	combined, _, err := merge.Combine(doc1, doc2, merge.CombineOptions{
+		CollisionStrategy:      merge.RenumberDoc2,
+		IgnoreEncodingMismatch: true,
+	})
+	if err != nil {
+		t.Fatalf("Combine: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, combined); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	roundtripped, err := decoder.Decode(&buf)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if got, want := len(roundtripped.Records), len(combined.Records); got != want {
+		t.Errorf("record count after round-trip: got %d want %d", got, want)
+	}
+}

@@ -442,7 +442,11 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 `Combine` returns a `CombineReport` describing the XRefs that were
 remapped on doc2 and any header fields where doc1's value was kept
 over a differing doc2 value. Both inputs are deep-copied; neither is
-mutated.
+mutated. Differing non-empty header versions or encodings are refused
+with `ErrIncompatibleHeader`; set `CombineOptions.IgnoreEncodingMismatch`
+to merge documents whose declared encodings differ (text is UTF-8 in
+memory either way) — doc1's encoding is kept and the difference is
+reported as a `HeaderConflict`.
 
 ## Record Types
 

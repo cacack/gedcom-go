@@ -506,6 +506,47 @@ func TestCombine_EncodingMismatch(t *testing.T) {
 	}
 }
 
+func TestCombine_IgnoreEncodingMismatch(t *testing.T) {
+	doc1 := buildDoc("a_")
+	doc2 := buildDoc("b_")
+	doc1.Header.Encoding = gedcom.EncodingANSEL
+	doc2.Header.Encoding = gedcom.EncodingUTF8
+
+	combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{IgnoreEncodingMismatch: true})
+	if err != nil {
+		t.Fatalf("Combine with IgnoreEncodingMismatch: %v", err)
+	}
+	if combined.Header.Encoding != gedcom.EncodingANSEL {
+		t.Errorf("Encoding = %q, want doc1's %q", combined.Header.Encoding, gedcom.EncodingANSEL)
+	}
+	want := merge.HeaderConflict{Field: "Encoding", Doc1: "ANSEL", Doc2: "UTF-8"}
+	found := false
+	for _, c := range report.HeaderConflicts {
+		if c == want {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("HeaderConflicts = %+v, want to contain %+v", report.HeaderConflicts, want)
+	}
+	if doc1.Header.Encoding != gedcom.EncodingANSEL || doc2.Header.Encoding != gedcom.EncodingUTF8 {
+		t.Error("Combine mutated an input header's Encoding")
+	}
+}
+
+func TestCombine_IgnoreEncodingMismatchStillChecksVersion(t *testing.T) {
+	doc1 := buildDoc("a_")
+	doc2 := buildDoc("b_")
+	doc1.Header.Version = gedcom.Version55
+	doc2.Header.Version = gedcom.Version70
+
+	_, _, err := merge.Combine(doc1, doc2, merge.CombineOptions{IgnoreEncodingMismatch: true})
+	var cerr *merge.CombineError
+	if !errors.As(err, &cerr) || cerr.Kind != "version" {
+		t.Fatalf("expected version CombineError, got %v", err)
+	}
+}
+
 func TestCombine_HeaderFieldConflictsRecorded(t *testing.T) {
 	doc1 := buildDoc("a_")
 	doc2 := buildDoc("b_")
