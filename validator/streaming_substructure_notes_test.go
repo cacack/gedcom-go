@@ -86,6 +86,9 @@ func TestStreamingValidator_SubstructureNotePointers(t *testing.T) {
 			t.Errorf("unexpected issue %s", iss.String())
 			continue
 		}
+		if prev, dup := got[iss.RelatedXRef]; dup {
+			t.Errorf("%s reported twice: %v and %s", iss.RelatedXRef, prev, iss.Details["field"])
+		}
 		got[iss.RelatedXRef] = loc{iss.RecordXRef, iss.Details["field"]}
 	}
 

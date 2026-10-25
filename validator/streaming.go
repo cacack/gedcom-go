@@ -208,7 +208,8 @@ func (sv *StreamingValidator) validateIndividual(ind *gedcom.Individual) []Issue
 		}
 	}
 
-	// Collect NOTE references nested in substructures
+	// Collect NOTE references nested in substructures (#535). Event, attribute,
+	// name and citation own notes are not yet collected.
 	for i := range ind.ChildInFamilies {
 		sv.collectNoteXRefs(ind.XRef, fmt.Sprintf("ChildInFamilies[%d].", i), ind.ChildInFamilies[i].NoteXRefs)
 	}
@@ -313,6 +314,8 @@ func (sv *StreamingValidator) collectSourceReferences(src *gedcom.Source) {
 // collectNoteXRefs records each non-empty note pointer as a NOTE usage by
 // recordXRef. prefix locates the slice below the record (e.g. "Media[0].")
 // and is prepended to the reported field; "" means the record's own notes.
+// For a nested slice Index is the position within that slice; Field is the
+// full path.
 func (sv *StreamingValidator) collectNoteXRefs(recordXRef, prefix string, noteXRefs []string) {
 	for i, noteXRef := range noteXRefs {
 		if noteXRef != "" {

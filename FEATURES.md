@@ -1268,7 +1268,7 @@ finalIssues := v.Finalize()  // Orphaned reference detection
 
 **Two-Phase Validation**:
 - **Immediate**: Date logic errors (death before birth), structural issues detected per-record
-- **Deferred**: Cross-reference validation (orphaned FAMC, FAMS, HUSB, WIFE, CHIL, SOUR, ASSO, REPO, NOTE) in `Finalize()`. Note pointers are checked on individual, family and source records and on their FAMC/FAMS links, ASSO, OBJE links, PLAC and REPO links, including those inside events and attributes; `Details["field"]` locates each (e.g. `Events[0].PlaceDetail.NoteXRefs[0]`)
+- **Deferred**: Cross-reference validation (orphaned FAMC, FAMS, HUSB, WIFE, CHIL, SOUR, ASSO, REPO, NOTE) in `Finalize()`. Note pointers are checked on individual, family and source records and on their FAMC/FAMS links, ASSO, OBJE links, PLAC and REPO links, including the ASSO, OBJE and PLAC of events and attributes (the own notes of events, attributes, names and source citations are not yet checked); `Details["field"]` locates each (e.g. `Events[0].PlaceDetail.NoteXRefs[0]`)
 
 **Note**: Parent-child date logic checks (child born before parent) require a complete document and are not supported in streaming mode.
 
