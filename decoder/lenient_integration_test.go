@@ -461,6 +461,47 @@ func TestDecodeWithDiagnostics_UnterminatedXRefBeforeStructuralTag(t *testing.T)
 	}
 }
 
+// TestDecodeWithDiagnostics_SpacedXRefBeforeStructuralTag pins that a spaced
+// identifier on HEAD/TRLR gets the same ordinary-record shape as an
+// unterminated one (issue #416). The space is reported only where the header's
+// version forbids it, so a 5.5.1 document gets the placement diagnostic alone.
+func TestDecodeWithDiagnostics_SpacedXRefBeforeStructuralTag(t *testing.T) {
+	for _, tag := range []string{"HEAD", "TRLR"} {
+		for vers, wantDiags := range map[string]int{"7.0": 2, "5.5.1": 1} {
+			t.Run(tag+" "+vers, func(t *testing.T) {
+				input := "0 HEAD\n1 GEDC\n2 VERS " + vers + "\n0 @I 1@ " + tag +
+					"\n1 SOUR FakeVendor\n0 TRLR\n"
+
+				result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+				if err != nil {
+					t.Fatalf("Unexpected error: %v", err)
+				}
+				if len(result.Diagnostics) != wantDiags {
+					t.Fatalf("Diagnostics = %v, want %d %s", result.Diagnostics, wantDiags, CodeInvalidXRef)
+				}
+				for _, d := range result.Diagnostics {
+					if d.Code != CodeInvalidXRef || d.Line != 4 {
+						t.Errorf("Diagnostic = %v, want %s on line 4", d, CodeInvalidXRef)
+					}
+				}
+
+				doc := result.Document
+				if len(doc.Records) != 1 {
+					t.Fatalf("Expected 1 record, got %d", len(doc.Records))
+				}
+				rec := doc.Records[0]
+				if rec.Type != gedcom.RecordType(tag) || rec.XRef != "@I 1@" || rec.Entity != nil {
+					t.Errorf("Record[0] = {Type: %q, XRef: %q, Entity: %v}, want {%s, @I 1@, nil}",
+						rec.Type, rec.XRef, rec.Entity, tag)
+				}
+				if len(rec.Tags) != 1 || rec.Tags[0].Tag != "SOUR" {
+					t.Errorf("Record[0].Tags = %+v, want the subordinate SOUR", rec.Tags)
+				}
+			})
+		}
+	}
+}
+
 // TestDecodeWithDiagnostics_XRefWithoutTag pins the fix for issue #398. A
 // level-0 XRef with no tag after it has no record type to recover, so the
 // parser reports it; dropping the line as well let its subordinate lines attach
