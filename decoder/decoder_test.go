@@ -454,6 +454,39 @@ func TestDecodeHeaderEdgeCases(t *testing.T) {
 		}
 	})
 
+	// #464: only HEAD.CHAR declares the charset, matching charset detection
+	// and the encoder's override. A CHAR nested deeper is kept raw, not typed.
+	t.Run("nested CHAR is not the charset declaration", func(t *testing.T) {
+		cases := []struct {
+			name  string
+			input string
+			want  gedcom.Encoding
+		}{
+			{"nested only", "0 HEAD\n1 SOUR TestApp\n2 CHAR ANSEL\n0 TRLR\n", ""},
+			{"nested after level 1", "0 HEAD\n1 CHAR UTF-8\n1 SOUR TestApp\n2 CHAR ANSEL\n0 TRLR\n", gedcom.EncodingUTF8},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				doc, err := Decode(strings.NewReader(tc.input))
+				if err != nil {
+					t.Fatalf("Decode() error = %v", err)
+				}
+				if doc.Header.Encoding != tc.want {
+					t.Errorf("Header.Encoding = %q, want %q", doc.Header.Encoding, tc.want)
+				}
+				found := false
+				for _, tag := range doc.Header.Tags {
+					if tag.Level == 2 && tag.Tag == "CHAR" && tag.Value == "ANSEL" {
+						found = true
+					}
+				}
+				if !found {
+					t.Error("nested CHAR missing from Header.Tags")
+				}
+			})
+		}
+	})
+
 	t.Run("header with LANG only", func(t *testing.T) {
 		input := `0 HEAD
 1 LANG Spanish

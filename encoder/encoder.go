@@ -212,6 +212,8 @@ func hasVersionChild(tags []*gedcom.Tag, i int) bool {
 // tag, if any. Everything it does not claim is written through verbatim --
 // including a GEDC.VERS the library does not model, such as 555SAMPLE.GED's
 // "5.5.5", which reconstruction used to silently normalize to 5.5.1.
+// CHAR is claimed at level 1 only, the one level the decoder reads
+// Header.Encoding from (#464).
 func headerTagOverride(tag *gedcom.Tag, inGEDC bool, opts *EncodeOptions) (string, bool) {
 	if tag.Level == 1 && tag.Tag == "CHAR" {
 		return string(writtenEncoding), true

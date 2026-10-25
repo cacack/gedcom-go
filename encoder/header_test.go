@@ -107,6 +107,36 @@ func TestHeaderCharDeclaresWhatWasWritten(t *testing.T) {
 	}
 }
 
+// TestHeaderNestedCharNotADeclaration covers #464. Only HEAD.CHAR is a
+// charset declaration: the decoder types Header.Encoding from it and the
+// encoder rewrites it, both at level 1. A CHAR nested deeper is neither, so it
+// is written back verbatim and no level-1 CHAR is synthesized for it.
+func TestHeaderNestedCharNotADeclaration(t *testing.T) {
+	input := "0 HEAD\n" +
+		"1 SOUR TestApp\n" +
+		"2 CHAR ANSEL\n" +
+		"1 GEDC\n" +
+		"2 VERS 5.5.1\n" +
+		"2 FORM LINEAGE-LINKED\n" +
+		"0 TRLR\n"
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if doc.Header.Encoding != "" {
+		t.Errorf("Header.Encoding = %q, want empty: a nested CHAR is not a declaration", doc.Header.Encoding)
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if got := buf.String(); got != input {
+		t.Errorf("header did not round-trip byte-identically:\ngot:\n%s\nwant:\n%s", got, input)
+	}
+}
+
 // TestHeaderVersionTagPreservedVerbatim guards a normalization that
 // reconstruction performed silently: 555SAMPLE.GED declares 5.5.5, a version
 // this library does not model, and the typed Header.Version reads 5.5.1. With

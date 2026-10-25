@@ -340,6 +340,8 @@ Supported on: Individual events (NO MARR, NO DEAT, NO NATU, NO EMIG, etc.) and F
 | UTF-16 LE/BE | Full | With BOM detection |
 | ANSEL | Full | With combining diacritical reordering; a mark with no base character stays on the line it came from |
 
+The charset declaration is `HEAD.CHAR` at level 1 only. Charset detection, `Header.Encoding` and the encoder's rewrite of `CHAR` to `UTF-8` all read that one line; a `CHAR` nested deeper in the header (`2 CHAR` under `SOUR`, say) is not a declaration, is kept in `Header.Tags` and written back verbatim.
+
 ## Document Operations
 
 ### Graph Traversal
