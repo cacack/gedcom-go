@@ -81,9 +81,11 @@ func (e *UnknownXRefError) Is(target error) bool {
 //
 // Strict mode also applies during the closure walk: any reference
 // followed from an included record that does not resolve returns an
-// error wrapping ErrUnknownXRef. The GEDCOM 7.0 "@VOID@" sentinel is
-// silently skipped during the walk (it does not pull anything into
-// the closure and does not error). Inline note text and inline
+// error wrapping ErrUnknownXRef. In a document whose Header.Version is
+// GEDCOM 7.0, the "@VOID@" null pointer is silently skipped during the
+// walk (it does not pull anything into the closure and does not error);
+// in any other document it is an ordinary identifier (see below), so a
+// dangling "@VOID@" errors like any other. Inline note text and inline
 // citation values that do not have the @xref@ pointer shape are
 // likewise ignored during the walk.
 //

@@ -148,9 +148,15 @@ func Visit(r *Record, visit func(string)) {
 //
 // @VOID@ is visited like any other pointer when v is GEDCOM 5.5 or 5.5.1,
 // where it is an ordinary identifier. For 7.0, and for any other v (which
-// selects the 7.0 grammar), it is the null pointer and is not visited. This is
-// the rule [Apply] and [Document.IsRecordPointer] use, with v standing in for
-// the document's version.
+// selects the 7.0 grammar), it is the null pointer and is not visited.
+//
+// This differs from [Document.IsRecordPointer], the document-level rule
+// [Apply] also uses, when no version is known: v == "" (as [Visit] passes)
+// skips @VOID@, while a document with no Header.Version treats it as an
+// ordinary identifier. The two also read different fields: v is the declared
+// version, IsRecordPointer keys @VOID@ on Header.Version. To classify pointers
+// the way [Document.Subset] and the validator do, use
+// [Document.IsRecordPointer].
 func VisitForVersion(r *Record, v Version, visit func(string)) {
 	if r == nil || visit == nil {
 		return
