@@ -134,6 +134,10 @@ func (e *StreamEncoder) WriteHeader(h *gedcom.Header) error {
 		return ErrEncodingComplete
 	}
 
+	// The header fixes the output version, which decides whether long values
+	// may be split with CONC (not in 7.0) for the header and every record.
+	e.options = e.options.forOutput(h)
+
 	if err := writeHeader(e.writer, h, e.options); err != nil {
 		e.err = err
 		return err

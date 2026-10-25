@@ -1518,7 +1518,7 @@ Decode → modify → encode workflow:
 Automatic handling of multiline and long text per GEDCOM specification:
 
 - **CONT (continuation)**: Multiline text automatically split on `\n` into CONT tags
-- **CONC (concatenation)**: Long lines (>248 chars) automatically split at word boundaries
+- **CONC (concatenation)**: For GEDCOM 5.5/5.5.1, long lines (>248 bytes) are split between two non-space characters, never inside a UTF-8 character, so readers that trim lines lose no space. GEDCOM 7.0 removed CONC, so 7.0 output (`TargetVersion`, else `Header.Version`) is never split
 
 ```go
 // Multiline text becomes CONT continuation
@@ -1528,19 +1528,19 @@ note := "Line one\nLine two\nLine three"
 // 2 CONT Line two
 // 2 CONT Line three
 
-// Long lines become CONC concatenation (split at word boundaries)
+// In 5.x, long lines become CONC concatenation (split between non-spaces)
 longText := "Very long text exceeding 248 characters..."
 // Encodes as:
-// 1 NOTE Very long text exceeding...
-// 2 CONC the 248 character limit...
+// 1 NOTE Very long text exceeding... the 248 charac
+// 2 CONC ter limit...
 ```
 
 Configurable via `EncodeOptions`:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `MaxLineLength` | 248 | Maximum line length before CONC split |
-| `DisableLineWrap` | false | Disable automatic CONC splitting |
+| `MaxLineLength` | 248 | Maximum line length (bytes) before CONC split; ignored for 7.0 |
+| `DisableLineWrap` | false | Disable automatic CONC splitting; implied for 7.0 |
 
 ### Inline Repository Support
 
