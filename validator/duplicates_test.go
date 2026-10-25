@@ -242,6 +242,51 @@ func TestStringSimilarity(t *testing.T) {
 	}
 }
 
+// TestStringSimilarity_RuneDenominator pins the denominator to rune length,
+// the unit levenshteinDistance counts in (#545). A byte denominator inflates
+// every multibyte score by the bytes-per-rune factor, so each multibyte case
+// below fails if it reverts; the ASCII case is the control that does not move.
+func TestStringSimilarity_RuneDenominator(t *testing.T) {
+	tests := []struct {
+		name   string
+		s1, s2 string
+		want   float64
+	}{
+		{"CJK, 2 runes", "太郎", "次郎", 0.5},           // bytes gave 0.833
+		{"CJK, 3 runes", "健太郎", "健次郎", 1.0 - 1.0/3}, // bytes gave 0.889
+		{"CJK, nothing shared", "日本語", "京都市", 0.0},  // bytes gave 0.667
+		{"Cyrillic", "Владимир", "Владислав", 1.0 - 4.0/9},
+		{"Greek", "Γεώργιος", "Γεώργιον", 0.875},
+		{"retained diacritic", "José", "Jose", 0.75},
+		{"ASCII control", "John", "Jon", 0.75},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := stringSimilarity(tt.s1, tt.s2)
+			if math.Abs(got-tt.want) > 1e-9 {
+				t.Errorf("stringSimilarity(%q, %q) = %v, want %v", tt.s1, tt.s2, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestFindDuplicates_MultibyteGivenNamesNotInflated is the end-to-end form of
+// #545: two unrelated Japanese given names sharing a surname scored 0.833 under
+// the byte denominator, clearing the default 0.8 threshold and being reported.
+func TestFindDuplicates_MultibyteGivenNamesNotInflated(t *testing.T) {
+	ind1 := &gedcom.Individual{XRef: "@I1@", Names: []*gedcom.PersonalName{{Given: "太郎", Surname: "山田"}}}
+	ind2 := &gedcom.Individual{XRef: "@I2@", Names: []*gedcom.PersonalName{{Given: "次郎", Surname: "山田"}}}
+	doc := &gedcom.Document{Records: []*gedcom.Record{
+		{XRef: ind1.XRef, Type: gedcom.RecordTypeIndividual, Entity: ind1},
+		{XRef: ind2.XRef, Type: gedcom.RecordTypeIndividual, Entity: ind2},
+	}}
+
+	if pairs := NewDuplicateDetector(nil).FindDuplicates(doc); len(pairs) != 0 {
+		t.Errorf("FindDuplicates reported %d pair(s) for 太郎/次郎, want 0", len(pairs))
+	}
+}
+
 func TestLevenshteinDistance(t *testing.T) {
 	tests := []struct {
 		name string
@@ -1657,13 +1702,19 @@ func TestCompareGivenNames_EarlyExitEquivalence(t *testing.T) {
 		{"equal lengths, fails the threshold", "john", "mary", 0.8},
 		{"wildly different lengths", "jo", "bartholomew", 0.8},
 		{"wildly different lengths, reversed", "bartholomew", "jo", 0.8},
-		// Rune count and byte count diverge from here down: the bound counts
-		// runes to match the DP, over stringSimilarity's own byte denominator.
+		// Rune count and byte count diverge from here down. The bound and
+		// stringSimilarity must both count runes (#545); a bound over bytes
+		// against a rune similarity, or the reverse, shows up here.
 		{"accented, same rune count", "jose", "josé", 0.8},
 		{"accented, different rune count", "josé", "jo", 0.8},
 		{"multibyte, exit does not fire", "日本語", "京都", 0.8},
 		{"multibyte, exit fires", "日本語である", "京", 0.8},
 		{"emoji, rune and byte counts diverge", "jo🙂", "jo", 0.8},
+		{"CJK, exit fires", "太郎", "太", 0.6},
+		{"CJK, bound equals exact at the threshold", "健太郎", "健太", 1.0 - 1.0/3},
+		{"Cyrillic, exit fires", "Владимир", "Влад", 0.8},
+		{"Cyrillic, exit does not fire", "Владимир", "Владимира", 0.8},
+		{"Greek, exit does not fire", "Γεώργιος", "Γεώργιον", 0.8},
 		// 1 - |5-3|/5 = 0.6 exactly, and the exit tests `<`, so this one must
 		// NOT fire and the exact value must come back...
 		{"threshold boundary, exit must not fire", "abcde", "abc", 0.6},
