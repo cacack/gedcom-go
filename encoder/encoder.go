@@ -46,6 +46,7 @@ func EncodeWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeOptions) e
 	if opts == nil {
 		opts = DefaultOptions()
 	}
+	opts = opts.forOutput(doc.Header)
 
 	// Write header
 	if err := writeHeader(w, doc.Header, opts); err != nil {
@@ -247,11 +248,7 @@ func headerTagOverride(tag *gedcom.Tag, inGEDC bool, opts *EncodeOptions) (strin
 // writeHeaderFields reconstructs a header from the typed fields. This is the
 // hand-built path: a document assembled in memory has no raw tags to preserve.
 func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error {
-	// Use TargetVersion if set, otherwise use header.Version
-	version := header.Version
-	if opts.TargetVersion != "" {
-		version = opts.TargetVersion
-	}
+	version := outputVersion(header, opts)
 
 	writeGedc := func() error {
 		if version == "" {

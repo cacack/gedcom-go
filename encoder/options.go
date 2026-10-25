@@ -13,13 +13,18 @@ type EncodeOptions struct {
 	// Set to "" (the zero value) to use "\n".
 	LineEnding string
 
-	// MaxLineLength specifies the maximum length for line content before
-	// splitting with CONC tags. Default is 248 characters.
+	// MaxLineLength specifies the maximum length, in bytes, for line content
+	// before splitting with CONC tags. Default is 248.
 	// Set to 0 to use the default value.
+	//
+	// It applies only to GEDCOM 5.5 and 5.5.1 output. GEDCOM 7.0 removed CONC
+	// and has no line-length limit, so 7.0 output (TargetVersion, or the
+	// header's version when no target is set) is never split.
 	MaxLineLength int
 
 	// DisableLineWrap disables automatic CONC splitting for long lines.
 	// When true, lines exceeding MaxLineLength will not be split.
+	// GEDCOM 7.0 output behaves as if this were true.
 	DisableLineWrap bool
 
 	// TargetVersion specifies the GEDCOM version to target for output.
@@ -58,6 +63,32 @@ func (opts *EncodeOptions) effectiveLineEnding() string {
 		return "\n"
 	}
 	return opts.LineEnding
+}
+
+// outputVersion returns the GEDCOM version output is written as:
+// opts.TargetVersion, or the header's version when no target is set -- the
+// same version the header's GEDC.VERS is written with.
+func outputVersion(header *gedcom.Header, opts *EncodeOptions) gedcom.Version {
+	if opts != nil && opts.TargetVersion != "" {
+		return opts.TargetVersion
+	}
+	if header != nil {
+		return header.Version
+	}
+	return ""
+}
+
+// forOutput returns the options to write a document with header. For GEDCOM
+// 7.0 output that is a copy with DisableLineWrap set, because 7.0 removed CONC
+// and has no line-length limit (issue #565); otherwise it is opts itself. The
+// caller's options are never modified.
+func (opts *EncodeOptions) forOutput(header *gedcom.Header) *EncodeOptions {
+	if outputVersion(header, opts) != gedcom.Version70 || opts.DisableLineWrap {
+		return opts
+	}
+	resolved := *opts
+	resolved.DisableLineWrap = true
+	return &resolved
 }
 
 // effectiveMaxLineLength returns the max line length to use,

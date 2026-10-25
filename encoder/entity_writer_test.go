@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -2352,8 +2353,9 @@ func TestSplitLineForLength(t *testing.T) {
 	}
 }
 
-// TestFindWordBoundary tests the word boundary finding helper
-func TestFindWordBoundary(t *testing.T) {
+// TestFindSplitPoint tests where a long line is cut for CONC: between two
+// non-space characters and never inside a UTF-8 character (issue #565).
+func TestFindSplitPoint(t *testing.T) {
 	tests := []struct {
 		name     string
 		line     string
@@ -2367,10 +2369,10 @@ func TestFindWordBoundary(t *testing.T) {
 			expected: 5,
 		},
 		{
-			name:     "split at space",
+			name:     "cut between two letters at max",
 			line:     "Hello world this is a test",
 			maxLen:   15,
-			expected: 12, // After "Hello world "
+			expected: 15, // "Hello world thi" | "s is a test"
 		},
 		{
 			name:     "no space found - split at max",
@@ -2379,26 +2381,75 @@ func TestFindWordBoundary(t *testing.T) {
 			expected: 10,
 		},
 		{
-			name:     "space exactly at max",
+			name:     "space just before max moves the cut back past it",
 			line:     "12345678 x",
 			maxLen:   9,
-			expected: 9, // After "12345678 "
+			expected: 7, // "1234567" | "8 x"
 		},
 		{
-			name:     "multiple spaces - uses last one within limit",
+			name:     "space at max moves the cut back past it",
 			line:     "one two three four",
 			maxLen:   14,
-			expected: 14, // After "one two three " (index 14 is right after the space)
+			expected: 12, // "one two thre" | "e four"
+		},
+		{
+			name:     "never inside a multi-byte character",
+			line:     "ab日本語",
+			maxLen:   4, // byte 4 is inside 日 (bytes 2-4)
+			expected: 2,
+		},
+		{
+			name:     "run of spaces longer than max falls back to max",
+			line:     "a      b",
+			maxLen:   4,
+			expected: 4,
+		},
+		{
+			name:     "first character longer than max is kept whole",
+			line:     "日本",
+			maxLen:   2,
+			expected: 3,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := findWordBoundary(tt.line, tt.maxLen)
+			result := findSplitPoint(tt.line, tt.maxLen)
 			if result != tt.expected {
-				t.Errorf("findWordBoundary() = %d, want %d", result, tt.expected)
+				t.Errorf("findSplitPoint() = %d, want %d", result, tt.expected)
 			}
 		})
+	}
+}
+
+// TestSplitLineForLengthSegmentEdges asserts every split of a long line lands
+// between two non-space characters and on a rune boundary, and that the
+// segments rebuild the line. A space at a segment edge is lost by readers
+// that trim lines (issue #565).
+func TestSplitLineForLengthSegmentEdges(t *testing.T) {
+	lines := []string{
+		strings.Repeat("word ", 60),
+		strings.Repeat("日本語 テキスト ", 30),
+		strings.Repeat("ab ", 100),
+	}
+	for _, line := range lines {
+		for _, maxLen := range []int{7, 20, 100} {
+			segments := splitLineForLength(line, &EncodeOptions{MaxLineLength: maxLen})
+			if got := strings.Join(segments, ""); got != line {
+				t.Fatalf("maxLen %d: segments rebuild %q, want %q", maxLen, got, line)
+			}
+			for i, seg := range segments {
+				if !utf8.ValidString(seg) {
+					t.Errorf("maxLen %d: segment %d %q is not valid UTF-8", maxLen, i, seg)
+				}
+				if i < len(segments)-1 && strings.HasSuffix(seg, " ") {
+					t.Errorf("maxLen %d: segment %d %q ends with a space", maxLen, i, seg)
+				}
+				if i > 0 && strings.HasPrefix(seg, " ") {
+					t.Errorf("maxLen %d: segment %d %q starts with a space", maxLen, i, seg)
+				}
+			}
+		}
 	}
 }
 

@@ -28,8 +28,8 @@ The question: how do we handle these transparently for library consumers?
 
 1. **Transparent handling** - Consumers shouldn't deal with CONT/CONC
 2. **Round-trip fidelity** - Encoded output should be valid GEDCOM
-3. **GEDCOM 7.0 compatibility** - 7.0 deprecates CONC (allows embedded newlines)
-4. **Readability** - Split at word boundaries, not mid-word
+3. **GEDCOM 7.0 compatibility** - 7.0 removed CONC and has no line-length limit
+4. **Reader tolerance** - 5.5.1 requires a CONC split between two non-space characters, since readers that trim lines lose a space at a split
 
 ## Considered Options
 
@@ -54,7 +54,7 @@ type Note struct {
 ### Option C: Full Automatic Handling (Selected)
 
 - **Decode**: Merge CONT/CONC into single string with embedded `\n`
-- **Encode**: Split on `\n` to CONT, split long lines to CONC at word boundaries
+- **Encode**: Split on `\n` to CONT; for 5.x, split long lines to CONC between two non-space characters and never inside a UTF-8 character
 - **Pros**: Transparent API, valid output, round-trip works
 - **Verdict**: Accepted
 
@@ -64,13 +64,14 @@ type Note struct {
 
 - Consumers work with plain strings containing `\n`
 - Encoded output respects GEDCOM line limits
-- Word-boundary splitting improves readability
-- GEDCOM 7.0 mode can skip CONC generation
+- No space is lost to readers that trim a line at a CONC split
+- GEDCOM 7.0 output never contains CONC
 
 ### Negative
 
 - Original CONT/CONC structure not preserved exactly (acceptable)
 - Slight encoding overhead for long text
+- A 5.x split usually falls mid-word, which reads worse in a raw file than a word-boundary split
 
 ## Implementation
 
@@ -120,10 +121,10 @@ func splitForLength(level int, tag, value string, opts *EncodeOptions) []*Tag {
         return []*Tag{{Level: level, Tag: tag, Value: value}}
     }
 
-    // Split at word boundaries
+    // Split between two non-space characters, on a rune boundary
     var tags []*Tag
     for len(value) > maxLen {
-        splitPoint := findWordBoundary(value, maxLen)
+        splitPoint := findSplitPoint(value, maxLen)
         tags = append(tags, &Tag{Level: level, Tag: tag, Value: value[:splitPoint]})
         value = value[splitPoint:]
         tag = "CONC"  // Subsequent segments are CONC
@@ -139,15 +140,15 @@ func splitForLength(level int, tag, value string, opts *EncodeOptions) []*Tag {
 ```go
 type EncodeOptions struct {
     MaxLineLength   int   // Default: 248 (GEDCOM spec: 255 minus overhead)
-    DisableLineWrap bool  // Skip CONC generation (for GEDCOM 7.0)
+    DisableLineWrap bool  // Skip CONC generation (implied for GEDCOM 7.0)
 }
 ```
 
 ## GEDCOM 7.0 Considerations
 
-GEDCOM 7.0 deprecates CONC tags and allows values to contain embedded newlines. When encoding for 7.0:
+GEDCOM 7.0 removed CONC and has no line-length limit. When the output version (`TargetVersion`, else `Header.Version`) is 7.0:
 
-- `DisableLineWrap: true` skips CONC generation
+- No CONC is generated, whatever `MaxLineLength` and `DisableLineWrap` say (issue #565)
 - CONT is still used for explicit line breaks
 - Values may exceed traditional line limits
 
