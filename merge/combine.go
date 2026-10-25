@@ -239,7 +239,7 @@ func (e *CombineError) Error() string {
 	case "version":
 		return fmt.Sprintf("merge: incompatible versions: %s vs %s", e.Doc1, e.Doc2)
 	case "encoding":
-		return fmt.Sprintf("merge: incompatible encodings: %s vs %s", e.Doc1, e.Doc2)
+		return fmt.Sprintf("merge: incompatible encodings: %s vs %s (set CombineOptions.IgnoreEncodingMismatch to merge anyway)", e.Doc1, e.Doc2)
 	case "collision":
 		return fmt.Sprintf("merge: xref collision: %s", summarizeXRefs(e.Colliding))
 	case "prefix-collision":

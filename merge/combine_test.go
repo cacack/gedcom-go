@@ -877,7 +877,7 @@ func TestCombineError_ErrorMessages(t *testing.T) {
 		{
 			name:   "encoding",
 			err:    &merge.CombineError{Kind: "encoding", Doc1: "UTF-8", Doc2: "ANSEL"},
-			want:   "merge: incompatible encodings: UTF-8 vs ANSEL",
+			want:   "merge: incompatible encodings: UTF-8 vs ANSEL (set CombineOptions.IgnoreEncodingMismatch to merge anyway)",
 			wantIs: []error{merge.ErrIncompatibleHeader},
 		},
 		{
