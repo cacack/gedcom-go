@@ -65,6 +65,46 @@ func TestHeaderUnknownTags(t *testing.T) {
 			want: []int{3, 5, 7, 9, 11, 14, 16},
 		},
 		{
+			name: "unknown tags under NOTE, SCHMA and DATA.DATE",
+			input: `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SOUR APP
+2 DATA Data
+3 DATE 1 JAN 2020
+4 ZZZZ under DATA.DATE
+1 NOTE Header note
+2 ZZZZ under NOTE
+1 SCHMA
+2 ZZZZ under SCHMA
+0 TRLR`,
+			want: []int{7, 9, 11},
+		},
+		{
+			name: "unchecked leaf contexts are silent by design",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 DEST OTHER
+2 ZZZZ under DEST
+1 SOUR APP
+2 VERS 1.0
+3 ZZZZ under SOUR.VERS
+0 TRLR`,
+			want: nil,
+		},
+		{
+			name: "identifier-bearing HEAD before the real header",
+			input: `0 @X1@ HEAD
+1 ZZZZ under bogus header
+0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 YYYY under real header
+0 TRLR`,
+			want: []int{6},
+		},
+		{
 			name: "misplaced standard tag",
 			input: `0 HEAD
 1 GEDC

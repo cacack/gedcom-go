@@ -379,7 +379,8 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 			inSour = false
 		}
 
-		// Extract header fields
+		// Extract header fields. A header tag handled here must also be listed
+		// in headerSubstructures, or it is reported as UNKNOWN_TAG.
 		switch line.Tag {
 		case "CHAR":
 			// tagToken, not line.Value: the encoding name is a token compared
