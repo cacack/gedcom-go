@@ -43,6 +43,13 @@ type CombineOptions struct {
 	// CollisionStrategy == PrefixDoc2. Required for that strategy;
 	// must contain no whitespace and must not be empty.
 	Prefix string
+	// IgnoreEncodingMismatch lets Combine merge documents whose headers
+	// declare different, non-empty encodings. Decoded text is UTF-8 in
+	// memory and the encoder always writes UTF-8, so the declared CHAR
+	// is provenance only. When set, doc1's Encoding is kept and the
+	// mismatch is recorded as a HeaderConflict{Field: "Encoding"}. The
+	// zero value refuses the mismatch with ErrIncompatibleHeader.
+	IgnoreEncodingMismatch bool
 }
 
 // CombineReport describes what Combine did on success. Combine returns
@@ -83,7 +90,9 @@ type HeaderConflict struct {
 //
 //   - Version and Encoding must be compatible. If both headers have
 //     a non-empty value and they differ, Combine returns an error.
-//     Equal or one-empty is OK.
+//     Equal or one-empty is OK. opts.IgnoreEncodingMismatch waives the
+//     Encoding check; doc1's value is then kept and the difference is
+//     recorded as a HeaderConflict.
 //   - For the other header scalar fields (SourceSystem, Date,
 //     Language, Copyright, AncestryTreeID, Vendor, Schema) doc1's
 //     value is kept. If doc2's value is non-empty AND differs,
@@ -111,7 +120,7 @@ func Combine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Document
 	}
 
 	// Check version/encoding compatibility BEFORE doing any work.
-	if err := checkHeaderCompat(doc1.Header, doc2.Header); err != nil {
+	if err := checkHeaderCompat(doc1.Header, doc2.Header, opts.IgnoreEncodingMismatch); err != nil {
 		return nil, nil, err
 	}
 
@@ -230,7 +239,7 @@ func (e *CombineError) Error() string {
 	case "version":
 		return fmt.Sprintf("merge: incompatible versions: %s vs %s", e.Doc1, e.Doc2)
 	case "encoding":
-		return fmt.Sprintf("merge: incompatible encodings: %s vs %s", e.Doc1, e.Doc2)
+		return fmt.Sprintf("merge: incompatible encodings: %s vs %s (set CombineOptions.IgnoreEncodingMismatch to merge anyway)", e.Doc1, e.Doc2)
 	case "collision":
 		return fmt.Sprintf("merge: xref collision: %s", summarizeXRefs(e.Colliding))
 	case "prefix-collision":
@@ -264,8 +273,8 @@ func summarizeXRefs(xrefs []string) string {
 
 // checkHeaderCompat returns an error if doc1 and doc2 have
 // incompatible Version or Encoding fields. Empty values are treated as
-// "unknown" and never conflict.
-func checkHeaderCompat(h1, h2 *gedcom.Header) error {
+// "unknown" and never conflict. ignoreEncoding skips the Encoding check.
+func checkHeaderCompat(h1, h2 *gedcom.Header, ignoreEncoding bool) error {
 	if h1 == nil || h2 == nil {
 		return nil
 	}
@@ -276,7 +285,7 @@ func checkHeaderCompat(h1, h2 *gedcom.Header) error {
 			Doc2: string(h2.Version),
 		}
 	}
-	if h1.Encoding != "" && h2.Encoding != "" && h1.Encoding != h2.Encoding {
+	if !ignoreEncoding && h1.Encoding != "" && h2.Encoding != "" && h1.Encoding != h2.Encoding {
 		return &CombineError{
 			Kind: "encoding",
 			Doc1: string(h1.Encoding),

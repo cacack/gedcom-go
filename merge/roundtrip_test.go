@@ -3,6 +3,7 @@ package merge_test
 import (
 	"bytes"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
@@ -142,4 +143,76 @@ func mustRoundtripDecode(t *testing.T, path string) *gedcom.Document {
 		t.Fatalf("decode %s: %v", path, err)
 	}
 	return doc
+}
+
+// TestCombine_Roundtrip_MixedEncodings combines an ANSEL-declared file with a
+// UTF-8 one (#568). Both are UTF-8 in memory, so with IgnoreEncodingMismatch
+// the result encodes and decodes back with every record intact.
+func TestCombine_Roundtrip_MixedEncodings(t *testing.T) {
+	doc1 := mustRoundtripDecode(t, "../testdata/gedcom-5.5/royal92.ged")
+	doc2 := mustRoundtripDecode(t, "../testdata/edge-cases/vendor-paf5.ged")
+	if doc1.Header.Encoding != gedcom.EncodingANSEL || doc2.Header.Encoding != gedcom.EncodingUTF8 {
+		t.Fatalf("fixture encodings = %q, %q; want ANSEL, UTF-8", doc1.Header.Encoding, doc2.Header.Encoding)
+	}
+
+	if _, _, err := merge.Combine(doc1, doc2, merge.CombineOptions{CollisionStrategy: merge.RenumberDoc2}); err == nil {
+		t.Fatal("zero-value options should still refuse the encoding mismatch")
+	}
+
+	combined, _, err := merge.Combine(doc1, doc2, merge.CombineOptions{
+		CollisionStrategy:      merge.RenumberDoc2,
+		IgnoreEncodingMismatch: true,
+	})
+	if err != nil {
+		t.Fatalf("Combine: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, combined); err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("\n1 CHAR UTF-8")) {
+		t.Error("encoded header should declare CHAR UTF-8 regardless of doc1's ANSEL")
+	}
+	roundtripped, err := decoder.Decode(&buf)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if got, want := len(roundtripped.Records), len(combined.Records); got != want {
+		t.Fatalf("record count after round-trip: got %d want %d", got, want)
+	}
+	for i, want := range combined.Records {
+		got := roundtripped.Records[i]
+		if got.XRef != want.XRef || got.Type != want.Type {
+			t.Fatalf("record %d: got %s %s want %s %s", i, got.XRef, got.Type, want.XRef, want.Type)
+		}
+		wantIndi, ok := want.GetIndividual()
+		if !ok {
+			continue
+		}
+		gotIndi, _ := got.GetIndividual()
+		if gotIndi == nil || len(gotIndi.Names) != len(wantIndi.Names) {
+			t.Fatalf("record %s: names lost in round-trip", want.XRef)
+		}
+		for j := range wantIndi.Names {
+			if gotIndi.Names[j].Full != wantIndi.Names[j].Full {
+				t.Errorf("record %s name %d: got %q want %q", want.XRef, j, gotIndi.Names[j].Full, wantIndi.Names[j].Full)
+			}
+		}
+	}
+	if !strings.Contains(nameFulls(roundtripped), "Lämmerhirt") {
+		t.Error("non-ASCII name from the UTF-8 doc did not survive the round-trip")
+	}
+}
+
+// nameFulls concatenates every individual's full names.
+func nameFulls(doc *gedcom.Document) string {
+	var b strings.Builder
+	for _, indi := range doc.Individuals() {
+		for _, n := range indi.Names {
+			b.WriteString(n.Full)
+			b.WriteByte('\n')
+		}
+	}
+	return b.String()
 }
