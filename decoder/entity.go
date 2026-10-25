@@ -608,10 +608,13 @@ type eventDetail struct {
 // detailOwner names the record an event or attribute belongs to. It decides
 // whether FAMILY_EVENT_DETAIL's HUSB/WIFE are in grammar: the spec defines them
 // under every family event and family attribute, and under no individual one.
+// The zero value is reserved so an eventDetail built without an owner matches
+// neither constant, and the HUSB/WIFE check stays silent rather than flagging.
 type detailOwner int
 
 const (
-	individualOwner detailOwner = iota
+	_ detailOwner = iota
+	individualOwner
 	familyOwner
 )
 
@@ -739,7 +742,7 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 		// attribute (maximal70.ged carries one under FAM.FACT). Known tags not
 		// yet parsed into typed fields. An individual's events and attributes
 		// have no such position, so there the tag is nonstandard.
-		if detail.owner != familyOwner {
+		if detail.owner == individualOwner {
 			collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
 		}
 	default:
