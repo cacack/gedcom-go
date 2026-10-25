@@ -148,7 +148,7 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "BIRT", "DEAT", "BAPM", "BURI", "CENS", "CHR", "ADOP", "RESI", "IMMI", "EMIG",
 			"BARM", "BASM", "BLES", "CHRA", "CONF", "FCOM",
 			"GRAD", "RETI", "NATU", "ORDN", "PROB", "WILL", "CREM", "EVEN":
-			event := parseEvent(record.Tags, i, tag.Tag, collector)
+			event := parseEvent(record.Tags, i, tag.Tag, individualOwner, collector)
 			indi.Events = append(indi.Events, event)
 
 		case "NO":
@@ -158,7 +158,7 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 				collector.addInvalidValue(tag.LineNumber, "NO", tag.Value, "missing event type")
 				continue
 			}
-			event := parseEvent(record.Tags, i, tag.Value, collector)
+			event := parseEvent(record.Tags, i, tag.Value, individualOwner, collector)
 			event.IsNegative = true
 			indi.Events = append(indi.Events, event)
 
@@ -167,7 +167,7 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			indi.LDSOrdinances = append(indi.LDSOrdinances, ord)
 
 		case "OCCU", "CAST", "DSCR", "EDUC", "IDNO", "NATI", "SSN", "TITL", "RELI", "NCHI", "NMR", "PROP", "FACT":
-			attr := parseAttribute(record.Tags, i, tag.Tag, collector)
+			attr := parseAttribute(record.Tags, i, tag.Tag, individualOwner, collector)
 			indi.Attributes = append(indi.Attributes, attr)
 
 		case "FAMC":
@@ -583,6 +583,7 @@ func parseSourceText(tags []*gedcom.Tag, textIdx int, collector *diagnosticColle
 // Every field must be set by the constructors below: parseEventDetailTag writes
 // through the pointers unguarded.
 type eventDetail struct {
+	owner           detailOwner
 	date            *string
 	parsedDate      **gedcom.Date
 	placeDetail     **gedcom.PlaceDetail
@@ -604,9 +605,20 @@ type eventDetail struct {
 	inlineNotes     *[]string
 }
 
+// detailOwner names the record an event or attribute belongs to. It decides
+// whether FAMILY_EVENT_DETAIL's HUSB/WIFE are in grammar: the spec defines them
+// under every family event and family attribute, and under no individual one.
+type detailOwner int
+
+const (
+	individualOwner detailOwner = iota
+	familyOwner
+)
+
 // eventDetailOf returns the EVENT_DETAIL view of an event.
-func eventDetailOf(e *gedcom.Event) eventDetail {
+func eventDetailOf(e *gedcom.Event, owner detailOwner) eventDetail {
 	return eventDetail{
+		owner:           owner,
 		date:            &e.Date,
 		parsedDate:      &e.ParsedDate,
 		placeDetail:     &e.PlaceDetail,
@@ -630,8 +642,9 @@ func eventDetailOf(e *gedcom.Event) eventDetail {
 }
 
 // eventDetailOfAttribute returns the EVENT_DETAIL view of an attribute.
-func eventDetailOfAttribute(a *gedcom.Attribute) eventDetail {
+func eventDetailOfAttribute(a *gedcom.Attribute, owner detailOwner) eventDetail {
 	return eventDetail{
+		owner:           owner,
 		date:            &a.Date,
 		parsedDate:      &a.ParsedDate,
 		placeDetail:     &a.PlaceDetail,
@@ -660,6 +673,10 @@ func eventDetailOfAttribute(a *gedcom.Attribute) eventDetail {
 // event and not on an attribute) stay with their own parser, which delegates
 // here for the rest.
 // Unrecognized standard tags are reported to collector (ADR 0007).
+//
+// The switch branches on the owning record, never on event versus attribute:
+// HUSB/WIFE (FAMILY_EVENT_DETAIL) are in grammar under a family's events and
+// attributes alike, and under neither for an individual (issue #475).
 //
 //nolint:gocyclo // GEDCOM parsing inherently requires handling many tag types
 func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collector *diagnosticCollector) {
@@ -720,7 +737,11 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 	case "HUSB", "WIFE":
 		// FAMILY_EVENT_DETAIL: the spouse ages on a family event or family
 		// attribute (maximal70.ged carries one under FAM.FACT). Known tags not
-		// yet parsed into typed fields.
+		// yet parsed into typed fields. An individual's events and attributes
+		// have no such position, so there the tag is nonstandard.
+		if detail.owner != familyOwner {
+			collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+		}
 	default:
 		if !strings.HasPrefix(tag.Tag, "_") {
 			collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -729,7 +750,7 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 }
 
 // parseEvent extracts an event from tags starting at eventIdx.
-func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, collector *diagnosticCollector) *gedcom.Event {
+func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailOwner, collector *diagnosticCollector) *gedcom.Event {
 	event := &gedcom.Event{
 		Type: gedcom.EventType(eventTag),
 	}
@@ -743,7 +764,7 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, collector *di
 	}
 
 	baseLevel := tags[eventIdx].Level
-	detail := eventDetailOf(event)
+	detail := eventDetailOf(event, owner)
 
 	// Look for subordinate tags at baseLevel+1
 	for i := eventIdx + 1; i < len(tags); i++ {
@@ -898,14 +919,14 @@ func validateCoordinate(tag *gedcom.Tag, parse func(string) (float64, error), co
 }
 
 // parseAttribute extracts an attribute from tags starting at attrIdx.
-func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string, collector *diagnosticCollector) *gedcom.Attribute {
+func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string, owner detailOwner, collector *diagnosticCollector) *gedcom.Attribute {
 	attr := &gedcom.Attribute{
 		Type:  gedcom.AttributeType(attrTag),
 		Value: tags[attrIdx].Value,
 	}
 
 	baseLevel := tags[attrIdx].Level
-	detail := eventDetailOfAttribute(attr)
+	detail := eventDetailOfAttribute(attr, owner)
 
 	// Look for subordinate tags at baseLevel+1
 	for i := attrIdx + 1; i < len(tags); i++ {
@@ -1021,11 +1042,11 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			fam.Children = append(fam.Children, tagToken(tag.Value))
 
 		case "NCHI", "FACT":
-			attr := parseAttribute(record.Tags, i, tag.Tag, collector)
+			attr := parseAttribute(record.Tags, i, tag.Tag, familyOwner, collector)
 			fam.Attributes = append(fam.Attributes, attr)
 
 		case "MARR", "DIV", "ENGA", "ANUL", "MARB", "MARC", "MARL", "MARS", "DIVF", "CENS", "RESI", "EVEN":
-			event := parseEvent(record.Tags, i, tag.Tag, collector)
+			event := parseEvent(record.Tags, i, tag.Tag, familyOwner, collector)
 			fam.Events = append(fam.Events, event)
 
 		case "NO":
@@ -1035,7 +1056,7 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 				collector.addInvalidValue(tag.LineNumber, "NO", tag.Value, "missing event type")
 				continue
 			}
-			event := parseEvent(record.Tags, i, tag.Value, collector)
+			event := parseEvent(record.Tags, i, tag.Value, familyOwner, collector)
 			event.IsNegative = true
 			fam.Events = append(fam.Events, event)
 

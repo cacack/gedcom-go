@@ -603,6 +603,11 @@ family — decodes the shared `EVENT_DETAIL` structure into typed fields:
 `gedcom.Attribute` names the same fields, so an attribute reads the same way as
 an event.
 
+`HUSB` and `WIFE` (spouse ages, `FAMILY_EVENT_DETAIL`) are accepted under a
+family's events and attributes and kept raw in `Record.Tags`; under an
+individual's events or attributes, where the grammar has no such position,
+they are reported as `UNKNOWN_TAG`.
+
 ## Attributes
 
 | Tag | Attribute | Constant | Notes |
