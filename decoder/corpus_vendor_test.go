@@ -91,7 +91,11 @@ func TestCorpusVendorFiles(t *testing.T) {
 			source:      "TMG 1.2a",
 			individuals: 110,
 			families:    58,
-			diags:       map[string]int{CodeUnknownTag: 161},
+			// 161 -> 162 for issue #449: buildHeader now reports unknown
+			// header tags, and this file's header has one -- "1 TIME 14:54"
+			// beside "1 DATE" rather than under it (HEAD.DATE.TIME). It is
+			// the only header tag the change flags anywhere in the corpus.
+			diags: map[string]int{CodeUnknownTag: 162},
 		},
 		{
 			path:        "../testdata/edge-cases/vendor-ancestris11-export.ged",

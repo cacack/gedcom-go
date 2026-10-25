@@ -79,8 +79,15 @@ func TestSpec55AnchorStatuses(t *testing.T) {
 			version:        "5.5.1",
 			superstructure: "HEADER.HEAD",
 			tag:            "DEST",
+			want:           specRawAccepted,
+			because:        "buildHeader knows DEST and has no typed field for it (issue #449)",
+		},
+		{
+			version:        "5.5.1",
+			superstructure: "LDS_SPOUSE_SEALING.SLGS.STAT",
+			tag:            "DATE",
 			want:           specRawUndiagnosed,
-			because:        "buildHeader is given no diagnostic collector, so it reports nothing",
+			because:        "parseLDSOrdinance reads STAT's value and never its subordinates",
 		},
 	}
 

@@ -51,9 +51,8 @@ that one line removed. It decodes both and reads three signals:
   Note what `raw (undiagnosed)` does *not* say. It does not mean the context is
   unparsed. Silence has two causes and this cannot tell them apart: a context no
   parser visits, and a context whose parser was never handed a diagnostic
-  collector. The header is the second kind — `buildHeader` reads every header line
-  and types four of them, but takes no collector, so all of `HEAD` is
-  `raw (undiagnosed)`.
+  collector. The header was the second kind until `buildHeader` was given one
+  ([#449](https://github.com/cacack/gedcom-go/issues/449)).
 
 Two things worth stating plainly. A `raw` status means there is no typed field
 for the structure, not that the structure is dropped: every line is kept in
@@ -108,9 +107,9 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 |--------|-----------:|------:|---------|
 | typed | 1245 | 89.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 71 | 5.1% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 87 | 6.3% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 9 | 0.6% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 64 | 4.6% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 48 | 3.5% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
 ### By top-level structure
 
@@ -121,7 +120,7 @@ The structure each pair is nested under at level 0.
 | `INDI` | 873 | 832 | 0 | 24 | 3 | 14 |
 | `FAM` | 392 | 333 | 0 | 37 | 0 | 22 |
 | `SOUR` | 29 | 18 | 0 | 2 | 0 | 9 |
-| `HEAD` | 27 | 11 | 0 | 0 | 0 | 16 |
+| `HEAD` | 27 | 11 | 0 | 16 | 0 | 0 |
 | `REPO` | 21 | 17 | 0 | 3 | 1 | 0 |
 | `OBJE` | 17 | 16 | 0 | 0 | 0 | 1 |
 | `SUBM` | 16 | 9 | 0 | 5 | 2 | 0 |
@@ -843,13 +842,13 @@ Substructures of `HEAD`.
 |-----|-----------|--------|
 | `COPR` | `COPR` | typed |
 | `DATE` | `HEAD-DATE` | typed |
-| `DEST` | `DEST` | raw (undiagnosed) |
+| `DEST` | `DEST` | raw (accepted) |
 | `GEDC` | `GEDC` | typed |
 | `LANG` | `HEAD-LANG` | typed |
-| `NOTE` | `NOTE` | raw (undiagnosed) |
-| `PLAC` | `HEAD-PLAC` | raw (undiagnosed) |
+| `NOTE` | `NOTE` | raw (accepted) |
+| `PLAC` | `HEAD-PLAC` | raw (accepted) |
 | `SCHMA` | `SCHMA` | typed |
-| `SNOTE` | `SNOTE` | raw (undiagnosed) |
+| `SNOTE` | `SNOTE` | raw (accepted) |
 | `SOUR` | `HEAD-SOUR` | typed |
 | `SUBM` | `SUBM` | typed |
 
@@ -859,7 +858,7 @@ Substructures of `HEAD-DATE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `TIME` | `TIME` | raw (undiagnosed) |
+| `TIME` | `TIME` | raw (accepted) |
 
 ### `HEAD.GEDC`
 
@@ -875,7 +874,7 @@ Substructures of `HEAD-PLAC`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `FORM` | `HEAD-PLAC-FORM` | raw (undiagnosed) |
+| `FORM` | `HEAD-PLAC-FORM` | raw (accepted) |
 
 ### `HEAD.SCHMA`
 
@@ -891,10 +890,10 @@ Substructures of `HEAD-SOUR`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `CORP` | `CORP` | raw (undiagnosed) |
-| `DATA` | `HEAD-SOUR-DATA` | raw (undiagnosed) |
-| `NAME` | `NAME` | raw (undiagnosed) |
-| `VERS` | `VERS` | raw (undiagnosed) |
+| `CORP` | `CORP` | raw (accepted) |
+| `DATA` | `HEAD-SOUR-DATA` | raw (accepted) |
+| `NAME` | `NAME` | raw (accepted) |
+| `VERS` | `VERS` | raw (accepted) |
 
 ### `HEAD.SOUR.CORP`
 
@@ -902,11 +901,11 @@ Substructures of `CORP`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (undiagnosed) |
-| `EMAIL` | `EMAIL` | raw (undiagnosed) |
-| `FAX` | `FAX` | raw (undiagnosed) |
-| `PHON` | `PHON` | raw (undiagnosed) |
-| `WWW` | `WWW` | raw (undiagnosed) |
+| `ADDR` | `ADDR` | raw (accepted) |
+| `EMAIL` | `EMAIL` | raw (accepted) |
+| `FAX` | `FAX` | raw (accepted) |
+| `PHON` | `PHON` | raw (accepted) |
+| `WWW` | `WWW` | raw (accepted) |
 
 ### `HEAD.SOUR.DATA`
 
@@ -915,7 +914,7 @@ Substructures of `HEAD-SOUR-DATA`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `COPR` | `COPR` | typed |
-| `DATE` | `DATE-exact` | raw (undiagnosed) |
+| `DATE` | `DATE-exact` | raw (accepted) |
 
 ### `INDI`
 

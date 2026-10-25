@@ -65,6 +65,10 @@ import (
 // #472 removed a tenth entry: NOTE, whose only remaining occurrences were the
 // MULTIMEDIA_LINK subtag of an inline OBJE (#470). parseMediaLink now decodes
 // it. 25 - 1 = 24.
+//
+// #449 added one entry back: TIME. buildHeader used to report nothing, and now
+// reports unknown header tags like every other context. Across the corpus that
+// flags exactly one header line, vendor-tmg12.ged's "1 TIME", so 24 + 1 = 25.
 var unhandledTags = map[string]string{
 	// Standard tags. These are the actionable entries.
 	"RIN":   "standard 5.5.1 record ID; no typed access (#441) and unrecognized in every context",
@@ -83,6 +87,7 @@ var unhandledTags = map[string]string{
 	"EMAIL": "standard 5.5.1/7.0 contact tag",
 	"WWW":   "standard 5.5.1/7.0 contact tag",
 	"UID":   "standard 7.0 tag",
+	"TIME":  "standard, but misplaced at HEAD level 1 instead of under HEAD.DATE (vendor-tmg12.ged)",
 
 	// GEDCOM 7.0 tags, all from maximal70.ged. Version Support is Principle 4
 	// and Differentiator 2, so these are the sharpest entries in the list.
