@@ -328,7 +328,7 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 // This checks for chronological impossibilities like death before birth,
 // children born before parents, and unreasonable ages. Dates that do not
 // exist on the calendar, such as 31 FEB 1900 (CodeInvalidDate), are reported
-// only by [Validator.ValidateAll].
+// only by [Validator.ValidateAll] and [Validator.QualityReport].
 func (v *Validator) ValidateDateLogic(doc *gedcom.Document) []Issue {
 	if doc == nil {
 		return nil
@@ -424,12 +424,12 @@ func (v *Validator) ValidateNotePointers(doc *gedcom.Document) []Issue {
 // QualityReport generates a data quality report for the document, combining
 // validation issues with data completeness statistics.
 //
-// The report covers date logic, cross-references, duplicates, custom tags and
-// completeness. It is not the full issue set: the header, broken-pointer,
-// record-structure, date-validity, XRef-length, encoding and note-pointer
-// checks run only under [Validator.ValidateAll], so a caller reading QualityReport's counts
-// alone can see a clean report for a document ValidateAll flags. Use
-// ValidateAll when completeness of the issue set matters.
+// The report runs the same checks as [Validator.ValidateAll] -- the
+// spec-conformance ones land in [QualityReport].ConformanceIssues -- so its
+// counts are not clean for a document ValidateAll flags. It differs from
+// ValidateAll in filtering, not coverage: it reports every severity and applies
+// none of Strictness, SkipRules, MaxErrors, SkipDuplicateDetection or
+// SkipEncodingValidation.
 func (v *Validator) QualityReport(doc *gedcom.Document) *QualityReport {
 	if doc == nil {
 		return &QualityReport{
@@ -440,6 +440,7 @@ func (v *Validator) QualityReport(doc *gedcom.Document) *QualityReport {
 			ReferenceIssues:    []Issue{},
 			DuplicateIssues:    []Issue{},
 			CompletenessIssues: []Issue{},
+			ConformanceIssues:  []Issue{},
 		}
 	}
 	return v.getQualityAnalyzer().Analyze(doc)

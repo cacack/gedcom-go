@@ -1067,8 +1067,8 @@ year following the first, such as `1750/53` or `1850/1860`, is reported too, eve
 partial or non-Gregorian date. A one- or two-digit dual year resolves forward, so
 `1699/00` is 1699 and 1700. A record built in code, with no raw tags, is checked
 through its typed events, attributes and LDS ordinances; those issues carry line 0 and
-a `path` of just `<TYPE>.DATE`. `ValidateDateLogic`, `QualityReport` and the streaming
-validator do not run this check.
+a `path` of just `<TYPE>.DATE`. `ValidateAll` and `QualityReport` run this check;
+`ValidateDateLogic` and the streaming validator do not.
 
 | Error Code | Severity | Description |
 |------------|----------|-------------|
@@ -1156,7 +1156,7 @@ Two notes for callers upgrading. `DUPLICATE_DETECTION_LIMITED` is a `Warning`, s
 
 **Quality Report:**
 
-Comprehensive quality assessment with metrics and issue aggregation:
+Comprehensive quality assessment with metrics and issue aggregation. The report runs every check `ValidateAll` runs, so its counts are never clean for a document `ValidateAll` flags. The spec-conformance checks — header, broken pointers, record structure, nil elements, date validity, XRef length, note pointers and encoding — land in `ConformanceIssues` (JSON `conformance_issues`) beside the record-quality categories. Unlike `ValidateAll`, the report reports every severity and applies none of `Strictness`, `SkipRules`, `MaxErrors`, `SkipDuplicateDetection` or `SkipEncodingValidation`; filter its issues yourself if you need those.
 
 ```go
 report := v.QualityReport(doc)

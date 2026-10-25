@@ -693,6 +693,9 @@ func TestQualityReport_EmptySlicesNotNil(t *testing.T) {
 	if report.CompletenessIssues == nil {
 		t.Error("CompletenessIssues should not be nil")
 	}
+	if report.ConformanceIssues == nil {
+		t.Error("ConformanceIssues should not be nil")
+	}
 }
 
 func TestQualityAnalyzer_Analyze_DeathDateCoverage(t *testing.T) {
@@ -1090,5 +1093,53 @@ func TestQualityAnalyzer_Analyze_DuplicateLimitReachesWarnings(t *testing.T) {
 	if got := codeCounts(report.DuplicateIssues)[CodePotentialDuplicate]; got == 0 {
 		t.Error("DuplicateIssues holds no POTENTIAL_DUPLICATE; the limit issue displaced " +
 			"the pairs that were successfully compared")
+	}
+}
+
+// TestQualityReport_RunsEveryValidateAllCheck pins #544: the report runs the
+// spec-conformance checks ValidateAll runs, so its counts cannot read clean on
+// a document ValidateAll flags.
+func TestQualityReport_RunsEveryValidateAllCheck(t *testing.T) {
+	longXRef := "@I123456789012345678901@"
+	ind := &gedcom.Individual{XRef: longXRef, Names: []*gedcom.PersonalName{nil}}
+
+	doc551 := makeDocument([]*gedcom.Individual{ind}, nil)
+	doc551.Header = &gedcom.Header{Version: gedcom.Version551}
+
+	doc70 := makeDocument(nil, nil)
+	doc70.Header = &gedcom.Header{Version: gedcom.Version70, Encoding: gedcom.EncodingANSEL}
+
+	tests := []struct {
+		name      string
+		doc       *gedcom.Document
+		wantCodes []string
+	}{
+		{"5.5.1 header, xref and nil element", doc551, []string{CodeMissingSUBM, CodeXRefTooLong, CodeNilElement}},
+		{"7.0 encoding", doc70, []string{CodeInvalidEncodingForVersion}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v := NewWithOptions(&ValidateOptions{Strictness: StrictnessStrict})
+			report := v.QualityReport(tt.doc)
+
+			conformance := codeCounts(report.ConformanceIssues)
+			reported := codeCounts(append(append(append([]Issue{}, report.Errors...), report.Warnings...), report.Info...))
+			for _, code := range tt.wantCodes {
+				if conformance[code] == 0 {
+					t.Errorf("ConformanceIssues has no %s", code)
+				}
+				if reported[code] == 0 {
+					t.Errorf("severity slices have no %s: it did not reach the counts", code)
+				}
+			}
+
+			// Every issue ValidateAll returns at StrictnessStrict, which filters
+			// nothing, is in the report; the report adds only completeness issues.
+			for code, n := range codeCounts(v.ValidateAll(tt.doc)) {
+				if reported[code] != n {
+					t.Errorf("%s: report has %d, ValidateAll has %d", code, reported[code], n)
+				}
+			}
+		})
 	}
 }

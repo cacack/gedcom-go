@@ -53,9 +53,9 @@
 //
 // # Quality Reports
 //
-// Combine validation issues with completeness statistics. The report runs a
-// subset of the checks -- see [Validator.QualityReport] -- so prefer ValidateAll
-// when the issue set must be complete:
+// Combine validation issues with completeness statistics. The report runs the
+// same checks as ValidateAll but applies no Strictness, SkipRules or MaxErrors
+// filtering -- see [Validator.QualityReport]:
 //
 //	v := validator.New()
 //	report := v.QualityReport(doc)
