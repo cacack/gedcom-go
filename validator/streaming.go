@@ -194,16 +194,7 @@ func (sv *StreamingValidator) validateIndividual(ind *gedcom.Individual) []Issue
 	}
 
 	// Collect NOTE references
-	for i, noteXRef := range ind.NoteXRefs {
-		if noteXRef != "" {
-			sv.usedXRefs[noteXRef] = append(sv.usedXRefs[noteXRef], usageLocation{
-				RecordXRef: ind.XRef,
-				Context:    "NOTE",
-				Field:      fmt.Sprintf("NoteXRefs[%d]", i),
-				Index:      i,
-			})
-		}
-	}
+	sv.collectNoteXRefs(ind.XRef, "", ind.NoteXRefs)
 
 	// Collect ASSO references
 	for i, assoc := range ind.Associations {
@@ -216,6 +207,18 @@ func (sv *StreamingValidator) validateIndividual(ind *gedcom.Individual) []Issue
 			})
 		}
 	}
+
+	// Collect NOTE references nested in substructures
+	for i := range ind.ChildInFamilies {
+		sv.collectNoteXRefs(ind.XRef, fmt.Sprintf("ChildInFamilies[%d].", i), ind.ChildInFamilies[i].NoteXRefs)
+	}
+	for i := range ind.SpouseInFamilies {
+		sv.collectNoteXRefs(ind.XRef, fmt.Sprintf("SpouseInFamilies[%d].", i), ind.SpouseInFamilies[i].NoteXRefs)
+	}
+	sv.collectAssociationNotes(ind.XRef, "", ind.Associations)
+	sv.collectMediaLinkNotes(ind.XRef, "", ind.Media)
+	sv.collectEventNotes(ind.XRef, ind.Events)
+	sv.collectAttributeNotes(ind.XRef, ind.Attributes)
 
 	return issues
 }
@@ -270,16 +273,12 @@ func (sv *StreamingValidator) validateFamily(fam *gedcom.Family) []Issue {
 	}
 
 	// Collect NOTE references
-	for i, noteXRef := range fam.NoteXRefs {
-		if noteXRef != "" {
-			sv.usedXRefs[noteXRef] = append(sv.usedXRefs[noteXRef], usageLocation{
-				RecordXRef: fam.XRef,
-				Context:    "NOTE",
-				Field:      fmt.Sprintf("NoteXRefs[%d]", i),
-				Index:      i,
-			})
-		}
-	}
+	sv.collectNoteXRefs(fam.XRef, "", fam.NoteXRefs)
+
+	// Collect NOTE references nested in substructures
+	sv.collectMediaLinkNotes(fam.XRef, "", fam.Media)
+	sv.collectEventNotes(fam.XRef, fam.Events)
+	sv.collectAttributeNotes(fam.XRef, fam.Attributes)
 
 	return nil
 }
@@ -300,15 +299,83 @@ func (sv *StreamingValidator) collectSourceReferences(src *gedcom.Source) {
 	}
 
 	// Collect NOTE references
-	for i, noteXRef := range src.NoteXRefs {
+	sv.collectNoteXRefs(src.XRef, "", src.NoteXRefs)
+
+	// Collect NOTE references nested in substructures
+	for i, link := range src.RepositoryLinks {
+		if link != nil {
+			sv.collectNoteXRefs(src.XRef, fmt.Sprintf("RepositoryLinks[%d].", i), link.NoteXRefs)
+		}
+	}
+	sv.collectMediaLinkNotes(src.XRef, "", src.Media)
+}
+
+// collectNoteXRefs records each non-empty note pointer as a NOTE usage by
+// recordXRef. prefix locates the slice below the record (e.g. "Media[0].")
+// and is prepended to the reported field; "" means the record's own notes.
+func (sv *StreamingValidator) collectNoteXRefs(recordXRef, prefix string, noteXRefs []string) {
+	for i, noteXRef := range noteXRefs {
 		if noteXRef != "" {
 			sv.usedXRefs[noteXRef] = append(sv.usedXRefs[noteXRef], usageLocation{
-				RecordXRef: src.XRef,
+				RecordXRef: recordXRef,
 				Context:    "NOTE",
-				Field:      fmt.Sprintf("NoteXRefs[%d]", i),
+				Field:      fmt.Sprintf("%sNoteXRefs[%d]", prefix, i),
 				Index:      i,
 			})
 		}
+	}
+}
+
+// collectAssociationNotes collects the note pointers on each ASSO structure.
+func (sv *StreamingValidator) collectAssociationNotes(recordXRef, prefix string, assocs []*gedcom.Association) {
+	for i, assoc := range assocs {
+		if assoc != nil {
+			sv.collectNoteXRefs(recordXRef, fmt.Sprintf("%sAssociations[%d].", prefix, i), assoc.NoteXRefs)
+		}
+	}
+}
+
+// collectMediaLinkNotes collects the note pointers on each OBJE link.
+func (sv *StreamingValidator) collectMediaLinkNotes(recordXRef, prefix string, links []*gedcom.MediaLink) {
+	for i, link := range links {
+		if link != nil {
+			sv.collectNoteXRefs(recordXRef, fmt.Sprintf("%sMedia[%d].", prefix, i), link.NoteXRefs)
+		}
+	}
+}
+
+// collectPlaceDetailNotes collects the note pointers on a PLAC structure.
+func (sv *StreamingValidator) collectPlaceDetailNotes(recordXRef, prefix string, place *gedcom.PlaceDetail) {
+	if place != nil {
+		sv.collectNoteXRefs(recordXRef, prefix+"PlaceDetail.", place.NoteXRefs)
+	}
+}
+
+// collectEventNotes collects the note pointers on the PLAC, OBJE and ASSO
+// substructures of each event.
+func (sv *StreamingValidator) collectEventNotes(recordXRef string, events []*gedcom.Event) {
+	for i, ev := range events {
+		if ev == nil {
+			continue
+		}
+		prefix := fmt.Sprintf("Events[%d].", i)
+		sv.collectPlaceDetailNotes(recordXRef, prefix, ev.PlaceDetail)
+		sv.collectMediaLinkNotes(recordXRef, prefix, ev.Media)
+		sv.collectAssociationNotes(recordXRef, prefix, ev.Associations)
+	}
+}
+
+// collectAttributeNotes collects the note pointers on the PLAC, OBJE and ASSO
+// substructures of each attribute.
+func (sv *StreamingValidator) collectAttributeNotes(recordXRef string, attrs []*gedcom.Attribute) {
+	for i, attr := range attrs {
+		if attr == nil {
+			continue
+		}
+		prefix := fmt.Sprintf("Attributes[%d].", i)
+		sv.collectPlaceDetailNotes(recordXRef, prefix, attr.PlaceDetail)
+		sv.collectMediaLinkNotes(recordXRef, prefix, attr.Media)
+		sv.collectAssociationNotes(recordXRef, prefix, attr.Associations)
 	}
 }
 
