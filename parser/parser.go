@@ -82,9 +82,11 @@ func (p *Parser) Reset() {
 // allow, and, at level 0, an identifier with no closing "@" at all (e.g.
 // "0 @I1 INDI"), which no version allows. The recovered Line is returned
 // alongside the error so lenient callers can keep the record instead of
-// dropping it; see [parseSpacedXRef] and [parseUnterminatedXRef]. A returned
-// Line is therefore not proof that the line was well formed — check the error
-// too.
+// dropping it; see [parseSpacedXRef] and [parseUnterminatedXRef]. A level-0
+// identifier with no tag after it ("0 @I1@") is likewise reported with a Line
+// that keeps the identifier as its tag, so its subordinate lines are not
+// reparented onto the preceding record. A returned Line is therefore not proof
+// that the line was well formed — check the error too.
 func (p *Parser) ParseLine(input string) (*Line, error) {
 	p.lineNumber++
 
@@ -129,7 +131,11 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 	if strings.HasPrefix(parts[1], "@") && strings.HasSuffix(parts[1], "@") {
 		xref = parts[1]
 		if len(parts) < 3 {
-			return nil, newParseError(p.lineNumber, "line with xref must have a tag", line)
+			err := newParseError(p.lineNumber, "line with xref must have a tag", line)
+			if level == 0 {
+				return p.taglessXRefLine(level, xref, ""), err
+			}
+			return nil, err
 		}
 		tag = parts[2]
 		valueStartIdx = 3
@@ -297,7 +303,11 @@ func splitUnterminatedXRef(level int, xrefField, line string) (xref, rest string
 func (p *Parser) parseSpacedXRef(level int, line, xref, rest string) (*Line, error) {
 	fields := strings.Fields(rest)
 	if len(fields) == 0 {
-		return nil, newParseError(p.lineNumber, "line with xref must have a tag", line)
+		err := newParseError(p.lineNumber, "line with xref must have a tag", line)
+		if level == 0 {
+			return p.taglessXRefLine(level, xref, rest), err
+		}
+		return nil, err
 	}
 	return p.recoverXRefLine(level, xref, rest, fields[0]), &ParseError{
 		Line:    p.lineNumber,
@@ -346,14 +356,24 @@ func (p *Parser) parseUnterminatedXRef(level int, line, xref, rest string) (*Lin
 		// Representation violation. Keep the parse these lines have always had
 		// — the identifier becomes the tag, the remainder the value — and
 		// report them.
-		return &Line{
-			Level:      level,
-			Tag:        xref,
-			Value:      trimDelimiter(rest),
-			LineNumber: p.lineNumber,
-		}, err
+		return p.taglessXRefLine(level, xref, rest), err
 	}
 	return p.recoverXRefLine(level, xref, rest, fields[0]), err
+}
+
+// taglessXRefLine builds the Line kept for a reported level-0 line whose
+// identifier cannot be recovered, chiefly because no tag follows it ("0 @I1@",
+// "0 @I 1@", "0 @I1"). The line keeps its pre-existing parse — the identifier
+// becomes the tag, the remainder the value — so the record still exists to own
+// its subordinate lines. Dropping it instead would silently reparent them onto
+// the preceding record (#398).
+func (p *Parser) taglessXRefLine(level int, xref, rest string) *Line {
+	return &Line{
+		Level:      level,
+		Tag:        xref,
+		Value:      trimDelimiter(rest),
+		LineNumber: p.lineNumber,
+	}
 }
 
 // recoverXRefLine builds the Line for a malformed XRef identifier located by
