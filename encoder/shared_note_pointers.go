@@ -45,17 +45,21 @@ func sharedNotePointers(doc *gedcom.Document, opts *EncodeOptions) *sharedNoteSe
 }
 
 // retagSharedNotePointers rewrites each NOTE tag whose value is a pointer into
-// sharedNotes as SNOTE, in place, and returns tags. It runs on the tags the
-// entity writers produced, so every note-bearing structure -- records and
-// substructures alike -- shares the one rule instead of each writer needing
-// the document. A nil set changes nothing.
+// sharedNotes as SNOTE and returns tags. It runs on the tags the entity writers
+// produced, so every note-bearing structure -- records and substructures alike
+// -- shares the one rule instead of each writer needing the document. A
+// retagged entry is replaced by a copy rather than edited: some writers pass
+// the entity's own preserved tags through (SharedNote.Tags), and encoding must
+// not change the caller's document. A nil set changes nothing.
 func retagSharedNotePointers(tags []*gedcom.Tag, sharedNotes *sharedNoteSet) []*gedcom.Tag {
 	if sharedNotes == nil {
 		return tags
 	}
-	for _, tag := range tags {
+	for i, tag := range tags {
 		if tag != nil && tag.Tag == "NOTE" && sharedNotes.has(tag.Value) {
-			tag.Tag = "SNOTE"
+			retagged := *tag
+			retagged.Tag = "SNOTE"
+			tags[i] = &retagged
 		}
 	}
 	return tags

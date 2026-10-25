@@ -430,3 +430,27 @@ func TestSharedNotePointersRoundTrip7(t *testing.T) {
 		}
 	}
 }
+
+// TestRetagLeavesCallerTagsUnchanged guards against the retag writing SNOTE
+// into the caller's document: SharedNote.Tags is passed through by the entity
+// writer, so a NOTE pointer there must be copied, not edited, when retagged.
+func TestRetagLeavesCallerTagsUnchanged(t *testing.T) {
+	preserved := &gedcom.Tag{Level: 1, Tag: "NOTE", Value: "@S2@"}
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version70},
+		Records: []*gedcom.Record{
+			{XRef: "@S1@", Type: gedcom.RecordTypeSharedNote, Entity: &gedcom.SharedNote{Text: "one", Tags: []*gedcom.Tag{preserved}}},
+			{XRef: "@S2@", Type: gedcom.RecordTypeSharedNote, Entity: &gedcom.SharedNote{Text: "two"}},
+		},
+	}
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	if !strings.Contains(buf.String(), "1 SNOTE @S2@\n") {
+		t.Errorf("pointer not written as SNOTE:\n%s", buf.String())
+	}
+	if preserved.Tag != "NOTE" {
+		t.Errorf("caller's preserved tag changed to %q, want NOTE", preserved.Tag)
+	}
+}

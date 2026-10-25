@@ -348,8 +348,10 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 	return nil
 }
 
-// sharedNotes is the set from sharedNotePointers: note pointers in an entity
-// that resolve to one of these XRefs are written as SNOTE rather than NOTE.
+// writeRecord writes record, from its preserved Tags when it has them and from
+// its Entity otherwise. sharedNotes is the set from sharedNotePointers: note
+// pointers in an entity-built record that resolve to one of these XRefs are
+// written as SNOTE rather than NOTE.
 func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions, sharedNotes *sharedNoteSet) error {
 	if record == nil {
 		return nil
