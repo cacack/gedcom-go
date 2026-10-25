@@ -9,8 +9,8 @@ type Header struct {
 	Version Version
 
 	// DeclaredVersion is the version the header declares (HEAD.GEDC.VERS),
-	// set by the decoder, by converter.Convert to a different version, and
-	// by merge.Combine when doc1 declares none. It is empty when the file
+	// set by the decoder, by converter.Convert to a different version or
+	// when it adds a missing GEDC.VERS, and by merge.Combine when doc1 declares none. It is empty when the file
 	// declares no version or one this package does not recognize, so unlike
 	// Version it is never a guess. It selects the identifier grammar
 	// Document.IsPointerXRef applies: GEDCOM 5.5 and 5.5.1 allow spaces in

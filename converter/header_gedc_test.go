@@ -76,6 +76,10 @@ func TestConvertHeaderGEDC(t *testing.T) {
 			if after := snap(doc.Header.Tags); !slices.Equal(after, inputTags) {
 				t.Errorf("Convert mutated the input header:\n got %+v\nwant %+v", after, inputTags)
 			}
+			// The header now declares VERS, so the typed twin must match it.
+			if got.Header.DeclaredVersion != tt.target {
+				t.Errorf("DeclaredVersion = %q, want %q", got.Header.DeclaredVersion, tt.target)
+			}
 
 			var buf bytes.Buffer
 			if err := encoder.Encode(&buf, got); err != nil {
@@ -133,5 +137,49 @@ func TestConvertSameVersionKeepsDeclaredVERS(t *testing.T) {
 	}
 	if buf.String() != input {
 		t.Errorf("output changed:\n got %q\nwant %q", buf.String(), input)
+	}
+}
+
+// TestConvertSameVersion70AddsVERSAndRenamesXRefs pins that a 7.0 same-version
+// conversion needing both repairs -- a VERS-less GEDC and an XRef the 7.0
+// grammar rejects -- applies both to one copy and leaves the input alone.
+func TestConvertSameVersion70AddsVERSAndRenamesXRefs(t *testing.T) {
+	const input = "0 HEAD\n1 GEDC\n1 CHAR UTF-8\n0 @i2@ INDI\n0 TRLR\n"
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	doc.Header.Version = gedcom.Version70
+	inputTags := len(doc.Header.Tags)
+
+	got, report, err := converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	if got == doc {
+		t.Fatal("same-version conversion needing repairs returned the input")
+	}
+	if len(doc.Header.Tags) != inputTags || doc.GetIndividual("@i2@") == nil {
+		t.Error("Convert mutated the input document")
+	}
+	if got.GetIndividual("@I2@") == nil {
+		t.Error("XRef @i2@ was not renamed to @I2@")
+	}
+	if !slices.ContainsFunc(report.Transformations, func(tr gedcom.Transformation) bool {
+		return tr.Type == "XREF_UPPERCASE"
+	}) {
+		t.Errorf("report lacks the XRef rename: %+v", report.Transformations)
+	}
+	if got.Header.DeclaredVersion != gedcom.Version70 {
+		t.Errorf("DeclaredVersion = %q, want %q", got.Header.DeclaredVersion, gedcom.Version70)
+	}
+
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, got); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	out := buf.String()
+	if n := strings.Count(out, "2 VERS 7.0\n"); n != 1 || !strings.Contains(out, "1 GEDC\n2 VERS 7.0\n") {
+		t.Errorf("want exactly one VERS 7.0 directly under GEDC:\n%s", out)
 	}
 }

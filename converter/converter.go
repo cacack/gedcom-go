@@ -96,6 +96,9 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 				converted = doc.Clone()
 			}
 			updateVersionTag(converted.Header, targetVersion)
+			// The header now declares VERS, so its identifier grammar
+			// applies, as on the cross-version path.
+			converted.Header.DeclaredVersion = targetVersion
 		}
 		if converted.Header == nil {
 			shallow := *converted

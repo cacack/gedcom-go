@@ -124,9 +124,10 @@ func gedcLacksVers(header *gedcom.Header) bool {
 // system's own version, which a conversion must not touch.
 //
 // encoder.writeHeaderTags walks the same structure for its TargetVersion
-// override and must agree with this on what "inside GEDC" means. The two are
-// deliberately not shared -- see the note there -- so a change to either should
-// be checked against the other.
+// override, and gedcLacksVers decides whether the same-version path calls this;
+// all three must agree on what "inside GEDC" means. The encoder's walk is
+// deliberately not shared -- see the note there -- so a change to any of them
+// should be checked against the others.
 func updateVersionTag(header *gedcom.Header, targetVersion gedcom.Version) {
 	// Nothing to keep in sync: a header with no raw tags is written from the
 	// typed fields, which the caller already set.
