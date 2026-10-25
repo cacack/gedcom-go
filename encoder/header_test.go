@@ -197,6 +197,100 @@ func TestHeaderTargetVersionWithoutGEDCInSource(t *testing.T) {
 	})
 }
 
+// TestHeaderSynthesizedGEDCPlacement pins #465: a GEDC the encoder synthesizes
+// for a retarget goes where the target grammar puts it -- before CHAR in 5.x,
+// first in 7.0 -- rather than after the last structure the source had, and a
+// 5.x one carries the FORM those versions require.
+func TestHeaderSynthesizedGEDCPlacement(t *testing.T) {
+	tests := []struct {
+		name   string
+		tags   []*gedcom.Tag
+		target gedcom.Version
+		want   string
+	}{
+		{
+			name: "5.5.1 before CHAR",
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "SOUR", Value: "PAF"},
+				{Level: 1, Tag: "CHAR", Value: "ANSEL"},
+			},
+			target: gedcom.Version551,
+			want:   "0 HEAD\n1 SOUR PAF\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n",
+		},
+		{
+			name: "5.5 after every structure ranked before it",
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "SOUR", Value: "PAF"},
+				{Level: 1, Tag: "FILE", Value: "x.ged"},
+			},
+			target: gedcom.Version55,
+			want:   "0 HEAD\n1 SOUR PAF\n1 FILE x.ged\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n",
+		},
+		{
+			name: "7.0 first, without FORM",
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "SOUR", Value: "PAF"},
+				{Level: 2, Tag: "VERS", Value: "2.2"},
+			},
+			target: gedcom.Version70,
+			want:   "0 HEAD\n1 GEDC\n2 VERS 7.0\n1 SOUR PAF\n2 VERS 2.2\n",
+		},
+		{
+			name: "extension structure ranks after GEDC",
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "SOUR", Value: "PAF"},
+				{Level: 1, Tag: "_EXT", Value: "x"},
+			},
+			target: gedcom.Version551,
+			want:   "0 HEAD\n1 SOUR PAF\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 _EXT x\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := DefaultOptions()
+			opts.TargetVersion = tt.target
+
+			var buf bytes.Buffer
+			doc := &gedcom.Document{Header: &gedcom.Header{Tags: tt.tags}}
+			if err := EncodeWithOptions(&buf, doc, opts); err != nil {
+				t.Fatalf("encode: %v", err)
+			}
+			if got := strings.TrimSuffix(buf.String(), "0 TRLR\n"); got != tt.want {
+				t.Errorf("header =\n%s\nwant\n%s", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestHeaderFieldsGEDCForm pins the hand-built path's half of #465: 5.5 and
+// 5.5.1 require GEDC.FORM, 7.0 removed it.
+func TestHeaderFieldsGEDCForm(t *testing.T) {
+	for _, tt := range []struct {
+		version  gedcom.Version
+		wantForm bool
+	}{
+		{gedcom.Version55, true},
+		{gedcom.Version551, true},
+		{gedcom.Version70, false},
+	} {
+		t.Run(tt.version.String(), func(t *testing.T) {
+			var buf bytes.Buffer
+			doc := &gedcom.Document{Header: &gedcom.Header{Version: tt.version}}
+			if err := Encode(&buf, doc); err != nil {
+				t.Fatalf("encode: %v", err)
+			}
+			want := "1 GEDC\n2 VERS " + tt.version.String() + "\n2 FORM LINEAGE-LINKED\n"
+			if got := strings.Contains(buf.String(), want); got != tt.wantForm {
+				t.Errorf("GEDC.FORM present = %v, want %v:\n%s", got, tt.wantForm, buf.String())
+			}
+			if !tt.wantForm && strings.Contains(buf.String(), "2 FORM") {
+				t.Errorf("7.0 header carries GEDC.FORM:\n%s", buf.String())
+			}
+		})
+	}
+}
+
 // TestHeaderFieldsPathWhenNoTags covers the hand-built document: with no raw
 // tags to preserve, the header is still reconstructed from the typed fields --
 // and CHAR still declares what was written rather than what was set.
@@ -247,6 +341,11 @@ func TestHeaderTagsWriteErrorsPropagate(t *testing.T) {
 			Tags: []*gedcom.Tag{{Level: 1, Tag: "SOUR", Value: "PAF 2.2"}},
 		},
 	}
+	charOnly := &gedcom.Document{
+		Header: &gedcom.Header{
+			Tags: []*gedcom.Tag{{Level: 1, Tag: "CHAR", Value: "ANSEL"}},
+		},
+	}
 
 	tests := []struct {
 		name      string
@@ -258,6 +357,8 @@ func TestHeaderTagsWriteErrorsPropagate(t *testing.T) {
 		{"synthesized VERS inside GEDC", withBareGEDC, 3},
 		{"synthesized GEDC when the source has none", withoutGEDC, 2},
 		{"synthesized VERS when the source has no GEDC", withoutGEDC, 3},
+		{"synthesized FORM when the source has no GEDC", withoutGEDC, 4},
+		{"synthesized GEDC ahead of a later structure", charOnly, 1},
 	}
 
 	for _, tt := range tests {

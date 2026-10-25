@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/headergrammar"
 )
 
 // ErrNilDocument is returned when there is no document to encode. A nil
@@ -116,9 +117,16 @@ func writeHeaderTags(w io.Writer, tags []*gedcom.Tag, opts *EncodeOptions) error
 	// every reader of it, while this one substitutes at write time and must
 	// leave the caller's document untouched. Change one, check the other.
 	inGEDC := false
-	wroteVersion := false
 
 	filtered := filterTags(tags, opts.DropUnknownTags)
+
+	// No GEDC at all in the source -- royal92.ged is such a file. Preserving
+	// that absence is right for a plain re-encode, but a caller who asked for a
+	// specific version must get a document that declares it. The synthesized
+	// GEDC goes where the target grammar puts it: before the first level-1
+	// structure ranked after it, not at the end of the header (#465).
+	needGEDC := opts.TargetVersion != "" && !hasGEDC(filtered)
+	gedcRank := headergrammar.Rank(opts.TargetVersion, "GEDC")
 
 	for i, tag := range filtered {
 		if tag == nil {
@@ -127,35 +135,40 @@ func writeHeaderTags(w io.Writer, tags []*gedcom.Tag, opts *EncodeOptions) error
 
 		if tag.Level <= 1 {
 			inGEDC = tag.Level == 1 && tag.Tag == "GEDC"
+			if needGEDC && headergrammar.Rank(opts.TargetVersion, tag.Tag) > gedcRank {
+				if err := writeGEDCVersion(w, opts); err != nil {
+					return err
+				}
+				needGEDC = false
+			}
 		}
 
 		if err := writeTag(w, overrideHeaderTag(tag, inGEDC, opts), opts); err != nil {
 			return err
 		}
 
-		wrote, err := writeRetargetedVersion(w, filtered, i, inGEDC, opts)
-		if err != nil {
+		if err := writeRetargetedVersion(w, filtered, i, inGEDC, opts); err != nil {
 			return err
-		}
-		if wrote || isGEDCVersion(tag, inGEDC) {
-			wroteVersion = true
 		}
 	}
 
-	// No GEDC at all in the source -- royal92.ged is such a file. Preserving
-	// that absence is right for a plain re-encode, but a caller who asked for a
-	// specific version must get a document that declares it.
-	if opts.TargetVersion != "" && !wroteVersion {
+	// Every structure present ranks before GEDC, so it goes last.
+	if needGEDC {
 		return writeGEDCVersion(w, opts)
 	}
 
 	return nil
 }
 
-// isGEDCVersion reports whether tag is the specification version, as opposed to
-// a source system's own VERS.
-func isGEDCVersion(tag *gedcom.Tag, inGEDC bool) bool {
-	return inGEDC && tag.Level == 2 && tag.Tag == "VERS"
+// hasGEDC reports whether tags carry a level-1 GEDC structure, by the same
+// test the write loop uses for "inside GEDC".
+func hasGEDC(tags []*gedcom.Tag) bool {
+	for _, tag := range tags {
+		if tag != nil && tag.Level == 1 && tag.Tag == "GEDC" {
+			return true
+		}
+	}
+	return false
 }
 
 // overrideHeaderTag returns the tag to write: the original, or a copy carrying
@@ -174,20 +187,26 @@ func overrideHeaderTag(tag *gedcom.Tag, inGEDC bool, opts *EncodeOptions) *gedco
 // writeRetargetedVersion supplies the VERS a retarget needs when the source's
 // GEDC has none of its own to override. Writing it here rather than appending
 // at the end keeps it inside the GEDC structure it belongs to.
-func writeRetargetedVersion(w io.Writer, tags []*gedcom.Tag, i int, inGEDC bool, opts *EncodeOptions) (bool, error) {
+func writeRetargetedVersion(w io.Writer, tags []*gedcom.Tag, i int, inGEDC bool, opts *EncodeOptions) error {
 	if !inGEDC || tags[i].Level != 1 || opts.TargetVersion == "" || hasVersionChild(tags, i) {
-		return false, nil
+		return nil
 	}
-	err := writeTag(w, &gedcom.Tag{Level: 2, Tag: "VERS", Value: string(opts.TargetVersion)}, opts)
-	return err == nil, err
+	return writeTag(w, &gedcom.Tag{Level: 2, Tag: "VERS", Value: string(opts.TargetVersion)}, opts)
 }
 
-// writeGEDCVersion writes a complete GEDC structure for the target version.
+// writeGEDCVersion writes a complete GEDC structure for the target version:
+// VERS, and for 5.5 and 5.5.1 the FORM those versions require (#465).
 func writeGEDCVersion(w io.Writer, opts *EncodeOptions) error {
 	if err := writeTag(w, &gedcom.Tag{Level: 1, Tag: "GEDC"}, opts); err != nil {
 		return err
 	}
-	return writeTag(w, &gedcom.Tag{Level: 2, Tag: "VERS", Value: string(opts.TargetVersion)}, opts)
+	if err := writeTag(w, &gedcom.Tag{Level: 2, Tag: "VERS", Value: string(opts.TargetVersion)}, opts); err != nil {
+		return err
+	}
+	if !headergrammar.RequiresGEDCForm(opts.TargetVersion) {
+		return nil
+	}
+	return writeTag(w, &gedcom.Tag{Level: 2, Tag: "FORM", Value: headergrammar.GEDCForm}, opts)
 }
 
 // hasVersionChild reports whether the GEDC tag at index i is followed by its
@@ -240,7 +259,14 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 		if _, err := fmt.Fprintf(w, "1 GEDC%s", opts.effectiveLineEnding()); err != nil {
 			return err
 		}
-		return writeValue(w, 2, "", "VERS", string(version), opts)
+		if err := writeValue(w, 2, "", "VERS", string(version), opts); err != nil {
+			return err
+		}
+		if !headergrammar.RequiresGEDCForm(version) {
+			return nil
+		}
+		_, err := fmt.Fprintf(w, "2 FORM %s%s", headergrammar.GEDCForm, opts.effectiveLineEnding())
+		return err
 	}
 
 	// Declared only when the header declares one at all: GEDCOM 7.0 removed

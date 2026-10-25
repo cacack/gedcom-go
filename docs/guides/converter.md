@@ -95,6 +95,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Transformation | Type | Description |
 |---------------|------|-------------|
 | Header update | `VERSION_UPGRADE` | Backward compatible upgrade |
+| GEDC.FORM | `GEDC_FORM_ADDED` | `2 FORM LINEAGE-LINKED` added under `GEDC` when missing |
 
 ### Downgrade from GEDCOM 7.0
 
@@ -104,12 +105,22 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Media types | `MEDIA_TYPE_MAPPED` | IANA formats converted to legacy |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar keywords (`JULIAN`) converted to escapes (`@#DJULIAN@`) |
 | Header update | `VERSION_DOWNGRADE` | Header version updated |
+| GEDC.FORM | `GEDC_FORM_ADDED` | `2 FORM LINEAGE-LINKED` added under `GEDC` when missing (required by 5.5 and 5.5.1) |
 
 Every conversion sets the header's `GEDC.VERS` to the target version, rewriting
 any existing `VERS` under any `GEDC`. If no `GEDC` has a `VERS`, one is added
 under the first `GEDC`, keeping its other children (`FORM` is kept for 5.5 and
 5.5.1 targets but dropped for 7.0, which removed it). A header with no `GEDC`
-gets one added.
+gets one added. A 5.5 or 5.5.1 target's `GEDC` always carries
+`FORM LINEAGE-LINKED`, after `VERS`.
+
+The header's level-1 structures are then put in the target version's grammar
+order -- `SOUR, DEST, DATE, SUBM, SUBN, FILE, COPR, GEDC, CHAR, LANG, PLAC,
+NOTE` for 5.5/5.5.1, `GEDC, SCHMA, SOUR, DEST, DATE, SUBM, COPR, LANG, PLAC,
+NOTE` for 7.0 -- each moving with its subordinate lines. Structures the target
+grammar does not define (extensions, or `FILE` in 7.0) go last in source order.
+A same-version conversion returns the document unchanged, so its header keeps
+the source's order.
 
 ## Media Type Mappings
 

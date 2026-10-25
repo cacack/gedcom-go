@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/headergrammar"
 )
 
 // transformHeader updates the header for the target version.
@@ -21,6 +22,70 @@ func transformHeader(doc *gedcom.Document, targetVersion gedcom.Version, report 
 
 	updateEncoding(doc.Header, targetVersion, report)
 	updateVersionTag(doc.Header, targetVersion)
+
+	// GEDC.FORM is required by 5.5 and 5.5.1. upgradeHeaderTo70 strips it on
+	// the way up; without this a downgrade never put it back (issue #465).
+	if headergrammar.RequiresGEDCForm(targetVersion) && addGEDCForm(doc.Header) {
+		report.AddTransformation(gedcom.Transformation{
+			Type:        "GEDC_FORM_ADDED",
+			Description: "Added GEDC.FORM " + headergrammar.GEDCForm + " (required by GEDCOM " + targetVersion.String() + ")",
+			Count:       1,
+		})
+	}
+
+	// The steps above add structures (GEDC, CHAR, FORM) at the end, and the
+	// source's order was its own version's grammar, not the target's -- a 5.x
+	// header puts GEDC eighth where 7.0 requires it first. A conversion
+	// rewrites the header for the target version, so it takes the target's
+	// order too. A same-version encode never comes through here, so its
+	// byte-identical round trip is untouched.
+	doc.Header.Tags = headergrammar.Sort(doc.Header.Tags, targetVersion)
+}
+
+// addGEDCForm adds "2 FORM LINEAGE-LINKED" under GEDC, after VERS as the 5.x
+// grammar orders them, reporting whether it had to. A FORM already there is
+// kept as it is. It runs after updateVersionTag, which guarantees the GEDC and
+// VERS of any header that has raw tags.
+func addGEDCForm(header *gedcom.Header) bool {
+	if len(header.Tags) == 0 {
+		// Written from the typed fields; the encoder adds FORM there.
+		return false
+	}
+
+	inGEDC := false
+	insertAt := -1
+
+	for i, tag := range header.Tags {
+		if tag == nil {
+			continue
+		}
+		if tag.Level <= 1 {
+			if inGEDC {
+				break // left the GEDC structure without finding FORM
+			}
+			inGEDC = tag.Level == 1 && tag.Tag == "GEDC"
+			if inGEDC {
+				insertAt = i + 1
+			}
+			continue
+		}
+		if !inGEDC || tag.Level != 2 {
+			continue
+		}
+		switch tag.Tag {
+		case "FORM":
+			return false
+		case "VERS":
+			insertAt = i + 1
+		}
+	}
+
+	if insertAt < 0 {
+		return false
+	}
+	header.Tags = slices.Insert(header.Tags, insertAt,
+		&gedcom.Tag{Level: 2, Tag: "FORM", Value: headergrammar.GEDCForm})
+	return true
 }
 
 // updateVersionTag rewrites GEDC.VERS in the raw header tags to the target
@@ -85,7 +150,8 @@ func updateVersionTag(header *gedcom.Header, targetVersion gedcom.Version) {
 
 	// Some 5.5 files carry no GEDC block at all (royal92.ged is one). A
 	// conversion has to leave the target version stated somewhere the encoder
-	// will write it, so the structure is added rather than assumed.
+	// will write it, so the structure is added rather than assumed. It is
+	// appended here and moved to its grammar position by transformHeader.
 	header.Tags = append(header.Tags,
 		&gedcom.Tag{Level: 1, Tag: "GEDC"},
 		vers,
@@ -247,6 +313,7 @@ func updateCharTag(header *gedcom.Header, targetVersion gedcom.Version) {
 		}
 	}
 
+	// Appended here; transformHeader moves it to its grammar position.
 	header.Tags = append(header.Tags,
 		&gedcom.Tag{Level: 1, Tag: "CHAR", Value: string(gedcom.EncodingUTF8)},
 	)

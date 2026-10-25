@@ -60,7 +60,7 @@ func ExampleEncode() {
 	fmt.Printf("Encoded %d bytes\n", buf.Len())
 
 	// Output:
-	// Encoded 60 bytes
+	// Encoded 82 bytes
 }
 
 // ExampleEncodeWithOptions shows encoding with custom line endings.
@@ -86,7 +86,7 @@ func ExampleEncodeWithOptions() {
 	fmt.Printf("Lines with CRLF: %d\n", crlfCount)
 
 	// Output:
-	// Lines with CRLF: 4
+	// Lines with CRLF: 5
 }
 
 // ExampleNewStreamEncoder demonstrates streaming encoding for large files.

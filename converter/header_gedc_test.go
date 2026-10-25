@@ -26,16 +26,16 @@ func TestConvertHeaderGEDC(t *testing.T) {
 		source gedcom.Version // overrides the decoder's fallback (5.5) when set
 		target gedcom.Version
 		// wantForm reports whether GEDC.FORM is in the output: false for 7.0,
-		// which removed the structure (GEDC_FORM_REMOVED), and false when the
-		// input had no FORM to keep.
+		// which removed the structure (GEDC_FORM_REMOVED); true for 5.x, which
+		// requires it, whether kept from the input or added (#465).
 		wantForm bool
 	}{
 		{"GEDC without VERS to 7.0", gedcNoVers, "", gedcom.Version70, false},
 		{"GEDC without VERS to 5.5.1", gedcNoVers, "", gedcom.Version551, true},
 		{"GEDC without VERS to 5.5", gedcNoVers, gedcom.Version551, gedcom.Version55, true},
 		{"no GEDC to 7.0", noGEDC, "", gedcom.Version70, false},
-		{"no GEDC to 5.5.1", noGEDC, "", gedcom.Version551, false},
-		{"no GEDC to 5.5", noGEDC, gedcom.Version551, gedcom.Version55, false},
+		{"no GEDC to 5.5.1", noGEDC, "", gedcom.Version551, true},
+		{"no GEDC to 5.5", noGEDC, gedcom.Version551, gedcom.Version55, true},
 	}
 
 	for _, tt := range tests {
@@ -83,7 +83,7 @@ func TestConvertHeaderGEDC(t *testing.T) {
 			if n := strings.Count(out, "1 GEDC\n"); n != 1 {
 				t.Errorf("want exactly one GEDC, got %d:\n%s", n, out)
 			}
-			// VERS is GEDC's first child; a kept FORM follows it.
+			// VERS is GEDC's first child; FORM, kept or added, follows it.
 			wantVers := "1 GEDC\n2 VERS " + tt.target.String() + "\n"
 			if tt.wantForm {
 				wantVers += "2 FORM LINEAGE-LINKED\n"
