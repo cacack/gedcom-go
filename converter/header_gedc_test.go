@@ -33,6 +33,9 @@ func TestConvertHeaderGEDC(t *testing.T) {
 		{"GEDC without VERS to 7.0", gedcNoVers, "", gedcom.Version70, false},
 		{"GEDC without VERS to 5.5.1", gedcNoVers, "", gedcom.Version551, true},
 		{"GEDC without VERS to 5.5", gedcNoVers, gedcom.Version551, gedcom.Version55, true},
+		// Same version (#615): the decoder's fallback reads the input as 5.5.
+		{"GEDC without VERS to 5.5, same version", gedcNoVers, "", gedcom.Version55, true},
+		{"GEDC without VERS to 5.5.1, same version", gedcNoVers, gedcom.Version551, gedcom.Version551, true},
 		{"no GEDC to 7.0", noGEDC, "", gedcom.Version70, false},
 		{"no GEDC to 5.5.1", noGEDC, "", gedcom.Version551, true},
 		{"no GEDC to 5.5", noGEDC, gedcom.Version551, gedcom.Version55, true},
@@ -105,5 +108,30 @@ func TestConvertHeaderGEDC(t *testing.T) {
 				t.Errorf("redecoded version = %q, want %q", redecoded.Header.Version, tt.target)
 			}
 		})
+	}
+}
+
+// TestConvertSameVersionKeepsDeclaredVERS pins the other half of issue #615: a
+// same-version conversion of a header that already declares GEDC.VERS returns
+// the input document itself, unchanged.
+func TestConvertSameVersionKeepsDeclaredVERS(t *testing.T) {
+	const input = "0 HEAD\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n0 @I1@ INDI\n0 TRLR\n"
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	got, _, err := converter.Convert(doc, gedcom.Version55)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	if got != doc {
+		t.Errorf("same-version conversion with VERS declared returned a copy, want the input")
+	}
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, got); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if buf.String() != input {
+		t.Errorf("output changed:\n got %q\nwant %q", buf.String(), input)
 	}
 }

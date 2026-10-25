@@ -88,6 +88,30 @@ func addGEDCForm(header *gedcom.Header) bool {
 	return true
 }
 
+// gedcLacksVers reports whether the raw header tags have a level-1 GEDC with no
+// VERS under it. A header with no GEDC at all is not reported: on the
+// same-version path there is no structure to complete.
+func gedcLacksVers(header *gedcom.Header) bool {
+	if header == nil {
+		return false
+	}
+	inGEDC, hasGEDC := false, false
+	for _, tag := range header.Tags {
+		if tag == nil {
+			continue
+		}
+		if tag.Level <= 1 {
+			inGEDC = tag.Level == 1 && tag.Tag == "GEDC"
+			hasGEDC = hasGEDC || inGEDC
+			continue
+		}
+		if inGEDC && tag.Level == 2 && tag.Tag == "VERS" {
+			return false
+		}
+	}
+	return hasGEDC
+}
+
 // updateVersionTag rewrites GEDC.VERS in the raw header tags to the target
 // version.
 //
