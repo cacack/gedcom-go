@@ -225,7 +225,7 @@ ANOTHER BAD LINE
 1 NAME Valid /Person/
 0 TRLR`,
 			expectDiagnostics:    1,
-			expectRecords:        1,
+			expectRecords:        2, // kept as a record so it owns any subordinates (#398)
 			expectError:          false,
 			expectDiagnosticCode: CodeInvalidXRef,
 		},
@@ -448,6 +448,72 @@ func TestDecodeWithDiagnostics_UnterminatedXRefBeforeStructuralTag(t *testing.T)
 			}
 			if len(next.Names) != 1 || next.Names[0].Full != "Valid /Person/" {
 				t.Errorf("@I2@ Names = %+v, want exactly one NAME (\"Valid /Person/\")", next.Names)
+			}
+		})
+	}
+}
+
+// TestDecodeWithDiagnostics_XRefWithoutTag pins the fix for issue #398. A
+// level-0 XRef with no tag after it has no record type to recover, so the
+// parser reports it; dropping the line as well let its subordinate lines attach
+// to the preceding record instead. The line now keeps its pre-existing parse
+// as a record of its own, so the preceding record's children are unaffected.
+func TestDecodeWithDiagnostics_XRefWithoutTag(t *testing.T) {
+	tests := []struct {
+		name string
+		xref string
+	}{
+		{name: "well-formed xref", xref: "@I2@"},
+		{name: "xref with a space", xref: "@I 2@"},
+		{name: "unterminated xref", xref: "@I2"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := `0 HEAD
+1 GEDC
+2 VERS 7.0
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME First /Person/
+0 ` + tt.xref + `
+1 NAME Orphan /Person/
+1 SEX M
+0 TRLR`
+
+			result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			doc := result.Document
+
+			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != CodeInvalidXRef {
+				t.Errorf("Diagnostics = %v, want exactly one %s", result.Diagnostics, CodeInvalidXRef)
+			}
+
+			// The preceding record keeps exactly its own children.
+			prev := doc.GetRecord("@I1@")
+			if prev == nil {
+				t.Fatal("record @I1@ should exist")
+			}
+			if len(prev.Tags) != 1 || prev.Tags[0].Tag != "NAME" || prev.Tags[0].Value != "First /Person/" {
+				t.Errorf("@I1@ Tags = %+v, want only its own NAME", prev.Tags)
+			}
+			if indi := doc.GetIndividual("@I1@"); indi == nil || len(indi.Names) != 1 || indi.Sex != "" {
+				t.Errorf("@I1@ Individual = %+v, want one NAME and no SEX", indi)
+			}
+
+			// The malformed line stays a record owning its subordinates.
+			if len(doc.Records) != 2 {
+				t.Fatalf("Expected 2 records, got %d", len(doc.Records))
+			}
+			rec := doc.Records[1]
+			if rec.Type != gedcom.RecordType(tt.xref) || rec.XRef != "" {
+				t.Errorf("Record[1] = {Type: %q, XRef: %q}, want the pre-existing parse {%s, \"\"}",
+					rec.Type, rec.XRef, tt.xref)
+			}
+			if len(rec.Tags) != 2 || rec.Tags[0].Tag != "NAME" || rec.Tags[1].Tag != "SEX" {
+				t.Errorf("Record[1].Tags = %+v, want both subordinate lines", rec.Tags)
 			}
 		})
 	}

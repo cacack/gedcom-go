@@ -227,10 +227,12 @@ func TestMalformedXRefs(t *testing.T) {
 			wantLine: &Line{Level: 0, XRef: "@I 1@", Tag: "INDI", Value: "extra value", LineNumber: 1},
 		},
 		{
+			// Kept with its pre-existing parse so its subordinates are not
+			// reparented onto the preceding record (#398).
 			name:     "xref with spaces and no tag",
 			input:    "0 @I 1@",
 			wantErr:  "line with xref must have a tag",
-			wantLine: nil,
+			wantLine: &Line{Level: 0, Tag: "@I 1@", LineNumber: 1},
 		},
 		{
 			name:     "xref with spaces and a value",

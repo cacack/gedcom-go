@@ -680,28 +680,57 @@ func TestParseFinalLineWithoutNewline(t *testing.T) {
 	}
 }
 
-// Test XRef without tag error
+// Test XRef without tag error. At level 0 the line is reported but kept, with
+// the identifier as its tag, so its subordinate lines still have an owner
+// (#398); at a deeper level it is dropped.
 func TestParseLineXRefWithoutTag(t *testing.T) {
 	p := NewParser()
 
 	tests := []struct {
-		name  string
-		input string
+		name     string
+		input    string
+		wantLine *Line
 	}{
 		{
-			name:  "xref only",
-			input: "0 @I1@",
+			name:     "xref only",
+			input:    "0 @I1@",
+			wantLine: &Line{Level: 0, Tag: "@I1@", LineNumber: 1},
 		},
 		{
-			name:  "xref with newline",
-			input: "0 @I1@\n",
+			name:     "xref with newline",
+			input:    "0 @I1@\n",
+			wantLine: &Line{Level: 0, Tag: "@I1@", LineNumber: 1},
+		},
+		{
+			name:     "xref with trailing spaces",
+			input:    "0 @I1@   ",
+			wantLine: &Line{Level: 0, Tag: "@I1@", LineNumber: 1},
+		},
+		{
+			name:     "spaced xref only",
+			input:    "0 @I 1@",
+			wantLine: &Line{Level: 0, Tag: "@I 1@", LineNumber: 1},
+		},
+		{
+			name:  "xref only at level 1",
+			input: "1 @I1@",
+		},
+		{
+			name:  "spaced xref only at level 1",
+			input: "1 @I 1@",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p.Reset()
-			_, err := p.ParseLine(tt.input)
+			line, err := p.ParseLine(tt.input)
+			switch {
+			case tt.wantLine == nil && line != nil:
+				t.Errorf("Expected no line, got %+v", *line)
+			case tt.wantLine != nil && (line == nil || *line != *tt.wantLine):
+				t.Errorf("Line = %+v, want %+v", line, *tt.wantLine)
+			}
 			if err == nil {
 				t.Fatal("Expected error for xref without tag")
 			}
@@ -1140,9 +1169,10 @@ X INVALID_LEVEL
 		}
 	}
 
-	// Should still parse valid lines (HEAD and TRLR)
-	if len(lines) != 2 {
-		t.Errorf("Expected 2 valid lines, got %d", len(lines))
+	// Should still parse valid lines (HEAD and TRLR), plus the reported
+	// "0 @I1@" line, kept so it owns any subordinate lines (#398)
+	if len(lines) != 3 {
+		t.Errorf("Expected 3 lines, got %d", len(lines))
 	}
 }
 
