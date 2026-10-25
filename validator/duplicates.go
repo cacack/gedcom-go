@@ -690,21 +690,14 @@ func compareGivenNames(g1, g2 string, minSimilarity float64) float64 {
 		return 1.0
 	}
 
-	// Early exit. Levenshtein distance is at least the difference in length, so
-	// 1 - |runeLen1-runeLen2|/maxLen is an upper bound on what stringSimilarity
-	// can return. Names that cannot possibly clear the threshold skip the DP.
-	//
-	// The mixed units are deliberate, not an oversight: the numerator counts
-	// RUNES to match levenshteinDistance's rune-based DP, while the denominator
-	// is stringSimilarity's own BYTE-based maxLen. Using the same denominator as
-	// the function being bounded is what makes the bound sound — the true value
-	// is 1 - runeDistance/byteMaxLen, and runeDistance >= |runeLen1-runeLen2|,
-	// so this expression is >= the true similarity for every input, multibyte
-	// names included. Normalizing both sides to runes (or both to bytes) would
-	// change the comparison and break that guarantee.
+	// Early exit. Levenshtein distance is at least the difference in rune
+	// length, so 1 - |runeLen1-runeLen2|/maxRuneLen is an upper bound on what
+	// stringSimilarity can return. Names that cannot possibly clear the
+	// threshold skip the DP. Both sides count runes, matching stringSimilarity's
+	// denominator; the bound is only sound while the two use the same unit.
 	if minSimilarity > 0 {
-		maxLen := max(len(g1), len(g2))
-		upperBound := 1.0 - float64(absInt(utf8.RuneCountInString(g1)-utf8.RuneCountInString(g2)))/float64(maxLen)
+		n1, n2 := utf8.RuneCountInString(g1), utf8.RuneCountInString(g2)
+		upperBound := 1.0 - float64(absInt(n1-n2))/float64(max(n1, n2))
 		if upperBound < minSimilarity {
 			return upperBound
 		}
@@ -726,7 +719,9 @@ func stringSimilarity(s1, s2 string) float64 {
 	}
 
 	distance := levenshteinDistance(s1, s2)
-	maxLen := max(len(s1), len(s2))
+	// Measured in runes, the same unit as levenshteinDistance. A byte length
+	// would inflate the score for multibyte names (#545).
+	maxLen := max(utf8.RuneCountInString(s1), utf8.RuneCountInString(s2))
 
 	// Similarity is 1 - (distance / maxLen)
 	return 1.0 - float64(distance)/float64(maxLen)
