@@ -3,6 +3,7 @@ package converter_test
 import (
 	"bytes"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -174,4 +175,88 @@ func TestDowngrade70DropsTagBlocks(t *testing.T) {
 	if transformationCount(report, "SNOTE_POINTER_TO_NOTE") != 2 {
 		t.Errorf("SNOTE_POINTER_TO_NOTE count = %d, want 2", transformationCount(report, "SNOTE_POINTER_TO_NOTE"))
 	}
+}
+
+// TestDowngrade70EntityDoesNotRestoreDroppedTags pins the encoder's entity
+// fallback: a record left with no Tags, or built in code without any, is
+// written from its entity, so the dropped UID, CREA and EXID must be gone from
+// the entity too, and an entity-only record must be reported.
+func TestDowngrade70EntityDoesNotRestoreDroppedTags(t *testing.T) {
+	t.Run("decoded record left without tags", func(t *testing.T) {
+		input := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 UID abc\n1 CREA\n2 DATE 1 JAN 2020\n0 TRLR\n"
+		_, report, out := downgradeFrom70(t, []byte(input), gedcom.Version551)
+		written := recordLineTags(out)
+		for _, tag := range []string{"UID", "CREA"} {
+			if written[tag] {
+				t.Errorf("output writes dropped %s:\n%s", tag, out)
+			}
+			if !hasDataLoss(report, tag+" tags", "@I1@") {
+				t.Errorf("%s tags not reported for @I1@", tag)
+			}
+		}
+	})
+
+	t.Run("entity-only record", func(t *testing.T) {
+		indi := &gedcom.Individual{
+			XRef:         "@I1@",
+			UIDs:         []string{"abc"},
+			CreationDate: &gedcom.ChangeDate{Date: "1 JAN 2020"},
+			ExternalIDs:  []*gedcom.ExternalID{{Value: "123", Type: "http://example.com"}},
+		}
+		record := &gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: indi}
+		doc := &gedcom.Document{
+			Header:  &gedcom.Header{Version: gedcom.Version70},
+			Records: []*gedcom.Record{record},
+			XRefMap: map[string]*gedcom.Record{"@I1@": record},
+		}
+		converted, report, err := converter.Convert(doc, gedcom.Version551)
+		if err != nil {
+			t.Fatalf("Convert: %v", err)
+		}
+		var buf bytes.Buffer
+		if err := encoder.EncodeWithOptions(&buf, converted, &encoder.EncodeOptions{TargetVersion: gedcom.Version551}); err != nil {
+			t.Fatalf("Encode: %v", err)
+		}
+		written := recordLineTags(buf.String())
+		for _, tag := range []string{"UID", "CREA", "EXID"} {
+			if written[tag] {
+				t.Errorf("output writes dropped %s:\n%s", tag, buf.String())
+			}
+			if !hasDataLoss(report, tag+" tags", "@I1@") {
+				t.Errorf("%s tags not reported for @I1@", tag)
+			}
+		}
+		if len(indi.UIDs) == 0 || indi.CreationDate == nil || len(indi.ExternalIDs) == 0 {
+			t.Error("Convert changed the source document's entity")
+		}
+	})
+}
+
+// TestDowngrade70DropsSharedNoteMIMEAndLANG checks that a shared note's
+// level-1 MIME and LANG, which a 5.x NOTE record does not define, are removed
+// and reported rather than written under the NOTE record.
+func TestDowngrade70DropsSharedNoteMIMEAndLANG(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @N1@ SNOTE <p>hi</p>\n1 MIME text/html\n1 LANG en\n0 TRLR\n"
+	_, report, out := downgradeFrom70(t, []byte(input), gedcom.Version55)
+	if !strings.Contains(out, "0 @N1@ NOTE <p>hi</p>\n") {
+		t.Errorf("output lacks the NOTE record:\n%s", out)
+	}
+	written := recordLineTags(out)
+	for _, tag := range []string{"MIME", "LANG"} {
+		if written[tag] {
+			t.Errorf("output writes %s under the NOTE record:\n%s", tag, out)
+		}
+		if !hasDataLoss(report, "Shared note "+tag, "@N1@") {
+			t.Errorf("Shared note %s not reported for @N1@", tag)
+		}
+	}
+}
+
+func hasDataLoss(report *gedcom.ConversionReport, feature, xref string) bool {
+	for _, loss := range report.DataLoss {
+		if loss.Feature == feature && slices.Contains(loss.AffectedRecords, xref) {
+			return true
+		}
+	}
+	return false
 }

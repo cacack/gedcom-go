@@ -200,14 +200,21 @@ converted back down to 5.x (see below).
 Each `EXID`, `TRAN`, `PHRASE`, `UID` and `CREA` is removed from the record's
 `Record.Tags` with its subordinate lines, at any level, so the output matches
 the report; a match nested inside a removed block is covered by the outer
-entry. The typed entity fields (`UIDs`, `CreationDate`, ...) are left as they
-are. A FamilySearch ARK `EXID` mapped to `_FSFTID` (`MapEXIDToVendorTags`) is
-not data loss.
+entry. The typed entity's record-level fields for them (`CreationDate`,
+`UIDs`, `ExternalIDs`, and a shared note's `Translations`) are cleared too,
+because the encoder writes a record without `Tags` from its entity; a record
+built in code without `Tags` is reported from those fields. Nested entity
+fields, such as an event's `UIDs`, are not cleared, so a record built in code
+can still write them. A FamilySearch ARK `EXID` mapped to `_FSFTID`
+(`MapEXIDToVendorTags`) is not data loss.
 
 Shared notes are not lost: `0 @N1@ SNOTE` records become `0 @N1@ NOTE`
 records (the typed `SharedNote` becomes a `Note`) and every `SNOTE` tag becomes
 `NOTE`, reported as a `Normalized` note per record and the
-`SNOTE_RECORD_TO_NOTE` and `SNOTE_POINTER_TO_NOTE` transformations.
+`SNOTE_RECORD_TO_NOTE` and `SNOTE_POINTER_TO_NOTE` transformations. A shared
+note's level-1 `MIME` and `LANG`, which a 5.x `NOTE` record does not define,
+are removed and reported as `Shared note MIME` and `Shared note LANG` data
+loss.
 
 Only the converter's 7.0 downgrade removes negative assertions. The encoder
 writes a negated event as `1 NO <EVENT>` whatever the header version, so a

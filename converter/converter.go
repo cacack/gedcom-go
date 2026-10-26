@@ -260,7 +260,7 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 	transformMediaTypes(doc, gedcom.Version55, report)
 	transformHeader(doc, gedcom.Version55, report)
 	dropV7OnlyTags(doc, report, gedcom.Version55)
-	downgradeSharedNotes(doc, report)
+	downgradeSharedNotes(doc, report, gedcom.Version55)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
@@ -287,7 +287,7 @@ func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 	transformMediaTypes(doc, gedcom.Version551, report)
 	transformHeader(doc, gedcom.Version551, report)
 	dropV7OnlyTags(doc, report, gedcom.Version551)
-	downgradeSharedNotes(doc, report)
+	downgradeSharedNotes(doc, report, gedcom.Version551)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
