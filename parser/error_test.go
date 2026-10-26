@@ -142,21 +142,19 @@ func TestMalformedXRefs(t *testing.T) {
 			wantLine: &Line{Level: 0, Tag: "@I1", LineNumber: 1},
 		},
 		{
-			// HEAD/TRLR guard: the decoder keys the header block and the end
-			// of a record off a bare level-0 HEAD/TRLR tag, so promoting the
-			// tag here would let a bogus header overwrite the real one.
+			// HEAD/TRLR are recovered like any other tag (issue #416): the
+			// decoder treats them as structural only without an XRef, so this
+			// gets the same shape as a well-formed "0 @X1@ HEAD".
 			name:     "xref without closing @ before HEAD",
 			input:    "0 @I1 HEAD",
 			wantErr:  "xref is missing its closing @",
-			wantLine: &Line{Level: 0, Tag: "@I1", Value: "HEAD", LineNumber: 1},
+			wantLine: &Line{Level: 0, XRef: "@I1", Tag: "HEAD", LineNumber: 1},
 		},
 		{
-			// Same guard: promoting TRLR would drop the line and everything
-			// subordinate to it from the document.
 			name:     "xref without closing @ before TRLR",
 			input:    "0 @I1 TRLR",
 			wantErr:  "xref is missing its closing @",
-			wantLine: &Line{Level: 0, Tag: "@I1", Value: "TRLR", LineNumber: 1},
+			wantLine: &Line{Level: 0, XRef: "@I1", Tag: "TRLR", LineNumber: 1},
 		},
 		{
 			// Level guard: a subordinate Tag has nowhere to store an XRef, so

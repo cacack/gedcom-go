@@ -806,10 +806,10 @@ func TestRecoveredXRefValueSpacing(t *testing.T) {
 			wantValue: "",
 		},
 		{
-			name:      "HEAD branch keeps one delimiter",
-			input:     "0 @I1  HEAD",
-			wantTag:   "@I1",
-			wantValue: " HEAD",
+			name:      "recovered HEAD keeps padded value",
+			input:     "0 @I1  HEAD  x",
+			wantTag:   "HEAD",
+			wantValue: " x",
 		},
 		{
 			name:      "recovered tag, only trailing spaces after it",

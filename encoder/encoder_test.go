@@ -162,12 +162,9 @@ func TestEncodeMultilineTagValue(t *testing.T) {
 // come back out exactly as it went in — which also means the output still
 // fails strict mode on re-read, the documented asymmetry it shares with #377.
 //
-// The HEAD case pins the other spelling. "0 @I1 HEAD" is reported but
-// deliberately not recovered, so the identifier stays in Tag and "HEAD" lands
-// in Value. That Value used to be dropped on re-encode (issue #404), making the
-// byte-exact promise true of the recovered shape only; now that writeRecord
-// writes a level-0 Value, both spellings come back out unchanged and the
-// promise is unqualified.
+// The HEAD case pins that "0 @I1 HEAD", recovered as an ordinary record with
+// Type "HEAD" and XRef "@I1" (issue #416), is not mistaken for the document's
+// header on re-encode and comes back out unchanged too.
 func TestEncodeUnterminatedXRefRoundtrip(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -180,7 +177,7 @@ func TestEncodeUnterminatedXRefRoundtrip(t *testing.T) {
 			wantLine: "0 @I1 INDI",
 		},
 		{
-			name:     "reported-but-not-recovered HEAD re-encodes byte for byte",
+			name:     "recovered HEAD record re-encodes byte for byte",
 			line:     "0 @I1 HEAD",
 			wantLine: "0 @I1 HEAD",
 		},

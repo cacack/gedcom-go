@@ -381,13 +381,13 @@ func TestDecodeWithDiagnostics_UnterminatedXRef(t *testing.T) {
 	})
 }
 
-// TestDecodeWithDiagnostics_UnterminatedXRefBeforeStructuralTag pins the
-// HEAD/TRLR carve-out in parseUnterminatedXRef (issue #385). buildHeader and
-// buildRecords both key off a bare level-0 HEAD/TRLR tag, so recovering the
-// identifier out of "0 @I1 HEAD" would make a bogus second header overwrite
-// the real one's typed fields, and out of "0 @I1 TRLR" would drop the line and
-// everything subordinate to it. Both keep their pre-existing parse instead,
-// reported but not recovered.
+// TestDecodeWithDiagnostics_UnterminatedXRefBeforeStructuralTag pins that
+// "0 @I1 HEAD" and "0 @I1 TRLR" are recovered like any other unterminated XRef
+// and get the same shape as a well-formed "0 @X1@ HEAD" (issue #416): the
+// decoder treats HEAD/TRLR as structural only without an XRef, so the line
+// becomes an ordinary record that keeps its subordinate lines and leaves the
+// real header's typed fields alone. Each defect is reported: the missing "@"
+// by the parser and the identifier on a structural tag by the decoder.
 func TestDecodeWithDiagnostics_UnterminatedXRefBeforeStructuralTag(t *testing.T) {
 	tests := []struct {
 		name string
@@ -417,8 +417,13 @@ func TestDecodeWithDiagnostics_UnterminatedXRefBeforeStructuralTag(t *testing.T)
 			}
 			doc := result.Document
 
-			if len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != CodeInvalidXRef {
-				t.Errorf("Diagnostics = %v, want exactly one %s", result.Diagnostics, CodeInvalidXRef)
+			if len(result.Diagnostics) != 2 {
+				t.Fatalf("Diagnostics = %v, want two %s", result.Diagnostics, CodeInvalidXRef)
+			}
+			for _, d := range result.Diagnostics {
+				if d.Code != CodeInvalidXRef || d.Line != 6 {
+					t.Errorf("Diagnostic = %v, want %s on line 6", d, CodeInvalidXRef)
+				}
 			}
 
 			// The real header must win: a second HEAD block must not be
@@ -434,9 +439,12 @@ func TestDecodeWithDiagnostics_UnterminatedXRefBeforeStructuralTag(t *testing.T)
 				t.Fatalf("Expected 2 records, got %d", len(doc.Records))
 			}
 			rec := doc.Records[0]
-			if rec.Type != gedcom.RecordType("@I1") || rec.Value != tt.tag {
-				t.Errorf("Record[0] = {Type: %q, Value: %q}, want the pre-existing parse {@I1, %s}",
-					rec.Type, rec.Value, tt.tag)
+			if rec.Type != gedcom.RecordType(tt.tag) || rec.XRef != "@I1" || rec.Value != "" || rec.Entity != nil {
+				t.Errorf("Record[0] = {Type: %q, XRef: %q, Value: %q, Entity: %v}, want {%s, @I1, \"\", nil}",
+					rec.Type, rec.XRef, rec.Value, rec.Entity, tt.tag)
+			}
+			if doc.XRefMap["@I1"] != rec {
+				t.Errorf("XRefMap[@I1] = %v, want the recovered record", doc.XRefMap["@I1"])
 			}
 			if len(rec.Tags) != 2 || rec.Tags[0].Tag != "SOUR" || rec.Tags[1].Tag != "CHAR" {
 				t.Errorf("Record[0].Tags = %+v, want both subordinate lines", rec.Tags)
@@ -450,6 +458,47 @@ func TestDecodeWithDiagnostics_UnterminatedXRefBeforeStructuralTag(t *testing.T)
 				t.Errorf("@I2@ Names = %+v, want exactly one NAME (\"Valid /Person/\")", next.Names)
 			}
 		})
+	}
+}
+
+// TestDecodeWithDiagnostics_SpacedXRefBeforeStructuralTag pins that a spaced
+// identifier on HEAD/TRLR gets the same ordinary-record shape as an
+// unterminated one (issue #416). The space is reported only where the header's
+// version forbids it, so a 5.5.1 document gets the placement diagnostic alone.
+func TestDecodeWithDiagnostics_SpacedXRefBeforeStructuralTag(t *testing.T) {
+	for _, tag := range []string{"HEAD", "TRLR"} {
+		for vers, wantDiags := range map[string]int{"7.0": 2, "5.5.1": 1} {
+			t.Run(tag+" "+vers, func(t *testing.T) {
+				input := "0 HEAD\n1 GEDC\n2 VERS " + vers + "\n0 @I 1@ " + tag +
+					"\n1 SOUR FakeVendor\n0 TRLR\n"
+
+				result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+				if err != nil {
+					t.Fatalf("Unexpected error: %v", err)
+				}
+				if len(result.Diagnostics) != wantDiags {
+					t.Fatalf("Diagnostics = %v, want %d %s", result.Diagnostics, wantDiags, CodeInvalidXRef)
+				}
+				for _, d := range result.Diagnostics {
+					if d.Code != CodeInvalidXRef || d.Line != 4 {
+						t.Errorf("Diagnostic = %v, want %s on line 4", d, CodeInvalidXRef)
+					}
+				}
+
+				doc := result.Document
+				if len(doc.Records) != 1 {
+					t.Fatalf("Expected 1 record, got %d", len(doc.Records))
+				}
+				rec := doc.Records[0]
+				if rec.Type != gedcom.RecordType(tag) || rec.XRef != "@I 1@" || rec.Entity != nil {
+					t.Errorf("Record[0] = {Type: %q, XRef: %q, Entity: %v}, want {%s, @I 1@, nil}",
+						rec.Type, rec.XRef, rec.Entity, tag)
+				}
+				if len(rec.Tags) != 1 || rec.Tags[0].Tag != "SOUR" {
+					t.Errorf("Record[0].Tags = %+v, want the subordinate SOUR", rec.Tags)
+				}
+			})
+		}
 	}
 }
 
