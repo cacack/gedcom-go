@@ -483,7 +483,8 @@ func TestConversionNotes_CONCConsolidation(t *testing.T) {
 			wantReason:        "GEDCOM 7.0 removes CONC tags",
 		},
 		{
-			name:          "CONT conversion to 7.0 produces normalized note",
+			// CONT is kept in 7.0 and written back out unchanged (#422)
+			name:          "CONT-only value to 7.0 produces no normalized note",
 			sourceVersion: gedcom.Version55,
 			targetVersion: gedcom.Version70,
 			// NOTE at level 1 with CONT child at level 2
@@ -491,8 +492,7 @@ func TestConversionNotes_CONCConsolidation(t *testing.T) {
 				{Level: 1, Tag: "NOTE", Value: "Line one"},
 				{Level: 2, Tag: "CONT", Value: "Line two"},
 			},
-			wantNormalizedLen: 1,
-			wantReason:        "GEDCOM 7.0 uses embedded newlines",
+			wantNormalizedLen: 0,
 		},
 		{
 			name:          "mixed CONC and CONT to 7.0",
@@ -531,6 +531,9 @@ func TestConversionNotes_CONCConsolidation(t *testing.T) {
 
 			if len(report.Normalized) < tt.wantNormalizedLen {
 				t.Errorf("got %d normalized notes, want at least %d", len(report.Normalized), tt.wantNormalizedLen)
+			}
+			if tt.wantNormalizedLen == 0 && len(report.Normalized) != 0 {
+				t.Errorf("got normalized notes %+v, want none", report.Normalized)
 			}
 
 			// Verify reason contains expected text

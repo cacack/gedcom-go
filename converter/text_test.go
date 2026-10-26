@@ -74,7 +74,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 		inputTags     []*gedcom.Tag
 		wantValue     string
 		wantCONCCount int
-		wantCONTCount int
 	}{
 		{
 			name: "CONC only",
@@ -84,7 +83,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			},
 			wantValue:     "Hello World",
 			wantCONCCount: 1,
-			wantCONTCount: 0,
 		},
 		{
 			name: "CONT only",
@@ -94,7 +92,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			},
 			wantValue:     "Line 1\nLine 2",
 			wantCONCCount: 0,
-			wantCONTCount: 1,
 		},
 		{
 			name: "interleaved CONC and CONT",
@@ -106,7 +103,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			},
 			wantValue:     "Start continued\nNew line more",
 			wantCONCCount: 2,
-			wantCONTCount: 1,
 		},
 		{
 			name: "multiple CONT tags",
@@ -118,7 +114,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			},
 			wantValue:     "Line 1\nLine 2\nLine 3\nLine 4",
 			wantCONCCount: 0,
-			wantCONTCount: 3,
 		},
 		{
 			name: "empty CONT",
@@ -129,7 +124,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			},
 			wantValue:     "Before\n\nAfter",
 			wantCONCCount: 0,
-			wantCONTCount: 2,
 		},
 		{
 			name: "preserves non-CONC/CONT children",
@@ -140,7 +134,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			},
 			wantValue:     "Text more",
 			wantCONCCount: 1,
-			wantCONTCount: 0,
 		},
 	}
 
@@ -160,21 +153,19 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 				t.Errorf("Value = %q, want %q", doc.Records[0].Tags[0].Value, tt.wantValue)
 			}
 
-			// Check report counts
-			var concCount, contCount int
+			// Check report counts. CONT is kept in 7.0 and written back out
+			// unchanged, so it is never reported (#422).
+			var concCount int
 			for _, tr := range report.Transformations {
-				if tr.Type == "CONC_REMOVED" {
+				switch tr.Type {
+				case "CONC_REMOVED":
 					concCount = tr.Count
-				}
-				if tr.Type == "CONT_CONVERTED" {
-					contCount = tr.Count
+				case "CONT_CONVERTED":
+					t.Errorf("unexpected CONT_CONVERTED transformation: %+v", tr)
 				}
 			}
 			if concCount != tt.wantCONCCount {
 				t.Errorf("CONC count = %d, want %d", concCount, tt.wantCONCCount)
-			}
-			if contCount != tt.wantCONTCount {
-				t.Errorf("CONT count = %d, want %d", contCount, tt.wantCONTCount)
 			}
 		})
 	}

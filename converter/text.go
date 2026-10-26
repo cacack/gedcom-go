@@ -11,7 +11,7 @@ import (
 func transformTextForVersion(doc *gedcom.Document, targetVersion gedcom.Version, report *gedcom.ConversionReport) {
 	switch targetVersion {
 	case gedcom.Version70:
-		// GEDCOM 7.0: Remove CONC and CONT, embed newlines in a single pass
+		// GEDCOM 7.0: fold CONC and CONT into values in a single pass
 		consolidateCONCAndCONT(doc, report)
 	case gedcom.Version55, gedcom.Version551:
 		// Downgrade: Convert embedded newlines back to CONT
@@ -22,18 +22,18 @@ func transformTextForVersion(doc *gedcom.Document, targetVersion gedcom.Version,
 // consolidateCONCAndCONT merges both CONC and CONT continuation tags into parent values.
 // CONC tags concatenate directly (no separator), CONT tags add a newline.
 // Both can be interleaved in GEDCOM 5.x files.
-// In GEDCOM 7.0, CONC is removed entirely and CONT is replaced with embedded newlines.
+// GEDCOM 7.0 removes CONC but keeps CONT. A folded CONT becomes an embedded
+// newline, which the encoder writes back out as the same CONT line, so only
+// CONC is reported: the report describes the output, not this internal step.
 func consolidateCONCAndCONT(doc *gedcom.Document, report *gedcom.ConversionReport) {
 	concCount := 0
-	contCount := 0
 
 	// Process header tags
 	if doc.Header != nil {
-		var c1, c2 int
+		var c1 int
 		var notes []consolidationNote
-		doc.Header.Tags, c1, c2, notes = consolidateCONCAndCONTInTagsWithNotes(doc.Header.Tags)
+		doc.Header.Tags, c1, _, notes = consolidateCONCAndCONTInTagsWithNotes(doc.Header.Tags)
 		concCount += c1
-		contCount += c2
 		// Add per-item notes for header
 		for _, n := range notes {
 			path := BuildNestedPath("HEAD", "", n.parentTag)
@@ -51,23 +51,21 @@ func consolidateCONCAndCONT(doc *gedcom.Document, report *gedcom.ConversionRepor
 		if record == nil {
 			continue
 		}
-		var c1, c2 int
+		var c1 int
 		var notes []consolidationNote
 		// The level-1 CONC/CONT lines of a record continue its level-0 value
 		// (a 5.x NOTE record's text), which is not one of its Tags.
-		if note, ok := foldRecordValueContinuations(record); ok {
+		if fold, ok := foldRecordValueContinuations(record); ok && fold.concCount > 0 {
 			report.AddNormalized(gedcom.ConversionNote{
 				Path:     BuildRecordPath(string(record.Type), record.XRef),
-				Original: note.original,
-				Result:   note.result,
-				Reason:   note.reason,
+				Original: fold.original,
+				Result:   fold.result,
+				Reason:   concConsolidationReason,
 			})
-			concCount += note.concCount
-			contCount += note.contCount
+			concCount += fold.concCount
 		}
-		record.Tags, c1, c2, notes = consolidateCONCAndCONTInTagsWithNotes(record.Tags)
+		record.Tags, c1, _, notes = consolidateCONCAndCONTInTagsWithNotes(record.Tags)
 		concCount += c1
-		contCount += c2
 		// Add per-item notes for this record
 		for _, n := range notes {
 			path := BuildNestedPath(string(record.Type), record.XRef, n.parentTag)
@@ -85,14 +83,6 @@ func consolidateCONCAndCONT(doc *gedcom.Document, report *gedcom.ConversionRepor
 			Type:        "CONC_REMOVED",
 			Description: "Consolidated CONC continuation tags into parent values",
 			Count:       concCount,
-		})
-	}
-
-	if contCount > 0 {
-		report.AddTransformation(gedcom.Transformation{
-			Type:        "CONT_CONVERTED",
-			Description: "Converted CONT tags to embedded newlines",
-			Count:       contCount,
 		})
 	}
 }
@@ -115,7 +105,9 @@ func consolidateCONCAndCONTInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, con
 
 // consolidateCONCAndCONTInTagsWithNotes processes a flat slice of tags, consolidating both
 // CONC and CONT tags into their parent values in a single pass.
-// Returns the new tag slice, CONC count, CONT count, and per-item notes.
+// Returns the new tag slice, CONC count, CONT count, and per-item notes. A note
+// is recorded only for a value that absorbed a CONC: a CONT-only value is
+// written back out unchanged.
 func consolidateCONCAndCONTInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom.Tag, concCount, contCount int, notes []consolidationNote) {
 	if len(tags) == 0 {
 		return tags, 0, 0, nil
@@ -177,13 +169,13 @@ func consolidateCONCAndCONTInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom
 			tag.Value = valueBuilder.String()
 			concCount += localConcCount
 			contCount += localContCount
-
-			// Create a note for this consolidation
+		}
+		if localConcCount > 0 {
 			notes = append(notes, consolidationNote{
 				parentTag: tag.Tag,
 				original:  originalValue,
 				result:    tag.Value,
-				reason:    consolidationReason(localConcCount, localContCount),
+				reason:    concConsolidationReason,
 			})
 		}
 
@@ -193,23 +185,15 @@ func consolidateCONCAndCONTInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom
 	return result, concCount, contCount, notes
 }
 
-// consolidationReason explains a consolidation of concCount CONC and
-// contCount CONT lines into one value.
-func consolidationReason(concCount, contCount int) string {
-	switch {
-	case concCount > 0 && contCount > 0:
-		return "GEDCOM 7.0 removes CONC tags and uses embedded newlines instead of CONT tags"
-	case concCount > 0:
-		return "GEDCOM 7.0 removes CONC tags; text concatenated into parent value"
-	default:
-		return "GEDCOM 7.0 uses embedded newlines instead of CONT tags"
-	}
-}
+// concConsolidationReason is the Normalized note reason for a value that
+// absorbed a CONC. A value that absorbed only CONT gets no note: 7.0 keeps
+// CONT and the encoder writes each embedded newline back out as one.
+const concConsolidationReason = "GEDCOM 7.0 removes CONC tags; text concatenated into parent value"
 
 // recordValueFold describes a fold of a record's level-0 continuations.
 type recordValueFold struct {
-	original, result, reason string
-	concCount, contCount     int
+	original, result string
+	concCount        int
 }
 
 // foldRecordValueContinuations moves each level-1 CONC/CONT of record.Tags
@@ -235,13 +219,11 @@ func foldRecordValueContinuations(record *gedcom.Record) (recordValueFold, bool)
 		default:
 			value.WriteByte('\n')
 			value.WriteString(tag.Value)
-			fold.contCount++
 		}
 	}
 	record.Value = value.String()
 	record.Tags = kept
 	fold.result = record.Value
-	fold.reason = consolidationReason(fold.concCount, fold.contCount)
 	return fold, true
 }
 

@@ -79,7 +79,7 @@ func TestConvertNoteRecordsTo70(t *testing.T) {
 				"NOTE_RECORD_TO_SNOTE":  1,
 				"NOTE_POINTER_TO_SNOTE": 2,
 				"CONC_REMOVED":          1,
-				"CONT_CONVERTED":        1,
+				"CONT_CONVERTED":        0, // 7.0 keeps CONT (#422)
 			} {
 				if got := transformationCount(report, typ); got != want {
 					t.Errorf("%s count = %d, want %d: %+v", typ, got, want, report.Transformations)
