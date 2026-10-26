@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -593,4 +594,32 @@ func TestTextTransformationReportCounts(t *testing.T) {
 			t.Errorf("Expected no transformations, got %d", len(report.Transformations))
 		}
 	})
+}
+
+// TestConsolidateNestedContinuations checks that a continuation below a
+// child tag is folded into that child, not left behind because its
+// grandparent's scan stepped over it (issue #567).
+func TestConsolidateNestedContinuations(t *testing.T) {
+	tags := []*gedcom.Tag{
+		{Level: 1, Tag: "OBJE"},
+		{Level: 2, Tag: "FILE", Value: "a.jpg"},
+		{Level: 3, Tag: "_TEXT", Value: "Year: 1880"},
+		{Level: 4, Tag: "CONC", Value: "; Roll: 12"},
+		{Level: 4, Tag: "CONT", Value: "next"},
+		{Level: 3, Tag: "FORM", Value: "jpg"},
+		{Level: 1, Tag: "NOTE", Value: "x"},
+		{Level: 2, Tag: "CONC", Value: "y"},
+	}
+	result, conc, cont, notes := consolidateCONCAndCONTInTagsWithNotes(tags)
+	var got []string
+	for _, tag := range result {
+		got = append(got, tag.Tag+"="+tag.Value)
+	}
+	want := []string{"OBJE=", "FILE=a.jpg", "_TEXT=Year: 1880; Roll: 12\nnext", "FORM=jpg", "NOTE=xy"}
+	if !slices.Equal(got, want) {
+		t.Errorf("result = %q, want %q", got, want)
+	}
+	if conc != 2 || cont != 1 || len(notes) != 2 {
+		t.Errorf("conc, cont, notes = %d, %d, %d, want 2, 1, 2", conc, cont, len(notes))
+	}
 }

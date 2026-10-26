@@ -187,8 +187,11 @@ func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 //nolint:unparam // error return kept for API consistency with other converters
 func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version70, report)
-	transformDateCalendars(doc, gedcom.Version70, report)
 	normalizeXRefsForV7(doc, report)
+	// After XRef normalization, so the records it reports (dual-year DataLoss
+	// AffectedRecords) are named by their XRefs in the converted document.
+	transformDateCalendars(doc, gedcom.Version70, report)
+	upgradeNoteRecordsForV7(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
 	if opts.ReportPreservedTags {
@@ -224,8 +227,11 @@ func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 //nolint:unparam // error return kept for API consistency with other converters
 func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformTextForVersion(doc, gedcom.Version70, report)
-	transformDateCalendars(doc, gedcom.Version70, report)
 	normalizeXRefsForV7(doc, report)
+	// After XRef normalization, so the records it reports (dual-year DataLoss
+	// AffectedRecords) are named by their XRefs in the converted document.
+	transformDateCalendars(doc, gedcom.Version70, report)
+	upgradeNoteRecordsForV7(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
 	if opts.ReportPreservedTags {
