@@ -9,14 +9,16 @@ import (
 // Convert converts a GEDCOM document to the target version using default options.
 //
 // When the document is already at the target version, nothing is converted
-// and the document is returned as-is, with one exception: a 7.0 document
+// and the document is returned as-is, with two exceptions. A header whose
+// GEDC has no VERS gets "2 VERS <target>" added under that GEDC, on a copy,
+// as a cross-version conversion would add it. And a 7.0 document
 // converted to 7.0 has any XRef the 7.0 grammar rejects (such as "@i 2@")
 // rewritten, together with the pointers to it, on a copy, and each rename is
 // recorded in the report as for a 5.5.x -> 7.0 upgrade. A dangling pointer
 // that 7.0 does not read as a pointer (one with a space) is left unchanged.
-// So a 7.0 -> 7.0 call returns the input itself when nothing needs renaming
-// and a copy otherwise; callers must not depend on the result being (or not
-// being) the same pointer as doc.
+// So a same-version call returns the input itself when nothing needs
+// repairing and a copy otherwise; callers must not depend on the result being
+// (or not being) the same pointer as doc.
 func Convert(doc *gedcom.Document, targetVersion gedcom.Version) (*gedcom.Document, *gedcom.ConversionReport, error) {
 	return ConvertWithOptions(doc, targetVersion, DefaultOptions())
 }
@@ -61,7 +63,8 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 	// and a document that already carries an empty header does not get one
 	// either -- a nil header has to behave exactly like that empty twin. The
 	// materialisation goes on a shallow copy, because the caller's document is
-	// an input, not ours to mutate.
+	// an input, not ours to mutate. A GEDC that is present but has no VERS is
+	// the other repair: VERS is added under it on a deep copy (issue #615).
 	//
 	// The one exception is 7.0: XRefs its grammar rejects are normalized as on
 	// the 5.5.x -> 7.0 paths (on a deep copy), so converting to 7.0 always
@@ -84,6 +87,18 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 				converted = doc.Clone()
 				applyV7XRefMapping(converted, mapping, dangling, report)
 			}
+		}
+		// A GEDC with no VERS (common in sloppy exports, whose version is
+		// then detected by tag fallback) gets VERS as a cross-version
+		// conversion would add it (#615); a declared VERS is left alone.
+		if gedcLacksVers(converted.Header) {
+			if converted == doc {
+				converted = doc.Clone()
+			}
+			updateVersionTag(converted.Header, targetVersion)
+			// The header now declares VERS, so its identifier grammar
+			// applies, as on the cross-version path.
+			converted.Header.DeclaredVersion = targetVersion
 		}
 		if converted.Header == nil {
 			shallow := *converted

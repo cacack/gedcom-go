@@ -120,7 +120,10 @@ NOTE` for 5.5/5.5.1, `GEDC, SCHMA, SOUR, DEST, DATE, SUBM, COPR, LANG, PLAC,
 NOTE` for 7.0 -- each moving with its subordinate lines. Structures the target
 grammar does not define (extensions, or `FILE` in 7.0) go last in source order.
 A same-version conversion returns the document unchanged, so its header keeps
-the source's order.
+the source's order. The one header repair it makes is `VERS`: a `GEDC` with no
+`VERS` (such a header is detected by tag fallback) gets `2 VERS <target>` added
+as its first child, on a copy. A header with no `GEDC`, or one that already
+declares `VERS`, is left as it is.
 
 ## Media Type Mappings
 
