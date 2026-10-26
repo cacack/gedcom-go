@@ -129,7 +129,7 @@ func nonNilTags(tags []*gedcom.Tag) []*gedcom.Tag {
 }
 
 // sortedReport orders the map-derived slices of a report so two runs compare
-// equal: record551Tags and record70DataLoss iterate a map, so their entries
+// equal: record551Tags and dropV7OnlyTags iterate a map, so their entries
 // arrive in an arbitrary order.
 func sortedReport(report *gedcom.ConversionReport) *gedcom.ConversionReport {
 	if report == nil {

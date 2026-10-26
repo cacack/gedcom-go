@@ -183,21 +183,31 @@ must conform to the target version.
 |---------|--------|
 | Dual-year dates | 7.0 has no dual-year syntax (`11 FEB 1731/32`); the date is left unchanged, so the output is not valid 7.0 for it. Each such date is also a `Preserved` note at its path, and `AffectedRecords` lists each record holding one. Dual years inside a date phrase (`(born 1799/00)`) are not flagged |
 
-The `SNOTE` records this direction produces are reported as `SNOTE tags` data
-loss when converted back down to 5.x: the downgrade does not turn them back
-into `NOTE` records.
+The `SNOTE` records this direction produces become `NOTE` records again when
+converted back down to 5.x (see below).
 
 ### 7.0 -> 5.5.1 / 5.5
 
 | Feature | Reason |
 |---------|--------|
-| EXID tags | External identifiers not supported |
 | NO tags | Negative assertions not supported; removed from the output (the `NO` line and its subordinates, and the negated event from `Individual.Events` / `Family.Events`) |
+| EXID tags | External identifiers not supported |
 | TRAN tags | Translation records not supported |
 | PHRASE tags | Phrase annotations not supported |
 | UID tags | Unique identifiers not supported in 5.x |
 | CREA tags | Creation date not supported |
-| SNOTE tags | Shared notes not supported |
+
+Each `EXID`, `TRAN`, `PHRASE`, `UID` and `CREA` is removed from the record's
+`Record.Tags` with its subordinate lines, at any level, so the output matches
+the report; a match nested inside a removed block is covered by the outer
+entry. The typed entity fields (`UIDs`, `CreationDate`, ...) are left as they
+are. A FamilySearch ARK `EXID` mapped to `_FSFTID` (`MapEXIDToVendorTags`) is
+not data loss.
+
+Shared notes are not lost: `0 @N1@ SNOTE` records become `0 @N1@ NOTE`
+records (the typed `SharedNote` becomes a `Note`) and every `SNOTE` tag becomes
+`NOTE`, reported as a `Normalized` note per record and the
+`SNOTE_RECORD_TO_NOTE` and `SNOTE_POINTER_TO_NOTE` transformations.
 
 Only the converter's 7.0 downgrade removes negative assertions. The encoder
 writes a negated event as `1 NO <EVENT>` whatever the header version, so a
