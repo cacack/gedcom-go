@@ -1402,7 +1402,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | CONT to newlines | Upgrade to 7.0 | Converts CONT tags to embedded newlines |
 | XRef normalization | To 7.0 (including from 7.0) | Rewrites cross-references to valid, collision-free 7.0 identifiers (uppercase, `_` for spaces and other invalid characters); a 5.5/5.5.1 record named `@VOID@`, the 7.0 null pointer, is renamed too |
 | Media types | Both | Maps between legacy (JPG) and IANA (image/jpeg) |
-| Date calendars | Both | Maps calendar escapes (`@#DJULIAN@`) to 7.0 keywords (`JULIAN`) and back, per date in ranges and periods; non-standard calendars are left unchanged and reported as Preserved |
+| Date calendars | Both | Maps calendar escapes (`@#DJULIAN@`) to 7.0 keywords (`JULIAN`) and back, per date in ranges and periods; non-standard calendars are left unchanged and reported as Preserved. A non-Gregorian calendar on a header date converted to 7.0 (`HEAD.DATE`, `HEAD.SOUR.DATA.DATE`, which 7.0 types as calendar-free `DateExact`) is left unchanged and reported as Preserved, needing attention |
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |
 | FamilySearch ARK EXID → `_FSFTID` | Downgrade from 7.0 | Maps to the vendor tag instead of dropping the ID (when `MapEXIDToVendorTags`) |
 | Header grammar order | Both | Level-1 `HEAD` structures, including any the conversion adds (`GEDC`, `CHAR`), are placed in the target version's grammar order (`GEDC` first for 7.0, after `COPR` for 5.x); structures the target grammar does not define go last, in source order |

@@ -44,6 +44,9 @@ var calendarKeywordToEscape = map[string]string{
 // Each rewrite is reported as a Normalized note. A calendar with no standard
 // equivalent (an escape such as @#DROMAN@ or @#DUNKNOWN@, or a 7.0 extension
 // calendar such as _MAYAN) is left unchanged and reported as a Preserved note.
+// So is a non-Gregorian calendar on a header date converted to 7.0
+// (HEAD.DATE, HEAD.SOUR.DATA.DATE): 7.0 types those as DateExact, which has
+// no calendar, and the date is not converted to the Gregorian equivalent.
 func transformDateCalendars(doc *gedcom.Document, targetVersion gedcom.Version, report *gedcom.ConversionReport) {
 	t := &calendarTranslator{target: targetVersion, report: report}
 	if header := doc.Header; header != nil {
@@ -219,7 +222,35 @@ func (t *calendarTranslator) translate(value *string, parsed *gedcom.Date, repor
 			Result:   result,
 			Reason:   "Calendar has no GEDCOM " + t.target.String() + " equivalent; left unchanged",
 		})
+	} else if t.target == gedcom.Version70 && path.isHeaderExactDate() && hasNonGregorianCalendar(result) {
+		t.report.AddPreserved(gedcom.ConversionNote{
+			Path:     path.String(),
+			Original: original,
+			Result:   result,
+			Reason:   "GEDCOM 7.0 header dates are exact Gregorian dates (DateExact); non-Gregorian calendar left unchanged and needs attention",
+		})
 	}
+}
+
+// isHeaderExactDate reports whether p is HEAD.DATE or HEAD.SOUR.DATA.DATE,
+// the header dates GEDCOM 7.0 types as DateExact, which has no calendar.
+func (p datePath) isHeaderExactDate() bool {
+	if p.recordType != "HEAD" {
+		return false
+	}
+	path := strings.Join(p.tags, ".")
+	return path == "DATE" || path == "SOUR.DATA.DATE"
+}
+
+// hasNonGregorianCalendar reports whether a GEDCOM 7.0 date value opens with a
+// calendar keyword other than GREGORIAN: a standard one or an extension (_XXX).
+func hasNonGregorianCalendar(value string) bool {
+	first, _, _ := strings.Cut(strings.TrimSpace(value), " ")
+	if first == "GREGORIAN" {
+		return false
+	}
+	_, standard := calendarKeywordToEscape[first]
+	return standard || strings.HasPrefix(first, "_")
 }
 
 // translateDateCalendars returns value with its calendar syntax rewritten for
