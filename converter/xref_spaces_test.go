@@ -421,13 +421,13 @@ func convertTo70Output(t *testing.T, input string) (converted *gedcom.Document, 
 	return converted, buf.String()
 }
 
-// noteValues returns the value of each level-1 NOTE line of record xref, in
-// order.
+// noteValues returns the value of each level-1 NOTE or SNOTE line of record
+// xref, in order. A 7.0 conversion writes a pointer to a note record as SNOTE.
 func noteValues(doc *gedcom.Document, xref string) []string {
 	var got []string
 	if r := doc.GetRecord(xref); r != nil {
 		for _, tag := range r.Tags {
-			if tag.Level == 1 && tag.Tag == "NOTE" {
+			if tag.Level == 1 && (tag.Tag == "NOTE" || tag.Tag == "SNOTE") {
 				got = append(got, tag.Value)
 			}
 		}

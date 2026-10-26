@@ -189,6 +189,7 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 	transformTextForVersion(doc, gedcom.Version70, report)
 	transformDateCalendars(doc, gedcom.Version70, report)
 	normalizeXRefsForV7(doc, report)
+	upgradeNoteRecordsForV7(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
 	if opts.ReportPreservedTags {
@@ -226,6 +227,7 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 	transformTextForVersion(doc, gedcom.Version70, report)
 	transformDateCalendars(doc, gedcom.Version70, report)
 	normalizeXRefsForV7(doc, report)
+	upgradeNoteRecordsForV7(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
 	if opts.ReportPreservedTags {

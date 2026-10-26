@@ -112,7 +112,7 @@ func TestConvertVoidRecordTo70(t *testing.T) {
 			if strings.Contains(out, "@VOID@") {
 				t.Errorf("output still holds @VOID@:\n%s", out)
 			}
-			note := got.GetNote(tt.wantVoid)
+			note := got.GetSharedNote(tt.wantVoid)
 			if note == nil || note.Text != "hello" {
 				t.Fatalf("renamed note %s = %+v, want text hello:\n%s", tt.wantVoid, note, out)
 			}

@@ -83,9 +83,11 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 
 | Transformation | Type | Description |
 |---------------|------|-------------|
-| CONC removal | `CONC_REMOVED` | Line continuations merged into single values |
+| CONC removal | `CONC_REMOVED` | Line continuations merged into single values, at any depth, including those continuing a level-0 line such as a 5.x `NOTE` record's text |
 | CONT to newlines | `CONT_CONVERTED` | Continuation lines converted to embedded newlines |
 | XRef normalization | `XREF_UPPERCASE` | Cross-references rewritten to the 7.0 form `@[A-Z0-9_]+@`: uppercased, other characters (such as 5.5.1 spaces) replaced by `_`, and a `_2`, `_3`, ... suffix added on collision with an existing record or pointer (never `@VOID@`); pointers follow, and each rewrite is a `Normalized` note. A record named `@VOID@`, an ordinary 5.5/5.5.1 identifier but the 7.0 null pointer, is renamed the same way (`@VOID_2@`) so its pointers do not become null; a `@VOID@` pointer no record defines stays the null pointer. A pointer to an undefined XRef joins a record only when they differ by ASCII case alone, otherwise it gets its own identifier. A dangling spaced pointer (`1 NOTE @X 9@`) is rewritten only when the source header declares 5.5 or 5.5.1 in `GEDC.VERS`; without that declaration it is left as-is. `Count` includes rewritten dangling pointers |
+| Note records | `NOTE_RECORD_TO_SNOTE` | `0 @N1@ NOTE` records become `0 @N1@ SNOTE` shared note records (the typed `Note` becomes a `SharedNote`); each is a `Normalized` note |
+| Note pointers | `NOTE_POINTER_TO_SNOTE` | `NOTE @N1@` pointers to a converted note record become `SNOTE @N1@`, at any level; inline note text and pointers no record defines stay `NOTE` |
 | Media types | `MEDIA_TYPE_MAPPED` | Legacy formats (JPG) converted to IANA (image/jpeg) |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar escapes (`@#DJULIAN@`) converted to keywords (`JULIAN`) |
 | Header update | `VERSION_UPGRADE` | Header version updated to 7.0 |
@@ -174,6 +176,16 @@ does not reject it: check `report.Preserved` for these notes when the output
 must conform to the target version.
 
 ## Data Loss Reference
+
+### 5.5 / 5.5.1 -> 7.0
+
+| Feature | Reason |
+|---------|--------|
+| Dual-year dates | 7.0 has no dual-year syntax (`11 FEB 1731/32`); the date is left unchanged, so the output is not valid 7.0 for it. Each such date is also a `Preserved` note at its path, and `AffectedRecords` lists each record holding one. Dual years inside a date phrase (`(born 1799/00)`) are not flagged |
+
+The `SNOTE` records this direction produces are reported as `SNOTE tags` data
+loss when converted back down to 5.x: the downgrade does not turn them back
+into `NOTE` records.
 
 ### 7.0 -> 5.5.1 / 5.5
 

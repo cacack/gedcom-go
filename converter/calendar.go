@@ -47,6 +47,10 @@ var calendarKeywordToEscape = map[string]string{
 // So is a non-Gregorian calendar on a header date converted to 7.0
 // (HEAD.DATE, HEAD.SOUR.DATA.DATE): 7.0 types those as DateExact, which has
 // no calendar, and the date is not converted to the Gregorian equivalent.
+//
+// A dual-year date (11 FEB 1731/32) converted to 7.0, which has no syntax for
+// one, is left unchanged and reported as a Preserved note and, once per
+// conversion, as DataLoss naming the affected records (issue #567).
 func transformDateCalendars(doc *gedcom.Document, targetVersion gedcom.Version, report *gedcom.ConversionReport) {
 	t := &calendarTranslator{target: targetVersion, report: report}
 	if header := doc.Header; header != nil {
@@ -76,7 +80,17 @@ func transformDateCalendars(doc *gedcom.Document, targetVersion gedcom.Version, 
 			Count:       t.count,
 		})
 	}
+	if t.dualYears > 0 {
+		report.AddDataLoss(gedcom.DataLossItem{
+			Feature:         "Dual-year dates",
+			Reason:          dualYearReason,
+			AffectedRecords: t.dualYearRecords,
+		})
+	}
 }
+
+// dualYearReason explains why a dual-year date converted to 7.0 is reported.
+const dualYearReason = "GEDCOM 7.0 has no dual-year syntax (1731/32); date left unchanged and not valid 7.0"
 
 // calendarTranslator carries the target version and the running count of
 // reported rewrites through one transformDateCalendars pass.
@@ -84,6 +98,11 @@ type calendarTranslator struct {
 	target gedcom.Version
 	report *gedcom.ConversionReport
 	count  int
+
+	// dualYears counts the reported dual-year dates converted to 7.0, and
+	// dualYearRecords lists the XRefs of the records holding them, once each.
+	dualYears       int
+	dualYearRecords []string
 }
 
 // datePath locates a date for reporting: the record it belongs to and the tag
@@ -230,6 +249,56 @@ func (t *calendarTranslator) translate(value *string, parsed *gedcom.Date, repor
 			Reason:   "GEDCOM 7.0 header dates are exact Gregorian dates (DateExact); non-Gregorian calendar left unchanged and needs attention",
 		})
 	}
+	if t.target == gedcom.Version70 && hasDualYear(result) {
+		t.report.AddPreserved(gedcom.ConversionNote{
+			Path:     path.String(),
+			Original: original,
+			Result:   result,
+			Reason:   dualYearReason,
+		})
+		t.dualYears++
+		// Dates are visited record by record, so a repeat is always the last.
+		if n := len(t.dualYearRecords); path.xref != "" && (n == 0 || t.dualYearRecords[n-1] != path.xref) {
+			t.dualYearRecords = append(t.dualYearRecords, path.xref)
+		}
+	}
+}
+
+// hasDualYear reports whether a date value holds a dual year: a word of
+// digits, a slash and digits (1731/32) outside any parenthesized date phrase.
+func hasDualYear(value string) bool {
+	for value != "" {
+		open := strings.IndexByte(value, '(')
+		if open < 0 {
+			open = len(value)
+		}
+		for _, word := range strings.Fields(value[:open]) {
+			year, suffix, found := strings.Cut(word, "/")
+			if found && isDigits(year) && isDigits(suffix) {
+				return true
+			}
+		}
+		value = value[open:]
+		closing := strings.IndexByte(value, ')')
+		if closing < 0 {
+			return false
+		}
+		value = value[closing+1:]
+	}
+	return false
+}
+
+// isDigits reports whether s is a non-empty run of ASCII digits.
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // isHeaderExactDate reports whether p is HEAD.DATE or HEAD.SOUR.DATA.DATE,

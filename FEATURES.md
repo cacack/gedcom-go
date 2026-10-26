@@ -1398,9 +1398,11 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 
 | Transformation | Direction | Description |
 |---------------|-----------|-------------|
-| CONC removal | Upgrade to 7.0 | Merges continuation tags into values |
+| CONC removal | Upgrade to 7.0 | Merges continuation tags into values, at any depth and including a level-0 `NOTE` record's text |
 | CONT to newlines | Upgrade to 7.0 | Converts CONT tags to embedded newlines |
 | XRef normalization | To 7.0 (including from 7.0) | Rewrites cross-references to valid, collision-free 7.0 identifiers (uppercase, `_` for spaces and other invalid characters); a 5.5/5.5.1 record named `@VOID@`, the 7.0 null pointer, is renamed too |
+| Note records → `SNOTE` | Upgrade to 7.0 | `NOTE` records become `SNOTE` shared note records, and `NOTE` pointers to them become `SNOTE` pointers |
+| Dual-year dates | Upgrade to 7.0 | Kept as written (`1731/32`, which 7.0 cannot express) and reported as DataLoss and a Preserved note per date |
 | Media types | Both | Maps between legacy (JPG) and IANA (image/jpeg) |
 | Date calendars | Both | Maps calendar escapes (`@#DJULIAN@`) to 7.0 keywords (`JULIAN`) and back, per date in ranges and periods; non-standard calendars are left unchanged and reported as Preserved. A non-Gregorian calendar on a header date converted to 7.0 (`HEAD.DATE`, `HEAD.SOUR.DATA.DATE`, which 7.0 types as calendar-free `DateExact`) is left unchanged and reported as Preserved, needing attention |
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |

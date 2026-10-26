@@ -52,6 +52,18 @@ func consolidateCONCAndCONT(doc *gedcom.Document, report *gedcom.ConversionRepor
 		}
 		var c1, c2 int
 		var notes []consolidationNote
+		// The level-1 CONC/CONT lines of a record continue its level-0 value
+		// (a 5.x NOTE record's text), which is not one of its Tags.
+		if note, ok := foldRecordValueContinuations(record); ok {
+			report.AddNormalized(gedcom.ConversionNote{
+				Path:     BuildRecordPath(string(record.Type), record.XRef),
+				Original: note.original,
+				Result:   note.result,
+				Reason:   note.reason,
+			})
+			concCount += note.concCount
+			contCount += note.contCount
+		}
 		record.Tags, c1, c2, notes = consolidateCONCAndCONTInTagsWithNotes(record.Tags)
 		concCount += c1
 		contCount += c2
@@ -108,15 +120,19 @@ func consolidateCONCAndCONTInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom
 		return tags, 0, 0, nil
 	}
 
-	i := 0
-	for i < len(tags) {
-		tag := tags[i]
+	// Every tag is visited, so continuations nested at any depth are folded
+	// into their own parent; consumed marks the continuation lines already
+	// folded, which are dropped from the result.
+	consumed := make([]bool, len(tags))
+	for i, tag := range tags {
+		if consumed[i] {
+			continue
+		}
 		if tag == nil {
 			// A nil tag has no level, so it neither owns continuations nor is
 			// one. Keep it where the caller put it rather than shortening the
 			// slice.
 			result = append(result, nil)
-			i++
 			continue
 		}
 		baseLevel := tag.Level
@@ -125,20 +141,13 @@ func consolidateCONCAndCONTInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom
 		// Look ahead for CONC/CONT children at baseLevel+1
 		var valueBuilder strings.Builder
 		valueBuilder.WriteString(tag.Value)
-		j := i + 1
-		foundContinuation := false
 		localConcCount := 0
 		localContCount := 0
 
-		// Collect non-continuation children to preserve
-		var otherChildren []*gedcom.Tag
-
-		for j < len(tags) {
+		for j := i + 1; j < len(tags); j++ {
 			nextTag := tags[j]
-			// A nil tag is never a continuation; preserve it in place.
+			// A nil tag is never a continuation; it stays in place.
 			if nextTag == nil {
-				otherChildren = append(otherChildren, nil)
-				j++
 				continue
 			}
 			// If level goes back to baseLevel or lower, we're done with children
@@ -146,62 +155,90 @@ func consolidateCONCAndCONTInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom
 				break
 			}
 			// Process CONC/CONT at exactly baseLevel+1
-			if nextTag.Level == baseLevel+1 {
-				switch nextTag.Tag {
-				case "CONC":
-					valueBuilder.WriteString(nextTag.Value)
-					concCount++
-					localConcCount++
-					foundContinuation = true
-					j++
-					continue
-				case "CONT":
-					valueBuilder.WriteString("\n")
-					valueBuilder.WriteString(nextTag.Value)
-					contCount++
-					localContCount++
-					foundContinuation = true
-					j++
-					continue
-				}
+			if nextTag.Level != baseLevel+1 {
+				continue
 			}
-			// Not a continuation tag at immediate child level, keep it
-			otherChildren = append(otherChildren, nextTag)
-			j++
+			switch nextTag.Tag {
+			case "CONC":
+				valueBuilder.WriteString(nextTag.Value)
+				localConcCount++
+				consumed[j] = true
+			case "CONT":
+				valueBuilder.WriteString("\n")
+				valueBuilder.WriteString(nextTag.Value)
+				localContCount++
+				consumed[j] = true
+			}
 		}
 
 		// Update tag value if we found continuation tags
-		if foundContinuation {
+		if localConcCount+localContCount > 0 {
 			tag.Value = valueBuilder.String()
+			concCount += localConcCount
+			contCount += localContCount
 
 			// Create a note for this consolidation
-			var reason string
-			switch {
-			case localConcCount > 0 && localContCount > 0:
-				reason = "GEDCOM 7.0 removes CONC tags and uses embedded newlines instead of CONT tags"
-			case localConcCount > 0:
-				reason = "GEDCOM 7.0 removes CONC tags; text concatenated into parent value"
-			default:
-				reason = "GEDCOM 7.0 uses embedded newlines instead of CONT tags"
-			}
 			notes = append(notes, consolidationNote{
 				parentTag: tag.Tag,
 				original:  originalValue,
 				result:    tag.Value,
-				reason:    reason,
+				reason:    consolidationReason(localConcCount, localContCount),
 			})
 		}
 
 		result = append(result, tag)
-
-		// Add other children back (non-CONC/CONT tags)
-		result = append(result, otherChildren...)
-
-		// Move to next unprocessed tag
-		i = j
 	}
 
 	return result, concCount, contCount, notes
+}
+
+// consolidationReason explains a consolidation of concCount CONC and
+// contCount CONT lines into one value.
+func consolidationReason(concCount, contCount int) string {
+	switch {
+	case concCount > 0 && contCount > 0:
+		return "GEDCOM 7.0 removes CONC tags and uses embedded newlines instead of CONT tags"
+	case concCount > 0:
+		return "GEDCOM 7.0 removes CONC tags; text concatenated into parent value"
+	default:
+		return "GEDCOM 7.0 uses embedded newlines instead of CONT tags"
+	}
+}
+
+// recordValueFold describes a fold of a record's level-0 continuations.
+type recordValueFold struct {
+	original, result, reason string
+	concCount, contCount     int
+}
+
+// foldRecordValueContinuations moves each level-1 CONC/CONT of record.Tags
+// into record.Value: those lines continue the level-0 line, such as a GEDCOM
+// 5.x NOTE record's text, which consolidateCONCAndCONTInTagsWithNotes never
+// sees because the level-0 line is not a tag. It reports whether any was found.
+func foldRecordValueContinuations(record *gedcom.Record) (recordValueFold, bool) {
+	fold := recordValueFold{original: record.Value}
+	value := record.Value
+	kept := record.Tags[:0:0]
+	for _, tag := range record.Tags {
+		switch {
+		case tag != nil && tag.Level == 1 && tag.Tag == "CONC":
+			value += tag.Value
+			fold.concCount++
+		case tag != nil && tag.Level == 1 && tag.Tag == "CONT":
+			value += "\n" + tag.Value
+			fold.contCount++
+		default:
+			kept = append(kept, tag)
+		}
+	}
+	if fold.concCount+fold.contCount == 0 {
+		return fold, false
+	}
+	record.Value = value
+	record.Tags = kept
+	fold.result = value
+	fold.reason = consolidationReason(fold.concCount, fold.contCount)
+	return fold, true
 }
 
 // consolidateCONC is provided for explicit CONC-only consolidation.
