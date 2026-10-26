@@ -244,6 +244,9 @@ func (p datePath) isHeaderExactDate() bool {
 
 // hasNonGregorianCalendar reports whether a GEDCOM 7.0 date value opens with a
 // calendar keyword other than GREGORIAN: a standard one or an extension (_XXX).
+// GREGORIAN is exempt by design (#617 scopes the flag to non-Gregorian
+// calendars): its date already reads correctly as Gregorian, although a strict
+// DateExact has no keyword at all, so a GREGORIAN prefix is left unflagged.
 func hasNonGregorianCalendar(value string) bool {
 	first, _, _ := strings.Cut(strings.TrimSpace(value), " ")
 	if first == "GREGORIAN" {

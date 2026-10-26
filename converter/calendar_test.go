@@ -520,6 +520,7 @@ func TestConvertDateCalendarHeaderExactDate(t *testing.T) {
 		{"french escape", "@#DFRENCH R@ 1 VEND 1", true},
 		{"julian keyword", "JULIAN 1 JAN 1700", true},
 		{"extension keyword", "_MAYAN 1 JAN 1700", true},
+		// GREGORIAN is exempt by design; see hasNonGregorianCalendar.
 		{"gregorian escape", "@#DGREGORIAN@ 2 FEB 2000", false},
 		{"plain date", "2 FEB 2000", false},
 		{"empty", "", false},
