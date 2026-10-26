@@ -17,10 +17,10 @@ const negativeAssertionTag = "NO"
 //   - the entity: every event with IsNegative set in Individual.Events and
 //     Family.Events, the form a document built in code carries.
 //
-// NO is therefore not in record70DataLoss's report-only list. Anything nested
-// under a dropped NO (a SOUR pointer, a PHRASE, an SNOTE) goes with it and is
-// covered by the NO entry; it runs before record70DataLoss so that sweep does
-// not also report those nested tags as if they were still present.
+// NO is therefore not in v7OnlyTags. Anything nested under a dropped NO (a
+// SOUR pointer, a PHRASE, an SNOTE) goes with it and is covered by the NO
+// entry; it runs before dropV7OnlyTags so that sweep does not also report
+// those nested tags.
 func dropNegativeAssertions(doc *gedcom.Document, report *gedcom.ConversionReport, targetVersion gedcom.Version) {
 	var affected []string
 	for _, record := range doc.Records {

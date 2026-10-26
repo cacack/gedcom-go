@@ -423,37 +423,6 @@ func TestCountTagsInRecord(t *testing.T) {
 	}
 }
 
-func TestFindTagsInRecord(t *testing.T) {
-	tags := []*gedcom.Tag{
-		{Tag: "NAME"},
-		{Tag: "EXID"},
-		{Tag: "EXID"}, // duplicate
-		{Tag: "UID"},
-	}
-	targetTags := []string{"EXID", "UID", "CREA"}
-
-	result := findTagsInRecord(tags, targetTags)
-
-	// Should return unique tags only
-	if len(result) != 2 {
-		t.Errorf("findTagsInRecord() returned %d tags, want 2", len(result))
-	}
-
-	found := make(map[string]bool)
-	for _, tag := range result {
-		found[tag] = true
-	}
-	if !found["EXID"] {
-		t.Error("Should find EXID")
-	}
-	if !found["UID"] {
-		t.Error("Should find UID")
-	}
-	if found["CREA"] {
-		t.Error("Should not find CREA (not in input)")
-	}
-}
-
 // Helper functions
 
 func createTestDocument(version gedcom.Version) *gedcom.Document {

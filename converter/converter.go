@@ -259,7 +259,8 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 	transformDateCalendars(doc, gedcom.Version55, report)
 	transformMediaTypes(doc, gedcom.Version55, report)
 	transformHeader(doc, gedcom.Version55, report)
-	record70DataLoss(doc, report, gedcom.Version55)
+	dropV7OnlyTags(doc, report, gedcom.Version55)
+	downgradeSharedNotes(doc, report, gedcom.Version55)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
@@ -285,7 +286,8 @@ func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 	transformDateCalendars(doc, gedcom.Version551, report)
 	transformMediaTypes(doc, gedcom.Version551, report)
 	transformHeader(doc, gedcom.Version551, report)
-	record70DataLoss(doc, report, gedcom.Version551)
+	dropV7OnlyTags(doc, report, gedcom.Version551)
+	downgradeSharedNotes(doc, report, gedcom.Version551)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
@@ -346,46 +348,6 @@ func record551Tags(doc *gedcom.Document, report *gedcom.ConversionReport) {
 	}
 }
 
-// record70DataLoss records data loss for GEDCOM 7.0-specific features.
-func record70DataLoss(doc *gedcom.Document, report *gedcom.ConversionReport, targetVersion gedcom.Version) {
-	// NO is not listed: dropNegativeAssertions removes negative assertions
-	// and reports them itself, before this sweep runs.
-	tags70 := []string{"EXID", "TRAN", "PHRASE", "UID", "CREA", "SNOTE"}
-	found := make(map[string][]string)
-
-	for _, record := range doc.Records {
-		if record == nil {
-			continue
-		}
-		affected := findTagsInRecord(record.Tags, tags70)
-		for _, tag := range affected {
-			found[tag] = append(found[tag], record.XRef)
-		}
-	}
-
-	for tag, xrefs := range found {
-		if len(xrefs) > 0 {
-			report.AddDataLoss(gedcom.DataLossItem{
-				Feature:         tag + " tags",
-				Reason:          "Tag not supported in GEDCOM " + targetVersion.String(),
-				AffectedRecords: xrefs,
-			})
-
-			// Add per-item dropped notes
-			for _, xref := range xrefs {
-				recordType := getRecordTypeByXRef(doc, xref)
-				path := BuildNestedPath(recordType, xref, tag)
-				report.AddDropped(gedcom.ConversionNote{
-					Path:     path,
-					Original: tag,
-					Result:   "",
-					Reason:   "Tag not supported in GEDCOM " + targetVersion.String(),
-				})
-			}
-		}
-	}
-}
-
 // countTagsInRecord counts occurrences of specific tags.
 func countTagsInRecord(tags []*gedcom.Tag, targetTags []string, found map[string]int) {
 	for _, tag := range tags {
@@ -398,27 +360,6 @@ func countTagsInRecord(tags []*gedcom.Tag, targetTags []string, found map[string
 			}
 		}
 	}
-}
-
-// findTagsInRecord returns which target tags exist in the record.
-func findTagsInRecord(tags []*gedcom.Tag, targetTags []string) []string {
-	foundSet := make(map[string]bool)
-	for _, tag := range tags {
-		if tag == nil {
-			continue
-		}
-		for _, target := range targetTags {
-			if tag.Tag == target {
-				foundSet[target] = true
-			}
-		}
-	}
-
-	var result []string
-	for tag := range foundSet {
-		result = append(result, tag)
-	}
-	return result
 }
 
 // getRecordTypeByXRef returns the record type string for a given XRef.

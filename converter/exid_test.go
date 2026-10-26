@@ -166,8 +166,8 @@ func TestTransformEXIDToVendorTags_NonFamilySearchStillDropped(t *testing.T) {
 	if findTag(rec, "_FSFTID") != nil {
 		t.Error("non-FamilySearch EXID must not be mapped to _FSFTID")
 	}
-	if findTag(rec, "EXID") == nil {
-		t.Error("non-FamilySearch EXID should be left in place for the data-loss sweep")
+	if findTag(rec, "EXID") != nil {
+		t.Error("non-FamilySearch EXID should be dropped by the data-loss sweep")
 	}
 	if !exidInDataLoss(report) {
 		t.Error("non-FamilySearch EXID should still be reported as data loss")
@@ -199,8 +199,8 @@ func TestTransformEXIDToVendorTags_ArkPathBoundary(t *testing.T) {
 	if findTag(rec, "_FSFTID") != nil {
 		t.Error("a non-ARK URI that merely contains the ark prefix must not convert")
 	}
-	if findTag(rec, "EXID") == nil {
-		t.Error("EXID should be left in place")
+	if findTag(rec, "EXID") != nil {
+		t.Error("non-ARK EXID should be dropped")
 	}
 	if !exidInDataLoss(report) {
 		t.Error("non-ARK EXID should still be reported as data loss")
@@ -233,8 +233,8 @@ func TestTransformEXIDToVendorTags_ExtraSubordinateNotConverted(t *testing.T) {
 	if findTag(rec, "_FSFTID") != nil {
 		t.Error("EXID with an extra subordinate must not be collapsed to _FSFTID")
 	}
-	if findTag(rec, "EXID") == nil || findTag(rec, "NOTE") == nil {
-		t.Error("EXID and its NOTE subordinate should be left in place")
+	if findTag(rec, "EXID") != nil || findTag(rec, "NOTE") != nil {
+		t.Error("EXID should be dropped together with its NOTE subordinate")
 	}
 	if !exidInDataLoss(report) {
 		t.Error("un-converted EXID should still be reported as data loss")
@@ -267,8 +267,8 @@ func TestTransformEXIDToVendorTags_ArkTypeWithDeepSubordinateNotConverted(t *tes
 	if findTag(rec, "_FSFTID") != nil {
 		t.Error("EXID whose TYPE has a deeper subordinate must not be collapsed to _FSFTID")
 	}
-	if findTag(rec, "EXID") == nil || findTag(rec, "NOTE") == nil {
-		t.Error("EXID and the NOTE under its TYPE should be left in place")
+	if findTag(rec, "EXID") != nil || findTag(rec, "NOTE") != nil {
+		t.Error("EXID should be dropped together with the NOTE under its TYPE")
 	}
 	if !exidInDataLoss(report) {
 		t.Error("un-converted EXID should still be reported as data loss")
@@ -364,8 +364,8 @@ func TestTransformEXIDToVendorTags_NonIndividualUntouched(t *testing.T) {
 	if findTag(rec, "_FSFTID") != nil {
 		t.Error("EXID on a family record must not be mapped to _FSFTID")
 	}
-	if findTag(rec, "EXID") == nil {
-		t.Error("EXID on a family record should be left in place")
+	if findTag(rec, "EXID") != nil {
+		t.Error("EXID on a family record should be dropped")
 	}
 	if !exidInDataLoss(report) {
 		t.Error("EXID on a family record should still be reported as data loss")

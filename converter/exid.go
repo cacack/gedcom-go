@@ -16,7 +16,7 @@ const familySearchArkType = "familysearch.org/ark"
 
 // transformEXIDToVendorTags rewrites GEDCOM 7.0 EXID structures that have a
 // faithful vendor-tag equivalent in the older target version, so the identifier
-// survives a downgrade instead of being dropped by record70DataLoss.
+// survives a downgrade instead of being dropped by dropV7OnlyTags.
 //
 // EXID is a GEDCOM 7.0-only structure. On a 7.0 -> 5.5/5.5.1 downgrade it is
 // otherwise dropped and reported as data loss. The only vendor tag with a
@@ -48,7 +48,7 @@ const familySearchArkType = "familysearch.org/ark"
 //     vendor extension; a caller opting out keeps the plain
 //     EXID-is-data-loss behavior.
 //
-// It must run before record70DataLoss so a converted EXID is not also counted
+// It must run before dropV7OnlyTags so a converted EXID is not also counted
 // as dropped. Each conversion is recorded as a normalized note, plus a single
 // aggregate transformation entry.
 func transformEXIDToVendorTags(doc *gedcom.Document, report *gedcom.ConversionReport, targetVersion gedcom.Version) {
