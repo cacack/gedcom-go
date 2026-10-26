@@ -5485,6 +5485,53 @@ func TestAttributeUnknownSubtagFlagged(t *testing.T) {
 	}
 }
 
+// TestSpouseAgeSubtagsOnlyUnderFamily pins issue #475: HUSB/WIFE
+// (FAMILY_EVENT_DETAIL) have no position under an individual's events or
+// attributes, so there they are UNKNOWN_TAG. The check keys on the owning
+// record, not on event versus attribute, so both INDI shapes are covered.
+func TestSpouseAgeSubtagsOnlyUnderFamily(t *testing.T) {
+	for _, context := range []string{"1 OCCU Blacksmith", "1 BIRT"} {
+		t.Run(context, func(t *testing.T) {
+			input := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n" + context + `
+2 HUSB
+3 AGE 25y
+2 WIFE
+3 AGE 25y
+0 TRLR
+`
+			result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+			if err != nil {
+				t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+			}
+			got := unknownTagsIn(result.Diagnostics)
+			if want := []string{"HUSB", "WIFE"}; !reflect.DeepEqual(got, want) {
+				t.Errorf("UNKNOWN_TAG diagnostics = %v, want %v", got, want)
+			}
+		})
+	}
+}
+
+// TestSpouseAgeSubtagsAcceptedUnderFamilyMaximal70 is the other half of #475:
+// maximal70.ged carries HUSB/WIFE under FAM.NCHI, FAM.RESI, FAM.FACT and
+// FAM.MARR, and none of them may be diagnosed.
+func TestSpouseAgeSubtagsAcceptedUnderFamilyMaximal70(t *testing.T) {
+	f, err := os.Open("../testdata/gedcom-7.0/maximal70.ged")
+	if err != nil {
+		t.Fatalf("Failed to open test file: %v", err)
+	}
+	defer f.Close()
+
+	result, err := DecodeWithDiagnostics(f, nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	for _, tag := range unknownTagsIn(result.Diagnostics) {
+		if tag == "HUSB" || tag == "WIFE" {
+			t.Errorf("unexpected UNKNOWN_TAG %s in maximal70.ged", tag)
+		}
+	}
+}
+
 // TestFamilyEventAndAttributeContexts pins the four FAM contexts parseFamily
 // never read (issue #448): CENS and RESI decode as events, NCHI and FACT as
 // attributes. NCHI lives only in Family.Attributes — Family.NumberOfChildren() reads
