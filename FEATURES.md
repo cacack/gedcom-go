@@ -1404,7 +1404,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | Transformation | Direction | Description |
 |---------------|-----------|-------------|
 | CONC removal | Upgrade to 7.0 | Merges continuation tags into values, at any depth and including a level-0 `NOTE` record's text |
-| CONT to newlines | Upgrade to 7.0 | Converts CONT tags to embedded newlines |
+| CONT kept | Upgrade to 7.0 | CONT lines are written unchanged (7.0 keeps CONT) and not reported as a transformation |
 | XRef normalization | To 7.0 (including from 7.0) | Rewrites cross-references to valid, collision-free 7.0 identifiers (uppercase, `_` for spaces and other invalid characters); a 5.5/5.5.1 record named `@VOID@`, the 7.0 null pointer, is renamed too |
 | Note records → `SNOTE` | Upgrade to 7.0 | `NOTE` records become `SNOTE` shared note records, and `NOTE` pointers to them become `SNOTE` pointers |
 | Dual-year dates | Upgrade to 7.0 | Kept as written (`1731/32`, which 7.0 cannot express) and reported as DataLoss and a Preserved note per date |

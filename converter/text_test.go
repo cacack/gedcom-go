@@ -74,7 +74,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 		inputTags     []*gedcom.Tag
 		wantValue     string
 		wantCONCCount int
-		wantCONTCount int
 	}{
 		{
 			name: "CONC only",
@@ -84,7 +83,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			},
 			wantValue:     "Hello World",
 			wantCONCCount: 1,
-			wantCONTCount: 0,
 		},
 		{
 			name: "CONT only",
@@ -94,7 +92,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			},
 			wantValue:     "Line 1\nLine 2",
 			wantCONCCount: 0,
-			wantCONTCount: 1,
 		},
 		{
 			name: "interleaved CONC and CONT",
@@ -106,7 +103,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			},
 			wantValue:     "Start continued\nNew line more",
 			wantCONCCount: 2,
-			wantCONTCount: 1,
 		},
 		{
 			name: "multiple CONT tags",
@@ -118,7 +114,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			},
 			wantValue:     "Line 1\nLine 2\nLine 3\nLine 4",
 			wantCONCCount: 0,
-			wantCONTCount: 3,
 		},
 		{
 			name: "empty CONT",
@@ -129,7 +124,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			},
 			wantValue:     "Before\n\nAfter",
 			wantCONCCount: 0,
-			wantCONTCount: 2,
 		},
 		{
 			name: "preserves non-CONC/CONT children",
@@ -140,7 +134,6 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 			},
 			wantValue:     "Text more",
 			wantCONCCount: 1,
-			wantCONTCount: 0,
 		},
 	}
 
@@ -160,21 +153,19 @@ func TestConsolidateCONCAndCONT(t *testing.T) {
 				t.Errorf("Value = %q, want %q", doc.Records[0].Tags[0].Value, tt.wantValue)
 			}
 
-			// Check report counts
-			var concCount, contCount int
+			// Check report counts. CONT is kept in 7.0 and written back out
+			// unchanged, so it is never reported (#422).
+			var concCount int
 			for _, tr := range report.Transformations {
-				if tr.Type == "CONC_REMOVED" {
+				switch tr.Type {
+				case "CONC_REMOVED":
 					concCount = tr.Count
-				}
-				if tr.Type == "CONT_CONVERTED" {
-					contCount = tr.Count
+				case "CONT_CONVERTED":
+					t.Errorf("unexpected CONT_CONVERTED transformation: %+v", tr)
 				}
 			}
 			if concCount != tt.wantCONCCount {
 				t.Errorf("CONC count = %d, want %d", concCount, tt.wantCONCCount)
-			}
-			if contCount != tt.wantCONTCount {
-				t.Errorf("CONT count = %d, want %d", contCount, tt.wantCONTCount)
 			}
 		})
 	}
@@ -334,88 +325,6 @@ func TestConsolidateCONCOnlyInTags(t *testing.T) {
 				if !hasCONT {
 					t.Error("CONT tag should be preserved")
 				}
-			}
-		})
-	}
-}
-
-func TestConvertCONTToNewlines(t *testing.T) {
-	doc := &gedcom.Document{
-		Header: &gedcom.Header{
-			Tags: []*gedcom.Tag{
-				{Level: 1, Tag: "NOTE", Value: "Line 1"},
-				{Level: 2, Tag: "CONT", Value: "Line 2"},
-			},
-		},
-		Records: []*gedcom.Record{
-			{
-				Tags: []*gedcom.Tag{
-					{Level: 1, Tag: "TEXT", Value: "A"},
-					{Level: 2, Tag: "CONT", Value: "B"},
-					{Level: 2, Tag: "CONT", Value: "C"},
-				},
-			},
-		},
-	}
-	report := &gedcom.ConversionReport{}
-
-	convertCONTToNewlines(doc, report)
-
-	if doc.Header.Tags[0].Value != "Line 1\nLine 2" {
-		t.Errorf("Header value = %q, want %q", doc.Header.Tags[0].Value, "Line 1\nLine 2")
-	}
-	if doc.Records[0].Tags[0].Value != "A\nB\nC" {
-		t.Errorf("Record value = %q, want %q", doc.Records[0].Tags[0].Value, "A\nB\nC")
-	}
-
-	// Check report
-	found := false
-	for _, tr := range report.Transformations {
-		if tr.Type == "CONT_CONVERTED" {
-			found = true
-			if tr.Count != 3 {
-				t.Errorf("CONT count = %d, want 3", tr.Count)
-			}
-		}
-	}
-	if !found {
-		t.Error("Should have CONT_CONVERTED transformation")
-	}
-}
-
-func TestConvertCONTOnlyInTags(t *testing.T) {
-	tests := []struct {
-		name      string
-		inputTags []*gedcom.Tag
-		wantValue string
-		wantCount int
-	}{
-		{
-			name:      "empty",
-			inputTags: []*gedcom.Tag{},
-			wantValue: "",
-			wantCount: 0,
-		},
-		{
-			name: "converts CONT to newlines",
-			inputTags: []*gedcom.Tag{
-				{Level: 1, Tag: "NOTE", Value: "First"},
-				{Level: 2, Tag: "CONT", Value: "Second"},
-			},
-			wantValue: "First\nSecond",
-			wantCount: 1,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, count := convertCONTOnlyInTags(tt.inputTags)
-
-			if count != tt.wantCount {
-				t.Errorf("Count = %d, want %d", count, tt.wantCount)
-			}
-			if tt.wantValue != "" && len(result) > 0 && result[0].Value != tt.wantValue {
-				t.Errorf("Value = %q, want %q", result[0].Value, tt.wantValue)
 			}
 		})
 	}

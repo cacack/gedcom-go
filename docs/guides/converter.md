@@ -84,7 +84,6 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Transformation | Type | Description |
 |---------------|------|-------------|
 | CONC removal | `CONC_REMOVED` | Line continuations merged into single values, at any depth, including those continuing a level-0 line such as a 5.x `NOTE` record's text |
-| CONT to newlines | `CONT_CONVERTED` | Continuation lines converted to embedded newlines |
 | XRef normalization | `XREF_UPPERCASE` | Cross-references rewritten to the 7.0 form `@[A-Z0-9_]+@`: uppercased, other characters (such as 5.5.1 spaces) replaced by `_`, and a `_2`, `_3`, ... suffix added on collision with an existing record or pointer (never `@VOID@`); pointers follow, and each rewrite is a `Normalized` note. A record named `@VOID@`, an ordinary 5.5/5.5.1 identifier but the 7.0 null pointer, is renamed the same way (`@VOID_2@`) so its pointers do not become null; a `@VOID@` pointer no record defines stays the null pointer. A pointer to an undefined XRef joins a record only when they differ by ASCII case alone, otherwise it gets its own identifier. A dangling spaced pointer (`1 NOTE @X 9@`) is rewritten only when the source header declares 5.5 or 5.5.1 in `GEDC.VERS`; without that declaration it is left as-is. `Count` includes rewritten dangling pointers |
 | Note records | `NOTE_RECORD_TO_SNOTE` | `0 @N1@ NOTE` records become `0 @N1@ SNOTE` shared note records (the typed `Note` becomes a `SharedNote`); each is a `Normalized` note |
 | Note pointers | `NOTE_POINTER_TO_SNOTE` | `NOTE @N1@` pointers to a converted note record become `SNOTE @N1@`, at any level; inline note text and pointers no record defines stay `NOTE` |
@@ -284,9 +283,8 @@ Example output from `report.String()`:
 ```
 Conversion: 5.5 -> 7.0
 Success: true
-Transformations: 3
+Transformations: 2
   - CONC_REMOVED: Consolidated CONC continuation tags into parent values (15 instances)
-  - CONT_CONVERTED: Converted CONT tags to embedded newlines (42 instances)
   - XREF_UPPERCASE: Normalized XRefs to uppercase letters, digits and underscore (required for GEDCOM 7.0) (8 instances)
 ```
 
