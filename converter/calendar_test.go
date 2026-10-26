@@ -444,6 +444,12 @@ func TestConvertDateCalendarHeader(t *testing.T) {
 	if len(report.Normalized) != 2 || !hasTransformation(report, "DATE_CALENDAR_CONVERTED") {
 		t.Errorf("want two Normalized notes and a DATE_CALENDAR_CONVERTED transformation, got %+v / %+v", report.Normalized, report.Transformations)
 	}
+	// 7.0 header dates are DateExact, which has no calendar: the Julian date is
+	// left as JULIAN and flagged, the Gregorian one is not (#617).
+	julian := gedcom.ConversionNote{Path: "Header > SOUR > DATA > DATE", Original: "@#DJULIAN@ 1 JAN 1700", Result: "JULIAN 1 JAN 1700"}
+	if len(report.Preserved) != 1 || !hasNoteAt(report.Preserved, julian) {
+		t.Errorf("want one Preserved note %+v, got %+v", julian, report.Preserved)
+	}
 
 	back, _, err := converter.Convert(decodeClean(t, v7Text, gedcom.Version70), gedcom.Version551)
 	if err != nil {
@@ -474,6 +480,9 @@ func TestConvertDateCalendarHeaderTypedOnly(t *testing.T) {
 	if len(report.Normalized) != 1 || !hasNoteAt(report.Normalized, want) {
 		t.Errorf("want one Normalized note %+v, got %+v", want, report.Normalized)
 	}
+	if len(report.Preserved) != 1 || !hasNoteAt(report.Preserved, want) {
+		t.Errorf("want one Preserved note %+v for the non-Gregorian header date, got %+v", want, report.Preserved)
+	}
 }
 
 // TestConvertDateCalendarHeaderTagsWithoutDate covers a typed Date on a header
@@ -494,6 +503,69 @@ func TestConvertDateCalendarHeaderTagsWithoutDate(t *testing.T) {
 	for _, n := range report.Normalized {
 		if strings.HasPrefix(n.Path, "Header") {
 			t.Errorf("unexpected header note %+v: the encoder does not write Header.Date", n)
+		}
+	}
+}
+
+// TestConvertDateCalendarHeaderExactDate covers which header dates are flagged
+// as carrying a calendar that GEDCOM 7.0 DateExact does not allow (#617).
+func TestConvertDateCalendarHeaderExactDate(t *testing.T) {
+	tests := []struct {
+		name    string
+		date    string
+		flagged bool
+	}{
+		{"julian escape", "@#DJULIAN@ 1 JAN 1700", true},
+		{"hebrew escape", "@#DHEBREW@ 1 TSH 5660", true},
+		{"french escape", "@#DFRENCH R@ 1 VEND 1", true},
+		{"julian keyword", "JULIAN 1 JAN 1700", true},
+		{"extension keyword", "_MAYAN 1 JAN 1700", true},
+		// GREGORIAN is exempt by design; see hasNonGregorianCalendar.
+		{"gregorian escape", "@#DGREGORIAN@ 2 FEB 2000", false},
+		{"plain date", "2 FEB 2000", false},
+		{"empty", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc := calendarDoc(gedcom.Version551, "1700")
+			doc.Header.Date = tt.date
+
+			got, report, err := converter.Convert(doc, gedcom.Version70)
+			if err != nil {
+				t.Fatalf("Convert: %v", err)
+			}
+			var flagged bool
+			for _, n := range report.Preserved {
+				if n.Path == "Header > DATE" && strings.Contains(n.Reason, "DateExact") {
+					flagged = true
+					if n.Result != got.Header.Date {
+						t.Errorf("note Result = %q, want the unchanged Header.Date %q", n.Result, got.Header.Date)
+					}
+				}
+			}
+			if flagged != tt.flagged {
+				t.Errorf("flagged = %v, want %v; Preserved = %+v", flagged, tt.flagged, report.Preserved)
+			}
+		})
+	}
+}
+
+// TestConvertDateCalendarHeaderExactDateDowngrade covers a 7.0 to 5.5.1
+// conversion, whose header dates allow a calendar escape: nothing is flagged.
+func TestConvertDateCalendarHeaderExactDateDowngrade(t *testing.T) {
+	doc := calendarDoc(gedcom.Version70, "1700")
+	doc.Header.Date = "JULIAN 1 JAN 1700"
+
+	got, report, err := converter.Convert(doc, gedcom.Version551)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	if got.Header.Date != "@#DJULIAN@ 1 JAN 1700" {
+		t.Errorf("Header.Date = %q, want %q", got.Header.Date, "@#DJULIAN@ 1 JAN 1700")
+	}
+	for _, n := range report.Preserved {
+		if strings.HasPrefix(n.Path, "Header") {
+			t.Errorf("unexpected header Preserved note %+v", n)
 		}
 	}
 }
