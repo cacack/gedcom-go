@@ -237,3 +237,27 @@ func TestConvertCorpusNotesTo70(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertDualYearAffectedRecordsUseOutputXRefs pins that the dual-year
+// DataLoss names records by their XRefs in the converted document, not by the
+// 5.x XRefs normalizeXRefsForV7 rewrites.
+func TestConvertDualYearAffectedRecordsUseOutputXRefs(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n" +
+		"0 @i1@ INDI\n1 BIRT\n2 DATE 11 FEB 1731/32\n0 TRLR\n"
+	doc, report, _ := convertTo70(t, input)
+
+	var affected []string
+	for _, d := range report.DataLoss {
+		if d.Feature == "Dual-year dates" {
+			affected = append(affected, d.AffectedRecords...)
+		}
+	}
+	if len(affected) != 1 || doc.GetIndividual(affected[0]) == nil {
+		t.Errorf("AffectedRecords = %q, want one XRef resolving in the converted document", affected)
+	}
+	for _, n := range report.Preserved {
+		if strings.Contains(n.Reason, "dual-year") && !strings.Contains(n.Path, affected[0]) {
+			t.Errorf("Preserved path %q does not name %q", n.Path, affected[0])
+		}
+	}
+}

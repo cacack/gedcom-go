@@ -100,9 +100,12 @@ type calendarTranslator struct {
 	count  int
 
 	// dualYears counts the reported dual-year dates converted to 7.0, and
-	// dualYearRecords lists the XRefs of the records holding them, once each.
+	// dualYearRecords lists the XRefs of the records holding them, once each,
+	// in visit order. A header date has no XRef: it is counted and gets a
+	// Preserved note but names no record.
 	dualYears       int
 	dualYearRecords []string
+	dualYearSeen    map[string]bool
 }
 
 // datePath locates a date for reporting: the record it belongs to and the tag
@@ -257,8 +260,11 @@ func (t *calendarTranslator) translate(value *string, parsed *gedcom.Date, repor
 			Reason:   dualYearReason,
 		})
 		t.dualYears++
-		// Dates are visited record by record, so a repeat is always the last.
-		if n := len(t.dualYearRecords); path.xref != "" && (n == 0 || t.dualYearRecords[n-1] != path.xref) {
+		if path.xref != "" && !t.dualYearSeen[path.xref] {
+			if t.dualYearSeen == nil {
+				t.dualYearSeen = make(map[string]bool)
+			}
+			t.dualYearSeen[path.xref] = true
 			t.dualYearRecords = append(t.dualYearRecords, path.xref)
 		}
 	}
@@ -266,6 +272,8 @@ func (t *calendarTranslator) translate(value *string, parsed *gedcom.Date, repor
 
 // hasDualYear reports whether a date value holds a dual year: a word of
 // digits, a slash and digits (1731/32) outside any parenthesized date phrase.
+// It scans the string rather than reading gedcom.Date.DualYear because most
+// dates it sees are raw DATE tag values, which carry no parsed Date.
 func hasDualYear(value string) bool {
 	for value != "" {
 		open := strings.IndexByte(value, '(')

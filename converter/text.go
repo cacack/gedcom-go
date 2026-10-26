@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -217,28 +218,37 @@ type recordValueFold struct {
 // sees because the level-0 line is not a tag. It reports whether any was found.
 func foldRecordValueContinuations(record *gedcom.Record) (recordValueFold, bool) {
 	fold := recordValueFold{original: record.Value}
-	value := record.Value
-	kept := record.Tags[:0:0]
-	for _, tag := range record.Tags {
-		switch {
-		case tag != nil && tag.Level == 1 && tag.Tag == "CONC":
-			value += tag.Value
-			fold.concCount++
-		case tag != nil && tag.Level == 1 && tag.Tag == "CONT":
-			value += "\n" + tag.Value
-			fold.contCount++
-		default:
-			kept = append(kept, tag)
-		}
-	}
-	if fold.concCount+fold.contCount == 0 {
+	if !slices.ContainsFunc(record.Tags, isRecordValueContinuation) {
 		return fold, false
 	}
-	record.Value = value
+	// A Builder, not +=, keeps a long note's fold linear in its size.
+	var value strings.Builder
+	value.WriteString(record.Value)
+	kept := make([]*gedcom.Tag, 0, len(record.Tags))
+	for _, tag := range record.Tags {
+		switch {
+		case !isRecordValueContinuation(tag):
+			kept = append(kept, tag)
+		case tag.Tag == "CONC":
+			value.WriteString(tag.Value)
+			fold.concCount++
+		default:
+			value.WriteByte('\n')
+			value.WriteString(tag.Value)
+			fold.contCount++
+		}
+	}
+	record.Value = value.String()
 	record.Tags = kept
-	fold.result = value
+	fold.result = record.Value
 	fold.reason = consolidationReason(fold.concCount, fold.contCount)
 	return fold, true
+}
+
+// isRecordValueContinuation reports whether tag is a level-1 CONC or CONT,
+// which continues its record's level-0 line.
+func isRecordValueContinuation(tag *gedcom.Tag) bool {
+	return tag != nil && tag.Level == 1 && (tag.Tag == "CONC" || tag.Tag == "CONT")
 }
 
 // consolidateCONC is provided for explicit CONC-only consolidation.
