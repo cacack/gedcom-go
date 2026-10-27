@@ -2,9 +2,9 @@ package encoder
 
 import (
 	"strconv"
-	"unicode/utf8"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/concsplit"
 )
 
 // textToTags converts a potentially multiline string value to GEDCOM tags.
@@ -12,7 +12,7 @@ import (
 // lines become CONT (continuation) tags at level+1.
 //
 // When opts is provided and DisableLineWrap is false, lines exceeding
-// MaxLineLength are automatically split using CONC tags (see findSplitPoint).
+// MaxLineLength are automatically split using CONC tags (see splitLineForLength).
 //
 // Examples:
 //   - "Single line" -> [TAG value="Single line"]
@@ -78,9 +78,9 @@ func recordNotesToEncode(noteXRefs, inlineNotes []string) []string {
 // Returns a slice with at least one element (the original line if no splitting needed).
 // Each later segment is written as CONC, so this must not run for GEDCOM 7.0
 // output, which has no CONC: the encoder entry points arrange that through
-// [EncodeOptions.forOutput], which sets DisableLineWrap for 7.0.
+// [EncodeOptions.forOutput], which sets DisableLineWrap for 7.0. Where the cut
+// falls is [concsplit.Split]'s rule, which the converter shares.
 func splitLineForLength(line string, opts *EncodeOptions) []string {
-	// If line wrapping is disabled or line is short enough, return as-is
 	if opts != nil && opts.DisableLineWrap {
 		return []string{line}
 	}
@@ -89,63 +89,7 @@ func splitLineForLength(line string, opts *EncodeOptions) []string {
 	if opts != nil {
 		maxLen = opts.effectiveMaxLineLength()
 	}
-
-	if len(line) <= maxLen {
-		return []string{line}
-	}
-
-	var segments []string
-	remaining := line
-
-	for len(remaining) > maxLen {
-		splitAt := findSplitPoint(remaining, maxLen)
-
-		segments = append(segments, remaining[:splitAt])
-		remaining = remaining[splitAt:]
-	}
-
-	// Add the final segment
-	if remaining != "" {
-		segments = append(segments, remaining)
-	}
-
-	return segments
-}
-
-// findSplitPoint returns where to cut line so the first piece is at most
-// maxLen bytes: the last offset at or before maxLen that starts a UTF-8
-// character and has a non-space on both sides.
-//
-// GEDCOM 5.5.1 requires a CONC split to fall between two non-space
-// characters, because readers that trim leading or trailing whitespace on a
-// line would otherwise lose the space (issue #565). A cut inside a multi-byte
-// character would leave both lines holding invalid UTF-8.
-//
-// A line with no such offset in range (a run of spaces longer than maxLen)
-// falls back to the last character boundary, and a first character longer
-// than maxLen is kept whole, so the caller's loop always makes progress.
-func findSplitPoint(line string, maxLen int) int {
-	if len(line) <= maxLen {
-		return len(line)
-	}
-
-	fallback := 0
-	for i := maxLen; i > 0; i-- {
-		if !utf8.RuneStart(line[i]) {
-			continue
-		}
-		if fallback == 0 {
-			fallback = i
-		}
-		if line[i-1] != ' ' && line[i] != ' ' {
-			return i
-		}
-	}
-	if fallback > 0 {
-		return fallback
-	}
-	_, size := utf8.DecodeRuneInString(line)
-	return size
+	return concsplit.Split(line, maxLen)
 }
 
 // entityToTags converts an entity to tags based on record type.
