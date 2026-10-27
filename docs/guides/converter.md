@@ -195,6 +195,7 @@ converted back down to 5.x (see below).
 | PHRASE tags | Phrase annotations not supported |
 | UID tags | Unique identifiers not supported in 5.x |
 | CREA tags | Creation date not supported |
+| `@VOID@` null pointers | 5.x has no null pointer; a kept `@VOID@` would dangle |
 
 Each `EXID`, `TRAN`, `PHRASE`, `UID` and `CREA` is removed from the record's
 `Record.Tags` with its subordinate lines, at any level, so the output matches
@@ -206,6 +207,15 @@ built in code without `Tags` is reported from those fields. Nested entity
 fields, such as an event's `UIDs`, are not cleared, so a record built in code
 can still write them. A FamilySearch ARK `EXID` mapped to `_FSFTID`
 (`MapEXIDToVendorTags`) is not data loss.
+
+Each `@VOID@` pointer is removed with the structure that holds it: a tag whose
+value is `@VOID@` (`1 FAMC @VOID@`, `2 SOUR @VOID@`, ...) goes with its
+subordinate lines, and the matching typed structure (a `FamilyLink`,
+citation, media link, association, repository link or note pointer) is
+removed from the entity; `HUSB`, `WIFE`, an LDS `FAMC` and the header `SUBM`
+are cleared. Each is a `Dropped` note, and the conversion reports one
+`@VOID@ null pointers` data loss entry, so `Subset` and the validator never
+meet a dangling `@VOID@` in the output.
 
 Shared notes are not lost: `0 @N1@ SNOTE` records become `0 @N1@ NOTE`
 records (the typed `SharedNote` becomes a `Note`) and every `SNOTE` tag becomes
