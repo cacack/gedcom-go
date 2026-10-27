@@ -28,6 +28,8 @@ func TestDowngradeSplitsLongValuesWithCONC(t *testing.T) {
 	shared := longNoteText("Shared")
 	sharedCont := longNoteText("Shared second")
 	nested := longNoteText("Nested")
+	// A one-line shared note decodes with no subordinate tags, only an entity.
+	single := longNoteText("Single")
 
 	// A hand-built 7.0 document, encoded and decoded so the downgrade sees
 	// what a caller reading a 7.0 file sees.
@@ -45,6 +47,10 @@ func TestDowngradeSplitsLongValuesWithCONC(t *testing.T) {
 			{XRef: "@N1@", Type: gedcom.RecordTypeSharedNote, Entity: &gedcom.SharedNote{
 				XRef: "@N1@",
 				Text: shared + "\n" + sharedCont,
+			}},
+			{XRef: "@N2@", Type: gedcom.RecordTypeSharedNote, Entity: &gedcom.SharedNote{
+				XRef: "@N2@",
+				Text: single,
 			}},
 		},
 	}
@@ -111,6 +117,9 @@ func TestDowngradeSplitsLongValuesWithCONC(t *testing.T) {
 			if want := shared + "\n" + sharedCont; note.Text != want {
 				t.Errorf("note record text = %q, want %q", note.Text, want)
 			}
+			if note := back.GetNote("@N2@"); note == nil || note.Text != single {
+				t.Errorf("one-line note record @N2@ did not round-trip: %+v", note)
+			}
 		})
 	}
 }
@@ -147,9 +156,16 @@ func TestSplitLongRecordValue(t *testing.T) {
 	})
 
 	t.Run("entity-only record is left alone", func(t *testing.T) {
-		record := &gedcom.Record{Type: gedcom.RecordTypeNote, Value: long, Entity: &gedcom.Note{Text: long}}
+		record := &gedcom.Record{Type: gedcom.RecordTypeSource, Value: long, Entity: &gedcom.Source{Title: "T"}}
 		if _, conc := splitLongRecordValue(record); conc != 0 || record.Value != long {
 			t.Errorf("conc=%d value len %d, want record untouched", conc, len(record.Value))
+		}
+	})
+
+	t.Run("entity-only note is split", func(t *testing.T) {
+		record := &gedcom.Record{Type: gedcom.RecordTypeNote, Value: long, Entity: &gedcom.Note{Text: long}}
+		if _, conc := splitLongRecordValue(record); conc == 0 || record.Value+record.Tags[0].Value != long {
+			t.Errorf("conc=%d tags=%d, want the value split onto CONC", conc, len(record.Tags))
 		}
 	})
 
@@ -174,4 +190,21 @@ func TestSplitLongRecordValue(t *testing.T) {
 			t.Error("value and CONC do not rebuild the first line")
 		}
 	})
+}
+
+// An XRef or tag that alone fills a 5.x line leaves no room for a value. The
+// limit floors at 1 rather than going negative, which looped forever.
+func TestMaxValueLengthFloorsAtOne(t *testing.T) {
+	xref := "@" + strings.Repeat("A", 260) + "@"
+	if got := maxValueLength(0, xref, "NOTE", 1); got != 1 {
+		t.Errorf("maxValueLength = %d, want 1", got)
+	}
+	record := &gedcom.Record{XRef: xref, Type: gedcom.RecordTypeNote, Value: "ab"}
+	if _, conc := splitLongRecordValue(record); conc != 1 || record.Value+record.Tags[0].Value != "ab" {
+		t.Errorf("conc=%d, want the value split one byte per line", conc)
+	}
+	tags, _, _, _ := expandNewlinesInTagsWithNotes([]*gedcom.Tag{{Level: 1, XRef: xref, Tag: "NOTE"}})
+	if len(tags) != 1 {
+		t.Errorf("empty value gave %d tags, want 1", len(tags))
+	}
 }

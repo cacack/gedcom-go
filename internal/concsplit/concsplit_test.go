@@ -80,6 +80,15 @@ func TestSplit(t *testing.T) {
 	if got := Split("short", 10); len(got) != 1 || got[0] != "short" {
 		t.Errorf("Split(short) = %q, want one unchanged piece", got)
 	}
+	// A non-positive limit acts as 1 rather than looping forever.
+	for _, maxLen := range []int{0, -5} {
+		if got := Split("", maxLen); len(got) != 1 || got[0] != "" {
+			t.Errorf("Split(\"\", %d) = %q, want one empty piece", maxLen, got)
+		}
+		if got := Split("abc", maxLen); strings.Join(got, "|") != "a|b|c" {
+			t.Errorf("Split(abc, %d) = %q, want a|b|c", maxLen, got)
+		}
+	}
 	line := strings.Repeat("word ", 60)
 	pieces := Split(line, 20)
 	if strings.Join(pieces, "") != line {

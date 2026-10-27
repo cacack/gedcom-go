@@ -420,10 +420,15 @@ func expandNewlinesToCONT(doc *gedcom.Document, report *gedcom.ConversionReport)
 // the CONT and CONC tags it added, and adds none to a value with no line over
 // the limit: the encoder already writes a line break in it as CONT.
 //
-// A record with no Tags but an Entity is left alone: the encoder writes it
-// from its entity only while Tags is empty, so adding tags would drop it.
+// A record with no Tags but an Entity is left alone, unless it is a note: the
+// encoder writes it from its entity only while Tags is empty, so adding tags
+// would drop it. A NOTE or SNOTE record is the exception. Its text is the
+// level-0 value split here, and the encoder writes nothing else from a NOTE
+// entity, which is what an SNOTE becomes later in the downgrade. Leaving it
+// alone wrote a one-line shared note past the limit.
 func splitLongRecordValue(record *gedcom.Record) (contCount, concCount int) {
-	if len(record.Tags) == 0 && record.Entity != nil {
+	isNote := record.Type == gedcom.RecordTypeNote || record.Type == gedcom.RecordTypeSharedNote
+	if len(record.Tags) == 0 && record.Entity != nil && !isNote {
 		return 0, 0
 	}
 	maxLen := maxValueLength(0, record.XRef, string(record.Type), 1)
@@ -524,7 +529,9 @@ const maxLineLength = 255
 // maxValueLength returns the longest value that keeps both the line opened by
 // level, xref and tag and its CONT/CONC lines at contLevel within
 // maxLineLength, capped at [concsplit.MaxValueLength]. Only a long XRef, tag
-// or level lowers it: "0 @N1@ NOTE " leaves 243 bytes, not 248.
+// or level lowers it: "0 @N1@ NOTE " leaves 243 bytes, not 248. It is at
+// least 1: a prefix that alone fills the line cannot be fixed by splitting,
+// and a length below 1 would leave nothing to put on each line.
 func maxValueLength(level int, xref, tag string, contLevel int) int {
 	prefix := func(level int, xref, tag string) int {
 		n := len(strconv.Itoa(level)) + 1 + len(tag) + 1
@@ -533,9 +540,9 @@ func maxValueLength(level int, xref, tag string, contLevel int) int {
 		}
 		return n
 	}
-	return min(concsplit.MaxValueLength,
+	return max(1, min(concsplit.MaxValueLength,
 		maxLineLength-prefix(level, xref, tag),
-		maxLineLength-prefix(contLevel, "", "CONC"))
+		maxLineLength-prefix(contLevel, "", "CONC")))
 }
 
 // splitLines splits value on its embedded newlines, returning at least one

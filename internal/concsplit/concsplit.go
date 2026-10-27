@@ -15,8 +15,10 @@ const MaxValueLength = 248
 
 // Split returns line cut into pieces of at most maxLen bytes, each later
 // piece to be written as a CONC line. It returns at least one element, and
-// the pieces concatenate back to line.
+// the pieces concatenate back to line. A maxLen below 1 is treated as 1, so
+// every piece holds at least one character and the split always ends.
 func Split(line string, maxLen int) []string {
+	maxLen = max(maxLen, 1)
 	if len(line) <= maxLen {
 		return []string{line}
 	}
