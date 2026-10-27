@@ -2,9 +2,11 @@ package converter
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/concsplit"
 )
 
 // transformTextForVersion handles CONC/CONT transformation based on target version.
@@ -329,32 +331,47 @@ func consolidateCONCOnlyInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, concCo
 	return result, concCount
 }
 
-// expansionNote captures details about a single newline-to-CONT expansion for per-item tracking.
+// expansionNote captures details about a single value expansion for per-item tracking.
 type expansionNote struct {
 	tag      string
 	original string
 	result   string
+	reason   string
 }
 
-// expandNewlinesToCONT converts embedded newlines back to CONT tags.
-// This is used when downgrading from GEDCOM 7.0 to 5.x.
+// Normalized note reasons for a value expanded on a downgrade to 5.x.
+const (
+	contExpansionReason = "GEDCOM 5.x uses CONT tags for line continuation instead of embedded newlines"
+	concSplitReason     = "GEDCOM 5.x limits a line to 255 characters; the value continues on CONC lines"
+)
+
+// expandNewlinesToCONT writes each value back in 5.x continuation form when
+// downgrading from GEDCOM 7.0: an embedded newline becomes a CONT line, and a
+// line longer than 5.x allows (see maxValueLength) continues on CONC lines:
+// 5.x limits a line to 255 characters and 7.0 has no such limit (issue #671).
+// The encoder writes raw tags verbatim, so this is the only place a decoded
+// 7.0 value gets split.
 func expandNewlinesToCONT(doc *gedcom.Document, report *gedcom.ConversionReport) {
-	contCount := 0
+	contCount, concCount := 0, 0
+	addNotes := func(recordType, xref string, notes []expansionNote) {
+		for _, n := range notes {
+			report.AddNormalized(gedcom.ConversionNote{
+				Path:     BuildNestedPath(recordType, xref, n.tag),
+				Original: n.original,
+				Result:   n.result,
+				Reason:   n.reason,
+			})
+		}
+	}
 
 	// Process header tags
 	if doc.Header != nil {
+		var cont, conc int
 		var notes []expansionNote
-		doc.Header.Tags, contCount, notes = expandNewlinesInTagsWithNotes(doc.Header.Tags)
-		// Add per-item notes for header
-		for _, n := range notes {
-			path := BuildNestedPath("HEAD", "", n.tag)
-			report.AddNormalized(gedcom.ConversionNote{
-				Path:     path,
-				Original: n.original,
-				Result:   n.result,
-				Reason:   "GEDCOM 5.x uses CONT tags for line continuation instead of embedded newlines",
-			})
-		}
+		doc.Header.Tags, cont, conc, notes = expandNewlinesInTagsWithNotes(doc.Header.Tags)
+		contCount += cont
+		concCount += conc
+		addNotes("HEAD", "", notes)
 	}
 
 	// Process all record tags
@@ -362,20 +379,23 @@ func expandNewlinesToCONT(doc *gedcom.Document, report *gedcom.ConversionReport)
 		if record == nil {
 			continue
 		}
-		var c int
-		var notes []expansionNote
-		record.Tags, c, notes = expandNewlinesInTagsWithNotes(record.Tags)
-		contCount += c
-		// Add per-item notes for this record
-		for _, n := range notes {
-			path := BuildNestedPath(string(record.Type), record.XRef, n.tag)
+		original := record.Value
+		if cont, conc := splitLongRecordValue(record); conc > 0 {
+			contCount += cont
+			concCount += conc
 			report.AddNormalized(gedcom.ConversionNote{
-				Path:     path,
-				Original: n.original,
-				Result:   n.result,
-				Reason:   "GEDCOM 5.x uses CONT tags for line continuation instead of embedded newlines",
+				Path:     BuildRecordPath(string(record.Type), record.XRef),
+				Original: original,
+				Result:   record.Value,
+				Reason:   concSplitReason,
 			})
 		}
+		var cont, conc int
+		var notes []expansionNote
+		record.Tags, cont, conc, notes = expandNewlinesInTagsWithNotes(record.Tags)
+		contCount += cont
+		concCount += conc
+		addNotes(string(record.Type), record.XRef, notes)
 	}
 
 	if contCount > 0 {
@@ -385,20 +405,53 @@ func expandNewlinesToCONT(doc *gedcom.Document, report *gedcom.ConversionReport)
 			Count:       contCount,
 		})
 	}
+	if concCount > 0 {
+		report.AddTransformation(gedcom.Transformation{
+			Type:        "CONC_ADDED",
+			Description: "Split over-length values onto CONC tags",
+			Count:       concCount,
+		})
+	}
+}
+
+// splitLongRecordValue moves the continuation of an over-length level-0
+// value, such as a 7.0 SNOTE record's text, onto level-1 CONT/CONC tags at the
+// front of record.Tags, where a decoded 5.x NOTE record keeps them. It returns
+// the CONT and CONC tags it added, and adds none to a value with no line over
+// the limit: the encoder already writes a line break in it as CONT.
+//
+// A record with no Tags but an Entity is left alone: the encoder writes it
+// from its entity only while Tags is empty, so adding tags would drop it.
+func splitLongRecordValue(record *gedcom.Record) (contCount, concCount int) {
+	if len(record.Tags) == 0 && record.Entity != nil {
+		return 0, 0
+	}
+	maxLen := maxValueLength(0, record.XRef, string(record.Type), 1)
+	if !slices.ContainsFunc(splitLines(record.Value), func(line string) bool {
+		return len(line) > maxLen
+	}) {
+		return 0, 0
+	}
+	first, tags, contCount, concCount := continuationTags(record.Value, maxLen, 1)
+	record.Value = first
+	record.Tags = append(tags, record.Tags...)
+	return contCount, concCount
 }
 
 // expandNewlinesInTags processes a flat slice of tags and expands newlines to CONT tags.
 // It returns the new tag slice and the count of created CONT tags.
 func expandNewlinesInTags(tags []*gedcom.Tag) (result []*gedcom.Tag, contCount int) {
-	result, contCount, _ = expandNewlinesInTagsWithNotes(tags)
+	result, contCount, _, _ = expandNewlinesInTagsWithNotes(tags)
 	return result, contCount
 }
 
-// expandNewlinesInTagsWithNotes processes a flat slice of tags and expands newlines to CONT tags.
-// It returns the new tag slice, the count of created CONT tags, and per-item notes.
-func expandNewlinesInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom.Tag, contCount int, notes []expansionNote) {
+// expandNewlinesInTagsWithNotes processes a flat slice of tags, expanding
+// embedded newlines to CONT tags and splitting over-length lines onto CONC
+// tags. It returns the new tag slice, the counts of created CONT and CONC
+// tags, and per-item notes.
+func expandNewlinesInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom.Tag, contCount, concCount int, notes []expansionNote) {
 	if len(tags) == 0 {
-		return tags, 0, nil
+		return tags, 0, 0, nil
 	}
 
 	for _, tag := range tags {
@@ -407,33 +460,86 @@ func expandNewlinesInTagsWithNotes(tags []*gedcom.Tag) (result []*gedcom.Tag, co
 			result = append(result, nil)
 			continue
 		}
-		// Check if this tag has embedded newlines
-		if strings.Contains(tag.Value, "\n") {
-			originalValue := tag.Value
-			lines := strings.Split(tag.Value, "\n")
-			tag.Value = lines[0]
-			result = append(result, tag)
+		originalValue := tag.Value
+		// A CONT or CONC line is itself a continuation, so the lines that
+		// continue it are its siblings, not its children.
+		level := tag.Level + 1
+		if tag.Tag == "CONT" || tag.Tag == "CONC" {
+			level = tag.Level
+		}
+		maxLen := maxValueLength(tag.Level, tag.XRef, tag.Tag, level)
+		first, added, cont, conc := continuationTags(tag.Value, maxLen, level)
+		tag.Value = first
+		result = append(result, tag)
+		result = append(result, added...)
+		contCount += cont
+		concCount += conc
 
-			// Create CONT tags for remaining lines
-			for _, line := range lines[1:] {
-				result = append(result, &gedcom.Tag{
-					Level: tag.Level + 1,
-					Tag:   "CONT",
-					Value: line,
-				})
-				contCount++
-			}
-
-			// Record the expansion
+		// Record the expansion
+		if cont > 0 {
 			notes = append(notes, expansionNote{
 				tag:      tag.Tag,
 				original: originalValue,
-				result:   lines[0], // The first line (remaining text now in CONT tags)
+				result:   first, // The first line (remaining text now in CONT tags)
+				reason:   contExpansionReason,
 			})
-		} else {
-			result = append(result, tag)
+		}
+		if conc > 0 {
+			notes = append(notes, expansionNote{
+				tag:      tag.Tag,
+				original: originalValue,
+				result:   first,
+				reason:   concSplitReason,
+			})
 		}
 	}
 
-	return result, contCount, notes
+	return result, contCount, concCount, notes
+}
+
+// continuationTags splits value into the text kept on its own line and the
+// 5.x CONT and CONC lines, at level, that carry the rest: a CONT for each
+// newline and a CONC for each piece of a line longer than maxLen. It returns
+// how many of each it made.
+func continuationTags(value string, maxLen, level int) (first string, tags []*gedcom.Tag, contCount, concCount int) {
+	for i, line := range splitLines(value) {
+		pieces := concsplit.Split(line, maxLen)
+		if i == 0 {
+			first = pieces[0]
+		} else {
+			tags = append(tags, &gedcom.Tag{Level: level, Tag: "CONT", Value: pieces[0]})
+			contCount++
+		}
+		for _, piece := range pieces[1:] {
+			tags = append(tags, &gedcom.Tag{Level: level, Tag: "CONC", Value: piece})
+			concCount++
+		}
+	}
+	return first, tags, contCount, concCount
+}
+
+// maxLineLength is GEDCOM 5.x's limit on the characters in a line.
+const maxLineLength = 255
+
+// maxValueLength returns the longest value that keeps both the line opened by
+// level, xref and tag and its CONT/CONC lines at contLevel within
+// maxLineLength, capped at [concsplit.MaxValueLength]. Only a long XRef, tag
+// or level lowers it: "0 @N1@ NOTE " leaves 243 bytes, not 248.
+func maxValueLength(level int, xref, tag string, contLevel int) int {
+	prefix := func(level int, xref, tag string) int {
+		n := len(strconv.Itoa(level)) + 1 + len(tag) + 1
+		if xref != "" {
+			n += len(xref) + 1
+		}
+		return n
+	}
+	return min(concsplit.MaxValueLength,
+		maxLineLength-prefix(level, xref, tag),
+		maxLineLength-prefix(contLevel, "", "CONC"))
+}
+
+// splitLines splits value on its embedded newlines, returning at least one
+// element.
+func splitLines(value string) []string {
+	return strings.Split(value, "\n")
 }
