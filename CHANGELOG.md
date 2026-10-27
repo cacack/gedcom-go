@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.0](https://github.com/cacack/gedcom-go/compare/v3.3.0...v3.4.0) (2026-10-27)
+
+
+### Features
+
+* **merge:** add CombineOptions.IgnoreEncodingMismatch ([b7074c7](https://github.com/cacack/gedcom-go/commit/b7074c7a209843cf9635b2960dbbb1a3354d253e)), closes [#568](https://github.com/cacack/gedcom-go/issues/568)
+* **validator:** report nil elements in a hand-built document ([c12ffae](https://github.com/cacack/gedcom-go/commit/c12ffaea7b5d6e4f535f9e82a497f8cd2c108e5e)), closes [#457](https://github.com/cacack/gedcom-go/issues/457)
+
+
+### Bug Fixes
+
+* **converter:** add a missing GEDC.VERS on same-version conversion ([9737eba](https://github.com/cacack/gedcom-go/commit/9737ebaf903847b296abe180de1144de583c4537)), closes [#615](https://github.com/cacack/gedcom-go/issues/615)
+* **converter:** drop the 7.0-only tags a downgrade reports as lost ([592f10d](https://github.com/cacack/gedcom-go/commit/592f10d1515e56c8ac81375f3378e26608a246f1)), closes [#570](https://github.com/cacack/gedcom-go/issues/570)
+* **converter:** flag non-Gregorian header dates converted to 7.0 ([2c34c94](https://github.com/cacack/gedcom-go/commit/2c34c94adf6ddde8fe44342545a39c9263aed873)), closes [#617](https://github.com/cacack/gedcom-go/issues/617)
+* **converter:** keep dropped 7.0 tags out of entity-written records ([5fef54d](https://github.com/cacack/gedcom-go/commit/5fef54d6d39bdb0ed15f7abe3bb165b980410d25)), closes [#570](https://github.com/cacack/gedcom-go/issues/570)
+* **converter:** order converted headers by target grammar and add GEDC.FORM ([53e0be3](https://github.com/cacack/gedcom-go/commit/53e0be31be4273b1f6c86d4e3503e33c6dfa19fa)), closes [#465](https://github.com/cacack/gedcom-go/issues/465)
+* **converter:** remove @VOID@ pointers on a 7.0 to 5.x downgrade ([87b61b6](https://github.com/cacack/gedcom-go/commit/87b61b6ede0e79e7faf10409501b8cd680345f83)), closes [#670](https://github.com/cacack/gedcom-go/issues/670)
+* **converter:** report dual-year records by their 7.0 XRefs ([b6035a2](https://github.com/cacack/gedcom-go/commit/b6035a25015e908f12d128088978cd9d7c0084f0))
+* **converter:** set DeclaredVersion when adding a missing GEDC.VERS ([165955e](https://github.com/cacack/gedcom-go/commit/165955e66b8a884266b031e1c07edad6adc0e799)), closes [#615](https://github.com/cacack/gedcom-go/issues/615)
+* **converter:** split one-line shared notes and floor the CONC limit ([7bbf8f3](https://github.com/cacack/gedcom-go/commit/7bbf8f323cdb982547c58df56395b0bf77c996c9)), closes [#671](https://github.com/cacack/gedcom-go/issues/671)
+* **converter:** split over-length values with CONC on a 7.0 to 5.x downgrade ([540bd5b](https://github.com/cacack/gedcom-go/commit/540bd5b6942605297275cc691051863e12fa2337)), closes [#671](https://github.com/cacack/gedcom-go/issues/671)
+* **converter:** stop reporting CONT as converted on upgrade to 7.0 ([dbada2a](https://github.com/cacack/gedcom-go/commit/dbada2a4c65c265495321524a609ff58344ac771)), closes [#422](https://github.com/cacack/gedcom-go/issues/422)
+* **converter:** upgrade NOTE records to SNOTE and report dual years for 7.0 ([6951c05](https://github.com/cacack/gedcom-go/commit/6951c05f3c52354dbe466fd10a0c0119120b235f)), closes [#567](https://github.com/cacack/gedcom-go/issues/567)
+* **decoder:** read Header.Encoding from HEAD.CHAR at level 1 only ([3abcb47](https://github.com/cacack/gedcom-go/commit/3abcb47027c41d53fd2b3d9576416696d4784e59)), closes [#464](https://github.com/cacack/gedcom-go/issues/464)
+* **decoder:** report HUSB/WIFE under individual events and attributes ([c1c8c53](https://github.com/cacack/gedcom-go/commit/c1c8c53457e97e816cf6dffb41c9e15d7ed7da7a)), closes [#475](https://github.com/cacack/gedcom-go/issues/475)
+* **decoder:** report unknown header tags ([c013768](https://github.com/cacack/gedcom-go/commit/c0137688d62acca1307e3c3c3de420bec6da164f)), closes [#429](https://github.com/cacack/gedcom-go/issues/429) [#449](https://github.com/cacack/gedcom-go/issues/449)
+* **encoder:** copy a retagged SNOTE pointer instead of editing the caller's tag ([269e297](https://github.com/cacack/gedcom-go/commit/269e29712c35446bb73cb84a9cb90104397d8999))
+* **encoder:** write a 7.0 pointer to an SNOTE record as SNOTE ([5f641ab](https://github.com/cacack/gedcom-go/commit/5f641ab4f163c4c1102dbc9abfa374d754006d52)), closes [#471](https://github.com/cacack/gedcom-go/issues/471)
+* **encoder:** write no CONC for 7.0 and split 5.x CONC between non-spaces ([b3b7869](https://github.com/cacack/gedcom-go/commit/b3b78699df7faa5a43adf8a6b7685055e73d281a)), closes [#565](https://github.com/cacack/gedcom-go/issues/565)
+* **gedcom:** treat @VOID@ as an ordinary identifier outside GEDCOM 7.0 ([296ecd0](https://github.com/cacack/gedcom-go/commit/296ecd033765ef2cf4ee10ef0a1695ace305fe7a)), closes [#614](https://github.com/cacack/gedcom-go/issues/614)
+* **merge:** accept an identity remap of a @VOID@ record ([a0b163e](https://github.com/cacack/gedcom-go/commit/a0b163ecd38e9048bd142cb8723861177a4b975f)), closes [#397](https://github.com/cacack/gedcom-go/issues/397)
+* **merge:** point encoding refusal at IgnoreEncodingMismatch ([c966644](https://github.com/cacack/gedcom-go/commit/c9666447b3cfbbf48bd8156e9f05005a4d07f09d)), closes [#568](https://github.com/cacack/gedcom-go/issues/568)
+* **merge:** skip records with non-pointer XRefs in RemapXRefs ([5c6e8d9](https://github.com/cacack/gedcom-go/commit/5c6e8d9730dcd98d4b0f9eeaf946e3020e842b8b)), closes [#397](https://github.com/cacack/gedcom-go/issues/397)
+* **parser:** keep a level-0 XRef line with no tag so it owns its subordinates ([91df553](https://github.com/cacack/gedcom-go/commit/91df5535701b98370f08d958f2dfb973a62c59e9)), closes [#398](https://github.com/cacack/gedcom-go/issues/398)
+* **parser:** recover an unterminated XRef before HEAD or TRLR ([3409b32](https://github.com/cacack/gedcom-go/commit/3409b32975d71aed09a41b8d65607aec006d7e7a)), closes [#416](https://github.com/cacack/gedcom-go/issues/416)
+* **validator:** divide name edit distance by rune length, not bytes ([1e5dc1f](https://github.com/cacack/gedcom-go/commit/1e5dc1ff6b3270fe04cc012c4ac05d04630094dd)), closes [#545](https://github.com/cacack/gedcom-go/issues/545)
+* **validator:** locate nil elements in records sharing an XRef ([ca8a5e5](https://github.com/cacack/gedcom-go/commit/ca8a5e50cfa2581dd885eec6053b925e7e549aac)), closes [#457](https://github.com/cacack/gedcom-go/issues/457)
+* **validator:** report dangling note pointers in substructures ([437e73f](https://github.com/cacack/gedcom-go/commit/437e73fbb74d3971174c7c458defabda250d4e97)), closes [#535](https://github.com/cacack/gedcom-go/issues/535)
+* **validator:** run every ValidateAll check in QualityReport ([2ecaa2c](https://github.com/cacack/gedcom-go/commit/2ecaa2c667b87354db980bb5f3b70c476241c228)), closes [#544](https://github.com/cacack/gedcom-go/issues/544)
+* **version:** ignore an identifier-bearing HEAD in DetectVersion ([ca8614d](https://github.com/cacack/gedcom-go/commit/ca8614d50c271dbcb04ba91d502540f6686835d2)), closes [#415](https://github.com/cacack/gedcom-go/issues/415)
+
 ## [3.3.0](https://github.com/cacack/gedcom-go/compare/v3.2.0...v3.3.0) (2026-10-25)
 
 
