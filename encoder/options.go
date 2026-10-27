@@ -1,11 +1,14 @@
 package encoder
 
-import "github.com/cacack/gedcom-go/v3/gedcom"
+import (
+	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/concsplit"
+)
 
 // DefaultMaxLineLength is the recommended maximum line length for GEDCOM files.
 // GEDCOM spec recommends lines not exceed 255 characters total.
 // We use 248 to account for level number, space, tag, and delimiter overhead.
-const DefaultMaxLineLength = 248
+const DefaultMaxLineLength = concsplit.MaxValueLength
 
 // EncodeOptions provides configuration for encoding GEDCOM files.
 type EncodeOptions struct {

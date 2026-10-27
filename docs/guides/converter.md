@@ -103,6 +103,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Transformation | Type | Description |
 |---------------|------|-------------|
 | Newlines to CONT | `CONT_EXPANDED` | Embedded newlines expanded to CONT tags |
+| Long lines to CONC | `CONC_ADDED` | A value line too long for 5.x's 255-character limit split onto CONC tags, between two non-spaces, including a level-0 `SNOTE` record's text; each split value is a `Normalized` note |
 | Media types | `MEDIA_TYPE_MAPPED` | IANA formats converted to legacy |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar keywords (`JULIAN`) converted to escapes (`@#DJULIAN@`) |
 | Header update | `VERSION_DOWNGRADE` | Header version updated |
