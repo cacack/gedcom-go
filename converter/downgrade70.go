@@ -141,8 +141,15 @@ func v7OnlyEntityFields(entity any) (crea **gedcom.ChangeDate, uids *[]string, e
 // level to compare and is kept, as the caller's element; drop is never called
 // with nil.
 func dropTagBlocks(record *gedcom.Record, drop func(*gedcom.Tag) bool) map[string]bool {
-	tags := record.Tags
 	var removed map[string]bool
+	record.Tags, removed = dropTagBlocksIn(record.Tags, drop)
+	return removed
+}
+
+// dropTagBlocksIn is dropTagBlocks on a tag slice: it returns tags without
+// each block drop matches (tags itself when nothing matches) and the names it
+// removed.
+func dropTagBlocksIn(tags []*gedcom.Tag, drop func(*gedcom.Tag) bool) (kept []*gedcom.Tag, removed map[string]bool) {
 	var out []*gedcom.Tag
 	for i := 0; i < len(tags); i++ {
 		tag := tags[i]
@@ -166,10 +173,10 @@ func dropTagBlocks(record *gedcom.Record, drop func(*gedcom.Tag) bool) map[strin
 		}
 		i = j - 1
 	}
-	if out != nil {
-		record.Tags = out
+	if out == nil {
+		return tags, nil
 	}
-	return removed
+	return out, removed
 }
 
 // sharedNoteOnlyTags are the level-1 substructures of a 7.0 shared note record

@@ -1413,6 +1413,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |
 | `SNOTE` → Note records | Downgrade from 7.0 | `SNOTE` records become `NOTE` records, and `SNOTE` pointers become `NOTE` pointers; the record's `MIME` and `LANG` are removed and reported as data loss |
 | 7.0-only tags removed | Downgrade from 7.0 | `EXID`, `TRAN`, `PHRASE`, `UID` and `CREA` are removed from `Record.Tags` with their subordinates, and from the typed entity's record-level fields, and reported as data loss |
+| `@VOID@` pointers removed | Downgrade from 7.0 | 5.x has no null pointer, so each structure whose pointer is `@VOID@` (`FAMC`, `CHIL`, `SOUR` citation, `SNOTE`, ...) is removed with its subordinates from `Tags` and the typed entity; `HUSB`, `WIFE`, LDS `FAMC` and header `SUBM` fields are cleared. Reported as data loss |
 | FamilySearch ARK EXID → `_FSFTID` | Downgrade from 7.0 | Maps to the vendor tag instead of dropping the ID (when `MapEXIDToVendorTags`) |
 | Header grammar order | Both | Level-1 `HEAD` structures, including any the conversion adds (`GEDC`, `CHAR`), are placed in the target version's grammar order (`GEDC` first for 7.0, after `COPR` for 5.x); structures the target grammar does not define go last, in source order |
 | `GEDC.VERS` | All, including same-version | `VERS` set to the target under `GEDC`; added under an existing `GEDC` that has none, even when source and target versions match |
