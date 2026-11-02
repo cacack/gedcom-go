@@ -32,7 +32,7 @@ jobs:
 
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
       with:
         egress-policy: audit
 
@@ -82,7 +82,7 @@ jobs:
       security-events: write
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
       with:
         egress-policy: audit
 
@@ -112,7 +112,7 @@ jobs:
         category: govulncheck
 
     - name: Run gosec
-      uses: securego/gosec@deb54465fea23d19a77f037e11e6589021f8501d # master (docker: 2.25.0)
+      uses: securego/gosec@5eb1d104ef85ff2c905c877eb600e8c1dee33a22 # master (docker: 2.25.0)
       with:
         args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
 
@@ -150,7 +150,7 @@ jobs:
       issues: write
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
       with:
         egress-policy: audit
 
