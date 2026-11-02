@@ -30,7 +30,7 @@ jobs:
     steps:
     - name: Harden Runner
       if: matrix.os == 'ubuntu-latest'
-      uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
       with:
         egress-policy: audit
 
@@ -86,7 +86,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
       with:
         egress-policy: audit
 
@@ -110,7 +110,7 @@ jobs:
     # profile was built from a hand-listed set of library packages, but it
     # fails the moment the profile covers ./... (#430).
     - name: Check coverage thresholds
-      uses: vladopajic/go-test-coverage@f484eec846448c97c777a26f8b58c5a69a327e12 # v2
+      uses: vladopajic/go-test-coverage@249eda999ac7e91238727277beec9b32b28a19b0 # v2
       with:
         config: .testcoverage.yml
         profile: coverage.out
@@ -141,7 +141,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
       with:
         egress-policy: audit
 
@@ -167,7 +167,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
       with:
         egress-policy: audit
 
@@ -206,7 +206,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
       with:
         egress-policy: audit
 
@@ -231,7 +231,7 @@ jobs:
       security-events: write
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
       with:
         egress-policy: audit
 
@@ -264,7 +264,7 @@ jobs:
         category: govulncheck
 
     - name: Run gosec
-      uses: securego/gosec@deb54465fea23d19a77f037e11e6589021f8501d # master (docker: 2.25.0)
+      uses: securego/gosec@5eb1d104ef85ff2c905c877eb600e8c1dee33a22 # master (docker: 2.25.0)
       with:
         args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
 
@@ -343,7 +343,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - name: Harden Runner
-      uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
       with:
         egress-policy: audit
 
@@ -379,7 +379,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
 
@@ -406,7 +406,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
 
@@ -446,7 +446,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
 
@@ -504,7 +504,7 @@ jobs:
     if: always()
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
         with:
           egress-policy: audit
 
