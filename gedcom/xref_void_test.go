@@ -41,6 +41,8 @@ func TestIsRecordPointer(t *testing.T) {
 		{"no version", &Document{Header: &Header{}}, false},
 		{"nil header", &Document{}, false},
 		{"nil header, @VOID@ record", &Document{XRefMap: voidRecord}, true},
+		{"guessed 5.5, @VOID@ in Records only", &Document{Header: &Header{Version: Version55}, Records: []*Record{nil, {XRef: "@VOID@"}}}, true},
+		{"guessed 5.5, Records without @VOID@", &Document{Header: &Header{Version: Version55}, Records: []*Record{{XRef: "@I1@"}}}, false},
 		{"nil document", nil, false},
 		{"7.0", &Document{Header: &Header{Version: Version70}}, false},
 		{"guessed 7.0, @VOID@ record", &Document{Header: &Header{Version: Version70}, XRefMap: voidRecord}, false},

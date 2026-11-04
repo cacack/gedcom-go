@@ -84,7 +84,8 @@ func (d *Document) IsPointerXRef(s string) bool {
 //     (Header.DeclaredVersion), it is an ordinary identifier.
 //   - Otherwise no version is declared, so Header.Version is at most a guess
 //     (or d has no Header): @VOID@ is the null pointer unless d has a record
-//     named @VOID@ ([Document.GetRecord]), which shows it is an identifier.
+//     named @VOID@, which shows it is an identifier. The record is looked up
+//     in XRefMap, or in Records when XRefMap is nil.
 //
 // [Document.Subset] and the validator's broken-pointer check use it.
 func (d *Document) IsRecordPointer(s string) bool {
@@ -105,7 +106,24 @@ func (d *Document) voidIsNull() bool {
 			return false
 		}
 	}
-	return d.GetRecord(nullXRef) == nil
+	return !d.hasVoidRecord()
+}
+
+// hasVoidRecord reports whether d has a record named @VOID@, read from
+// XRefMap or, for a document built without one, from Records.
+func (d *Document) hasVoidRecord() bool {
+	if d == nil {
+		return false
+	}
+	if d.XRefMap != nil {
+		return d.XRefMap[nullXRef] != nil
+	}
+	for _, r := range d.Records {
+		if r != nil && r.XRef == nullXRef {
+			return true
+		}
+	}
+	return false
 }
 
 // declaredVersion returns d's Header.DeclaredVersion, or "" for a nil d or

@@ -401,7 +401,6 @@ sub, err := doc.Subset(doc.Descendants("@I1@"))
 - `@VOID@` is skipped as the null pointer (not treated as a missing ref)
   when `Header.Version` is 7.0, or when no version is declared and no
   record is named `@VOID@`; this is the rule `gedcom.Apply` uses
-  (`Document.IsRecordPointer`)
   (`Document.IsRecordPointer`); in a 5.5/5.5.1 document it is an ordinary
   identifier, followed like any other pointer and accepted as a seed
 - XRefs are preserved exactly — callers needing fresh IDs apply an
