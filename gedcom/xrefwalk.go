@@ -75,11 +75,17 @@ func (d *Document) IsPointerXRef(s string) bool {
 }
 
 // IsRecordPointer reports whether s, read as a pointer value in d, names a
-// record identifier: [Document.IsPointerXRef], or "@VOID@" when d is not
-// GEDCOM 7.0. @VOID@ is the GEDCOM 7.0 null pointer but an ordinary
-// identifier in GEDCOM 5.5 and 5.5.1, and this uses the same version rule as
-// [Apply]: @VOID@ is the null pointer only when Header.Version is 7.0, so in
-// a document with no Header or no Header.Version it is an ordinary identifier.
+// record identifier: [Document.IsPointerXRef], or "@VOID@" when it is not the
+// null pointer in d. @VOID@ is the GEDCOM 7.0 null pointer but an ordinary
+// identifier in GEDCOM 5.5 and 5.5.1, and this is the rule [Apply] uses:
+//
+//   - When Header.Version is 7.0, @VOID@ is the null pointer.
+//   - Otherwise, when the header declares 5.5 or 5.5.1
+//     (Header.DeclaredVersion), it is an ordinary identifier.
+//   - Otherwise no version is declared, so Header.Version is at most a guess
+//     (or d has no Header): @VOID@ is the null pointer unless d has a record
+//     named @VOID@ ([Document.GetRecord]), which shows it is an identifier.
+//
 // [Document.Subset] and the validator's broken-pointer check use it.
 func (d *Document) IsRecordPointer(s string) bool {
 	if s == nullXRef {
@@ -88,11 +94,18 @@ func (d *Document) IsRecordPointer(s string) bool {
 	return d.IsPointerXRef(s)
 }
 
-// voidIsNull reports whether @VOID@ is the null pointer in d: Header.Version
-// is GEDCOM 7.0. It keys on Header.Version, not Header.DeclaredVersion; see
-// [Apply].
+// voidIsNull reports whether @VOID@ is the null pointer in d, under the rule
+// described on [Document.IsRecordPointer].
 func (d *Document) voidIsNull() bool {
-	return d != nil && d.Header != nil && d.Header.Version == Version70
+	if d != nil && d.Header != nil {
+		if d.Header.Version == Version70 {
+			return true
+		}
+		if v := d.Header.DeclaredVersion; v == Version55 || v == Version551 {
+			return false
+		}
+	}
+	return d.GetRecord(nullXRef) == nil
 }
 
 // declaredVersion returns d's Header.DeclaredVersion, or "" for a nil d or
@@ -150,13 +163,13 @@ func Visit(r *Record, visit func(string)) {
 // where it is an ordinary identifier. For 7.0, and for any other v (which
 // selects the 7.0 grammar), it is the null pointer and is not visited.
 //
-// This differs from [Document.IsRecordPointer], the document-level rule
-// [Apply] also uses, when no version is known: v == "" (as [Visit] passes)
-// skips @VOID@, while a document with no Header.Version treats it as an
-// ordinary identifier. The two also read different fields: v is the declared
-// version, IsRecordPointer keys @VOID@ on Header.Version. To classify pointers
-// the way [Document.Subset] and the validator do, use
-// [Document.IsRecordPointer].
+// This matches [Document.IsRecordPointer], the document-level rule [Apply]
+// also uses, except in two cases a record alone cannot see: a document that
+// declares no version but has a record named @VOID@, where IsRecordPointer
+// treats @VOID@ as an ordinary identifier, and one whose guessed
+// Header.Version is 7.0 while it declares 5.5 or 5.5.1, where IsRecordPointer
+// treats it as the null pointer. To classify pointers the way
+// [Document.Subset] and the validator do, use [Document.IsRecordPointer].
 func VisitForVersion(r *Record, v Version, visit func(string)) {
 	if r == nil || visit == nil {
 		return
@@ -182,14 +195,13 @@ func VisitForVersion(r *Record, v Version, visit func(string)) {
 // Tag.XRef and Tag.Value), the Header.Submitter and Header tags, and the
 // keys of Document.XRefMap.
 //
-// "@VOID@" is the GEDCOM 7.0 null pointer, so in a document whose
-// Header.Version is 7.0 a @VOID@ reference is never rewritten. In any other
-// document, such as a 5.5/5.5.1 one where @VOID@ is an ordinary identifier,
-// a mapping entry for "@VOID@" rewrites its references like any other key.
-// This keys on Header.Version, not Header.DeclaredVersion, because the
-// converter renames a 5.5/5.5.1 record named @VOID@ before it stamps the
-// target version 7.0, whatever version the source file declared.
-// [Document.IsRecordPointer] applies the same rule.
+// "@VOID@" is the GEDCOM 7.0 null pointer, so where it is the null pointer in
+// d, under the rule described on [Document.IsRecordPointer], a @VOID@
+// reference is never rewritten. Elsewhere, such as in a 5.5/5.5.1 document
+// where @VOID@ is an ordinary identifier, a mapping entry for "@VOID@"
+// rewrites its references like any other key. The rule is applied to d as
+// passed, so the converter renames a 5.5/5.5.1 record named @VOID@ before it
+// stamps the target version 7.0.
 //
 // Apply mutates d in place. Most callers should reach for the higher-
 // level merge.RemapXRefs instead, which clones the document, validates
@@ -220,8 +232,8 @@ func Apply(d *Document, mapping map[string]string) {
 	// permissive grammar (GEDCOM 5.5.1, which allows spaces such as
 	// "@N 1@") is looked up, so inline text is never rewritten.
 	//
-	// @VOID@ is not pointer-shaped, so it is let through separately when the
-	// document is not GEDCOM 7.0, where it is not the null pointer.
+	// @VOID@ is not pointer-shaped, so it is let through separately when it
+	// is not the null pointer in d.
 	voidIsNull := d.voidIsNull()
 	rewriteRef := func(p *string) {
 		if p == nil {

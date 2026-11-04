@@ -126,11 +126,11 @@ func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling
 		return candidate
 	}
 
-	// Keyed on Header.Version to match gedcom.Apply, which must use Version
-	// because the 5.5.x -> 7.0 paths stamp it only after normalizing. So a
+	// The rule gedcom.Apply uses (Document.IsRecordPointer), which the
+	// 5.5.x -> 7.0 paths meet before they stamp the target version. So a
 	// version guessed as 7.0 from tags (no VERS declared) counts as 7.0 here:
 	// a record named @VOID@ keeps its name and @VOID@ stays the null pointer.
-	voidIsNull := doc.Header != nil && doc.Header.Version == gedcom.Version70
+	voidIsNull := !doc.IsRecordPointer(v7NullXRef)
 	for _, record := range doc.Records {
 		if record == nil || !recordNeedsV7XRef(record.XRef, voidIsNull) {
 			continue
@@ -158,9 +158,9 @@ func buildXRefMapping(doc *gedcom.Document) (mapping map[string]string, dangling
 // recordNeedsV7XRef reports whether a record XRef must be renamed for 7.0:
 // it is not a valid 7.0 Xref, or it is @VOID@ in a 5.5/5.5.1 source. In a 7.0
 // source (the 7.0 -> 7.0 path) voidIsNull is true and @VOID@ is kept, since it
-// is the null pointer there and its pointers must not follow a rename. It is
-// keyed on Header.Version, as gedcom.Apply is, which the 5.5.x -> 7.0 paths
-// stamp only after normalizing.
+// is the null pointer there and its pointers must not follow a rename. It
+// follows the rule gedcom.Apply uses (Document.IsRecordPointer), which the
+// 5.5.x -> 7.0 paths meet before they stamp the target version.
 func recordNeedsV7XRef(xref string, voidIsNull bool) bool {
 	if xref == "" {
 		return false

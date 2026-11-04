@@ -399,7 +399,9 @@ sub, err := doc.Subset(doc.Descendants("@I1@"))
 - Strict mode: unknown seeds and dangling references during closure
   walking return errors wrapping `gedcom.ErrUnknownXRef`
 - `@VOID@` is skipped as the null pointer (not treated as a missing ref)
-  only when `Header.Version` is 7.0, the rule `gedcom.Apply` uses
+  when `Header.Version` is 7.0, or when no version is declared and no
+  record is named `@VOID@`; this is the rule `gedcom.Apply` uses
+  (`Document.IsRecordPointer`)
   (`Document.IsRecordPointer`); in a 5.5/5.5.1 document it is an ordinary
   identifier, followed like any other pointer and accepted as a seed
 - XRefs are preserved exactly — callers needing fresh IDs apply an
@@ -1021,7 +1023,7 @@ silently.
 - Valid line format (level, tag, value, xref)
 - Proper hierarchy (levels increment by 1)
 - Required tags present (HEAD, TRLR)
-- Valid cross-references: every pointer in a record's raw tags must name an existing record (`BROKEN_XREF`, with the pointing line; the typed `ORPHANED_*` codes cover FAMC/FAMS/SOUR/HUSB/WIFE/CHIL). `@VOID@` is exempt as the null pointer only when `Header.Version` is 7.0; in a 5.5/5.5.1 document a dangling `@VOID@` is reported
+- Valid cross-references: every pointer in a record's raw tags must name an existing record (`BROKEN_XREF`, with the pointing line; the typed `ORPHANED_*` codes cover FAMC/FAMS/SOUR/HUSB/WIFE/CHIL). `@VOID@` is exempt as the null pointer when `Header.Version` is 7.0, or when no version is declared and no record is named `@VOID@`; in a document declaring 5.5/5.5.1 a dangling `@VOID@` is reported
 - Individuals with no NAME (`MISSING_REQUIRED_FIELD`, warning) and families with no HUSB/WIFE/CHIL (`EMPTY_FAMILY`, warning), each with the record's line
 
 ### Version-Specific Validation

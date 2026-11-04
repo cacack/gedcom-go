@@ -30,9 +30,8 @@ import (
 //
 // CONT and CONC lines are text continuations, never pointers, and are skipped.
 // The GEDCOM 7.0 "@VOID@" null pointer is deliberate, not a broken pointer;
-// in a document whose Header.Version is not 7.0, such as a 5.5/5.5.1 one,
-// @VOID@ is an ordinary identifier and is checked like any other. Pointer
-// shape follows the version the document declares; see
+// in a document declaring 5.5/5.5.1 @VOID@ is an ordinary identifier and is
+// checked like any other. Pointer shape and the @VOID@ rule follow
 // [gedcom.Document.IsRecordPointer].
 func validateBrokenXRefs(doc *gedcom.Document) []Issue {
 	var issues []Issue

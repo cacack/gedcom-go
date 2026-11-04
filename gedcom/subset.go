@@ -81,11 +81,10 @@ func (e *UnknownXRefError) Is(target error) bool {
 //
 // Strict mode also applies during the closure walk: any reference
 // followed from an included record that does not resolve returns an
-// error wrapping ErrUnknownXRef. In a document whose Header.Version is
-// GEDCOM 7.0, the "@VOID@" null pointer is silently skipped during the
-// walk (it does not pull anything into the closure and does not error);
-// in any other document it is an ordinary identifier (see below), so a
-// dangling "@VOID@" errors like any other. Inline note text and inline
+// error wrapping ErrUnknownXRef. Where "@VOID@" is the null pointer (see
+// below), it is silently skipped during the walk (it does not pull
+// anything into the closure and does not error); where it is an ordinary
+// identifier, a dangling "@VOID@" errors like any other. Inline note text and inline
 // citation values that do not have the @xref@ pointer shape are
 // likewise ignored during the walk.
 //
@@ -98,9 +97,11 @@ func (e *UnknownXRefError) Is(target error) bool {
 // Pointer shape follows the version the source declares
 // ([Document.IsPointerXRef]): in a GEDCOM 5.5 or 5.5.1 document a spaced
 // pointer such as "@N 1@" is a valid seed and is followed like any other.
-// "@VOID@" is the null pointer only when Header.Version is 7.0, the rule
-// [Apply] uses ([Document.IsRecordPointer]); in any other document it is an
-// ordinary identifier, so it is a valid seed and is followed like any other.
+// Whether "@VOID@" is the null pointer follows [Document.IsRecordPointer],
+// the rule [Apply] uses: it is in a 7.0 document and in one that declares no
+// version and has no record named @VOID@. Elsewhere, as in a document
+// declaring 5.5 or 5.5.1, it is an ordinary identifier, so it is a valid
+// seed and is followed like any other.
 func (d *Document) Subset(xrefs []string) (*Document, error) {
 	if d == nil {
 		return nil, errors.New("subset: source document is nil")
@@ -177,8 +178,8 @@ func (d *Document) subsetClosure(xrefs []string) (map[string]bool, error) {
 
 	var walkErr error
 	// walkRecord rather than VisitForVersion: VisitForVersion takes one
-	// version, but @VOID@ keys on Header.Version and pointer shape on
-	// Header.DeclaredVersion, which IsRecordPointer combines. walkRecord
+	// version, but @VOID@ also keys on Header.Version and on whether a
+	// @VOID@ record exists, which IsRecordPointer combines. walkRecord
 	// never passes a nil p.
 	visit := func(p *string) {
 		if walkErr != nil {
