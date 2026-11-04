@@ -87,7 +87,9 @@
 //   - GEDC.VERS follows TargetVersion when that option is set. A header with
 //     no GEDC gets one, placed where the target version's grammar puts it
 //     rather than at the end; for 5.5 and 5.5.1 it carries FORM
-//     LINEAGE-LINKED, as does the GEDC of a hand-built 5.x header.
+//     LINEAGE-LINKED, as does the GEDC of a hand-built 5.x header. A GEDC the
+//     header already has gets that FORM too when it lacks one, as a 7.0
+//     header retargeted to 5.x without the converter does.
 //
 // Version conversion belongs to the converter package, which updates the raw
 // header tags alongside the typed fields for exactly this reason.
