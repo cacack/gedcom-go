@@ -136,3 +136,191 @@ func TestStreamingValidator_SubstructureNotePointers_NilElements(t *testing.T) {
 		t.Errorf("nil substructures produced %d issue(s), want 0: %v", len(issues), issues)
 	}
 }
+
+// ownerNotesGEDCOM puts a dangling note pointer on each structure that owns
+// notes of its own (#673): personal name, event, attribute, source citation
+// (on the record, a name, an event, an attribute and an association), LDS
+// ordinance and change date, on individual, family and source records. @N1@
+// exists; every @NY..@ pointer does not.
+const ownerNotesGEDCOM = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Doe/
+2 NOTE @NY1@
+2 SOUR @S1@
+3 NOTE @NY2@
+1 SOUR @S1@
+2 NOTE @N1@
+2 NOTE @NY3@
+1 BIRT
+2 NOTE @NY4@
+2 SOUR @S1@
+3 NOTE @NY5@
+1 OCCU Farmer
+2 NOTE @NY6@
+2 SOUR @S1@
+3 NOTE @NY7@
+1 ASSO @I2@
+2 RELA Godfather
+2 SOUR @S1@
+3 NOTE @NY8@
+1 BAPL
+2 NOTE @NY9@
+1 CHAN
+2 DATE 1 JAN 2020
+2 NOTE @NY10@
+0 @I2@ INDI
+1 NAME Jim /Roe/
+0 @F1@ FAM
+1 HUSB @I1@
+1 SOUR @S1@
+2 NOTE @NY11@
+1 MARR
+2 NOTE @NY12@
+1 SLGS
+2 NOTE @NY13@
+1 CHAN
+2 DATE 1 JAN 2020
+2 NOTE @NY14@
+0 @S1@ SOUR
+1 TITL Register
+1 CHAN
+2 DATE 1 JAN 2020
+2 NOTE @NY15@
+0 @N1@ NOTE A shared note
+0 TRLR
+`
+
+// TestStreamingValidator_OwnerNotePointers guards #673: a dangling note
+// pointer owned by a name, event, attribute, source citation, LDS ordinance or
+// change date is reported, located below its record.
+func TestStreamingValidator_OwnerNotePointers(t *testing.T) {
+	doc, err := decoder.Decode(strings.NewReader(ownerNotesGEDCOM))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+
+	sv := NewStreamingValidator(StreamingOptions{})
+	for _, record := range doc.Records {
+		if issues := sv.ValidateRecord(record); len(issues) != 0 {
+			t.Fatalf("ValidateRecord(%s) = %v, want no immediate issues", record.XRef, issues)
+		}
+	}
+
+	type loc struct{ record, field string }
+	got := map[string]loc{}
+	for _, iss := range sv.Finalize() {
+		if iss.Code != "ORPHANED_NOTE" {
+			t.Errorf("unexpected issue %s", iss.String())
+			continue
+		}
+		if prev, dup := got[iss.RelatedXRef]; dup {
+			t.Errorf("%s reported twice: %v and %s", iss.RelatedXRef, prev, iss.Details["field"])
+		}
+		got[iss.RelatedXRef] = loc{iss.RecordXRef, iss.Details["field"]}
+	}
+
+	want := map[string]loc{
+		"@NY1@":  {"@I1@", "Names[0].NoteXRefs[0]"},
+		"@NY2@":  {"@I1@", "Names[0].SourceCitations[0].NoteXRefs[0]"},
+		"@NY3@":  {"@I1@", "SourceCitations[0].NoteXRefs[1]"},
+		"@NY4@":  {"@I1@", "Events[0].NoteXRefs[0]"},
+		"@NY5@":  {"@I1@", "Events[0].SourceCitations[0].NoteXRefs[0]"},
+		"@NY6@":  {"@I1@", "Attributes[0].NoteXRefs[0]"},
+		"@NY7@":  {"@I1@", "Attributes[0].SourceCitations[0].NoteXRefs[0]"},
+		"@NY8@":  {"@I1@", "Associations[0].SourceCitations[0].NoteXRefs[0]"},
+		"@NY9@":  {"@I1@", "LDSOrdinances[0].NoteXRefs[0]"},
+		"@NY10@": {"@I1@", "ChangeDate.NoteXRefs[0]"},
+		"@NY11@": {"@F1@", "SourceCitations[0].NoteXRefs[0]"},
+		"@NY12@": {"@F1@", "Events[0].NoteXRefs[0]"},
+		"@NY13@": {"@F1@", "LDSOrdinances[0].NoteXRefs[0]"},
+		"@NY14@": {"@F1@", "ChangeDate.NoteXRefs[0]"},
+		"@NY15@": {"@S1@", "ChangeDate.NoteXRefs[0]"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("orphaned NOTE issues =\n  %v\nwant\n  %v", got, want)
+	}
+}
+
+// TestStreamingValidator_NotePointersAgreeWithBatch checks that, for every
+// dangling note pointer the decoder types (#535, #673), the streaming
+// validator reports the same (record, pointer) pairs as the batch validator.
+func TestStreamingValidator_NotePointersAgreeWithBatch(t *testing.T) {
+	for name, src := range map[string]string{
+		"substructures": substructureNotesGEDCOM,
+		"owners":        ownerNotesGEDCOM,
+	} {
+		t.Run(name, func(t *testing.T) {
+			doc, err := decoder.Decode(strings.NewReader(src))
+			if err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+
+			batch := map[string]int{}
+			for _, iss := range New().ValidateAll(doc) {
+				if iss.Code == CodeBrokenXRef && iss.Details["tag"] == "NOTE" {
+					batch[iss.RecordXRef+" "+iss.RelatedXRef]++
+				}
+			}
+
+			sv := NewStreamingValidator(StreamingOptions{})
+			for _, record := range doc.Records {
+				sv.ValidateRecord(record)
+			}
+			streaming := map[string]int{}
+			for _, iss := range sv.Finalize() {
+				if iss.Code == "ORPHANED_NOTE" {
+					streaming[iss.RecordXRef+" "+iss.RelatedXRef]++
+				}
+			}
+
+			if len(batch) == 0 || !reflect.DeepEqual(batch, streaming) {
+				t.Errorf("dangling note pointers:\n  batch     %v\n  streaming %v", batch, streaming)
+			}
+		})
+	}
+}
+
+// TestStreamingValidator_OwnerNotePointers_HandBuilt covers the owners a
+// 5.5.1 file cannot carry (CREA) and checks that nil elements are skipped
+// rather than panicking (ADR 0007).
+func TestStreamingValidator_OwnerNotePointers_HandBuilt(t *testing.T) {
+	sv := NewStreamingValidator(StreamingOptions{})
+
+	ind := &gedcom.Individual{
+		XRef:            "@I1@",
+		Names:           []*gedcom.PersonalName{nil, {SourceCitations: []*gedcom.SourceCitation{nil}}},
+		SourceCitations: []*gedcom.SourceCitation{nil},
+		Associations:    []*gedcom.Association{{SourceCitations: []*gedcom.SourceCitation{nil}}},
+		Events:          []*gedcom.Event{{SourceCitations: []*gedcom.SourceCitation{nil}}},
+		LDSOrdinances:   []*gedcom.LDSOrdinance{nil},
+		CreationDate:    &gedcom.ChangeDate{NoteXRefs: []string{"@NX1@"}},
+	}
+	fam := &gedcom.Family{
+		XRef:          "@F1@",
+		LDSOrdinances: []*gedcom.LDSOrdinance{nil},
+		CreationDate:  &gedcom.ChangeDate{NoteXRefs: []string{"@NX2@"}},
+	}
+	src := &gedcom.Source{
+		XRef:         "@S1@",
+		CreationDate: &gedcom.ChangeDate{NoteXRefs: []string{"@NX3@"}},
+	}
+	sv.ValidateRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind})
+	sv.ValidateRecord(&gedcom.Record{XRef: "@F1@", Type: gedcom.RecordTypeFamily, Entity: fam})
+	sv.ValidateRecord(&gedcom.Record{XRef: "@S1@", Type: gedcom.RecordTypeSource, Entity: src})
+
+	got := map[string]string{}
+	for _, iss := range sv.Finalize() {
+		got[iss.RecordXRef+" "+iss.RelatedXRef] = iss.Details["field"]
+	}
+	want := map[string]string{
+		"@I1@ @NX1@": "CreationDate.NoteXRefs[0]",
+		"@F1@ @NX2@": "CreationDate.NoteXRefs[0]",
+		"@S1@ @NX3@": "CreationDate.NoteXRefs[0]",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("issues = %v, want %v", got, want)
+	}
+}
