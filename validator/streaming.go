@@ -208,20 +208,36 @@ func (sv *StreamingValidator) validateIndividual(ind *gedcom.Individual) []Issue
 		}
 	}
 
-	// Collect NOTE references nested in substructures (#535). Event, attribute,
-	// name and citation own notes are not yet collected.
+	// Collect NOTE references nested in substructures (#535, #673)
+	sv.collectIndividualSubstructureNotes(ind)
+
+	return issues
+}
+
+// collectIndividualSubstructureNotes collects the note pointers on every typed
+// structure below an individual that carries notes.
+func (sv *StreamingValidator) collectIndividualSubstructureNotes(ind *gedcom.Individual) {
 	for i := range ind.ChildInFamilies {
 		sv.collectNoteXRefs(ind.XRef, fmt.Sprintf("ChildInFamilies[%d].", i), ind.ChildInFamilies[i].NoteXRefs)
 	}
 	for i := range ind.SpouseInFamilies {
 		sv.collectNoteXRefs(ind.XRef, fmt.Sprintf("SpouseInFamilies[%d].", i), ind.SpouseInFamilies[i].NoteXRefs)
 	}
+	for i, name := range ind.Names {
+		if name != nil {
+			prefix := fmt.Sprintf("Names[%d].", i)
+			sv.collectNoteXRefs(ind.XRef, prefix, name.NoteXRefs)
+			sv.collectCitationNotes(ind.XRef, prefix, name.SourceCitations)
+		}
+	}
+	sv.collectCitationNotes(ind.XRef, "", ind.SourceCitations)
 	sv.collectAssociationNotes(ind.XRef, "", ind.Associations)
 	sv.collectMediaLinkNotes(ind.XRef, "", ind.Media)
 	sv.collectEventNotes(ind.XRef, ind.Events)
 	sv.collectAttributeNotes(ind.XRef, ind.Attributes)
-
-	return issues
+	sv.collectLDSOrdinanceNotes(ind.XRef, ind.LDSOrdinances)
+	sv.collectChangeDateNotes(ind.XRef, "ChangeDate.", ind.ChangeDate)
+	sv.collectChangeDateNotes(ind.XRef, "CreationDate.", ind.CreationDate)
 }
 
 // validateFamily validates a Family record and collects XRef references.
@@ -277,9 +293,13 @@ func (sv *StreamingValidator) validateFamily(fam *gedcom.Family) []Issue {
 	sv.collectNoteXRefs(fam.XRef, "", fam.NoteXRefs)
 
 	// Collect NOTE references nested in substructures
+	sv.collectCitationNotes(fam.XRef, "", fam.SourceCitations)
 	sv.collectMediaLinkNotes(fam.XRef, "", fam.Media)
 	sv.collectEventNotes(fam.XRef, fam.Events)
 	sv.collectAttributeNotes(fam.XRef, fam.Attributes)
+	sv.collectLDSOrdinanceNotes(fam.XRef, fam.LDSOrdinances)
+	sv.collectChangeDateNotes(fam.XRef, "ChangeDate.", fam.ChangeDate)
+	sv.collectChangeDateNotes(fam.XRef, "CreationDate.", fam.CreationDate)
 
 	return nil
 }
@@ -309,6 +329,8 @@ func (sv *StreamingValidator) collectSourceReferences(src *gedcom.Source) {
 		}
 	}
 	sv.collectMediaLinkNotes(src.XRef, "", src.Media)
+	sv.collectChangeDateNotes(src.XRef, "ChangeDate.", src.ChangeDate)
+	sv.collectChangeDateNotes(src.XRef, "CreationDate.", src.CreationDate)
 }
 
 // collectNoteXRefs records each non-empty note pointer as a NOTE usage by
@@ -329,12 +351,41 @@ func (sv *StreamingValidator) collectNoteXRefs(recordXRef, prefix string, noteXR
 	}
 }
 
-// collectAssociationNotes collects the note pointers on each ASSO structure.
+// collectAssociationNotes collects the note pointers on each ASSO structure
+// and on its source citations.
 func (sv *StreamingValidator) collectAssociationNotes(recordXRef, prefix string, assocs []*gedcom.Association) {
 	for i, assoc := range assocs {
 		if assoc != nil {
-			sv.collectNoteXRefs(recordXRef, fmt.Sprintf("%sAssociations[%d].", prefix, i), assoc.NoteXRefs)
+			assocPrefix := fmt.Sprintf("%sAssociations[%d].", prefix, i)
+			sv.collectNoteXRefs(recordXRef, assocPrefix, assoc.NoteXRefs)
+			sv.collectCitationNotes(recordXRef, assocPrefix, assoc.SourceCitations)
 		}
+	}
+}
+
+// collectCitationNotes collects the note pointers on each SOUR citation.
+func (sv *StreamingValidator) collectCitationNotes(recordXRef, prefix string, citations []*gedcom.SourceCitation) {
+	for i, citation := range citations {
+		if citation != nil {
+			sv.collectNoteXRefs(recordXRef, fmt.Sprintf("%sSourceCitations[%d].", prefix, i), citation.NoteXRefs)
+		}
+	}
+}
+
+// collectLDSOrdinanceNotes collects the note pointers on each LDS ordinance.
+func (sv *StreamingValidator) collectLDSOrdinanceNotes(recordXRef string, ords []*gedcom.LDSOrdinance) {
+	for i, ord := range ords {
+		if ord != nil {
+			sv.collectNoteXRefs(recordXRef, fmt.Sprintf("LDSOrdinances[%d].", i), ord.NoteXRefs)
+		}
+	}
+}
+
+// collectChangeDateNotes collects the note pointers on a CHAN or CREA
+// structure; prefix names the field holding it (e.g. "ChangeDate.").
+func (sv *StreamingValidator) collectChangeDateNotes(recordXRef, prefix string, cd *gedcom.ChangeDate) {
+	if cd != nil {
+		sv.collectNoteXRefs(recordXRef, prefix, cd.NoteXRefs)
 	}
 }
 
@@ -354,29 +405,33 @@ func (sv *StreamingValidator) collectPlaceDetailNotes(recordXRef, prefix string,
 	}
 }
 
-// collectEventNotes collects the note pointers on the PLAC, OBJE and ASSO
-// substructures of each event.
+// collectEventNotes collects the note pointers on each event and on its PLAC,
+// SOUR, OBJE and ASSO substructures.
 func (sv *StreamingValidator) collectEventNotes(recordXRef string, events []*gedcom.Event) {
 	for i, ev := range events {
 		if ev == nil {
 			continue
 		}
 		prefix := fmt.Sprintf("Events[%d].", i)
+		sv.collectNoteXRefs(recordXRef, prefix, ev.NoteXRefs)
 		sv.collectPlaceDetailNotes(recordXRef, prefix, ev.PlaceDetail)
+		sv.collectCitationNotes(recordXRef, prefix, ev.SourceCitations)
 		sv.collectMediaLinkNotes(recordXRef, prefix, ev.Media)
 		sv.collectAssociationNotes(recordXRef, prefix, ev.Associations)
 	}
 }
 
-// collectAttributeNotes collects the note pointers on the PLAC, OBJE and ASSO
-// substructures of each attribute.
+// collectAttributeNotes collects the note pointers on each attribute and on its
+// PLAC, SOUR, OBJE and ASSO substructures.
 func (sv *StreamingValidator) collectAttributeNotes(recordXRef string, attrs []*gedcom.Attribute) {
 	for i, attr := range attrs {
 		if attr == nil {
 			continue
 		}
 		prefix := fmt.Sprintf("Attributes[%d].", i)
+		sv.collectNoteXRefs(recordXRef, prefix, attr.NoteXRefs)
 		sv.collectPlaceDetailNotes(recordXRef, prefix, attr.PlaceDetail)
+		sv.collectCitationNotes(recordXRef, prefix, attr.SourceCitations)
 		sv.collectMediaLinkNotes(recordXRef, prefix, attr.Media)
 		sv.collectAssociationNotes(recordXRef, prefix, attr.Associations)
 	}
