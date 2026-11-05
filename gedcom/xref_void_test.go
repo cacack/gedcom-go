@@ -23,20 +23,29 @@ func voidDocument(v Version) *Document {
 	}
 }
 
-// TestIsRecordPointer pins issue #614: @VOID@ is a record pointer in every
-// document except a 7.0 one, the rule Apply uses.
+// TestIsRecordPointer pins issues #614 and #672: @VOID@ is a record pointer
+// in a document declaring 5.5 or 5.5.1, and in one declaring no version that
+// has a record named @VOID@; in a 7.0 document, or one declaring no version
+// and no such record, it is the null pointer. Apply uses the same rule.
 func TestIsRecordPointer(t *testing.T) {
+	voidRecord := map[string]*Record{"@VOID@": {XRef: "@VOID@"}}
 	for _, tt := range []struct {
 		name string
 		doc  *Document
 		want bool
 	}{
-		{"5.5", &Document{Header: &Header{Version: Version55}}, true},
-		{"5.5.1", &Document{Header: &Header{Version: Version551}}, true},
-		{"no version", &Document{Header: &Header{}}, true},
-		{"nil header", &Document{}, true},
-		{"nil document", nil, true},
+		{"declared 5.5", &Document{Header: &Header{Version: Version55, DeclaredVersion: Version55}}, true},
+		{"declared 5.5.1", &Document{Header: &Header{Version: Version551, DeclaredVersion: Version551}}, true},
+		{"guessed 5.5", &Document{Header: &Header{Version: Version55}}, false},
+		{"guessed 5.5, @VOID@ record", &Document{Header: &Header{Version: Version55}, XRefMap: voidRecord}, true},
+		{"no version", &Document{Header: &Header{}}, false},
+		{"nil header", &Document{}, false},
+		{"nil header, @VOID@ record", &Document{XRefMap: voidRecord}, true},
+		{"guessed 5.5, @VOID@ in Records only", &Document{Header: &Header{Version: Version55}, Records: []*Record{nil, {XRef: "@VOID@"}}}, true},
+		{"guessed 5.5, Records without @VOID@", &Document{Header: &Header{Version: Version55}, Records: []*Record{{XRef: "@I1@"}}}, false},
+		{"nil document", nil, false},
 		{"7.0", &Document{Header: &Header{Version: Version70}}, false},
+		{"guessed 7.0, @VOID@ record", &Document{Header: &Header{Version: Version70}, XRefMap: voidRecord}, false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.doc.IsRecordPointer("@VOID@"); got != tt.want {
@@ -100,5 +109,28 @@ func TestSubsetVoid(t *testing.T) {
 	}
 	if _, err := voidDocument(Version70).Subset([]string{"@VOID@"}); !errors.Is(err, ErrUnknownXRef) {
 		t.Errorf("7.0 Subset(@VOID@ seed) error = %v, want ErrUnknownXRef", err)
+	}
+}
+
+// TestSubsetVoidUndeclared pins issue #672: in a document that declares no
+// version (Header.Version guessed as 5.5), a dangling @VOID@ is the null
+// pointer, so strict Subset skips it rather than erroring, while a record
+// named @VOID@ is still followed.
+func TestSubsetVoidUndeclared(t *testing.T) {
+	doc := voidDocument(Version55)
+	doc.Header.DeclaredVersion = ""
+	sub, err := doc.Subset([]string{"@I1@"})
+	if err != nil || sub.GetRecord("@VOID@") == nil {
+		t.Errorf("Subset with @VOID@ record = %v, %v; want the @VOID@ record followed", sub, err)
+	}
+
+	delete(doc.XRefMap, "@VOID@")
+	doc.Records = doc.Records[:1]
+	sub, err = doc.Subset([]string{"@I1@"})
+	if err != nil {
+		t.Fatalf("Subset with dangling @VOID@ errored: %v", err)
+	}
+	if sub.GetRecord("@I1@") == nil {
+		t.Error("Subset dropped the seed @I1@")
 	}
 }

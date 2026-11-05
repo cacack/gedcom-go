@@ -33,8 +33,8 @@ const voidXRef = "@VOID@"
 // @VOID@ is not skipped (see below).
 //
 // A record named @VOID@ (allowed in GEDCOM 5.5 and 5.5.1) is remapped like
-// any other, and so are its @VOID@ pointers unless Header.Version is 7.0,
-// where @VOID@ is the null pointer; see gedcom.Apply. The transform may
+// any other, and so are its @VOID@ pointers unless @VOID@ is the null
+// pointer in doc (Document.IsRecordPointer); see gedcom.Apply. The transform may
 // return @VOID@ unchanged for it (an identity result is always accepted),
 // so Combine's strategies, which keep non-colliding XRefs as-is, succeed.
 //

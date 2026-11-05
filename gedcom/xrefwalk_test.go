@@ -744,21 +744,27 @@ func TestIsPointerXRefForVersion_NoAlloc(t *testing.T) {
 	}
 }
 
-// TestApply_VoidMappingKey pins issue #603: a mapping entry for @VOID@
-// rewrites @VOID@ references in a document that is not GEDCOM 7.0, where
-// @VOID@ is an ordinary identifier, but never in a 7.0 document, where it is
-// the null pointer. Every reference site walked by rewriteRef is checked:
-// typed entity fields, raw Tag.Value and Tag.XRef, and header tags.
+// TestApply_VoidMappingKey pins issues #603 and #672: a mapping entry for
+// @VOID@ rewrites @VOID@ references where @VOID@ is an ordinary identifier (a
+// document declaring 5.5/5.5.1, or declaring no version but having a record
+// named @VOID@), but never where it is the null pointer (a 7.0 document, or
+// one declaring no version and having no such record). Every reference site
+// walked by rewriteRef is checked: typed entity fields, raw Tag.Value and
+// Tag.XRef, and header tags.
 func TestApply_VoidMappingKey(t *testing.T) {
 	for _, tt := range []struct {
-		name   string
-		header *Header
-		want   string
+		name       string
+		header     *Header
+		voidRecord bool
+		want       string
 	}{
-		{"5.5.1", &Header{Version: Version551}, "@VOID_2@"},
-		{"no version", &Header{}, "@VOID_2@"},
-		{"nil header", nil, "@VOID_2@"},
-		{"7.0", &Header{Version: Version70}, "@VOID@"},
+		{"5.5.1", &Header{Version: Version551, DeclaredVersion: Version551}, false, "@VOID_2@"},
+		{"no version, @VOID@ record", &Header{}, true, "@VOID_2@"},
+		{"nil header, @VOID@ record", nil, true, "@VOID_2@"},
+		{"no version", &Header{}, false, "@VOID@"},
+		{"guessed 5.5.1", &Header{Version: Version551}, false, "@VOID@"},
+		{"nil header", nil, false, "@VOID@"},
+		{"7.0", &Header{Version: Version70}, true, "@VOID@"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			ind := &Record{
@@ -775,6 +781,9 @@ func TestApply_VoidMappingKey(t *testing.T) {
 				tt.header.Tags = []*Tag{hdrTag}
 			}
 			doc := &Document{Header: tt.header, Records: []*Record{ind}}
+			if tt.voidRecord {
+				doc.XRefMap = map[string]*Record{"@VOID@": {XRef: "@VOID@"}}
+			}
 
 			Apply(doc, map[string]string{"@VOID@": "@VOID_2@"})
 

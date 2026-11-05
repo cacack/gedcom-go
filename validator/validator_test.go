@@ -157,7 +157,8 @@ func TestValidateBrokenXRef_NonPointers(t *testing.T) {
 
 // TestValidateBrokenXRef_Void pins issue #614: @VOID@ is an ordinary
 // identifier in GEDCOM 5.5/5.5.1, so a dangling @VOID@ pointer there is
-// broken, while in 7.0 it is the null pointer and is not reported.
+// broken, while in 7.0, or with no declared version (issue #672), it is the
+// null pointer and is not reported.
 func TestValidateBrokenXRef_Void(t *testing.T) {
 	for _, tt := range []struct {
 		vers string
@@ -166,9 +167,17 @@ func TestValidateBrokenXRef_Void(t *testing.T) {
 		{"5.5", 1},
 		{"5.5.1", 1},
 		{"7.0", 0},
+		// Issue #672: with no GEDC.VERS and no 7.0-only tags the version is
+		// guessed as 5.5, but nothing declares it, so @VOID@ is the null
+		// pointer.
+		{"", 0},
 	} {
-		t.Run(tt.vers, func(t *testing.T) {
-			input := "0 HEAD\n1 GEDC\n2 VERS " + tt.vers + "\n0 @I1@ INDI\n1 NOTE @VOID@\n0 TRLR"
+		t.Run("vers="+tt.vers, func(t *testing.T) {
+			header := "0 HEAD\n1 GEDC\n2 VERS " + tt.vers + "\n"
+			if tt.vers == "" {
+				header = "0 HEAD\n1 GEDC\n2 FORM LINEAGE-LINKED\n"
+			}
+			input := header + "0 @I1@ INDI\n1 NOTE @VOID@\n0 TRLR"
 			doc, err := decoder.Decode(strings.NewReader(input))
 			if err != nil {
 				t.Fatalf("Decode() error = %v", err)
@@ -179,6 +188,18 @@ func TestValidateBrokenXRef_Void(t *testing.T) {
 			}
 			if tt.want == 1 && (got[0].RelatedXRef != "@VOID@" || got[0].LineNumber != 5) {
 				t.Errorf("BROKEN_XREF = %v, want @VOID@ on line 5", got[0])
+			}
+			if tt.vers == "" {
+				// Subset and VisitForVersion follow the same rule.
+				if doc.Header.Version != gedcom.Version55 || doc.Header.DeclaredVersion != "" {
+					t.Fatalf("Header = %q declared %q, want guessed 5.5", doc.Header.Version, doc.Header.DeclaredVersion)
+				}
+				if _, err := doc.Subset([]string{"@I1@"}); err != nil {
+					t.Errorf("Subset() error = %v, want nil", err)
+				}
+				gedcom.VisitForVersion(doc.GetRecord("@I1@"), doc.Header.DeclaredVersion, func(ref string) {
+					t.Errorf("VisitForVersion visited %q, want none", ref)
+				})
 			}
 		})
 	}
