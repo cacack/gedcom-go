@@ -152,6 +152,10 @@ func writeHeaderTags(w io.Writer, tags []*gedcom.Tag, opts *EncodeOptions) error
 		if err := writeRetargetedVersion(w, filtered, i, inGEDC, opts); err != nil {
 			return err
 		}
+
+		if err := writeRetargetedForm(w, filtered, i, inGEDC, opts); err != nil {
+			return err
+		}
 	}
 
 	// Every structure present ranks before GEDC, so it goes last.
@@ -190,10 +194,40 @@ func overrideHeaderTag(tag *gedcom.Tag, inGEDC bool, opts *EncodeOptions) *gedco
 // GEDC has none of its own to override. Writing it here rather than appending
 // at the end keeps it inside the GEDC structure it belongs to.
 func writeRetargetedVersion(w io.Writer, tags []*gedcom.Tag, i int, inGEDC bool, opts *EncodeOptions) error {
-	if !inGEDC || tags[i].Level != 1 || opts.TargetVersion == "" || hasVersionChild(tags, i) {
+	if !inGEDC || tags[i].Level != 1 || opts.TargetVersion == "" || hasGEDCChild(tags, i, "VERS") {
 		return nil
 	}
 	return writeTag(w, &gedcom.Tag{Level: 2, Tag: "VERS", Value: string(opts.TargetVersion)}, opts)
+}
+
+// writeRetargetedForm supplies the GEDC.FORM 5.5 and 5.5.1 require when the
+// source's GEDC has none, such as a 7.0 header retargeted without the
+// converter (#674). It goes after the GEDC structure's last line, so after VERS
+// as the 5.x grammar orders them.
+func writeRetargetedForm(w io.Writer, tags []*gedcom.Tag, i int, inGEDC bool, opts *EncodeOptions) error {
+	if !inGEDC || !headergrammar.RequiresGEDCForm(opts.TargetVersion) || !endsStructure(tags, i) {
+		return nil
+	}
+	gedc := i
+	for tags[gedc] == nil || tags[gedc].Level > 1 {
+		gedc--
+	}
+	if hasGEDCChild(tags, gedc, "FORM") {
+		return nil
+	}
+	return writeGEDCForm(w, opts)
+}
+
+// endsStructure reports whether the tag at index i is the last line of its
+// level-1 structure: nothing but nils follows it before the next tag at level 1
+// or above, or the end of the header.
+func endsStructure(tags []*gedcom.Tag, i int) bool {
+	for _, tag := range tags[i+1:] {
+		if tag != nil {
+			return tag.Level <= 1
+		}
+	}
+	return true
 }
 
 // writeGEDCVersion writes a complete GEDC structure for the target version:
@@ -208,12 +242,17 @@ func writeGEDCVersion(w io.Writer, opts *EncodeOptions) error {
 	if !headergrammar.RequiresGEDCForm(opts.TargetVersion) {
 		return nil
 	}
+	return writeGEDCForm(w, opts)
+}
+
+// writeGEDCForm writes the GEDC.FORM 5.5 and 5.5.1 require.
+func writeGEDCForm(w io.Writer, opts *EncodeOptions) error {
 	return writeTag(w, &gedcom.Tag{Level: 2, Tag: "FORM", Value: headergrammar.GEDCForm}, opts)
 }
 
-// hasVersionChild reports whether the GEDC tag at index i is followed by its
-// own VERS subtag.
-func hasVersionChild(tags []*gedcom.Tag, i int) bool {
+// hasGEDCChild reports whether the GEDC tag at index i is followed by its own
+// level-2 subtag named name.
+func hasGEDCChild(tags []*gedcom.Tag, i int, name string) bool {
 	for _, tag := range tags[i+1:] {
 		if tag == nil {
 			continue
@@ -222,7 +261,7 @@ func hasVersionChild(tags []*gedcom.Tag, i int) bool {
 		if tag.Level <= 1 {
 			return false
 		}
-		if tag.Level == 2 && tag.Tag == "VERS" {
+		if tag.Level == 2 && tag.Tag == name {
 			return true
 		}
 	}

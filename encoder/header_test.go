@@ -832,3 +832,91 @@ func TestHeaderDateIgnoresSourceDataDate(t *testing.T) {
 		})
 	}
 }
+
+// TestHeaderRetargetAddsGEDCForm pins #674: a header whose GEDC lacks FORM --
+// a 7.0 source retargeted without the converter -- gets the FORM 5.5 and 5.5.1
+// require, after VERS as their grammar orders it. A FORM already there is kept,
+// and 7.0 output gains none.
+func TestHeaderRetargetAddsGEDCForm(t *testing.T) {
+	tests := []struct {
+		name   string
+		tags   []*gedcom.Tag
+		target gedcom.Version
+		want   string
+	}{
+		{
+			name: "7.0 source to 5.5.1",
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "VERS", Value: "7.0"},
+				{Level: 1, Tag: "SOUR", Value: "APP"},
+			},
+			target: gedcom.Version551,
+			want:   "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 SOUR APP\n",
+		},
+		{
+			name: "GEDC last, no VERS, to 5.5",
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "SOUR", Value: "APP"},
+				{Level: 1, Tag: "GEDC"},
+			},
+			target: gedcom.Version55,
+			want:   "0 HEAD\n1 SOUR APP\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n",
+		},
+		{
+			name: "existing FORM kept",
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "VERS", Value: "5.5"},
+				{Level: 2, Tag: "FORM", Value: "LINEAGE-LINKED"},
+			},
+			target: gedcom.Version551,
+			want:   "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n",
+		},
+		{
+			name: "7.0 target adds none",
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "VERS", Value: "7.0"},
+			},
+			target: gedcom.Version70,
+			want:   "0 HEAD\n1 GEDC\n2 VERS 7.0\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := DefaultOptions()
+			opts.TargetVersion = tt.target
+
+			var buf bytes.Buffer
+			doc := &gedcom.Document{Header: &gedcom.Header{Tags: tt.tags}}
+			if err := EncodeWithOptions(&buf, doc, opts); err != nil {
+				t.Fatalf("encode: %v", err)
+			}
+			if got := strings.TrimSuffix(buf.String(), "0 TRLR\n"); got != tt.want {
+				t.Errorf("header =\n%s\nwant\n%s", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestHeaderRetargetFromDecoded70AddsGEDCForm covers the end-to-end path the
+// issue names: a decoded 7.0 file encoded with a 5.5.1 TargetVersion.
+func TestHeaderRetargetFromDecoded70AddsGEDCForm(t *testing.T) {
+	doc, err := decoder.Decode(strings.NewReader("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 TRLR\n"))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	opts := DefaultOptions()
+	opts.TargetVersion = gedcom.Version551
+
+	var buf bytes.Buffer
+	if err := EncodeWithOptions(&buf, doc, opts); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if !strings.Contains(buf.String(), "1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n") {
+		t.Errorf("5.5.1 output lacks GEDC.FORM:\n%s", buf.String())
+	}
+}
