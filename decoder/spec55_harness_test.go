@@ -78,9 +78,9 @@ func TestSpec55AnchorStatuses(t *testing.T) {
 		{
 			version:        "5.5.1",
 			superstructure: "HEADER.HEAD",
-			tag:            "DEST",
+			tag:            "NOTE",
 			want:           specRawAccepted,
-			because:        "buildHeader knows DEST and has no typed field for it (issue #449)",
+			because:        "buildHeader knows HEAD.NOTE and has no typed field for it (issue #676)",
 		},
 		{
 			version:        "5.5.1",

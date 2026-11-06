@@ -44,7 +44,8 @@ func (e *UnknownXRefError) Is(target error) bool {
 //
 // Header policy: the returned document always has a non-nil Header.
 // When the source has a Header, the new one carries Version,
-// DeclaredVersion, Encoding, SourceSystem, Date, Language, Copyright,
+// DeclaredVersion, Encoding, SourceSystem, SourceVersion, SourceName,
+// SourceCorporation, Destination, Date, Time, Language, Copyright, PlaceForm,
 // AncestryTreeID, and Schema from it. When the source's Header is nil,
 // an empty *Header is returned so callers can safely access
 // sub.Header.Version without a nil check. The Submitter pointer names
@@ -221,14 +222,20 @@ func subsetHeader(src *Document, closure map[string]bool) *Header {
 		return &Header{}
 	}
 	h := &Header{
-		Version:         src.Header.Version,
-		DeclaredVersion: src.Header.DeclaredVersion,
-		Encoding:        src.Header.Encoding,
-		SourceSystem:    src.Header.SourceSystem,
-		Date:            src.Header.Date,
-		Language:        src.Header.Language,
-		Copyright:       src.Header.Copyright,
-		AncestryTreeID:  src.Header.AncestryTreeID,
+		Version:           src.Header.Version,
+		DeclaredVersion:   src.Header.DeclaredVersion,
+		Encoding:          src.Header.Encoding,
+		SourceSystem:      src.Header.SourceSystem,
+		SourceVersion:     src.Header.SourceVersion,
+		SourceName:        src.Header.SourceName,
+		SourceCorporation: src.Header.SourceCorporation.Clone(),
+		Destination:       src.Header.Destination,
+		Date:              src.Header.Date,
+		Time:              src.Header.Time,
+		Language:          src.Header.Language,
+		Copyright:         src.Header.Copyright,
+		PlaceForm:         src.Header.PlaceForm,
+		AncestryTreeID:    src.Header.AncestryTreeID,
 	}
 	// Mirrors the raw-tag rule below exactly: a pointer outside the closure
 	// is dropped, anything else is carried through. The two predicates have

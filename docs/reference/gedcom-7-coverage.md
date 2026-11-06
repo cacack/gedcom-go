@@ -105,9 +105,9 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 1245 | 89.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1256 | 90.4% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 87 | 6.3% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 76 | 5.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 9 | 0.6% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 48 | 3.5% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
@@ -120,7 +120,7 @@ The structure each pair is nested under at level 0.
 | `INDI` | 873 | 832 | 0 | 24 | 3 | 14 |
 | `FAM` | 392 | 333 | 0 | 37 | 0 | 22 |
 | `SOUR` | 29 | 18 | 0 | 2 | 0 | 9 |
-| `HEAD` | 27 | 11 | 0 | 16 | 0 | 0 |
+| `HEAD` | 27 | 22 | 0 | 5 | 0 | 0 |
 | `REPO` | 21 | 17 | 0 | 3 | 1 | 0 |
 | `OBJE` | 17 | 16 | 0 | 0 | 0 | 1 |
 | `SUBM` | 16 | 9 | 0 | 5 | 2 | 0 |
@@ -842,7 +842,7 @@ Substructures of `HEAD`.
 |-----|-----------|--------|
 | `COPR` | `COPR` | typed |
 | `DATE` | `HEAD-DATE` | typed |
-| `DEST` | `DEST` | raw (accepted) |
+| `DEST` | `DEST` | typed |
 | `GEDC` | `GEDC` | typed |
 | `LANG` | `HEAD-LANG` | typed |
 | `NOTE` | `NOTE` | raw (accepted) |
@@ -858,7 +858,7 @@ Substructures of `HEAD-DATE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `TIME` | `TIME` | raw (accepted) |
+| `TIME` | `TIME` | typed |
 
 ### `HEAD.GEDC`
 
@@ -874,7 +874,7 @@ Substructures of `HEAD-PLAC`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `FORM` | `HEAD-PLAC-FORM` | raw (accepted) |
+| `FORM` | `HEAD-PLAC-FORM` | typed |
 
 ### `HEAD.SCHMA`
 
@@ -890,10 +890,10 @@ Substructures of `HEAD-SOUR`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `CORP` | `CORP` | raw (accepted) |
+| `CORP` | `CORP` | typed |
 | `DATA` | `HEAD-SOUR-DATA` | raw (accepted) |
-| `NAME` | `NAME` | raw (accepted) |
-| `VERS` | `VERS` | raw (accepted) |
+| `NAME` | `NAME` | typed |
+| `VERS` | `VERS` | typed |
 
 ### `HEAD.SOUR.CORP`
 
@@ -901,11 +901,11 @@ Substructures of `CORP`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADDR` | `ADDR` | raw (accepted) |
-| `EMAIL` | `EMAIL` | raw (accepted) |
-| `FAX` | `FAX` | raw (accepted) |
-| `PHON` | `PHON` | raw (accepted) |
-| `WWW` | `WWW` | raw (accepted) |
+| `ADDR` | `ADDR` | typed |
+| `EMAIL` | `EMAIL` | typed |
+| `FAX` | `FAX` | typed |
+| `PHON` | `PHON` | typed |
+| `WWW` | `WWW` | typed |
 
 ### `HEAD.SOUR.DATA`
 

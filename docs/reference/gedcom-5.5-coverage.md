@@ -178,9 +178,9 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 863 | 86.5% | 1140 | 86.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 871 | 87.3% | 1151 | 87.5% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 88 | 8.8% | 106 | 8.1% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 80 | 8.0% | 95 | 7.2% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 28 | 2.8% | 57 | 4.3% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
@@ -193,7 +193,7 @@ pairs under it reach the typed model.
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
 | `FAM` | 209 / 254 | 274 / 324 |
-| `HEAD` | 10 / 28 | 10 / 33 |
+| `HEAD` | 18 / 28 | 21 / 33 |
 | `INDI` | 592 / 625 | 792 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 6 / 12 | 11 / 13 |
@@ -766,7 +766,7 @@ Measured at `HEAD` in 5.5, 5.5.1.
 | `CHAR` | `HEADER.HEAD.CHAR` | typed | typed | `{1:1}` |
 | `COPR` | `HEADER.HEAD.COPR` | typed | typed | `{0:1}` |
 | `DATE` | `HEADER.HEAD.DATE` | typed | typed | `{0:1}` |
-| `DEST` | `HEADER.HEAD.DEST` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `DEST` | `HEADER.HEAD.DEST` | typed | typed | `{0:1}` |
 | `FILE` | `HEADER.HEAD.FILE` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `GEDC` | `HEADER.HEAD.GEDC` | typed | typed | `{1:1}` |
 | `LANG` | `HEADER.HEAD.LANG` | typed | typed | `{0:1}` |
@@ -790,7 +790,7 @@ Measured at `HEAD.DATE` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `TIME` | `HEADER.HEAD.DATE.TIME` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `TIME` | `HEADER.HEAD.DATE.TIME` | typed | typed | `{0:1}` |
 
 ### `HEADER.HEAD.GEDC`
 
@@ -816,7 +816,7 @@ Measured at `HEAD.PLAC` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `FORM` | `HEADER.HEAD.PLAC.FORM` | raw (accepted) | raw (accepted) | `{1:1}` |
+| `FORM` | `HEADER.HEAD.PLAC.FORM` | typed | typed | `{1:1}` |
 
 ### `HEADER.HEAD.SOUR`
 
@@ -824,10 +824,10 @@ Measured at `HEAD.SOUR` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `CORP` | `HEADER.HEAD.SOUR.CORP` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `CORP` | `HEADER.HEAD.SOUR.CORP` | typed | typed | `{0:1}` |
 | `DATA` | `HEADER.HEAD.SOUR.DATA` | raw (accepted) | raw (accepted) | `{0:1}` |
-| `NAME` | `HEADER.HEAD.SOUR.NAME` | raw (accepted) | raw (accepted) | `{0:1}` |
-| `VERS` | `HEADER.HEAD.SOUR.VERS` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `NAME` | `HEADER.HEAD.SOUR.NAME` | typed | typed | `{0:1}` |
+| `VERS` | `HEADER.HEAD.SOUR.VERS` | typed | typed | `{0:1}` |
 
 ### `HEADER.HEAD.SOUR.CORP`
 
@@ -835,11 +835,11 @@ Measured at `HEAD.SOUR.CORP` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | raw (accepted) | raw (accepted) | `{0:1}` |
-| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | raw (accepted) | `{0:3}` |
-| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (accepted) | `{0:3}` |
-| `PHON` | `ADDRESS_STRUCTURE.PHON` | raw (accepted) | raw (accepted) | `{0:3}` |
-| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (accepted) | `{0:3}` |
+| `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
+| `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
+| `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
+| `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
+| `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `HEADER.HEAD.SOUR.DATA`
 
