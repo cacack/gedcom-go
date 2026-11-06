@@ -108,6 +108,19 @@ func sampleEntities() []struct {
 			XRef: "@U1@",
 			Name: "Jane Researcher",
 		}},
+		{"Submission", "@SN2@", gedcom.RecordTypeSubmission, &gedcom.Submission{
+			XRef:                  "@SN2@",
+			SubmitterXRef:         "@U1@",
+			FamilyFileName:        "family.ged",
+			TempleCode:            "SLAKE",
+			AncestorGenerations:   "3",
+			DescendantGenerations: "2",
+			OrdinanceProcessFlag:  "yes",
+			AutomatedRecordID:     "42",
+			NoteXRefs:             []string{"@N1@"},
+			InlineNotes:           []string{"Submission note\nSecond line"},
+			ChangeDate:            &gedcom.ChangeDate{Date: "1 JAN 2000", Time: "12:00:00"},
+		}},
 		// Multi-line text on a hand-built record is the shape #334 and #330
 		// were about; kept here so a regression is caught rather than refiled.
 		{"Note", "@N1@", gedcom.RecordTypeNote, &gedcom.Note{

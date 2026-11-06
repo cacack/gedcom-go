@@ -110,6 +110,8 @@ func populateEntities(doc *gedcom.Document, collector *diagnosticCollector) {
 			record.Entity = parseSource(record, collector)
 		case gedcom.RecordTypeSubmitter:
 			record.Entity = parseSubmitter(record, collector)
+		case gedcom.RecordTypeSubmission:
+			record.Entity = parseSubmission(record, collector)
 		case gedcom.RecordTypeRepository:
 			record.Entity = parseRepository(record, collector)
 		case gedcom.RecordTypeNote:
@@ -1340,6 +1342,58 @@ func parseSubmitter(record *gedcom.Record, collector *diagnosticCollector) *gedc
 	}
 
 	return subm
+}
+
+// parseSubmission converts record tags to a Submission entity (SUBN, GEDCOM
+// 5.5 and 5.5.1).
+func parseSubmission(record *gedcom.Record, collector *diagnosticCollector) *gedcom.Submission {
+	subn := &gedcom.Submission{
+		XRef: record.XRef,
+		Tags: record.Tags,
+	}
+
+	for i := 0; i < len(record.Tags); i++ {
+		tag := record.Tags[i]
+		if tag.Level != 1 {
+			continue
+		}
+
+		switch tag.Tag {
+		case "SUBM":
+			subn.SubmitterXRef = tagToken(tag.Value)
+
+		case "FAMF":
+			subn.FamilyFileName = tag.Value
+
+		case "TEMP":
+			subn.TempleCode = tag.Value
+
+		case "ANCE":
+			subn.AncestorGenerations = tag.Value
+
+		case "DESC":
+			subn.DescendantGenerations = tag.Value
+
+		case "ORDI":
+			subn.OrdinanceProcessFlag = tag.Value
+
+		case "RIN":
+			subn.AutomatedRecordID = tag.Value
+
+		case "NOTE":
+			subn.NoteXRefs, subn.InlineNotes = appendRecordNote(record.Tags, i, subn.NoteXRefs, subn.InlineNotes, collector)
+
+		case "CHAN":
+			subn.ChangeDate = parseChangeDate(record.Tags, i, collector)
+
+		default:
+			if !strings.HasPrefix(tag.Tag, "_") {
+				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+			}
+		}
+	}
+
+	return subn
 }
 
 // parseRepository converts record tags to a Repository entity.

@@ -178,11 +178,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 863 | 86.5% | 1140 | 86.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 871 | 87.3% | 1151 | 87.5% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 88 | 8.8% | 106 | 8.1% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 28 | 2.8% | 57 | 4.3% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 20 | 2.0% | 46 | 3.5% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -200,7 +200,7 @@ pairs under it reach the typed model.
 | `REPO` | 13 / 17 | 17 / 21 |
 | `SOUR` | 25 / 34 | 25 / 34 |
 | `SUBM` | 5 / 10 | 8 / 15 |
-| `SUBN` | 0 / 8 | 0 / 11 |
+| `SUBN` | 8 / 8 | 11 / 11 |
 | `TRLR` | 0 / 1 | 0 / 1 |
 
 ## Defects in the specification text
@@ -265,7 +265,7 @@ Structures that appear at the top of a document.
 | `REPO` | `REPOSITORY_RECORD.REPO` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_RECORD.SOUR` | typed | typed | `{0:M}` |
 | `SUBM` | `SUBMITTER_RECORD.SUBM` | typed | typed | `{0:M}` |
-| `SUBN` | `SUBMISSION_RECORD.SUBN` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `SUBN` | `SUBMISSION_RECORD.SUBN` | typed | typed | `{0:1}` |
 | `TRLR` | `LINEAGE_LINKED_GEDCOM.TRLR` | raw (undiagnosed) | raw (undiagnosed) | `{1:1}` |
 
 ### `ADDRESS_STRUCTURE.ADDR`
@@ -2488,16 +2488,16 @@ Measured at `SUBN` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ANCE` | `SUBMISSION_RECORD.SUBN.ANCE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `CHAN` | `CHANGE_DATE.CHAN` | — | raw (undiagnosed) | `{0:1}` |
-| `DESC` | `SUBMISSION_RECORD.SUBN.DESC` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `FAMF` | `SUBMISSION_RECORD.SUBN.FAMF` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | — | raw (undiagnosed) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | — | raw (undiagnosed) | `{0:M}` |
-| `ORDI` | `SUBMISSION_RECORD.SUBN.ORDI` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `RIN` | `SUBMISSION_RECORD.SUBN.RIN` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `SUBM` | `SUBMISSION_RECORD.SUBN.SUBM` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `TEMP` | `SUBMISSION_RECORD.SUBN.TEMP` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `ANCE` | `SUBMISSION_RECORD.SUBN.ANCE` | typed | typed | `{0:1}` |
+| `CHAN` | `CHANGE_DATE.CHAN` | — | typed | `{0:1}` |
+| `DESC` | `SUBMISSION_RECORD.SUBN.DESC` | typed | typed | `{0:1}` |
+| `FAMF` | `SUBMISSION_RECORD.SUBN.FAMF` | typed | typed | `{0:1}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | — | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | — | typed | `{0:M}` |
+| `ORDI` | `SUBMISSION_RECORD.SUBN.ORDI` | typed | typed | `{0:1}` |
+| `RIN` | `SUBMISSION_RECORD.SUBN.RIN` | typed | typed | `{0:1}` |
+| `SUBM` | `SUBMISSION_RECORD.SUBN.SUBM` | typed | typed | `{0:1}` |
+| `TEMP` | `SUBMISSION_RECORD.SUBN.TEMP` | typed | typed | `{0:1}` |
 
 ### `SUBMITTER_RECORD.SUBM`
 
