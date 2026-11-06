@@ -5184,3 +5184,29 @@ func TestDecodedNCHIEncodesOnce(t *testing.T) {
 // intPtr returns a pointer to v, for building optional integer fields such as
 // SourceCitation.Quality in table-driven fixtures.
 func intPtr(v int) *int { return &v }
+
+// TestSubmissionToTagsOrder pins the SUBMISSION_RECORD order of GEDCOM 5.5.1:
+// the scalars and RIN come before NOTE and CHAN.
+func TestSubmissionToTagsOrder(t *testing.T) {
+	subn := &gedcom.Submission{
+		SubmitterXRef:         "@U1@",
+		FamilyFileName:        "family.ged",
+		TempleCode:            "SLAKE",
+		AncestorGenerations:   "3",
+		DescendantGenerations: "2",
+		OrdinanceProcessFlag:  "yes",
+		AutomatedRecordID:     "42",
+		InlineNotes:           []string{"note"},
+		ChangeDate:            &gedcom.ChangeDate{Date: "1 JAN 2000"},
+	}
+	var got []string
+	for _, tag := range submissionToTags(subn, nil) {
+		if tag.Level == 1 {
+			got = append(got, tag.Tag)
+		}
+	}
+	want := []string{"SUBM", "FAMF", "TEMP", "ANCE", "DESC", "ORDI", "RIN", "NOTE", "CHAN"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("submissionToTags() level-1 order = %v, want %v", got, want)
+	}
+}

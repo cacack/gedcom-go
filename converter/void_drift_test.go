@@ -15,7 +15,7 @@ func TestPruneVoidEntityCoversWalker(t *testing.T) {
 	entities := []any{
 		&gedcom.Individual{}, &gedcom.Family{}, &gedcom.Source{},
 		&gedcom.Repository{}, &gedcom.Note{}, &gedcom.MediaObject{},
-		&gedcom.Submitter{}, &gedcom.SharedNote{},
+		&gedcom.Submitter{}, &gedcom.Submission{}, &gedcom.SharedNote{},
 	}
 	for _, entity := range entities {
 		name := reflect.TypeOf(entity).Elem().Name()
