@@ -325,7 +325,7 @@ func remapXRefMap(in map[string]*Record, mapping map[string]string) map[string]*
 // do not share a common interface for their XRef field. Each case
 // guards against a typed-nil pointer so reading the field never panics.
 //
-//nolint:gocyclo // 8 entity types × per-case nil guard; intrinsic shape
+//nolint:gocyclo // 9 entity types × per-case nil guard; intrinsic shape
 func entityXRef(entity interface{}) string {
 	switch e := entity.(type) {
 	case *Individual:
@@ -363,6 +363,11 @@ func entityXRef(entity interface{}) string {
 			return ""
 		}
 		return e.XRef
+	case *Submission:
+		if e == nil {
+			return ""
+		}
+		return e.XRef
 	case *SharedNote:
 		if e == nil {
 			return ""
@@ -375,7 +380,7 @@ func entityXRef(entity interface{}) string {
 // setEntityXRef writes newXRef into the typed entity's XRef field.
 // Unknown types and typed-nil entities are ignored.
 //
-//nolint:gocyclo // 8 entity types × per-case nil guard; intrinsic shape
+//nolint:gocyclo // 9 entity types × per-case nil guard; intrinsic shape
 func setEntityXRef(entity interface{}, newXRef string) {
 	switch e := entity.(type) {
 	case *Individual:
@@ -403,6 +408,10 @@ func setEntityXRef(entity interface{}, newXRef string) {
 			e.XRef = newXRef
 		}
 	case *Submitter:
+		if e != nil {
+			e.XRef = newXRef
+		}
+	case *Submission:
 		if e != nil {
 			e.XRef = newXRef
 		}
@@ -462,6 +471,8 @@ func walkEntity(entity interface{}, cb refCallback) {
 		walkMediaObject(e, cb)
 	case *Submitter:
 		walkSubmitter(e, cb)
+	case *Submission:
+		walkSubmission(e, cb)
 	case *SharedNote:
 		walkSharedNote(e, cb)
 	}
@@ -587,6 +598,18 @@ func walkSubmitter(s *Submitter, cb refCallback) {
 		return
 	}
 	walkNotes(s.NoteXRefs, cb)
+	for _, t := range s.Tags {
+		walkTag(t, cb)
+	}
+}
+
+func walkSubmission(s *Submission, cb refCallback) {
+	if s == nil {
+		return
+	}
+	cb(&s.SubmitterXRef)
+	walkNotes(s.NoteXRefs, cb)
+	walkChangeDate(s.ChangeDate, cb)
 	for _, t := range s.Tags {
 		walkTag(t, cb)
 	}

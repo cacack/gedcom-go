@@ -162,6 +162,8 @@ func fullyPopulatedRecords() []*Record {
 		Tags: rawTags("R")}
 	subm := &Submitter{XRef: "@U1@", NoteXRefs: []string{"@U_NX@"},
 		Tags: rawTags("U")}
+	subn := &Submission{XRef: "@B1@", SubmitterXRef: "@B_SUBM@",
+		NoteXRefs: []string{"@B_NX@"}, ChangeDate: chg("B"), Tags: rawTags("B")}
 	snote := &SharedNote{
 		XRef:            "@N1@",
 		SourceCitations: []*SourceCitation{cite("@N_SOUR@")},
@@ -176,6 +178,7 @@ func fullyPopulatedRecords() []*Record {
 		{XRef: "@M1@", Type: RecordTypeMedia, Entity: obje},
 		{XRef: "@R1@", Type: RecordTypeRepository, Entity: repo},
 		{XRef: "@U1@", Type: RecordTypeSubmitter, Entity: subm},
+		{XRef: "@B1@", Type: RecordTypeSubmission, Entity: subn},
 		{XRef: "@N1@", Type: RecordTypeSharedNote, Entity: snote},
 	}
 }
@@ -250,7 +253,7 @@ func isDefinitionSite(rt reflect.Type, field string) bool {
 	}
 	switch rt.Name() {
 	case "Individual", "Family", "Source", "Repository",
-		"Note", "MediaObject", "Submitter", "SharedNote":
+		"Note", "MediaObject", "Submitter", "Submission", "SharedNote":
 		return true
 	}
 	return false

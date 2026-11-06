@@ -25,6 +25,10 @@ const (
 	// RecordTypeSubmitter represents a submitter (SUBM)
 	RecordTypeSubmitter RecordType = "SUBM"
 
+	// RecordTypeSubmission represents a submission record (SUBN, GEDCOM 5.5
+	// and 5.5.1)
+	RecordTypeSubmission RecordType = "SUBN"
+
 	// RecordTypeSharedNote represents a shared note (SNOTE, GEDCOM 7.0)
 	RecordTypeSharedNote RecordType = "SNOTE"
 )
@@ -68,7 +72,8 @@ type Record struct {
 	// LineNumber is the line number where the record starts
 	LineNumber int
 
-	// Parsed entity (one of: Individual, Family, Source, Repository, Note, MediaObject)
+	// Parsed entity (one of: Individual, Family, Source, Repository, Note,
+	// MediaObject, Submitter, Submission, SharedNote)
 	// Will be populated during decoding based on the Type
 	Entity interface{}
 }
@@ -130,6 +135,17 @@ func (r *Record) GetSource() (*Source, bool) {
 	}
 	if src, ok := r.Entity.(*Source); ok && src != nil {
 		return src, true
+	}
+	return nil, false
+}
+
+// GetSubmission returns the record as a Submission if it's the correct type.
+func (r *Record) GetSubmission() (*Submission, bool) {
+	if r == nil {
+		return nil, false
+	}
+	if subn, ok := r.Entity.(*Submission); ok && subn != nil {
+		return subn, true
 	}
 	return nil, false
 }
