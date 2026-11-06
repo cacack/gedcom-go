@@ -2139,7 +2139,8 @@ func TestParseDate_CalendarWithRanges(t *testing.T) {
 // TestParseDate_UnmappedCalendarWithModifier pins that escape names the library
 // does not map (@#DROMAN@, @#DUNKNOWN@ — reserved or undefined in 5.5.1) stay
 // parse errors under a modifier, exactly as they do bare. Composing a modifier
-// with an escape does not widen the set of recognized calendars.
+// with an escape does not widen the set of recognized calendars. Leaving them
+// unmapped is deliberate (#401); docs/reference/gedcom-date-formats.md says why.
 func TestParseDate_UnmappedCalendarWithModifier(t *testing.T) {
 	inputs := []string{
 		"ABT @#DROMAN@ 1700",
