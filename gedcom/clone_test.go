@@ -1506,3 +1506,24 @@ func assertUIDsUnaliased(t *testing.T, name string, original, copied []string) {
 		t.Errorf("%s UIDs shares backing storage with original", name)
 	}
 }
+
+func TestClonePersonalNameVariations(t *testing.T) {
+	original := &PersonalName{
+		Full:      "山田 /太郎/",
+		Phonetic:  []*NameVariation{{Value: "Yamada /Taro/", Type: "kana", Given: "Taro"}, nil},
+		Romanized: []*NameVariation{{Value: "Yamada /Taro/", Type: "romaji"}},
+	}
+
+	copied := clonePersonalName(original)
+	if !reflect.DeepEqual(copied.Phonetic, original.Phonetic) || !reflect.DeepEqual(copied.Romanized, original.Romanized) {
+		t.Fatalf("variations mismatch after clone: %+v / %+v", copied.Phonetic, copied.Romanized)
+	}
+	original.Phonetic[0].Given = "Modified"
+	original.Romanized[0].Type = "Modified"
+	if copied.Phonetic[0].Given == "Modified" || copied.Romanized[0].Type == "Modified" {
+		t.Error("Should be a deep copy")
+	}
+	if clonePersonalName(&PersonalName{}).Phonetic != nil {
+		t.Error("nil Phonetic should stay nil")
+	}
+}

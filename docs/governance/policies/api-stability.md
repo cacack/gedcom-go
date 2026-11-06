@@ -179,6 +179,7 @@ caller relying on the old behaviour now sees.
 | `converter` removes `@VOID@` pointers on a 7.0 → 5.5/5.5.1 downgrade ([#670](https://github.com/cacack/gedcom-go/issues/670)) | v3.4.0 | Changes the output and `ConversionReport` of a 7.0 → 5.5/5.5.1 conversion whose input has `@VOID@` null pointers. GEDCOM 5.5/5.5.1 has no null pointer, so a kept `@VOID@` is a dangling XRef there, which `Subset` rejects with `ErrUnknownXRef` and the validator reports as `BROKEN_XREF` since #614. Old: `@VOID@` pointers were copied unchanged. New: each tag whose value or XRef is `@VOID@` is removed with its subordinate lines from the header's, each record's and each entity's `Tags`, and each typed structure holding one (`FamilyLink`, `Association`, `SourceCitation`, `MediaLink`, `SourceRepositoryLink`, note-pointer slice entries) is removed from the entity; `Family.Husband`/`Wife`, `LDSOrdinance.FamilyXRef` and `Header.Submitter` are cleared to `""`. Each removal is a `Dropped` note (`Original` `"<TAG> @VOID@"`, or `"@VOID@"` for a record without `Tags`) and the conversion gets one `@VOID@ null pointers` `DataLoss` entry listing the affected records, so a `StrictDataLoss` conversion of such a file now fails. A caller reading those pointers from the converted document no longer finds them; the source document is unchanged. |
 | `converter` splits over-length values with `CONC` on a 7.0 → 5.5/5.5.1 downgrade ([#671](https://github.com/cacack/gedcom-go/issues/671)) | v3.4.0 | Changes the output and `ConversionReport` of a 7.0 → 5.x conversion with a value line longer than 248 bytes (less for a long XRef, tag or level). 7.0 has no line limit and no `CONC`, and the encoder writes `Record.Tags` verbatim. Old: the value stayed on one line, so the encoded 5.x output broke the 255-character limit. New: the line is split between two non-spaces into `CONC` tags in `Record.Tags` (a CONT/CONC line's `CONC` is its sibling; a level-0 `SNOTE` record's text moves its continuation onto level-1 `CONC`/`CONT` tags at the front of `Record.Tags`, and `Record.Value` keeps the first piece), the report gains a `CONC_ADDED` transformation and a `Normalized` note per split value, and decoding the output gives back the original text. A caller reading `Tag.Value` or `Record.Value` of a converted document sees the first piece only and must fold `CONC` as for any decoded 5.x file. |
 | `encoder` adds `GEDC.FORM LINEAGE-LINKED` to an existing `GEDC` when `TargetVersion` is 5.5 or 5.5.1 ([#674](https://github.com/cacack/gedcom-go/issues/674)) | v3.4.0 | Encoding a header whose raw tags carry a `GEDC` with no `FORM` — typically a decoded 7.0 file — with a 5.x `TargetVersion` wrote 5.x output missing the `FORM` both versions require. The encoder now writes `2 FORM LINEAGE-LINKED` at the end of that `GEDC`, after `VERS`, so output gains one line. A `FORM` already present is kept, and 7.0 targets, plain re-encodes and converter output are unchanged. A caller with golden-file tests over such retargeted output must update them. |
+| `gedcom.PersonalName` types 5.5.1 `FONE` and `ROMN` name variations ([#453](https://github.com/cacack/gedcom-go/issues/453)) | v3.4.0 | `FONE` and `ROMN` under `INDI.NAME` were reachable only through `Record.Tags`; they now also fill the new `Phonetic` and `Romanized` fields (`[]*gedcom.NameVariation`, the scheme in `Type`). `Transliterations` is unchanged and still holds only 7.0 `TRAN`, so `RequiresGEDCOM7` gives the same answer. The decoder previously never read beneath either tag; it now emits `UNKNOWN_TAG` for a non-underscore tag there other than the name pieces, `TYPE`, `NOTE` and `SOUR`, as FEATURES.md documents for any unrecognized tag, so diagnostic counts can rise. A document encoded from the typed model alone (`Record.Tags` cleared, or hand-built) now writes the variations where the encoder previously dropped them. `NOTE` and `SOUR` beneath a variation remain raw-only. |
 
 ## Accepted Future Breaks
 
@@ -196,42 +197,13 @@ field the decoder does not populate is dead surface, the speculative API that
 against. When the justifying work cannot land in the current major, the break
 is recorded here instead.
 
-| Break | Arrives with | Recorded | Why it is accepted |
-|-------|--------------|----------|--------------------|
-| `gedcom.Transliteration` stops being comparable with `==` | [#453](https://github.com/cacack/gedcom-go/issues/453) — typed decoding of 5.5.1 `FONE` / `ROMN` onto `PersonalName.Transliterations` | v3.0.0 cycle ([#501](https://github.com/cacack/gedcom-go/issues/501)) | See below. |
-
-### `Transliteration` loses `==` when #453 lands
-
-`Transliteration` is comparable today, and nothing about the type itself needs
-that to change: every `NAME-TRAN` substructure is typed, and the 5.5.1 name
-pieces it mirrors are `{0:1}`. The pressure comes from #453. 5.5.1's `FONE` and
-`ROMN` are accepted and dropped today, and #453 maps both onto
-`PersonalName.Transliterations` — onto this type. `FONE` and `ROMN` admit
-`NOTE {0:M}` and `SOUR {0:M}` plus a required `TYPE` naming the scheme, so a
-lossless mapping gives `Transliteration` at least `SourceCitations` and the
-`NoteXRefs` / `InlineNotes` pair. A struct holding a slice cannot be compared,
-so the type loses `==` — and use as a map key — the day #453 lands.
-
-The maintainer decision ([#501](https://github.com/cacack/gedcom-go/issues/501))
-was not to schedule #453 into v3.0.0, so this break falls to a later major. It
-is accepted there because:
-
-- #453 is a fidelity fix for 5.5.1, the most common GEDCOM format in the wild.
-  Nothing about the feature is breaking; only the comparability side effect is.
-  Gating it on "too breaking" would defer lossless decoding of real files for a
-  purely mechanical reason.
-- No known downstream call site depends on it: the my-family index surveyed
-  for #501 has no use of `Transliteration`, and the type predates the version
-  my-family pins, so the absence is genuine non-use rather than a version
-  artefact.
-- The alternatives were judged worse. Adding the note fields during v3 and
-  leaving `SourceCitations` and the scheme field for later would take the same
-  break twice. Adding empty fields with no decoder support would be dead
-  surface.
-
-Consequently `Transliteration` gains **no** exported field in v3.0.0 that the
-decoder does not populate. #453 adds its fields together with the decoding and
-encoding that fill them.
+No break is currently recorded. The register's first entry, "`gedcom.Transliteration`
+stops being comparable with `==`" (recorded in the v3.0.0 cycle,
+[#501](https://github.com/cacack/gedcom-go/issues/501)), was withdrawn when
+[#453](https://github.com/cacack/gedcom-go/issues/453) landed: 5.5.1 `FONE` and
+`ROMN` decode into the new `PersonalName.Phonetic` and `Romanized` fields
+(`gedcom.NameVariation`) rather than onto `Transliterations`, so
+`Transliteration` gains no field and stays comparable.
 
 ## Accepted Asymmetries
 

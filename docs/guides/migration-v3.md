@@ -1014,8 +1014,9 @@ None of the six changes can be staged on `v2.5.0` — the note fields do not exi
 there — but the replacement comparisons above all compile against v2, so they
 can be written ahead of the upgrade.
 
-`Transliteration` is not on this list: it stays comparable in v3.0.0. It is
-expected to lose `==` in a later major; see
+`Transliteration` is not on this list: it stays comparable. A later loss of
+`==` was once expected, but #453 typed `FONE`/`ROMN` on a separate
+`NameVariation` type instead; see
 [Accepted Future Breaks](../governance/policies/api-stability.md#accepted-future-breaks).
 
 ### Known downstream call sites
