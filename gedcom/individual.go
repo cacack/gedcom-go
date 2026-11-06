@@ -119,11 +119,13 @@ type PersonalName struct {
 	Transliterations []*Transliteration
 
 	// Phonetic are phonetic variations of the name (GEDCOM 5.5.1 FONE tag),
-	// in file order.
+	// in file order. FONE is defined only in 5.5.1 (7.0 uses TRAN); the
+	// encoder writes these for any target version without a version guard.
 	Phonetic []*NameVariation
 
 	// Romanized are romanized variations of the name (GEDCOM 5.5.1 ROMN tag),
-	// in file order.
+	// in file order. ROMN is defined only in 5.5.1 (7.0 uses TRAN); the
+	// encoder writes these for any target version without a version guard.
 	Romanized []*NameVariation
 
 	// SourceCitations are source citations documenting this name (NAME.SOUR).
@@ -183,6 +185,7 @@ type NameVariation struct {
 	// Type is the method used to produce the variation (TYPE tag). GEDCOM
 	// 5.5.1 defines "hangul" and "kana" for FONE and "pinyin", "romaji" and
 	// "wadegiles" for ROMN, and allows any user-defined value.
+	// TYPE is required {1:1}; the encoder omits it when empty.
 	Type string
 
 	// Given is the given (first) name in this variation (GIVN tag).
