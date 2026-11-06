@@ -22,7 +22,11 @@ Two cases do not follow the naming, because the value already owns a phrase:
   `PHRASE` under its `ROLE`.
 
 **A `PHRASE` is typed only where the value it qualifies is typed.** The encoder
-writes a phrase only beneath its value, never on its own.
+writes a phrase only beneath its value, never on its own. `Date.Phrase` is the
+exception: it is decode-only, because the encoder writes `DATE` from the raw
+string and has never written its `PHRASE` from the entity. A decoded record
+keeps the `PHRASE` in `Record.Tags`, which the encoder writes; a record encoded
+from its entity alone (built in code, or with `Tags` cleared) loses it.
 
 ## Context
 

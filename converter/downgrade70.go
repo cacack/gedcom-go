@@ -74,12 +74,17 @@ func dropV7OnlyTags(doc *gedcom.Document, report *gedcom.ConversionReport, targe
 
 // clearV7OnlyEntityFields clears the record-level fields of record's typed
 // entity that the encoder writes as a v7OnlyTags tag (CreationDate as CREA,
-// UIDs as UID, ExternalIDs as EXID, a shared note's Translations as TRAN) and
-// returns the tags whose fields held data. Nested fields, such as an event's
-// UIDs, are not reached; they are written only for a record without Tags.
+// UIDs as UID, ExternalIDs as EXID, a shared note's Translations as TRAN, a
+// family's HusbandPhrase and WifePhrase as PHRASE) and returns the tags whose
+// fields held data. Nested fields, such as an event's UIDs, are not reached;
+// they are written only for a record without Tags.
 func clearV7OnlyEntityFields(record *gedcom.Record) map[string]bool {
 	crea, uids, exids, trans := v7OnlyEntityFields(record.Entity)
 	cleared := make(map[string]bool)
+	if f, ok := record.Entity.(*gedcom.Family); ok && f != nil && (f.HusbandPhrase != "" || f.WifePhrase != "") {
+		cleared["PHRASE"] = true
+		f.HusbandPhrase, f.WifePhrase = "", ""
+	}
 	if crea != nil && *crea != nil {
 		cleared["CREA"] = true
 		*crea = nil
