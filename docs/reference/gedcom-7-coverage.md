@@ -105,11 +105,11 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 1245 | 89.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1252 | 90.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 87 | 6.3% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 9 | 0.6% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 48 | 3.5% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 41 | 3.0% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
 ### By top-level structure
 
@@ -117,12 +117,12 @@ The structure each pair is nested under at level 0.
 
 | Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |
 |---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|
-| `INDI` | 873 | 832 | 0 | 24 | 3 | 14 |
-| `FAM` | 392 | 333 | 0 | 37 | 0 | 22 |
+| `INDI` | 873 | 835 | 0 | 24 | 3 | 11 |
+| `FAM` | 392 | 336 | 0 | 37 | 0 | 19 |
 | `SOUR` | 29 | 18 | 0 | 2 | 0 | 9 |
 | `HEAD` | 27 | 11 | 0 | 16 | 0 | 0 |
 | `REPO` | 21 | 17 | 0 | 3 | 1 | 0 |
-| `OBJE` | 17 | 16 | 0 | 0 | 0 | 1 |
+| `OBJE` | 17 | 17 | 0 | 0 | 0 | 0 |
 | `SUBM` | 16 | 9 | 0 | 5 | 2 | 0 |
 | `SNOTE` | 12 | 9 | 0 | 0 | 3 | 0 |
 | `CONT` | 1 | 0 | 0 | 0 | 0 | 1 |
@@ -269,7 +269,7 @@ Substructures of `SDATE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (undiagnosed) |
+| `PHRASE` | `PHRASE` | typed |
 | `TIME` | `TIME` | raw (undiagnosed) |
 
 ### `FAM.ANUL.WIFE`
@@ -516,7 +516,7 @@ Substructures of `FAM-HUSB`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (undiagnosed) |
+| `PHRASE` | `PHRASE` | typed |
 
 ### `FAM.MARB`
 
@@ -832,7 +832,7 @@ Substructures of `FAM-WIFE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (undiagnosed) |
+| `PHRASE` | `PHRASE` | typed |
 
 ### `HEAD`
 
@@ -1019,7 +1019,7 @@ Substructures of `AGE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (undiagnosed) |
+| `PHRASE` | `PHRASE` | typed |
 
 ### `INDI.ADOP.FAMC`
 
@@ -1592,7 +1592,7 @@ Substructures of `PEDI`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (undiagnosed) |
+| `PHRASE` | `PHRASE` | typed |
 
 ### `INDI.FAMC.STAT`
 
@@ -1771,7 +1771,7 @@ Substructures of `NAME-TYPE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (undiagnosed) |
+| `PHRASE` | `PHRASE` | typed |
 
 ### `INDI.NATI`
 
@@ -2207,7 +2207,7 @@ Substructures of `MEDI`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (undiagnosed) |
+| `PHRASE` | `PHRASE` | typed |
 
 ### `OBJE.FILE.TRAN`
 
