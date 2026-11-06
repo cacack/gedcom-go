@@ -149,8 +149,9 @@ Two gaps were new, and neither could have come from the 7.0 half:
 
 - **[#452]** — submission records reach no typed field at all. 7.0 removed
   `SUBN`, so only a 5.5.x inventory can show it.
-- **[#453]** — 5.5.1's `FONE` and `ROMN` name variations are recognized and
-  then dropped, where 7.0's equivalent `TRAN` is parsed into the typed model.
+- **[#453]** — 5.5.1's `FONE` and `ROMN` name variations were recognized and
+  then dropped, where 7.0's equivalent `TRAN` was parsed into the typed model.
+  They now decode into `PersonalName.Phonetic` and `Romanized`.
 
 Read the table as a statement of where the library is, not as a backlog — the
 backlog lives in the tracker.
@@ -178,11 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 863 | 86.5% | 1140 | 86.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 863 | 86.5% | 1156 | 87.8% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 88 | 8.8% | 106 | 8.1% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 88 | 8.8% | 112 | 8.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 28 | 2.8% | 57 | 4.3% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 28 | 2.8% | 35 | 2.7% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -194,7 +195,7 @@ pairs under it reach the typed model.
 |---------|----------------:|----------------:|
 | `FAM` | 209 / 254 | 274 / 324 |
 | `HEAD` | 10 / 28 | 10 / 33 |
-| `INDI` | 592 / 625 | 792 / 855 |
+| `INDI` | 592 / 625 | 808 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 6 / 12 | 11 / 13 |
 | `REPO` | 13 / 17 | 17 / 21 |
@@ -2183,7 +2184,7 @@ Measured at `INDI.NAME` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `FONE` | `PERSONAL_NAME_STRUCTURE.NAME.FONE` | — | raw (accepted) | `{0:M}` |
+| `FONE` | `PERSONAL_NAME_STRUCTURE.NAME.FONE` | — | typed | `{0:M}` |
 | `GIVN` | `PERSONAL_NAME_PIECES.GIVN` | — | typed | `{0:1}` |
 | `GIVN` | `PERSONAL_NAME_STRUCTURE.NAME.GIVN` | typed | — | `{0:1}` |
 | `NICK` | `PERSONAL_NAME_PIECES.NICK` | — | typed | `{0:1}` |
@@ -2194,7 +2195,7 @@ Measured at `INDI.NAME` in 5.5, 5.5.1.
 | `NPFX` | `PERSONAL_NAME_STRUCTURE.NAME.NPFX` | typed | — | `{0:1}` |
 | `NSFX` | `PERSONAL_NAME_PIECES.NSFX` | — | typed | `{0:1}` |
 | `NSFX` | `PERSONAL_NAME_STRUCTURE.NAME.NSFX` | typed | — | `{0:1}` |
-| `ROMN` | `PERSONAL_NAME_STRUCTURE.NAME.ROMN` | — | raw (accepted) | `{0:M}` |
+| `ROMN` | `PERSONAL_NAME_STRUCTURE.NAME.ROMN` | — | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 | `SPFX` | `PERSONAL_NAME_PIECES.SPFX` | — | typed | `{0:1}` |
@@ -2209,17 +2210,17 @@ Measured at `INDI.NAME.FONE` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `GIVN` | `PERSONAL_NAME_PIECES.GIVN` | — | raw (undiagnosed) | `{0:1}` |
-| `NICK` | `PERSONAL_NAME_PIECES.NICK` | — | raw (undiagnosed) | `{0:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | — | raw (undiagnosed) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | — | raw (undiagnosed) | `{0:M}` |
-| `NPFX` | `PERSONAL_NAME_PIECES.NPFX` | — | raw (undiagnosed) | `{0:1}` |
-| `NSFX` | `PERSONAL_NAME_PIECES.NSFX` | — | raw (undiagnosed) | `{0:1}` |
-| `SOUR` | `SOURCE_CITATION.SOUR` | — | raw (undiagnosed) | `{0:M}` |
-| `SOUR` | `SOURCE_CITATION.SOUR#2` | — | raw (undiagnosed) | `{0:M}` |
-| `SPFX` | `PERSONAL_NAME_PIECES.SPFX` | — | raw (undiagnosed) | `{0:1}` |
-| `SURN` | `PERSONAL_NAME_PIECES.SURN` | — | raw (undiagnosed) | `{0:1}` |
-| `TYPE` | `PERSONAL_NAME_STRUCTURE.NAME.FONE.TYPE` | — | raw (undiagnosed) | `{1:1}` |
+| `GIVN` | `PERSONAL_NAME_PIECES.GIVN` | — | typed | `{0:1}` |
+| `NICK` | `PERSONAL_NAME_PIECES.NICK` | — | typed | `{0:1}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | — | raw (accepted) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | — | raw (accepted) | `{0:M}` |
+| `NPFX` | `PERSONAL_NAME_PIECES.NPFX` | — | typed | `{0:1}` |
+| `NSFX` | `PERSONAL_NAME_PIECES.NSFX` | — | typed | `{0:1}` |
+| `SOUR` | `SOURCE_CITATION.SOUR` | — | raw (accepted) | `{0:M}` |
+| `SOUR` | `SOURCE_CITATION.SOUR#2` | — | raw (accepted) | `{0:M}` |
+| `SPFX` | `PERSONAL_NAME_PIECES.SPFX` | — | typed | `{0:1}` |
+| `SURN` | `PERSONAL_NAME_PIECES.SURN` | — | typed | `{0:1}` |
+| `TYPE` | `PERSONAL_NAME_STRUCTURE.NAME.FONE.TYPE` | — | typed | `{1:1}` |
 
 ### `PERSONAL_NAME_STRUCTURE.NAME.ROMN`
 
@@ -2227,17 +2228,17 @@ Measured at `INDI.NAME.ROMN` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `GIVN` | `PERSONAL_NAME_PIECES.GIVN` | — | raw (undiagnosed) | `{0:1}` |
-| `NICK` | `PERSONAL_NAME_PIECES.NICK` | — | raw (undiagnosed) | `{0:1}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | — | raw (undiagnosed) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | — | raw (undiagnosed) | `{0:M}` |
-| `NPFX` | `PERSONAL_NAME_PIECES.NPFX` | — | raw (undiagnosed) | `{0:1}` |
-| `NSFX` | `PERSONAL_NAME_PIECES.NSFX` | — | raw (undiagnosed) | `{0:1}` |
-| `SOUR` | `SOURCE_CITATION.SOUR` | — | raw (undiagnosed) | `{0:M}` |
-| `SOUR` | `SOURCE_CITATION.SOUR#2` | — | raw (undiagnosed) | `{0:M}` |
-| `SPFX` | `PERSONAL_NAME_PIECES.SPFX` | — | raw (undiagnosed) | `{0:1}` |
-| `SURN` | `PERSONAL_NAME_PIECES.SURN` | — | raw (undiagnosed) | `{0:1}` |
-| `TYPE` | `PERSONAL_NAME_STRUCTURE.NAME.ROMN.TYPE` | — | raw (undiagnosed) | `{1:1}` |
+| `GIVN` | `PERSONAL_NAME_PIECES.GIVN` | — | typed | `{0:1}` |
+| `NICK` | `PERSONAL_NAME_PIECES.NICK` | — | typed | `{0:1}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | — | raw (accepted) | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | — | raw (accepted) | `{0:M}` |
+| `NPFX` | `PERSONAL_NAME_PIECES.NPFX` | — | typed | `{0:1}` |
+| `NSFX` | `PERSONAL_NAME_PIECES.NSFX` | — | typed | `{0:1}` |
+| `SOUR` | `SOURCE_CITATION.SOUR` | — | raw (accepted) | `{0:M}` |
+| `SOUR` | `SOURCE_CITATION.SOUR#2` | — | raw (accepted) | `{0:M}` |
+| `SPFX` | `PERSONAL_NAME_PIECES.SPFX` | — | typed | `{0:1}` |
+| `SURN` | `PERSONAL_NAME_PIECES.SURN` | — | typed | `{0:1}` |
+| `TYPE` | `PERSONAL_NAME_STRUCTURE.NAME.ROMN.TYPE` | — | typed | `{1:1}` |
 
 ### `PLACE_STRUCTURE.PLAC`
 

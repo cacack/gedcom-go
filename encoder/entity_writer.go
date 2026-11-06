@@ -627,6 +627,14 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 		tags = append(tags, transliterationToTags(tran, level+1)...)
 	}
 
+	// Phonetic and romanized variations (GEDCOM 5.5.1 FONE and ROMN tags)
+	for _, v := range name.Phonetic {
+		tags = append(tags, nameVariationToTags(v, "FONE", level+1)...)
+	}
+	for _, v := range name.Romanized {
+		tags = append(tags, nameVariationToTags(v, "ROMN", level+1)...)
+	}
+
 	// Source citations
 	for _, cite := range name.SourceCitations {
 		tags = append(tags, sourceCitationToTags(cite, level+1, opts)...)
@@ -672,6 +680,32 @@ func transliterationToTags(tran *gedcom.Transliteration, level int) []*gedcom.Ta
 	}
 	if tran.SurnamePrefix != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SPFX", Value: tran.SurnamePrefix})
+	}
+
+	return tags
+}
+
+// nameVariationToTags converts a NameVariation to a FONE or ROMN tag (tagName)
+// and its subordinates at the specified level.
+func nameVariationToTags(v *gedcom.NameVariation, tagName string, level int) []*gedcom.Tag {
+	if v == nil {
+		return nil
+	}
+
+	tags := []*gedcom.Tag{{Level: level, Tag: tagName, Value: v.Value}}
+
+	for _, piece := range []struct{ tag, value string }{
+		{"TYPE", v.Type},
+		{"NPFX", v.Prefix},
+		{"GIVN", v.Given},
+		{"NICK", v.Nickname},
+		{"SPFX", v.SurnamePrefix},
+		{"SURN", v.Surname},
+		{"NSFX", v.Suffix},
+	} {
+		if piece.value != "" {
+			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: piece.tag, Value: piece.value})
+		}
 	}
 
 	return tags
