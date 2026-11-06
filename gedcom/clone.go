@@ -393,6 +393,28 @@ func (s *Submitter) Clone() *Submitter {
 	}
 }
 
+// Clone returns a deep copy of the submission. Returns nil if s is nil.
+func (s *Submission) Clone() *Submission {
+	if s == nil {
+		return nil
+	}
+
+	return &Submission{
+		XRef:                  s.XRef,
+		SubmitterXRef:         s.SubmitterXRef,
+		FamilyFileName:        s.FamilyFileName,
+		TempleCode:            s.TempleCode,
+		AncestorGenerations:   s.AncestorGenerations,
+		DescendantGenerations: s.DescendantGenerations,
+		OrdinanceProcessFlag:  s.OrdinanceProcessFlag,
+		AutomatedRecordID:     s.AutomatedRecordID,
+		NoteXRefs:             cloneStringSlice(s.NoteXRefs),
+		InlineNotes:           cloneStringSlice(s.InlineNotes),
+		ChangeDate:            cloneChangeDate(s.ChangeDate),
+		Tags:                  CloneTags(s.Tags),
+	}
+}
+
 // Clone returns a deep copy of the shared note. Returns nil if s is nil.
 func (s *SharedNote) Clone() *SharedNote {
 	if s == nil {
@@ -455,6 +477,8 @@ func cloneEntity(entity interface{}) interface{} {
 	case *MediaObject:
 		return e.Clone()
 	case *Submitter:
+		return e.Clone()
+	case *Submission:
 		return e.Clone()
 	case *SharedNote:
 		return e.Clone()

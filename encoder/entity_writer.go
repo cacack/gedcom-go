@@ -138,6 +138,10 @@ func entityToTags(record *gedcom.Record, opts *EncodeOptions) []*gedcom.Tag {
 		if subm, ok := record.Entity.(*gedcom.Submitter); ok {
 			return submitterToTags(subm, opts)
 		}
+	case gedcom.RecordTypeSubmission:
+		if subn, ok := record.Entity.(*gedcom.Submission); ok {
+			return submissionToTags(subn, opts)
+		}
 	case gedcom.RecordTypeRepository:
 		if repo, ok := record.Entity.(*gedcom.Repository); ok {
 			return repositoryToTags(repo, opts)
@@ -507,6 +511,40 @@ func submitterToTags(subm *gedcom.Submitter, opts *EncodeOptions) []*gedcom.Tag 
 	}
 
 	return tags
+}
+
+// submissionToTags converts a Submission entity to GEDCOM tags, in the
+// SUBMISSION_RECORD order of GEDCOM 5.5.1.
+func submissionToTags(subn *gedcom.Submission, opts *EncodeOptions) []*gedcom.Tag {
+	if subn == nil {
+		return nil
+	}
+
+	var tags []*gedcom.Tag
+	scalars := []struct{ tag, value string }{
+		{"SUBM", subn.SubmitterXRef},
+		{"FAMF", subn.FamilyFileName},
+		{"TEMP", subn.TempleCode},
+		{"ANCE", subn.AncestorGenerations},
+		{"DESC", subn.DescendantGenerations},
+		{"ORDI", subn.OrdinanceProcessFlag},
+	}
+	for _, s := range scalars {
+		if s.value != "" {
+			tags = append(tags, &gedcom.Tag{Level: 1, Tag: s.tag, Value: s.value})
+		}
+	}
+
+	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
+	for _, note := range recordNotesToEncode(subn.NoteXRefs, subn.InlineNotes) {
+		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
+	}
+
+	if subn.AutomatedRecordID != "" {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "RIN", Value: subn.AutomatedRecordID})
+	}
+
+	return append(tags, changeDateToTags(subn.ChangeDate, 1, "CHAN", opts)...)
 }
 
 // repositoryToTags converts a Repository entity to GEDCOM tags.

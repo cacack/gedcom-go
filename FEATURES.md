@@ -68,8 +68,8 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [863 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (86.5%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,140 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (86.6%) | Most common format |
+| GEDCOM 5.5 | Every readable line preserved | [871 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (87.3%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,151 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (87.5%) | Most common format |
 | GEDCOM 7.0 | Every readable line preserved | [1,252 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (90.1%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch versions such as `VERS 7.0.14` detect as 7.0; a `0 @X1@ HEAD` record is not the header and never sets the version)
@@ -88,8 +88,8 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,252 of 7.0's structures reach the typed model, 863 of
-5.5's, and 1,140 of 5.5.1's.
+document built for it: 1,252 of 7.0's structures reach the typed model, 871 of
+5.5's, and 1,151 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -435,7 +435,7 @@ sub, err := doc.Subset(doc.Descendants("@I1@"))
 
 Public `Clone()` methods on `Document`, `Header`, `Trailer`, `Record`,
 `Tag`, `Individual`, `Family`, `Source`, `Repository`, `Note`,
-`MediaObject`, `Submitter`, and `SharedNote`. All return nil for a nil
+`MediaObject`, `Submitter`, `Submission`, and `SharedNote`. All return nil for a nil
 receiver and share no pointers with the original.
 
 ```go
@@ -531,12 +531,20 @@ reported as a `HeaderConflict`.
 - Cross-reference ID (`@U1@`)
 - Name, address, language
 
+### Submissions (SUBN, GEDCOM 5.5/5.5.1)
+
+- Cross-reference ID, `SubmitterXRef` (SUBM)
+- `FamilyFileName` (FAMF), `TempleCode` (TEMP), `AncestorGenerations` (ANCE),
+  `DescendantGenerations` (DESC), `OrdinanceProcessFlag` (ORDI) and
+  `AutomatedRecordID` (RIN), each stored as written
+- Notes and `ChangeDate` (CHAN)
+
 ### Notes (NOTE)
 
 - Cross-reference ID (`@N1@`)
 - Text content with continuation
 - Split note fields on note-bearing records (Individual, Family, Source,
-  Repository, Submitter, MediaObject) and on the note-bearing substructures
+  Repository, Submitter, Submission, MediaObject) and on the note-bearing substructures
   (PersonalName, Event, Attribute, SourceCitation, LDSOrdinance, ChangeDate, Association,
   SourceRepositoryLink, MediaLink, FamilyLink, PlaceDetail): `NoteXRefs` holds
   XRef pointers to shared NOTE/SNOTE records, `InlineNotes` holds note text
@@ -1536,6 +1544,7 @@ Full support for encoding typed entities back to GEDCOM format:
 | Source | Title, author, publication, text, repository ref/inline, notes, media |
 | Repository | Name, address, contact info (phone, email, fax, website), notes |
 | Submitter | Name, address, contact info, languages |
+| Submission | Submitter ref, FAMF, TEMP, ANCE, DESC, ORDI, RIN, notes, change date |
 | Note | Text with continuation lines |
 | MediaObject | Files, formats, translations, citations |
 
@@ -1792,6 +1801,7 @@ O(1) lookup by cross-reference ID for all record types:
 | `GetSource(xref)` | `*Source` | Source lookup |
 | `GetRepository(xref)` | `*Repository` | Repository lookup |
 | `GetSubmitter(xref)` | `*Submitter` | Submitter lookup |
+| `GetSubmission(xref)` | `*Submission` | Submission lookup |
 | `GetNote(xref)` | `*Note` | Note lookup |
 | `GetMediaObject(xref)` | `*MediaObject` | Media object lookup |
 
@@ -1806,6 +1816,7 @@ All methods return `nil` if the record is not found (consistent with Go map beha
 | `Sources()` | `[]*Source` | All sources |
 | `Repositories()` | `[]*Repository` | All repositories |
 | `Submitters()` | `[]*Submitter` | All submitters |
+| `Submissions()` | `[]*Submission` | All submissions |
 | `Notes()` | `[]*Note` | All notes |
 | `MediaObjects()` | `[]*MediaObject` | All media objects |
 
@@ -1903,6 +1914,7 @@ Convenience methods on `Record` for type checking and casting:
 | `GetSource()` | `(*Source, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
 | `GetRepository()` | `(*Repository, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
 | `GetSubmitter()` | `(*Submitter, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
+| `GetSubmission()` | `(*Submission, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
 | `GetNote()` | `(*Note, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
 | `GetMediaObject()` | `(*MediaObject, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
 | `GetSharedNote()` | `(*SharedNote, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
