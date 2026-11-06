@@ -2385,3 +2385,60 @@ func TestNewReader_UTF16BOMReadErrorNotPassedRaw(t *testing.T) {
 		t.Errorf("ReadAll() data = %q, want none", got)
 	}
 }
+
+// TestNewReader_ErrorAfterCompleteDocument is the reproduction from issue
+// #414: the source delivers a whole document, fails once, then reports EOF.
+// The header probe consumes everything before the failure, so the bytes and
+// the error must both reach the caller rather than vanishing.
+func TestNewReader_ErrorAfterCompleteDocument(t *testing.T) {
+	testErr := errors.New("transient read error")
+	const doc = "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NAME Alex /Example/\n0 TRLR\n"
+	src := &scriptedReader{steps: []readStep{{doc, nil}, {"", testErr}}}
+
+	got, err := io.ReadAll(NewReader(src))
+	if !errors.Is(err, testErr) {
+		t.Errorf("ReadAll() error = %v, want %v", err, testErr)
+	}
+	if string(got) != doc {
+		t.Errorf("ReadAll() data = %q, want %q", got, doc)
+	}
+}
+
+// TestUTF8Reader_TransientErrorKeepsPendingBytes covers the original #414
+// path: a transient (0, err) arriving while an incomplete UTF-8 sequence is
+// pended must report the error and keep the pended bytes, so a caller that
+// retries reads the document with no gap.
+func TestUTF8Reader_TransientErrorKeepsPendingBytes(t *testing.T) {
+	testErr := errors.New("transient read error")
+	const doc = "0 HEAD\n1 NOTE caf\xc3\xa9\n0 TRLR\n"
+	// Split inside the two-byte é so \xc3 is pended when the error arrives.
+	split := strings.Index(doc, "\xa9")
+	src := &scriptedReader{steps: []readStep{{doc[:split], nil}, {"", testErr}, {doc[split:], nil}}}
+	r := NewReaderWithEncoding(src, EncodingUTF8)
+
+	var got []byte
+	errs := 0
+	buf := make([]byte, 4)
+	for {
+		n, err := r.Read(buf)
+		got = append(got, buf[:n]...)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			if !errors.Is(err, testErr) {
+				t.Fatalf("Read() error = %v, want %v", err, testErr)
+			}
+			errs++
+			if errs > 1 {
+				t.Fatal("Read() reported the transient error more than once")
+			}
+		}
+	}
+	if errs != 1 {
+		t.Errorf("Read() reported the transient error %d times, want 1", errs)
+	}
+	if string(got) != doc {
+		t.Errorf("Read() data = %q, want %q", got, doc)
+	}
+}
