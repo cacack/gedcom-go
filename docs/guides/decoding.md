@@ -133,6 +133,40 @@ offset-reporting iterators (`RecordIteratorWithOffset`, `RecordsWithOffset`)
 and `LazyParser.BuildIndex`, which wrap `parser.ErrLineTooLong`; test for it
 with `errors.Is`.
 
+## Reading Data the Typed Model Does Not Cover
+
+**Reading `Record.Tags` is a supported access path, not a workaround.**
+
+Every record carries two views of the same data
+([ADR 0003](../decisions/0003-lossless-dual-storage.md)). `Record.Tags` is
+complete: every line the parser read, in document order. `Record.Entity` is a
+typed projection over the structures this library models. Neither loses data;
+the typed view is simply narrower. When a structure has no typed field, its
+value is in `Tags`, and reading it from there is the intended answer. The same
+holds for `Header.Tags`.
+
+Which structures are typed and which are `Tags`-only is published per version,
+per context, and regenerated from the decoder so it cannot drift:
+[gedcom-7-coverage.md](../reference/gedcom-7-coverage.md) and
+[gedcom-5.5-coverage.md](../reference/gedcom-5.5-coverage.md). A
+`raw (accepted)` structure is one the decoder recognizes and deliberately leaves
+untyped (`RIN` and `AFN` on an individual, for example).
+
+`Tags` holds the record's subordinate lines (level 1 and deeper) as a flat
+slice; `Level` gives the nesting:
+
+```go
+rec := doc.XRefMap["@I1@"]
+for _, tag := range rec.Tags {
+    if tag.Level == 1 && tag.Tag == "RIN" {
+        fmt.Println("RIN:", tag.Value)
+    }
+}
+```
+
+If you need a structure often enough that a typed field would help, open an
+issue: falling back to `Tags` silently keeps that demand invisible.
+
 ## Round-trip Expectations
 
 When encoding a decoded document back to GEDCOM format, here's what to expect.
