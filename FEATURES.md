@@ -93,6 +93,9 @@ document built for it: 1,245 of 7.0's structures reach the typed model, 863 of
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
+A structure without typed access is read from `Record.Tags`, which is a
+supported access path, not a workaround — see
+[Reading Data the Typed Model Does Not Cover](docs/guides/decoding.md#reading-data-the-typed-model-does-not-cover).
 
 Read each percentage against its own version, not against the others. The three
 specifications define different structure sets — 7.0 defines the most, and much
