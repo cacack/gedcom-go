@@ -100,3 +100,36 @@ func TestRequiresGEDCOM7_PlainAttributeStays551(t *testing.T) {
 		t.Error("RequiresGEDCOM7() = true, want false for a 5.5.1-compatible attribute")
 	}
 }
+
+// Each typed PHRASE field (issue #450) is 7.0-only and written unconditionally
+// beneath its value, so it must push the document to 7.0.
+func TestRequiresGEDCOM7_TypedPhrases(t *testing.T) {
+	indi := func(i *Individual) *Record {
+		i.XRef = "@I1@"
+		return &Record{XRef: "@I1@", Type: RecordTypeIndividual, Entity: i}
+	}
+	tests := []struct {
+		name string
+		rec  *Record
+	}{
+		{"NAME.TYPE", indi(&Individual{Names: []*PersonalName{{Type: "OTHER", TypePhrase: "p"}}})},
+		{"FAMC.PEDI", indi(&Individual{ChildInFamilies: []FamilyLink{{FamilyXRef: "@F1@", Pedigree: "OTHER", PedigreePhrase: "p"}}})},
+		{"ASSO.ROLE", indi(&Individual{Associations: []*Association{{IndividualXRef: "@I2@", Role: "OTHER", RolePhrase: "p"}}})},
+		{"event AGE", indi(&Individual{Events: []*Event{{Type: EventBirth, Age: "3y", AgePhrase: "p"}}})},
+		{"event SDATE", indi(&Individual{Events: []*Event{{Type: EventBirth, SortDatePhrase: "p"}}})},
+		{"attribute SDATE", indi(&Individual{Attributes: []*Attribute{{Type: "OCCU", SortDatePhrase: "p"}}})},
+		{"FAM.HUSB", &Record{XRef: "@F1@", Type: RecordTypeFamily, Entity: &Family{Husband: "@I1@", HusbandPhrase: "p"}}},
+		{"FAM.WIFE", &Record{XRef: "@F1@", Type: RecordTypeFamily, Entity: &Family{Wife: "@I1@", WifePhrase: "p"}}},
+		{"FILE.FORM.MEDI", &Record{XRef: "@O1@", Type: RecordTypeMedia, Entity: &MediaObject{
+			Files: []*MediaFile{{FileRef: "a.jpg", Form: "image/jpeg", MediaType: "OTHER", MediaPhrase: "p"}},
+		}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc := &Document{Records: []*Record{tt.rec}}
+			if !doc.RequiresGEDCOM7() {
+				t.Errorf("RequiresGEDCOM7() = false, want true")
+			}
+		})
+	}
+}

@@ -8,10 +8,21 @@ type Family struct {
 	// Husband is the XRef to the husband individual
 	Husband string
 
+	// HusbandPhrase is the PHRASE under HUSB (GEDCOM 7.0), e.g. describing
+	// a husband recorded as @VOID@. Written only beneath a Husband.
+	HusbandPhrase string
+
 	// Wife is the XRef to the wife individual
 	Wife string
 
-	// Children are XRefs to child individuals
+	// WifePhrase is the PHRASE under WIFE (GEDCOM 7.0). Written only beneath
+	// a Wife.
+	WifePhrase string
+
+	// Children are XRefs to child individuals.
+	//
+	// A CHIL's PHRASE (GEDCOM 7.0) has no typed field: Children is a plain
+	// XRef slice, so it stays in Tags (ADR 0010).
 	Children []string
 
 	// Events contains family events (marriage, divorce, etc.) in file order.

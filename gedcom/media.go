@@ -28,6 +28,10 @@ type MediaFile struct {
 	// MediaType is the category (MEDI tag): AUDIO, BOOK, CARD, ELECTRONIC, PHOTO, VIDEO, etc.
 	MediaType string
 
+	// MediaPhrase is the PHRASE under MEDI (GEDCOM 7.0), typically
+	// describing a MEDI OTHER. Written only beneath a MediaType.
+	MediaPhrase string
+
 	// Title is a descriptive title for this file
 	Title string
 
