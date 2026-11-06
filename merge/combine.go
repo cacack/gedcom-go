@@ -97,6 +97,13 @@ type HeaderConflict struct {
 //     Language, Copyright, AncestryTreeID, Vendor, Schema) doc1's
 //     value is kept. If doc2's value is non-empty AND differs,
 //     a HeaderConflict is recorded in the report.
+//   - The typed views of header substructures (SourceVersion, SourceName,
+//     SourceCorporation, Destination, Time, PlaceForm) follow the raw
+//     structure that holds them (SOUR, DEST, DATE, PLAC): doc1's views are
+//     kept, and doc2's replace them only when doc2's structure is the one
+//     carried into the combined Tags. They record no HeaderConflict of
+//     their own: a doc2 structure dropped because doc1 has one is reported
+//     as "Tags.SOUR", "Tags.DEST", "Tags.DATE" or "Tags.PLAC".
 //   - Submitter: doc1's submitter wins if set. If doc1 has none,
 //     doc2's submitter is used and is looked up in the remapping
 //     (it may have been renamed by collision resolution).
@@ -614,6 +621,7 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 	if h1.Date != "" {
 		occupied["DATE"] = true
 	}
+	mergeHeaderStructureViews(out, h1, h2, occupied)
 	tagConflicts := appendNonCollidingHeaderTags(out, h2, occupied)
 	conflicts = append(conflicts, tagConflicts...)
 
@@ -626,6 +634,37 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 	}
 
 	return out, conflicts
+}
+
+// mergeHeaderStructureViews merges the typed read views of header
+// substructures (SourceVersion, SourceName, SourceCorporation, Destination,
+// Time, PlaceForm) into out, a clone of h1. Each view follows the level-1
+// structure that holds it, because appendNonCollidingHeaderTags moves a doc2
+// structure into out.Tags whole or not at all: when doc2's structure is the
+// one out will carry, its views replace h1's -- even views a hand-built h1
+// set without a raw structure, since Tags governs encoding -- so a view never
+// describes a structure other than the one the encoded header holds. No
+// conflict is recorded here: when both documents carry the structure,
+// dropping doc2's is already reported as "Tags.<tag>". occupied is the set
+// passed to appendNonCollidingHeaderTags, computed before it runs.
+func mergeHeaderStructureViews(out, h1, h2 *gedcom.Header, occupied map[string]bool) {
+	adopts := func(tag string) bool {
+		return !occupied[tag] && !hasLevel1HeaderTag(h1.Tags, tag) && hasLevel1HeaderTag(h2.Tags, tag)
+	}
+	if adopts("SOUR") {
+		out.SourceVersion = h2.SourceVersion
+		out.SourceName = h2.SourceName
+		out.SourceCorporation = h2.SourceCorporation.Clone()
+	}
+	if adopts("DEST") {
+		out.Destination = h2.Destination
+	}
+	if adopts("DATE") {
+		out.Time = h2.Time
+	}
+	if adopts("PLAC") {
+		out.PlaceForm = h2.PlaceForm
+	}
 }
 
 // hasLevel1HeaderTag reports whether tags carries a level-1 structure named name.

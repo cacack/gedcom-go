@@ -66,9 +66,9 @@ func TestSpec7AnchorStatuses(t *testing.T) {
 		},
 		{
 			superstructure: "HEAD",
-			tag:            "DEST",
+			tag:            "NOTE",
 			want:           specRawAccepted,
-			because:        "buildHeader knows DEST and has no typed field for it (issue #449)",
+			because:        "buildHeader knows HEAD.NOTE and has no typed field for it (issue #676)",
 		},
 		{
 			superstructure: "ord-STAT",
