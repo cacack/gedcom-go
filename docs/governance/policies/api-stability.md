@@ -199,42 +199,13 @@ field the decoder does not populate is dead surface, the speculative API that
 against. When the justifying work cannot land in the current major, the break
 is recorded here instead.
 
-| Break | Arrives with | Recorded | Why it is accepted |
-|-------|--------------|----------|--------------------|
-| `gedcom.Transliteration` stops being comparable with `==` | [#453](https://github.com/cacack/gedcom-go/issues/453) — typed decoding of 5.5.1 `FONE` / `ROMN` onto `PersonalName.Transliterations` | v3.0.0 cycle ([#501](https://github.com/cacack/gedcom-go/issues/501)) | See below. |
-
-### `Transliteration` loses `==` when #453 lands
-
-`Transliteration` is comparable today, and nothing about the type itself needs
-that to change: every `NAME-TRAN` substructure is typed, and the 5.5.1 name
-pieces it mirrors are `{0:1}`. The pressure comes from #453. 5.5.1's `FONE` and
-`ROMN` are accepted and dropped today, and #453 maps both onto
-`PersonalName.Transliterations` — onto this type. `FONE` and `ROMN` admit
-`NOTE {0:M}` and `SOUR {0:M}` plus a required `TYPE` naming the scheme, so a
-lossless mapping gives `Transliteration` at least `SourceCitations` and the
-`NoteXRefs` / `InlineNotes` pair. A struct holding a slice cannot be compared,
-so the type loses `==` — and use as a map key — the day #453 lands.
-
-The maintainer decision ([#501](https://github.com/cacack/gedcom-go/issues/501))
-was not to schedule #453 into v3.0.0, so this break falls to a later major. It
-is accepted there because:
-
-- #453 is a fidelity fix for 5.5.1, the most common GEDCOM format in the wild.
-  Nothing about the feature is breaking; only the comparability side effect is.
-  Gating it on "too breaking" would defer lossless decoding of real files for a
-  purely mechanical reason.
-- No known downstream call site depends on it: the my-family index surveyed
-  for #501 has no use of `Transliteration`, and the type predates the version
-  my-family pins, so the absence is genuine non-use rather than a version
-  artefact.
-- The alternatives were judged worse. Adding the note fields during v3 and
-  leaving `SourceCitations` and the scheme field for later would take the same
-  break twice. Adding empty fields with no decoder support would be dead
-  surface.
-
-Consequently `Transliteration` gains **no** exported field in v3.0.0 that the
-decoder does not populate. #453 adds its fields together with the decoding and
-encoding that fill them.
+No break is currently recorded. The register's first entry, "`gedcom.Transliteration`
+stops being comparable with `==`" (recorded in the v3.0.0 cycle,
+[#501](https://github.com/cacack/gedcom-go/issues/501)), was withdrawn when
+[#453](https://github.com/cacack/gedcom-go/issues/453) landed: 5.5.1 `FONE` and
+`ROMN` decode into the new `PersonalName.Phonetic` and `Romanized` fields
+(`gedcom.NameVariation`) rather than onto `Transliterations`, so
+`Transliteration` gains no field and stays comparable.
 
 ## Accepted Asymmetries
 
