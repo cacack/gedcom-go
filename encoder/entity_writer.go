@@ -528,6 +528,7 @@ func submissionToTags(subn *gedcom.Submission, opts *EncodeOptions) []*gedcom.Ta
 		{"ANCE", subn.AncestorGenerations},
 		{"DESC", subn.DescendantGenerations},
 		{"ORDI", subn.OrdinanceProcessFlag},
+		{"RIN", subn.AutomatedRecordID},
 	}
 	for _, s := range scalars {
 		if s.value != "" {
@@ -538,10 +539,6 @@ func submissionToTags(subn *gedcom.Submission, opts *EncodeOptions) []*gedcom.Ta
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
 	for _, note := range recordNotesToEncode(subn.NoteXRefs, subn.InlineNotes) {
 		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
-	}
-
-	if subn.AutomatedRecordID != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "RIN", Value: subn.AutomatedRecordID})
 	}
 
 	return append(tags, changeDateToTags(subn.ChangeDate, 1, "CHAN", opts)...)

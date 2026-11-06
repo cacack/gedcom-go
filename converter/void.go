@@ -133,6 +133,8 @@ func pruneVoidEntity(entity any) bool {
 			e.NoteXRefs = p.strings(e.NoteXRefs)
 			e.Tags = p.tags(e.Tags)
 		}
+	case *gedcom.Submission:
+		p.submission(e)
 	case *gedcom.SharedNote:
 		if e != nil {
 			e.SourceCitations = p.citations(e.SourceCitations)
@@ -233,6 +235,16 @@ func (p *voidPruner) source(s *gedcom.Source) {
 	s.Media = p.mediaLinks(s.Media)
 	p.changeDate(s.ChangeDate)
 	p.changeDate(s.CreationDate)
+	s.Tags = p.tags(s.Tags)
+}
+
+func (p *voidPruner) submission(s *gedcom.Submission) {
+	if s == nil {
+		return
+	}
+	p.clear(&s.SubmitterXRef)
+	s.NoteXRefs = p.strings(s.NoteXRefs)
+	p.changeDate(s.ChangeDate)
 	s.Tags = p.tags(s.Tags)
 }
 
