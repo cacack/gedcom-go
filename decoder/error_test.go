@@ -3,6 +3,7 @@ package decoder
 import (
 	"bufio"
 	"errors"
+	"io"
 	"os"
 	"reflect"
 	"strings"
@@ -434,5 +435,39 @@ func TestDecode_LineAboveMaxLineBytes(t *testing.T) {
 	}
 	if _, err := DecodeWithDiagnostics(strings.NewReader(input), nil); !errors.Is(err, bufio.ErrTooLong) {
 		t.Errorf("DecodeWithDiagnostics() error = %v, want bufio.ErrTooLong", err)
+	}
+}
+
+// failOnceReader delivers data, fails once with err, then reports io.EOF.
+type failOnceReader struct {
+	data []byte
+	err  error
+}
+
+func (r *failOnceReader) Read(p []byte) (int, error) {
+	if len(r.data) > 0 {
+		n := copy(p, r.data)
+		r.data = r.data[n:]
+		return n, nil
+	}
+	if r.err != nil {
+		err := r.err
+		r.err = nil
+		return 0, err
+	}
+	return 0, io.EOF
+}
+
+// TestDecodeWithDiagnostics_SourceReadError checks that a read error from the
+// source reaches the caller of DecodeWithDiagnostics rather than producing an
+// empty document with a nil error (issue #414).
+func TestDecodeWithDiagnostics_SourceReadError(t *testing.T) {
+	injected := errors.New("read failed")
+	src := &failOnceReader{
+		data: []byte("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NAME Alex /Example/\n0 TRLR\n"),
+		err:  injected,
+	}
+	if _, err := DecodeWithDiagnostics(src, nil); !errors.Is(err, injected) {
+		t.Errorf("DecodeWithDiagnostics() error = %v, want %v", err, injected)
 	}
 }
