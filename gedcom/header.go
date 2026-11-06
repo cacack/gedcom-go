@@ -27,15 +27,42 @@ type Header struct {
 	// SourceSystem identifies the software that created the file
 	SourceSystem string
 
+	// SourceVersion is the version of the source software (HEAD.SOUR.VERS),
+	// verbatim. Empty when the tag is absent. It is a read view filled by the
+	// decoder: Tags governs encoding, so setting it on a decoded document does
+	// not change the encoded header, and the encoder never writes it for a
+	// header built in memory.
+	SourceVersion string
+
+	// SourceName is the source software's product name (HEAD.SOUR.NAME),
+	// verbatim. Empty when the tag is absent. Like SourceVersion, it is a read
+	// view: Tags governs encoding and the encoder never writes it.
+	SourceName string
+
+	// SourceCorporation is the business that owns the source software
+	// (HEAD.SOUR.CORP), or nil when the tag is absent. Like SourceVersion, it
+	// is a read view: Tags governs encoding and the encoder never writes it.
+	SourceCorporation *Corporation
+
+	// Destination is the system the file is intended for (HEAD.DEST),
+	// verbatim. Empty when the tag is absent. Like SourceVersion, it is a read
+	// view: Tags governs encoding and the encoder never writes it.
+	Destination string
+
 	// Date is the transmission date from HEAD.DATE, verbatim as the file
 	// wrote it (for example "7 AUG 2026"). It is a GEDCOM DATE_EXACT value,
 	// kept as a string so it round-trips losslessly like every other date in
 	// this package (see ADR 0001); call ParseDate for a structured value.
 	//
-	// HEAD.DATE.TIME has no typed field: it is kept in Tags with the rest of
-	// the header, which is what a decoded document is encoded from. A header
-	// built in memory, with no Tags, gets "1 DATE" and no TIME line.
+	// HEAD.DATE.TIME is typed separately, as Time.
 	Date string
+
+	// Time is the transmission time from HEAD.DATE.TIME, verbatim (for
+	// example "13:45:02"). Empty when the tag is absent. It is a read view
+	// filled by the decoder: Tags governs encoding, so setting it on a decoded
+	// document does not change the encoded header, and a header built in
+	// memory, with no Tags, gets "1 DATE" and no TIME line.
+	Time string
 
 	// Language is the primary language used in the file (optional)
 	Language string
@@ -55,6 +82,13 @@ type Header struct {
 	// reporting it.
 	Submitter string
 
+	// PlaceForm is the default place hierarchy from HEAD.PLAC.FORM, verbatim
+	// (for example "City, County, State, Country"): the jurisdiction list that
+	// interprets every PLAC value in the file that has no FORM of its own.
+	// Empty when the tag is absent. Like SourceVersion, it is a read view:
+	// Tags governs encoding and the encoder never writes it.
+	PlaceForm string
+
 	// AncestryTreeID is the Ancestry.com tree identifier from HEAD.SOUR._TREE.
 	// This is an Ancestry.com vendor extension that identifies the family tree
 	// this GEDCOM was exported from.
@@ -71,4 +105,32 @@ type Header struct {
 	// use the converter, which keeps both in step. See the encoder package
 	// documentation for the full rule.
 	Tags []*Tag
+}
+
+// Corporation is the CORP structure under HEAD.SOUR: the business that owns
+// the software that produced the file, with its address and contact details.
+// Like the Header fields that hold it, it is a read view: Header.Tags governs
+// encoding.
+type Corporation struct {
+	// Name is the corporation's name (the CORP value).
+	Name string
+
+	// Address is the corporation's postal address (ADDR), or nil.
+	Address *Address
+
+	// Phone holds the corporation's phone numbers (PHON, {0:3}), in document
+	// order. PHON is a sibling of ADDR in ADDRESS_STRUCTURE, not part of it.
+	Phone []string
+
+	// Email holds the corporation's email addresses (EMAIL, {0:3}, GEDCOM
+	// 5.5.1+), in document order.
+	Email []string
+
+	// Fax holds the corporation's fax numbers (FAX, {0:3}, GEDCOM 5.5.1+), in
+	// document order.
+	Fax []string
+
+	// Website holds the corporation's web addresses (WWW, {0:3}, GEDCOM
+	// 5.5.1+), in document order.
+	Website []string
 }

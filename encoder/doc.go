@@ -71,7 +71,9 @@
 // what gets written — so SCHMA, SUBM, DEST, DATE (with its TIME), COPR, the
 // SOUR subtree and header notes all survive a round-trip. The typed scalar
 // fields (Version, Encoding, SourceSystem, Date, Language, Submitter) are NOT
-// consulted on this path. Setting doc.Header.SourceSystem on a decoded
+// consulted on this path, and the header-substructure views (SourceVersion,
+// SourceName, SourceCorporation, Destination, Time, PlaceForm) are never
+// consulted at all. Setting doc.Header.SourceSystem on a decoded
 // document and encoding it does not change the output; edit the corresponding
 // entry in doc.Header.Tags instead. This is the trade the library makes for a
 // lossless header: what was read is what is written.

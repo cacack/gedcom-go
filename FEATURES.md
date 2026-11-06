@@ -68,9 +68,9 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [871 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (87.3%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,167 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (88.7%) | Most common format |
-| GEDCOM 7.0 | Every readable line preserved | [1,252 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (90.1%) | Latest standard |
+| GEDCOM 5.5 | Every readable line preserved | [879 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (88.1%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,178 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (89.5%) | Most common format |
+| GEDCOM 7.0 | Every readable line preserved | [1,263 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (90.9%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch versions such as `VERS 7.0.14` detect as 7.0; a `0 @X1@ HEAD` record is not the header and never sets the version)
 - Heuristic-based detection for malformed headers
@@ -88,8 +88,8 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,252 of 7.0's structures reach the typed model, 871 of
-5.5's, and 1,167 of 5.5.1's.
+document built for it: 1,263 of 7.0's structures reach the typed model, 879 of
+5.5's, and 1,178 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -402,8 +402,9 @@ and emits a valid document. The source is not mutated.
 sub, err := doc.Subset(doc.Descendants("@I1@"))
 ```
 
-- Header carries Version, DeclaredVersion, Encoding, SourceSystem, Date,
-  Language, Copyright, AncestryTreeID, and Schema from the source
+- Header carries Version, DeclaredVersion, Encoding, SourceSystem,
+  SourceVersion, SourceName, SourceCorporation, Destination, Date, Time,
+  Language, Copyright, PlaceForm, AncestryTreeID, and Schema from the source
 - Spaced pointers (`@N 1@`) are followed in a document whose header
   declares GEDCOM 5.5 or 5.5.1 (`Header.DeclaredVersion`), as they are by
   `merge` and the validator's broken-pointer check
@@ -473,13 +474,29 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 `Combine` returns a `CombineReport` describing the XRefs that were
 remapped on doc2 and any header fields where doc1's value was kept
 over a differing doc2 value. Both inputs are deep-copied; neither is
-mutated. Differing non-empty header versions or encodings are refused
+mutated. The typed views of header substructures (`SourceVersion`,
+`SourceName`, `SourceCorporation`, `Destination`, `Time`, `PlaceForm`) follow
+the raw structure that holds them, so a doc2 `SOUR`, `DEST`, `DATE` or `PLAC`
+dropped in favour of doc1's is reported as a `Tags.<tag>` conflict.
+Differing non-empty header versions or encodings are refused
 with `ErrIncompatibleHeader`; set `CombineOptions.IgnoreEncodingMismatch`
 to merge documents whose declared encodings differ (text is UTF-8 in
 memory either way) — doc1's encoding is kept and the difference is
 reported as a `HeaderConflict`.
 
 ## Record Types
+
+### Header (HEAD)
+
+- Version (`GEDC.VERS`), encoding (`CHAR`), transmission date and time
+  (`DATE`, `DATE.TIME`), language, copyright, submitter pointer and SCHMA
+- Source software (`SOUR`): system ID, `VERS` (`SourceVersion`), product
+  `NAME` (`SourceName`) and `CORP` (`SourceCorporation`, with its address and
+  `PHON`/`EMAIL`/`FAX`/`WWW` contact slices)
+- Destination system (`DEST`) and default place hierarchy (`PLAC.FORM`,
+  `PlaceForm`)
+- Every typed field is a read view filled by the decoder: `Header.Tags` is
+  what a decoded header is encoded from (see the `encoder` package docs)
 
 ### Individuals (INDI)
 
