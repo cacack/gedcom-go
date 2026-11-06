@@ -69,7 +69,7 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
 | GEDCOM 5.5 | Every readable line preserved | [871 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (87.3%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,151 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (87.5%) | Most common format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,167 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (88.7%) | Most common format |
 | GEDCOM 7.0 | Every readable line preserved | [1,252 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (90.1%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch versions such as `VERS 7.0.14` detect as 7.0; a `0 @X1@ HEAD` record is not the header and never sets the version)
@@ -89,7 +89,7 @@ parsing table above, which says which shapes those are.
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
 document built for it: 1,252 of 7.0's structures reach the typed model, 871 of
-5.5's, and 1,151 of 5.5.1's.
+5.5's, and 1,167 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -825,6 +825,25 @@ for _, name := range individual.Names {
 | Suffix | Transliterated name suffix |
 | Nickname | Transliterated nickname |
 | SurnamePrefix | Transliterated surname prefix |
+
+### Phonetic and Romanized Variations (FONE, ROMN)
+
+GEDCOM 5.5.1's `FONE` and `ROMN` under `NAME` decode into
+`PersonalName.Phonetic` and `PersonalName.Romanized` (`[]*gedcom.NameVariation`).
+They are kept apart from `Transliterations` because they name their scheme with
+a required `TYPE` (e.g. `kana`, `romaji`) rather than 7.0's `LANG`:
+
+```go
+for _, v := range name.Romanized {
+    fmt.Println(v.Value)   // "Yamada /Taro/"
+    fmt.Println(v.Type)    // "romaji"
+    fmt.Println(v.Surname) // "Yamada"
+}
+```
+
+`NameVariation` carries `Value`, `Type` and the six name pieces (`Given`,
+`Surname`, `Prefix`, `Suffix`, `Nickname`, `SurnamePrefix`). `NOTE` and `SOUR`
+beneath a variation are kept in `Record.Tags` only.
 
 ## Pedigree (PEDI) Support
 

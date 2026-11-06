@@ -118,6 +118,14 @@ type PersonalName struct {
 	// name in different languages, scripts, or romanization systems.
 	Transliterations []*Transliteration
 
+	// Phonetic are phonetic variations of the name (GEDCOM 5.5.1 FONE tag),
+	// in file order.
+	Phonetic []*NameVariation
+
+	// Romanized are romanized variations of the name (GEDCOM 5.5.1 ROMN tag),
+	// in file order.
+	Romanized []*NameVariation
+
 	// SourceCitations are source citations documenting this name (NAME.SOUR).
 	SourceCitations []*SourceCitation
 
@@ -158,6 +166,41 @@ type Transliteration struct {
 	Nickname string
 
 	// SurnamePrefix is the transliterated surname prefix, e.g., "von", "de" (SPFX tag).
+	SurnamePrefix string
+}
+
+// NameVariation is a phonetic (FONE) or romanized (ROMN) variation of a name,
+// as GEDCOM 5.5.1 defines under NAME. It is kept apart from Transliteration,
+// GEDCOM 7.0's TRAN, because the two record their scheme differently: TRAN
+// names a language with LANG, while FONE and ROMN name the method used with a
+// required TYPE. NOTE and SOUR beneath a variation are kept only in the raw
+// tags (ADR 0003).
+type NameVariation struct {
+	// Value is the full name variation in GEDCOM format (e.g., "Yamada /Taro/").
+	// This is the value from the FONE or ROMN tag itself.
+	Value string
+
+	// Type is the method used to produce the variation (TYPE tag). GEDCOM
+	// 5.5.1 defines "hangul" and "kana" for FONE and "pinyin", "romaji" and
+	// "wadegiles" for ROMN, and allows any user-defined value.
+	Type string
+
+	// Given is the given (first) name in this variation (GIVN tag).
+	Given string
+
+	// Surname is the family name in this variation (SURN tag).
+	Surname string
+
+	// Prefix is the name prefix in this variation (NPFX tag).
+	Prefix string
+
+	// Suffix is the name suffix in this variation (NSFX tag).
+	Suffix string
+
+	// Nickname is the nickname in this variation (NICK tag).
+	Nickname string
+
+	// SurnamePrefix is the surname prefix in this variation (SPFX tag).
 	SurnamePrefix string
 }
 

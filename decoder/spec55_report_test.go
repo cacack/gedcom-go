@@ -207,8 +207,9 @@ Two gaps were new, and neither could have come from the 7.0 half:
 
 - **[#452]** — submission records reach no typed field at all. 7.0 removed
   `+"`SUBN`"+`, so only a 5.5.x inventory can show it.
-- **[#453]** — 5.5.1's `+"`FONE`"+` and `+"`ROMN`"+` name variations are recognized and
-  then dropped, where 7.0's equivalent `+"`TRAN`"+` is parsed into the typed model.
+- **[#453]** — 5.5.1's `+"`FONE`"+` and `+"`ROMN`"+` name variations were recognized and
+  then dropped, where 7.0's equivalent `+"`TRAN`"+` was parsed into the typed model.
+  They now decode into `+"`PersonalName.Phonetic`"+` and `+"`Romanized`"+`.
 
 Read the table as a statement of where the library is, not as a backlog — the
 backlog lives in the tracker.
