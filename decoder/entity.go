@@ -288,6 +288,7 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCol
 				name.SurnamePrefix = tagToken(tag.Value)
 			case "TYPE":
 				name.Type = tag.Value
+				name.TypePhrase = findSubordinate(tags, i, "PHRASE")
 			case "TRAN":
 				tran := parseNameTransliteration(tags, i, collector)
 				name.Transliterations = append(name.Transliterations, tran)
@@ -381,6 +382,7 @@ func parseFamilyLink(tags []*gedcom.Tag, linkIdx int, tagName string, collector 
 						"not valid under FAMS; a spouse link has no pedigree")
 				}
 				famLink.Pedigree = tag.Value
+				famLink.PedigreePhrase = findSubordinate(tags, i, "PHRASE")
 			case "NOTE", "SNOTE":
 				famLink.NoteXRefs, famLink.InlineNotes = appendRecordNote(
 					tags, i, famLink.NoteXRefs, famLink.InlineNotes, collector)
@@ -415,6 +417,7 @@ func parseAssociation(tags []*gedcom.Tag, assoIdx int, collector *diagnosticColl
 			switch tag.Tag {
 			case "RELA", "ROLE": // RELA in 5.5.1, ROLE in 7.0
 				assoc.Role = tag.Value
+				assoc.RolePhrase = findSubordinate(tags, i, "PHRASE")
 			case "PHRASE":
 				assoc.Phrase = tag.Value
 			case "NOTE", "SNOTE":
@@ -598,6 +601,7 @@ type eventDetail struct {
 	restriction     *string
 	uids            *[]string
 	sortDate        *string
+	sortDatePhrase  *string
 	sourceCitations *[]*gedcom.SourceCitation
 	media           *[]*gedcom.MediaLink
 	associations    *[]*gedcom.Association
@@ -636,6 +640,7 @@ func eventDetailOf(e *gedcom.Event, owner detailOwner) eventDetail {
 		restriction:     &e.Restriction,
 		uids:            &e.UIDs,
 		sortDate:        &e.SortDate,
+		sortDatePhrase:  &e.SortDatePhrase,
 		sourceCitations: &e.SourceCitations,
 		media:           &e.Media,
 		associations:    &e.Associations,
@@ -662,6 +667,7 @@ func eventDetailOfAttribute(a *gedcom.Attribute, owner detailOwner) eventDetail 
 		restriction:     &a.Restriction,
 		uids:            &a.UIDs,
 		sortDate:        &a.SortDate,
+		sortDatePhrase:  &a.SortDatePhrase,
 		sourceCitations: &a.SourceCitations,
 		media:           &a.Media,
 		associations:    &a.Associations,
@@ -687,19 +693,8 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 	switch tag.Tag {
 	case "DATE":
 		*detail.date = tag.Value
-		if parsed, err := gedcom.ParseDate(tag.Value); err == nil {
+		if parsed := parseDateValue(tags, i, collector); parsed != nil {
 			*detail.parsedDate = parsed
-		} else {
-			// Date parsing failed - raw value is preserved, add diagnostic
-			collector.addInvalidValue(tag.LineNumber, "DATE", tag.Value, err.Error())
-		}
-		// PHRASE (7.0) is a DATE subordinate carrying the date in prose. An
-		// empty one is ignored rather than assigned, because ParseDate itself
-		// fills Phrase for a parenthesized date phrase.
-		if phrase := findSubordinate(tags, i, "PHRASE"); phrase != "" {
-			if parsed := *detail.parsedDate; parsed != nil {
-				parsed.Phrase = phrase
-			}
 		}
 	case "PLAC":
 		*detail.placeDetail = parsePlaceDetail(tags, i, tag.Level, collector)
@@ -725,6 +720,7 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 		*detail.uids = append(*detail.uids, tag.Value)
 	case "SDATE":
 		*detail.sortDate = tag.Value
+		*detail.sortDatePhrase = findSubordinate(tags, i, "PHRASE")
 	case "SOUR":
 		cite := parseSourceCitation(tags, i, tag.Level, collector)
 		*detail.sourceCitations = append(*detail.sourceCitations, cite)
@@ -749,6 +745,32 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 		if !strings.HasPrefix(tag.Tag, "_") {
 			collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
 		}
+	}
+}
+
+// parseDateValue parses the DATE at tags[i], with its PHRASE (7.0) — the
+// date in prose — into a typed Date. It returns nil, and reports the raw
+// value, when the payload does not parse; the raw value stays in Tags.
+//
+// GEDCOM 7.0 permits an empty DateValue when a PHRASE carries the date, so
+// that case yields a phrase-only Date with no date components rather than a
+// diagnostic. An empty PHRASE is ignored rather than assigned, because
+// ParseDate itself fills Phrase for a parenthesized date phrase.
+func parseDateValue(tags []*gedcom.Tag, i int, collector *diagnosticCollector) *gedcom.Date {
+	tag := tags[i]
+	phrase := findSubordinate(tags, i, "PHRASE")
+	parsed, err := gedcom.ParseDate(tag.Value)
+	switch {
+	case err == nil:
+		if phrase != "" {
+			parsed.Phrase = phrase
+		}
+		return parsed
+	case tag.Value == "" && phrase != "":
+		return &gedcom.Date{Calendar: gedcom.CalendarGregorian, Phrase: phrase, IsPhrase: true}
+	default:
+		collector.addInvalidValue(tag.LineNumber, "DATE", tag.Value, err.Error())
+		return nil
 	}
 }
 
@@ -781,6 +803,7 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailO
 				event.EventTypeDetail = tag.Value
 			case "AGE":
 				event.Age = tag.Value
+				event.AgePhrase = findSubordinate(tags, i, "PHRASE")
 			default:
 				// Everything else is EVENT_DETAIL, shared with parseAttribute.
 				parseEventDetailTag(&detail, tags, i, collector)
@@ -991,10 +1014,8 @@ func parseLDSOrdinance(tags []*gedcom.Tag, ordIdx int, ordType gedcom.LDSOrdinan
 			switch tag.Tag {
 			case "DATE":
 				ord.Date = tag.Value
-				if parsed, err := gedcom.ParseDate(tag.Value); err == nil {
+				if parsed := parseDateValue(tags, i, collector); parsed != nil {
 					ord.ParsedDate = parsed
-				} else {
-					collector.addInvalidValue(tag.LineNumber, "DATE", tag.Value, err.Error())
 				}
 			case "TEMP":
 				ord.Temple = tag.Value
@@ -1037,9 +1058,11 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		switch tag.Tag {
 		case "HUSB":
 			fam.Husband = tagToken(tag.Value)
+			fam.HusbandPhrase = findSubordinate(record.Tags, i, "PHRASE")
 
 		case "WIFE":
 			fam.Wife = tagToken(tag.Value)
+			fam.WifePhrase = findSubordinate(record.Tags, i, "PHRASE")
 
 		case "CHIL":
 			fam.Children = append(fam.Children, tagToken(tag.Value))
@@ -1687,6 +1710,7 @@ func parseMediaFile(tags []*gedcom.Tag, fileIdx, baseLevel int, collector *diagn
 					}
 					if mediTag.Level == baseLevel+2 && mediTag.Tag == "MEDI" {
 						file.MediaType = mediTag.Value
+						file.MediaPhrase = findSubordinate(tags, j, "PHRASE")
 						break
 					}
 				}

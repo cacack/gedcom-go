@@ -62,6 +62,16 @@ func textToTags(value string, level int, tagName string, opts *EncodeOptions) []
 	return tags
 }
 
+// appendPhrase appends a GEDCOM 7.0 PHRASE line at level when phrase is
+// non-empty. Callers invoke it right after writing the value the PHRASE
+// qualifies, so a phrase is never written without its value (ADR 0010).
+func appendPhrase(tags []*gedcom.Tag, phrase string, level int) []*gedcom.Tag {
+	if phrase == "" {
+		return tags
+	}
+	return append(tags, &gedcom.Tag{Level: level, Tag: "PHRASE", Value: phrase})
+}
+
 // recordNotesToEncode returns the NOTE values to emit for a structure, in the
 // order they are written: the shared-note XRef pointers first (emitted as
 // "NOTE @Nn@"; writeRecord retags a 7.0 pointer to an SNOTE record as SNOTE,
@@ -256,11 +266,13 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	// Husband (level 1) - HUSB
 	if fam.Husband != "" {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "HUSB", Value: fam.Husband})
+		tags = appendPhrase(tags, fam.HusbandPhrase, 2)
 	}
 
 	// Wife (level 1) - WIFE
 	if fam.Wife != "" {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "WIFE", Value: fam.Wife})
+		tags = appendPhrase(tags, fam.WifePhrase, 2)
 	}
 
 	// Children (level 1) - CHIL
@@ -620,6 +632,7 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 	}
 	if name.Type != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: name.Type})
+		tags = appendPhrase(tags, name.TypePhrase, level+2)
 	}
 
 	// Transliterations (GEDCOM 7.0 TRAN tag)
@@ -688,6 +701,7 @@ type eventDetail struct {
 	typeDetail           string
 	cause                string
 	age                  string
+	agePhrase            string
 	agency               string
 	religiousAffiliation string
 	address              *gedcom.Address
@@ -698,6 +712,7 @@ type eventDetail struct {
 	restriction          string
 	uids                 []string
 	sortDate             string
+	sortDatePhrase       string
 	associations         []*gedcom.Association
 	noteXRefs            []string
 	inlineNotes          []string
@@ -735,6 +750,7 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 
 	if d.age != "" {
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "AGE", Value: d.age})
+		tags = appendPhrase(tags, d.agePhrase, level+1)
 	}
 
 	if d.agency != "" {
@@ -761,6 +777,7 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 
 	if d.sortDate != "" {
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "SDATE", Value: d.sortDate})
+		tags = appendPhrase(tags, d.sortDatePhrase, level+1)
 	}
 
 	// Associations - ASSO (witnesses, officiants, godparents)
@@ -812,6 +829,7 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 		typeDetail:           event.EventTypeDetail,
 		cause:                event.Cause,
 		age:                  event.Age,
+		agePhrase:            event.AgePhrase,
 		agency:               event.Agency,
 		religiousAffiliation: event.ReligiousAffiliation,
 		address:              event.Address,
@@ -822,6 +840,7 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 		restriction:          event.Restriction,
 		uids:                 event.UIDs,
 		sortDate:             event.SortDate,
+		sortDatePhrase:       event.SortDatePhrase,
 		associations:         event.Associations,
 		noteXRefs:            event.NoteXRefs,
 		inlineNotes:          event.InlineNotes,
@@ -855,6 +874,7 @@ func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*
 		restriction:          attr.Restriction,
 		uids:                 attr.UIDs,
 		sortDate:             attr.SortDate,
+		sortDatePhrase:       attr.SortDatePhrase,
 		associations:         attr.Associations,
 		noteXRefs:            attr.NoteXRefs,
 		inlineNotes:          attr.InlineNotes,
@@ -1102,6 +1122,7 @@ func familyLinkToTags(link *gedcom.FamilyLink, tagName string, level int, opts *
 	// Subordinate tags at level+1
 	if link.Pedigree != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PEDI", Value: link.Pedigree})
+		tags = appendPhrase(tags, link.PedigreePhrase, level+2)
 	}
 
 	// Notes - NOTE (with CONT/CONC for multiline/long)
@@ -1132,6 +1153,7 @@ func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions
 	// Use ROLE for GEDCOM 7.0 compatibility (also compatible with 5.5.1 RELA)
 	if assoc.Role != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "ROLE", Value: assoc.Role})
+		tags = appendPhrase(tags, assoc.RolePhrase, level+2)
 	}
 
 	// Source citations (GEDCOM 7.0)
@@ -1250,6 +1272,7 @@ func mediaFileToTags(file *gedcom.MediaFile, level int) []*gedcom.Tag {
 		// MEDI subordinate at level+2
 		if file.MediaType != "" {
 			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "MEDI", Value: file.MediaType})
+			tags = appendPhrase(tags, file.MediaPhrase, level+3)
 		}
 	}
 

@@ -109,6 +109,10 @@ type PersonalName struct {
 	// Type is the name type (e.g., "birth", "married", "aka")
 	Type string
 
+	// TypePhrase is the PHRASE under TYPE (GEDCOM 7.0), typically describing
+	// a TYPE OTHER. Written only beneath a Type.
+	TypePhrase string
+
 	// Transliterations are alternative representations of the name in different
 	// writing systems or scripts (GEDCOM 7.0 TRAN tag). Used to store the same
 	// name in different languages, scripts, or romanization systems.
@@ -168,6 +172,10 @@ type FamilyLink struct {
 	// spouse link (FAMS), where it is preserved solely so malformed input round-trips.
 	Pedigree string
 
+	// PedigreePhrase is the PHRASE under PEDI (GEDCOM 7.0), typically
+	// describing a PEDI OTHER. Written only beneath a Pedigree.
+	PedigreePhrase string
+
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
 	NoteXRefs []string
 
@@ -185,6 +193,11 @@ type Association struct {
 	// Role is the relationship role (e.g., "GODP" for godparent, "WITN" for witness)
 	// In GEDCOM 5.5.1 this comes from RELA tag, in GEDCOM 7.0 from ROLE tag
 	Role string
+
+	// RolePhrase is the PHRASE under ROLE (GEDCOM 7.0), typically describing
+	// a ROLE OTHER. Distinct from Phrase, which qualifies the ASSO itself.
+	// Written only beneath a Role.
+	RolePhrase string
 
 	// Phrase is a human-readable description of the association (GEDCOM 7.0 PHRASE tag).
 	// Used when the structured data cannot fully express the relationship.
@@ -306,6 +319,10 @@ type Attribute struct {
 	// SortDate is the date used for sorting attributes (SDATE subordinate, GEDCOM 7.0)
 	// Typically in ISO 8601 format (e.g., "1900-01-01")
 	SortDate string
+
+	// SortDatePhrase is the PHRASE under SDATE (GEDCOM 7.0). Written only
+	// beneath a SortDate.
+	SortDatePhrase string
 
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation
