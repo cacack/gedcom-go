@@ -186,6 +186,8 @@ func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 //
 //nolint:unparam // error return kept for API consistency with other converters
 func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+	// First, so no later transform reports a change inside a removed record.
+	dropSubmissionRecords(doc, report)
 	transformTextForVersion(doc, gedcom.Version70, report)
 	normalizeXRefsForV7(doc, report)
 	// After XRef normalization, so the records it reports (dual-year DataLoss
@@ -226,6 +228,8 @@ func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 //
 //nolint:unparam // error return kept for API consistency with other converters
 func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
+	// First, so no later transform reports a change inside a removed record.
+	dropSubmissionRecords(doc, report)
 	transformTextForVersion(doc, gedcom.Version70, report)
 	normalizeXRefsForV7(doc, report)
 	// After XRef normalization, so the records it reports (dual-year DataLoss
