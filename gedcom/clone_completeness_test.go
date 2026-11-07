@@ -259,6 +259,7 @@ var cloneFuncs = []struct {
 	{"Note", (*Note).Clone},
 	{"MediaObject", (*MediaObject).Clone},
 	{"Submitter", (*Submitter).Clone},
+	{"Submission", (*Submission).Clone},
 	{"SharedNote", (*SharedNote).Clone},
 	{"SchemaDefinition", cloneSchemaDefinition},
 	{"PersonalName", clonePersonalName},

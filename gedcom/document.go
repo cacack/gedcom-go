@@ -114,6 +114,33 @@ func (d *Document) Sources() []*Source {
 	return sources
 }
 
+// GetSubmission returns the submission record with the given XRef.
+// Returns nil if not found or if the record is not a submission.
+func (d *Document) GetSubmission(xref string) *Submission {
+	record := d.GetRecord(xref)
+	if record == nil {
+		return nil
+	}
+	if subn, ok := record.GetSubmission(); ok {
+		return subn
+	}
+	return nil
+}
+
+// Submissions returns all submission records in the document.
+func (d *Document) Submissions() []*Submission {
+	if d == nil {
+		return nil
+	}
+	var submissions []*Submission
+	for _, record := range d.Records {
+		if subn, ok := record.GetSubmission(); ok {
+			submissions = append(submissions, subn)
+		}
+	}
+	return submissions
+}
+
 // GetSubmitter returns the submitter record with the given XRef.
 // Returns nil if not found or if the record is not a submitter.
 func (d *Document) GetSubmitter(xref string) *Submitter {
