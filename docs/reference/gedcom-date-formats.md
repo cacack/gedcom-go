@@ -465,6 +465,19 @@ specifies) everywhere it accepts an escape, whatever the file's version.
 Extension calendars (`_XXX`) are not recognized and the date is reported as
 invalid, with its raw value preserved.
 
+**`@#DROMAN@` and `@#DUNKNOWN@`** (5.5.1 escapes, deliberately not mapped):
+5.5.1 lists both in `DATE_CALENDAR_ESCAPE` but defines no date grammar for
+either -- there is no month vocabulary, day range or arithmetic for a reserved
+Roman calendar or for a calendar that is by definition not known -- and 7.0
+drops both. gedcom-go therefore has no `Calendar` constant for them:
+`ParseDate` returns an error, bare or under a modifier
+(`ABT @#DUNKNOWN@ 1700`), exactly as for an extension calendar. Nothing is
+lost: the raw value stays on `Event.Date` and in `Record.Tags`, is written
+back unchanged, and the converter keeps it as-is and reports it as Preserved
+when converting to 7.0. Mapping them would mean inventing `Validate`, Julian
+Day and `ToGregorian` semantics the spec does not give, and committing to two
+enum constants with no file in the test corpus using either escape (#401).
+
 **Interpreted Dates** (GEDCOM 5.5 only, removed in 7.0):
 ```
 INT 1900 (probably around 1900)
