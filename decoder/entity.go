@@ -300,8 +300,10 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCol
 			case "NOTE", "SNOTE":
 				name.NoteXRefs, name.InlineNotes = appendRecordNote(
 					tags, i, name.NoteXRefs, name.InlineNotes, collector)
-			case "FONE", "ROMN":
-				// GEDCOM 5.5.1 phonetic/romanized variants, not yet typed (#453)
+			case "FONE":
+				name.Phonetic = append(name.Phonetic, parseNameVariation(tags, i, collector))
+			case "ROMN":
+				name.Romanized = append(name.Romanized, parseNameVariation(tags, i, collector))
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -353,6 +355,49 @@ func parseNameTransliteration(tags []*gedcom.Tag, tranIdx int, collector *diagno
 	}
 
 	return tran
+}
+
+// parseNameVariation extracts a GEDCOM 5.5.1 FONE or ROMN name variation from
+// tags starting at varIdx.
+func parseNameVariation(tags []*gedcom.Tag, varIdx int, collector *diagnosticCollector) *gedcom.NameVariation {
+	baseLevel := tags[varIdx].Level
+
+	variation := &gedcom.NameVariation{
+		Value: tags[varIdx].Value,
+	}
+
+	for i := varIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level == baseLevel+1 {
+			switch tag.Tag {
+			case "TYPE":
+				variation.Type = tag.Value
+			case "GIVN":
+				variation.Given = tagToken(tag.Value)
+			case "SURN":
+				variation.Surname = tagToken(tag.Value)
+			case "NPFX":
+				variation.Prefix = tagToken(tag.Value)
+			case "NSFX":
+				variation.Suffix = tagToken(tag.Value)
+			case "NICK":
+				variation.Nickname = tagToken(tag.Value)
+			case "SPFX":
+				variation.SurnamePrefix = tagToken(tag.Value)
+			case "NOTE", "SOUR":
+				// Name-piece notes and citations, kept only in the raw tags
+			default:
+				if !strings.HasPrefix(tag.Tag, "_") {
+					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+				}
+			}
+		}
+	}
+
+	return variation
 }
 
 // parseFamilyLink extracts a family link from tags starting at linkIdx.

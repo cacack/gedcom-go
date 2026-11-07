@@ -541,6 +541,9 @@ func clonePersonalName(n *PersonalName) *PersonalName {
 		}
 	}
 
+	copied.Phonetic = cloneNameVariations(n.Phonetic)
+	copied.Romanized = cloneNameVariations(n.Romanized)
+
 	if n.SourceCitations != nil {
 		copied.SourceCitations = make([]*SourceCitation, len(n.SourceCitations))
 		for i, sc := range n.SourceCitations {
@@ -565,6 +568,20 @@ func cloneTransliteration(t *Transliteration) *Transliteration {
 		Nickname:      t.Nickname,
 		SurnamePrefix: t.SurnamePrefix,
 	}
+}
+
+func cloneNameVariations(vs []*NameVariation) []*NameVariation {
+	if vs == nil {
+		return nil
+	}
+	copied := make([]*NameVariation, len(vs))
+	for i, v := range vs {
+		if v != nil {
+			c := *v // all fields are strings
+			copied[i] = &c
+		}
+	}
+	return copied
 }
 
 func cloneAssociation(a *Association) *Association {

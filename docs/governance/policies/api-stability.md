@@ -181,6 +181,7 @@ caller relying on the old behaviour now sees.
 | `encoder` adds `GEDC.FORM LINEAGE-LINKED` to an existing `GEDC` when `TargetVersion` is 5.5 or 5.5.1 ([#674](https://github.com/cacack/gedcom-go/issues/674)) | v3.4.0 | Encoding a header whose raw tags carry a `GEDC` with no `FORM` — typically a decoded 7.0 file — with a 5.x `TargetVersion` wrote 5.x output missing the `FORM` both versions require. The encoder now writes `2 FORM LINEAGE-LINKED` at the end of that `GEDC`, after `VERS`, so output gains one line. A `FORM` already present is kept, and 7.0 targets, plain re-encodes and converter output are unchanged. A caller with golden-file tests over such retargeted output must update them. |
 | GEDCOM 7.0 `PHRASE` typed beside the value it qualifies ([#450](https://github.com/cacack/gedcom-go/issues/450)) | v3.4.0 | Two results change on unchanged input. An empty event or LDS `DATE` with a `PHRASE` child, which 7.0 permits, previously left `ParsedDate` nil and emitted an `INVALID_VALUE` diagnostic; it now yields a phrase-only `Date` (`IsPhrase` true, `Phrase` set, no components) and no diagnostic. A bare empty `DATE` is still reported. `RequiresGEDCOM7`/`MinimumVersion` now return true/`Version70` for a document whose `PHRASE` sits under `NAME.TYPE`, `FAMC.PEDI`, `ASSO.ROLE`, an event `AGE` or `SDATE`, an attribute `SDATE`, `FAM.HUSB`/`WIFE` or `FILE.FORM.MEDI`, since the new typed fields carry it and 5.5.1 cannot; before, those phrases were raw only and not inspected. Callers counting diagnostics or relying on a 5.5.1 minimum for such files see the change. |
 | The decoder types submission records (`SUBN`) ([#452](https://github.com/cacack/gedcom-go/issues/452)) | v3.4.0 | The decoder's record dispatch (`populateEntities`) had no `SUBN` case, so a GEDCOM 5.5/5.5.1 submission record decoded with `Record.Entity == nil`, its lines only in `Record.Tags`, and no line in it was ever diagnosed. `Record.Entity` is now a `*gedcom.Submission` (`SubmitterXRef`, `FamilyFileName`, `TempleCode`, `AncestorGenerations`, `DescendantGenerations`, `OrdinanceProcessFlag`, `AutomatedRecordID`, notes, `ChangeDate`), so a caller that tested `Entity == nil` to find untyped records no longer sees `SUBN` there. `DecodeWithDiagnostics` now emits `UNKNOWN_TAG` for a non-underscore tag inside `SUBN` that the grammar does not define, as it does in every other record (none of the corpus fixtures gains one). `Visit`, `Clone` and `merge.RemapXRefs` now also follow the typed `SUBM`, `NOTE` and `CHAN.NOTE` pointers; for a decoded document the raw tags already carried them, so only the typed copies are new. Encoder output for a decoded document is unchanged, since `Record.Tags` stays authoritative. |
+| `gedcom.PersonalName` types 5.5.1 `FONE` and `ROMN` name variations ([#453](https://github.com/cacack/gedcom-go/issues/453)) | v3.4.0 | `FONE` and `ROMN` under `INDI.NAME` were reachable only through `Record.Tags`; they now also fill the new `Phonetic` and `Romanized` fields (`[]*gedcom.NameVariation`, the scheme in `Type`). `Transliterations` is unchanged and still holds only 7.0 `TRAN`, so `RequiresGEDCOM7` gives the same answer. The decoder previously never read beneath either tag; it now emits `UNKNOWN_TAG` for a non-underscore tag there other than the name pieces, `TYPE`, `NOTE` and `SOUR`, as FEATURES.md documents for any unrecognized tag, so diagnostic counts can rise. A document encoded from the typed model alone (`Record.Tags` cleared, or hand-built) now writes the variations where the encoder previously dropped them. `NOTE` and `SOUR` beneath a variation remain raw-only. |
 
 ## Accepted Future Breaks
 
@@ -198,42 +199,13 @@ field the decoder does not populate is dead surface, the speculative API that
 against. When the justifying work cannot land in the current major, the break
 is recorded here instead.
 
-| Break | Arrives with | Recorded | Why it is accepted |
-|-------|--------------|----------|--------------------|
-| `gedcom.Transliteration` stops being comparable with `==` | [#453](https://github.com/cacack/gedcom-go/issues/453) — typed decoding of 5.5.1 `FONE` / `ROMN` onto `PersonalName.Transliterations` | v3.0.0 cycle ([#501](https://github.com/cacack/gedcom-go/issues/501)) | See below. |
-
-### `Transliteration` loses `==` when #453 lands
-
-`Transliteration` is comparable today, and nothing about the type itself needs
-that to change: every `NAME-TRAN` substructure is typed, and the 5.5.1 name
-pieces it mirrors are `{0:1}`. The pressure comes from #453. 5.5.1's `FONE` and
-`ROMN` are accepted and dropped today, and #453 maps both onto
-`PersonalName.Transliterations` — onto this type. `FONE` and `ROMN` admit
-`NOTE {0:M}` and `SOUR {0:M}` plus a required `TYPE` naming the scheme, so a
-lossless mapping gives `Transliteration` at least `SourceCitations` and the
-`NoteXRefs` / `InlineNotes` pair. A struct holding a slice cannot be compared,
-so the type loses `==` — and use as a map key — the day #453 lands.
-
-The maintainer decision ([#501](https://github.com/cacack/gedcom-go/issues/501))
-was not to schedule #453 into v3.0.0, so this break falls to a later major. It
-is accepted there because:
-
-- #453 is a fidelity fix for 5.5.1, the most common GEDCOM format in the wild.
-  Nothing about the feature is breaking; only the comparability side effect is.
-  Gating it on "too breaking" would defer lossless decoding of real files for a
-  purely mechanical reason.
-- No known downstream call site depends on it: the my-family index surveyed
-  for #501 has no use of `Transliteration`, and the type predates the version
-  my-family pins, so the absence is genuine non-use rather than a version
-  artefact.
-- The alternatives were judged worse. Adding the note fields during v3 and
-  leaving `SourceCitations` and the scheme field for later would take the same
-  break twice. Adding empty fields with no decoder support would be dead
-  surface.
-
-Consequently `Transliteration` gains **no** exported field in v3.0.0 that the
-decoder does not populate. #453 adds its fields together with the decoding and
-encoding that fill them.
+No break is currently recorded. The register's first entry, "`gedcom.Transliteration`
+stops being comparable with `==`" (recorded in the v3.0.0 cycle,
+[#501](https://github.com/cacack/gedcom-go/issues/501)), was withdrawn when
+[#453](https://github.com/cacack/gedcom-go/issues/453) landed: 5.5.1 `FONE` and
+`ROMN` decode into the new `PersonalName.Phonetic` and `Romanized` fields
+(`gedcom.NameVariation`) rather than onto `Transliterations`, so
+`Transliteration` gains no field and stays comparable.
 
 ## Accepted Asymmetries
 

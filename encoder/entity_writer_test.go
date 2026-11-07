@@ -5210,3 +5210,60 @@ func TestSubmissionToTagsOrder(t *testing.T) {
 		t.Errorf("submissionToTags() level-1 order = %v, want %v", got, want)
 	}
 }
+
+// TestRoundTripNameVariations pins FONE and ROMN (issue #453) surviving an
+// encode derived from the typed model alone: with Record.Tags cleared, the
+// variations must be written back from PersonalName.Phonetic and Romanized.
+func TestRoundTripNameVariations(t *testing.T) {
+	original := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME 山田 /太郎/
+2 FONE Yamada /Taro/
+3 TYPE kana
+3 NPFX Dr
+3 GIVN Taro
+3 NICK Taro-chan
+3 SPFX no
+3 SURN Yamada
+3 NSFX Jr
+2 ROMN Yamada /Taro/
+3 TYPE romaji
+0 TRLR
+`
+	doc, err := decoder.Decode(strings.NewReader(original))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	want := doc.GetIndividual("@I1@").Names[0]
+	for _, rec := range doc.Records {
+		rec.Tags = nil
+	}
+
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("Encode failed: %v", err)
+	}
+	for _, line := range []string{"2 FONE Yamada /Taro/\n3 TYPE kana\n3 NPFX Dr\n3 GIVN Taro\n3 NICK Taro-chan\n3 SPFX no\n3 SURN Yamada\n3 NSFX Jr\n", "2 ROMN Yamada /Taro/\n3 TYPE romaji\n"} {
+		if !strings.Contains(buf.String(), line) {
+			t.Errorf("encoded output missing %q:\n%s", line, buf.String())
+		}
+	}
+
+	doc2, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatalf("Re-decode failed: %v", err)
+	}
+	got := doc2.GetIndividual("@I1@").Names[0]
+	if !reflect.DeepEqual(got.Phonetic, want.Phonetic) || !reflect.DeepEqual(got.Romanized, want.Romanized) {
+		t.Errorf("variations after round-trip = %+v / %+v, want %+v / %+v",
+			got.Phonetic, got.Romanized, want.Phonetic, want.Romanized)
+	}
+}
+
+func TestNameVariationToTagsNil(t *testing.T) {
+	if got := nameVariationToTags(nil, "FONE", 2); got != nil {
+		t.Errorf("nameVariationToTags(nil) = %v, want nil", got)
+	}
+}
