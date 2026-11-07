@@ -135,6 +135,10 @@ type Event struct {
 	// Age is the age at the time of the event (AGE subordinate)
 	Age string
 
+	// AgePhrase is the PHRASE under AGE (GEDCOM 7.0), the age in prose.
+	// Written only beneath an Age.
+	AgePhrase string
+
 	// Agency is the responsible agency (AGNC subordinate)
 	Agency string
 
@@ -168,6 +172,10 @@ type Event struct {
 	// SortDate is the date used for sorting events (SDATE subordinate, GEDCOM 7.0)
 	// Typically in ISO 8601 format (e.g., "1900-01-01")
 	SortDate string
+
+	// SortDatePhrase is the PHRASE under SDATE (GEDCOM 7.0). Written only
+	// beneath a SortDate.
+	SortDatePhrase string
 
 	// IsNegative indicates this is a GEDCOM 7.0 negative assertion.
 	// When true, it means the event did NOT occur (e.g., NO MARR = never married).

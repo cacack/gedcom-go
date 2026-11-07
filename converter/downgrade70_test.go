@@ -232,6 +232,53 @@ func TestDowngrade70EntityDoesNotRestoreDroppedTags(t *testing.T) {
 	})
 }
 
+// TestDowngrade70ClearsFamilyPhrases checks that a family's HUSB and WIFE
+// PHRASE (issue #450) are cleared from the entity on a downgrade: an
+// entity-only family must not write them into 5.x output, and a decoded one
+// must not keep the converted document at a 7.0 minimum version.
+func TestDowngrade70ClearsFamilyPhrases(t *testing.T) {
+	t.Run("decoded record", func(t *testing.T) {
+		input := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n0 @F1@ FAM\n" +
+			"1 HUSB @I1@\n2 PHRASE Stepfather\n1 WIFE @VOID@\n2 PHRASE Unknown mother\n0 TRLR\n"
+		converted, _, out := downgradeFrom70(t, []byte(input), gedcom.Version551)
+		if recordLineTags(out)["PHRASE"] {
+			t.Errorf("output writes dropped PHRASE:\n%s", out)
+		}
+		if converted.RequiresGEDCOM7() {
+			t.Error("RequiresGEDCOM7() = true after downgrade, want false")
+		}
+	})
+
+	t.Run("entity-only record", func(t *testing.T) {
+		fam := &gedcom.Family{XRef: "@F1@", Husband: "@I1@", HusbandPhrase: "Stepfather", WifePhrase: "Unknown mother"}
+		indi := &gedcom.Individual{XRef: "@I1@"}
+		famRec := &gedcom.Record{XRef: "@F1@", Type: gedcom.RecordTypeFamily, Entity: fam}
+		indiRec := &gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: indi}
+		doc := &gedcom.Document{
+			Header:  &gedcom.Header{Version: gedcom.Version70},
+			Records: []*gedcom.Record{indiRec, famRec},
+			XRefMap: map[string]*gedcom.Record{"@I1@": indiRec, "@F1@": famRec},
+		}
+		converted, report, err := converter.Convert(doc, gedcom.Version551)
+		if err != nil {
+			t.Fatalf("Convert: %v", err)
+		}
+		var buf bytes.Buffer
+		if err := encoder.EncodeWithOptions(&buf, converted, &encoder.EncodeOptions{TargetVersion: gedcom.Version551}); err != nil {
+			t.Fatalf("Encode: %v", err)
+		}
+		if recordLineTags(buf.String())["PHRASE"] {
+			t.Errorf("output writes dropped PHRASE:\n%s", buf.String())
+		}
+		if !hasDataLoss(report, "PHRASE tags", "@F1@") {
+			t.Error("PHRASE tags not reported for @F1@")
+		}
+		if fam.HusbandPhrase == "" || fam.WifePhrase == "" {
+			t.Error("Convert changed the source document's entity")
+		}
+	})
+}
+
 // TestDowngrade70DropsSharedNoteMIMEAndLANG checks that a shared note's
 // level-1 MIME and LANG, which a 5.x NOTE record does not define, are removed
 // and reported rather than written under the NOTE record.

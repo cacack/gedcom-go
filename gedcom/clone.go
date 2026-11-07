@@ -175,15 +175,17 @@ func (f *Family) Clone() *Family {
 	}
 
 	copied := &Family{
-		XRef:        f.XRef,
-		Husband:     f.Husband,
-		Wife:        f.Wife,
-		Children:    cloneStringSlice(f.Children),
-		NoteXRefs:   cloneStringSlice(f.NoteXRefs),
-		InlineNotes: cloneStringSlice(f.InlineNotes),
-		RefNumbers:  cloneRefNumbers(f.RefNumbers),
-		UIDs:        cloneStringSlice(f.UIDs),
-		ExternalIDs: cloneExternalIDs(f.ExternalIDs),
+		XRef:          f.XRef,
+		Husband:       f.Husband,
+		HusbandPhrase: f.HusbandPhrase,
+		Wife:          f.Wife,
+		WifePhrase:    f.WifePhrase,
+		Children:      cloneStringSlice(f.Children),
+		NoteXRefs:     cloneStringSlice(f.NoteXRefs),
+		InlineNotes:   cloneStringSlice(f.InlineNotes),
+		RefNumbers:    cloneRefNumbers(f.RefNumbers),
+		UIDs:          cloneStringSlice(f.UIDs),
+		ExternalIDs:   cloneExternalIDs(f.ExternalIDs),
 	}
 
 	if f.Events != nil {
@@ -503,6 +505,7 @@ func clonePersonalName(n *PersonalName) *PersonalName {
 		Nickname:      n.Nickname,
 		SurnamePrefix: n.SurnamePrefix,
 		Type:          n.Type,
+		TypePhrase:    n.TypePhrase,
 		NoteXRefs:     cloneStringSlice(n.NoteXRefs),
 		InlineNotes:   cloneStringSlice(n.InlineNotes),
 	}
@@ -548,6 +551,7 @@ func cloneAssociation(a *Association) *Association {
 	copied := &Association{
 		IndividualXRef: a.IndividualXRef,
 		Role:           a.Role,
+		RolePhrase:     a.RolePhrase,
 		Phrase:         a.Phrase,
 		NoteXRefs:      cloneStringSlice(a.NoteXRefs),
 		InlineNotes:    cloneStringSlice(a.InlineNotes),
@@ -575,11 +579,13 @@ func cloneEvent(e *Event) *Event {
 		EventTypeDetail:      e.EventTypeDetail,
 		Cause:                e.Cause,
 		Age:                  e.Age,
+		AgePhrase:            e.AgePhrase,
 		Agency:               e.Agency,
 		ReligiousAffiliation: e.ReligiousAffiliation,
 		Restriction:          e.Restriction,
 		UIDs:                 cloneStringSlice(e.UIDs),
 		SortDate:             e.SortDate,
+		SortDatePhrase:       e.SortDatePhrase,
 		IsNegative:           e.IsNegative,
 		NoteXRefs:            cloneStringSlice(e.NoteXRefs),
 		InlineNotes:          cloneStringSlice(e.InlineNotes),
@@ -633,6 +639,7 @@ func cloneAttribute(a *Attribute) *Attribute {
 		Restriction:          a.Restriction,
 		UIDs:                 cloneStringSlice(a.UIDs),
 		SortDate:             a.SortDate,
+		SortDatePhrase:       a.SortDatePhrase,
 		NoteXRefs:            cloneStringSlice(a.NoteXRefs),
 		InlineNotes:          cloneStringSlice(a.InlineNotes),
 		Phone:                cloneStringSlice(a.Phone),
@@ -804,10 +811,11 @@ func cloneMediaFile(mf *MediaFile) *MediaFile {
 	}
 
 	copied := &MediaFile{
-		FileRef:   mf.FileRef,
-		Form:      mf.Form,
-		MediaType: mf.MediaType,
-		Title:     mf.Title,
+		FileRef:     mf.FileRef,
+		Form:        mf.Form,
+		MediaType:   mf.MediaType,
+		MediaPhrase: mf.MediaPhrase,
+		Title:       mf.Title,
 	}
 
 	if mf.Translations != nil {
@@ -885,10 +893,11 @@ func cloneFamilyLinks(links []FamilyLink) []FamilyLink {
 	copied := make([]FamilyLink, len(links))
 	for i, link := range links {
 		copied[i] = FamilyLink{
-			FamilyXRef:  link.FamilyXRef,
-			Pedigree:    link.Pedigree,
-			NoteXRefs:   cloneStringSlice(link.NoteXRefs),
-			InlineNotes: cloneStringSlice(link.InlineNotes),
+			FamilyXRef:     link.FamilyXRef,
+			Pedigree:       link.Pedigree,
+			PedigreePhrase: link.PedigreePhrase,
+			NoteXRefs:      cloneStringSlice(link.NoteXRefs),
+			InlineNotes:    cloneStringSlice(link.InlineNotes),
 		}
 	}
 	return copied

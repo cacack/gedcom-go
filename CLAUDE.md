@@ -137,6 +137,7 @@ Key design decisions are documented in `docs/decisions/`:
 | 0007 | Error transparency (line numbers, context, never panic) |
 | 0008 | Validator architecture (pluggable, configurable) |
 | 0009 | Bounded duplicate detection (per-group cap, skip whole) |
+| 0010 | GEDCOM 7.0 PHRASE as a sibling `<Value>Phrase` field |
 
 ### Workflow for New Ideas
 

@@ -70,7 +70,7 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 |---------|----------|----------------|-------|
 | GEDCOM 5.5 | Every readable line preserved | [863 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (86.5%) | Legacy format |
 | GEDCOM 5.5.1 | Every readable line preserved | [1,140 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (86.6%) | Most common format |
-| GEDCOM 7.0 | Every readable line preserved | [1,245 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (89.6%) | Latest standard |
+| GEDCOM 7.0 | Every readable line preserved | [1,252 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (90.1%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch versions such as `VERS 7.0.14` detect as 7.0; a `0 @X1@ HEAD` record is not the header and never sets the version)
 - Heuristic-based detection for malformed headers
@@ -88,7 +88,7 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,245 of 7.0's structures reach the typed model, 863 of
+document built for it: 1,252 of 7.0's structures reach the typed model, 863 of
 5.5's, and 1,140 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
@@ -126,8 +126,8 @@ encoder.EncodeWithOptions(w, doc, opts)
 `MinimumVersion` returns `Version551` by default and `Version70` when the document
 uses any 7.0-only feature the library models: `SCHMA`, `SNOTE` records, `EXID`,
 `CREA`, negative events (`NO`), event sort dates (`SDATE`), name transliterations
-(`TRAN`), association `PHRASE`, media `CROP`, media-file `TRAN`, and `SNOTE`
-references. INT (interpreted) dates and non-Gregorian calendars are **not** 7.0
+(`TRAN`), association `PHRASE` and the other typed `PHRASE` fields, media
+`CROP`, media-file `TRAN`, and `SNOTE` references. INT (interpreted) dates and non-Gregorian calendars are **not** 7.0
 triggers — both are valid in 5.5.1.
 
 ## Vendor Detection
@@ -332,6 +332,28 @@ The library's own readers skip negative assertions: `BirthEvent`, `DeathEvent`, 
 | NoteXRefs / InlineNotes | Notes explaining the negative assertion |
 
 Supported on: Individual events (NO MARR, NO DEAT, NO NATU, NO EMIG, etc.) and Family events (NO DIV, NO ANUL)
+
+### Phrases (PHRASE)
+
+A `PHRASE` qualifying a typed value is decoded into a `<Value>Phrase` field
+beside it, and written back beneath that value
+([ADR 0010](docs/decisions/0010-phrase-typed-access.md)):
+
+| PHRASE under | Field |
+|--------------|-------|
+| `NAME.TYPE` | `PersonalName.TypePhrase` |
+| `FAMC.PEDI` | `FamilyLink.PedigreePhrase` |
+| `ASSO` | `Association.Phrase` |
+| `ASSO.ROLE` | `Association.RolePhrase` |
+| Event `AGE` | `Event.AgePhrase` |
+| Event/attribute `SDATE` | `Event.SortDatePhrase`, `Attribute.SortDatePhrase` |
+| `FAM.HUSB`, `FAM.WIFE` | `Family.HusbandPhrase`, `Family.WifePhrase` |
+| `FILE.FORM.MEDI` | `MediaFile.MediaPhrase` |
+| `CALN.MEDI` | `CallNumber.MediaPhrase` |
+| `DATE` | `Date.Phrase` (an empty `DATE` with a `PHRASE` is a phrase-only date) |
+
+`PHRASE` under a value with no typed field (`CHIL`, `ALIA`, `FAMC.STAT`, and
+others listed in the ADR) stays in `Record.Tags`.
 
 ## Character Encoding
 
@@ -817,7 +839,8 @@ Each includes: DATE, PLAC, TEMP (temple), STAT (status)
 
 - Link individuals with roles
 - Supported roles: GODP (godparent), WITN (witness), custom roles
-- PHRASE - Human-readable description (GEDCOM 7.0)
+- PHRASE - Human-readable description (GEDCOM 7.0); `RolePhrase` holds the
+  PHRASE under ROLE
 - Source citations on associations (GEDCOM 7.0)
 - Notes on associations
 
@@ -859,7 +882,7 @@ Structured date parsing for GEDCOM date strings with full support for:
 | B.C. dates | `44 BC`, `753 B.C.E.` | IsBC flag set |
 | Dual dating | `21 FEB 1750/51` | Both years accessible |
 | Date phrases | `(unknown)` | GEDCOM 5.5 format |
-| PHRASE subordinate | `3 PHRASE Afternoon` | GEDCOM 7.0 human-readable description |
+| PHRASE subordinate | `3 PHRASE Afternoon` | GEDCOM 7.0 human-readable description; an empty `DATE` with a `PHRASE` gives a phrase-only date (`IsPhrase`) |
 
 ### Validation
 

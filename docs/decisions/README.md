@@ -14,3 +14,4 @@ A record is immutable once accepted; supersede it with a new record rather than 
 | [0007](0007-error-transparency.md) | Error transparency (line numbers, context, never panic) |
 | [0008](0008-validator-architecture.md) | Validator architecture (pluggable, configurable) |
 | [0009](0009-bounded-duplicate-detection.md) | Bounded duplicate detection (per-group cap, skip whole) |
+| [0010](0010-phrase-typed-access.md) | GEDCOM 7.0 PHRASE as a sibling `<Value>Phrase` field |

@@ -14,7 +14,9 @@ package gedcom
 //   - NO negative event assertions
 //   - SDATE event sort dates
 //   - TRAN name transliterations
-//   - PHRASE on associations
+//   - PHRASE on associations, and the typed PHRASE beside a value
+//     (TypePhrase, PedigreePhrase, RolePhrase, AgePhrase, SortDatePhrase,
+//     HusbandPhrase, WifePhrase, MediaPhrase)
 //   - CROP media crop regions
 //   - TRAN media-file translations
 //   - SNOTE references from media objects
@@ -100,12 +102,8 @@ func individualRequiresGEDCOM7(i *Individual) bool {
 		mediaLinksRequireGEDCOM7(i.Media) {
 		return true
 	}
-	for _, n := range i.Names {
-		if n != nil && len(n.Transliterations) > 0 {
-			return true
-		}
-	}
-	if associationPhraseRequiresGEDCOM7(i.Associations) {
+	if namesRequireGEDCOM7(i.Names) || pedigreePhraseRequiresGEDCOM7(i.ChildInFamilies) ||
+		associationPhraseRequiresGEDCOM7(i.Associations) {
 		return true
 	}
 	for _, ev := range i.Events {
@@ -121,12 +119,34 @@ func individualRequiresGEDCOM7(i *Individual) bool {
 	return false
 }
 
+// namesRequireGEDCOM7 reports whether any name carries a TRAN or a TYPE
+// PHRASE, both 7.0-only.
+func namesRequireGEDCOM7(names []*PersonalName) bool {
+	for _, n := range names {
+		if n != nil && (len(n.Transliterations) > 0 || n.TypePhrase != "") {
+			return true
+		}
+	}
+	return false
+}
+
+// pedigreePhraseRequiresGEDCOM7 reports whether any child link carries a PEDI
+// PHRASE, which 5.5.1 has no equivalent for.
+func pedigreePhraseRequiresGEDCOM7(links []FamilyLink) bool {
+	for _, link := range links {
+		if link.PedigreePhrase != "" {
+			return true
+		}
+	}
+	return false
+}
+
 func familyRequiresGEDCOM7(f *Family) bool {
 	if f == nil {
 		return false
 	}
 	if len(f.ExternalIDs) > 0 || f.CreationDate != nil || len(f.UIDs) > 0 ||
-		mediaLinksRequireGEDCOM7(f.Media) {
+		f.HusbandPhrase != "" || f.WifePhrase != "" || mediaLinksRequireGEDCOM7(f.Media) {
 		return true
 	}
 	for _, ev := range f.Events {
@@ -150,7 +170,8 @@ func eventRequiresGEDCOM7(ev *Event) bool {
 	// UID is checked here for the same reason attributeRequiresGEDCOM7
 	// checks it: both come from the one shared EVENT_DETAIL parse, so a
 	// rule that held for one and not the other would be arbitrary.
-	if ev.IsNegative || ev.SortDate != "" || len(ev.UIDs) > 0 {
+	if ev.IsNegative || ev.SortDate != "" || len(ev.UIDs) > 0 ||
+		ev.AgePhrase != "" || ev.SortDatePhrase != "" {
 		return true
 	}
 	// An ASSO on an event is 7.0-only by position: 5.5 and 5.5.1 define
@@ -172,7 +193,7 @@ func attributeRequiresGEDCOM7(at *Attribute) bool {
 	if at == nil {
 		return false
 	}
-	if len(at.UIDs) > 0 || at.SortDate != "" {
+	if len(at.UIDs) > 0 || at.SortDate != "" || at.SortDatePhrase != "" {
 		return true
 	}
 	// As on an event, an ASSO under an attribute has no 5.5.1 position.
@@ -183,14 +204,14 @@ func attributeRequiresGEDCOM7(at *Attribute) bool {
 }
 
 // associationPhraseRequiresGEDCOM7 reports whether any association carries a
-// PHRASE, which 5.5.1 has no equivalent for.
+// PHRASE, on the ASSO or its ROLE, which 5.5.1 has no equivalent for.
 //
 // This is the right test only for Individual.Associations, where 5.5.1
 // already has INDI.ASSO and PHRASE is the sole 7.0 addition. On an event or
 // attribute the structure itself is 7.0-only, so those callers test presence.
 func associationPhraseRequiresGEDCOM7(assocs []*Association) bool {
 	for _, a := range assocs {
-		if a != nil && a.Phrase != "" {
+		if a != nil && (a.Phrase != "" || a.RolePhrase != "") {
 			return true
 		}
 	}
@@ -209,7 +230,7 @@ func mediaObjectRequiresGEDCOM7(m *MediaObject) bool {
 		return true
 	}
 	for _, f := range m.Files {
-		if f != nil && len(f.Translations) > 0 {
+		if f != nil && (len(f.Translations) > 0 || f.MediaPhrase != "") {
 			return true
 		}
 	}
