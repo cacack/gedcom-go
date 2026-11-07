@@ -419,6 +419,8 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 		}
 	}
 
+	parseHeaderStructures(doc.Header)
+
 	// Ensure header has a version
 	if doc.Header.Version == "" {
 		doc.Header.Version = ver
@@ -428,6 +430,66 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 	doc.Vendor = gedcom.DetectVendor(doc.Header.SourceSystem)
 
 	reportUnknownHeaderTags(doc.Header.Tags, collector)
+}
+
+// parseHeaderStructures fills the Header's typed views of the HEAD.SOUR
+// subtree (VERS, NAME, CORP), HEAD.DEST, HEAD.DATE.TIME and HEAD.PLAC.FORM from
+// h.Tags, whose levels start at 1. Each is read only at its own position, so a
+// VERS under GEDC or a DATE.TIME under SOUR.DATA is not mistaken for one.
+// Unknown subordinates are left to reportUnknownHeaderTags, so the CORP address
+// is parsed without a collector to avoid reporting them twice.
+func parseHeaderStructures(h *gedcom.Header) {
+	parent := ""
+	for i, tag := range h.Tags {
+		if tag.Level == 1 {
+			parent = tag.Tag
+			if tag.Tag == "DEST" {
+				h.Destination = tag.Value
+			}
+			continue
+		}
+		if tag.Level != 2 {
+			continue
+		}
+		switch parent + "." + tag.Tag {
+		case "SOUR.VERS":
+			h.SourceVersion = tag.Value
+		case "SOUR.NAME":
+			h.SourceName = tag.Value
+		case "SOUR.CORP":
+			h.SourceCorporation = parseHeaderCorporation(h.Tags, i)
+		case "DATE.TIME":
+			h.Time = tag.Value
+		case "PLAC.FORM":
+			h.PlaceForm = tag.Value
+		}
+	}
+}
+
+// parseHeaderCorporation builds the CORP structure at tags[corpIdx] from its
+// subordinates: an ADDR and the PHON, EMAIL, FAX and WWW siblings of it.
+func parseHeaderCorporation(tags []*gedcom.Tag, corpIdx int) *gedcom.Corporation {
+	corp := &gedcom.Corporation{Name: tags[corpIdx].Value}
+	level := tags[corpIdx].Level
+	for i := corpIdx + 1; i < len(tags) && tags[i].Level > level; i++ {
+		tag := tags[i]
+		if tag.Level != level+1 {
+			continue
+		}
+		switch tag.Tag {
+		case "ADDR":
+			corp.Address = parseEventAddress(tags, i, tag.Level, nil)
+		case "PHON":
+			corp.Phone = append(corp.Phone, tag.Value)
+		case "EMAIL":
+			corp.Email = append(corp.Email, tag.Value)
+		case "FAX":
+			corp.Fax = append(corp.Fax, tag.Value)
+		case "WWW":
+			corp.Website = append(corp.Website, tag.Value)
+		}
+	}
+	return corp
 }
 
 // headerSubstructures lists, for each header context, the tags GEDCOM 5.5,

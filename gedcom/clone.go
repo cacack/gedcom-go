@@ -39,16 +39,37 @@ func (h *Header) Clone() *Header {
 	}
 
 	return &Header{
-		Version:         h.Version,
-		DeclaredVersion: h.DeclaredVersion,
-		Encoding:        h.Encoding,
-		SourceSystem:    h.SourceSystem,
-		Date:            h.Date,
-		Language:        h.Language,
-		Copyright:       h.Copyright,
-		Submitter:       h.Submitter,
-		AncestryTreeID:  h.AncestryTreeID,
-		Tags:            CloneTags(h.Tags),
+		Version:           h.Version,
+		DeclaredVersion:   h.DeclaredVersion,
+		Encoding:          h.Encoding,
+		SourceSystem:      h.SourceSystem,
+		SourceVersion:     h.SourceVersion,
+		SourceName:        h.SourceName,
+		SourceCorporation: h.SourceCorporation.Clone(),
+		Destination:       h.Destination,
+		Date:              h.Date,
+		Time:              h.Time,
+		Language:          h.Language,
+		Copyright:         h.Copyright,
+		Submitter:         h.Submitter,
+		PlaceForm:         h.PlaceForm,
+		AncestryTreeID:    h.AncestryTreeID,
+		Tags:              CloneTags(h.Tags),
+	}
+}
+
+// Clone returns a deep copy of the corporation. Returns nil if c is nil.
+func (c *Corporation) Clone() *Corporation {
+	if c == nil {
+		return nil
+	}
+	return &Corporation{
+		Name:    c.Name,
+		Address: cloneAddress(c.Address),
+		Phone:   cloneStringSlice(c.Phone),
+		Email:   cloneStringSlice(c.Email),
+		Fax:     cloneStringSlice(c.Fax),
+		Website: cloneStringSlice(c.Website),
 	}
 }
 
