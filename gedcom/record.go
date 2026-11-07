@@ -47,6 +47,11 @@ type Record struct {
 
 	// Tags contains all the tags that make up this record, in document order.
 	//
+	// Tags is complete; Entity is a typed projection over the structures this
+	// library models. Reading a structure that has no typed field from Tags is
+	// supported, not a workaround. docs/reference/gedcom-7-coverage.md and
+	// docs/reference/gedcom-5.5-coverage.md list which structures are typed.
+	//
 	// Tags is authoritative when encoding. The encoder writes Tags verbatim
 	// whenever it is non-empty and builds tags from Entity only for a record
 	// that has none. Editing a typed field on a decoded record therefore does
