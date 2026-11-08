@@ -372,8 +372,11 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 	// CHAR has no place in the 7.0 grammar at all, so its position there is
 	// arbitrary; it is kept in the sequence so a hand-built header that sets
 	// Encoding still gets the line it asked for.
+	//
+	// The order reads the gated version (7.0.N is 7.0); VERS above keeps the
+	// value as given (issue #696).
 	writes := []func() error{writeSour, writeDate, writeSubm, writeGedc, writeChar, writeLang}
-	if version == gedcom.Version70 {
+	if opts.is70() {
 		writes = []func() error{writeGedc, writeSour, writeDate, writeSubm, writeChar, writeLang}
 	}
 

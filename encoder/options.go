@@ -1,6 +1,8 @@
 package encoder
 
 import (
+	"strings"
+
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/internal/concsplit"
 	"github.com/cacack/gedcom-go/v3/internal/gedcvers"
@@ -99,8 +101,13 @@ func outputVersion(header *gedcom.Header, opts *EncodeOptions) gedcom.Version {
 // for output version v: the version gedcvers.Parse recognizes it as, the rule
 // the decoder applies to GEDC.VERS, so a GEDCOM 7 patch version such as 7.0.14
 // is 7.0 (issue #696). A value it does not recognize, such as 7.1, is kept as
-// given: it is not 7.0, and not any other version either.
+// given: it is not 7.0, and not any other version either. So is a value with
+// surrounding whitespace, which Parse would trim: the gates read it exactly as
+// they did before #696, as an unrecognized version.
 func gateVersion(v gedcom.Version) gedcom.Version {
+	if strings.TrimSpace(string(v)) != string(v) {
+		return v
+	}
 	if known := gedcvers.Parse(string(v)); known != "" {
 		return known
 	}
