@@ -147,7 +147,7 @@ func pedigreePhraseRequiresGEDCOM7(links []FamilyLink) bool {
 // a PHRASE substructure, which 5.5.1 has no equivalent for.
 func ldsOrdinancesRequireGEDCOM7(ords []*LDSOrdinance) bool {
 	for _, o := range ords {
-		if o != nil && o.ParsedDate.PhraseSubstructure() != "" {
+		if o != nil && o.ParsedDate.PhraseSubstructure(o.Date) != "" {
 			return true
 		}
 	}
@@ -185,7 +185,7 @@ func eventRequiresGEDCOM7(ev *Event) bool {
 	// checks it: both come from the one shared EVENT_DETAIL parse, so a
 	// rule that held for one and not the other would be arbitrary.
 	if ev.IsNegative || ev.SortDate != "" || len(ev.UIDs) > 0 ||
-		ev.AgePhrase != "" || ev.SortDatePhrase != "" || ev.ParsedDate.PhraseSubstructure() != "" {
+		ev.AgePhrase != "" || ev.SortDatePhrase != "" || ev.ParsedDate.PhraseSubstructure(ev.Date) != "" {
 		return true
 	}
 	// An ASSO on an event is 7.0-only by position: 5.5 and 5.5.1 define
@@ -208,7 +208,7 @@ func attributeRequiresGEDCOM7(at *Attribute) bool {
 		return false
 	}
 	if len(at.UIDs) > 0 || at.SortDate != "" || at.SortDatePhrase != "" ||
-		at.ParsedDate.PhraseSubstructure() != "" {
+		at.ParsedDate.PhraseSubstructure(at.Date) != "" {
 		return true
 	}
 	// As on an event, an ASSO under an attribute has no 5.5.1 position.

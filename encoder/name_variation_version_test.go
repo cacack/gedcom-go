@@ -11,7 +11,7 @@ import (
 )
 
 // Name variations are version-specific (issue #692): FONE and ROMN exist only
-// in GEDCOM 5.5.1, TRAN only in 7.0. An encode from the typed model must write
+// in GEDCOM 5.5.1 (not 5.5), TRAN only in 7.0. An encode from the typed model must write
 // each only for the output version that defines it.
 
 const nameVariations551 = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
@@ -76,6 +76,7 @@ func TestNameVariations_DroppedForOtherVersion(t *testing.T) {
 		dropped []string
 	}{
 		{"5.5.1 to 7.0 drops FONE and ROMN", nameVariations551, gedcom.Version70, []string{"FONE", "ROMN"}},
+		{"5.5.1 to 5.5 drops FONE and ROMN", nameVariations551, gedcom.Version55, []string{"FONE", "ROMN"}},
 		{"7.0 to 5.5.1 drops TRAN", nameVariations70, gedcom.Version551, []string{"TRAN"}},
 		{"7.0 to 5.5 drops TRAN", nameVariations70, gedcom.Version55, []string{"TRAN"}},
 	}

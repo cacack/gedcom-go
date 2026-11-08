@@ -1086,14 +1086,21 @@ func (d *Date) String() string {
 	return d.Original
 }
 
-// PhraseSubstructure returns the GEDCOM 7.0 PHRASE that qualifies this date:
-// Phrase when it did not come from the date value itself, "" otherwise. A
-// 5.5/5.5.1 date phrase "(text)" is part of the value, so it returns "".
-func (d *Date) PhraseSubstructure() string {
+// PhraseSubstructure returns the GEDCOM 7.0 PHRASE that qualifies a DATE
+// whose value is value and whose parsed form is d: Phrase when value does not
+// itself carry it, "" otherwise. A 5.5/5.5.1 date phrase "(text)" is part of
+// the value, so it returns "".
+//
+// value is the DATE payload as it is (or will be) written -- Event.Date,
+// Attribute.Date or LDSOrdinance.Date -- not d.Original, so a Date built in
+// code without Original is judged against the value that holds it. A 7.0
+// DATE "(x)" with a PHRASE "x" reads as the value form; 7.0 does not permit a
+// parenthesized date value, so only a malformed file can carry one.
+func (d *Date) PhraseSubstructure(value string) string {
 	if d == nil || d.Phrase == "" {
 		return ""
 	}
-	if fromValue, err := ParseDate(d.Original); err == nil && fromValue.Phrase == d.Phrase {
+	if fromValue, err := ParseDate(value); err == nil && fromValue.Phrase == d.Phrase {
 		return ""
 	}
 	return d.Phrase

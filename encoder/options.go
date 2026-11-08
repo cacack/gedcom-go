@@ -35,13 +35,12 @@ type EncodeOptions struct {
 	// If empty, the version from the document header is preserved.
 	//
 	// A record written from its typed entity (Record.Tags empty) gets only the
-	// name variations the output version defines: 7.0 output drops
-	// PersonalName.Phonetic and Romanized (5.5.1 FONE/ROMN), and 5.5/5.5.1
-	// output drops PersonalName.Transliterations (7.0 TRAN). With no known
-	// output version (no TargetVersion and no header version) nothing is
-	// dropped. The encoder does
-	// not report the drop; the converter package reports data loss on a
-	// conversion. A record written from its Record.Tags is written verbatim.
+	// version-specific structures the output version defines; see the package
+	// documentation for the full list (name variations, DATE PHRASE). With no
+	// known output version (no TargetVersion and no header version) nothing is
+	// dropped. The encoder does not report a drop; the converter package
+	// reports data loss on a conversion. A record written from its
+	// Record.Tags is written verbatim.
 	TargetVersion gedcom.Version
 
 	// DropUnknownTags controls whether custom/unknown tags are stripped from
@@ -57,8 +56,9 @@ type EncodeOptions struct {
 	// its children would leave a stub that carries no data.
 	DropUnknownTags bool
 
-	// version is the resolved output version, set by forOutput. It is empty
-	// on options that have not been through forOutput, which reads as not 7.0.
+	// version is the resolved output version, set by forOutput. Writers must
+	// be reached only with options forOutput returned; on any other options it
+	// is empty, which reads as an unknown version (not 7.0, lacking nothing).
 	version gedcom.Version
 }
 
@@ -113,11 +113,13 @@ func (opts *EncodeOptions) is70() bool {
 	return opts != nil && opts.version == gedcom.Version70
 }
 
-// is5x reports whether output is GEDCOM 5.5 or 5.5.1, per the version
-// forOutput resolved. It is not the negation of is70: an unknown output
-// version is neither, so a writer gating on both drops nothing for it.
-func (opts *EncodeOptions) is5x() bool {
-	return opts != nil && (opts.version == gedcom.Version55 || opts.version == gedcom.Version551)
+// outputLacks reports whether a structure defined only by GEDCOM version
+// defining must be dropped: the output version forOutput resolved is known
+// and is not defining. An unknown output version (nil or unresolved options,
+// or no TargetVersion and no header version) lacks nothing, so a writer
+// gating on it drops nothing for such output.
+func (opts *EncodeOptions) outputLacks(defining gedcom.Version) bool {
+	return opts != nil && opts.version != "" && opts.version != defining
 }
 
 // effectiveMaxLineLength returns the max line length to use,

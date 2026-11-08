@@ -34,14 +34,18 @@
 //   - DisableLineWrap     — disable CONC splitting entirely
 //   - TargetVersion       — override the document's GEDCOM version in output.
 //     A record written from typed entities gets only the name variations the
-//     output version defines: 7.0 output drops FONE/ROMN (PersonalName.Phonetic,
-//     Romanized), and 5.5/5.5.1 output drops TRAN (Transliterations). The drop
-//     is not reported; the converter package reports data loss on a conversion.
-//     Likewise a 7.0 DATE PHRASE (gedcom.Date.PhraseSubstructure on an event,
-//     attribute or LDS ordinance date) is written beneath its DATE for 7.0
-//     output only; 5.5/5.5.1 output drops it without folding it into the
-//     value, as the converter does. A 5.5.1 "(text)" date phrase is part of
-//     the DATE value and is never written as a PHRASE.
+//     output version defines: FONE/ROMN (PersonalName.Phonetic, Romanized)
+//     only for 5.5.1 output, TRAN (Transliterations) only for 7.0 output.
+//     The drop is not reported; the converter package reports data loss on a
+//     conversion. Likewise a 7.0 DATE PHRASE (gedcom.Date.PhraseSubstructure
+//     on an event, attribute or LDS ordinance date) is written beneath its
+//     DATE for 7.0 output only; 5.5/5.5.1 output drops it without folding it
+//     into the value, as the converter does. A 5.5.1 "(text)" date phrase is
+//     part of the DATE value: it is never written as a PHRASE, and it is not
+//     rewritten for 7.0 output either, so a typed 5.5.1 document retargeted to
+//     7.0 keeps "DATE (text)", which 7.0 does not permit -- convert it with
+//     the converter package for valid 7.0. With no known output version (no
+//     TargetVersion and no header version) none of these is dropped.
 //   - DropUnknownTags     — false (the zero value) keeps custom _UNDERSCORE
 //     tags. True drops each one with its whole subtree, and drops a record
 //     whose own type is a custom tag ("0 _EVDEF") entirely rather than

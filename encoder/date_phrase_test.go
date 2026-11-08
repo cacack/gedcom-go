@@ -128,3 +128,20 @@ func TestDatePhraseRawOptionsNotWritten(t *testing.T) {
 		t.Errorf("7.0 tags = %+v, want BIRT, empty DATE, PHRASE at level 3", tags)
 	}
 }
+
+// TestDatePhraseHandBuiltValuePhraseNotDoubled pins that a hand-built event
+// whose DATE value is a "(text)" phrase, with a ParsedDate that never set
+// Original, is not also given a PHRASE line: the written value decides.
+func TestDatePhraseHandBuiltValuePhraseNotDoubled(t *testing.T) {
+	ev := &gedcom.Event{
+		Type:       gedcom.EventBirth,
+		Date:       "(unknown)",
+		ParsedDate: &gedcom.Date{Phrase: "unknown", IsPhrase: true},
+	}
+	opts := (&EncodeOptions{TargetVersion: gedcom.Version70}).forOutput(nil)
+	for _, tag := range eventToTags(ev, 1, opts) {
+		if tag.Tag == "PHRASE" {
+			t.Errorf("7.0 output doubled the value phrase as a PHRASE line: %+v", tag)
+		}
+	}
+}

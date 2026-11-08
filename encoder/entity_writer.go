@@ -80,7 +80,7 @@ func appendPhrase(tags []*gedcom.Tag, phrase string, level int) []*gedcom.Tag {
 func dateToTags(date string, parsed *gedcom.Date, level int, opts *EncodeOptions) []*gedcom.Tag {
 	phrase := ""
 	if opts.is70() {
-		phrase = parsed.PhraseSubstructure()
+		phrase = parsed.PhraseSubstructure(date)
 	}
 	if date == "" && phrase == "" {
 		return nil
@@ -704,20 +704,20 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 
 // nameVariationsToTags converts a name's variations to GEDCOM tags at level.
 // Variations are version-specific (issue #692), so each is written only for
-// the output version that defines it and dropped otherwise: 7.0 output gets
-// TRAN, 5.5/5.5.1 output gets FONE and ROMN. When the output version is
-// unknown (no TargetVersion and no header version) nothing is dropped, so
-// such output is unchanged.
+// the output version that defines it and dropped otherwise: TRAN only for
+// 7.0 output, FONE and ROMN only for 5.5.1 output (5.5 defines neither).
+// When the output version is unknown (no TargetVersion and no header
+// version) nothing is dropped, so such output is unchanged.
 func nameVariationsToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// Transliterations (GEDCOM 7.0 TRAN tag)
-	if !opts.is5x() {
+	if !opts.outputLacks(gedcom.Version70) {
 		for _, tran := range name.Transliterations {
 			tags = append(tags, transliterationToTags(tran, level)...)
 		}
 	}
-	if opts.is70() {
+	if opts.outputLacks(gedcom.Version551) {
 		return tags
 	}
 
