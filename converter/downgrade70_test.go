@@ -279,6 +279,62 @@ func TestDowngrade70ClearsFamilyPhrases(t *testing.T) {
 	})
 }
 
+// TestDowngrade70ClearsDatePhrases pins that a 7.0 DATE PHRASE (issue #691)
+// on an event, attribute or LDS ordinance is cleared from ParsedDate on a
+// downgrade, so the converted document no longer reports needing 7.0, while a
+// 5.5.1-style "(text)" value phrase is untouched.
+func TestDowngrade70ClearsDatePhrases(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 7.0\n" +
+		"0 @I1@ INDI\n" +
+		"1 BIRT\n2 DATE 1850\n3 PHRASE about 1850\n" +
+		"1 RESI\n2 DATE\n3 PHRASE while young\n" +
+		"1 OCCU Farmer\n2 DATE 1870\n3 PHRASE in his twenties\n" +
+		"1 BAPL\n2 DATE 1900\n3 PHRASE the spring of 1900\n" +
+		"0 @F1@ FAM\n1 MARR\n2 DATE 1875\n3 PHRASE soon after\n" +
+		"0 TRLR\n"
+	converted, report, out := downgradeFrom70(t, []byte(input), gedcom.Version551)
+	if recordLineTags(out)["PHRASE"] {
+		t.Errorf("output writes dropped PHRASE:\n%s", out)
+	}
+	if converted.RequiresGEDCOM7() {
+		t.Error("RequiresGEDCOM7() = true after downgrade, want false")
+	}
+	if !hasDataLoss(report, "PHRASE tags", "@I1@") {
+		t.Error("PHRASE tags not reported for @I1@")
+	}
+	indi := converted.GetIndividual("@I1@")
+	for _, ev := range indi.Events {
+		if ev.Date == "" && ev.ParsedDate != nil {
+			t.Errorf("%s phrase-only date kept ParsedDate %+v, want nil", ev.Type, ev.ParsedDate)
+		}
+		if ev.Date == "1850" && (ev.ParsedDate == nil || ev.ParsedDate.Year != 1850) {
+			t.Errorf("%s lost its parsed date: %+v", ev.Type, ev.ParsedDate)
+		}
+	}
+
+	t.Run("5.5.1 value phrase kept", func(t *testing.T) {
+		d, err := gedcom.ParseDate("(unknown)")
+		if err != nil {
+			t.Fatalf("ParseDate: %v", err)
+		}
+		ev := &gedcom.Event{Type: gedcom.EventBirth, Date: "(unknown)", ParsedDate: d}
+		rec := &gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{XRef: "@I1@", Events: []*gedcom.Event{ev}}}
+		doc := &gedcom.Document{
+			Header:  &gedcom.Header{Version: gedcom.Version70},
+			Records: []*gedcom.Record{rec},
+			XRefMap: map[string]*gedcom.Record{"@I1@": rec},
+		}
+		converted, _, err := converter.Convert(doc, gedcom.Version551)
+		if err != nil {
+			t.Fatalf("Convert: %v", err)
+		}
+		got := converted.GetIndividual("@I1@").Events[0].ParsedDate
+		if got == nil || got.Phrase != "unknown" {
+			t.Errorf("value phrase changed: %+v", got)
+		}
+	})
+}
+
 // TestDowngrade70DropsSharedNoteMIMEAndLANG checks that a shared note's
 // level-1 MIME and LANG, which a 5.x NOTE record does not define, are removed
 // and reported rather than written under the NOTE record.
