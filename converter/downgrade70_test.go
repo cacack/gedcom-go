@@ -288,6 +288,7 @@ func TestDowngrade70ClearsDatePhrases(t *testing.T) {
 		"0 @I1@ INDI\n" +
 		"1 BIRT\n2 DATE 1850\n3 PHRASE about 1850\n" +
 		"1 RESI\n2 DATE\n3 PHRASE while young\n" +
+		"1 DEAT\n2 DATE CIRCA 1920\n3 PHRASE about 1920\n" +
 		"1 OCCU Farmer\n2 DATE 1870\n3 PHRASE in his twenties\n" +
 		"1 BAPL\n2 DATE 1900\n3 PHRASE the spring of 1900\n" +
 		"0 @F1@ FAM\n1 MARR\n2 DATE 1875\n3 PHRASE soon after\n" +
@@ -304,7 +305,9 @@ func TestDowngrade70ClearsDatePhrases(t *testing.T) {
 	}
 	indi := converted.GetIndividual("@I1@")
 	for _, ev := range indi.Events {
-		if ev.Date == "" && ev.ParsedDate != nil {
+		// A phrase-only date (empty or unparseable value, issue #695) has
+		// nothing left once its PHRASE goes, as decoding that 5.x DATE gives.
+		if (ev.Date == "" || ev.Date == "CIRCA 1920") && ev.ParsedDate != nil {
 			t.Errorf("%s phrase-only date kept ParsedDate %+v, want nil", ev.Type, ev.ParsedDate)
 		}
 		if ev.Date == "1850" && (ev.ParsedDate == nil || ev.ParsedDate.Year != 1850) {
