@@ -46,6 +46,10 @@
 //     7.0 keeps "DATE (text)", which 7.0 does not permit -- convert it with
 //     the converter package for valid 7.0. With no known output version (no
 //     TargetVersion and no header version) none of these is dropped.
+//     Every version-specific rule (these, CONC splitting, SNOTE pointers,
+//     header order) reads a GEDCOM 7 patch version such as "7.0.14" as 7.0,
+//     as the decoder reads VERS; GEDC.VERS is still written as given. A value
+//     the decoder does not recognize either, such as "7.1", is not 7.0.
 //   - DropUnknownTags     — false (the zero value) keeps custom _UNDERSCORE
 //     tags. True drops each one with its whole subtree, and drops a record
 //     whose own type is a custom tag ("0 _EVDEF") entirely rather than

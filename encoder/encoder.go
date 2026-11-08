@@ -127,8 +127,10 @@ func writeHeaderTags(w io.Writer, tags []*gedcom.Tag, opts *EncodeOptions) error
 	// specific version must get a document that declares it. The synthesized
 	// GEDC goes where the target grammar puts it: before the first level-1
 	// structure ranked after it, not at the end of the header (#465).
+	// Only consulted when a target is set, where opts.version is that target as
+	// the version gates read it (7.0.N ranks as 7.0).
 	needGEDC := opts.TargetVersion != "" && !hasGEDC(filtered)
-	gedcRank := headergrammar.Rank(opts.TargetVersion, "GEDC")
+	gedcRank := headergrammar.Rank(opts.version, "GEDC")
 
 	for i, tag := range filtered {
 		if tag == nil {
@@ -137,7 +139,7 @@ func writeHeaderTags(w io.Writer, tags []*gedcom.Tag, opts *EncodeOptions) error
 
 		if tag.Level <= 1 {
 			inGEDC = tag.Level == 1 && tag.Tag == "GEDC"
-			if needGEDC && headergrammar.Rank(opts.TargetVersion, tag.Tag) > gedcRank {
+			if needGEDC && headergrammar.Rank(opts.version, tag.Tag) > gedcRank {
 				if err := writeGEDCVersion(w, opts); err != nil {
 					return err
 				}

@@ -1523,7 +1523,7 @@ See [docs/guides/converter.md](docs/guides/converter.md) for detailed documentat
 
 - Write valid GEDCOM files
 - Configurable line endings (LF, CRLF)
-- GEDCOM 5.5, 5.5.1, 7.0 output
+- GEDCOM 5.5, 5.5.1, 7.0 output; a GEDCOM 7 patch version (`TargetVersion: "7.0.14"`, or such a `Header.Version`) is written as 7.0 by every version-specific rule, by the same rule the decoder reads `VERS 7.0.N` with, while `GEDC.VERS` keeps the value as given
 - Header written from the source's `Header.Tags` in source order, so a same-version re-encode is byte-identical; a `GEDC` the encoder has to add for `TargetVersion` is placed where the target grammar puts it, and a 5.5/5.5.1 `GEDC` it writes (added, or from a hand-built header) carries `FORM LINEAGE-LINKED`
 - UTF-8 output
 
