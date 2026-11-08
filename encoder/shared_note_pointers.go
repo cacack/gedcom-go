@@ -15,14 +15,14 @@ func (s *sharedNoteSet) has(xref string) bool {
 }
 
 // sharedNotePointers returns the set of doc's SNOTE record XRefs when the
-// output is GEDCOM 7.0 (see outputVersion), and nil otherwise.
+// output is GEDCOM 7.0 (see outputVersion and gateVersion), and nil otherwise.
 //
 // The entity model holds every note pointer as a bare XRef string (NoteXRefs),
 // so the tag a pointer needs is decided by what it points at: in 7.0 a pointer
 // to a SHARED_NOTE record is "SNOTE @X@", while "NOTE" takes text (issue
 // #471). GEDCOM 5.5/5.5.1 has no SNOTE, so there every pointer stays NOTE.
 func sharedNotePointers(doc *gedcom.Document, opts *EncodeOptions) *sharedNoteSet {
-	if outputVersion(doc.Header, opts) != gedcom.Version70 {
+	if gateVersion(outputVersion(doc.Header, opts)) != gedcom.Version70 {
 		return nil
 	}
 

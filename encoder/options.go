@@ -1,8 +1,11 @@
 package encoder
 
 import (
+	"strings"
+
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/internal/concsplit"
+	"github.com/cacack/gedcom-go/v3/internal/gedcvers"
 )
 
 // DefaultMaxLineLength is the recommended maximum line length for GEDCOM files.
@@ -83,7 +86,7 @@ func (opts *EncodeOptions) effectiveLineEnding() string {
 
 // outputVersion returns the GEDCOM version output is written as:
 // opts.TargetVersion, or the header's version when no target is set -- the
-// same version the header's GEDC.VERS is written with.
+// same version the header's GEDC.VERS is written with, exactly as given.
 func outputVersion(header *gedcom.Header, opts *EncodeOptions) gedcom.Version {
 	if opts != nil && opts.TargetVersion != "" {
 		return opts.TargetVersion
@@ -94,13 +97,31 @@ func outputVersion(header *gedcom.Header, opts *EncodeOptions) gedcom.Version {
 	return ""
 }
 
+// gateVersion returns the version the encoder's version gates compare against
+// for output version v: the version gedcvers.Parse recognizes it as, the rule
+// the decoder applies to GEDC.VERS, so a GEDCOM 7 patch version such as 7.0.14
+// is 7.0 (issue #696). A value it does not recognize, such as 7.1, is kept as
+// given: it is not 7.0, and not any other version either. So is a value with
+// surrounding whitespace, which Parse would trim: the gates read it exactly as
+// they did before #696, as an unrecognized version.
+func gateVersion(v gedcom.Version) gedcom.Version {
+	if strings.TrimSpace(string(v)) != string(v) {
+		return v
+	}
+	if known := gedcvers.Parse(string(v)); known != "" {
+		return known
+	}
+	return v
+}
+
 // forOutput returns the options to write a document with header: a copy of
-// opts carrying the resolved output version (see outputVersion), with
-// DisableLineWrap set for GEDCOM 7.0 output because 7.0 removed CONC and has
-// no line-length limit (issue #565). The caller's options are never modified.
+// opts carrying the resolved output version (see outputVersion and
+// gateVersion), with DisableLineWrap set for GEDCOM 7.0 output because 7.0
+// removed CONC and has no line-length limit (issue #565). The caller's options
+// are never modified.
 func (opts *EncodeOptions) forOutput(header *gedcom.Header) *EncodeOptions {
 	resolved := *opts
-	resolved.version = outputVersion(header, opts)
+	resolved.version = gateVersion(outputVersion(header, opts))
 	if resolved.version == gedcom.Version70 {
 		resolved.DisableLineWrap = true
 	}
