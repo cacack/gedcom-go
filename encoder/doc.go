@@ -37,6 +37,11 @@
 //     output version defines: 7.0 output drops FONE/ROMN (PersonalName.Phonetic,
 //     Romanized), and 5.5/5.5.1 output drops TRAN (Transliterations). The drop
 //     is not reported; the converter package reports data loss on a conversion.
+//     Likewise a 7.0 DATE PHRASE (gedcom.Date.PhraseSubstructure on an event,
+//     attribute or LDS ordinance date) is written beneath its DATE for 7.0
+//     output only; 5.5/5.5.1 output drops it without folding it into the
+//     value, as the converter does. A 5.5.1 "(text)" date phrase is part of
+//     the DATE value and is never written as a PHRASE.
 //   - DropUnknownTags     — false (the zero value) keeps custom _UNDERSCORE
 //     tags. True drops each one with its whole subtree, and drops a record
 //     whose own type is a custom tag ("0 _EVDEF") entirely rather than

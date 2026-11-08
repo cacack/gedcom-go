@@ -1086,6 +1086,19 @@ func (d *Date) String() string {
 	return d.Original
 }
 
+// PhraseSubstructure returns the GEDCOM 7.0 PHRASE that qualifies this date:
+// Phrase when it did not come from the date value itself, "" otherwise. A
+// 5.5/5.5.1 date phrase "(text)" is part of the value, so it returns "".
+func (d *Date) PhraseSubstructure() string {
+	if d == nil || d.Phrase == "" {
+		return ""
+	}
+	if fromValue, err := ParseDate(d.Original); err == nil && fromValue.Phrase == d.Phrase {
+		return ""
+	}
+	return d.Phrase
+}
+
 // toJDN converts a Date to Julian Day Number.
 // Returns error if date is too incomplete (year=0).
 // For partial dates, uses day=1 and month=1 as defaults.

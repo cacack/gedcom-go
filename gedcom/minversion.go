@@ -17,6 +17,8 @@ package gedcom
 //   - PHRASE on associations, and the typed PHRASE beside a value
 //     (TypePhrase, PedigreePhrase, RolePhrase, AgePhrase, SortDatePhrase,
 //     HusbandPhrase, WifePhrase, MediaPhrase)
+//   - DATE PHRASE on event, attribute and LDS ordinance dates
+//     (ParsedDate.PhraseSubstructure; a 5.5.1 "(text)" date phrase is not one)
 //   - CROP media crop regions
 //   - TRAN media-file translations
 //   - SNOTE references from media objects
@@ -103,7 +105,7 @@ func individualRequiresGEDCOM7(i *Individual) bool {
 		return true
 	}
 	if namesRequireGEDCOM7(i.Names) || pedigreePhraseRequiresGEDCOM7(i.ChildInFamilies) ||
-		associationPhraseRequiresGEDCOM7(i.Associations) {
+		associationPhraseRequiresGEDCOM7(i.Associations) || ldsOrdinancesRequireGEDCOM7(i.LDSOrdinances) {
 		return true
 	}
 	for _, ev := range i.Events {
@@ -141,12 +143,24 @@ func pedigreePhraseRequiresGEDCOM7(links []FamilyLink) bool {
 	return false
 }
 
+// ldsOrdinancesRequireGEDCOM7 reports whether any LDS ordinance date carries
+// a PHRASE substructure, which 5.5.1 has no equivalent for.
+func ldsOrdinancesRequireGEDCOM7(ords []*LDSOrdinance) bool {
+	for _, o := range ords {
+		if o != nil && o.ParsedDate.PhraseSubstructure() != "" {
+			return true
+		}
+	}
+	return false
+}
+
 func familyRequiresGEDCOM7(f *Family) bool {
 	if f == nil {
 		return false
 	}
 	if len(f.ExternalIDs) > 0 || f.CreationDate != nil || len(f.UIDs) > 0 ||
-		f.HusbandPhrase != "" || f.WifePhrase != "" || mediaLinksRequireGEDCOM7(f.Media) {
+		f.HusbandPhrase != "" || f.WifePhrase != "" || mediaLinksRequireGEDCOM7(f.Media) ||
+		ldsOrdinancesRequireGEDCOM7(f.LDSOrdinances) {
 		return true
 	}
 	for _, ev := range f.Events {
@@ -171,7 +185,7 @@ func eventRequiresGEDCOM7(ev *Event) bool {
 	// checks it: both come from the one shared EVENT_DETAIL parse, so a
 	// rule that held for one and not the other would be arbitrary.
 	if ev.IsNegative || ev.SortDate != "" || len(ev.UIDs) > 0 ||
-		ev.AgePhrase != "" || ev.SortDatePhrase != "" {
+		ev.AgePhrase != "" || ev.SortDatePhrase != "" || ev.ParsedDate.PhraseSubstructure() != "" {
 		return true
 	}
 	// An ASSO on an event is 7.0-only by position: 5.5 and 5.5.1 define
@@ -193,7 +207,8 @@ func attributeRequiresGEDCOM7(at *Attribute) bool {
 	if at == nil {
 		return false
 	}
-	if len(at.UIDs) > 0 || at.SortDate != "" || at.SortDatePhrase != "" {
+	if len(at.UIDs) > 0 || at.SortDate != "" || at.SortDatePhrase != "" ||
+		at.ParsedDate.PhraseSubstructure() != "" {
 		return true
 	}
 	// As on an event, an ASSO under an attribute has no 5.5.1 position.
