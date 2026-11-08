@@ -15,6 +15,7 @@ var recordTypeLabels = map[string]string{
 	"NOTE": "Note",
 	"OBJE": "MediaObject",
 	"SUBM": "Submitter",
+	"SUBN": "Submission",
 	"HEAD": "Header",
 	"TRLR": "Trailer",
 }
