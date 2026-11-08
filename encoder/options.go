@@ -33,6 +33,13 @@ type EncodeOptions struct {
 	// TargetVersion specifies the GEDCOM version to target for output.
 	// This can affect header generation and tag validity.
 	// If empty, the version from the document header is preserved.
+	//
+	// A record written from its typed entity (Record.Tags empty) gets only the
+	// name variations the output version defines: 7.0 output drops
+	// PersonalName.Phonetic and Romanized (5.5.1 FONE/ROMN), and 5.5/5.5.1
+	// output drops PersonalName.Transliterations (7.0 TRAN). The encoder does
+	// not report the drop; the converter package reports data loss on a
+	// conversion. A record written from its Record.Tags is written verbatim.
 	TargetVersion gedcom.Version
 
 	// DropUnknownTags controls whether custom/unknown tags are stripped from
@@ -47,6 +54,10 @@ type EncodeOptions struct {
 	// "0 _EVDEF") is dropped in full -- writing the level-0 line while stripping
 	// its children would leave a stub that carries no data.
 	DropUnknownTags bool
+
+	// version is the resolved output version, set by forOutput. It is empty
+	// on options that have not been through forOutput, which reads as not 7.0.
+	version gedcom.Version
 }
 
 // DefaultOptions returns the default encoding options.
@@ -81,17 +92,23 @@ func outputVersion(header *gedcom.Header, opts *EncodeOptions) gedcom.Version {
 	return ""
 }
 
-// forOutput returns the options to write a document with header. For GEDCOM
-// 7.0 output that is a copy with DisableLineWrap set, because 7.0 removed CONC
-// and has no line-length limit (issue #565); otherwise it is opts itself. The
-// caller's options are never modified.
+// forOutput returns the options to write a document with header: a copy of
+// opts carrying the resolved output version (see outputVersion), with
+// DisableLineWrap set for GEDCOM 7.0 output because 7.0 removed CONC and has
+// no line-length limit (issue #565). The caller's options are never modified.
 func (opts *EncodeOptions) forOutput(header *gedcom.Header) *EncodeOptions {
-	if outputVersion(header, opts) != gedcom.Version70 || opts.DisableLineWrap {
-		return opts
-	}
 	resolved := *opts
-	resolved.DisableLineWrap = true
+	resolved.version = outputVersion(header, opts)
+	if resolved.version == gedcom.Version70 {
+		resolved.DisableLineWrap = true
+	}
 	return &resolved
+}
+
+// is70 reports whether output is GEDCOM 7.0, per the version forOutput
+// resolved. Nil options, and options forOutput has not resolved, are not 7.0.
+func (opts *EncodeOptions) is70() bool {
+	return opts != nil && opts.version == gedcom.Version70
 }
 
 // effectiveMaxLineLength returns the max line length to use,

@@ -2883,9 +2883,11 @@ func TestNameToTagsWithTransliterations(t *testing.T) {
 		},
 	}
 
+	// TRAN is written only for 7.0 output (issue #692).
+	opts := (&EncodeOptions{TargetVersion: gedcom.Version70}).forOutput(nil)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := nameToTags(tt.pname, tt.level, nil)
+			tags := nameToTags(tt.pname, tt.level, opts)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -3003,7 +3005,8 @@ func TestNameToTagsTransliterationCount(t *testing.T) {
 		},
 	}
 
-	tags := nameToTags(pname, 1, nil)
+	// TRAN is written only for 7.0 output (issue #692).
+	tags := nameToTags(pname, 1, (&EncodeOptions{TargetVersion: gedcom.Version70}).forOutput(nil))
 
 	// Count TRAN tags
 	tranCount := 0

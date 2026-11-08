@@ -670,18 +670,7 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 		tags = appendPhrase(tags, name.TypePhrase, level+2)
 	}
 
-	// Transliterations (GEDCOM 7.0 TRAN tag)
-	for _, tran := range name.Transliterations {
-		tags = append(tags, transliterationToTags(tran, level+1)...)
-	}
-
-	// Phonetic and romanized variations (GEDCOM 5.5.1 FONE and ROMN tags)
-	for _, v := range name.Phonetic {
-		tags = append(tags, nameVariationToTags(v, "FONE", level+1)...)
-	}
-	for _, v := range name.Romanized {
-		tags = append(tags, nameVariationToTags(v, "ROMN", level+1)...)
-	}
+	tags = append(tags, nameVariationsToTags(name, level+1, opts)...)
 
 	// Source citations
 	for _, cite := range name.SourceCitations {
@@ -693,6 +682,31 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
+	return tags
+}
+
+// nameVariationsToTags converts a name's variations to GEDCOM tags at level.
+// Variations are version-specific (issue #692), so each is written only for
+// the output version that defines it and dropped otherwise: 7.0 output gets
+// TRAN, 5.5/5.5.1 output gets FONE and ROMN.
+func nameVariationsToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+
+	// Transliterations (GEDCOM 7.0 TRAN tag)
+	if opts.is70() {
+		for _, tran := range name.Transliterations {
+			tags = append(tags, transliterationToTags(tran, level)...)
+		}
+		return tags
+	}
+
+	// Phonetic and romanized variations (GEDCOM 5.5.1 FONE and ROMN tags)
+	for _, v := range name.Phonetic {
+		tags = append(tags, nameVariationToTags(v, "FONE", level)...)
+	}
+	for _, v := range name.Romanized {
+		tags = append(tags, nameVariationToTags(v, "ROMN", level)...)
+	}
 	return tags
 }
 

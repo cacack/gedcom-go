@@ -32,7 +32,11 @@
 //     A split falls between two non-space characters, never inside a UTF-8
 //     character. GEDCOM 7.0 output is never split: 7.0 has no CONC.
 //   - DisableLineWrap     — disable CONC splitting entirely
-//   - TargetVersion       — override the document's GEDCOM version in output
+//   - TargetVersion       — override the document's GEDCOM version in output.
+//     A record written from typed entities gets only the name variations the
+//     output version defines: 7.0 output drops FONE/ROMN (PersonalName.Phonetic,
+//     Romanized), and 5.5/5.5.1 output drops TRAN (Transliterations). The drop
+//     is not reported; the converter package reports data loss on a conversion.
 //   - DropUnknownTags     — false (the zero value) keeps custom _UNDERSCORE
 //     tags. True drops each one with its whole subtree, and drops a record
 //     whose own type is a custom tag ("0 _EVDEF") entirely rather than
