@@ -50,8 +50,15 @@ func dropV7OnlyTags(doc *gedcom.Document, report *gedcom.ConversionReport, targe
 		}
 	}
 
+	reportDroppedTags(doc, report, v7OnlyTags, found, targetVersion)
+}
+
+// reportDroppedTags reports, for each of tags in order, the records found
+// lists for it as one DataLoss item and a Dropped note per record, both with
+// the reason that targetVersion does not support the tag.
+func reportDroppedTags(doc *gedcom.Document, report *gedcom.ConversionReport, tags []string, found map[string][]string, targetVersion gedcom.Version) {
 	reason := "Tag not supported in GEDCOM " + targetVersion.String()
-	for _, tag := range v7OnlyTags {
+	for _, tag := range tags {
 		xrefs := found[tag]
 		if len(xrefs) == 0 {
 			continue

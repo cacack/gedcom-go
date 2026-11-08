@@ -196,6 +196,9 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 	upgradeNoteRecordsForV7(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
+	// 5.5 does not define FONE/ROMN either, but a nonconforming 5.5 file can
+	// carry them, and 7.0 output must not.
+	dropNameVariations(doc, report, gedcom.Version70)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
@@ -213,6 +216,7 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformHeader(doc, gedcom.Version55, report)
 	record551Tags(doc, report)
+	dropNameVariations(doc, report, gedcom.Version55)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
@@ -238,6 +242,7 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 	upgradeNoteRecordsForV7(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
+	dropNameVariations(doc, report, gedcom.Version70)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}

@@ -183,6 +183,7 @@ must conform to the target version.
 |---------|--------|
 | Dual-year dates | 7.0 has no dual-year syntax (`11 FEB 1731/32`); the date is left unchanged, so the output is not valid 7.0 for it. Each such date is also a `Preserved` note at its path, and `AffectedRecords` lists each record holding one. Dual years inside a date phrase (`(born 1799/00)`) are not flagged |
 | `SUBN records` | 7.0 has no submission record. Every `0 @S1@ SUBN` record and the `HEAD.SUBN` pointer are removed before any other step; `AffectedRecords` lists the removed records, and each record (`Submission @S1@`) and the pointer (`Header > SUBN`) is also a `Dropped` note. The submitter (`SUBM`) records stay |
+| `FONE tags`, `ROMN tags` | 5.5.1 phonetic and romanized variations (under `NAME` or `PLAC`); 7.0 replaced them with `TRAN`, which names a language rather than the `TYPE` scheme, so they are not mapped. See [Name variations](#name-variations-fone-romn) |
 
 The `SNOTE` records this direction produces become `NOTE` records again when
 converted back down to 5.x (see below).
@@ -244,8 +245,20 @@ document encodes from `Record.Tags`, so remove its level-1 `NO` tags there.
 | WWW | Tag introduced in 5.5.1 |
 | FACT | Generic fact tag introduced in 5.5.1 |
 | MAP, LATI, LONG | Geographic coordinates introduced in 5.5.1 |
+| `FONE tags`, `ROMN tags` | Phonetic and romanized variations introduced in 5.5.1; removed (see below) |
 
-Note: These tags are preserved but may not be recognized by strict 5.5 parsers.
+Note: The tags other than `FONE` and `ROMN` are preserved but may not be
+recognized by strict 5.5 parsers.
+
+### Name variations (FONE, ROMN)
+
+On a conversion to 7.0 or to 5.5, every `FONE` and `ROMN` is removed from
+`Record.Tags` with its subordinate lines, at any level (under `NAME` or
+`PLAC`), and each individual's typed `PersonalName.Phonetic` and `Romanized`
+are cleared, because the encoder writes a record without `Tags` from its
+entity. Each tag is a `FONE tags` / `ROMN tags` data loss entry listing the
+affected records, with a `Dropped` note per record; a record built in code
+without `Tags` is reported from those fields. A conversion to 5.5.1 keeps them.
 
 ## ConversionReport Structure
 
