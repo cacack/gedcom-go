@@ -120,12 +120,14 @@ type PersonalName struct {
 
 	// Phonetic are phonetic variations of the name (GEDCOM 5.5.1 FONE tag),
 	// in file order. FONE is defined only in 5.5.1 (7.0 uses TRAN); the
-	// encoder writes these for any target version without a version guard.
+	// encoder writes these only for 5.5.1 output, and converter.Convert to
+	// 7.0 or 5.5 clears them.
 	Phonetic []*NameVariation
 
 	// Romanized are romanized variations of the name (GEDCOM 5.5.1 ROMN tag),
 	// in file order. ROMN is defined only in 5.5.1 (7.0 uses TRAN); the
-	// encoder writes these for any target version without a version guard.
+	// encoder writes these only for 5.5.1 output, and converter.Convert to
+	// 7.0 or 5.5 clears them.
 	Romanized []*NameVariation
 
 	// SourceCitations are source citations documenting this name (NAME.SOUR).

@@ -860,7 +860,9 @@ for _, v := range name.Romanized {
 
 `NameVariation` carries `Value`, `Type` and the six name pieces (`Given`,
 `Surname`, `Prefix`, `Suffix`, `Nickname`, `SurnamePrefix`). `NOTE` and `SOUR`
-beneath a variation are kept in `Record.Tags` only.
+beneath a variation are kept in `Record.Tags` only. The encoder writes the
+typed variations only for 5.5.1 output, and `converter.Convert` to 7.0 or 5.5
+removes them and reports the loss.
 
 ## Pedigree (PEDI) Support
 
@@ -1485,6 +1487,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | Long lines to CONC | Downgrade from 7.0 | Splits a value line past 5.x's 255-character limit onto CONC tags, between two non-spaces, so the encoded output has no over-length line and decodes back to the same text |
 | `SNOTE` → Note records | Downgrade from 7.0 | `SNOTE` records become `NOTE` records, and `SNOTE` pointers become `NOTE` pointers; the record's `MIME` and `LANG` are removed and reported as data loss |
 | 7.0-only tags removed | Downgrade from 7.0 | `EXID`, `TRAN`, `PHRASE`, `UID` and `CREA` are removed from `Record.Tags` with their subordinates, and from the typed entity's record-level fields, and reported as data loss |
+| `FONE`/`ROMN` removed | To 7.0 or 5.5 | 5.5.1 phonetic and romanized variations are removed from `Record.Tags` with their subordinates (under `NAME` or `PLAC`), and from `PersonalName.Phonetic`/`Romanized`, and reported as data loss; they are not mapped to 7.0 `TRAN` |
 | `@VOID@` pointers removed | Downgrade from 7.0 | 5.x has no null pointer, so each structure whose pointer is `@VOID@` (`FAMC`, `CHIL`, `SOUR` citation, `SNOTE`, ...) is removed with its subordinates from `Tags` and the typed entity; `HUSB`, `WIFE`, LDS `FAMC` and header `SUBM` fields are cleared. Reported as data loss |
 | FamilySearch ARK EXID → `_FSFTID` | Downgrade from 7.0 | Maps to the vendor tag instead of dropping the ID (when `MapEXIDToVendorTags`) |
 | Header grammar order | Both | Level-1 `HEAD` structures, including any the conversion adds (`GEDC`, `CHAR`), are placed in the target version's grammar order (`GEDC` first for 7.0, after `COPR` for 5.x); structures the target grammar does not define go last, in source order |
