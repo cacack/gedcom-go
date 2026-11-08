@@ -104,6 +104,24 @@ func TestDocument_RequiresGEDCOM7_True(t *testing.T) {
 			name: "media SNOTE reference",
 			doc:  &Document{Records: []*Record{{Type: RecordTypeMedia, Entity: &MediaObject{SharedNoteXRefs: []string{"@N1@"}}}}},
 		},
+		{
+			name: "DATE PHRASE on event",
+			doc:  indiDoc(&Individual{Events: []*Event{{Type: EventBirth, Date: "1850", ParsedDate: &Date{Original: "1850", Year: 1850, Phrase: "about 1850"}}}}),
+		},
+		{
+			name: "DATE PHRASE on attribute",
+			doc:  indiDoc(&Individual{Attributes: []*Attribute{{Type: AttributeOccupation, ParsedDate: &Date{Phrase: "while young", IsPhrase: true}}}}),
+		},
+		{
+			name: "DATE PHRASE on individual LDS ordinance",
+			doc:  indiDoc(&Individual{LDSOrdinances: []*LDSOrdinance{{Type: LDSBaptism, ParsedDate: &Date{Phrase: "as a child", IsPhrase: true}}}}),
+		},
+		{
+			name: "DATE PHRASE on family LDS ordinance",
+			doc: &Document{Records: []*Record{{Type: RecordTypeFamily, Entity: &Family{
+				LDSOrdinances: []*LDSOrdinance{{Type: LDSSealingSpouse, ParsedDate: &Date{Phrase: "after the war", IsPhrase: true}}},
+			}}}},
+		},
 	}
 
 	for _, tt := range tests {
@@ -125,6 +143,11 @@ func TestDocument_RequiresGEDCOM7_False(t *testing.T) {
 	}{
 		{name: "nil document", doc: nil},
 		{name: "empty document", doc: &Document{}},
+		{
+			// A 5.5.1 date phrase lives in the DATE value, not a PHRASE.
+			name: "date phrase in the value",
+			doc:  indiDoc(&Individual{Events: []*Event{{Type: EventBirth, Date: "(unknown)", ParsedDate: &Date{Original: "(unknown)", Phrase: "unknown", IsPhrase: true}}}}),
+		},
 		{
 			name: "plain individual with name and event",
 			doc:  indiDoc(&Individual{Names: []*PersonalName{{Full: "John /Doe/"}}, Events: []*Event{{Type: EventBirth, Date: "1 JAN 1900"}}}),

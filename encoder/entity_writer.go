@@ -72,6 +72,23 @@ func appendPhrase(tags []*gedcom.Tag, phrase string, level int) []*gedcom.Tag {
 	return append(tags, &gedcom.Tag{Level: level, Tag: "PHRASE", Value: phrase})
 }
 
+// dateToTags writes a DATE line at level with its GEDCOM 7.0 PHRASE beneath.
+// The PHRASE comes from parsed.PhraseSubstructure and is written for 7.0
+// output only; 5.x output drops it rather than folding it into the value, as
+// the converter does on a 7.0 downgrade. A phrase-only date writes a DATE
+// with an empty value so the PHRASE has a line to qualify.
+func dateToTags(date string, parsed *gedcom.Date, level int, opts *EncodeOptions) []*gedcom.Tag {
+	phrase := ""
+	if opts.is70() {
+		phrase = parsed.PhraseSubstructure(date)
+	}
+	if date == "" && phrase == "" {
+		return nil
+	}
+	tags := []*gedcom.Tag{{Level: level, Tag: "DATE", Value: date}}
+	return appendPhrase(tags, phrase, level+1)
+}
+
 // recordNotesToEncode returns the NOTE values to emit for a structure, in the
 // order they are written: the shared-note XRef pointers first (emitted as
 // "NOTE @Nn@"; writeRecord retags a 7.0 pointer to an SNOTE record as SNOTE,
@@ -670,18 +687,7 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 		tags = appendPhrase(tags, name.TypePhrase, level+2)
 	}
 
-	// Transliterations (GEDCOM 7.0 TRAN tag)
-	for _, tran := range name.Transliterations {
-		tags = append(tags, transliterationToTags(tran, level+1)...)
-	}
-
-	// Phonetic and romanized variations (GEDCOM 5.5.1 FONE and ROMN tags)
-	for _, v := range name.Phonetic {
-		tags = append(tags, nameVariationToTags(v, "FONE", level+1)...)
-	}
-	for _, v := range name.Romanized {
-		tags = append(tags, nameVariationToTags(v, "ROMN", level+1)...)
-	}
+	tags = append(tags, nameVariationsToTags(name, level+1, opts)...)
 
 	// Source citations
 	for _, cite := range name.SourceCitations {
@@ -693,6 +699,35 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
+	return tags
+}
+
+// nameVariationsToTags converts a name's variations to GEDCOM tags at level.
+// Variations are version-specific (issue #692), so each is written only for
+// the output version that defines it and dropped otherwise: TRAN only for
+// 7.0 output, FONE and ROMN only for 5.5.1 output (5.5 defines neither).
+// When the output version is unknown (no TargetVersion and no header
+// version) nothing is dropped, so such output is unchanged.
+func nameVariationsToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+
+	// Transliterations (GEDCOM 7.0 TRAN tag)
+	if !opts.outputLacks(gedcom.Version70) {
+		for _, tran := range name.Transliterations {
+			tags = append(tags, transliterationToTags(tran, level)...)
+		}
+	}
+	if opts.outputLacks(gedcom.Version551) {
+		return tags
+	}
+
+	// Phonetic and romanized variations (GEDCOM 5.5.1 FONE and ROMN tags)
+	for _, v := range name.Phonetic {
+		tags = append(tags, nameVariationToTags(v, "FONE", level)...)
+	}
+	for _, v := range name.Romanized {
+		tags = append(tags, nameVariationToTags(v, "ROMN", level)...)
+	}
 	return tags
 }
 
@@ -766,6 +801,7 @@ func nameVariationToTags(v *gedcom.NameVariation, tagName string, level int) []*
 // the one EVENT_DETAIL member gedcom.Attribute does not model.
 type eventDetail struct {
 	date                 string
+	parsedDate           *gedcom.Date
 	placeDetail          *gedcom.PlaceDetail
 	typeDetail           string
 	cause                string
@@ -795,11 +831,7 @@ type eventDetail struct {
 //
 //nolint:gocyclo // One guarded append per EVENT_DETAIL substructure
 func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom.Tag {
-	var tags []*gedcom.Tag
-
-	if d.date != "" {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "DATE", Value: d.date})
-	}
+	tags := dateToTags(d.date, d.parsedDate, level, opts)
 
 	// Place. A non-nil PlaceDetail is enough, even with an empty Name: the
 	// decoder parses a bare "2 PLAC" line to a non-nil PlaceDetail whose Name
@@ -894,6 +926,7 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 	// Subordinate tags at level+1
 	return append(tags, eventDetailToTags(&eventDetail{
 		date:                 event.Date,
+		parsedDate:           event.ParsedDate,
 		placeDetail:          event.PlaceDetail,
 		typeDetail:           event.EventTypeDetail,
 		cause:                event.Cause,
@@ -930,6 +963,7 @@ func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*
 	// Subordinate tags at level+1
 	return append(tags, eventDetailToTags(&eventDetail{
 		date:                 attr.Date,
+		parsedDate:           attr.ParsedDate,
 		placeDetail:          attr.PlaceDetail,
 		typeDetail:           attr.TypeDetail,
 		cause:                attr.Cause,
@@ -1147,9 +1181,7 @@ func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions
 	tags = append(tags, &gedcom.Tag{Level: level, Tag: string(ord.Type)})
 
 	// Subordinate tags at level+1
-	if ord.Date != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: ord.Date})
-	}
+	tags = append(tags, dateToTags(ord.Date, ord.ParsedDate, level+1, opts)...)
 
 	if ord.Temple != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TEMP", Value: ord.Temple})

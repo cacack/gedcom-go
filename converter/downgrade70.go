@@ -77,13 +77,19 @@ func dropV7OnlyTags(doc *gedcom.Document, report *gedcom.ConversionReport, targe
 // UIDs as UID, ExternalIDs as EXID, a shared note's Translations as TRAN, a
 // family's HusbandPhrase and WifePhrase as PHRASE) and returns the tags whose
 // fields held data. Nested fields, such as an event's UIDs, are not reached;
-// they are written only for a record without Tags.
+// they are written only for a record without Tags. The one exception is the
+// DATE PHRASE on events, attributes and LDS ordinances (clearV7OnlyDatePhrases):
+// gedcom.Document.RequiresGEDCOM7 reads it, so a downgraded document that kept
+// it would report itself as still needing 7.0.
 func clearV7OnlyEntityFields(record *gedcom.Record) map[string]bool {
 	crea, uids, exids, trans := v7OnlyEntityFields(record.Entity)
 	cleared := make(map[string]bool)
 	if f, ok := record.Entity.(*gedcom.Family); ok && f != nil && (f.HusbandPhrase != "" || f.WifePhrase != "") {
 		cleared["PHRASE"] = true
 		f.HusbandPhrase, f.WifePhrase = "", ""
+	}
+	if clearV7OnlyDatePhrases(record.Entity) {
+		cleared["PHRASE"] = true
 	}
 	if crea != nil && *crea != nil {
 		cleared["CREA"] = true
@@ -102,6 +108,63 @@ func clearV7OnlyEntityFields(record *gedcom.Record) map[string]bool {
 		*trans = nil
 	}
 	return cleared
+}
+
+// clearV7OnlyDatePhrases clears the 7.0 DATE PHRASE
+// (gedcom.Date.PhraseSubstructure) from every event, attribute and LDS
+// ordinance date of an individual or family entity, and reports whether any
+// was set. A phrase-only date (empty DATE value) has nothing left to parse,
+// so its ParsedDate becomes nil, as decoding an empty 5.x DATE gives. A
+// 5.5.1 "(text)" phrase is part of the value and is kept.
+func clearV7OnlyDatePhrases(entity any) bool {
+	var events []*gedcom.Event
+	var attributes []*gedcom.Attribute
+	var ordinances []*gedcom.LDSOrdinance
+	switch e := entity.(type) {
+	case *gedcom.Individual:
+		if e == nil {
+			return false
+		}
+		events, attributes, ordinances = e.Events, e.Attributes, e.LDSOrdinances
+	case *gedcom.Family:
+		if e == nil {
+			return false
+		}
+		events, attributes, ordinances = e.Events, e.Attributes, e.LDSOrdinances
+	default:
+		return false
+	}
+	cleared := false
+	for _, ev := range events {
+		if ev != nil && clearDatePhrase(ev.Date, &ev.ParsedDate) {
+			cleared = true
+		}
+	}
+	for _, at := range attributes {
+		if at != nil && clearDatePhrase(at.Date, &at.ParsedDate) {
+			cleared = true
+		}
+	}
+	for _, o := range ordinances {
+		if o != nil && clearDatePhrase(o.Date, &o.ParsedDate) {
+			cleared = true
+		}
+	}
+	return cleared
+}
+
+// clearDatePhrase clears the 7.0 PHRASE from the parsed form of a DATE whose
+// value is date, and reports whether there was one.
+func clearDatePhrase(date string, parsed **gedcom.Date) bool {
+	if (*parsed).PhraseSubstructure(date) == "" {
+		return false
+	}
+	if date == "" {
+		*parsed = nil
+		return true
+	}
+	(*parsed).Phrase = ""
+	return true
 }
 
 // v7OnlyEntityFields returns pointers to the fields clearV7OnlyEntityFields

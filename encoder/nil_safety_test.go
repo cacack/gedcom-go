@@ -110,6 +110,7 @@ func TestEncode_NilSliceElement(t *testing.T) {
 		withNil    interface{}
 		withoutNil interface{}
 		wantLine   string
+		version    gedcom.Version // header version; empty means entityDoc's default
 	}{
 		{
 			name:       "Individual.Names",
@@ -177,6 +178,7 @@ func TestEncode_NilSliceElement(t *testing.T) {
 				{Full: "John /Doe/", Transliterations: []*gedcom.Transliteration{aTransliteration()}},
 			}},
 			wantLine: "2 TRAN Jon /Do/",
+			version:  gedcom.Version70, // TRAN is written only for 7.0 output (#692)
 		},
 		{
 			name:       "Event.SourceCitations",
@@ -352,17 +354,25 @@ func TestEncode_NilSliceElement(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			want := mustEncode(t, entityDoc(tt.recordType, tt.withoutNil))
+			doc := func(entity interface{}) *gedcom.Document {
+				d := entityDoc(tt.recordType, entity)
+				if tt.version != "" {
+					d.Header.Version = tt.version
+				}
+				return d
+			}
+
+			want := mustEncode(t, doc(tt.withoutNil))
 
 			if !strings.Contains(want, tt.wantLine) {
 				t.Fatalf("test setup: encoding without the nil does not contain %q:\n%s", tt.wantLine, want)
 			}
 
-			if got := mustEncode(t, entityDoc(tt.recordType, tt.withNil)); got != want {
+			if got := mustEncode(t, doc(tt.withNil)); got != want {
 				t.Errorf("Encode() with a nil element =\n%s\nwant:\n%s", got, want)
 			}
 
-			if got := mustEncodeStreaming(t, entityDoc(tt.recordType, tt.withNil)); got != want {
+			if got := mustEncodeStreaming(t, doc(tt.withNil)); got != want {
 				t.Errorf("EncodeStreaming() with a nil element =\n%s\nwant:\n%s", got, want)
 			}
 		})

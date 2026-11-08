@@ -350,7 +350,7 @@ beside it, and written back beneath that value
 | `FAM.HUSB`, `FAM.WIFE` | `Family.HusbandPhrase`, `Family.WifePhrase` |
 | `FILE.FORM.MEDI` | `MediaFile.MediaPhrase` |
 | `CALN.MEDI` | `CallNumber.MediaPhrase` |
-| `DATE` | `Date.Phrase` (an empty `DATE` with a `PHRASE` is a phrase-only date) |
+| `DATE` | `Date.Phrase` (an empty `DATE` with a `PHRASE` is a phrase-only date). `Date.PhraseSubstructure` tells a `PHRASE` apart from a 5.5.1 `(text)` value; the encoder writes it beneath event, attribute and LDS ordinance dates for 7.0 output only |
 
 `PHRASE` under a value with no typed field (`CHIL`, `ALIA`, `FAMC.STAT`, and
 others listed in the ADR) stays in `Record.Tags`.

@@ -6,9 +6,11 @@ This document provides links to official GEDCOM specifications and key reference
 
 | Version | Release Date | PDF Link | Notes |
 |---------|--------------|----------|-------|
-| 5.5 | 1996-01-10 | [ged55.pdf](https://gedcom.io/specifications/ged55.pdf) | Original widely-adopted version |
+| 5.5 | 1996-01-02 | [ged55.pdf](https://gedcom.io/specifications/ged55.pdf) | Original widely-adopted version |
 | 5.5.1 | 2019-11-15 | [ged551.pdf](https://gedcom.io/specifications/ged551.pdf) | Clarifications, EMAIL/WWW/MAP tags |
 | 7.0 | 2021-06-07 | [FamilySearchGEDCOMv7.pdf](https://gedcom.io/specifications/FamilySearchGEDCOMv7.pdf) | Major overhaul, UTF-8 only |
+
+**Date sources.** The 5.5 date is the one on the title page of the PDF pinned (by SHA-256) in [`testdata/spec/gedcom-5.5/SOURCE`](../../testdata/spec/gedcom-5.5/SOURCE). The 5.5.1 PDF's title page carries no date, and its copyright line runs to 1999, when the spec was originally released; 2019-11-15 is the date gedcom.io republished it.
 
 ## Official Resources
 
