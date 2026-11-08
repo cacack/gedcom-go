@@ -87,3 +87,52 @@ func TestPhraseOnlyDate(t *testing.T) {
 		t.Errorf("diagnostics = %v, want one INVALID_VALUE for the bare DEAT DATE", result.Diagnostics)
 	}
 }
+
+// TestUnparseableDateKeepsPhrase pins issue #695: a 7.0 DATE whose value does
+// not parse still carries its PHRASE into a phrase-only ParsedDate (Original
+// the raw value, no date components), and the value is still reported. With
+// no PHRASE, an unparseable value keeps a nil ParsedDate.
+func TestUnparseableDateKeepsPhrase(t *testing.T) {
+	const input = "0 HEAD\n1 GEDC\n2 VERS 7.0\n" +
+		"0 @I1@ INDI\n" +
+		"1 BIRT\n2 DATE CIRCA 1850\n3 PHRASE about 1850\n" +
+		"1 OCCU Smith\n2 DATE CIRCA 1870\n3 PHRASE as a young man\n" +
+		"1 BAPL\n2 DATE CIRCA 1860\n3 PHRASE as a child\n" +
+		"1 DEAT\n2 DATE CIRCA 1900\n" +
+		"0 TRLR\n"
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	indi := result.Document.GetIndividual("@I1@")
+	for _, tc := range []struct {
+		name, value, phrase string
+		got                 *gedcom.Date
+	}{
+		{"BIRT", "CIRCA 1850", "about 1850", indi.Events[0].ParsedDate},
+		{"OCCU", "CIRCA 1870", "as a young man", indi.Attributes[0].ParsedDate},
+		{"BAPL", "CIRCA 1860", "as a child", indi.LDSOrdinances[0].ParsedDate},
+	} {
+		want := gedcom.Date{Original: tc.value, Calendar: gedcom.CalendarGregorian, Phrase: tc.phrase, IsPhrase: true}
+		if tc.got == nil || *tc.got != want {
+			t.Errorf("%s ParsedDate = %+v, want %+v", tc.name, tc.got, want)
+		}
+	}
+	if indi.Events[1].ParsedDate != nil {
+		t.Errorf("DEAT ParsedDate = %+v, want nil", indi.Events[1].ParsedDate)
+	}
+	if !result.Document.RequiresGEDCOM7() {
+		t.Error("RequiresGEDCOM7() = false, want true for the typed DATE PHRASE")
+	}
+
+	invalid := 0
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeInvalidValue {
+			invalid++
+		}
+	}
+	if invalid != 4 {
+		t.Errorf("diagnostics = %v, want one INVALID_VALUE per unparseable DATE (4)", result.Diagnostics)
+	}
+}

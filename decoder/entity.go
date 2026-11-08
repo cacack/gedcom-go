@@ -796,29 +796,34 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 }
 
 // parseDateValue parses the DATE at tags[i], with its PHRASE (7.0) — the
-// date in prose — into a typed Date. It returns nil, and reports the raw
-// value, when the payload does not parse; the raw value stays in Tags.
+// date in prose — into a typed Date. When the payload does not parse, it
+// reports the raw value (which stays in Tags) and returns nil, unless a
+// PHRASE carries the date.
 //
-// GEDCOM 7.0 permits an empty DateValue when a PHRASE carries the date, so
-// that case yields a phrase-only Date with no date components rather than a
-// diagnostic. An empty PHRASE is ignored rather than assigned, because
-// ParseDate itself fills Phrase for a parenthesized date phrase.
+// A PHRASE is kept whatever the value: beside a value that does not parse
+// (including the empty DateValue 7.0 permits when a PHRASE carries the date),
+// it yields a phrase-only Date — IsPhrase set, Original the raw value, no
+// date components — so the phrase reaches the typed model. An empty value is
+// valid there and is not reported. An empty PHRASE is ignored rather than
+// assigned, because ParseDate itself fills Phrase for a parenthesized date
+// phrase.
 func parseDateValue(tags []*gedcom.Tag, i int, collector *diagnosticCollector) *gedcom.Date {
 	tag := tags[i]
 	phrase := findSubordinate(tags, i, "PHRASE")
 	parsed, err := gedcom.ParseDate(tag.Value)
-	switch {
-	case err == nil:
+	if err == nil {
 		if phrase != "" {
 			parsed.Phrase = phrase
 		}
 		return parsed
-	case tag.Value == "" && phrase != "":
-		return &gedcom.Date{Calendar: gedcom.CalendarGregorian, Phrase: phrase, IsPhrase: true}
-	default:
+	}
+	if tag.Value != "" || phrase == "" {
 		collector.addInvalidValue(tag.LineNumber, "DATE", tag.Value, err.Error())
+	}
+	if phrase == "" {
 		return nil
 	}
+	return &gedcom.Date{Original: tag.Value, Calendar: gedcom.CalendarGregorian, Phrase: phrase, IsPhrase: true}
 }
 
 // parseEvent extracts an event from tags starting at eventIdx.

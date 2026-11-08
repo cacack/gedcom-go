@@ -120,9 +120,10 @@ func clearV7OnlyEntityFields(record *gedcom.Record) map[string]bool {
 // clearV7OnlyDatePhrases clears the 7.0 DATE PHRASE
 // (gedcom.Date.PhraseSubstructure) from every event, attribute and LDS
 // ordinance date of an individual or family entity, and reports whether any
-// was set. A phrase-only date (empty DATE value) has nothing left to parse,
-// so its ParsedDate becomes nil, as decoding an empty 5.x DATE gives. A
-// 5.5.1 "(text)" phrase is part of the value and is kept.
+// was set. A phrase-only date (an empty DATE value, or one that does not
+// parse) has nothing left once the phrase goes, so its ParsedDate becomes
+// nil, as decoding that 5.x DATE gives. A 5.5.1 "(text)" phrase is part of
+// the value and is kept.
 func clearV7OnlyDatePhrases(entity any) bool {
 	var events []*gedcom.Event
 	var attributes []*gedcom.Attribute
@@ -166,7 +167,7 @@ func clearDatePhrase(date string, parsed **gedcom.Date) bool {
 	if (*parsed).PhraseSubstructure(date) == "" {
 		return false
 	}
-	if date == "" {
+	if _, err := gedcom.ParseDate(date); err != nil {
 		*parsed = nil
 		return true
 	}

@@ -76,6 +76,31 @@ func TestDatePhrase70RoundTrip(t *testing.T) {
 	}
 }
 
+// TestDatePhraseUnparseableValueRoundTrip pins issue #695: a 7.0 DATE PHRASE
+// beneath a DATE value that does not parse survives a typed-only encode and a
+// re-decode.
+func TestDatePhraseUnparseableValueRoundTrip(t *testing.T) {
+	const input = "0 HEAD\n1 GEDC\n2 VERS 7.0\n" +
+		"0 @I1@ INDI\n1 BIRT\n2 DATE CIRCA 1850\n3 PHRASE about 1850\n" +
+		"0 TRLR\n"
+	out := encodeTypedOnly(t, input, nil)
+	if want := "1 BIRT\n2 DATE CIRCA 1850\n3 PHRASE about 1850\n"; !strings.Contains(out, want) {
+		t.Errorf("output missing %q:\n%s", want, out)
+	}
+
+	doc, err := decoder.Decode(strings.NewReader(out))
+	if err != nil {
+		t.Fatalf("re-Decode() error = %v", err)
+	}
+	indi := doc.GetIndividual("@I1@")
+	if indi == nil {
+		t.Fatalf("re-decoded document has no @I1@:\n%s", out)
+	}
+	if got := indi.Events[0].ParsedDate; got == nil || got.Phrase != "about 1850" {
+		t.Errorf("re-decoded BIRT ParsedDate = %+v, want Phrase %q", got, "about 1850")
+	}
+}
+
 // TestDatePhrase551ValueNotWrittenAsPhrase pins that a 5.5.1 "(text)" date
 // phrase stays in the DATE value, whatever the output version.
 func TestDatePhrase551ValueNotWrittenAsPhrase(t *testing.T) {
