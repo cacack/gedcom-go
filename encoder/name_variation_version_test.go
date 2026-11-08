@@ -127,3 +127,33 @@ func TestNameVariations_KeptForOwnVersion(t *testing.T) {
 		}
 	}
 }
+
+// TestNameVariations_KeptForUnknownVersion pins that a document with no
+// header version and no TargetVersion keeps every variation: with no known
+// output version there is nothing to gate on, so output is unchanged.
+func TestNameVariations_KeptForUnknownVersion(t *testing.T) {
+	name := &gedcom.PersonalName{
+		Full:             "Taro /Yamada/",
+		Transliterations: []*gedcom.Transliteration{{Value: "Yamada /Taro/"}},
+		Phonetic:         []*gedcom.NameVariation{{Value: "Yamada /Taro/"}},
+		Romanized:        []*gedcom.NameVariation{{Value: "Yamada /Taro/"}},
+	}
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{},
+		Records: []*gedcom.Record{{
+			XRef:   "@I1@",
+			Type:   gedcom.RecordTypeIndividual,
+			Entity: &gedcom.Individual{XRef: "@I1@", Names: []*gedcom.PersonalName{name}},
+		}},
+	}
+	for encName, encode := range nameVariationEncoders {
+		t.Run(encName, func(t *testing.T) {
+			out := encodeWithFunc(t, encode, doc, &EncodeOptions{})
+			for _, tag := range []string{"TRAN", "FONE", "ROMN"} {
+				if !hasTagLine(out, tag) {
+					t.Errorf("output has no %s line:\n%s", tag, out)
+				}
+			}
+		})
+	}
+}

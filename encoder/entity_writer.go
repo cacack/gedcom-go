@@ -705,15 +705,19 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 // nameVariationsToTags converts a name's variations to GEDCOM tags at level.
 // Variations are version-specific (issue #692), so each is written only for
 // the output version that defines it and dropped otherwise: 7.0 output gets
-// TRAN, 5.5/5.5.1 output gets FONE and ROMN.
+// TRAN, 5.5/5.5.1 output gets FONE and ROMN. When the output version is
+// unknown (no TargetVersion and no header version) nothing is dropped, so
+// such output is unchanged.
 func nameVariationsToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// Transliterations (GEDCOM 7.0 TRAN tag)
-	if opts.is70() {
+	if !opts.is5x() {
 		for _, tran := range name.Transliterations {
 			tags = append(tags, transliterationToTags(tran, level)...)
 		}
+	}
+	if opts.is70() {
 		return tags
 	}
 

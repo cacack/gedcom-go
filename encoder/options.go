@@ -37,7 +37,9 @@ type EncodeOptions struct {
 	// A record written from its typed entity (Record.Tags empty) gets only the
 	// name variations the output version defines: 7.0 output drops
 	// PersonalName.Phonetic and Romanized (5.5.1 FONE/ROMN), and 5.5/5.5.1
-	// output drops PersonalName.Transliterations (7.0 TRAN). The encoder does
+	// output drops PersonalName.Transliterations (7.0 TRAN). With no known
+	// output version (no TargetVersion and no header version) nothing is
+	// dropped. The encoder does
 	// not report the drop; the converter package reports data loss on a
 	// conversion. A record written from its Record.Tags is written verbatim.
 	TargetVersion gedcom.Version
@@ -109,6 +111,13 @@ func (opts *EncodeOptions) forOutput(header *gedcom.Header) *EncodeOptions {
 // resolved. Nil options, and options forOutput has not resolved, are not 7.0.
 func (opts *EncodeOptions) is70() bool {
 	return opts != nil && opts.version == gedcom.Version70
+}
+
+// is5x reports whether output is GEDCOM 5.5 or 5.5.1, per the version
+// forOutput resolved. It is not the negation of is70: an unknown output
+// version is neither, so a writer gating on both drops nothing for it.
+func (opts *EncodeOptions) is5x() bool {
+	return opts != nil && (opts.version == gedcom.Version55 || opts.version == gedcom.Version551)
 }
 
 // effectiveMaxLineLength returns the max line length to use,
