@@ -188,6 +188,10 @@ func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	// First, so no later transform reports a change inside a removed record.
 	dropSubmissionRecords(doc, report)
+	// 5.5 does not define FONE/ROMN either, but a nonconforming 5.5 file can
+	// carry them, and 7.0 output must not. Removed before the text and XRef
+	// transforms for the same reason; reported after XRef normalization.
+	variations := removeNameVariations(doc)
 	transformTextForVersion(doc, gedcom.Version70, report)
 	normalizeXRefsForV7(doc, report)
 	// After XRef normalization, so the records it reports (dual-year DataLoss
@@ -196,9 +200,7 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 	upgradeNoteRecordsForV7(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
-	// 5.5 does not define FONE/ROMN either, but a nonconforming 5.5 file can
-	// carry them, and 7.0 output must not.
-	dropNameVariations(doc, report, gedcom.Version70)
+	variations.report(doc, report, gedcom.Version70)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
@@ -234,6 +236,9 @@ func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	// First, so no later transform reports a change inside a removed record.
 	dropSubmissionRecords(doc, report)
+	// Removed before the text and XRef transforms for the same reason, and
+	// reported after XRef normalization, so records are named by new XRefs.
+	variations := removeNameVariations(doc)
 	transformTextForVersion(doc, gedcom.Version70, report)
 	normalizeXRefsForV7(doc, report)
 	// After XRef normalization, so the records it reports (dual-year DataLoss
@@ -242,7 +247,7 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 	upgradeNoteRecordsForV7(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
-	dropNameVariations(doc, report, gedcom.Version70)
+	variations.report(doc, report, gedcom.Version70)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
@@ -262,6 +267,9 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 	// transform reports a change to text inside a block that is then removed.
 	dropNegativeAssertions(doc, report, gedcom.Version55)
 	dropVoidPointers(doc, report, gedcom.Version55)
+	// 7.0 does not define FONE/ROMN, but a nonconforming 7.0 file or a
+	// hand-built document can carry them, and 5.5 output must not.
+	dropNameVariations(doc, report, gedcom.Version55)
 	if opts.MapEXIDToVendorTags {
 		transformEXIDToVendorTags(doc, report, gedcom.Version55)
 	}

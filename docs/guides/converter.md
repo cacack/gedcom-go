@@ -258,7 +258,11 @@ On a conversion to 7.0 or to 5.5, every `FONE` and `ROMN` is removed from
 are cleared, because the encoder writes a record without `Tags` from its
 entity. Each tag is a `FONE tags` / `ROMN tags` data loss entry listing the
 affected records, with a `Dropped` note per record; a record built in code
-without `Tags` is reported from those fields. A conversion to 5.5.1 keeps them.
+without `Tags` is reported from those fields. This covers a nonconforming 5.5
+source on a conversion to 7.0, and a nonconforming 7.0 source on a conversion
+to 5.5, as well as 5.5.1. They are removed before the text and pointer steps,
+so no other report entry describes a line inside a removed block. A conversion
+to 5.5.1 keeps them.
 
 ## ConversionReport Structure
 

@@ -140,6 +140,85 @@ func TestConvertKeepsNameVariationsFor551(t *testing.T) {
 	}
 }
 
+// TestConvertDropsNameVariationsFromOtherSources checks the paths whose
+// source does not define FONE/ROMN either, for a nonconforming file that
+// carries them: 5.5 -> 7.0 and 7.0 -> 5.5 drop and report them too.
+func TestConvertDropsNameVariationsFromOtherSources(t *testing.T) {
+	tests := []struct {
+		vers   string
+		target gedcom.Version
+	}{
+		{"5.5", gedcom.Version70},
+		{"7.0", gedcom.Version55},
+	}
+	for _, tt := range tests {
+		t.Run(tt.vers+"->"+tt.target.String(), func(t *testing.T) {
+			input := "0 HEAD\n1 GEDC\n2 VERS " + tt.vers + "\n0 @I1@ INDI\n1 NAME Yamada /Taro/\n2 ROMN Yamada Taro\n3 TYPE romaji\n0 TRLR\n"
+			doc, err := decoder.Decode(bytes.NewReader([]byte(input)))
+			if err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			_, report, out := convertAndEncode(t, doc, tt.target)
+			if recordLineTags(out)["ROMN"] {
+				t.Errorf("output writes ROMN:\n%s", out)
+			}
+			if !hasDataLoss(report, "ROMN tags", "@I1@") {
+				t.Error("ROMN tags not reported for @I1@")
+			}
+		})
+	}
+
+	t.Run("entity-only/7.0->5.5", func(t *testing.T) {
+		name := &gedcom.PersonalName{Full: "Yamada /Taro/", Romanized: []*gedcom.NameVariation{{Value: "Yamada Taro"}}}
+		indi := &gedcom.Individual{XRef: "@I1@", Names: []*gedcom.PersonalName{name}}
+		record := &gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: indi}
+		doc := &gedcom.Document{
+			Header:  &gedcom.Header{Version: gedcom.Version70},
+			Records: []*gedcom.Record{record},
+			XRefMap: map[string]*gedcom.Record{"@I1@": record},
+		}
+		converted, report, _ := convertAndEncode(t, doc, gedcom.Version55)
+		if got := converted.GetIndividual("@I1@").Names[0].Romanized; len(got) != 0 {
+			t.Errorf("converted name keeps Romanized %v; want empty", got)
+		}
+		if !hasDataLoss(report, "ROMN tags", "@I1@") {
+			t.Error("ROMN tags not reported for @I1@")
+		}
+	})
+}
+
+// TestConvertNameVariationReportOrder checks that on a conversion to 7.0 no
+// transform reports a change inside a FONE/ROMN block that is then removed,
+// and that the drop names the record by its normalized XRef.
+func TestConvertNameVariationReportOrder(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+		"0 @N1@ NOTE shared\n" +
+		"0 @i-1@ INDI\n1 NAME Yamada /Taro/\n" +
+		"2 ROMN Yamada /Taro/\n3 TYPE romaji\n3 NOTE @N1@\n3 NOTE some long\n4 CONC  text\n" +
+		"0 TRLR\n"
+	doc, err := decoder.Decode(bytes.NewReader([]byte(input)))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	_, report, out := convertAndEncode(t, doc, gedcom.Version70)
+	if recordLineTags(out)["ROMN"] {
+		t.Errorf("output writes ROMN:\n%s", out)
+	}
+	for _, typ := range []string{"CONC_REMOVED", "NOTE_POINTER_TO_SNOTE"} {
+		if got := transformationCount(report, typ); got != 0 {
+			t.Errorf("%s count = %d, want 0 (the only one is inside the dropped ROMN)", typ, got)
+		}
+	}
+	for _, note := range report.Normalized {
+		if note.Original == "some long" {
+			t.Errorf("Normalized note %+v describes text inside the dropped ROMN", note)
+		}
+	}
+	if !hasDataLoss(report, "ROMN tags", "@I_1@") {
+		t.Errorf("ROMN tags not reported under the normalized XRef @I_1@; DataLoss = %+v", report.DataLoss)
+	}
+}
+
 // TestConvertDropsCorpusNameVariations runs the conversion on the corpus file
 // that carries ROMN and FONE under a second NAME.
 func TestConvertDropsCorpusNameVariations(t *testing.T) {
