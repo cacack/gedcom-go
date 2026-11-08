@@ -139,10 +139,11 @@ type Date struct {
 	Phrase string
 
 	// IsPhrase is true when the date is a phrase, not a parseable date. The
-	// decoder also sets it for a GEDCOM 7.0 DATE whose value is empty or does
-	// not parse but has a PHRASE: Phrase holds the PHRASE, Original the raw
-	// value, and no other field claims a parsed date (Day, Month and Year are
-	// 0, Modifier is none, Calendar is Gregorian).
+	// decoder also sets it for a DATE whose value is empty or does not parse
+	// but has a PHRASE substructure (a GEDCOM 7.0 construct, though the decoder
+	// does this whatever the file's version): Phrase holds the PHRASE,
+	// Original the raw value, and no other field claims a parsed date (Day,
+	// Month and Year are 0, Modifier is none, Calendar is Gregorian).
 	IsPhrase bool
 
 	// IsInterpreted is true when the date uses the INT modifier, indicating

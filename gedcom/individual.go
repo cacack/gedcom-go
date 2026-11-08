@@ -475,7 +475,8 @@ func (i *Individual) DeathEvent() *Event {
 }
 
 // BirthDate returns the parsed birth date for this individual, or nil if no birth event
-// or no parsed date is available.
+// or no parsed date is available. It can be a phrase-only date (IsPhrase set, no
+// components), which callers such as the validator count as a recorded date.
 func (i *Individual) BirthDate() *Date {
 	event := i.BirthEvent()
 	if event == nil {
@@ -485,7 +486,7 @@ func (i *Individual) BirthDate() *Date {
 }
 
 // DeathDate returns the parsed death date for this individual, or nil if no death event
-// or no parsed date is available.
+// or no parsed date is available. Like BirthDate, it can be a phrase-only date.
 func (i *Individual) DeathDate() *Date {
 	event := i.DeathEvent()
 	if event == nil {
