@@ -18,3 +18,7 @@ testdata/encoding/utf16*.ged binary
 docs/reference/gedcom-7-coverage.md text eol=lf
 docs/reference/gedcom-5.5-coverage.md text eol=lf
 testdata/spec/** text eol=lf
+
+# Its hash keys the CI cache of the fetched corpora; keep it identical on
+# every platform.
+internal/corpora/gedcomio.lock text eol=lf

@@ -114,6 +114,12 @@ make preflight
 make bench
 ```
 
+**Fetched test corpora:** run `make fetch-corpora` once to download the
+gedcom.io test files into the gitignored `.corpora/` directory. They may be used
+but not redistributed, so they are not in the repository; the tests that need
+them skip until they are fetched. See
+[testdata/README.md](testdata/README.md#fetched-at-test-time-gedcomio-test-files).
+
 **Using Go commands directly:**
 
 ```bash

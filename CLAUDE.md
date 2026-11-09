@@ -31,6 +31,7 @@ This installs git hooks that enforce:
 | `make security` | Run gosec + govulncheck |
 | `make api-check` | Check for breaking API changes vs latest release |
 | `make bench` | Run benchmarks |
+| `make fetch-corpora` | Download pinned gedcom.io test files into `.corpora/` (not redistributable; their tests skip without) |
 | `make watch-test` | Watch for changes and re-run tests (requires `entr`) |
 
 **Running a single test:**

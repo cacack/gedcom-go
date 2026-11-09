@@ -1,7 +1,7 @@
 # Makefile for gedcom-go
 # Go genealogy library for parsing and validating GEDCOM files
 
-.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint security clean coverage-html install-tools build build-examples tidy check check-coverage spec-coverage all setup-hooks setup preflight api-check
+.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint security clean coverage-html install-tools build build-examples tidy check check-coverage spec-coverage all setup-hooks setup preflight api-check fetch-corpora
 
 # Default target
 .DEFAULT_GOAL := help
@@ -153,6 +153,9 @@ spec-coverage: ## Regenerate the docs/reference/gedcom-*-coverage.md reports fro
 	@echo ""
 	@echo "✓ docs/reference/gedcom-7-coverage.md regenerated — review the diff"
 	@echo "✓ docs/reference/gedcom-5.5-coverage.md regenerated — review the diff"
+
+fetch-corpora: ## Download the pinned gedcom.io test files into .corpora/ (tests that need them skip without)
+	$(GOCMD) run ./internal/cmd/fetchcorpora
 
 check-coverage: ## Check coverage thresholds (same as CI)
 	@echo "Running tests with coverage..."
