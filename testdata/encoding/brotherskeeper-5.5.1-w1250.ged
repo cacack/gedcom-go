@@ -1,0 +1,4584 @@
+0 HEAD
+1 SOUR BROSKEEP
+2 VERS 7.5.4 WINDOWS
+1 DEST BROSKEEP (BK)
+1 DATE 11 MAY 2026
+1 CHAR ANSI
+1 FILE media/file1.GED
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 SUBM @SUB1@
+0 @I1@ INDI
+1 NAME Marjeta2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 03 OCT 1879
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+2 SOUR @S87@
+2 SOUR @S15@
+1 BAPM
+2 PLAC Rovte, Slovenija
+1 DEAT
+2 DATE 04 OCT 1933
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+2 SOUR @S87@
+1 RESI
+2 DATE 25 OCT 1909
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S109@
+1 OCCU kmet 3/4
+2 DATE 25 FEB 1909
+2 SOUR @S109@
+1 FAMS @F1@
+1 FAMC @F2@
+1 CHAN
+2 DATE 03 FEB 2022
+0 @I2@ INDI
+1 NAME Vinko /Oblakek/
+1 SEX F
+1 BIRT
+2 DATE 01 JAN 1888
+2 PLAC Žiberše __36/38 (Pri Tominc), Rovte; Logatec, Slovenija
+2 SOUR @S3@
+2 SOUR @S15@
+1 BAPM
+2 DATE 02 JAN 1888
+2 PLAC Rovte, Slovenija
+2 SOUR @S3@
+2 SOUR @S15@
+1 DEAT
+2 DATE 31 JAN 1979
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 RESI
+2 DATE 25 OCT 1909
+2 PLAC Žiberše __36/38 (Pri Tominc), Rovte; Logatec, Slovenija
+2 SOUR @S109@
+1 FAMS @F1@
+1 FAMC @F143@
+1 CHAN
+2 DATE 13 APR 2016
+0 @I3@ INDI
+1 NAME Karolina4 /Oblakiè/
+2 _AKAN Jule
+1 SEX M
+1 BIRT
+2 DATE 27 JUL 1910
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+2 SOUR @S87@
+1 DEAT
+2 DATE 25 APR 1975
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMS @F3@
+1 FAMC @F1@
+1 CHAN
+2 DATE 17 MAY 2015
+0 @I4@ INDI
+1 NAME Bernard4 /Oblakiè/
+2 _ADPN Jokl
+1 SEX M
+1 BIRT
+2 DATE 23 JUL 1911
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 01 JAN 1944
+2 PLAC II.svet. vojna partizan
+2 SOUR @S3@
+2 SOUR @S106@
+1 RESI
+2 DATE 29 SEP 1933
+2 PLAC Tržaška __57, Ljubljana
+2 SOUR @S156@
+1 RESI
+2 DATE 14 MAY 1935
+2 PLAC Rožna dolina XVII/24, Ljubljana
+2 SOUR @S156@
+1 RESI
+2 DATE 18 MAY 1940
+2 PLAC Veèna pot __12, Ljubljana, Slovenija
+2 SOUR @S156@
+2 SOUR @S156@
+1 FAMC @F1@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I5@ INDI
+1 NAME Genovefa4 /Oblakiè/
+2 _ADPN Tina
+1 SEX F
+1 BIRT
+2 DATE 12 JUN 1913
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 10 MAR 2010
+2 PLAC Šoštanj, Slovenija
+2 SOUR @S3@
+1 FAMS @F7354@
+1 FAMS @F820@
+1 FAMC @F1@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I6@ INDI
+1 NAME Marjeta2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 03 AUG 1914
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 29 AUG 1942
+2 PLAC II.svet. vojna domobranec
+2 SOUR @S3@
+1 FAMC @F1@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I7@ INDI
+1 NAME Rozalija2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 16 JUN 1916
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE __.__.1945
+2 PLAC II.svet. vojna povojni poboji vrnjenih s Koroške
+2 SOUR @S3@
+2 SOUR @S106@
+1 FAMC @F1@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I8@ INDI
+1 NAME Elizabeta /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 06 AUG 1918
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE __.__.1945
+2 PLAC II.svet. vojna povojni poboji Teharje, Celje, Slovenija
+2 SOUR @S3@
+2 SOUR @S106@
+1 FAMC @F1@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I9@ INDI
+1 NAME Karolina /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 01 JUN 1920
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S87@
+1 DEAT
+2 DATE 02 SEP 1921
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S87@
+1 FAMC @F1@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I10@ INDI
+1 NAME Štefan /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 20 DEC 1921
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE __.__.1945
+2 PLAC II.svet. vojna domobranec
+2 SOUR @S3@
+2 SOUR @S106@
+1 FAMC @F1@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I11@ INDI
+1 NAME Vinko /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 15 SEP 1923
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 07 FEB 1924
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 RESI
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+1 FAMC @F1@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I12@ INDI
+1 NAME Karolina /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 15 SEP 1923
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+2 SOUR @S87@
+1 DEAT
+2 DATE 07 FEB 1924
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 RESI
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+1 FAMC @F1@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I13@ INDI
+1 NAME Veronika3 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 03 JUL 1925
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE __.__.1945
+2 PLAC II.svet. vojna domobranec, Hrastnik, Slovenija
+2 SOUR @S3@
+1 RESI
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+1 FAMC @F1@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I14@ INDI
+1 NAME Agata4 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 05 APR 1928
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 23 DEC 2000
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 RESI
+2 ADDR Kristanova 8 Lj.
+1 FAMS @F5@
+1 FAMC @F1@
+1 CHAN
+2 DATE 02 SEP 2015
+0 @I15@ INDI
+1 NAME Matevž4 /Oblakiè/
+2 _ADPN Marko
+1 SEX M
+1 BIRT
+2 DATE 04 SEP 1929
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+2 SOUR @S87@
+1 DEAT
+2 DATE 22 SEP 2025
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S343@
+1 FAMS @F6@
+1 FAMC @F1@
+1 CHAN
+2 DATE 22 SEP 2025
+0 @I16@ INDI
+1 NAME Silvester /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 28 SEP 1834
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S8@
+1 DEAT
+2 DATE 01 OCT 1905
+2 PLAC Rovte, Slovenija
+2 SOUR @S3@
+1 RESI
+2 DATE 12 MAY 1873
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S1@
+1 OCCU kmet 3/4
+1 FAMS @F7@
+1 FAMS @F2@
+1 FAMC @F262@
+1 CHAN
+2 DATE 11 JAN 2016
+0 @I17@ INDI
+1 NAME Vinko /Oblakar/
+1 SEX F
+1 BIRT
+2 DATE 01 JAN 1838
+2 PLAC Rovte __31/131, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+2 SOUR @S8@
+1 BAPM
+2 DATE 01 JAN 1838
+2 PLAC Rovte, Slovenija
+2 SOUR @S8@
+1 DEAT
+2 DATE 19 JAN 1873
+2 PLAC Rovte, Slovenija
+2 SOUR @S26@
+2 SOUR @S525@
+1 FAMS @F7@
+1 FAMC @F8@
+1 CHAN
+2 DATE 05 SEP 2014
+0 @I18@ INDI
+1 NAME Peter4 /Oblaknik/
+1 SEX F
+1 BIRT
+2 DATE 19 OCT 1912
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 06 DEC 1998
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMS @F3@
+1 FAMC @F9@
+1 CHAN
+2 DATE 17 MAY 2015
+0 @I19@ INDI
+1 NAME Rozalija2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 13 JUN 1945
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 RESI
+2 DATE 28 OCT 2015
+2 PLAC Šubljeva __13, Domžale, Slovenija
+2 SOUR @S3@
+1 OCCU univ.dipl.ing. kemije
+1 RESI
+2 ADDR Janez Modrijan
+3 CONT Šubljeva 13, 1230 Domžale
+2 PHON +000 000 000
+2 EMAIL user1@example.test
+1 FAMS @F10@
+1 FAMC @F3@
+1 CHAN
+2 DATE 30 JUL 2016
+0 @I20@ INDI
+1 NAME Elizabeta /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 20 DEC 1947
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMS @F11@
+1 FAMC @F3@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I21@ INDI
+1 NAME Štefan /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 13 JUN 1954
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 02 FEB 2025
+2 PLAC Ljubljana, bolnišnica, Slovenija
+1 RESI
+2 ADDR Jožef Modrijan
+3 CONT Nanoška ul. Ljubljana
+1 FAMS @F12@
+1 FAMC @F3@
+1 CHAN
+2 DATE 03 FEB 2025
+0 @I22@ INDI
+1 NAME Suzana4 Primož4 /Oblakšek/
+1 SEX F
+1 BIRT
+2 DATE 25 MAR 1945
+2 PLAC Goèe, Vipava, Slovenija
+2 SOUR @S3@
+1 EDUC univ.dipl.prav
+1 FAMS @F10@
+1 FAMC @F132@
+1 CHAN
+2 DATE 03 JAN 2023
+0 @I23@ INDI
+1 NAME Dorotea4 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 17 JAN 1975
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 ADOP
+2 DATE 14 SEP 1976
+2 PLAC Šabac, Srbija
+2 SOUR @S3@
+1 RESI
+2 ADDR Primož Modrijan
+3 CONT Jakopièeva 2, Domžale, Slovenija
+1 FAMS @F13@
+1 FAMC @F10@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I24@ INDI
+1 NAME Aleš4 /Oblaknc/
+1 SEX F
+1 BIRT
+2 DATE 24 OCT 1970
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 RESI
+2 ADDR Manica Dermastja
+3 CONT Jakopièeva 2, Domžale, Slovenija
+1 FAMS @F13@
+1 FAMC @F607@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I25@ INDI
+1 NAME Regina4 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 16 NOV 2000
+2 PLAC porodnišnica Kranj, Slovenija
+2 SOUR @S3@
+1 RESI
+2 ADDR Lori Modrijan
+3 CONT Lori Modrijan
+3 CONT Jakopièeva 2, Domžale, Slovenija
+1 FAMC @F13@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I26@ INDI
+1 NAME Benjamin4 /Oblakman/
+1 SEX M
+1 BIRT
+2 DATE 19 AUG 1940
+2 PLAC Fara __12/13, Nova vas, Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 21 JAN 2023
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S343@
+1 RESI
+2 ADDR Ernest Kluèar
+3 CONT Bratovževa plošèat 16.
+1 FAMS @F11@
+1 FAMC @F50@
+1 CHAN
+2 DATE 21 JAN 2023
+0 @I27@ INDI
+1 NAME Silvester4 /Oblakman/
+1 SEX F
+1 BIRT
+2 DATE 24 JAN 1971
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMC @F11@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I28@ INDI
+1 NAME Franèiška3 /Oblakman/
+1 SEX F
+1 BIRT
+2 DATE 06 MAY 1978
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMS @F2907@
+1 FAMC @F11@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I29@ INDI
+1 NAME Margareta4 Primož4 /Oblakšek/
+1 SEX F
+1 BIRT
+2 DATE 22 JUL 1953
+2 PLAC Kobdilj, Štanjel, Slovenija
+2 SOUR @S3@
+1 FAMS @F12@
+1 FAMC @F132@
+1 CHAN
+2 DATE 03 JAN 2023
+0 @I30@ INDI
+1 NAME Adolf4 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 03 OCT 1975
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMC @F12@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I31@ INDI
+1 NAME Ema3 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 30 SEP 1979
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMS @F690@
+1 FAMC @F12@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I32@ INDI
+1 NAME Franèiška4 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 19 JUN 1985
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMS @F9331@
+1 FAMC @F12@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I33@ INDI
+1 NAME Elizabeta /Oblakovec/
+1 SEX F
+1 BIRT
+2 DATE 07 AUG 1849
+2 PLAC Praprotno brdo ___9, Rovte, Logatec, Slovenija
+2 SOUR @S3@
+2 SOUR @S4@
+1 DEAT
+2 DATE 24 JUN 1918
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+2 SOUR @S1@
+1 FAMS @F2@
+1 FAMC @F164@
+1 CHAN
+2 DATE 22 AUG 2015
+0 @I34@ INDI
+1 NAME Rozalija2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 10 APR 1876
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S4@
+1 DEAT
+2 DATE 11 FEB 1911
+2 PLAC ____
+2 SOUR @S3@
+2 SOUR @S84@
+1 RESI
+2 DATE 10 APR 1876
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S4@
+1 RESI
+2 DATE 21 APR 1908
+2 PLAC Rovte ___7/1(Zajeljška mlekarna), Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 RESI
+2 DATE 31 JUL 1905
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S109@
+1 OCCU kmet 3/4
+2 DATE 31 JUL 1905
+2 SOUR @S109@
+1 FAMS @F14@
+1 FAMC @F2@
+1 CHAN
+2 DATE 22 AUG 2023
+0 @I35@ INDI
+1 NAME Johana2 /Oblakin/
+1 SEX F
+1 BIRT
+2 DATE 18 MAR 1757
+2 PLAC Rovte, Slovenija
+2 SOUR @S12@
+1 FAMC @F2663@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I36@ INDI
+1 NAME Matevž4 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 10 JAN 1940
+2 PLAC Družmirje, Šoštanj, Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 31 DEC 1990
+2 PLAC Šmartno ob Paki, Slovenija
+2 SOUR @S71@
+1 FAMS @F15@
+1 FAMC @F7354@
+1 CHAN
+2 DATE 19 AUG 2015
+0 @I37@ INDI
+1 NAME Mihael /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 29 DEC 1950
+2 PLAC Družmirje, Šoštanj, Slovenija
+2 SOUR @S3@
+1 RESI
+2 ADDR Viktor Modrijan
+3 CONT Metleèe 8 Šoštanj
+2 PHON +000 000 000
+1 FAMS @F16@
+1 FAMC @F820@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I38@ INDI
+1 NAME Egidij2 /Oblakel/
+1 SEX F
+1 BIRT
+2 DATE 31 OCT 1953
+2 PLAC Celje, Slovenija
+2 SOUR @S3@
+1 FAMS @F16@
+1 FAMC @F821@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I39@ INDI
+1 NAME Egidij4 /Oblakniè/
+1 SEX F
+1 BIRT
+2 DATE 05 MAR 1943
+2 PLAC Šoštanj, Slovenija
+2 SOUR @S3@
+1 FAMS @F15@
+1 FAMC @F130@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I40@ INDI
+1 NAME Fortunat4 /Oblakoviè/
+1 SEX F
+1 BIRT
+2 DATE 19 NOV 1929
+2 PLAC Rovte _137, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+2 SOUR @S87@
+1 FAMS @F6@
+1 FAMC @F3511@
+1 CHAN
+2 DATE 25 JAN 2018
+0 @I41@ INDI
+1 NAME Matevž4 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 06 MAR 1955
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMS @F17@
+1 FAMC @F6@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I42@ INDI
+1 NAME Štefan /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 17 MAR 1956
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMS @F18@
+1 FAMC @F6@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I43@ INDI
+1 NAME Elizabeta /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 19 MAR 1960
+2 PLAC Ljubljana, bolnišnica, Slovenija
+2 SOUR @S3@
+1 FAMS @F19@
+1 FAMC @F6@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I44@ INDI
+1 NAME Fortunat4 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 28 SEP 1963
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMS @F20@
+1 FAMC @F6@
+1 CHAN
+2 DATE 25 JAN 2018
+0 @I45@ INDI
+1 NAME Aleš2 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 14 JUL 1967
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMS @F21@
+1 FAMC @F6@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I46@ INDI
+1 NAME Marina4 /Oblakak/
+1 SEX F
+1 BIRT
+2 DATE 04 DEC 1956
+2 PLAC Dobraèeva ____, Žiri, Slovenija
+2 SOUR @S3@
+1 FAMS @F17@
+1 FAMC @F2632@
+1 CHAN
+2 DATE 01 JUN 2016
+0 @I47@ INDI
+1 NAME Rozalija2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 06 OCT 1982
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMC @F17@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I48@ INDI
+1 NAME Boštjan3 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 01 APR 1984
+2 PLAC Dobraèeva __67, Žiri, Slovenija
+2 SOUR @S3@
+1 FAMS @F478@
+1 FAMC @F17@
+1 CHAN
+2 DATE 30 JAN 2018
+0 @I49@ INDI
+1 NAME Ljudmila4 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 12 AUG 1986
+2 PLAC Dobraèeva __67, Žiri, Slovenija
+2 SOUR @S3@
+1 FAMS @F7374@
+1 FAMC @F17@
+1 CHAN
+2 DATE 30 JAN 2018
+0 @I50@ INDI
+1 NAME Karolina /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 31 AUG 1988
+2 PLAC Dobraèeva __67, Žiri, Slovenija
+2 SOUR @S3@
+1 FAMS @F16164@
+1 FAMC @F17@
+1 CHAN
+2 DATE 30 JAN 2018
+0 @I51@ INDI
+1 NAME Valburga4 /Oblakveè/
+1 SEX F
+1 BIRT
+2 DATE 06 AUG 1962
+2 PLAC Hotedršica, Slovenija
+2 SOUR @S3@
+1 FAMS @F18@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I52@ INDI
+1 NAME Kajetan4 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 22 SEP 1984
+2 PLAC Rovte __90/10 (Pr Šoštrèk), Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMS @F4800@
+1 FAMC @F18@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I53@ INDI
+1 NAME Emerik4 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 12 OCT 1985
+2 PLAC Rovte __96a, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMS @F16165@
+1 FAMC @F18@
+1 CHAN
+2 DATE 30 JAN 2018
+0 @I54@ INDI
+1 NAME Nežka4 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 20 OCT 1987
+2 PLAC Rovte __96a, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMS @F10632@
+1 FAMC @F18@
+1 CHAN
+2 DATE 17 MAY 2017
+0 @I55@ INDI
+1 NAME Franc2 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 17 JUN 1997
+2 PLAC Rovte __96a, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMC @F18@
+1 CHAN
+2 DATE 30 JAN 2018
+0 @I56@ INDI
+1 NAME Rozalija2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 30 JUL 1958
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 10 DEC 2018
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 RESI
+2 DATE 18 JUN 1983
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+1 OCCU kmet 3/4
+1 FAMS @F22@
+1 FAMC @F6@
+1 CHAN
+2 DATE 05 OCT 2019
+0 @I57@ INDI
+1 NAME Cvetka4 /Oblakak/
+1 SEX F
+1 BIRT
+2 DATE 27 JAN 1961
+2 PLAC Ljubljana, bolnišnica, Slovenija
+2 SOUR @S3@
+1 FAMC @F2801@
+1 CHAN
+2 DATE 04 JAN 2021
+0 @I58@ INDI
+1 NAME Matevž2 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 27 JUN 1989
+2 PLAC Ljubljana, bolnišnica, Slovenija
+2 SOUR @S3@
+1 FAMC @F22@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I59@ INDI
+1 NAME Genovefa /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 21 NOV 1992
+2 PLAC Ljubljana, bolnišnica, Slovenija
+2 SOUR @S3@
+1 FAMC @F22@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I60@ INDI
+1 NAME Mihael /Oblakièek/
+1 SEX M
+1 BIRT
+2 DATE 20 SEP 1955
+2 PLAC Rovte __77c, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+2 SOUR @S84@
+1 FAMS @F19@
+1 FAMC @F5619@
+1 CHAN
+2 DATE 30 JAN 2018
+0 @I61@ INDI
+1 NAME Aleš3 /Oblakièek/
+1 SEX F
+1 BIRT
+2 DATE 20 SEP 1979
+2 PLAC ____
+2 SOUR @S3@
+1 FAMS @F23@
+1 FAMC @F19@
+1 CHAN
+2 DATE 16 MAR 2018
+0 @I62@ INDI
+1 NAME Cvetka3 /Oblakièek/
+1 SEX M
+1 BIRT
+2 DATE 27 AUG 1983
+2 PLAC ____
+2 SOUR @S3@
+1 FAMS @F4801@
+1 FAMC @F19@
+1 CHAN
+2 DATE 16 MAR 2018
+0 @I63@ INDI
+1 NAME Marta /Oblaknjak/
+1 SEX M
+1 BIRT
+2 DATE 25 JUL 1978
+2 PLAC ____
+2 SOUR @S3@
+1 FAMS @F23@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I64@ INDI
+1 NAME Ana5 /Oblaknjak/
+1 SEX M
+1 BIRT
+2 DATE 23 JUN 2003
+2 PLAC ____
+2 SOUR @S3@
+1 FAMC @F23@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I65@ INDI
+1 NAME Marija5 /Pirciè/
+1 SEX M
+1 BIRT
+2 DATE 30 DEC 1961
+2 PLAC Rovte _131, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMS @F20@
+1 FAMC @F5516@
+1 CHAN
+2 DATE 05 JAN 2019
+0 @I66@ INDI
+1 NAME Dorotea2 /Pirciè/
+1 SEX M
+1 BIRT
+2 DATE 21 JAN 1985
+2 PLAC Žiri, Slovenija
+2 SOUR @S3@
+1 RESI
+2 DATE 09 AUG 2012
+2 PLAC Rovte __77c, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMS @F126@
+1 FAMS @F127@
+1 FAMC @F20@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I67@ INDI
+1 NAME Lucija2 /Pirciè/
+1 SEX F
+1 BIRT
+2 DATE 06 NOV 1987
+2 PLAC Rovte, Slovenija
+2 SOUR @S3@
+1 FAMS @F4802@
+1 FAMC @F20@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I68@ INDI
+1 NAME Rozalija2 /Pircek/
+1 SEX M
+1 BIRT
+2 DATE 03 DEC 1966
+2 PLAC Rovte ___7/1(Zajeljška mlekarna), Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 RESI
+2 PLAC Rovte __81, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMS @F21@
+1 FAMC @F5998@
+1 CHAN
+2 DATE 30 JAN 2018
+0 @I69@ INDI
+1 NAME Ivan5 /Pircek/
+1 SEX F
+1 BIRT
+2 DATE 03 DEC 1991
+2 PLAC Rovte __81, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMC @F21@
+1 CHAN
+2 DATE 30 JAN 2018
+0 @I70@ INDI
+1 NAME Danijela3 /Pircek/
+1 SEX F
+1 BIRT
+2 DATE 11 MAR 1995
+2 PLAC Rovte __81, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 FAMS @F14105@
+1 FAMC @F21@
+1 CHAN
+2 DATE 30 JAN 2018
+0 @I71@ INDI
+1 NAME Elizabeta /Pircar/
+1 SEX F
+1 BIRT
+2 DATE 15 JUN 1883
+2 PLAC Petkovec ___6, Rovte, Logatec, Slovenija
+2 SOUR @S84@
+2 SOUR @S87@
+2 SOUR @S15@
+1 DEAT
+2 DATE 13 OCT 1967
+2 PLAC Rovte _162, Rovte, Logatec,Slovenija
+2 SOUR @S15@
+1 RESI
+2 DATE 31 JUL 1905
+2 PLAC Rovte _125/52 (Pri Pustniku), Rovte, Logatec,Slovenija
+2 SOUR @S109@
+1 FAMS @F14@
+1 FAMS @F5479@
+1 FAMS @F506@
+1 FAMC @F2865@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I72@ INDI
+1 NAME Rozalija2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 04 FEB 1909
+2 PLAC Rovte ___7/1(Zajeljška mlekarna), Rovte, Logatec,Slovenija
+2 SOUR @S84@
+2 SOUR @S87@
+1 DEAT
+2 DATE __.__.1945
+2 PLAC II.svet. vojna povojni poboji javljenih v Logatcu 1945
+2 SOUR @S106@
+1 OCCU posestnik
+1 FAMS @F24@
+1 FAMC @F14@
+1 CHAN
+2 DATE 19 JUL 2020
+0 @I73@ INDI
+1 NAME Magdalena3 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 07 NOV 1926
+2 PLAC Rovte _125, Rovte, Logatec,Slovenija
+2 SOUR @S84@
+1 RESI
+2 DATE 02 JUN 1951
+2 PLAC Rovte _125, Rovte, Logatec,Slovenija
+1 FAMS @F25@
+1 FAMC @F24@
+1 CHAN
+2 DATE 25 SEP 2020
+0 @I74@ INDI
+1 NAME Jakob2 Jožef5 /Pircnik/
+1 SEX F
+1 BIRT
+2 DATE 03 DEC 1904
+2 PLAC Rovte __39/112 (Na petic), Rovte, Logatec,Slovenija
+2 SOUR @S84@
+1 DEAT
+2 DATE 01 FEB 2000
+2 PLAC ____
+1 FAMS @F5989@
+1 FAMS @F24@
+1 FAMC @F5988@
+1 CHAN
+2 DATE 14 OCT 2020
+0 @I75@ INDI
+1 NAME Franc5 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 06 JAN 1931
+2 PLAC Rovte __52, Rovte, Logatec,Slovenija
+2 SOUR @S84@
+2 SOUR @S4@
+1 OCCU delavka
+2 DATE 08 MAY 1955
+1 FAMS @F26@
+1 FAMC @F24@
+1 CHAN
+2 DATE 19 JUL 2020
+0 @I76@ INDI
+1 NAME Nežka /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 20 MAY 1935
+2 PLAC Rovte _125/52 (Planina), Rovte, Logatec,Slovenija
+2 SOUR @S84@
+1 FAMS @F27@
+1 FAMC @F24@
+1 CHAN
+2 DATE 11 DEC 2024
+0 @I77@ INDI
+1 NAME Marko5 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 04 OCT 1944
+2 PLAC Rovte _125/52 (Pri Pustniku), Rovte, Logatec,Slovenija
+1 DEAT
+2 DATE 27 MAY 2004
+2 PLAC Rovte, Slovenija
+1 FAMS @F28@
+1 FAMC @F24@
+1 CHAN
+2 DATE 03 JUN 2016
+0 @I78@ INDI
+1 NAME Veronika3 /Pircšek/
+1 SEX M
+1 BIRT
+2 DATE 04 JUL 1927
+2 PLAC Svibno ___2, Rateèe, Slovenija
+1 DEAT
+2 DATE 17 OCT 2000
+2 PLAC ____
+1 OCCU tovarniški delavec
+2 DATE 02 JUN 1951
+1 FAMS @F25@
+1 FAMC @F16571@
+1 CHAN
+2 DATE 25 SEP 2020
+0 @I79@ INDI
+1 NAME Tone5 /Pircšek/
+1 SEX F
+1 BIRT
+2 DATE 15 AUG 1953
+2 PLAC ____
+1 FAMS @F29@
+1 FAMC @F25@
+1 CHAN
+2 DATE 20 DEC 2017
+0 @I80@ INDI
+1 NAME Neža5 /Pircnc/
+1 SEX M
+1 BIRT
+2 DATE 18 APR 1952
+2 PLAC ____
+1 FAMS @F29@
+1 CHAN
+2 DATE 20 DEC 2017
+0 @I81@ INDI
+1 NAME Alojz5 /Pircnc/
+1 SEX F
+1 BIRT
+2 DATE 02 JUL 1977
+2 PLAC ____
+1 FAMC @F29@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I82@ INDI
+1 NAME Terezija5 /Pircnc/
+1 SEX F
+1 BIRT
+2 DATE 01 JUL 1979
+2 PLAC ____
+1 FAMC @F29@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I83@ INDI
+1 NAME Nežka /Pircšek/
+1 SEX M
+1 BIRT
+2 DATE 15 APR 1955
+2 PLAC ____
+1 FAMS @F30@
+1 FAMC @F25@
+1 CHAN
+2 DATE 26 JUL 2022
+0 @I84@ INDI
+1 NAME Ivana3 /Pircšek/
+1 SEX M
+1 BIRT
+2 DATE 02 OCT 1957
+2 PLAC ____
+1 FAMS @F31@
+1 FAMC @F25@
+1 CHAN
+2 DATE 20 DEC 2017
+0 @I85@ INDI
+1 NAME Tomaž4 /Pircman/
+1 SEX F
+1 BIRT
+2 DATE 16 JUL 1960
+2 PLAC ____
+1 FAMS @F30@
+1 CHAN
+2 DATE 20 DEC 2017
+0 @I86@ INDI
+1 NAME Peter5 /Pircšek/
+1 SEX F
+1 BIRT
+2 DATE 16 MAR 1981
+2 PLAC ____
+1 FAMC @F30@
+1 CHAN
+2 DATE 24 FEB 2020
+0 @I87@ INDI
+1 NAME Terezija5 /Pircšek/
+1 SEX F
+1 BIRT
+2 DATE 02 APR 1982
+2 PLAC ____
+1 FAMC @F30@
+1 CHAN
+2 DATE 24 FEB 2020
+0 @I88@ INDI
+1 NAME Marko5 /Pircovec/
+1 SEX F
+1 BIRT
+2 DATE 03 MAY 1959
+2 PLAC ____
+1 FAMS @F31@
+1 CHAN
+2 DATE 20 DEC 2017
+0 @I89@ INDI
+1 NAME Cvetka3 /Pircšek/
+1 SEX M
+1 BIRT
+2 DATE 01 JUL 1983
+2 PLAC ____
+1 FAMC @F31@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I90@ INDI
+1 NAME Martin2 /Pircšek/
+1 SEX M
+1 BIRT
+2 DATE 23 FEB 1988
+2 PLAC ____
+1 FAMC @F31@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I91@ INDI
+1 NAME Janez3 /Pircin/
+1 SEX F
+1 BIRT
+2 DATE 17 JUL 1939
+2 PLAC ____
+1 FAMS @F27@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I92@ INDI
+1 NAME Katarina5 Barbara Anton5 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 15 JAN 1977
+2 PLAC ____
+1 FAMC @F27@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I93@ INDI
+1 NAME Aleš /Pircel/
+1 SEX M
+1 BIRT
+2 DATE 29 FEB 1932
+2 PLAC Zaplana __21, Vrhnika, Slovenija
+2 SOUR @S87@
+2 SOUR @S84@
+1 DEAT
+2 DATE 27 APR 2004
+2 PLAC ____
+1 FAMS @F26@
+1 FAMC @F117@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I94@ INDI
+1 NAME Aleš /Pircel/
+1 SEX M
+1 BIRT
+2 DATE 09 MAR 1956
+2 PLAC Rovte __52, Rovte, Logatec,Slovenija
+2 SOUR @S87@
+1 FAMC @F26@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I95@ INDI
+1 NAME Franc5 /Pircel/
+1 SEX F
+1 BIRT
+2 DATE 21 DEC 1957
+2 PLAC Rovte __52, Rovte, Logatec,Slovenija
+2 SOUR @S87@
+1 FAMS @F32@
+1 FAMC @F26@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I96@ INDI
+1 NAME Štefan /Pircel/
+1 SEX M
+1 BIRT
+2 DATE 25 FEB 1961
+2 PLAC Rovte __51/79 (Pri Jernaè), Rovte, Logatec,Slovenija
+2 SOUR @S87@
+1 FAMC @F26@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I97@ INDI
+1 NAME Franc2 /Pircel/
+1 SEX F
+1 BIRT
+2 DATE 12 JAN 1965
+2 PLAC Rovte __51/79 (Pri Jernaè), Rovte, Logatec,Slovenija
+1 FAMS @F33@
+1 FAMC @F26@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I98@ INDI
+1 NAME Uršula5 /Pircel/
+1 SEX M
+1 BIRT
+2 DATE 27 AUG 1966
+2 PLAC Rovte __51/79 (Pri Jernaè), Rovte, Logatec,Slovenija
+1 FAMS @F34@
+1 FAMC @F26@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I99@ INDI
+1 NAME Rozalija2 /Pircniè/
+1 SEX M
+1 BIRT
+2 DATE 24 JUN 1954
+2 PLAC Rovte, Slovenija
+1 FAMS @F32@
+1 FAMC @F746@
+1 CHAN
+2 DATE 30 JAN 2019
+0 @I100@ INDI
+1 NAME Jurij2 /Pircniè/
+1 SEX F
+1 BIRT
+2 DATE 26 JAN 1979
+2 PLAC Rovte, Slovenija
+1 FAMC @F32@
+1 CHAN
+2 DATE 30 JAN 2019
+0 @I101@ INDI
+1 NAME Matevž2 /Pircniè/
+1 SEX F
+1 BIRT
+2 DATE 31 MAY 1982
+2 PLAC Rovte, Slovenija
+1 FAMC @F32@
+1 CHAN
+2 DATE 30 JAN 2019
+0 @I102@ INDI
+1 NAME Franèiška4 /Pircniè/
+1 SEX M
+1 BIRT
+2 DATE 27 MAR 1988
+2 PLAC Rovte, Slovenija
+1 FAMC @F32@
+1 CHAN
+2 DATE 30 JAN 2019
+0 @I103@ INDI
+1 NAME Tone5 /Pircniè/
+1 SEX F
+1 BIRT
+2 DATE 18 DEC 1992
+2 PLAC Rovte, Slovenija
+1 FAMC @F32@
+1 CHAN
+2 DATE 30 JAN 2019
+0 @I104@ INDI
+1 NAME Bernard4 /Pircniè/
+1 SEX M
+1 BIRT
+2 DATE 13 MAR 1997
+2 PLAC Rovte, Slovenija
+1 FAMC @F32@
+1 CHAN
+2 DATE 30 JAN 2019
+0 @I105@ INDI
+1 NAME Štefan /Pircoviè/
+1 SEX M
+1 BIRT
+2 DATE 27 MAR 1960
+2 PLAC Kranj, Slovenija
+1 FAMS @F33@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I106@ INDI
+1 NAME Urban3 /Pircoviè/
+1 SEX M
+1 BIRT
+2 DATE 06 JUL 1987
+2 PLAC Kranj, Slovenija
+1 FAMC @F33@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I107@ INDI
+1 NAME Terezija5 /Pircoviè/
+1 SEX F
+1 BIRT
+2 DATE 03 DEC 1991
+2 PLAC Kranj, Slovenija
+1 FAMC @F33@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I108@ INDI
+1 NAME Matija5 /Pircoviè/
+1 SEX M
+1 BIRT
+2 DATE 01 NOV 1999
+2 PLAC Kranj, Slovenija
+1 FAMC @F33@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I109@ INDI
+1 NAME Helena5 /Pircak/
+1 SEX F
+1 BIRT
+2 DATE 20 MAY 1970
+2 PLAC ____
+1 FAMS @F34@
+1 CHAN
+2 DATE 20 DEC 2017
+0 @I110@ INDI
+1 NAME Emerik4 /Pircel/
+1 SEX F
+1 BIRT
+2 DATE 01 SEP 1992
+2 PLAC Rovte __51/79 (Pri Jernaè), Rovte, Logatec,Slovenija
+1 FAMC @F34@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I111@ INDI
+1 NAME Danijela3 /Pircel/
+1 SEX F
+1 BIRT
+2 DATE 19 NOV 1993
+2 PLAC Rovte __51/79 (Pri Jernaè), Rovte, Logatec,Slovenija
+1 FAMC @F34@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I112@ INDI
+1 NAME Lovro5 /Pircel/
+1 SEX F
+1 BIRT
+2 DATE 08 APR 2004
+2 PLAC Rovte __51/79 (Pri Jernaè), Rovte, Logatec,Slovenija
+1 FAMC @F34@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I113@ INDI
+1 NAME Mihael /Pircveè/
+1 SEX M
+1 BIRT
+2 DATE 01 OCT 1945
+2 PLAC Smreèje __41, Rovte, Logatec, Slovenija
+1 OCCU mizar
+1 FAMS @F28@
+1 FAMC @F3685@
+1 CHAN
+2 DATE 22 AUG 2023
+0 @I114@ INDI
+1 NAME Adolf4 /Pircveè/
+1 SEX M
+1 BIRT
+2 DATE 14 APR 1969
+2 PLAC porodnišnica Ljubljana, Slovenija
+1 FAMS @F35@
+1 FAMC @F28@
+1 CHAN
+2 DATE 22 AUG 2023
+0 @I115@ INDI
+1 NAME Barbara2 /Pircveè/
+1 SEX F
+1 BIRT
+2 DATE 25 SEP 1972
+2 PLAC porodnišnica Ljubljana, Slovenija
+1 FAMS @F36@
+1 FAMC @F28@
+1 CHAN
+2 DATE 22 AUG 2023
+0 @I116@ INDI
+1 NAME Helena3 /Pircveè/
+1 SEX M
+1 BIRT
+2 DATE 20 SEP 1978
+2 PLAC porodnišnica Ljubljana, Slovenija
+1 FAMC @F28@
+1 CHAN
+2 DATE 22 AUG 2023
+0 @I117@ INDI
+1 NAME Alojz5 /Pircveè/
+1 SEX F
+1 BIRT
+2 DATE 07 OCT 1981
+2 PLAC porodnišnica Ljubljana, Slovenija
+1 FAMS @F37@
+1 FAMC @F28@
+1 CHAN
+2 DATE 22 AUG 2023
+0 @I118@ INDI
+1 NAME Barbara5 /Pircièek/
+1 SEX F
+1 BIRT
+2 DATE 23 JAN 1974
+2 PLAC Dolnji Logatec, Slovenija
+1 FAMS @F35@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I119@ INDI
+1 NAME Miha5 /Pircveè/
+1 SEX F
+1 BIRT
+2 DATE 08 DEC 1996
+2 PLAC ____
+1 FAMC @F35@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I120@ INDI
+1 NAME Angela3 /Pircveè/
+1 SEX F
+1 BIRT
+2 DATE 26 MAR 2000
+2 PLAC ____
+1 FAMC @F35@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I121@ INDI
+1 NAME Bernard4 /Oblakveè/
+1 SEX M
+1 BIRT
+2 DATE 04 JUL 1966
+2 PLAC Rovte, Slovenija
+1 FAMS @F36@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I122@ INDI
+1 NAME Rozalija5 /Oblakveè/
+1 SEX M
+1 BIRT
+2 DATE 07 APR 1994
+2 PLAC Rovte, Slovenija
+1 FAMC @F36@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I123@ INDI
+1 NAME Amalija2 /Oblakveè/
+1 SEX M
+1 BIRT
+2 DATE 17 OCT 2001
+2 PLAC Rovte, Slovenija
+1 FAMC @F36@
+1 CHAN
+2 DATE 03 MAR 2019
+0 @I124@ INDI
+1 NAME Genovefa /Pircnjak/
+1 SEX M
+1 BIRT
+2 DATE 29 NOV 1976
+2 PLAC ____
+1 FAMS @F37@
+1 CHAN
+2 DATE 14 APR 2019
+0 @I125@ INDI
+1 NAME Štefan /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 26 FEB 1906
+2 PLAC Rovte __69/29 (Hudi konc, Na rudniku), Rovte, Logatec,Slovenija
+2 SOUR @S84@
+2 SOUR @S87@
+1 DEAT
+2 DATE __.__.1963
+2 PLAC Ljubljana, bolnišnica, Slovenija
+2 SOUR @S3@
+1 RESI
+2 PLAC Rovte _125/52 (Pri Pustniku), Rovte, Logatec,Slovenija
+1 OCCU gostaè
+1 FAMS @F500@
+1 FAMC @F14@
+1 CHAN
+2 DATE 25 SEP 2020
+0 @I126@ INDI
+1 NAME Elizabeta /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 27 MAR 1863
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S4@
+1 BAPM
+2 DATE 27 MAR 1863
+2 PLAC Rovte, Slovenija
+2 SOUR @S4@
+1 DEAT
+2 DATE 17 MAY 1863
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S4@
+2 SOUR @S525@
+1 FAMC @F7@
+1 CHAN
+2 DATE 04 APR 2021
+0 @I127@ INDI
+1 NAME Štefan /Oblakar/
+1 SEX M
+1 BIRT
+2 DATE 05 JAN 1790
+2 PLAC Rovte __31/131, Rovte, Logatec,Slovenija
+1 DEAT
+2 DATE __._<.1875
+2 PLAC ____
+2 SOUR @S1@
+1 FAMS @F3791@
+1 FAMS @F8@
+1 FAMC @F1692@
+1 CHAN
+2 DATE 10 MAR 2019
+0 @I128@ INDI
+1 NAME Jakob5 /Ramovšiè/
+1 SEX F
+1 BIRT
+2 DATE 07 DEC 1807
+2 PLAC Zadlog __26, Èrni vrh nad Idrijo, Slovenija
+2 SOUR @S87@
+1 DEAT
+2 DATE 22 JUN 1901
+2 PLAC ____
+2 SOUR @S87@
+1 FAMS @F8@
+1 FAMC @F9244@
+1 CHAN
+2 DATE 10 MAR 2019
+0 @I129@ INDI
+1 NAME Marjeta2 /Oblaknik/
+1 SEX M
+1 BIRT
+2 DATE 01 DEC 1871
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 28 JUL 1916
+2 PLAC I.svet. vojna Galicija
+2 SOUR @S3@
+1 RESI
+2 DATE 08 FEB 1897
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+1 OCCU kmet 1/2
+1 FAMS @F9@
+1 FAMC @F38@
+1 CHAN
+2 DATE 19 SEP 2019
+0 @I130@ INDI
+1 NAME Jakob2 /Ramovšek/
+1 SEX F
+1 BIRT
+2 DATE 14 DEC 1872
+2 PLAC Dobrniè __30 (Ribnèan), Dobrniè, Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 08 NOV 1918
+2 PLAC Dobrniè, Slovenija
+2 SOUR @S3@
+1 FAMS @F9@
+1 FAMC @F39@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I131@ INDI
+1 NAME Karolina /Oblaknik/
+1 SEX M
+1 BIRT
+2 DATE 29 JAN 1837
+2 PLAC Vavpèa vas ___8 (Mladi Šturm), Dobrniè, Slovenija
+2 SOUR @S3@
+1 RESI
+2 DATE 05 JUN 1865
+2 PLAC Vavpèa vas ___8 (Mladi Šturm), Dobrniè, Slovenija
+1 OCCU kmet 1/2
+1 FAMS @F38@
+1 FAMC @F599@
+1 CHAN
+2 DATE 19 SEP 2019
+0 @I132@ INDI
+1 NAME Anton4 /Ramovšar/
+1 SEX F
+1 BIRT
+2 DATE 19 APR 1842
+2 PLAC Veliki Lipovec ____, Dvor, Slovenija
+2 SOUR @S3@
+1 RESI
+2 DATE 05 JUN 1865
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+1 OCCU kmet 1/2
+1 FAMS @F680@
+1 FAMS @F38@
+1 FAMC @F642@
+1 CHAN
+2 DATE 19 SEP 2019
+0 @I133@ INDI
+1 NAME Ema5 /Ramovšek/
+1 SEX M
+1 BIRT
+2 DATE 23 OCT 1846
+2 PLAC Dobrniè __30 (Ribnèan), Dobrniè, Slovenija
+1 DEAT
+2 DATE __._<.1897
+2 PLAC Dobrniè __30 (Ribnèan), Dobrniè, Slovenija
+1 RESI
+2 DATE 06 FEB 1871
+2 PLAC Dobrniè __30 (Ribnèan), Dobrniè, Slovenija
+1 OCCU kmet
+2 DATE 03 FEB 1869
+1 FAMS @F7293@
+1 FAMS @F39@
+1 FAMC @F3700@
+1 CHAN
+2 DATE 25 MAR 2023
+0 @I134@ INDI
+1 NAME Jakob2 /Ramovšnik/
+1 SEX F
+1 BIRT
+2 DATE 10 OCT 1846
+2 PLAC Dolenja vas ___5(Žabjek), Dobrniè, Slovenija
+2 SOUR @S3@
+1 RESI
+2 DATE 06 FEB 1871
+2 PLAC Dolenja vas ___5(Žabjek), Dobrniè, Slovenija
+1 FAMS @F39@
+1 FAMC @F8273@
+1 CHAN
+2 DATE 06 APR 2016
+0 @I135@ INDI
+1 NAME Andrej5 /Oblaknik/
+1 SEX F
+1 BIRT
+2 DATE 19 MAR 1898
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 08 JUL 1929
+2 PLAC Ljubljana, Slovenija
+1 OCCU nuna
+2 SOUR @S3@
+1 FAMC @F9@
+1 CHAN
+2 DATE 19 SEP 2019
+0 @I136@ INDI
+1 NAME Elizabeta /Oblaknik/
+1 SEX F
+1 BIRT
+2 DATE 11 JUL 1908
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 22 SEP 1960
+2 PLAC Ljubljana, Slovenija
+1 FAMC @F9@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I137@ INDI
+1 NAME Štefan /Oblaknik/
+1 SEX M
+1 BIRT
+2 DATE 13 OCT 1906
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+1 DEAT
+2 DATE __.<>.1980
+2 PLAC Buenos Aires, Argentina
+1 FAMS @F598@
+1 FAMC @F9@
+1 CHAN
+2 DATE 20 SEP 2019
+0 @I138@ INDI
+1 NAME Karolina /Oblaknik/
+1 SEX M
+1 BIRT
+2 DATE 01 APR 1916
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+2 SOUR @S3@
+1 BAPM
+2 DATE 02 APR 1916
+2 PLAC Dobrniè, Slovenija
+1 DEAT
+2 DATE 04 NOV 1998
+2 PLAC Beograd, Srbija
+1 BURI
+2 DATE 07 NOV 1998
+2 PLAC Topèider, Beograd, Srbija
+1 FAMS @F555@
+1 FAMC @F9@
+1 CHAN
+2 DATE 13 MAR 2011
+0 @I139@ INDI
+1 NAME Jakob2 /Oblaknik/
+1 SEX F
+1 BIRT
+2 DATE 20 JUN 1901
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 12 JUL 1944
+2 PLAC Križe pri Tržièu, Slovenija
+1 FAMS @F239@
+1 FAMC @F9@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I140@ INDI
+1 NAME Aleš /Oblaknik/
+1 SEX M
+1 BIRT
+2 DATE 30 JUL 1910
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+1 DEAT
+2 DATE 14 AUG 1942
+2 PLAC II.svet. vojna - ubili Italijani
+2 SOUR @S3@
+1 OCCU mizar
+1 FAMC @F9@
+1 CHAN
+2 DATE 01 JUL 2018
+0 @I141@ INDI
+1 NAME Rozalija2 /Ramovššek/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1710
+2 PLAC Ledine, Spodnja Idrija, Slovenija
+1 FAMS @F40@
+1 CHAN
+2 DATE 16 MAR 2016
+0 @I142@ INDI
+1 NAME Elizabeta /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 24 AUG 1711
+2 PLAC Rovte, Slovenija
+1 BAPM
+2 DATE 25 AUG 1711
+2 PLAC Sv.Mihael, Rovte, Slovenija
+1 FAMS @F40@
+1 FAMC @F41@
+1 CHAN
+2 DATE 30 JAN 2013
+0 @I143@ INDI
+1 NAME Boštjan3 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 14 FEB 1672
+2 PLAC Rovte, Slovenija
+1 DEAT
+2 DATE 12 APR 1749
+2 PLAC Rovte (Groblje Modrijan), Logatec, Slovenija
+1 RESI
+2 DATE __.__.1711
+2 PLAC Rovte, Slovenija
+1 FAMS @F41@
+1 FAMC @F69@
+1 CHAN
+2 DATE 02 FEB 2022
+0 @I144@ INDI
+1 NAME Peter4 /Ramovšnc/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1680
+2 PLAC ____
+1 FAMS @F41@
+1 CHAN
+2 DATE 11 APR 2019
+0 @I145@ INDI
+1 NAME Rozalija2 /Ramovšman/
+1 SEX M
+1 BIRT
+2 DATE 11 DEC 1708
+2 PLAC Blatna Brezovica, Vrhnika, Slovenija
+1 RESI
+2 DATE 18 FEB 1737
+2 PLAC Setnica ___5/6 (Urbancova bajta) , Polhov Gradec, Slovenija
+1 FAMS @F43@
+1 FAMC @F44@
+1 CHAN
+2 DATE 12 MAR 2016
+0 @I146@ INDI
+1 NAME Peter4 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 27 JUL 1717
+2 PLAC Rovte (Trtovše), Logatec, Slovenija
+1 RESI
+2 DATE 18 FEB 1737
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 FAMS @F43@
+1 FAMC @F45@
+1 CHAN
+2 DATE 04 MAR 2013
+0 @I147@ INDI
+1 NAME Marko3 /Ramovšovec/
+1 SEX F
+1 BIRT
+2 DATE 15 MAY 1855
+2 PLAC Gorenja vas __82, Planina, Vipava, Slovenija
+1 FAMC @F15916@
+1 CHAN
+2 DATE 20 DEC 2022
+0 @I148@ INDI
+1 NAME Franc2 /Ramovšnc/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1680
+2 PLAC ____
+1 FAMS @F44@
+1 CHAN
+2 DATE 27 NOV 2022
+0 @I149@ INDI
+1 NAME Franèiška5 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1680
+2 PLAC Rovte (Trtovše), Logatec, Slovenija
+1 DEAT
+2 DATE 30 DEC 1742
+2 PLAC Rovte (Trtovše), Logatec, Slovenija
+1 FAMS @F45@
+1 FAMC @F99@
+1 CHAN
+2 DATE 23 JUL 2014
+0 @I150@ INDI
+1 NAME Aleš3 /Ramovšin/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1685
+2 PLAC Stara Vrhnika (Kuren), Slovenija
+1 DEAT
+2 DATE 20 AUG 1751
+2 PLAC Rovte, Slovenija
+1 FAMS @F45@
+1 FAMC @F7197@
+1 CHAN
+2 DATE 09 APR 2019
+0 @I151@ INDI
+1 NAME Martin3 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 14 FEB 1707
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 DEAT
+2 DATE 17 NOV 1758
+2 PLAC Rovte, Slovenija
+1 FAMS @F46@
+1 FAMC @F41@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I152@ INDI
+1 NAME Johana2 /Ramovšel/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1710
+2 PLAC Petkovec, Rovte, Slovenija
+1 FAMS @F46@
+1 FAMC @F9394@
+1 CHAN
+2 DATE 02 SEP 2016
+0 @I153@ INDI
+1 NAME Tone /Ramovšel/
+1 SEX M
+1 BIRT
+2 DATE 08 AUG 1670
+2 PLAC Petkovec, Rovte, Slovenija
+1 FAMS @F9394@
+1 FAMS @F119@
+1 FAMC @F7342@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I154@ INDI
+1 NAME Jakob2 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 03 FEB 1913
+2 PLAC Žiberše __16/17 (Osoje), Rovte, Logatec, Slovenija
+1 FAMC @F731@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I155@ INDI
+1 NAME Štefan /Ramovšniè/
+1 SEX M
+1 BIRT
+2 DATE 14 MAR 1713
+2 PLAC Rovte (Brdo), Logatec, Slovenija
+1 DEAT
+2 DATE __._<.1760
+2 PLAC Rovte, Slovenija
+1 RESI
+2 DATE 30 APR 1738
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 FAMS @F48@
+1 FAMC @F378@
+1 CHAN
+2 DATE 05 APR 2021
+0 @I156@ INDI
+1 NAME Jakob5 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 13 DEC 1723
+2 PLAC Rovte (Laneuše), Logatec, Slovenija
+1 RESI
+2 DATE 30 APR 1738
+2 PLAC Medvedje brdo (sv.Katarina), Rovte, Logatec,Slovenija
+1 FAMS @F48@
+1 FAMS @F7588@
+1 FAMC @F525@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I157@ INDI
+1 NAME Elizabeta /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 19 FEB 1913
+2 PLAC Rovte _139 (Gradišèe), Rovte, Logatec,Slovenija
+2 SOUR @S87@
+1 DEAT
+2 DATE 18 MAY 2002
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMS @F741@
+1 FAMC @F3100@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I158@ INDI
+1 NAME Martin5 /Ramovšoviè/
+1 SEX M
+1 BIRT
+2 DATE 16 JUL 1906
+2 PLAC Petkovec __11, Rovte, Logatec, Slovenija
+2 SOUR @S87@
+1 DEAT
+2 DATE __.__.1945
+2 PLAC II.svet. vojna povojni poboji javljenih v Logatcu 1945
+2 SOUR @S3@
+1 RESI
+2 PLAC Rovte _145/Petkovec ___6 (Pri Frideriku), Rovte, Logatec,Slovenija
+1 FAMS @F741@
+1 FAMC @F6080@
+1 CHAN
+2 DATE 04 MAR 2018
+0 @I159@ INDI
+1 NAME Elizabeta /Ramovšak/
+1 SEX F
+1 BIRT
+2 DATE 27 JUL 1818
+2 PLAC Dolnji Logatec __52, Logatec, Slovenija
+1 DEAT
+2 DATE 10 APR 1883
+2 PLAC Dolnji Logatec __51, Logatec, Slovenija
+1 FAMS @F362@
+1 FAMC @F363@
+1 CHAN
+2 DATE 16 OCT 2017
+0 @I160@ INDI
+1 NAME Ana3 /Ramovšin/
+1 SEX F
+1 BIRT
+2 DATE 11 MAR 1720
+2 PLAC Petkovec, Rovte, Slovenija
+1 FAMS @F355@
+1 FAMC @F7025@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I161@ INDI
+1 NAME Nace2 /Ramovšveè/
+1 SEX M
+1 BIRT
+2 DATE 17 MAY 1730
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 DEAT
+2 DATE __._<.1780
+2 PLAC Petkovec, Rovte, Slovenija
+1 FAMS @F1010@
+1 FAMC @F1945@
+1 CHAN
+2 DATE 05 APR 2021
+0 @I162@ INDI
+1 NAME Elizabeta /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 11 AUG 1711
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 DEAT
+2 DATE 09 DEC 1754
+2 PLAC Rovte, Slovenija
+1 FAMS @F6285@
+1 FAMC @F57@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I163@ INDI
+1 NAME Dorotea /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 22 FEB 1715
+2 PLAC Rovte (Trtovše), Logatec, Slovenija
+1 DEAT
+2 DATE 14 APR 1788
+2 PLAC Rovte __80/30 (Trtovše), Rovte, Logatec,Slovenija
+1 FAMS @F53@
+1 FAMC @F45@
+1 CHAN
+2 DATE 02 FEB 2022
+0 @I164@ INDI
+1 NAME Elizabeta /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 06 SEP 1709
+2 PLAC Rovte (Trtovše), Logatec, Slovenija
+1 RESI
+2 DATE 24 NOV 1727
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 FAMS @F54@
+1 FAMC @F45@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I165@ INDI
+1 NAME Franc2 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 01 JUN 1728
+2 PLAC Rovte (Trtovše), Logatec, Slovenija
+1 DEAT
+2 DATE 30 APR 1788
+2 PLAC Šentjošt ___8, Horjul, Slovenija
+1 FAMS @F55@
+1 FAMC @F45@
+1 CHAN
+2 DATE 04 DEC 2017
+0 @I166@ INDI
+1 NAME Ljudmila /Oblakveè/
+1 SEX F
+1 BIRT
+2 DATE 17 JUL 1722
+2 PLAC Rovte (Osredek), Logatec, Slovenija
+1 DEAT
+2 DATE 14 APR 1788
+2 PLAC Rovte __80/30 (Trtovše), Rovte, Logatec,Slovenija
+1 RESI
+2 DATE 01 FEB 1740
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 FAMS @F53@
+1 FAMC @F373@
+1 CHAN
+2 DATE 05 DEC 2021
+0 @I167@ INDI
+1 NAME Genovefa /Ramovšièek/
+1 SEX M
+1 BIRT
+2 DATE 17 NOV 1692
+2 PLAC Rovte, Slovenija
+1 RESI
+2 DATE 24 NOV 1727
+2 PLAC Petkovec (bl.sv.Hieronim), Rovte, Slovenija
+1 FAMS @F54@
+1 FAMC @F372@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I168@ INDI
+1 NAME Ema5 /Ramovšnjak/
+1 SEX M
+1 BIRT
+2 DATE 12 AUG 1718
+2 PLAC Smreèje ____, Rovte, Logatec, Slovenija
+1 DEAT
+2 DATE 26 DEC 1789
+2 PLAC ____
+1 FAMS @F2389@
+1 FAMS @F55@
+1 CHAN
+2 DATE 14 MAR 2019
+0 @I169@ INDI
+1 NAME Johana2 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 13 JUL 1721
+2 PLAC Rovte (Groblje), Logatec, Slovenija
+1 FAMS @F56@
+1 FAMC @F41@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I170@ INDI
+1 NAME Julijana5 /Oblakveè/
+1 SEX M
+1 BIRT
+2 DATE 02 OCT 1719
+2 PLAC Rovte (Osredek), Logatec, Slovenija
+1 RESI
+2 DATE 28 JAN 1743
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 FAMS @F56@
+1 FAMS @F923@
+1 FAMS @F2901@
+1 FAMC @F373@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I171@ INDI
+1 NAME Filip3 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1670
+2 PLAC Rovte, Slovenija
+1 FAMS @F52@
+1 FAMS @F57@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I172@ INDI
+1 NAME Jurij5 /Ramovšnc/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1680
+2 PLAC ____
+1 FAMS @F52@
+1 CHAN
+2 DATE 08 MAR 2019
+0 @I173@ INDI
+1 NAME Anton4 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1700
+2 PLAC Rovte (Kamnje), Logatec, Slovenija
+1 RESI
+2 DATE 13 FEB 1719
+2 PLAC Rovte (Kamnje), Logatec, Slovenija
+1 FAMS @F58@
+1 FAMC @F52@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I174@ INDI
+1 NAME Genovefa /Severiè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1690
+2 PLAC ____
+1 RESI
+2 DATE 13 FEB 1719
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 FAMS @F58@
+1 FAMC @F6570@
+1 CHAN
+2 DATE 04 MAR 2019
+0 @I175@ INDI
+1 NAME Adolf2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1660
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 DEAT
+2 DATE 22 OCT 1720
+2 PLAC Rovte, Slovenija
+1 FAMS @F59@
+1 CHAN
+2 DATE 25 NOV 2014
+0 @I176@ INDI
+1 NAME Peter4 /Ramovšnc/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1660
+2 PLAC ____
+1 FAMS @F59@
+1 CHAN
+2 DATE 07 SEP 2021
+0 @I177@ INDI
+1 NAME Anton4 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1685
+2 PLAC Rovte, Slovenija
+1 FAMS @F60@
+1 FAMC @F59@
+1 CHAN
+2 DATE 13 MAR 2016
+0 @I178@ INDI
+1 NAME Egidij2 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1690
+2 PLAC Rovte, Slovenija
+1 FAMS @F61@
+1 FAMC @F59@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I179@ INDI
+1 NAME Franc2 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 26 MAY 1700
+2 PLAC Žiberše __17/19 (Srebotje), Rovte, Logatec, Slovenija
+1 FAMS @F388@
+1 FAMC @F59@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I180@ INDI
+1 NAME Uršula4 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1710
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 DEAT
+2 DATE 21 DEC 1779
+2 PLAC Petkovec ___3, Rovte, Logatec, Slovenija
+1 RESI
+2 DATE 20 SEP 1779
+2 PLAC Petkovec ___3, Rovte, Logatec, Slovenija
+1 RESI
+2 DATE 28 APR 1766
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 OCCU gostaè
+1 FAMS @F63@
+1 FAMS @F358@
+1 FAMS @F349@
+1 FAMC @F59@
+1 CHAN
+2 DATE 04 FEB 2022
+0 @I181@ INDI
+1 NAME Nace2 /Oblakveè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1680
+2 PLAC Rovte, Slovenija
+1 DEAT
+2 DATE __._<.1740
+2 PLAC Rovte, Slovenija
+1 FAMS @F60@
+1 FAMC @F64@
+1 CHAN
+2 DATE 05 APR 2021
+0 @I182@ INDI
+1 NAME Adolf2 /Oblakveè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1650
+2 PLAC ____
+1 DEAT
+2 DATE __._<.1727
+2 PLAC Rovte, Slovenija
+1 FAMS @F64@
+1 CHAN
+2 DATE 05 APR 2021
+0 @I183@ INDI
+1 NAME Franc2 /Ramovšnc/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1650
+2 PLAC ____
+1 FAMS @F64@
+1 CHAN
+2 DATE 25 MAR 2019
+0 @I184@ INDI
+1 NAME Franèiška5 /Severek/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1690
+2 PLAC Rovte, Slovenija
+1 RESI
+2 DATE 10 FEB 1709
+2 PLAC Zaplana, Vrhnika, Slovenija
+1 FAMS @F61@
+1 FAMC @F387@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I185@ INDI
+1 NAME Rozalija2 /Pircar/
+1 SEX M
+1 BIRT
+2 DATE 14 DEC 1842
+2 PLAC Petkovec __19, Rovte, Logatec, Slovenija
+1 DEAT
+2 DATE 22 JAN 1846
+2 PLAC Petkovec __19, Rovte, Logatec, Slovenija
+1 FAMC @F7048@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I186@ INDI
+1 NAME Aleš3 /Ramovšoviè/
+1 SEX F
+1 BIRT
+2 DATE 09 JAN 1729
+2 PLAC Rovte, Slovenija
+1 DEAT
+2 DATE 15 FEB 1766
+2 PLAC Rovte, Slovenija
+1 FAMS @F63@
+1 FAMC @F8185@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I187@ INDI
+1 NAME Ema5 /Severar/
+1 SEX M
+1 BIRT
+2 DATE 20 SEP 1676
+2 PLAC Rovte, Slovenija
+1 FAMC @F7084@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I188@ INDI
+1 NAME Ana3 /Severnik/
+1 SEX F
+1 BIRT
+2 DATE 03 MAR 1696
+2 PLAC Rovte (Potok), Logatec, Slovenija
+1 RESI
+2 DATE 22 FEB 1727
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 FAMS @F8185@
+1 FAMC @F1665@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I189@ INDI
+1 NAME Apolonija5 /Pircveè/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1680
+2 PLAC Rovte, Slovenija
+1 FAMS @F57@
+1 FAMS @F917@
+1 FAMC @F66@
+1 CHAN
+2 DATE 18 MAR 2016
+0 @I190@ INDI
+1 NAME Ljudmila4 /Pircveè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1650
+2 PLAC ____
+1 DEAT
+2 DATE __._<.1704
+2 PLAC ____
+1 FAMS @F66@
+1 CHAN
+2 DATE 05 APR 2021
+0 @I191@ INDI
+1 NAME Jurij5 /Ramovšnc/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1660
+2 PLAC ____
+1 FAMS @F66@
+1 CHAN
+2 DATE 14 MAR 2019
+0 @I192@ INDI
+1 NAME Peter4 /Ramovššek/
+1 SEX F
+1 BIRT
+2 DATE 15 SEP 1778
+2 PLAC Dolge njive ___1, Luèine, Slovenija
+1 DEAT
+2 DATE 11 DEC 1801
+2 PLAC Dolge njive ___1, Luèine, Slovenija
+1 FAMS @F2506@
+1 FAMC @F1648@
+1 CHAN
+2 DATE 06 FEB 2018
+0 @I193@ INDI
+1 NAME Elizabeta /Ramovšnc/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1670
+2 PLAC ____
+1 FAMS @F67@
+1 CHAN
+2 DATE 29 MAR 2019
+0 @I194@ INDI
+1 NAME Johana2 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 22 FEB 1674
+2 PLAC Rovte, Slovenija
+1 FAMS @F68@
+1 FAMC @F69@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I195@ INDI
+1 NAME Elizabeta /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 16 APR 1700
+2 PLAC Rovte (Laneuše), Logatec, Slovenija
+1 RESI
+2 DATE 05 FEB 1720
+2 PLAC Medvedje brdo (sv.Katarina), Rovte, Logatec,Slovenija
+1 FAMS @F70@
+1 FAMC @F67@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I196@ INDI
+1 NAME Ljudmila4 /Severšek/
+1 SEX M
+1 BIRT
+2 DATE __.__.1670
+2 PLAC ____
+1 FAMS @F68@
+1 FAMC @F601@
+1 CHAN
+2 DATE 25 MAR 2019
+0 @I197@ INDI
+1 NAME Ema5 /Severnc/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1695
+2 PLAC Idrija, Slovenija
+1 RESI
+2 DATE 05 FEB 1720
+2 PLAC Sv.Marija Magdalena žup.Idrija
+1 FAMS @F70@
+1 FAMC @F6555@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I198@ INDI
+1 NAME Adolf2 /Severman/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1630
+2 PLAC ____
+1 FAMS @F7053@
+1 CHAN
+2 DATE 18 MAR 2019
+0 @I199@ INDI
+1 NAME Dorotea /Severek/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1640
+2 PLAC ____
+1 FAMS @F7055@
+1 CHAN
+2 DATE 06 APR 2019
+0 @I200@ INDI
+1 NAME Johana2 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1695
+2 PLAC Rovte, Slovenija
+1 RESI
+2 DATE 08 FEB 1734
+2 PLAC Ravnik (bliž.sv.Barbara), Hotedršica, Logatec, Slovenija
+1 RESI
+2 DATE 25 JAN 1719
+2 PLAC Rovte, Slovenija
+1 FAMS @F72@
+1 FAMS @F1527@
+1 FAMC @F94@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I201@ INDI
+1 NAME Dorotea /Severovec/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1695
+2 PLAC Rovte, Slovenija
+1 DEAT
+2 DATE __._<.1734
+2 PLAC Rovte, Slovenija
+1 RESI
+2 DATE 25 JAN 1719
+2 PLAC Medvedje brdo (sv.Katarina), Rovte, Logatec,Slovenija
+1 FAMS @F72@
+1 FAMS @F6936@
+1 FAMC @F6544@
+1 CHAN
+2 DATE 05 APR 2021
+0 @I202@ INDI
+1 NAME Helena3 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1680
+2 PLAC Rovte, Slovenija
+1 OCCU kmet 3/4
+1 FAMS @F73@
+1 FAMC @F94@
+1 CHAN
+2 DATE 18 SEP 2019
+0 @I203@ INDI
+1 NAME Elizabeta /Severin/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1680
+2 PLAC ____
+1 FAMS @F73@
+1 FAMC @F9104@
+1 CHAN
+2 DATE 29 MAR 2019
+0 @I204@ INDI
+1 NAME Johana2 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 26 MAR 1701
+2 PLAC Medvedje brdo (sv.Katarina), Rovte, Logatec,Slovenija
+1 RESI
+2 DATE 11 FEB 1725
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 FAMS @F74@
+1 FAMC @F73@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I205@ INDI
+1 NAME Rozalija2 /Oblakin/
+1 SEX M
+1 BIRT
+2 DATE 09 JUN 1705
+2 PLAC Zaplana (bl.sv.Urh),Vrhnika, Slovenija
+1 DEAT
+2 DATE __._<.1754
+2 PLAC ____
+1 FAMS @F74@
+1 FAMC @F75@
+1 CHAN
+2 DATE 05 APR 2021
+0 @I206@ INDI
+1 NAME Filip3 /Oblakin/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1680
+2 PLAC Zaplana, Vrhnika, Slovenija
+1 FAMS @F75@
+1 FAMS @F17915@
+1 CHAN
+2 DATE 05 APR 2023
+0 @I207@ INDI
+1 NAME Anton4 /Ramovšnc/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1680
+2 PLAC ____
+1 FAMS @F75@
+1 CHAN
+2 DATE 05 APR 2023
+0 @I208@ INDI
+1 NAME Vinko /Oblaknik/
+1 SEX F
+1 BIRT
+2 DATE 13 JUN 1898
+2 PLAC Vavpèa vas ___4, Dobrniè, Slovenija
+1 FAMC @F8251@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I209@ INDI
+1 NAME Ana3 /Severel/
+1 SEX F
+1 BIRT
+2 DATE 14 MAR 1887
+2 PLAC Hotedršica __32 (Valentin), Slovenija
+1 DEAT
+2 DATE 13 MAR 1973
+2 PLAC Hotedršica, Slovenija
+1 RESI
+2 DATE 17 MAY 1920
+2 PLAC Hotedršica __32 (Valentin), Slovenija
+1 FAMS @F1014@
+1 FAMC @F9027@
+1 CHAN
+2 DATE 03 NOV 2019
+0 @I210@ INDI
+1 NAME Jakob2 /Oblaknik/
+1 SEX F
+1 BIRT
+2 DATE 16 JAN 1881
+2 PLAC Vavpèa vas ___4, Dobrniè, Slovenija
+1 DEAT
+2 DATE 22 JAN 1955
+2 PLAC Dolenja Dobrava __13, Dobrniè, Slovenija
+1 RESI
+2 DATE 24 FEB 1908
+2 PLAC poroka
+1 FAMC @F8251@
+1 CHAN
+2 DATE 26 OCT 2014
+0 @I211@ INDI
+1 NAME Marjeta2 /Severniè/
+1 SEX M
+1 BIRT
+2 DATE 16 JAN 1856
+2 PLAC Blekova vas ___5/16 (Maèek), Logatec, Slovenija
+1 DEAT
+2 DATE 19 JUN 1923
+2 PLAC Blekova vas __14/5 (Zimov), Logatec, Slovenija
+1 RESI
+2 DATE 01 JUL 1889
+2 PLAC Blekova vas ___5/16 (Maèek), Logatec, Slovenija
+1 OCCU kmet 1/2
+1 FAMS @F7737@
+1 FAMS @F11915@
+1 FAMC @F7736@
+1 CHAN
+2 DATE 23 NOV 2017
+0 @I212@ INDI
+1 NAME Rozalija2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 29 AUG 1839
+2 PLAC Rovte __80/30 (Trtovše), Rovte, Logatec,Slovenija
+2 SOUR @S8@
+2 SOUR @S84@
+1 RESI
+2 DATE 06 FEB 1882
+2 PLAC Rovte __81/33 (Pri Francelnu), Rovte, Logatec,Slovenija
+2 SOUR @S1@
+1 FAMS @F190@
+1 FAMC @F191@
+1 CHAN
+2 DATE 06 SEP 2014
+0 @I213@ INDI
+1 NAME Silvester /Severoviè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1640
+2 PLAC ____
+1 FAMS @F7056@
+1 CHAN
+2 DATE 18 MAR 2019
+0 @I214@ INDI
+1 NAME Anton4 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 14 JAN 1725
+2 PLAC Žažar __19 (Modrijan), Horjul, Slovenija
+1 FAMS @F78@
+1 FAMC @F79@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I215@ INDI
+1 NAME Ema5 /Severoviè/
+1 SEX M
+1 BIRT
+2 DATE 18 SEP 1720
+2 PLAC Rovte (Osredek), Logatec, Slovenija
+1 FAMS @F78@
+1 FAMC @F393@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I216@ INDI
+1 NAME Emerik /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 06 OCT 1713
+2 PLAC Rovte (Groblje Modrijan), Logatec, Slovenija
+1 DEAT
+2 DATE 19 JAN 1728
+2 PLAC Rovte, Slovenija
+1 FAMC @F41@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I217@ INDI
+1 NAME Štefan /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 01 MAR 1719
+2 PLAC Rovte (Trtovše), Logatec, Slovenija
+1 DEAT
+2 DATE 10 JUL 1720
+2 PLAC Rovte (Trtovše), Logatec, Slovenija
+1 FAMC @F45@
+1 CHAN
+2 DATE 21 JAN 2016
+0 @I218@ INDI
+1 NAME Franèiška5 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 27 JUL 1717
+2 PLAC Rovte (Trtovše), Logatec, Slovenija
+1 DEAT
+2 DATE 07 SEP 1724
+2 PLAC Rovte (Trtovše), Logatec, Slovenija
+1 RESI
+2 DATE 18 FEB 1737
+2 PLAC Rovte (bliž.sv.Mihaela), Logatec, Slovenija
+1 FAMC @F45@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I219@ INDI
+1 NAME Rozalija2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1725
+2 PLAC Rovte (Trtovše), Logatec, Slovenija
+1 DEAT
+2 DATE 20 MAR 1727
+2 PLAC Rovte (Trtovše), Logatec, Slovenija
+1 FAMC @F45@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I220@ INDI
+1 NAME Marjeta2 /Severak/
+1 SEX M
+1 BIRT
+2 DATE 31 MAR 1936
+2 PLAC Tacen, Ljubljana, Slovenija
+2 SOUR @S3@
+1 DEAT
+2 DATE 26 DEC 2018
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 OCCU sodar
+2 SOUR @S3@
+1 FAMS @F5@
+1 FAMC @F125@
+1 CHAN
+2 DATE 06 JAN 2019
+0 @I221@ INDI
+1 NAME Filip3 /Severak/
+1 SEX M
+1 BIRT
+2 DATE 20 MAY 1965
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMS @F80@
+1 FAMC @F5@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I222@ INDI
+1 NAME Simon3 /Severak/
+1 SEX M
+1 BIRT
+2 DATE 21 AUG 1966
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMS @F81@
+1 FAMC @F5@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I223@ INDI
+1 NAME Peter4 /Severveè/
+1 SEX F
+1 BIRT
+2 DATE 30 DEC 1976
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMS @F80@
+1 FAMC @F533@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I224@ INDI
+1 NAME Martin /Severak/
+1 SEX M
+1 BIRT
+2 DATE 25 NOV 1996
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMC @F80@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I225@ INDI
+1 NAME Boštjan3 /Severak/
+1 SEX M
+1 BIRT
+2 DATE 21 MAY 1998
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMC @F80@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I226@ INDI
+1 NAME Blaž5 /Severièek/
+1 SEX F
+1 BIRT
+2 DATE 11 JAN 1976
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMS @F81@
+1 FAMC @F532@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I227@ INDI
+1 NAME Ljudmila /Severak/
+1 SEX F
+1 BIRT
+2 DATE 23 JUL 1999
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMC @F81@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I228@ INDI
+1 NAME Ana5 /Severak/
+1 SEX M
+1 BIRT
+2 DATE 02 FEB 2002
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+1 FAMC @F81@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I229@ INDI
+1 NAME Fortunat /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 04 SEP 1976
+2 PLAC Slovenj Gradec, Slovenija
+2 SOUR @S3@
+1 FAMS @F82@
+1 FAMC @F16@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I230@ INDI
+1 NAME Ivan5 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 31 OCT 1979
+2 PLAC Slovenj Gradec, Slovenija
+2 SOUR @S3@
+1 FAMS @F83@
+1 FAMC @F16@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I231@ INDI
+1 NAME Alojzija /Severnjak/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1973
+2 PLAC ____
+1 FAMS @F82@
+1 CHAN
+2 DATE 24 FEB 2020
+0 @I232@ INDI
+1 NAME Jurij5 /Ramovšnc/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1980
+2 PLAC ____
+1 FAMS @F83@
+1 CHAN
+2 DATE 04 AUG 2019
+0 @I233@ INDI
+1 NAME Marjeta5 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 30 OCT 2002
+2 PLAC Amerika, ZDA
+2 SOUR @S3@
+1 FAMC @F83@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I234@ INDI
+1 NAME Valentin5 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 30 OCT 2002
+2 PLAC Amerika, ZDA
+2 SOUR @S3@
+1 FAMC @F83@
+1 CHAN
+2 DATE 01 FEB 2018
+0 @I235@ INDI
+1 NAME Ema3 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 06 DEC 1805
+2 PLAC Sinja Gorica __15, Vrhnika, Slovenija
+1 DEAT
+2 DATE 10 NOV 1828
+2 PLAC ____
+1 RESI
+2 DATE 04 FEB 1828
+2 PLAC Sinja Gorica ___5, Vrhnika, Slovenija
+1 OCCU kajžar
+1 FAMS @F84@
+1 FAMC @F85@
+1 CHAN
+2 DATE 09 JUL 2025
+0 @I236@ INDI
+1 NAME Anton4 /Tavèariè/
+1 SEX F
+1 BIRT
+2 DATE __._~.1799
+2 PLAC Sinja Gorica ___2, Vrhnika, Slovenija
+1 FAMS @F84@
+1 FAMS @F18339@
+1 FAMC @F122@
+1 CHAN
+2 DATE 24 MAR 2024
+0 @I237@ INDI
+1 NAME Bernard4 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 06 JUL 1828
+2 PLAC Sinja Gorica ___5, Vrhnika, Slovenija
+1 FAMC @F84@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I238@ INDI
+1 NAME Karolina /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 22 AUG 1934
+2 PLAC Rovte _118/6 (Žabnica), Rovte, Logatec,Slovenija
+1 DEAT
+2 DATE 02 FEB 1952
+2 PLAC Logatec, Slovenija
+1 FAMC @F728@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I239@ INDI
+1 NAME Genovefa /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 07 AUG 1645
+2 PLAC Rovte, Slovenija
+1 FAMS @F86@
+1 FAMS @F651@
+1 FAMS @F658@
+1 FAMC @F92@
+1 CHAN
+2 DATE 06 MAR 2019
+0 @I240@ INDI
+1 NAME Elizabeta /Ramovšnc/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1653
+2 PLAC ____
+1 FAMS @F86@
+1 CHAN
+2 DATE 06 MAR 2019
+0 @I241@ INDI
+1 NAME Ema3 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 19 DEC 1677
+2 PLAC Vrhnika vas ____, Vrhnika, Slovenija
+1 FAMC @F86@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I242@ INDI
+1 NAME Franèiška5 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 18 DEC 1679
+2 PLAC Vrhnika vas ____, Vrhnika, Slovenija
+1 FAMS @F655@
+1 FAMS @F656@
+1 FAMS @F659@
+1 FAMC @F86@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I243@ INDI
+1 NAME Marjeta2 /Ramovšièek/
+1 SEX M
+1 BIRT
+2 DATE 06 JAN 1944
+2 PLAC Petkovec __14, Rovte, Logatec, Slovenija
+2 SOUR @S87@
+1 FAMS @F1011@
+1 FAMC @F5842@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I244@ INDI
+1 NAME Aleš2 /Tavèarek/
+1 SEX F
+1 BIRT
+2 DATE 27 JUL 1953
+2 PLAC Jakovica , Planina pri Rakeku, Slovenija
+1 FAMS @F1011@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I245@ INDI
+1 NAME Ana3 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 12 FEB 1634
+2 PLAC Rovte (Planina), Logatec, Slovenija
+1 FAMS @F567@
+1 FAMC @F638@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I246@ INDI
+1 NAME Vinko2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 29 DEC 1736
+2 PLAC Zaplana (Log), Vrhnika, Slovenija
+1 FAMC @F89@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I247@ INDI
+1 NAME Adolf2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1610
+2 PLAC Rovte, Slovenija
+1 FAMS @F912@
+1 FAMS @F9106@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I248@ INDI
+1 NAME Lucija2 /Pircniè/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1620
+2 PLAC ____
+1 FAMS @F42@
+1 CHAN
+2 DATE 15 MAR 2019
+0 @I249@ INDI
+1 NAME Rozalija2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 09 MAY 1644
+2 PLAC Rovte, Slovenija
+1 FAMC @F42@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I250@ INDI
+1 NAME Adolf2 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 16 APR 1646
+2 PLAC Rovte, Slovenija
+1 FAMC @F42@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I251@ INDI
+1 NAME Bernard4 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 14 MAY 1649
+2 PLAC Rovte, Slovenija
+1 DEAT
+2 DATE 28 MAY 1736
+2 PLAC Rovte (Laneuše), Logatec, Slovenija
+1 FAMC @F42@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I252@ INDI
+1 NAME Ana3 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 04 FEB 1653
+2 PLAC Rovte, Slovenija
+1 FAMC @F42@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I253@ INDI
+1 NAME Boštjan3 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE __.<>.1655
+2 PLAC ____
+1 FAMS @F90@
+1 CHAN
+2 DATE 18 MAR 2019
+0 @I254@ INDI
+1 NAME Anton4 /Ramovšnc/
+1 SEX F
+1 BIRT
+2 DATE __.<>.1660
+2 PLAC ____
+1 FAMS @F90@
+1 CHAN
+2 DATE 18 MAR 2019
+0 @I255@ INDI
+1 NAME Egidij2 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 23 NOV 1681
+2 PLAC Vrhnika vas ____, Vrhnika, Slovenija
+1 FAMC @F90@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I256@ INDI
+1 NAME Anton4 /Oblakiè/
+1 SEX F
+1 BIRT
+2 DATE 26 DEC 1683
+2 PLAC Vrhnika vas ____, Vrhnika, Slovenija
+1 FAMC @F90@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @I257@ INDI
+1 NAME Ema5 /Oblakiè/
+1 SEX M
+1 BIRT
+2 DATE 21 SEP 1686
+2 PLAC Bevke, Vrhnika, Slovenija
+1 FAMC @F90@
+1 CHAN
+2 DATE 17 JAN 2016
+0 @S3@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR Družinski zapisi Modrijan Cilka, Janez
+1 REPO @R13@
+0 @S87@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR Žup.Rovte SA II
+1 REPO @R122@
+0 @S15@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR NŠAL Rovte R 1878 - 1894
+1 REPO @R254@
+0 @S109@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR NŠAL Rovte P 1901++ duplikat
+1 REPO @R241@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+1 CHIL @I4@
+1 CHIL @I5@
+1 CHIL @I6@
+1 CHIL @I7@
+1 CHIL @I8@
+1 CHIL @I9@
+1 CHIL @I10@
+1 CHIL @I11@
+1 CHIL @I12@
+1 CHIL @I13@
+1 CHIL @I14@
+1 CHIL @I15@
+1 MARR
+2 DATE 25 FEB 1909
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S109@
+1 RESI
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+0 @F2@ FAM
+1 HUSB @I16@
+1 WIFE @I33@
+1 CHIL @I34@
+1 CHIL @I1@
+1 MARR
+2 DATE 12 MAY 1873
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S3@
+2 SOUR @S1@
+0 @F143@ FAM
+1 CHIL @I2@
+1 MARR
+2 DATE 22 NOV 1880
+2 PLAC sv.Urh, Zaplana, Slovenija
+1 RESI
+2 PLAC Žiberše __38/23/36, Rovte, Logatec, Slovenija
+0 @F3@ FAM
+1 HUSB @I3@
+1 WIFE @I18@
+1 CHIL @I19@
+1 CHIL @I20@
+1 CHIL @I21@
+1 RESI
+2 DATE BET 1945 AND 1998
+2 PLAC Kongresni trg __15, Ljubljana, Slovenija
+2 SOUR @S343@
+1 MARR
+2 DATE 29 JUL 1944
+2 PLAC Ljubljana, Marijinega oznanenja, Slovenija
+2 SOUR @S3@
+2 SOUR @S87@
+0 @S106@ SOUR
+1 AUTH Janko Maèek
+1 TITL Rovte v viharju vojne in revolucije
+1 ABBR Rovte v viharju vojne in revolucije
+1 _ITALIC Y
+0 @S156@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR LJU 500 MF 622 leto 1900-1945
+0 @F7354@ FAM
+1 WIFE @I5@
+1 CHIL @I36@
+1 _NMR 
+2 SOUR @S3@
+1 _MSTAT Partners
+1 _MARRIED N
+0 @F820@ FAM
+1 WIFE @I5@
+1 CHIL @I37@
+1 _NMR 
+2 SOUR @S3@
+1 _MSTAT Partners
+1 _MARRIED N
+0 @F5@ FAM
+1 HUSB @I220@
+1 WIFE @I14@
+1 CHIL @I221@
+1 CHIL @I222@
+1 MARR
+2 DATE 04 MAY 1963
+2 PLAC Sv.Peter, Ljubljana, Slovenija
+2 SOUR @S87@
+0 @S343@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR Družinski viri Modrijan Janez
+1 REPO @R13@
+0 @F6@ FAM
+1 HUSB @I15@
+1 WIFE @I40@
+1 CHIL @I41@
+1 CHIL @I42@
+1 CHIL @I56@
+1 CHIL @I43@
+1 CHIL @I44@
+1 CHIL @I45@
+1 RESI
+2 DATE 28 OCT 2015
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+1 MARR
+2 DATE 16 MAY 1954
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S3@
+2 SOUR @S87@
+1 RESI
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+0 @S8@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR NŠAL Rovte R 1823 - 1841
+0 @S1@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR NŠAL Rovte P 1816 - 1889
+0 @F7@ FAM
+1 HUSB @I16@
+1 WIFE @I17@
+1 CHIL @I126@
+1 MARR
+2 DATE 24 FEB 1862
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S1@
+0 @F262@ FAM
+1 CHIL @I16@
+1 MARR
+2 DATE 12 NOV 1827
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S1@
+0 @S26@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR NŠAL Rovte SA II. 1771-1879
+0 @S525@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR NŠAL Rovte M 1844- 1890
+0 @F8@ FAM
+1 HUSB @I127@
+1 WIFE @I128@
+1 CHIL @I17@
+1 MARR
+2 DATE 16 JAN 1826
+2 PLAC Èrni Vrh nad Idrijo, Slovenija
+0 @F9@ FAM
+1 HUSB @I129@
+1 WIFE @I130@
+1 CHIL @I135@
+1 CHIL @I139@
+1 CHIL @I137@
+1 CHIL @I136@
+1 CHIL @I140@
+1 CHIL @I18@
+1 CHIL @I138@
+1 MARR
+2 DATE 08 FEB 1897
+2 PLAC Dobrniè, Slovenija
+1 RESI
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+0 @F10@ FAM
+1 HUSB @I19@
+1 WIFE @I22@
+1 CHIL @I23@
+1 MARR
+2 DATE 06 DEC 1969
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+0 @F11@ FAM
+1 HUSB @I26@
+1 WIFE @I20@
+1 CHIL @I27@
+1 CHIL @I28@
+1 MARR
+2 DATE 18 AUG 1969
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+0 @F12@ FAM
+1 HUSB @I21@
+1 WIFE @I29@
+1 CHIL @I30@
+1 CHIL @I31@
+1 CHIL @I32@
+1 MARR
+2 DATE 10 MAY 1975
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+0 @F132@ FAM
+1 CHIL @I22@
+1 CHIL @I29@
+1 MARR
+2 DATE 12 FEB 1945
+2 PLAC Štanjel, Slovenija
+0 @F13@ FAM
+1 HUSB @I23@
+1 WIFE @I24@
+1 CHIL @I25@
+1 _COML 
+0 @F607@ FAM
+1 CHIL @I24@
+1 MARR
+2 DATE 16 NOV 1968
+2 PLAC Ljubljana, Slovenija
+0 @F50@ FAM
+1 CHIL @I26@
+1 MARR
+2 DATE 21 OCT 1919
+2 PLAC Fara, Nova vas, Slovenija
+0 @F2907@ FAM
+1 WIFE @I28@
+0 @F690@ FAM
+1 HUSB @I31@
+1 _NMR __
+1 _MSTAT Partners
+1 _MARRIED N
+0 @F9331@ FAM
+1 HUSB @I32@
+1 MARR
+2 DATE 08 AUG 2015
+2 PLAC Laško, Slovenija
+2 SOUR @S3@
+0 @S4@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR NŠAL Rovte R 1842 - 1878
+0 @F164@ FAM
+1 CHIL @I33@
+1 MARR
+2 DATE 16 JUN 1845
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S1@
+0 @S84@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR Žup.Rovte SA I gostaèi
+0 @F14@ FAM
+1 HUSB @I34@
+1 WIFE @I71@
+1 CHIL @I125@
+1 CHIL @I72@
+1 MARR
+2 DATE 31 JUL 1905
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S3@
+2 SOUR @S84@
+2 SOUR @S109@
+0 @S12@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR NŠAL Rovte R 1756 - 1778
+0 @F2663@ FAM
+1 CHIL @I35@
+1 MARR
+2 DATE 11 JAN 1751
+2 PLAC Rovte, Slovenija
+0 @S71@ SOUR
+1 AUTH Janez Modrijan
+1 ABBR Družinski zapisi Lija Modrijan
+1 REPO @R13@
+0 @F15@ FAM
+1 HUSB @I36@
+1 WIFE @I39@
+1 MARR
+2 DATE 09 NOV 1963
+2 PLAC Šoštanj, Slovenija
+2 SOUR @S3@
+0 @F16@ FAM
+1 HUSB @I37@
+1 WIFE @I38@
+1 CHIL @I229@
+1 CHIL @I230@
+1 MARR
+2 DATE 16 JUN 1977
+2 PLAC Andraž nad Polzelo, Slovenija
+2 SOUR @S3@
+0 @F821@ FAM
+1 CHIL @I38@
+1 MARR
+0 @F130@ FAM
+1 CHIL @I39@
+1 MARR
+2 DATE __.<>.1940
+2 PLAC ____
+0 @F3511@ FAM
+1 CHIL @I40@
+1 MARR
+2 DATE 03 AUG 1908
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S87@
+2 SOUR @S109@
+2 SOUR @S15@
+0 @F17@ FAM
+1 HUSB @I41@
+1 WIFE @I46@
+1 CHIL @I47@
+1 CHIL @I48@
+1 CHIL @I49@
+1 CHIL @I50@
+1 MARR
+2 DATE 04 SEP 1982
+2 PLAC Žiri, Slovenija
+2 SOUR @S3@
+1 RESI
+2 PLAC Jurišnega bataljona __20, Žiri, Slovenija
+0 @F18@ FAM
+1 HUSB @I42@
+1 WIFE @I51@
+1 CHIL @I52@
+1 CHIL @I53@
+1 CHIL @I54@
+1 CHIL @I55@
+1 MARR
+2 DATE 06 AUG 1983
+2 PLAC Hotedršica, Slovenija
+2 SOUR @S3@
+1 RESI
+2 PLAC Rovte __90, Rovte, Logatec,Slovenija
+0 @F19@ FAM
+1 HUSB @I60@
+1 WIFE @I43@
+1 CHIL @I61@
+1 CHIL @I62@
+1 MARR
+2 DATE 05 MAY 1979
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S3@
+1 RESI
+2 PLAC Rovte, Slovenija
+0 @F20@ FAM
+1 HUSB @I65@
+1 WIFE @I44@
+1 CHIL @I66@
+1 CHIL @I67@
+1 MARR
+2 DATE 21 JUL 1984
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S3@
+1 RESI
+2 PLAC Rovte ___4, Rovte, Logatec,Slovenija
+0 @F21@ FAM
+1 HUSB @I68@
+1 WIFE @I45@
+1 CHIL @I69@
+1 CHIL @I70@
+1 MARR
+2 DATE 09 JUN 1990
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S3@
+1 RESI
+2 PLAC Rovte __81, Rovte, Logatec,Slovenija
+0 @F2632@ FAM
+1 CHIL @I46@
+1 MARR
+2 DATE __.<>.1950
+2 PLAC ____
+0 @F478@ FAM
+1 HUSB @I48@
+1 MARR
+2 DATE 04 SEP 2010
+2 PLAC Bled, Slovenija
+2 SOUR @S3@
+0 @F7374@ FAM
+1 HUSB @I49@
+1 _NMR 
+2 SOUR @S3@
+1 _MSTAT Partners
+1 _MARRIED N
+0 @F16164@ FAM
+1 HUSB @I50@
+1 MARR
+2 DATE 29 AUG 2018
+2 PLAC ____
+0 @F4800@ FAM
+1 WIFE @I52@
+1 _NMR neporoèena
+1 _MSTAT Partners
+1 _MARRIED N
+0 @F16165@ FAM
+1 WIFE @I53@
+1 _NMR 
+2 DATE __.<>.____
+1 _MSTAT Partners
+1 _MARRIED N
+0 @F10632@ FAM
+1 WIFE @I54@
+1 _NMR neporoèen
+1 _MSTAT Partners
+1 _MARRIED N
+0 @F22@ FAM
+1 HUSB @I56@
+1 CHIL @I58@
+1 CHIL @I59@
+1 MARR
+2 DATE 18 JUN 1983
+2 PLAC Žiri, Slovenija
+2 SOUR @S3@
+1 RESI
+2 PLAC Rovte ___5/96, Rovte, Logatec,Slovenija
+2 SOUR @S3@
+0 @F2801@ FAM
+1 CHIL @I57@
+1 MARR
+2 DATE 26 NOV 1960
+2 PLAC ____
+0 @F5619@ FAM
+1 CHIL @I60@
+1 MARR
+2 DATE 26 JUN 1954
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S84@
+0 @F23@ FAM
+1 HUSB @I63@
+1 WIFE @I61@
+1 CHIL @I64@
+1 MARR
+2 DATE 22 MAY 2004
+2 PLAC ____
+2 SOUR @S3@
+0 @F4801@ FAM
+1 HUSB @I62@
+1 MARR
+2 DATE 16 JUL 2011
+2 PLAC Zaplana, Vrhnika, Slovenija
+2 SOUR @S3@
+0 @F5516@ FAM
+1 CHIL @I65@
+1 MARR
+2 DATE 11 JAN 1959
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S84@
+2 SOUR @S87@
+0 @F126@ FAM
+1 HUSB @I66@
+1 _COML neporoèena
+0 @F127@ FAM
+1 HUSB @I66@
+1 MARR
+2 DATE 11 JUN 2011
+2 PLAC Žiri, Slovenija
+2 SOUR @S3@
+0 @F4802@ FAM
+1 WIFE @I67@
+1 MARR
+2 DATE 23 JUN 2012
+2 PLAC Štanjel, Slovenija
+2 SOUR @S3@
+0 @F5998@ FAM
+1 CHIL @I68@
+1 MARR
+2 DATE 23 MAY 1958
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S87@
+0 @F14105@ FAM
+1 WIFE @I70@
+1 MARR
+2 DATE 14 JUL 2018
+2 PLAC Rovte, Slovenija
+0 @F5479@ FAM
+1 WIFE @I71@
+0 @F506@ FAM
+1 WIFE @I71@
+1 MARR
+2 DATE 19 SEP 1915
+2 PLAC Šentjošt, Horjul, Slovenija
+2 SOUR @S87@
+0 @F2865@ FAM
+1 CHIL @I71@
+1 MARR
+2 DATE 21 AUG 1876
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S1@
+0 @F24@ FAM
+1 HUSB @I72@
+1 WIFE @I74@
+1 CHIL @I73@
+1 CHIL @I75@
+1 CHIL @I76@
+1 CHIL @I77@
+1 MARR
+2 DATE 19 AUG 1928
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S87@
+2 SOUR @S84@
+0 @F25@ FAM
+1 HUSB @I78@
+1 WIFE @I73@
+1 CHIL @I79@
+1 CHIL @I83@
+1 CHIL @I84@
+1 MARR
+2 DATE 02 JUN 1951
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S84@
+0 @F5989@ FAM
+1 WIFE @I74@
+0 @F5988@ FAM
+1 CHIL @I74@
+1 MARR
+2 DATE 16 NOV 1885
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S87@
+2 SOUR @S1@
+0 @F26@ FAM
+1 HUSB @I93@
+1 WIFE @I75@
+1 CHIL @I94@
+1 CHIL @I95@
+1 CHIL @I96@
+1 CHIL @I97@
+1 CHIL @I98@
+1 MARR
+2 DATE 08 MAY 1955
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S87@
+0 @F27@ FAM
+1 HUSB @I76@
+1 WIFE @I91@
+1 CHIL @I92@
+1 MARR
+2 DATE __.<>.1970
+2 PLAC ____
+0 @F28@ FAM
+1 HUSB @I113@
+1 WIFE @I77@
+1 CHIL @I114@
+1 CHIL @I115@
+1 CHIL @I116@
+1 CHIL @I117@
+1 MARR
+2 DATE 06 JUL 1968
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F16571@ FAM
+1 CHIL @I78@
+1 MARR
+2 DATE __.<>.1920
+2 PLAC ____
+1 RESI
+2 PLAC Svibno ___2, Rateèe, Slovenija
+0 @F29@ FAM
+1 HUSB @I80@
+1 WIFE @I79@
+1 CHIL @I81@
+1 CHIL @I82@
+1 MARR
+2 DATE 15 AUG 1975
+2 PLAC ____
+0 @F30@ FAM
+1 HUSB @I83@
+1 WIFE @I85@
+1 CHIL @I86@
+1 CHIL @I87@
+1 MARR
+2 DATE 23 AUG 1980
+2 PLAC ____
+0 @F31@ FAM
+1 HUSB @I84@
+1 WIFE @I88@
+1 CHIL @I89@
+1 CHIL @I90@
+1 MARR
+2 DATE 25 DEC 1982
+2 PLAC ____
+0 @F117@ FAM
+1 CHIL @I93@
+1 MARR
+2 DATE 28 JUN 1931
+2 PLAC Zaplana, Vrhnika, Slovenija
+0 @F32@ FAM
+1 HUSB @I99@
+1 WIFE @I95@
+1 CHIL @I100@
+1 CHIL @I101@
+1 CHIL @I102@
+1 CHIL @I103@
+1 CHIL @I104@
+1 MARR
+2 DATE 18 AUG 1978
+2 PLAC ____
+0 @F33@ FAM
+1 HUSB @I105@
+1 WIFE @I97@
+1 CHIL @I106@
+1 CHIL @I107@
+1 CHIL @I108@
+1 MARR
+2 DATE 10 OCT 1986
+2 PLAC ____
+0 @F34@ FAM
+1 HUSB @I98@
+1 WIFE @I109@
+1 CHIL @I110@
+1 CHIL @I111@
+1 CHIL @I112@
+1 MARR
+2 DATE 25 APR 1992
+2 PLAC ____
+0 @F746@ FAM
+1 CHIL @I99@
+1 MARR
+2 DATE 29 SEP 1951
+2 PLAC Ljubljana, sv.Nikolaj (stolnica), Slovenija
+2 SOUR @S87@
+0 @F3685@ FAM
+1 CHIL @I113@
+1 MARR
+2 DATE 23 NOV 1936
+2 PLAC ____
+0 @F35@ FAM
+1 HUSB @I114@
+1 WIFE @I118@
+1 CHIL @I119@
+1 CHIL @I120@
+1 MARR
+2 DATE 10 AUG 1996
+2 PLAC Dolnji Logatec, Slovenija
+0 @F36@ FAM
+1 HUSB @I121@
+1 WIFE @I115@
+1 CHIL @I122@
+1 CHIL @I123@
+1 MARR
+2 DATE 15 MAY 1993
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F37@ FAM
+1 HUSB @I124@
+1 WIFE @I117@
+1 MARR
+0 @F500@ FAM
+1 HUSB @I125@
+1 MARR
+2 DATE 02 FEB 1930
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S87@
+0 @F3791@ FAM
+1 HUSB @I127@
+1 MARR
+2 DATE __.<>.1809
+2 PLAC ____
+0 @F1692@ FAM
+1 CHIL @I127@
+1 MARR
+2 DATE 28 JAN 1788
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F9244@ FAM
+1 CHIL @I128@
+1 MARR
+2 DATE __.<>.1800
+2 PLAC ____
+0 @F38@ FAM
+1 HUSB @I131@
+1 WIFE @I132@
+1 CHIL @I129@
+1 MARR
+2 DATE 05 JUN 1865
+2 PLAC Dobrniè, Slovenija
+1 RESI
+2 DATE 05 JUN 1865
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+0 @F39@ FAM
+1 HUSB @I133@
+1 WIFE @I134@
+1 CHIL @I130@
+1 MARR
+2 DATE 06 FEB 1871
+2 PLAC Šentlovrenc, Velika Loka, Slovenija
+0 @F599@ FAM
+1 CHIL @I131@
+1 MARR
+2 DATE 15 FEB 1832
+2 PLAC Dobrniè, Slovenija
+1 RESI
+2 DATE __.__.1869
+2 PLAC Vavpèa vas ___8, Dobrniè, Slovenija
+0 @F680@ FAM
+1 WIFE @I132@
+1 MARR
+2 DATE __.<>.1862
+2 PLAC ____
+1 RESI
+2 PLAC Gorenja vas ___2 (Matevž), Dobrniè, Slovenija
+0 @F642@ FAM
+1 CHIL @I132@
+1 MARR
+2 DATE __.<>.1830
+2 PLAC ____
+0 @F7293@ FAM
+1 HUSB @I133@
+1 MARR
+2 DATE 03 FEB 1869
+2 PLAC Sv.Jurij, Dobrniè, Slovenija
+0 @F3700@ FAM
+1 CHIL @I133@
+1 MARR
+2 DATE 07 FEB 1842
+2 PLAC Dobrniè, Slovenija
+0 @F8273@ FAM
+1 CHIL @I134@
+1 MARR
+2 DATE 26 FEB 1840
+2 PLAC Èatež pod Zaplazom, Slovenija
+0 @F598@ FAM
+1 HUSB @I137@
+1 MARR
+2 DATE __.<>.1940
+2 PLAC Buenos Aires, Argentina
+1 RESI
+2 DATE __._>.1936
+2 PLAC Buenos Aires, Argentina
+2 SOUR @S3@
+0 @F555@ FAM
+1 HUSB @I138@
+1 MARR
+2 DATE 04 APR 1943
+2 PLAC Beograd, Srbija
+1 RESI
+2 DATE __._>.1936
+2 PLAC Beograd, Srbija
+2 SOUR @S3@
+0 @F239@ FAM
+1 WIFE @I139@
+1 MARR
+2 DATE 19 AUG 1929
+2 PLAC Dobrniè, Slovenija
+2 SOUR @S3@
+1 RESI
+2 PLAC Križe pri Tržièu, Slovenija
+0 @F40@ FAM
+1 HUSB @I141@
+1 WIFE @I142@
+1 MARR
+2 DATE 01 MAR 1734
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F41@ FAM
+1 HUSB @I143@
+1 WIFE @I144@
+1 CHIL @I151@
+1 CHIL @I142@
+1 CHIL @I216@
+1 CHIL @I169@
+1 MARR
+2 DATE __.<>.1705
+2 PLAC ____
+0 @F69@ FAM
+1 CHIL @I143@
+1 CHIL @I194@
+1 MARR
+2 DATE __.<>.1660
+2 PLAC ____
+0 @F43@ FAM
+1 HUSB @I145@
+1 WIFE @I146@
+1 MARR
+2 DATE 18 FEB 1737
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F44@ FAM
+1 WIFE @I148@
+1 CHIL @I145@
+1 MARR
+2 DATE __.<>.1700
+2 PLAC ____
+0 @F45@ FAM
+1 HUSB @I149@
+1 WIFE @I150@
+1 CHIL @I164@
+1 CHIL @I163@
+1 CHIL @I146@
+1 CHIL @I218@
+1 CHIL @I217@
+1 CHIL @I219@
+1 CHIL @I165@
+1 MARR
+2 DATE 21 FEB 1700
+2 PLAC Vrhnika, Slovenija
+0 @F15916@ FAM
+1 CHIL @I147@
+1 MARR
+2 DATE 08 FEB 1841
+2 PLAC Planina pri Vipavi, Slovenija
+1 RESI
+2 PLAC Gorenja vas __82, Planina, Vipava, Slovenija
+0 @F99@ FAM
+1 CHIL @I149@
+1 MARR
+1 _NMR __
+1 _MSTAT Partners
+1 _MARRIED N
+0 @F7197@ FAM
+1 CHIL @I150@
+1 MARR
+2 DATE 16 FEB 1688
+2 PLAC Vrhnika, Slovenija
+0 @F46@ FAM
+1 HUSB @I151@
+1 WIFE @I152@
+1 MARR
+2 DATE 11 FEB 1738
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F9394@ FAM
+1 HUSB @I153@
+1 CHIL @I152@
+1 MARR
+2 DATE __._<.1700
+2 PLAC ____
+0 @F119@ FAM
+1 HUSB @I153@
+1 MARR
+2 DATE __ MAY 1724
+2 PLAC Logatec, Slovenija
+0 @F7342@ FAM
+1 CHIL @I153@
+1 MARR
+2 DATE __.<>.1660
+2 PLAC ____
+0 @F731@ FAM
+1 CHIL @I154@
+1 MARR
+2 DATE 29 JAN 1912
+2 PLAC sv.Katarina, Medvedje brdo, Rovte, Slovenija
+2 SOUR @S84@
+2 SOUR @S109@
+0 @F48@ FAM
+1 HUSB @I155@
+1 WIFE @I156@
+1 MARR
+2 DATE 30 APR 1738
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F378@ FAM
+1 CHIL @I155@
+1 MARR
+2 DATE __.<>.1700
+2 PLAC ____
+0 @F7588@ FAM
+1 WIFE @I156@
+1 MARR
+2 DATE 30 MAY 1768
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F525@ FAM
+1 CHIL @I156@
+1 EVEN
+2 TYPE Oklici
+2 DATE 11 JAN 1720
+2 PLAC Logatec, Slovenija
+1 MARR
+2 DATE __ JAN 1720
+2 PLAC ____
+0 @F741@ FAM
+1 HUSB @I158@
+1 WIFE @I157@
+1 MARR
+2 DATE 22 NOV 1931
+2 PLAC Logatec, Slovenija
+2 SOUR @S3@
+0 @F3100@ FAM
+1 CHIL @I157@
+1 MARR
+2 DATE 11 JUN 1906
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S109@
+0 @F6080@ FAM
+1 CHIL @I158@
+1 MARR
+2 DATE 22 FEB 1892
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S87@
+0 @F362@ FAM
+1 WIFE @I159@
+1 MARR
+2 DATE 26 JUN 1837
+2 PLAC Gornji Logatec, Slovenija
+0 @F363@ FAM
+1 CHIL @I159@
+1 MARR
+2 DATE __.<>.1810
+2 PLAC ____
+0 @F355@ FAM
+1 WIFE @I160@
+1 MARR
+2 DATE 10 FEB 1744
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F7025@ FAM
+1 CHIL @I160@
+1 EVEN
+2 TYPE Oklici
+2 DATE 16 JAN 1717
+2 PLAC Logatec, Slovenija
+1 MARR
+2 DATE __ JAN 1717
+2 PLAC ____
+0 @F1010@ FAM
+1 HUSB @I161@
+1 MARR
+2 DATE 26 JAN 1763
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F1945@ FAM
+1 CHIL @I161@
+1 MARR
+2 DATE 12 JAN 1728
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F6285@ FAM
+1 WIFE @I162@
+1 MARR
+2 DATE 12 JAN 1739
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F57@ FAM
+1 HUSB @I171@
+1 WIFE @I189@
+1 CHIL @I162@
+1 MARR
+2 DATE 04 FEB 1704
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F53@ FAM
+1 HUSB @I163@
+1 WIFE @I166@
+1 MARR
+2 DATE 01 FEB 1740
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F54@ FAM
+1 HUSB @I167@
+1 WIFE @I164@
+1 MARR
+2 DATE 24 NOV 1727
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F55@ FAM
+1 HUSB @I168@
+1 WIFE @I165@
+1 MARR
+2 DATE 10 FEB 1744
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F373@ FAM
+1 CHIL @I170@
+1 CHIL @I166@
+1 EVEN
+2 TYPE Oklici
+2 DATE 13 JAN 1717
+2 PLAC Logatec, Slovenija
+1 MARR
+2 DATE 25 JAN 1717
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F372@ FAM
+1 CHIL @I167@
+1 MARR
+2 DATE __.<>.1690
+2 PLAC ____
+0 @F2389@ FAM
+1 HUSB @I168@
+1 MARR
+2 DATE 20 FEB 1742
+2 PLAC Zaplana, Vrhnika, Slovenija
+0 @F56@ FAM
+1 HUSB @I170@
+1 WIFE @I169@
+1 MARR
+2 DATE 28 JAN 1743
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F923@ FAM
+1 HUSB @I170@
+1 MARR
+2 DATE 21 NOV 1763
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F2901@ FAM
+1 HUSB @I170@
+1 MARR
+2 DATE __.<>.1760
+2 PLAC ____
+0 @F52@ FAM
+1 HUSB @I171@
+1 WIFE @I172@
+1 CHIL @I173@
+1 MARR
+2 DATE __.<>.1700
+2 PLAC ____
+0 @F58@ FAM
+1 HUSB @I174@
+1 WIFE @I173@
+1 EVEN
+2 TYPE Oklici
+2 DATE 02 FEB 1719
+2 PLAC Rovte, Slovenija
+1 MARR
+2 DATE 13 FEB 1719
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F6570@ FAM
+1 CHIL @I174@
+0 @F59@ FAM
+1 HUSB @I175@
+1 WIFE @I176@
+1 CHIL @I177@
+1 CHIL @I178@
+1 CHIL @I179@
+1 CHIL @I180@
+1 MARR
+2 DATE __.<>.1690
+2 PLAC ____
+0 @F60@ FAM
+1 HUSB @I181@
+1 WIFE @I177@
+1 MARR
+2 DATE 21 JAN 1704
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F61@ FAM
+1 HUSB @I184@
+1 WIFE @I178@
+1 MARR
+2 DATE 10 FEB 1709
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F388@ FAM
+1 WIFE @I179@
+1 MARR
+2 DATE 27 JAN 1722
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F63@ FAM
+1 HUSB @I180@
+1 WIFE @I186@
+1 MARR
+2 DATE 10 JAN 1753
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F358@ FAM
+1 HUSB @I180@
+1 MARR
+2 DATE 28 APR 1766
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F349@ FAM
+1 HUSB @I180@
+1 MARR
+2 DATE 20 SEP 1779
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F64@ FAM
+1 HUSB @I182@
+1 WIFE @I183@
+1 CHIL @I181@
+1 MARR
+2 DATE __.<>.1680
+2 PLAC ____
+0 @F387@ FAM
+1 CHIL @I184@
+0 @F7048@ FAM
+1 CHIL @I185@
+1 MARR
+2 DATE 07 FEB 1842
+2 PLAC sv.Urh, Zaplana, Slovenija
+0 @F8185@ FAM
+1 WIFE @I188@
+1 CHIL @I186@
+1 MARR
+2 DATE 22 FEB 1727
+2 PLAC Rovte, Slovenija
+0 @F7084@ FAM
+1 CHIL @I187@
+1 MARR
+2 DATE __.<>.1670
+2 PLAC ____
+0 @F1665@ FAM
+1 CHIL @I188@
+1 MARR
+2 DATE __.<>.1680
+2 PLAC ____
+0 @F917@ FAM
+1 WIFE @I189@
+1 MARR
+2 DATE 11 FEB 1725
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F66@ FAM
+1 HUSB @I190@
+1 WIFE @I191@
+1 CHIL @I189@
+1 MARR
+2 DATE __.<>.1680
+2 PLAC ____
+0 @F2506@ FAM
+1 WIFE @I192@
+1 MARR
+2 DATE 06 FEB 1793
+2 PLAC Luèine, Gorenja vas, Slovenija
+0 @F1648@ FAM
+1 CHIL @I192@
+1 MARR
+2 DATE 31 JAN 1774
+2 PLAC Polhov Gradec, Slovenija
+0 @F67@ FAM
+1 WIFE @I193@
+1 CHIL @I195@
+1 MARR
+2 DATE __.<>.1695
+2 PLAC ____
+0 @F68@ FAM
+1 HUSB @I196@
+1 WIFE @I194@
+1 MARR
+2 DATE 16 FEB 1705
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F70@ FAM
+1 HUSB @I197@
+1 WIFE @I195@
+1 EVEN
+2 TYPE Oklici
+2 DATE 24 JAN 1720
+2 PLAC oklici
+1 MARR
+2 DATE 05 FEB 1720
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F601@ FAM
+1 CHIL @I196@
+1 MARR
+2 DATE __.<>.1670
+2 PLAC ____
+0 @F6555@ FAM
+1 CHIL @I197@
+0 @F7053@ FAM
+1 HUSB @I198@
+1 MARR
+2 DATE __.<>.1660
+2 PLAC ____
+0 @F7055@ FAM
+1 HUSB @I199@
+1 MARR
+2 DATE 13 JAN 1659
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F72@ FAM
+1 HUSB @I201@
+1 WIFE @I200@
+1 EVEN
+2 TYPE Oklici
+2 DATE 14 JAN 1719
+2 PLAC oklici
+1 MARR
+2 DATE 25 JAN 1719
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F1527@ FAM
+1 WIFE @I200@
+1 MARR
+2 DATE 08 FEB 1734
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F94@ FAM
+1 CHIL @I202@
+1 CHIL @I200@
+1 MARR
+2 DATE __.<>.1680
+2 PLAC ____
+0 @F6936@ FAM
+1 HUSB @I201@
+1 MARR
+2 DATE __.<>.1723
+2 PLAC ____
+0 @F6544@ FAM
+1 CHIL @I201@
+0 @F73@ FAM
+1 HUSB @I202@
+1 WIFE @I203@
+1 CHIL @I204@
+1 MARR
+2 DATE 11 JAN 1699
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F9104@ FAM
+1 CHIL @I203@
+0 @F74@ FAM
+1 HUSB @I205@
+1 WIFE @I204@
+1 MARR
+2 DATE 11 FEB 1725
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F75@ FAM
+1 HUSB @I206@
+1 WIFE @I207@
+1 CHIL @I205@
+1 MARR
+2 DATE __.<>.1700
+2 PLAC ____
+0 @F17915@ FAM
+1 HUSB @I206@
+1 MARR
+2 DATE __.<>.1720
+2 PLAC ____
+0 @F8251@ FAM
+1 CHIL @I210@
+1 CHIL @I208@
+1 MARR
+2 DATE 19 NOV 1877
+2 PLAC Sv.Jurij, Dobrniè, Slovenija
+0 @F1014@ FAM
+1 WIFE @I209@
+1 MARR
+2 DATE 17 MAY 1920
+2 PLAC Hotedršica, Slovenija
+2 SOUR @S15@
+0 @F9027@ FAM
+1 CHIL @I209@
+1 MARR
+2 DATE 05 JUL 1880
+2 PLAC Hotedršica, Slovenija
+0 @F7737@ FAM
+1 HUSB @I211@
+1 MARR
+2 DATE 01 JUL 1889
+2 PLAC sv.Urh, Zaplana, Slovenija
+0 @F11915@ FAM
+1 HUSB @I211@
+1 MARR
+2 DATE 12 OCT 1908
+2 PLAC ____
+0 @F7736@ FAM
+1 CHIL @I211@
+1 MARR
+2 DATE 15 FEB 1847
+2 PLAC Gornji Logatec, Slovenija
+0 @F190@ FAM
+1 HUSB @I212@
+1 MARR
+2 DATE 06 FEB 1882
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S1@
+0 @F191@ FAM
+1 CHIL @I212@
+1 MARR
+2 DATE 22 MAR 1826
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S1@
+0 @F7056@ FAM
+1 HUSB @I213@
+1 MARR
+2 DATE 08 MAR 1666
+2 PLAC Vrhnika, Slovenija
+0 @F78@ FAM
+1 HUSB @I215@
+1 WIFE @I214@
+1 MARR
+2 DATE 17 FEB 1749
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F79@ FAM
+1 CHIL @I214@
+1 MARR
+2 DATE 07 JAN 1723
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F393@ FAM
+1 CHIL @I215@
+1 MARR
+2 DATE 11 APR 1717
+2 PLAC Vrhnika, Slovenija
+0 @F125@ FAM
+1 CHIL @I220@
+1 MARR
+2 DATE __ MAY 1932
+2 PLAC ____
+0 @F80@ FAM
+1 HUSB @I221@
+1 WIFE @I223@
+1 CHIL @I224@
+1 CHIL @I225@
+1 MARR
+2 DATE 22 JUN 1996
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+0 @F81@ FAM
+1 HUSB @I222@
+1 WIFE @I226@
+1 CHIL @I227@
+1 CHIL @I228@
+1 MARR
+2 DATE 08 AUG 1998
+2 PLAC Ljubljana, Slovenija
+2 SOUR @S3@
+0 @F533@ FAM
+1 CHIL @I223@
+1 MARR
+0 @F532@ FAM
+1 CHIL @I226@
+1 MARR
+0 @F82@ FAM
+1 HUSB @I231@
+1 WIFE @I229@
+1 MARR
+2 DATE 26 AUG 2002
+2 PLAC Šoštanj, Slovenija
+2 SOUR @S3@
+0 @F83@ FAM
+1 HUSB @I232@
+1 WIFE @I230@
+1 CHIL @I233@
+1 CHIL @I234@
+1 MARR
+2 DATE 28 APR 2002
+2 PLAC Amerika, ZDA
+2 SOUR @S3@
+0 @F84@ FAM
+1 HUSB @I235@
+1 WIFE @I236@
+1 CHIL @I237@
+1 MARR
+2 DATE 04 FEB 1828
+2 PLAC Vrhnika, Slovenija
+0 @F85@ FAM
+1 CHIL @I235@
+1 MARR
+2 DATE 13 MAY 1801
+2 PLAC Vrhnika, Slovenija
+0 @F18339@ FAM
+1 WIFE @I236@
+1 MARR
+2 DATE 08 FEB 1830
+2 PLAC Horjul, Slovenija
+0 @F122@ FAM
+1 CHIL @I236@
+1 MARR
+2 DATE __.<>.1790
+2 PLAC ____
+0 @F728@ FAM
+1 CHIL @I238@
+1 MARR
+2 DATE 30 APR 1934
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S87@
+0 @F86@ FAM
+1 HUSB @I239@
+1 WIFE @I240@
+1 CHIL @I241@
+1 CHIL @I242@
+1 MARR
+2 DATE __.<>.1670
+2 PLAC ____
+0 @F651@ FAM
+1 HUSB @I239@
+1 MARR
+2 DATE 07 FEB 1689
+2 PLAC Vrhnika, Slovenija
+0 @F658@ FAM
+1 HUSB @I239@
+1 MARR
+2 DATE 13 MAY 1711
+2 PLAC Vrhnika, Slovenija
+0 @F92@ FAM
+1 CHIL @I239@
+1 MARR
+2 DATE 20 JAN 1620
+2 PLAC Vrhnika, Slovenija
+0 @F655@ FAM
+1 HUSB @I242@
+1 MARR
+2 DATE 21 FEB 1700
+2 PLAC Vrhnika, Slovenija
+0 @F656@ FAM
+1 HUSB @I242@
+1 MARR
+2 DATE 15 FEB 1722
+2 PLAC Vrhnika, Slovenija
+0 @F659@ FAM
+1 HUSB @I242@
+1 MARR
+2 DATE 17 MAY 1734
+2 PLAC Vrhnika, Slovenija
+0 @F1011@ FAM
+1 HUSB @I243@
+1 WIFE @I244@
+1 MARR
+2 DATE 14 OCT 1978
+2 PLAC Planina pri Rakeku, Slovenija
+0 @F5842@ FAM
+1 CHIL @I243@
+1 MARR
+2 DATE 03 MAY 1942
+2 PLAC Sv.Mihael, Rovte, Slovenija
+2 SOUR @S87@
+0 @F567@ FAM
+1 WIFE @I245@
+1 MARR
+2 DATE 04 FEB 1657
+2 PLAC Sv.Mihael, Rovte, Slovenija
+0 @F638@ FAM
+1 CHIL @I245@
+1 MARR
+2 DATE 21 NOV 1625
+2 PLAC Vrhnika, Slovenija
+0 @F89@ FAM
+1 CHIL @I246@
+1 MARR
+2 DATE 24 FEB 1721
+2 PLAC sv.Urh, Zaplana, Slovenija
+0 @F912@ FAM
+1 HUSB @I247@
+1 MARR
+2 DATE 15 FEB 1628
+2 PLAC Vrhnika, Slovenija
+0 @F9106@ FAM
+1 HUSB @I247@
+1 MARR
+2 DATE __.<>.1630
+2 PLAC ____
+0 @F42@ FAM
+1 WIFE @I248@
+1 CHIL @I249@
+1 CHIL @I250@
+1 CHIL @I251@
+1 CHIL @I252@
+1 MARR
+2 DATE 13 FEB 1640
+2 PLAC Sv.Hieronim, Petkovec, Rovte, Slovenija
+0 @F90@ FAM
+1 HUSB @I253@
+1 WIFE @I254@
+1 CHIL @I255@
+1 CHIL @I256@
+1 CHIL @I257@
+1 MARR
+2 DATE __.<>.1680
+2 PLAC ____
+0 @R13@ REPO
+1 NAME Agata5
+0 @R122@ REPO
+1 NAME Simon5 Lucija5
+0 @R254@ REPO
+1 NAME Gašper5
+0 @R241@ REPO
+1 NAME Gašper5
+0 @SUB1@ SUBM
+1 NAME Rozalija2 Magdalena5
+1 ADDR Naslov 1
+2 CONT Domžale
+2 CONT SLOVENIJA
+1 PHON +000 000 000
+1 EMAIL user2@example.test
+0 TRLR

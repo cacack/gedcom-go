@@ -1,0 +1,2890 @@
+0 HEAD
+1 SOUR webtrees
+2 NAME Jera8
+2 VERS 2.1.27
+1 DEST DISKETTE
+1 DATE 16 MAY 2026
+2 TIME 15:38:01
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 FILE media/file1.ged
+1 PLAC
+2 FORM City, County, State/Province, Country
+1 SUBM @S0@
+0 @I1@ INDI
+1 OBJE @X11@
+1 OBJE @M130@
+1 OBJE @M139@
+1 OBJE @M313@
+1 OBJE @M293@
+1 NAME Ivana3 /Hribarič/
+2 GIVN Ivana3
+2 SURN Hribarič
+1 SEX M
+1 BIRT
+2 DATE 15 MAY 1961
+2 PLAC Ljubljana, Slovenija
+3 MAP
+4 LATI N46.05
+4 LONG E14.51
+1 _EMAIL user1@example.test
+1 OCCU Informatik
+1 FAMS @F1@
+1 FAMC @F2@
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+1 CHAN
+2 DATE 27 AUG 2024
+3 TIME 18:32:38
+2 _WT_USER bojan
+0 @I2@ INDI
+1 OBJE @M232@
+1 OBJE @M245@
+1 OBJE @M235@
+1 OBJE @M236@
+1 OBJE @M244@
+1 OBJE @M237@
+1 OBJE @M285@
+1 OBJE @M293@
+1 NAME Sebastijan8 /Hribarek/
+2 GIVN Sebastijan8
+2 SURN Hribarek
+1 NAME Sebastijan8 /Hribarar/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 22 OCT 1967
+2 PLAC Jesenice, Slovenija
+1 OCCU Ekonomistka
+1 FAMS @F1@
+1 FAMC @F3@
+1 NOTE @NI2@
+1 CHAN
+2 DATE 03 JUN 2025
+3 TIME 20:58:38
+2 _WT_USER bojan
+0 @I3@ INDI
+1 NAME Bernard4 /Hribarič/
+2 GIVN Bernard4
+2 SURN Hribarič
+1 SEX M
+1 BIRT
+2 DATE 1 OCT 1994
+2 PLAC Kranj, Slovenija
+1 FAMC @F1@
+1 NOTE @NI3@
+1 OBJE @M293@
+1 CHAN
+2 DATE 30 OCT 2020
+3 TIME 15:47:04
+2 _WT_USER bojan
+0 @I4@ INDI
+1 NAME Emerik /Hribarič/
+2 GIVN Emerik
+2 SURN Hribarič
+1 SEX M
+1 BIRT
+2 DATE 30 JUL 1996
+2 PLAC Beljak/Villach, Avstrija
+1 FAMC @F1@
+1 NOTE @NI4@
+1 OBJE @M293@
+1 CHAN
+2 DATE 30 OCT 2020
+3 TIME 15:42:38
+2 _WT_USER bojan
+0 @I5@ INDI
+1 NAME Kristina8 Ivan8 /Hribarič/
+2 NPFX Dr.
+2 GIVN Ivan8
+2 SURN Hribarič
+1 SEX M
+1 BIRT
+2 DATE 30 NOV 1928
+2 PLAC Celje, Slovenija
+2 SOUR @X290@
+1 OCCU Dr. elektrotehnike
+1 FAMS @F2@
+1 FAMC @F4@
+1 SOUR @S6@
+1 SOUR @S23@
+2 PAGE Dušan Sajovic - rojstni in krstni list
+2 DATA
+3 TEXT Lorem ipsum note.
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+1 DEAT
+2 DATE 15 AUG 2009
+3 TIME 05:50
+2 PLAC Ljubljana, Slovenija
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+1 CHAN
+2 DATE 27 JUN 2025
+3 TIME 16:11:45
+2 _WT_USER bojan
+1 SOUR @X295@
+0 @I6@ INDI
+1 NAME Vinko /Hribarnik/
+2 GIVN Vinko
+2 SURN Hribarnik
+1 NAME Vinko /Hribarič/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 26 JAN 1930
+2 PLAC Bosanski Novi, Bosna in Hercegovina
+2 SOUR @S22@
+3 PAGE Antonija Šubic - rojstni in krstni list
+1 DEAT
+2 DATE 6 MAR 2003
+2 PLAC Ljubljana, Slovenija
+1 FAMS @F2@
+1 FAMC @F76@
+1 SOUR @S22@
+2 PAGE Antonija Šubic - rojstni in krstni list
+2 DATA
+3 TEXT Lorem ipsum note.
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+1 CHR
+2 DATE 3 FEB 1930
+2 PLAC Bosanski Novi, Bosna in Hercegovina
+2 SOUR @S22@
+3 PAGE Antonija Šubic - rojstni in krstni list
+1 CHAN
+2 DATE 15 AUG 2025
+3 TIME 07:48:32
+2 _WT_USER bojan
+1 NOTE @X161@
+0 @I7@ INDI
+1 NAME Urban8 Klara8 /Hribarič/
+2 NPFX ing.
+2 GIVN Klara8
+2 SURN Hribarič
+1 SEX M
+1 BIRT
+2 DATE 10 NOV 1897
+2 PLAC Pivka, Slovenija
+2 ADDR Pivka (takrat : Hrastje pri sv.Petru Na Krasu), Slovenija
+2 SOUR @X286@
+1 DEAT
+2 DATE 10 SEP 1968
+2 PLAC Ljubljana, Slovenija
+3 MAP
+4 LATI N46::3::19"
+4 LONG E14::30::52"
+2 CAUS Srčna kap
+1 FAMS @F4@
+1 FAMC @F5@
+1 SOUR @S7@
+2 PAGE Srečko Sajovic - potrdilo o povratku iz ruskega ujetništva
+2 DATA
+3 TEXT Lorem ipsum note.
+4 CONT lorem ipsum
+4 CONC lorem ipsum
+4 CONT
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+1 SOUR @S16@
+2 PAGE Zdenko Sajovic - pismo Srečku po vojni iz ZDA
+1 SOUR @S17@
+2 PAGE Srečko sajovic - identitetni listek železnice
+2 DATA
+3 TEXT Lorem ipsum note.
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+1 SOUR @S18@
+2 PAGE Srečko Sajovic - obvestilo o izostanku od pouka
+2 DATA
+3 TEXT Lorem ipsum note.
+4 CONT
+4 CONT lorem ipsum
+4 CONC lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+1 SOUR @S19@
+2 PAGE Srečko Sajovic - kazen za izostanek od pouka
+2 DATA
+3 TEXT Lorem ipsum note.
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+1 SOUR @S20@
+2 PAGE Srečko Sajovic - Domovnica
+2 DATA
+3 TEXT Lorem ipsum note.
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+4 CONT lorem ipsum
+1 SOUR @S31@
+2 PAGE Srečko,Dušan,Zdenko in Ivanka Sajovic
+1 EVEN
+2 TYPE Ujet na ruskem bojišču
+2 DATE 28 JUL 1916
+2 SOUR @S7@
+1 SOUR @S23@
+1 CHAN
+2 DATE 23 AUG 2025
+3 TIME 09:31:09
+2 _WT_USER bojan
+1 SOUR @X292@
+0 @I8@ INDI
+1 NAME Ferdinand8 Elizabeta /Hribaršek/
+2 GIVN Ljudmila8
+2 SURN Hribaršek
+1 NAME Ferdinand8 Elizabeta /Hribarič/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 8 DEC 1896
+2 PLAC Pazin, Hrvaška
+2 SOUR @S21@
+1 DEAT
+2 DATE 15 JUN 1984
+2 PLAC Ljubljana, Slovenija
+2 ADDR Dom starejših občanov na Bokalcah, Ljubljana
+1 BURI
+2 PLAC Ljubljana, Slovenija
+1 OCCU Tajnica, Gospodinja
+1 FAMS @F4@
+1 FAMC @F6@
+1 SOUR @S21@
+2 PAGE Zalka Korenjak - rojstni in krstni list
+1 SOUR @S23@
+1 CHAN
+2 DATE 11 NOV 2025
+3 TIME 21:16:45
+2 _WT_USER bojan
+0 @I9@ INDI
+1 SEX M
+1 NAME Ignac8 /Hribarič/
+2 GIVN Ignac8
+2 SURN Hribarič
+1 BIRT
+2 DATE 27 JAN 1863
+2 PLAC Unec pri Rakeku, Slovenija
+2 ADDR Unec št. 1
+1 DEAT
+2 DATE 20 OCT 1938
+2 PLAC Ljubljana, Slovenija
+1 FAMS @F5@
+1 FAMC @F127@
+1 NOTE Lorem ipsum note.
+1 BAPM
+2 DATE 29 JAN 1863
+2 PLAC Unec pri Rakeku, Slovenija
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 SOUR @
+2 PAGE Sajovic Karol in Korošec Ivanka - poročni list
+2 DATA
+3 TEXT Lorem ipsum note.
+4 CONT
+1 CHAN
+2 DATE 28 JUL 2025
+3 TIME 17:48:36
+2 _WT_USER bojan
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+0 @X5@ INDI
+1 NAME Veronika2 /Hribarnc/
+2 GIVN Veronika2
+2 SURN Hribarnc
+1 SEX M
+1 BIRT
+2 DATE 1939
+2 PLAC Koprivnik, Slovenija
+1 DEAT
+2 PLAC Cigale, Slovenija
+1 FAMC @F250@
+1 CHAN
+2 DATE 12 AUG 2020
+3 TIME 13:40:49
+2 _WT_USER bojan
+0 @X6@ INDI
+1 NAME Karolina8 /Hribarnc/
+2 GIVN Karolina8
+2 SURN Hribarnc
+1 SEX M
+1 BIRT
+2 DATE 1937
+2 PLAC Koprivnik, Slovenija
+1 DEAT
+1 FAMC @F250@
+1 CHAN
+2 DATE 12 AUG 2020
+3 TIME 13:42:13
+2 _WT_USER bojan
+0 @X7@ INDI
+1 NAME Bernard8 Janez /Hribarnc/
+2 GIVN Genovefa8
+2 SURN Hribarnc
+1 SEX F
+1 BIRT
+2 DATE 1935
+2 PLAC Koprivnik, Slovenija
+1 DEAT
+1 FAMC @F250@
+1 CHAN
+2 DATE 12 AUG 2020
+3 TIME 13:43:34
+2 _WT_USER bojan
+0 @X8@ INDI
+1 NAME Elizabeta4 /Hribarnc/
+2 GIVN Elizabeta4
+2 SURN Hribarnc
+1 SEX F
+1 BIRT
+2 DATE 1929
+2 PLAC Koprivnik, Slovenija
+1 DEAT
+1 FAMC @F250@
+1 CHAN
+2 DATE 12 AUG 2020
+3 TIME 13:44:36
+2 _WT_USER bojan
+0 @X9@ INDI
+1 NAME Magdalena3 /Hribarnc/
+2 GIVN Magdalena3
+2 SURN Hribarnc
+1 SEX F
+1 BIRT
+2 DATE 1928
+2 PLAC Koprivnik, Slovenija
+1 DEAT
+1 FAMC @F250@
+1 CHAN
+2 DATE 12 AUG 2020
+3 TIME 13:45:46
+2 _WT_USER bojan
+0 @I10@ INDI
+1 NAME Silvester Matevž8 /Hribaršek/
+2 GIVN Suzana8
+2 SURN Hribaršek
+1 SEX M
+1 BIRT
+2 DATE 17 FEB 1866
+2 NOTE Lorem ipsum note.
+1 DEAT
+2 DATE 1915
+2 PLAC Tržič, Slovenija
+2 ADDR Padel v 1. sv. vojni, na fronti pri Tržiču
+1 FAMS @F6@
+1 FAMC @F14@
+1 NOTE @NI10@
+1 CHAN
+2 DATE 20 OCT 2025
+3 TIME 12:22:30
+2 _WT_USER bojan
+0 @I11@ INDI
+1 NAME Marko3 /Hribarman/
+2 GIVN Marko3
+2 SURN Hribarman
+1 NAME Marko3 /Hribaršek/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 2 FEB 1865
+2 PLAC Biljana, Slovenija
+1 DEAT
+2 DATE 22 MAY 1945
+2 PLAC Graz, Avstrija
+2 ADDR Gruenegasse 6
+3 CONT Graz
+1 FAMS @F6@
+1 FAMC @F8@
+1 NOTE @NI11@
+1 SOUR @S6@
+2 PAGE Dušan Sajovic - pismo teti Ivanki po vojni
+2 DATA
+3 TEXT Lorem ipsum note.
+1 BURI
+2 DATE 30 MAY 1945
+2 PLAC Graz, Avstrija
+1 CHAN
+2 DATE 11 NOV 2025
+3 TIME 21:11:11
+2 _WT_USER bojan
+0 @I12@ INDI
+1 NAME Cvetka2 /Hribaršek/
+2 GIVN Cvetka2
+2 SURN Hribaršek
+1 NAME Cvetka2 /Hribarovec/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 3 JAN 1903
+2 PLAC Split, Hrvaška
+1 FAMC @F6@
+1 FAMS @F141@
+1 DEAT
+2 DATE 1999
+1 CHAN
+2 DATE 21 JAN 2025
+3 TIME 13:05:46
+2 _WT_USER bojan
+1 OCCU Operna pevka
+0 @I13@ INDI
+1 NAME Valburga4 /Hribaršek/
+2 GIVN Valburga4
+2 SURN Hribaršek
+1 SEX F
+1 BIRT
+2 DATE 11 JUL 1894
+2 PLAC Trst, Italija
+1 DEAT
+2 DATE 5 JUL 1942
+2 PLAC Paračin, Srbija
+1 FAMS @F9@
+1 FAMC @F6@
+1 NOTE @NI13@
+1 CHAN
+2 DATE 12 APR 2026
+3 TIME 09:58:24
+2 _WT_USER bojan
+1 NAME Valburga4 /Hribarin/
+2 TYPE MARRIED
+2 GIVN Valburga4
+2 SURN Hribarin
+0 @I14@ INDI
+1 NAME Valburga2 /Hribaršek/
+2 GIVN Valburga2
+2 SURN Hribaršek
+1 SEX F
+1 BIRT
+2 DATE 10 MAY 1891
+2 PLAC Trst, Italija
+1 DEAT
+2 DATE 6 JAN 1972
+2 PLAC Ljubljana, Slovenija
+1 BURI
+2 PLAC Ljubljana, Slovenija
+1 FAMC @F6@
+1 CHAN
+2 DATE 26 FEB 2026
+3 TIME 12:25:40
+2 _WT_USER bojan
+0 @I15@ INDI
+1 NAME Primož8 /Hribaršek/
+2 GIVN Primož8
+2 SURN Hribaršek
+1 SEX M
+1 BIRT
+2 DATE 21 SEP 1888
+2 PLAC Biljana, Slovenija
+1 DEAT
+2 DATE 7 DEC 1925
+2 PLAC Domžale, Slovenija
+1 CHAN
+2 DATE 16 NOV 2025
+3 TIME 12:15:38
+2 _WT_USER bojan
+1 FAMS @F10@
+1 FAMC @F6@
+1 NOTE @NI15@
+0 @I16@ INDI
+1 NAME Dorotea8 /Hribarin/
+2 GIVN Dorotea8
+2 SURN Hribarin
+1 SEX M
+1 FAMS @F9@
+1 BIRT
+2 DATE 24 MAR 1890
+2 PLAC Šmihel, Novo Mesto, Slovenija
+1 DEAT
+2 DATE 01 NOV 1970
+1 CHAN
+2 DATE 07 MAY 2026
+3 TIME 20:29:59
+2 _WT_USER bojan
+1 FAMC @F314@
+0 @I17@ INDI
+1 NAME Helena3 /Hribarin/
+2 GIVN Helena3
+2 SURN Hribarin
+1 SEX M
+1 BIRT
+2 DATE 19 NOV 1932
+2 PLAC Skopje, Makedonija
+1 OCCU Odvetnik
+1 FAMS @F11@
+1 FAMC @F9@
+1 DEAT
+2 DATE 2019
+1 CHAN
+2 DATE 03 JUN 2025
+3 TIME 18:05:19
+2 _WT_USER bojan
+0 @I18@ INDI
+1 NAME Aleš8 /Hribarel/
+2 GIVN Aleš8
+2 SURN Hribarel
+1 NAME Aleš8 /Hribarin/
+2 TYPE MARRIED
+1 SEX F
+1 OCCU Zobozdravnica
+1 FAMS @F11@
+1 CHAN
+2 DATE 11 MAY 2020
+3 TIME 11:19:24
+2 _WT_USER bojan
+0 @I19@ INDI
+1 NAME Regina8 /Hribarin/
+2 GIVN Regina8
+2 SURN Hribarin
+1 SEX F
+1 BIRT
+2 DATE 15 DEC 1969
+2 PLAC Ljubljana, Slovenija
+1 FAMC @F11@
+1 DEAT
+2 DATE 2003
+2 PLAC Ljubljana, Slovenija
+1 CHAN
+2 DATE 14 NOV 2017
+3 TIME 13:41:08
+2 _WT_USER bojan
+0 @I20@ INDI
+1 NAME Benjamin8 /Hribarin/
+2 GIVN Benjamin8
+2 SURN Hribarin
+1 NAME Benjamin8 /Hribarnič/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 13 JUL 1927
+2 PLAC Ljubljana, Slovenija
+1 FAMS @F12@
+1 FAMC @F9@
+1 CHAN
+2 DATE 12 APR 2026
+3 TIME 09:59:33
+2 _WT_USER bojan
+1 DEAT
+2 DATE 25 APR 1999
+1 NAME Benjamin8 /Hribarovič/
+2 TYPE MARRIED
+2 GIVN Benjamin8
+2 SURN Hribarovič
+1 FAMS @X486@
+0 @I21@ INDI
+1 NAME Tone5 /Hribarnič/
+2 GIVN Tone5
+2 SURN Hribarnič
+1 SEX F
+1 BIRT
+2 DATE 12 JUN 1947
+1 FAMS @F13@
+1 FAMC @F12@
+1 CHAN
+2 DATE 19 OCT 2025
+3 TIME 14:52:56
+2 _WT_USER bojan
+0 @I22@ INDI
+1 NAME Silvester8 /Hribarak/
+2 GIVN Silvester8
+2 SURN Hribarak
+1 SEX M
+1 BIRT
+2 DATE 25 SEP 1936
+1 FAMS @F13@
+1 CHAN
+2 DATE 10 MAY 2026
+3 TIME 20:51:08
+2 _WT_USER bojan
+1 FAMC @F315@
+1 OCCU Sodnik, pravnik
+0 @I23@ INDI
+1 NAME Apolonija2 /Hribarak/
+2 GIVN Apolonija2
+2 SURN Hribarak
+1 SEX M
+1 BIRT
+2 DATE 4 JUL 1965
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 FAMC @F13@
+0 @I24@ INDI
+1 NAME Ivana5 /Hribarveč/
+2 GIVN Ivana5
+2 SURN Hribarveč
+1 NAME Ivana5 Margareta8
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 1896
+1 DEAT
+2 DATE 19 MAY 1968
+2 PLAC Domžale, Slovenija
+1 CHAN
+2 DATE 12 APR 2026
+3 TIME 10:30:54
+2 _WT_USER bojan
+1 FAMS @F10@
+1 NOTE Lorem ipsum note.
+2 CONT
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT
+2 CONT
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+0 @I25@ INDI
+1 NAME Štefan /Hribaršek/
+2 GIVN Štefan
+2 SURN Hribaršek
+1 SEX M
+1 DEAT
+2 DATE AFT 1869
+1 NOTE @NI25@
+1 NAME Adolf8 //
+2 GIVN Adolf8
+1 CHAN
+2 DATE 16 FEB 2026
+3 TIME 21:48:11
+2 _WT_USER bojan
+1 FAMS @F14@
+1 FAMC @X246@
+1 BIRT
+2 DATE 26 FEB 1836
+2 PLAC Biljana, Slovenija
+0 @I26@ INDI
+1 NAME Andrej5 /Hribariček/
+2 GIVN Andrej5
+2 SURN Hribariček
+1 SEX F
+1 BIRT
+2 DATE ABT 1835
+2 PLAC Belo v Brdih, Slovenija
+1 DEAT
+2 DATE 1917
+3 TIME (Približno 1917)
+1 FAMS @F14@
+1 NOTE @NI26@
+1 CHAN
+2 DATE 22 NOV 2025
+3 TIME 11:25:37
+2 _WT_USER bojan
+1 FAMC @X249@
+0 @I27@ INDI
+1 NAME Bernard4 /Hribaršek/
+2 GIVN Bernard4
+2 SURN Hribaršek
+1 SEX M
+1 CHAN
+2 DATE 21 OCT 2025
+3 TIME 15:10:57
+2 _WT_USER bojan
+1 FAMC @X246@
+2 PEDI BIRTH
+1 DEAT Y
+1 BIRT
+2 DATE 23 JAN 1839
+0 @I28@ INDI
+1 NAME Štefan7 /Hribaršek/
+2 GIVN Štefan7
+2 SURN Hribaršek
+1 NAME Štefan7 /Hribarnjak/
+2 TYPE MARRIED
+1 SEX F
+1 FAMS @F15@
+1 FAMC @F14@
+1 DEAT Y
+1 CHAN
+2 DATE 17 JUL 2020
+3 TIME 09:46:58
+2 _WT_USER bojan
+0 @I29@ INDI
+1 NAME Karolina /Hribaršek/
+2 GIVN Karolina
+2 SURN Hribaršek
+1 SEX M
+1 BIRT
+2 DATE 1867
+1 DEAT
+2 DATE 1945
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 FAMC @F14@
+0 @I30@ INDI
+1 NAME Aleš /Hribaršek/
+2 GIVN Aleš
+2 SURN Hribaršek
+1 SEX M
+1 BIRT
+2 PLAC Šlamberk, Slovenija
+1 DEAT
+2 PLAC Neznano kje, 1. Svetovna Vojna, Evropa
+2 CAUS Verjetno padel v boju
+2 DATE 1916
+3 TIME (I.sv.vojna med 1914 in 1918)
+1 CHAN
+2 DATE 12 DEC 2006
+3 TIME 21:33:54
+2 _WT_USER Bojan
+1 FAMC @F14@
+0 @I31@ INDI
+1 NAME Apolonija3 /Hribarnjak/
+2 GIVN Apolonija3
+2 SURN Hribarnjak
+2 NICK Egidij8
+1 SEX M
+1 BIRT
+2 DATE 10 JUL 1878
+1 DEAT
+2 DATE 17 APR 1955
+1 FAMC @F15@
+1 CHAN
+2 DATE 10 DEC 2025
+3 TIME 17:49:19
+2 _WT_USER bojan
+0 @I32@ INDI
+1 NAME Dorotea /Hribarnjak/
+2 GIVN Dorotea
+2 SURN Hribarnjak
+1 SEX M
+1 BIRT
+2 DATE ABT 1873
+1 DEAT
+2 DATE 1930
+1 CHAN
+2 DATE 22 NOV 2025
+3 TIME 11:22:03
+2 _WT_USER bojan
+1 FAMS @F16@
+1 FAMC @F15@
+0 @I33@ INDI
+1 NAME Lucija8 /Hribarnjak/
+2 GIVN Lucija8
+2 SURN Hribarnjak
+1 NAME Lucija8 Fortunat8
+2 TYPE MARRIED
+1 SEX F
+1 CHAN
+2 DATE 07 MAY 2014
+3 TIME 15:38:59
+2 _WT_USER bojan
+1 FAMS @F17@
+1 FAMC @F16@
+1 DEAT Y
+0 @I34@ INDI
+1 NAME Apolonija3 /Jermanič/
+2 GIVN Apolonija3
+2 SURN Jermanič
+1 SEX M
+1 BIRT
+2 DATE 1897
+1 DEAT
+2 DATE 1973
+1 CHAN
+2 DATE 1 FEB 2002
+3 TIME 19:33
+1 FAMC @F16@
+0 @I35@ INDI
+1 NAME Ljudmila7 /Jermanič/
+2 GIVN Ljudmila7
+2 SURN Jermanič
+1 SEX M
+1 BIRT
+2 DATE 1895
+1 DEAT
+2 DATE 1972
+1 CHAN
+2 DATE 1 FEB 2002
+3 TIME 19:34
+1 FAMC @F16@
+0 @I36@ INDI
+1 NAME Suzana2 /Hribarel/
+2 GIVN Suzana2
+2 SURN Hribarel
+1 SEX M
+1 DEAT
+2 DATE JAN 1974
+1 CHAN
+2 DATE 23 MAR 2009
+3 TIME 14:47:34
+2 _WT_USER Bojan
+1 FAMS @F17@
+0 @I37@ INDI
+1 NAME Martin3 /Hribarman/
+2 GIVN Martin3
+2 SURN Hribarman
+1 SEX M
+1 BIRT
+2 DATE 1819
+2 NOTE Lorem ipsum note.
+1 DEAT
+2 DATE 1893
+3 TIME (Kasneje kot 1893)
+2 PLAC Biljana, Slovenija
+1 CHAN
+2 DATE 20 JAN 2026
+3 TIME 15:18:17
+2 _WT_USER bojan
+1 FAMS @F8@
+1 FAMC @F134@
+0 @I38@ INDI
+1 NAME Marina8 /Hribarman/
+2 GIVN Marina8
+2 SURN Hribarman
+2 NOTE Lorem ipsum note.
+1 SEX F
+1 FAMS @F18@
+1 FAMC @F8@
+1 DEAT
+2 DATE 15 SEP 1896
+2 PLAC Hruševlje, Slovenija
+2 CAUS Umrla pri porodu hčere
+2 NOTE Lorem ipsum note.
+3 CONT
+3 CONT lorem ipsum
+3 CONT lorem ipsum
+3 CONT lorem ipsum
+3 CONT
+3 CONT lorem ipsum
+3 CONT lorem ipsum
+3 CONT lorem ipsum
+3 CONT lorem ipsum
+1 CHAN
+2 DATE 20 JAN 2026
+3 TIME 14:45:18
+2 _WT_USER bojan
+1 BIRT
+2 DATE 16 OCT 1870
+2 PLAC Biljana, Slovenija
+1 NAME Valburga8 /Jermanek/
+2 GIVN Valburga8
+2 SURN Jermanek
+0 @I39@ INDI
+1 NAME Elizabeta /Hribarman/
+2 GIVN Elizabeta
+2 SURN Hribarman
+1 NAME Elizabeta /Jermanar/
+2 TYPE MARRIED
+1 SEX F
+1 DEAT
+2 DATE AFT 1906
+2 NOTE Lorem ipsum note.
+1 FAMS @F19@
+1 FAMC @F8@
+1 CHAN
+2 DATE 07 MAY 2026
+3 TIME 20:15:47
+2 _WT_USER bojan
+1 BIRT
+2 DATE 08 MAY 1862
+2 PLAC Biljana, Slovenija
+0 @I40@ INDI
+1 NAME Valburga8 Bernard6 /Jermanek/
+2 GIVN Kajetan8
+2 SURN Jermanek
+1 SEX F
+1 DEAT
+2 DATE 11 JUN 1973
+2 PLAC Čedad/Cividale, Italija
+1 CHAN
+2 DATE 20 JAN 2026
+3 TIME 15:22:12
+2 _WT_USER bojan
+1 FAMC @F18@
+1 NAME Emerik8 /Jermanek/
+2 TYPE AKA
+2 GIVN Emerik8
+2 SURN Jermanek
+1 BIRT
+2 DATE 15 SEP 1896
+2 PLAC Hruševlje, Slovenija
+1 FAMS @X626@
+0 @I41@ INDI
+1 NAME Egidij2 Nežka8 /Jermanar/
+2 GIVN Cvetka8
+2 SURN Jermanar
+1 NAME Egidij2 Nežka8 /Jermannik/
+2 TYPE MARRIED
+1 SEX F
+1 CHAN
+2 DATE 16 NOV 2025
+3 TIME 12:09:35
+2 _WT_USER bojan
+1 FAMC @F19@
+1 BIRT
+2 DATE 25 MAY 1902
+2 PLAC Biljana, Slovenija
+1 DEAT Y
+1 FAMS @X1113@
+0 @I42@ INDI
+1 NAME Fortunat4 /Jermanar/
+2 GIVN Fortunat4
+2 SURN Jermanar
+1 SEX F
+1 BIRT
+2 DATE 1906
+1 DEAT
+2 DATE 7 MAY 1987
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 FAMC @F19@
+0 @I43@ INDI
+1 NAME Marjeta2 /Jermanar/
+2 GIVN Marjeta2
+2 SURN Jermanar
+1 SEX M
+1 DEAT
+2 DATE 6 JAN 1967
+2 PLAC Biljana, Slovenija
+1 CHAN
+2 DATE 01 JUN 2012
+3 TIME 11:46:13
+2 _WT_USER bojan
+1 FAMS @F20@
+1 FAMC @F19@
+1 BIRT
+2 DATE 01 DEC 1897
+0 @I44@ INDI
+1 NAME Karolina /Jermanar/
+2 GIVN Karolina
+2 SURN Jermanar
+1 SEX M
+1 BIRT
+2 DATE 1888
+1 CHAN
+2 DATE 07 MAY 2014
+3 TIME 15:39:01
+2 _WT_USER bojan
+1 FAMC @F19@
+1 DEAT Y
+0 @I45@ INDI
+1 NAME Štefan Ana9 /Jermanar/
+2 GIVN Marija9
+2 SURN Jermanar
+1 SEX M
+1 DEAT
+2 DATE 1972
+2 PLAC Biljana, Slovenija
+1 FAMC @F19@
+1 BIRT
+2 DATE 06 JAN 1900
+2 PLAC Biljana, Slovenija
+1 CHAN
+2 DATE 16 NOV 2025
+3 TIME 12:02:19
+2 _WT_USER bojan
+1 FAMS @X541@
+0 @I46@ INDI
+1 NAME Ivan9 /Jermanar/
+2 GIVN Ivan9
+2 SURN Jermanar
+1 SEX M
+1 FAMS @F21@
+1 FAMC @F19@
+1 NOTE Lorem ipsum note.
+1 BIRT
+2 DATE 19 FEB 1893
+2 PLAC Biljana, Slovenija
+1 DEAT
+2 DATE 17 FEB 1947
+2 PLAC Gorica, Italija
+1 CHAN
+2 DATE 16 NOV 2025
+3 TIME 11:51:37
+2 _WT_USER bojan
+0 @I47@ INDI
+1 NAME Gašper Jožef9 /Jermanar/
+2 GIVN Franc9
+2 SURN Jermanar
+1 SEX M
+1 DEAT
+2 DATE ABT 1915
+2 PLAC 1. Svetovna Vojna, Evropa
+1 CHAN
+2 DATE 16 FEB 2026
+3 TIME 21:25:20
+2 _WT_USER bojan
+1 FAMC @F19@
+1 BIRT
+2 DATE 19 JUN 1895
+2 PLAC Biljana, Slovenija
+0 @I48@ INDI
+1 NAME Apolonija3 /Jermanar/
+2 GIVN Apolonija3
+2 SURN Jermanar
+2 NICK Marko9
+2 NOTE Lorem ipsum note.
+1 SEX M
+1 BIRT
+2 DATE 29 JAN 1855
+2 PLAC Višnjevik, Slovenija
+1 CHAN
+2 DATE 07 MAY 2026
+3 TIME 19:27:25
+2 _WT_USER bojan
+1 FAMS @F19@
+1 DEAT Y
+1 FAMC @X538@
+0 @I49@ INDI
+1 NAME Tone9 /Jermanar/
+2 GIVN Tone9
+2 SURN Jermanar
+1 SEX M
+1 FAMC @F21@
+1 BIRT
+2 DATE 1921
+1 DEAT
+2 DATE 1998
+2 PLAC Biljana, Slovenija
+1 NAME Angela2 /Jermanar/
+2 GIVN Angela2
+2 SURN Jermanar
+1 CHAN
+2 DATE 14 AUG 2017
+3 TIME 11:01:20
+2 _WT_USER bojan
+1 FAMS @F247@
+0 @I50@ INDI
+1 NAME Agata4 /Jermanar/
+2 GIVN Agata4
+2 SURN Jermanar
+1 SEX F
+1 CHAN
+2 DATE 01 JUN 2012
+3 TIME 11:20:10
+2 _WT_USER bojan
+1 FAMC @F21@
+1 BIRT
+2 DATE 1927
+0 @I51@ INDI
+1 NAME Neža9 /Jermanar/
+2 GIVN Neža9
+2 SURN Jermanar
+1 SEX M
+1 FAMC @F20@
+1 CHAN
+2 DATE 01 FEB 2021
+3 TIME 11:46:13
+2 _WT_USER bojan
+1 FAMS @X1103@
+0 @I52@ INDI
+1 NAME Marta3 /Jermanar/
+2 GIVN Marta3
+2 SURN Jermanar
+1 SEX M
+1 FAMC @F20@
+1 FAMS @X35@
+1 CHAN
+2 DATE 01 FEB 2021
+3 TIME 11:39:23
+2 _WT_USER bojan
+0 @I53@ INDI
+1 NAME Alojzija /Jermanar/
+2 GIVN Alojzija
+2 SURN Jermanar
+1 SEX M
+1 CHAN
+2 DATE 01 JUN 2012
+3 TIME 11:40:57
+2 _WT_USER bojan
+1 FAMC @F20@
+1 BIRT
+2 DATE 06 MAY 1932
+2 PLAC Biljana, Slovenija
+1 DEAT
+2 DATE 11 AUG 2005
+2 PLAC Biljana, Slovenija
+1 FAMS @X273@
+0 @I54@ INDI
+1 NAME Luka2 /Jermanar/
+2 GIVN Luka2
+2 SURN Jermanar
+1 NAME Luka2 Alojz9
+2 TYPE MARRIED
+2 GIVN Luka2
+2 SURN Jermanšek
+1 SEX F
+1 CHAN
+2 DATE 10 MAY 2026
+3 TIME 12:12:29
+2 _WT_USER bojan
+1 FAMC @F20@
+1 NOTE Lorem ipsum note.
+1 FAMS @F187@
+0 @I55@ INDI
+1 NAME Aleš8 /Jermanar/
+2 GIVN Aleš8
+2 SURN Jermanar
+1 SEX F
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 FAMC @F20@
+0 @I56@ INDI
+1 NAME Terezija9 /Hribarek/
+2 GIVN Terezija9
+2 SURN Hribarek
+1 SEX M
+1 BIRT
+2 DATE 9 JUL 1946
+2 PLAC Ljubljana, Slovenija
+1 OCCU Podjetnik
+1 FAMS @F3@
+1 FAMC @F22@
+1 DEAT
+2 DATE 09 JUN 2009
+2 PLAC Jesenice, Slovenija
+1 CHAN
+2 DATE 24 JAN 2026
+3 TIME 13:01:05
+2 _WT_USER bojan
+0 @I57@ INDI
+1 NAME Anton2 /Jermannc/
+2 GIVN Anton2
+2 SURN Jermannc
+1 NAME Anton2 /Hribarek/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 4 DEC 1946
+2 PLAC Jesenice, Slovenija
+1 FAMS @F3@
+1 FAMC @F112@
+1 DEAT
+2 DATE 14 FEB 2021
+3 TIME 08:10
+2 PLAC Ljubljana, Slovenija
+2 ADDR Dom starejših občanov Škofljica
+1 CHAN
+2 DATE 06 OCT 2025
+3 TIME 10:08:44
+2 _WT_USER bojan
+0 @I58@ INDI
+1 NAME Boštjan3 /Hribarek/
+2 GIVN Boštjan3
+2 SURN Hribarek
+1 SEX M
+1 BIRT
+2 DATE 24 OCT 1974
+2 PLAC Jesenice, Slovenija
+1 FAMS @F125@
+1 FAMC @F3@
+1 CHAN
+2 DATE 10 SEP 2017
+3 TIME 15:09:11
+2 _WT_USER bojan
+0 @I59@ INDI
+1 NAME Peter9 /Hribarek/
+2 GIVN Peter9
+2 SURN Hribarek
+1 NAME Peter9 /Jermanman/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 26 MAR 1913
+2 PLAC Dravograd, Slovenija
+1 DEAT
+2 DATE 19 FEB 1997
+2 PLAC Jesenice, Slovenija
+1 FAMS @F22@
+1 FAMC @F23@
+1 CHAN
+2 DATE 10 SEP 2017
+3 TIME 11:41:40
+2 _WT_USER bojan
+0 @I60@ INDI
+1 NAME Karolina /Jermanman/
+2 GIVN Karolina
+2 SURN Jermanman
+1 SEX M
+1 BIRT
+2 DATE 13 JAN 1888
+2 PLAC Kruplivnik, Slovenija
+1 DEAT
+2 DATE 1 MAY 1963
+1 FAMS @F22@
+1 FAMC @F197@
+1 CHAN
+2 DATE 09 OCT 2025
+3 TIME 09:29:06
+2 _WT_USER bojan
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+0 @I61@ INDI
+1 NAME Zofija3 /Hribarek/
+2 GIVN Zofija3
+2 SURN Hribarek
+1 SEX F
+1 BIRT
+2 DATE 11 MAR 1945
+1 FAMS @F24@
+1 FAMS @F25@
+1 FAMC @F22@
+1 CHAN
+2 DATE 03 SEP 2017
+3 TIME 18:11:06
+2 _WT_USER bojan
+0 @I62@ INDI
+1 NAME Karolina /Hribarek/
+2 GIVN Karolina
+2 SURN Hribarek
+1 SEX M
+1 BIRT
+2 DATE 30 JAN 1943
+1 CHAN
+2 DATE 15 AUG 2025
+3 TIME 08:10:30
+2 _WT_USER bojan
+1 FAMS @F26@
+1 FAMC @F22@
+0 @I63@ INDI
+1 NAME Katarina9 /Hribarek/
+2 GIVN Katarina9
+2 SURN Hribarek
+1 NAME Katarina9 /Jermanovec/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 8 MAR 1941
+1 FAMS @F27@
+1 FAMS @F28@
+1 FAMS @F29@
+1 FAMC @F22@
+1 CHAN
+2 DATE 06 NOV 2025
+3 TIME 15:44:06
+2 _WT_USER bojan
+1 NAME Katarina9 /Jermanman/
+2 TYPE CHANGE
+2 GIVN Katarina9
+2 SURN Jermanman
+0 @I64@ INDI
+1 NAME Simon /Hribarek/
+2 GIVN Simon
+2 SURN Hribarek
+1 SEX M
+1 BIRT
+2 DATE 2 JUL 1938
+1 CHAN
+2 DATE 29 NOV 2025
+3 TIME 13:34:44
+2 _WT_USER bojan
+1 FAMS @F30@
+1 FAMC @F22@
+1 DEAT
+2 DATE 10 FEB 2024
+1 BURI
+2 DATE 15 MAR 2024
+2 PLAC Waldfriendhofes Monheim
+2 ADDR Knipprather Straße 105
+0 @I65@ INDI
+1 NAME Marko3 /Jermanin/
+2 GIVN Marko3
+2 SURN Jermanin
+1 SEX F
+1 BIRT
+2 DATE 14 OCT 1949
+2 PLAC Čakovec, Srbija
+1 CHAN
+2 DATE 29 NOV 2025
+3 TIME 13:35:37
+2 _WT_USER bojan
+1 FAMS @F30@
+1 NAME Marko3 /Hribarek/
+2 TYPE MARRIED
+2 GIVN Marko3
+2 SURN Hribarek
+0 @I66@ INDI
+1 NAME Pavel7 /Hribarek/
+2 GIVN Pavel7
+2 SURN Hribarek
+1 SEX F
+1 BIRT
+2 DATE 24 NOV 1971
+2 PLAC Duesseldorf, Nemčija
+1 CHAN
+2 DATE 06 DEC 2006
+3 TIME 22:26:34
+2 _WT_USER Bojan
+1 FAMS @F113@
+1 FAMC @F30@
+0 @I67@ INDI
+1 NAME Simon /Hribarek/
+2 GIVN Simon
+2 SURN Hribarek
+1 SEX M
+1 BIRT
+2 DATE 23 FEB 1967
+2 PLAC Jesenice, Slovenija
+1 CHAN
+2 DATE 05 DEC 2006
+3 TIME 17:59:14
+2 _WT_USER Bojan
+1 FAMC @F30@
+0 @I68@ INDI
+1 NAME Anton9 /Jermanel/
+2 GIVN Anton9
+2 SURN Jermanel
+1 SEX M
+1 FAMS @F27@
+1 CHAN
+2 DATE 09 SEP 2017
+3 TIME 17:30:33
+2 _WT_USER bojan
+0 @I69@ INDI
+1 NAME Silvester4 /Hribarek/
+2 GIVN Silvester4
+2 SURN Hribarek
+1 NAME Silvester4 /Jermannič/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 5 MAR 1960
+1 FAMS @F31@
+1 FAMS @F32@
+1 FAMC @F27@
+1 CHAN
+2 DATE 01 SEP 2017
+3 TIME 09:01:05
+2 _WT_USER bojan
+0 @I70@ INDI
+1 SEX M
+1 FAMS @F28@
+1 CHAN
+2 DATE 09 SEP 2017
+3 TIME 17:30:49
+2 _WT_USER bojan
+0 @I71@ INDI
+1 NAME Andrej3 /Jermanman/
+2 GIVN Andrej3
+2 SURN Jermanman
+1 NAME Andrej3 /Jermanovič/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 1 JUL 1962
+1 FAMS @F33@
+1 FAMC @F28@
+1 CHAN
+2 DATE 01 SEP 2017
+3 TIME 09:06:24
+2 _WT_USER bojan
+0 @I72@ INDI
+1 NAME Uršula9 /Jermanovec/
+2 GIVN Uršula9
+2 SURN Jermanovec
+1 SEX M
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 FAMS @F29@
+0 @I73@ INDI
+1 NAME Matija9 /Jermanovec/
+2 GIVN Matija9
+2 SURN Jermanovec
+1 SEX M
+1 BIRT
+2 DATE 25 NOV 1973
+2 PLAC Udine, Italija
+1 CHAN
+2 DATE 05 DEC 2006
+3 TIME 11:42:28
+2 _WT_USER Bojan
+1 FAMC @F29@
+1 FAMS @F139@
+0 @I74@ INDI
+1 NAME Nežka /Jermanak/
+2 GIVN Nežka
+2 SURN Jermanak
+1 SEX M
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 FAMS @F31@
+0 @I75@ INDI
+1 NAME Klara3 /Jermanak/
+2 GIVN Klara3
+2 SURN Jermanak
+1 SEX M
+1 CHAN
+2 DATE 1 FEB 2002
+3 TIME 19:37
+1 FAMC @F31@
+0 @I76@ INDI
+1 NAME Karel3 /Jermanak/
+2 GIVN Karel3
+2 SURN Jermanak
+1 SEX M
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 FAMC @F31@
+0 @I77@ INDI
+1 NAME Helena9 /Jermanovič/
+2 GIVN Helena9
+2 SURN Jermanovič
+2 NOTE Lorem ipsum note.
+1 SEX M
+1 DEAT
+2 DATE 01 DEC 1991
+2 NOTE Lorem ipsum note.
+1 FAMS @F33@
+1 CHAN
+2 DATE 01 DEC 2025
+3 TIME 13:51:07
+2 _WT_USER bojan
+0 @I78@ INDI
+1 NAME Alojz5 /Jermanveč/
+2 TYPE MARRIED
+2 GIVN Alojz5
+2 SURN Jermanveč
+1 SEX F
+1 CHAN
+2 DATE 01 DEC 2025
+3 TIME 13:52:59
+2 _WT_USER bojan
+1 FAMC @F33@
+0 @I79@ INDI
+1 NAME Tomaž2 /Jermaniček/
+2 GIVN Tomaž2
+2 SURN Jermaniček
+1 SEX F
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 FAMC @F33@
+0 @I80@ INDI
+1 NAME Alojz4 /Jermannjak/
+2 GIVN Alojz4
+2 SURN Jermannjak
+1 SEX M
+1 FAMS @F24@
+1 CHAN
+2 DATE 06 FEB 2020
+3 TIME 16:57:24
+2 _WT_USER bojan
+1 DEAT
+2 DATE 2019
+0 @I81@ INDI
+1 NAME Alojz5 /Jermannjak/
+2 GIVN Alojz5
+2 SURN Jermannjak
+1 NAME Alojz5 /Koderič/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 14 JUL 1972
+1 FAMS @F34@
+1 FAMC @F24@
+1 FAMS @F257@
+1 CHAN
+2 DATE 19 DEC 2017
+3 TIME 12:23:52
+2 _WT_USER bojan
+0 @I82@ INDI
+1 NAME Tone2 /Jermannjak/
+2 GIVN Tone2
+2 SURN Jermannjak
+1 SEX F
+1 BIRT
+2 DATE 24 JUL 1967
+1 FAMS @F35@
+1 FAMC @F24@
+1 CHAN
+2 DATE 03 SEP 2017
+3 TIME 18:09:34
+2 _WT_USER bojan
+0 @I83@ INDI
+1 NAME Lovro9 /Koderek/
+2 GIVN Lovro9
+2 SURN Koderek
+1 SEX M
+1 FAMS @F25@
+1 CHAN
+2 DATE 03 SEP 2017
+3 TIME 18:14:01
+2 _WT_USER bojan
+0 @I84@ INDI
+1 NAME Barbara9 /Koderek/
+2 GIVN Barbara9
+2 SURN Koderek
+1 SEX M
+1 BIRT
+2 DATE 9 AUG 1981
+2 PLAC Beljak/Villach, Avstrija
+1 FAMC @F25@
+1 CHAN
+2 DATE 11 SEP 2017
+3 TIME 11:52:33
+2 _WT_USER bojan
+0 @I85@ INDI
+1 NAME Alojzija /Koderar/
+2 GIVN Alojzija
+2 SURN Koderar
+1 SEX M
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 FAMS @F35@
+0 @I86@ INDI
+1 NAME Miha9 /Jermannjak/
+2 GIVN Miha9
+2 SURN Jermannjak
+1 SEX M
+1 CHAN
+2 DATE 06 DEC 2006
+3 TIME 21:42:28
+2 _WT_USER Bojan
+1 FAMC @F35@
+1 BIRT
+2 DATE 13 FEB 1993
+2 PLAC Beljak/Villach, Avstrija
+0 @I87@ INDI
+1 NAME Rozalija9 /Jermannjak/
+2 GIVN Rozalija9
+2 SURN Jermannjak
+1 SEX M
+1 FAMC @F35@
+1 BIRT
+2 DATE 19 DEC 1995
+2 PLAC Beljak/Villach, Avstrija
+1 CHAN
+2 DATE 09 SEP 2017
+3 TIME 17:36:32
+2 _WT_USER bojan
+1 FAMS @F255@
+0 @I88@ INDI
+1 NAME Jakob9 /Kodernik/
+2 GIVN Jakob9
+2 SURN Kodernik
+1 SEX M
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 FAMS @F34@
+0 @I89@ INDI
+1 NAME Ema9 /Kodernik/
+2 GIVN Ema9
+2 SURN Kodernik
+1 SEX F
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 FAMC @F34@
+0 @I90@ INDI
+1 NAME Andrej9 /Kodernik/
+2 GIVN Andrej9
+2 SURN Kodernik
+1 SEX F
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 FAMC @F34@
+0 @I91@ INDI
+1 NAME Ema2 /Koderšek/
+2 GIVN Ema2
+2 SURN Koderšek
+1 NAME Ema2 /Hribarek/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 3 OCT 1954
+1 FAMS @F26@
+1 FAMC @F245@
+1 CHAN
+2 DATE 15 AUG 2025
+3 TIME 08:11:12
+2 _WT_USER bojan
+0 @I92@ INDI
+1 NAME Cvetka3 /Hribarek/
+2 GIVN Cvetka3
+2 SURN Hribarek
+1 SEX M
+1 BIRT
+2 DATE 1 DEC 1973
+2 PLAC Ljubljana, Slovenija
+1 CHAN
+2 DATE 15 AUG 2025
+3 TIME 08:20:36
+2 _WT_USER bojan
+1 FAMS @F36@
+1 FAMC @F26@
+0 @I93@ INDI
+1 NAME Frančiška9 /Hribarek/
+2 GIVN Frančiška9
+2 SURN Hribarek
+1 NAME Frančiška9 /Kodernc/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 5 AUG 1975
+2 PLAC Ljubljana, Slovenija
+1 FAMS @F124@
+1 FAMC @F26@
+1 CHAN
+2 DATE 26 NOV 2025
+3 TIME 15:43:51
+2 _WT_USER bojan
+0 @I94@ INDI
+1 NAME Martin9 /Hribarek/
+2 GIVN Martin9
+2 SURN Hribarek
+1 NAME Martin9 /Koderman/
+2 TYPE MARRIED
+1 SEX F
+1 FAMC @F26@
+1 BIRT
+2 DATE 29 JAN 1986
+2 PLAC Ljubljana, Slovenija
+1 FAMS @F219@
+1 CHAN
+2 DATE 24 JAN 2018
+3 TIME 13:46:36
+2 _WT_USER bojan
+0 @I95@ INDI
+1 NAME Julijana9 /Koderovec/
+2 GIVN Julijana9
+2 SURN Koderovec
+1 NAME Julijana9 /Hribarek/
+2 TYPE MARRIED
+1 SEX F
+1 FAMS @F36@
+1 CHAN
+2 DATE 18 JAN 2018
+3 TIME 13:18:35
+2 _WT_USER bojan
+0 @I96@ INDI
+1 NAME Miha5 /Hribarek/
+2 GIVN Miha5
+2 SURN Hribarek
+1 SEX F
+1 CHAN
+2 DATE 13 DEC 2006
+3 TIME 20:26:56
+2 _WT_USER Bojan
+1 FAMC @F36@
+1 BIRT
+2 DATE 02 JAN 1998
+2 PLAC Ljubljana, Slovenija
+0 @I97@ INDI
+1 NAME Gašper /Hribarek/
+2 GIVN Gašper
+2 NICK Magdalena7
+2 SURN Hribarek
+2 NICK Rozalija2
+1 SEX M
+1 BIRT
+2 DATE 15 JUN 1875
+2 PLAC Šentilj pri Mislinji, Slovenija
+2 RESN NONE
+1 DEAT
+2 DATE 14 APR 1950
+2 PLAC Šentilj pri Mislinji, Slovenija
+1 FAMS @F23@
+1 FAMC @F37@
+1 CHAN
+2 DATE 14 JUL 2025
+3 TIME 18:37:40
+2 _WT_USER bojan
+0 @I98@ INDI
+1 NAME Elizabeta /Koderin/
+2 GIVN Elizabeta
+2 SURN Koderin
+1 NAME Elizabeta /Hribarek/
+2 TYPE MARRIED
+1 SEX F
+1 BIRT
+2 DATE 11 MAR 1883
+2 PLAC Altenmarkt, Avstrija
+2 ADDR Gradiše 1, Okraj Altenmarkt
+1 DEAT
+2 DATE 13 MAR 1963
+1 CHAN
+2 DATE 24 SEP 2025
+3 TIME 14:05:58
+2 _WT_USER bojan
+1 FAMS @F23@
+1 FAMC @F38@
+0 @I99@ INDI
+1 NAME Klara6 /Koderin/
+2 GIVN Klara6
+2 SURN Koderin
+1 SEX F
+1 BIRT
+2 DATE 25 MAY 1905
+2 PLAC Slovenj Gradec, Slovenija
+1 DEAT
+2 DATE 19 JUL 1992
+1 CHAN
+2 DATE 07 DEC 2006
+3 TIME 13:37:57
+2 _WT_USER Bojan
+1 FAMS @F39@
+1 FAMC @F23@
+0 @X10@ INDI
+1 NAME Jera /Hribarnc/
+2 GIVN Jera
+2 SURN Hribarnc
+1 SEX M
+1 BIRT
+2 DATE 1928
+2 PLAC Koprivnik, Slovenija
+1 DEAT
+1 FAMC @F250@
+2 PEDI birth
+1 CHAN
+2 DATE 12 AUG 2020
+3 TIME 13:47:02
+2 _WT_USER bojan
+0 @X13@ INDI
+1 NAME Apolonija2 /Koderman/
+2 GIVN Apolonija2
+2 SURN Koderman
+1 SEX M
+1 BIRT
+2 DATE 25 SEP 2020
+1 FAMC @F219@
+2 PEDI birth
+1 CHAN
+2 DATE 15 NOV 2020
+3 TIME 18:52:47
+2 _WT_USER bojan
+0 @X14@ INDI
+1 NAME Alojz6 /Koderel/
+2 GIVN Alojz6
+2 SURN Koderel
+1 SEX M
+1 FAMC @F317@
+2 PEDI birth
+1 CHAN
+2 DATE 14 DEC 2020
+3 TIME 18:08:26
+2 _WT_USER bojan
+1 DEAT Y
+0 @X15@ INDI
+1 NAME Jurij9 /Koderel/
+2 GIVN Jurij9
+2 SURN Koderel
+1 SEX F
+1 BIRT
+2 DATE 1897
+2 PLAC Krk, Hrvaška
+1 DEAT
+2 DATE 1922
+2 PLAC Ljubljana, Slovenija
+1 FAMC @F317@
+2 PEDI birth
+1 CHAN
+2 DATE 14 DEC 2025
+3 TIME 13:55:07
+2 _WT_USER bojan
+0 @X16@ INDI
+1 NAME Apolonija9 /Koderel/
+2 GIVN Apolonija9
+2 SURN Koderel
+1 SEX F
+1 FAMC @F317@
+2 PEDI birth
+1 CHAN
+2 DATE 14 DEC 2020
+3 TIME 18:10:40
+2 _WT_USER bojan
+1 DEAT Y
+0 @X17@ INDI
+1 NAME Bernard6 /Koderel/
+2 GIVN Bernard6
+2 SURN Koderel
+1 SEX F
+1 BIRT Y
+1 DEAT Y
+1 FAMC @F317@
+2 PEDI birth
+1 CHAN
+2 DATE 14 DEC 2020
+3 TIME 18:11:33
+2 _WT_USER bojan
+0 @X11@ OBJE
+1 FILE media/file2.jpg
+2 FORM jpeg
+3 TYPE photo
+2 TITL Bojan Sajovic leta 2020
+1 RESN none
+1 RESN locked
+1 CHAN
+2 DATE 18 OCT 2020
+3 TIME 20:05:04
+2 _WT_USER bojan
+0 @M130@ OBJE
+1 FILE media/file3.JPG
+2 FORM jpeg
+3 TYPE photo
+2 TITL Bojan Sajovic
+1 _PRIM N
+1 CHAN
+2 DATE 14 FEB 2016
+3 TIME 21:00:30
+2 _WT_USER bojan
+0 @M139@ OBJE
+1 FILE media/file4.jpg
+2 FORM jpeg
+3 TYPE photo
+2 TITL Bojan Sajovic 2012
+1 _PRIM Y
+1 CHAN
+2 DATE 28 FEB 2017
+3 TIME 13:21:03
+2 _WT_USER bojan
+0 @M313@ OBJE
+1 FILE media/file5.jpg
+2 FORM jpeg
+3 TYPE photo
+2 TITL Grb družine Sajovitz
+1 _PRIM N
+1 CHAN
+2 DATE 02 APR 2018
+3 TIME 09:08:35
+2 _WT_USER bojan
+0 @M293@ OBJE
+1 FILE media/file6.jpg
+2 FORM jpeg
+3 TYPE photo
+2 TITL Družina Sajovic 18.10.2006
+1 CHAN
+2 DATE 26 SEP 2017
+3 TIME 10:12:14
+2 _WT_USER bojan
+0 @F1@ FAM
+1 HUSB @I1@
+2 _PREF Y
+1 WIFE @I2@
+2 _PREF Y
+1 MARR
+2 DATE 7 MAY 1994
+2 PLAC Bled, Slovenija
+1 CHIL @I3@
+2 _PREF Y
+1 CHIL @I4@
+1 RESI
+2 PLAC Ljubljana, Slovenija
+2 ADDR Vrtača 9a
+1 OBJE @M293@
+1 CHAN
+2 DATE 26 NOV 2025
+3 TIME 16:06:50
+2 _WT_USER bojan
+0 @F2@ FAM
+1 HUSB @I5@
+2 _PREF Y
+1 WIFE @I6@
+2 _PREF Y
+1 MARR
+2 TYPE Civil
+2 DATE 9 AUG 1959
+2 PLAC Ljubljana, Slovenija
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+3 CONT lorem ipsum
+3 CONT lorem ipsum
+3 CONT lorem ipsum
+3 CONT lorem ipsum
+3 CONT lorem ipsum
+1 CHIL @I1@
+2 _PREF Y
+1 CHAN
+2 DATE 30 OCT 2020
+3 TIME 15:43:32
+2 _WT_USER bojan
+0 @M232@ OBJE
+1 FILE media/file7.JPG
+2 FORM jpeg
+3 TYPE photo
+2 TITL Tadeja Pačnik sajovic
+1 _PRIM Y
+1 CHAN
+2 DATE 08 SEP 2017
+3 TIME 21:33:51
+2 _WT_USER bojan
+0 @M245@ OBJE
+1 FILE media/file8.png
+2 FORM png
+3 TYPE photo
+2 TITL Tadeja Pačnik-Sajovic 1. rojstni dan
+1 CHAN
+2 DATE 10 SEP 2017
+3 TIME 10:11:01
+2 _WT_USER bojan
+0 @M235@ OBJE
+1 FILE media/file9.png
+2 FORM png
+3 TYPE photo
+2 TITL Tadeja Pačnik-Sajovic 2. rojstni dan
+1 CHAN
+2 DATE 10 SEP 2017
+3 TIME 09:46:04
+2 _WT_USER bojan
+0 @M236@ OBJE
+1 FILE media/file10.png
+2 FORM png
+3 TYPE photo
+2 TITL Tadeja Pačnik-Sajovic 3. rojstni dan
+1 CHAN
+2 DATE 10 SEP 2017
+3 TIME 10:10:05
+2 _WT_USER bojan
+0 @M244@ OBJE
+1 FILE media/file11.png
+2 FORM png
+3 TYPE photo
+2 TITL Tadeja Pačnik-Sajovic 4. rojstni dan
+1 CHAN
+2 DATE 10 SEP 2017
+3 TIME 10:10:35
+2 _WT_USER bojan
+0 @M237@ OBJE
+1 FILE media/file12.png
+2 FORM png
+3 TYPE photo
+2 TITL Tadeja Pačnik-Sajovic 5. rojstni dan
+1 CHAN
+2 DATE 10 SEP 2017
+3 TIME 09:46:58
+2 _WT_USER bojan
+0 @M285@ OBJE
+1 FILE media/file13.png
+2 FORM png
+3 TYPE photo
+2 TITL Nada, Brane in Tadeja
+1 CHAN
+2 DATE 10 SEP 2017
+3 TIME 15:05:44
+2 _WT_USER bojan
+0 @F3@ FAM
+1 HUSB @I56@
+2 _PREF Y
+1 WIFE @I57@
+2 _PREF Y
+1 MARR
+2 DATE 18 MAR 1967
+2 PLAC Jesenice, Slovenija
+1 CHIL @I2@
+2 _PREF Y
+1 CHIL @I58@
+1 CHAN
+2 DATE 10 SEP 2017
+3 TIME 15:05:44
+2 _WT_USER bojan
+1 OBJE @M285@
+0 @NI2@ NOTE Lorem ipsum note.
+0 @NI3@ NOTE Lorem ipsum note.
+0 @NI4@ NOTE Lorem ipsum note.
+0 @X290@ SOUR
+1 TITL Dušan Sajovic - rojstni in krstni list
+1 CHAN
+2 DATE 19 JUN 2025
+3 TIME 20:36:00
+2 _WT_USER bojan
+0 @F4@ FAM
+1 HUSB @I7@
+2 _PREF Y
+1 WIFE @I8@
+2 _PREF Y
+1 MARR
+2 PLAC Ljubljana, Slovenija
+3 MAP
+4 LATI N46::14::10"
+4 LONG E15::16::3"
+2 DATE 15 FEB 1928
+1 CHIL @I5@
+2 _PREF Y
+1 CHAN
+2 DATE 21 JAN 2025
+3 TIME 17:19:59
+2 _WT_USER bojan
+0 @S6@ SOUR
+1 ABBR Dušan Sajovic-pismo Ivanki
+1 TITL Dušan Sajovic - pismo teti Ivanki po vojni
+1 AUTH Dušan Sajovic
+1 CHAN
+2 DATE 26 OCT 2009
+3 TIME 22:49:18
+2 _WT_USER Bojan
+1 REPO @R3@
+1 TEXT Lorem ipsum note.
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONC lorem ipsum
+2 CONC lorem ipsum
+2 CONC lorem ipsum
+2 CONC lorem ipsum
+2 CONC lorem ipsum
+2 CONC lorem ipsum
+2 CONT lorem ipsum
+0 @S23@ SOUR
+1 ABBR Dušan Sajovic - rojstni in krstni list
+1 TITL Dušan Sajovic - rojstni in krstni list
+1 REPO @R3@
+1 CHAN
+2 DATE 20 OCT 2009
+3 TIME 00:26:45
+2 _WT_USER Bojan
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+1 AUTH Peter Jurak, župnik
+0 @X295@ SOUR
+1 TITL Fotoalbum Dušana Sajovica iz leta 1956
+1 ABBR Fotoalbum 1956
+1 AUTH Dušan Sajovic
+1 CHAN
+2 DATE 27 JUN 2025
+3 TIME 16:11:15
+2 _WT_USER bojan
+0 @S22@ SOUR
+1 ABBR Antonija Šubic - rojstni in krstni list
+1 TITL Antonija Šubic - rojstni in krstni list
+1 REPO @R3@
+1 CHAN
+2 DATE 16 OCT 2009
+3 TIME 10:32:21
+2 _WT_USER Bojan
+1 AUTH Katolička župa Bosanski Novi
+0 @F76@ FAM
+1 MARR
+2 TYPE RELIGIOUS
+2 DATE 24 OCT 1924
+2 PLAC Brezje, Slovenija
+2 RESN NONE
+1 CHIL @I6@
+2 _PREF Y
+1 CHAN
+2 DATE 31 AUG 2025
+3 TIME 17:17:31
+2 _WT_USER bojan
+0 @X161@ NOTE Lorem ipsum note.
+1 CONC lorem ipsum
+1 CONT
+1 CONT lorem ipsum
+1 CONC lorem ipsum
+1 CONT
+1 CONT lorem ipsum
+1 CHAN
+2 DATE 17 JUN 2024
+3 TIME 12:54:57
+2 _WT_USER bojan
+0 @X286@ SOUR
+1 TITL Srečko Sajovic - Prepis rojstnega lista
+1 ABBR Roj.list Srečko Sajovic
+1 AUTH Župni urad Slavina
+1 RESN NONE
+1 CHAN
+2 DATE 19 JUN 2025
+3 TIME 20:27:16
+2 _WT_USER bojan
+0 @F5@ FAM
+1 CHIL @I7@
+2 _PREF Y
+1 HUSB @I9@
+2 _PREF Y
+1 MARR
+2 TYPE Religious
+2 DATE 2 DEC 1893
+2 PLAC Dunaj/Wien, Avstrija
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+3 CONT lorem ipsum
+3 CONT lorem ipsum
+1 CHAN
+2 DATE 30 APR 2018
+3 TIME 22:06:30
+2 _WT_USER bojan
+0 @S7@ SOUR
+1 ABBR Srečko Sajovic - potrdilo o povratku iz ujetništva
+1 TITL Srečko Sajovic-potrdilo o povratku iz ruskega ujetništva
+1 CHAN
+2 DATE 26 OCT 2009
+3 TIME 22:54:00
+2 _WT_USER Bojan
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+2 CONC lorem ipsum
+2 CONT
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+1 REPO @R3@
+1 AUTH Evidenčni urad. Ekspozitura kr.37 pešpolka
+0 @S16@ SOUR
+1 ABBR Zdenko Sajovic - pismo po vojni iz ZDA
+1 TITL Zdenko Sajovic - pismo Srečku po vojni iz ZDA
+1 AUTH Zdenko Sajovic
+1 PUBL Zdenko je takoj po vojni iz ZDA pisal Srečku sajovicu ....
+1 REPO @R3@
+1 CHAN
+2 DATE 26 OCT 2009
+3 TIME 22:22:38
+2 _WT_USER Bojan
+0 @S17@ SOUR
+1 ABBR Srečko sajovic - identitetni listek železnice
+1 TITL Srečko sajovic - identitetni listek železnice
+1 PUBL Icdentitetni listek železnice Srečka, kot sina želežniškega nadzornika. Na prvi strani slika, na zadnji pa podatki
+1 REPO @R3@
+1 CHAN
+2 DATE 26 OCT 2009
+3 TIME 22:55:04
+2 _WT_USER Bojan
+1 AUTH Družba južne železnice, obratno ravnateljstvo Ljubljana
+0 @S18@ SOUR
+1 ABBR Srečko Sajovic - obvestilo o izostanku od pouka
+1 TITL Srečko Sajovic - obvestilo o izostanku od pouka
+1 AUTH F. Kobal, razrednik
+1 REPO @R3@
+1 CHAN
+2 DATE 26 OCT 2009
+3 TIME 22:55:49
+2 _WT_USER Bojan
+1 TEXT Lorem ipsum note.
+2 CONT
+2 CONT lorem ipsum
+2 CONC lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+0 @S19@ SOUR
+1 ABBR Srečko Sajovic - kazen za izostanek od pouka
+1 TITL Srečko Sajovic - kazen za izostanek od pouka
+1 AUTH F. Kobal, razrednik
+1 REPO @R3@
+1 CHAN
+2 DATE 01 JUN 2012
+3 TIME 14:00:55
+2 _WT_USER bojan
+1 TEXT Lorem ipsum note.
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+0 @S20@ SOUR
+1 ABBR Srečko Sajovic - Domovnica
+1 TITL Srečko Sajovic - Domovnica
+1 AUTH COMUNE DI LUBIANA (Mestan občina ljubljanska)
+1 REPO @R3@
+1 CHAN
+2 DATE 26 OCT 2009
+3 TIME 22:52:55
+2 _WT_USER Bojan
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+0 @S31@ SOUR
+1 ABBR Slika - bratje in sestra Sajovic
+1 TITL Srečko,Dušan,Zdenko in Ivanka Sajovic, cca. leta 1902
+1 REPO @R3@
+1 CHAN
+2 DATE 26 OCT 2009
+3 TIME 22:23:22
+2 _WT_USER Bojan
+1 NOTE Lorem ipsum note.
+1 AUTH Neznani fotograf
+0 @X292@ SOUR
+1 TITL Srečko Sajovic - prijava za izdajo delovne knjižice leta 1952
+1 RESN NONE
+1 CHAN
+2 DATE 19 JUN 2025
+3 TIME 21:02:50
+2 _WT_USER bojan
+0 @S21@ SOUR
+1 ABBR Zalka Korenjak - rojstni in krstni list
+1 TITL Zalka Korenjak - rojstni in krstni list
+1 REPO @R3@
+1 AUTH Župnija Pazin ?
+1 CHAN
+2 DATE 06 JUL 2020
+3 TIME 08:56:49
+2 _WT_USER bojan
+0 @F6@ FAM
+1 CHIL @I15@
+2 _PREF Y
+1 CHIL @I14@
+1 CHIL @I13@
+1 CHIL @I8@
+1 CHIL @I12@
+1 HUSB @I10@
+2 _PREF Y
+1 WIFE @I11@
+2 _PREF Y
+1 CHAN
+2 DATE 11 NOV 2025
+3 TIME 21:03:41
+2 _WT_USER bojan
+1 MARR
+2 DATE 30 NOV 1889
+2 PLAC Biljana, Slovenija
+0 @F127@ FAM
+1 CHIL @I9@
+1 CHAN
+2 DATE 30 APR 2018
+3 TIME 21:51:08
+2 _WT_USER bojan
+0 @F250@ FAM
+1 CHIL @X9@
+1 CHIL @X10@
+1 CHIL @X8@
+1 MARR Y
+1 CHIL @X7@
+1 CHIL @X6@
+1 CHIL @X5@
+1 CHAN
+2 DATE 12 AUG 2020
+3 TIME 13:47:02
+2 _WT_USER bojan
+0 @F14@ FAM
+1 CHIL @I28@
+1 CHIL @I10@
+1 CHIL @I29@
+1 CHIL @I30@
+1 WIFE @I26@
+2 _PREF Y
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 HUSB @I25@
+2 _PREF Y
+0 @NI10@ NOTE Lorem ipsum note.
+0 @F8@ FAM
+1 CHIL @I39@
+1 CHIL @I11@
+2 _PREF Y
+1 CHIL @I38@
+1 HUSB @I37@
+2 _PREF Y
+1 CHAN
+2 DATE 20 JAN 2026
+3 TIME 16:35:47
+2 _WT_USER bojan
+1 MARR
+2 DATE 16 FEB 1860
+2 NOTE Lorem ipsum note.
+0 @NI11@ NOTE Lorem ipsum note.
+0 @F141@ FAM
+1 WIFE @I12@
+1 CHAN
+2 DATE 21 JAN 2025
+3 TIME 17:13:50
+2 _WT_USER bojan
+1 NOTE Lorem ipsum note.
+0 @F9@ FAM
+1 HUSB @I16@
+2 _PREF Y
+1 WIFE @I13@
+2 _PREF Y
+1 CHIL @I20@
+2 _PREF Y
+1 CHIL @I17@
+1 CHAN
+2 DATE 19 OCT 2025
+3 TIME 14:28:46
+2 _WT_USER bojan
+1 MARR
+2 TYPE RELIGIOUS
+2 DATE 18 SEP 1922
+2 PLAC Vič, Ljubljana, Slovenija
+0 @NI13@ NOTE Lorem ipsum note.
+0 @F10@ FAM
+1 HUSB @I15@
+2 _PREF Y
+1 WIFE @I24@
+2 _PREF Y
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @NI15@ NOTE Lorem ipsum note.
+0 @F314@ FAM
+1 CHIL @I16@
+1 CHAN
+2 DATE 11 MAY 2020
+3 TIME 11:31:33
+2 _WT_USER bojan
+1 MARR Y
+0 @F11@ FAM
+1 HUSB @I17@
+2 _PREF Y
+1 WIFE @I18@
+2 _PREF Y
+1 CHIL @I19@
+2 _PREF Y
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @F12@ FAM
+1 WIFE @I20@
+2 _PREF Y
+1 CHIL @I21@
+2 _PREF Y
+1 CHAN
+2 DATE 17 DEC 2006
+3 TIME 23:55:30
+2 _WT_USER Bojan
+1 MARR Y
+0 @X486@ FAM
+1 MARR Y
+1 WIFE @I20@
+1 CHAN
+2 DATE 19 OCT 2025
+3 TIME 14:57:26
+2 _WT_USER bojan
+0 @F13@ FAM
+1 HUSB @I22@
+2 _PREF Y
+1 WIFE @I21@
+2 _PREF Y
+1 CHIL @I23@
+2 _PREF Y
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @F315@ FAM
+1 CHIL @I22@
+1 CHAN
+2 DATE 11 MAY 2020
+3 TIME 11:41:48
+2 _WT_USER bojan
+0 @NI25@ NOTE Lorem ipsum note.
+1 CONT lorem ipsum
+1 CONT lorem ipsum
+1 CONT lorem ipsum
+1 CHAN
+2 DATE 17 DEC 2006
+3 TIME 22:19:43
+2 _WT_USER Bojan
+0 @X246@ FAM
+1 CHIL @I25@
+1 CHIL @I27@
+1 CHAN
+2 DATE 21 OCT 2025
+3 TIME 15:10:57
+2 _WT_USER bojan
+0 @NI26@ NOTE Lorem ipsum note.
+1 CONT lorem ipsum
+1 CHAN
+2 DATE 17 DEC 2006
+3 TIME 22:02:53
+2 _WT_USER Bojan
+0 @X249@ FAM
+1 CHIL @I26@
+1 CHAN
+2 DATE 11 NOV 2024
+3 TIME 18:45:21
+2 _WT_USER bojan
+0 @F15@ FAM
+1 WIFE @I28@
+2 _PREF Y
+1 CHIL @I32@
+2 _PREF Y
+1 CHIL @I31@
+1 CHAN
+2 DATE 20 SEP 2017
+3 TIME 13:20:26
+2 _WT_USER bojan
+0 @F16@ FAM
+1 HUSB @I32@
+2 _PREF Y
+1 CHIL @I33@
+2 _PREF Y
+1 CHIL @I35@
+1 CHIL @I34@
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @F17@ FAM
+1 HUSB @I36@
+2 _PREF Y
+1 WIFE @I33@
+2 _PREF Y
+1 CHAN
+2 DATE 17 DEC 2006
+3 TIME 22:15:06
+2 _WT_USER Bojan
+0 @F134@ FAM
+1 CHIL @I37@
+1 CHAN
+2 DATE 18 SEP 2005
+3 TIME 22:22:21
+2 _WT_USER Bojan
+0 @F18@ FAM
+1 WIFE @I38@
+2 _PREF Y
+1 CHIL @I40@
+2 _PREF Y
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+1 MARR
+2 TYPE RELIGIOUS
+2 DATE 1893
+0 @F19@ FAM
+1 CHIL @I44@
+1 CHIL @I46@
+1 CHIL @I47@
+1 CHIL @I43@
+1 CHIL @I45@
+1 CHIL @I41@
+2 _PREF Y
+1 CHIL @I42@
+1 HUSB @I48@
+2 _PREF Y
+1 WIFE @I39@
+2 _PREF Y
+1 CHAN
+2 DATE 07 MAY 2026
+3 TIME 19:35:10
+2 _WT_USER bojan
+1 MARR
+2 DATE 26 NOV 1884
+2 RESN NONE
+0 @X626@ FAM
+1 MARR Y
+1 WIFE @I40@
+1 CHAN
+2 DATE 20 JAN 2026
+3 TIME 14:48:30
+2 _WT_USER bojan
+0 @X1113@ FAM
+1 MARR Y
+1 WIFE @I41@
+1 CHAN
+2 DATE 10 MAY 2026
+3 TIME 12:16:47
+2 _WT_USER bojan
+0 @F20@ FAM
+1 HUSB @I43@
+2 _PREF Y
+1 CHIL @I51@
+2 _PREF Y
+1 CHIL @I52@
+1 CHIL @I53@
+1 CHIL @I54@
+1 CHIL @I55@
+1 CHAN
+2 DATE 07 MAY 2026
+3 TIME 20:04:57
+2 _WT_USER bojan
+1 MARR
+2 DATE 09 FEB 1929
+2 NOTE Lorem ipsum note.
+2 RESN NONE
+0 @X541@ FAM
+1 MARR
+2 DATE 04 FEB 1931
+1 HUSB @I45@
+1 CHAN
+2 DATE 16 NOV 2025
+3 TIME 12:05:14
+2 _WT_USER bojan
+0 @F21@ FAM
+1 HUSB @I46@
+2 _PREF Y
+1 CHIL @I49@
+2 _PREF Y
+1 CHIL @I50@
+1 CHAN
+2 DATE 01 JUN 2012
+3 TIME 11:44:13
+2 _WT_USER bojan
+0 @X538@ FAM
+1 CHIL @I48@
+1 CHAN
+2 DATE 16 NOV 2025
+3 TIME 11:32:40
+2 _WT_USER bojan
+1 MARR Y
+0 @F247@ FAM
+1 HUSB @I49@
+1 MARR Y
+1 CHAN
+2 DATE 14 AUG 2017
+3 TIME 11:01:19
+2 _WT_USER bojan
+0 @X1103@ FAM
+1 MARR Y
+1 HUSB @I51@
+1 CHAN
+2 DATE 08 MAY 2026
+3 TIME 06:04:46
+2 _WT_USER bojan
+0 @X35@ FAM
+1 HUSB @I52@
+1 CHAN
+2 DATE 01 FEB 2021
+3 TIME 11:39:23
+2 _WT_USER bojan
+1 MARR Y
+0 @X273@ FAM
+1 HUSB @I53@
+1 CHAN
+2 DATE 20 MAY 2025
+3 TIME 13:23:43
+2 _WT_USER bojan
+0 @F187@ FAM
+1 WIFE @I54@
+1 MARR Y
+1 CHAN
+2 DATE 17 DEC 2006
+3 TIME 23:43:32
+2 _WT_USER Bojan
+0 @F22@ FAM
+1 HUSB @I60@
+2 _PREF Y
+1 WIFE @I59@
+2 _PREF Y
+1 CHIL @I64@
+2 _PREF Y
+1 CHIL @I63@
+1 CHIL @I62@
+1 CHIL @I61@
+1 CHIL @I56@
+1 CHAN
+2 DATE 09 OCT 2025
+3 TIME 09:26:08
+2 _WT_USER bojan
+1 MARR
+2 DATE 30 NOV 1959
+0 @F112@ FAM
+1 CHIL @I57@
+2 _PREF Y
+1 CHAN
+2 DATE 10 OCT 2025
+3 TIME 20:01:52
+2 _WT_USER bojan
+1 MARR
+2 DATE 1941
+0 @F125@ FAM
+1 HUSB @I58@
+2 _PREF Y
+1 MARR
+2 DATE 15 JUN 2002
+1 CHAN
+2 DATE 07 MAY 2014
+3 TIME 15:26:11
+2 _WT_USER bojan
+1 RESI
+2 PLAC Kranjska Gora, Slovenija
+0 @F23@ FAM
+1 HUSB @I97@
+2 _PREF Y
+1 WIFE @I98@
+2 _PREF Y
+1 MARR
+2 DATE 28 JUL 1913
+2 PLAC Prevalje, Slovenija
+1 CHIL @I99@
+2 _PREF Y
+1 CHIL @I59@
+1 CHAN
+2 DATE 05 DEC 2006
+3 TIME 23:05:26
+2 _WT_USER Bojan
+0 @F197@ FAM
+1 CHIL @I60@
+1 CHAN
+2 DATE 12 APR 2026
+3 TIME 10:46:04
+2 _WT_USER bojan
+0 @F24@ FAM
+1 HUSB @I80@
+2 _PREF Y
+1 WIFE @I61@
+2 _PREF Y
+1 CHIL @I82@
+2 _PREF Y
+1 CHIL @I81@
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @F25@ FAM
+1 HUSB @I83@
+1 WIFE @I61@
+2 _PREF Y
+1 CHIL @I84@
+2 _PREF Y
+1 CHAN
+2 DATE 24 JAN 2026
+3 TIME 12:17:25
+2 _WT_USER bojan
+1 MARR
+2 NOTE Lorem ipsum note.
+2 RESN NONE, LOCKED
+0 @F26@ FAM
+1 HUSB @I62@
+2 _PREF Y
+1 WIFE @I91@
+2 _PREF Y
+1 CHIL @I92@
+2 _PREF Y
+1 CHIL @I93@
+1 CHIL @I94@
+1 CHAN
+2 DATE 15 AUG 2025
+3 TIME 08:03:42
+2 _WT_USER bojan
+0 @F27@ FAM
+1 HUSB @I68@
+2 _PREF Y
+1 WIFE @I63@
+2 _PREF Y
+1 CHIL @I69@
+2 _PREF Y
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @F28@ FAM
+1 HUSB @I70@
+1 WIFE @I63@
+2 _PREF Y
+1 CHIL @I71@
+2 _PREF Y
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @F29@ FAM
+1 HUSB @I72@
+1 WIFE @I63@
+2 _PREF Y
+1 CHIL @I73@
+2 _PREF Y
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @F30@ FAM
+1 HUSB @I64@
+2 _PREF Y
+1 WIFE @I65@
+2 _PREF Y
+1 CHIL @I67@
+2 _PREF Y
+1 CHIL @I66@
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @F113@ FAM
+1 WIFE @I66@
+2 _PREF Y
+1 CHAN
+2 DATE 10 SEP 2017
+3 TIME 11:50:27
+2 _WT_USER bojan
+0 @F31@ FAM
+1 HUSB @I74@
+2 _PREF Y
+1 WIFE @I69@
+2 _PREF Y
+1 CHIL @I75@
+2 _PREF Y
+1 CHIL @I76@
+1 CHAN
+2 DATE 10 SEP 2017
+3 TIME 14:50:40
+2 _WT_USER bojan
+0 @F32@ FAM
+1 WIFE @I69@
+2 _PREF Y
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @F33@ FAM
+1 HUSB @I77@
+2 _PREF Y
+1 WIFE @I71@
+2 _PREF Y
+1 CHIL @I78@
+2 _PREF Y
+1 CHIL @I79@
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @F139@ FAM
+1 HUSB @I73@
+1 CHAN
+2 DATE 23 OCT 2005
+3 TIME 15:44:05
+2 _WT_USER Bojan
+0 @F34@ FAM
+1 HUSB @I88@
+2 _PREF Y
+1 WIFE @I81@
+2 _PREF Y
+1 CHIL @I89@
+2 _PREF Y
+1 CHIL @I90@
+1 CHAN
+2 DATE 11 SEP 2017
+3 TIME 12:17:34
+2 _WT_USER bojan
+0 @F257@ FAM
+1 WIFE @I81@
+1 MARR
+2 DATE 2017
+1 CHAN
+2 DATE 09 SEP 2017
+3 TIME 17:53:22
+2 _WT_USER bojan
+0 @F35@ FAM
+1 HUSB @I85@
+2 _PREF Y
+1 WIFE @I82@
+2 _PREF Y
+1 CHIL @I86@
+2 _PREF Y
+1 CHIL @I87@
+1 CHAN
+2 DATE 09 SEP 2017
+3 TIME 17:35:21
+2 _WT_USER bojan
+1 MARR
+2 DATE 10 JUL 2011
+0 @F255@ FAM
+1 HUSB @I87@
+1 MARR Y
+1 CHAN
+2 DATE 09 SEP 2017
+3 TIME 17:37:00
+2 _WT_USER bojan
+0 @F245@ FAM
+1 CHIL @I91@
+1 CHAN
+2 DATE 14 AUG 2017
+3 TIME 10:42:13
+2 _WT_USER bojan
+0 @F36@ FAM
+1 HUSB @I92@
+2 _PREF Y
+1 WIFE @I95@
+2 _PREF Y
+1 MARR
+2 DATE 17 OCT 1998
+2 PLAC Domžale, Slovenija
+1 CHIL @I96@
+2 _PREF Y
+1 CHAN
+2 DATE 26 NOV 2025
+3 TIME 15:51:54
+2 _WT_USER bojan
+0 @F124@ FAM
+1 WIFE @I93@
+2 _PREF Y
+1 MARR
+2 DATE 5 AUG 2000
+2 PLAC Domžale, Slovenija
+1 CHAN
+2 DATE 26 NOV 2025
+3 TIME 15:41:26
+2 _WT_USER bojan
+0 @F219@ FAM
+1 WIFE @I94@
+1 MARR
+2 DATE 21 SEP 2013
+2 PLAC Tuštanj, Slovenija
+2 TYPE Civil
+1 CHIL @X13@
+1 CHAN
+2 DATE 15 NOV 2020
+3 TIME 18:52:47
+2 _WT_USER bojan
+0 @F37@ FAM
+1 CHIL @I97@
+2 _PREF Y
+1 CHAN
+2 DATE 14 JUL 2025
+3 TIME 19:44:02
+2 _WT_USER bojan
+1 MARR
+2 TYPE RELIGIOUS
+2 DATE 13 JUN 1864
+2 PLAC Šentilj pri Mislinji, Slovenija
+2 RESN NONE
+0 @F38@ FAM
+1 CHIL @I98@
+2 _PREF Y
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @F39@ FAM
+1 WIFE @I99@
+2 _PREF Y
+1 CHAN
+2 DATE 23 JAN 2002
+3 TIME 23:46
+0 @F317@ FAM
+1 CHIL @X15@
+1 CHIL @X14@
+1 CHIL @X16@
+1 CHIL @X17@
+1 MARR Y
+1 CHAN
+2 DATE 14 DEC 2020
+3 TIME 18:13:30
+2 _WT_USER bojan
+0 @R3@ REPO
+1 NAME Ivana3 Blaž9 Danijela Marjeta9 Valentin9
+1 ADDR Dokumenti, shranjeni kot družinska zapuščina, v lasti Bojana Sajovica
+1 EMAIL user2@example.test
+1 CHAN
+2 DATE 22 MAR 2006
+3 TIME 23:06:10
+2 _WT_USER Bojan
+0 @S0@ SUBM
+1 NAME Ivana3 Blaž9
+1 ADDR Naslov 1
+2 CONT
+0 TRLR

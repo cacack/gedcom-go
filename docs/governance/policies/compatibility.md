@@ -14,12 +14,14 @@ The following table shows which genealogy software exports have been tested with
 | Legacy Family Tree | 8.0 (2016) | ⚠️ | Older version; custom tags preserved (`_TODO`, `_UID`, `_PRIV`) |
 | Family Tree Maker | 22.2.5 (2016) | ⚠️ | Older version; Ancestry format with custom tags |
 | Family Tree Maker | 17.0 (2005) | ✅ | Real export tested (vendored corpus); `CHAR ANSI` decoded as Windows-1252; the export's high bytes (ñ, ó, £) convert correctly, and 0x80–0x9F punctuation, which this export lacks, is pinned by `encoding/ansi-cp1252-c1-range.ged` |
+| Family Historian | 7.0.24 (2026), UTF-8 | ✅ | Real export tested (ged-merge corpus); UTF-8+BOM, strict and lenient decode; address parts written directly under `RESI` flagged as unknown tags |
+| Family Historian | 7.0.24 (2026), ANSI | ❌ | Real export (ged-merge corpus); `CHAR ANSI` over Windows-1250 bytes is decoded as Windows-1252, so `č`/`Č` arrive as `è`/`È` with no diagnostic (shared letters such as `š`, `ž` are correct); pinned by `TestCorpusVendorANSIOver1250KnownGap` |
 | Family Historian | 6.2.2 | ⚠️ | Custom tags preserved (`_ATTR`, `_USED`, `_SHAN`, `_SHAR`) |
 | HEREDIS | 14 PC | ⚠️ | French locales work; non-standard PLAC FORM handled |
 | Gramps | 6.0.6 (2025) | ✅ | Real export tested; `CHAN` records, `TYPE birth`, note refs |
 | MyHeritage | 5.5.1 (2025) | ✅ | Real export tested; `_UID`, `RIN`, HTML notes, `QUAY` tags |
 | MyHeritage Family Tree Builder | 8 (desktop) | ✅ | Real export tested (vendored corpus); empty `HEAD.SOUR` handled, `MH:` RINs, level-0 `_PUBLISH` record preserved |
-| Ancestry.com | 2025.08 | ✅ | Real export tested; `_TREE` parsed, long XRefs, nickname handling |
+| Ancestry.com | 2025.08 | ✅ | Real exports tested (two, one from the ged-merge corpus); `_TREE` parsed, long XRefs, nickname handling; full month names (`June 1950`) flagged with diagnostics |
 | FamilySearch | 2025 | ✅ | Real export tested (GEDCOM 5.5.1); `_HASH`/`_LHASH` tags, standardizer note |
 | Ancestris | 11 (2025) | ✅ | Real export tested (vendored corpus); 5.5.1 UTF-8, French data, OBJE FILE refs |
 | PAF (Personal Ancestral File) | 5.2.18.0 | ✅ | Real export tested (vendored corpus); decodes clean, zero diagnostics |
@@ -28,6 +30,12 @@ The following table shows which genealogy software exports have been tested with
 | My Roots (Palm OS) | 4.00 | ✅ | Real export tested (vendored corpus); ANSEL encoding |
 | webtreeprint.com | 1.0 | ✅ | Real export tested (vendored corpus); ALIA usage preserved, free-text month DATE flagged |
 | EasyTree | V1.0 | ✅ | Real export tested (vendored corpus); nonstandard `CHAR IBM WINDOWS` preserved verbatim |
+| MacFamilyTree (Synium) | 11.2.3 | ✅ | Real **GEDCOM 7.0.3** export tested (ged-merge corpus), the only real desktop 7.0 export located; strict and lenient decode; 5.5.1-style `GEDC.FORM` tolerated silently and kept in `Header.Tags`; mixed-case months (`10 Dec 1868`) parse; `Abt.`/`Bef.`/`about` qualifiers flagged with diagnostics; undeclared `_FID`/`_SMC`/`_SIF` (no `SCHMA`) preserved raw, `_FID` not mapped to `Individual.FamilySearchID` |
+| Reunion | 14 (2026) | ✅ | Real export tested (ged-merge corpus); classic-Mac CR-only line endings, diagnostics report the physical line |
+| Geneanet | 7.0.0 (2026), UTF-8 | ✅ | Real export tested (ged-merge corpus); 5.5-style `ASSO.TYPE` flagged in a 5.5.1 file |
+| Geneanet | 7.0.0 (2026), ANSI | ❌ | Real export (ged-merge corpus); `CHAR ANSI` over Windows-1250 bytes decoded as Windows-1252 (`č` → `è`, no diagnostic); pinned by `TestCorpusVendorANSIOver1250KnownGap` |
+| webtrees | 2.1.27 (2026) | ✅ | Real export tested (ged-merge corpus); `RESN` on `SOUR` flagged, non-numeric `MAP` coordinates flagged with diagnostics |
+| Brother's Keeper | 7.5.4 WINDOWS (2026) | ❌ | Real export (ged-merge corpus); decodes in strict and lenient mode, but `CHAR ANSI` over Windows-1250 bytes is read as Windows-1252 (`č` → `è`, no diagnostic); BK placeholder dates (`__.<>.1680`) flagged with diagnostics; pinned by `TestCorpusVendorANSIOver1250KnownGap` |
 | Brother's Keeper | 5.2 | ❌ | Real export (vendored corpus); CP437 encoding unsupported — strict decode fails, lenient mode recovers a partial document |
 
 ### Legend
@@ -43,8 +51,9 @@ The following table shows which genealogy software exports have been tested with
 ### Important Notes
 
 - **Export column intentionally omitted**: This library produces standard GEDCOM output, not vendor-specific formats. All encoding is spec-compliant.
-- **Older versions**: Test files for FTM 22.2.5, Family Historian, and HEREDIS are from 2015-2016 era software. Current versions may have different export patterns. (Legacy is covered by both a current 10.0 export and the older 8.0 file.)
+- **Older versions**: Test files for FTM 22.2.5, Family Historian, and HEREDIS are from 2015-2016 era software. Current versions may have different export patterns. (Legacy is covered by both a current 10.0 export and the older 8.0 file, and Family Historian by both 7.0.24 exports and the older 6.2.2 file.)
 - **"Vendored corpus" rows**: Real exports vendored byte-identical (aside from submitter-contact redaction) from the [D-Jeffrey/gedcom-samples](https://github.com/D-Jeffrey/gedcom-samples) corpus (MIT OR CC0-1.0); several are vintage platforms (PAF, Family Origins, TMG, My Roots, EasyTree, Brother's Keeper) valuable for exercising historical export quirks. Exercised by `decoder/corpus_vendor_test.go`.
+- **"ged-merge corpus" rows**: Privacy-scrubbed real exports vendored byte-identical from the [rodoslovje/ged-merge](https://github.com/rodoslovje/ged-merge) corpus (MIT); names, free text and contacts were pseudonymized upstream, structure, dates, places and encoding were kept. Exercised by `decoder/corpus_vendor_test.go`, which decodes each in both strict and lenient mode.
 - **FamilySearch**: The ✅ is backed by a real GEDCOM **5.5.1** export from FamilySearch.org (2025). FamilySearch has since retired its own tree-download tool — [familysearch.org/innovate/export](https://www.familysearch.org/innovate/export) states "GEDCOM export is no longer supported using this resource" (verified 2026-08-15) — so no newer first-party export is obtainable. Our GEDCOM 7.0 coverage comes from [official spec examples](https://gedcom.io/tools/).
 
 ## GEDCOM Specification Support
@@ -111,6 +120,7 @@ Key sources include:
 | [gedcom4j Project](https://github.com/frizbog/gedcom4j) | `edge-cases/vendor-*.ged` | MIT |
 | [Gramps Project](https://github.com/gramps-project/gramps) | `encoding/ansel-lf.ged`, `vendor-rootsmagic.ged`, `vendor-heredis.ged` | GPL-2.0 |
 | [D-Jeffrey/gedcom-samples](https://github.com/D-Jeffrey/gedcom-samples) | 12 vendor exports (modern: Legacy 10, Ancestris 11, MyHeritage FTB 8; the rest vintage) in `edge-cases/`+`encoding/`, `gedcom-5.5.1/longsword.ged` | MIT OR CC0-1.0 |
+| [rodoslovje/ged-merge](https://github.com/rodoslovje/ged-merge) | 9 scrubbed real exports (MacFamilyTree 7.0, Reunion, Geneanet, webtrees, Family Historian 7, Brother's Keeper 7, Ancestry) in `edge-cases/`+`encoding/` | MIT |
 | [gedcom7code/test-files](https://github.com/gedcom7code/test-files) | `edge-cases/atsign-55.ged`, `xref-case.ged`, `age-keywords-551.ged`, `date-dual-years.ged` | Unlicense (public domain) |
 | Synthetic (this project) | Various test files | Apache-2.0 |
 
@@ -207,6 +217,7 @@ Tested with real export from FamilySearch.org (2025).
 ### Encoding and Grammar Limitations
 
 - **CP437 (IBMPC) is not supported.** Files declaring `CHAR IBMPC` with genuine CP437 bytes fail strict decoding ("error reading input"); lenient mode recovers a partial document. Pinned by `encoding/ibmpc-cp437-broskeep.ged` and `TestCorpusVendorCP437KnownFailure` in `decoder/corpus_vendor_test.go`.
+- **`CHAR ANSI` is always read as Windows-1252.** Central European producers (Geneanet, Family Historian 7, Brother's Keeper 7) write `CHAR ANSI` over Windows-1250 bytes; the file decodes, but letters whose byte differs between the two code pages (`č`, `Č`, `ć`, `đ`, …) arrive as their Windows-1252 neighbours (`è`, `È`, `æ`, `ð`) with no diagnostic. There is no way to name the code page today ([#759](https://github.com/cacack/gedcom-go/issues/759)). Pinned by the three `encoding/*-w1250.ged` fixtures and `TestCorpusVendorANSIOver1250KnownGap`.
 - **UTF-16 without a BOM is not detected.** The encoding cascade (ADR 0004) is BOM → header declaration → UTF-8 fallback; BOM-less UTF-16 falls through. No fixture yet — a known follow-up from the #301 research.
 - **Some standard tags are recognized but not decoded into typed fields.** At the `INDI` level, `ALIA`, `AFN`, `RFN`, `RIN`, `ANCI`, `DESI`, `SUBM`, `RESN`, and `INIL` are preserved in `Individual.Tags` only — no typed accessor yet. `INIL` stays that way by decision ([#386](https://github.com/cacack/gedcom-go/issues/386)): a typed initiatory ordinance needs a sixth `gedcom.LDSOrdinanceType` constant that no consumer reads. At the `FAM` level, `RESN`, `SUBM`, and `ASSO` are the same case. `FACT` no longer is: `gedcom.Family` gained an `Attributes` field, so `FAM`-level `FACT` and `NCHI` decode into `Family.Attributes` and `CENS`/`RESI` into `Family.Events`, each with its `EVENT_DETAIL` ([#448](https://github.com/cacack/gedcom-go/issues/448)). None of these produce `UNKNOWN_TAG`, which is reserved for genuinely nonstandard tags ([#375](https://github.com/cacack/gedcom-go/issues/375)). The recognition tables for subordinate structures classify a small, enumerated set of standard tags as `UNKNOWN_TAG`: `FAMC` under `ADOP`/`BIRT`/`CHR`, and `CREA`/`REFN`/`UID` on the `REPO`/`SUBM`/`SNOTE` records. `NOTE` under an inline `OBJE` left this set when `MediaLink` began decoding it ([#470](https://github.com/cacack/gedcom-go/issues/470), [#472](https://github.com/cacack/gedcom-go/issues/472)). `docs/reference/gedcom-7-coverage.md` is the generated inventory — the `raw (flagged)` rows are exactly this set.
 - **Levels above 99 are rejected, not clamped.** The GEDCOM level field is at most two digits, so the parser accepts levels 0-99 (`parser.MaxNestingDepth-1`) and drops anything deeper with a `CodeInvalidLevel` error — the line's content is lost. `CodeBadLevelJump` always means the opposite: the line was clamped and *kept*.
