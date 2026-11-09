@@ -497,6 +497,67 @@ func (i *Individual) DeathDate() *Date {
 	return event.ParsedDate
 }
 
+// Name returns the individual's first recorded name, skipping nil entries, or
+// nil when there is none. Safe on a nil receiver. Use it instead of indexing
+// Names[0], which panics on a nameless individual.
+func (i *Individual) Name() *PersonalName {
+	if i == nil {
+		return nil
+	}
+	for _, name := range i.Names {
+		if name != nil {
+			return name
+		}
+	}
+	return nil
+}
+
+// FullName returns the Full value of [Individual.Name], or "" when the
+// individual has no name. Safe on a nil receiver.
+func (i *Individual) FullName() string {
+	name := i.Name()
+	if name == nil {
+		return ""
+	}
+	return name.Full
+}
+
+// BirthPlace returns the place name of [Individual.BirthEvent], or "" when there
+// is no birth event or it records no place. Safe on a nil receiver.
+func (i *Individual) BirthPlace() string {
+	return i.BirthEvent().PlaceName()
+}
+
+// DeathPlace returns the place name of [Individual.DeathEvent], or "" when there
+// is no death event or it records no place. Safe on a nil receiver.
+func (i *Individual) DeathPlace() string {
+	return i.DeathEvent().PlaceName()
+}
+
+// EventOf returns the first event of the given type, or nil if none found. Like
+// BirthEvent, it skips nil entries and negative assertions (IsNegative). Safe on
+// a nil receiver.
+func (i *Individual) EventOf(eventType EventType) *Event {
+	if i == nil {
+		return nil
+	}
+	return firstOccurredEvent(i.Events, eventType)
+}
+
+// AttributeOf returns the first attribute of the given type, skipping nil
+// entries, or nil if none found. Safe on a nil receiver.
+func (i *Individual) AttributeOf(attributeType AttributeType) *Attribute {
+	if i == nil {
+		return nil
+	}
+	for _, attr := range i.Attributes {
+		if attr != nil && attr.Type == attributeType {
+			return attr
+		}
+	}
+	return nil
+}
+
 // FamilySearchURL returns the FamilySearch.org URL for this individual's record.
 // Returns an empty string if FamilySearchID is not set.
 func (i *Individual) FamilySearchURL() string {

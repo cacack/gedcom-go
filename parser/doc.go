@@ -7,15 +7,12 @@
 //
 // Example usage:
 //
-//	p := parser.NewParser(reader)
-//	for {
-//	    line, err := p.ParseLine()
-//	    if err == io.EOF {
-//	        break
-//	    }
-//	    if err != nil {
-//	        log.Fatal(err)
-//	    }
+//	p := parser.NewParser()
+//	lines, err := p.Parse(reader)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for _, line := range lines {
 //	    fmt.Printf("Level %d: %s = %s\n", line.Level, line.Tag, line.Value)
 //	}
 package parser

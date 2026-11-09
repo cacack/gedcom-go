@@ -268,8 +268,7 @@ fmt.Printf("Total individuals: %d\n", len(individuals))
 // Iterate through individuals
 for _, person := range individuals {
     // Get names
-    if len(person.Names) > 0 {
-        name := person.Names[0]
+    if name := person.Name(); name != nil {
         fmt.Printf("%s: %s\n", person.XRef, name.Full)
         fmt.Printf("  Given: %s, Surname: %s\n", name.Given, name.Surname)
     }
@@ -291,9 +290,7 @@ for _, person := range individuals {
 
 // Look up specific individual
 person := doc.GetIndividual("@I1@")
-if person != nil {
-    fmt.Printf("Found: %s\n", person.Names[0].Full)
-}
+fmt.Printf("Found: %s\n", person.FullName()) // "" if no such person or no name
 ```
 
 ### Working with Names
@@ -352,10 +349,8 @@ for _, person := range doc.Individuals() {
 
 // Find specific event type
 for _, person := range doc.Individuals() {
-    for _, event := range person.Events {
-        if event.Type == "BIRT" {
-            fmt.Printf("%s was born on %s\n", person.Names[0].Full, event.Date)
-        }
+    if event := person.EventOf(gedcom.EventBirth); event != nil {
+        fmt.Printf("%s was born on %s\n", person.FullName(), event.Date)
     }
 }
 ```
@@ -374,16 +369,16 @@ for _, family := range families {
     // Get husband
     if family.Husband != "" {
         husband := doc.GetIndividual(family.Husband)
-        if husband != nil && len(husband.Names) > 0 {
-            fmt.Printf("  Husband: %s\n", husband.Names[0].Full)
+        if husband != nil {
+            fmt.Printf("  Husband: %s\n", husband.FullName())
         }
     }
 
     // Get wife
     if family.Wife != "" {
         wife := doc.GetIndividual(family.Wife)
-        if wife != nil && len(wife.Names) > 0 {
-            fmt.Printf("  Wife: %s\n", wife.Names[0].Full)
+        if wife != nil {
+            fmt.Printf("  Wife: %s\n", wife.FullName())
         }
     }
 
@@ -391,8 +386,8 @@ for _, family := range families {
     fmt.Printf("  Children: %d\n", len(family.Children))
     for _, childXRef := range family.Children {
         child := doc.GetIndividual(childXRef)
-        if child != nil && len(child.Names) > 0 {
-            fmt.Printf("    - %s\n", child.Names[0].Full)
+        if child != nil {
+            fmt.Printf("    - %s\n", child.FullName())
         }
     }
 
@@ -967,7 +962,7 @@ for _, family := range doc.Families() {
 // Now you can traverse the tree
 person := people["@I1@"]
 fmt.Printf("%s has %d children\n",
-    person.Individual.Names[0].Full,
+    person.Individual.FullName(),
     len(person.Children))
 ```
 
@@ -1074,9 +1069,7 @@ defer f.Close()  // Always use defer to ensure cleanup
 
 ```go
 person := doc.GetIndividual("@I1@")
-if person != nil && len(person.Names) > 0 {
-    fmt.Println(person.Names[0].Full)
-}
+fmt.Println(person.FullName()) // nil-safe: "" for a missing person or name
 ```
 
 ### 3. Validate After Creation

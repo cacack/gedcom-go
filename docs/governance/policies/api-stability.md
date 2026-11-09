@@ -335,7 +335,7 @@ its own type and slice was reconsidered and **not** taken for v3.0.0.
 
 What the asymmetry costs: a caller that ranges over `Events` without checking
 `IsNegative` treats "did not die between 1900 and 1910" as a death. The
-library's own readers — `BirthEvent`, `DeathEvent`, the date-logic and quality
+library's own readers — `BirthEvent`, `DeathEvent`, `EventOf`, `MarriageEvent`, the date-logic and quality
 validators, the converter's 5.x output — skip or drop negated events, and
 `OccurredEvents()` / `NegativeAssertions()` give callers the filtered views
 directly. Nothing is lost: the `NO` line, its period and its citations

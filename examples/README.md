@@ -343,12 +343,11 @@ if err != nil {
 
 ### Safe Field Access
 
-Always check for nil and empty slices:
+Prefer the nil-safe accessors to indexing slices directly:
 
 ```go
-if len(person.Names) > 0 {
-    fmt.Println(person.Names[0].Full)
-}
+fmt.Println(person.FullName())   // "" when there is no name
+fmt.Println(person.BirthPlace()) // "" when there is no birth or place
 ```
 
 ## Next Steps

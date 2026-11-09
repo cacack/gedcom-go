@@ -112,6 +112,16 @@ func (f *Family) NegativeAssertions() []*Event {
 	return filterEvents(f.Events, true)
 }
 
+// MarriageEvent returns the first marriage event (MARR) for this family, or nil
+// if none found. A negative assertion (NO MARR, IsNegative) is skipped. Safe on a
+// nil receiver.
+func (f *Family) MarriageEvent() *Event {
+	if f == nil {
+		return nil
+	}
+	return firstOccurredEvent(f.Events, EventMarriage)
+}
+
 // NumberOfChildren returns the value of the NCHI entry in Attributes, or "" if
 // the family has none. It is nil-safe.
 //

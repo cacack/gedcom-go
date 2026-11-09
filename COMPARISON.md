@@ -141,7 +141,7 @@ person := doc.GetIndividual("@I1@")
 
 // Typed entity access
 for _, individual := range doc.Individuals() {
-    fmt.Println(individual.Names[0].Full)
+    fmt.Println(individual.FullName())
 }
 
 // Structured date parsing with lossless representation
