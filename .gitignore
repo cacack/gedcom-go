@@ -59,6 +59,9 @@ prompts/
 # Downloaded specification PDFs (copyrighted, not for redistribution)
 docs/specs/*.pdf
 
+# Test corpora downloaded by `make fetch-corpora` (not for redistribution)
+.corpora/
+
 # Python bytecode from the by-hand transcription scripts in scripts/spec55
 __pycache__/
 *.pyc
