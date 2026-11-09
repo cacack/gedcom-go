@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0](https://github.com/cacack/gedcom-go/compare/v3.4.0...v3.5.0) (2026-11-09)
+
+
+### Features
+
+* **decoder:** read _UID into UIDs and keep it through encode and convert ([2c7ee79](https://github.com/cacack/gedcom-go/commit/2c7ee7924da507d3f7419a3afb0aade14e3838b9)), closes [#715](https://github.com/cacack/gedcom-go/issues/715)
+
+
+### Bug Fixes
+
+* **charset:** bound the ANSEL combining marks held before a base character ([37ba386](https://github.com/cacack/gedcom-go/commit/37ba386d556ae48cbe08865355e080769e8322db)), closes [#716](https://github.com/cacack/gedcom-go/issues/716) [#753](https://github.com/cacack/gedcom-go/issues/753)
+* **encoder:** write entity-built records from their text and own tags ([7c18ba7](https://github.com/cacack/gedcom-go/commit/7c18ba7aedaf9e4fce897895a9b84747b58ad006)), closes [#707](https://github.com/cacack/gedcom-go/issues/707) [#711](https://github.com/cacack/gedcom-go/issues/711)
+* **encoder:** write only extension tags from an entity's own Tags ([4f035cd](https://github.com/cacack/gedcom-go/commit/4f035cda1aa791c7b009325a34f7f5310c78ed76))
+* **gedcom:** apply the Hebrew dehiyot to the weekdays they name ([f0dd870](https://github.com/cacack/gedcom-go/commit/f0dd870b142727705267a835fdd5584f518bb3e9)), closes [#702](https://github.com/cacack/gedcom-go/issues/702)
+* **validator:** bound the given-name length duplicate detection compares ([55cfa6d](https://github.com/cacack/gedcom-go/commit/55cfa6d62cf27ddc76769a1a6819599769b0326a)), closes [#717](https://github.com/cacack/gedcom-go/issues/717)
+* **validator:** skip the @VOID@ null pointer in orphaned-reference checks ([25ffe9a](https://github.com/cacack/gedcom-go/commit/25ffe9a0cd75823e58a3d82107bfdc99f9e4ec98)), closes [#703](https://github.com/cacack/gedcom-go/issues/703)
+
 ## [3.4.0](https://github.com/cacack/gedcom-go/compare/v3.3.0...v3.4.0) (2026-11-08)
 
 
