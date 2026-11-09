@@ -41,7 +41,7 @@ type Repository struct {
 	// Tags contains all raw tags for this repository (for unknown/custom tags),
 	// a lossless read-side record per ADR 0003. While Record.Tags is non-empty
 	// it does not drive encoding; a record written from its entity appends
-	// the level-1 tags here whose names its typed fields did not produce.
+	// the extension (_-prefixed) level-1 tags here after its typed fields.
 	// See Record.Tags for the rule that governs what a decoded record writes.
 	Tags []*Tag
 }

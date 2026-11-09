@@ -203,6 +203,28 @@ func TestDowngrade70EntityDoesNotRestoreDroppedTags(t *testing.T) {
 		}
 	})
 
+	t.Run("decoded record whose tags are all 7.0-only", func(t *testing.T) {
+		// Every level-1 tag is dropped, so record.Tags empties and the
+		// encoder writes the record from its entity, whose Tags still hold
+		// the raw EXID and CREA. They must not come back (#711 panel review).
+		input := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 EXID abc\n2 TYPE http://x.example\n1 CREA\n2 DATE 1 JAN 2020\n0 TRLR\n"
+		converted, report, out := downgradeFrom70(t, []byte(input), gedcom.Version551)
+		if n := len(converted.XRefMap["@I1@"].Tags); n != 0 {
+			t.Fatalf("record.Tags has %d tags after the downgrade, want 0 so the entity path is exercised", n)
+		}
+		written := recordLineTags(out)
+		for _, tag := range []string{"EXID", "TYPE", "CREA", "DATE"} {
+			if written[tag] {
+				t.Errorf("output writes dropped %s from the entity's Tags:\n%s", tag, out)
+			}
+		}
+		for _, tag := range []string{"EXID", "CREA"} {
+			if !hasDataLoss(report, tag+" tags", "@I1@") {
+				t.Errorf("%s tags not reported for @I1@", tag)
+			}
+		}
+	})
+
 	t.Run("entity-only record", func(t *testing.T) {
 		indi := &gedcom.Individual{
 			XRef:         "@I1@",

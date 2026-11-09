@@ -432,14 +432,15 @@ func TestSharedNotePointersRoundTrip7(t *testing.T) {
 }
 
 // TestRetagLeavesCallerTagsUnchanged guards against the retag writing SNOTE
-// into the caller's document: SharedNote.Tags is passed through by the entity
-// writer, so a NOTE pointer there must be copied, not edited, when retagged.
+// into the caller's document: an entity's extension Tags are passed through
+// by the entity writer with their subordinates, so a NOTE pointer inside such
+// a block must be copied, not edited, when retagged.
 func TestRetagLeavesCallerTagsUnchanged(t *testing.T) {
-	preserved := &gedcom.Tag{Level: 1, Tag: "NOTE", Value: "@S2@"}
+	preserved := &gedcom.Tag{Level: 2, Tag: "NOTE", Value: "@S2@"}
 	doc := &gedcom.Document{
 		Header: &gedcom.Header{Version: gedcom.Version70},
 		Records: []*gedcom.Record{
-			{XRef: "@S1@", Type: gedcom.RecordTypeSharedNote, Entity: &gedcom.SharedNote{Text: "one", Tags: []*gedcom.Tag{preserved}}},
+			{XRef: "@S1@", Type: gedcom.RecordTypeSharedNote, Entity: &gedcom.SharedNote{Text: "one", Tags: []*gedcom.Tag{{Level: 1, Tag: "_MYAPP", Value: "x"}, preserved}}},
 			{XRef: "@S2@", Type: gedcom.RecordTypeSharedNote, Entity: &gedcom.SharedNote{Text: "two"}},
 		},
 	}
@@ -447,7 +448,7 @@ func TestRetagLeavesCallerTagsUnchanged(t *testing.T) {
 	if err := Encode(&buf, doc); err != nil {
 		t.Fatalf("Encode() error = %v", err)
 	}
-	if !strings.Contains(buf.String(), "1 SNOTE @S2@\n") {
+	if !strings.Contains(buf.String(), "1 _MYAPP x\n2 SNOTE @S2@\n") {
 		t.Errorf("pointer not written as SNOTE:\n%s", buf.String())
 	}
 	if preserved.Tag != "NOTE" {

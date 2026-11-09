@@ -22,7 +22,7 @@ func TestAnselReader_CombiningRunIsFlushedInGroups(t *testing.T) {
 
 	// The first two groups of MaxPendingCombining marks are written out as
 	// they stand, before the base; the remaining 8 are reordered after it.
-	want := strings.Repeat("́", 2*MaxPendingCombining) + "a" + strings.Repeat("́", 8)
+	want := strings.Repeat("\u0301", 2*MaxPendingCombining) + "a" + strings.Repeat("\u0301", 8)
 	if string(got) != want {
 		t.Errorf("got %q (%d runes), want %q", got, len([]rune(string(got))), want)
 	}
@@ -35,7 +35,7 @@ func TestAnselReader_ShortRunStillReordered(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadAll: %v", err)
 	}
-	if want := "e" + strings.Repeat("́", MaxPendingCombining); string(got) != want {
+	if want := "e" + strings.Repeat("\u0301", MaxPendingCombining); string(got) != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }

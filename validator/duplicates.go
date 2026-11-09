@@ -48,13 +48,12 @@ const UnlimitedGroupSize = -1
 // detection compares (#717). Given names longer than this are compared on
 // their first DefaultMaxNameRunes runes.
 //
-// The value is set against the testdata corpus: of 216,186 individuals, 64
-// have a given name longer than 64 runes, all in one MyHeritage export that
-// stores titles and epithets in GIVN (the longest is 146 runes), and none has
-// a given name a prefix of 64 runes fails to identify. Per-pair cost is
-// Levenshtein's O(len₁·len₂), so without this bound two 100,000-character
-// names, a 200 KB file, cost 51 s; at the bound a pair costs at most 64²
-// cell updates.
+// Per-pair cost is Levenshtein's O(len₁·len₂), so without this bound two
+// 100,000-character names, a 200 KB file, cost 51 s; at the bound a pair
+// costs at most 64² cell updates. The value was set against the testdata
+// corpus, where names over it are titles stored in GIVN and comparing them
+// on a prefix changes no reported pair; the measurement lives in
+// docs/decisions/0009-bounded-duplicate-detection.md ("Why 64").
 const DefaultMaxNameRunes = 64
 
 // UnlimitedNameRunes disables the given-name length bound when assigned to
@@ -175,8 +174,11 @@ type DuplicateConfig struct {
 	// what one pair costs; two 100,000-character given names took 51 s
 	// (#717). A given name longer than the bound is compared on its first
 	// MaxNameRunes runes, and the individuals so compared are counted in the
-	// DUPLICATE_DETECTION_LIMITED notice, since a verdict reached on a prefix
-	// can differ from one on the whole name.
+	// DUPLICATE_DETECTION_LIMITED notice ("truncated_names"), since a verdict
+	// reached on a prefix can differ from one on the whole name in either
+	// direction, and the document's author chooses the names. A caller that
+	// acts on reported pairs without a person in the loop should read
+	// DuplicateReport.LimitIssues before trusting a pair.
 	//
 	// Tri-state, like MaxGroupSize and for the same reason:
 	//
@@ -372,8 +374,11 @@ type DuplicateReport struct {
 
 	// LimitIssues describes any analysis that was skipped or approximated:
 	// a surname group exceeding DuplicateConfig.MaxGroupSize, or given names
-	// longer than DuplicateConfig.MaxNameRunes compared on a prefix. Empty
-	// when the entire document was compared in full.
+	// longer than DuplicateConfig.MaxNameRunes compared on a prefix. Both
+	// are reported under one CodeDuplicateDetectionLimited issue; read its
+	// "skipped_groups" and "truncated_names" details to tell which applied,
+	// since either may be zero. Empty when the entire document was compared
+	// in full.
 	LimitIssues []Issue
 }
 

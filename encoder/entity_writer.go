@@ -2,6 +2,7 @@ package encoder
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/internal/concsplit"
@@ -1480,45 +1481,38 @@ func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Ta
 		tags = append(tags, changeDateToTags(note.ChangeDate, 1, "CHAN", opts)...)
 	}
 
-	// The note's own raw Tags are appended by writeRecord through
-	// entityOwnTags, as for every other entity type; appending them here as
-	// well wrote a decoded shared note's substructures twice once its
-	// Record.Tags were cleared (#711).
+	// The note's own extension Tags are appended by writeRecord through
+	// entityOwnTags, as for every other entity type. Appending the whole
+	// field here, as before #711, wrote a decoded shared note's standard
+	// substructures twice once its Record.Tags were cleared.
 
 	return tags
 }
 
-// entityOwnTags returns the raw tags an entity carries in its own Tags field
-// that produced, the tags written from its typed fields, does not already
-// cover. It is how a record written from its entity carries a tag the typed
-// model has no field for (#711): a hand-built Individual with a vendor
-// _MYAPP_ID in Tags writes it after NAME, and a decoded record whose
-// Record.Tags were cleared keeps its ALIA, AFN or RIN lines rather than
-// losing every structure the typed model does not represent.
+// entityOwnTags returns the extension tags an entity carries in its own Tags
+// field, so a record written from its entity can carry a vendor or
+// application tag beside its typed structures (#711): a hand-built Individual
+// with a level-1 _MYAPP_ID in Tags writes it after NAME, and a decoded record
+// whose Record.Tags were cleared keeps its _-prefixed lines.
 //
-// The rule is by level-1 name: a level-1 tag in Tags, with its subordinate
-// block, is written when produced holds no level-1 tag of that name, and
-// dropped otherwise, because the typed field that produced the name is the
-// authoritative form of that structure. Names the encoder chooses between by
-// output version count as one (ownTagName): a shared-note pointer is produced
-// as NOTE and retagged to SNOTE afterwards, so a raw SNOTE is covered by a
-// produced NOTE, and UIDs are written as UID or _UID by version. CONT and CONC are never written from here; the text they
-// continue is written from the entity's Text. Anything before the first
-// level-1 tag is skipped.
+// Only extension tags (a leading underscore) are taken, each with its
+// subordinate block, and not the two the typed model has fields for, _UID
+// (Individual.UIDs and friends, written by uidsToTags) and _FSFTID
+// (Individual.FamilySearchID). Standard tags are never written from here,
+// typed or not: the decoder sets every entity's Tags to the whole raw
+// record, so for a decoded record a standard tag that the typed fields did
+// not produce is as likely a structure the caller deleted, or one the
+// converter dropped, as one the model has no field for. Writing it back
+// would resurrect deleted data, so the typed fields stay the only source of
+// standard structures and a caller who wants an untyped standard tag kept
+// edits Record.Tags. Anything before the first level-1 tag is skipped.
 //
 // Record.Tags, when non-empty, is still written verbatim and this is never
 // consulted (see the package documentation, "Raw Tags Are Authoritative").
-func entityOwnTags(entity any, produced []*gedcom.Tag) []*gedcom.Tag {
+func entityOwnTags(entity any) []*gedcom.Tag {
 	own := entityTagsField(entity)
 	if len(own) == 0 {
 		return nil
-	}
-
-	covered := make(map[string]bool, len(produced))
-	for _, t := range produced {
-		if t != nil && t.Level == 1 {
-			covered[ownTagName(t.Tag)] = true
-		}
 	}
 
 	var out []*gedcom.Tag
@@ -1528,7 +1522,7 @@ func entityOwnTags(entity any, produced []*gedcom.Tag) []*gedcom.Tag {
 			continue
 		}
 		if t.Level <= 1 {
-			keep = t.Level == 1 && t.Tag != "CONT" && t.Tag != "CONC" && !covered[ownTagName(t.Tag)]
+			keep = t.Level == 1 && isOwnExtensionTag(t.Tag)
 		}
 		if keep {
 			out = append(out, t)
@@ -1537,18 +1531,19 @@ func entityOwnTags(entity any, produced []*gedcom.Tag) []*gedcom.Tag {
 	return out
 }
 
-// ownTagName folds the level-1 tag names the encoder chooses between by
-// output version onto one name, so entityOwnTags treats a raw tag and the
-// typed field written under the other spelling as the same structure.
-func ownTagName(tag string) string {
-	switch tag {
-	case "SNOTE":
-		return "NOTE"
-	case "_UID":
-		return "UID"
-	}
-	return tag
+// isOwnExtensionTag reports whether a level-1 tag in an entity's Tags is
+// written by entityOwnTags: an extension tag the typed model has no field
+// for. typedExtensionTags are the extensions it does have fields for; they
+// are written from those fields, by uidsToTags and individualToTags, and
+// writing them from Tags too would duplicate or resurrect them.
+func isOwnExtensionTag(tag string) bool {
+	return strings.HasPrefix(tag, "_") && !typedExtensionTags[tag]
 }
+
+// typedExtensionTags are the level-1 extension tags the typed model holds in
+// a field, so isOwnExtensionTag excludes them. Keep in step with uidTagName
+// (_UID) and the FamilySearchID writer in individualToTags (_FSFTID).
+var typedExtensionTags = map[string]bool{"_UID": true, "_FSFTID": true}
 
 // entityTagsField returns the Tags field of a record entity, or nil for an
 // entity type that has none. A typed nil entity has no Tags (ADR 0007).
@@ -1648,13 +1643,14 @@ func uidsToTags(uids []string, level int, opts *EncodeOptions) []*gedcom.Tag {
 	return tags
 }
 
-// uidTagName is the tag a unique identifier is written under: UID, the
-// GEDCOM 7.0 structure, or _UID, the vendor extension every GEDCOM 5.5/5.5.1
-// desktop producer uses for the same identifier and the decoder reads into
-// the same field (#715), when the output version is known to be 5.5 or
-// 5.5.1. An unknown output version writes UID, as before.
+// uidTagName is the tag a unique identifier is written under: _UID, the
+// vendor extension every GEDCOM 5.5/5.5.1 desktop producer uses for the same
+// identifier and the decoder reads into the same field (#715), when the
+// output version forOutput resolved is 5.5 or 5.5.1; otherwise UID, the
+// GEDCOM 7.0 structure. An unknown output version, or any other version
+// such as a 7.x draft, writes UID, as before.
 func uidTagName(opts *EncodeOptions) string {
-	if opts.outputLacks(gedcom.Version70) {
+	if opts != nil && (opts.version == gedcom.Version55 || opts.version == gedcom.Version551) {
 		return "_UID"
 	}
 	return "UID"

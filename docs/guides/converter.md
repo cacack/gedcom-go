@@ -89,7 +89,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Note pointers | `NOTE_POINTER_TO_SNOTE` | `NOTE @N1@` pointers to a converted note record become `SNOTE @N1@`, at any level; inline note text and pointers no record defines stay `NOTE` |
 | Media types | `MEDIA_TYPE_MAPPED` | Legacy formats (JPG) converted to IANA (image/jpeg) |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar escapes (`@#DJULIAN@`) converted to keywords (`JULIAN`) |
-| Vendor `_UID` | `UID_FROM_VENDOR_TAG` | Every `_UID` tag, at any level, becomes the 7.0 `UID` it standardised; each is a `Normalized` note |
+| Vendor `_UID` | `UID_FROM_VENDOR_TAG` | A `_UID` tag becomes the 7.0 `UID` it standardised wherever 7.0 defines `UID`: at level 1 of an `INDI`, `FAM`, `SOUR`, `REPO`, `OBJE`, `SNOTE` or `SUBM` record, and at level 2 under an individual or family event or attribute. A `_UID` elsewhere (under `NAME`, say) stays an extension. The value is carried unchanged, as 7.0 asks for an existing identifier; each rename is a `Normalized` note, naming the enclosing event for a nested one |
 | Header update | `VERSION_UPGRADE` | Header version updated to 7.0 |
 
 ### Upgrade 5.5 to 5.5.1

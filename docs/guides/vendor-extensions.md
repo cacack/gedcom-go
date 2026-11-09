@@ -220,10 +220,11 @@ identifier under two spellings:
   unknown). `Document.MinimumVersion` therefore does not count UIDs as a 7.0
   feature.
 - **Converting** renames the tag in `Record.Tags` in both directions: `_UID`
-  becomes `UID` on an upgrade to 7.0 and `UID` becomes `_UID` on a downgrade,
-  each reported as a `Normalized` note under a `UID_FROM_VENDOR_TAG` or
-  `UID_TO_VENDOR_TAG` transformation. A downgrade no longer reports `UID` as
-  data loss.
+  becomes `UID` on an upgrade to 7.0 wherever 7.0 defines `UID` (level 1 of a
+  record, level 2 under an event or attribute), and `UID` becomes `_UID` at
+  any level on a downgrade, each reported as a `Normalized` note under a
+  `UID_FROM_VENDOR_TAG` or `UID_TO_VENDOR_TAG` transformation. A downgrade no
+  longer reports `UID` as data loss.
 
 ```go
 for _, uid := range indi.UIDs { // "_UID" in a 5.5.1 export, "UID" in 7.0

@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -110,4 +111,82 @@ func TestTransformUIDTagsNoneToRename(t *testing.T) {
 			t.Errorf("unexpected transformation %+v", tr)
 		}
 	}
+}
+
+// TestTransformUIDTagsOnlyWhereDefined checks the upgrade renames _UID only
+// where 7.0 defines UID, and the downgrade renames UID everywhere.
+func TestTransformUIDTagsOnlyWhereDefined(t *testing.T) {
+	build := func(version gedcom.Version, tag string) *gedcom.Document {
+		indi := &gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Tags: []*gedcom.Tag{
+			{Level: 0, Tag: "INDI", XRef: "@I1@"},
+			{Level: 1, Tag: tag, Value: "rec"},
+			{Level: 1, Tag: "NAME", Value: "A /B/"},
+			{Level: 2, Tag: tag, Value: "under-name"},
+			{Level: 1, Tag: "OCCU", Value: "Smith"},
+			{Level: 2, Tag: tag, Value: "under-attr"},
+			{Level: 1, Tag: "BIRT"},
+			{Level: 2, Tag: "PLAC", Value: "X"},
+			{Level: 3, Tag: tag, Value: "under-plac"},
+		}, Entity: &gedcom.Individual{XRef: "@I1@"}}
+		subm := &gedcom.Record{XRef: "@U1@", Type: gedcom.RecordTypeSubmitter, Tags: []*gedcom.Tag{
+			{Level: 0, Tag: "SUBM", XRef: "@U1@"},
+			{Level: 1, Tag: "NAME", Value: "Sub"},
+			{Level: 1, Tag: tag, Value: "subm"},
+			{Level: 1, Tag: "ADDR", Value: "x"},
+			{Level: 2, Tag: tag, Value: "under-addr"},
+		}, Entity: &gedcom.Submitter{XRef: "@U1@"}}
+		return &gedcom.Document{
+			Header:  &gedcom.Header{Version: version, DeclaredVersion: version},
+			Records: []*gedcom.Record{indi, subm},
+			XRefMap: map[string]*gedcom.Record{"@I1@": indi, "@U1@": subm},
+		}
+	}
+	valuesByTag := func(doc *gedcom.Document, tag string) []string {
+		var out []string
+		for _, rec := range doc.Records {
+			for _, t := range rec.Tags {
+				if t.Tag == tag {
+					out = append(out, t.Value)
+				}
+			}
+		}
+		return out
+	}
+
+	t.Run("upgrade", func(t *testing.T) {
+		converted, report, err := Convert(build(gedcom.Version551, "_UID"), gedcom.Version70)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := strings.Join(valuesByTag(converted, "UID"), ",")
+		if got != "rec,under-attr,subm" {
+			t.Errorf("renamed to UID: %q, want rec,under-attr,subm (record level and event detail only)", got)
+		}
+		left := strings.Join(valuesByTag(converted, "_UID"), ",")
+		if left != "under-name,under-plac,under-addr" {
+			t.Errorf("left as _UID: %q, want under-name,under-plac,under-addr", left)
+		}
+		var paths []string
+		for _, n := range report.Normalized {
+			if n.Result == "UID" {
+				paths = append(paths, n.Path)
+			}
+		}
+		if len(paths) != 3 || !strings.Contains(strings.Join(paths, " "), "OCCU") {
+			t.Errorf("Normalized paths = %v, want three, the nested one naming OCCU", paths)
+		}
+	})
+
+	t.Run("downgrade", func(t *testing.T) {
+		converted, _, err := Convert(build(gedcom.Version70, "UID"), gedcom.Version551)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n := len(valuesByTag(converted, "UID")); n != 0 {
+			t.Errorf("%d UID tags left after downgrade, want 0", n)
+		}
+		if n := len(valuesByTag(converted, "_UID")); n != 6 {
+			t.Errorf("%d _UID tags after downgrade, want 6 (every level)", n)
+		}
+	})
 }

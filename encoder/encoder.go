@@ -423,9 +423,9 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions, shared
 	//   whenever the entity has any: a decoded note keeps its first line in
 	//   Value, and gating on an empty Value wrote that line alone, dropping
 	//   every continuation of a note whose Tags were cleared (#707). Last come
-	//   the entity's own raw Tags that the typed fields did not produce, so a
-	//   hand-built record can carry a vendor tag beside its typed structures
-	//   (#711); see entityOwnTags for the rule.
+	//   the entity's own extension Tags, so a hand-built record can carry a
+	//   vendor tag beside its typed structures (#711); see entityOwnTags for
+	//   the rule and why standard tags are never taken from there.
 	tags := record.Tags
 	value := record.Value
 	if len(tags) == 0 && record.Entity != nil {
@@ -434,7 +434,7 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions, shared
 			value = text
 			typed = append(contTags, typed...)
 		}
-		typed = append(typed, entityOwnTags(record.Entity, typed)...)
+		typed = append(typed, entityOwnTags(record.Entity)...)
 		tags = retagSharedNotePointers(typed, sharedNotes)
 	}
 

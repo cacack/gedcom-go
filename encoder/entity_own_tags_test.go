@@ -199,35 +199,69 @@ func TestOwnTagsAppliesToEveryEntityType(t *testing.T) {
 	}
 }
 
-// TestOwnTagsSkipCoveredAndContinuation checks the filter: a level-1 name the
-// typed fields produced is dropped with its block, CONT/CONC are never
-// written from Tags, and a decoded record keeps its untyped lines.
-func TestOwnTagsSkipCoveredAndContinuation(t *testing.T) {
+// TestOwnTagsExtensionOnly checks the filter: only _-prefixed level-1 tags
+// are taken from an entity's Tags, with their blocks; standard tags the
+// typed model has no field for are dropped on this path, as before #711,
+// and CONT/CONC are never written from Tags.
+func TestOwnTagsExtensionOnly(t *testing.T) {
 	const in = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
-		"0 @I1@ INDI\n1 NAME A /B/\n2 GIVN A\n1 SEX M\n1 AFN 123-ABC\n1 ALIA @I2@\n1 NOTE line one\n2 CONT line two\n" +
-		"0 @I2@ INDI\n1 NAME C /D/\n" +
+		"0 @I1@ INDI\n1 NAME A /B/\n2 GIVN A\n1 SEX M\n1 AFN 123-ABC\n1 _MYAPP x\n2 _SUB y\n1 NOTE line one\n2 CONT line two\n" +
 		"0 TRLR\n"
 	doc := decodeGEDCOM(t, in)
 	clearRecordTags(doc)
 	out := encodeToString(t, doc)
 
-	for _, want := range []string{"1 NAME A /B/\n", "1 SEX M\n", "1 AFN 123-ABC\n", "1 ALIA @I2@\n", "1 NOTE line one\n2 CONT line two\n"} {
+	for _, want := range []string{"1 NAME A /B/\n", "1 SEX M\n", "1 _MYAPP x\n2 _SUB y\n", "1 NOTE line one\n2 CONT line two\n"} {
 		if strings.Count(out, want) != 1 {
 			t.Errorf("%q written %d times, want once:\n%s", want, strings.Count(out, want), out)
 		}
 	}
+	if strings.Contains(out, "AFN") {
+		t.Errorf("standard tag AFN written from entity Tags:\n%s", out)
+	}
 
-	// A hand-built NOTE whose Tags carry stale CONT lines: the text wins.
+	// A hand-built NOTE whose Tags carry stale CONT lines: the text wins, and
+	// the standard REFN is not taken from Tags.
 	note := &gedcom.Document{Records: []*gedcom.Record{{
 		Type: gedcom.RecordTypeNote, XRef: "@N1@", Value: "stale value",
 		Entity: &gedcom.Note{Text: "fresh\ntext", Tags: []*gedcom.Tag{
 			{Level: 1, Tag: "CONT", Value: "stale"},
 			{Level: 1, Tag: "CONC", Value: "stale"},
 			{Level: 1, Tag: "REFN", Value: "r1"},
+			{Level: 1, Tag: "_REF", Value: "r2"},
 		}},
 	}}}
 	out = encodeToString(t, note)
-	if !strings.Contains(out, "0 @N1@ NOTE fresh\n1 CONT text\n1 REFN r1\n") || strings.Contains(out, "stale") {
-		t.Errorf("note written from entity should take text from Note.Text and skip raw CONT/CONC:\n%s", out)
+	if !strings.Contains(out, "0 @N1@ NOTE fresh\n1 CONT text\n1 _REF r2\n") || strings.Contains(out, "stale") || strings.Contains(out, "REFN") {
+		t.Errorf("note written from entity should take text from Note.Text and only extension tags from Tags:\n%s", out)
+	}
+}
+
+// TestClearedTagsHonourDeletion is the panel-review case for #711: a decoded
+// record's entity Tags hold the whole raw record, so a structure the caller
+// deleted from the typed model must not come back from there.
+func TestClearedTagsHonourDeletion(t *testing.T) {
+	const in = "0 HEAD\n1 GEDC\n2 VERS 7.0\n" +
+		"0 @I1@ INDI\n1 NAME A /B/\n1 SEX M\n1 BIRT\n2 DATE 1 JAN 1900\n1 DEAT\n2 DATE 1 JAN 1980\n" +
+		"1 OCCU Smith\n1 UID abc\n1 _FSFTID KWCJ-QN7\n1 EXID 123\n2 TYPE http://x.example\n1 _MYAPP keep\n" +
+		"0 TRLR\n"
+	doc := decodeGEDCOM(t, in)
+	indi := doc.GetIndividual("@I1@")
+	indi.Names = nil
+	indi.Events = nil
+	indi.Attributes = nil
+	indi.UIDs = nil
+	indi.FamilySearchID = ""
+	indi.ExternalIDs = nil
+	clearRecordTags(doc)
+
+	out := encodeToString(t, doc)
+	for _, gone := range []string{"NAME", "BIRT", "DEAT", "OCCU", "UID", "_FSFTID", "EXID"} {
+		if strings.Contains(out, " "+gone) {
+			t.Errorf("deleted %s came back from entity Tags:\n%s", gone, out)
+		}
+	}
+	if !strings.Contains(out, "1 SEX M\n") || !strings.Contains(out, "1 _MYAPP keep\n") {
+		t.Errorf("kept structures missing:\n%s", out)
 	}
 }

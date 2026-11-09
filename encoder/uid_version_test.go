@@ -35,6 +35,7 @@ func TestUIDsWrittenForOutputVersion(t *testing.T) {
 		{"5.5 header", gedcom.Version55, "", "_UID"},
 		{"7.0 header", gedcom.Version70, "", "UID"},
 		{"unknown version", "", "", "UID"},
+		{"7.1 draft header", gedcom.Version("7.1"), "", "UID"},
 		{"7.0 header retargeted to 5.5.1", gedcom.Version70, gedcom.Version551, "_UID"},
 		{"5.5.1 header retargeted to 7.0", gedcom.Version551, gedcom.Version70, "UID"},
 	}

@@ -78,15 +78,18 @@
 //
 // A record rebuilt from its Entity is written in two parts. The typed fields
 // come first, as tags; for a NOTE or SNOTE the entity's Text supplies the
-// level-0 value and its CONT/CONC lines, whatever Record.Value holds. Then
-// come the entity's own raw Tags (Individual.Tags, Family.Tags and so on) that
-// the typed fields did not produce: a level-1 tag there, with its
-// subordinates, is written when no typed field produced a level-1 tag of the
-// same name, and dropped otherwise. This is how a hand-built record carries a
-// vendor or application tag beside its typed structures, and how a decoded
-// record whose Record.Tags were cleared keeps the structures the typed model
-// has no field for. CONT and CONC in an entity's Tags are never written from
-// there.
+// level-0 value and its CONT/CONC lines when it is non-empty, and Record.Value
+// is written otherwise. Then come the extension tags in the entity's own Tags
+// (Individual.Tags, Family.Tags and so on): each level-1 tag with a leading
+// underscore, with its subordinates, except _UID and _FSFTID, which the typed
+// model holds in fields and writes from them. This is how a hand-built record
+// carries a vendor or application tag beside its typed structures. Standard
+// tags are never written from an entity's Tags, because for a decoded record
+// that field is the whole raw record and a standard tag the typed fields did
+// not produce is usually one the caller deleted; the typed fields are the
+// only source of standard structures on this path, so a decoded record whose
+// Record.Tags were cleared drops the standard tags the typed model has no
+// field for, as it always did.
 //
 // The header follows the same rule with its own field, described next.
 //
