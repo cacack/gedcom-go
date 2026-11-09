@@ -1339,6 +1339,11 @@ for _, record := range records {
 finalIssues := v.Finalize()  // Orphaned reference detection
 ```
 
+Set `StreamingOptions.Version` to the document's GEDCOM version: the streaming
+validator never sees the header, and `Finalize` needs it to treat `@VOID@` as
+the 7.0 null pointer (never orphaned) or as a 5.5/5.5.1 identifier that must be
+declared. Left empty, `@VOID@` is taken as the null pointer.
+
 **Two-Phase Validation**:
 - **Immediate**: Date logic errors (death before birth), structural issues detected per-record
 - **Deferred**: Cross-reference validation (orphaned FAMC, FAMS, HUSB, WIFE, CHIL, SOUR, ASSO, REPO, NOTE) in `Finalize()`. Note pointers are checked on individual, family and source records and on every typed structure below them that carries notes -- names, events, attributes, source citations, LDS ordinances, change and creation dates, FAMC/FAMS links, ASSO, OBJE links, PLAC and REPO links; `Details["field"]` locates each (e.g. `Events[0].PlaceDetail.NoteXRefs[0]`)

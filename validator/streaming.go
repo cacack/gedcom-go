@@ -38,6 +38,17 @@ type StreamingOptions struct {
 	// Strictness controls which severity levels are included in results.
 	// The zero value is StrictnessNormal (errors and warnings).
 	Strictness Strictness
+
+	// Version is the GEDCOM version of the records being validated. It
+	// decides what Finalize makes of a pointer to "@VOID@" that no record
+	// declares: in GEDCOM 7.0 it is the null pointer and is never reported,
+	// while in 5.5 and 5.5.1 it is an ordinary identifier and is reported as
+	// orphaned like any other. The streaming validator never sees the
+	// header, so the version has to be given here; leave it empty when
+	// unknown, and @VOID@ is taken as the null pointer, the rule
+	// [gedcom.Document.IsNullPointer] applies to a document that declares
+	// no version (#703).
+	Version gedcom.Version
 }
 
 // usageLocation records where an XRef is referenced.
@@ -441,12 +452,24 @@ func (sv *StreamingValidator) collectAttributeNotes(recordXRef string, attrs []*
 // This method should be called after all records have been validated with ValidateRecord.
 //
 // Returns issues for:
-//   - Orphaned references (XRefs used but never declared)
+//   - Orphaned references (XRefs used but never declared), except the GEDCOM
+//     7.0 null pointer "@VOID@" under [StreamingOptions.Version]
 func (sv *StreamingValidator) Finalize() []Issue {
 	var issues []Issue
 
-	// Check for orphaned references
+	// Check for orphaned references. A null pointer names no record by
+	// design, so it is skipped before the declared set is consulted; the
+	// rule is gedcom.Document.IsNullPointer's, applied to a document that
+	// carries only the version opts.Version names, so the batch and
+	// streaming validators cannot disagree about which value is null.
+	scope := &gedcom.Document{}
+	if sv.opts.Version != "" {
+		scope.Header = &gedcom.Header{Version: sv.opts.Version, DeclaredVersion: sv.opts.Version}
+	}
 	for xref, usages := range sv.usedXRefs {
+		if scope.IsNullPointer(xref) {
+			continue
+		}
 		if _, exists := sv.seenXRefs[xref]; !exists {
 			// XRef is used but was never declared
 			for _, usage := range usages {
