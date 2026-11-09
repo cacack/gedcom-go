@@ -1,0 +1,3584 @@
+0 HEAD
+1 SOUR Geneanet
+2 NAME Franc7
+2 VERS 7.0.0
+2 CORP Geneanet
+3 ADDR Naslov 1
+2 DATA silvo71.gwb
+1 DATE 09 MAR 2026
+2 TIME 21:29:57
+1 FILE media/file1.tmp
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR ANSI
+2 SOUR
+3 PAGE geneweb wiki notes: notes
+0 @I1@ INDI
+1 NAME Marija5 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 03 DEC 1971
+2 PLAC Jesenice
+1 RESI
+2 NOTE Lorem ipsum note.
+1 FAMC @F1@
+1 FAMS @F2@
+0 @I2@ INDI
+1 NAME Pavel7 /Logarek/
+1 SEX F
+1 BIRT
+2 DATE 30 JUL 1972
+2 PLAC Jesenice
+1 RESI
+2 NOTE Lorem ipsum note.
+1 FAMC @F3@
+1 FAMS @F2@
+1 FAMS @F4@
+0 @I3@ INDI
+1 NAME Matevž2 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 26 OCT 2012
+2 PLAC Jesenice
+1 RESI
+2 NOTE Lorem ipsum note.
+1 FAMC @F2@
+0 @I4@ INDI
+1 NAME Marjeta2 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 29 JUL 1940
+2 PLAC Studor v Bohinju 22
+1 DEAT
+2 DATE 11 JUN 2018
+2 PLAC Kamnje 43
+2 NOTE Lorem ipsum note.
+1 BURI
+2 DATE 14 JUN 2018
+2 PLAC Bohinjska Bistrica
+1 FAMC @F5@
+1 FAMS @F1@
+0 @I5@ INDI
+1 NAME Elizabeta /Logarar/
+1 SEX F
+1 BIRT
+2 DATE 21 MAR 1946
+2 PLAC Veliki Okiè 31
+1 FAMC @F6@
+1 FAMS @F1@
+0 @I6@ INDI
+1 NAME Franc2 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 05 JAN 1970
+2 PLAC Jesenice
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F1@
+1 FAMS @F7@
+0 @I7@ INDI
+1 NAME Uršula5 /Logarnik/
+1 SEX M
+1 BIRT
+2 DATE 27 MAR 1968
+2 PLAC Jesenice
+1 FAMC @F8@
+1 FAMS @F4@
+1 FAMS @F9@
+1 SOUR vesna pekovec - vpekovec a gmail.com (Smart Match)
+0 @I8@ INDI
+1 NAME Ljudmila /Logarek/
+1 SEX F
+1 BIRT
+2 DATE 03 SEP 1997
+2 PLAC Jesenice, Jesenice, 4270, Slovenia
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F4@
+1 SOUR <br> - lucija odar - odar Web Site (Smart Match)<br> - Geni World Family Tree<br>
+0 @I9@ INDI
+1 NAME Elizabeta /Logaršek/
+1 SEX F
+1 BIRT
+2 DATE 26 DEC 1947
+2 PLAC Sadinja vas 5, Semiè
+1 BAPM
+2 PLAC Semiè
+1 FAMC @F10@
+1 FAMS @F3@
+0 @I10@ INDI
+1 NAME Jera /Logarek/
+1 SEX M
+1 BIRT
+2 DATE 18 DEC 1947
+2 PLAC Studor v Bohinju 21
+1 FAMC @F11@
+1 FAMS @F3@
+0 @I11@ INDI
+1 NAME Katarina2 /Logarek/
+1 SEX F
+1 BIRT
+2 DATE 08 SEP 1974
+2 PLAC Jesenice
+1 FAMC @F3@
+1 FAMS @F12@
+1 SOUR klemen konda - konda Web Site (Smart Match)
+0 @I12@ INDI
+1 NAME Tone /Logariè/
+2 NICK Cecilija7
+1 SEX M
+1 BIRT
+2 DATE 09 AUG 1902
+2 PLAC Studor v Bohinju 22
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=189
+1 BAPM
+2 DATE 10 AUG 1902
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=189
+1 DEAT
+2 DATE 28 JUN 1971
+2 PLAC Studor v Bohinju 22
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=189
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F13@
+1 FAMS @F5@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=189
+1 NOTE Lorem ipsum note.
+0 @I13@ INDI
+1 NAME Janez /Logariè/
+2 NICK Boštjan7
+1 SEX F
+1 BIRT
+2 DATE 15 JUN 1910
+2 PLAC Srednja vas v Bohinju 77
+1 DEAT
+2 DATE 20 APR 2003
+2 PLAC Studor v Bohinju 22
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F14@
+1 FAMS @F5@
+0 @I14@ INDI
+1 NAME Rozalija2 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 03 FEB 1937
+2 PLAC Studor v Bohinju 22
+1 DEAT
+2 DATE 17 APR 1997
+2 PLAC Bolnica Jesenice
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F5@
+1 FAMS @F15@
+1 FAMS @F16@
+0 @I15@ INDI
+1 NAME Veronika7 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 20 SEP 1933
+2 PLAC Studor v Bohinju 22
+1 DEAT
+2 DATE 06 JUN 2019
+2 PLAC Studor v Bohinju 11
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F5@
+1 FAMS @F17@
+0 @I16@ INDI
+1 NAME Silvester2 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 09 FEB 1932
+2 PLAC Studor v Bohinju 22
+1 DEAT
+2 DATE 28 JUL 2020
+2 PLAC Kamnje 29
+2 NOTE Lorem ipsum note.
+1 BURI
+2 PLAC Bohinjska Bistrica
+1 FAMC @F5@
+1 FAMS @F18@
+0 @I17@ INDI
+1 NAME Elizabeta3 /Logarnc/
+1 SEX F
+1 BIRT
+2 DATE 29 JUL 1908
+2 PLAC Slatina
+1 DEAT
+2 DATE 13 JUN 2004
+1 BURI
+2 PLAC Cirkulane
+1 FAMC @F19@
+1 FAMS @F6@
+0 @I18@ INDI
+1 NAME Marjeta2 /Logarar/
+1 SEX M
+1 BIRT
+2 DATE 20 MAR 1908
+2 PLAC Slatina 15
+1 DEAT
+2 DATE 26 FEB 1965
+1 BURI
+2 PLAC Cirkulane
+1 FAMC @F20@
+1 FAMS @F6@
+1 NOTE Lorem ipsum note.
+2 CONC lorem ipsum
+2 CONC lorem ipsum
+0 @I19@ INDI
+1 NAME Marjeta2 /Logarar/
+1 SEX M
+1 BIRT
+2 DATE 12 JUL 1934
+2 PLAC Veliki Okiè 31
+1 DEAT
+2 DATE 18 FEB 2002
+2 PLAC Jelovška cesta 10
+2 NOTE Lorem ipsum note.
+1 BURI
+2 PLAC Bitnje
+1 FAMC @F6@
+1 FAMS @F21@
+0 @I20@ INDI
+1 NAME Emerik /Logarar/
+1 SEX M
+1 BIRT
+2 DATE 01 NOV 1941
+2 PLAC Veliki Okiè 31
+1 FAMC @F6@
+1 FAMS @F22@
+0 @I21@ INDI
+1 NAME Janez3 /Logarar/
+1 SEX F
+1 BIRT
+2 DATE 12 SEP 1952
+2 PLAC Ptuj porodnišnica
+1 DEAT
+2 DATE 10 SEP 2023
+2 PLAC Repišèe 23
+1 BURI
+2 DATE 15 SEP 2023
+2 PLAC Zgornji Leskovec
+2 NOTE Lorem ipsum note.
+1 FAMC @F6@
+1 FAMS @F23@
+0 @I22@ INDI
+1 NAME Nace7 /Logarman/
+1 SEX M
+1 BIRT
+2 DATE 04 SEP 1967
+1 FAMS @F7@
+1 SOUR <br> - Peter Horvat - Horvat Web Site (Smart Match)<br> - Geni World Family Tree<br>
+0 @I23@ INDI
+1 NAME Ivana7 /Logarman/
+1 SEX F
+1 BIRT
+2 DATE 10 AUG 1991
+2 PLAC Jesenice
+1 FAMC @F7@
+1 SOUR Geni World Family Tree
+0 @I24@ INDI
+1 NAME Alojzija /Logarman/
+1 SEX M
+1 BIRT
+2 DATE 08 JUN 1997
+2 PLAC Jesenice
+1 FAMC @F7@
+1 SOUR <br> - Peter Horvat - Horvat Web Site (Smart Match)<br> - Geni World Family Tree<br> - Geni World Family Tree<br>
+0 @I25@ INDI
+1 NAME Valentin2 /Logarovec/
+1 SEX F
+1 BIRT
+2 DATE 16 MAR 1980
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F24@
+1 FAMS @F9@
+0 @I26@ INDI
+1 NAME Adolf4 /Logarnik/
+1 SEX M
+1 BIRT
+2 DATE 21 JUN 2007
+1 FAMC @F9@
+0 @I27@ INDI
+1 NAME Ivana7 /Logarnik/
+1 SEX F
+1 BIRT
+2 DATE 07 DEC 2003
+1 FAMC @F9@
+0 @I28@ INDI
+1 NAME Marjeta2 /Logarnik/
+1 SEX M
+1 BIRT
+2 DATE 12 MAR 1932
+2 PLAC Studor v Bohinju 22
+1 DEAT
+2 DATE 30 DEC 1979
+2 PLAC Studor v Bohinju 14
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F25@
+1 FAMS @F8@
+0 @I29@ INDI
+1 NAME Janez /Logarin/
+1 SEX F
+1 BIRT
+2 DATE 16 JUL 1941
+2 PLAC Studor v Bohinju 6
+1 FAMC @F26@
+1 FAMS @F8@
+0 @I30@ INDI
+1 NAME Štefan7 /Logarnik/
+1 SEX F
+1 BIRT
+2 DATE 07 DEC 1971
+2 PLAC Jesenice
+1 FAMC @F8@
+1 FAMS @F27@
+0 @I31@ INDI
+1 NAME Karolina /Logaršek/
+1 SEX M
+1 BIRT
+2 DATE 14 SEP 1913
+2 PLAC Sadinja vas 15, Semiè
+1 DEAT
+2 DATE 18 AUG 1981
+2 PLAC Sadinja vas, Semiè
+1 BURI
+2 PLAC Sveti Rok, Semiè
+1 FAMC @F28@
+1 FAMS @F10@
+0 @I32@ INDI
+1 NAME Janez /Logarel/
+1 SEX F
+1 BIRT
+2 DATE 31 JUL 1927
+2 PLAC Brezova Reber, Semiè
+1 DEAT
+2 DATE 12 JUL 2010
+2 PLAC Novo Mesto, Slovenija
+1 BURI
+2 PLAC sv. rok semiè
+1 OCCU gospodinja
+1 FAMC @F29@
+1 FAMS @F10@
+1 SOUR <br> - Geni World Family Tree<br> - Val Klinar - Klinar Web Site (Smart Match)<br>
+0 @I33@ INDI
+1 NAME Mihael2 /Logaršek/
+1 SEX F
+1 BIRT
+2 DATE 10 OCT 1949
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F10@
+1 FAMS @F30@
+0 @I34@ INDI
+1 NAME Aleš2 /Logaršek/
+1 SEX F
+1 BIRT
+2 DATE 05 NOV 1951
+2 PLAC Sadinja vas, Semiè
+1 FAMC @F10@
+1 FAMS @F31@
+1 SOUR vesna pekovec - vpekovec a gmail.com (Smart Match)
+0 @I35@ INDI
+1 NAME Karolina /Logaršek/
+1 SEX M
+1 BIRT
+2 DATE 28 JUL 1953
+2 PLAC sadinja vas 5, semiè
+1 FAMC @F10@
+1 FAMS @F32@
+1 SOUR vesna pekovec - vpekovec a gmail.com (Smart Match)
+0 @I36@ INDI
+1 NAME Silvester2 /Logaršek/
+1 SEX M
+1 BIRT
+2 DATE 27 FEB 1955
+2 PLAC sadinja vas 5, semiè
+1 FAMC @F10@
+1 FAMS @F33@
+1 SOUR vesna pekovec - vpekovec a gmail.com (Smart Match)
+0 @I37@ INDI
+1 NAME Marjeta2 /Logarek/
+2 NICK Johana7
+1 SEX M
+1 BIRT
+2 DATE 07 OCT 1918
+2 PLAC Studor v Bohinju 21
+1 DEAT
+2 DATE 13 FEB 1981
+2 PLAC Studor v Bohinju 21
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F34@
+1 FAMS @F11@
+0 @I38@ INDI
+1 NAME Jakob2 /Logarniè/
+2 NICK Vinko7
+1 SEX F
+1 BIRT
+2 DATE 23 SEP 1921
+2 PLAC Bohinjska Èešnjica 75
+1 DEAT
+2 DATE 21 NOV 1966
+2 PLAC Studor v Bohinju 21
+1 BURI
+2 DATE 24 NOV 1966
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F35@
+1 FAMS @F11@
+1 SOUR <br> - Geni World Family Tree<br> - Ivanka OBLAK - OBLAK Web Site (Smart Match)<br>
+0 @I39@ INDI
+1 NAME Elizabeta /Logarek/
+1 SEX F
+1 BIRT
+2 DATE 16 JUL 1952
+2 PLAC Studor v Bohinju 21
+1 FAMC @F11@
+1 FAMS @F36@
+0 @I40@ INDI
+1 NAME Marjeta2 /Logarek/
+1 SEX M
+1 BIRT
+2 DATE 10 OCT 1949
+2 PLAC Studor v Bohinju 21
+1 DEAT
+2 DATE 22 MAY 2016
+2 PLAC Srednja vas v Bohinju 33A, Zavod sv. Martina,
+2 NOTE Lorem ipsum note.
+1 BURI
+2 DATE 25 MAY 2016
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F11@
+0 @I41@ INDI
+1 NAME Valburga2 /Logarek/
+1 SEX F
+1 BIRT
+2 DATE 22 MAY 1959
+2 PLAC Studor v Bohinju 21
+1 DEAT
+2 DATE 05 DEC 2010
+2 PLAC Srednja vas v Bohinju 33A, Zavod sv. Martina,
+1 BURI
+2 DATE 08 DEC 2010
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F11@
+0 @I42@ INDI
+1 NAME Genovefa /Logaroviè/
+1 SEX M
+1 BIRT
+2 DATE 06 NOV 1968
+2 PLAC Jesenice
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F37@
+1 FAMS @F12@
+0 @I43@ INDI
+1 NAME Amalija7 /Logaroviè/
+1 SEX F
+1 BIRT
+2 DATE 09 APR 2008
+2 PLAC Jesenice
+1 FAMC @F12@
+1 SOUR vesna pekovec - vpekovec a gmail.com (Smart Match)
+0 @I44@ INDI
+1 NAME Rok7 /Logaroviè/
+1 SEX F
+1 BIRT
+2 DATE 05 MAY 2010
+2 PLAC Jesenice
+1 FAMC @F12@
+0 @I45@ INDI
+1 NAME Emerik /Logariè/
+2 NICK Cecilija7
+1 SEX M
+1 BIRT
+2 DATE 07 OCT 1851
+2 PLAC Studor v Bohinju 22
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=74
+1 BAPM
+2 DATE 07 OCT 1851
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=74
+1 DEAT
+2 DATE 07 APR 1923
+2 PLAC Studor v Bohinju 22
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 OCCU kajžar
+1 FAMC @F38@
+1 FAMS @F13@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=74
+1 NOTE Lorem ipsum note.
+0 @I46@ INDI
+1 NAME Elizabeta /Logarak/
+2 NICK Danijela7
+1 SEX F
+1 BIRT
+2 DATE 29 OCT 1863
+2 PLAC Stara Fužina 70, (stara hš 13)
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=137
+1 BAPM
+2 DATE 29 OCT 1863
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=137
+1 DEAT
+2 DATE 02 NOV 1933
+2 PLAC Studor v Bohinju 22
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F39@
+1 FAMS @F13@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=137
+1 NOTE Lorem ipsum note.
+0 @I47@ INDI
+1 NAME Štefan /Logariè/
+2 NICK Karel7
+1 SEX M
+1 BIRT
+2 DATE 27 DEC 1867
+2 PLAC Studor v Bohinju 17
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=155
+1 BAPM
+2 DATE 27 DEC 1867
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=155
+1 DEAT
+2 DATE 03 APR 1922
+2 PLAC Srednja vas v Bohinju 77
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 OCCU Mizar
+1 FAMC @F40@
+1 FAMS @F41@
+1 FAMS @F14@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=155
+1 NOTE Lorem ipsum note.
+0 @I48@ INDI
+1 NAME Ana3 /Logarveè/
+2 NICK Boštjan7
+1 SEX F
+1 BIRT
+2 DATE 16 FEB 1876
+2 PLAC Krnica 64 (stara hš 48)
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/gorje/03843/?pg=60
+1 BAPM
+2 DATE 16 FEB 1876
+2 PLAC Gorje
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/gorje/03843/?pg=60
+1 DEAT
+2 DATE 20 JUL 1959
+2 PLAC Srednja vas v Bohinju 77
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 OCCU babica
+1 FAMC @F42@
+1 FAMS @F14@
+1 FAMS @F43@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/gorje/03843/?pg=60
+1 NOTE Lorem ipsum note.
+0 @I49@ INDI
+1 NAME Marjeta2 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 08 APR 1903
+2 PLAC Srednja vas v Bohinju 9
+1 DEAT
+2 DATE 11 JUL 1944
+2 PLAC Srednja vas v Bohinju 77
+1 FAMC @F14@
+1 FAMS @F44@
+0 @I50@ INDI
+1 NAME Emerik /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 12 NOV 1904
+2 PLAC Srednja vas v Bohinju 9
+1 DEAT Y
+1 FAMC @F14@
+1 FAMS @F45@
+0 @I51@ INDI
+1 NAME Valentin3 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 09 FEB 1906
+2 PLAC Srednja vas v Bohinju 77
+1 DEAT
+2 DATE 17 JAN 1999
+2 PLAC Stara Fužina 149
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F14@
+1 FAMS @F46@
+0 @I52@ INDI
+1 NAME Zofija7 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 11 OCT 1907
+2 PLAC Srednja vas v Bohinju 77
+1 DEAT Y
+1 FAMC @F14@
+0 @I53@ INDI
+1 NAME Jakob2 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 13 JUN 1912
+2 PLAC Srednja vas v Bohinju 77
+1 DEAT
+2 DATE 28 JAN 2000
+2 PLAC Stara Fužina 200
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F14@
+1 FAMS @F47@
+0 @I54@ INDI
+1 NAME Ljudmila /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 18 JUL 1914
+2 PLAC Srednja vas v Bohinju 77
+1 DEAT
+2 DATE 26 APR 1991
+1 FAMC @F14@
+1 FAMS @F48@
+1 FAMS @F49@
+1 SOUR Geni World Family Tree
+0 @I55@ INDI
+1 NAME Janez7 /Logarièek/
+1 SEX F
+1 BIRT
+2 DATE 08 DEC 1930
+1 DEAT
+2 DATE 14 MAY 2006
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMS @F15@
+0 @I56@ INDI
+1 NAME Egidij2 /Logarièek/
+1 SEX F
+1 BIRT
+2 DATE 26 DEC 1968
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F15@
+1 FAMS @F50@
+0 @I57@ INDI
+1 NAME Jakob2 /Logarnjak/
+1 SEX F
+1 BIRT
+2 DATE 03 OCT 1942
+2 PLAC Brod 12, (stara hš 14)
+1 DEAT
+2 DATE 04 SEP 1998
+2 PLAC Stara Fužina 195
+1 FAMC @F51@
+1 FAMS @F16@
+1 FAMS @F52@
+0 @I58@ INDI
+1 NAME Vinko3 /Logarnjak/
+1 SEX M
+1 BIRT
+2 DATE 03 JAN 1964
+2 PLAC Jesenice
+1 FAMC @F16@
+1 FAMS @F53@
+0 @I59@ INDI
+1 NAME Elizabeta /Medvediè/
+1 SEX F
+1 BIRT
+2 DATE 14 JAN 1936
+1 DEAT
+2 DATE 24 DEC 2020
+2 PLAC Studor v Bohinju 11
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F54@
+1 FAMS @F17@
+0 @I60@ INDI
+1 NAME Marina4 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 10 MAY 1962
+1 FAMC @F17@
+1 FAMS @F55@
+0 @I61@ INDI
+1 NAME Karolina /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 07 JUN 1963
+1 FAMC @F17@
+1 FAMS @F56@
+0 @I62@ INDI
+1 NAME Marjeta2 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 10 JUL 1971
+1 FAMC @F17@
+0 @I63@ INDI
+1 NAME Alojzija7 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 02 MAY 1966
+1 FAMC @F17@
+1 FAMS @F57@
+1 FAMS @F58@
+0 @I64@ INDI
+1 NAME Elizabeta /Medvedek/
+1 SEX F
+1 BIRT
+2 DATE 24 NOV 1934
+2 PLAC Kamnje 29, (stara hš 23)
+1 FAMC @F59@
+1 FAMS @F18@
+0 @I65@ INDI
+1 NAME Silvester2 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 03 MAY 1964
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F18@
+1 FAMS @F60@
+0 @I66@ INDI
+1 NAME Valburga4 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 02 JUL 1960
+2 PLAC Jesenice
+1 FAMC @F18@
+1 FAMS @F61@
+0 @I67@ INDI
+1 NAME Vinko3 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 24 AUG 1971
+1 FAMC @F18@
+0 @I68@ INDI
+1 NAME Jakob2 /Medvedar/
+1 SEX F
+1 BIRT
+2 DATE 25 NOV 1937
+1 DEAT
+2 DATE 21 APR 2025
+2 PLAC Dom sv. Martina, Srednja vas v Bohinju
+1 BURI
+2 DATE 25 APR 2025
+2 PLAC Bohinjska Bistrica
+2 NOTE Lorem ipsum note.
+1 FAMS @F21@
+0 @I69@ INDI
+1 NAME Mihael7 /Logarar/
+1 SEX F
+1 BIRT
+2 DATE 15 AUG 1961
+1 FAMC @F21@
+1 FAMS @F62@
+1 SOUR <br> - Geni World Family Tree<br> - Geni World Family Tree<br>
+0 @I70@ INDI
+1 NAME Helena3 /Logarar/
+1 SEX M
+1 FAMC @F21@
+1 FAMS @F63@
+0 @I71@ INDI
+1 NAME Marjeta2 /Logarar/
+1 SEX M
+1 BIRT
+2 DATE 1971
+2 PLAC Jesenice
+1 FAMC @F21@
+1 FAMS @F64@
+0 @I72@ INDI
+1 NAME Luka2 /Logarar/
+1 SEX F
+1 FAMC @F21@
+1 FAMS @F65@
+1 FAMS @F66@
+0 @I73@ INDI
+1 NAME Egidij4 /Medvednik/
+1 SEX F
+1 DEAT Y
+1 FAMC @F67@
+1 FAMS @F22@
+1 SOUR Geni World Family Tree
+0 @I74@ INDI
+1 NAME Helena2 /Logarar/
+1 SEX F
+1 FAMC @F22@
+1 FAMS @F68@
+0 @I75@ INDI
+1 NAME Apolonija3 /Logarar/
+1 SEX M
+1 FAMC @F22@
+1 FAMS @F69@
+0 @I76@ INDI
+1 NAME Štefan /Medvedšek/
+1 SEX M
+1 FAMC @F70@
+1 FAMS @F23@
+0 @I77@ INDI
+1 NAME Egidij4 /Medvedšek/
+1 SEX F
+1 BIRT
+2 DATE 1975
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F23@
+1 FAMS @F71@
+0 @I78@ INDI
+1 NAME Silvester2 /Medvedšek/
+1 SEX M
+1 BIRT
+2 DATE 1973
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F23@
+1 FAMS @F72@
+0 @I79@ INDI
+1 NAME Emerik /Medvedšek/
+1 SEX M
+1 BIRT
+2 DATE 1976
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F23@
+0 @I80@ INDI
+1 NAME Genovefa4 /Logariè/
+2 NICK Jera7
+1 SEX F
+1 BIRT
+2 DATE 07 OCT 1908
+2 PLAC Studor v Bohinju 22
+1 DEAT
+2 DATE 04 JUN 1961
+2 PLAC Studor v Bohinju 14
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F13@
+1 FAMS @F25@
+0 @I81@ INDI
+1 NAME Emerik /Logarnik/
+2 NICK Sebastijan7
+1 SEX M
+1 BIRT
+2 DATE 07 NOV 1906
+2 PLAC Studor v Bohinju 14
+1 DEAT
+2 DATE 22 APR 1971
+2 PLAC Studor v Bohinju 14
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F73@
+1 FAMS @F25@
+0 @I82@ INDI
+1 NAME Valburga2 /Logarnik/
+1 SEX F
+1 BIRT
+2 DATE 05 JUN 1939
+2 PLAC Studor v Bohinju 14
+1 DEAT
+2 DATE 23 FEB 2024
+2 PLAC Studor v Bohinju 14
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F25@
+0 @I83@ INDI
+1 NAME Janez3 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 19 NOV 1910
+2 PLAC Stara Fužina 130, (stara hš 36)
+1 DEAT
+2 DATE 26 FEB 1992
+2 PLAC Studor v Bohinju 6
+1 FAMC @F74@
+1 FAMS @F26@
+0 @I84@ INDI
+1 NAME Marjeta2 /Logarin/
+1 SEX M
+1 BIRT
+2 DATE 03 OCT 1903
+2 PLAC Studor v Bohinju 6
+1 DEAT
+2 DATE 19 JUL 1984
+2 PLAC Studor v Bohinju 6
+1 FAMC @F75@
+1 FAMS @F26@
+0 @I85@ INDI
+1 NAME Terezija4 /Logarin/
+1 SEX F
+1 BIRT
+2 DATE 01 MAR 1936
+2 PLAC Studor v Bohinju
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F26@
+1 FAMS @F76@
+0 @I86@ INDI
+1 NAME Štefan /Logarin/
+1 SEX M
+1 BIRT
+2 DATE 28 FEB 1947
+1 FAMC @F26@
+1 FAMS @F77@
+1 SOUR Mojca Svenšek - Svenšek / Pekovec Family Web Site (Smart Match)
+0 @I87@ INDI
+1 NAME Regina /Medvednc/
+1 SEX M
+1 BIRT
+2 DATE 11 SEP 1996
+1 FAMC @F27@
+0 @I88@ INDI
+1 NAME Kristina7 /Logarnik/
+1 SEX M
+1 BIRT
+2 DATE 07 JUN 2002
+1 FAMC @F27@
+0 @I89@ INDI
+1 NAME Elizabeta /Medvedman/
+1 SEX F
+1 BIRT
+2 DATE 30 AUG 1887
+2 PLAC Sadinja vas 15, Semiè
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/semic/04161/?pg=200
+1 BAPM
+2 DATE 30 AUG 1887
+2 PLAC Semiè
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/semic/04161/?pg=200
+1 DEAT
+2 DATE 22 DEC 1924
+1 FAMC @F78@
+1 FAMS @F28@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/semic/04161/?pg=200
+1 NOTE Lorem ipsum note.
+0 @I90@ INDI
+1 NAME Silvester2 /Logaršek/
+1 SEX M
+1 BIRT
+2 DATE 18 MAR 1912
+2 PLAC sadinja vas 15, semiè
+1 DEAT
+2 DATE 25 APR 1944
+2 PLAC Cerovec pod Gorjanci (pri Tolstem vrhu?)
+1 BURI
+2 PLAC Sveti Rok, semiè
+1 FAMC @F28@
+1 SOUR Val Klinar - Klinar Web Site (Smart Match)
+0 @I91@ INDI
+1 NAME Elizabeta /Logaršek/
+1 SEX F
+1 BIRT
+2 DATE 1916
+2 PLAC Sadinja vas 15, Semiè
+1 DEAT
+2 DATE 1990
+2 PLAC Brstovec 2, Semiè
+1 BURI
+2 PLAC sveti duh, semiè
+1 FAMC @F28@
+1 FAMS @F79@
+0 @I92@ INDI
+1 NAME Jakob2 /Logaršek/
+1 SEX F
+1 BIRT
+2 DATE 10 DEC 1918
+2 PLAC Sadinja vas 15, Semiè
+1 DEAT
+2 DATE 07 APR 1990
+2 PLAC Gorenjce, Semiè
+1 BURI
+2 PLAC Sveti Rok, semiè
+1 FAMC @F28@
+1 FAMS @F80@
+0 @I93@ INDI
+1 NAME Aleš /Logaršek/
+1 SEX M
+1 BIRT
+2 DATE 1920
+2 PLAC Sadinja vas 15, Semiè
+1 DEAT
+2 DATE 1983
+2 PLAC Drage 18, Semiè
+1 FAMC @F28@
+1 FAMS @F81@
+0 @I94@ INDI
+1 NAME Emerik /Logaršek/
+1 SEX M
+1 BIRT
+2 DATE 1922
+1 DEAT
+2 DATE 1932
+1 FAMC @F28@
+0 @I95@ INDI
+1 NAME Anton4 /Logarel/
+1 SEX F
+1 BIRT
+2 DATE 05 NOV 1907
+2 PLAC Osojnik 29, Semiè
+1 DEAT
+2 DATE 05 MAR 1960
+2 PLAC Brezova Reber, Semiè
+1 FAMC @F82@
+1 FAMS @F29@
+0 @I96@ INDI
+1 NAME Bernard4 /Logarel/
+1 SEX M
+1 BIRT
+2 DATE 23 SEP 1904
+2 PLAC Brezova Reber 2, Semiè
+1 DEAT
+2 DATE 20 APR 1956
+2 PLAC Brezova Reber 2, Semiè
+1 FAMC @F83@
+1 FAMS @F29@
+0 @I97@ INDI
+1 NAME Mihael7 /Logarel/
+1 SEX F
+1 FAMC @F29@
+1 FAMS @F84@
+0 @I98@ INDI
+1 NAME Anton4 /Logarel/
+1 SEX F
+1 FAMC @F29@
+1 FAMS @F85@
+0 @I99@ INDI
+1 NAME Mihael2 /Logarel/
+1 SEX F
+1 FAMC @F29@
+1 FAMS @F86@
+0 @I100@ INDI
+1 NAME Urban7 /Logarel/
+1 SEX F
+1 FAMC @F29@
+1 FAMS @F87@
+0 @I101@ INDI
+1 NAME Klara7 /Logarel/
+1 SEX F
+1 FAMC @F29@
+1 FAMS @F88@
+0 @I102@ INDI
+1 NAME Ferdinand7 /Logarel/
+1 SEX M
+1 FAMC @F29@
+1 FAMS @F89@
+0 @I103@ INDI
+1 NAME Ljudmila7 /Logarel/
+1 SEX M
+1 FAMC @F29@
+1 FAMS @F90@
+0 @I104@ INDI
+1 NAME Ferdinand7 /Medvedovec/
+1 SEX M
+1 DEAT
+2 DATE 2021
+1 FAMS @F30@
+1 SOUR Geni World Family Tree
+0 @I105@ INDI
+1 NAME Silvester2 /Medvedovec/
+1 SEX M
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F30@
+0 @I106@ INDI
+1 NAME Aleš2 /Medvedovec/
+1 SEX F
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F30@
+1 FAMS @F91@
+0 @I107@ INDI
+1 NAME Karolina /Medvedin/
+1 SEX M
+1 BIRT
+2 DATE 21 NOV 1949
+2 PLAC rožanec
+1 DEAT
+2 DATE 28 FEB 1994
+2 PLAC rožanec
+1 BURI
+2 PLAC Petrova vas
+1 FAMC @F92@
+1 FAMS @F31@
+1 SOUR FamilySearch Family Tree
+0 @I108@ INDI
+1 NAME Marjeta2 /Medvedin/
+1 SEX M
+1 BIRT
+2 DATE 20 MAR 1978
+2 PLAC Rožanec 12
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 OCCU DIPL.ING.STROJNIŠTVA
+1 FAMC @F31@
+1 FAMS @F93@
+1 SOUR <br> - Geni World Family Tree<br> - zvonka verdnik - Home verdnik  (Smart Match)<br>
+0 @I109@ INDI
+1 NAME Barbara2 /Medvedin/
+1 SEX F
+1 BIRT
+2 DATE 21 SEP 1974
+2 PLAC Rožanec 12
+1 RESI
+2 NOTE Lorem ipsum note.
+1 FAMC @F31@
+1 FAMS @F94@
+0 @I110@ INDI
+1 NAME Helena5 /Medvedel/
+1 SEX F
+1 FAMS @F32@
+0 @I111@ INDI
+1 NAME Elizabeta /Medvedniè/
+1 SEX F
+1 BIRT
+2 DATE AUG 1964
+1 FAMC @F95@
+1 FAMS @F33@
+1 SOUR klemen konda - konda Web Site (Smart Match)
+0 @I112@ INDI
+1 NAME Rozalija3 /Logaršek/
+1 SEX M
+1 BIRT
+2 DATE 25 MAY 2002
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F33@
+1 SOUR klemen konda - konda Web Site (Smart Match)
+0 @I113@ INDI
+1 NAME Marjeta2 /Logarek/
+2 NICK Johana7
+1 SEX M
+1 BIRT
+2 DATE 15 AUG 1880
+2 PLAC Studor v Bohinju 21
+1 BAPM
+2 DATE 15 AUG 1880
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+1 DEAT
+2 DATE 05 MAY 1959
+2 PLAC Studor v Bohinju 21
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F96@
+1 FAMS @F34@
+1 SOUR Ivanka OBLAK - OBLAK Web Site (Smart Match)
+1 NOTE Lorem ipsum note.
+0 @I114@ INDI
+1 NAME Elizabeta /Medvedoviè/
+2 NICK Ignac7
+1 SEX F
+1 BIRT
+2 DATE 21 MAY 1882
+2 PLAC Stara Fužina 115, (stara hš 26)
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=40
+1 BAPM
+2 DATE 21 MAY 1882
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=40
+1 DEAT
+2 DATE 23 MAR 1964
+2 PLAC Studor v Bohinju 21
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=40
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F97@
+1 FAMS @F34@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=40
+1 NOTE Lorem ipsum note.
+0 @I115@ INDI
+1 NAME Emerik /Logarek/
+1 SEX M
+1 BIRT
+2 DATE 07 NOV 1908
+2 PLAC Studor v Bohinju 21
+1 DEAT
+2 DATE 06 APR 1926
+2 PLAC Studor v Bohinju 21
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F34@
+0 @I116@ INDI
+1 NAME Rozalija2 /Logarek/
+1 SEX M
+1 BIRT
+2 DATE 28 MAY 1910
+2 PLAC Studor v Bohinju 21
+1 DEAT
+2 DATE MAY 1945
+2 PLAC Vodice-Podkraj
+2 NOTE Lorem ipsum note.
+3 CONC lorem ipsum
+3 CONC lorem ipsum
+3 CONC lorem ipsum
+3 CONT lorem ipsum
+1 FAMC @F34@
+0 @I117@ INDI
+1 NAME Jakob2 /Logarek/
+1 SEX F
+1 BIRT
+2 DATE 07 OCT 1912
+2 PLAC Studor v Bohinju 21
+1 DEAT
+2 DATE 26 DEC 1991
+2 PLAC Jesenice
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F34@
+0 @I118@ INDI
+1 NAME Elizabeta /Logarek/
+1 SEX F
+1 BIRT
+2 DATE 30 AUG 1914
+2 PLAC Studor v Bohinju 21
+1 DEAT
+2 DATE 17 SEP 1998
+2 PLAC Studor v Bohinju 39
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 OCCU GOSPODINJA
+1 FAMC @F34@
+1 FAMS @F98@
+0 @I119@ INDI
+1 NAME Genovefa4 /Logarek/
+1 SEX F
+1 BIRT
+2 DATE 21 SEP 1920
+2 PLAC Studor v Bohinju 21
+1 DEAT
+2 DATE 29 MAR 2021
+2 PLAC Srednja vas v Bohinju 11a
+1 BURI
+2 DATE 01 APR 2021
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F34@
+1 FAMS @F99@
+0 @I120@ INDI
+1 NAME Štefan /Logarek/
+1 SEX M
+1 BIRT
+2 DATE 10 OCT 1922
+2 PLAC Studor v Bohinju 21
+1 DEAT
+2 DATE 23 JAN 1945
+2 PLAC Bohinjska Èešnjica
+2 NOTE Lorem ipsum note.
+3 CONC lorem ipsum
+3 CONC lorem ipsum
+3 CONC lorem ipsum
+3 CONT lorem ipsum
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F34@
+0 @I121@ INDI
+1 NAME Janez /Logarniè/
+1 SEX F
+1 BIRT
+2 DATE 12 NOV 1897
+2 PLAC Bohinjska Èešnjica 75
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=146
+1 BAPM
+2 DATE 13 NOV 1897
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=146
+1 DEAT
+2 DATE 11 APR 1971
+2 PLAC Studor v Bohinju 21
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F100@
+1 FAMS @F35@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=146
+1 NOTE Lorem ipsum note.
+0 @I122@ INDI
+1 NAME Jera /Medvedak/
+1 SEX M
+1 BIRT
+2 DATE 11 MAY 1947
+2 PLAC Jereka 29
+1 DEAT
+2 DATE 07 JAN 1994
+2 PLAC Jereka 29
+1 FAMC @F101@
+1 FAMS @F36@
+0 @I123@ INDI
+1 NAME Genovefa /Medvedak/
+1 SEX M
+1 BIRT
+2 DATE 16 JUL 1971
+2 PLAC Jesenice
+1 DEAT
+2 DATE 23 AUG 1992
+2 PLAC Jereka 29
+1 FAMC @F36@
+0 @I124@ INDI
+1 NAME Martin3 /Logariè/
+2 NICK Cecilija7
+1 SEX M
+1 BIRT
+2 DATE 21 JAN 1813
+2 PLAC Studor v Bohinju 22
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02298/?pg=3
+1 BAPM
+2 DATE 21 JAN 1813
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02298/?pg=3
+1 DEAT
+2 DATE 02 APR 1883
+2 PLAC Studor v Bohinju 22
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 OCCU kajžar
+1 FAMC @F102@
+1 FAMS @F38@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02298/?pg=3
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+0 @I125@ INDI
+1 NAME Ljudmila /Medvedveè/
+2 NICK Karolina7
+1 SEX F
+1 BIRT
+2 DATE 12 MAY 1817
+2 PLAC Studor v Bohinju 31
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02298/?pg=19
+1 BAPM
+2 DATE 12 MAY 1817
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02298/?pg=19
+1 DEAT
+2 DATE 02 DEC 1899
+2 PLAC Studor v Bohinju 22
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F103@
+1 FAMS @F38@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02298/?pg=19
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+0 @I126@ INDI
+1 NAME Elizabeta /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 12 DEC 1846
+2 PLAC Studor v Bohinju 22
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=57
+1 BAPM
+2 DATE 12 DEC 1846
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=57
+1 DEAT
+2 DATE 15 DEC 1846
+2 PLAC Studor v Bohinju 22
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02303/?pg=34
+1 BURI
+2 DATE 17 DEC 1846
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F38@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=57
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+0 @I127@ INDI
+1 NAME Jakob2 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 17 FEB 1849
+2 PLAC Studor v Bohinju 22
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=64
+1 BAPM
+2 DATE 18 FEB 1849
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=64
+1 DEAT Y
+1 FAMC @F38@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=64
+1 NOTE Lorem ipsum note.
+0 @I128@ INDI
+1 NAME Peter4 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 30 AUG 1855
+2 PLAC Studor v Bohinju 22
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=92
+1 BAPM
+2 DATE 30 AUG 1855
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=92
+1 DEAT
+2 PLAC Studor v Bohinju 23
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F38@
+1 FAMS @F104@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=92
+1 NOTE Lorem ipsum note.
+0 @I129@ INDI
+1 NAME Elizabeta /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 30 AUG 1855
+2 PLAC Studor v Bohinju 22
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=92
+1 BAPM
+2 DATE 30 AUG 1855
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=92
+1 DEAT
+2 DATE 04 SEP 1855
+2 PLAC Studor v Bohinju 22
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02303/?pg=74
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F38@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=92
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+0 @I130@ INDI
+1 NAME Bernard4 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 25 JUL 1858
+2 PLAC Studor v Bohinju 22
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=108
+1 BAPM
+2 DATE 25 JUL 1858
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=108
+1 DEAT
+2 DATE 04 AUG 1946
+2 PLAC Studor v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=108
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F38@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=108
+1 NOTE Lorem ipsum note.
+0 @I131@ INDI
+1 NAME Janez /Medvedièek/
+2 NICK Danijela7
+1 SEX F
+1 BIRT
+2 DATE 01 JAN 1832
+2 PLAC Stara Fužina 70, (stara hš 13)
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02298/?pg=108
+1 BAPM
+2 DATE 01 JAN 1832
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02298/?pg=108
+1 DEAT
+2 PLAC Stara Fužina 70, (stara hš 13)
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F105@
+1 FAMS @F39@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02298/?pg=108
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+0 @I132@ INDI
+1 NAME Ljudmila4 /Logarak/
+2 NICK Bernard7
+1 SEX M
+1 BIRT
+2 DATE 23 AUG 1839
+2 PLAC Stara Fužina 121, (stara hš 30)
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=25
+1 BAPM
+2 DATE 23 AUG 1839
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=25
+1 DEAT
+2 DATE 25 OCT 1916
+2 PLAC Stara Fužina 70, (stara hš 13)
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 OCCU kajžar
+1 FAMC @F106@
+1 FAMS @F39@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=25
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+0 @I133@ INDI
+1 NAME Elizabeta /Medvednjak/
+1 SEX F
+1 DEAT Y
+1 FAMC @F48@
+1 FAMS @F107@
+0 @I134@ INDI
+1 NAME Karolina /Medvednjak/
+1 SEX M
+1 BIRT
+2 DATE 1912
+2 PLAC Bohinjska Èešnjica
+1 DEAT
+2 DATE 1943
+2 PLAC Lesce
+1 BURI
+2 PLAC Begunje na Gorenjskem
+1 OCCU Trgovec
+1 FAMS @F49@
+0 @I135@ INDI
+1 NAME Jakob5 /Nastraniè/
+1 SEX F
+1 BIRT
+2 DATE 24 APR 1971
+1 FAMC @F108@
+1 FAMS @F53@
+0 @I136@ INDI
+1 NAME Genovefa7 /Logarnjak/
+1 SEX M
+1 BIRT
+2 DATE 18 FEB 1993
+2 PLAC Jesenice
+1 FAMC @F53@
+1 NOTE Lorem ipsum note.
+0 @I137@ INDI
+1 NAME Marta2 /Logarnjak/
+1 SEX F
+1 BIRT
+2 DATE 11 MAY 1998
+1 FAMC @F53@
+1 FAMS @F109@
+0 @I138@ INDI
+1 NAME Marjeta2 /Nastranek/
+2 NICK Matevž7
+1 SEX M
+1 BIRT
+2 DATE 04 APR 1956
+2 PLAC Srednja vas v Bohinju 16
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F110@
+1 FAMS @F55@
+0 @I139@ INDI
+1 NAME Rok2 /Nastranek/
+1 SEX F
+1 BIRT
+2 DATE 05 MAR 1987
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F55@
+1 FAMS @F111@
+0 @I140@ INDI
+1 NAME Nežka3 /Nastranek/
+1 SEX M
+1 BIRT
+2 DATE 28 JUN 1990
+1 FAMC @F55@
+0 @I141@ INDI
+1 NAME Nežka4 /Nastranar/
+1 SEX F
+1 BIRT
+2 DATE 10 NOV 1960
+1 FAMS @F56@
+0 @I142@ INDI
+1 NAME Vinko2 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 03 JUL 1993
+1 FAMC @F56@
+0 @I143@ INDI
+1 NAME Suzana7 /Nastrannik/
+1 SEX F
+1 BIRT
+2 DATE 22 JAN 1985
+1 FAMC @F112@
+1 FAMS @F58@
+1 FAMS @F113@
+0 @I144@ INDI
+1 NAME Primož7 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 05 JUN 2010
+1 FAMC @F58@
+0 @I145@ INDI
+1 NAME Dorotea7 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 29 MAY 2012
+1 FAMC @F58@
+0 @I146@ INDI
+1 NAME Vinko3 /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 14 FEB 2015
+1 FAMC @F58@
+0 @I147@ INDI
+1 NAME Kristina2 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 25 SEP 1960
+1 FAMS @F57@
+1 FAMS @F114@
+0 @I148@ INDI
+1 NAME Neža /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 30 APR 1998
+1 FAMC @F57@
+0 @I149@ INDI
+1 NAME Lovro2 /Nastranšek/
+1 SEX F
+1 BIRT
+2 DATE 23 MAR 1966
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F115@
+1 FAMS @F60@
+0 @I150@ INDI
+1 NAME Jakob5 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 01 JUL 1989
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F60@
+1 FAMS @F116@
+0 @I151@ INDI
+1 NAME Dorotea /Logariè/
+1 SEX M
+1 BIRT
+2 DATE 14 NOV 1995
+1 FAMC @F60@
+0 @I152@ INDI
+1 NAME Aleš7 /Nastrannc/
+1 SEX M
+1 BIRT
+2 DATE 26 OCT 1954
+1 FAMS @F61@
+0 @I153@ INDI
+1 NAME Angela3 /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 04 JUN 1986
+2 PLAC Jesenice
+1 FAMC @F61@
+1 FAMS @F117@
+0 @I154@ INDI
+1 NAME Egidij3 /Logarar/
+1 SEX M
+1 BIRT
+2 DATE 19 AUG 1983
+1 FAMC @F62@
+1 NOTE Lorem ipsum note.
+0 @I155@ INDI
+1 NAME Amalija7 /Logarar/
+1 SEX F
+1 FAMC @F63@
+1 FAMS @F118@
+0 @I156@ INDI
+1 NAME Katarina3 /Logarar/
+1 SEX M
+1 FAMC @F63@
+1 NOTE Lorem ipsum note.
+0 @I157@ INDI
+1 NAME Regina7 /Nastranman/
+1 SEX F
+1 FAMS @F64@
+0 @I158@ INDI
+1 NAME Anton4 /Logarar/
+1 SEX F
+1 FAMC @F64@
+1 NOTE Lorem ipsum note.
+0 @I159@ INDI
+1 NAME Benjamin7 Silvester7 /Nastranovec/
+1 SEX M
+1 FAMS @F65@
+0 @I160@ INDI
+1 NAME Rok2 /Nastranovec/
+1 SEX F
+1 FAMC @F65@
+0 @I161@ INDI
+1 NAME Margareta7 /Nastranin/
+1 SEX M
+1 FAMS @F66@
+0 @I162@ INDI
+1 NAME Franèiška4 /Nastranin/
+1 SEX M
+1 FAMC @F66@
+0 @I163@ INDI
+1 NAME Helena3 /Nastranin/
+1 SEX M
+1 FAMC @F66@
+0 @I164@ INDI
+1 NAME Marjeta2 /Medvednik/
+1 SEX M
+1 BIRT
+2 DATE 1913
+1 DEAT
+2 DATE 1986
+1 FAMS @F67@
+0 @I165@ INDI
+1 NAME Ljudmila /Medvednik/
+1 SEX F
+1 BIRT
+2 DATE 1915
+1 DEAT
+2 DATE 2000
+1 FAMS @F67@
+1 SOUR elena dolinsek - dolinsek Web Site<br>MyHeritage družinskih drevesih Družinsko spletno mesto: dolinsek Web Site Družinsko drevo: 732878631-1 - Discovery - 732878631-1 - 2 OCT 2024 - Osebna fotografija osebe Ana Kokelj-Kokelj Dodano s pomoèjo Photo Discovery odkritij fotografij™ - Discovery<br>
+0 @I166@ INDI
+1 NAME Suzana2 /Medvednik/
+1 SEX M
+1 FAMC @F67@
+1 NOTE Lorem ipsum note.
+0 @I167@ INDI
+1 NAME Marko3 /Medvednik/
+1 SEX F
+1 BIRT
+2 DATE 1949
+1 DEAT
+2 DATE 2023
+1 FAMC @F67@
+0 @I168@ INDI
+1 NAME Primož3 /Medvednik/
+1 SEX M
+1 FAMC @F67@
+1 FAMS @F119@
+0 @I169@ INDI
+1 NAME Adolf7 /Medvednik/
+1 SEX M
+1 FAMC @F67@
+1 FAMS @F120@
+0 @I170@ INDI
+1 NAME Karolina /Medvednik/
+1 SEX M
+1 BIRT
+2 DATE 1943
+1 DEAT
+2 DATE 2003
+1 FAMC @F67@
+0 @I171@ INDI
+1 NAME Elizabeta /Nastranel/
+1 SEX F
+1 FAMC @F67@
+1 FAMS @F121@
+0 @I172@ INDI
+1 NAME Egidij7 /Nastranniè/
+1 SEX M
+1 FAMC @F122@
+1 FAMS @F68@
+0 @I173@ INDI
+1 NAME Fortunat7 /Nastranniè/
+1 SEX M
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F68@
+1 FAMS @F123@
+0 @I174@ INDI
+1 NAME Martin2 /Nastranniè/
+1 SEX M
+1 FAMC @F68@
+1 NOTE Lorem ipsum note.
+0 @I175@ INDI
+1 NAME Marina7 /Nastranoviè/
+1 SEX F
+1 FAMS @F69@
+0 @I176@ INDI
+1 NAME Amalija7 /Logarar/
+1 SEX F
+1 FAMC @F69@
+1 NOTE Lorem ipsum note.
+0 @I177@ INDI
+1 NAME Adolf7 /Nastranak/
+1 SEX M
+1 FAMS @F71@
+0 @I178@ INDI
+1 NAME Franèiška3 /Nastranak/
+1 SEX F
+1 FAMC @F71@
+1 NOTE Lorem ipsum note.
+0 @I179@ INDI
+1 NAME Angela3 /Nastranak/
+1 SEX F
+1 FAMC @F71@
+1 NOTE Lorem ipsum note.
+0 @I180@ INDI
+1 NAME Karel3 /Nastranak/
+1 SEX M
+1 FAMC @F71@
+1 NOTE Lorem ipsum note.
+0 @I181@ INDI
+1 NAME Valburga7 /Medvedšek/
+1 SEX F
+1 FAMS @F72@
+0 @I182@ INDI
+1 NAME Kajetan7 /Medvedšek/
+1 SEX F
+1 FAMC @F72@
+0 @I183@ INDI
+1 NAME Tomaž2 /Medvedšek/
+1 SEX F
+1 FAMC @F72@
+0 @I184@ INDI
+1 NAME Karolina /Nastranveè/
+1 SEX M
+1 BIRT
+2 DATE 16 OCT 1933
+2 PLAC Slovenija
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 DEAT
+2 DATE 06 OCT 2022
+2 PLAC Studor v Bohinju 6
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMS @F76@
+1 SOUR Maja Taler - Taler Web Site (Smart Match)
+0 @I185@ INDI
+1 NAME Marta3 /Nastranveè/
+1 SEX M
+1 BIRT
+2 DATE 27 SEP 1962
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F76@
+1 FAMS @F124@
+1 SOUR Mojca Svenšek - Svenšek / Pekovec Family Web Site (Smart Match)
+0 @I186@ INDI
+1 NAME Karolina /Nastranveè/
+1 SEX M
+1 BIRT
+2 DATE 11 APR 1964
+2 PLAC Studor v Bohinju 6
+1 DEAT
+2 DATE 29 SEP 2025
+2 PLAC Studor v Bohinju 6
+1 BURI
+2 DATE 03 OCT 2025
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F76@
+1 FAMS @F125@
+1 SOUR Maja Taler - Taler Web Site (Smart Match)
+0 @I187@ INDI
+1 NAME Elizabeta /Nastranièek/
+1 SEX F
+1 BIRT
+2 DATE 28 APR 1948
+1 FAMS @F77@
+0 @I188@ INDI
+1 NAME Martin /Logarin/
+1 SEX M
+1 BIRT
+2 DATE 12 AUG 1974
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F77@
+1 FAMS @F126@
+1 SOUR Izidor Golob - Golob Web Site (Smart Match)
+0 @I189@ INDI
+1 NAME Dorotea4 /Logarin/
+1 SEX M
+1 BIRT
+2 DATE 04 AUG 1975
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F77@
+1 FAMS @F127@
+0 @I190@ INDI
+1 NAME Lucija2 /Logarin/
+1 SEX F
+1 BIRT
+2 DATE 1971
+1 DEAT
+2 DATE 1980
+2 NOTE Lorem ipsum note.
+1 FAMC @F77@
+0 @I191@ INDI
+1 NAME Franc2 /Medvedman/
+1 SEX F
+1 BIRT
+2 DATE ABT 1894
+2 PLAC Sadinja vas 15, Semiè
+1 DEAT Y
+1 FAMC @F78@
+1 FAMS @F128@
+1 SOUR Val Klinar - Klinar Web Site (Smart Match)
+0 @I192@ INDI
+1 NAME Suzana2 /Nastrannjak/
+1 SEX M
+1 BIRT
+2 DATE 07 MAY 1908
+2 PLAC Vranovièi 20, Podzemelj
+1 DEAT
+2 DATE 22 JUL 1974
+2 PLAC Gorenjce, Semiè
+1 BURI
+2 PLAC Sveti Rok, semiè
+1 FAMC @F129@
+1 FAMS @F80@
+0 @I193@ INDI
+1 NAME Elizabeta /Nastrannjak/
+1 SEX F
+1 BIRT
+2 DATE 17 JUN 1950
+2 PLAC Drage 18, Semiè
+1 FAMC @F80@
+1 FAMS @F130@
+0 @I194@ INDI
+1 NAME Emerik7 /Osolnikiè/
+1 SEX F
+1 FAMC @F80@
+1 FAMS @F131@
+0 @I195@ INDI
+1 NAME Klara6 /Logaršek/
+1 SEX F
+1 BIRT
+2 DATE 1912
+2 PLAC Kot, Semiè
+1 DEAT
+2 DATE 1982
+2 PLAC Drage 18, Semiè
+1 FAMS @F81@
+0 @I196@ INDI
+1 NAME Johana3 /Logaršek/
+1 SEX M
+1 FAMC @F81@
+1 NOTE Lorem ipsum note.
+0 @I197@ INDI
+1 NAME Nežka /Logaršek/
+1 SEX M
+1 FAMC @F81@
+1 NOTE Lorem ipsum note.
+0 @I198@ INDI
+1 NAME Nežka7 /Logaršek/
+1 SEX F
+1 FAMC @F81@
+1 NOTE Lorem ipsum note.
+0 @I199@ INDI
+1 NAME Elizabeta5 /Logaršek/
+1 SEX M
+1 FAMC @F81@
+1 NOTE Lorem ipsum note.
+0 @I200@ INDI
+1 NAME Elizabeta /Logarel/
+1 SEX F
+1 NOTE Lorem ipsum note.
+0 @I201@ INDI
+1 NAME Genovefa /Nastrannjak/
+1 SEX M
+1 FAMS @F84@
+0 @I202@ INDI
+1 NAME Cvetka7 /Osolnikek/
+1 SEX F
+1 FAMC @F84@
+1 FAMS @F132@
+0 @I203@ INDI
+1 NAME Ferdinand7 /Osolnikek/
+1 SEX M
+1 FAMC @F84@
+1 FAMS @F133@
+0 @I204@ INDI
+1 NAME Franc2 /Osolnikek/
+1 SEX F
+1 FAMC @F84@
+1 FAMS @F134@
+0 @I205@ INDI
+1 NAME Luka2 /Osolnikek/
+1 SEX F
+1 FAMC @F84@
+1 FAMS @F135@
+0 @I206@ INDI
+1 NAME Ferdinand7 /Osolnikar/
+1 SEX M
+1 FAMS @F85@
+0 @I207@ INDI
+1 NAME Ferdinand7 /Osolnikek/
+1 SEX M
+1 FAMC @F85@
+1 FAMS @F136@
+0 @I208@ INDI
+1 NAME Silvester2 /Osolnikek/
+1 SEX M
+1 FAMC @F85@
+1 FAMS @F137@
+1 SOUR Jože Malnariè - Malnariè Web Site<br>MyHeritage družinskih drevesih Družinsko spletno mesto: Malnariè Web Site Družinsko drevo: 1440215922-1 - Discovery - 1440215922-1 - 31 AUG 2024 - Osebna fotografija osebe JOŽE MALNARIÈ Dodano s pomoèjo Photo Discovery odkritij fotografij™ - Discovery<br>
+0 @I209@ INDI
+1 NAME Ferdinand7 /Osolniknik/
+1 SEX M
+1 FAMS @F86@
+0 @I210@ INDI
+1 NAME Klara7 /Osolnikek/
+1 SEX F
+1 FAMC @F86@
+1 NOTE Lorem ipsum note.
+0 @I211@ INDI
+1 NAME Ana8 /Osolnikek/
+1 SEX F
+1 FAMC @F86@
+1 FAMS @F138@
+0 @I212@ INDI
+1 NAME Marija8 /Osolnikek/
+1 SEX M
+1 FAMC @F86@
+1 FAMS @F139@
+0 @I213@ INDI
+1 NAME Aleš /Osolnikšek/
+1 SEX M
+1 FAMS @F87@
+0 @I214@ INDI
+1 NAME Silvester2 /Osolnikek/
+1 SEX M
+1 FAMC @F87@
+1 FAMS @F140@
+0 @I215@ INDI
+1 NAME Elizabeta /Osolnikek/
+1 SEX F
+1 FAMC @F87@
+1 FAMS @F141@
+0 @I216@ INDI
+1 NAME Aleš2 /Osolnikek/
+1 SEX F
+1 FAMC @F87@
+1 FAMS @F142@
+0 @I217@ INDI
+1 NAME Aleš /Osolniknc/
+1 SEX M
+1 FAMS @F88@
+0 @I218@ INDI
+1 NAME Alojzija /Osolnikek/
+1 SEX M
+1 FAMC @F88@
+1 FAMS @F143@
+0 @I219@ INDI
+1 NAME Pavel3 /Osolnikek/
+1 SEX F
+1 FAMC @F88@
+1 FAMS @F144@
+0 @I220@ INDI
+1 NAME Mihael2 /Osolnikman/
+1 SEX F
+1 FAMS @F89@
+0 @I221@ INDI
+1 NAME Regina2 /Logarel/
+1 SEX F
+1 FAMC @F89@
+1 FAMS @F145@
+0 @I222@ INDI
+1 NAME Ljudmila7 /Logarel/
+1 SEX M
+1 FAMC @F89@
+1 FAMS @F146@
+0 @I223@ INDI
+1 NAME Marija8 /Logarel/
+1 SEX M
+1 FAMC @F89@
+1 FAMS @F147@
+0 @I224@ INDI
+1 NAME Valburga7 /Osolnikovec/
+1 SEX F
+1 FAMS @F90@
+0 @I225@ INDI
+1 NAME Lucija4 /Logarel/
+1 SEX M
+1 FAMC @F90@
+1 FAMS @F148@
+0 @I226@ INDI
+1 NAME Ivan8 /Logarel/
+1 SEX M
+1 FAMC @F90@
+1 NOTE Lorem ipsum note.
+0 @I227@ INDI
+1 NAME Elizabeta /Logarel/
+1 SEX F
+1 FAMC @F90@
+1 NOTE Lorem ipsum note.
+0 @I228@ INDI
+1 NAME Simon3 /Logarel/
+1 SEX M
+1 FAMC @F90@
+1 NOTE Lorem ipsum note.
+0 @I229@ INDI
+1 NAME Rozalija2 /Osolnikin/
+1 SEX M
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMS @F91@
+0 @I230@ INDI
+1 NAME Jožef8 /Osolnikin/
+1 SEX F
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F91@
+1 FAMS @F149@
+0 @I231@ INDI
+1 NAME Kajetan7 /Osolnikin/
+1 SEX F
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F91@
+0 @I232@ INDI
+1 NAME Lucija3 /Medvedin/
+1 SEX M
+1 BIRT
+2 DATE 17 SEP 1908
+2 PLAC rožanec 26, èrnomelj
+1 DEAT
+2 DATE 11 AUG 1981
+2 PLAC rožanec
+1 BURI
+2 PLAC Petrova vas
+1 FAMC @F150@
+1 FAMS @F92@
+1 SOUR <br> - FamilySearch Family Tree<br> - zvonka verdnik - Home verdnik  (Smart Match)<br>
+0 @I233@ INDI
+1 NAME Jakob2 /Osolnikel/
+1 SEX F
+1 BIRT
+2 DATE 08 MAR 1914
+1 DEAT
+2 DATE 16 APR 2002
+2 PLAC rožanec
+1 BURI
+2 PLAC Petrova vas
+1 FAMC @F151@
+1 FAMS @F92@
+1 SOUR <br> - FamilySearch Family Tree<br> - zvonka verdnik - Home verdnik  (Smart Match)<br>
+0 @I234@ INDI
+1 NAME Štefan /Medvedin/
+1 SEX M
+1 BIRT
+2 DATE 07 JUL 1945
+1 DEAT
+2 DATE 24 MAY 2006
+1 FAMC @F92@
+1 FAMS @F152@
+0 @I235@ INDI
+1 NAME Vinko /Osolnikniè/
+1 SEX F
+1 BIRT
+2 DATE 14 SEP 1934
+1 DEAT
+2 DATE 2009
+1 FAMC @F92@
+1 FAMS @F153@
+1 SOUR FamilySearch Family Tree
+0 @I236@ INDI
+1 NAME Ema2 /Osolnikoviè/
+1 SEX F
+1 BIRT
+2 DATE 15 JUN 1932
+2 PLAC rožanec
+1 DEAT
+2 DATE 2019
+2 PLAC dobova
+1 FAMC @F92@
+1 FAMS @F154@
+0 @I237@ INDI
+1 NAME Helena2 /Osolnikak/
+1 SEX F
+1 BIRT
+2 DATE 10 OCT 1980
+2 PLAC Krupa
+1 FAMC @F155@
+1 FAMS @F93@
+1 SOUR Geni World Family Tree
+0 @I238@ INDI
+1 NAME Tomaž2 /Medvedin/
+1 SEX F
+1 BIRT
+2 DATE 24 AUG 2005
+2 PLAC Rožanec 12
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F93@
+0 @I239@ INDI
+1 NAME Helena3 /Medvedin/
+1 SEX M
+1 BIRT
+2 DATE 23 SEP 2009
+2 PLAC Rožanec 12
+1 FAMC @F93@
+0 @I240@ INDI
+1 NAME Rok2 /Medvedin/
+1 SEX F
+1 BIRT
+2 DATE 24 MAY 2015
+2 PLAC Rožanec 12
+1 FAMC @F93@
+0 @I241@ INDI
+1 NAME Franc8 /Osolnikveè/
+1 SEX M
+1 BIRT
+2 DATE 1966
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMS @F94@
+0 @I242@ INDI
+1 NAME Marko8 /Osolnikveè/
+1 SEX M
+1 BIRT
+2 DATE 23 APR 2008
+1 FAMC @F94@
+0 @I243@ INDI
+1 NAME Tone8 /Osolnikveè/
+1 SEX M
+1 BIRT
+2 DATE 14 JAN 2010
+1 FAMC @F94@
+0 @I244@ INDI
+1 NAME Ignac2 /Medvedniè/
+1 SEX F
+1 BIRT
+2 DATE 1962
+1 FAMC @F95@
+1 FAMS @F156@
+0 @I245@ INDI
+1 NAME Neža8 /Medvedniè/
+1 SEX F
+1 BIRT
+2 DATE JAN 1967
+1 FAMC @F95@
+1 FAMS @F157@
+0 @I246@ INDI
+1 NAME Elizabeta /Osolnikièek/
+2 NICK Alojz8
+1 SEX F
+1 BIRT
+2 DATE 19 DEC 1847
+2 PLAC Stara Fužina 81, (stara hš 20)
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=61
+1 BAPM
+2 DATE 20 DEC 1847
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=61
+1 DEAT
+2 DATE 30 APR 1918
+2 PLAC Studor v Bohinju 21
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F158@
+1 FAMS @F96@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=61
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+0 @I247@ INDI
+1 NAME Ema3 /Logarek/
+2 NICK Johana7
+1 SEX M
+1 BIRT
+2 DATE 20 DEC 1820
+2 PLAC Studor v Bohinju 10
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02298/?pg=37
+1 BAPM
+2 DATE 20 DEC 1820
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02298/?pg=37
+1 DEAT
+2 DATE 04 FEB 1883
+2 PLAC Studor v Bohinju 21
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 OCCU kajžar
+1 FAMC @F159@
+1 FAMS @F160@
+1 FAMS @F96@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02298/?pg=37
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+2 CONT lorem ipsum
+0 @I248@ INDI
+1 NAME Terezija8 /Logarek/
+1 SEX M
+1 BIRT
+2 DATE 23 MAY 1870
+2 PLAC Studor v Bohinju 21
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=167
+1 BAPM
+2 DATE 23 MAY 1870
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=167
+1 DEAT
+2 DATE 23 MAY 1870
+2 PLAC Studor v Bohinju 21
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02303/?pg=139
+1 BURI
+2 DATE 25 MAY 1870
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02303/?pg=139
+1 FAMC @F96@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=167
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+0 @I249@ INDI
+1 NAME Rozalija2 /Logarek/
+1 SEX M
+1 BIRT
+2 DATE 18 SEP 1871
+2 PLAC Studor v Bohinju 21
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=173
+1 BAPM
+2 DATE 19 SEP 1871
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=173
+1 DEAT
+2 DATE 18 NOV 1871
+2 PLAC Studor v Bohinju 21
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02303/?pg=143
+1 BURI
+2 DATE 20 NOV 1871
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02303/?pg=143
+1 FAMC @F96@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=173
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+0 @I250@ INDI
+1 NAME Jakob2 /Logarek/
+1 SEX F
+1 BIRT
+2 DATE 23 NOV 1873
+2 PLAC Studor v Bohinju 21
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=182
+1 BAPM
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=182
+1 DEAT
+2 DATE 07 FEB 1874
+2 PLAC Studor v Bohinju 21
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02303/?pg=153
+1 BURI
+2 DATE 09 FEB 1874
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02303/?pg=153
+1 FAMC @F96@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=182
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+0 @I251@ INDI
+1 NAME Rozalija2 /Logarek/
+2 NICK Peter8
+1 SEX M
+1 BIRT
+2 DATE 09 SEP 1875
+2 PLAC Studor v Bohinju 21
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=6
+1 BAPM
+2 DATE 10 SEP 1875
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=6
+1 DEAT
+2 DATE 28 JAN 1942
+2 PLAC Studor v Bohinju 18
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F96@
+1 FAMS @F161@
+1 FAMS @F162@
+1 FAMS @F163@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=6
+1 NOTE Lorem ipsum note.
+0 @I252@ INDI
+1 NAME Štefan /Logarek/
+1 SEX M
+1 BIRT
+2 DATE 19 FEB 1878
+2 PLAC Studor v Bohinju 21
+1 BAPM
+2 DATE 20 FEB 1878
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+1 DEAT
+2 DATE 25 MAY 1893
+2 PLAC Studor v Bohinju 21
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F96@
+1 NOTE Lorem ipsum note.
+0 @I253@ INDI
+1 NAME Jakob2 /Logarek/
+1 SEX F
+1 BIRT
+2 DATE 02 JAN 1883
+2 PLAC Studor v Bohinju 21
+1 BAPM
+2 DATE 02 JAN 1883
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+1 DEAT
+2 DATE 15 MAY 1893
+2 PLAC Studor v Bohinju 21
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F96@
+1 SOUR vesna pekovec - vpekovec a gmail.com (Smart Match)
+1 NOTE Lorem ipsum note.
+2 CONT lorem ipsum
+0 @I254@ INDI
+1 NAME Rozalija2 /Medvedoviè/
+2 NICK Katarina8
+1 SEX M
+1 BIRT
+2 DATE 15 JUL 1839
+2 PLAC Stara Fužina 115, (stara hš 26)
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=24
+1 BAPM
+2 DATE 15 JUL 1839
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=24
+1 DEAT
+2 PLAC Stara Fužina
+1 FAMC @F164@
+1 FAMS @F97@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=24
+1 NOTE Lorem ipsum note.
+0 @I255@ INDI
+1 NAME Elizabeta /Logariè/
+1 SEX F
+1 BIRT
+2 DATE 09 AUG 1848
+2 PLAC Studor v Bohinju 9
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=63
+1 BAPM
+2 DATE 09 AUG 1848
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=63
+1 DEAT
+2 PLAC Stara Fužina 115, (stara hš 26)
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F165@
+1 FAMS @F97@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=63
+1 NOTE Lorem ipsum note.
+0 @I256@ INDI
+1 NAME Emerik /Medvedoviè/
+2 NICK Katarina8
+1 SEX M
+1 BIRT
+2 DATE 30 OCT 1888
+2 PLAC Stara Fužina 115, (stara hš 26)
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=74
+1 BAPM
+2 DATE 30 OCT 1888
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=74
+1 DEAT
+2 DATE 10 JAN 1960
+2 PLAC Stara Fužina
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=74
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F97@
+1 FAMS @F166@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=74
+1 NOTE Lorem ipsum note.
+0 @I257@ INDI
+1 NAME Amalija /Medvedoviè/
+1 SEX F
+1 BIRT
+2 DATE 27 FEB 1893
+2 PLAC Stara Fužina 115, (stara hš 26)
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=105
+1 BAPM
+2 DATE 27 FEB 1893
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=105
+1 DEAT
+2 DATE 21 OCT 1974
+2 PLAC Stara Fužina 200
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=105
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F97@
+1 FAMS @F167@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=105
+1 NOTE Lorem ipsum note.
+0 @I258@ INDI
+1 NAME Karolina /Osolniknjak/
+1 SEX M
+1 BIRT
+2 DATE 24 MAY 1909
+2 PLAC Studor v Bohinju 39
+1 DEAT
+2 DATE 06 JAN 1950
+2 PLAC Studor v Bohinju 39
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F168@
+1 FAMS @F98@
+1 SOUR Geni World Family Tree
+0 @I259@ INDI
+1 NAME Štefan /Osolniknjak/
+1 SEX M
+1 BIRT
+2 DATE 02 MAR 1937
+2 PLAC Studor v Bohinju 39
+1 FAMC @F98@
+0 @I260@ INDI
+1 NAME Karolina /Osolniknjak/
+1 SEX M
+1 BIRT
+2 DATE 28 APR 1938
+2 PLAC Studor v Bohinju 39
+1 DEAT
+2 DATE 17 APR 1999
+2 PLAC Studor v Bohinju 39
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F98@
+0 @I261@ INDI
+1 NAME Rozalija2 /Osolniknjak/
+1 SEX M
+1 BIRT
+2 DATE 05 MAY 1940
+2 PLAC Studor v Bohinju 39
+1 DEAT
+2 DATE 04 DEC 2023
+2 PLAC Jesenice
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F98@
+1 FAMS @F169@
+0 @I262@ INDI
+1 NAME Marjeta2 /Osolniknjak/
+1 SEX M
+1 BIRT
+2 DATE 21 JUL 1941
+2 PLAC Studor v Bohinju 39
+1 FAMC @F98@
+0 @I263@ INDI
+1 NAME Martin3 /Osolniknjak/
+2 SURN Puènikiè
+1 SEX M
+1 BIRT
+2 DATE 07 FEB 1943
+2 PLAC Studor v Bohinju 39
+1 DEAT
+2 DATE 16 JAN 2016
+2 PLAC Studor v Bohinju 39
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F98@
+0 @I264@ INDI
+1 NAME Elizabeta /Osolniknjak/
+2 SURN Puènikek
+1 SEX F
+1 BIRT
+2 DATE 07 JUL 1945
+2 PLAC Studor v Bohinju 39
+1 FAMC @F98@
+1 FAMS @F170@
+0 @I265@ INDI
+1 NAME Jakob2 /Osolniknjak/
+1 SEX F
+1 BIRT
+2 DATE 11 MAY 1949
+2 PLAC Studor v Bohinju 39
+1 FAMC @F98@
+1 FAMS @F171@
+0 @I266@ INDI
+1 NAME Štefan /Puènikar/
+2 NICK Anton8
+1 SEX M
+1 BIRT
+2 DATE 08 SEP 1919
+2 PLAC Stara Fužina 205, (stara hš 78)
+1 DEAT
+2 DATE 08 NOV 1994
+2 PLAC Stara Fužina 34
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F172@
+1 FAMS @F99@
+0 @I267@ INDI
+1 NAME Katarina2 /Puènikar/
+1 SEX F
+1 BIRT
+2 DATE 23 JAN 1958
+2 PLAC Jesenice
+1 RESI
+2 NOTE Lorem ipsum note.
+3 CONT lorem ipsum
+1 FAMC @F99@
+1 FAMS @F173@
+1 SOUR <br> - Geni World Family Tree<br> - vesna pekovec - vpekovec a gmail.com (Smart Match)<br>
+0 @I268@ INDI
+1 NAME Matevž2 /Puèniknik/
+1 SEX F
+1 BIRT
+2 DATE 30 OCT 1860
+2 PLAC Bohinjska Èešnjica 2
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=120
+1 BAPM
+2 DATE 31 OCT 1860
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=120
+1 DEAT
+2 DATE 13 JAN 1922
+2 PLAC Bohinjska Èešnjica 75
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F174@
+1 FAMS @F100@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=120
+1 NOTE Lorem ipsum note.
+0 @I269@ INDI
+1 NAME Rozalija2 /Logarniè/
+2 NICK Uršula8
+1 SEX M
+1 BIRT
+2 DATE 21 JUN 1868
+2 PLAC Srednja vas v Bohinju 16
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=158
+1 BAPM
+2 DATE 22 JUN 1868
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=158
+1 DEAT
+2 DATE 18 FEB 1949
+2 PLAC Bohinjska Èešnjica 75
+1 BURI
+2 PLAC Srednja vas v Bohinju
+1 FAMC @F175@
+1 FAMS @F100@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02299/?pg=158
+1 NOTE Lorem ipsum note.
+0 @I270@ INDI
+1 NAME Jakob2 /Logarniè/
+1 SEX F
+1 BIRT
+2 DATE 06 NOV 1891
+2 PLAC Bohinjska Èešnjica 16
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=95
+1 BAPM
+2 DATE 06 NOV 1891
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=95
+1 DEAT
+2 DATE 09 DEC 1957
+2 PLAC Bolnica Jesenice
+1 FAMC @F100@
+1 FAMS @F176@
+1 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=95
+1 NOTE Lorem ipsum note.
+0 @F1@ FAM
+1 MARR
+2 DATE 20 DEC 1969
+1 HUSB @I4@
+1 WIFE @I5@
+1 CHIL @I6@
+1 CHIL @I1@
+0 @F2@ FAM
+1 EVEN
+2 TYPE unmarried
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+0 @F3@ FAM
+1 MARR
+2 DATE 06 OCT 1972
+2 PLAC Brezje
+1 HUSB @I10@
+1 WIFE @I9@
+1 CHIL @I2@
+1 CHIL @I11@
+0 @F4@ FAM
+1 HUSB @I7@
+1 WIFE @I2@
+1 CHIL @I8@
+0 @F5@ FAM
+1 MARR
+2 DATE 09 FEB 1931
+2 PLAC Srednja vas v Bohinju
+1 HUSB @I12@
+1 WIFE @I13@
+1 CHIL @I16@
+1 CHIL @I15@
+1 CHIL @I14@
+1 CHIL @I4@
+0 @F6@ FAM
+1 HUSB @I18@
+1 WIFE @I17@
+1 CHIL @I19@
+1 CHIL @I20@
+1 CHIL @I5@
+1 CHIL @I21@
+0 @F7@ FAM
+1 EVEN
+2 TYPE nomen
+1 EVEN
+2 TYPE nomen
+1 EVEN
+2 TYPE nomen
+1 HUSB @I22@
+1 WIFE @I6@
+1 CHIL @I23@
+1 CHIL @I24@
+0 @F8@ FAM
+1 HUSB @I28@
+1 WIFE @I29@
+1 CHIL @I7@
+1 CHIL @I30@
+0 @F9@ FAM
+1 HUSB @I7@
+1 WIFE @I25@
+1 CHIL @I27@
+1 CHIL @I26@
+0 @F10@ FAM
+1 HUSB @I31@
+1 WIFE @I32@
+1 CHIL @I9@
+1 CHIL @I33@
+1 CHIL @I34@
+1 CHIL @I35@
+1 CHIL @I36@
+0 @F11@ FAM
+1 MARR
+2 DATE 08 NOV 1947
+2 PLAC Srednja vas v Bohinju
+1 HUSB @I37@
+1 WIFE @I38@
+1 CHIL @I10@
+1 CHIL @I40@
+1 CHIL @I39@
+1 CHIL @I41@
+0 @F12@ FAM
+1 EVEN
+2 TYPE nomen
+1 EVEN
+2 TYPE nomen
+1 HUSB @I42@
+1 WIFE @I11@
+1 CHIL @I43@
+1 CHIL @I44@
+0 @F13@ FAM
+1 MARR
+2 DATE 21 FEB 1887
+2 PLAC Srednja vas v Bohinju
+2 NOTE Lorem ipsum note.
+1 HUSB @I45@
+1 WIFE @I46@
+1 CHIL @I12@
+1 CHIL @I80@
+0 @F14@ FAM
+1 MARR
+2 DATE 25 AUG 1902
+2 PLAC Zgornje Gorje
+2 NOTE Lorem ipsum note.
+1 HUSB @I47@
+1 WIFE @I48@
+1 CHIL @I49@
+1 CHIL @I50@
+1 CHIL @I51@
+1 CHIL @I52@
+1 CHIL @I13@
+1 CHIL @I53@
+1 CHIL @I54@
+0 @F15@ FAM
+1 HUSB @I14@
+1 WIFE @I55@
+1 CHIL @I56@
+0 @F16@ FAM
+1 HUSB @I14@
+1 WIFE @I57@
+1 CHIL @I58@
+0 @F17@ FAM
+1 HUSB @I15@
+1 WIFE @I59@
+1 CHIL @I60@
+1 CHIL @I61@
+1 CHIL @I63@
+1 CHIL @I62@
+0 @F18@ FAM
+1 HUSB @I16@
+1 WIFE @I64@
+1 CHIL @I66@
+1 CHIL @I65@
+1 CHIL @I67@
+0 @F19@ FAM
+1 MARR
+2 DATE 16 FEB 1903
+2 PLAC Cirkulane
+1 CHIL @I17@
+0 @F20@ FAM
+1 MARR Y
+1 CHIL @I18@
+0 @F21@ FAM
+1 HUSB @I19@
+1 WIFE @I68@
+1 CHIL @I69@
+1 CHIL @I71@
+1 CHIL @I70@
+1 CHIL @I72@
+0 @F22@ FAM
+1 HUSB @I20@
+1 WIFE @I73@
+1 CHIL @I74@
+1 CHIL @I75@
+0 @F23@ FAM
+1 HUSB @I76@
+1 WIFE @I21@
+1 CHIL @I78@
+1 CHIL @I77@
+1 CHIL @I79@
+0 @F24@ FAM
+1 CHIL @I25@
+0 @F25@ FAM
+1 MARR
+2 DATE 20 NOV 1932
+2 PLAC Srednja vas v Bohinju
+1 HUSB @I81@
+1 WIFE @I80@
+1 CHIL @I28@
+1 CHIL @I82@
+0 @F26@ FAM
+1 HUSB @I84@
+1 WIFE @I83@
+1 CHIL @I85@
+1 CHIL @I29@
+1 CHIL @I86@
+0 @F27@ FAM
+1 EVEN
+2 TYPE unmarried
+1 WIFE @I30@
+1 CHIL @I87@
+1 CHIL @I88@
+0 @F28@ FAM
+1 MARR
+2 DATE 1909
+2 PLAC Semiè
+1 WIFE @I89@
+1 CHIL @I90@
+1 CHIL @I31@
+1 CHIL @I91@
+1 CHIL @I92@
+1 CHIL @I93@
+1 CHIL @I94@
+0 @F29@ FAM
+1 MARR
+2 DATE 21 FEB 1927
+2 PLAC Semiè
+1 HUSB @I96@
+1 WIFE @I95@
+1 CHIL @I32@
+1 CHIL @I97@
+1 CHIL @I98@
+1 CHIL @I99@
+1 CHIL @I100@
+1 CHIL @I101@
+1 CHIL @I102@
+1 CHIL @I103@
+0 @F30@ FAM
+1 HUSB @I104@
+1 WIFE @I33@
+1 CHIL @I105@
+1 CHIL @I106@
+0 @F31@ FAM
+1 HUSB @I107@
+1 WIFE @I34@
+1 CHIL @I109@
+1 CHIL @I108@
+0 @F32@ FAM
+1 HUSB @I35@
+1 WIFE @I110@
+0 @F33@ FAM
+1 HUSB @I36@
+1 WIFE @I111@
+1 CHIL @I112@
+0 @F34@ FAM
+1 MARR
+2 DATE 10 FEB 1908
+2 PLAC Srednja vas v Bohinju
+1 HUSB @I113@
+1 WIFE @I114@
+1 CHIL @I115@
+1 CHIL @I116@
+1 CHIL @I117@
+1 CHIL @I118@
+1 CHIL @I37@
+1 CHIL @I119@
+1 CHIL @I120@
+0 @F35@ FAM
+1 EVEN
+2 TYPE nomen
+1 WIFE @I121@
+1 CHIL @I38@
+0 @F36@ FAM
+1 MARR
+2 DATE 20 FEB 1971
+2 PLAC Brezje
+1 HUSB @I122@
+1 WIFE @I39@
+1 CHIL @I123@
+0 @F37@ FAM
+1 CHIL @I42@
+0 @F38@ FAM
+1 MARR
+2 DATE 19 JAN 1846
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02308/?pg=45
+1 HUSB @I124@
+1 WIFE @I125@
+1 CHIL @I126@
+1 CHIL @I127@
+1 CHIL @I45@
+1 CHIL @I128@
+1 CHIL @I129@
+1 CHIL @I130@
+0 @F39@ FAM
+1 MARR
+2 DATE 27 MAY 1861
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02308/?pg=81
+1 HUSB @I132@
+1 WIFE @I131@
+1 CHIL @I46@
+0 @F40@ FAM
+1 MARR
+2 DATE 01 FEB 1864
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02308/?pg=88
+1 CHIL @I47@
+0 @F41@ FAM
+1 MARR
+2 DATE 22 JAN 1894
+2 PLAC Srednja vas v Bohinju
+1 HUSB @I47@
+0 @F42@ FAM
+1 MARR
+2 DATE 05 OCT 1863
+2 PLAC Gorje
+1 CHIL @I48@
+0 @F43@ FAM
+1 EVEN
+2 TYPE unmarried
+1 WIFE @I48@
+0 @F44@ FAM
+1 MARR
+2 DATE 08 MAY 1932
+2 PLAC Srednja vas v Bohinju
+1 HUSB @I49@
+0 @F45@ FAM
+1 MARR Y
+1 HUSB @I50@
+0 @F46@ FAM
+1 MARR Y
+1 WIFE @I51@
+0 @F47@ FAM
+1 MARR
+2 DATE 19 JUN 1938
+2 PLAC Srednja vas v Bohinju
+1 WIFE @I53@
+0 @F48@ FAM
+1 EVEN
+2 TYPE unmarried
+1 WIFE @I54@
+1 CHIL @I133@
+0 @F49@ FAM
+1 HUSB @I134@
+1 WIFE @I54@
+0 @F50@ FAM
+1 MARR Y
+1 WIFE @I56@
+0 @F51@ FAM
+1 MARR
+2 DATE 24 APR 1938
+2 PLAC Bohinjska Bistrica
+1 CHIL @I57@
+0 @F52@ FAM
+1 MARR Y
+1 WIFE @I57@
+0 @F53@ FAM
+1 HUSB @I58@
+1 WIFE @I135@
+1 CHIL @I136@
+1 CHIL @I137@
+0 @F54@ FAM
+1 MARR
+2 DATE 14 OCT 1935
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/04182/?pg=137
+1 CHIL @I59@
+0 @F55@ FAM
+1 HUSB @I138@
+1 WIFE @I60@
+1 CHIL @I139@
+1 CHIL @I140@
+0 @F56@ FAM
+1 HUSB @I61@
+1 WIFE @I141@
+1 CHIL @I142@
+0 @F57@ FAM
+1 MARR Y
+1 DIV Y
+1 HUSB @I63@
+1 WIFE @I147@
+1 CHIL @I148@
+0 @F58@ FAM
+1 MARR Y
+1 HUSB @I63@
+1 WIFE @I143@
+1 CHIL @I144@
+1 CHIL @I145@
+1 CHIL @I146@
+0 @F59@ FAM
+1 MARR
+2 DATE 18 MAY 1930
+2 PLAC Srednja vas v Bohinju
+1 CHIL @I64@
+0 @F60@ FAM
+1 HUSB @I65@
+1 WIFE @I149@
+1 CHIL @I150@
+1 CHIL @I151@
+0 @F61@ FAM
+1 MARR Y
+1 HUSB @I152@
+1 WIFE @I66@
+1 CHIL @I153@
+0 @F62@ FAM
+1 MARR Y
+1 WIFE @I69@
+1 CHIL @I154@
+0 @F63@ FAM
+1 MARR Y
+1 HUSB @I70@
+1 CHIL @I155@
+1 CHIL @I156@
+0 @F64@ FAM
+1 MARR
+2 PLAC Bogenšperk
+1 HUSB @I71@
+1 WIFE @I157@
+1 CHIL @I158@
+0 @F65@ FAM
+1 HUSB @I159@
+1 WIFE @I72@
+1 CHIL @I160@
+0 @F66@ FAM
+1 HUSB @I161@
+1 WIFE @I72@
+1 CHIL @I162@
+1 CHIL @I163@
+0 @F67@ FAM
+1 HUSB @I164@
+1 WIFE @I165@
+1 CHIL @I73@
+1 CHIL @I166@
+1 CHIL @I167@
+1 CHIL @I168@
+1 CHIL @I169@
+1 CHIL @I170@
+1 CHIL @I171@
+0 @F68@ FAM
+1 HUSB @I172@
+1 WIFE @I74@
+1 CHIL @I173@
+1 CHIL @I174@
+0 @F69@ FAM
+1 HUSB @I75@
+1 WIFE @I175@
+1 CHIL @I176@
+0 @F70@ FAM
+1 CHIL @I76@
+0 @F71@ FAM
+1 HUSB @I177@
+1 WIFE @I77@
+1 CHIL @I178@
+1 CHIL @I179@
+1 CHIL @I180@
+0 @F72@ FAM
+1 HUSB @I78@
+1 WIFE @I181@
+1 CHIL @I182@
+1 CHIL @I183@
+0 @F73@ FAM
+1 MARR
+2 DATE 06 MAR 1905
+1 CHIL @I81@
+0 @F74@ FAM
+1 MARR
+2 DATE 21 NOV 1898
+2 PLAC Srednja vas v Bohinju
+1 CHIL @I83@
+0 @F75@ FAM
+1 MARR
+2 DATE 17 FEB 1896
+2 PLAC Srednja vas v Bohinju
+1 CHIL @I84@
+0 @F76@ FAM
+1 HUSB @I184@
+1 WIFE @I85@
+1 CHIL @I185@
+1 CHIL @I186@
+0 @F77@ FAM
+1 HUSB @I86@
+1 WIFE @I187@
+1 CHIL @I190@
+1 CHIL @I188@
+1 CHIL @I189@
+0 @F78@ FAM
+1 MARR
+2 DATE 27 AUG 1877
+2 PLAC Semiè
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/semic/02164/?pg=91
+1 CHIL @I89@
+1 CHIL @I191@
+0 @F79@ FAM
+1 MARR Y
+1 WIFE @I91@
+0 @F80@ FAM
+1 MARR
+2 DATE 16 JUL 1949
+2 PLAC Semiè
+1 HUSB @I192@
+1 WIFE @I92@
+1 CHIL @I193@
+1 CHIL @I194@
+0 @F81@ FAM
+1 HUSB @I93@
+1 WIFE @I195@
+1 CHIL @I196@
+1 CHIL @I197@
+1 CHIL @I198@
+1 CHIL @I199@
+0 @F82@ FAM
+1 MARR
+2 DATE ABT 1899
+2 SOUR Geneanet Family Tree hawlina (https://gw.geneanet.org/hawlina?n=sever&p=matija&oc=5)
+1 CHIL @I95@
+1 SOUR Geneanet Family Tree hawlina (https://gw.geneanet.org/hawlina?n=sever&p=neza&oc=6)
+0 @F83@ FAM
+1 MARR
+2 DATE 30 JAN 1893
+2 PLAC Semiè
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/semic/04163/?pg=60
+1 CHIL @I96@
+0 @F84@ FAM
+1 HUSB @I201@
+1 WIFE @I97@
+1 CHIL @I202@
+1 CHIL @I203@
+1 CHIL @I204@
+1 CHIL @I205@
+0 @F85@ FAM
+1 HUSB @I206@
+1 WIFE @I98@
+1 CHIL @I207@
+1 CHIL @I208@
+0 @F86@ FAM
+1 HUSB @I209@
+1 WIFE @I99@
+1 CHIL @I210@
+1 CHIL @I211@
+1 CHIL @I212@
+0 @F87@ FAM
+1 HUSB @I213@
+1 WIFE @I100@
+1 CHIL @I214@
+1 CHIL @I215@
+1 CHIL @I216@
+0 @F88@ FAM
+1 HUSB @I217@
+1 WIFE @I101@
+1 CHIL @I218@
+1 CHIL @I219@
+0 @F89@ FAM
+1 HUSB @I102@
+1 WIFE @I220@
+1 CHIL @I221@
+1 CHIL @I222@
+1 CHIL @I223@
+0 @F90@ FAM
+1 HUSB @I103@
+1 WIFE @I224@
+1 CHIL @I225@
+1 CHIL @I226@
+1 CHIL @I227@
+1 CHIL @I228@
+0 @F91@ FAM
+1 HUSB @I229@
+1 WIFE @I106@
+1 CHIL @I230@
+1 CHIL @I231@
+0 @F92@ FAM
+1 MARR
+2 DATE 14 MAY 1932
+2 PLAC Èrnomelj
+1 HUSB @I232@
+1 WIFE @I233@
+1 CHIL @I236@
+1 CHIL @I235@
+1 CHIL @I234@
+1 CHIL @I107@
+0 @F93@ FAM
+1 HUSB @I108@
+1 WIFE @I237@
+1 CHIL @I238@
+1 CHIL @I239@
+1 CHIL @I240@
+0 @F94@ FAM
+1 HUSB @I241@
+1 WIFE @I109@
+1 CHIL @I242@
+1 CHIL @I243@
+0 @F95@ FAM
+1 CHIL @I244@
+1 CHIL @I111@
+1 CHIL @I245@
+0 @F96@ FAM
+1 MARR
+2 DATE 19 JUL 1869
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02308/?pg=102
+1 HUSB @I247@
+1 WIFE @I246@
+1 CHIL @I248@
+1 CHIL @I249@
+1 CHIL @I250@
+1 CHIL @I251@
+1 CHIL @I252@
+1 CHIL @I113@
+1 CHIL @I253@
+0 @F97@ FAM
+1 MARR
+2 DATE 23 FEB 1879
+2 PLAC Srednja vas v Bohinju
+1 HUSB @I254@
+1 WIFE @I255@
+1 CHIL @I114@
+1 CHIL @I256@
+1 CHIL @I257@
+0 @F98@ FAM
+1 MARR
+2 DATE 23 NOV 1936
+2 PLAC Srednja vas v Bohinju
+1 HUSB @I258@
+1 WIFE @I118@
+1 CHIL @I259@
+1 CHIL @I260@
+1 CHIL @I261@
+1 CHIL @I262@
+1 CHIL @I263@
+1 CHIL @I264@
+1 CHIL @I265@
+0 @F99@ FAM
+1 MARR
+2 DATE 01 FEB 1964
+2 PLAC Ljubljana
+1 HUSB @I266@
+1 WIFE @I119@
+1 CHIL @I267@
+0 @F100@ FAM
+1 MARR
+2 DATE 04 MAY 1890
+2 PLAC Srednja vas v Bohinju
+1 HUSB @I269@
+1 WIFE @I268@
+1 CHIL @I270@
+1 CHIL @I121@
+0 @F101@ FAM
+1 MARR
+2 DATE 21 NOV 1937
+1 CHIL @I122@
+0 @F102@ FAM
+1 MARR
+2 DATE 30 JAN 1809
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02307/?pg=47
+1 CHIL @I124@
+0 @F103@ FAM
+1 MARR
+2 DATE 09 FEB 1806
+2 PLAC Srednja vas v Bohinju
+1 CHIL @I125@
+0 @F104@ FAM
+1 MARR
+2 DATE 07 FEB 1887
+2 PLAC Srednja vas v Bohinju
+1 WIFE @I128@
+0 @F105@ FAM
+1 MARR
+2 DATE 14 FEB 1831
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02308/?pg=24
+1 CHIL @I131@
+0 @F106@ FAM
+1 MARR
+2 DATE 11 FEB 1833
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02308/?pg=26
+1 CHIL @I132@
+1 SOUR Geneanet Family Tree mitexb (https://gw.geneanet.org/mitexb?n=gasperin&p=franc&oc=3)
+0 @F107@ FAM
+1 WIFE @I133@
+0 @F108@ FAM
+1 MARR
+2 DATE 1970
+1 CHIL @I135@
+0 @F109@ FAM
+1 WIFE @I137@
+0 @F110@ FAM
+1 MARR Y
+1 CHIL @I138@
+0 @F111@ FAM
+1 WIFE @I139@
+0 @F112@ FAM
+1 CHIL @I143@
+0 @F113@ FAM
+1 WIFE @I143@
+0 @F114@ FAM
+1 MARR Y
+1 WIFE @I147@
+0 @F115@ FAM
+1 CHIL @I149@
+0 @F116@ FAM
+1 EVEN
+2 TYPE nomen
+1 EVEN
+2 TYPE nomen
+1 EVEN
+2 TYPE nomen
+1 WIFE @I150@
+0 @F117@ FAM
+1 WIFE @I153@
+0 @F118@ FAM
+1 MARR Y
+1 WIFE @I155@
+0 @F119@ FAM
+1 HUSB @I168@
+0 @F120@ FAM
+1 HUSB @I169@
+0 @F121@ FAM
+1 WIFE @I171@
+0 @F122@ FAM
+1 CHIL @I172@
+0 @F123@ FAM
+1 HUSB @I173@
+0 @F124@ FAM
+1 HUSB @I185@
+0 @F125@ FAM
+1 MARR
+2 DATE 04 JUN 1994
+2 PLAC Ribèev laz, Sv. Duh
+1 HUSB @I186@
+0 @F126@ FAM
+1 HUSB @I188@
+0 @F127@ FAM
+1 HUSB @I189@
+0 @F128@ FAM
+1 MARR
+2 DATE 10 MAY 1925
+1 WIFE @I191@
+0 @F129@ FAM
+1 MARR
+2 DATE 15 JUN 1903
+2 PLAC Semiè
+1 CHIL @I192@
+0 @F130@ FAM
+1 WIFE @I193@
+0 @F131@ FAM
+1 WIFE @I194@
+0 @F132@ FAM
+1 WIFE @I202@
+0 @F133@ FAM
+1 HUSB @I203@
+0 @F134@ FAM
+1 WIFE @I204@
+0 @F135@ FAM
+1 WIFE @I205@
+0 @F136@ FAM
+1 HUSB @I207@
+0 @F137@ FAM
+1 HUSB @I208@
+0 @F138@ FAM
+1 WIFE @I211@
+0 @F139@ FAM
+1 HUSB @I212@
+0 @F140@ FAM
+1 HUSB @I214@
+0 @F141@ FAM
+1 WIFE @I215@
+0 @F142@ FAM
+1 WIFE @I216@
+0 @F143@ FAM
+1 HUSB @I218@
+0 @F144@ FAM
+1 WIFE @I219@
+0 @F145@ FAM
+1 WIFE @I221@
+0 @F146@ FAM
+1 HUSB @I222@
+0 @F147@ FAM
+1 HUSB @I223@
+0 @F148@ FAM
+1 HUSB @I225@
+0 @F149@ FAM
+1 WIFE @I230@
+0 @F150@ FAM
+1 CHIL @I232@
+0 @F151@ FAM
+1 CHIL @I233@
+0 @F152@ FAM
+1 HUSB @I234@
+0 @F153@ FAM
+1 WIFE @I235@
+0 @F154@ FAM
+1 WIFE @I236@
+0 @F155@ FAM
+1 CHIL @I237@
+0 @F156@ FAM
+1 WIFE @I244@
+0 @F157@ FAM
+1 WIFE @I245@
+0 @F158@ FAM
+1 MARR
+2 DATE 13 FEB 1832
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02308/?pg=25
+1 CHIL @I246@
+0 @F159@ FAM
+1 MARR
+2 DATE 20 FEB 1806
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02307/?pg=42
+1 CHIL @I247@
+0 @F160@ FAM
+1 MARR
+2 DATE 27 FEB 1854
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02308/?pg=61
+1 HUSB @I247@
+0 @F161@ FAM
+1 MARR
+2 DATE 19 NOV 1906
+2 PLAC Srednja vas v Bohinju
+1 HUSB @I251@
+0 @F162@ FAM
+1 MARR
+2 DATE 04 JUN 1928
+2 PLAC Srednja vas v Bohinju
+1 HUSB @I251@
+0 @F163@ FAM
+1 EVEN
+2 TYPE nomen
+1 HUSB @I251@
+0 @F164@ FAM
+1 MARR
+2 DATE 19 FEB 1838
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02308/?pg=35
+1 CHIL @I254@
+0 @F165@ FAM
+1 MARR
+2 DATE 09 FEB 1846
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02308/?pg=46
+1 CHIL @I255@
+0 @F166@ FAM
+1 MARR
+2 DATE 24 FEB 1913
+2 PLAC Srednja vas v Bohinju
+1 HUSB @I256@
+0 @F167@ FAM
+1 MARR
+2 DATE 30 JAN 1911
+2 PLAC Srednja vas v Bohinju
+1 WIFE @I257@
+0 @F168@ FAM
+1 MARR
+2 DATE 24 APR 1899
+2 PLAC Srednja vas v Bohinju
+1 CHIL @I258@
+0 @F169@ FAM
+1 MARR Y
+1 HUSB @I261@
+0 @F170@ FAM
+1 WIFE @I264@
+0 @F171@ FAM
+1 MARR Y
+1 WIFE @I265@
+0 @F172@ FAM
+1 MARR
+2 DATE 02 JAN 1909
+2 PLAC Srednja vas v Bohinju
+1 CHIL @I266@
+0 @F173@ FAM
+1 MARR Y
+1 WIFE @I267@
+0 @F174@ FAM
+1 CHIL @I268@
+0 @F175@ FAM
+1 MARR
+2 DATE 16 FEB 1857
+2 PLAC Srednja vas v Bohinju
+2 SOUR https://data.matricula-online.eu/sl/slovenia/ljubljana/srednja-vas-v-bohinju/02308/?pg=68
+1 CHIL @I269@
+0 @F176@ FAM
+1 MARR
+2 DATE 06 FEB 1914
+1 WIFE @I270@
+0 TRLR

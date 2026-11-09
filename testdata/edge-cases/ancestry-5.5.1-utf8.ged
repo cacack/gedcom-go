@@ -1,0 +1,1993 @@
+0 HEAD
+1 SUBM @SUBM1@
+1 SOUR Ancestry.com Family Trees
+2 NAME Ana Marija Ivan
+2 VERS 2025.08
+2 _TREE Maydick Family Tree
+3 RIN 151156277
+3 NOTE Lorem ipsum note.
+3 _ENV prd
+2 CORP Ancestry.com
+3 PHON +000 000 000
+3 WWW www.ancestry.com
+3 ADDR Naslov 1
+4 CONT Lehi, UT  84043
+4 CONT USA
+1 DATE 3 Apr 2026
+2 TIME 15:53:17
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I392010166162@ INDI
+1 NAME Jožef Franc /Ambrožič/
+2 GIVN Marko
+2 SURN Ambrožič
+2 SOUR @S1477456556@
+3 _APID 1,1732::245246796
+2 SOUR @S1475978038@
+3 PAGE City: Oxford; State: Pennsylvania; Year(s): 2002
+3 _APID 1,7339::107704460
+1 SEX F
+1 FAMC @F146@
+1 FAMS @F259@
+1 BIRT
+2 DATE 05 dec 1953
+2 PLAC Stapleton, Staten Island, , New York, USA
+2 SOUR @S1477456556@
+3 _APID 1,1732::245246796
+1 RESI
+2 DATE 2002
+2 PLAC Oxford, Pennsylvania, USA
+2 SOUR @S1475978038@
+3 PAGE City: Oxford; State: Pennsylvania; Year(s): 2002
+3 _APID 1,7339::107704460
+1 RESI
+2 PLAC Staten Island, New York City, New York, USA
+2 SOUR @S1477456556@
+3 _APID 1,1732::245246796
+1 SOUR @S1477456556@
+2 _APID 1,1732::245246796
+1 SOUR @S1475978038@
+2 PAGE City: Oxford; State: Pennsylvania; Year(s): 2002
+2 _APID 1,7339::107704460
+1 SOUR @S1475412403@
+2 PAGE New York City Municipal Archives; New York, New York; Borough: Staten Island
+2 _APID 1,61406::905535562
+0 @I392005955647@ INDI
+1 NAME Jožef Franc /Ambrožek/
+2 GIVN Marko
+2 SURN Ambrožek
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979642
+2 SOUR @S1475865911@
+3 PAGE Number: 131-16-2354; Issue State: New York; Issue Date: Before 1951
+3 _APID 1,3693::23881496
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700887
+2 SOUR @S1475814685@
+3 _APID 1,60525::1990004
+2 SOUR @S1475741980@
+3 _APID 1,60901::28543199
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Volume Number: 1
+3 _APID 1,61406::957636
+2 SOUR @S1475814797@
+3 _APID 1,61457::1053414
+2 SOUR @S1528231169@
+3 PAGE United States of America, Bureau of the Census; Washington, D.C.; Seventeenth Census of the United States, 1950; Record Group: Records of the Bureau of the Census, 1790-2007; Record Group Number: 29; Residence Date: 1950; Home in 1950: New York, Ri
+4 CONC chmond, 
+3 _APID 1,62308::278313018
+1 SEX F
+1 FAMC @F181@
+1 FAMS @F146@
+1 BIRT
+2 DATE 19 Apr 1926
+2 PLAC Stapleton, Richmond County (Staten Island), New York, United States of America
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979642
+2 SOUR @S1475865911@
+3 PAGE Number: 131-16-2354; Issue State: New York; Issue Date: Before 1951
+3 _APID 1,3693::23881496
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700887
+2 SOUR @S1475814685@
+3 _APID 1,60525::1990004
+2 SOUR @S1475741980@
+3 _APID 1,60901::28543199
+2 SOUR @S1475814797@
+3 _APID 1,61457::1053414
+2 SOUR @S1528231169@
+3 PAGE United States of America, Bureau of the Census; Washington, D.C.; Seventeenth Census of the United States, 1950; Record Group: Records of the Bureau of the Census, 1790-2007; Record Group Number: 29; Residence Date: 1950; Home in 1950: New York, Ri
+4 CONC chmond, 
+3 _APID 1,62308::278313018
+1 RESI
+2 DATE 1930
+2 PLAC Richmond, Richmond, New York, USA
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700887
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1935
+2 PLAC New York, Richmond, New York
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979642
+1 RESI
+2 DATE 1940
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979642
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1950
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1528231169@
+3 PAGE United States of America, Bureau of the Census; Washington, D.C.; Seventeenth Census of the United States, 1950; Record Group: Records of the Bureau of the Census, 1790-2007; Record Group Number: 29; Residence Date: 1950; Home in 1950: New York, Ri
+4 CONC chmond, 
+3 _APID 1,62308::278313018
+2 NOTE Lorem ipsum note.
+1 DEAT
+2 DATE 6 May 1994
+2 PLAC Stapleton, Richmond County (Staten Island), New York, United States of America
+2 SOUR @S1475865911@
+3 PAGE Number: 131-16-2354; Issue State: New York; Issue Date: Before 1951
+3 _APID 1,3693::23881496
+2 SOUR @S1475814685@
+3 _APID 1,60525::1990004
+2 SOUR @S1475741980@
+3 _APID 1,60901::28543199
+1 BURI
+2 PLAC Sunnyside, Richmond County (Staten Island), New York, United States of America
+2 SOUR @S1475814685@
+3 _APID 1,60525::1990004
+1 SOUR @S1475412447@
+2 PAGE Ancestry Family Tree
+2 _APID 270188513361:1030:119811155
+2 _APID 332276445065:1030:175401433
+2 _APID 342014714514:1030:38364128
+1 SOUR @S1475741924@
+2 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+2 _APID 1,2442::4979642
+1 SOUR @S1475865911@
+2 PAGE Number: 131-16-2354; Issue State: New York; Issue Date: Before 1951
+2 _APID 1,3693::23881496
+1 SOUR @S1475742037@
+2 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+2 _APID 1,6224::45700887
+1 SOUR @S1475814685@
+2 _APID 1,60525::1990004
+1 SOUR @S1475741980@
+2 _APID 1,60901::28543199
+1 SOUR @S1475412403@
+2 PAGE New York City Municipal Archives; New York, New York; Volume Number: 1
+2 _APID 1,61406::957636
+1 SOUR @S1475814797@
+2 _APID 1,61457::1053414
+1 SOUR @S1528231169@
+2 PAGE United States of America, Bureau of the Census; Washington, D.C.; Seventeenth Census of the United States, 1950; Record Group: Records of the Bureau of the Census, 1790-2007; Record Group Number: 29; Residence Date: 1950; Home in 1950: New York, Ri
+3 CONC chmond, 
+2 _APID 1,62308::278313018
+0 @I392005955648@ INDI
+1 NAME Tone /Ambrožar/
+2 GIVN Tone
+2 SURN Ambrožar
+2 SOUR @S1475412359@
+3 PAGE The National Archives at St. Louis; St. Louis, Missouri; World War II Draft Cards (4th Registration) for the State of New York; Record Group Title: Records of the Selective Service System, 1926-1975; Record Group Number: 147
+3 _APID 1,1002::14652452
+2 SOUR @S1562306545@
+3 _APID 1,1198::158113
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979636
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785772
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268067
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700889
+2 SOUR @S1475814685@
+3 _APID 1,60525::189984161
+2 SOUR @S1475741980@
+3 _APID 1,60901::628543199
+3 _APID 1,60901::642636667
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Volume Number: 3; Page Number: 44
+3 _APID 1,61406::6797576
+1 NAME Neža /Ambrožar/
+2 GIVN Neža
+2 SURN Ambrožar
+1 NAME Neža /Ambrožar/
+2 GIVN Neža
+2 SURN Ambrožar
+1 NAME Neža /Ambrožar/
+2 GIVN Neža
+2 SURN Ambrožar
+1 NAME Alojz /Ambrožek/
+2 GIVN Alojz
+2 SURN Ambrožek
+2 SOUR @S1475741980@
+3 _APID 1,60901::630168622
+1 NAME Alojz /Ambrožnik/
+2 GIVN Alojz
+2 SURN Ambrožnik
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979636
+1 SEX M
+1 FAMC @F54@
+1 FAMS @F181@
+1 BIRT
+2 DATE 6 Aug 1887
+2 PLAC Spodnji Tuštanj, Moravče, Slovenia
+2 SOUR @S1475412359@
+3 PAGE The National Archives at St. Louis; St. Louis, Missouri; World War II Draft Cards (4th Registration) for the State of New York; Record Group Title: Records of the Selective Service System, 1926-1975; Record Group Number: 147
+3 _APID 1,1002::14652452
+2 SOUR @S1562306545@
+3 _APID 1,1198::158113
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979636
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785772
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268067
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700889
+2 SOUR @S1475814685@
+3 _APID 1,60525::189984161
+2 NOTE Lorem ipsum note.
+1 BIRT
+2 DATE 6 Aug 1887
+2 PLAC Yugoslavia
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979636
+1 EVEN
+2 TYPE Arrival
+2 DATE 1905
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268067
+1 EVEN
+2 TYPE Arrival
+2 DATE 23 Oct 1906
+2 PLAC New York, New York
+2 NOTE Lorem ipsum note.
+1 _MILT
+2 DATE 28 Oct 1910
+2 SOUR @S1562306545@
+3 _APID 1,1198::158113
+1 _MILT
+2 DATE 14 Aug 1915
+2 PLAC Ft. Wadsworth, Staten Island, New York, NYC, USA
+2 NOTE Lorem ipsum note.
+1 NATU
+2 DATE 11 Mar 1916
+2 PLAC St George, Staten Island, New York City, New York, USA
+2 NOTE Lorem ipsum note.
+1 EVEN
+2 TYPE Arrival
+2 DATE 24 Dec 1919
+2 PLAC New York, New York
+1 RESI
+2 DATE 1920
+2 PLAC Richmond Assembly District 1, Richmond, New York, USA
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268067
+2 NOTE Lorem ipsum note.
+1 EVEN
+2 TYPE Arrival
+2 DATE 26 Jul 1920
+2 PLAC New York, New York
+1 EVEN
+2 TYPE Arrival
+2 DATE 11 Feb 1922
+2 PLAC New Orleans, Louisiana
+1 RESI
+2 DATE 1924
+2 PLAC New York, New York, USA
+1 RESI
+2 DATE 1 June 1925
+2 PLAC New York, Richmond, New York, United States
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785772
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1930
+2 PLAC Richmond, Richmond, New York, USA
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700889
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1935
+2 PLAC New York, Richmond, New York
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979636
+1 RESI
+2 DATE 1940
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979636
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1942
+2 PLAC Stapleton, New York
+2 SOUR @S1475412359@
+3 PAGE The National Archives at St. Louis; St. Louis, Missouri; World War II Draft Cards (4th Registration) for the State of New York; Record Group Title: Records of the Selective Service System, 1926-1975; Record Group Number: 147
+3 _APID 1,1002::14652452
+1 EVEN
+2 TYPE Departure
+2 PLAC Bremen
+1 EVEN
+2 TYPE Departure
+2 PLAC Pernambuco
+1 EVEN
+2 TYPE Departure
+2 PLAC Puerto Lobos, Mexico
+1 EVEN
+2 TYPE Departure
+2 PLAC Rotterdam
+1 RESI
+2 PLAC Carniola, Austria-Hungary
+1 RESI
+2 PLAC New York
+2 NOTE Lorem ipsum note.
+1 RESI
+2 PLAC Staten Island, Richmond, New York, USA
+2 NOTE Lorem ipsum note.
+1 DEAT
+2 DATE 21 JAN 1945
+2 PLAC Staten Island, Richmond County (Staten Island), New York, United States of America
+2 SOUR @S1475814685@
+3 _APID 1,60525::189984161
+2 NOTE Lorem ipsum note.
+1 BURI
+2 DATE 25 Jan 1945
+2 PLAC Ocean View Cemetery
+2 SOUR @S1475814685@
+3 _APID 1,60525::189984161
+1 SOUR @S1475412359@
+2 PAGE The National Archives at St. Louis; St. Louis, Missouri; World War II Draft Cards (4th Registration) for the State of New York; Record Group Title: Records of the Selective Service System, 1926-1975; Record Group Number: 147
+2 _APID 1,1002::14652452
+1 SOUR @S1475412447@
+2 PAGE Ancestry Family Tree
+2 _APID -1704866506:1030:3628480
+2 _APID 19827608907:1030:42728927
+2 _APID 40383900958:1030:78413175
+2 _APID 46291344464:1030:70947848
+2 _APID 202214660969:1030:101559438
+2 _APID 270188513474:1030:119811155
+2 _APID 332276428943:1030:175401433
+2 _APID 342014714439:1030:38364128
+2 _APID 420123888055:1030:51189208
+1 SOUR @S1562306545@
+2 _APID 1,1198::158113
+1 SOUR @S1475741924@
+2 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+2 _APID 1,2442::4979636
+1 SOUR @S1475742006@
+2 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+2 _APID 1,2704::15785772
+1 SOUR @S1475742046@
+2 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+2 _APID 1,6061::54268067
+1 SOUR @S1475742037@
+2 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+2 _APID 1,6224::45700889
+1 SOUR @S1475814685@
+2 _APID 1,60525::189984161
+1 SOUR @S1475741980@
+2 _APID 1,60901::628543199
+2 _APID 1,60901::630168622
+2 _APID 1,60901::642636667
+1 SOUR @S1475412403@
+2 PAGE New York City Municipal Archives; New York, New York; Volume Number: 3; Page Number: 44
+2 _APID 1,61406::6797576
+1 OBJE @O11@
+2 _PRIM Y
+1 OBJE @O82@
+0 @I392005955667@ INDI
+1 NAME Terezija Peter /Ambrožšek/
+2 GIVN Katarina
+2 SURN Ambrožšek
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979637
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785773
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268068
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700877
+2 SOUR @S1475814685@
+3 _APID 1,60525::189984235
+2 SOUR @S1475741980@
+3 _APID 1,60901::778543199
+3 _APID 1,60901::780168622
+3 _APID 1,60901::792636667
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Volume Number: 3; Page Number: 44
+3 _APID 1,61406::6798591
+1 SEX F
+1 FAMC @F172@
+1 FAMS @F181@
+1 BIRT
+2 DATE 13 AUG 1894
+2 PLAC Staten Island, Richmond County (Staten Island), New York, United States of America
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979637
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785773
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268068
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700877
+2 SOUR @S1475814685@
+3 _APID 1,60525::189984235
+1 RESI
+2 DATE 1900
+2 PLAC Richmond Ward 2, Richmond, New York, USA
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1910
+2 PLAC Richmond Ward 2, Richmond, New York, USA
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1920
+2 PLAC Richmond Assembly District 1, Richmond, New York, USA
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268068
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1 June 1925
+2 PLAC New York, Richmond, New York, United States
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785773
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1930
+2 PLAC Richmond, Richmond, New York, USA
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700877
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1935
+2 PLAC New York, Richmond, New York
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979637
+1 RESI
+2 DATE 1940
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979637
+2 NOTE Lorem ipsum note.
+1 RESI
+2 PLAC New York
+2 NOTE Lorem ipsum note.
+1 DEAT
+2 DATE 3 Sep 1948
+2 PLAC Staten Island, Richmond County (Staten Island), New York, United States of America
+2 SOUR @S1475814685@
+3 _APID 1,60525::189984235
+1 BURI
+2 DATE 7 Sep 1948
+2 PLAC Ocean View Cemetery
+2 SOUR @S1475814685@
+3 _APID 1,60525::189984235
+1 SOUR @S1475412447@
+2 PAGE Ancestry Family Tree
+2 _APID -1702910226:1030:3628480
+2 _APID 28898925828:1030:14387025
+2 _APID 40383900984:1030:78413175
+2 _APID 46291344465:1030:70947848
+2 _APID 172071770303:1030:4965367
+2 _APID 202214660973:1030:101559438
+2 _APID 270188513527:1030:119811155
+2 _APID 332276428933:1030:175401433
+2 _APID 340190228953:1030:38364128
+2 _APID 420123888094:1030:51189208
+1 SOUR @S1475741924@
+2 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+2 _APID 1,2442::4979637
+1 SOUR @S1475742006@
+2 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+2 _APID 1,2704::15785773
+1 SOUR @S1475742046@
+2 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+2 _APID 1,6061::54268068
+1 SOUR @S1475742037@
+2 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+2 _APID 1,6224::45700877
+1 SOUR @S1475814685@
+2 _APID 1,60525::189984235
+1 SOUR @S1475741980@
+2 _APID 1,60901::778543199
+2 _APID 1,60901::780168622
+2 _APID 1,60901::792636667
+1 SOUR @S1475412403@
+2 PAGE New York City Municipal Archives; New York, New York; Volume Number: 3; Page Number: 44
+2 _APID 1,61406::6798591
+1 OBJE @O118@
+2 _PRIM Y
+0 @I392005955688@ INDI
+1 NAME Peter /Ambrožnc/
+2 GIVN Peter
+2 SURN Ambrožnc
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 23
+3 _APID 1,2704::15785521
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 9B; Enumeration District: 1571
+3 _APID 1,6061::54262770
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 7B; Enumeration District: 0112; FHL microfilm: 2341347
+3 _APID 1,6224::45701408
+2 SOUR @S1528231169@
+3 PAGE National Archives at Washington, DC; Washington, D.C.; Seventeenth Census of the United States, 1950; Year: 1950; Census Place: New York, Richmond, New York; Roll: 4068; Page: 72; Enumeration District: 43-148
+3 _APID 1,62308::284502326
+1 NAME Peter /Ambrožšek/
+2 GIVN Peter
+2 SURN Ambrožšek
+1 NAME Peter /Ambrožšek/
+2 GIVN Peter
+2 SURN Ambrožšek
+1 NAME Peter /Ambrožšek/
+2 GIVN Peter
+2 SURN Ambrožšek
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 9B; Enumeration District: 43-40
+3 _APID 1,2442::4980608
+1 SEX F
+1 FAMC @F306@
+1 FAMS @F172@
+1 BIRT
+2 DATE 29 JUL 1873
+2 PLAC Ohrnbach, Bayern, Germany
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 9B; Enumeration District: 43-40
+3 _APID 1,2442::4980608
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 23
+3 _APID 1,2704::15785521
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 9B; Enumeration District: 1571
+3 _APID 1,6061::54262770
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 7B; Enumeration District: 0112; FHL microfilm: 2341347
+3 _APID 1,6224::45701408
+2 SOUR @S1528231169@
+3 PAGE National Archives at Washington, DC; Washington, D.C.; Seventeenth Census of the United States, 1950; Year: 1950; Census Place: New York, Richmond, New York; Roll: 4068; Page: 72; Enumeration District: 43-148
+3 _APID 1,62308::284502326
+1 EVEN
+2 TYPE Arrival
+2 DATE 3 Oct 1890
+2 PLAC New York, New York
+1 EVEN
+2 TYPE Arrival
+2 DATE 11 Oct 1891
+2 PLAC Antwerp, Antwerpen, Belgium
+1 RESI
+2 DATE 1900
+2 PLAC Richmond Ward 2, Richmond, New York, USA
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1910
+2 PLAC Richmond Ward 2, Richmond, New York, USA
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1 June 1915
+2 PLAC New York, Richmond, New York, United States
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1920
+2 PLAC Richmond Assembly District 1, Richmond, New York, USA
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 9B; Enumeration District: 1571
+3 _APID 1,6061::54262770
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1 June 1925
+2 PLAC New York, Richmond, New York, United States
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 23
+3 _APID 1,2704::15785521
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1930
+2 PLAC Richmond, Richmond, New York, USA
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 7B; Enumeration District: 0112; FHL microfilm: 2341347
+3 _APID 1,6224::45701408
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1940
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 9B; Enumeration District: 43-40
+3 _APID 1,2442::4980608
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1950
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1528231169@
+3 PAGE National Archives at Washington, DC; Washington, D.C.; Seventeenth Census of the United States, 1950; Year: 1950; Census Place: New York, Richmond, New York; Roll: 4068; Page: 72; Enumeration District: 43-148
+3 _APID 1,62308::284502326
+2 NOTE Lorem ipsum note.
+1 EVEN
+2 TYPE Departure
+2 PLAC Hamburg, Germany
+1 RESI
+2 PLAC Arrochar
+1 RESI
+2 PLAC New York City
+1 RESI
+2 PLAC New York, Richmond, New York
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 9B; Enumeration District: 43-40
+3 _APID 1,2442::4980608
+1 RESI
+2 PLAC Richmond
+2 SOUR @S1528231169@
+3 PAGE National Archives at Washington, DC; Washington, D.C.; Seventeenth Census of the United States, 1950; Year: 1950; Census Place: New York, Richmond, New York; Roll: 4068; Page: 72; Enumeration District: 43-148
+3 _APID 1,62308::284502326
+1 DEAT
+2 DATE 19 NOV 1953
+2 PLAC Staten Island, New York City, New York, USA
+1 SOUR @S1475412447@
+2 PAGE Ancestry Family Tree
+2 _APID 1457627185:1030:14387025
+2 _APID 172071758588:1030:4965367
+2 _APID 270188513378:1030:119811155
+2 _APID 332276428962:1030:175401433
+2 _APID 340190227259:1030:38364128
+1 SOUR @S1475741924@
+2 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 9B; Enumeration District: 43-40
+2 _APID 1,2442::4980608
+1 SOUR @S1475742006@
+2 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 23
+2 _APID 1,2704::15785521
+1 SOUR @S1475742046@
+2 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 9B; Enumeration District: 1571
+2 _APID 1,6061::54262770
+1 SOUR @S1475742037@
+2 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 7B; Enumeration District: 0112; FHL microfilm: 2341347
+2 _APID 1,6224::45701408
+1 SOUR @S1528231169@
+2 PAGE National Archives at Washington, DC; Washington, D.C.; Seventeenth Census of the United States, 1950; Year: 1950; Census Place: New York, Richmond, New York; Roll: 4068; Page: 72; Enumeration District: 43-148
+2 _APID 1,62308::284502326
+1 OBJE @O33@
+2 _PRIM Y
+1 OBJE @O57@
+0 @I392005955703@ INDI
+1 NAME Anton Uršula /Ambrožšek/
+2 GIVN Matija
+2 SURN Ambrožšek
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 9B; Enumeration District: 43-40
+3 _APID 1,2442::4980606
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 23
+3 _APID 1,2704::15785518
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 9B; Enumeration District: 1571
+3 _APID 1,6061::54262769
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 7B; Enumeration District: 0112; FHL microfilm: 2341347
+3 _APID 1,6224::45701383
+2 SOUR @S1475814685@
+3 _APID 1,60525::183605625
+2 SOUR @S1475741980@
+3 _APID 1,60901::1690326
+1 SEX M
+1 FAMC @F184@
+1 FAMS @F172@
+1 BIRT
+2 DATE 21 Jul 1867
+2 PLAC Amorbach, Landkreis Miltenberg, Bavaria (Bayern), Germany
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 9B; Enumeration District: 43-40
+3 _APID 1,2442::4980606
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 23
+3 _APID 1,2704::15785518
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 9B; Enumeration District: 1571
+3 _APID 1,6061::54262769
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 7B; Enumeration District: 0112; FHL microfilm: 2341347
+3 _APID 1,6224::45701383
+2 SOUR @S1475814685@
+3 _APID 1,60525::183605625
+2 SOUR @S1475741980@
+3 _APID 1,60901::1690326
+1 EVEN
+2 TYPE Arrival
+2 DATE 1890
+1 EVEN
+2 TYPE Arrival
+2 DATE 1891
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 7B; Enumeration District: 0112; FHL microfilm: 2341347
+3 _APID 1,6224::45701383
+1 EVEN
+2 TYPE Arrival
+2 DATE 1892
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 9B; Enumeration District: 1571
+3 _APID 1,6061::54262769
+1 RESI
+2 DATE 1900
+2 PLAC Richmond Ward 2, Richmond, New York, USA
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1910
+2 PLAC Richmond Ward 2, Richmond, New York, USA
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1 June 1915
+2 PLAC New York, Richmond, New York, United States
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1920
+2 PLAC Richmond Assembly District 1, Richmond, New York, USA
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 9B; Enumeration District: 1571
+3 _APID 1,6061::54262769
+2 NOTE Lorem ipsum note.
+1 EVEN
+2 TYPE Arrival
+2 DATE 23 Jun 1922
+2 PLAC New York, New York, USA
+1 RESI
+2 DATE 1 June 1925
+2 PLAC New York, Richmond, New York, United States
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 23
+3 _APID 1,2704::15785518
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1930
+2 PLAC Richmond, Richmond, New York, USA
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 7B; Enumeration District: 0112; FHL microfilm: 2341347
+3 _APID 1,6224::45701383
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1940
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 9B; Enumeration District: 43-40
+3 _APID 1,2442::4980606
+2 NOTE Lorem ipsum note.
+1 EVEN
+2 TYPE Departure
+2 PLAC Hamburg
+1 RESI
+2 PLAC New York City
+2 NOTE Lorem ipsum note.
+1 RESI
+2 PLAC New York, Richmond, New York
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 9B; Enumeration District: 43-40
+3 _APID 1,2442::4980606
+1 RESI
+2 PLAC Pleasant Valley, NY
+1 DEAT
+2 DATE 5 March 1944
+2 PLAC Staten Island, Richmond County (Staten Island), New York, United States of America
+2 SOUR @S1475814685@
+3 _APID 1,60525::183605625
+1 DEAT
+2 DATE 5 March 1944
+2 PLAC Staten Island, New York City, New York, USA
+1 BURI
+2 DATE Valhalla Ocean View
+2 PLAC Oakwood, Richmond County (Staten Island), New York, United States of America
+2 SOUR @S1475814685@
+3 _APID 1,60525::183605625
+1 SOUR @S1475412447@
+2 PAGE Ancestry Family Tree
+2 _APID 1457624901:1030:14387025
+2 _APID 160182484311:1030:75540730
+2 _APID 172071758545:1030:4965367
+2 _APID 270188513377:1030:119811155
+2 _APID 332276428976:1030:175401433
+2 _APID 340190224432:1030:38364128
+1 SOUR @S1475741924@
+2 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 9B; Enumeration District: 43-40
+2 _APID 1,2442::4980606
+1 SOUR @S1475742006@
+2 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 23
+2 _APID 1,2704::15785518
+1 SOUR @S1475742046@
+2 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 9B; Enumeration District: 1571
+2 _APID 1,6061::54262769
+1 SOUR @S1475742037@
+2 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 7B; Enumeration District: 0112; FHL microfilm: 2341347
+2 _APID 1,6224::45701383
+1 SOUR @S1475814685@
+2 _APID 1,60525::183605625
+1 SOUR @S1475741980@
+2 _APID 1,60901::1690326
+1 OBJE @O105@
+2 _PRIM Y
+1 OBJE @O108@
+1 OBJE @O30@
+1 OBJE @O129@
+1 OBJE @O137@
+1 OBJE @O34@
+0 @I392005955737@ INDI
+1 NAME Alojz Helena /Ambrožman/
+2 GIVN Lovro
+2 SURN Ambrožman
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785782
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700878
+2 SOUR @S1475814797@
+3 _APID 1,61457::2178524
+1 SEX M
+1 FAMC @F181@
+1 BIRT
+2 DATE 30 July 1921
+2 PLAC Staten Island, Richmond County, New York, United States of America
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785782
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700878
+2 SOUR @S1475814797@
+3 _APID 1,61457::2178524
+1 RESI
+2 DATE 1 June 1925
+2 PLAC New York, Richmond, New York, United States
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785782
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1930
+2 PLAC Richmond, Richmond, New York, USA
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700878
+2 NOTE Lorem ipsum note.
+1 DEAT
+2 DATE 11 November 1930
+2 PLAC Staten Island, Richmond County, New York, United States of America
+2 NOTE Lorem ipsum note.
+1 BURI
+2 DATE 15 Nov 1930
+2 PLAC Ocean View Cemetery
+1 SOUR @S1475412447@
+2 PAGE Ancestry Family Tree
+2 _APID 270188513359:1030:119811155
+2 _APID 332276428938:1030:175401433
+2 _APID 342014714517:1030:38364128
+1 SOUR @S1475742006@
+2 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+2 _APID 1,2704::15785782
+1 SOUR @S1475742037@
+2 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+2 _APID 1,6224::45700878
+1 SOUR @S1475814797@
+2 _APID 1,61457::2178524
+0 @I392005955774@ INDI
+1 NAME Barbara Miha /Ambrožman/
+2 GIVN Rozalija
+2 SURN Ambrožman
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979645
+2 SOUR @S1475865911@
+3 PAGE Number: 064-22-9384; Issue State: New York; Issue Date: Before 1951
+3 _APID 1,3693::39921414
+2 SOUR @S1475741980@
+3 _APID 1,60901::30168622
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Borough: Staten Island; Volume Number: 1
+3 _APID 1,61406::344160
+2 SOUR @S1475814797@
+3 _APID 1,61457::3299053
+1 NAME Barbara /Ambrožnik/
+2 GIVN Barbara
+2 SURN Ambrožnik
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979645
+1 NAME Barbara Helena /Ambrožman/ Jr
+2 GIVN Jakob
+2 SURN Ambrožman
+2 NSFX Jr
+1 NAME Ema Andrej /Ambrožovec/ Jr
+2 GIVN Frančiška
+2 SURN Ambrožovec
+2 NSFX Jr
+2 SOUR
+3 _APID 1,7545::22140206
+1 SEX M
+1 FAMC @F181@
+1 FAMS @F193@
+1 FAMS @F194@
+1 BIRT
+2 DATE 19 Sep 1930
+2 PLAC Staten Island, NY
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979645
+2 SOUR @S1475865911@
+3 PAGE Number: 064-22-9384; Issue State: New York; Issue Date: Before 1951
+3 _APID 1,3693::39921414
+2 SOUR @S1475741980@
+3 _APID 1,60901::30168622
+2 SOUR @S1475814797@
+3 _APID 1,61457::3299053
+1 BIRT
+2 DATE 19 Aug 1928
+2 PLAC Staten Island, NY
+1 MARR
+2 DATE 16 JAN 1954
+2 PLAC Staten Island, NY
+1 EVEN
+2 TYPE John Maydick  (1930)
+2 DATE 1917-2013
+2 PLAC United States of America
+2 OBJE @O73@
+1 RESI
+2 DATE 1935
+2 PLAC New York, Richmond, New York
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979645
+1 RESI
+2 DATE 1940
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979645
+2 NOTE Lorem ipsum note.
+1 _MILT
+2 DATE 14 Nov 1945
+2 PLAC Stapleton, New York, USA
+1 _MILT
+2 DATE 4 Jan 1951
+1 RESI
+2 DATE 1988
+2 PLAC Staten Island, NY
+1 RESI
+2 PLAC Stapleton, New York
+1 RESI
+2 PLAC Staten Island, New York
+2 SOUR
+3 _APID 1,7545::22140206
+1 DEAT
+2 DATE 22 Feb 1994
+2 PLAC Staten Island, Richmond, New York, USA
+2 SOUR @S1475865911@
+3 PAGE Number: 064-22-9384; Issue State: New York; Issue Date: Before 1951
+3 _APID 1,3693::39921414
+2 SOUR @S1475741980@
+3 _APID 1,60901::30168622
+1 DEAT
+2 DATE 23 Dec 2009
+2 PLAC Staten Island, Richmond, New York, USA
+2 SOUR
+3 _APID 1,7545::22140206
+1 BURI
+2 NOTE Lorem ipsum note.
+1 SOUR @S1475412447@
+2 PAGE Ancestry Family Tree
+2 _APID 40384410344:1030:78413175
+2 _APID 270188513364:1030:119811155
+2 _APID 332276457379:1030:175401433
+2 _APID 342014714440:1030:38364128
+1 SOUR @S1475741924@
+2 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+2 _APID 1,2442::4979645
+1 SOUR @S1475865911@
+2 PAGE Number: 064-22-9384; Issue State: New York; Issue Date: Before 1951
+2 _APID 1,3693::39921414
+1 SOUR
+2 _APID 1,7545::22140206
+1 SOUR @S1475741980@
+2 _APID 1,60901::30168622
+1 SOUR @S1475412403@
+2 PAGE New York City Municipal Archives; New York, New York; Borough: Staten Island; Volume Number: 1
+2 _APID 1,61406::344160
+1 SOUR @S1475814797@
+2 _APID 1,61457::3299053
+1 OBJE @O73@
+0 @I392005955824@ INDI
+1 NAME Martin Alojz /Ambrožek/
+2 GIVN Julijana
+2 SURN Ambrožek
+2 SOUR @S1477456556@
+3 _APID 1,1732::245144363
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979647
+2 SOUR @S1475978038@
+3 PAGE City: Staten Island; State: New York; Year(s): 1993-2002
+3 _APID 1,7339::47754717
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York
+3 _APID 1,61406::2645496
+1 SEX M
+2 SOUR @S1475978038@
+3 PAGE City: Staten Island; State: New York; Year(s): 1993-2002
+3 _APID 1,7339::47754717
+1 FAMC @F181@
+1 FAMS @F214@
+1 BIRT
+2 DATE 7 JUN 1935
+2 PLAC Staten Island, NY
+2 SOUR @S1477456556@
+3 _APID 1,1732::245144363
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979647
+1 RESI
+2 DATE 1935
+2 PLAC Same House
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979647
+1 RESI
+2 DATE 1940
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979647
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1993-2002
+2 PLAC Staten Island, New York, USA
+2 SOUR @S1475978038@
+3 PAGE City: Staten Island; State: New York; Year(s): 1993-2002
+3 _APID 1,7339::47754717
+1 RESI
+2 PLAC Great Kills
+1 RESI
+2 PLAC Staten Island, NY
+2 SOUR @S1477456556@
+3 _APID 1,1732::245144363
+1 DEAT
+2 DATE 21 AUG 2013
+2 PLAC Staten Island, NY
+1 SOUR @S1475412447@
+2 PAGE Ancestry Family Tree
+2 _APID 40384410347:1030:78413175
+2 _APID 270188513366:1030:119811155
+2 _APID 342014714647:1030:38364128
+1 SOUR @S1477456556@
+2 _APID 1,1732::245144363
+1 SOUR @S1475741924@
+2 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+2 _APID 1,2442::4979647
+1 SOUR @S1475978038@
+2 PAGE City: Staten Island; State: New York; Year(s): 1993-2002
+2 _APID 1,7339::47754717
+1 SOUR @S1475412403@
+2 PAGE New York City Municipal Archives; New York, New York
+2 _APID 1,61406::2645496
+0 @I392005955858@ INDI
+1 NAME Jurij Jožef /Ambrožman/
+2 GIVN Apolonija
+2 SURN Ambrožman
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979638
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785776
+2 SOUR @S1475865911@
+3 PAGE Social Security Administration; Washington D.C., USA; Social Security Death Index, Master File
+3 _APID 1,3693::57212374
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268069
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700895
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Volume Number: 1
+3 _APID 1,61406::944805
+1 SEX F
+1 FAMC @F181@
+1 FAMS @F26@
+1 BIRT
+2 DATE 4 July 1916
+2 PLAC Staten Island, Richmond County (Staten Island), New York, United States of America
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979638
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785776
+2 SOUR @S1475865911@
+3 PAGE Social Security Administration; Washington D.C., USA; Social Security Death Index, Master File
+3 _APID 1,3693::57212374
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268069
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700895
+2 SOUR @S1475814685@
+3 DATA
+4 WWW https://www.findagrave.com/memorial/220390880/helen-theresa-siminski
+3 _APID 1,60525::192462216
+1 RESI
+2 DATE 1920
+2 PLAC Richmond Assembly District 1, Richmond, New York, USA
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268069
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1 June 1925
+2 PLAC New York, Richmond, New York, United States
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785776
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1930
+2 PLAC Richmond, Richmond, New York, USA
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700895
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1935
+2 PLAC New York, Richmond, New York
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979638
+1 RESI
+2 DATE 1940
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979638
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1950
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1528231169@
+3 PAGE United States of America, Bureau of the Census; Washington, D.C.; Seventeenth Census of the United States, 1950; Record Group: Records of the Bureau of the Census, 1790-2007; Record Group Number: 29; Residence Date: 1950; Home in 1950: New York, Ri
+4 CONC chmond, 
+3 _APID 1,62308::284501889
+1 RESI
+2 DATE Before 1951
+2 PLAC New York
+2 SOUR @S1475865911@
+3 PAGE Social Security Administration; Washington D.C., USA; Social Security Death Index, Master File
+3 _APID 1,3693::57212374
+1 DEAT
+2 DATE 24 Feb 1984
+2 PLAC Staten Island, NY
+2 SOUR @S1475865911@
+3 PAGE Social Security Administration; Washington D.C., USA; Social Security Death Index, Master File
+3 _APID 1,3693::57212374
+1 BURI
+2 PLAC Oakwood, Richmond County (Staten Island), New York, United States of America
+2 SOUR @S1475814685@
+3 DATA
+4 WWW https://www.findagrave.com/memorial/220390880/helen-theresa-siminski
+3 _APID 1,60525::192462216
+1 SOUR @S1475412447@
+2 PAGE Ancestry Family Tree
+2 _APID 46291344535:1030:70947848
+2 _APID 222009436015:1030:34183544
+2 _APID 270188513479:1030:119811155
+2 _APID 332276445048:1030:175401433
+2 _APID 342014714513:1030:38364128
+1 SOUR @S1475741924@
+2 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+2 _APID 1,2442::4979638
+1 SOUR @S1475742006@
+2 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+2 _APID 1,2704::15785776
+1 SOUR @S1475865911@
+2 PAGE Social Security Administration; Washington D.C., USA; Social Security Death Index, Master File
+2 _APID 1,3693::57212374
+1 SOUR @S1475742046@
+2 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+2 _APID 1,6061::54268069
+1 SOUR @S1475742037@
+2 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+2 _APID 1,6224::45700895
+1 SOUR @S1475814685@
+2 DATA
+3 WWW https://www.findagrave.com/memorial/220390880/helen-theresa-siminski
+2 _APID 1,60525::192462216
+1 SOUR @S1475412403@
+2 PAGE New York City Municipal Archives; New York, New York; Volume Number: 1
+2 _APID 1,61406::944805
+1 SOUR @S1528231169@
+2 PAGE United States of America, Bureau of the Census; Washington, D.C.; Seventeenth Census of the United States, 1950; Record Group: Records of the Bureau of the Census, 1790-2007; Record Group Number: 29; Residence Date: 1950; Home in 1950: New York, Ri
+3 CONC chmond, 
+2 _APID 1,62308::284501889
+0 @I392005955898@ INDI
+1 NAME Blaž Terezija /Ambrožek/
+2 GIVN Marjeta
+2 SURN Ambrožek
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979639
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785777
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268070
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700881
+2 SOUR @S1475814685@
+3 _APID 1,60525::110626437
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Volume Number: 1; Page Number: 58
+3 _APID 1,61406::938227
+1 SEX F
+1 FAMC @F181@
+1 FAMS @F3@
+1 BIRT
+2 DATE 12 MAY 1918
+2 PLAC Staten Island, Richmond, New York, USA
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979639
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785777
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268070
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700881
+2 SOUR @S1475814685@
+3 _APID 1,60525::110626437
+1 RESI
+2 DATE 1920
+2 PLAC Richmond Assembly District 1, Richmond, New York, USA
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268070
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1 June 1925
+2 PLAC New York, Richmond, New York, United States
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785777
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1930
+2 PLAC Richmond, Richmond, New York, USA
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700881
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1935
+2 PLAC New York, Richmond, New York
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979639
+1 RESI
+2 DATE 1940
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979639
+2 NOTE Lorem ipsum note.
+1 DEAT
+2 DATE 8 AUG 2014
+2 PLAC Jacksonville Beach, Duval County, Florida, United States of America
+2 SOUR @S1475814685@
+3 _APID 1,60525::110626437
+1 BURI
+2 PLAC Pleasant Plains, Richmond County (Staten Island), New York, United States of America
+2 SOUR @S1475814685@
+3 _APID 1,60525::110626437
+1 SOUR @S1475412447@
+2 PAGE Ancestry Family Tree
+2 _APID 26232485501:1030:51189208
+2 _APID 46291344536:1030:70947848
+2 _APID 270188513343:1030:119811155
+2 _APID 342014714515:1030:38364128
+1 SOUR @S1475741924@
+2 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+2 _APID 1,2442::4979639
+1 SOUR @S1475742006@
+2 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+2 _APID 1,2704::15785777
+1 SOUR @S1475742046@
+2 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+2 _APID 1,6061::54268070
+1 SOUR @S1475742037@
+2 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+2 _APID 1,6224::45700881
+1 SOUR @S1475814685@
+2 _APID 1,60525::110626437
+1 SOUR @S1475412403@
+2 PAGE New York City Municipal Archives; New York, New York; Volume Number: 1; Page Number: 58
+2 _APID 1,61406::938227
+0 @I392005955906@ INDI
+1 NAME Terezija Peter /Ambrožek/
+2 GIVN Katarina
+2 SURN Ambrožek
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979640
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785780
+2 SOUR @S1475865911@
+3 PAGE Issue State: New York; Issue Date: Before 1951
+3 _APID 1,3693::80742243
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268071
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700903
+2 SOUR @S1475741980@
+3 _APID 1,60901::42636667
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Borough: Staten Island; Volume Number: 1
+3 _APID 1,61406::938367
+2 SOUR @S1475814797@
+3 _APID 1,61457::2120945
+1 SEX F
+1 FAMC @F181@
+1 FAMS @F77@
+1 BIRT
+2 DATE 15 MAY 1919
+2 PLAC Staten Island, NY
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979640
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785780
+2 SOUR @S1475865911@
+3 PAGE Issue State: New York; Issue Date: Before 1951
+3 _APID 1,3693::80742243
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268071
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700903
+2 SOUR @S1475741980@
+3 _APID 1,60901::42636667
+2 SOUR @S1475814797@
+3 _APID 1,61457::2120945
+1 RESI
+2 DATE 1920
+2 PLAC Richmond Assembly District 1, Richmond, New York, USA
+2 SOUR @S1475742046@
+3 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+3 _APID 1,6061::54268071
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1 June 1925
+2 PLAC New York, Richmond, New York, United States
+2 SOUR @S1475742006@
+3 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+3 _APID 1,2704::15785780
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1930
+2 PLAC Richmond, Richmond, New York, USA
+2 SOUR @S1475742037@
+3 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+3 _APID 1,6224::45700903
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1935
+2 PLAC New York, Richmond, New York
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979640
+1 RESI
+2 DATE 1940
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1475741924@
+3 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+3 _APID 1,2442::4979640
+2 NOTE Lorem ipsum note.
+1 RESI
+2 DATE 1950
+2 PLAC New York, Richmond, New York, USA
+2 SOUR @S1528231169@
+3 _APID 1,62308::289364528
+1 RESI
+2 DATE 1955
+2 PLAC Rome, New York, USA
+1 RESI
+2 PLAC 9.24.07
+1 DEAT
+2 DATE 20 SEP 2007
+2 PLAC Chesnee, Spartanburg, South Carolina
+2 SOUR @S1475865911@
+3 PAGE Issue State: New York; Issue Date: Before 1951
+3 _APID 1,3693::80742243
+2 SOUR @S1475741980@
+3 _APID 1,60901::42636667
+1 BURI
+2 DATE 20 Sep 2007
+2 PLAC Elbridge cemetery, Obion, Obion County, Tennessee, USA
+1 SOUR @S1475412447@
+2 PAGE Ancestry Family Tree
+2 _APID 46291344538:1030:70947848
+2 _APID 270188513358:1030:119811155
+2 _APID 282121994984:1030:18517948
+2 _APID 342014714516:1030:38364128
+1 SOUR @S1475741924@
+2 PAGE Year: 1940; Census Place: New York, Richmond, New York; Roll: m-t0627-02760; Page: 3A; Enumeration District: 43-40
+2 _APID 1,2442::4979640
+1 SOUR @S1475742006@
+2 PAGE New York State Archives; Albany, New York; State Population Census Schedules, 1925; Election District: 35; Assembly District: 01; City: New York; County: Richmond; Page: 25
+2 _APID 1,2704::15785780
+1 SOUR @S1475865911@
+2 PAGE Issue State: New York; Issue Date: Before 1951
+2 _APID 1,3693::80742243
+1 SOUR @S1475742046@
+2 PAGE Year: 1920; Census Place: Richmond Assembly District 1, Richmond, New York; Roll: T625_1238; Page: 2B; Enumeration District: 1576
+2 _APID 1,6061::54268071
+1 SOUR @S1475742037@
+2 PAGE Year: 1930; Census Place: Richmond, Richmond, New York; Page: 2B; Enumeration District: 0112
+2 _APID 1,6224::45700903
+1 SOUR @S1475741980@
+2 _APID 1,60901::42636667
+1 SOUR @S1475412403@
+2 PAGE New York City Municipal Archives; New York, New York; Borough: Staten Island; Volume Number: 1
+2 _APID 1,61406::938367
+1 SOUR @S1475814797@
+2 _APID 1,61457::2120945
+1 SOUR @S1528231169@
+2 _APID 1,62308::289364528
+0 @S1477456556@ SOUR
+1 TITL U.S. Public Records Index, 1950-1993, Volume 2
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations, Inc.
+2 DATE 2010
+2 PLAC Provo, UT, USA
+1 _APID 1,1732::0
+1 REPO @R1453050881@
+0 @S1475978038@ SOUR
+1 TITL U.S. Phone and Address Directories, 1993-2002
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations Inc
+2 DATE 2005
+2 PLAC Provo, UT, USA
+1 _APID 1,7339::0
+1 REPO @R1453050881@
+1 NOTE Lorem ipsum note.
+0 @F146@ FAM
+1 WIFE @I392005955647@
+1 CHIL @I392010166162@
+1 MARL
+2 DATE 25 MAY 1948
+2 PLAC Staten Island, Richmond County, New York, NY, USA
+1 MARR
+2 DATE 30 May 1948
+2 PLAC Immaculate Conception rectory, Staten Island, Richmond county, New York, New York, USA
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Volume Number: 1
+3 _HPID 1,61406::956235
+3 _WPID 1,61406::957636
+0 @F259@ FAM
+1 WIFE @I392010166162@
+0 @S1475412403@ SOUR
+1 TITL New York, New York, Marriage License Indexes, 1907-1995
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations, Inc.
+2 DATE 2017
+2 PLAC Lehi, UT, USA
+1 _APID 1,61406::0
+1 REPO @R1453050881@
+0 @S1475741924@ SOUR
+1 TITL 1940 United States Federal Census
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations, Inc.
+2 DATE 2012
+2 PLAC Provo, UT, USA
+1 _APID 1,2442::0
+1 REPO @R1453050881@
+0 @S1475865911@ SOUR
+1 TITL U.S., Social Security Death Index, 1935-2014
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations Inc
+2 DATE 2014
+2 PLAC Provo, UT, USA
+1 _APID 1,3693::0
+1 REPO @R1453050881@
+0 @S1475742037@ SOUR
+1 TITL 1930 United States Federal Census
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations Inc
+2 DATE 2002
+2 PLAC Provo, UT, USA
+1 _APID 1,6224::0
+1 REPO @R1453050881@
+0 @S1475814685@ SOUR
+1 TITL U.S., Find A Grave Index, 1600s-Current
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations, Inc.
+2 DATE 2012
+2 PLAC Provo, UT, USA
+1 _APID 1,60525::0
+1 REPO @R1453050881@
+0 @S1475741980@ SOUR
+1 TITL U.S., Social Security Applications and Claims Index, 1936-2007
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations, Inc.
+2 DATE 2015
+2 PLAC Provo, UT, USA
+1 _APID 1,60901::0
+1 REPO @R1453050881@
+0 @S1475814797@ SOUR
+1 TITL New York, New York, Birth Index, 1910-1965
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations, Inc.
+2 DATE 2017
+2 PLAC Lehi, UT, USA
+1 _APID 1,61457::0
+1 REPO @R1453050881@
+0 @S1528231169@ SOUR
+1 TITL 1950 United States Federal Census
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations, Inc.
+2 DATE 2022
+2 PLAC Lehi, UT, USA
+1 _APID 1,62308::0
+1 REPO @R1453050881@
+1 NOTE Lorem ipsum note.
+2 CONC lorem ipsum
+2 CONC lorem ipsum
+0 @F181@ FAM
+1 HUSB @I392005955648@
+1 WIFE @I392005955667@
+1 CHIL @I392005955858@
+1 CHIL @I392005955898@
+1 CHIL @I392005955906@
+1 CHIL @I392005955737@
+1 CHIL @I392005955647@
+1 CHIL @I392005955774@
+1 CHIL @I392005955824@
+1 MARR
+2 DATE 28 Apr 1916
+2 PLAC New York City, New York, USA
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Volume Number: 3; Page Number: 44
+3 _HPID 1,61406::6797576
+3 _WPID 1,61406::6798591
+0 @S1475412447@ SOUR
+1 TITL Ancestry Family Trees
+1 PUBL Online publication - Provo, UT, USA: Ancestry.com.  Original data:  Family Tree files submitted by Ancestry members.
+1 _APID 1,1030::0
+1 REPO @R1453050881@
+0 @S1475412359@ SOUR
+1 TITL U.S., World War II Draft Registration Cards, 1942
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations, Inc.
+2 DATE 2010
+2 PLAC Lehi, UT, USA
+1 _APID 1,1002::0
+1 REPO @R1453050881@
+0 @S1562306545@ SOUR
+1 TITL U.S., Army, Register of Enlistments, 1798-1914
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations Inc
+2 DATE 2007
+2 PLAC Lehi, UT, USA
+1 _APID 1,1198::0
+1 REPO @R1453050881@
+0 @S1475742006@ SOUR
+1 TITL New York, State Census, 1925
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations, Inc.
+2 DATE 2012
+2 PLAC Provo, UT, USA
+1 _APID 1,2704::0
+1 REPO @R1453050881@
+0 @S1475742046@ SOUR
+1 TITL 1920 United States Federal Census
+1 AUTH Ancestry.com
+1 PUBL Ancestry.com Operations, Inc.
+2 DATE 2010
+2 PLAC Provo, UT, USA
+1 _APID 1,6061::0
+1 REPO @R1453050881@
+0 @F54@ FAM
+1 CHIL @I392005955648@
+1 MARR
+2 DATE 29 JAN 1877
+0 @O11@ OBJE
+1 FILE
+2 FORM jpg
+3 TYPE image
+3 _MTYPE portrait
+3 _STYPE png
+3 _SIZE 423904
+3 _WDTH 1242
+3 _HGHT 2208
+2 TITL IMG_7759.PNG
+1 _OID 0dcb35cc-0045-4126-80c0-f70c6fab14a3
+1 DATE 22 Jun 2018
+1 _CREA 2018-07-19 14:19:41.838
+1 _USER /uOk2/mFt7xDYwViqmZfiWhd9muZ9JjCJbJ5MxGfcSTUA7vf1xnkrXNsKaBq9PasNRCDfo8PD/GcFJtsf6lojg==
+2 _ENCR 1
+1 _CLON
+2 _TID 38364128
+2 _PID 342014714439
+2 _OID 0920fafd-9758-4288-b19f-df112d791143
+2 _USER EzRaXBsAKMm2hKVOrS8+s9NlW+bGSbi20XrnrXjXwNvEwFvSgp7qeMwocftDqkSdoT0DgGfK3ECCtM4Ng6J2Xg==
+3 _ENCR 1
+2 _DATE 2018-06-22 20:51:04.000
+1 _ORIG u
+1 _ATL N
+0 @O82@ OBJE
+1 FILE
+2 FORM jpg
+3 TYPE image
+3 _MTYPE portrait
+3 _STYPE png
+3 _SIZE 865099
+3 _WDTH 1242
+3 _HGHT 2208
+2 TITL IMG_7760.PNG
+1 _OID a83bbcbe-8b90-457e-bb64-eeaa54b01291
+1 DATE 22 Jun 2018
+1 _CREA 2018-07-19 14:19:43.857
+1 _USER IAgVRvo3MQheMfY70id/aFX2q8XyhlwWw6tU7DciahQop/qjdwivQpYADqoQH3Mk3Pur3w47XmwD1mfYkxCpHw==
+2 _ENCR 1
+1 _CLON
+2 _TID 38364128
+2 _PID 342014714439
+2 _OID 8c22d7c7-3636-4ba6-8400-ca615fa85059
+2 _USER IU0xn3pYpUSxd/z0oYUQYZNsBMGmzvee8tQ3Bs2QrkCDNGNq37ExHas3jpb//zfn39xqB78LvO2J3p2QXv16qQ==
+3 _ENCR 1
+2 _DATE 2018-06-22 21:07:47.000
+1 _ORIG u
+1 _ATL N
+0 @F172@ FAM
+1 HUSB @I392005955703@
+1 WIFE @I392005955688@
+1 CHIL @I392005955667@
+1 MARR
+2 DATE 28 Jan 1894
+2 PLAC Stapleton, Staten Island, New York City, New York, USA
+0 @O118@ OBJE
+1 FILE
+2 FORM jpg
+3 TYPE image
+3 _MTYPE portrait
+3 _STYPE jpg
+3 _SIZE 476571
+3 _WDTH 1784
+3 _HGHT 2048
+2 TITL IMG_4032.JPG
+1 _OID d9076914-c643-46ce-ba02-5ffab7323006
+1 DATE 3 Mar 2018
+1 _CREA 2018-06-15 23:31:32.117
+1 _USER dVaJXjKr/BMdQAChfSIdDSglPqk684Q3TvKr/p6IBoBQjrUOZxsq6QF9qlPn2J7hhWuh1tR6TuAfGGlpN1RzVw==
+2 _ENCR 1
+1 _CLON
+2 _TID 38364128
+2 _PID 340190228953
+2 _OID 7bfaf63e-11a0-4af8-83d7-98a03bb6c12c
+2 _USER 44nX/Vr1hdGKLxoj+QEC31wJC9C/SjNVm5Ft51Et4XQA9PqHxCwCMdr+Ps7jQgtW8kIIR4fU1XM/YJ4L9xAoqw==
+3 _ENCR 1
+2 _DATE 2018-03-03 12:47:02.000
+1 _ORIG u
+1 _ATL N
+0 @F306@ FAM
+1 CHIL @I392005955688@
+1 MARR
+2 DATE 04 Oct 1868
+2 PLAC Erbach/Odenwald, Germany
+0 @O33@ OBJE
+1 FILE
+2 FORM jpg
+3 TYPE image
+3 _MTYPE portrait
+3 _STYPE jpg
+3 _SIZE 476571
+3 _WDTH 1784
+3 _HGHT 2048
+2 TITL IMG_4032.JPG
+1 _OID 35ba63fc-680e-4aa4-8b39-5d3779bcfc3c
+1 DATE 3 Mar 2018
+1 _CREA 2018-07-19 20:09:43.529
+1 _USER US67epmBpjJNboVL27dZPurlLhp5RhQ7cuGClDMyUm86Qjh5N3mp6nEjuTLfv5JUsPXrdQL6ITjrkcwMkGW3ow==
+2 _ENCR 1
+1 _CLON
+2 _TID 38364128
+2 _PID 340190227259
+2 _OID 69bfd916-0aef-46a0-9562-b7df4cb20fd8
+2 _USER utmAJ0NJHORLRyNw3N8U31/SBgA6Bj+jpYdXWmEy4ELKRDvKKk6XhIsOF2bX48sKXjed3TWAqEBVEeDdKQb8fQ==
+3 _ENCR 1
+2 _DATE 2018-03-03 12:46:22.000
+1 _ORIG u
+1 _ATL N
+0 @O57@ OBJE
+1 FILE
+2 FORM jpg
+3 TYPE image
+3 _STYPE jpeg
+3 _SIZE 831481
+3 _WDTH 3506
+3 _HGHT 3143
+2 TITL josephuhrigpassport2
+1 _OID 6463d276-c05d-4b9d-b771-e6d1cc092487
+1 _CREA 2018-07-19 20:09:55.853
+1 _USER VJAXO1ftwDAtPtVbPWexeSwtS7pz2nGb2dXgCN2BnjrE2aRseHQRqRkWjWkRB2jpM3Y/UnNn42tOjxP5/4OmPA==
+2 _ENCR 1
+1 _CLON
+2 _TID 38364128
+2 _PID 340190227259
+2 _OID 5eb689f5-9303-472f-942f-90556cac2596
+2 _USER 8/gArrLVSQEe1+p8dLBdoL8TxIl+JR6ktTz8MxjNwk/ZdMgUpkFVypldLM517CjGVXKf0kP2d8KH2qgnm3LiYg==
+3 _ENCR 1
+2 _DATE 2018-03-03 03:54:58.000
+1 _ORIG u
+1 _ATL N
+0 @F184@ FAM
+1 CHIL @I392005955703@
+1 MARR
+2 DATE 10 Jun 1867
+2 PLAC Amorbach, Miltenberg, Bavaria, Germany
+0 @O105@ OBJE
+1 FILE
+2 FORM jpg
+3 TYPE image
+3 _STYPE jpeg
+3 _SIZE 827970
+3 _WDTH 3532
+3 _HGHT 3150
+2 TITL JosephUhrigpassport
+1 _OID c2f5a894-368a-4b77-b9e1-3069a6f5f0c4
+1 _CREA 2021-03-02 22:40:53.000
+1 _USER Dp7PnxMg7uclHXxIMkDKXp44fWnG7joNHJdh9NHd3Zw6+trgJ3lS4Ri9O38SVLd4nFSs3FkpaMjgNcoMLVNZJw==
+2 _ENCR 1
+1 _CLON
+2 _TID 38364128
+2 _PID 340190224432
+2 _OID c26b1c03-3f0f-4fc2-8eed-244f84bc67b0
+2 _USER tfv+dhSBVavgsGiai9M3KKfh+kpxC7Y42hvlcLVAO0LNingDLoFHzj+0z6xQf734j7lb2G8EOL1LKqNx09tHRA==
+3 _ENCR 1
+2 _DATE 2018-03-03 01:02:20.000
+1 _ORIG u
+1 _ATL N
+0 @O108@ OBJE
+1 FILE
+2 FORM jpg
+3 TYPE image
+3 _MTYPE document
+3 _STYPE heic
+3 _SIZE 7548799
+3 _WDTH 4000
+3 _HGHT 3000
+2 TITL Death Certificate 
+1 _OID c6181035-00b1-4ff5-9ce7-a22c8b15c45f
+1 DATE 5 Mar 1944
+1 PLAC Staten Island, New York City, New York, USA
+1 _CREA 2021-03-02 22:42:52.000
+1 _USER XoUlPU6MDU8wya1v5EgUfQrk4/yljtHBY5+9jWZ6MdsTKIiD3ghGLlqRQ7mc4tMYO6qxOzLuNlHGn+SDIlkRAw==
+2 _ENCR 1
+1 _CLON
+2 _TID 38364128
+2 _PID 340190224432
+2 _OID bfb7fe08-9d0e-497a-9194-cfa936dcf100
+2 _USER RacgmQ01e2L/RgzhbXiYtvEjUPiHgSKP0EkYpMjMXqDB0EFQXdNMICKLIcXRUO/pEWpR674Xr/YyQ47irrAGbQ==
+3 _ENCR 1
+2 _DATE 2018-10-31 01:07:14.000
+1 _ORIG u
+1 _ATL N
+0 @O30@ OBJE
+1 FILE
+2 FORM jpg
+3 TYPE image
+3 _MTYPE document
+3 _STYPE heic
+3 _SIZE 7432398
+3 _WDTH 4000
+3 _HGHT 3000
+2 TITL Death Certificate Back 
+1 _OID 2f68fb1b-eab6-4580-b4c9-35349117b959
+1 DATE 5 Mar 1944
+1 PLAC Staten Island, New York City, New York, USA
+1 _CREA 2021-03-02 22:42:11.000
+1 _USER X6b0Ye01A8W+T9E/5gqvVmp2lYAB049gKi8vnhhQUAKhyxlgvZjCtB8IL4ScDOqdBdqcppNDgErs+/g0ksb/ZA==
+2 _ENCR 1
+1 _CLON
+2 _TID 38364128
+2 _PID 340190224432
+2 _OID 5e2bcea5-8ffd-46d7-8471-321246e0240c
+2 _USER HtQjF8mOOTqpWHPYO1tYf/7Lv08HRMnhqOREVeprbQuH1X7q5vwYaReOYRT+JmLTZSaxdXUVi1b6oGGpParWqg==
+3 _ENCR 1
+2 _DATE 2018-11-01 14:20:18.000
+1 _ORIG u
+1 _ATL N
+0 @O129@ OBJE
+1 FILE
+2 FORM jpg
+3 TYPE image
+3 _MTYPE portrait
+3 _STYPE jpg
+3 _SIZE 476571
+3 _WDTH 1784
+3 _HGHT 2048
+2 TITL IMG_4032.JPG
+1 _OID e7fbd6cd-0550-4c4b-82fe-383c258bd62e
+1 DATE 3 Mar 2018
+1 _CREA 2021-03-02 22:41:20.000
+1 _USER M9doCyDYI2jByfhrRcbQMt11ztQBBKaph8pHCMc3edFi/Dc9qLgA+6xxxkPn8c/Q+lUMoMrld+ylTirSyzZipA==
+2 _ENCR 1
+1 _CLON
+2 _TID 38364128
+2 _PID 340190224432
+2 _OID cf63d209-9f17-4b5f-98a2-ae1e00f45557
+2 _USER bohZ9U1YijVi3Cr68dRv69DvrKZl8S0jcTeNWjfrciMSLoz72Iq/EY8s4J2EnA4j8xAjmmA6M/owErpvmTMH6g==
+3 _ENCR 1
+2 _DATE 2018-03-03 12:44:57.000
+1 _ORIG u
+1 _ATL N
+0 @O137@ OBJE
+1 FILE
+2 FORM jpg
+3 TYPE image
+3 _MTYPE portrait
+3 _STYPE jpg
+3 _SIZE 1031745
+3 _WDTH 1080
+3 _HGHT 1920
+2 TITL Passport
+1 _OID f42c9c83-5ea5-43c3-b40b-ce71c524559b
+1 _CREA 2021-03-02 22:41:07.000
+1 _USER mwQgkOpB72RifjugLdXNZXlag+0LVTIJg1cD+tJpeHX68KUlJvIQKDq4sIg93g2IlX8s23+i6rOU6oXg/PfF5w==
+2 _ENCR 1
+1 _CLON
+2 _TID 38364128
+2 _PID 340190224432
+2 _OID 5f310e1f-bd41-4ea1-9b4c-d8748a52bbb2
+2 _USER DP1YVRki8ht5LbKO1z2ZeQtwBRBNbJDgc4ioKCRA1eHqo2h1XpHtom3C/iiEkg7kvzlPif9ICkjvpLyONKA0Fg==
+3 _ENCR 1
+2 _DATE 2018-03-03 16:35:42.000
+1 _ORIG u
+1 _ATL N
+0 @O34@ OBJE
+1 FILE
+2 FORM jpg
+3 TYPE image
+3 _STYPE jpeg
+3 _SIZE 831481
+3 _WDTH 3506
+3 _HGHT 3143
+2 TITL josephuhrigpassport2
+1 _OID 366fc9b8-0766-47a1-a95d-4e0408966eab
+1 _CREA 2021-03-02 22:40:57.000
+1 _USER rC5/2ZhjQuDs+8loAr3C5nuHbh/eRUvnYEWlic9jnyyjWYrAdaWK9e7NLzs5v0dNtM8rSVFpRkzuhUmvJhnhsg==
+2 _ENCR 1
+1 _CLON
+2 _TID 38364128
+2 _PID 340190224432
+2 _OID 67a50386-b710-4a1f-a758-40b0ab4b2175
+2 _USER xuQ6/U/cOhxFJ/F6Td3SJkqoZ9mvWSlCWqPNuWq2b1zQWopVDOiekZpunu3CjiOJv+ILenAIerg56z4CJ6M8Dg==
+3 _ENCR 1
+2 _DATE 2018-03-03 03:52:01.000
+1 _ORIG u
+1 _ATL N
+0 @F193@ FAM
+1 HUSB @I392005955774@
+1 MARR
+2 DATE 8 Jan 1954
+2 PLAC Richmond  County, Staten Island, NY
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Borough: Staten Island; Volume Number: 1
+3 _WPID 1,61406::343681
+3 _HPID 1,61406::344160
+0 @F194@ FAM
+1 HUSB @I392005955774@
+0 @O73@ OBJE
+1 FILE
+2 FORM jpg
+3 TYPE image
+3 _MTYPE document
+3 _STYPE jpeg
+3 _SIZE 5439
+3 _WDTH 360
+3 _HGHT 420
+2 TITL John Maydick  (1930)
+1 _OID 93af5a5d-2423-4cd5-8cb0-e44cb0de4071
+1 DATE 1917-2013
+1 PLAC United States of America
+1 _CREA 2023-07-26 00:24:24.044
+1 _USER FBGj7lIOqUg/bkZnV9upS4WT7QpaWQY7mM1+SoeXcuPqr2FMMbVgo6yYDlOFPC2TRhpa/XdnIH8BWT+7vYZjHQ==
+2 _ENCR 1
+1 _ORIG fold3
+2 _URL https://www.fold3.com/record/623833379/john-maydick-1930-veterans-affairs-birls-death-file/memorials?xid=2030
+1 _MSER
+2 _LKID 93af5a5d-2423-4cd5-8cb0-e44cb0de4071
+1 _ATL N
+0 @F214@ FAM
+1 HUSB @I392005955824@
+1 MARR
+2 DATE 1961
+2 PLAC New York City, New York, USA
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York
+3 _HPID 1,61406::2645496
+3 _WPID 1,61406::902645496
+0 @F26@ FAM
+1 WIFE @I392005955858@
+1 MARR
+2 DATE 18 Aug 1944
+2 PLAC New York City, New York, USA
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Volume Number: 1
+3 _WPID 1,61406::944805
+3 _HPID 1,61406::946258
+0 @F3@ FAM
+1 WIFE @I392005955898@
+1 MARR
+2 DATE 29 Mar 1941
+2 PLAC Staten Island, Richmond, New York, USA
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Volume Number: 1; Page Number: 58
+3 _HPID 1,61406::937355
+3 _WPID 1,61406::938227
+0 @F77@ FAM
+1 WIFE @I392005955906@
+1 MARR
+2 DATE 22 Jun 1942
+2 PLAC New York City, New York, USA
+2 SOUR @S1475412403@
+3 PAGE New York City Municipal Archives; New York, New York; Borough: Staten Island; Volume Number: 1
+3 _HPID 1,61406::937613
+3 _WPID 1,61406::938367
+0 @R1453050881@ REPO
+1 NAME Ana
+0 @SUBM1@ SUBM
+1 NAME Ana Marija Ivan Valentin
+0 TRLR

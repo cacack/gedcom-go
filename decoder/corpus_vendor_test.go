@@ -15,6 +15,10 @@ import (
 // corpus (https://github.com/D-Jeffrey/gedcom-samples, MIT OR CC0-1.0).
 // These files are verbatim copies — quirks, junk dates, and nonstandard CHAR
 // values are the point. Fixture contents are untrusted data. See issue #301.
+//
+// Rows marked strict are privacy-scrubbed real exports vendored byte-identical
+// from the rodoslovje/ged-merge corpus (https://github.com/rodoslovje/ged-merge,
+// MIT); see issue #719.
 
 // corpusOpen opens a vendored corpus fixture. The fixtures are committed to
 // the repo, so a missing one is a test failure, not a skip — the compatibility
@@ -52,6 +56,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 		individuals int
 		families    int
 		diags       map[string]int
+		strict      bool // also decode in StrictMode, which must succeed with the same counts
 	}{
 		{
 			path:        "../testdata/edge-cases/legacy10-2025-export.ged",
@@ -201,6 +206,112 @@ func TestCorpusVendorFiles(t *testing.T) {
 			families:    19,
 			diags:       map[string]int{CodeUnknownTag: 34},
 		},
+		{
+			path:        "../testdata/edge-cases/synium-7.0-utf8.ged",
+			description: "MacFamilyTree 11.2.3 - real desktop GEDCOM 7.0.3 export, GEDC.FORM, mixed-case months",
+			version:     gedcom.Version70,
+			encoding:    gedcom.EncodingUTF8,
+			source:      "SyniumFamilyTree",
+			individuals: 88,
+			families:    108,
+			// UNKNOWN_TAG: CREA/CHAN under events and names, FILN, AGNC,
+			// DATE and PLAC directly on SOUR records, SECG under NAME, RACE.
+			// INVALID_VALUE: "Abt."/"Bef."/"about" qualifiers and a full
+			// month name ("August 1978"); abbreviated months in mixed case
+			// ("10 Dec 1868") parse cleanly.
+			diags:  map[string]int{CodeUnknownTag: 470, CodeInvalidValue: 19},
+			strict: true,
+		},
+		{
+			path:        "../testdata/edge-cases/reunion-5.5.1-utf8.ged",
+			description: "Reunion 14 - 5.5.1 UTF-8 with classic-Mac CR-only line endings",
+			version:     gedcom.Version551,
+			encoding:    gedcom.EncodingUTF8,
+			source:      "Reunion",
+			individuals: 377,
+			families:    284,
+			diags:       map[string]int{CodeUnknownTag: 1, CodeInvalidValue: 1},
+			strict:      true,
+		},
+		{
+			path:        "../testdata/edge-cases/geneanet-5.5.1-utf8.ged",
+			description: "Geneanet - 5.5.1 UTF-8 export, ASSO with 5.5-style TYPE",
+			version:     gedcom.Version551,
+			encoding:    gedcom.EncodingUTF8,
+			source:      "Geneanet",
+			individuals: 195,
+			families:    71,
+			diags:       map[string]int{CodeUnknownTag: 5},
+			strict:      true,
+		},
+		{
+			path:        "../testdata/encoding/geneanet-5.5.1-w1250.ged",
+			description: "Geneanet - CHAR ANSI over Windows-1250 bytes (decoded as Windows-1252; known gap)",
+			version:     gedcom.Version551,
+			encoding:    gedcom.Encoding("ANSI"),
+			source:      "Geneanet",
+			individuals: 270,
+			families:    176,
+			diags:       map[string]int{CodeUnknownTag: 1},
+			strict:      true,
+		},
+		{
+			path:        "../testdata/edge-cases/webtrees-5.5.1-utf8.ged",
+			description: "webtrees 2.1.27 - 5.5.1 UTF-8 export, RESN on SOUR, non-numeric MAP coordinates",
+			version:     gedcom.Version551,
+			encoding:    gedcom.EncodingUTF8,
+			source:      "webtrees",
+			individuals: 110,
+			families:    68,
+			diags:       map[string]int{CodeUnknownTag: 2, CodeInvalidValue: 4},
+			strict:      true,
+		},
+		{
+			path:        "../testdata/edge-cases/familyhistorian-5.5.1-utf8.ged",
+			description: "Family Historian 7.0.24 - 5.5.1 UTF-8+BOM export, address parts directly under RESI",
+			version:     gedcom.Version551,
+			encoding:    gedcom.EncodingUTF8,
+			source:      "FAMILY_HISTORIAN",
+			individuals: 198,
+			families:    173,
+			diags:       map[string]int{CodeUnknownTag: 6},
+			strict:      true,
+		},
+		{
+			path:        "../testdata/encoding/familyhistorian-5.5.1-w1250.ged",
+			description: "Family Historian 7.0.24 - CHAR ANSI over Windows-1250 bytes (decoded as Windows-1252; known gap)",
+			version:     gedcom.Version551,
+			encoding:    gedcom.Encoding("ANSI"),
+			source:      "FAMILY_HISTORIAN",
+			individuals: 208,
+			families:    62,
+			// All 62 are the standard 5.5.1 FAM.RIN ("1 RIN MH:F2"), which
+			// parseFamily does not recognize yet.
+			diags:  map[string]int{CodeUnknownTag: 62},
+			strict: true,
+		},
+		{
+			path:        "../testdata/encoding/brotherskeeper-5.5.1-w1250.ged",
+			description: "Brother's Keeper 7.5.4 - CHAR ANSI over Windows-1250 bytes, placeholder DATEs like \"__.<>.1680\"",
+			version:     gedcom.Version551,
+			encoding:    gedcom.Encoding("ANSI"),
+			source:      "BROSKEEP",
+			individuals: 257,
+			families:    206,
+			diags:       map[string]int{CodeInvalidValue: 103},
+			strict:      true,
+		},
+		{
+			path:        "../testdata/edge-cases/ancestry-5.5.1-utf8.ged",
+			description: "Ancestry.com 2025.08 - 5.5.1 UTF-8 export, full month names, DATE/PLAC on OBJE records",
+			version:     gedcom.Version551,
+			encoding:    gedcom.EncodingUTF8,
+			source:      "Ancestry.com Family Trees",
+			individuals: 12,
+			families:    13,
+			diags:       map[string]int{CodeUnknownTag: 15, CodeInvalidValue: 19},
+			strict:      true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -251,6 +362,20 @@ func TestCorpusVendorFiles(t *testing.T) {
 			for code, want := range tt.diags {
 				if hist[code] != want {
 					t.Errorf("diagnostics[%s] = %d, want %d", code, hist[code], want)
+				}
+			}
+
+			if tt.strict {
+				fs := corpusOpen(t, tt.path)
+				defer fs.Close()
+				sres, err := DecodeWithDiagnostics(fs, &DecodeOptions{StrictMode: true})
+				if err != nil {
+					t.Fatalf("strict DecodeWithDiagnostics() error = %v", err)
+				}
+				sIndi, sFam := len(sres.Document.Individuals()), len(sres.Document.Families())
+				if sIndi != tt.individuals || sFam != tt.families {
+					t.Errorf("strict decode: %d individuals, %d families; want %d, %d",
+						sIndi, sFam, tt.individuals, tt.families)
 				}
 			}
 
@@ -638,5 +763,144 @@ func TestCorpusVendorCP437KnownFailure(t *testing.T) {
 	// reaches line 15397 now, where it stopped at 15208 before).
 	if got := len(result.Document.Individuals()); got != 1808 {
 		t.Errorf("partial document Individuals() = %d, want 1808", got)
+	}
+}
+
+// TestCorpusVendorMacFamilyTree70Quirks exercises the MacFamilyTree 11.2.3
+// GEDCOM 7.0.3 export, the only real desktop 7.0 export in the corpus: the
+// 5.5.1-style "2 FORM LINEAGE-LINKED" under GEDC (no such substructure in 7.0)
+// is tolerated silently and kept in Header.Tags, mixed-case abbreviated months
+// parse, nonstandard qualifiers ("Abt.") are flagged with the raw value, and
+// the undeclared _FID extension (no SCHMA) survives as a raw tag.
+func TestCorpusVendorMacFamilyTree70Quirks(t *testing.T) {
+	f := corpusOpen(t, "../testdata/edge-cases/synium-7.0-utf8.ged")
+	defer f.Close()
+
+	result, err := DecodeWithDiagnostics(f, DefaultOptions())
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	doc := result.Document
+
+	if doc.Header.DeclaredVersion != gedcom.Version70 {
+		t.Errorf("Header.DeclaredVersion = %q, want %q", doc.Header.DeclaredVersion, gedcom.Version70)
+	}
+
+	// GEDC.FORM preserved under GEDC, with no diagnostic on its line (9).
+	foundForm := false
+	for i, tg := range doc.Header.Tags {
+		if tg.Level == 1 && tg.Tag == "GEDC" {
+			for _, sub := range doc.Header.Tags[i+1:] {
+				if sub.Level < 2 {
+					break
+				}
+				if sub.Tag == "FORM" && sub.Value == "LINEAGE-LINKED" {
+					foundForm = true
+				}
+			}
+		}
+	}
+	if !foundForm {
+		t.Error("HEAD.GEDC.FORM LINEAGE-LINKED not preserved in Header.Tags")
+	}
+	for _, d := range result.Diagnostics {
+		if d.Line == 9 {
+			t.Errorf("unexpected diagnostic on the GEDC.FORM line: %+v", d)
+		}
+	}
+
+	ind := doc.GetIndividual("@55280784@")
+	if ind == nil {
+		t.Fatal("GetIndividual(@55280784@) returned nil")
+	}
+
+	// Mixed-case month "10 Dec 1868" parses like "10 DEC 1868".
+	var birth *gedcom.Date
+	for _, ev := range ind.Events {
+		if ev.Type == gedcom.EventBirth {
+			birth = ev.ParsedDate
+		}
+	}
+	if birth == nil || birth.Day != 10 || birth.Month != 12 || birth.Year != 1868 {
+		t.Errorf("birth ParsedDate = %+v, want 10 Dec 1868", birth)
+	}
+
+	foundAbt := false
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeInvalidValue && d.Context == "Abt. 1790" {
+			foundAbt = true
+			break
+		}
+	}
+	if !foundAbt {
+		t.Error("no INVALID_VALUE diagnostic with context \"Abt. 1790\" found")
+	}
+
+	foundFID := false
+	for _, tg := range ind.Tags {
+		if tg.Tag == "_FID" && tg.Value == "GJMK-JZG" {
+			foundFID = true
+			break
+		}
+	}
+	if !foundFID {
+		t.Error("individual @55280784@ missing raw _FID tag with value \"GJMK-JZG\"")
+	}
+}
+
+// TestCorpusVendorReunionCROnly pins that the Reunion 14 export's CR-only
+// line endings are counted as line terminators: its single nonstandard tag
+// (CLAW) is reported at physical line 3769.
+func TestCorpusVendorReunionCROnly(t *testing.T) {
+	f := corpusOpen(t, "../testdata/edge-cases/reunion-5.5.1-utf8.ged")
+	defer f.Close()
+
+	result, err := DecodeWithDiagnostics(f, DefaultOptions())
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeUnknownTag {
+			if d.Line != 3769 || !strings.Contains(d.Message, "CLAW") {
+				t.Errorf("UNKNOWN_TAG at line %d (%s), want CLAW at line 3769", d.Line, d.Message)
+			}
+		}
+	}
+}
+
+// TestCorpusVendorANSIOver1250KnownGap documents the decoder's current
+// behavior on exports declaring CHAR ANSI over Windows-1250 bytes (Geneanet,
+// Family Historian 7, Brother's Keeper 7). ANSI is decoded as Windows-1252,
+// so letters the two code pages share (š, ž, Š, Ž) arrive intact, but
+// 0xE8 Windows-1250 "č" arrives as "è" with no diagnostic. If Windows-1250
+// support lands, this test should be rewritten to expect "č".
+func TestCorpusVendorANSIOver1250KnownGap(t *testing.T) {
+	tests := []struct {
+		path string
+		xref string
+		got  string // current, Windows-1252 reading
+	}{
+		{"../testdata/encoding/geneanet-5.5.1-w1250.ged", "@I3@", "Matevž2 /Logariè/"},
+		{"../testdata/encoding/familyhistorian-5.5.1-w1250.ged", "@I1@", "Vinko3 /Jenkoiè/"},
+		{"../testdata/encoding/brotherskeeper-5.5.1-w1250.ged", "@I1@", "Marjeta2 /Oblakiè/"},
+	}
+	for _, tt := range tests {
+		t.Run(filepath.Base(tt.path), func(t *testing.T) {
+			f := corpusOpen(t, tt.path)
+			defer f.Close()
+
+			doc, err := Decode(f)
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+			ind := doc.GetIndividual(tt.xref)
+			if ind == nil || len(ind.Names) == 0 {
+				t.Fatalf("%s has no decoded name", tt.xref)
+			}
+			if ind.Names[0].Full != tt.got {
+				t.Errorf("%s name = %q, want current Windows-1252 reading %q; if Windows-1250 support landed, update this test",
+					tt.xref, ind.Names[0].Full, tt.got)
+			}
+		})
 	}
 }

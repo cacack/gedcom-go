@@ -325,6 +325,32 @@ submitter contact values. Exercised by `decoder/corpus_vendor_test.go`.
 
 The scale fixture `gedcom-5.5.1/longsword.ged` (see above) comes from the same corpus.
 
+#### rodoslovje/ged-merge Corpus Fixtures (issue #719)
+
+Privacy-scrubbed slices of real exports, vendored byte-identical (SHA-256
+checked) from [rodoslovje/ged-merge](https://github.com/rodoslovje/ged-merge)
+`src/__fixtures__/corpus/` at commit `78425cfb15c9ce859d59bff7619bfbe03add32e9`.
+License: MIT (Copyright (c) 2026 Luka Renko). Upstream generated them from
+real exports with `scripts/anonymize-corpus.ts`: personal names are replaced
+by pseudonyms, NOTE/TEXT narrative by placeholder text, and email, phone,
+submitter name/address and media paths are scrubbed; tags, nesting, CONT/CONC
+layout, dates, places, line endings and character encoding are preserved
+byte for byte. No further redaction was needed. Exporter, version, charset
+and line endings below are from the upstream `manifest.json`. Exercised by
+`decoder/corpus_vendor_test.go` in strict and lenient mode.
+
+| Fixture | Exporter | GEDCOM | Charset | EOL | Quirk |
+|---|---|---|---|---|---|
+| edge-cases/synium-7.0-utf8.ged | MacFamilyTree 11.2.3 (Synium) | **7.0.3** | UTF-8 | LF | 5.5.1-style `GEDC.FORM`, mixed-case months, `_FID`/`_SMC`/`_SIF` without `SCHMA` |
+| edge-cases/reunion-5.5.1-utf8.ged | Reunion 14 | 5.5.1 | UTF-8 | **CR** | classic-Mac CR-only endings |
+| edge-cases/geneanet-5.5.1-utf8.ged | Geneanet 7.0.0 | 5.5.1 | UTF-8 | LF | |
+| encoding/geneanet-5.5.1-w1250.ged | Geneanet 7.0.0 | 5.5.1 | Windows-1250 (`CHAR ANSI`) | LF | ANSI over 1250 (known gap) |
+| edge-cases/webtrees-5.5.1-utf8.ged | webtrees 2.1.27 | 5.5.1 | UTF-8 | CRLF | |
+| edge-cases/familyhistorian-5.5.1-utf8.ged | Family Historian 7.0.24 | 5.5.1 | UTF-8+BOM | CRLF | |
+| encoding/familyhistorian-5.5.1-w1250.ged | Family Historian 7.0.24 | 5.5.1 | Windows-1250 (`CHAR ANSI`) | CRLF | ANSI over 1250 (known gap) |
+| encoding/brotherskeeper-5.5.1-w1250.ged | Brother's Keeper 7.5.4 | 5.5.1 | Windows-1250 (`CHAR ANSI`) | CRLF | ANSI over 1250 (known gap) |
+| edge-cases/ancestry-5.5.1-utf8.ged | Ancestry.com Family Trees 2025.08 | 5.5.1 | UTF-8 | CRLF | |
+
 #### Structural Torture Fixtures (issue #301)
 
 Deliberate structural edge cases mined from peer-library test suites (see
@@ -516,6 +542,10 @@ When adding new test files:
   - License: MIT OR CC0-1.0 (Copyright (c) 2025 D Jeffrey)
   - Files: 12 vintage vendor exports in `edge-cases/` and `encoding/` (see attribution table above) plus `gedcom-5.5.1/longsword.ged`
   - Real exports from Legacy 10, PAF 5.2, Family Origins 5, TMG 1.2a, Ancestris 11, MyHeritage FTB 8, and more
+- **rodoslovje/ged-merge Corpus**: https://github.com/rodoslovje/ged-merge
+  - License: MIT (Copyright (c) 2026 Luka Renko)
+  - Files: 9 privacy-scrubbed real exports in `edge-cases/` and `encoding/` (see the ged-merge table above)
+  - MacFamilyTree 11 GEDCOM 7.0, Reunion 14, Geneanet, webtrees, Family Historian 7, Brother's Keeper 7, Ancestry
 - **gedcom7code/test-files**: https://github.com/gedcom7code/test-files
   - License: Unlicense (public domain)
   - Files: the whole suite in `gedcom7code/`, plus `edge-cases/atsign-55.ged`, `edge-cases/xref-case.ged`, `edge-cases/age-keywords-551.ged`, `edge-cases/date-dual-years.ged`
@@ -541,6 +571,7 @@ When adding new test files:
 - Gramps files: GPL-2.0 (used as test data inputs; GPL copyleft does not apply to data file consumers)
 - D-Jeffrey/gedcom-samples files: MIT OR CC0-1.0 (attribution given above per the corpus README)
 - gedcom7code/test-files files: Unlicense (public domain)
+- rodoslovje/ged-merge files: MIT (Copyright (c) 2026 Luka Renko)
 
 ## Testing Best Practices
 

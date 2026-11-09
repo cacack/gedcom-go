@@ -89,6 +89,18 @@ var unhandledTags = map[string]string{
 	"UID":   "standard 7.0 tag",
 	"TIME":  "standard, but misplaced at HEAD level 1 instead of under HEAD.DATE (vendor-tmg12.ged)",
 
+	// Standard tags misplaced by the producer (rodoslovje/ged-merge exports,
+	// #719). Flagging them is correct; recorded so they are not mistaken for
+	// decoder gaps.
+	"PLAC": "standard, but written directly on OBJE/SOUR records (ancestry-5.5.1-utf8.ged, synium-7.0-utf8.ged)",
+	"AGNC": "standard under SOUR.DATA, but written directly on SOUR records (synium-7.0-utf8.ged)",
+	"CHAN": "standard record-level tag, but written at level 2+ under events and names (synium-7.0-utf8.ged)",
+	"RESN": "standard, but written on a SOUR record, which has no RESN (webtrees-5.5.1-utf8.ged)",
+	"ADR1": "standard ADDR part, but written directly under RESI without ADDR (familyhistorian-5.5.1-utf8.ged)",
+	"CITY": "standard ADDR part, but written directly under RESI without ADDR (familyhistorian-5.5.1-utf8.ged)",
+	"MARR": "family event written on an INDI record (ancestry-5.5.1-utf8.ged)",
+	"TYPE": "5.5 ASSO.TYPE in a 5.5.1 file, which dropped it (geneanet-5.5.1-utf8.ged)",
+
 	// GEDCOM 7.0 tags, all from maximal70.ged. Version Support is Principle 4
 	// and Differentiator 2, so these are the sharpest entries in the list.
 	"CREA": "GEDCOM 7.0 creation timestamp",
@@ -101,6 +113,10 @@ var unhandledTags = map[string]string{
 	"HEAL": "EasyTree vendor tag, no underscore prefix",
 	"COMM": "vendor tag, no underscore prefix (royal92.ged)",
 	"BUST": "vendor tag, no underscore prefix (structural-torture.ged)",
+	"CLAW": "Reunion vendor tag, no underscore prefix (reunion-5.5.1-utf8.ged)",
+	"FILN": "MacFamilyTree vendor tag on SOUR, no underscore prefix (synium-7.0-utf8.ged)",
+	"RACE": "MacFamilyTree vendor tag, no underscore prefix (synium-7.0-utf8.ged)",
+	"SECG": "MacFamilyTree name piece, no underscore prefix (synium-7.0-utf8.ged)",
 
 	// Deliberately invalid input.
 	"INVALID": "malformed fixture: testdata/malformed/invalid-level.ged",
