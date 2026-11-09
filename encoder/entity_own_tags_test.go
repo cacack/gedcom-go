@@ -150,6 +150,7 @@ func TestHandBuiltRecordCarriesOwnTags(t *testing.T) {
 				Names: []*gedcom.PersonalName{{Full: "A /B/"}},
 				Tags: []*gedcom.Tag{
 					{Level: 1, Tag: "_MYAPP_ID", Value: "abc123"},
+					nil, // a nil element is skipped, not written and not a panic (ADR 0007)
 					{Level: 2, Tag: "_SOURCE", Value: "sync"},
 				},
 			},
