@@ -257,7 +257,7 @@ jobs:
         output-file: govulncheck-results.sarif
 
     - name: Upload govulncheck results to GitHub Security
-      uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
       if: success() || failure()
       with:
         sarif_file: govulncheck-results.sarif
@@ -269,7 +269,7 @@ jobs:
         args: '-no-fail -fmt sarif -out gosec-results.sarif ./...'
 
     - name: Upload gosec results to GitHub Security
-      uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
       if: success() || failure()
       with:
         sarif_file: gosec-results.sarif
@@ -294,7 +294,7 @@ jobs:
         severity: 'CRITICAL,HIGH,MEDIUM'
 
     - name: Upload Trivy results to GitHub Security
-      uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
       if: success() || failure()
       with:
         sarif_file: trivy-results.sarif
@@ -312,7 +312,7 @@ jobs:
           ./
 
     - name: Upload osv-scanner results to GitHub Security
-      uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
       if: success() || failure()
       with:
         sarif_file: osv-scanner-results.sarif
@@ -331,7 +331,7 @@ jobs:
           /src
 
     - name: Upload Semgrep results to GitHub Security
-      uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
       if: success() || failure()
       with:
         sarif_file: semgrep.sarif
