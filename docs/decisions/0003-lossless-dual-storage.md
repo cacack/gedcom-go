@@ -116,7 +116,7 @@ func encodeRecord(record *Record, opts *EncodeOptions) {
 ```go
 // To modify and re-encode:
 individual := record.Entity.(*Individual)
-individual.Names[0].Given = "Jonathan"
+individual.Name().Given = "Jonathan"
 record.Tags = nil  // Clear to force entity-to-tags conversion
 ```
 

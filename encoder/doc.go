@@ -70,7 +70,7 @@
 //
 // The consequence for a decoded document is the single most important rule
 // here: editing a typed field does not change encoded output. Setting
-// indi.Names[0].Full, fam.Attributes[0].Value or any other typed field on a
+// indi.Name().Full, fam.Attributes[0].Value or any other typed field on a
 // decoded record succeeds in memory, survives a round of reads, and is silently
 // absent from the file — no error, no diagnostic. Edit the matching entry in
 // Record.Tags instead, or set Record.Tags to nil to have the record rebuilt

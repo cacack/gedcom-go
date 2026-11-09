@@ -15,7 +15,7 @@
 //	}
 //
 //	for _, ind := range doc.Individuals() {
-//	    fmt.Println(ind.Names[0].Full)
+//	    fmt.Println(ind.FullName())
 //	}
 //
 // Write a GEDCOM file:

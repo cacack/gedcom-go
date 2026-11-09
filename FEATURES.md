@@ -328,7 +328,7 @@ for _, event := range individual.NegativeAssertions() {
 }
 ```
 
-The library's own readers skip negative assertions: `BirthEvent`, `DeathEvent`, `BirthDate` and `DeathDate`; the date-logic rules (`DEATH_BEFORE_BIRTH`, `MARRIAGE_BEFORE_BIRTH`, lifespan and parent-age checks) and the quality report's completeness counts; and duplicate detection's birth-date comparison. Converting to GEDCOM 5.5 or 5.5.1, which have no `NO` structure, drops every negative assertion (the `NO` line and its subordinates, and the negated event from the typed model) and reports it as data loss. Code that ranges over `Events` directly must check `IsNegative` or use the helpers.
+The library's own readers skip negative assertions: `BirthEvent`, `DeathEvent`, `BirthDate`, `DeathDate`, `BirthPlace`, `DeathPlace`, `EventOf` and `Family.MarriageEvent`; the date-logic rules (`DEATH_BEFORE_BIRTH`, `MARRIAGE_BEFORE_BIRTH`, lifespan and parent-age checks) and the quality report's completeness counts; and duplicate detection's birth-date comparison. Converting to GEDCOM 5.5 or 5.5.1, which have no `NO` structure, drops every negative assertion (the `NO` line and its subordinates, and the negated event from the typed model) and reports it as data loss. Code that ranges over `Events` directly must check `IsNegative` or use the helpers.
 
 | Field | Description |
 |-------|-------------|
@@ -1905,13 +1905,13 @@ All methods:
 // Navigate from individual to relatives
 person := doc.GetIndividual("@I1@")
 for _, parent := range person.Parents(doc) {
-    fmt.Println(parent.Names[0].Full)
+    fmt.Println(parent.FullName())
 }
 for _, spouse := range person.Spouses(doc) {
-    fmt.Println(spouse.Names[0].Full)
+    fmt.Println(spouse.FullName())
 }
 for _, child := range person.Children(doc) {
-    fmt.Println(child.Names[0].Full)
+    fmt.Println(child.FullName())
 }
 
 // Navigate from family to members
@@ -1923,18 +1923,28 @@ children := family.ChildrenIndividuals(doc)
 
 ### Event and Date Access
 
-Convenience methods for accessing parsed events and dates on individuals:
+Convenience methods for accessing names, parsed events and dates on individuals.
+All are safe on a nil receiver and on nil slice entries; use `Name()` or
+`FullName()` instead of indexing `Names[0]`, which panics on a nameless
+individual:
 
 | Method | Return Type | Description |
 |--------|-------------|-------------|
+| `Name()` | `*PersonalName` | First name (nil if none) |
+| `FullName()` | `string` | `Full` of the first name (`""` if none) |
 | `BirthEvent()` | `*Event` | First birth event (nil if none) |
 | `DeathEvent()` | `*Event` | First death event (nil if none) |
 | `BirthDate()` | `*Date` | Parsed birth date (nil if no event or no date) |
 | `DeathDate()` | `*Date` | Parsed death date (nil if no event or no date) |
+| `BirthPlace()` | `string` | Birth place name (`""` if no event or no place) |
+| `DeathPlace()` | `string` | Death place name (`""` if no event or no place) |
+| `EventOf(eventType)` | `*Event` | First event of that type (nil if none) |
+| `AttributeOf(attributeType)` | `*Attribute` | First attribute of that type (nil if none) |
 | `OccurredEvents()` | `[]*Event` | Events that happened: `Events` without negative assertions or nil entries (also on `Family`) |
 | `NegativeAssertions()` | `[]*Event` | GEDCOM 7.0 `NO <EVENT>` assertions only (also on `Family`) |
+| `Family.MarriageEvent()` | `*Event` | First marriage event of a family (nil if none) |
 
-The birth and death accessors skip GEDCOM 7.0 negative assertions: a `NO DEAT` is not a death, so `DeathEvent()` never returns one. See [Negative Assertions (NO)](#negative-assertions-no).
+The event accessors skip GEDCOM 7.0 negative assertions: a `NO DEAT` is not a death, so `DeathEvent()` never returns one. See [Negative Assertions (NO)](#negative-assertions-no).
 
 ```go
 // Access birth and death events directly

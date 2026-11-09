@@ -204,9 +204,7 @@ if report.HasDataLoss() {
 ```go
 // Find and display individuals
 for _, individual := range doc.Individuals() {
-    if len(individual.Names) > 0 {
-        fmt.Printf("Name: %s\n", individual.Names[0].Full)
-    }
+    fmt.Printf("Name: %s\n", individual.FullName()) // "" when unnamed
 
     // Access events
     for _, event := range individual.Events {
@@ -217,7 +215,7 @@ for _, individual := range doc.Individuals() {
 // O(1) lookup by cross-reference ID
 person := doc.GetIndividual("@I1@")
 if person != nil {
-    fmt.Printf("Found: %s\n", person.Names[0].Full)
+    fmt.Printf("Found: %s\n", person.FullName())
 }
 
 // Navigate family relationships
