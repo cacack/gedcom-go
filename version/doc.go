@@ -6,7 +6,7 @@
 //
 // Example usage:
 //
-//	lines, _ := parser.Parse(reader)
+//	lines, _ := parser.NewParser().Parse(reader)
 //	detected := version.DetectVersion(lines)
 //	fmt.Printf("Detected GEDCOM version: %s\n", detected)
 package version

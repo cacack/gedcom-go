@@ -15,12 +15,12 @@
 //
 //	// Access individuals
 //	for _, individual := range doc.Individuals() {
-//	    fmt.Printf("Name: %s\n", individual.Name)
+//	    fmt.Printf("Name: %s\n", individual.FullName())
 //	}
 //
 //	// Lookup by cross-reference
 //	person := doc.GetIndividual("@I1@")
 //	if person != nil {
-//	    fmt.Printf("Found: %s\n", person.Name)
+//	    fmt.Printf("Found: %s\n", person.FullName())
 //	}
 package gedcom

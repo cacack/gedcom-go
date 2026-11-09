@@ -208,7 +208,7 @@ for _, individual := range doc.Individuals() {
 
     // Access events
     for _, event := range individual.Events {
-        fmt.Printf("  %s: %s\n", event.Tag, event.Date)
+        fmt.Printf("  %s: %s\n", event.Type, event.Date)
     }
 }
 
@@ -272,10 +272,10 @@ To opt into strict parsing (fail on the first syntax error, no diagnostics colle
 The `gedcomgo` facade also exposes `*WithOptions` variants for the common operations:
 
 ```go
-doc, err := gedcomgo.DecodeWithOptions(r, opts)
-err     = gedcomgo.EncodeWithOptions(w, doc, opts)
-errs   := gedcomgo.ValidateWithOptions(doc, opts)
-issues := gedcomgo.ValidateAllWithOptions(doc, opts)
+doc, err := gedcomgo.DecodeWithOptions(r, decodeOpts)
+err = gedcomgo.EncodeWithOptions(w, doc, encodeOpts)
+errs := gedcomgo.ValidateWithOptions(doc, validateOpts)
+issues := gedcomgo.ValidateAllWithOptions(doc, validateOpts)
 ```
 
 Option types — `DecodeOptions`, `EncodeOptions`, `ValidateOptions` — are re-exported from the facade. For the full surface area (streaming, diagnostics, converter), import the underlying packages directly:
@@ -379,8 +379,8 @@ This library follows [Semantic Versioning](https://semver.org/). We do not break
 | `decoder` | Decode(), DecodeWithOptions() |
 | `encoder` | Encode(), EncodeWithOptions(), NewStreamEncoder(), NewStreamEncoderWithOptions(), EncodeStreaming(), EncodeStreamingWithOptions() |
 | `converter` | Convert(), ConvertWithOptions() |
-| `parser` | Parse(), ParseLine(), NewRecordIterator(), NewRecordIteratorWithOffset(), Records(), RecordsWithOffset(), NewLazyParser() |
-| `validator` | Validate(), ValidateAll(), NewStreamingValidator() |
+| `parser` | NewParser(), Parser.Parse(), Parser.ParseLine(), NewRecordIterator(), NewRecordIteratorWithOffset(), Records(), RecordsWithOffset(), NewLazyParser() |
+| `validator` | New(), Validator.Validate(), Validator.ValidateAll(), NewStreamingValidator() |
 | `charset` | NewReader() |
 | `version` | DetectVersion() |
 
