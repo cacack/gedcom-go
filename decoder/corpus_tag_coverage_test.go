@@ -89,18 +89,6 @@ var unhandledTags = map[string]string{
 	"UID":   "standard 7.0 tag",
 	"TIME":  "standard, but misplaced at HEAD level 1 instead of under HEAD.DATE (vendor-tmg12.ged)",
 
-	// Standard tags misplaced by the producer (rodoslovje/ged-merge exports,
-	// #719). Flagging them is correct; recorded so they are not mistaken for
-	// decoder gaps.
-	"PLAC": "standard, but written directly on OBJE/SOUR records (ancestry-5.5.1-utf8.ged, synium-7.0-utf8.ged)",
-	"AGNC": "standard under SOUR.DATA, but written directly on SOUR records (synium-7.0-utf8.ged)",
-	"CHAN": "standard record-level tag, but written at level 2+ under events and names (synium-7.0-utf8.ged)",
-	"RESN": "standard, but written on a SOUR record, which has no RESN (webtrees-5.5.1-utf8.ged)",
-	"ADR1": "standard ADDR part, but written directly under RESI without ADDR (familyhistorian-5.5.1-utf8.ged)",
-	"CITY": "standard ADDR part, but written directly under RESI without ADDR (familyhistorian-5.5.1-utf8.ged)",
-	"MARR": "family event written on an INDI record (ancestry-5.5.1-utf8.ged)",
-	"TYPE": "5.5 ASSO.TYPE in a 5.5.1 file, which dropped it (geneanet-5.5.1-utf8.ged)",
-
 	// GEDCOM 7.0 tags, all from maximal70.ged. Version Support is Principle 4
 	// and Differentiator 2, so these are the sharpest entries in the list.
 	"CREA": "GEDCOM 7.0 creation timestamp",
@@ -120,6 +108,37 @@ var unhandledTags = map[string]string{
 
 	// Deliberately invalid input.
 	"INVALID": "malformed fixture: testdata/malformed/invalid-level.ged",
+}
+
+// misplacedTags maps a fixture to the standard tags its producer writes in a
+// context the standard does not allow, with the exact number of occurrences.
+// Flagging them is correct; they are recorded so they are not mistaken for
+// decoder gaps (rodoslovje/ged-merge exports, #719).
+//
+// These are common standard tags, so they are excused per fixture rather than
+// in unhandledTags: the same tag flagged in any other fixture, or a different
+// count here, still fails, so a decoder regression that stops recognizing PLAC
+// under BIRT or CHAN on a record is caught.
+var misplacedTags = map[string]map[string]int{
+	"ancestry-5.5.1-utf8.ged": {
+		"PLAC": 3, // written directly on OBJE/SOUR records
+		"MARR": 1, // family event written on an INDI record
+	},
+	"familyhistorian-5.5.1-utf8.ged": {
+		"ADR1": 2, // ADDR part written directly under RESI without ADDR
+		"CITY": 2, // ADDR part written directly under RESI without ADDR
+	},
+	"geneanet-5.5.1-utf8.ged": {
+		"TYPE": 5, // 5.5 ASSO.TYPE in a 5.5.1 file, which dropped it
+	},
+	"synium-7.0-utf8.ged": {
+		"PLAC": 15,  // written directly on OBJE/SOUR records
+		"AGNC": 10,  // belongs under SOUR.DATA, written directly on SOUR records
+		"CHAN": 170, // record-level tag written at level 2+ under events and names
+	},
+	"webtrees-5.5.1-utf8.ged": {
+		"RESN": 2, // written on a SOUR record, which has no RESN
+	},
 }
 
 func corpusFixtures(t *testing.T) []string {
@@ -147,6 +166,7 @@ func corpusFixtures(t *testing.T) []string {
 func TestCorpusTagCoverage(t *testing.T) {
 	found := map[string]int{}
 	where := map[string]map[string]bool{}
+	misplaced := map[string]map[string]int{}
 
 	for _, path := range corpusFixtures(t) {
 		data, err := os.ReadFile(path)
@@ -165,11 +185,19 @@ func TestCorpusTagCoverage(t *testing.T) {
 			if tag == d.Message || tag == "" || strings.HasPrefix(tag, "_") {
 				continue // custom tags are Tags-only by design (ADR 0003)
 			}
+			fixture := filepath.Base(path)
+			if _, ok := misplacedTags[fixture][tag]; ok {
+				if misplaced[fixture] == nil {
+					misplaced[fixture] = map[string]int{}
+				}
+				misplaced[fixture][tag]++
+				continue
+			}
 			found[tag]++
 			if where[tag] == nil {
 				where[tag] = map[string]bool{}
 			}
-			where[tag][filepath.Base(path)] = true
+			where[tag][fixture] = true
 		}
 	}
 
@@ -195,6 +223,15 @@ func TestCorpusTagCoverage(t *testing.T) {
 		sort.Strings(fixed)
 		t.Errorf("these tags are now recognized; remove them from unhandledTags:\n  %s",
 			strings.Join(fixed, "\n  "))
+	}
+
+	for fixture, tags := range misplacedTags {
+		for tag, want := range tags {
+			if got := misplaced[fixture][tag]; got != want {
+				t.Errorf("%s: misplaced tag %q flagged %d times, misplacedTags expects %d",
+					fixture, tag, got, want)
+			}
+		}
 	}
 
 	t.Logf("corpus tag coverage: %d non-underscore tags unrecognized across %d fixtures",
