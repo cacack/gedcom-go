@@ -1411,8 +1411,9 @@ func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int) []*gedcom.
 
 // entityRecordText returns the level-0 line value and any leading CONT/CONC
 // continuation tags for a record whose entity carries text on the level-0 line —
-// GEDCOM 7.0 SharedNote (SNOTE) and NOTE. Consulted only for entity-only records
-// (empty record.Value, no raw Tags); returns ("", nil) otherwise.
+// GEDCOM 7.0 SharedNote (SNOTE) and NOTE. Consulted only for records written
+// from their entity (no raw Tags), whatever record.Value holds (#707); returns
+// ("", nil) for any other record type or an empty Text.
 //
 // Both types run Text through textToTags: the first segment is the level-0 value
 // and the remainder are leading CONT/CONC tags. This splits on embedded newlines
@@ -1442,7 +1443,8 @@ func entityRecordText(record *gedcom.Record, opts *EncodeOptions) (string, []*ge
 // sharedNoteToTags converts a SharedNote entity to GEDCOM tags.
 // GEDCOM 7.0 SNOTE records include MIME types, language tags, and translations.
 // The note's Text (level-0 value plus CONT/CONC continuation) is handled by
-// writeRecord via entityRecordText, not here.
+// writeRecord via entityRecordText, and its own raw Tags by entityOwnTags,
+// not here.
 func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Tag {
 	if note == nil {
 		return nil
@@ -1478,10 +1480,120 @@ func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Ta
 		tags = append(tags, changeDateToTags(note.ChangeDate, 1, "CHAN", opts)...)
 	}
 
-	// Preserved unknown tags
-	tags = append(tags, note.Tags...)
+	// The note's own raw Tags are appended by writeRecord through
+	// entityOwnTags, as for every other entity type; appending them here as
+	// well wrote a decoded shared note's substructures twice once its
+	// Record.Tags were cleared (#711).
 
 	return tags
+}
+
+// entityOwnTags returns the raw tags an entity carries in its own Tags field
+// that produced, the tags written from its typed fields, does not already
+// cover. It is how a record written from its entity carries a tag the typed
+// model has no field for (#711): a hand-built Individual with a vendor
+// _MYAPP_ID in Tags writes it after NAME, and a decoded record whose
+// Record.Tags were cleared keeps its ALIA, AFN or RIN lines rather than
+// losing every structure the typed model does not represent.
+//
+// The rule is by level-1 name: a level-1 tag in Tags, with its subordinate
+// block, is written when produced holds no level-1 tag of that name, and
+// dropped otherwise, because the typed field that produced the name is the
+// authoritative form of that structure. Names the encoder chooses between by
+// output version count as one (ownTagName): a shared-note pointer is produced
+// as NOTE and retagged to SNOTE afterwards, so a raw SNOTE is covered by a
+// produced NOTE, and UIDs are written as UID or _UID by version. CONT and CONC are never written from here; the text they
+// continue is written from the entity's Text. Anything before the first
+// level-1 tag is skipped.
+//
+// Record.Tags, when non-empty, is still written verbatim and this is never
+// consulted (see the package documentation, "Raw Tags Are Authoritative").
+func entityOwnTags(entity any, produced []*gedcom.Tag) []*gedcom.Tag {
+	own := entityTagsField(entity)
+	if len(own) == 0 {
+		return nil
+	}
+
+	covered := make(map[string]bool, len(produced))
+	for _, t := range produced {
+		if t != nil && t.Level == 1 {
+			covered[ownTagName(t.Tag)] = true
+		}
+	}
+
+	var out []*gedcom.Tag
+	keep := false
+	for _, t := range own {
+		if t == nil {
+			continue
+		}
+		if t.Level <= 1 {
+			keep = t.Level == 1 && t.Tag != "CONT" && t.Tag != "CONC" && !covered[ownTagName(t.Tag)]
+		}
+		if keep {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// ownTagName folds the level-1 tag names the encoder chooses between by
+// output version onto one name, so entityOwnTags treats a raw tag and the
+// typed field written under the other spelling as the same structure.
+func ownTagName(tag string) string {
+	switch tag {
+	case "SNOTE":
+		return "NOTE"
+	case "_UID":
+		return "UID"
+	}
+	return tag
+}
+
+// entityTagsField returns the Tags field of a record entity, or nil for an
+// entity type that has none. A typed nil entity has no Tags (ADR 0007).
+//
+//nolint:gocyclo // One nil-checked case per entity type that has a Tags field.
+func entityTagsField(entity any) []*gedcom.Tag {
+	switch e := entity.(type) {
+	case *gedcom.Individual:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.Family:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.Source:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.Submitter:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.Submission:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.Repository:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.Note:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.MediaObject:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.SharedNote:
+		if e != nil {
+			return e.Tags
+		}
+	}
+	return nil
 }
 
 // sharedNoteTranslationToTags converts a SharedNoteTranslation to GEDCOM tags at the specified level.
