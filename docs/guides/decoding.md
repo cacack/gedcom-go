@@ -133,6 +133,16 @@ offset-reporting iterators (`RecordIteratorWithOffset`, `RecordsWithOffset`)
 and `LazyParser.BuildIndex`, which wrap `parser.ErrLineTooLong`; test for it
 with `errors.Is`.
 
+One bound sits below the line scanner. ANSEL writes a combining mark before
+its base character and Unicode after, so the ANSEL reader holds marks until
+the base arrives; a file declaring `CHAR ANSEL` whose body is one long run of
+marks would otherwise be held in memory whole before a single byte reached the
+line limit. The reader buffers at most `charset.MaxPendingCombining` (16)
+marks, and writes a longer run out standalone in groups of that size rather
+than rejecting it. Real text never approaches the bound (ANSEL allows two
+marks on a base), so this applies only to hostile or corrupt input, which the
+line limit then handles as above.
+
 ## Reading Data the Typed Model Does Not Cover
 
 **Reading `Record.Tags` is a supported access path, not a workaround.**

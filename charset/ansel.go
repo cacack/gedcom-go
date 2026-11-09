@@ -36,6 +36,18 @@ func (e *ErrInvalidANSEL) ErrorLine() int {
 // The parser matches on this method, not on the concrete type, so pin it here.
 var _ interface{ ErrorLine() int } = (*ErrInvalidANSEL)(nil)
 
+// MaxPendingCombining bounds how many ANSEL combining marks the reader
+// buffers while waiting for the base character they precede. ANSEL places a
+// mark before its base and Unicode after, so marks are held until the base
+// arrives; without a bound a file that is one long run of marks is held in
+// memory whole, and parser.MaxLineBytes never applies because no byte reaches
+// the line scanner until the run ends (#716). The ANSEL specification allows
+// two marks on a base and real files carry at most three or four, so 16 is
+// well clear of any legitimate text. When a run exceeds it, the buffered
+// marks are written out as they are, standalone, before the next mark is
+// buffered; the input is not rejected.
+const MaxPendingCombining = 16
+
 // anselReader implements io.Reader to convert ANSEL-encoded input to UTF-8.
 type anselReader struct {
 	reader    io.Reader
@@ -58,6 +70,8 @@ type anselReader struct {
 //     emitted before the terminator, so they attach to the last character on
 //     their line. The reader does not know GEDCOM structure, so this applies
 //     even when the mark's base starts a following CONC line.
+//   - At most MaxPendingCombining marks buffered at once; a longer run is
+//     flushed standalone in groups of that size (#716).
 func newAnselReader(r io.Reader) io.Reader {
 	return &anselReader{
 		reader:  r,
@@ -175,6 +189,11 @@ func (r *anselReader) processByte(b byte) error {
 		if !ok {
 			// Undefined combining mark in range (0xFC, 0xFD)
 			return &ErrInvalidANSEL{Line: r.line, Column: r.column, Byte: b}
+		}
+		// A run longer than any text produces is written out as it stands
+		// rather than held, so memory stays bounded whatever the input (#716).
+		if len(r.pending) >= MaxPendingCombining {
+			r.flushPendingCombining()
 		}
 		r.pending = append(r.pending, combining)
 		r.advance(b)
