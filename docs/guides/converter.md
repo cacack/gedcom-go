@@ -89,6 +89,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Note pointers | `NOTE_POINTER_TO_SNOTE` | `NOTE @N1@` pointers to a converted note record become `SNOTE @N1@`, at any level; inline note text and pointers no record defines stay `NOTE` |
 | Media types | `MEDIA_TYPE_MAPPED` | Legacy formats (JPG) converted to IANA (image/jpeg) |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar escapes (`@#DJULIAN@`) converted to keywords (`JULIAN`) |
+| Vendor `_UID` | `UID_FROM_VENDOR_TAG` | A `_UID` tag becomes the 7.0 `UID` it standardised wherever 7.0 defines `UID`: at level 1 of an `INDI`, `FAM`, `SOUR`, `REPO`, `OBJE`, `SNOTE` or `SUBM` record, and at level 2 under an individual or family event or attribute. A `_UID` elsewhere (under `NAME`, say) stays an extension. The value is carried unchanged, as 7.0 asks for an existing identifier; each rename is a `Normalized` note, naming the enclosing event for a nested one |
 | Header update | `VERSION_UPGRADE` | Header version updated to 7.0 |
 
 ### Upgrade 5.5 to 5.5.1
@@ -106,6 +107,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Long lines to CONC | `CONC_ADDED` | A value line too long for 5.x's 255-character limit split onto CONC tags, between two non-spaces, including a level-0 `SNOTE` record's text; each split value is a `Normalized` note |
 | Media types | `MEDIA_TYPE_MAPPED` | IANA formats converted to legacy |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar keywords (`JULIAN`) converted to escapes (`@#DJULIAN@`) |
+| `UID` to vendor `_UID` | `UID_TO_VENDOR_TAG` | Every `UID` tag, at any level, becomes `_UID`, the extension 5.5.x producers use for the same identifier; each is a `Normalized` note, and `UID` is not data loss |
 | Header update | `VERSION_DOWNGRADE` | Header version updated |
 | GEDC.FORM | `GEDC_FORM_ADDED` | `2 FORM LINEAGE-LINKED` added under `GEDC` when missing (required by 5.5 and 5.5.1) |
 
@@ -196,20 +198,20 @@ converted back down to 5.x (see below).
 | EXID tags | External identifiers not supported |
 | TRAN tags | Translation records not supported |
 | PHRASE tags | Phrase annotations not supported |
-| UID tags | Unique identifiers not supported in 5.x |
 | CREA tags | Creation date not supported |
 | `@VOID@` null pointers | 5.x has no null pointer; a kept `@VOID@` would dangle |
 
-Each `EXID`, `TRAN`, `PHRASE`, `UID` and `CREA` is removed from the record's
+Each `EXID`, `TRAN`, `PHRASE` and `CREA` is removed from the record's
 `Record.Tags` with its subordinate lines, at any level, so the output matches
 the report; a match nested inside a removed block is covered by the outer
 entry. The typed entity's record-level fields for them (`CreationDate`,
-`UIDs`, `ExternalIDs`, and a shared note's `Translations`) are cleared too,
-because the encoder writes a record without `Tags` from its entity; a record
-built in code without `Tags` is reported from those fields. Nested entity
-fields, such as an event's `UIDs`, are not cleared, so a record built in code
-can still write them. A FamilySearch ARK `EXID` mapped to `_FSFTID`
-(`MapEXIDToVendorTags`) is not data loss.
+`ExternalIDs`, and a shared note's `Translations`) are cleared too, because
+the encoder writes a record without `Tags` from its entity; a record built in
+code without `Tags` is reported from those fields. Nested entity fields are
+not cleared, so a record built in code can still write them. A FamilySearch
+ARK `EXID` mapped to `_FSFTID` (`MapEXIDToVendorTags`) is not data loss, and
+neither is `UID`, which is renamed to the vendor tag `_UID`
+(`UID_TO_VENDOR_TAG`) and written as such by the encoder for a 5.x target.
 
 Each `@VOID@` pointer is removed with the structure that holds it: a tag whose
 value is `@VOID@` (`1 FAMC @VOID@`, `2 SOUR @VOID@`, ...) goes with its

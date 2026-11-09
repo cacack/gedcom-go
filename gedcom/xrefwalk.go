@@ -89,10 +89,22 @@ func (d *Document) IsPointerXRef(s string) bool {
 //
 // [Document.Subset] and the validator's broken-pointer check use it.
 func (d *Document) IsRecordPointer(s string) bool {
+	if d.IsNullPointer(s) {
+		return false
+	}
 	if s == nullXRef {
-		return !d.voidIsNull()
+		return true
 	}
 	return d.IsPointerXRef(s)
+}
+
+// IsNullPointer reports whether s is the GEDCOM 7.0 null pointer "@VOID@" in
+// d, under the rule described on [Document.IsRecordPointer]. A null pointer
+// names no record, so it is neither a broken pointer nor an orphaned
+// reference; every check that would otherwise report it as one consults this
+// method (#703). It is false for any s other than "@VOID@".
+func (d *Document) IsNullPointer(s string) bool {
+	return s == nullXRef && d.voidIsNull()
 }
 
 // voidIsNull reports whether @VOID@ is the null pointer in d, under the rule

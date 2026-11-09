@@ -326,8 +326,9 @@ issues := gedcomgo.ValidateAllWithOptions(doc, opts)
 
 Every `DuplicateConfig` field's zero value is its default, so a partial literal
 changes only what it names; use `validator.ZeroThreshold` for an explicit zero
-threshold. `MaxGroupSize` bounds the cost of duplicate detection on untrusted
-input; zero means the default (1000), not unlimited. Set
+threshold. `MaxGroupSize` and `MaxNameRunes` bound the cost of duplicate
+detection on untrusted input; zero means the default (1000 and 64), not
+unlimited. Set
 `ValidateOptions.SkipDuplicateDetection` to drop duplicate detection from
 `ValidateAll` entirely. See
 [performance](docs/guides/performance.md#bounding-untrusted-input) for the

@@ -417,19 +417,25 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions, shared
 	// Determine the tags to write and the level-0 line value together:
 	// - If record.Tags has content, use those (preserves lossless behavior) and the
 	//   stored record.Value.
-	// - If record.Tags is empty/nil but Entity is set, convert the entity to tags.
-	//   Some records (NOTE, SNOTE) carry text on the level-0 line; when record.Value
-	//   is empty, derive that value (and, for SNOTE, its CONT/CONC continuation) from
-	//   the entity so a hand-built note's text is not lost.
+	// - If record.Tags is empty/nil but Entity is set, the entity is the whole
+	//   record: its typed fields become tags, and for a NOTE or SNOTE its Text
+	//   becomes the level-0 value plus CONT/CONC. The text replaces record.Value
+	//   whenever the entity has any: a decoded note keeps its first line in
+	//   Value, and gating on an empty Value wrote that line alone, dropping
+	//   every continuation of a note whose Tags were cleared (#707). Last come
+	//   the entity's own extension Tags, so a hand-built record can carry a
+	//   vendor tag beside its typed structures (#711); see entityOwnTags for
+	//   the rule and why standard tags are never taken from there.
 	tags := record.Tags
 	value := record.Value
 	if len(tags) == 0 && record.Entity != nil {
-		tags = retagSharedNotePointers(entityToTags(record, opts), sharedNotes)
-		if value == "" {
-			var contTags []*gedcom.Tag
-			value, contTags = entityRecordText(record, opts)
-			tags = append(contTags, tags...)
+		typed := entityToTags(record, opts)
+		if text, contTags := entityRecordText(record, opts); text != "" || len(contTags) > 0 {
+			value = text
+			typed = append(contTags, typed...)
 		}
+		typed = append(typed, entityOwnTags(record.Entity)...)
+		tags = retagSharedNotePointers(typed, sharedNotes)
 	}
 
 	// The level-0 line goes through the same writer as every other line. Two

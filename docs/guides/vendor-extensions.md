@@ -168,12 +168,13 @@ field but are preserved in raw `Tags` (see the escape-hatch example above).
 ## MyHeritage
 
 MyHeritage exports are detected (`VendorMyHeritage`) and preserved losslessly.
-None of its extensions have typed accessors today; all are reachable via raw
-`Tags` (records) and `Header.Tags` (header).
+Apart from `_UID` (below), none of its extensions have typed accessors; all are
+reachable via raw `Tags` (records) and `Header.Tags` (header).
 
 | Tag | Location | Notes |
 |-----|----------|-------|
-| `_UID`, `RIN` | individual | per-record identifiers, preserved in raw `Tags` |
+| `_UID` | individual, family, event | **typed:** `UIDs` (see [`_UID`](#_uid--record-and-event-identifiers)) |
+| `RIN` | individual | per-record identifier, preserved in raw `Tags` |
 | `_RTLSAVE`, `_PROJECT_GUID`, `_EXPORTED_FROM_SITE_ID` | header | preserved in `Header.Tags` |
 
 > **Behavioral note:** MyHeritage exports omit `REPO` (repository) records, so a
@@ -183,10 +184,11 @@ None of its extensions have typed accessors today; all are reachable via raw
 ## RootsMagic
 
 Detected (`VendorRootsMagic`) and preserved. Its tags are covered by the
-validation registry; none have typed accessors.
+validation registry; apart from `_UID` (below), none have typed accessors.
 
 | Tag | Location | Notes |
 |-----|----------|-------|
+| `_UID` | individual | **typed:** `Individual.UIDs` (see [`_UID`](#_uid--record-and-event-identifiers)) |
 | `_PRIM` | any | primary indicator (Y/N) — more permissive than Ancestry's `_PRIM` |
 | `_SDATE` | any | sort date, separate from the display date |
 | `_TMPLT` | source | source-template reference |
@@ -200,6 +202,36 @@ Gramps and Legacy are recognized by vendor detection (`VendorGramps`,
 preserved. See [compatibility](../governance/policies/compatibility.md) for the per-vendor support
 matrix and tested fixtures.
 
+## `_UID` — record and event identifiers
+
+`_UID` is the most common extension tag in the test corpus: 19,242 occurrences
+across exports from MyHeritage Family Tree Builder, MyHeritage web, PAF,
+RootsMagic, Legacy Family Tree and Family Historian. It carries a stable
+per-record (and, for MyHeritage, per-event) identifier, which is exactly what
+GEDCOM 7.0 standardised as `UID`. The library treats the two as one
+identifier under two spellings:
+
+- **Decoding** fills `UIDs` from either tag on `Individual`, `Family`,
+  `Source`, `MediaObject`, `Event` and `Attribute`, in file order. The raw
+  `_UID` tag stays in `Tags`. A `_UID` on a `SUBM` record, which has no `UIDs`
+  field, stays in `Tags` only.
+- **Encoding** a record from its entity writes `UIDs` as `_UID` when the
+  output version is 5.5 or 5.5.1, and as `UID` for 7.0 (or when the version is
+  unknown). `Document.MinimumVersion` therefore does not count UIDs as a 7.0
+  feature.
+- **Converting** renames the tag in `Record.Tags` in both directions: `_UID`
+  becomes `UID` on an upgrade to 7.0 wherever 7.0 defines `UID` (level 1 of a
+  record, level 2 under an event or attribute), and `UID` becomes `_UID` at
+  any level on a downgrade, each reported as a `Normalized` note under a
+  `UID_FROM_VENDOR_TAG` or `UID_TO_VENDOR_TAG` transformation. A downgrade no
+  longer reports `UID` as data loss.
+
+```go
+for _, uid := range indi.UIDs { // "_UID" in a 5.5.1 export, "UID" in 7.0
+    fmt.Println(uid)
+}
+```
+
 ## Typed vs preserved-raw — quick reference
 
 | Tag | Vendor | Typed field / method | Preserved raw |
@@ -210,7 +242,8 @@ matrix and tested fixtures.
 | `EXID` | FamilySearch (7.0) | `Individual.ExternalIDs`, `Source.ExternalIDs` | ✓ |
 | `_MILT`, `_DEST`, `_PRIM`, `_PHOTO` | Ancestry | — | ✓ |
 | `_FSORD`, `_FSTAG`, `_HASH`, `_LHASH` | FamilySearch | — | ✓ |
-| `_UID`, `RIN`, header exts | MyHeritage | — | ✓ |
+| `_UID` | MyHeritage, PAF, RootsMagic, Legacy, Family Historian | `UIDs` on `Individual`, `Family`, `Source`, `MediaObject`, `Event`, `Attribute` | ✓ |
+| `RIN`, header exts | MyHeritage | — | ✓ |
 | `_PRIM`, `_SDATE`, `_TMPLT` | RootsMagic | — | ✓ |
 | any other `_`-prefixed tag | any | — | ✓ |
 

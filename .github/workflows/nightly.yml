@@ -29,6 +29,9 @@ jobs:
           - package: ./gedcom
             fuzz: ^FuzzParseDate$
             time: 2m
+          - package: ./charset
+            fuzz: ^FuzzNewReader$
+            time: 2m
 
     steps:
     - name: Harden Runner

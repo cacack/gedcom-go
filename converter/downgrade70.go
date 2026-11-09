@@ -8,9 +8,10 @@ import (
 
 // v7OnlyTags are the GEDCOM 7.0 structures with no GEDCOM 5.5/5.5.1 form that
 // dropV7OnlyTags removes on a downgrade, in the order they are reported. NO
-// (dropNegativeAssertions) and SNOTE (downgradeSharedNotes) are handled
-// separately: NO is dropped by its own pass, and SNOTE has a 5.x form.
-var v7OnlyTags = []string{"EXID", "TRAN", "PHRASE", "UID", "CREA"}
+// (dropNegativeAssertions), SNOTE (downgradeSharedNotes) and UID
+// (transformUIDTags) are handled separately: NO is dropped by its own pass,
+// and SNOTE and UID have 5.x forms, NOTE and the vendor tag _UID.
+var v7OnlyTags = []string{"EXID", "TRAN", "PHRASE", "CREA"}
 
 // dropV7OnlyTags removes every v7OnlyTags tag, at any level and together with
 // its subordinate block, from each record's Tags on a 7.0 -> 5.5/5.5.1
@@ -81,15 +82,16 @@ func reportDroppedTags(doc *gedcom.Document, report *gedcom.ConversionReport, ta
 
 // clearV7OnlyEntityFields clears the record-level fields of record's typed
 // entity that the encoder writes as a v7OnlyTags tag (CreationDate as CREA,
-// UIDs as UID, ExternalIDs as EXID, a shared note's Translations as TRAN, a
-// family's HusbandPhrase and WifePhrase as PHRASE) and returns the tags whose
-// fields held data. Nested fields, such as an event's UIDs, are not reached;
-// they are written only for a record without Tags. The one exception is the
+// ExternalIDs as EXID, a shared note's Translations as TRAN, a family's
+// HusbandPhrase and WifePhrase as PHRASE) and returns the tags whose fields
+// held data. UIDs are kept: the encoder writes them as _UID for a 5.5.x
+// target (#715). Nested fields are not reached; they are written only for a
+// record without Tags. The one exception is the
 // DATE PHRASE on events, attributes and LDS ordinances (clearV7OnlyDatePhrases):
 // gedcom.Document.RequiresGEDCOM7 reads it, so a downgraded document that kept
 // it would report itself as still needing 7.0.
 func clearV7OnlyEntityFields(record *gedcom.Record) map[string]bool {
-	crea, uids, exids, trans := v7OnlyEntityFields(record.Entity)
+	crea, exids, trans := v7OnlyEntityFields(record.Entity)
 	cleared := make(map[string]bool)
 	if f, ok := record.Entity.(*gedcom.Family); ok && f != nil && (f.HusbandPhrase != "" || f.WifePhrase != "") {
 		cleared["PHRASE"] = true
@@ -101,10 +103,6 @@ func clearV7OnlyEntityFields(record *gedcom.Record) map[string]bool {
 	if crea != nil && *crea != nil {
 		cleared["CREA"] = true
 		*crea = nil
-	}
-	if uids != nil && len(*uids) > 0 {
-		cleared["UID"] = true
-		*uids = nil
 	}
 	if exids != nil && len(*exids) > 0 {
 		cleared["EXID"] = true
@@ -177,38 +175,38 @@ func clearDatePhrase(date string, parsed **gedcom.Date) bool {
 
 // v7OnlyEntityFields returns pointers to the fields clearV7OnlyEntityFields
 // clears on entity, nil for each one its type (or a nil entity) does not have.
-func v7OnlyEntityFields(entity any) (crea **gedcom.ChangeDate, uids *[]string, exids *[]*gedcom.ExternalID, trans *[]*gedcom.SharedNoteTranslation) {
+func v7OnlyEntityFields(entity any) (crea **gedcom.ChangeDate, exids *[]*gedcom.ExternalID, trans *[]*gedcom.SharedNoteTranslation) {
 	switch e := entity.(type) {
 	case *gedcom.Individual:
 		if e != nil {
-			return &e.CreationDate, &e.UIDs, &e.ExternalIDs, nil
+			return &e.CreationDate, &e.ExternalIDs, nil
 		}
 	case *gedcom.Family:
 		if e != nil {
-			return &e.CreationDate, &e.UIDs, &e.ExternalIDs, nil
+			return &e.CreationDate, &e.ExternalIDs, nil
 		}
 	case *gedcom.Source:
 		if e != nil {
-			return &e.CreationDate, &e.UIDs, &e.ExternalIDs, nil
+			return &e.CreationDate, &e.ExternalIDs, nil
 		}
 	case *gedcom.MediaObject:
 		if e != nil {
-			return &e.CreationDate, &e.UIDs, &e.ExternalIDs, nil
+			return &e.CreationDate, &e.ExternalIDs, nil
 		}
 	case *gedcom.Submitter:
 		if e != nil {
-			return nil, nil, &e.ExternalIDs, nil
+			return nil, &e.ExternalIDs, nil
 		}
 	case *gedcom.Repository:
 		if e != nil {
-			return nil, nil, &e.ExternalIDs, nil
+			return nil, &e.ExternalIDs, nil
 		}
 	case *gedcom.SharedNote:
 		if e != nil {
-			return nil, nil, &e.ExternalIDs, &e.Translations
+			return nil, &e.ExternalIDs, &e.Translations
 		}
 	}
-	return nil, nil, nil, nil
+	return nil, nil, nil
 }
 
 // dropTagBlocks removes each tag drop matches, with its subordinate block,

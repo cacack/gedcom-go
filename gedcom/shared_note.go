@@ -31,7 +31,11 @@ type SharedNote struct {
 	// ChangeDate is when the record was last modified (CHAN tag)
 	ChangeDate *ChangeDate
 
-	// Tags contains all raw tags for this shared note (for unknown/custom tags)
+	// Tags contains all raw tags for this shared note (for unknown/custom tags),
+	// a lossless read-side record per ADR 0003. While Record.Tags is non-empty
+	// it does not drive encoding; a record written from its entity appends
+	// the extension (_-prefixed) level-1 tags here after its typed fields.
+	// See Record.Tags for the rule that governs what a decoded record writes.
 	Tags []*Tag
 }
 

@@ -39,8 +39,10 @@ type Repository struct {
 	ExternalIDs []*ExternalID
 
 	// Tags contains all raw tags for this repository (for unknown/custom tags),
-	// a lossless read-side record per ADR 0003. It does not drive encoding --
-	// see Record.Tags for the rule that governs what a decoded record writes.
+	// a lossless read-side record per ADR 0003. While Record.Tags is non-empty
+	// it does not drive encoding; a record written from its entity appends
+	// the extension (_-prefixed) level-1 tags here after its typed fields.
+	// See Record.Tags for the rule that governs what a decoded record writes.
 	Tags []*Tag
 }
 

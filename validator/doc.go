@@ -47,9 +47,11 @@
 //	duplicates := v.FindPotentialDuplicates(doc) // Find potential duplicates
 //
 // Duplicate detection skips any surname group larger than
-// [DuplicateConfig.MaxGroupSize]. Use [Validator.FindPotentialDuplicatesReport]
-// instead of [Validator.FindPotentialDuplicates] to tell an empty result from
-// an incomplete one.
+// [DuplicateConfig.MaxGroupSize] and compares a given name longer than
+// [DuplicateConfig.MaxNameRunes] on its prefix. Use
+// [Validator.FindPotentialDuplicatesReport] instead of
+// [Validator.FindPotentialDuplicates] to tell an empty result from an
+// incomplete one.
 //
 // # Quality Reports
 //

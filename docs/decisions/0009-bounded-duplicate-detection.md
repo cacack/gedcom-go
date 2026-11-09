@@ -1,7 +1,7 @@
 # ADR-009: Bounded Duplicate Detection
 
 **Status**: Accepted
-**Date**: 2026-09-20
+**Date**: 2026-09-20 (name-length bound added 2026-11-09, [#717](https://github.com/cacack/gedcom-go/issues/717))
 **Context**: Duplicate detection work bounds in the validator package
 
 ## Decision
@@ -11,6 +11,11 @@ default 1000). A group larger than the cap is skipped whole, never truncated. Th
 tri-state: zero means "use the default", negative means "unlimited". When any group is
 skipped, the detector emits one aggregate `DUPLICATE_DETECTION_LIMITED` issue at
 **Warning** severity so the caller learns the analysis was incomplete.
+
+Bound the **length of the given names compared** too (`DuplicateConfig.MaxNameRunes`,
+default 64), with the same tri-state rule. A longer given name is compared on its first
+`MaxNameRunes` runes, and the individuals so compared are counted on the same aggregate
+issue. The group cap bounds how many pairs are compared; this bounds what one pair costs.
 
 ## Context
 
@@ -51,6 +56,22 @@ of single-core CPU, and ~6 MB buys ~2 hours.
 
 The question: how do we put a ceiling on that work without making results depend on
 something the caller cannot see?
+
+### The second axis: name length
+
+The group cap was set on the assumption that one pair comparison is cheap. It is not when
+the names are long: `compareGivenNames` is Levenshtein distance, O(len₁ · len₂), and nothing
+bounded a name's length except `parser.MaxLineBytes` (1 MiB). Measured for
+[#717](https://github.com/cacack/gedcom-go/issues/717):
+
+| Input | `ValidateAll` |
+|-------|---------------|
+| Two individuals, 100,000-character given names (a 200 KB file) | 51.4 s, all in `stringSimilarity` |
+| Six such individuals | killed after 120 s |
+| One pair at the 1 MiB line limit | ~85 min (extrapolated) |
+
+Equal-length names defeat the length-difference early exit, so the group cap alone leaves a
+pair cost the input controls.
 
 ## Decision Drivers
 
@@ -121,6 +142,21 @@ MaxGroupSize int
 The tri-state rule lives in exactly one place, an unexported `maxGroupSize()` resolver on
 the detector, so no call site special-cases it.
 
+```go
+// MaxNameRunes bounds the length of the given names compared. A longer given
+// name is compared on its first MaxNameRunes runes and counted on the notice.
+//   0        → DefaultMaxNameRunes (NOT unlimited)
+//   negative → unlimited (UnlimitedNameRunes)
+//   positive → that value
+// Default: DefaultMaxNameRunes (64)
+MaxNameRunes int
+```
+
+`maxNameRunes()` resolves it the same way. The cut is made once per individual in
+`buildCandidates`, after normalization and before any pair is scored, so the similarity
+never sees more than `MaxNameRunes²` cells. Surnames are not cut: they are compared by
+equality, which is linear.
+
 ### Why Zero Means the Default, Not Unlimited
 
 This breaks the Go zero-value convention, and it is inconsistent with
@@ -161,6 +197,22 @@ individual real-world file; the next largest is 70. A default of 1000 gives ~2x 
 over the worst real observation, so the cap does not fire on realistic genealogical data
 while still holding the adversarial case to a linear bound.
 
+### Why 64
+
+Of the 216,186 individuals in `testdata/`, 64 have a given name longer than 64 runes, all
+in two files that store titles and epithets in `GIVN` (the longest is 146 runes, in the
+MyHeritage Family Tree Builder export). Comparing those on their first 64 runes changes no
+pair the detector reports on either file (86,235 and 89 pairs, identical with and without
+the bound), so the bound costs real detection nothing; the files do gain the notice, which
+is the honest price of comparing on a prefix.
+
+The worst case is now `n × MaxGroupSize / 2 × MaxNameRunes²` cell updates. At the defaults
+that is 2 × 10⁹ per 1000 same-surname individuals with distinct 64-rune names, about ten
+seconds on the development machine, against 51 s for *two* individuals before. A service
+validating hostile uploads at scale should lower `MaxNameRunes` or `MaxGroupSize` further;
+both are the caller's to set. The two-individual probe above completes in under a
+millisecond.
+
 ### What Was Left Out
 
 A document-level `MaxIndividuals` gate was considered and deliberately omitted. That gate is
@@ -173,7 +225,8 @@ the caller does not already have.
 
 - [#530](https://github.com/cacack/gedcom-go/issues/530) - unbounded duplicate detection
 - [#529](https://github.com/cacack/gedcom-go/issues/529) - the prior constant-factor fix
-- `validator/duplicates.go` - `MaxGroupSize`, `maxGroupSize()`, `FindDuplicatesReport`
+- [#717](https://github.com/cacack/gedcom-go/issues/717) - unbounded name length per pair
+- `validator/duplicates.go` - `MaxGroupSize`, `maxGroupSize()`, `MaxNameRunes`, `maxNameRunes()`, `FindDuplicatesReport`
 - `validator/issue.go` - `CodeDuplicateDetectionLimited`
 - `validator/validator.go` - `SkipDuplicateDetection`, limit issues in `ValidateAll`
 - [ADR-008](0008-validator-architecture.md) - validator architecture, strictness levels

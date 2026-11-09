@@ -43,10 +43,14 @@ func TestNewDuplicateDetector_ZeroConfigEqualsDefault(t *testing.T) {
 		if d.maxGroupSize() != def.maxGroupSize() {
 			t.Errorf("%s: maxGroupSize() = %d, want %d", name, d.maxGroupSize(), def.maxGroupSize())
 		}
-		// MaxGroupSize is resolved on use rather than at construction, so it
-		// is compared above and blanked here.
+		if d.maxNameRunes() != def.maxNameRunes() {
+			t.Errorf("%s: maxNameRunes() = %d, want %d", name, d.maxNameRunes(), def.maxNameRunes())
+		}
+		// MaxGroupSize and MaxNameRunes are resolved on use rather than at
+		// construction, so they are compared above and blanked here.
 		gotCfg, wantCfg := d.config, def.config
 		gotCfg.MaxGroupSize, wantCfg.MaxGroupSize = 0, 0
+		gotCfg.MaxNameRunes, wantCfg.MaxNameRunes = 0, 0
 		if gotCfg != wantCfg {
 			t.Errorf("%s resolved to %+v, DefaultDuplicateConfig() to %+v", name, gotCfg, wantCfg)
 		}

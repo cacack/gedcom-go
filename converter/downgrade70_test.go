@@ -82,6 +82,9 @@ func TestDowngrade70OutputMatchesReport(t *testing.T) {
 					t.Errorf("output writes 7.0-only tag %s", tag)
 				}
 			}
+			if bytes.Contains(input, []byte("\n1 UID ")) && !written["_UID"] {
+				t.Error("output lacks the UID rewritten as _UID (#715)")
+			}
 
 			if !strings.Contains(out, "0 @N1@ NOTE Shared note 1\n") {
 				t.Error("output lacks the shared note as a NOTE record")
@@ -179,8 +182,9 @@ func TestDowngrade70DropsTagBlocks(t *testing.T) {
 
 // TestDowngrade70EntityDoesNotRestoreDroppedTags pins the encoder's entity
 // fallback: a record left with no Tags, or built in code without any, is
-// written from its entity, so the dropped UID, CREA and EXID must be gone from
-// the entity too, and an entity-only record must be reported.
+// written from its entity, so the dropped CREA and EXID must be gone from
+// the entity too, and an entity-only record must be reported. UID is not
+// dropped but rewritten as _UID (#715), on both paths.
 func TestDowngrade70EntityDoesNotRestoreDroppedTags(t *testing.T) {
 	t.Run("decoded record left without tags", func(t *testing.T) {
 		input := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 UID abc\n1 CREA\n2 DATE 1 JAN 2020\n0 TRLR\n"
@@ -190,6 +194,31 @@ func TestDowngrade70EntityDoesNotRestoreDroppedTags(t *testing.T) {
 			if written[tag] {
 				t.Errorf("output writes dropped %s:\n%s", tag, out)
 			}
+		}
+		if !hasDataLoss(report, "CREA tags", "@I1@") {
+			t.Error("CREA tags not reported for @I1@")
+		}
+		if hasDataLoss(report, "UID tags", "@I1@") || !strings.Contains(out, "1 _UID abc\n") {
+			t.Errorf("UID should be rewritten as _UID, not dropped:\n%s", out)
+		}
+	})
+
+	t.Run("decoded record whose tags are all 7.0-only", func(t *testing.T) {
+		// Every level-1 tag is dropped, so record.Tags empties and the
+		// encoder writes the record from its entity, whose Tags still hold
+		// the raw EXID and CREA. They must not come back (#711 panel review).
+		input := "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 EXID abc\n2 TYPE http://x.example\n1 CREA\n2 DATE 1 JAN 2020\n0 TRLR\n"
+		converted, report, out := downgradeFrom70(t, []byte(input), gedcom.Version551)
+		if n := len(converted.XRefMap["@I1@"].Tags); n != 0 {
+			t.Fatalf("record.Tags has %d tags after the downgrade, want 0 so the entity path is exercised", n)
+		}
+		written := recordLineTags(out)
+		for _, tag := range []string{"EXID", "TYPE", "CREA", "DATE"} {
+			if written[tag] {
+				t.Errorf("output writes dropped %s from the entity's Tags:\n%s", tag, out)
+			}
+		}
+		for _, tag := range []string{"EXID", "CREA"} {
 			if !hasDataLoss(report, tag+" tags", "@I1@") {
 				t.Errorf("%s tags not reported for @I1@", tag)
 			}
@@ -222,9 +251,14 @@ func TestDowngrade70EntityDoesNotRestoreDroppedTags(t *testing.T) {
 			if written[tag] {
 				t.Errorf("output writes dropped %s:\n%s", tag, buf.String())
 			}
+		}
+		for _, tag := range []string{"CREA", "EXID"} {
 			if !hasDataLoss(report, tag+" tags", "@I1@") {
 				t.Errorf("%s tags not reported for @I1@", tag)
 			}
+		}
+		if hasDataLoss(report, "UID tags", "@I1@") || !strings.Contains(buf.String(), "1 _UID abc\n") {
+			t.Errorf("entity UIDs should be written as _UID for 5.5.1, not dropped:\n%s", buf.String())
 		}
 		if len(indi.UIDs) == 0 || indi.CreationDate == nil || len(indi.ExternalIDs) == 0 {
 			t.Error("Convert changed the source document's entity")

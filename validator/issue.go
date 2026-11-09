@@ -128,15 +128,20 @@ const (
 	// CodePotentialDuplicate indicates two records may represent the same entity.
 	CodePotentialDuplicate = "POTENTIAL_DUPLICATE"
 
-	// CodeDuplicateDetectionLimited indicates duplicate detection skipped one or
-	// more surname groups because DuplicateConfig.MaxGroupSize was exceeded, so
-	// some duplicates may be unreported.
+	// CodeDuplicateDetectionLimited indicates duplicate detection did not
+	// compare the whole document in full: it skipped one or more surname
+	// groups because DuplicateConfig.MaxGroupSize was exceeded, or compared
+	// one or more given names on a prefix because they exceeded
+	// DuplicateConfig.MaxNameRunes, or both, so some duplicates may be
+	// unreported or approximate. The "skipped_groups" and "truncated_names"
+	// details say which applied; either may be "0".
 	//
 	// Unlike CodePotentialDuplicate this carries SeverityWarning and no
 	// RecordXRef: it describes the completeness of the analysis rather than a
-	// finding about any one record. Its "surnames" detail samples the group
-	// keys, which are normalized unless DuplicateConfig.DisableNameNormalization is set and
-	// so need not match the source document verbatim.
+	// finding about any one record. Its "surnames" detail, present only when
+	// a group was skipped, samples the group keys, which are normalized unless
+	// DuplicateConfig.DisableNameNormalization is set and so need not match
+	// the source document verbatim.
 	CodeDuplicateDetectionLimited = "DUPLICATE_DETECTION_LIMITED"
 )
 

@@ -46,7 +46,10 @@ type Record struct {
 	// (encoder.ErrLineBreak).
 	Type RecordType
 
-	// Value is the value from the level 0 line (used for NOTE records, etc.)
+	// Value is the value from the level 0 line (used for NOTE records, etc.).
+	// It is written as read while Tags is non-empty; a NOTE or SNOTE record
+	// written from its Entity takes its value from the entity's Text instead
+	// when that is non-empty, and falls back to Value when it is empty.
 	Value string
 
 	// Tags contains all the tags that make up this record, in document order.
@@ -67,8 +70,12 @@ type Record struct {
 	//
 	//   - Edit the matching entry in Tags.
 	//   - Set Tags to nil, so the encoder re-derives the whole record from
-	//     Entity. This drops any raw tag the typed model does not represent,
-	//     so it trades losslessness for the typed model's view.
+	//     Entity: its typed fields first, then the extension (_-prefixed)
+	//     level-1 tags in the entity's own Tags (Individual.Tags, Note.Tags,
+	//     ...). Standard tags the typed model has no field for are dropped,
+	//     and a typed structure that was deleted stays deleted. A NOTE or
+	//     SNOTE takes its value and CONT/CONC lines from the entity's Text
+	//     when that is non-empty.
 	//
 	// The converter keeps both in step and is the safe option when converting
 	// between GEDCOM versions.

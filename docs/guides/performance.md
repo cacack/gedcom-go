@@ -169,54 +169,63 @@ go test ./validator -bench BenchmarkFindDuplicates -run '^$' -benchmem -count=3
 
 #### Bounding Untrusted Input
 
-Two knobs control the worst case, so callers validating untrusted uploads do not
+Three knobs control the worst case, so callers validating untrusted uploads do not
 have to bound document size at their own layer:
 
 | Knob | Default | Effect |
 |---|---|---|
 | `DuplicateConfig.MaxGroupSize` | `validator.DefaultMaxGroupSize` (1000) | Any normalized-surname group larger than the cap is skipped whole, never truncated |
-| `ValidateOptions.SkipDuplicateDetection` | `false` | Drops duplicate detection from the `ValidateAll` sweep. `QualityReport` and `FindPotentialDuplicates` still run it — they are explicit requests — bounded by `MaxGroupSize` |
+| `DuplicateConfig.MaxNameRunes` | `validator.DefaultMaxNameRunes` (64) | A given name longer than the bound is compared on its first 64 runes; the similarity is Levenshtein, quadratic in name length, so this bounds what one pair costs |
+| `ValidateOptions.SkipDuplicateDetection` | `false` | Drops duplicate detection from the `ValidateAll` sweep. `QualityReport` and `FindPotentialDuplicates` still run it — they are explicit requests — bounded by the two caps above |
 
-`MaxGroupSize` is tri-state, and zero does **not** mean unlimited:
+`MaxGroupSize` and `MaxNameRunes` are tri-state, and zero does **not** mean unlimited:
 
 | Value | Meaning |
 |---|---|
-| `0` | Use `DefaultMaxGroupSize` (1000) |
-| negative (`validator.UnlimitedGroupSize`) | No cap — compare every group however large |
+| `0` | Use the default (`DefaultMaxGroupSize` 1000, `DefaultMaxNameRunes` 64) |
+| negative (`validator.UnlimitedGroupSize`, `validator.UnlimitedNameRunes`) | No cap — compare every group however large, or every name at full length |
 | positive | Use that value |
 
 A partial struct literal such as `&validator.DuplicateConfig{MinConfidence: 0.7}`
-leaves the field at zero, so it stays bounded rather than silently opting back
-into unbounded work. Opting out has to be explicit, and `UnlimitedGroupSize`
-exists so it reads as a decision rather than a magic `-1`.
+leaves the fields at zero, so it stays bounded rather than silently opting back
+into unbounded work. Opting out has to be explicit, and `UnlimitedGroupSize` and
+`UnlimitedNameRunes` exist so it reads as a decision rather than a magic `-1`.
 
-The cap turns the worst case from quadratic into linear in document size. With
-*n* individuals, the pair count is bounded by:
+The caps turn the worst case from quadratic into linear in document size. With
+*n* individuals, the work is bounded by:
 
 ```
-worst case = n × MaxGroupSize / 2 pair comparisons
+worst case = n × MaxGroupSize / 2 pair comparisons × MaxNameRunes² cells each
 ```
 
-At the default that is 500 × *n*, whatever the surnames are: a 100,000-individual
-upload cannot exceed ~50M comparisons. For scale, the fixture row above compares
-~3.1M pairs in ~1.1 s.
+At the defaults that is 500 × *n* pairs, whatever the surnames are: a
+100,000-individual upload cannot exceed ~50M comparisons. For scale, the fixture
+row above compares ~3.1M pairs in ~1.1 s. The name bound matters when the names
+are long: two individuals with 100,000-character given names took 51 s before
+it (the pair cost is the product of the lengths) and under a millisecond with
+it. The fully adversarial shape — 1000 same-surname individuals with distinct
+64-rune names — still costs about ten seconds, so a service exposed to hostile
+uploads at scale should set both caps lower than the defaults.
 
-Skipping is reported rather than silent. When any group exceeds the cap, the
-detector emits **one** aggregate `DUPLICATE_DETECTION_LIMITED` issue at Warning
-severity, with details for the number of groups and individuals skipped, the
-largest group, the resolved cap, and a sample of surnames. It surfaces through
-`Validator.ValidateAll` and `Validator.QualityReport`, and through
-`DuplicateDetector.FindDuplicatesReport` as `DuplicateReport.LimitIssues`.
+Skipping and prefix comparison are reported rather than silent. When any group
+exceeds the cap, or any given name is compared on a prefix, the detector emits
+**one** aggregate `DUPLICATE_DETECTION_LIMITED` issue at Warning severity, with
+details for the number of groups and individuals skipped, the largest group, the
+resolved caps, the number of names cut, and a sample of skipped surnames. It
+surfaces through `Validator.ValidateAll` and `Validator.QualityReport`, and
+through `DuplicateDetector.FindDuplicatesReport` as `DuplicateReport.LimitIssues`.
 `FindDuplicates` returns pairs only, so use the report form when you need to know
 whether the sweep was complete — an empty result from a capped document means
 "unknown", not "none".
 
-The default is set from the corpus: the largest normalized-surname group anywhere
-in `testdata/` is **519**, in the scale fixture (203,154 individuals, 55,801
-groups); the next largest anywhere is 70. A cap of 1000 leaves roughly 2x
+The defaults are set from the corpus. The largest normalized-surname group
+anywhere in `testdata/` is **519**, in the scale fixture (203,154 individuals,
+55,801 groups); the next largest anywhere is 70. A cap of 1000 leaves roughly 2x
 headroom over the worst real-world observation, and running the whole corpus
-through the detector at the default produces zero `DUPLICATE_DETECTION_LIMITED`
-issues — the cap costs real data nothing.
+through the detector at the default skips no group. Of 216,186 individuals, 64
+have a given name over 64 runes, all titles and epithets stored in `GIVN` in two
+files; comparing them on their first 64 runes changes no pair those files report,
+so the two files gain the notice and lose no detection.
 
 See [ADR 0009](../decisions/0009-bounded-duplicate-detection.md) for the
 alternatives considered and why the cap is per-group rather than global.

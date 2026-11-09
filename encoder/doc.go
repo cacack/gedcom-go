@@ -74,8 +74,22 @@
 // decoded record succeeds in memory, survives a round of reads, and is silently
 // absent from the file — no error, no diagnostic. Edit the matching entry in
 // Record.Tags instead, or set Record.Tags to nil to have the record rebuilt
-// from Entity (which drops any raw tag the typed model does not represent).
-// The converter keeps both in step.
+// from Entity. The converter keeps both in step.
+//
+// A record rebuilt from its Entity is written in two parts. The typed fields
+// come first, as tags; for a NOTE or SNOTE the entity's Text supplies the
+// level-0 value and its CONT/CONC lines when it is non-empty, and Record.Value
+// is written otherwise. Then come the extension tags in the entity's own Tags
+// (Individual.Tags, Family.Tags and so on): each level-1 tag with a leading
+// underscore, with its subordinates, except _UID and _FSFTID, which the typed
+// model holds in fields and writes from them. This is how a hand-built record
+// carries a vendor or application tag beside its typed structures. Standard
+// tags are never written from an entity's Tags, because for a decoded record
+// that field is the whole raw record and a standard tag the typed fields did
+// not produce is usually one the caller deleted; the typed fields are the
+// only source of standard structures on this path, so a decoded record whose
+// Record.Tags were cleared drops the standard tags the typed model has no
+// field for, as it always did.
 //
 // The header follows the same rule with its own field, described next.
 //

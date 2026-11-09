@@ -374,14 +374,13 @@ func TestRecord70DataLoss(t *testing.T) {
 			}
 
 			foundEXID := false
-			foundUID := false
 			foundCREA := false
 			for _, loss := range report.DataLoss {
 				if contains(loss.Feature, "EXID") {
 					foundEXID = true
 				}
 				if contains(loss.Feature, "UID") {
-					foundUID = true
+					t.Error("UID reported as data loss; it is rewritten as _UID (#715)")
 				}
 				if contains(loss.Feature, "CREA") {
 					foundCREA = true
@@ -389,9 +388,6 @@ func TestRecord70DataLoss(t *testing.T) {
 			}
 			if !foundEXID {
 				t.Error("Should report EXID tag data loss")
-			}
-			if !foundUID {
-				t.Error("Should report UID tag data loss")
 			}
 			if !foundCREA {
 				t.Error("Should report CREA tag data loss")
@@ -726,11 +722,11 @@ func TestConversionNotes_DroppedTags(t *testing.T) {
 			wantDropped:   true,
 		},
 		{
-			name:          "UID dropped in 7.0 to 5.5 conversion",
+			name:          "UID kept as _UID in 7.0 to 5.5 conversion",
 			sourceVersion: gedcom.Version70,
 			targetVersion: gedcom.Version55,
 			tagToAdd:      "UID",
-			wantDropped:   true,
+			wantDropped:   false,
 		},
 		{
 			name:          "CREA dropped in 7.0 to 5.5.1 conversion",

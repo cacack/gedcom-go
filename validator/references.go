@@ -86,7 +86,7 @@ func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, rec
 
 	// Check FAMC references (ChildInFamilies)
 	for i, link := range ind.ChildInFamilies {
-		if link.FamilyXRef == "" {
+		if skipReference(doc, link.FamilyXRef) {
 			continue
 		}
 		if doc.GetFamily(link.FamilyXRef) == nil {
@@ -105,7 +105,7 @@ func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, rec
 
 	// Check FAMS references (SpouseInFamilies)
 	for i, link := range ind.SpouseInFamilies {
-		if link.FamilyXRef == "" {
+		if skipReference(doc, link.FamilyXRef) {
 			continue
 		}
 		if doc.GetFamily(link.FamilyXRef) == nil {
@@ -124,7 +124,7 @@ func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, rec
 
 	// Check SOUR references (SourceCitations)
 	for i, citation := range ind.SourceCitations {
-		if citation == nil || citation.SourceXRef == "" {
+		if citation == nil || skipReference(doc, citation.SourceXRef) {
 			continue
 		}
 		if doc.GetSource(citation.SourceXRef) == nil {
@@ -151,7 +151,7 @@ func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, record 
 	lines := newPointerLines(record)
 
 	// Check HUSB reference
-	if fam.Husband != "" {
+	if !skipReference(doc, fam.Husband) {
 		if doc.GetIndividual(fam.Husband) == nil {
 			issue := NewIssue(
 				SeverityError,
@@ -167,7 +167,7 @@ func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, record 
 	}
 
 	// Check WIFE reference
-	if fam.Wife != "" {
+	if !skipReference(doc, fam.Wife) {
 		if doc.GetIndividual(fam.Wife) == nil {
 			issue := NewIssue(
 				SeverityError,
@@ -184,7 +184,7 @@ func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, record 
 
 	// Check CHIL references
 	for i, childXRef := range fam.Children {
-		if childXRef == "" {
+		if skipReference(doc, childXRef) {
 			continue
 		}
 		if doc.GetIndividual(childXRef) == nil {
@@ -202,6 +202,16 @@ func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, record 
 	}
 
 	return issues
+}
+
+// skipReference reports whether a typed pointer field holds nothing to
+// resolve: it is empty, or it is the GEDCOM 7.0 null pointer "@VOID@" in doc.
+// A null pointer deliberately names no record, so it is not an orphaned
+// reference and is not counted as a reference at all. Which values are null
+// is decided by [gedcom.Document.IsNullPointer], the same rule the
+// BROKEN_XREF check applies to raw tags (#703).
+func skipReference(doc *gedcom.Document, xref string) bool {
+	return xref == "" || doc.IsNullPointer(xref)
 }
 
 // pointerLines finds the source line of a typed pointer by looking up the
@@ -288,7 +298,7 @@ func (v *ReferenceValidator) Report(doc *gedcom.Document) *ReferenceReport {
 func (v *ReferenceValidator) countIndividualReferences(doc *gedcom.Document, ind *gedcom.Individual, report *ReferenceReport) {
 	// Count FAMC references
 	for _, link := range ind.ChildInFamilies {
-		if link.FamilyXRef == "" {
+		if skipReference(doc, link.FamilyXRef) {
 			continue
 		}
 		report.TotalReferences++
@@ -303,7 +313,7 @@ func (v *ReferenceValidator) countIndividualReferences(doc *gedcom.Document, ind
 
 	// Count FAMS references
 	for _, link := range ind.SpouseInFamilies {
-		if link.FamilyXRef == "" {
+		if skipReference(doc, link.FamilyXRef) {
 			continue
 		}
 		report.TotalReferences++
@@ -318,7 +328,7 @@ func (v *ReferenceValidator) countIndividualReferences(doc *gedcom.Document, ind
 
 	// Count SOUR references
 	for _, citation := range ind.SourceCitations {
-		if citation == nil || citation.SourceXRef == "" {
+		if citation == nil || skipReference(doc, citation.SourceXRef) {
 			continue
 		}
 		report.TotalReferences++
@@ -335,7 +345,7 @@ func (v *ReferenceValidator) countIndividualReferences(doc *gedcom.Document, ind
 // countFamilyReferences counts all references in a family record.
 func (v *ReferenceValidator) countFamilyReferences(doc *gedcom.Document, fam *gedcom.Family, report *ReferenceReport) {
 	// Count HUSB reference
-	if fam.Husband != "" {
+	if !skipReference(doc, fam.Husband) {
 		report.TotalReferences++
 		report.ByType[string(RefTypeHUSB)]++
 		if doc.GetIndividual(fam.Husband) == nil {
@@ -347,7 +357,7 @@ func (v *ReferenceValidator) countFamilyReferences(doc *gedcom.Document, fam *ge
 	}
 
 	// Count WIFE reference
-	if fam.Wife != "" {
+	if !skipReference(doc, fam.Wife) {
 		report.TotalReferences++
 		report.ByType[string(RefTypeWIFE)]++
 		if doc.GetIndividual(fam.Wife) == nil {
@@ -360,7 +370,7 @@ func (v *ReferenceValidator) countFamilyReferences(doc *gedcom.Document, fam *ge
 
 	// Count CHIL references
 	for _, childXRef := range fam.Children {
-		if childXRef == "" {
+		if skipReference(doc, childXRef) {
 			continue
 		}
 		report.TotalReferences++

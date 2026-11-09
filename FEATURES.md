@@ -197,6 +197,13 @@ if indi.FamilySearchID != "" {
 }
 ```
 
+### `_UID` (MyHeritage, PAF, RootsMagic, Legacy, Family Historian)
+
+`_UID` fills the same `UIDs` fields as GEDCOM 7.0's `UID`, on `Individual`,
+`Family`, `Source`, `MediaObject`, `Event` and `Attribute`; the raw tag stays
+in `Tags`. The encoder writes `UIDs` as `_UID` for 5.5/5.5.1 output and `UID`
+for 7.0. See [vendor extensions](docs/guides/vendor-extensions.md#_uid--record-and-event-identifiers).
+
 ### Round-Trip Preservation
 
 All vendor extensions are preserved during encode/decode cycles. Custom tags not explicitly parsed are retained in the raw `Tags` field on each entity.
@@ -1226,6 +1233,7 @@ config := &validator.DuplicateConfig{
     MaxBirthYearDiff:  2,
     MinConfidence:     0.7,
     MaxGroupSize:      1000, // per-surname-group ceiling
+    MaxNameRunes:      64,   // given names compared on at most this many runes
 }
 v := validator.NewWithConfig(&validator.ValidatorConfig{Duplicates: config})
 pairs := v.FindPotentialDuplicates(doc)
@@ -1237,7 +1245,7 @@ for _, pair := range pairs {
 
 Every field's zero value is its default, so a partial literal such as `&validator.DuplicateConfig{MinConfidence: 0.9}` keeps the other thresholds and name normalization in force. `MinNameSimilarity`, `MinConfidence` and `MaxBirthYearDiff` treat `0` as "use the default" (0.8, 0.7 and 2) and any negative value — spelled `validator.ZeroThreshold` — as an explicit zero. Name normalization (trim, lowercase, accent folding) is on unless `DisableNameNormalization` is set. Given-name similarity is the Levenshtein distance divided by the longer name's length, both counted in characters (runes) rather than bytes, so names in non-Latin scripts score on the same scale as ASCII ones. `DefaultDuplicateConfig()` returns a `*DuplicateConfig` with every default spelled out. Birth years are compared as astronomical years, so 44 BCE and 44 CE are 87 years apart and 1 BCE and 1 CE are one year apart; a birth date with no real year (a phrase, year 0, `0 BC`) earns no birth-year credit. Birth dates in different calendars are each placed on their first day (a dual date read in New Style, a modifier or range end ignored, a day or month the calendar does not have dropped) and compared as Gregorian years, so Hebrew 5660 and Gregorian 1899 are the same year while Hebrew 1900 and Gregorian 1900 are not; two dates in the same calendar compare `Year` as written, so a dual date counts from its Old Style year.
 
-Comparison is quadratic within a surname group, and the input controls the surnames, so `MaxGroupSize` bounds it: any normalized-surname group larger than the cap is skipped whole and reported as one `DUPLICATE_DETECTION_LIMITED` warning (available as `DuplicateReport.LimitIssues` from `FindDuplicatesReport`, and included in `ValidateAll` and `QualityReport` output). The field is tri-state and **zero is not unlimited** — `0` selects `validator.DefaultMaxGroupSize` (1000), a negative value disables the cap, and a positive value is used as given, so a partial config literal stays bounded. `ValidateOptions.SkipDuplicateDetection` drops duplicate detection from the `ValidateAll` sweep; `QualityReport`, `FindPotentialDuplicates` and `FindPotentialDuplicatesReport` still run it, bounded by `MaxGroupSize`. See [performance](docs/guides/performance.md#bounding-untrusted-input) for the worst-case bound and [ADR 0009](docs/decisions/0009-bounded-duplicate-detection.md) for the rationale.
+Comparison is quadratic within a surname group, and the input controls the surnames, so `MaxGroupSize` bounds it: any normalized-surname group larger than the cap is skipped whole and reported as one `DUPLICATE_DETECTION_LIMITED` warning (available as `DuplicateReport.LimitIssues` from `FindDuplicatesReport`, and included in `ValidateAll` and `QualityReport` output). Each pair's cost is quadratic in the given-name length too, so `MaxNameRunes` bounds that: a longer given name is compared on its first 64 runes and the individuals so compared are counted on the same warning. Both fields are tri-state and **zero is not unlimited** — `0` selects the default (`validator.DefaultMaxGroupSize` 1000, `validator.DefaultMaxNameRunes` 64), a negative value (`UnlimitedGroupSize`, `UnlimitedNameRunes`) disables the cap, and a positive value is used as given, so a partial config literal stays bounded. `ValidateOptions.SkipDuplicateDetection` drops duplicate detection from the `ValidateAll` sweep; `QualityReport`, `FindPotentialDuplicates` and `FindPotentialDuplicatesReport` still run it, bounded by `MaxGroupSize`. See [performance](docs/guides/performance.md#bounding-untrusted-input) for the worst-case bound and [ADR 0009](docs/decisions/0009-bounded-duplicate-detection.md) for the rationale.
 
 Two notes for callers upgrading. `DUPLICATE_DETECTION_LIMITED` is a `Warning`, so unlike the `Info`-level `POTENTIAL_DUPLICATE` it appears at the default `StrictnessNormal` — a document with an oversized surname group gains a warning where duplicate detection previously contributed nothing at that strictness. Suppress it like any other code via `ValidateOptions.SkipRules`; a rule skipping `POTENTIAL_DUPLICATE` does **not** cover it. It also lands in `QualityReport.DuplicateIssues` (JSON `duplicate_issues`) alongside the pairs, so count pairs by filtering on `POTENTIAL_DUPLICATE` rather than taking the length of that slice.
 
@@ -1338,6 +1346,11 @@ for _, record := range records {
 // Check cross-references after all records processed
 finalIssues := v.Finalize()  // Orphaned reference detection
 ```
+
+Set `StreamingOptions.Version` to the document's GEDCOM version: the streaming
+validator never sees the header, and `Finalize` needs it to treat `@VOID@` as
+the 7.0 null pointer (never orphaned) or as a 5.5/5.5.1 identifier that must be
+declared. Left empty, `@VOID@` is taken as the null pointer.
 
 **Two-Phase Validation**:
 - **Immediate**: Date logic errors (death before birth), structural issues detected per-record
@@ -1486,7 +1499,8 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |
 | Long lines to CONC | Downgrade from 7.0 | Splits a value line past 5.x's 255-character limit onto CONC tags, between two non-spaces, so the encoded output has no over-length line and decodes back to the same text |
 | `SNOTE` → Note records | Downgrade from 7.0 | `SNOTE` records become `NOTE` records, and `SNOTE` pointers become `NOTE` pointers; the record's `MIME` and `LANG` are removed and reported as data loss |
-| 7.0-only tags removed | Downgrade from 7.0 | `EXID`, `TRAN`, `PHRASE`, `UID` and `CREA` are removed from `Record.Tags` with their subordinates, and from the typed entity's record-level fields, and reported as data loss |
+| 7.0-only tags removed | Downgrade from 7.0 | `EXID`, `TRAN`, `PHRASE` and `CREA` are removed from `Record.Tags` with their subordinates, and from the typed entity's record-level fields, and reported as data loss |
+| `UID` ↔ `_UID` | Both | `_UID`, the extension every 5.5.x desktop producer writes for the identifier 7.0 standardised as `UID`, is renamed to `UID` on an upgrade wherever 7.0 defines `UID` (level 1 of a record, level 2 under an event or attribute) and `UID` to `_UID` at any level on a downgrade (`UID_FROM_VENDOR_TAG`, `UID_TO_VENDOR_TAG`); neither is data loss |
 | `FONE`/`ROMN` removed | To 7.0 or 5.5 | 5.5.1 phonetic and romanized variations are removed from `Record.Tags` with their subordinates (under `NAME` or `PLAC`), and from `PersonalName.Phonetic`/`Romanized`, and reported as data loss; they are not mapped to 7.0 `TRAN` |
 | `@VOID@` pointers removed | Downgrade from 7.0 | 5.x has no null pointer, so each structure whose pointer is `@VOID@` (`FAMC`, `CHIL`, `SOUR` citation, `SNOTE`, ...) is removed with its subordinates from `Tags` and the typed entity; `HUSB`, `WIFE`, LDS `FAMC` and header `SUBM` fields are cleared. Reported as data loss |
 | FamilySearch ARK EXID → `_FSFTID` | Downgrade from 7.0 | Maps to the vendor tag instead of dropping the ID (when `MapEXIDToVendorTags`) |

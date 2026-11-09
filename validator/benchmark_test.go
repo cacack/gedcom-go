@@ -402,16 +402,22 @@ func TestDuplicateCapPreservesCorpusResults(t *testing.T) {
 	capped := NewDuplicateDetector(nil).FindDuplicatesReport(doc)
 
 	unlimited := DefaultDuplicateConfig()
-	unlimited.MaxGroupSize = -1
+	unlimited.MaxGroupSize = UnlimitedGroupSize
+	unlimited.MaxNameRunes = UnlimitedNameRunes
 	uncapped := NewDuplicateDetector(unlimited).FindDuplicatesReport(doc)
 
-	if len(capped.LimitIssues) != 0 {
-		t.Errorf("the default cap of %d fired on real data: %s",
-			DefaultMaxGroupSize, capped.LimitIssues[0].Message)
+	// The group cap must not fire on real data. The name bound (#717) may:
+	// this fixture has 13 given names over 64 runes, titles stored in GIVN,
+	// which are compared on their prefix and reported, but that must not
+	// change a single pair found.
+	for _, issue := range capped.LimitIssues {
+		if issue.Details["skipped_groups"] != "0" {
+			t.Errorf("the default cap of %d fired on real data: %s", DefaultMaxGroupSize, issue.Message)
+		}
 	}
-	if len(capped.Pairs) != len(uncapped.Pairs) {
-		t.Errorf("capped detection found %d pairs, uncapped %d: the default cap is losing "+
-			"real duplicates", len(capped.Pairs), len(uncapped.Pairs))
+	if !samePairs(capped.Pairs, uncapped.Pairs) {
+		t.Errorf("bounded detection found %d pairs, unbounded %d: the defaults are changing "+
+			"real results", len(capped.Pairs), len(uncapped.Pairs))
 	}
 	if len(capped.Pairs) == 0 {
 		t.Fatal("the fixture produced no duplicate pairs at all; the comparison is vacuous")
@@ -428,6 +434,28 @@ func TestDuplicateCapPreservesCorpusResults(t *testing.T) {
 	}
 	t.Logf("%d individuals, %d surname groups, largest %d (cap %d), %d pairs",
 		len(doc.Individuals()), len(groups), largest, DefaultMaxGroupSize, len(capped.Pairs))
+}
+
+// samePairs reports whether two duplicate sweeps found the same pairs with
+// the same confidence, in any order.
+func samePairs(a, b []DuplicatePair) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	key := func(p DuplicatePair) string {
+		return fmt.Sprintf("%s|%s|%.6f", p.Individual1.XRef, p.Individual2.XRef, p.Confidence)
+	}
+	seen := make(map[string]int, len(a))
+	for _, p := range a {
+		seen[key(p)]++
+	}
+	for _, p := range b {
+		if seen[key(p)] == 0 {
+			return false
+		}
+		seen[key(p)]--
+	}
+	return true
 }
 
 // adversarialGroupSize is the size of the single surname group in

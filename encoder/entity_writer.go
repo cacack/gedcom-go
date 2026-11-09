@@ -2,6 +2,7 @@ package encoder
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/internal/concsplit"
@@ -259,7 +260,7 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 	tags = append(tags, refNumbersToTags(indi.RefNumbers)...)
 
 	// UIDs (level 1)
-	tags = append(tags, uidsToTags(indi.UIDs, 1)...)
+	tags = append(tags, uidsToTags(indi.UIDs, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(indi.ExternalIDs, 1)...)
@@ -345,7 +346,7 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	tags = append(tags, refNumbersToTags(fam.RefNumbers)...)
 
 	// UIDs (level 1)
-	tags = append(tags, uidsToTags(fam.UIDs, 1)...)
+	tags = append(tags, uidsToTags(fam.UIDs, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(fam.ExternalIDs, 1)...)
@@ -412,7 +413,7 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	tags = append(tags, refNumbersToTags(src.RefNumbers)...)
 
 	// UIDs (level 1)
-	tags = append(tags, uidsToTags(src.UIDs, 1)...)
+	tags = append(tags, uidsToTags(src.UIDs, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(src.ExternalIDs, 1)...)
@@ -639,7 +640,7 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 	tags = append(tags, refNumbersToTags(media.RefNumbers)...)
 
 	// UIDs (level 1)
-	tags = append(tags, uidsToTags(media.UIDs, 1)...)
+	tags = append(tags, uidsToTags(media.UIDs, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(media.ExternalIDs, 1)...)
@@ -874,7 +875,7 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "RESN", Value: d.restriction})
 	}
 
-	tags = append(tags, uidsToTags(d.uids, level)...)
+	tags = append(tags, uidsToTags(d.uids, level, opts)...)
 
 	if d.sortDate != "" {
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "SDATE", Value: d.sortDate})
@@ -1411,8 +1412,9 @@ func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int) []*gedcom.
 
 // entityRecordText returns the level-0 line value and any leading CONT/CONC
 // continuation tags for a record whose entity carries text on the level-0 line —
-// GEDCOM 7.0 SharedNote (SNOTE) and NOTE. Consulted only for entity-only records
-// (empty record.Value, no raw Tags); returns ("", nil) otherwise.
+// GEDCOM 7.0 SharedNote (SNOTE) and NOTE. Consulted only for records written
+// from their entity (no raw Tags), whatever record.Value holds (#707); returns
+// ("", nil) for any other record type or an empty Text.
 //
 // Both types run Text through textToTags: the first segment is the level-0 value
 // and the remainder are leading CONT/CONC tags. This splits on embedded newlines
@@ -1442,7 +1444,8 @@ func entityRecordText(record *gedcom.Record, opts *EncodeOptions) (string, []*ge
 // sharedNoteToTags converts a SharedNote entity to GEDCOM tags.
 // GEDCOM 7.0 SNOTE records include MIME types, language tags, and translations.
 // The note's Text (level-0 value plus CONT/CONC continuation) is handled by
-// writeRecord via entityRecordText, not here.
+// writeRecord via entityRecordText, and its own raw Tags by entityOwnTags,
+// not here.
 func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Tag {
 	if note == nil {
 		return nil
@@ -1478,10 +1481,114 @@ func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Ta
 		tags = append(tags, changeDateToTags(note.ChangeDate, 1, "CHAN", opts)...)
 	}
 
-	// Preserved unknown tags
-	tags = append(tags, note.Tags...)
+	// The note's own extension Tags are appended by writeRecord through
+	// entityOwnTags, as for every other entity type. Appending the whole
+	// field here, as before #711, wrote a decoded shared note's standard
+	// substructures twice once its Record.Tags were cleared.
 
 	return tags
+}
+
+// entityOwnTags returns the extension tags an entity carries in its own Tags
+// field, so a record written from its entity can carry a vendor or
+// application tag beside its typed structures (#711): a hand-built Individual
+// with a level-1 _MYAPP_ID in Tags writes it after NAME, and a decoded record
+// whose Record.Tags were cleared keeps its _-prefixed lines.
+//
+// Only extension tags (a leading underscore) are taken, each with its
+// subordinate block, and not the two the typed model has fields for, _UID
+// (Individual.UIDs and friends, written by uidsToTags) and _FSFTID
+// (Individual.FamilySearchID). Standard tags are never written from here,
+// typed or not: the decoder sets every entity's Tags to the whole raw
+// record, so for a decoded record a standard tag that the typed fields did
+// not produce is as likely a structure the caller deleted, or one the
+// converter dropped, as one the model has no field for. Writing it back
+// would resurrect deleted data, so the typed fields stay the only source of
+// standard structures and a caller who wants an untyped standard tag kept
+// edits Record.Tags. Anything before the first level-1 tag is skipped.
+//
+// Record.Tags, when non-empty, is still written verbatim and this is never
+// consulted (see the package documentation, "Raw Tags Are Authoritative").
+func entityOwnTags(entity any) []*gedcom.Tag {
+	own := entityTagsField(entity)
+	if len(own) == 0 {
+		return nil
+	}
+
+	var out []*gedcom.Tag
+	keep := false
+	for _, t := range own {
+		if t == nil {
+			continue
+		}
+		if t.Level <= 1 {
+			keep = t.Level == 1 && isOwnExtensionTag(t.Tag)
+		}
+		if keep {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// isOwnExtensionTag reports whether a level-1 tag in an entity's Tags is
+// written by entityOwnTags: an extension tag the typed model has no field
+// for. typedExtensionTags are the extensions it does have fields for; they
+// are written from those fields, by uidsToTags and individualToTags, and
+// writing them from Tags too would duplicate or resurrect them.
+func isOwnExtensionTag(tag string) bool {
+	return strings.HasPrefix(tag, "_") && !typedExtensionTags[tag]
+}
+
+// typedExtensionTags are the level-1 extension tags the typed model holds in
+// a field, so isOwnExtensionTag excludes them. Keep in step with uidTagName
+// (_UID) and the FamilySearchID writer in individualToTags (_FSFTID).
+var typedExtensionTags = map[string]bool{"_UID": true, "_FSFTID": true}
+
+// entityTagsField returns the Tags field of a record entity, or nil for an
+// entity type that has none. A typed nil entity has no Tags (ADR 0007).
+//
+//nolint:gocyclo // One nil-checked case per entity type that has a Tags field.
+func entityTagsField(entity any) []*gedcom.Tag {
+	switch e := entity.(type) {
+	case *gedcom.Individual:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.Family:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.Source:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.Submitter:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.Submission:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.Repository:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.Note:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.MediaObject:
+		if e != nil {
+			return e.Tags
+		}
+	case *gedcom.SharedNote:
+		if e != nil {
+			return e.Tags
+		}
+	}
+	return nil
 }
 
 // sharedNoteTranslationToTags converts a SharedNoteTranslation to GEDCOM tags at the specified level.
@@ -1526,13 +1633,27 @@ func refNumbersToTags(refNumbers []gedcom.RefNumber) []*gedcom.Tag {
 }
 
 // uidsToTags converts unique identifiers to UID tags at the given level, in
-// order.
-func uidsToTags(uids []string, level int) []*gedcom.Tag {
+// order, spelled for the output version (uidTagName).
+func uidsToTags(uids []string, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
+	name := uidTagName(opts)
 	for _, uid := range uids {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "UID", Value: uid})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: name, Value: uid})
 	}
 	return tags
+}
+
+// uidTagName is the tag a unique identifier is written under: _UID, the
+// vendor extension every GEDCOM 5.5/5.5.1 desktop producer uses for the same
+// identifier and the decoder reads into the same field (#715), when the
+// output version forOutput resolved is 5.5 or 5.5.1; otherwise UID, the
+// GEDCOM 7.0 structure. An unknown output version, or any other version
+// such as a 7.x draft, writes UID, as before.
+func uidTagName(opts *EncodeOptions) string {
+	if opts != nil && (opts.version == gedcom.Version55 || opts.version == gedcom.Version551) {
+		return "_UID"
+	}
+	return "UID"
 }
 
 // externalIDsToTags converts a slice of ExternalIDs to GEDCOM tags at the specified level.
