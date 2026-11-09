@@ -380,6 +380,14 @@ Comprehensive GEDCOM 7.0 edge case testing from FamilySearch:
 - **maximal70-memories1.ged** (1.1K) - Multimedia object records
 - **maximal70-memories2.ged** (1.2K) - Family and event multimedia objects
 
+**Not vendored (#718):** the rest of `gedcom70/` (`date.ged`, `warnings70.ged`,
+`minimal70.gdz`, `maximal70.gdz`, `maximal70/`) and all of `gedcom71/`. The
+FamilySearch/GEDCOM.io repository that serves them declares no licence, so
+copying more needs a licence decision first. The files above predate that
+check and also carry no recorded licence. Until it is settled, `warnings70.ged`
+is not validated, `.gdz` files are not held (GEDZIP is #127), and
+`minimal71.ged` decoding as 5.5 is not covered.
+
 ### gedcom7code Conversion Suite (`gedcom7code/`)
 Source: https://github.com/gedcom7code/test-files (commit pinned in `gedcom7code/SOURCE`)
 License: Unlicense (public domain; upstream `LICENSE` vendored alongside)
