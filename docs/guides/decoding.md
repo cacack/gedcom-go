@@ -191,7 +191,9 @@ record that has none. A decoded record always has tags, so:
 
 ```go
 indi := doc.GetIndividual("@I1@")
-indi.Name().Full = "Jane /Roe/"   // succeeds in memory...
+if name := indi.Name(); name != nil {
+    name.Full = "Jane /Roe/"   // succeeds in memory...
+}
 // ...and is silently absent from the encoded output. No error, no diagnostic.
 ```
 
