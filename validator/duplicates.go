@@ -44,6 +44,28 @@ const DefaultMaxGroupSize = 1000
 // the quadratic blowup described in docs/decisions/0009-bounded-duplicate-detection.md.
 const UnlimitedGroupSize = -1
 
+// DefaultMaxNameRunes is the default bound on the given-name length duplicate
+// detection compares (#717). Given names longer than this are compared on
+// their first DefaultMaxNameRunes runes.
+//
+// The value is set against the testdata corpus: of 216,186 individuals, 64
+// have a given name longer than 64 runes, all in one MyHeritage export that
+// stores titles and epithets in GIVN (the longest is 146 runes), and none has
+// a given name a prefix of 64 runes fails to identify. Per-pair cost is
+// Levenshtein's O(len₁·len₂), so without this bound two 100,000-character
+// names, a 200 KB file, cost 51 s; at the bound a pair costs at most 64²
+// cell updates.
+const DefaultMaxNameRunes = 64
+
+// UnlimitedNameRunes disables the given-name length bound when assigned to
+// [DuplicateConfig.MaxNameRunes], comparing names at their full length.
+//
+// As with [UnlimitedGroupSize], the field's zero value means "use
+// DefaultMaxNameRunes", so opting out has to be explicit. Only use it on
+// input you control; on attacker-supplied documents a pair of long names
+// costs the product of their lengths.
+const UnlimitedNameRunes = -1
+
 // ZeroThreshold requests an effective value of exactly zero when assigned to
 // [DuplicateConfig.MinNameSimilarity], [DuplicateConfig.MinConfidence] or
 // [DuplicateConfig.MaxBirthYearDiff].
@@ -76,7 +98,8 @@ const (
 // Every field's zero value is the default, so a partial struct literal such as
 // &DuplicateConfig{MinConfidence: 0.9} changes only the field it names. The
 // numeric fields therefore reserve negative values for "explicitly zero" or
-// "unlimited" — see [ZeroThreshold] and [UnlimitedGroupSize].
+// "unlimited" — see [ZeroThreshold], [UnlimitedGroupSize] and
+// [UnlimitedNameRunes].
 type DuplicateConfig struct {
 	// DisableNameNormalization turns off name normalization (trim, lowercase,
 	// remove accents) before surnames are grouped and given names compared.
@@ -145,6 +168,24 @@ type DuplicateConfig struct {
 	//
 	// Default: DefaultMaxGroupSize
 	MaxGroupSize int
+
+	// MaxNameRunes bounds the length of the given names duplicate detection
+	// compares. Similarity is Levenshtein distance, quadratic in the name
+	// lengths, and MaxGroupSize bounds how many pairs are compared but not
+	// what one pair costs; two 100,000-character given names took 51 s
+	// (#717). A given name longer than the bound is compared on its first
+	// MaxNameRunes runes, and the individuals so compared are counted in the
+	// DUPLICATE_DETECTION_LIMITED notice, since a verdict reached on a prefix
+	// can differ from one on the whole name.
+	//
+	// Tri-state, like MaxGroupSize and for the same reason:
+	//
+	//	0        use DefaultMaxNameRunes (64)
+	//	negative no bound; compare names at full length ([UnlimitedNameRunes])
+	//	positive use that value
+	//
+	// Default: DefaultMaxNameRunes
+	MaxNameRunes int
 }
 
 // DefaultDuplicateConfig returns a new *DuplicateConfig with default values,
@@ -160,6 +201,7 @@ func DefaultDuplicateConfig() *DuplicateConfig {
 		RequireBirthDate:         false,
 		MinConfidence:            defaultMinConfidence,
 		MaxGroupSize:             DefaultMaxGroupSize,
+		MaxNameRunes:             DefaultMaxNameRunes,
 	}
 }
 
@@ -260,8 +302,8 @@ type DuplicateDetector struct {
 // The detector keeps its own copy of config, so later changes to the caller's
 // struct have no effect. Zero thresholds are resolved to their defaults and
 // negative ones to zero at this point, as documented on [DuplicateConfig]
-// (a NaN threshold is treated like zero);
-// MaxGroupSize is resolved on use by maxGroupSize.
+// (a NaN threshold is treated like zero); MaxGroupSize and MaxNameRunes are
+// resolved on use by maxGroupSize and maxNameRunes.
 func NewDuplicateDetector(config *DuplicateConfig) *DuplicateDetector {
 	if config == nil {
 		config = DefaultDuplicateConfig()
@@ -302,6 +344,21 @@ func (d *DuplicateDetector) maxGroupSize() int {
 	}
 }
 
+// maxNameRunes resolves DuplicateConfig.MaxNameRunes under the same tri-state
+// rule as maxGroupSize: negative means unlimited, zero means the default,
+// positive is taken as given. Unlimited is math.MaxInt so the one call site
+// stays a plain length comparison.
+func (d *DuplicateDetector) maxNameRunes() int {
+	switch {
+	case d.config.MaxNameRunes < 0:
+		return math.MaxInt
+	case d.config.MaxNameRunes == 0:
+		return DefaultMaxNameRunes
+	default:
+		return d.config.MaxNameRunes
+	}
+}
+
 // DuplicateReport carries the result of duplicate detection along with any
 // issues describing where the analysis was deliberately incomplete.
 //
@@ -313,9 +370,10 @@ type DuplicateReport struct {
 	// Pairs contains the potential duplicates found.
 	Pairs []DuplicatePair
 
-	// LimitIssues describes any analysis that was skipped, for example a
-	// surname group exceeding DuplicateConfig.MaxGroupSize. Empty when the
-	// entire document was compared.
+	// LimitIssues describes any analysis that was skipped or approximated:
+	// a surname group exceeding DuplicateConfig.MaxGroupSize, or given names
+	// longer than DuplicateConfig.MaxNameRunes compared on a prefix. Empty
+	// when the entire document was compared in full.
 	LimitIssues []Issue
 }
 
@@ -353,6 +411,7 @@ func (d *DuplicateDetector) FindDuplicatesReport(doc *gedcom.Document) Duplicate
 
 	var duplicates []DuplicatePair
 	limit := d.maxGroupSize()
+	nameLimit := d.maxNameRunes()
 	var skipped skippedGroups
 
 	// Compare pairs within each surname group
@@ -372,7 +431,8 @@ func (d *DuplicateDetector) FindDuplicatesReport(doc *gedcom.Document) Duplicate
 
 		// Derived only now that the group is known to be compared: see
 		// buildCandidates on why this is not done during grouping.
-		candidates := d.buildCandidates(surname, group)
+		candidates, truncated := d.buildCandidates(surname, group, nameLimit)
+		skipped.truncatedNames += truncated
 
 		// Compare all pairs within the group
 		for i := 0; i < len(candidates); i++ {
@@ -385,8 +445,8 @@ func (d *DuplicateDetector) FindDuplicatesReport(doc *gedcom.Document) Duplicate
 	}
 
 	report := DuplicateReport{Pairs: duplicates}
-	if skipped.groups > 0 {
-		report.LimitIssues = []Issue{skipped.toIssue(limit)}
+	if skipped.groups > 0 || skipped.truncatedNames > 0 {
+		report.LimitIssues = []Issue{skipped.toIssue(limit, nameLimit)}
 	}
 	return report
 }
@@ -397,13 +457,15 @@ func (d *DuplicateDetector) FindDuplicatesReport(doc *gedcom.Document) Duplicate
 // with them.
 const maxSkippedSurnamesReported = 5
 
-// skippedGroups accumulates the surname groups that exceeded the cap so a
-// single aggregate Issue can describe all of them.
+// skippedGroups accumulates the surname groups that exceeded the cap, and the
+// individuals whose given names were compared on a prefix (#717), so a single
+// aggregate Issue can describe all of them.
 type skippedGroups struct {
-	groups      int
-	individuals int
-	largest     int
-	surnames    []string
+	groups         int
+	individuals    int
+	largest        int
+	surnames       []string
+	truncatedNames int
 }
 
 // record notes one skipped group of the given surname key and size.
@@ -419,15 +481,17 @@ func (s *skippedGroups) record(surname string, size int) {
 	s.surnames = append(s.surnames, surname)
 }
 
-// toIssue renders the accumulated skips as one Issue.
+// toIssue renders the accumulated skips and truncations as one Issue.
 //
 // One aggregate issue is emitted rather than one per group so the output stays
 // bounded regardless of how many oversized groups a document contains. The
 // severity is Warning, deliberately louder than the Info carried by
 // POTENTIAL_DUPLICATE: a caller running at the default strictness has to learn
 // that the analysis was incomplete, since a quiet Info would let "no duplicates
-// found" be read as "none exist".
-func (s *skippedGroups) toIssue(limit int) Issue {
+// found" be read as "none exist". Prefix comparison is reported on the same
+// issue, with the same severity, because a verdict reached on a prefix can
+// differ from one on the whole name in either direction.
+func (s *skippedGroups) toIssue(limit, nameLimit int) Issue {
 	// Map iteration order is randomized, so the sample must be sorted to keep
 	// the emitted Issue identical across runs of the same document.
 	sort.Strings(s.surnames)
@@ -436,17 +500,30 @@ func (s *skippedGroups) toIssue(limit int) Issue {
 		sample = sample[:maxSkippedSurnamesReported]
 	}
 
-	message := fmt.Sprintf(
-		"Duplicate detection skipped %d surname group(s) totaling %d individuals "+
-			"because they exceed MaxGroupSize=%d; some duplicates may be unreported",
-		s.groups, s.individuals, limit)
+	var parts []string
+	if s.groups > 0 {
+		parts = append(parts, fmt.Sprintf(
+			"skipped %d surname group(s) totaling %d individuals "+
+				"because they exceed MaxGroupSize=%d", s.groups, s.individuals, limit))
+	}
+	if s.truncatedNames > 0 {
+		parts = append(parts, fmt.Sprintf(
+			"compared %d individual(s) on the first %d characters of a given name "+
+				"longer than MaxNameRunes", s.truncatedNames, nameLimit))
+	}
+	message := "Duplicate detection " + strings.Join(parts, " and ") + "; some duplicates may be unreported"
 
-	return NewIssue(SeverityWarning, CodeDuplicateDetectionLimited, message, "").
+	issue := NewIssue(SeverityWarning, CodeDuplicateDetectionLimited, message, "").
 		WithDetail("skipped_groups", strconv.Itoa(s.groups)).
 		WithDetail("skipped_individuals", strconv.Itoa(s.individuals)).
 		WithDetail("largest_group", strconv.Itoa(s.largest)).
 		WithDetail("max_group_size", strconv.Itoa(limit)).
-		WithDetail("surnames", strings.Join(sample, ", "))
+		WithDetail("truncated_names", strconv.Itoa(s.truncatedNames)).
+		WithDetail("max_name_runes", strconv.Itoa(nameLimit))
+	if s.groups > 0 {
+		issue = issue.WithDetail("surnames", strings.Join(sample, ", "))
+	}
+	return issue
 }
 
 // buildSurnameGroups groups individuals by their normalized surname.
@@ -493,18 +570,26 @@ func (d *DuplicateDetector) buildSurnameGroups(individuals []*gedcom.Individual)
 // its given names up front would run a transform chain per individual only to
 // discard every result. Deferring keeps that work proportional to the set
 // actually compared rather than to the size of the input (#530).
-func (d *DuplicateDetector) buildCandidates(surname string, individuals []*gedcom.Individual) []candidate {
-	candidates := make([]candidate, 0, len(individuals))
+//
+// A given name longer than maxRunes is cut to its first maxRunes runes here,
+// before any pair is scored, so the quadratic similarity never sees more
+// than maxRunes² cells (#717). truncated counts the individuals cut.
+func (d *DuplicateDetector) buildCandidates(surname string, individuals []*gedcom.Individual, maxRunes int) (candidates []candidate, truncated int) {
+	candidates = make([]candidate, 0, len(individuals))
 
 	for _, ind := range individuals {
 		given := extractGivenName(ind)
 		if !d.config.DisableNameNormalization {
 			given = normalizeName(given)
 		}
+		if utf8.RuneCountInString(given) > maxRunes {
+			given = string([]rune(given)[:maxRunes])
+			truncated++
+		}
 		candidates = append(candidates, candidate{ind: ind, surname: surname, given: given})
 	}
 
-	return candidates
+	return candidates, truncated
 }
 
 // extractSurname extracts the surname from an individual's primary name.
