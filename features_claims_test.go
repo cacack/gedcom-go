@@ -174,5 +174,6 @@ func readFile(t *testing.T, path string) string {
 	if err != nil {
 		t.Fatalf("read %s: %v", path, err)
 	}
-	return string(data)
+	// Windows checkouts may convert Markdown to CRLF; the tests match on "\n".
+	return strings.ReplaceAll(string(data), "\r\n", "\n")
 }
