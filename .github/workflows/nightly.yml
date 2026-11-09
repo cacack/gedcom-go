@@ -76,6 +76,37 @@ jobs:
         path: '**/testdata/fuzz/**'
         retention-days: 30
 
+  # The gedcom.io test files are fetched, not vendored (#718). PR CI tolerates
+  # a failed fetch so a network outage cannot block it; here a vanished or
+  # changed source must fail, so the fetch uses -require and a missing file
+  # fails its tests instead of skipping them.
+  corpora:
+    name: Fetched Test Corpora
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@46b06cea07f9e64621fdf066ba77ac6915163d43 # v2.22.3
+      with:
+        egress-policy: audit
+
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version: '1.26'
+        cache: true
+
+    - name: Fetch test corpora
+      run: go run ./internal/cmd/fetchcorpora -require
+
+    - name: Run tests with the fetched corpora required
+      env:
+        GEDCOM_REQUIRE_FETCHED_CORPORA: '1'
+      run: go test -timeout 10m ./...
+
   security:
     name: Security Scan (Nightly)
     runs-on: ubuntu-latest
@@ -146,7 +177,7 @@ jobs:
   notify:
     name: Notify on Failure
     runs-on: ubuntu-latest
-    needs: [fuzz, security]
+    needs: [fuzz, corpora, security]
     if: failure() && github.event_name == 'schedule'
     permissions:
       contents: read
@@ -180,6 +211,7 @@ jobs:
           --body "The nightly workflow failed on $(date -u +%Y-%m-%d).
 
         **Fuzz testing**: ${{ needs.fuzz.result }}
+        **Fetched test corpora**: ${{ needs.corpora.result }}
         **Security scan**: ${{ needs.security.result }}
 
         [View full run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})

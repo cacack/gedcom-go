@@ -47,6 +47,22 @@ jobs:
     - name: Verify dependencies
       run: go mod verify
 
+    # The gedcom.io test files may be used but not redistributed, so they are
+    # fetched rather than vendored (#718; see testdata/README.md). The cache is
+    # keyed on the lock, so a run normally makes no request. The fetch must
+    # never block a PR: on a network failure it warns and exits 0, and
+    # continue-on-error covers anything else, so the tests that need the files
+    # skip. The nightly workflow fetches with -require instead.
+    - name: Restore fetched test corpora
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: .corpora
+        key: corpora-${{ runner.os }}-${{ hashFiles('internal/corpora/gedcomio.lock') }}
+
+    - name: Fetch test corpora
+      continue-on-error: true
+      run: go run ./internal/cmd/fetchcorpora
+
     # ./... rather than a hand-maintained package list: the list silently fell
     # behind and left the root package, converter and gedcom/testing ungated
     # (#430). examples/ and specs/ are excluded from the coverage thresholds by
