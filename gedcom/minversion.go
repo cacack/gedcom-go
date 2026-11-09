@@ -24,8 +24,11 @@ package gedcom
 //   - SNOTE references from media objects
 //
 // Note that INT (interpreted) dates and non-Gregorian calendar dates are NOT
-// treated as 7.0-only, because both are valid in GEDCOM 5.5.1. Features stored
-// only as raw tags (rather than typed fields) are not inspected.
+// treated as 7.0-only, because both are valid in GEDCOM 5.5.1. Nor are UIDs:
+// the encoder writes them as the vendor tag _UID for 5.5/5.5.1 output, the
+// spelling every 5.5.x desktop producer uses and the decoder reads (#715).
+// Features stored only as raw tags (rather than typed fields) are not
+// inspected.
 func (d *Document) RequiresGEDCOM7() bool {
 	if d == nil {
 		return false
@@ -58,7 +61,7 @@ func recordRequiresGEDCOM7(rec *Record) bool {
 	case *Family:
 		return familyRequiresGEDCOM7(e)
 	case *Source:
-		return len(e.ExternalIDs) > 0 || e.CreationDate != nil || len(e.UIDs) > 0 ||
+		return len(e.ExternalIDs) > 0 || e.CreationDate != nil ||
 			mediaLinksRequireGEDCOM7(e.Media)
 	case *MediaObject:
 		return mediaObjectRequiresGEDCOM7(e)
@@ -95,12 +98,10 @@ func individualRequiresGEDCOM7(i *Individual) bool {
 	if i == nil {
 		return false
 	}
-	// UID has no 5.5 or 5.5.1 position at any level -- it does not appear in
-	// the 5.5 coverage matrix at all -- and the encoder writes it with no
-	// version guard, so a record carrying one cannot honestly be labelled
-	// 5.5.1. Same argument as eventRequiresGEDCOM7 and
-	// attributeRequiresGEDCOM7 make one level down.
-	if len(i.ExternalIDs) > 0 || i.CreationDate != nil || len(i.UIDs) > 0 ||
+	// UIDs are not checked here or one level down: the encoder writes them as
+	// _UID for 5.5/5.5.1 output, so a record carrying one is representable
+	// there (#715).
+	if len(i.ExternalIDs) > 0 || i.CreationDate != nil ||
 		mediaLinksRequireGEDCOM7(i.Media) {
 		return true
 	}
@@ -158,7 +159,7 @@ func familyRequiresGEDCOM7(f *Family) bool {
 	if f == nil {
 		return false
 	}
-	if len(f.ExternalIDs) > 0 || f.CreationDate != nil || len(f.UIDs) > 0 ||
+	if len(f.ExternalIDs) > 0 || f.CreationDate != nil ||
 		f.HusbandPhrase != "" || f.WifePhrase != "" || mediaLinksRequireGEDCOM7(f.Media) ||
 		ldsOrdinancesRequireGEDCOM7(f.LDSOrdinances) {
 		return true
@@ -180,11 +181,9 @@ func eventRequiresGEDCOM7(ev *Event) bool {
 	if ev == nil {
 		return false
 	}
-	// NO (negative assertion), SDATE (sort date) and UID are 7.0-only.
-	// UID is checked here for the same reason attributeRequiresGEDCOM7
-	// checks it: both come from the one shared EVENT_DETAIL parse, so a
-	// rule that held for one and not the other would be arbitrary.
-	if ev.IsNegative || ev.SortDate != "" || len(ev.UIDs) > 0 ||
+	// NO (negative assertion) and SDATE (sort date) are 7.0-only. UIDs are
+	// not: see individualRequiresGEDCOM7.
+	if ev.IsNegative || ev.SortDate != "" ||
 		ev.AgePhrase != "" || ev.SortDatePhrase != "" || ev.ParsedDate.PhraseSubstructure(ev.Date) != "" {
 		return true
 	}
@@ -199,15 +198,15 @@ func eventRequiresGEDCOM7(ev *Event) bool {
 }
 
 // attributeRequiresGEDCOM7 reports whether an attribute carries a
-// structure only GEDCOM 7.0 defines. UID and SDATE on an attribute, and
-// an ASSO with a PHRASE, are all 7.0-only; the encoder emits them
-// unconditionally, so a document holding one cannot honestly be labelled
-// 5.5.1.
+// structure only GEDCOM 7.0 defines. SDATE on an attribute, and an ASSO
+// with a PHRASE, are 7.0-only; the encoder emits them unconditionally, so a
+// document holding one cannot honestly be labelled 5.5.1. UIDs are not
+// checked: see individualRequiresGEDCOM7.
 func attributeRequiresGEDCOM7(at *Attribute) bool {
 	if at == nil {
 		return false
 	}
-	if len(at.UIDs) > 0 || at.SortDate != "" || at.SortDatePhrase != "" ||
+	if at.SortDate != "" || at.SortDatePhrase != "" ||
 		at.ParsedDate.PhraseSubstructure(at.Date) != "" {
 		return true
 	}
@@ -241,7 +240,7 @@ func mediaObjectRequiresGEDCOM7(m *MediaObject) bool {
 	// RESN substructure. RESN inside EVENT_DETAIL is a different position and
 	// is 5.5.1-valid, which is why Event/Attribute do not check it.
 	if len(m.ExternalIDs) > 0 || m.CreationDate != nil || len(m.SharedNoteXRefs) > 0 ||
-		len(m.UIDs) > 0 || m.Restriction != "" {
+		m.Restriction != "" {
 		return true
 	}
 	for _, f := range m.Files {

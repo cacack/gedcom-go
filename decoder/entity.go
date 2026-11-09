@@ -204,7 +204,9 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "REFN":
 			indi.RefNumbers = append(indi.RefNumbers, parseRefNumber(record.Tags, i))
 
-		case "UID":
+		case "UID", "_UID":
+			// _UID is the vendor spelling of UID every 5.5.x desktop producer
+			// agrees on (#715); see uidTagName in the encoder for the write side.
 			indi.UIDs = append(indi.UIDs, tag.Value)
 
 		case "_FSFTID":
@@ -763,7 +765,7 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 		*detail.website = append(*detail.website, tag.Value)
 	case "RESN":
 		*detail.restriction = tag.Value
-	case "UID":
+	case "UID", "_UID":
 		*detail.uids = append(*detail.uids, tag.Value)
 	case "SDATE":
 		*detail.sortDate = tag.Value
@@ -1162,7 +1164,7 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "REFN":
 			fam.RefNumbers = append(fam.RefNumbers, parseRefNumber(record.Tags, i))
 
-		case "UID":
+		case "UID", "_UID":
 			fam.UIDs = append(fam.UIDs, tag.Value)
 
 		case "EXID":
@@ -1221,7 +1223,7 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			src.CreationDate = parseChangeDate(record.Tags, i, collector)
 		case "REFN":
 			src.RefNumbers = append(src.RefNumbers, parseRefNumber(record.Tags, i))
-		case "UID":
+		case "UID", "_UID":
 			src.UIDs = append(src.UIDs, tag.Value)
 		case "EXID":
 			src.ExternalIDs = append(src.ExternalIDs, parseExternalID(record.Tags, i))
@@ -1775,7 +1777,7 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 			media.CreationDate = parseChangeDate(record.Tags, i, collector)
 		case "REFN":
 			media.RefNumbers = append(media.RefNumbers, parseRefNumber(record.Tags, i))
-		case "UID":
+		case "UID", "_UID":
 			media.UIDs = append(media.UIDs, tag.Value)
 		case "RESN":
 			media.Restriction = tag.Value

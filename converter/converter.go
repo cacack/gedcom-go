@@ -200,6 +200,7 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 	upgradeNoteRecordsForV7(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
+	transformUIDTags(doc, report, gedcom.Version70)
 	variations.report(doc, report, gedcom.Version70)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
@@ -247,6 +248,7 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 	upgradeNoteRecordsForV7(doc, report)
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
+	transformUIDTags(doc, report, gedcom.Version70)
 	variations.report(doc, report, gedcom.Version70)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
@@ -277,6 +279,8 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 	transformDateCalendars(doc, gedcom.Version55, report)
 	transformMediaTypes(doc, gedcom.Version55, report)
 	transformHeader(doc, gedcom.Version55, report)
+	// Before dropV7OnlyTags, which reports whatever 7.0-only tag remains.
+	transformUIDTags(doc, report, gedcom.Version55)
 	dropV7OnlyTags(doc, report, gedcom.Version55)
 	downgradeSharedNotes(doc, report, gedcom.Version55)
 	if opts.ReportPreservedTags {
@@ -305,6 +309,8 @@ func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 	transformDateCalendars(doc, gedcom.Version551, report)
 	transformMediaTypes(doc, gedcom.Version551, report)
 	transformHeader(doc, gedcom.Version551, report)
+	// Before dropV7OnlyTags, which reports whatever 7.0-only tag remains.
+	transformUIDTags(doc, report, gedcom.Version551)
 	dropV7OnlyTags(doc, report, gedcom.Version551)
 	downgradeSharedNotes(doc, report, gedcom.Version551)
 	if opts.ReportPreservedTags {

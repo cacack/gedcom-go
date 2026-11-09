@@ -259,7 +259,7 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 	tags = append(tags, refNumbersToTags(indi.RefNumbers)...)
 
 	// UIDs (level 1)
-	tags = append(tags, uidsToTags(indi.UIDs, 1)...)
+	tags = append(tags, uidsToTags(indi.UIDs, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(indi.ExternalIDs, 1)...)
@@ -345,7 +345,7 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	tags = append(tags, refNumbersToTags(fam.RefNumbers)...)
 
 	// UIDs (level 1)
-	tags = append(tags, uidsToTags(fam.UIDs, 1)...)
+	tags = append(tags, uidsToTags(fam.UIDs, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(fam.ExternalIDs, 1)...)
@@ -412,7 +412,7 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	tags = append(tags, refNumbersToTags(src.RefNumbers)...)
 
 	// UIDs (level 1)
-	tags = append(tags, uidsToTags(src.UIDs, 1)...)
+	tags = append(tags, uidsToTags(src.UIDs, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(src.ExternalIDs, 1)...)
@@ -639,7 +639,7 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 	tags = append(tags, refNumbersToTags(media.RefNumbers)...)
 
 	// UIDs (level 1)
-	tags = append(tags, uidsToTags(media.UIDs, 1)...)
+	tags = append(tags, uidsToTags(media.UIDs, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(media.ExternalIDs, 1)...)
@@ -874,7 +874,7 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "RESN", Value: d.restriction})
 	}
 
-	tags = append(tags, uidsToTags(d.uids, level)...)
+	tags = append(tags, uidsToTags(d.uids, level, opts)...)
 
 	if d.sortDate != "" {
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "SDATE", Value: d.sortDate})
@@ -1526,13 +1526,26 @@ func refNumbersToTags(refNumbers []gedcom.RefNumber) []*gedcom.Tag {
 }
 
 // uidsToTags converts unique identifiers to UID tags at the given level, in
-// order.
-func uidsToTags(uids []string, level int) []*gedcom.Tag {
+// order, spelled for the output version (uidTagName).
+func uidsToTags(uids []string, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
+	name := uidTagName(opts)
 	for _, uid := range uids {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "UID", Value: uid})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: name, Value: uid})
 	}
 	return tags
+}
+
+// uidTagName is the tag a unique identifier is written under: UID, the
+// GEDCOM 7.0 structure, or _UID, the vendor extension every GEDCOM 5.5/5.5.1
+// desktop producer uses for the same identifier and the decoder reads into
+// the same field (#715), when the output version is known to be 5.5 or
+// 5.5.1. An unknown output version writes UID, as before.
+func uidTagName(opts *EncodeOptions) string {
+	if opts.outputLacks(gedcom.Version70) {
+		return "_UID"
+	}
+	return "UID"
 }
 
 // externalIDsToTags converts a slice of ExternalIDs to GEDCOM tags at the specified level.

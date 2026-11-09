@@ -6,16 +6,17 @@ import "testing"
 //
 // individualRequiresGEDCOM7 used to skip Attributes on the stated
 // precondition that "the Attribute struct carries no 7.0-only typed
-// fields". Once UID, SortDate and Associations landed on Attribute the
+// fields". Once SortDate and Associations landed on Attribute the
 // precondition stopped holding, and MinimumVersion would have reported
-// 5.5.1 for a document the encoder writes UID/SDATE/ASSO-PHRASE into --
-// which a 5.5.1 importer rejects or silently drops.
+// 5.5.1 for a document the encoder writes SDATE/ASSO-PHRASE into --
+// which a 5.5.1 importer rejects or silently drops. UIDs are not a marker:
+// the encoder writes them as _UID for 5.5.x output (#715), covered by
+// TestRequiresGEDCOM7_UIDsAreNotAMarker.
 func TestRequiresGEDCOM7_AttributeMarkers(t *testing.T) {
 	tests := []struct {
 		name string
 		attr *Attribute
 	}{
-		{"UID on an attribute", &Attribute{Type: "OCCU", UIDs: []string{"abc"}}},
 		{"SDATE on an attribute", &Attribute{Type: "OCCU", SortDate: "1900-01-01"}},
 		{"ASSO with PHRASE on an attribute", &Attribute{
 			Type:         "OCCU",

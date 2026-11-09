@@ -188,6 +188,13 @@ fmt.Println(doc.Header.AncestryTreeID)  // "@T123@"
 |-----|----------|-------------|
 | `_FSFTID` | Individual | FamilySearch Family Tree ID |
 
+### `_UID` (MyHeritage, PAF, RootsMagic, Legacy, Family Historian)
+
+`_UID` fills the same `UIDs` fields as GEDCOM 7.0's `UID`, on `Individual`,
+`Family`, `Source`, `MediaObject`, `Event` and `Attribute`; the raw tag stays
+in `Tags`. The encoder writes `UIDs` as `_UID` for 5.5/5.5.1 output and `UID`
+for 7.0. See [vendor extensions](docs/guides/vendor-extensions.md#_uid--record-and-event-identifiers).
+
 ```go
 // Access FamilySearch ID on individuals
 indi := doc.GetIndividual("@I1@")
@@ -1491,7 +1498,8 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |
 | Long lines to CONC | Downgrade from 7.0 | Splits a value line past 5.x's 255-character limit onto CONC tags, between two non-spaces, so the encoded output has no over-length line and decodes back to the same text |
 | `SNOTE` → Note records | Downgrade from 7.0 | `SNOTE` records become `NOTE` records, and `SNOTE` pointers become `NOTE` pointers; the record's `MIME` and `LANG` are removed and reported as data loss |
-| 7.0-only tags removed | Downgrade from 7.0 | `EXID`, `TRAN`, `PHRASE`, `UID` and `CREA` are removed from `Record.Tags` with their subordinates, and from the typed entity's record-level fields, and reported as data loss |
+| 7.0-only tags removed | Downgrade from 7.0 | `EXID`, `TRAN`, `PHRASE` and `CREA` are removed from `Record.Tags` with their subordinates, and from the typed entity's record-level fields, and reported as data loss |
+| `UID` ↔ `_UID` | Both | `_UID`, the extension every 5.5.x desktop producer writes for the identifier 7.0 standardised as `UID`, is renamed to `UID` on an upgrade and `UID` to `_UID` on a downgrade, at any level (`UID_FROM_VENDOR_TAG`, `UID_TO_VENDOR_TAG`); neither is data loss |
 | `FONE`/`ROMN` removed | To 7.0 or 5.5 | 5.5.1 phonetic and romanized variations are removed from `Record.Tags` with their subordinates (under `NAME` or `PLAC`), and from `PersonalName.Phonetic`/`Romanized`, and reported as data loss; they are not mapped to 7.0 `TRAN` |
 | `@VOID@` pointers removed | Downgrade from 7.0 | 5.x has no null pointer, so each structure whose pointer is `@VOID@` (`FAMC`, `CHIL`, `SOUR` citation, `SNOTE`, ...) is removed with its subordinates from `Tags` and the typed entity; `HUSB`, `WIFE`, LDS `FAMC` and header `SUBM` fields are cleared. Reported as data loss |
 | FamilySearch ARK EXID → `_FSFTID` | Downgrade from 7.0 | Maps to the vendor tag instead of dropping the ID (when `MapEXIDToVendorTags`) |

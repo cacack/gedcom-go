@@ -1963,7 +1963,7 @@ func TestRoundtripComplexIndividual(t *testing.T) {
 		"3 TIME 12:00:00",
 		"1 CREA",
 		"1 REFN REF001",
-		"1 UID UID-BEETHOVEN",
+		"1 _UID UID-BEETHOVEN", // a 5.5.1 document writes UIDs as _UID (#715)
 	}
 
 	for _, pattern := range expectedPatterns {
