@@ -102,9 +102,9 @@ specifications define different structure sets — 7.0 defines the most, and muc
 of what it added is what this library has yet to type — so the shares rank the
 work left per version, not the versions.
 
-**Re-encoding.** Not byte-for-byte, and this is measured too. Of 102 corpus
-fixtures, 1 do not survive decode and encode at all; of the 101 that do, 93
-reproduce their header byte for byte and 83 reproduce their record body.
+**Re-encoding.** Not byte-for-byte, and this is measured too. Of 153 corpus
+fixtures, 3 do not survive decode and encode at all; of the 150 that do, 139
+reproduce their header byte for byte and 130 reproduce their record body.
 `byte_roundtrip_test.go` names the reason behind every exception. What remains
 in the body count is not a defect but a limit of byte comparison itself: a
 source that was not UTF-8 has been transcoded, so its bytes cannot match

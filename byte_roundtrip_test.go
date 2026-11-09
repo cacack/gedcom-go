@@ -56,6 +56,8 @@ var headerKnownBad = map[string]string{
 	"testdata/gedcom-5.5/torture-test/TGC551LF.ged": "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom-5.5/torture-test/TGC55C.ged":   "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom-5.5/torture-test/TGC55CLF.ged": "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom7code/5/char_utf16be-2.ged":     "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom7code/5/char_utf16le-2.ged":     "non-UTF-8 source; payload transcoded",
 
 	// The encoder synthesizes what a header must have when the source has no
 	// header at all, or an empty one: "0 HEAD" for the first, "1 GEDC / 2 VERS"
@@ -64,6 +66,7 @@ var headerKnownBad = map[string]string{
 	// allow-list could not see either, because neither fixture was on it.
 	"testdata/malformed/missing-header.ged":          "encoder writes 0 HEAD for a headerless file",
 	"testdata/edge-cases/bare-header-geo-coords.ged": "encoder writes GEDC.VERS for an empty header",
+	"testdata/gedcom7code/5/tiny-1.ged":              "encoder writes GEDC.VERS for an empty header",
 }
 
 // bodyKnownBad lists fixtures whose records do not survive a round-trip, with
@@ -89,6 +92,8 @@ var bodyKnownBad = map[string]string{
 	"testdata/gedcom-5.5/torture-test/TGC551LF.ged":  "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom-5.5/torture-test/TGC55C.ged":    "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom-5.5/torture-test/TGC55CLF.ged":  "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom7code/5/char_utf16be-2.ged":      "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom7code/5/char_utf16le-2.ged":      "non-UTF-8 source; payload transcoded",
 
 	// Lenient recovery rewrites the line rather than preserving it. Arguably
 	// correct — the input is malformed — but it is a real byte difference and
@@ -111,6 +116,8 @@ var bodyKnownBad = map[string]string{
 // there are no bytes to compare. Kept explicit so the count cannot drift.
 var undecodable = map[string]string{
 	"testdata/encoding/ibmpc-cp437-broskeep.ged": "invalid byte for the declared encoding",
+	"testdata/gedcom7code/5/char_utf16be-1.ged":  "BOM-less UTF-16 is not detected; read as UTF-8",
+	"testdata/gedcom7code/5/char_utf16le-1.ged":  "BOM-less UTF-16 is not detected; read as UTF-8",
 }
 
 // valuelessLine matches a line carrying no value: "1 CONT", "0 @I1@ INDI".

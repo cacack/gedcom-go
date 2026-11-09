@@ -1,0 +1,6 @@
+repository: https://github.com/gedcom7code/test-files
+commit: 4418c40978bdf9e56bbf612558548d670c590816
+describes: master, committed 2025-11-19
+retrieved: 2026-11-09
+license: Unlicense
+files: 5/, 7/, LICENSE, README.md (byte-identical; .github/ not vendored)
