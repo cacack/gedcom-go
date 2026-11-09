@@ -23,7 +23,7 @@ import (
 // suite's README defines: a trailing space on a valueless line, the order of
 // substructures with distinct tags, an explicit GREGORIAN calendar, the tag an
 // extension URI is given in SCHMA, and the spelling of cross-reference
-// identifiers. Records are compared; HEAD is not (see canonicalGEDCOM).
+// identifiers. HEAD is compared less the declarations listed in headerDropped.
 //
 // The expected side is read from the upstream bytes, not decoded and
 // re-encoded, so a decoder or encoder loss cannot hide by happening on both
@@ -83,6 +83,9 @@ var conversionKnownGaps = map[string]string{
 
 	"sour-1.ged 5->7": "inline-text SOUR citations are not promoted to SOUR records",
 	"sour-1.ged 7->5": "not invertible: the SOUR record is kept as a record; 5/ uses the inline form",
+
+	"xref-case.ged 5->7": "HEAD.SUBM @test@ resolves case-insensitively to @TEST@; the suite treats it as dangling (@VOID@)",
+	"xref-case.ged 7->5": "not invertible: HEAD.SUBM @VOID@ is dropped; 5/ holds a dangling @test@",
 }
 
 func TestGedcom7codeConversionPairs(t *testing.T) {
@@ -178,34 +181,43 @@ var pointerPayload = regexp.MustCompile(`^@[^@#]+@$`)
 // gregorianEscape matches an explicit Gregorian calendar in either version.
 var gregorianEscape = regexp.MustCompile(`(@#DGREGORIAN@|\bGREGORIAN) `)
 
+// headerDropped lists the HEAD substructures canonicalGEDCOM does not compare:
+// the version and encoding declarations (GEDC, CHAR, FORM), the SCHMA that
+// extension tags are compared through, and SOUR and SUBN, which the suite's 7/
+// headers add or drop by hand in ways its README does not call equivalent.
+var headerDropped = map[string]bool{
+	"GEDC": true, "CHAR": true, "FORM": true, "SCHMA": true, "SOUR": true, "SUBN": true,
+}
+
 // canonicalGEDCOM renders data in a form in which two files equivalent under
 // the suite's rules are identical text. v7 selects the version's @ escaping.
 func canonicalGEDCOM(data []byte, v7 bool) string {
 	roots := readSuiteTree(data)
 
 	// Extension tags documented in SCHMA are compared by URI, not by tag.
-	// HEAD itself is then dropped: besides the version declaration that a
-	// conversion must change, the suite's 7/ headers are hand-written and
-	// differ from their 5/ partners in ways its README does not call
-	// equivalent (HEAD.SOUR present in one and not the other, for one).
+	// HEAD is compared without headerDropped, which holds the substructures
+	// a conversion must change or that the suite's 7/ headers wrote by hand.
 	uris := map[string]string{}
-	var records []*suiteNode
 	for _, r := range roots {
 		if r.tag != "HEAD" {
-			records = append(records, r)
 			continue
 		}
+		var kept []*suiteNode
 		for _, c := range r.children {
-			if c.tag != "SCHMA" {
-				continue
-			}
-			for _, tag := range c.children {
-				if f := strings.Fields(tag.value); tag.tag == "TAG" && len(f) == 2 {
-					uris[f[0]] = "<" + f[1] + ">"
+			if c.tag == "SCHMA" {
+				for _, tag := range c.children {
+					if f := strings.Fields(tag.value); tag.tag == "TAG" && len(f) == 2 {
+						uris[f[0]] = "<" + f[1] + ">"
+					}
 				}
 			}
+			if !headerDropped[c.tag] {
+				kept = append(kept, c)
+			}
 		}
+		r.children = kept
 	}
+	records := roots
 
 	var normalize func(n *suiteNode)
 	normalize = func(n *suiteNode) {
@@ -360,6 +372,14 @@ func TestCanonicalGEDCOMEquivalences(t *testing.T) {
 	}
 	if firstLineDiff(want, canonicalGEDCOM([]byte(different), true)) == "" {
 		t.Error("reordering same-tag siblings compares equal")
+	}
+	if firstLineDiff(canonicalGEDCOM([]byte("0 HEAD\n1 NOTE \u00b6\n0 TRLR\n"), true),
+		canonicalGEDCOM([]byte("0 HEAD\n1 NOTE ?\n0 TRLR\n"), true)) == "" {
+		t.Error("a differing HEAD.NOTE compares equal")
+	}
+	if firstLineDiff(canonicalGEDCOM([]byte("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR ASCII\n0 TRLR\n"), false),
+		canonicalGEDCOM([]byte("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 TRLR\n"), false)) != "" {
+		t.Error("the version and encoding declarations are compared")
 	}
 	if got := unescapeAt("a@@b", false); got != "a@b" {
 		t.Errorf("5.5.1 unescape = %q, want a@b", got)
