@@ -406,13 +406,10 @@ Comprehensive GEDCOM 7.0 edge case testing from FamilySearch:
 - **maximal70-memories1.ged** (1.1K) - Multimedia object records
 - **maximal70-memories2.ged** (1.2K) - Family and event multimedia objects
 
-**Not vendored (#718):** the rest of `gedcom70/` (`date.ged`, `warnings70.ged`,
-`minimal70.gdz`, `maximal70.gdz`, `maximal70/`) and all of `gedcom71/`. The
-FamilySearch/GEDCOM.io repository that serves them declares no licence, so
-copying more needs a licence decision first. The files above predate that
-check and also carry no recorded licence. Until it is settled, `warnings70.ged`
-is not validated, `.gdz` files are not held (GEDZIP is #127), and
-`minimal71.ged` decoding as 5.5 is not covered.
+These files predate the licence check and carry no recorded licence; whether
+they move to the fetched scheme below is a separate decision. The whole of
+`gedcom70/` and `gedcom71/`, these 18 included, is also fetched at test time;
+see the next section.
 
 ### gedcom7code Conversion Suite (`gedcom7code/`)
 Source: https://github.com/gedcom7code/test-files (commit pinned in `gedcom7code/SOURCE`)
@@ -438,6 +435,32 @@ ways and compared under the README's rules). Both keep a self-cleaning list of
 known failures. Four `5/` files (`atsign`, `xref-case`, `age-valid`,
 `date-dual-valid`) were vendored earlier into `edge-cases/`; see the Structural
 Torture Fixtures section.
+
+### Fetched at test time: gedcom.io test files
+
+Not in this directory. The complete FamilySearch/GEDCOM.io `testfiles/gedcom70/`
+and `testfiles/gedcom71/` (45 files: every `.ged`, the four `.gdz` archives, and
+the `maximal70/`, `maximal71/`, `minimal70/` and `minimal71/` directories with
+their media) are downloaded by `make fetch-corpora` into `.corpora/gedcomio/` at
+the repository root.
+
+- **Why not vendored:** the repository declares no licence and the site reads
+  "All rights reserved", so the files may be used but not redistributed.
+- **Pinned:** `internal/corpora/gedcomio.lock` names an immutable upstream
+  commit and each file's size and SHA-256. A file that no longer matches fails
+  the fetch; a network failure only warns, unless `-require` is given.
+- **Outside `testdata/`** on purpose, so the corpus walkers here never see
+  files that are only sometimes present.
+- **Tests:** `decoder/conformance_gedcomio_test.go` decodes every `.ged` in
+  strict and lenient mode and checks it decodes as 7.0;
+  `validator/conformance_gedcomio_test.go` records which of the warnings
+  `warnings70.ged`/`warnings71.ged` are built to raise we raise. Both keep
+  self-cleaning known-failure lists; `.gdz` files skip until GEDZIP lands
+  (#127). Without the files these tests skip naming `make fetch-corpora`;
+  `GEDCOM_REQUIRE_FETCHED_CORPORA=1` makes that a failure.
+- **CI:** the test job restores them from a cache keyed on the lock and
+  tolerates a failed fetch; the nightly workflow fetches with `-require` and
+  runs the tests with `GEDCOM_REQUIRE_FETCHED_CORPORA=1`.
 
 ### Malformed Files
 
@@ -520,6 +543,7 @@ When adding new test files:
 
 - **FamilySearch GEDCOM 7.0 Examples**: https://gedcom.io/testfiles/gedcom70/
   - All files in `gedcom-7.0/familysearch-examples/`
+  - The whole of `gedcom70/` and `gedcom71/` is fetched at test time, not held here (see above)
 - **GEDCOM.org Official Samples**: https://www.gedcom.org/samples.html
   - UTF-8 with BOM, UTF-16 LE/BE samples in `encoding/`
 - **TestGED Torture Test Suite**: https://www.geditcom.com/gedcom.html
