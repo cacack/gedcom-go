@@ -13,6 +13,7 @@ testdata/
 ├── gedcom-7.0/          # GEDCOM 7.0 test files
 │   ├── familysearch-examples/  # FamilySearch GEDCOM 7.0 edge cases
 │   └── ...              # Various 7.0 samples
+├── gedcom7code/         # gedcom7code/test-files: matched 5.5.1 (5/) and 7.0 (7/) pairs
 ├── encoding/            # Character encoding test files
 ├── edge-cases/          # Edge case and special scenario tests
 └── malformed/           # Invalid GEDCOM files for error testing
@@ -379,6 +380,31 @@ Comprehensive GEDCOM 7.0 edge case testing from FamilySearch:
 - **maximal70-memories1.ged** (1.1K) - Multimedia object records
 - **maximal70-memories2.ged** (1.2K) - Family and event multimedia objects
 
+### gedcom7code Conversion Suite (`gedcom7code/`)
+Source: https://github.com/gedcom7code/test-files (commit pinned in `gedcom7code/SOURCE`)
+License: Unlicense (public domain; upstream `LICENSE` vendored alongside)
+
+The whole suite, byte-identical: `5/` holds 26 GEDCOM 5.5.1 files and `7/` the
+7.0 conversions of 25 of them (`date-dual-valid.ged` has no 7.0 partner). The
+upstream `README.md` is vendored too; it defines when two files are equivalent
+(trailing space on a valueless line, order of distinct-tag substructures,
+`GREGORIAN`, SCHMA tag names, XRef spelling).
+
+- **age-valid / age-invalid** - `AGE` payloads, including 5.5.1 keywords and malformed ages
+- **atsign** - `@` escaping in each version
+- **char_*** - ASCII, UTF-8 and UTF-16 (with and without BOM) encodings
+- **date-all** (~10k lines) - the DateValue grammar; **date-dual-*** - dual-year dates
+- **enum-ext**, **pedi-1**, **rela_1** - enumerations and their 7.0 `PHRASE` fallbacks
+- **filename-1**, **lang-all**, **notes-1**, **obje-1**, **sour-1** - payloads and structures that change shape between versions
+- **obsolete-1** - 5.5.1 structures removed in 7.0; **tiny-1** - smallest file; **xref-case** - XRef case and spaces
+
+Exercised by `decoder/conformance_suites_test.go` (strict and lenient decode of
+every file) and `converter/conformance_pairs_test.go` (each pair converted both
+ways and compared under the README's rules). Both keep a self-cleaning list of
+known failures. Four `5/` files (`atsign`, `xref-case`, `age-valid`,
+`date-dual-valid`) were vendored earlier into `edge-cases/`; see the Structural
+Torture Fixtures section.
+
 ### Malformed Files
 
 Files with intentional errors for testing error handling and validation:
@@ -484,8 +510,8 @@ When adding new test files:
   - Real exports from Legacy 10, PAF 5.2, Family Origins 5, TMG 1.2a, Ancestris 11, MyHeritage FTB 8, and more
 - **gedcom7code/test-files**: https://github.com/gedcom7code/test-files
   - License: Unlicense (public domain)
-  - Files: `edge-cases/atsign-55.ged`, `edge-cases/xref-case.ged`, `edge-cases/age-keywords-551.ged`, `edge-cases/date-dual-years.ged`
-  - At-sign escaping, XRef case quirks, 5.5.1 AGE keywords, dual-year dates
+  - Files: the whole suite in `gedcom7code/`, plus `edge-cases/atsign-55.ged`, `edge-cases/xref-case.ged`, `edge-cases/age-keywords-551.ged`, `edge-cases/date-dual-years.ged`
+  - 5.5.1 ↔ 7.0 conversion pairs; at-sign escaping, XRef case quirks, 5.5.1 AGE keywords, dual-year dates
 - **Synthetic Test Files**: Created specifically for this project
   - `gedcom-5.5.1/comprehensive.ged` - GEDCOM 5.5.1 features
   - `encoding/utf8-unicode.ged` - International character testing
