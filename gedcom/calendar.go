@@ -434,17 +434,21 @@ func hebrewDelay(year int) int {
 		parts = 0 // Reset to midnight
 	}
 
-	// Day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+	// Day of week (0 = Sunday, 1 = Monday, 2 = Tuesday, ..., 6 = Saturday).
+	// Rule 4 below tests 0/3/5 for Sunday/Wednesday/Friday in this same
+	// convention; rules 2 and 3 must use it too (#702).
 	dayOfWeek := day % 7
 
-	// Rule 2 (GaTaRaD): If Monday and parts >= 9 hours 204 parts, postpone to Tuesday
-	// This only applies to regular (non-leap) years
-	if dayOfWeek == 1 && parts >= 9*1080+204 && !IsHebrewLeapYear(year) {
+	// Rule 2 (GaTaRaD): a common year whose molad falls on Tuesday at or after
+	// 9 hours 204 parts is postponed to Wednesday, which Rule 4 then moves to
+	// Thursday. Without it the year would have 356 days.
+	if dayOfWeek == 2 && parts >= 9*1080+204 && !IsHebrewLeapYear(year) {
+		day += 1 // Wednesday, which Rule 4 postpones to Thursday
+	} else if dayOfWeek == 1 && parts >= 15*1080+589 && IsHebrewLeapYear(year-1) {
+		// Rule 3 (BeTuTaKFoT): a year following a leap year whose molad falls
+		// on Monday at or after 15 hours 589 parts is postponed to Tuesday.
+		// Without it the preceding leap year would have 382 days.
 		day += 1 // Tuesday
-	} else if dayOfWeek == 0 && parts >= 15*1080+589 && IsHebrewLeapYear(year-1) {
-		// Rule 3 (BeTuTaKFoT): If Tuesday and parts >= 15 hours 589 parts, postpone
-		// This only applies when previous year was a leap year
-		day += 1 // Wednesday, which will be postponed to Thursday by Rule 4
 	}
 
 	// Rule 4 (Lo ADU Rosh): Rosh Hashanah cannot fall on Sunday (0), Wednesday (3), or Friday (5)
