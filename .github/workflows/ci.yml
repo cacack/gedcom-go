@@ -61,6 +61,7 @@ jobs:
 
     - name: Fetch test corpora
       continue-on-error: true
+      timeout-minutes: 3
       run: go run ./internal/cmd/fetchcorpora
 
     # ./... rather than a hand-maintained package list: the list silently fell

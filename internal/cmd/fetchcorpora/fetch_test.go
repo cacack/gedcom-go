@@ -125,6 +125,16 @@ func TestFetchNetworkFailureWarns(t *testing.T) {
 			t.Errorf("code=%d stderr=%q", code, stderr)
 		}
 	})
+	t.Run("stops after the first network failure", func(t *testing.T) {
+		f, src := newFetcher(t, map[string]string{}) // every request 404s
+		code, stdout, stderr := fetch(f, false)
+		if code != 0 || !strings.Contains(stdout, "3 unreachable") || !strings.Contains(stderr, "not attempted after an earlier network failure") {
+			t.Errorf("code=%d stdout=%q stderr=%q", code, stdout, stderr)
+		}
+		if n := src.requests.Load(); n != 1 {
+			t.Errorf("made %d requests after a network failure; want 1", n)
+		}
+	})
 	t.Run("server unreachable", func(t *testing.T) {
 		f, _ := newFetcher(t, files)
 		f.lock.Base = "http://127.0.0.1:1/base/" // nothing listens on port 1

@@ -72,10 +72,18 @@ type fetcher struct {
 func (f fetcher) fetchAll(require bool, stdout, stderr io.Writer) int {
 	var present, fetched int
 	var unreachable, failed []string
+	offline := false
 	for _, e := range f.lock.Entries {
 		ok, err := f.verified(e)
 		if err == nil && ok {
 			present++
+			continue
+		}
+		// After one network failure, try no further downloads: each could
+		// stall for requestTimeout, and a stalled CI step must not outlast
+		// the job.
+		if err == nil && offline {
+			unreachable = append(unreachable, e.Path+": not attempted after an earlier network failure")
 			continue
 		}
 		if err == nil {
@@ -87,6 +95,7 @@ func (f fetcher) fetchAll(require bool, stdout, stderr io.Writer) int {
 			fetched++
 		case errors.As(err, &netErr):
 			unreachable = append(unreachable, err.Error())
+			offline = true
 		default:
 			failed = append(failed, err.Error())
 		}
