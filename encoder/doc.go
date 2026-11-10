@@ -116,7 +116,9 @@
 //
 //   - CHAR always declares UTF-8, because Encode always writes UTF-8 and
 //     converts nothing on the way out. A header echoing a source charset it no
-//     longer contains cannot be re-decoded.
+//     longer contains cannot be re-decoded. A hand-built header declares it
+//     even with Encoding unset, so a 5.x reader does not assume ANSEL; only
+//     7.0 output, which removed CHAR, omits it unless Encoding is set.
 //   - GEDC.VERS follows TargetVersion when that option is set. A header with
 //     no GEDC gets one, placed where the target version's grammar puts it
 //     rather than at the end; for 5.5 and 5.5.1 it carries FORM
@@ -144,10 +146,20 @@
 // [gedcom.Record].XRef or the [gedcom.Header].Submitter pointer -- or in a
 // typed entity field that becomes a tag name, such as [gedcom.Event].Type --
 // makes Encode return [ErrLineBreak] instead of writing a line a reader could
-// take for a record the caller never wrote. Only line breaks are checked;
-// other characters in those fields are written verbatim, so a hand-built
-// document is otherwise the caller's to keep well formed. A decoded document
-// never contains one.
+// take for a record the caller never wrote.
+//
+// The encoder does not write what its own decoder cannot read back, so the
+// rest of a line a hand-built document controls is checked too. Encode returns
+// [ErrMalformedLine] for a [gedcom.Tag] below a record or the header whose
+// Level is outside 1-99 (0 is the zero value, and would open a record
+// mid-record), for an empty tag name or one containing whitespace, for a
+// [gedcom.Record].XRef that does not open with "@", and for a record typed
+// HEAD or TRLR with no XRef. It returns [ErrInvalidUTF8] for a value, tag name
+// or identifier that is not valid UTF-8, the charset the output declares.
+// Each error names the record (or HEAD) and the line. A decoded document never
+// trips any of them: a record identifier with no closing "@" ("@I1"), which a
+// lenient decode recovers, is accepted and written back verbatim. Other
+// characters are written verbatim.
 //
 // Lines already written when the error is found stay written, as with a write
 // error, so encode into a buffer when partial output must not reach the

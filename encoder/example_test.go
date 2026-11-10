@@ -86,7 +86,7 @@ func ExampleEncodeWithOptions() {
 	fmt.Printf("Lines with CRLF: %d\n", crlfCount)
 
 	// Output:
-	// Lines with CRLF: 5
+	// Lines with CRLF: 6
 }
 
 // ExampleNewStreamEncoder demonstrates streaming encoding for large files.

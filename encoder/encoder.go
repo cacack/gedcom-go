@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/internal/headergrammar"
@@ -25,6 +27,37 @@ var ErrNilDocument = errors.New("document is nil")
 // record the caller never wrote. A line break in a value is not an error: it
 // is written as CONT.
 var ErrLineBreak = errors.New("line break in tag or cross-reference identifier")
+
+// ErrMalformedLine is returned when a line's level, tag name or record
+// identifier is one the decoder cannot read back as written (issue #726):
+//
+//   - a [gedcom.Tag] below a record or header with a Level outside 1-99 --
+//     level 0 would open a new record mid-record, and the parser rejects a
+//     negative level or one past 99;
+//   - an empty tag name, or one containing whitespace, in [gedcom.Tag].Tag or
+//     [gedcom.Record].Type -- the parser splits a line on whitespace, so the
+//     tag would be read back shifted into the value;
+//   - a [gedcom.Record].XRef that does not open with "@" -- "0 I1 INDI" is
+//     read back as a record of type I1.
+//
+// A record identifier with no closing "@" is accepted only in the shape the
+// decoder itself recovers from such input ("@I1", no whitespace and no
+// further "@"), so a leniently decoded document still re-encodes byte for byte
+// (issue #385).
+//
+// The error names the record (or HEAD) and the line it was found on.
+var ErrMalformedLine = errors.New("level, tag name or record identifier the decoder cannot read back")
+
+// ErrInvalidUTF8 is returned when a value, tag name or identifier is not
+// valid UTF-8 (issue #726). The encoder converts nothing and declares UTF-8
+// (see [gedcom.EncodingUTF8]), so such bytes would make the output a file the
+// decoder rejects. Convert strings taken from a legacy source to UTF-8 before
+// encoding, or replace the bad bytes with [strings.ToValidUTF8]. The error
+// names the record (or HEAD) and the line it was found on.
+var ErrInvalidUTF8 = errors.New("value is not valid UTF-8")
+
+// maxLevel is the deepest level the parser accepts (parser.MaxNestingDepth-1).
+const maxLevel = 99
 
 // Encode writes a GEDCOM document to a writer.
 //
@@ -97,10 +130,24 @@ func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error 
 	// COPR, the SOUR subtree and header NOTEs all reach the output, where
 	// rebuilding from four scalar fields discarded them (issue #429).
 	if len(header.Tags) > 0 {
-		return writeHeaderTags(w, header.Tags, opts)
+		return inRecord("HEAD", writeHeaderTags(w, header.Tags, opts))
 	}
 
-	return writeHeaderFields(w, header, opts)
+	return inRecord("HEAD", writeHeaderFields(w, header, opts))
+}
+
+// inRecord prefixes an input error -- one of [ErrLineBreak],
+// [ErrMalformedLine] or [ErrInvalidUTF8] -- with the record it was found in,
+// so a caller encoding thousands of records can find the one at fault. A write
+// error is returned as is: it says nothing about the record.
+func inRecord(record string, err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, ErrLineBreak) || errors.Is(err, ErrMalformedLine) || errors.Is(err, ErrInvalidUTF8) {
+		return fmt.Errorf("record %q: %w", record, err)
+	}
+	return err
 }
 
 // writeHeaderTags writes a header from its raw tags, overriding the two values
@@ -308,10 +355,13 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 		return err
 	}
 
-	// Declared only when the header declares one at all: GEDCOM 7.0 removed
-	// CHAR, and synthesizing one there would add a line the source never had.
+	// Declared for every output but 7.0, whether or not the header sets
+	// Encoding: a 5.x reader that finds no CHAR may assume ANSEL, the 5.x
+	// default, and misread every non-ASCII byte the encoder wrote as UTF-8
+	// (issue #726). GEDCOM 7.0 removed CHAR -- 7.0 is UTF-8 by definition --
+	// so there it is written only when the header asks for one.
 	writeChar := func() error {
-		if header.Encoding == "" {
+		if header.Encoding == "" && opts.is70() {
 			return nil
 		}
 		_, err := fmt.Fprintf(w, "1 CHAR %s%s", writtenEncoding, opts.effectiveLineEnding())
@@ -452,8 +502,11 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions, shared
 	// the value into CONT at level+1, which is 1 here. Sharing it leaves one
 	// place that decides what a value on a line means, rather than two that
 	// drifted apart.
+	if err := checkRecordLine(record); err != nil {
+		return inRecord(recordName(record), err)
+	}
 	if err := writeValue(w, 0, record.XRef, string(record.Type), value, opts); err != nil {
-		return err
+		return inRecord(recordName(record), err)
 	}
 
 	// Filter out custom tags if DropUnknownTags is set
@@ -462,16 +515,58 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions, shared
 	// Write tags
 	for _, tag := range tags {
 		if err := writeTag(w, tag, opts); err != nil {
-			return err
+			return inRecord(recordName(record), err)
 		}
 	}
 
 	return nil
 }
 
+// recordName is how an error names record: its XRef and type. Built only on
+// the error path, so a successful encode pays nothing for it.
+func recordName(record *gedcom.Record) string {
+	return strings.TrimSpace(record.XRef + " " + string(record.Type))
+}
+
+// checkRecordLine rejects a level-0 line the decoder would not read back as
+// this record (issue #726). A HEAD or TRLR with no identifier is the
+// document's own header or trailer to the decoder, so a record written as one
+// would end the file early or stand in for the header; with an identifier it
+// is an ordinary record (#416). A record identifier not opening with "@"
+// becomes the record type on re-read ("0 I1 INDI" is a record of type I1). An
+// identifier with no closing "@" is accepted only in the exact shape the
+// parser recovers as an identifier -- no whitespace and no further "@" --
+// because that is what a lenient decode of "0 @I1 INDI" holds, and it must
+// re-encode byte for byte (issue #385). A line break is left to writeValue,
+// which reports it as ErrLineBreak.
+func checkRecordLine(record *gedcom.Record) error {
+	xref := record.XRef
+	if xref == "" {
+		if record.Type == "HEAD" || record.Type == "TRLR" {
+			return fmt.Errorf("level 0 tag %q without an xref is not a record: %w", record.Type, ErrMalformedLine)
+		}
+		return nil
+	}
+	if hasLineBreak(xref) {
+		return nil
+	}
+	if xref[0] == '@' && (len(xref) > 1 && xref[len(xref)-1] == '@' ||
+		!strings.ContainsRune(xref[1:], '@') && !containsSpace(xref)) {
+		return nil
+	}
+	return fmt.Errorf("level 0 xref %q: %w", xref, ErrMalformedLine)
+}
+
+// writeTag writes a line subordinate to a record or the header, so its level
+// must be one the parser reads as subordinate: 0 would open a new record, and a
+// negative level or one past 99 is rejected on re-read (issue #726). Level 0 is
+// also Tag's zero value, so a hand-built &gedcom.Tag{Tag: "NAME"} lands here.
 func writeTag(w io.Writer, tag *gedcom.Tag, opts *EncodeOptions) error {
 	if tag == nil {
 		return nil
+	}
+	if tag.Level < 1 || tag.Level > maxLevel {
+		return fmt.Errorf("level %d tag %q: level must be 1-%d: %w", tag.Level, tag.Tag, maxLevel, ErrMalformedLine)
 	}
 	return writeValue(w, tag.Level, tag.XRef, tag.Tag, tag.Value, opts)
 }
@@ -485,14 +580,10 @@ func writeTag(w io.Writer, tag *gedcom.Tag, opts *EncodeOptions) error {
 // for the level-0 line without allocating a Tag to describe a record it already
 // has.
 func writeValue(w io.Writer, level int, xref, tag, value string, opts *EncodeOptions) error {
-	// A tag name or identifier has no CONT form, so a line break in either is
-	// rejected rather than folded (issue #466). Checked here rather than in
-	// writeLine so a multi-line value pays for it once, not once per CONT.
-	if hasLineBreak(tag) {
-		return fmt.Errorf("level %d tag %q: %w", level, tag, ErrLineBreak)
-	}
-	if hasLineBreak(xref) {
-		return fmt.Errorf("level %d xref %q: %w", level, xref, ErrLineBreak)
+	// Checked here rather than in writeLine so a multi-line value pays for it
+	// once, not once per CONT.
+	if err := checkLine(level, xref, tag, value); err != nil {
+		return err
 	}
 
 	// A value carrying line breaks has to be split back across CONT lines. The
@@ -547,6 +638,82 @@ func hasLineBreak(s string) bool {
 		if s[i] == '\n' || s[i] == '\r' {
 			return true
 		}
+	}
+	return false
+}
+
+// checkLine rejects a line the decoder would not read back as written:
+//
+//   - a line break in the tag name or identifier, which has no CONT form
+//     (ErrLineBreak, issue #466);
+//   - a tag name that is empty or holds whitespace, which the parser's split
+//     on whitespace reads back shifted -- "1 NAME X" + " A /B/" gives tag NAME
+//     and value "X A /B/" (ErrMalformedLine, issue #726);
+//   - bytes that are not UTF-8 anywhere on the line: the output declares
+//     UTF-8 and the decoder rejects anything else, so one string carried over
+//     unconverted from a legacy charset would make the whole file unreadable
+//     (ErrInvalidUTF8, issue #726).
+//
+// It runs for every line written, so the tag name every real line has -- a
+// few ASCII letters -- is cleared by plainTagName in one pass, and the
+// identifier, almost always empty, is checked only when present.
+func checkLine(level int, xref, tag, value string) error {
+	if !plainTagName(tag) {
+		switch {
+		case hasLineBreak(tag):
+			return fmt.Errorf("level %d tag %q: %w", level, tag, ErrLineBreak)
+		case !utf8.ValidString(tag):
+			return fmt.Errorf("level %d tag %q: %w", level, strings.ToValidUTF8(tag, "\uFFFD"), ErrInvalidUTF8)
+		case tag == "" || containsSpace(tag):
+			return fmt.Errorf("level %d tag %q: empty or contains whitespace: %w", level, tag, ErrMalformedLine)
+		}
+	}
+	if xref != "" {
+		if hasLineBreak(xref) {
+			return fmt.Errorf("level %d xref %q: %w", level, xref, ErrLineBreak)
+		}
+		if !utf8.ValidString(xref) {
+			return fmt.Errorf("level %d tag %q xref: %w", level, tag, ErrInvalidUTF8)
+		}
+	}
+	if !utf8.ValidString(value) {
+		return fmt.Errorf("level %d tag %q value: %w", level, tag, ErrInvalidUTF8)
+	}
+	return nil
+}
+
+// plainTagName reports whether tag is non-empty, ASCII and free of
+// whitespace: a tag name checkLine need look at no further.
+func plainTagName(tag string) bool {
+	if tag == "" {
+		return false
+	}
+	for i := 0; i < len(tag); i++ {
+		switch b := tag[i]; {
+		case b >= utf8.RuneSelf, b == ' ', b == '\t', b == '\n', b == '\v', b == '\f', b == '\r':
+			return false
+		}
+	}
+	return true
+}
+
+// containsSpace reports whether s holds a character the parser's field split
+// (strings.Fields) treats as a separator. Tag names are a few ASCII bytes, so
+// the loop decodes a rune only for a non-ASCII byte.
+func containsSpace(s string) bool {
+	for i := 0; i < len(s); {
+		if s[i] < utf8.RuneSelf {
+			if s[i] == ' ' || s[i] == '\t' || s[i] == '\v' || s[i] == '\f' || s[i] == '\n' || s[i] == '\r' {
+				return true
+			}
+			i++
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(s[i:])
+		if unicode.IsSpace(r) {
+			return true
+		}
+		i += size
 	}
 	return false
 }
