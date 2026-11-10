@@ -1959,8 +1959,8 @@ func TestEventAddressStructure(t *testing.T) {
 	if birth.Address == nil {
 		t.Fatal("Birth.Address is nil, want non-nil")
 	}
-	if birth.Address.Line1 != "Boston General Hospital" {
-		t.Errorf("Birth.Address.Line1 = %s, want 'Boston General Hospital'", birth.Address.Line1)
+	if birth.Address.Full != "Boston General Hospital" {
+		t.Errorf("Birth.Address.Full = %s, want 'Boston General Hospital'", birth.Address.Full)
 	}
 	if birth.Address.City != "Boston" {
 		t.Errorf("Birth.Address.City = %s, want Boston", birth.Address.City)
@@ -2008,8 +2008,8 @@ func TestEventAddressWithContinuation(t *testing.T) {
 	}
 
 	expected := "123 Main Street\nSuite 100"
-	if resi.Address.Line1 != expected {
-		t.Errorf("Address.Line1 = %q, want %q", resi.Address.Line1, expected)
+	if resi.Address.Full != expected {
+		t.Errorf("Address.Full = %q, want %q", resi.Address.Full, expected)
 	}
 	if resi.Address.City != "Springfield" {
 		t.Errorf("Address.City = %s, want Springfield", resi.Address.City)
@@ -2106,8 +2106,8 @@ func TestFamilyEventAddress(t *testing.T) {
 	if marr.Address == nil {
 		t.Fatal("Marriage.Address is nil, want non-nil")
 	}
-	if marr.Address.Line1 != "St. Patrick's Church" {
-		t.Errorf("Address.Line1 = %s, want 'St. Patrick's Church'", marr.Address.Line1)
+	if marr.Address.Full != "St. Patrick's Church" {
+		t.Errorf("Address.Full = %s, want 'St. Patrick's Church'", marr.Address.Full)
 	}
 	if marr.Address.City != "Chicago" {
 		t.Errorf("Address.City = %s, want Chicago", marr.Address.City)
@@ -2625,8 +2625,8 @@ func TestSubmitterParsing(t *testing.T) {
 	if subm1.Address == nil {
 		t.Fatal("subm1.Address is nil")
 	}
-	if subm1.Address.Line1 != "123 Main St" {
-		t.Errorf("subm1.Address.Line1 = %s, want '123 Main St'", subm1.Address.Line1)
+	if subm1.Address.Full != "123 Main St" {
+		t.Errorf("subm1.Address.Full = %s, want '123 Main St'", subm1.Address.Full)
 	}
 	if subm1.Address.City != "Springfield" {
 		t.Errorf("subm1.Address.City = %s, want 'Springfield'", subm1.Address.City)
@@ -2753,8 +2753,8 @@ func TestRepositoryParsing(t *testing.T) {
 	if repo1.Address == nil {
 		t.Fatal("repo1.Address is nil")
 	}
-	if repo1.Address.Line1 != "35 North West Temple Street" {
-		t.Errorf("repo1.Address.Line1 = %s, want '35 North West Temple Street'", repo1.Address.Line1)
+	if repo1.Address.Full != "35 North West Temple Street" {
+		t.Errorf("repo1.Address.Full = %s, want '35 North West Temple Street'", repo1.Address.Full)
 	}
 	if repo1.Address.City != "Salt Lake City" {
 		t.Errorf("repo1.Address.City = %s, want 'Salt Lake City'", repo1.Address.City)
@@ -5429,8 +5429,8 @@ func TestAttributeEventDetail(t *testing.T) {
 	if attr.Address == nil || attr.Address.City != "Springfield" {
 		t.Fatalf("Address = %+v, want City \"Springfield\"", attr.Address)
 	}
-	if attr.Address.Line1 != "1 Forge Lane" {
-		t.Errorf("Address.Line1 = %q, want \"1 Forge Lane\"", attr.Address.Line1)
+	if attr.Address.Full != "1 Forge Lane" {
+		t.Errorf("Address.Full = %q, want \"1 Forge Lane\"", attr.Address.Full)
 	}
 
 	sliceFields := []struct {

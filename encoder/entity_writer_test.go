@@ -1204,13 +1204,65 @@ func TestAddressToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := addressToTags(tt.addr, tt.level)
+			tags := addressToTags(tt.addr, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
 				if !tagMap[expected] {
 					t.Errorf("addressToTags() missing expected tag %q", expected)
 				}
+			}
+		})
+	}
+}
+
+// TestAddressToTagsPayloadAndLines pins issue #706: the ADDR payload is
+// written from Full with its CONT lines, and ADR1-ADR3 from Line1-Line3 alone,
+// with no CONT under any of them.
+func TestAddressToTagsPayloadAndLines(t *testing.T) {
+	tests := []struct {
+		name string
+		addr *gedcom.Address
+		want []string
+	}{
+		{
+			name: "multi-line payload beside ADR1 and ADR2",
+			addr: &gedcom.Address{
+				Full:  "Margaret Cross Norton Building\nCapitol Complex\nUSA",
+				Line1: "Margaret Cross Norton Building",
+				Line2: "Capitol Complex",
+				City:  "Springfield",
+			},
+			want: []string{
+				"1 ADDR Margaret Cross Norton Building",
+				"2 CONT Capitol Complex",
+				"2 CONT USA",
+				"2 ADR1 Margaret Cross Norton Building",
+				"2 ADR2 Capitol Complex",
+				"2 CITY Springfield",
+			},
+		},
+		{
+			name: "payload only",
+			addr: &gedcom.Address{Full: "1 Main St\nBoston"},
+			want: []string{"1 ADDR 1 Main St", "2 CONT Boston"},
+		},
+		{
+			name: "ADR1 only writes an empty ADDR",
+			addr: &gedcom.Address{Line1: "1 Main St"},
+			want: []string{"1 ADDR", "2 ADR1 1 Main St"},
+		},
+		{
+			name: "line break in ADR1 is written as a space",
+			addr: &gedcom.Address{Line1: "1 Main St\nBoston", Line3: "Unit 2\r\nRear"},
+			want: []string{"1 ADDR", "2 ADR1 1 Main St Boston", "2 ADR3 Unit 2 Rear"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatTags(addressToTags(tt.addr, 1, nil))
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("addressToTags() = %#v, want %#v", got, tt.want)
 			}
 		})
 	}
@@ -4686,6 +4738,7 @@ func TestAttributeToTagsEventDetail(t *testing.T) {
 		Agency:               "County Recorder",
 		ReligiousAffiliation: "Methodist",
 		Address: &gedcom.Address{
+			Full:  "12 Elm Street",
 			Line1: "12 Elm Street",
 			City:  "Springfield",
 		},

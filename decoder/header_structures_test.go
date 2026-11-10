@@ -55,7 +55,7 @@ func TestDecodeHeaderStructures(t *testing.T) {
 				SourceCorporation: &gedcom.Corporation{
 					Name: "Acme Software",
 					Address: &gedcom.Address{
-						Line1:      "123 Main St\nSuite 4",
+						Full:       "123 Main St\nSuite 4",
 						City:       "Springfield",
 						State:      "IL",
 						PostalCode: "62701",
