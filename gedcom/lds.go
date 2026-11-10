@@ -39,8 +39,20 @@ type LDSOrdinance struct {
 	// Place is the place where the ordinance was performed (PLAC subordinate)
 	Place string
 
-	// Status is the ordinance status (STAT subordinate, e.g., "COMPLETED")
+	// Status is the ordinance status (STAT subordinate, e.g., "COMPLETED").
+	// 5.5.1 and 7.0 require a StatusDate beneath it; see StatusDate.
 	Status string
+
+	// StatusDate is the date the status was set (STAT.DATE, GEDCOM 5.5.1 and
+	// 7.0), kept as written. Both versions require it beneath STAT: set it
+	// for valid 5.5.1 or 7.0 output, since the encoder writes a Status that
+	// has no StatusDate alone rather than drop it. 5.5 defines no STAT.DATE,
+	// so 5.5 output writes Status alone.
+	StatusDate string
+
+	// StatusTime is the time beneath StatusDate (STAT.DATE.TIME, GEDCOM 7.0),
+	// written only beneath a StatusDate and only for 7.0 output.
+	StatusTime string
 
 	// FamilyXRef is the family cross-reference for SLGC (child sealing to parents)
 	// Only used with SLGC ordinance type (FAMC subordinate)

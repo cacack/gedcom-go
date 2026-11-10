@@ -925,7 +925,7 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 	}
 
 	// Subordinate tags at level+1
-	return append(tags, eventDetailToTags(&eventDetail{
+	tags = append(tags, eventDetailToTags(&eventDetail{
 		date:                 event.Date,
 		parsedDate:           event.ParsedDate,
 		placeDetail:          event.PlaceDetail,
@@ -950,6 +950,34 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 		sourceCitations:      event.SourceCitations,
 		media:                event.Media,
 	}, level+1, opts)...)
+
+	// FAMC, with ADOP and its PHRASE beneath it (issue #740): written only
+	// where every version defines it -- FAMC on a BIRT, CHR or ADOP event,
+	// and ADOP only beneath an ADOP event's FAMC -- so a hand-built value set
+	// on any other event is not written as a structure no version allows.
+	if event.FamilyXRef != "" && eventTakesFamilyLink(event) {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FAMC", Value: event.FamilyXRef})
+		if event.AdoptedBy != "" && event.Type == gedcom.EventAdoption {
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "ADOP", Value: event.AdoptedBy})
+			tags = appendPhrase(tags, event.AdoptedByPhrase, level+3)
+		}
+	}
+
+	return tags
+}
+
+// eventTakesFamilyLink reports whether event may carry a FAMC: an individual's
+// BIRT, CHR or ADOP that occurred (a 7.0 NO assertion has no substructure but
+// DATE, NOTE and SOUR). It mirrors the decoder's parseEventFamilyLink.
+func eventTakesFamilyLink(event *gedcom.Event) bool {
+	if event.IsNegative {
+		return false
+	}
+	switch event.Type {
+	case gedcom.EventBirth, gedcom.EventChristening, gedcom.EventAdoption:
+		return true
+	}
+	return false
 }
 
 // attributeToTags converts an Attribute to GEDCOM tags at the specified level.
@@ -1201,9 +1229,7 @@ func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PLAC", Value: ord.Place})
 	}
 
-	if ord.Status != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "STAT", Value: ord.Status})
-	}
+	tags = append(tags, ldsStatusToTags(ord, level+1, opts)...)
 
 	// FAMC for SLGC (sealing to parents)
 	if ord.FamilyXRef != "" {
@@ -1215,6 +1241,27 @@ func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions
 		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
+	return tags
+}
+
+// ldsStatusToTags writes an ordinance's STAT at level (issue #740), with its
+// DATE (StatusDate) beneath it except for 5.5 output, which defines no
+// STAT.DATE. TIME beneath the DATE is 7.0 only. A Status with no StatusDate
+// is written alone for every version: 5.5.1 and 7.0 require the DATE, but
+// dropping the status would lose data the caller set, so supplying the date
+// is the caller's part. An unknown output version drops nothing.
+func ldsStatusToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions) []*gedcom.Tag {
+	if ord.Status == "" {
+		return nil
+	}
+	tags := []*gedcom.Tag{{Level: level, Tag: "STAT", Value: ord.Status}}
+	if ord.StatusDate == "" || opts.outputIs(gedcom.Version55) {
+		return tags
+	}
+	tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: ord.StatusDate})
+	if ord.StatusTime != "" && !opts.outputLacks(gedcom.Version70) {
+		tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "TIME", Value: ord.StatusTime})
+	}
 	return tags
 }
 
@@ -1261,9 +1308,26 @@ func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PHRASE", Value: assoc.Phrase})
 	}
 
-	// Use ROLE for GEDCOM 7.0 compatibility (also compatible with 5.5.1 RELA)
+	// TYPE is 5.5 only, where it is required: written there (INDI when
+	// unset), dropped for any other known output version (issue #740).
+	if !opts.outputLacks(gedcom.Version55) {
+		recordType := assoc.RecordType
+		if recordType == "" && opts.outputIs(gedcom.Version55) {
+			recordType = "INDI"
+		}
+		if recordType != "" {
+			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: recordType})
+		}
+	}
+
+	// The role is RELA in 5.5 and 5.5.1 and ROLE in 7.0 (issue #740). An
+	// unknown output version keeps ROLE, as before.
 	if assoc.Role != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "ROLE", Value: assoc.Role})
+		roleTag := "ROLE"
+		if opts.outputIs(gedcom.Version55) || opts.outputIs(gedcom.Version551) {
+			roleTag = "RELA"
+		}
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: roleTag, Value: assoc.Role})
 		tags = appendPhrase(tags, assoc.RolePhrase, level+2)
 	}
 
@@ -1315,6 +1379,10 @@ func mediaLinkToTags(link *gedcom.MediaLink, level int, opts *EncodeOptions) []*
 		return nil
 	}
 
+	if mediaLinkIsDegenerate(link) {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// OBJE tag with media XRef
@@ -1335,6 +1403,20 @@ func mediaLinkToTags(link *gedcom.MediaLink, level int, opts *EncodeOptions) []*
 	}
 
 	return tags
+}
+
+// mediaLinkIsDegenerate reports whether a link carries neither a pointer nor
+// any subordinate data (issue #740). Encoding one would emit a bare `1 OBJE`
+// that carries nothing, so it is skipped, as repositoryLinkIsDegenerate skips
+// a bare REPO.
+//
+// A link with no pointer but a title, crop or note is an inline link whose
+// FILE the typed model does not hold yet (issue #733). It is still written,
+// without the FILE every 5.x version requires: skipping it would drop the
+// typed data it does carry.
+func mediaLinkIsDegenerate(link *gedcom.MediaLink) bool {
+	hasNotes := len(link.NoteXRefs) > 0 || len(link.InlineNotes) > 0
+	return link.MediaXRef == "" && link.Title == "" && link.Crop == nil && !hasNotes
 }
 
 // cropRegionToTags converts a CropRegion to GEDCOM tags at the specified level.

@@ -177,6 +177,21 @@ type Event struct {
 	// beneath a SortDate.
 	SortDatePhrase string
 
+	// FamilyXRef is the family the event links the individual to as a
+	// child (FAMC subordinate of BIRT, CHR and ADOP), e.g. "@F1@". The
+	// encoder writes it only on an individual's BIRT, CHR or ADOP event that
+	// is not a NO assertion, the positions every version defines.
+	FamilyXRef string
+
+	// AdoptedBy says which parent adopted the child (ADOP beneath an ADOP
+	// event's FAMC: HUSB, WIFE or BOTH). Written only beneath a FamilyXRef,
+	// and only on an ADOP event.
+	AdoptedBy string
+
+	// AdoptedByPhrase is the PHRASE under that ADOP (GEDCOM 7.0). Written
+	// only beneath an AdoptedBy.
+	AdoptedByPhrase string
+
 	// IsNegative indicates this is a GEDCOM 7.0 negative assertion.
 	// When true, it means the event did NOT occur (e.g., NO MARR = never married).
 	// The NO tag is used to record explicit conclusions from research that an event

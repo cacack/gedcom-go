@@ -57,7 +57,6 @@ Where the qualified value has no typed field, its `PHRASE` stays in
 | `FAM.ASSO`, `FAM.ASSO.ROLE` | `Family` has no typed associations. `RolePhrase` already covers `ROLE` under an individual's or event's `ASSO`; the coverage report measures `ASSO` under `FAM` only. |
 | `INDI.ALIA` | `ALIA` has no typed field ([#375](https://github.com/cacack/gedcom-go/issues/375)). |
 | `INDI.FAMC.STAT` | `STAT` under `FAMC` has no typed field. |
-| `INDI.ADOP.FAMC.ADOP` | The adoption event's `FAMC` has no typed field. |
 | `FAM.SOUR.EVEN` | A citation's `EVEN` has no typed field. |
 | `SOUR.DATA.EVEN.DATE` | A source's `DATA.EVEN` has no typed field. |
 
@@ -66,4 +65,6 @@ Where the qualified value has no typed field, its `PHRASE` stays in
 - `make spec-coverage` reclassifies seven `PHRASE` rows as `typed`; the rows in
   the table above stay `raw (undiagnosed)` until their value is typed.
 - Typing one of the deferred values brings its `PHRASE` with it, under the same
-  `<Value>Phrase` rule.
+  `<Value>Phrase` rule. `INDI.ADOP.FAMC.ADOP` was deferred until
+  [#740](https://github.com/cacack/gedcom-go/issues/740) typed the adoption
+  `FAMC`; its `PHRASE` is now `Event.AdoptedByPhrase`.

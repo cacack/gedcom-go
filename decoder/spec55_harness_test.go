@@ -86,8 +86,8 @@ func TestSpec55AnchorStatuses(t *testing.T) {
 			version:        "5.5.1",
 			superstructure: "LDS_SPOUSE_SEALING.SLGS.STAT",
 			tag:            "DATE",
-			want:           specRawUndiagnosed,
-			because:        "parseLDSOrdinance reads STAT's value and never its subordinates",
+			want:           specTyped,
+			because:        "parseLDSOrdinance reads STAT's DATE into StatusDate (issue #740)",
 		},
 	}
 

@@ -73,8 +73,8 @@ func TestSpec7AnchorStatuses(t *testing.T) {
 		{
 			superstructure: "ord-STAT",
 			tag:            "DATE",
-			want:           specRawUndiagnosed,
-			because:        "parseLDSOrdinance reads STAT's value and never its subordinates",
+			want:           specTyped,
+			because:        "parseLDSOrdinance reads STAT's DATE into StatusDate (issue #740)",
 		},
 	}
 

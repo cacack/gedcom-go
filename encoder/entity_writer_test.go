@@ -4984,7 +4984,7 @@ func TestEntityBuiltEventDetailEncodes(t *testing.T) {
 		"1 MARR",
 		"2 RELI Lutheran",
 		"2 ASSO @I4@",
-		"3 ROLE WITN",
+		"3 RELA WITN", // 5.5.1 output (#740)
 		"2 NOTE @N1@",
 		"2 NOTE Married in the village church",
 		"1 RESI Farmhouse",

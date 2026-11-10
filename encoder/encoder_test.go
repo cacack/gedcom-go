@@ -1886,7 +1886,7 @@ func TestRoundtripComplexIndividual(t *testing.T) {
 						{IndividualXRef: "@I2@", Role: "GODP", InlineNotes: []string{"Godfather"}},
 					},
 					LDSOrdinances: []*gedcom.LDSOrdinance{
-						{Type: "BAPL", Date: "1 JAN 1900", Temple: "SLAKE", Status: "COMPLETED"},
+						{Type: "BAPL", Date: "1 JAN 1900", Temple: "SLAKE", Status: "COMPLETED", StatusDate: "2 JAN 1900"},
 					},
 					SourceCitations: []*gedcom.SourceCitation{
 						{SourceXRef: "@S1@", Page: "Entire file"},
@@ -1948,11 +1948,12 @@ func TestRoundtripComplexIndividual(t *testing.T) {
 		"2 PEDI birth",
 		"1 FAMS @F2@",
 		"1 ASSO @I2@",
-		"2 ROLE GODP",
+		"2 RELA GODP",
 		"2 NOTE Godfather",
 		"1 BAPL",
 		"2 TEMP SLAKE",
 		"2 STAT COMPLETED",
+		"3 DATE 2 JAN 1900",
 		"1 SOUR @S1@",
 		"2 PAGE Entire file",
 		"1 NOTE Famous composer",

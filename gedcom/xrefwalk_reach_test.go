@@ -82,6 +82,7 @@ func fullyPopulatedRecords() []*Record {
 			Media:           []*MediaLink{medialink("@"+prefix+"_EV_OBJE@", "@"+prefix+"_EV_OBJE_NX@")},
 			Associations:    []*Association{assoc("@" + prefix + "_EV_ASSO@")},
 			NoteXRefs:       []string{"@" + prefix + "_EV_NX@"},
+			FamilyXRef:      "@" + prefix + "_EV_FAMC@",
 		}
 	}
 	chg := func(prefix string) *ChangeDate {

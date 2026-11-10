@@ -68,9 +68,9 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [879 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (88.1%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,178 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (89.5%) | Most common format |
-| GEDCOM 7.0 | Every readable line preserved | [1,263 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (90.9%) | Latest standard |
+| GEDCOM 5.5 | Every readable line preserved | [884 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (88.6%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,186 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (90.1%) | Most common format |
+| GEDCOM 7.0 | Every readable line preserved | [1,269 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (91.4%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch versions such as `VERS 7.0.14` detect as 7.0; a `0 @X1@ HEAD` record is not the header and never sets the version)
 - Heuristic-based detection for malformed headers
@@ -88,8 +88,8 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,263 of 7.0's structures reach the typed model, 879 of
-5.5's, and 1,178 of 5.5.1's.
+document built for it: 1,269 of 7.0's structures reach the typed model, 884 of
+5.5's, and 1,186 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -352,6 +352,7 @@ beside it, and written back beneath that value
 | `FAMC.PEDI` | `FamilyLink.PedigreePhrase` |
 | `ASSO` | `Association.Phrase` |
 | `ASSO.ROLE` | `Association.RolePhrase` |
+| `ADOP.FAMC.ADOP` | `Event.AdoptedByPhrase` |
 | Event `AGE` | `Event.AgePhrase` |
 | Event/attribute `SDATE` | `Event.SortDatePhrase`, `Attribute.SortDatePhrase` |
 | `FAM.HUSB`, `FAM.WIFE` | `Family.HusbandPhrase`, `Family.WifePhrase` |
@@ -514,8 +515,8 @@ reported as a `HeaderConflict`.
 - Events (see Events section)
 - Attributes (see Attributes section)
 - Family links (FAMC, FAMS) with per-link notes; pedigree types on FAMC
-- Associations (ASSO) with roles
-- LDS ordinances (BAPL, CONL, ENDL, SLGC)
+- Associations (ASSO) with roles (`RELA`/`ROLE`) and the 5.5 record `TYPE` (`Association.RecordType`)
+- LDS ordinances (BAPL, CONL, ENDL, SLGC), with the status date (`STAT.DATE`, `StatusDate`/`StatusTime`)
 - Source citations
 - Notes and multimedia references
 - Change dates (CHAN)
@@ -589,13 +590,13 @@ reported as a `HeaderConflict`.
 
 | Tag | Event | Subordinates |
 |-----|-------|--------------|
-| BIRT | Birth | DATE, PLAC, TYPE, CAUS, AGE, AGNC, ADDR, SOUR, NOTE |
+| BIRT | Birth | DATE, PLAC, TYPE, CAUS, AGE, AGNC, ADDR, SOUR, NOTE, FAMC |
 | DEAT | Death | DATE, PLAC, TYPE, CAUS, AGE, AGNC, ADDR, SOUR, NOTE |
 | BURI | Burial | DATE, PLAC, TYPE, CAUS, AGE, AGNC, ADDR, SOUR, NOTE |
 | CREM | Cremation | DATE, PLAC, TYPE, CAUS, AGE, AGNC, ADDR, SOUR, NOTE |
-| ADOP | Adoption | DATE, PLAC, FAMC with ADOP type |
+| ADOP | Adoption | DATE, PLAC, FAMC with ADOP type (`Event.FamilyXRef`, `AdoptedBy`) |
 | BAPM | Baptism | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
-| CHR | Christening | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
+| CHR | Christening | DATE, PLAC, TYPE, CAUS, AGE, AGNC, FAMC |
 | CHRA | Adult Christening | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
 | BARM | Bar Mitzvah | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
 | BASM | Bas Mitzvah | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
@@ -1614,6 +1615,8 @@ A line break in a value is written as `CONT` lines. A line break in a tag name o
 The encoder does not write what its decoder cannot read back (issue #726). A subordinate `Tag.Level` outside 1-99 (including the zero value 0, which would open a record mid-record) or at 99 with a multi-line value, an empty tag name or one containing whitespace, a `Record.XRef` that does not open with `@`, a `Tag.XRef` not closed by `@`, an identifier whose whitespace the parser would split differently (`@A@ SUBM @B@`; a 5.5 `@I 1@` is still accepted), and a `HEAD`/`TRLR` record with no XRef return `encoder.ErrMalformedLine`; a value, tag name or identifier that is not valid UTF-8 returns `encoder.ErrInvalidUTF8`. Both errors name the record (or `HEAD`). A decoded document never trips them -- the unterminated `@I1` and tagless `0 @I 1@` a lenient decode recovers are still written back verbatim. A hand-built header declares `1 CHAR UTF-8` even with `Encoding` unset, except for 7.0 output, which has no `CHAR`. A nightly fuzz target (`FuzzEncodeRoundTrip`) checks that whatever the encoder writes without error re-decodes with the same record count.
 
 Nil values in a hand-built document are written as nothing instead of panicking: a nil element in any slice (a record, a tag, a name, an event, a citation) is skipped, a nil `Header` encodes as an empty one, and a nil `Document` returns `encoder.ErrNilDocument`. The same skip-rather-than-panic rule applies library-wide — see [ADR 0007](docs/decisions/0007-error-transparency.md#nil-values) for the full policy, and the `encoder` package documentation for what the encoder writes for each shape.
+
+Structures whose shape differs by version are written for the output version (issue #740), when a record is encoded from its entity. An association's role is `RELA` for 5.5/5.5.1 output and `ROLE` otherwise, and 5.5 output carries the `TYPE` it requires (`Association.RecordType`, `INDI` when unset); 5.5.1 and 7.0 output drop `RecordType`. An LDS `STAT` is written with its `DATE` (and, for 7.0, `TIME`) from `StatusDate`/`StatusTime`; a `Status` with no `StatusDate` is written alone rather than dropped (5.5.1 and 7.0 require the `DATE`, so set `StatusDate` for valid output), and 5.5 output, which has no `STAT.DATE`, writes `STAT` alone. A `BIRT`, `CHR` or `ADOP` event writes its `FAMC` from `Event.FamilyXRef`, and an `ADOP` event the `ADOP` beneath it from `AdoptedBy`; neither is written on any other event or on a `NO` assertion. A `MediaLink` with no pointer and nothing else is skipped rather than written as a bare `OBJE`; one with no pointer but a title, crop or note is still written, without the `FILE` the typed model does not yet hold (#733).
 
 Note pointers (`NoteXRefs`, and `MediaObject.SharedNoteXRefs`) are written by what they point at. When the output is GEDCOM 7.0 (`TargetVersion`, or `Header.Version` when no target is set), a pointer to a document `SNOTE` record is written as `SNOTE @X@`; any other pointer -- to a `NOTE` record or to nothing -- stays `NOTE @X@`. A 5.5/5.5.1 output has no `SNOTE`, so every pointer is `NOTE`. This applies only to records encoded from their entities; a decoded record re-encodes from `Record.Tags` and keeps the tag it was read with.
 

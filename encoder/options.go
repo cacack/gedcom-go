@@ -134,6 +134,12 @@ func (opts *EncodeOptions) is70() bool {
 	return opts != nil && opts.version == gedcom.Version70
 }
 
+// outputIs reports whether output is GEDCOM version v, per the version
+// forOutput resolved. An unknown output version is no version.
+func (opts *EncodeOptions) outputIs(v gedcom.Version) bool {
+	return opts != nil && opts.version == v
+}
+
 // outputLacks reports whether a structure defined only by GEDCOM version
 // defining must be dropped: the output version forOutput resolved is known
 // and is not defining. An unknown output version (nil or unresolved options,
