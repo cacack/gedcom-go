@@ -459,7 +459,7 @@ for _, repo := range repositories {
     fmt.Printf("  Name: %s\n", repo.Name)
 
     if repo.Address != nil {
-        fmt.Printf("  Address: %s\n", repo.Address.Line1)
+        fmt.Printf("  Address: %s\n", repo.Address.Full)
         fmt.Printf("  City: %s\n", repo.Address.City)
         fmt.Printf("  Country: %s\n", repo.Address.Country)
     }
