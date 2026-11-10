@@ -133,7 +133,9 @@ type CallNumber struct {
 type Address struct {
 	// Full is the ADDR payload: the value on the ADDR line with its CONT lines
 	// joined by "\n" and its CONC lines concatenated. It may span several
-	// lines and is empty when the ADDR line has no value.
+	// lines and is empty when the ADDR line has no value. The encoder writes
+	// the ADDR value from Full alone, never from Line1-Line3, so a hand-built
+	// address sets Full for its ADDR text.
 	Full string
 
 	// Line1 is the ADR1 value only. It is empty when the address has no ADR1,

@@ -1118,7 +1118,10 @@ func addressToTags(addr *gedcom.Address, level int, opts *EncodeOptions) []*gedc
 }
 
 // singleLine joins the lines of value with a space, for a tag whose grammar
-// allows no CONT.
+// allows no CONT. It deliberately does not split an over-long value: the
+// grammar gives ADR1-ADR3 no CONC either, and writeValue leaves long lines
+// alone, so such a value is written as one over-length line, which still
+// parses.
 func singleLine(value string) string {
 	return strings.Join(splitValueLines(value), " ")
 }
