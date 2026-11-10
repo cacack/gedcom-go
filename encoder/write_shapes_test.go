@@ -82,8 +82,8 @@ func TestLDSStatusWrittenForOutputVersion(t *testing.T) {
 		{"5.5.1 dated drops TIME", gedcom.Version551, dated, "1 BAPL\n2 STAT COMPLETED\n3 DATE 27 MAR 2022\n"},
 		{"5.5 has no STAT.DATE", gedcom.Version55, dated, "1 BAPL\n2 STAT COMPLETED\n"},
 		{"unknown version drops nothing", "", dated, "1 BAPL\n2 STAT COMPLETED\n3 DATE 27 MAR 2022\n4 TIME 15:48\n"},
-		{"7.0 undated omits STAT", gedcom.Version70, undated, "1 BAPL\n"},
-		{"5.5.1 undated omits STAT", gedcom.Version551, undated, "1 BAPL\n"},
+		{"7.0 undated keeps STAT", gedcom.Version70, undated, "1 BAPL\n2 STAT COMPLETED\n"},
+		{"5.5.1 undated keeps STAT", gedcom.Version551, undated, "1 BAPL\n2 STAT COMPLETED\n"},
 		{"5.5 undated", gedcom.Version55, undated, "1 BAPL\n2 STAT COMPLETED\n"},
 		{"unknown version undated", "", undated, "1 BAPL\n2 STAT COMPLETED\n"},
 	}
@@ -118,6 +118,21 @@ func TestEventFamilyLinkWritten(t *testing.T) {
 	want := "1 ADOP\n2 FAMC @F1@\n3 ADOP BOTH\n4 PHRASE Both parents\n" +
 		"1 BIRT\n2 FAMC @F2@\n" +
 		"1 ADOP\n2 DATE 1900\n0 TRLR\n"
+	if !strings.Contains(out, want) {
+		t.Errorf("want\n%s\ngot:\n%s", want, out)
+	}
+}
+
+// TestEventFamilyLinkGatedByEvent pins that a hand-built FamilyXRef or
+// AdoptedBy is written only where every version defines it: FAMC on BIRT,
+// CHR or ADOP (not a NO assertion), ADOP only beneath an ADOP event's FAMC.
+func TestEventFamilyLinkGatedByEvent(t *testing.T) {
+	out := encodeIndividual(t, gedcom.Version70, &gedcom.Individual{Events: []*gedcom.Event{
+		{Type: gedcom.EventDeath, Date: "1950", FamilyXRef: "@F1@"},
+		{Type: gedcom.EventBirth, FamilyXRef: "@F2@", AdoptedBy: "HUSB"},
+		{Type: gedcom.EventBirth, IsNegative: true, FamilyXRef: "@F3@"},
+	}})
+	want := "1 DEAT\n2 DATE 1950\n1 BIRT\n2 FAMC @F2@\n1 NO BIRT\n0 TRLR\n"
 	if !strings.Contains(out, want) {
 		t.Errorf("want\n%s\ngot:\n%s", want, out)
 	}

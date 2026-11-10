@@ -178,11 +178,14 @@ type Event struct {
 	SortDatePhrase string
 
 	// FamilyXRef is the family the event links the individual to as a
-	// child (FAMC subordinate of BIRT, CHR and ADOP), e.g. "@F1@".
+	// child (FAMC subordinate of BIRT, CHR and ADOP), e.g. "@F1@". The
+	// encoder writes it only on an individual's BIRT, CHR or ADOP event that
+	// is not a NO assertion, the positions every version defines.
 	FamilyXRef string
 
 	// AdoptedBy says which parent adopted the child (ADOP beneath an ADOP
-	// event's FAMC: HUSB, WIFE or BOTH). Written only beneath a FamilyXRef.
+	// event's FAMC: HUSB, WIFE or BOTH). Written only beneath a FamilyXRef,
+	// and only on an ADOP event.
 	AdoptedBy string
 
 	// AdoptedByPhrase is the PHRASE under that ADOP (GEDCOM 7.0). Written

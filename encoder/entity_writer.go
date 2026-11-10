@@ -951,16 +951,33 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 		media:                event.Media,
 	}, level+1, opts)...)
 
-	// FAMC (BIRT, CHR, ADOP), with ADOP and its PHRASE beneath it (issue #740)
-	if event.FamilyXRef != "" {
+	// FAMC, with ADOP and its PHRASE beneath it (issue #740): written only
+	// where every version defines it -- FAMC on a BIRT, CHR or ADOP event,
+	// and ADOP only beneath an ADOP event's FAMC -- so a hand-built value set
+	// on any other event is not written as a structure no version allows.
+	if event.FamilyXRef != "" && eventTakesFamilyLink(event) {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FAMC", Value: event.FamilyXRef})
-		if event.AdoptedBy != "" {
+		if event.AdoptedBy != "" && event.Type == gedcom.EventAdoption {
 			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "ADOP", Value: event.AdoptedBy})
 			tags = appendPhrase(tags, event.AdoptedByPhrase, level+3)
 		}
 	}
 
 	return tags
+}
+
+// eventTakesFamilyLink reports whether event may carry a FAMC: an individual's
+// BIRT, CHR or ADOP that occurred (a 7.0 NO assertion has no substructure but
+// DATE, NOTE and SOUR). It mirrors the decoder's parseEventFamilyLink.
+func eventTakesFamilyLink(event *gedcom.Event) bool {
+	if event.IsNegative {
+		return false
+	}
+	switch event.Type {
+	case gedcom.EventBirth, gedcom.EventChristening, gedcom.EventAdoption:
+		return true
+	}
+	return false
 }
 
 // attributeToTags converts an Attribute to GEDCOM tags at the specified level.
@@ -1227,16 +1244,14 @@ func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions
 	return tags
 }
 
-// ldsStatusToTags writes an ordinance's STAT at level (issue #740). 5.5.1
-// and 7.0 require a DATE beneath STAT, so for that output a Status with no
-// StatusDate is omitted rather than written invalid; 5.5 defines no
-// STAT.DATE, so 5.5 output writes STAT alone. TIME beneath the DATE is 7.0
-// only. An unknown output version drops nothing.
+// ldsStatusToTags writes an ordinance's STAT at level (issue #740), with its
+// DATE (StatusDate) beneath it except for 5.5 output, which defines no
+// STAT.DATE. TIME beneath the DATE is 7.0 only. A Status with no StatusDate
+// is written alone for every version: 5.5.1 and 7.0 require the DATE, but
+// dropping the status would lose data the caller set, so supplying the date
+// is the caller's part. An unknown output version drops nothing.
 func ldsStatusToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if ord.Status == "" {
-		return nil
-	}
-	if ord.StatusDate == "" && (opts.outputIs(gedcom.Version551) || opts.is70()) {
 		return nil
 	}
 	tags := []*gedcom.Tag{{Level: level, Tag: "STAT", Value: ord.Status}}

@@ -48,8 +48,10 @@
 //     as RELA for 5.5/5.5.1 output and ROLE otherwise, and its TYPE
 //     (Association.RecordType) only for 5.5 output, as INDI when unset. An
 //     LDS STAT is written with its DATE (StatusDate) for 5.5.1 and 7.0
-//     output and omitted there when StatusDate is empty, since both require
-//     it; 5.5 output writes STAT alone, and TIME (StatusTime) is 7.0 only.
+//     output, which both require it; a Status with no StatusDate is written
+//     alone rather than dropped, as is every STAT in 5.5 output, and TIME
+//     (StatusTime) is 7.0 only. An event's FAMC (Event.FamilyXRef) is written
+//     only on a BIRT, CHR or ADOP event, and its ADOP only on an ADOP event.
 //     With no known output version (no TargetVersion and no header version)
 //     none of these is dropped, and the role is ROLE.
 //     Every version-specific rule (these, CONC splitting, SNOTE pointers,
