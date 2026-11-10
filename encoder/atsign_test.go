@@ -198,8 +198,17 @@ func fillStrings(v reflect.Value, depth int) {
 	}
 	switch v.Kind() {
 	case reflect.String:
-		if v.Type() == reflect.TypeOf("") {
+		switch {
+		case v.Type() == reflect.TypeOf(""):
 			v.SetString(textSentinel)
+		// An event's, attribute's or ordinance's type is its tag name, which the encoder
+		// rejects empty (#726).
+		case v.Type() == reflect.TypeOf(gedcom.EventType("")):
+			v.SetString(string(gedcom.EventBirth))
+		case v.Type() == reflect.TypeOf(gedcom.AttributeType("")):
+			v.SetString(string(gedcom.AttributeOccupation))
+		case v.Type() == reflect.TypeOf(gedcom.LDSOrdinanceType("")):
+			v.SetString(string(gedcom.LDSBaptism))
 		}
 	case reflect.Pointer:
 		if v.Type().Elem().Kind() == reflect.Struct {
