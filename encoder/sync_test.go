@@ -53,6 +53,11 @@ func TestSyncTagsUnmodifiedIsNoOp(t *testing.T) {
 		if strings.Contains(path, "malformed") {
 			continue
 		}
+		// The 46 MiB scale fixture takes minutes per test under -race; see
+		// decoder.TestScaleFixture for why it is kept out of ordinary runs.
+		if filepath.Base(path) == "longsword.ged" {
+			continue
+		}
 		t.Run(path, func(t *testing.T) {
 			f, err := os.Open(path) // #nosec G304 -- path comes from the repo's own testdata
 			if err != nil {
@@ -421,6 +426,11 @@ func TestSyncTagsReachesFixpoint(t *testing.T) {
 	more, _ := filepath.Glob("../testdata/*/*/*.ged")
 	for _, path := range append(paths, more...) {
 		if strings.Contains(path, "malformed") {
+			continue
+		}
+		// The 46 MiB scale fixture takes minutes per test under -race; see
+		// decoder.TestScaleFixture for why it is kept out of ordinary runs.
+		if filepath.Base(path) == "longsword.ged" {
 			continue
 		}
 		t.Run(path, func(t *testing.T) {
