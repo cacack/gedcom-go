@@ -122,6 +122,12 @@ if name := individual.Name(); name != nil {
 record.Tags = nil  // Clear to force entity-to-tags conversion
 ```
 
+Clearing Tags drops every standard tag the typed model does not represent.
+`encoder.SyncTags` (#725) is the lossless alternative: it applies only the
+difference the edit made to Tags, so they stay authoritative and keep every
+line the edit did not touch. `validator.CodeEntityTagsDiverged` reports a
+record that was edited but not synced.
+
 ## References
 
 - `gedcom/record.go` - Record struct definition

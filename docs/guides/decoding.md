@@ -194,22 +194,64 @@ indi := doc.GetIndividual("@I1@")
 if name := indi.Name(); name != nil {
     name.Full = "Jane /Roe/"   // succeeds in memory...
 }
-// ...and is silently absent from the encoded output. No error, no diagnostic.
+// ...and is absent from the encoded output: Encode writes rec.Tags.
 ```
 
-Two supported ways to change the output:
+Call `encoder.SyncTags` after editing. It brings `Record.Tags` and
+`Header.Tags` in step with the typed fields, changing only the structures the
+edit touched:
 
 ```go
-// 1. Edit the raw tag — keeps everything else lossless.
+indi := doc.GetIndividual("@I1@")
+if name := indi.Name(); name != nil {
+    name.Full = "Jane /Roe/"
+    name.Given, name.Surname = "Jane", "Roe" // edit fields filled from NAME together
+}
+doc.Header.SourceSystem = "MyApp"
+
+if err := encoder.SyncTags(doc); err != nil {
+    return err
+}
+err := encoder.Encode(w, doc) // writes "1 NAME Jane /Roe/" and "1 SOUR MyApp"
+```
+
+`SyncTags` compares what the typed fields encode to now with what the raw tags
+decode and encode to, and applies the difference:
+
+- A structure the edit did not touch keeps its raw lines exactly, including
+  every tag the typed model does not represent and its original CONT/CONC
+  split. On an unmodified document it changes nothing.
+- A structure whose value changed takes the new value and keeps its unchanged
+  substructures: the header `SOUR` above keeps its `VERS`, `NAME` and `CORP`.
+- A structure added to the typed model is inserted beside its siblings; one
+  removed from it is removed, with everything beneath it.
+- Afterwards the tags read back as the typed fields. The decoder fills
+  `PersonalName.Given` and `Surname` from the `NAME` value when there is no
+  `GIVN` or `SURN`, so editing `Full` alone writes the old given name and
+  surname as `GIVN` and `SURN`. Edit them together.
+
+The header fields it carries are those a hand-built header is written from:
+`SourceSystem`, `Date`, `Submitter`, `Language`, `Version` and `Encoding`.
+
+`ValidateAll` reports a record or header still awaiting `SyncTags` as
+`ENTITY_TAGS_DIVERGED` (a warning), so the edit can be caught before writing.
+The check reads the raw tags back through the decoder; list the code in
+`ValidateOptions.SkipRules` to skip it.
+
+Two lower-level alternatives:
+
+```go
+// 1. Edit the raw tag. Only level-1 NAME lines are the record's names; a NAME
+//    deeper down belongs to something else.
 for _, tag := range rec.Tags {
-    if tag.Tag == "NAME" {
+    if tag.Level == 1 && tag.Tag == "NAME" && tag.Value == "John /Doe/" {
         tag.Value = "Jane /Roe/"
     }
 }
 
 // 2. Clear Tags so the record is rebuilt from the typed model. This drops any
-//    raw tag the typed model does not represent, so it trades losslessness for
-//    the typed view.
+//    standard tag the typed model does not represent, so it trades losslessness
+//    for the typed view.
 rec.Tags = nil
 ```
 
