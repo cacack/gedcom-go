@@ -44,8 +44,14 @@
 //     part of the DATE value: it is never written as a PHRASE, and it is not
 //     rewritten for 7.0 output either, so a typed 5.5.1 document retargeted to
 //     7.0 keeps "DATE (text)", which 7.0 does not permit -- convert it with
-//     the converter package for valid 7.0. With no known output version (no
-//     TargetVersion and no header version) none of these is dropped.
+//     the converter package for valid 7.0. An association's role is written
+//     as RELA for 5.5/5.5.1 output and ROLE otherwise, and its TYPE
+//     (Association.RecordType) only for 5.5 output, as INDI when unset. An
+//     LDS STAT is written with its DATE (StatusDate) for 5.5.1 and 7.0
+//     output and omitted there when StatusDate is empty, since both require
+//     it; 5.5 output writes STAT alone, and TIME (StatusTime) is 7.0 only.
+//     With no known output version (no TargetVersion and no header version)
+//     none of these is dropped, and the role is ROLE.
 //     Every version-specific rule (these, CONC splitting, SNOTE pointers,
 //     header order) reads a GEDCOM 7 patch version such as "7.0.14" as 7.0,
 //     as the decoder reads VERS; GEDC.VERS is still written as given. A value

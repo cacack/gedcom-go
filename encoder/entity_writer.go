@@ -925,7 +925,7 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 	}
 
 	// Subordinate tags at level+1
-	return append(tags, eventDetailToTags(&eventDetail{
+	tags = append(tags, eventDetailToTags(&eventDetail{
 		date:                 event.Date,
 		parsedDate:           event.ParsedDate,
 		placeDetail:          event.PlaceDetail,
@@ -950,6 +950,17 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 		sourceCitations:      event.SourceCitations,
 		media:                event.Media,
 	}, level+1, opts)...)
+
+	// FAMC (BIRT, CHR, ADOP), with ADOP and its PHRASE beneath it (issue #740)
+	if event.FamilyXRef != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FAMC", Value: event.FamilyXRef})
+		if event.AdoptedBy != "" {
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "ADOP", Value: event.AdoptedBy})
+			tags = appendPhrase(tags, event.AdoptedByPhrase, level+3)
+		}
+	}
+
+	return tags
 }
 
 // attributeToTags converts an Attribute to GEDCOM tags at the specified level.
@@ -1201,9 +1212,7 @@ func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PLAC", Value: ord.Place})
 	}
 
-	if ord.Status != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "STAT", Value: ord.Status})
-	}
+	tags = append(tags, ldsStatusToTags(ord, level+1, opts)...)
 
 	// FAMC for SLGC (sealing to parents)
 	if ord.FamilyXRef != "" {
@@ -1215,6 +1224,29 @@ func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions
 		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
 	}
 
+	return tags
+}
+
+// ldsStatusToTags writes an ordinance's STAT at level (issue #740). 5.5.1
+// and 7.0 require a DATE beneath STAT, so for that output a Status with no
+// StatusDate is omitted rather than written invalid; 5.5 defines no
+// STAT.DATE, so 5.5 output writes STAT alone. TIME beneath the DATE is 7.0
+// only. An unknown output version drops nothing.
+func ldsStatusToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions) []*gedcom.Tag {
+	if ord.Status == "" {
+		return nil
+	}
+	if ord.StatusDate == "" && (opts.outputIs(gedcom.Version551) || opts.is70()) {
+		return nil
+	}
+	tags := []*gedcom.Tag{{Level: level, Tag: "STAT", Value: ord.Status}}
+	if ord.StatusDate == "" || opts.outputIs(gedcom.Version55) {
+		return tags
+	}
+	tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: ord.StatusDate})
+	if ord.StatusTime != "" && !opts.outputLacks(gedcom.Version70) {
+		tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "TIME", Value: ord.StatusTime})
+	}
 	return tags
 }
 
@@ -1261,9 +1293,26 @@ func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PHRASE", Value: assoc.Phrase})
 	}
 
-	// Use ROLE for GEDCOM 7.0 compatibility (also compatible with 5.5.1 RELA)
+	// TYPE is 5.5 only, where it is required: written there (INDI when
+	// unset), dropped for any other known output version (issue #740).
+	if !opts.outputLacks(gedcom.Version55) {
+		recordType := assoc.RecordType
+		if recordType == "" && opts.outputIs(gedcom.Version55) {
+			recordType = "INDI"
+		}
+		if recordType != "" {
+			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: recordType})
+		}
+	}
+
+	// The role is RELA in 5.5 and 5.5.1 and ROLE in 7.0 (issue #740). An
+	// unknown output version keeps ROLE, as before.
 	if assoc.Role != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "ROLE", Value: assoc.Role})
+		roleTag := "ROLE"
+		if opts.outputIs(gedcom.Version55) || opts.outputIs(gedcom.Version551) {
+			roleTag = "RELA"
+		}
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: roleTag, Value: assoc.Role})
 		tags = appendPhrase(tags, assoc.RolePhrase, level+2)
 	}
 
@@ -1315,6 +1364,10 @@ func mediaLinkToTags(link *gedcom.MediaLink, level int, opts *EncodeOptions) []*
 		return nil
 	}
 
+	if mediaLinkIsDegenerate(link) {
+		return nil
+	}
+
 	var tags []*gedcom.Tag
 
 	// OBJE tag with media XRef
@@ -1335,6 +1388,20 @@ func mediaLinkToTags(link *gedcom.MediaLink, level int, opts *EncodeOptions) []*
 	}
 
 	return tags
+}
+
+// mediaLinkIsDegenerate reports whether a link carries neither a pointer nor
+// any subordinate data (issue #740). Encoding one would emit a bare `1 OBJE`
+// that carries nothing, so it is skipped, as repositoryLinkIsDegenerate skips
+// a bare REPO.
+//
+// A link with no pointer but a title, crop or note is an inline link whose
+// FILE the typed model does not hold yet (issue #733). It is still written,
+// without the FILE every 5.x version requires: skipping it would drop the
+// typed data it does carry.
+func mediaLinkIsDegenerate(link *gedcom.MediaLink) bool {
+	hasNotes := len(link.NoteXRefs) > 0 || len(link.InlineNotes) > 0
+	return link.MediaXRef == "" && link.Title == "" && link.Crop == nil && !hasNotes
 }
 
 // cropRegionToTags converts a CropRegion to GEDCOM tags at the specified level.
