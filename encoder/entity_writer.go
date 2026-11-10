@@ -14,6 +14,8 @@ import (
 //
 // When opts is provided and DisableLineWrap is false, lines exceeding
 // MaxLineLength are automatically split using CONC tags (see splitLineForLength).
+// Each line is escaped for the output version after the split (opts.text), so a
+// CONC cut never falls inside an escaped "@@".
 //
 // Examples:
 //   - "Single line" -> [TAG value="Single line"]
@@ -40,11 +42,11 @@ func textToTags(value string, level int, tagName string, opts *EncodeOptions) []
 
 	// Process first line - it becomes the primary tag
 	firstLineSegments := splitLineForLength(lines[0], opts)
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: tagName, Value: firstLineSegments[0]})
+	tags = append(tags, &gedcom.Tag{Level: level, Tag: tagName, Value: opts.text(firstLineSegments[0])})
 
 	// Add CONC tags for remaining segments of first line
 	for i := 1; i < len(firstLineSegments); i++ {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONC", Value: firstLineSegments[i]})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONC", Value: opts.text(firstLineSegments[i])})
 	}
 
 	// Process remaining lines (from newlines) - they become CONT tags
@@ -52,11 +54,11 @@ func textToTags(value string, level int, tagName string, opts *EncodeOptions) []
 		lineSegments := splitLineForLength(lines[i], opts)
 
 		// First segment becomes CONT
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONT", Value: lineSegments[0]})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONT", Value: opts.text(lineSegments[0])})
 
 		// Remaining segments become CONC at level+1 (same as CONT)
 		for j := 1; j < len(lineSegments); j++ {
-			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONC", Value: lineSegments[j]})
+			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONC", Value: opts.text(lineSegments[j])})
 		}
 	}
 
@@ -66,11 +68,11 @@ func textToTags(value string, level int, tagName string, opts *EncodeOptions) []
 // appendPhrase appends a GEDCOM 7.0 PHRASE line at level when phrase is
 // non-empty. Callers invoke it right after writing the value the PHRASE
 // qualifies, so a phrase is never written without its value (ADR 0010).
-func appendPhrase(tags []*gedcom.Tag, phrase string, level int) []*gedcom.Tag {
+func appendPhrase(tags []*gedcom.Tag, phrase string, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if phrase == "" {
 		return tags
 	}
-	return append(tags, &gedcom.Tag{Level: level, Tag: "PHRASE", Value: phrase})
+	return append(tags, &gedcom.Tag{Level: level, Tag: "PHRASE", Value: opts.text(phrase)})
 }
 
 // dateToTags writes a DATE line at level with its GEDCOM 7.0 PHRASE beneath.
@@ -86,20 +88,30 @@ func dateToTags(date string, parsed *gedcom.Date, level int, opts *EncodeOptions
 	if date == "" && phrase == "" {
 		return nil
 	}
-	tags := []*gedcom.Tag{{Level: level, Tag: "DATE", Value: date}}
-	return appendPhrase(tags, phrase, level+1)
+	tags := []*gedcom.Tag{{Level: level, Tag: "DATE", Value: opts.text(date)}}
+	return appendPhrase(tags, phrase, level+1, opts)
 }
 
-// recordNotesToEncode returns the NOTE values to emit for a structure, in the
-// order they are written: the shared-note XRef pointers first (emitted as
-// "NOTE @Nn@"; writeRecord retags a 7.0 pointer to an SNOTE record as SNOTE,
-// see retagSharedNotePointers), then the inline note text. Every writer that emits notes goes
-// through here, so notes are resolved in exactly one place -- the invariant
-// TestDecodedNotesEncodeOnce asserts.
-func recordNotesToEncode(noteXRefs, inlineNotes []string) []string {
-	notes := make([]string, 0, len(noteXRefs)+len(inlineNotes))
-	notes = append(notes, noteXRefs...)
-	return append(notes, inlineNotes...)
+// notesToTags writes the NOTE lines for a structure at level, in order: the
+// shared-note XRef pointers first (emitted as "NOTE @Nn@"; writeRecord retags a
+// 7.0 pointer to an SNOTE record as SNOTE, see retagSharedNotePointers), then
+// the inline note text with its CONT/CONC lines. Every writer that emits notes
+// goes through here, so notes are resolved in exactly one place -- the
+// invariant TestDecodedNotesEncodeOnce asserts.
+//
+// The two are written differently because they are different things: a pointer
+// verbatim, and text escaped by textToTags, so inline text shaped like a
+// pointer ("@I1@") is written "@@I1@" and does not re-decode as a link to
+// whatever record carries that identifier (#708).
+func notesToTags(noteXRefs, inlineNotes []string, level int, opts *EncodeOptions) []*gedcom.Tag {
+	tags := make([]*gedcom.Tag, 0, len(noteXRefs)+len(inlineNotes))
+	for _, xref := range noteXRefs {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "NOTE", Value: xref})
+	}
+	for _, note := range inlineNotes {
+		tags = append(tags, textToTags(note, level, "NOTE", opts)...)
+	}
+	return tags
 }
 
 // splitLineForLength splits a single line into segments that fit within MaxLineLength.
@@ -198,7 +210,7 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 
 	// Sex (level 1)
 	if indi.Sex != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "SEX", Value: indi.Sex})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "SEX", Value: opts.text(indi.Sex)})
 	}
 
 	// Events (level 1) - BIRT, DEAT, etc.
@@ -237,9 +249,7 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(indi.NoteXRefs, indi.InlineNotes) {
-		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(indi.NoteXRefs, indi.InlineNotes, 1, opts)...)
 
 	// Media links (level 1) - OBJE
 	for _, media := range indi.Media {
@@ -257,19 +267,18 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 	}
 
 	// Reference numbers (level 1) - REFN, each with its optional TYPE
-	tags = append(tags, refNumbersToTags(indi.RefNumbers)...)
+	tags = append(tags, refNumbersToTags(indi.RefNumbers, opts)...)
 
 	// UIDs (level 1)
 	tags = append(tags, uidsToTags(indi.UIDs, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
-	tags = append(tags, externalIDsToTags(indi.ExternalIDs, 1)...)
+	tags = append(tags, externalIDsToTags(indi.ExternalIDs, 1, opts)...)
 
-	// FamilySearch Family Tree ID (level 1) - _FSFTID. Escape a leading "@" so a
-	// pointer-shaped id is not written as an XRef pointer; this mirrors the
-	// decoder's UnescapeLeadingAt when reading _FSFTID back into FamilySearchID.
+	// FamilySearch Family Tree ID (level 1) - _FSFTID, escaped like any other
+	// text so a pointer-shaped id is not written as an XRef pointer.
 	if indi.FamilySearchID != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "_FSFTID", Value: gedcom.EscapeLeadingAt(indi.FamilySearchID)})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "_FSFTID", Value: opts.text(indi.FamilySearchID)})
 	}
 
 	return tags
@@ -288,13 +297,13 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	// Husband (level 1) - HUSB
 	if fam.Husband != "" {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "HUSB", Value: fam.Husband})
-		tags = appendPhrase(tags, fam.HusbandPhrase, 2)
+		tags = appendPhrase(tags, fam.HusbandPhrase, 2, opts)
 	}
 
 	// Wife (level 1) - WIFE
 	if fam.Wife != "" {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "WIFE", Value: fam.Wife})
-		tags = appendPhrase(tags, fam.WifePhrase, 2)
+		tags = appendPhrase(tags, fam.WifePhrase, 2, opts)
 	}
 
 	// Children (level 1) - CHIL
@@ -323,9 +332,7 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(fam.NoteXRefs, fam.InlineNotes) {
-		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(fam.NoteXRefs, fam.InlineNotes, 1, opts)...)
 
 	// Media links (level 1) - OBJE
 	for _, media := range fam.Media {
@@ -343,13 +350,13 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	}
 
 	// Reference numbers (level 1) - REFN, each with its optional TYPE
-	tags = append(tags, refNumbersToTags(fam.RefNumbers)...)
+	tags = append(tags, refNumbersToTags(fam.RefNumbers, opts)...)
 
 	// UIDs (level 1)
 	tags = append(tags, uidsToTags(fam.UIDs, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
-	tags = append(tags, externalIDsToTags(fam.ExternalIDs, 1)...)
+	tags = append(tags, externalIDsToTags(fam.ExternalIDs, 1, opts)...)
 
 	return tags
 }
@@ -366,17 +373,17 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 
 	// Title (level 1) - TITL
 	if src.Title != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "TITL", Value: src.Title})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "TITL", Value: opts.text(src.Title)})
 	}
 
 	// Author (level 1) - AUTH
 	if src.Author != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "AUTH", Value: src.Author})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "AUTH", Value: opts.text(src.Author)})
 	}
 
 	// Publication (level 1) - PUBL
 	if src.Publication != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "PUBL", Value: src.Publication})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "PUBL", Value: opts.text(src.Publication)})
 	}
 
 	// Text (level 1) - TEXT (with CONT/CONC for multiline/long)
@@ -395,9 +402,7 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(src.NoteXRefs, src.InlineNotes) {
-		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(src.NoteXRefs, src.InlineNotes, 1, opts)...)
 
 	// Change date (level 1) - CHAN
 	if src.ChangeDate != nil {
@@ -410,13 +415,13 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	}
 
 	// Reference numbers (level 1) - REFN, each with its optional TYPE
-	tags = append(tags, refNumbersToTags(src.RefNumbers)...)
+	tags = append(tags, refNumbersToTags(src.RefNumbers, opts)...)
 
 	// UIDs (level 1)
 	tags = append(tags, uidsToTags(src.UIDs, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
-	tags = append(tags, externalIDsToTags(src.ExternalIDs, 1)...)
+	tags = append(tags, externalIDsToTags(src.ExternalIDs, 1, opts)...)
 
 	return tags
 }
@@ -456,7 +461,7 @@ func sourceRepositoryLinkToTags(link *gedcom.SourceRepositoryLink, opts *EncodeO
 	} else {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REPO"})
 		if link.Inline != nil && link.Inline.Name != "" {
-			tags = append(tags, &gedcom.Tag{Level: 2, Tag: "NAME", Value: link.Inline.Name})
+			tags = append(tags, &gedcom.Tag{Level: 2, Tag: "NAME", Value: opts.text(link.Inline.Name)})
 		}
 	}
 
@@ -466,21 +471,19 @@ func sourceRepositoryLinkToTags(link *gedcom.SourceRepositoryLink, opts *EncodeO
 		if caln == nil {
 			continue
 		}
-		tags = append(tags, &gedcom.Tag{Level: 2, Tag: "CALN", Value: caln.Value})
+		tags = append(tags, &gedcom.Tag{Level: 2, Tag: "CALN", Value: opts.text(caln.Value)})
 		// A PHRASE has no other parent than MEDI, so a phrase set without a
 		// media type still writes a valueless MEDI to carry it.
 		if caln.MediaType != "" || caln.MediaPhrase != "" {
-			tags = append(tags, &gedcom.Tag{Level: 3, Tag: "MEDI", Value: caln.MediaType})
+			tags = append(tags, &gedcom.Tag{Level: 3, Tag: "MEDI", Value: opts.text(caln.MediaType)})
 		}
 		if caln.MediaPhrase != "" {
-			tags = append(tags, &gedcom.Tag{Level: 4, Tag: "PHRASE", Value: caln.MediaPhrase})
+			tags = append(tags, &gedcom.Tag{Level: 4, Tag: "PHRASE", Value: opts.text(caln.MediaPhrase)})
 		}
 	}
 
 	// Per-link notes (level 2) - NOTE (with CONT/CONC for multiline/long).
-	for _, note := range recordNotesToEncode(link.NoteXRefs, link.InlineNotes) {
-		tags = append(tags, textToTags(note, 2, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(link.NoteXRefs, link.InlineNotes, 2, opts)...)
 
 	return tags
 }
@@ -495,7 +498,7 @@ func submitterToTags(subm *gedcom.Submitter, opts *EncodeOptions) []*gedcom.Tag 
 
 	// Name (level 1) - NAME
 	if subm.Name != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NAME", Value: subm.Name})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NAME", Value: opts.text(subm.Name)})
 	}
 
 	// Address (level 1) - ADDR
@@ -505,28 +508,26 @@ func submitterToTags(subm *gedcom.Submitter, opts *EncodeOptions) []*gedcom.Tag 
 
 	// Phone numbers (level 1) - PHON
 	for _, phone := range subm.Phone {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "PHON", Value: phone})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "PHON", Value: opts.text(phone)})
 	}
 
 	// Email addresses (level 1) - EMAIL
 	for _, email := range subm.Email {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "EMAIL", Value: email})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "EMAIL", Value: opts.text(email)})
 	}
 
 	// Languages (level 1) - LANG
 	for _, lang := range subm.Language {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "LANG", Value: lang})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "LANG", Value: opts.text(lang)})
 	}
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	// Emitted before NOTE to match GEDCOM 7 structure order (IDENTIFIER_STRUCTURE
 	// precedes NOTE_STRUCTURE) and the placement used by the other record writers.
-	tags = append(tags, externalIDsToTags(subm.ExternalIDs, 1)...)
+	tags = append(tags, externalIDsToTags(subm.ExternalIDs, 1, opts)...)
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(subm.NoteXRefs, subm.InlineNotes) {
-		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(subm.NoteXRefs, subm.InlineNotes, 1, opts)...)
 
 	return tags
 }
@@ -539,8 +540,11 @@ func submissionToTags(subn *gedcom.Submission, opts *EncodeOptions) []*gedcom.Ta
 	}
 
 	var tags []*gedcom.Tag
+	// SUBM is a pointer, written verbatim; the rest are text.
+	if subn.SubmitterXRef != "" {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "SUBM", Value: subn.SubmitterXRef})
+	}
 	scalars := []struct{ tag, value string }{
-		{"SUBM", subn.SubmitterXRef},
 		{"FAMF", subn.FamilyFileName},
 		{"TEMP", subn.TempleCode},
 		{"ANCE", subn.AncestorGenerations},
@@ -550,14 +554,12 @@ func submissionToTags(subn *gedcom.Submission, opts *EncodeOptions) []*gedcom.Ta
 	}
 	for _, s := range scalars {
 		if s.value != "" {
-			tags = append(tags, &gedcom.Tag{Level: 1, Tag: s.tag, Value: s.value})
+			tags = append(tags, &gedcom.Tag{Level: 1, Tag: s.tag, Value: opts.text(s.value)})
 		}
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(subn.NoteXRefs, subn.InlineNotes) {
-		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(subn.NoteXRefs, subn.InlineNotes, 1, opts)...)
 
 	return append(tags, changeDateToTags(subn.ChangeDate, 1, "CHAN", opts)...)
 }
@@ -572,7 +574,7 @@ func repositoryToTags(repo *gedcom.Repository, opts *EncodeOptions) []*gedcom.Ta
 
 	// Name (level 1) - NAME
 	if repo.Name != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NAME", Value: repo.Name})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "NAME", Value: opts.text(repo.Name)})
 	}
 
 	// Address (level 1) - ADDR
@@ -582,17 +584,15 @@ func repositoryToTags(repo *gedcom.Repository, opts *EncodeOptions) []*gedcom.Ta
 
 	// Contact details (level 1) - PHON, EMAIL, FAX, WWW, in ADDRESS_STRUCTURE
 	// grammar order after ADDR.
-	tags = append(tags, contactTags(repo.Phone, repo.Email, repo.Fax, repo.Website, 1)...)
+	tags = append(tags, contactTags(repo.Phone, repo.Email, repo.Fax, repo.Website, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	// Emitted before NOTE to match GEDCOM 7 structure order (IDENTIFIER_STRUCTURE
 	// precedes NOTE_STRUCTURE) and the placement used by the other record writers.
-	tags = append(tags, externalIDsToTags(repo.ExternalIDs, 1)...)
+	tags = append(tags, externalIDsToTags(repo.ExternalIDs, 1, opts)...)
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(repo.NoteXRefs, repo.InlineNotes) {
-		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(repo.NoteXRefs, repo.InlineNotes, 1, opts)...)
 
 	return tags
 }
@@ -607,7 +607,7 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 
 	// Files (level 1) - FILE
 	for _, file := range media.Files {
-		tags = append(tags, mediaFileToTags(file, 1)...)
+		tags = append(tags, mediaFileToTags(file, 1, opts)...)
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long).
@@ -617,9 +617,7 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 	noteXRefs := make([]string, 0, len(media.NoteXRefs)+len(media.SharedNoteXRefs))
 	noteXRefs = append(noteXRefs, media.NoteXRefs...)
 	noteXRefs = append(noteXRefs, media.SharedNoteXRefs...)
-	for _, note := range recordNotesToEncode(noteXRefs, media.InlineNotes) {
-		tags = append(tags, textToTags(note, 1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(noteXRefs, media.InlineNotes, 1, opts)...)
 
 	// Source citations (level 1) - SOUR
 	for _, cite := range media.SourceCitations {
@@ -637,17 +635,17 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 	}
 
 	// Reference numbers (level 1) - REFN, each with its optional TYPE
-	tags = append(tags, refNumbersToTags(media.RefNumbers)...)
+	tags = append(tags, refNumbersToTags(media.RefNumbers, opts)...)
 
 	// UIDs (level 1)
 	tags = append(tags, uidsToTags(media.UIDs, 1, opts)...)
 
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
-	tags = append(tags, externalIDsToTags(media.ExternalIDs, 1)...)
+	tags = append(tags, externalIDsToTags(media.ExternalIDs, 1, opts)...)
 
 	// Restriction (level 1) - RESN
 	if media.Restriction != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "RESN", Value: media.Restriction})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "RESN", Value: opts.text(media.Restriction)})
 	}
 
 	return tags
@@ -662,30 +660,30 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 	var tags []*gedcom.Tag
 
 	// NAME tag with full name value
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: "NAME", Value: name.Full})
+	tags = append(tags, &gedcom.Tag{Level: level, Tag: "NAME", Value: opts.text(name.Full)})
 
 	// Subordinate tags at level+1
 	if name.Given != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "GIVN", Value: name.Given})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "GIVN", Value: opts.text(name.Given)})
 	}
 	if name.Surname != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SURN", Value: name.Surname})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SURN", Value: opts.text(name.Surname)})
 	}
 	if name.Prefix != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NPFX", Value: name.Prefix})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NPFX", Value: opts.text(name.Prefix)})
 	}
 	if name.Suffix != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NSFX", Value: name.Suffix})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NSFX", Value: opts.text(name.Suffix)})
 	}
 	if name.Nickname != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NICK", Value: name.Nickname})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NICK", Value: opts.text(name.Nickname)})
 	}
 	if name.SurnamePrefix != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SPFX", Value: name.SurnamePrefix})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SPFX", Value: opts.text(name.SurnamePrefix)})
 	}
 	if name.Type != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: name.Type})
-		tags = appendPhrase(tags, name.TypePhrase, level+2)
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: opts.text(name.Type)})
+		tags = appendPhrase(tags, name.TypePhrase, level+2, opts)
 	}
 
 	tags = append(tags, nameVariationsToTags(name, level+1, opts)...)
@@ -696,9 +694,7 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 	}
 
 	// Notes (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(name.NoteXRefs, name.InlineNotes) {
-		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(name.NoteXRefs, name.InlineNotes, level+1, opts)...)
 
 	return tags
 }
@@ -715,7 +711,7 @@ func nameVariationsToTags(name *gedcom.PersonalName, level int, opts *EncodeOpti
 	// Transliterations (GEDCOM 7.0 TRAN tag)
 	if !opts.outputLacks(gedcom.Version70) {
 		for _, tran := range name.Transliterations {
-			tags = append(tags, transliterationToTags(tran, level)...)
+			tags = append(tags, transliterationToTags(tran, level, opts)...)
 		}
 	}
 	if opts.outputLacks(gedcom.Version551) {
@@ -724,16 +720,16 @@ func nameVariationsToTags(name *gedcom.PersonalName, level int, opts *EncodeOpti
 
 	// Phonetic and romanized variations (GEDCOM 5.5.1 FONE and ROMN tags)
 	for _, v := range name.Phonetic {
-		tags = append(tags, nameVariationToTags(v, "FONE", level)...)
+		tags = append(tags, nameVariationToTags(v, "FONE", level, opts)...)
 	}
 	for _, v := range name.Romanized {
-		tags = append(tags, nameVariationToTags(v, "ROMN", level)...)
+		tags = append(tags, nameVariationToTags(v, "ROMN", level, opts)...)
 	}
 	return tags
 }
 
 // transliterationToTags converts a Transliteration to GEDCOM tags at the specified level.
-func transliterationToTags(tran *gedcom.Transliteration, level int) []*gedcom.Tag {
+func transliterationToTags(tran *gedcom.Transliteration, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if tran == nil {
 		return nil
 	}
@@ -741,29 +737,29 @@ func transliterationToTags(tran *gedcom.Transliteration, level int) []*gedcom.Ta
 	var tags []*gedcom.Tag
 
 	// TRAN tag with transliterated name value
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: "TRAN", Value: tran.Value})
+	tags = append(tags, &gedcom.Tag{Level: level, Tag: "TRAN", Value: opts.text(tran.Value)})
 
 	// Subordinate tags at level+1
 	if tran.Language != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "LANG", Value: tran.Language})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "LANG", Value: opts.text(tran.Language)})
 	}
 	if tran.Given != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "GIVN", Value: tran.Given})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "GIVN", Value: opts.text(tran.Given)})
 	}
 	if tran.Surname != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SURN", Value: tran.Surname})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SURN", Value: opts.text(tran.Surname)})
 	}
 	if tran.Prefix != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NPFX", Value: tran.Prefix})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NPFX", Value: opts.text(tran.Prefix)})
 	}
 	if tran.Suffix != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NSFX", Value: tran.Suffix})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NSFX", Value: opts.text(tran.Suffix)})
 	}
 	if tran.Nickname != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NICK", Value: tran.Nickname})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NICK", Value: opts.text(tran.Nickname)})
 	}
 	if tran.SurnamePrefix != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SPFX", Value: tran.SurnamePrefix})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SPFX", Value: opts.text(tran.SurnamePrefix)})
 	}
 
 	return tags
@@ -771,12 +767,12 @@ func transliterationToTags(tran *gedcom.Transliteration, level int) []*gedcom.Ta
 
 // nameVariationToTags converts a NameVariation to a FONE or ROMN tag (tagName)
 // and its subordinates at the specified level.
-func nameVariationToTags(v *gedcom.NameVariation, tagName string, level int) []*gedcom.Tag {
+func nameVariationToTags(v *gedcom.NameVariation, tagName string, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if v == nil {
 		return nil
 	}
 
-	tags := []*gedcom.Tag{{Level: level, Tag: tagName, Value: v.Value}}
+	tags := []*gedcom.Tag{{Level: level, Tag: tagName, Value: opts.text(v.Value)}}
 
 	for _, piece := range []struct{ tag, value string }{
 		{"TYPE", v.Type},
@@ -788,7 +784,7 @@ func nameVariationToTags(v *gedcom.NameVariation, tagName string, level int) []*
 		{"NSFX", v.Suffix},
 	} {
 		if piece.value != "" {
-			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: piece.tag, Value: piece.value})
+			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: piece.tag, Value: opts.text(piece.value)})
 		}
 	}
 
@@ -843,24 +839,24 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 	}
 
 	if d.typeDetail != "" {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "TYPE", Value: d.typeDetail})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "TYPE", Value: opts.text(d.typeDetail)})
 	}
 
 	if d.cause != "" {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "CAUS", Value: d.cause})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "CAUS", Value: opts.text(d.cause)})
 	}
 
 	if d.age != "" {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "AGE", Value: d.age})
-		tags = appendPhrase(tags, d.agePhrase, level+1)
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "AGE", Value: opts.text(d.age)})
+		tags = appendPhrase(tags, d.agePhrase, level+1, opts)
 	}
 
 	if d.agency != "" {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "AGNC", Value: d.agency})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "AGNC", Value: opts.text(d.agency)})
 	}
 
 	if d.religiousAffiliation != "" {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "RELI", Value: d.religiousAffiliation})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "RELI", Value: opts.text(d.religiousAffiliation)})
 	}
 
 	// Address
@@ -869,17 +865,17 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 	}
 
 	// Contact info
-	tags = append(tags, contactTags(d.phone, d.email, d.fax, d.website, level)...)
+	tags = append(tags, contactTags(d.phone, d.email, d.fax, d.website, level, opts)...)
 
 	if d.restriction != "" {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "RESN", Value: d.restriction})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "RESN", Value: opts.text(d.restriction)})
 	}
 
 	tags = append(tags, uidsToTags(d.uids, level, opts)...)
 
 	if d.sortDate != "" {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "SDATE", Value: d.sortDate})
-		tags = appendPhrase(tags, d.sortDatePhrase, level+1)
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "SDATE", Value: opts.text(d.sortDate)})
+		tags = appendPhrase(tags, d.sortDatePhrase, level+1, opts)
 	}
 
 	// Associations - ASSO (witnesses, officiants, godparents)
@@ -889,10 +885,8 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 
 	// Notes - NOTE (XRef pointers and inline text, with CONT/CONC for
 	// multiline/long). Pointers are written as "NOTE @Nn@" exactly as the
-	// record-level writers do; see recordNotesToEncode.
-	for _, note := range recordNotesToEncode(d.noteXRefs, d.inlineNotes) {
-		tags = append(tags, textToTags(note, level, "NOTE", opts)...)
-	}
+	// record-level writers do; see notesToTags.
+	tags = append(tags, notesToTags(d.noteXRefs, d.inlineNotes, level, opts)...)
 
 	// Source citations
 	for _, cite := range d.sourceCitations {
@@ -921,7 +915,7 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 	} else {
 		// Description is the event line's own payload (the descriptor on a
 		// generic EVEN); empty for every event the decoder types by tag.
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: string(event.Type), Value: event.Description})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: string(event.Type), Value: opts.text(event.Description)})
 	}
 
 	// Subordinate tags at level+1
@@ -958,8 +952,8 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 	if event.FamilyXRef != "" && eventTakesFamilyLink(event) {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FAMC", Value: event.FamilyXRef})
 		if event.AdoptedBy != "" && event.Type == gedcom.EventAdoption {
-			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "ADOP", Value: event.AdoptedBy})
-			tags = appendPhrase(tags, event.AdoptedByPhrase, level+3)
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "ADOP", Value: opts.text(event.AdoptedBy)})
+			tags = appendPhrase(tags, event.AdoptedByPhrase, level+3, opts)
 		}
 	}
 
@@ -987,7 +981,7 @@ func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*
 	}
 
 	// Attribute tag (OCCU, EDUC, etc.) with value
-	tags := []*gedcom.Tag{{Level: level, Tag: string(attr.Type), Value: attr.Value}}
+	tags := []*gedcom.Tag{{Level: level, Tag: string(attr.Type), Value: opts.text(attr.Value)}}
 
 	// Subordinate tags at level+1
 	return append(tags, eventDetailToTags(&eventDetail{
@@ -1028,7 +1022,7 @@ func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOp
 
 	// Subordinate tags at level+1
 	if cite.Page != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PAGE", Value: cite.Page})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PAGE", Value: opts.text(cite.Page)})
 	}
 
 	if cite.Quality != nil {
@@ -1041,13 +1035,11 @@ func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOp
 	}
 
 	// Notes - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(cite.NoteXRefs, cite.InlineNotes) {
-		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(cite.NoteXRefs, cite.InlineNotes, level+1, opts)...)
 
 	// Ancestry APID (vendor extension)
 	if cite.AncestryAPID != nil {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "_APID", Value: cite.AncestryAPID.Raw})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "_APID", Value: opts.text(cite.AncestryAPID.Raw)})
 	}
 
 	return tags
@@ -1066,7 +1058,7 @@ func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int, opts *
 
 	// Subordinate tags at level+1
 	if data.Date != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: data.Date})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: opts.text(data.Date)})
 	}
 
 	// Text: every entry, in order. Each Value goes through textToTags so a
@@ -1078,10 +1070,10 @@ func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int, opts *
 		}
 		tags = append(tags, textToTags(text.Value, level+1, "TEXT", opts)...)
 		if text.MIME != "" {
-			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "MIME", Value: text.MIME})
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "MIME", Value: opts.text(text.MIME)})
 		}
 		if text.Language != "" {
-			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "LANG", Value: text.Language})
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "LANG", Value: opts.text(text.Language)})
 		}
 	}
 
@@ -1091,19 +1083,19 @@ func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int, opts *
 // contactTags writes the ADDRESS_STRUCTURE contact siblings of ADDR -- PHON,
 // EMAIL, FAX and WWW -- at the given level, in grammar order, one line per
 // entry.
-func contactTags(phone, email, fax, website []string, level int) []*gedcom.Tag {
+func contactTags(phone, email, fax, website []string, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 	for _, v := range phone {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "PHON", Value: v})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "PHON", Value: opts.text(v)})
 	}
 	for _, v := range email {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "EMAIL", Value: v})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "EMAIL", Value: opts.text(v)})
 	}
 	for _, v := range fax {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "FAX", Value: v})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "FAX", Value: opts.text(v)})
 	}
 	for _, v := range website {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "WWW", Value: v})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "WWW", Value: opts.text(v)})
 	}
 	return tags
 }
@@ -1126,20 +1118,20 @@ func addressToTags(addr *gedcom.Address, level int, opts *EncodeOptions) []*gedc
 		{"ADR1", addr.Line1}, {"ADR2", addr.Line2}, {"ADR3", addr.Line3},
 	} {
 		if line.value != "" {
-			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: line.tag, Value: singleLine(line.value)})
+			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: line.tag, Value: opts.text(singleLine(line.value))})
 		}
 	}
 	if addr.City != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CITY", Value: addr.City})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CITY", Value: opts.text(addr.City)})
 	}
 	if addr.State != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "STAE", Value: addr.State})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "STAE", Value: opts.text(addr.State)})
 	}
 	if addr.PostalCode != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "POST", Value: addr.PostalCode})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "POST", Value: opts.text(addr.PostalCode)})
 	}
 	if addr.Country != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CTRY", Value: addr.Country})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CTRY", Value: opts.text(addr.Country)})
 	}
 
 	return tags
@@ -1166,27 +1158,25 @@ func placeToTags(detail *gedcom.PlaceDetail, level int, opts *EncodeOptions) []*
 	}
 
 	// PLAC tag with place name
-	tags := []*gedcom.Tag{{Level: level, Tag: "PLAC", Value: detail.Name}}
+	tags := []*gedcom.Tag{{Level: level, Tag: "PLAC", Value: opts.text(detail.Name)}}
 
 	if detail.Form != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FORM", Value: detail.Form})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FORM", Value: opts.text(detail.Form)})
 	}
 
 	// Coordinates via MAP
 	if detail.Coordinates != nil {
-		tags = append(tags, coordinatesToTags(detail.Coordinates, level+1)...)
+		tags = append(tags, coordinatesToTags(detail.Coordinates, level+1, opts)...)
 	}
 
 	// Notes - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(detail.NoteXRefs, detail.InlineNotes) {
-		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(detail.NoteXRefs, detail.InlineNotes, level+1, opts)...)
 
 	return tags
 }
 
 // coordinatesToTags converts Coordinates to GEDCOM tags at the specified level.
-func coordinatesToTags(coords *gedcom.Coordinates, level int) []*gedcom.Tag {
+func coordinatesToTags(coords *gedcom.Coordinates, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if coords == nil {
 		return nil
 	}
@@ -1198,10 +1188,10 @@ func coordinatesToTags(coords *gedcom.Coordinates, level int) []*gedcom.Tag {
 
 	// Subordinate tags at level+1
 	if coords.Latitude != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "LATI", Value: coords.Latitude})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "LATI", Value: opts.text(coords.Latitude)})
 	}
 	if coords.Longitude != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "LONG", Value: coords.Longitude})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "LONG", Value: opts.text(coords.Longitude)})
 	}
 
 	return tags
@@ -1222,11 +1212,11 @@ func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions
 	tags = append(tags, dateToTags(ord.Date, ord.ParsedDate, level+1, opts)...)
 
 	if ord.Temple != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TEMP", Value: ord.Temple})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TEMP", Value: opts.text(ord.Temple)})
 	}
 
 	if ord.Place != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PLAC", Value: ord.Place})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PLAC", Value: opts.text(ord.Place)})
 	}
 
 	tags = append(tags, ldsStatusToTags(ord, level+1, opts)...)
@@ -1237,9 +1227,7 @@ func ldsOrdinanceToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions
 	}
 
 	// Notes - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(ord.NoteXRefs, ord.InlineNotes) {
-		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(ord.NoteXRefs, ord.InlineNotes, level+1, opts)...)
 
 	return tags
 }
@@ -1254,13 +1242,13 @@ func ldsStatusToTags(ord *gedcom.LDSOrdinance, level int, opts *EncodeOptions) [
 	if ord.Status == "" {
 		return nil
 	}
-	tags := []*gedcom.Tag{{Level: level, Tag: "STAT", Value: ord.Status}}
+	tags := []*gedcom.Tag{{Level: level, Tag: "STAT", Value: opts.text(ord.Status)}}
 	if ord.StatusDate == "" || opts.outputIs(gedcom.Version55) {
 		return tags
 	}
-	tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: ord.StatusDate})
+	tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: opts.text(ord.StatusDate)})
 	if ord.StatusTime != "" && !opts.outputLacks(gedcom.Version70) {
-		tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "TIME", Value: ord.StatusTime})
+		tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "TIME", Value: opts.text(ord.StatusTime)})
 	}
 	return tags
 }
@@ -1279,14 +1267,12 @@ func familyLinkToTags(link *gedcom.FamilyLink, tagName string, level int, opts *
 
 	// Subordinate tags at level+1
 	if link.Pedigree != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PEDI", Value: link.Pedigree})
-		tags = appendPhrase(tags, link.PedigreePhrase, level+2)
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PEDI", Value: opts.text(link.Pedigree)})
+		tags = appendPhrase(tags, link.PedigreePhrase, level+2, opts)
 	}
 
 	// Notes - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(link.NoteXRefs, link.InlineNotes) {
-		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(link.NoteXRefs, link.InlineNotes, level+1, opts)...)
 
 	return tags
 }
@@ -1305,7 +1291,7 @@ func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions
 	// Subordinate tags at level+1
 	// PHRASE (GEDCOM 7.0) - human-readable description of the association
 	if assoc.Phrase != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PHRASE", Value: assoc.Phrase})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PHRASE", Value: opts.text(assoc.Phrase)})
 	}
 
 	// TYPE is 5.5 only, where it is required: written there (INDI when
@@ -1316,7 +1302,7 @@ func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions
 			recordType = "INDI"
 		}
 		if recordType != "" {
-			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: recordType})
+			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: opts.text(recordType)})
 		}
 	}
 
@@ -1327,8 +1313,8 @@ func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions
 		if opts.outputIs(gedcom.Version55) || opts.outputIs(gedcom.Version551) {
 			roleTag = "RELA"
 		}
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: roleTag, Value: assoc.Role})
-		tags = appendPhrase(tags, assoc.RolePhrase, level+2)
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: roleTag, Value: opts.text(assoc.Role)})
+		tags = appendPhrase(tags, assoc.RolePhrase, level+2, opts)
 	}
 
 	// Source citations (GEDCOM 7.0)
@@ -1337,9 +1323,7 @@ func associationToTags(assoc *gedcom.Association, level int, opts *EncodeOptions
 	}
 
 	// Notes (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(assoc.NoteXRefs, assoc.InlineNotes) {
-		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(assoc.NoteXRefs, assoc.InlineNotes, level+1, opts)...)
 
 	return tags
 }
@@ -1357,18 +1341,16 @@ func changeDateToTags(cd *gedcom.ChangeDate, level int, tagName string, opts *En
 
 	// Subordinate DATE at level+1
 	if cd.Date != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: cd.Date})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: opts.text(cd.Date)})
 
 		// TIME subordinate at level+2
 		if cd.Time != "" {
-			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "TIME", Value: cd.Time})
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "TIME", Value: opts.text(cd.Time)})
 		}
 	}
 
 	// Notes - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(cd.NoteXRefs, cd.InlineNotes) {
-		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(cd.NoteXRefs, cd.InlineNotes, level+1, opts)...)
 
 	return tags
 }
@@ -1394,13 +1376,11 @@ func mediaLinkToTags(link *gedcom.MediaLink, level int, opts *EncodeOptions) []*
 	}
 
 	if link.Title != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TITL", Value: link.Title})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TITL", Value: opts.text(link.Title)})
 	}
 
 	// Notes - NOTE (with CONT/CONC for multiline/long)
-	for _, note := range recordNotesToEncode(link.NoteXRefs, link.InlineNotes) {
-		tags = append(tags, textToTags(note, level+1, "NOTE", opts)...)
-	}
+	tags = append(tags, notesToTags(link.NoteXRefs, link.InlineNotes, level+1, opts)...)
 
 	return tags
 }
@@ -1448,7 +1428,7 @@ func cropRegionToTags(crop *gedcom.CropRegion, level int) []*gedcom.Tag {
 }
 
 // mediaFileToTags converts a MediaFile to GEDCOM tags at the specified level.
-func mediaFileToTags(file *gedcom.MediaFile, level int) []*gedcom.Tag {
+func mediaFileToTags(file *gedcom.MediaFile, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if file == nil {
 		return nil
 	}
@@ -1456,34 +1436,34 @@ func mediaFileToTags(file *gedcom.MediaFile, level int) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	// FILE tag with file reference
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: "FILE", Value: file.FileRef})
+	tags = append(tags, &gedcom.Tag{Level: level, Tag: "FILE", Value: opts.text(file.FileRef)})
 
 	// FORM subordinate at level+1
 	if file.Form != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FORM", Value: file.Form})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FORM", Value: opts.text(file.Form)})
 
 		// MEDI subordinate at level+2
 		if file.MediaType != "" {
-			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "MEDI", Value: file.MediaType})
-			tags = appendPhrase(tags, file.MediaPhrase, level+3)
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "MEDI", Value: opts.text(file.MediaType)})
+			tags = appendPhrase(tags, file.MediaPhrase, level+3, opts)
 		}
 	}
 
 	// TITL subordinate at level+1
 	if file.Title != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TITL", Value: file.Title})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TITL", Value: opts.text(file.Title)})
 	}
 
 	// Translations (TRAN)
 	for _, tran := range file.Translations {
-		tags = append(tags, mediaTranslationToTags(tran, level+1)...)
+		tags = append(tags, mediaTranslationToTags(tran, level+1, opts)...)
 	}
 
 	return tags
 }
 
 // mediaTranslationToTags converts a MediaTranslation to GEDCOM tags at the specified level.
-func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int) []*gedcom.Tag {
+func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if tran == nil {
 		return nil
 	}
@@ -1491,11 +1471,11 @@ func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int) []*gedcom.
 	var tags []*gedcom.Tag
 
 	// TRAN tag with file reference
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: "TRAN", Value: tran.FileRef})
+	tags = append(tags, &gedcom.Tag{Level: level, Tag: "TRAN", Value: opts.text(tran.FileRef)})
 
 	// FORM subordinate at level+1
 	if tran.Form != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FORM", Value: tran.Form})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FORM", Value: opts.text(tran.Form)})
 	}
 
 	return tags
@@ -1516,20 +1496,31 @@ func mediaTranslationToTags(tran *gedcom.MediaTranslation, level int) []*gedcom.
 // For NOTE this covers the Text field, which since v3 is the only carrier of a
 // note's body: entityRecordText is the single CONT/CONC producer for notes, so
 // there is no second path that could emit the body twice.
+//
+// A Text that record.Value already spells is written as record.Value, verbatim
+// (see wireSpells): a decoded one-line note has no Tags, so it is written from
+// its entity, and re-escaping its text would rewrite a source "@" the producer
+// did not double, which a byte round trip keeps (#708).
 func entityRecordText(record *gedcom.Record, opts *EncodeOptions) (string, []*gedcom.Tag) {
+	var text, tagName string
 	switch record.Type {
 	case gedcom.RecordTypeSharedNote:
-		if snote, ok := record.Entity.(*gedcom.SharedNote); ok && snote != nil && snote.Text != "" {
-			tags := textToTags(snote.Text, 0, "SNOTE", opts)
-			return tags[0].Value, tags[1:]
+		if snote, ok := record.Entity.(*gedcom.SharedNote); ok && snote != nil {
+			text, tagName = snote.Text, "SNOTE"
 		}
 	case gedcom.RecordTypeNote:
-		if note, ok := record.Entity.(*gedcom.Note); ok && note != nil && note.Text != "" {
-			tags := textToTags(note.Text, 0, "NOTE", opts)
-			return tags[0].Value, tags[1:]
+		if note, ok := record.Entity.(*gedcom.Note); ok && note != nil {
+			text, tagName = note.Text, "NOTE"
 		}
 	}
-	return "", nil
+	if text == "" {
+		return "", nil
+	}
+	if opts.wireSpells(record.Value, text) {
+		return record.Value, nil
+	}
+	tags := textToTags(text, 0, tagName, opts)
+	return tags[0].Value, tags[1:]
 }
 
 // sharedNoteToTags converts a SharedNote entity to GEDCOM tags.
@@ -1546,12 +1537,12 @@ func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Ta
 
 	// MIME (level 1)
 	if note.MIME != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "MIME", Value: note.MIME})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "MIME", Value: opts.text(note.MIME)})
 	}
 
 	// LANG (level 1)
 	if note.Language != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "LANG", Value: note.Language})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "LANG", Value: opts.text(note.Language)})
 	}
 
 	// Translations (level 1) - TRAN with nested MIME/LANG at level 2
@@ -1565,7 +1556,7 @@ func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Ta
 	}
 
 	// External IDs (level 1) - EXID
-	tags = append(tags, externalIDsToTags(note.ExternalIDs, 1)...)
+	tags = append(tags, externalIDsToTags(note.ExternalIDs, 1, opts)...)
 
 	// Change date (level 1) - CHAN
 	if note.ChangeDate != nil {
@@ -1698,12 +1689,12 @@ func sharedNoteTranslationToTags(tran *gedcom.SharedNoteTranslation, level int, 
 
 	// MIME subordinate at level+1
 	if tran.MIME != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "MIME", Value: tran.MIME})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "MIME", Value: opts.text(tran.MIME)})
 	}
 
 	// LANG subordinate at level+1
 	if tran.Language != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "LANG", Value: tran.Language})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "LANG", Value: opts.text(tran.Language)})
 	}
 
 	return tags
@@ -1712,12 +1703,12 @@ func sharedNoteTranslationToTags(tran *gedcom.SharedNoteTranslation, level int, 
 // refNumbersToTags converts record-level reference numbers to level-1 REFN
 // tags, each followed by its level-2 TYPE subordinate when set. Every entry is
 // written, in order, so repeated REFN values survive a round trip.
-func refNumbersToTags(refNumbers []gedcom.RefNumber) []*gedcom.Tag {
+func refNumbersToTags(refNumbers []gedcom.RefNumber, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 	for _, refn := range refNumbers {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REFN", Value: refn.Value})
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "REFN", Value: opts.text(refn.Value)})
 		if refn.Type != "" {
-			tags = append(tags, &gedcom.Tag{Level: 2, Tag: "TYPE", Value: refn.Type})
+			tags = append(tags, &gedcom.Tag{Level: 2, Tag: "TYPE", Value: opts.text(refn.Type)})
 		}
 	}
 	return tags
@@ -1729,7 +1720,7 @@ func uidsToTags(uids []string, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 	name := uidTagName(opts)
 	for _, uid := range uids {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: name, Value: uid})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: name, Value: opts.text(uid)})
 	}
 	return tags
 }
@@ -1748,7 +1739,7 @@ func uidTagName(opts *EncodeOptions) string {
 }
 
 // externalIDsToTags converts a slice of ExternalIDs to GEDCOM tags at the specified level.
-func externalIDsToTags(externalIDs []*gedcom.ExternalID, level int) []*gedcom.Tag {
+func externalIDsToTags(externalIDs []*gedcom.ExternalID, level int, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
 
 	for _, exid := range externalIDs {
@@ -1757,11 +1748,11 @@ func externalIDsToTags(externalIDs []*gedcom.ExternalID, level int) []*gedcom.Ta
 		}
 
 		// EXID tag with external identifier value
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "EXID", Value: exid.Value})
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "EXID", Value: opts.text(exid.Value)})
 
 		// TYPE subordinate at level+1
 		if exid.Type != "" {
-			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: exid.Type})
+			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: opts.text(exid.Type)})
 		}
 	}
 

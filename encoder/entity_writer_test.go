@@ -1618,7 +1618,7 @@ func TestMediaFileToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := mediaFileToTags(tt.file, tt.level)
+			tags := mediaFileToTags(tt.file, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -1656,7 +1656,7 @@ func TestMediaTranslationToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := mediaTranslationToTags(tt.tran, tt.level)
+			tags := mediaTranslationToTags(tt.tran, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -1754,7 +1754,7 @@ func TestCoordinatesToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := coordinatesToTags(tt.coords, tt.level)
+			tags := coordinatesToTags(tt.coords, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -2995,7 +2995,7 @@ func TestTransliterationToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := transliterationToTags(tt.tran, tt.level)
+			tags := transliterationToTags(tt.tran, tt.level, nil)
 			tagMap := tagNamesToMap(tags)
 
 			for _, expected := range tt.contains {
@@ -3029,7 +3029,7 @@ func TestTransliterationToTagsSubordinateLevels(t *testing.T) {
 		Surname:  "Doe",
 	}
 
-	tags := transliterationToTags(tran, 2)
+	tags := transliterationToTags(tran, 2, nil)
 
 	// TRAN should be at level 2
 	if tags[0].Level != 2 {
@@ -3430,7 +3430,7 @@ func TestExternalIDsToTags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tags := externalIDsToTags(tt.exids, tt.level)
+			tags := externalIDsToTags(tt.exids, tt.level, nil)
 
 			if len(tags) != tt.count {
 				t.Errorf("externalIDsToTags() returned %d tags, want %d", len(tags), tt.count)
@@ -5108,7 +5108,7 @@ func countLine(out, line string) int {
 // the split NoteXRefs/InlineNotes fields both being written (issue #447); that
 // slice is gone (#473), but a writer that emitted both halves of the split, or
 // emitted notes from two places, would still double a line here.
-// recordNotesToEncode is the single place that resolves a structure's notes;
+// notesToTags is the single place that resolves a structure's notes;
 // this test is what fails if a writer stops going through it.
 func TestDecodedNotesEncodeOnce(t *testing.T) {
 	out := encodeFromEntities(t, decodedNoteFixture)
@@ -5319,7 +5319,7 @@ func TestRoundTripNameVariations(t *testing.T) {
 }
 
 func TestNameVariationToTagsNil(t *testing.T) {
-	if got := nameVariationToTags(nil, "FONE", 2); got != nil {
+	if got := nameVariationToTags(nil, "FONE", 2, nil); got != nil {
 		t.Errorf("nameVariationToTags(nil) = %v, want nil", got)
 	}
 }

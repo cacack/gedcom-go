@@ -159,7 +159,8 @@ func TestEncodeHeaderFoldedValueRoundTrip(t *testing.T) {
 	}
 	var cont bool
 	for _, tag := range got.Header.Tags {
-		if tag.Tag == "CONT" && tag.Value == forgedRecord {
+		// Header.Tags holds the wire form: 5.5.1 text with every "@" doubled (#708).
+		if tag.Tag == "CONT" && tag.Value == "0 @@F9@@ FAM" {
 			cont = true
 		}
 	}

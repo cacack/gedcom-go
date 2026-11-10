@@ -357,7 +357,7 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 		// Track when we're inside SOUR structure
 		if line.Level == 1 && line.Tag == "SOUR" {
 			inSour = true
-			doc.Header.SourceSystem = line.Value
+			doc.Header.SourceSystem = collector.text(line.Value)
 			continue
 		}
 
@@ -400,12 +400,12 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 			// Level 1 only: HEAD.SOUR.DATA.DATE is the source data's
 			// publication date, not the file's transmission date.
 			if line.Level == 1 {
-				doc.Header.Date = line.Value
+				doc.Header.Date = collector.text(line.Value)
 			}
 		case "LANG":
-			doc.Header.Language = line.Value
+			doc.Header.Language = collector.text(line.Value)
 		case "COPR":
-			doc.Header.Copyright = line.Value
+			doc.Header.Copyright = collector.text(line.Value)
 		case "SUBM":
 			// Level 1 only: the header's own pointer to the submitter record.
 			if line.Level == 1 {
@@ -414,12 +414,12 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 		case "_TREE":
 			// Ancestry.com tree identifier (subordinate of SOUR)
 			if inSour && line.Level == 2 {
-				doc.Header.AncestryTreeID = line.Value
+				doc.Header.AncestryTreeID = collector.text(line.Value)
 			}
 		}
 	}
 
-	parseHeaderStructures(doc.Header)
+	parseHeaderStructures(doc.Header, collector)
 
 	// Ensure header has a version
 	if doc.Header.Version == "" {
@@ -437,14 +437,19 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 // h.Tags, whose levels start at 1. Each is read only at its own position, so a
 // VERS under GEDC or a DATE.TIME under SOUR.DATA is not mistaken for one.
 // Unknown subordinates are left to reportUnknownHeaderTags, so the CORP address
-// is parsed without a collector to avoid reporting them twice.
-func parseHeaderStructures(h *gedcom.Header) {
+// is parsed with a collector that discards diagnostics, to avoid reporting them
+// twice; collector supplies the version text values are unescaped for.
+func parseHeaderStructures(h *gedcom.Header, collector *diagnosticCollector) {
+	quiet := &diagnosticCollector{discard: true}
+	if collector != nil {
+		quiet.version = collector.version
+	}
 	parent := ""
 	for i, tag := range h.Tags {
 		if tag.Level == 1 {
 			parent = tag.Tag
 			if tag.Tag == "DEST" {
-				h.Destination = tag.Value
+				h.Destination = quiet.text(tag.Value)
 			}
 			continue
 		}
@@ -453,23 +458,23 @@ func parseHeaderStructures(h *gedcom.Header) {
 		}
 		switch parent + "." + tag.Tag {
 		case "SOUR.VERS":
-			h.SourceVersion = tag.Value
+			h.SourceVersion = quiet.text(tag.Value)
 		case "SOUR.NAME":
-			h.SourceName = tag.Value
+			h.SourceName = quiet.text(tag.Value)
 		case "SOUR.CORP":
-			h.SourceCorporation = parseHeaderCorporation(h.Tags, i)
+			h.SourceCorporation = parseHeaderCorporation(h.Tags, i, quiet)
 		case "DATE.TIME":
-			h.Time = tag.Value
+			h.Time = quiet.text(tag.Value)
 		case "PLAC.FORM":
-			h.PlaceForm = tag.Value
+			h.PlaceForm = quiet.text(tag.Value)
 		}
 	}
 }
 
 // parseHeaderCorporation builds the CORP structure at tags[corpIdx] from its
 // subordinates: an ADDR and the PHON, EMAIL, FAX and WWW siblings of it.
-func parseHeaderCorporation(tags []*gedcom.Tag, corpIdx int) *gedcom.Corporation {
-	corp := &gedcom.Corporation{Name: tags[corpIdx].Value}
+func parseHeaderCorporation(tags []*gedcom.Tag, corpIdx int, quiet *diagnosticCollector) *gedcom.Corporation {
+	corp := &gedcom.Corporation{Name: quiet.text(tags[corpIdx].Value)}
 	level := tags[corpIdx].Level
 	for i := corpIdx + 1; i < len(tags) && tags[i].Level > level; i++ {
 		tag := tags[i]
@@ -478,15 +483,15 @@ func parseHeaderCorporation(tags []*gedcom.Tag, corpIdx int) *gedcom.Corporation
 		}
 		switch tag.Tag {
 		case "ADDR":
-			corp.Address = parseEventAddress(tags, i, tag.Level, nil)
+			corp.Address = parseEventAddress(tags, i, tag.Level, quiet)
 		case "PHON":
-			corp.Phone = append(corp.Phone, tag.Value)
+			corp.Phone = append(corp.Phone, quiet.text(tag.Value))
 		case "EMAIL":
-			corp.Email = append(corp.Email, tag.Value)
+			corp.Email = append(corp.Email, quiet.text(tag.Value))
 		case "FAX":
-			corp.Fax = append(corp.Fax, tag.Value)
+			corp.Fax = append(corp.Fax, quiet.text(tag.Value))
 		case "WWW":
-			corp.Website = append(corp.Website, tag.Value)
+			corp.Website = append(corp.Website, quiet.text(tag.Value))
 		}
 	}
 	return corp

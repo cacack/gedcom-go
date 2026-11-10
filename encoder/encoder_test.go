@@ -1705,7 +1705,7 @@ func TestRoundtripEntityEncoding(t *testing.T) {
 		"1 AUTH County Archives",
 		"0 @SUBM1@ SUBM",
 		"1 NAME Test User",
-		"1 EMAIL test@example.com",
+		"1 EMAIL test@@example.com", // 5.5.1 doubles every "@" (#708)
 		"1 LANG English",
 		"0 @R1@ REPO",
 		"1 NAME City Archives",
