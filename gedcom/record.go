@@ -82,8 +82,10 @@ type Record struct {
 	//     SNOTE takes its value and CONT/CONC lines from the entity's Text
 	//     when that is non-empty.
 	//
-	// The converter keeps both in step and is the safe option when converting
-	// between GEDCOM versions.
+	// Use one route per document. SyncTags makes the typed fields win, so it
+	// reverts an edit made to Tags alone, and converter.Convert edits Tags
+	// without keeping every Entity field in step: encode and decode converted
+	// output before making typed edits on it.
 	Tags []*Tag
 
 	// LineNumber is the line number where the record starts

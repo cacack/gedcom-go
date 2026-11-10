@@ -85,7 +85,10 @@
 // tag the edit did not touch, and validator.CodeEntityTagsDiverged reports a
 // document that still needs it. Otherwise edit the matching entry in
 // Record.Tags, or set Record.Tags to nil to have the record rebuilt from
-// Entity. The converter keeps both in step.
+// Entity. Use one route per document: SyncTags makes the typed fields win, so
+// it reverts an edit made to Tags alone. The converter edits Tags without
+// keeping every Entity field in step, so encode and decode its output before
+// making typed edits on it.
 //
 // A record rebuilt from its Entity is written in two parts. The typed fields
 // come first, as tags; for a NOTE or SNOTE the entity's Text supplies the
@@ -126,8 +129,10 @@
 // consulted at all. Setting doc.Header.SourceSystem on a decoded
 // document and encoding it does not change the output; call [SyncTags] first,
 // which carries the scalar fields into Tags, or edit the corresponding entry
-// in doc.Header.Tags. The substructure views are not carried. This is the trade the library makes for a
-// lossless header: what was read is what is written.
+// in doc.Header.Tags. SyncTags does not carry the substructure views.
+//
+// This is the trade the library makes for a lossless header: what was read is
+// what is written.
 //
 // A document assembled in memory has no tags, so its header is built from those
 // typed fields instead.

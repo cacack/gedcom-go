@@ -231,12 +231,23 @@ decode and encode to, and applies the difference:
   surname as `GIVN` and `SURN`. Edit them together.
 
 The header fields it carries are those a hand-built header is written from:
-`SourceSystem`, `Date`, `Submitter`, `Language`, `Version` and `Encoding`.
+`SourceSystem`, `Date`, `Submitter`, `Language`, `Version`, and whether
+`Encoding` is set. The encoder always writes `CHAR UTF-8`, so the value of
+`Encoding` is not carried, and for GEDCOM 7.0, which has no `CHAR`, neither is
+its presence.
 
-`ValidateAll` reports a record or header still awaiting `SyncTags` as
-`ENTITY_TAGS_DIVERGED` (a warning), so the edit can be caught before writing.
-The check reads the raw tags back through the decoder; list the code in
-`ValidateOptions.SkipRules` to skip it.
+`SyncTags` makes the typed fields win. It cannot tell a typed edit from an
+edit made to `Tags` alone, so it writes the typed fields back over the latter.
+Use one route per document. `converter.Convert` edits `Tags` without keeping
+every typed field in step, so encode and decode converted output before making
+typed edits on it.
+
+`ValidateAll` reports a record or header whose typed fields and tags disagree
+as `ENTITY_TAGS_DIVERGED` (a warning), so the edit can be caught before
+writing; if `SyncTags` fails on the document, one Info issue under the same
+code says the comparison was not made. The check reads the raw tags back
+through the decoder; list the code in `ValidateOptions.SkipRules` to skip it
+in `ValidateAll` (`QualityReport` always runs it).
 
 Two lower-level alternatives:
 
@@ -255,10 +266,15 @@ for _, tag := range rec.Tags {
 rec.Tags = nil
 ```
 
+<<<<<<< HEAD
 After editing `Tags` (option 1), `decoder.SyncEntities(doc)` rebuilds each
 tagged record's typed `Entity` from them, so reads through the typed model see
 the edit too. The converter does this on its output, so a converted document's
 two views always agree and it is the safe option when changing version.
+=======
+The converter is the safe option when changing version. It edits `Tags`, so
+encode and decode its output before making typed edits on it (see above).
+>>>>>>> 5bab550 (docs: state that SyncTags reverts edits made to Tags alone)
 
 This is the trade the library makes for Lossless Representation: what was read
 is what is written. It applies to every record type, not just the header.
