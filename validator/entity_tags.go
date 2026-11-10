@@ -4,7 +4,8 @@
 // Record.Tags is authoritative on encode, so a typed field edited on a decoded
 // record -- a renamed person, a new header SOUR -- is silently absent from the
 // file. encoder.SyncTags is the step that carries such an edit into Tags; this
-// rule reports the records that still need it, before anything is written.
+// rule reports the records whose typed fields and Tags disagree, before
+// anything is written.
 
 package validator
 
@@ -20,9 +21,8 @@ import (
 // encoder.SyncTags would change. It runs SyncTags on a shallow copy of the
 // header and records, which is enough because SyncTags replaces their Value
 // and Tags rather than editing a Tag, so the document is never modified. A
-// document SyncTags cannot process is not reported here: the reason (a line
-// break in an identifier, raw tags that do not read back) is an encode error
-// or a structural finding of its own.
+// document SyncTags cannot process gets one Info issue under the same code,
+// carrying the error, since the comparison could not be made.
 func validateEntityTags(doc *gedcom.Document) []Issue {
 	synced := &gedcom.Document{Records: make([]*gedcom.Record, len(doc.Records))}
 	if doc.Header != nil {
@@ -36,7 +36,12 @@ func validateEntityTags(doc *gedcom.Document) []Issue {
 		}
 	}
 	if err := encoder.SyncTags(synced); err != nil {
-		return nil
+		return []Issue{{
+			Severity: SeverityInfo,
+			Code:     CodeEntityTagsDiverged,
+			Message:  "typed fields could not be compared with Record.Tags; encoder.SyncTags fails: " + err.Error(),
+			Details:  map[string]string{"error": err.Error()},
+		}}
 	}
 
 	var issues []Issue
@@ -44,7 +49,7 @@ func validateEntityTags(doc *gedcom.Document) []Issue {
 		issues = append(issues, Issue{
 			Severity: SeverityWarning,
 			Code:     CodeEntityTagsDiverged,
-			Message:  "header fields were edited but Header.Tags was not; the edit will not be encoded until encoder.SyncTags is called",
+			Message:  "header typed fields and Header.Tags disagree; Encode writes Header.Tags, and encoder.SyncTags would rewrite it from the typed fields",
 			Details:  map[string]string{"record": "HEAD"},
 		})
 	}
@@ -59,7 +64,7 @@ func validateEntityTags(doc *gedcom.Document) []Issue {
 		issues = append(issues, Issue{
 			Severity:   SeverityWarning,
 			Code:       CodeEntityTagsDiverged,
-			Message:    fmt.Sprintf("%s record %s was edited in its typed fields but not in Record.Tags; the edit will not be encoded until encoder.SyncTags is called", record.Type, record.XRef),
+			Message:    fmt.Sprintf("%s record %s: typed fields and Record.Tags disagree; Encode writes Record.Tags, and encoder.SyncTags would rewrite it from the typed fields", record.Type, record.XRef),
 			RecordXRef: record.XRef,
 			LineNumber: record.LineNumber,
 			Details:    map[string]string{"record": string(record.Type)},

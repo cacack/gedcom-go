@@ -219,11 +219,16 @@ const (
 // Error codes for the write path.
 const (
 	// CodeEntityTagsDiverged indicates the header or a record whose typed
-	// fields would encode differently from its raw Tags: a typed field was
-	// edited on a decoded document, and because Tags is authoritative on
-	// encode the edit will be silently absent from the output.
-	// encoder.SyncTags carries the edit into Tags. RecordXRef is the record,
-	// empty for the header; Details["record"] is the record type, or "HEAD".
+	// fields would encode differently from its raw Tags (a Warning).
+	// Usually a typed field was edited on a decoded document, and because
+	// Tags is authoritative on encode the edit will be absent from the
+	// output; encoder.SyncTags carries it into Tags. The check has no
+	// direction, though: Tags edited without the Entity (by hand, or by
+	// converter.Convert) are reported too, and SyncTags would revert them.
+	// The header fields compared are those SyncTags carries. RecordXRef is
+	// the record, empty for the header; Details["record"] is the record
+	// type, or "HEAD". When SyncTags fails on the document, a single Info
+	// issue with Details["error"] says the comparison was not made.
 	CodeEntityTagsDiverged = "ENTITY_TAGS_DIVERGED"
 )
 

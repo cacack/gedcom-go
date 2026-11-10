@@ -294,7 +294,8 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	// Report typed edits the encoder would not write. It is outside
 	// recordChecks only because it reads the document's raw tags back through
 	// the decoder, so a caller who lists its code in SkipRules should not pay
-	// for it; QualityAnalyzer.runConformanceChecks runs it too.
+	// for it. QualityAnalyzer.runConformanceChecks runs it unconditionally,
+	// as it applies no SkipRules.
 	if !v.skips(CodeEntityTagsDiverged) {
 		allIssues = append(allIssues, validateEntityTags(doc)...)
 	}

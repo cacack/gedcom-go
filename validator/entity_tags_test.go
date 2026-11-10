@@ -76,7 +76,7 @@ func TestEntityTagsDiverged(t *testing.T) {
 }
 
 // A hand-built document has no raw tags to diverge from, and a document
-// SyncTags cannot process reports nothing here.
+// SyncTags cannot process gets one Info issue saying so.
 func TestEntityTagsDivergedSkips(t *testing.T) {
 	doc := &gedcom.Document{
 		Header: &gedcom.Header{Version: gedcom.Version551, Submitter: "@S\n1@"},
@@ -87,8 +87,9 @@ func TestEntityTagsDivergedSkips(t *testing.T) {
 		t.Errorf("hand-built document reported %v", got)
 	}
 	doc.Header.Tags = []*gedcom.Tag{{Level: 1, Tag: "SUBM", Value: "@S1@"}}
-	if got := validateEntityTags(doc); len(got) != 0 {
-		t.Errorf("document SyncTags rejects reported %v", got)
+	got := validateEntityTags(doc)
+	if len(got) != 1 || got[0].Severity != SeverityInfo || got[0].Details["error"] == "" {
+		t.Errorf("document SyncTags rejects reported %v, want one Info issue carrying the error", got)
 	}
 }
 
