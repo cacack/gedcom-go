@@ -33,17 +33,25 @@ var ErrLineBreak = errors.New("line break in tag or cross-reference identifier")
 //
 //   - a [gedcom.Tag] below a record or header with a Level outside 1-99 --
 //     level 0 would open a new record mid-record, and the parser rejects a
-//     negative level or one past 99;
+//     negative level or one past 99 -- or at 99 with a line break in its
+//     Value, whose CONT would sit at level 100;
 //   - an empty tag name, or one containing whitespace, in [gedcom.Tag].Tag or
 //     [gedcom.Record].Type -- the parser splits a line on whitespace, so the
 //     tag would be read back shifted into the value;
 //   - a [gedcom.Record].XRef that does not open with "@" -- "0 I1 INDI" is
-//     read back as a record of type I1.
+//     read back as a record of type I1 -- or a [gedcom.Tag].XRef not closed
+//     by "@" at both ends;
+//   - an identifier holding whitespace that the parser would split
+//     differently: one with a further "@" inside ("@A@ SUBM @B@" reads as
+//     "@A@" of type SUBM), with no ASCII space among its whitespace, or
+//     opening "@ " ("@ I1@" reads as "@" of type "I1@"). A 5.5 spaced
+//     identifier such as "@I 1@" reads back whole and is accepted.
 //
 // A record identifier with no closing "@" is accepted only in the shape the
 // decoder itself recovers from such input ("@I1", no whitespace and no
-// further "@"), so a leniently decoded document still re-encodes byte for byte
-// (issue #385).
+// further "@"), and a spaced identifier standing alone as a record's Type
+// ("0 @I 1@") only with no value, so a leniently decoded document still
+// re-encodes byte for byte (issue #385).
 //
 // The error names the record (or HEAD) and the line it was found on.
 var ErrMalformedLine = errors.New("level, tag name or record identifier the decoder cannot read back")
@@ -534,11 +542,12 @@ func recordName(record *gedcom.Record) string {
 // would end the file early or stand in for the header; with an identifier it
 // is an ordinary record (#416). A record identifier not opening with "@"
 // becomes the record type on re-read ("0 I1 INDI" is a record of type I1). An
-// identifier with no closing "@" is accepted only in the exact shape the
-// parser recovers as an identifier -- no whitespace and no further "@" --
-// because that is what a lenient decode of "0 @I1 INDI" holds, and it must
-// re-encode byte for byte (issue #385). A line break is left to writeValue,
-// which reports it as ErrLineBreak.
+// identifier closed by "@" must be one the parser reads back whole (see
+// closedXRefReadsBack). An identifier with no closing "@" is accepted only in
+// the exact shape the parser recovers as an identifier -- no whitespace and no
+// further "@" -- because that is what a lenient decode of "0 @I1 INDI" holds,
+// and it must re-encode byte for byte (issue #385). A line break is left to
+// writeValue, which reports it as ErrLineBreak.
 func checkRecordLine(record *gedcom.Record) error {
 	xref := record.XRef
 	if xref == "" {
@@ -550,8 +559,10 @@ func checkRecordLine(record *gedcom.Record) error {
 	if hasLineBreak(xref) {
 		return nil
 	}
-	if xref[0] == '@' && (len(xref) > 1 && xref[len(xref)-1] == '@' ||
-		!strings.ContainsRune(xref[1:], '@') && !containsSpace(xref)) {
+	if closedXRefReadsBack(xref) {
+		return nil
+	}
+	if xref[0] == '@' && !strings.ContainsRune(xref[1:], '@') && !containsSpace(xref) {
 		return nil
 	}
 	return fmt.Errorf("level 0 xref %q: %w", xref, ErrMalformedLine)
@@ -600,11 +611,8 @@ func writeValue(w io.Writer, level int, xref, tag, value string, opts *EncodeOpt
 	//
 	// A line break in a value at level MaxNestingDepth-1 (99) cannot be encoded
 	// at all: its CONT would sit at level 100, past the two-digit ceiling the
-	// grammar allows. The CONT is still written, because an over-level line is
-	// at least reported as INVALID_LEVEL on re-read, where the bare
-	// continuation this replaces produced a misleading SYNTAX_ERROR against the
-	// following line. Neither is valid GEDCOM -- such a document is
-	// un-encodable -- and textToTags has always had the same limit.
+	// grammar allows, which the parser rejects. It is an ErrMalformedLine, like
+	// any other level the decoder cannot read back (issue #726).
 	// Almost every value is a single line, so that case must not pay for the
 	// split: writeValue runs for every line of every record, and allocating a
 	// one-element slice here cost ~8000 allocations and 21% on
@@ -613,6 +621,11 @@ func writeValue(w io.Writer, level int, xref, tag, value string, opts *EncodeOpt
 	// build an asciiSet and scan in Go, while IndexByte is assembly.
 	if strings.IndexByte(value, '\n') < 0 && strings.IndexByte(value, '\r') < 0 {
 		return writeLine(w, level, xref, tag, value, opts)
+	}
+
+	if level >= maxLevel {
+		return fmt.Errorf("level %d tag %q: line break in value needs a CONT at level %d, past %d: %w",
+			level, tag, level+1, maxLevel, ErrMalformedLine)
 	}
 
 	lines := splitValueLines(value)
@@ -664,7 +677,7 @@ func checkLine(level int, xref, tag, value string) error {
 			return fmt.Errorf("level %d tag %q: %w", level, tag, ErrLineBreak)
 		case !utf8.ValidString(tag):
 			return fmt.Errorf("level %d tag %q: %w", level, strings.ToValidUTF8(tag, "\uFFFD"), ErrInvalidUTF8)
-		case tag == "" || containsSpace(tag):
+		case tag == "" || containsSpace(tag) && !tagIsLoneXRef(level, xref, tag, value):
 			return fmt.Errorf("level %d tag %q: empty or contains whitespace: %w", level, tag, ErrMalformedLine)
 		}
 	}
@@ -675,11 +688,48 @@ func checkLine(level int, xref, tag, value string) error {
 		if !utf8.ValidString(xref) {
 			return fmt.Errorf("level %d tag %q xref: %w", level, tag, ErrInvalidUTF8)
 		}
+		// Level 0 was checked by checkRecordLine, which also admits the
+		// unterminated "@I1" a lenient decode recovers; below it the parser
+		// recovers no such shape, so the identifier must be closed.
+		if level > 0 && !closedXRefReadsBack(xref) {
+			return fmt.Errorf("level %d tag %q xref %q: %w", level, tag, xref, ErrMalformedLine)
+		}
 	}
 	if !utf8.ValidString(value) {
 		return fmt.Errorf("level %d tag %q value: %w", level, tag, ErrInvalidUTF8)
 	}
 	return nil
+}
+
+// closedXRefReadsBack reports whether xref, delimited by "@" at both ends,
+// reads back as one identifier when written before a tag. With no whitespace
+// it is a single field, which the parser takes whole. With whitespace it must
+// be the 5.5 spaced shape the parser recovers (splitSpacedXRef in package
+// parser): no "@" inside, which would close it early ("@A@ SUBM @B@" reads as
+// "@A@" of type SUBM); an ASCII space, which is what the recovery looks for;
+// and a first field that is not "@" alone, which the parser takes for a whole
+// identifier ("@ I1@" reads as "@" of type "I1@"). A spaced identifier is only
+// checked here on the rare path, so its strings.Fields allocation is not paid
+// per line.
+func closedXRefReadsBack(xref string) bool {
+	if len(xref) < 2 || xref[0] != '@' || xref[len(xref)-1] != '@' {
+		return false
+	}
+	if !containsSpace(xref) {
+		return true
+	}
+	body := xref[1 : len(xref)-1]
+	return !strings.ContainsRune(body, '@') && strings.ContainsRune(body, ' ') &&
+		strings.Fields(xref)[0] != "@"
+}
+
+// tagIsLoneXRef reports whether tag is a spaced identifier standing alone on a
+// level-0 line, the shape a lenient decode of "0 @I 1@" holds: with no tag
+// after the identifier, the parser keeps it as the record type, and it must
+// re-encode byte for byte as the unterminated "@I1" does (issue #385). Any
+// value after it would be read back as the record type instead.
+func tagIsLoneXRef(level int, xref, tag, value string) bool {
+	return level == 0 && xref == "" && value == "" && closedXRefReadsBack(tag)
 }
 
 // plainTagName reports whether tag is non-empty, ASCII and free of

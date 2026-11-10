@@ -5,9 +5,11 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/parser"
 )
 
 // assertRejected checks that err wraps want and names the record it was found
@@ -40,22 +42,29 @@ func TestEncodeRejectsMalformedLine(t *testing.T) {
 		"level 0 forges a record": {indi(
 			&gedcom.Tag{Level: 1, Tag: "NAME", Value: "John /Doe/"},
 			&gedcom.Tag{Level: 0, XRef: "@X@", Tag: "INDI"}), "@I1@ INDI", "0 @X@ INDI"},
-		"zero-value level":      {indi(&gedcom.Tag{Tag: "NAME", Value: "John /Doe/"}), "@I1@ INDI", "0 NAME"},
-		"negative level":        {indi(&gedcom.Tag{Level: -1, Tag: "NAME"}), "@I1@ INDI", "-1 NAME"},
-		"level past 99":         {indi(&gedcom.Tag{Level: 100, Tag: "NAME"}), "@I1@ INDI", "100 NAME"},
-		"empty tag":             {indi(&gedcom.Tag{Level: 1, Value: "x"}), "@I1@ INDI", "1  x"},
-		"space in tag":          {indi(&gedcom.Tag{Level: 1, Tag: "NAME X", Value: "A /B/"}), "@I1@ INDI", "NAME X"},
-		"tab in tag":            {indi(&gedcom.Tag{Level: 1, Tag: "NAME\tX"}), "@I1@ INDI", "NAME\t"},
-		"unicode space in tag":  {indi(&gedcom.Tag{Level: 1, Tag: "NAME\u00a0X"}), "@I1@ INDI", "NAME\u00a0"},
-		"space in record type":  {&gedcom.Record{XRef: "@I1@", Type: "IN DI"}, "@I1@ IN DI", "IN DI"},
-		"empty record type":     {&gedcom.Record{XRef: "@I1@"}, "@I1@", "0 @I1@"},
-		"xref without @":        {&gedcom.Record{XRef: "I1", Type: gedcom.RecordTypeIndividual}, "I1 INDI", "0 I1"},
-		"unterminated with @":   {&gedcom.Record{XRef: "@I1@x", Type: gedcom.RecordTypeIndividual}, "@I1@x INDI", "0 @I1@x"},
-		"unterminated spaced":   {&gedcom.Record{XRef: "@I 1", Type: gedcom.RecordTypeIndividual}, "@I 1 INDI", "0 @I 1"},
-		"entity with bad xref":  {&gedcom.Record{XRef: "I1", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{XRef: "I1"}}, "I1 INDI", "0 I1"},
-		"structural TRLR":       {&gedcom.Record{Type: "TRLR"}, "TRLR", "0 TRLR\n0 TRLR"},
-		"structural HEAD":       {&gedcom.Record{Type: "HEAD"}, "HEAD", "0 HEAD\n0 TRLR"},
-		"entity event type tab": {&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{XRef: "@I1@", Events: []*gedcom.Event{{Type: "BI RT"}}}}, "@I1@ INDI", "BI RT"},
+		"zero-value level":       {indi(&gedcom.Tag{Tag: "NAME", Value: "John /Doe/"}), "@I1@ INDI", "0 NAME"},
+		"negative level":         {indi(&gedcom.Tag{Level: -1, Tag: "NAME"}), "@I1@ INDI", "-1 NAME"},
+		"level past 99":          {indi(&gedcom.Tag{Level: 100, Tag: "NAME"}), "@I1@ INDI", "100 NAME"},
+		"empty tag":              {indi(&gedcom.Tag{Level: 1, Value: "x"}), "@I1@ INDI", "1  x"},
+		"space in tag":           {indi(&gedcom.Tag{Level: 1, Tag: "NAME X", Value: "A /B/"}), "@I1@ INDI", "NAME X"},
+		"tab in tag":             {indi(&gedcom.Tag{Level: 1, Tag: "NAME\tX"}), "@I1@ INDI", "NAME\t"},
+		"unicode space in tag":   {indi(&gedcom.Tag{Level: 1, Tag: "NAME\u00a0X"}), "@I1@ INDI", "NAME\u00a0"},
+		"space in record type":   {&gedcom.Record{XRef: "@I1@", Type: "IN DI"}, "@I1@ IN DI", "IN DI"},
+		"empty record type":      {&gedcom.Record{XRef: "@I1@"}, "@I1@", "0 @I1@"},
+		"xref without @":         {&gedcom.Record{XRef: "I1", Type: gedcom.RecordTypeIndividual}, "I1 INDI", "0 I1"},
+		"unterminated with @":    {&gedcom.Record{XRef: "@I1@x", Type: gedcom.RecordTypeIndividual}, "@I1@x INDI", "0 @I1@x"},
+		"unterminated spaced":    {&gedcom.Record{XRef: "@I 1", Type: gedcom.RecordTypeIndividual}, "@I 1 INDI", "0 @I 1"},
+		"entity with bad xref":   {&gedcom.Record{XRef: "I1", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{XRef: "I1"}}, "I1 INDI", "0 I1"},
+		"structural TRLR":        {&gedcom.Record{Type: "TRLR"}, "TRLR", "0 TRLR\n0 TRLR"},
+		"structural HEAD":        {&gedcom.Record{Type: "HEAD"}, "HEAD", "0 HEAD\n0 TRLR"},
+		"CONT past level 99":     {indi(&gedcom.Tag{Level: 99, Tag: "_X", Value: "a\nb"}), "@I1@ INDI", "100 CONT"},
+		"closed xref with @":     {&gedcom.Record{XRef: "@A@ SUBM @B@", Type: gedcom.RecordTypeIndividual}, "@A@ SUBM @B@ INDI", "0 @A@"},
+		"closed xref with tab":   {&gedcom.Record{XRef: "@I\t1@", Type: gedcom.RecordTypeIndividual}, "INDI", "0 @I\t"},
+		"closed xref lone @":     {&gedcom.Record{XRef: "@ I1@", Type: gedcom.RecordTypeIndividual}, "@ I1@ INDI", "0 @ I1@"},
+		"subordinate xref no @":  {indi(&gedcom.Tag{Level: 1, Tag: "FAMC", XRef: "I 1"}), "@I1@ INDI", "1 I 1"},
+		"subordinate unclosed":   {indi(&gedcom.Tag{Level: 1, Tag: "_X", XRef: "@X1"}), "@I1@ INDI", "1 @X1"},
+		"lone xref with a value": {&gedcom.Record{Type: "@I 1@", Value: "x"}, "@I 1@", "0 @I 1@ x"},
+		"entity event type tab":  {&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{XRef: "@I1@", Events: []*gedcom.Event{{Type: "BI RT"}}}}, "@I1@ INDI", "BI RT"},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -87,6 +96,54 @@ func TestEncodeAcceptsReadableRecordXRef(t *testing.T) {
 	var buf bytes.Buffer
 	if err := Encode(&buf, docWithRecord(&gedcom.Record{XRef: "@X1@", Type: "HEAD"})); err != nil {
 		t.Errorf("Encode(0 @X1@ HEAD) error = %v", err)
+	}
+}
+
+// TestEncodeRoundTripsRecoveredXRef pins the identifiers a lenient decode
+// recovers from malformed input: each must encode without error and read back
+// as it was decoded, record type and identifier alike (issue #385).
+func TestEncodeRoundTripsRecoveredXRef(t *testing.T) {
+	for _, body := range []string{
+		"0 @I1 INDI\n1 NAME A /B/\n",
+		"0 @I1\n1 NOTE x\n",
+		"0 @I 1@ INDI\n1 NAME A /B/\n",
+		"0 @I 1@\n1 NOTE x\n",
+		"0 @I1@ INDI\n1 @X 1@ _X y\n",
+	} {
+		t.Run(body, func(t *testing.T) {
+			in := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n" + body + "0 TRLR\n"
+			doc, err := decoder.Decode(strings.NewReader(in))
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+			var buf bytes.Buffer
+			if err := Encode(&buf, doc); err != nil {
+				t.Fatalf("Encode() error = %v", err)
+			}
+			if !strings.Contains(buf.String(), body) {
+				t.Errorf("output does not contain %q:\n%s", body, buf.String())
+			}
+		})
+	}
+}
+
+// TestMaxLevelMatchesParser keeps maxLevel tied to the parser's limit, which
+// the encoder copies rather than import the parser for one constant.
+func TestMaxLevelMatchesParser(t *testing.T) {
+	if maxLevel != parser.MaxNestingDepth-1 {
+		t.Errorf("maxLevel = %d, want parser.MaxNestingDepth-1 = %d", maxLevel, parser.MaxNestingDepth-1)
+	}
+}
+
+// TestPlainTagNameImpliesNoSpace pins the fast path in checkLine: a tag name
+// plainTagName clears must be one containsSpace would also clear, or a
+// separator could slip past the slow path.
+func TestPlainTagNameImpliesNoSpace(t *testing.T) {
+	for b := 0; b < 256; b++ {
+		tag := "A" + string([]byte{byte(b)})
+		if plainTagName(tag) && (containsSpace(tag) || !utf8.ValidString(tag)) {
+			t.Errorf("plainTagName(%q) = true, but the slow path rejects it", tag)
+		}
 	}
 }
 
