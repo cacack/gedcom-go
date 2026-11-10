@@ -32,6 +32,9 @@ jobs:
           - package: ./charset
             fuzz: ^FuzzNewReader$
             time: 2m
+          - package: ./encoder
+            fuzz: ^FuzzEncodeRoundTrip$
+            time: 2m
 
     steps:
     - name: Harden Runner
