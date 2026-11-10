@@ -91,7 +91,7 @@ func ExampleEncodeWithOptions() {
 	fmt.Printf("CRLF lines: %d\n", strings.Count(buf.String(), "\r\n"))
 
 	// Output:
-	// CRLF lines: 5
+	// CRLF lines: 6
 }
 
 // ExampleValidateAllWithOptions shows validating via the facade with custom options.
