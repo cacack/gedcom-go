@@ -220,3 +220,79 @@ func fillStrings(v reflect.Value, depth int) {
 		}
 	}
 }
+
+// TestAtSignWrapFitsLineLength asserts that 5.5.1 escaping, which doubles every
+// "@", is measured before the CONC split: an "@"-dense note stays within the
+// line limit, no line holds an odd "@" run, and the text round-trips.
+func TestAtSignWrapFitsLineLength(t *testing.T) {
+	for _, note := range []string{strings.Repeat("@", 300), strings.Repeat("a@", 200), strings.Repeat("x", 247) + "@@y"} {
+		doc := &gedcom.Document{Records: []*gedcom.Record{{
+			XRef:   "@I1@",
+			Type:   gedcom.RecordTypeIndividual,
+			Entity: &gedcom.Individual{XRef: "@I1@", InlineNotes: []string{note}},
+		}}}
+		out, got := encodeDecode(t, doc, gedcom.Version551)
+		for _, line := range strings.Split(out, "\n") {
+			// 255 is the 5.5.1 line limit; DefaultMaxLineLength bounds the value.
+			if len(line) > 255 {
+				t.Errorf("line is %d bytes, want at most 255: %q", len(line), line)
+			}
+			if _, value, ok := strings.Cut(line, " CONC "); ok && strings.HasPrefix(value, "@") && !strings.HasPrefix(value, "@@") {
+				t.Errorf("CONC line begins with a lone @: %q", line)
+			}
+		}
+		if indi := got.GetIndividual("@I1@"); indi == nil || !reflect.DeepEqual(indi.InlineNotes, []string{note}) {
+			t.Errorf("note did not round-trip:\n%s", out)
+		}
+	}
+}
+
+// TestUndeclaredVersionRoundTrip covers a file with no GEDC.VERS: the decoder
+// unescapes by the detected version, the one the encoder writes it as, so an
+// unedited decode-encode keeps a mid-value "@@" as written.
+func TestUndeclaredVersionRoundTrip(t *testing.T) {
+	input := "0 HEAD\n1 SOUR a@@b\n0 @N1@ NOTE x@@y\n0 TRLR\n"
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	if got := doc.GetNote("@N1@").Text; got != "x@y" {
+		t.Errorf("Note.Text = %q, want %q", got, "x@y")
+	}
+	if got := doc.Header.SourceSystem; got != "a@b" {
+		t.Errorf("SourceSystem = %q, want %q", got, "a@b")
+	}
+	var buf bytes.Buffer
+	if err := EncodeWithOptions(&buf, doc, &EncodeOptions{LineEnding: "\n"}); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	for _, want := range []string{"\n1 SOUR a@@b\n", "\n0 @N1@ NOTE x@@y\n"} {
+		if !strings.Contains(buf.String(), want) {
+			t.Errorf("output lacks %q:\n%s", want, buf.String())
+		}
+	}
+}
+
+// TestMultiLineNoteReEscaped pins the limit of the NOTE record's verbatim
+// path: only a one-line Text keeps Record.Value as written. A multi-line Text
+// is written from the entity, so a lone "@" a 5.5.1 producer left undoubled is
+// re-escaped -- the same text, in its spec form.
+func TestMultiLineNoteReEscaped(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @N1@ NOTE a@b\n0 @N2@ NOTE a@b\n1 CONT c\n0 TRLR\n"
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	for _, r := range doc.Records {
+		r.Tags = nil
+	}
+	var buf bytes.Buffer
+	if err := EncodeWithOptions(&buf, doc, &EncodeOptions{LineEnding: "\n"}); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	for _, want := range []string{"\n0 @N1@ NOTE a@b\n", "\n0 @N2@ NOTE a@@b\n1 CONT c\n"} {
+		if !strings.Contains(buf.String(), want) {
+			t.Errorf("output lacks %q:\n%s", want, buf.String())
+		}
+	}
+}

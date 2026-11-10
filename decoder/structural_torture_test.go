@@ -486,7 +486,7 @@ func TestStructuralTortureAtSign55(t *testing.T) {
 			continue
 		}
 		if note.Text != tt.want {
-			t.Errorf("Note %s = %q, want %q ", tt.xref, note.Text, tt.want)
+			t.Errorf("Note %s = %q, want %q", tt.xref, note.Text, tt.want)
 		}
 	}
 
