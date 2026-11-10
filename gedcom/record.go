@@ -66,8 +66,13 @@ type Record struct {
 	// round of reads, and is silently absent from the file. There is no error
 	// and no diagnostic.
 	//
-	// Two supported ways to change what a decoded record encodes to:
+	// Three supported ways to change what a decoded record encodes to:
 	//
+	//   - Edit the typed fields, then call encoder.SyncTags on the document.
+	//     It applies the difference to Tags structure by structure and keeps
+	//     every raw tag the edit did not touch, including those the typed
+	//     model does not represent. validator.CodeEntityTagsDiverged reports
+	//     a record whose edits still need it.
 	//   - Edit the matching entry in Tags.
 	//   - Set Tags to nil, so the encoder re-derives the whole record from
 	//     Entity: its typed fields first, then the extension (_-prefixed)
