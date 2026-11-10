@@ -38,12 +38,14 @@ func Split(line string, maxLen int) []string {
 
 // splitPoint returns where to cut line so the first piece is at most
 // maxLen bytes: the last offset at or before maxLen that starts a UTF-8
-// character and has a non-space on both sides.
+// character, has a non-space on both sides and is not inside an "@@" pair.
 //
 // GEDCOM 5.5.1 requires a CONC split to fall between two non-space
 // characters, because readers that trim leading or trailing whitespace on a
 // line would otherwise lose the space (issue #565). A cut inside a multi-byte
-// character would leave both lines holding invalid UTF-8.
+// character would leave both lines holding invalid UTF-8. A cut inside an
+// "@@" pair, the escape for a literal "@" (issue #708), would leave a lone
+// "@" on each line, which a reader escaping line by line misreads.
 //
 // A line with no such offset in range (a run of spaces longer than maxLen)
 // falls back to the last character boundary, and a first character longer
@@ -61,7 +63,7 @@ func splitPoint(line string, maxLen int) int {
 		if fallback == 0 {
 			fallback = i
 		}
-		if line[i-1] != ' ' && line[i] != ' ' {
+		if line[i-1] != ' ' && line[i] != ' ' && !splitsAtPair(line, i) {
 			return i
 		}
 	}
@@ -70,4 +72,17 @@ func splitPoint(line string, maxLen int) int {
 	}
 	_, size := utf8.DecodeRuneInString(line)
 	return size
+}
+
+// splitsAtPair reports whether offset i of line falls inside an "@@" pair: an
+// odd number of bytes into a run of "@", whose bytes pair off from its start.
+func splitsAtPair(line string, i int) bool {
+	if line[i-1] != '@' || line[i] != '@' {
+		return false
+	}
+	start := i - 1
+	for start > 0 && line[start-1] == '@' {
+		start--
+	}
+	return (i-start)%2 == 1
 }

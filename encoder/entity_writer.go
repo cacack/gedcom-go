@@ -14,8 +14,9 @@ import (
 //
 // When opts is provided and DisableLineWrap is false, lines exceeding
 // MaxLineLength are automatically split using CONC tags (see splitLineForLength).
-// Each line is escaped for the output version after the split (opts.text), so a
-// CONC cut never falls inside an escaped "@@".
+// Each line is escaped for the output version before the split (opts.text), so
+// the escaped line is what has to fit, and [concsplit.Split] never cuts inside
+// an escaped "@@".
 //
 // Examples:
 //   - "Single line" -> [TAG value="Single line"]
@@ -41,24 +42,24 @@ func textToTags(value string, level int, tagName string, opts *EncodeOptions) []
 	tags := make([]*gedcom.Tag, 0, len(lines))
 
 	// Process first line - it becomes the primary tag
-	firstLineSegments := splitLineForLength(lines[0], opts)
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: tagName, Value: opts.text(firstLineSegments[0])})
+	firstLineSegments := splitLineForLength(opts.text(lines[0]), opts)
+	tags = append(tags, &gedcom.Tag{Level: level, Tag: tagName, Value: firstLineSegments[0]})
 
 	// Add CONC tags for remaining segments of first line
 	for i := 1; i < len(firstLineSegments); i++ {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONC", Value: opts.text(firstLineSegments[i])})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONC", Value: firstLineSegments[i]})
 	}
 
 	// Process remaining lines (from newlines) - they become CONT tags
 	for i := 1; i < len(lines); i++ {
-		lineSegments := splitLineForLength(lines[i], opts)
+		lineSegments := splitLineForLength(opts.text(lines[i]), opts)
 
 		// First segment becomes CONT
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONT", Value: opts.text(lineSegments[0])})
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONT", Value: lineSegments[0]})
 
 		// Remaining segments become CONC at level+1 (same as CONT)
 		for j := 1; j < len(lineSegments); j++ {
-			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONC", Value: opts.text(lineSegments[j])})
+			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONC", Value: lineSegments[j]})
 		}
 	}
 
