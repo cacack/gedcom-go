@@ -1629,7 +1629,10 @@ same at the start of each `CONT` line), GEDCOM 5.5/5.5.1 double every `@`
 version takes the 7.0 rule. The encoder escapes every value it writes from a
 typed field, so `InlineNotes: ["@I1@"]` is written `NOTE @@I1@` and re-decodes as
 the same text rather than as a link to `@I1@`; the decoder undoes the escaping of
-the declared version for every typed text field. Pointer fields (`NoteXRefs`,
+`Header.Version` for every typed text field -- the declared version, or for a file
+that declares none the detected one, which is also the version the encoder
+writes it as. A `CONC` split is measured on the escaped value, so doubling never
+pushes a line past `MaxLineLength`, and never falls inside an `@@` pair. Pointer fields (`NoteXRefs`,
 `Family.Husband`, `SourceCitation.SourceXRef`, ...) and raw `Tags` are written
 and read as they are, so a decoded record re-encodes byte for byte and a `Tags`
 value must already be in its wire form. A one-line `NOTE`/`SNOTE` record whose
