@@ -157,7 +157,8 @@ if indi.FamilySearchID != "" {
 
 `FamilySearchID` is the logical identifier. If an id begins with `@` (e.g. an
 EXID downgraded to `_FSFTID`), the raw tag value on disk is escaped as `@@…` so
-it is not misread as an XRef pointer; the decoder unescapes it, so
+it is not misread as an XRef pointer; the decoder unescapes it like any typed
+text (see [At-Sign Escaping](../../FEATURES.md#at-sign-escaping)), so
 `FamilySearchID` always holds the unescaped value.
 
 ### `_HASH` / `_LHASH`

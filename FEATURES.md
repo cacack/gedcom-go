@@ -1620,6 +1620,21 @@ Structures whose shape differs by version are written for the output version (is
 
 Note pointers (`NoteXRefs`, and `MediaObject.SharedNoteXRefs`) are written by what they point at. When the output is GEDCOM 7.0 (`TargetVersion`, or `Header.Version` when no target is set), a pointer to a document `SNOTE` record is written as `SNOTE @X@`; any other pointer -- to a `NOTE` record or to nothing -- stays `NOTE @X@`. A 5.5/5.5.1 output has no `SNOTE`, so every pointer is `NOTE`. This applies only to records encoded from their entities; a decoded record re-encodes from `Record.Tags` and keeps the tag it was read with.
 
+### At-Sign Escaping
+
+A literal `@` in a line value is escaped so it is not read as a pointer, by the
+rule of the output version: GEDCOM 7.0 doubles a leading `@` (`@@start`, and the
+same at the start of each `CONT` line), GEDCOM 5.5/5.5.1 double every `@`
+(`a@@b.com`) except the `@` of an escape such as `@#DJULIAN@`. An unknown output
+version takes the 7.0 rule. The encoder escapes every value it writes from a
+typed field, so `InlineNotes: ["@I1@"]` is written `NOTE @@I1@` and re-decodes as
+the same text rather than as a link to `@I1@`; the decoder undoes the escaping of
+the declared version for every typed text field. Pointer fields (`NoteXRefs`,
+`Family.Husband`, `SourceCitation.SourceXRef`, ...) and raw `Tags` are written
+and read as they are, so a decoded record re-encodes byte for byte and a `Tags`
+value must already be in its wire form. A one-line `NOTE`/`SNOTE` record whose
+`Record.Value` still reads as its entity's `Text` keeps that value as written.
+
 ### Round-Trip Encoding
 
 Decode → modify → encode workflow:
