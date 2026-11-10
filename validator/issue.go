@@ -216,6 +216,17 @@ const (
 	CodeNilElement = "NIL_ELEMENT"
 )
 
+// Error codes for the write path.
+const (
+	// CodeEntityTagsDiverged indicates the header or a record whose typed
+	// fields would encode differently from its raw Tags: a typed field was
+	// edited on a decoded document, and because Tags is authoritative on
+	// encode the edit will be silently absent from the output.
+	// encoder.SyncTags carries the edit into Tags. RecordXRef is the record,
+	// empty for the header; Details["record"] is the record type, or "HEAD".
+	CodeEntityTagsDiverged = "ENTITY_TAGS_DIVERGED"
+)
+
 // Issue represents a validation finding with severity, context, and actionable information.
 type Issue struct {
 	// Severity indicates the importance level of this issue.

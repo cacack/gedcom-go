@@ -283,12 +283,13 @@ func (a *QualityAnalyzer) runTagValidator(doc *gedcom.Document, report *QualityR
 // runConformanceChecks runs the spec-conformance checks that ValidateAll runs
 // and the record-quality validators above do not, so the report's counts are
 // not clean for a document ValidateAll flags. The record-level checks come
-// from recordChecks, which ValidateAll also calls; the header and encoding
-// checks mirror ValidateAll's own calls.
+// from recordChecks, which ValidateAll also calls; the header, entity-tags and
+// encoding checks mirror ValidateAll's own calls.
 func (a *QualityAnalyzer) runConformanceChecks(doc *gedcom.Document, report *QualityReport) {
 	var issues []Issue
 	issues = append(issues, NewHeaderValidator().ValidateHeader(doc)...)
 	issues = append(issues, recordChecks(doc, NewXRefValidator(), NewNoteValidator())...)
+	issues = append(issues, validateEntityTags(doc)...)
 	issues = append(issues, NewEncodingValidator().Validate(doc)...)
 	report.ConformanceIssues = append(report.ConformanceIssues, issues...)
 }

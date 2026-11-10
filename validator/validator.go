@@ -291,6 +291,14 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	// QualityAnalyzer.runConformanceChecks.
 	allIssues = append(allIssues, recordChecks(doc, v.getXRefValidator(), v.getNoteValidator())...)
 
+	// Report typed edits the encoder would not write. It is outside
+	// recordChecks only because it reads the document's raw tags back through
+	// the decoder, so a caller who lists its code in SkipRules should not pay
+	// for it; QualityAnalyzer.runConformanceChecks runs it too.
+	if !v.skips(CodeEntityTagsDiverged) {
+		allIssues = append(allIssues, validateEntityTags(doc)...)
+	}
+
 	// Run duplicate detection and convert to issues, unless it was skipped.
 	// LimitIssues report any surname group that exceeded MaxGroupSize, so the
 	// caller can tell "no duplicates" from "not everything was compared". They
@@ -493,6 +501,19 @@ func (v *Validator) filterByStrictness(issues []Issue) []Issue {
 	result = v.applyMaxErrors(result)
 
 	return result
+}
+
+// skips reports whether SkipRules lists code.
+func (v *Validator) skips(code string) bool {
+	if v.config == nil {
+		return false
+	}
+	for _, skipped := range v.config.SkipRules {
+		if skipped == code {
+			return true
+		}
+	}
+	return false
 }
 
 // filterBySkipRules removes issues whose code matches any entry in SkipRules.
