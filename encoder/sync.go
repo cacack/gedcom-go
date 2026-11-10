@@ -47,7 +47,17 @@ var ErrSyncBaseline = errors.New("raw tags do not read back as the same records"
 // reads back with them. Edit such fields together.
 //
 // The header's typed fields are those a hand-built header is written from:
-// SourceSystem, Date, Submitter, Language, Version and Encoding.
+// SourceSystem, Date, Submitter, Language, Version and whether Encoding is set.
+// The encoder always writes CHAR UTF-8, so Encoding's value is not carried,
+// only its presence, and for 7.0 output, which has no CHAR, not even that.
+//
+// SyncTags makes the typed fields win. It cannot tell a typed edit from an
+// edit made to Tags alone, so on a record whose Tags were changed without its
+// Entity -- by hand, or by a tool that edits Tags, such as converter.Convert
+// -- it writes the stale typed fields back over that change, and drops raw
+// structures the Entity does not hold. Edit one side only: to make typed
+// edits on such a document, encode and decode it first, so its Entity reads
+// as its Tags.
 //
 // SyncTags replaces Header.Tags, Record.Tags and Record.Value; it never edits
 // a Tag in place, nor an Entity. Records with no Tags (written from the Entity
@@ -222,6 +232,14 @@ func decodeBaseline(header *gedcom.Header, records []*gedcom.Record) (*gedcom.Do
 func syncHeader(header, baseline *gedcom.Header, opts *EncodeOptions) ([]*gedcom.Tag, error) {
 	if baseline == nil {
 		baseline = &gedcom.Header{}
+	}
+	// GEDCOM 7.0 has no CHAR, and its decoder leaves Encoding empty while the
+	// converter sets it to UTF-8, so for 7.0 output Encoding is not a field
+	// SyncTags carries: a raw CHAR line, if any, is kept as it is.
+	if opts.is70() {
+		copied, base := *header, *baseline
+		copied.Encoding, base.Encoding = "", ""
+		header, baseline = &copied, &base
 	}
 	was, err := headerFieldTags(baseline, opts)
 	if err != nil {

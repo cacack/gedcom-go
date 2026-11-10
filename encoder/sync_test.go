@@ -351,6 +351,18 @@ func TestSyncTagsHeader(t *testing.T) {
 	}
 }
 
+// A 7.0 header has no CHAR, and converter.Convert sets Encoding to UTF-8 on
+// one anyway; SyncTags must not add a CHAR line for it.
+func TestSyncTagsHeader70IgnoresEncoding(t *testing.T) {
+	in := "0 HEAD\n1 GEDC\n2 VERS 7.0\n1 SOUR APP\n0 TRLR\n"
+	doc := decodeGEDCOM(t, in)
+	doc.Header.Encoding = gedcom.EncodingUTF8
+	syncTags(t, doc)
+	if got := encodeToString(t, doc); got != in {
+		t.Errorf("7.0 header after SyncTags:\n%s\nwant:\n%s", got, in)
+	}
+}
+
 func TestSyncTagsLeavesUnsyncableRecords(t *testing.T) {
 	built := &gedcom.Record{XRef: "@I9@", Type: gedcom.RecordTypeIndividual,
 		Entity: &gedcom.Individual{XRef: "@I9@", Names: []*gedcom.PersonalName{{Full: "Built /Here/"}}}}
