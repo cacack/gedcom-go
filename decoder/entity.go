@@ -31,9 +31,9 @@ func tagToken(s string) string {
 
 // diagnosticCollector is the parse context threaded through entity
 // population. It accumulates diagnostics and, because it already reaches every
-// parse function, also carries the GEDCOM version that decides what counts as
-// a pointer; see isPointer. Its methods accept a nil receiver, which collects
-// nothing and knows no version.
+// parse function, also carries the GEDCOM versions that decide what counts as
+// a pointer (isPointer) and how text is unescaped (text). Its methods accept a
+// nil receiver, which collects nothing and knows no version.
 type diagnosticCollector struct {
 	diagnostics Diagnostics
 
@@ -41,9 +41,27 @@ type diagnosticCollector struct {
 	// when it declares none this package recognizes.
 	version gedcom.Version
 
+	// textVersion is the version the document is read as, Header.Version: the
+	// declared version, or the one detected when it declares none. The encoder
+	// escapes a decoded document's text by that version, so the decoder must
+	// unescape by it too, or a decode-encode round trip rewrites "@@" in a
+	// file that declares no version.
+	textVersion gedcom.Version
+
 	// discard drops diagnostics instead of accumulating them, for a decode
 	// that reports none but still needs version.
 	discard bool
+}
+
+// quiet returns a collector that discards diagnostics but carries c's
+// versions, for a parse whose diagnostics are reported elsewhere.
+func (c *diagnosticCollector) quiet() *diagnosticCollector {
+	q := &diagnosticCollector{discard: true}
+	if c != nil {
+		q.version = c.version
+		q.textVersion = c.textVersion
+	}
+	return q
 }
 
 // collecting reports whether diagnostics added to c are kept. Helpers check
@@ -61,9 +79,9 @@ func (c *diagnosticCollector) add(d Diagnostic) {
 }
 
 // text returns a typed text value read from a line: the value with the "@"
-// escaping of the document's version undone (atsign.Unescape), "@@" for "@"
-// throughout in 5.5 and 5.5.1 and only at the start of a line in 7.0 and a
-// document that declares no version (#708). Every typed field that holds text
+// escaping of the version the document is read as undone (atsign.Unescape),
+// "@@" for "@" throughout in 5.5 and 5.5.1 and only at the start of a line in
+// 7.0 (#708). A nil collector knows no version and takes the 7.0 rule. Every typed field that holds text
 // is read through it, so it holds what the encoder's text escaping started
 // from. Pointer fields are not -- a pointer is not text -- and neither is the
 // pointer test that sorts a NOTE into NoteXRefs or InlineNotes, which runs on
@@ -72,7 +90,7 @@ func (c *diagnosticCollector) add(d Diagnostic) {
 func (c *diagnosticCollector) text(s string) string {
 	var v gedcom.Version
 	if c != nil {
-		v = c.version
+		v = c.textVersion
 	}
 	return atsign.Unescape(s, v)
 }

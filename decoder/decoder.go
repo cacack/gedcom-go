@@ -207,8 +207,9 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// that reports them keeps them, but every decode needs the version it
 	// carries.
 	collector := &diagnosticCollector{
-		version: xrefVersion,
-		discard: opts.StrictMode || !collect,
+		version:     xrefVersion,
+		textVersion: detectedVersion,
+		discard:     opts.StrictMode || !collect,
 	}
 
 	// Lenient mode: recover from malformed indentation in real-world exports by
@@ -440,10 +441,7 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 // is parsed with a collector that discards diagnostics, to avoid reporting them
 // twice; collector supplies the version text values are unescaped for.
 func parseHeaderStructures(h *gedcom.Header, collector *diagnosticCollector) {
-	quiet := &diagnosticCollector{discard: true}
-	if collector != nil {
-		quiet.version = collector.version
-	}
+	quiet := collector.quiet()
 	parent := ""
 	for i, tag := range h.Tags {
 		if tag.Level == 1 {

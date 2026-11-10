@@ -10,9 +10,10 @@
 //   - GEDCOM 7.0 doubles only a leading "@" ("@@start"); an "@" elsewhere in
 //     the value is written as is.
 //
-// Any other version, or none, takes the 7.0 rule: it is the one the decoder
-// applies to a file declaring no version, and doubling a leading "@" is what
-// keeps text from being read as a pointer in every version.
+// Any other version, or none, takes the 7.0 rule: doubling a leading "@" is
+// what keeps text from being read as a pointer in every version. The decoder
+// never applies it to a file declaring no version; it unescapes by the version
+// it detects, which is the one the encoder escapes a decoded document by.
 //
 // The encoder escapes the values it writes from typed fields and the decoder
 // unescapes the values it reads into them, so the two must agree, which is why
@@ -37,8 +38,10 @@ func doublesEvery(v gedcom.Version) bool {
 // one is leading too and is doubled.
 //
 // The result is never a pointer, under any version's grammar: a leading "@"
-// is always doubled unless it opens an escape sequence, and an escape sequence
-// is never the whole value.
+// is always doubled -- in 5.5 and 5.5.1 unless it opens an escape sequence,
+// which is never the whole value. The 7.0 rule, which 7.0 has no escape
+// sequences for, doubles a leading "@#DJULIAN@" too, so a calendar escape in
+// typed text survives only as 5.5 or 5.5.1 output.
 func Escape(s string, v gedcom.Version) string {
 	if strings.IndexByte(s, '@') < 0 {
 		return s
