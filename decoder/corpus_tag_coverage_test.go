@@ -79,7 +79,6 @@ var unhandledTags = map[string]string{
 	"NAME":  "standard; unrecognized in some contexts",
 	"SOUR":  "standard; unrecognized in some contexts",
 	"ALIA":  "standard; #375 fixed level 1 on INDI, still unrecognized at level 2",
-	"FAMC":  "standard; unrecognized in some contexts",
 	"TITL":  "standard; unrecognized in some contexts",
 	"BLOB":  "standard 5.5 multimedia blob",
 	"RFN":   "standard 5.5.1 record file number",

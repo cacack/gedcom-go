@@ -324,6 +324,7 @@ func (p *voidPruner) events(events []*gedcom.Event) {
 		e.SourceCitations = p.citations(e.SourceCitations)
 		e.Media = p.mediaLinks(e.Media)
 		e.Associations = p.associations(e.Associations)
+		p.clear(&e.FamilyXRef)
 	}
 }
 

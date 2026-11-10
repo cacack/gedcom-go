@@ -179,11 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 879 | 88.1% | 1178 | 89.5% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 884 | 88.6% | 1186 | 90.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 80 | 8.0% | 101 | 7.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
-| raw (flagged) | 19 | 1.9% | 13 | 1.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 20 | 2.0% | 24 | 1.8% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (flagged) | 15 | 1.5% | 10 | 0.8% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
+| raw (undiagnosed) | 19 | 1.9% | 19 | 1.4% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -193,9 +193,9 @@ pairs under it reach the typed model.
 
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
-| `FAM` | 209 / 254 | 274 / 324 |
+| `FAM` | 209 / 254 | 275 / 324 |
 | `HEAD` | 18 / 28 | 21 / 33 |
-| `INDI` | 592 / 625 | 808 / 855 |
+| `INDI` | 597 / 625 | 815 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 6 / 12 | 11 / 13 |
 | `REPO` | 13 / 17 | 17 / 21 |
@@ -295,7 +295,7 @@ Measured at `INDI.ASSO` in 5.5, 5.5.1.
 | `RELA` | `ASSOCIATION_STRUCTURE.ASSO.RELA` | typed | typed | `{1:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
-| `TYPE` | `ASSOCIATION_STRUCTURE.ASSO.TYPE` | raw (flagged) | — | `{1:1}` |
+| `TYPE` | `ASSOCIATION_STRUCTURE.ASSO.TYPE` | typed | — | `{1:1}` |
 
 ### `CHANGE_DATE.CHAN`
 
@@ -1252,7 +1252,7 @@ Measured at `INDI.ADOP` in 5.5, 5.5.1.
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
 | `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
-| `FAMC` | `INDIVIDUAL_EVENT_STRUCTURE.ADOP.FAMC` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `FAMC` | `INDIVIDUAL_EVENT_STRUCTURE.ADOP.FAMC` | typed | typed | `{0:1}` |
 | `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
@@ -1273,7 +1273,7 @@ Measured at `INDI.ADOP.FAMC` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ADOP` | `INDIVIDUAL_EVENT_STRUCTURE.ADOP.FAMC.ADOP` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `ADOP` | `INDIVIDUAL_EVENT_STRUCTURE.ADOP.FAMC.ADOP` | typed | typed | `{0:1}` |
 
 ### `INDIVIDUAL_EVENT_STRUCTURE.BAPM`
 
@@ -1369,7 +1369,7 @@ Measured at `INDI.BIRT` in 5.5, 5.5.1.
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
 | `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
-| `FAMC` | `INDIVIDUAL_EVENT_STRUCTURE.BIRT.FAMC` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `FAMC` | `INDIVIDUAL_EVENT_STRUCTURE.BIRT.FAMC` | typed | typed | `{0:1}` |
 | `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
@@ -1478,7 +1478,7 @@ Measured at `INDI.CHR` in 5.5, 5.5.1.
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
 | `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
-| `FAMC` | `INDIVIDUAL_EVENT_STRUCTURE.BIRT.FAMC` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `FAMC` | `INDIVIDUAL_EVENT_STRUCTURE.BIRT.FAMC` | typed | typed | `{0:1}` |
 | `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
@@ -1969,7 +1969,7 @@ Measured at `INDI.BAPL.STAT` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `DATE` | `LDS_INDIVIDUAL_ORDINANCE.BAPL.STAT.DATE` | — | raw (undiagnosed) | `{1:1}` |
+| `DATE` | `LDS_INDIVIDUAL_ORDINANCE.BAPL.STAT.DATE` | — | typed | `{1:1}` |
 
 ### `LDS_INDIVIDUAL_ORDINANCE.CONL`
 
@@ -2007,7 +2007,7 @@ Measured at `INDI.ENDL.STAT` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `DATE` | `LDS_INDIVIDUAL_ORDINANCE.ENDL.STAT.DATE` | — | raw (undiagnosed) | `{1:1}` |
+| `DATE` | `LDS_INDIVIDUAL_ORDINANCE.ENDL.STAT.DATE` | — | typed | `{1:1}` |
 
 ### `LDS_INDIVIDUAL_ORDINANCE.SLGC`
 
@@ -2031,7 +2031,7 @@ Measured at `INDI.SLGC.STAT` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `DATE` | `LDS_INDIVIDUAL_ORDINANCE.SLGC.STAT.DATE` | — | raw (undiagnosed) | `{1:1}` |
+| `DATE` | `LDS_INDIVIDUAL_ORDINANCE.SLGC.STAT.DATE` | — | typed | `{1:1}` |
 
 ### `LDS_SPOUSE_SEALING.SLGS`
 
@@ -2054,7 +2054,7 @@ Measured at `FAM.SLGS.STAT` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `DATE` | `LDS_SPOUSE_SEALING.SLGS.STAT.DATE` | — | raw (undiagnosed) | `{1:1}` |
+| `DATE` | `LDS_SPOUSE_SEALING.SLGS.STAT.DATE` | — | typed | `{1:1}` |
 
 ### `MULTIMEDIA_LINK.OBJE#2`
 

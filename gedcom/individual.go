@@ -241,13 +241,20 @@ type Association struct {
 	IndividualXRef string
 
 	// Role is the relationship role (e.g., "GODP" for godparent, "WITN" for witness)
-	// In GEDCOM 5.5.1 this comes from RELA tag, in GEDCOM 7.0 from ROLE tag
+	// In GEDCOM 5.5 and 5.5.1 this comes from RELA tag, in GEDCOM 7.0 from ROLE
+	// tag; the encoder writes RELA for 5.5.x output and ROLE otherwise.
 	Role string
 
 	// RolePhrase is the PHRASE under ROLE (GEDCOM 7.0), typically describing
 	// a ROLE OTHER. Distinct from Phrase, which qualifies the ASSO itself.
 	// Written only beneath a Role.
 	RolePhrase string
+
+	// RecordType is the type of the associated record (GEDCOM 5.5 TYPE
+	// subordinate, e.g. "INDI" or "FAM"). Only 5.5 defines it, where it is
+	// required: the encoder writes it only for 5.5 output, as "INDI" when
+	// empty, and drops it for 5.5.1 and 7.0 output.
+	RecordType string
 
 	// Phrase is a human-readable description of the association (GEDCOM 7.0 PHRASE tag).
 	// Used when the structured data cannot fully express the relationship.

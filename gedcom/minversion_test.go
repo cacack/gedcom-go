@@ -117,6 +117,14 @@ func TestDocument_RequiresGEDCOM7_True(t *testing.T) {
 			doc:  indiDoc(&Individual{LDSOrdinances: []*LDSOrdinance{{Type: LDSBaptism, ParsedDate: &Date{Phrase: "as a child", IsPhrase: true}}}}),
 		},
 		{
+			name: "ADOP PHRASE on an adoption's FAMC",
+			doc:  indiDoc(&Individual{Events: []*Event{{Type: EventAdoption, FamilyXRef: "@F1@", AdoptedBy: "BOTH", AdoptedByPhrase: "Both"}}}),
+		},
+		{
+			name: "TIME on an LDS status date",
+			doc:  indiDoc(&Individual{LDSOrdinances: []*LDSOrdinance{{Type: LDSBaptism, Status: "COMPLETED", StatusDate: "1 JAN 2000", StatusTime: "12:00"}}}),
+		},
+		{
 			name: "DATE PHRASE on family LDS ordinance",
 			doc: &Document{Records: []*Record{{Type: RecordTypeFamily, Entity: &Family{
 				LDSOrdinances: []*LDSOrdinance{{Type: LDSSealingSpouse, ParsedDate: &Date{Phrase: "after the war", IsPhrase: true}}},

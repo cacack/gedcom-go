@@ -655,6 +655,7 @@ func walkEvent(e *Event, cb refCallback) {
 	walkCitations(e.SourceCitations, cb)
 	walkMediaLinks(e.Media, cb)
 	walkAssociations(e.Associations, cb)
+	cb(&e.FamilyXRef)
 }
 
 func walkAttribute(a *Attribute, cb refCallback) {

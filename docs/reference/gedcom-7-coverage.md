@@ -105,11 +105,11 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 1263 | 90.9% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1269 | 91.4% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 76 | 5.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
-| raw (flagged) | 9 | 0.6% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 41 | 3.0% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (flagged) | 6 | 0.4% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
+| raw (undiagnosed) | 38 | 2.7% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
 ### By top-level structure
 
@@ -117,8 +117,8 @@ The structure each pair is nested under at level 0.
 
 | Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |
 |---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|
-| `INDI` | 873 | 835 | 0 | 24 | 3 | 11 |
-| `FAM` | 392 | 336 | 0 | 37 | 0 | 19 |
+| `INDI` | 873 | 840 | 0 | 24 | 0 | 9 |
+| `FAM` | 392 | 337 | 0 | 37 | 0 | 18 |
 | `SOUR` | 29 | 18 | 0 | 2 | 0 | 9 |
 | `HEAD` | 27 | 22 | 0 | 5 | 0 | 0 |
 | `REPO` | 21 | 17 | 0 | 3 | 1 | 0 |
@@ -792,7 +792,7 @@ Substructures of `ord-STAT`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `DATE` | `DATE-exact` | raw (undiagnosed) |
+| `DATE` | `DATE-exact` | typed |
 
 ### `FAM.SOUR`
 
@@ -998,7 +998,7 @@ Substructures of `ADOP`.
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
-| `FAMC` | `ADOP-FAMC` | raw (flagged) |
+| `FAMC` | `ADOP-FAMC` | typed |
 | `FAX` | `FAX` | typed |
 | `NOTE` | `NOTE` | typed |
 | `OBJE` | `OBJE` | typed |
@@ -1027,7 +1027,7 @@ Substructures of `ADOP-FAMC`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ADOP` | `FAMC-ADOP` | raw (undiagnosed) |
+| `ADOP` | `FAMC-ADOP` | typed |
 
 ### `INDI.ADOP.FAMC.ADOP`
 
@@ -1035,7 +1035,7 @@ Substructures of `FAMC-ADOP`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (undiagnosed) |
+| `PHRASE` | `PHRASE` | typed |
 
 ### `INDI.ALIA`
 
@@ -1153,7 +1153,7 @@ Substructures of `BIRT`.
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
-| `FAMC` | `FAMC` | raw (flagged) |
+| `FAMC` | `FAMC` | typed |
 | `FAX` | `FAX` | typed |
 | `NOTE` | `NOTE` | typed |
 | `OBJE` | `OBJE` | typed |
@@ -1289,7 +1289,7 @@ Substructures of `CHR`.
 | `CAUS` | `CAUS` | typed |
 | `DATE` | `DATE` | typed |
 | `EMAIL` | `EMAIL` | typed |
-| `FAMC` | `FAMC` | raw (flagged) |
+| `FAMC` | `FAMC` | typed |
 | `FAX` | `FAX` | typed |
 | `NOTE` | `NOTE` | typed |
 | `OBJE` | `OBJE` | typed |

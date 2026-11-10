@@ -467,6 +467,15 @@ func parseAssociation(tags []*gedcom.Tag, assoIdx int, collector *diagnosticColl
 			case "RELA", "ROLE": // RELA in 5.5.1, ROLE in 7.0
 				assoc.Role = tag.Value
 				assoc.RolePhrase = findSubordinate(tags, i, "PHRASE")
+			case "TYPE":
+				// The associated record's type, defined by 5.5 alone. It is
+				// kept whatever the version, and reported as before in a
+				// document declaring another (5.5-style exports such as
+				// Geneanet's 5.5.1 write it).
+				assoc.RecordType = tag.Value
+				if collector != nil && collector.version != "" && collector.version != gedcom.Version55 {
+					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+				}
 			case "PHRASE":
 				assoc.Phrase = tag.Value
 			case "NOTE", "SNOTE":
@@ -858,6 +867,10 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailO
 			case "AGE":
 				event.Age = tag.Value
 				event.AgePhrase = findSubordinate(tags, i, "PHRASE")
+			case "FAMC":
+				if !parseEventFamilyLink(event, tags, i, tags[eventIdx].Tag, owner) {
+					parseEventDetailTag(&detail, tags, i, collector)
+				}
 			default:
 				// Everything else is EVENT_DETAIL, shared with parseAttribute.
 				parseEventDetailTag(&detail, tags, i, collector)
@@ -866,6 +879,26 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailO
 	}
 
 	return event
+}
+
+// parseEventFamilyLink types the FAMC at tags[famcIdx] beneath an
+// individual's BIRT, CHR or ADOP event (the only events every version gives
+// one), with the ADOP and PHRASE beneath it on an ADOP event. eventTag is the
+// event line's own tag, so a 7.0 "NO BIRT" is not taken for a birth. It
+// reports false for any other position, which the caller treats as an
+// unknown tag.
+func parseEventFamilyLink(event *gedcom.Event, tags []*gedcom.Tag, famcIdx int, eventTag string, owner detailOwner) bool {
+	if owner != individualOwner || (eventTag != "BIRT" && eventTag != "CHR" && eventTag != "ADOP") {
+		return false
+	}
+	event.FamilyXRef = tagToken(tags[famcIdx].Value)
+	if eventTag == "ADOP" {
+		if adopIdx := findSubordinateIndex(tags, famcIdx, "ADOP"); adopIdx >= 0 {
+			event.AdoptedBy = tags[adopIdx].Value
+			event.AdoptedByPhrase = findSubordinate(tags, adopIdx, "PHRASE")
+		}
+	}
+	return true
 }
 
 // parseEventAddress extracts an address structure from tags starting at addrIdx.
@@ -1079,6 +1112,10 @@ func parseLDSOrdinance(tags []*gedcom.Tag, ordIdx int, ordType gedcom.LDSOrdinan
 				ord.Place = tag.Value
 			case "STAT":
 				ord.Status = tag.Value
+				if dateIdx := findSubordinateIndex(tags, i, "DATE"); dateIdx >= 0 {
+					ord.StatusDate = tags[dateIdx].Value
+					ord.StatusTime = findSubordinate(tags, dateIdx, "TIME")
+				}
 			case "FAMC":
 				ord.FamilyXRef = tagToken(tag.Value)
 			case "NOTE", "SNOTE":
