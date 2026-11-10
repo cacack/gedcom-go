@@ -500,7 +500,7 @@ func submitterToTags(subm *gedcom.Submitter, opts *EncodeOptions) []*gedcom.Tag 
 
 	// Address (level 1) - ADDR
 	if subm.Address != nil {
-		tags = append(tags, addressToTags(subm.Address, 1)...)
+		tags = append(tags, addressToTags(subm.Address, 1, opts)...)
 	}
 
 	// Phone numbers (level 1) - PHON
@@ -577,7 +577,7 @@ func repositoryToTags(repo *gedcom.Repository, opts *EncodeOptions) []*gedcom.Ta
 
 	// Address (level 1) - ADDR
 	if repo.Address != nil {
-		tags = append(tags, addressToTags(repo.Address, 1)...)
+		tags = append(tags, addressToTags(repo.Address, 1, opts)...)
 	}
 
 	// Contact details (level 1) - PHON, EMAIL, FAX, WWW, in ADDRESS_STRUCTURE
@@ -865,7 +865,7 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 
 	// Address
 	if d.address != nil {
-		tags = append(tags, addressToTags(d.address, level)...)
+		tags = append(tags, addressToTags(d.address, level, opts)...)
 	}
 
 	// Contact info
@@ -1081,25 +1081,25 @@ func contactTags(phone, email, fax, website []string, level int) []*gedcom.Tag {
 }
 
 // addressToTags converts an Address to GEDCOM tags at the specified level.
-func addressToTags(addr *gedcom.Address, level int) []*gedcom.Tag {
+//
+// Each tag is written from its own field: the ADDR value and its CONT/CONC
+// lines from Full, ADR1-ADR3 from Line1-Line3. The grammar gives ADR1-ADR3 no
+// CONT, so a line break in Line1-Line3 is written as a space rather than
+// folded into a CONT the line cannot carry.
+func addressToTags(addr *gedcom.Address, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if addr == nil {
 		return nil
 	}
 
-	var tags []*gedcom.Tag
-
-	// ADDR tag with optional first line value
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: "ADDR", Value: addr.Line1})
+	tags := textToTags(addr.Full, level, "ADDR", opts)
 
 	// Subordinate tags at level+1
-	if addr.Line1 != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "ADR1", Value: addr.Line1})
-	}
-	if addr.Line2 != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "ADR2", Value: addr.Line2})
-	}
-	if addr.Line3 != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "ADR3", Value: addr.Line3})
+	for _, line := range []struct{ tag, value string }{
+		{"ADR1", addr.Line1}, {"ADR2", addr.Line2}, {"ADR3", addr.Line3},
+	} {
+		if line.value != "" {
+			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: line.tag, Value: singleLine(line.value)})
+		}
 	}
 	if addr.City != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CITY", Value: addr.City})
@@ -1115,6 +1115,15 @@ func addressToTags(addr *gedcom.Address, level int) []*gedcom.Tag {
 	}
 
 	return tags
+}
+
+// singleLine joins the lines of value with a space, for a tag whose grammar
+// allows no CONT. It deliberately does not split an over-long value: the
+// grammar gives ADR1-ADR3 no CONC either, and writeValue leaves long lines
+// alone, so such a value is written as one over-length line, which still
+// parses.
+func singleLine(value string) string {
+	return strings.Join(splitValueLines(value), " ")
 }
 
 // placeToTags converts a place structure to GEDCOM tags at the specified level.

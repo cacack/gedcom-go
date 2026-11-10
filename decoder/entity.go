@@ -869,9 +869,11 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailO
 }
 
 // parseEventAddress extracts an address structure from tags starting at addrIdx.
+// The ADDR payload and its CONT/CONC lines fill Full; ADR1-ADR3 fill Line1-Line3
+// alone, so neither overwrites the other.
 func parseEventAddress(tags []*gedcom.Tag, addrIdx, baseLevel int, collector *diagnosticCollector) *gedcom.Address {
 	addr := &gedcom.Address{
-		Line1: tags[addrIdx].Value,
+		Full: tags[addrIdx].Value,
 	}
 
 	// Look for subordinate tags at baseLevel+1
@@ -897,16 +899,16 @@ func parseEventAddress(tags []*gedcom.Tag, addrIdx, baseLevel int, collector *di
 			case "CTRY":
 				addr.Country = tag.Value
 			case "CONT":
-				// Continue address on next line. Not foldContinuation: an empty
-				// first line takes the value directly, with no leading newline.
-				if addr.Line1 != "" {
-					addr.Line1 += "\n" + tag.Value
+				// Continue the payload on the next line. Not foldContinuation: an
+				// empty first line takes the value directly, with no leading
+				// newline.
+				if addr.Full != "" {
+					addr.Full += "\n" + tag.Value
 				} else {
-					addr.Line1 = tag.Value
+					addr.Full = tag.Value
 				}
 			case "CONC":
-				// Concatenate to address
-				addr.Line1 += tag.Value
+				addr.Full += tag.Value
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)

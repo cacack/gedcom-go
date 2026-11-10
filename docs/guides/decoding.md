@@ -292,7 +292,7 @@ that one space and keeps everything after it, so a value that an exporter padded
 with extra spaces arrives padded:
 
 ```
-1 ADDR   123 Main St     ->  Line1 = "  123 Main St"
+1 ADDR   123 Main St     ->  Full = "  123 Main St"
 2 CONC  and then left    ->  the leading space is the word separator
 ```
 

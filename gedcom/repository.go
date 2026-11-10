@@ -114,8 +114,14 @@ type CallNumber struct {
 	MediaPhrase string
 }
 
-// Address represents the ADDR structure: a postal address and its ADR1-3,
-// CITY, STAE, POST and CTRY subordinates, each {0:1}.
+// Address represents the ADDR structure: the address text written on the ADDR
+// line itself (the payload, with its CONT/CONC lines) and its ADR1-3, CITY,
+// STAE, POST and CTRY subordinates, each {0:1}.
+//
+// The payload and the subordinates are independent: an exporter may write the
+// whole address as the payload, split it into the subordinates, or both. GEDCOM
+// 7.0 deprecates ADR1-ADR3 and makes the payload the only address text, so
+// read Full for the address as written and the other fields for its parts.
 //
 // The contact tags PHON, EMAIL, FAX and WWW are siblings of ADDR in the
 // GEDCOM grammar, not part of it, and are {0:3}. They are typed as []string
@@ -125,13 +131,23 @@ type CallNumber struct {
 // Address is comparable with ==; a compile-time assertion in this package
 // keeps it that way.
 type Address struct {
-	// Line1 is the first address line
+	// Full is the ADDR payload: the value on the ADDR line with its CONT lines
+	// joined by "\n" and its CONC lines concatenated. It may span several
+	// lines and is empty when the ADDR line has no value. The encoder writes
+	// the ADDR value from Full alone, never from Line1-Line3, so a hand-built
+	// address sets Full for its ADDR text.
+	Full string
+
+	// Line1 is the ADR1 value only. It is empty when the address has no ADR1,
+	// even when the ADDR payload is set; the payload lives in Full. Like
+	// Line2 and Line3 it is a single line: the grammar gives ADR1-ADR3 no
+	// CONT, so the encoder writes a line break in one as a space.
 	Line1 string
 
-	// Line2 is the second address line (optional)
+	// Line2 is the ADR2 value (optional)
 	Line2 string
 
-	// Line3 is the third address line (optional)
+	// Line3 is the ADR3 value (optional)
 	Line3 string
 
 	// City is the city name
