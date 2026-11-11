@@ -3,6 +3,7 @@ package converter
 import (
 	"fmt"
 
+	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
@@ -100,6 +101,11 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 			// applies, as on the cross-version path.
 			converted.Header.DeclaredVersion = targetVersion
 		}
+		if converted != doc {
+			// A copy whose Tags were rewritten: its entities are re-derived
+			// from them, as on the cross-version path (#772).
+			decoder.SyncEntities(converted)
+		}
 		if converted.Header == nil {
 			shallow := *converted
 			shallow.Header = &gedcom.Header{}
@@ -156,6 +162,12 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 	// The header now declares the target version (updateVersionTag), so its
 	// identifier grammar applies from here on.
 	converted.Header.DeclaredVersion = targetVersion
+
+	// The transforms above rewrite each record's Tags, the authoritative
+	// result; its typed Entity is re-derived from them by the target version,
+	// so the two agree whatever a transform touched (#772). A record with no
+	// Tags keeps the Entity the transforms left it.
+	decoder.SyncEntities(converted)
 
 	// Validate if requested
 	if opts.Validate {
