@@ -206,8 +206,10 @@ func syncable(record *gedcom.Record) bool {
 // are records, in order.
 func decodeBaseline(header *gedcom.Header, records []*gedcom.Record) (*gedcom.Document, error) {
 	var buf bytes.Buffer
+	// Raw tags the encoder refuses (ErrMalformedLine, ErrInvalidUTF8: #726)
+	// are tags that do not read back either, so the error carries both.
 	if err := Encode(&buf, &gedcom.Document{Header: header, Records: records}); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrSyncBaseline, err)
 	}
 	baseline, err := decoder.Decode(&buf)
 	if err != nil {

@@ -411,8 +411,13 @@ func TestSyncTagsErrors(t *testing.T) {
 			XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{},
 			Tags: []*gedcom.Tag{{Level: 1, Tag: "SEX", Value: "F"}, {Level: 0, XRef: "@I2@", Tag: "INDI"}},
 		}}}
-		if err := SyncTags(doc); !errors.Is(err, ErrSyncBaseline) {
+		err := SyncTags(doc)
+		if !errors.Is(err, ErrSyncBaseline) {
 			t.Errorf("SyncTags = %v, want ErrSyncBaseline", err)
+		}
+		// The encoder refuses the line outright (#726), and says why.
+		if !errors.Is(err, ErrMalformedLine) {
+			t.Errorf("SyncTags = %v, want it to wrap ErrMalformedLine", err)
 		}
 	})
 }
