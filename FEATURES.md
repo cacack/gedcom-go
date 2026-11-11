@@ -1515,6 +1515,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | FamilySearch ARK EXID → `_FSFTID` | Downgrade from 7.0 | Maps to the vendor tag instead of dropping the ID (when `MapEXIDToVendorTags`) |
 | Header grammar order | Both | Level-1 `HEAD` structures, including any the conversion adds (`GEDC`, `CHAR`), are placed in the target version's grammar order (`GEDC` first for 7.0, after `COPR` for 5.x); structures the target grammar does not define go last, in source order |
 | `GEDC.VERS` | All, including same-version | `VERS` set to the target under `GEDC`; added under an existing `GEDC` that has none, even when source and target versions match |
+| Typed entities | All, and a same-version conversion that rewrites a copy (7.0 XRef normalization, `GEDC.VERS` repair) | Every record with `Tags` has its `Entity` re-derived from the converted `Tags` (`decoder.SyncEntities`), so the typed model reads what the output encodes; a record with no `Tags` keeps its `Entity` |
 | `GEDC.FORM` | To 5.5/5.5.1 | `2 FORM LINEAGE-LINKED` added under `GEDC` when missing (`GEDC_FORM_ADDED`), as both versions require; removed on the way to 7.0 (`GEDC_FORM_REMOVED`) |
 
 ### API

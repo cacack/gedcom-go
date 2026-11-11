@@ -137,26 +137,32 @@ func (c *diagnosticCollector) addInvalidValue(lineNumber int, tag, value, reason
 // If collector is nil, no diagnostics are collected (backward compatible behavior).
 func populateEntities(doc *gedcom.Document, collector *diagnosticCollector) {
 	for _, record := range doc.Records {
-		switch record.Type {
-		case gedcom.RecordTypeIndividual:
-			record.Entity = parseIndividual(record, collector)
-		case gedcom.RecordTypeFamily:
-			record.Entity = parseFamily(record, collector)
-		case gedcom.RecordTypeSource:
-			record.Entity = parseSource(record, collector)
-		case gedcom.RecordTypeSubmitter:
-			record.Entity = parseSubmitter(record, collector)
-		case gedcom.RecordTypeSubmission:
-			record.Entity = parseSubmission(record, collector)
-		case gedcom.RecordTypeRepository:
-			record.Entity = parseRepository(record, collector)
-		case gedcom.RecordTypeNote:
-			record.Entity = parseNote(record, collector)
-		case gedcom.RecordTypeMedia:
-			record.Entity = parseMediaObject(record, collector)
-		case gedcom.RecordTypeSharedNote:
-			record.Entity = parseSharedNote(record, collector)
-		}
+		populateRecordEntity(record, collector)
+	}
+}
+
+// populateRecordEntity sets record.Entity to the entity its type parses into
+// from its Tags. A record type with no entity is left as it is.
+func populateRecordEntity(record *gedcom.Record, collector *diagnosticCollector) {
+	switch record.Type {
+	case gedcom.RecordTypeIndividual:
+		record.Entity = parseIndividual(record, collector)
+	case gedcom.RecordTypeFamily:
+		record.Entity = parseFamily(record, collector)
+	case gedcom.RecordTypeSource:
+		record.Entity = parseSource(record, collector)
+	case gedcom.RecordTypeSubmitter:
+		record.Entity = parseSubmitter(record, collector)
+	case gedcom.RecordTypeSubmission:
+		record.Entity = parseSubmission(record, collector)
+	case gedcom.RecordTypeRepository:
+		record.Entity = parseRepository(record, collector)
+	case gedcom.RecordTypeNote:
+		record.Entity = parseNote(record, collector)
+	case gedcom.RecordTypeMedia:
+		record.Entity = parseMediaObject(record, collector)
+	case gedcom.RecordTypeSharedNote:
+		record.Entity = parseSharedNote(record, collector)
 	}
 }
 
@@ -942,8 +948,11 @@ func parseEventFamilyLink(event *gedcom.Event, tags []*gedcom.Tag, famcIdx int, 
 // The ADDR payload and its CONT/CONC lines fill Full; ADR1-ADR3 fill Line1-Line3
 // alone, so neither overwrites the other.
 func parseEventAddress(tags []*gedcom.Tag, addrIdx, baseLevel int, collector *diagnosticCollector) *gedcom.Address {
+	// A payload already folded into one value (Tags rewritten by the
+	// converter, #772) drops its leading empty lines, as the CONT case below
+	// does for the same lines unfolded. A value read from a line has none.
 	addr := &gedcom.Address{
-		Full: collector.text(tags[addrIdx].Value),
+		Full: strings.TrimLeft(collector.text(tags[addrIdx].Value), "\n"),
 	}
 
 	// Look for subordinate tags at baseLevel+1

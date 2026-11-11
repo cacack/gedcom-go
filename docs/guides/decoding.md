@@ -213,7 +213,10 @@ for _, tag := range rec.Tags {
 rec.Tags = nil
 ```
 
-The converter keeps both in step and is the safe option when changing version.
+After editing `Tags` (option 1), `decoder.SyncEntities(doc)` rebuilds each
+tagged record's typed `Entity` from them, so reads through the typed model see
+the edit too. The converter does this on its output, so a converted document's
+two views always agree and it is the safe option when changing version.
 
 This is the trade the library makes for Lossless Representation: what was read
 is what is written. It applies to every record type, not just the header.
