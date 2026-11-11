@@ -223,12 +223,15 @@ const (
 	// Usually a typed field was edited on a decoded document, and because
 	// Tags is authoritative on encode the edit will be absent from the
 	// output; encoder.SyncTags carries it into Tags. The check has no
-	// direction, though: Tags edited without the Entity (by hand, or by
-	// converter.Convert) are reported too, and SyncTags would revert them.
+	// direction, though: Tags edited by hand without the Entity are reported
+	// too, and SyncTags would revert them (decoder.SyncEntities is the other
+	// direction).
 	// The header fields compared are those SyncTags carries. RecordXRef is
 	// the record, empty for the header; Details["record"] is the record
 	// type, or "HEAD". When SyncTags fails on the document, a single Info
-	// issue with Details["error"] says the comparison was not made.
+	// issue with Details["error"] says the comparison was not made. The
+	// check is opt-in: ValidatorConfig.CheckEntityTags, or
+	// WithEntityTagsCheck for a QualityAnalyzer.
 	CodeEntityTagsDiverged = "ENTITY_TAGS_DIVERGED"
 )
 

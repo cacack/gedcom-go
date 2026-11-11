@@ -53,11 +53,11 @@ var ErrSyncBaseline = errors.New("raw tags do not read back as the same records"
 //
 // SyncTags makes the typed fields win. It cannot tell a typed edit from an
 // edit made to Tags alone, so on a record whose Tags were changed without its
-// Entity -- by hand, or by a tool that edits Tags, such as converter.Convert
-// -- it writes the stale typed fields back over that change, and drops raw
-// structures the Entity does not hold. Edit one side only: to make typed
-// edits on such a document, encode and decode it first, so its Entity reads
-// as its Tags.
+// Entity -- by hand, say -- it writes the stale typed fields back over that
+// change, and drops raw structures the Entity does not hold. Edit one side
+// only: to make typed edits after editing Tags, call decoder.SyncEntities
+// first, so the Entity reads as its Tags. converter.Convert output already
+// does.
 //
 // SyncTags replaces Header.Tags, Record.Tags and Record.Value; it never edits
 // a Tag in place, nor an Entity. Records with no Tags (written from the Entity

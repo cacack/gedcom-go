@@ -158,6 +158,9 @@ type QualityAnalyzer struct {
 	references   *ReferenceValidator
 	duplicates   *DuplicateDetector
 	tagValidator *TagValidator
+
+	// checkEntityTags adds the ENTITY_TAGS_DIVERGED check (WithEntityTagsCheck).
+	checkEntityTags bool
 }
 
 // QualityOption is a functional option for configuring QualityAnalyzer.
@@ -183,6 +186,18 @@ func WithDuplicateConfig(config *DuplicateConfig) QualityOption {
 func WithTagRegistry(registry *TagRegistry) QualityOption {
 	return func(a *QualityAnalyzer) {
 		a.tagValidator = NewTagValidator(registry, true)
+	}
+}
+
+// WithEntityTagsCheck returns a QualityOption that adds the
+// ENTITY_TAGS_DIVERGED check to the report's conformance issues. That check
+// encodes and decodes the document to compare its typed fields with its raw
+// Tags, about a round trip's cost (see docs/guides/performance.md), so it is
+// off by default. It is the analyzer's counterpart of
+// ValidatorConfig.CheckEntityTags.
+func WithEntityTagsCheck() QualityOption {
+	return func(a *QualityAnalyzer) {
+		a.checkEntityTags = true
 	}
 }
 
@@ -289,7 +304,9 @@ func (a *QualityAnalyzer) runConformanceChecks(doc *gedcom.Document, report *Qua
 	var issues []Issue
 	issues = append(issues, NewHeaderValidator().ValidateHeader(doc)...)
 	issues = append(issues, recordChecks(doc, NewXRefValidator(), NewNoteValidator())...)
-	issues = append(issues, validateEntityTags(doc)...)
+	if a.checkEntityTags {
+		issues = append(issues, validateEntityTags(doc)...)
+	}
 	issues = append(issues, NewEncodingValidator().Validate(doc)...)
 	report.ConformanceIssues = append(report.ConformanceIssues, issues...)
 }

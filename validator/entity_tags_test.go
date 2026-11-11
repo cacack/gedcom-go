@@ -25,9 +25,14 @@ func decodeFixture(t testing.TB, path string) *gedcom.Document {
 	return doc
 }
 
+// checking is a validator with the opt-in ENTITY_TAGS_DIVERGED check on.
+func checking() *Validator {
+	return NewWithOptions(&ValidateOptions{CheckEntityTags: true})
+}
+
 func divergedIssues(doc *gedcom.Document) []Issue {
 	var out []Issue
-	for _, issue := range New().ValidateAll(doc) {
+	for _, issue := range checking().ValidateAll(doc) {
 		if issue.Code == CodeEntityTagsDiverged {
 			out = append(out, issue)
 		}
@@ -99,10 +104,27 @@ func TestEntityTagsDivergedSkipRule(t *testing.T) {
 	if len(divergedIssues(doc)) != 1 {
 		t.Fatal("edited header not reported")
 	}
-	v := NewWithOptions(&ValidateOptions{SkipRules: []string{CodeEntityTagsDiverged}})
+	v := NewWithOptions(&ValidateOptions{CheckEntityTags: true, SkipRules: []string{CodeEntityTagsDiverged}})
 	for _, issue := range v.ValidateAll(doc) {
 		if issue.Code == CodeEntityTagsDiverged {
 			t.Errorf("reported despite SkipRules: %v", issue)
+		}
+	}
+}
+
+// TestEntityTagsDivergedOptIn asserts the check is off by default: the same
+// edited header goes unreported by a default ValidateAll and QualityReport.
+func TestEntityTagsDivergedOptIn(t *testing.T) {
+	doc := decodeFixture(t, "../testdata/gedcom-5.5/royal92.ged")
+	doc.Header.SourceSystem = "EDITED-APP"
+	for _, issue := range New().ValidateAll(doc) {
+		if issue.Code == CodeEntityTagsDiverged {
+			t.Errorf("default ValidateAll reported %v", issue)
+		}
+	}
+	for _, issue := range New().QualityReport(doc).ConformanceIssues {
+		if issue.Code == CodeEntityTagsDiverged {
+			t.Errorf("default QualityReport reported %v", issue)
 		}
 	}
 }
@@ -111,10 +133,38 @@ func TestEntityTagsDivergedInQualityReport(t *testing.T) {
 	doc := decodeFixture(t, "../testdata/gedcom-5.5/royal92.ged")
 	doc.Header.SourceSystem = "EDITED-APP"
 	found := false
-	for _, issue := range New().QualityReport(doc).ConformanceIssues {
+	for _, issue := range checking().QualityReport(doc).ConformanceIssues {
 		found = found || issue.Code == CodeEntityTagsDiverged
 	}
 	if !found {
 		t.Error("QualityReport.ConformanceIssues lacks ENTITY_TAGS_DIVERGED")
+	}
+}
+
+// TestWithEntityTagsCheck asserts the QualityAnalyzer opt-in adds the check
+// and nothing else: the same edited document does not report it by default.
+func TestWithEntityTagsCheck(t *testing.T) {
+	doc := decodeFixture(t, "../testdata/gedcom-5.5/royal92.ged")
+	doc.Header.SourceSystem = "EDITED-APP"
+	count := func(r *QualityReport) (diverged, other int) {
+		for _, issue := range r.ConformanceIssues {
+			if issue.Code == CodeEntityTagsDiverged {
+				diverged++
+			} else {
+				other++
+			}
+		}
+		return diverged, other
+	}
+	withD, withOther := count(NewQualityAnalyzer(WithEntityTagsCheck()).Analyze(doc))
+	withoutD, withoutOther := count(NewQualityAnalyzer().Analyze(doc))
+	if withD == 0 {
+		t.Fatal("WithEntityTagsCheck: no ENTITY_TAGS_DIVERGED for an edited header")
+	}
+	if withoutD != 0 {
+		t.Errorf("default analyzer: %d ENTITY_TAGS_DIVERGED issues, want 0", withoutD)
+	}
+	if withoutOther != withOther {
+		t.Errorf("WithEntityTagsCheck changed the other conformance issues: %d, want %d", withOther, withoutOther)
 	}
 }

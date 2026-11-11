@@ -40,14 +40,14 @@ func TestNoIssueCarriesLineNumberDetailKey(t *testing.T) {
 		t.Fatal("no .ged fixtures found; the test would prove nothing")
 	}
 
-	// ENTITY_TAGS_DIVERGED is skipped: it runs encoder.SyncTags over every
-	// record, which on the 46 MiB scale fixture pushes this test past the
-	// Windows -race timeout, and its Details carry only "record" or "error".
+	// ENTITY_TAGS_DIVERGED is opt-in (CheckEntityTags) and left off: it runs
+	// encoder.SyncTags over every record, which on the 46 MiB scale fixture
+	// pushes this test past the Windows -race timeout, and its Details carry
+	// only "record" or "error".
 	v := NewWithOptions(&ValidateOptions{
 		TagRegistry:        NewTagRegistry(),
 		ValidateCustomTags: true,
 		Strictness:         StrictnessStrict,
-		SkipRules:          []string{CodeEntityTagsDiverged},
 	})
 
 	var checked int
