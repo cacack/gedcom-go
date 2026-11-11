@@ -681,7 +681,8 @@ func TestHeaderFieldsDate(t *testing.T) {
 				t.Fatalf("Date injected a level-0 record:\n%s", out)
 			}
 		}
-		if !strings.Contains(out, "\n1 DATE 1 JAN 2000\n2 CONT 0 @X@ INDI\n") {
+		// The CONT line is text, so 5.5.1 doubles its "@"s (#708).
+		if !strings.Contains(out, "\n1 DATE 1 JAN 2000\n2 CONT 0 @@X@@ INDI\n") {
 			t.Errorf("line break not written as CONT:\n%s", out)
 		}
 		doc, err := decoder.Decode(strings.NewReader(out))

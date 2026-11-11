@@ -157,6 +157,10 @@ func (d *Document) declaredVersion() Version {
 // identifier) that could otherwise be pointer-shaped; UnescapeLeadingAt is the
 // inverse. Note this deliberately covers any leading "@", not only well-formed
 // "@xref@" pointers — a value like "@foo" still needs escaping per the spec.
+//
+// It is for a raw [Tag] value, which holds the wire form. A typed field holds
+// unescaped text, which the encoder escapes for the output version itself, so
+// do not pass a typed value through it: the "@" would be written doubled twice.
 func EscapeLeadingAt(s string) string {
 	if strings.HasPrefix(s, "@") {
 		return "@" + s

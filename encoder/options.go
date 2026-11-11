@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/atsign"
 	"github.com/cacack/gedcom-go/v3/internal/concsplit"
 	"github.com/cacack/gedcom-go/v3/internal/gedcvers"
 )
@@ -138,6 +139,35 @@ func (opts *EncodeOptions) is70() bool {
 // forOutput resolved. An unknown output version is no version.
 func (opts *EncodeOptions) outputIs(v gedcom.Version) bool {
 	return opts != nil && opts.version == v
+}
+
+// text returns a typed text value escaped for the output version forOutput
+// resolved (atsign.Escape): a leading "@" doubled for 7.0 and an unknown
+// version, every "@" outside an escape sequence for 5.5 and 5.5.1. Every value
+// the encoder writes from a typed field goes through it, so text shaped like a
+// pointer is never written as one (#708). Pointer fields, tag names and raw
+// Tags do not: a pointer is not text, and raw Tags are already the wire form.
+func (opts *EncodeOptions) text(s string) string {
+	var v gedcom.Version
+	if opts != nil {
+		v = opts.version
+	}
+	return atsign.Escape(s, v)
+}
+
+// wireSpells reports whether wire, a value as it stands on a line, reads back
+// as the one-line text under the output version's escaping. Such a value is
+// written as is rather than re-escaped from text, so a value that was never
+// changed keeps its bytes even where its producer escaped it differently.
+func (opts *EncodeOptions) wireSpells(wire, text string) bool {
+	if wire == "" || strings.ContainsAny(text, "\n\r") {
+		return false
+	}
+	var v gedcom.Version
+	if opts != nil {
+		v = opts.version
+	}
+	return atsign.Unescape(wire, v) == text
 }
 
 // outputLacks reports whether a structure defined only by GEDCOM version

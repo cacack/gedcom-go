@@ -57,6 +57,18 @@ func TestSplitPoint(t *testing.T) {
 			expected: 4,
 		},
 		{
+			name:     "never inside an @@ pair",
+			line:     "ab@@cd",
+			maxLen:   3, // "ab@" | "@cd" would leave a lone "@" on each line
+			expected: 2,
+		},
+		{
+			name:     "between two @@ pairs",
+			line:     "a@@@@b",
+			maxLen:   4, // the run starts at 1, so offset 3 pairs off and 4 does not
+			expected: 3,
+		},
+		{
 			name:     "first character longer than max is kept whole",
 			line:     "日本",
 			maxLen:   2,

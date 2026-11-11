@@ -451,8 +451,10 @@ func TestStructuralTortureLevelOver99(t *testing.T) {
 // TestStructuralTortureAtSign55 covers GEDCOM 5.5 at-sign torture: @@ doubling
 // in text, @#...@ escapes inside NOTE payloads, and @@ at the start of
 // CONC/CONT lines. Fixture vendored verbatim from gedcom7code/test-files
-// (public domain). The decoder preserves all payloads verbatim: it neither
-// collapses @@ nor interprets @#...@ escapes outside DATE values.
+// (public domain). The typed Note.Text holds the text, with the 5.5 escaping
+// undone: every @@ collapses to @ (#708), a lone @ a producer did not double
+// is kept, and @#...@ escapes are left as written. The raw Tags keep the wire
+// form.
 func TestStructuralTortureAtSign55(t *testing.T) {
 	const path = "../testdata/edge-cases/atsign-55.ged"
 
@@ -471,11 +473,11 @@ func TestStructuralTortureAtSign55(t *testing.T) {
 		want string
 	}{
 		{"@N01@", "@ one leading"},
-		{"@N03@", "@@ two leading"},
-		{"@N05@", "doubled @@ internal"},
+		{"@N03@", "@ two leading"},
+		{"@N05@", "doubled @ internal"},
 		{"@N09@", "@#DJULIAN@date escape zero spaces"},
 		{"@N13@", "@#DJULIAN AND SUCH@ date escape internal spaces"},
-		{"@N18@", "@@all in @one@@thing @#DWITH DATES@ , @#OBSOLETE@ etc"},
+		{"@N18@", "@all in @one@thing @#DWITH DATES@ , @#OBSOLETE@ etc"},
 	}
 	for _, tt := range tests {
 		note := doc.GetNote(tt.xref)
@@ -484,16 +486,16 @@ func TestStructuralTortureAtSign55(t *testing.T) {
 			continue
 		}
 		if note.Text != tt.want {
-			t.Errorf("Note %s = %q, want %q (verbatim, no unescaping)", tt.xref, note.Text, tt.want)
+			t.Errorf("Note %s = %q, want %q", tt.xref, note.Text, tt.want)
 		}
 	}
 
-	// @@ at the start of CONC and CONT lines survives folding.
+	// @@ at the start of CONC and CONT lines collapses like any other.
 	n19 := doc.GetNote("@N19@")
 	if n19 == nil {
 		t.Fatal("GetNote(@N19@) returned nil")
 	}
-	want := "@@ at at front and @@ at after CONC and \n@@ at after CONT and @ inside CONT too."
+	want := "@ at at front and @ at after CONC and \n@ at after CONT and @ inside CONT too."
 	if n19.Text != want {
 		t.Errorf("N19 Text = %q, want %q", n19.Text, want)
 	}

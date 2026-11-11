@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/atsign"
 )
 
 // tagToken returns a tag value with surrounding whitespace removed, for a typed
@@ -30,9 +31,9 @@ func tagToken(s string) string {
 
 // diagnosticCollector is the parse context threaded through entity
 // population. It accumulates diagnostics and, because it already reaches every
-// parse function, also carries the GEDCOM version that decides what counts as
-// a pointer; see isPointer. Its methods accept a nil receiver, which collects
-// nothing and knows no version.
+// parse function, also carries the GEDCOM versions that decide what counts as
+// a pointer (isPointer) and how text is unescaped (text). Its methods accept a
+// nil receiver, which collects nothing and knows no version.
 type diagnosticCollector struct {
 	diagnostics Diagnostics
 
@@ -40,9 +41,27 @@ type diagnosticCollector struct {
 	// when it declares none this package recognizes.
 	version gedcom.Version
 
+	// textVersion is the version the document is read as, Header.Version: the
+	// declared version, or the one detected when it declares none. The encoder
+	// escapes a decoded document's text by that version, so the decoder must
+	// unescape by it too, or a decode-encode round trip rewrites "@@" in a
+	// file that declares no version.
+	textVersion gedcom.Version
+
 	// discard drops diagnostics instead of accumulating them, for a decode
 	// that reports none but still needs version.
 	discard bool
+}
+
+// quiet returns a collector that discards diagnostics but carries c's
+// versions, for a parse whose diagnostics are reported elsewhere.
+func (c *diagnosticCollector) quiet() *diagnosticCollector {
+	q := &diagnosticCollector{discard: true}
+	if c != nil {
+		q.version = c.version
+		q.textVersion = c.textVersion
+	}
+	return q
 }
 
 // collecting reports whether diagnostics added to c are kept. Helpers check
@@ -57,6 +76,23 @@ func (c *diagnosticCollector) add(d Diagnostic) {
 	if c.collecting() {
 		c.diagnostics = append(c.diagnostics, d)
 	}
+}
+
+// text returns a typed text value read from a line: the value with the "@"
+// escaping of the version the document is read as undone (atsign.Unescape),
+// "@@" for "@" throughout in 5.5 and 5.5.1 and only at the start of a line in
+// 7.0 (#708). A nil collector knows no version and takes the 7.0 rule. Every typed field that holds text
+// is read through it, so it holds what the encoder's text escaping started
+// from. Pointer fields are not -- a pointer is not text -- and neither is the
+// pointer test that sorts a NOTE into NoteXRefs or InlineNotes, which runs on
+// the line as written: "1 NOTE @@I1@" is the text "@I1@", not a link. The raw
+// Tags keep the wire form.
+func (c *diagnosticCollector) text(s string) string {
+	var v gedcom.Version
+	if c != nil {
+		v = c.textVersion
+	}
+	return atsign.Unescape(s, v)
 }
 
 // isPointer reports whether a token-position value is an XRef pointer under
@@ -145,7 +181,7 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			indi.Names = append(indi.Names, name)
 
 		case "SEX":
-			indi.Sex = tagToken(tag.Value)
+			indi.Sex = collector.text(tagToken(tag.Value))
 
 		case "BIRT", "DEAT", "BAPM", "BURI", "CENS", "CHR", "ADOP", "RESI", "IMMI", "EMIG",
 			"BARM", "BASM", "BLES", "CHRA", "CONF", "FCOM",
@@ -202,22 +238,22 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			indi.CreationDate = parseChangeDate(record.Tags, i, collector)
 
 		case "REFN":
-			indi.RefNumbers = append(indi.RefNumbers, parseRefNumber(record.Tags, i))
+			indi.RefNumbers = append(indi.RefNumbers, parseRefNumber(record.Tags, i, collector))
 
 		case "UID", "_UID":
 			// _UID is the vendor spelling of UID every 5.5.x desktop producer
 			// agrees on (#715); see uidTagName in the encoder for the write side.
-			indi.UIDs = append(indi.UIDs, tag.Value)
+			indi.UIDs = append(indi.UIDs, collector.text(tag.Value))
 
 		case "_FSFTID":
-			// A leading "@@" is the escaped form of a literal leading "@" (see
-			// gedcom.EscapeLeadingAt, applied by the EXID->_FSFTID converter).
-			// Unescape it so callers reading Individual.FamilySearchID /
-			// FamilySearchURL() get the logical id; the raw tag retains "@@".
-			indi.FamilySearchID = gedcom.UnescapeLeadingAt(tag.Value)
+			// Text like any other: a leading "@@" (written by the encoder, or
+			// by the EXID->_FSFTID converter's gedcom.EscapeLeadingAt) is a
+			// literal "@", so FamilySearchID / FamilySearchURL() get the
+			// logical id; the raw tag retains "@@".
+			indi.FamilySearchID = collector.text(tag.Value)
 
 		case "EXID":
-			indi.ExternalIDs = append(indi.ExternalIDs, parseExternalID(record.Tags, i))
+			indi.ExternalIDs = append(indi.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
 		case "ALIA", "AFN", "RFN", "RIN", "ANCI", "DESI", "SUBM", "RESN", "INIL":
 			// Standard INDI substructures not yet parsed into typed fields; the
@@ -252,12 +288,12 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 //nolint:gocyclo // Name parsing requires handling many tag types and edge cases
 func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCollector) *gedcom.PersonalName {
 	name := &gedcom.PersonalName{
-		Full: tags[nameIdx].Value,
+		Full: collector.text(tags[nameIdx].Value),
 	}
 
 	// Parse the full name to extract given and surname
 	// GEDCOM format: "Given /Surname/"
-	full := tags[nameIdx].Value
+	full := collector.text(tags[nameIdx].Value)
 	if slashIdx := strings.Index(full, "/"); slashIdx >= 0 {
 		name.Given = strings.TrimSpace(full[:slashIdx])
 		surname := full[slashIdx+1:]
@@ -279,20 +315,20 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCol
 		if tag.Level == 2 {
 			switch tag.Tag {
 			case "GIVN":
-				name.Given = tagToken(tag.Value)
+				name.Given = collector.text(tagToken(tag.Value))
 			case "SURN":
-				name.Surname = tagToken(tag.Value)
+				name.Surname = collector.text(tagToken(tag.Value))
 			case "NPFX":
-				name.Prefix = tagToken(tag.Value)
+				name.Prefix = collector.text(tagToken(tag.Value))
 			case "NSFX":
-				name.Suffix = tagToken(tag.Value)
+				name.Suffix = collector.text(tagToken(tag.Value))
 			case "NICK":
-				name.Nickname = tagToken(tag.Value)
+				name.Nickname = collector.text(tagToken(tag.Value))
 			case "SPFX":
-				name.SurnamePrefix = tagToken(tag.Value)
+				name.SurnamePrefix = collector.text(tagToken(tag.Value))
 			case "TYPE":
-				name.Type = tag.Value
-				name.TypePhrase = findSubordinate(tags, i, "PHRASE")
+				name.Type = collector.text(tag.Value)
+				name.TypePhrase = collector.text(findSubordinate(tags, i, "PHRASE"))
 			case "TRAN":
 				tran := parseNameTransliteration(tags, i, collector)
 				name.Transliterations = append(name.Transliterations, tran)
@@ -323,7 +359,7 @@ func parseNameTransliteration(tags []*gedcom.Tag, tranIdx int, collector *diagno
 	baseLevel := tags[tranIdx].Level
 
 	tran := &gedcom.Transliteration{
-		Value: tags[tranIdx].Value,
+		Value: collector.text(tags[tranIdx].Value),
 	}
 
 	// Look for subordinate tags at baseLevel+1 (level 3 for NAME.TRAN)
@@ -335,19 +371,19 @@ func parseNameTransliteration(tags []*gedcom.Tag, tranIdx int, collector *diagno
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "LANG":
-				tran.Language = tag.Value
+				tran.Language = collector.text(tag.Value)
 			case "GIVN":
-				tran.Given = tag.Value
+				tran.Given = collector.text(tag.Value)
 			case "SURN":
-				tran.Surname = tag.Value
+				tran.Surname = collector.text(tag.Value)
 			case "NPFX":
-				tran.Prefix = tag.Value
+				tran.Prefix = collector.text(tag.Value)
 			case "NSFX":
-				tran.Suffix = tag.Value
+				tran.Suffix = collector.text(tag.Value)
 			case "NICK":
-				tran.Nickname = tag.Value
+				tran.Nickname = collector.text(tag.Value)
 			case "SPFX":
-				tran.SurnamePrefix = tag.Value
+				tran.SurnamePrefix = collector.text(tag.Value)
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -365,7 +401,7 @@ func parseNameVariation(tags []*gedcom.Tag, varIdx int, collector *diagnosticCol
 	baseLevel := tags[varIdx].Level
 
 	variation := &gedcom.NameVariation{
-		Value: tags[varIdx].Value,
+		Value: collector.text(tags[varIdx].Value),
 	}
 
 	for i := varIdx + 1; i < len(tags); i++ {
@@ -376,19 +412,19 @@ func parseNameVariation(tags []*gedcom.Tag, varIdx int, collector *diagnosticCol
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "TYPE":
-				variation.Type = tag.Value
+				variation.Type = collector.text(tag.Value)
 			case "GIVN":
-				variation.Given = tagToken(tag.Value)
+				variation.Given = collector.text(tagToken(tag.Value))
 			case "SURN":
-				variation.Surname = tagToken(tag.Value)
+				variation.Surname = collector.text(tagToken(tag.Value))
 			case "NPFX":
-				variation.Prefix = tagToken(tag.Value)
+				variation.Prefix = collector.text(tagToken(tag.Value))
 			case "NSFX":
-				variation.Suffix = tagToken(tag.Value)
+				variation.Suffix = collector.text(tagToken(tag.Value))
 			case "NICK":
-				variation.Nickname = tagToken(tag.Value)
+				variation.Nickname = collector.text(tagToken(tag.Value))
 			case "SPFX":
-				variation.SurnamePrefix = tagToken(tag.Value)
+				variation.SurnamePrefix = collector.text(tagToken(tag.Value))
 			case "NOTE", "SOUR":
 				// Name-piece notes and citations, kept only in the raw tags
 			default:
@@ -430,8 +466,8 @@ func parseFamilyLink(tags []*gedcom.Tag, linkIdx int, tagName string, collector 
 					collector.addInvalidValue(tag.LineNumber, "PEDI", tag.Value,
 						"not valid under FAMS; a spouse link has no pedigree")
 				}
-				famLink.Pedigree = tag.Value
-				famLink.PedigreePhrase = findSubordinate(tags, i, "PHRASE")
+				famLink.Pedigree = collector.text(tag.Value)
+				famLink.PedigreePhrase = collector.text(findSubordinate(tags, i, "PHRASE"))
 			case "NOTE", "SNOTE":
 				famLink.NoteXRefs, famLink.InlineNotes = appendRecordNote(
 					tags, i, famLink.NoteXRefs, famLink.InlineNotes, collector)
@@ -465,19 +501,19 @@ func parseAssociation(tags []*gedcom.Tag, assoIdx int, collector *diagnosticColl
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "RELA", "ROLE": // RELA in 5.5.1, ROLE in 7.0
-				assoc.Role = tag.Value
-				assoc.RolePhrase = findSubordinate(tags, i, "PHRASE")
+				assoc.Role = collector.text(tag.Value)
+				assoc.RolePhrase = collector.text(findSubordinate(tags, i, "PHRASE"))
 			case "TYPE":
 				// The associated record's type, defined by 5.5 alone. It is
 				// kept whatever the version, and reported as before in a
 				// document declaring another (5.5-style exports such as
 				// Geneanet's 5.5.1 write it).
-				assoc.RecordType = tag.Value
+				assoc.RecordType = collector.text(tag.Value)
 				if collector != nil && collector.version != "" && collector.version != gedcom.Version55 {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
 				}
 			case "PHRASE":
-				assoc.Phrase = tag.Value
+				assoc.Phrase = collector.text(tag.Value)
 			case "NOTE", "SNOTE":
 				assoc.NoteXRefs, assoc.InlineNotes = appendRecordNote(
 					tags, i, assoc.NoteXRefs, assoc.InlineNotes, collector)
@@ -496,18 +532,18 @@ func parseAssociation(tags []*gedcom.Tag, assoIdx int, collector *diagnosticColl
 }
 
 // parseRefNumber parses a REFN tag with its optional TYPE subordinate.
-func parseRefNumber(tags []*gedcom.Tag, refnIdx int) gedcom.RefNumber {
+func parseRefNumber(tags []*gedcom.Tag, refnIdx int, collector *diagnosticCollector) gedcom.RefNumber {
 	return gedcom.RefNumber{
-		Value: tags[refnIdx].Value,
-		Type:  findSubordinate(tags, refnIdx, "TYPE"),
+		Value: collector.text(tags[refnIdx].Value),
+		Type:  collector.text(findSubordinate(tags, refnIdx, "TYPE")),
 	}
 }
 
 // parseExternalID parses an EXID tag with optional TYPE subordinate.
-func parseExternalID(tags []*gedcom.Tag, exidIdx int) *gedcom.ExternalID {
+func parseExternalID(tags []*gedcom.Tag, exidIdx int, collector *diagnosticCollector) *gedcom.ExternalID {
 	baseLevel := tags[exidIdx].Level
 	exid := &gedcom.ExternalID{
-		Value: tags[exidIdx].Value,
+		Value: collector.text(tags[exidIdx].Value),
 	}
 
 	// Look for TYPE subordinate at baseLevel+1
@@ -517,7 +553,7 @@ func parseExternalID(tags []*gedcom.Tag, exidIdx int) *gedcom.ExternalID {
 			break
 		}
 		if tag.Level == baseLevel+1 && tag.Tag == "TYPE" {
-			exid.Type = tag.Value
+			exid.Type = collector.text(tag.Value)
 			break
 		}
 	}
@@ -539,7 +575,7 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "PAGE":
-				cite.Page = foldedValue(tags, i)
+				cite.Page = collector.text(foldedValue(tags, i))
 			case "QUAY":
 				// Parse quality as integer (0-3). QUAY 0 is a real assertion,
 				// so the pointer is set for every in-range value.
@@ -554,7 +590,7 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 				cite.Data = parseSourceCitationData(tags, i, baseLevel+1, collector)
 			case "_APID":
 				// Parse Ancestry Permanent Identifier (vendor extension)
-				cite.AncestryAPID = gedcom.ParseAPID(tag.Value)
+				cite.AncestryAPID = gedcom.ParseAPID(collector.text(tag.Value))
 			case "NOTE", "SNOTE":
 				cite.NoteXRefs, cite.InlineNotes = appendRecordNote(tags, i, cite.NoteXRefs, cite.InlineNotes, collector)
 			case "OBJE", "EVEN", "TEXT":
@@ -583,7 +619,7 @@ func parseSourceCitationData(tags []*gedcom.Tag, dataIdx, baseLevel int, collect
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "DATE":
-				data.Date = tag.Value
+				data.Date = collector.text(tag.Value)
 			case "TEXT":
 				// TEXT is {0:M}: append, never overwrite, so every passage
 				// survives in document order (issue #497).
@@ -607,7 +643,7 @@ func parseSourceText(tags []*gedcom.Tag, textIdx int, collector *diagnosticColle
 	// foldedValue reuses tag.Value when there is no continuation, which saves
 	// a copy and an allocation per citation (measured by
 	// BenchmarkDecodeCitationHeavy).
-	text := &gedcom.SourceText{Value: foldedValue(tags, textIdx)}
+	text := &gedcom.SourceText{Value: collector.text(foldedValue(tags, textIdx))}
 
 	for i := textIdx + 1; i < len(tags); i++ {
 		tag := tags[i]
@@ -621,9 +657,9 @@ func parseSourceText(tags []*gedcom.Tag, textIdx int, collector *diagnosticColle
 		case "CONT", "CONC":
 			// Already folded into Value above.
 		case "MIME":
-			text.MIME = tag.Value
+			text.MIME = collector.text(tag.Value)
 		case "LANG":
-			text.Language = tag.Value
+			text.Language = collector.text(tag.Value)
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
 				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -750,35 +786,35 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 	tag := tags[i]
 	switch tag.Tag {
 	case "DATE":
-		*detail.date = tag.Value
+		*detail.date = collector.text(tag.Value)
 		if parsed := parseDateValue(tags, i, collector); parsed != nil {
 			*detail.parsedDate = parsed
 		}
 	case "PLAC":
 		*detail.placeDetail = parsePlaceDetail(tags, i, tag.Level, collector)
 	case "CAUS":
-		*detail.cause = tag.Value
+		*detail.cause = collector.text(tag.Value)
 	case "AGNC":
-		*detail.agency = tag.Value
+		*detail.agency = collector.text(tag.Value)
 	case "RELI":
-		*detail.religion = tag.Value
+		*detail.religion = collector.text(tag.Value)
 	case "ADDR":
 		*detail.address = parseEventAddress(tags, i, tag.Level, collector)
 	case "PHON":
-		*detail.phone = append(*detail.phone, tag.Value)
+		*detail.phone = append(*detail.phone, collector.text(tag.Value))
 	case "EMAIL":
-		*detail.email = append(*detail.email, tag.Value)
+		*detail.email = append(*detail.email, collector.text(tag.Value))
 	case "FAX":
-		*detail.fax = append(*detail.fax, tag.Value)
+		*detail.fax = append(*detail.fax, collector.text(tag.Value))
 	case "WWW":
-		*detail.website = append(*detail.website, tag.Value)
+		*detail.website = append(*detail.website, collector.text(tag.Value))
 	case "RESN":
-		*detail.restriction = tag.Value
+		*detail.restriction = collector.text(tag.Value)
 	case "UID", "_UID":
-		*detail.uids = append(*detail.uids, tag.Value)
+		*detail.uids = append(*detail.uids, collector.text(tag.Value))
 	case "SDATE":
-		*detail.sortDate = tag.Value
-		*detail.sortDatePhrase = findSubordinate(tags, i, "PHRASE")
+		*detail.sortDate = collector.text(tag.Value)
+		*detail.sortDatePhrase = collector.text(findSubordinate(tags, i, "PHRASE"))
 	case "SOUR":
 		cite := parseSourceCitation(tags, i, tag.Level, collector)
 		*detail.sourceCitations = append(*detail.sourceCitations, cite)
@@ -820,8 +856,9 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 // phrase.
 func parseDateValue(tags []*gedcom.Tag, i int, collector *diagnosticCollector) *gedcom.Date {
 	tag := tags[i]
-	phrase := findSubordinate(tags, i, "PHRASE")
-	parsed, err := gedcom.ParseDate(tag.Value)
+	value := collector.text(tag.Value)
+	phrase := collector.text(findSubordinate(tags, i, "PHRASE"))
+	parsed, err := gedcom.ParseDate(value)
 	if err == nil {
 		if phrase != "" {
 			parsed.Phrase = phrase
@@ -834,7 +871,7 @@ func parseDateValue(tags []*gedcom.Tag, i int, collector *diagnosticCollector) *
 	if phrase == "" {
 		return nil
 	}
-	return &gedcom.Date{Original: tag.Value, Calendar: gedcom.CalendarGregorian, Phrase: phrase, IsPhrase: true}
+	return &gedcom.Date{Original: value, Calendar: gedcom.CalendarGregorian, Phrase: phrase, IsPhrase: true}
 }
 
 // parseEvent extracts an event from tags starting at eventIdx.
@@ -848,7 +885,7 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailO
 	// field. Guard on the raw tag so "NO EVEN" (7.0 negative assertion, where
 	// eventTag comes from the NO value) is not mistaken for a descriptor.
 	if tags[eventIdx].Tag == "EVEN" {
-		event.Description = tags[eventIdx].Value
+		event.Description = collector.text(tags[eventIdx].Value)
 	}
 
 	baseLevel := tags[eventIdx].Level
@@ -863,12 +900,12 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailO
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "TYPE":
-				event.EventTypeDetail = tag.Value
+				event.EventTypeDetail = collector.text(tag.Value)
 			case "AGE":
-				event.Age = tag.Value
-				event.AgePhrase = findSubordinate(tags, i, "PHRASE")
+				event.Age = collector.text(tag.Value)
+				event.AgePhrase = collector.text(findSubordinate(tags, i, "PHRASE"))
 			case "FAMC":
-				if !parseEventFamilyLink(event, tags, i, tags[eventIdx].Tag, owner) {
+				if !parseEventFamilyLink(event, tags, i, tags[eventIdx].Tag, owner, collector) {
 					parseEventDetailTag(&detail, tags, i, collector)
 				}
 			default:
@@ -887,15 +924,15 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailO
 // event line's own tag, so a 7.0 "NO BIRT" is not taken for a birth. It
 // reports false for any other position, which the caller treats as an
 // unknown tag.
-func parseEventFamilyLink(event *gedcom.Event, tags []*gedcom.Tag, famcIdx int, eventTag string, owner detailOwner) bool {
+func parseEventFamilyLink(event *gedcom.Event, tags []*gedcom.Tag, famcIdx int, eventTag string, owner detailOwner, collector *diagnosticCollector) bool {
 	if owner != individualOwner || (eventTag != "BIRT" && eventTag != "CHR" && eventTag != "ADOP") {
 		return false
 	}
 	event.FamilyXRef = tagToken(tags[famcIdx].Value)
 	if eventTag == "ADOP" {
 		if adopIdx := findSubordinateIndex(tags, famcIdx, "ADOP"); adopIdx >= 0 {
-			event.AdoptedBy = tags[adopIdx].Value
-			event.AdoptedByPhrase = findSubordinate(tags, adopIdx, "PHRASE")
+			event.AdoptedBy = collector.text(tags[adopIdx].Value)
+			event.AdoptedByPhrase = collector.text(findSubordinate(tags, adopIdx, "PHRASE"))
 		}
 	}
 	return true
@@ -906,7 +943,7 @@ func parseEventFamilyLink(event *gedcom.Event, tags []*gedcom.Tag, famcIdx int, 
 // alone, so neither overwrites the other.
 func parseEventAddress(tags []*gedcom.Tag, addrIdx, baseLevel int, collector *diagnosticCollector) *gedcom.Address {
 	addr := &gedcom.Address{
-		Full: tags[addrIdx].Value,
+		Full: collector.text(tags[addrIdx].Value),
 	}
 
 	// Look for subordinate tags at baseLevel+1
@@ -918,30 +955,30 @@ func parseEventAddress(tags []*gedcom.Tag, addrIdx, baseLevel int, collector *di
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "ADR1":
-				addr.Line1 = tag.Value
+				addr.Line1 = collector.text(tag.Value)
 			case "ADR2":
-				addr.Line2 = tag.Value
+				addr.Line2 = collector.text(tag.Value)
 			case "ADR3":
-				addr.Line3 = tag.Value
+				addr.Line3 = collector.text(tag.Value)
 			case "CITY":
-				addr.City = tag.Value
+				addr.City = collector.text(tag.Value)
 			case "STAE":
-				addr.State = tag.Value
+				addr.State = collector.text(tag.Value)
 			case "POST":
-				addr.PostalCode = tag.Value
+				addr.PostalCode = collector.text(tag.Value)
 			case "CTRY":
-				addr.Country = tag.Value
+				addr.Country = collector.text(tag.Value)
 			case "CONT":
 				// Continue the payload on the next line. Not foldContinuation: an
 				// empty first line takes the value directly, with no leading
 				// newline.
 				if addr.Full != "" {
-					addr.Full += "\n" + tag.Value
+					addr.Full += "\n" + collector.text(tag.Value)
 				} else {
-					addr.Full = tag.Value
+					addr.Full = collector.text(tag.Value)
 				}
 			case "CONC":
-				addr.Full += tag.Value
+				addr.Full += collector.text(tag.Value)
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -956,7 +993,7 @@ func parseEventAddress(tags []*gedcom.Tag, addrIdx, baseLevel int, collector *di
 // parsePlaceDetail extracts a place structure with optional coordinates from tags starting at placIdx.
 func parsePlaceDetail(tags []*gedcom.Tag, placIdx, baseLevel int, collector *diagnosticCollector) *gedcom.PlaceDetail {
 	place := &gedcom.PlaceDetail{
-		Name: tags[placIdx].Value,
+		Name: collector.text(tags[placIdx].Value),
 	}
 
 	// Look for subordinate tags at baseLevel+1
@@ -968,7 +1005,7 @@ func parsePlaceDetail(tags []*gedcom.Tag, placIdx, baseLevel int, collector *dia
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "FORM":
-				place.Form = tag.Value
+				place.Form = collector.text(tag.Value)
 			case "MAP":
 				place.Coordinates = parseCoordinates(tags, i, tag.Level, collector)
 			case "NOTE", "SNOTE":
@@ -1000,10 +1037,10 @@ func parseCoordinates(tags []*gedcom.Tag, mapIdx, baseLevel int, collector *diag
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "LATI":
-				coords.Latitude = tag.Value
+				coords.Latitude = collector.text(tag.Value)
 				validateCoordinate(tag, gedcom.ParseLatitude, collector)
 			case "LONG":
-				coords.Longitude = tag.Value
+				coords.Longitude = collector.text(tag.Value)
 				validateCoordinate(tag, gedcom.ParseLongitude, collector)
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
@@ -1037,7 +1074,7 @@ func validateCoordinate(tag *gedcom.Tag, parse func(string) (float64, error), co
 func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string, owner detailOwner, collector *diagnosticCollector) *gedcom.Attribute {
 	attr := &gedcom.Attribute{
 		Type:  gedcom.AttributeType(attrTag),
-		Value: tags[attrIdx].Value,
+		Value: collector.text(tags[attrIdx].Value),
 	}
 
 	baseLevel := tags[attrIdx].Level
@@ -1052,7 +1089,7 @@ func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string, owner detai
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "TYPE":
-				attr.TypeDetail = tag.Value
+				attr.TypeDetail = collector.text(tag.Value)
 			case "AGE":
 				// Known tag not parsed into a typed field: gedcom.Attribute has
 				// no Age counterpart to Event.Age, and nothing asks for one. The
@@ -1102,19 +1139,19 @@ func parseLDSOrdinance(tags []*gedcom.Tag, ordIdx int, ordType gedcom.LDSOrdinan
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "DATE":
-				ord.Date = tag.Value
+				ord.Date = collector.text(tag.Value)
 				if parsed := parseDateValue(tags, i, collector); parsed != nil {
 					ord.ParsedDate = parsed
 				}
 			case "TEMP":
-				ord.Temple = tag.Value
+				ord.Temple = collector.text(tag.Value)
 			case "PLAC":
-				ord.Place = tag.Value
+				ord.Place = collector.text(tag.Value)
 			case "STAT":
-				ord.Status = tag.Value
+				ord.Status = collector.text(tag.Value)
 				if dateIdx := findSubordinateIndex(tags, i, "DATE"); dateIdx >= 0 {
-					ord.StatusDate = tags[dateIdx].Value
-					ord.StatusTime = findSubordinate(tags, dateIdx, "TIME")
+					ord.StatusDate = collector.text(tags[dateIdx].Value)
+					ord.StatusTime = collector.text(findSubordinate(tags, dateIdx, "TIME"))
 				}
 			case "FAMC":
 				ord.FamilyXRef = tagToken(tag.Value)
@@ -1151,11 +1188,11 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		switch tag.Tag {
 		case "HUSB":
 			fam.Husband = tagToken(tag.Value)
-			fam.HusbandPhrase = findSubordinate(record.Tags, i, "PHRASE")
+			fam.HusbandPhrase = collector.text(findSubordinate(record.Tags, i, "PHRASE"))
 
 		case "WIFE":
 			fam.Wife = tagToken(tag.Value)
-			fam.WifePhrase = findSubordinate(record.Tags, i, "PHRASE")
+			fam.WifePhrase = collector.text(findSubordinate(record.Tags, i, "PHRASE"))
 
 		case "CHIL":
 			fam.Children = append(fam.Children, tagToken(tag.Value))
@@ -1201,13 +1238,13 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			fam.CreationDate = parseChangeDate(record.Tags, i, collector)
 
 		case "REFN":
-			fam.RefNumbers = append(fam.RefNumbers, parseRefNumber(record.Tags, i))
+			fam.RefNumbers = append(fam.RefNumbers, parseRefNumber(record.Tags, i, collector))
 
 		case "UID", "_UID":
-			fam.UIDs = append(fam.UIDs, tag.Value)
+			fam.UIDs = append(fam.UIDs, collector.text(tag.Value))
 
 		case "EXID":
-			fam.ExternalIDs = append(fam.ExternalIDs, parseExternalID(record.Tags, i))
+			fam.ExternalIDs = append(fam.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
 		case "RESN", "SUBM", "ASSO":
 			// Known tags not yet parsed into typed fields; the raw tags remain
@@ -1242,13 +1279,13 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 
 		switch tag.Tag {
 		case "TITL":
-			src.Title = foldedValue(record.Tags, i)
+			src.Title = collector.text(foldedValue(record.Tags, i))
 		case "AUTH":
-			src.Author = foldedValue(record.Tags, i)
+			src.Author = collector.text(foldedValue(record.Tags, i))
 		case "PUBL":
-			src.Publication = foldedValue(record.Tags, i)
+			src.Publication = collector.text(foldedValue(record.Tags, i))
 		case "TEXT":
-			src.Text = foldedValue(record.Tags, i)
+			src.Text = collector.text(foldedValue(record.Tags, i))
 		case "REPO":
 			src.RepositoryLinks = append(src.RepositoryLinks, parseSourceRepositoryLink(record.Tags, i, collector))
 		case "NOTE", "SNOTE":
@@ -1261,11 +1298,11 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "CREA":
 			src.CreationDate = parseChangeDate(record.Tags, i, collector)
 		case "REFN":
-			src.RefNumbers = append(src.RefNumbers, parseRefNumber(record.Tags, i))
+			src.RefNumbers = append(src.RefNumbers, parseRefNumber(record.Tags, i, collector))
 		case "UID", "_UID":
-			src.UIDs = append(src.UIDs, tag.Value)
+			src.UIDs = append(src.UIDs, collector.text(tag.Value))
 		case "EXID":
-			src.ExternalIDs = append(src.ExternalIDs, parseExternalID(record.Tags, i))
+			src.ExternalIDs = append(src.ExternalIDs, parseExternalID(record.Tags, i, collector))
 		case "DATA", "ABBR":
 			// Known tags not yet parsed into typed fields
 		default:
@@ -1313,10 +1350,10 @@ func parseSourceRepositoryLink(tags []*gedcom.Tag, repoIdx int, collector *diagn
 				if link.Inline == nil {
 					link.Inline = &gedcom.InlineRepository{}
 				}
-				link.Inline.Name = tag.Value
+				link.Inline.Name = collector.text(tag.Value)
 			}
 		case "CALN":
-			link.CallNumbers = append(link.CallNumbers, parseCallNumber(tags, i))
+			link.CallNumbers = append(link.CallNumbers, parseCallNumber(tags, i, collector))
 		case "NOTE", "SNOTE":
 			link.NoteXRefs, link.InlineNotes = appendRecordNote(
 				tags, i, link.NoteXRefs, link.InlineNotes, collector)
@@ -1335,11 +1372,11 @@ func parseSourceRepositoryLink(tags []*gedcom.Tag, repoIdx int, collector *diagn
 // MEDI and PHRASE are the only substructures any supported GEDCOM version
 // defines under CALN, each 0:1; the first of each is typed, and anything else
 // stays in the raw tags.
-func parseCallNumber(tags []*gedcom.Tag, calnIdx int) *gedcom.CallNumber {
-	caln := &gedcom.CallNumber{Value: tags[calnIdx].Value}
+func parseCallNumber(tags []*gedcom.Tag, calnIdx int, collector *diagnosticCollector) *gedcom.CallNumber {
+	caln := &gedcom.CallNumber{Value: collector.text(tags[calnIdx].Value)}
 	if mediIdx := findSubordinateIndex(tags, calnIdx, "MEDI"); mediIdx >= 0 {
-		caln.MediaType = tags[mediIdx].Value
-		caln.MediaPhrase = findSubordinate(tags, mediIdx, "PHRASE")
+		caln.MediaType = collector.text(tags[mediIdx].Value)
+		caln.MediaPhrase = collector.text(findSubordinate(tags, mediIdx, "PHRASE"))
 	}
 	return caln
 }
@@ -1385,7 +1422,7 @@ func parseChangeDate(tags []*gedcom.Tag, chanIdx int, collector *diagnosticColle
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "DATE":
-				cd.Date = tag.Value
+				cd.Date = collector.text(tag.Value)
 				// Look for TIME subordinate at baseLevel+2
 				for j := i + 1; j < len(tags); j++ {
 					timeTag := tags[j]
@@ -1393,7 +1430,7 @@ func parseChangeDate(tags []*gedcom.Tag, chanIdx int, collector *diagnosticColle
 						break
 					}
 					if timeTag.Level == baseLevel+2 && timeTag.Tag == "TIME" {
-						cd.Time = timeTag.Value
+						cd.Time = collector.text(timeTag.Value)
 						break
 					}
 				}
@@ -1425,25 +1462,25 @@ func parseSubmitter(record *gedcom.Record, collector *diagnosticCollector) *gedc
 
 		switch tag.Tag {
 		case "NAME":
-			subm.Name = tag.Value
+			subm.Name = collector.text(tag.Value)
 
 		case "ADDR":
 			subm.Address = parseEventAddress(record.Tags, i, tag.Level, collector)
 
 		case "PHON":
-			subm.Phone = append(subm.Phone, tag.Value)
+			subm.Phone = append(subm.Phone, collector.text(tag.Value))
 
 		case "EMAIL":
-			subm.Email = append(subm.Email, tag.Value)
+			subm.Email = append(subm.Email, collector.text(tag.Value))
 
 		case "LANG":
-			subm.Language = append(subm.Language, tag.Value)
+			subm.Language = append(subm.Language, collector.text(tag.Value))
 
 		case "NOTE", "SNOTE":
 			subm.NoteXRefs, subm.InlineNotes = appendRecordNote(record.Tags, i, subm.NoteXRefs, subm.InlineNotes, collector)
 
 		case "EXID":
-			subm.ExternalIDs = append(subm.ExternalIDs, parseExternalID(record.Tags, i))
+			subm.ExternalIDs = append(subm.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
 		case "CHAN", "FAX", "WWW", "OBJE", "RIN", "UID":
 			// Known tags not yet parsed into typed fields
@@ -1477,22 +1514,22 @@ func parseSubmission(record *gedcom.Record, collector *diagnosticCollector) *ged
 			subn.SubmitterXRef = tagToken(tag.Value)
 
 		case "FAMF":
-			subn.FamilyFileName = tag.Value
+			subn.FamilyFileName = collector.text(tag.Value)
 
 		case "TEMP":
-			subn.TempleCode = tag.Value
+			subn.TempleCode = collector.text(tag.Value)
 
 		case "ANCE":
-			subn.AncestorGenerations = tag.Value
+			subn.AncestorGenerations = collector.text(tag.Value)
 
 		case "DESC":
-			subn.DescendantGenerations = tag.Value
+			subn.DescendantGenerations = collector.text(tag.Value)
 
 		case "ORDI":
-			subn.OrdinanceProcessFlag = tag.Value
+			subn.OrdinanceProcessFlag = collector.text(tag.Value)
 
 		case "RIN":
-			subn.AutomatedRecordID = tag.Value
+			subn.AutomatedRecordID = collector.text(tag.Value)
 
 		case "NOTE":
 			subn.NoteXRefs, subn.InlineNotes = appendRecordNote(record.Tags, i, subn.NoteXRefs, subn.InlineNotes, collector)
@@ -1525,28 +1562,28 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 
 		switch tag.Tag {
 		case "NAME":
-			repo.Name = tag.Value
+			repo.Name = collector.text(tag.Value)
 
 		case "ADDR":
 			repo.Address = parseEventAddress(record.Tags, i, tag.Level, collector)
 
 		case "PHON":
-			repo.Phone = append(repo.Phone, tag.Value)
+			repo.Phone = append(repo.Phone, collector.text(tag.Value))
 
 		case "EMAIL":
-			repo.Email = append(repo.Email, tag.Value)
+			repo.Email = append(repo.Email, collector.text(tag.Value))
 
 		case "FAX":
-			repo.Fax = append(repo.Fax, tag.Value)
+			repo.Fax = append(repo.Fax, collector.text(tag.Value))
 
 		case "WWW":
-			repo.Website = append(repo.Website, tag.Value)
+			repo.Website = append(repo.Website, collector.text(tag.Value))
 
 		case "NOTE", "SNOTE":
 			repo.NoteXRefs, repo.InlineNotes = appendRecordNote(record.Tags, i, repo.NoteXRefs, repo.InlineNotes, collector)
 
 		case "EXID":
-			repo.ExternalIDs = append(repo.ExternalIDs, parseExternalID(record.Tags, i))
+			repo.ExternalIDs = append(repo.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
 		case "CHAN", "REFN", "UID":
 			// Known tags not yet parsed into typed fields
@@ -1598,7 +1635,7 @@ func appendRecordNote(
 		return append(xrefs, ptr), inline
 	}
 
-	return xrefs, append(inline, foldedValue(tags, noteIdx))
+	return xrefs, append(inline, collector.text(foldedValue(tags, noteIdx)))
 }
 
 // foldedValue returns the value of tags[idx] with its direct CONT/CONC
@@ -1657,7 +1694,7 @@ func parseNote(record *gedcom.Record, collector *diagnosticCollector) *gedcom.No
 			foldContinuation(&b, tag)
 
 		case "EXID":
-			note.ExternalIDs = append(note.ExternalIDs, parseExternalID(record.Tags, i))
+			note.ExternalIDs = append(note.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
 		case "MIME", "LANG", "TRAN", "SOUR", "REFN", "UID", "CHAN":
 			// Known tags not yet parsed into typed fields
@@ -1669,7 +1706,7 @@ func parseNote(record *gedcom.Record, collector *diagnosticCollector) *gedcom.No
 		}
 	}
 
-	note.Text = b.String()
+	note.Text = collector.text(b.String())
 
 	return note
 }
@@ -1696,13 +1733,13 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 
 		switch tag.Tag {
 		case "MIME":
-			note.MIME = tag.Value
+			note.MIME = collector.text(tag.Value)
 
 		case "LANG":
-			note.Language = tag.Value
+			note.Language = collector.text(tag.Value)
 
 		case "TRAN":
-			tran := parseSharedNoteTranslation(record.Tags, i)
+			tran := parseSharedNoteTranslation(record.Tags, i, collector)
 			note.Translations = append(note.Translations, tran)
 
 		case "SOUR":
@@ -1710,7 +1747,7 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 			note.SourceCitations = append(note.SourceCitations, cite)
 
 		case "EXID":
-			note.ExternalIDs = append(note.ExternalIDs, parseExternalID(record.Tags, i))
+			note.ExternalIDs = append(note.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
 		case "CHAN":
 			note.ChangeDate = parseChangeDate(record.Tags, i, collector)
@@ -1729,13 +1766,13 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 		}
 	}
 
-	note.Text = b.String()
+	note.Text = collector.text(b.String())
 
 	return note
 }
 
 // parseSharedNoteTranslation extracts a translation from TRAN tag in a SharedNote.
-func parseSharedNoteTranslation(tags []*gedcom.Tag, tranIdx int) *gedcom.SharedNoteTranslation {
+func parseSharedNoteTranslation(tags []*gedcom.Tag, tranIdx int, collector *diagnosticCollector) *gedcom.SharedNoteTranslation {
 	baseLevel := tags[tranIdx].Level
 
 	tran := &gedcom.SharedNoteTranslation{}
@@ -1755,16 +1792,16 @@ func parseSharedNoteTranslation(tags []*gedcom.Tag, tranIdx int) *gedcom.SharedN
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "MIME":
-				tran.MIME = tag.Value
+				tran.MIME = collector.text(tag.Value)
 			case "LANG":
-				tran.Language = tag.Value
+				tran.Language = collector.text(tag.Value)
 			case "CONT", "CONC":
 				foldContinuation(&b, tag)
 			}
 		}
 	}
 
-	tran.Value = b.String()
+	tran.Value = collector.text(b.String())
 
 	return tran
 }
@@ -1815,13 +1852,13 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 		case "CREA":
 			media.CreationDate = parseChangeDate(record.Tags, i, collector)
 		case "REFN":
-			media.RefNumbers = append(media.RefNumbers, parseRefNumber(record.Tags, i))
+			media.RefNumbers = append(media.RefNumbers, parseRefNumber(record.Tags, i, collector))
 		case "UID", "_UID":
-			media.UIDs = append(media.UIDs, tag.Value)
+			media.UIDs = append(media.UIDs, collector.text(tag.Value))
 		case "RESN":
-			media.Restriction = tag.Value
+			media.Restriction = collector.text(tag.Value)
 		case "EXID":
-			media.ExternalIDs = append(media.ExternalIDs, parseExternalID(record.Tags, i))
+			media.ExternalIDs = append(media.ExternalIDs, parseExternalID(record.Tags, i, collector))
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
 				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -1835,7 +1872,7 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 // parseMediaFile extracts a MediaFile from FILE tag and its subordinates.
 func parseMediaFile(tags []*gedcom.Tag, fileIdx, baseLevel int, collector *diagnosticCollector) *gedcom.MediaFile {
 	file := &gedcom.MediaFile{
-		FileRef: tags[fileIdx].Value,
+		FileRef: collector.text(tags[fileIdx].Value),
 	}
 
 	for i := fileIdx + 1; i < len(tags); i++ {
@@ -1846,7 +1883,7 @@ func parseMediaFile(tags []*gedcom.Tag, fileIdx, baseLevel int, collector *diagn
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "FORM":
-				file.Form = tag.Value
+				file.Form = collector.text(tag.Value)
 				// Look for MEDI at baseLevel+2
 				for j := i + 1; j < len(tags); j++ {
 					mediTag := tags[j]
@@ -1854,13 +1891,13 @@ func parseMediaFile(tags []*gedcom.Tag, fileIdx, baseLevel int, collector *diagn
 						break
 					}
 					if mediTag.Level == baseLevel+2 && mediTag.Tag == "MEDI" {
-						file.MediaType = mediTag.Value
-						file.MediaPhrase = findSubordinate(tags, j, "PHRASE")
+						file.MediaType = collector.text(mediTag.Value)
+						file.MediaPhrase = collector.text(findSubordinate(tags, j, "PHRASE"))
 						break
 					}
 				}
 			case "TITL":
-				file.Title = tag.Value
+				file.Title = collector.text(tag.Value)
 			case "TRAN":
 				tran := parseMediaTranslation(tags, i, tag.Level, collector)
 				file.Translations = append(file.Translations, tran)
@@ -1878,7 +1915,7 @@ func parseMediaFile(tags []*gedcom.Tag, fileIdx, baseLevel int, collector *diagn
 // parseMediaTranslation extracts a MediaTranslation from TRAN tag and its subordinates.
 func parseMediaTranslation(tags []*gedcom.Tag, tranIdx, baseLevel int, collector *diagnosticCollector) *gedcom.MediaTranslation {
 	tran := &gedcom.MediaTranslation{
-		FileRef: tags[tranIdx].Value,
+		FileRef: collector.text(tags[tranIdx].Value),
 	}
 
 	for i := tranIdx + 1; i < len(tags); i++ {
@@ -1889,7 +1926,7 @@ func parseMediaTranslation(tags []*gedcom.Tag, tranIdx, baseLevel int, collector
 		if tag.Level == baseLevel+1 {
 			switch tag.Tag {
 			case "FORM":
-				tran.Form = tag.Value
+				tran.Form = collector.text(tag.Value)
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -1917,7 +1954,7 @@ func parseMediaLink(tags []*gedcom.Tag, objeIdx, baseLevel int, collector *diagn
 			case "CROP":
 				link.Crop = parseCropRegion(tags, i, tag.Level, collector)
 			case "TITL":
-				link.Title = tag.Value
+				link.Title = collector.text(tag.Value)
 			case "NOTE", "SNOTE":
 				// Before #472 this fell through to default and every
 				// OBJE-level NOTE was reported as an unknown tag (#470).

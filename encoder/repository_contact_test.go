@@ -42,6 +42,8 @@ func TestRepositoryToTagsContactOrder(t *testing.T) {
 // TestRepositoryContactEntityRoundTrip decodes a repository carrying
 // 3x PHON, 3x EMAIL, FAX and WWW, drops the raw tags so the encoder must
 // rebuild the record from the typed model, and requires byte-identical output.
+// The EMAIL values are written as 5.5.1 spells them, every "@" doubled (#708);
+// the typed Email holds them undoubled.
 func TestRepositoryContactEntityRoundTrip(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
@@ -55,9 +57,9 @@ func TestRepositoryContactEntityRoundTrip(t *testing.T) {
 1 PHON 555-0001
 1 PHON 555-0002
 1 PHON 555-0003
-1 EMAIL a@example.org
-1 EMAIL b@example.org
-1 EMAIL c@example.org
+1 EMAIL a@@example.org
+1 EMAIL b@@example.org
+1 EMAIL c@@example.org
 1 FAX 555-0100
 1 WWW https://archive.example.org
 0 TRLR

@@ -10,9 +10,10 @@ import (
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
-// TestRecordNotesToEncode verifies the encoder emits shared-note XRef pointers
-// first, then inline note text.
-func TestRecordNotesToEncode(t *testing.T) {
+// TestNotesToTags verifies the encoder emits shared-note XRef pointers first,
+// verbatim, then inline note text, escaped so pointer-shaped text is not
+// written as a pointer (#708).
+func TestNotesToTags(t *testing.T) {
 	tests := []struct {
 		name      string
 		noteXRefs []string
@@ -36,16 +37,28 @@ func TestRecordNotesToEncode(t *testing.T) {
 			want:   []string{"just inline"},
 		},
 		{
-			name: "all empty returns an empty slice",
+			name:      "pointer-shaped inline text is escaped, the pointer is not",
+			noteXRefs: []string{"@N1@"},
+			inline:    []string{"@I1@"},
+			want:      []string{"@N1@", "@@I1@"},
+		},
+		{
+			name: "all empty returns no tags",
 			want: []string{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := recordNotesToEncode(tt.noteXRefs, tt.inline)
+			got := []string{}
+			for _, tag := range notesToTags(tt.noteXRefs, tt.inline, 1, nil) {
+				if tag.Level != 1 || tag.Tag != "NOTE" {
+					t.Errorf("notesToTags() wrote %d %s, want 1 NOTE", tag.Level, tag.Tag)
+				}
+				got = append(got, tag.Value)
+			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("recordNotesToEncode() = %#v, want %#v", got, tt.want)
+				t.Errorf("notesToTags() values = %#v, want %#v", got, tt.want)
 			}
 		})
 	}

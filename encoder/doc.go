@@ -99,6 +99,14 @@
 // Record.Tags were cleared drops the standard tags the typed model has no
 // field for, as it always did.
 //
+// Values written from typed fields are escaped for the output version so a
+// literal "@" is not read as a pointer: a leading "@" is doubled for 7.0 (and an
+// unknown version), every "@" outside an escape such as "@#DJULIAN@" for 5.5
+// and 5.5.1. Escaping comes before CONC wrapping, so the escaped value is what
+// fits MaxLineLength. Pointer fields are written as they are, and so are raw Tags, which
+// must already hold the wire form. A NOTE or SNOTE whose Record.Value already
+// reads back as its entity's one-line Text is written with that Value.
+//
 // The header follows the same rule with its own field, described next.
 //
 // # How the Header Is Written

@@ -385,7 +385,7 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 		if header.SourceSystem == "" {
 			return nil
 		}
-		return writeValue(w, 1, "", "SOUR", header.SourceSystem, opts)
+		return writeValue(w, 1, "", "SOUR", opts.text(header.SourceSystem), opts)
 	}
 
 	// Written verbatim, like every other GEDCOM date: the field holds the
@@ -394,7 +394,7 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 		if header.Date == "" {
 			return nil
 		}
-		return writeValue(w, 1, "", "DATE", header.Date, opts)
+		return writeValue(w, 1, "", "DATE", opts.text(header.Date), opts)
 	}
 
 	// The pointer is written verbatim: whatever the caller put in the field is
@@ -415,7 +415,7 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 		if header.Language == "" {
 			return nil
 		}
-		return writeValue(w, 1, "", "LANG", header.Language, opts)
+		return writeValue(w, 1, "", "LANG", opts.text(header.Language), opts)
 	}
 
 	// Order is version-dependent because the two grammars disagree about where
