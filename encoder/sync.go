@@ -521,10 +521,49 @@ func mergeNode(rn, wn, nn *tagNode) []*gedcom.Tag {
 	return append([]*gedcom.Tag{head}, mergeChildren(rn.kids, wn.kids, nn.kids, changed, rn.tag.Level)...)
 }
 
+// maxAlignCells caps the LCS table alignTrees builds for the part of a group
+// left after its common prefix and suffix. A typed edit changes a few
+// structures, so that part is small; one past the cap (two runs of over 512
+// differing structures of one tag) aligns nothing there, and mergeGroup
+// rewrites it from the typed fields rather than allocate n*m cells for a
+// hostile file (in the spirit of ADR 0009's bounded work).
+const maxAlignCells = 1 << 18
+
 // alignTrees returns the index pairs of a longest common subsequence of
-// identical structures in a and b, in order.
+// identical structures in a and b, in order. The common prefix and suffix are
+// matched directly; only what lies between them is aligned by LCS, within
+// maxAlignCells.
 func alignTrees(a, b []*tagNode) [][2]int {
+	pre := 0
+	for pre < len(a) && pre < len(b) && sameTree(a[pre], b[pre]) {
+		pre++
+	}
+	suf := 0
+	for suf < len(a)-pre && suf < len(b)-pre && sameTree(a[len(a)-1-suf], b[len(b)-1-suf]) {
+		suf++
+	}
+
+	matches := make([][2]int, 0, pre+suf)
+	for i := 0; i < pre; i++ {
+		matches = append(matches, [2]int{i, i})
+	}
+	for _, mid := range lcsTrees(a[pre:len(a)-suf], b[pre:len(b)-suf]) {
+		matches = append(matches, [2]int{mid[0] + pre, mid[1] + pre})
+	}
+	for k := suf; k > 0; k-- {
+		matches = append(matches, [2]int{len(a) - k, len(b) - k})
+	}
+	return matches
+}
+
+// lcsTrees returns the index pairs of a longest common subsequence of
+// identical structures in a and b, or none when the table would exceed
+// maxAlignCells.
+func lcsTrees(a, b []*tagNode) [][2]int {
 	n, m := len(a), len(b)
+	if n == 0 || m == 0 || (n+1)*(m+1) > maxAlignCells {
+		return nil
+	}
 	lcs := make([][]int, n+1)
 	for i := range lcs {
 		lcs[i] = make([]int, m+1)
