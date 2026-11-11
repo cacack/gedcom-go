@@ -344,79 +344,74 @@ func headerTagOverride(tag *gedcom.Tag, inGEDC bool, opts *EncodeOptions) (strin
 // writeHeaderFields reconstructs a header from the typed fields. This is the
 // hand-built path: a document assembled in memory has no raw tags to preserve.
 func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error {
-	version := outputVersion(header, opts)
-
-	writeGedc := func() error {
-		if version == "" {
-			return nil
-		}
-		if _, err := fmt.Fprintf(w, "1 GEDC%s", opts.effectiveLineEnding()); err != nil {
-			return err
-		}
-		if err := writeValue(w, 2, "", "VERS", string(version), opts); err != nil {
-			return err
-		}
-		if !headergrammar.RequiresGEDCForm(version) {
-			return nil
-		}
-		_, err := fmt.Fprintf(w, "2 FORM %s%s", headergrammar.GEDCForm, opts.effectiveLineEnding())
+	tags, err := headerFieldTags(header, opts)
+	if err != nil {
 		return err
 	}
+	for _, tag := range tags {
+		if err := writeTag(w, tag, opts); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
-	// Declared for every output but 7.0, whether or not the header sets
-	// Encoding: a 5.x reader that finds no CHAR may assume ANSEL, the 5.x
+// headerFieldTags returns the level-1 header tags the typed fields are written
+// as. writeHeaderFields writes them and SyncTags compares them, so both agree
+// on what a header field encodes to.
+//
+// VERS, SOUR, DATE and LANG are values, so each is written through writeValue
+// rather than a bare Fprintf: a line break in a hand-built value (say, one
+// taken from user input) becomes a CONT line instead of starting a new GEDCOM
+// line -- a raw "\n0 @X@ INDI" would otherwise inject a record into the file
+// (issue #466).
+func headerFieldTags(header *gedcom.Header, opts *EncodeOptions) ([]*gedcom.Tag, error) {
+	version := outputVersion(header, opts)
+
+	var gedc []*gedcom.Tag
+	if version != "" {
+		gedc = append(gedc,
+			&gedcom.Tag{Level: 1, Tag: "GEDC"},
+			&gedcom.Tag{Level: 2, Tag: "VERS", Value: string(version)})
+		if headergrammar.RequiresGEDCForm(version) {
+			gedc = append(gedc, &gedcom.Tag{Level: 2, Tag: "FORM", Value: headergrammar.GEDCForm})
+		}
+	}
+
+	// optional is the line for a field, or nothing when the field is empty.
+	optional := func(tag, value string) []*gedcom.Tag {
+		if value == "" {
+			return nil
+		}
+		return []*gedcom.Tag{{Level: 1, Tag: tag, Value: value}}
+	}
+
+	// CHAR is declared for every output but 7.0, whether or not the header
+	// sets Encoding: a 5.x reader that finds no CHAR may assume ANSEL, the 5.x
 	// default, and misread every non-ASCII byte the encoder wrote as UTF-8
 	// (issue #726). GEDCOM 7.0 removed CHAR -- 7.0 is UTF-8 by definition --
 	// so there it is written only when the header asks for one.
-	writeChar := func() error {
-		if header.Encoding == "" && opts.is70() {
-			return nil
-		}
-		_, err := fmt.Fprintf(w, "1 CHAR %s%s", writtenEncoding, opts.effectiveLineEnding())
-		return err
+	var char []*gedcom.Tag
+	if header.Encoding != "" || !opts.is70() {
+		char = optional("CHAR", string(writtenEncoding))
 	}
 
-	// VERS, SOUR, DATE and LANG are values, so each goes through writeValue
-	// rather than a bare Fprintf: a line break in a hand-built value (say, one
-	// taken from user input) becomes a CONT line instead of starting a new
-	// GEDCOM line -- a raw "\n0 @X@ INDI" would otherwise inject a record into
-	// the file (issue #466).
-	writeSour := func() error {
-		if header.SourceSystem == "" {
-			return nil
-		}
-		return writeValue(w, 1, "", "SOUR", opts.text(header.SourceSystem), opts)
+	// The SUBM pointer is written verbatim: whatever the caller put in the
+	// field is the pointer the document's SUBM record is keyed by, and
+	// re-delimiting it would break that link rather than repair it. A pointer
+	// is an identifier, so like an XRef a line break in it has no CONT form
+	// and is rejected.
+	if hasLineBreak(header.Submitter) {
+		return nil, fmt.Errorf("level 1 SUBM pointer %q: %w", header.Submitter, ErrLineBreak)
 	}
 
-	// Written verbatim, like every other GEDCOM date: the field holds the
-	// DATE_EXACT string as read or as the caller set it.
-	writeDate := func() error {
-		if header.Date == "" {
-			return nil
-		}
-		return writeValue(w, 1, "", "DATE", opts.text(header.Date), opts)
-	}
-
-	// The pointer is written verbatim: whatever the caller put in the field is
-	// the pointer the document's SUBM record is keyed by, and re-delimiting it
-	// would break that link rather than repair it. A pointer is an identifier,
-	// so like an XRef a line break in it has no CONT form and is rejected.
-	writeSubm := func() error {
-		if header.Submitter == "" {
-			return nil
-		}
-		if hasLineBreak(header.Submitter) {
-			return fmt.Errorf("level 1 SUBM pointer %q: %w", header.Submitter, ErrLineBreak)
-		}
-		return writeValue(w, 1, "", "SUBM", header.Submitter, opts)
-	}
-
-	writeLang := func() error {
-		if header.Language == "" {
-			return nil
-		}
-		return writeValue(w, 1, "", "LANG", opts.text(header.Language), opts)
-	}
+	// SOUR, DATE and LANG are text, escaped for the output version like every
+	// typed value (#708); the DATE is otherwise written as given, like every
+	// other GEDCOM date. The SUBM pointer is not text.
+	sour := optional("SOUR", opts.text(header.SourceSystem))
+	date := optional("DATE", opts.text(header.Date))
+	subm := optional("SUBM", header.Submitter)
+	lang := optional("LANG", opts.text(header.Language))
 
 	// Order is version-dependent because the two grammars disagree about where
 	// GEDC sits: 5.5/5.5.1 open the header with SOUR and declare GEDC late
@@ -433,18 +428,16 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 	//
 	// The order reads the gated version (7.0.N is 7.0); VERS above keeps the
 	// value as given (issue #696).
-	writes := []func() error{writeSour, writeDate, writeSubm, writeGedc, writeChar, writeLang}
+	groups := [][]*gedcom.Tag{sour, date, subm, gedc, char, lang}
 	if opts.is70() {
-		writes = []func() error{writeGedc, writeSour, writeDate, writeSubm, writeChar, writeLang}
+		groups = [][]*gedcom.Tag{gedc, sour, date, subm, char, lang}
 	}
 
-	for _, write := range writes {
-		if err := write(); err != nil {
-			return err
-		}
+	var tags []*gedcom.Tag
+	for _, group := range groups {
+		tags = append(tags, group...)
 	}
-
-	return nil
+	return tags, nil
 }
 
 // writeRecord writes record, from its preserved Tags when it has them and from
@@ -487,13 +480,7 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions, shared
 	tags := record.Tags
 	value := record.Value
 	if len(tags) == 0 && record.Entity != nil {
-		typed := entityToTags(record, opts)
-		if text, contTags := entityRecordText(record, opts); text != "" || len(contTags) > 0 {
-			value = text
-			typed = append(contTags, typed...)
-		}
-		typed = append(typed, entityOwnTags(record.Entity)...)
-		tags = retagSharedNotePointers(typed, sharedNotes)
+		value, tags = entityRecordLines(record, opts, sharedNotes)
 	}
 
 	// The level-0 line goes through the same writer as every other line. Two
@@ -566,6 +553,22 @@ func checkRecordLine(record *gedcom.Record) error {
 		return nil
 	}
 	return fmt.Errorf("level 0 xref %q: %w", xref, ErrMalformedLine)
+}
+
+// entityRecordLines returns the level-0 value and the tags a record is written
+// with when it is written from its Entity: the typed fields, a NOTE or SNOTE's
+// Text as the value plus CONT/CONC, then the entity's own extension Tags.
+// writeRecord and SyncTags both derive a record this way, so what SyncTags
+// compares is exactly what the encoder would write.
+func entityRecordLines(record *gedcom.Record, opts *EncodeOptions, sharedNotes *sharedNoteSet) (string, []*gedcom.Tag) {
+	value := record.Value
+	typed := entityToTags(record, opts)
+	if text, contTags := entityRecordText(record, opts); text != "" || len(contTags) > 0 {
+		value = text
+		typed = append(contTags, typed...)
+	}
+	typed = append(typed, entityOwnTags(record.Entity)...)
+	return value, retagSharedNotePointers(typed, sharedNotes)
 }
 
 // writeTag writes a line subordinate to a record or the header, so its level

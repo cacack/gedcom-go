@@ -1232,6 +1232,26 @@ holds a nil, so this rule only ever fires on hand-built input; skip it with
 |------------|----------|-------------|
 | NIL_ELEMENT | Error | Nil record, nil slice element or typed-nil entity in a hand-built document |
 
+**Typed Edits the Encoder Would Not Write:**
+
+`Record.Tags` and `Header.Tags` are authoritative on encode, so a typed field
+edited on a decoded document is absent from the output until
+`encoder.SyncTags` carries it into the tags. `ValidateAll` reports the header
+and each record whose typed fields would encode differently from its raw tags
+— exactly those `SyncTags` would change — with `RecordXRef` and `LineNumber`
+of the record, and `Details["record"]` holding the record type or `HEAD`. The
+check reads the raw tags back through the decoder, about doubling
+`ValidateAll`'s time, so it is opt-in: `ValidateOptions.CheckEntityTags` turns
+it on for `ValidateAll` and `QualityReport` (which lists the findings under
+`ConformanceIssues`), and `validator.WithEntityTagsCheck()` for a
+`QualityAnalyzer`. The check has no direction: `Tags` edited without the
+typed fields (by hand) are reported too.
+
+| Error Code | Severity | Description |
+|------------|----------|-------------|
+| ENTITY_TAGS_DIVERGED | Warning | Typed fields and raw Tags of a decoded record or header disagree; `encoder.SyncTags` rewrites Tags from the typed fields |
+| ENTITY_TAGS_DIVERGED | Info | `encoder.SyncTags` fails on the document, so the comparison was not made; `Details["error"]` holds the error |
+
 **Duplicate Detection:**
 
 Configurable matching based on name similarity and date proximity:
@@ -1645,6 +1665,7 @@ Decode → modify → encode workflow:
 - Lossless by default: original tags preserved when present
 - Entity conversion: generates tags from typed fields when tags are empty
 - All nested structures supported: events, names, citations, addresses, coordinates
+- `encoder.SyncTags(doc)` carries typed edits on a decoded document into `Record.Tags` and `Header.Tags`, which the encoder writes verbatim. It applies only the difference between what the typed fields encode to now and what the raw tags decode and encode to, structure by structure: untouched structures keep their raw lines (unmodelled tags and original CONT/CONC split included), so an unmodified document is left line-for-line unchanged; a changed value keeps its unchanged substructures; added and removed structures are inserted and removed. Afterwards the tags read back as the typed fields. Header fields carried: `SourceSystem`, `Date`, `Submitter`, `Language`, `Version`, and whether `Encoding` is set (the encoder always writes `CHAR UTF-8`; not carried for 7.0, which has no `CHAR`). The typed fields win: an edit made to `Tags` alone is reverted, so call `decoder.SyncEntities` after editing `Tags` and before making typed edits (`converter.Convert` output already agrees). See [docs/guides/decoding.md](docs/guides/decoding.md#modifying-a-decoded-document)
 
 ### Line Continuation (CONT/CONC)
 

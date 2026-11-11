@@ -101,9 +101,9 @@ type Header struct {
 	// Tags is authoritative when encoding. The encoder writes the header from
 	// Tags whenever it is non-empty, and consults the typed fields above only
 	// for a document that has none. Editing a typed field on a decoded document
-	// therefore does not change the encoded header — edit the matching tag, or
-	// use the converter, which keeps both in step. See the encoder package
-	// documentation for the full rule.
+	// therefore does not change the encoded header — call encoder.SyncTags
+	// after the edit, edit the matching tag, or, to change version, use the
+	// converter. See the encoder package documentation for the full rule.
 	Tags []*Tag
 }
 

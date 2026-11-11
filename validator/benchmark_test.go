@@ -76,6 +76,38 @@ func BenchmarkValidateLarge(b *testing.B) {
 	}
 }
 
+// BenchmarkValidateAllEntityTags measures what the ENTITY_TAGS_DIVERGED check
+// adds to ValidateAll on a decoded real file (pres2020.ged, 2,322
+// individuals), whose records all have Tags. The check encodes and decodes
+// the document, so it is benchmarked with and without it (CheckEntityTags),
+// with duplicate detection off in both so the difference is the check alone.
+func BenchmarkValidateAllEntityTags(b *testing.B) {
+	f, err := os.Open("../testdata/gedcom-5.5/pres2020.ged")
+	if err != nil {
+		b.Fatal(err)
+	}
+	doc, err := decoder.Decode(f)
+	_ = f.Close()
+	if err != nil {
+		b.Fatal(err)
+	}
+	for _, bc := range []struct {
+		name  string
+		check bool
+	}{
+		{"with-check", true},
+		{"without-check", false},
+	} {
+		b.Run(bc.name, func(b *testing.B) {
+			v := NewWithOptions(&ValidateOptions{SkipDuplicateDetection: true, CheckEntityTags: bc.check})
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				_ = v.ValidateAll(doc)
+			}
+		})
+	}
+}
+
 // BenchmarkValidateWithErrors benchmarks validating a document with broken references
 func BenchmarkValidateWithErrors(b *testing.B) {
 	doc := generateInvalidDocument(100)

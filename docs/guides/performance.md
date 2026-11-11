@@ -124,6 +124,28 @@ Line ending format has negligible impact (<1% overhead for CRLF vs LF).
 
 **Key Insight**: Zero allocations when no errors found!
 
+### Entity Tags Check
+
+`ENTITY_TAGS_DIVERGED` (opt-in via `ValidateOptions.CheckEntityTags`) compares
+each record's typed fields with its raw `Tags` by running `encoder.SyncTags`
+on a copy, which encodes and decodes the document. On `pres2020.ged`
+(2,322 individuals, every record decoded with `Tags`), with duplicate
+detection off:
+
+| `ValidateAll` | Time/Op | Memory | Allocations |
+|---------------|---------|--------|-------------|
+| Without the check (default) | 34 ms | 9.4 MB | 403k |
+| With the check | 73 ms | 63 MB | 1.44M |
+
+The extra cost is about one encode-decode round trip of the document, so it
+grows with file size. A hand-built record with no `Tags` costs nothing. A
+group of more than 512 changed structures of one tag in one record is
+rewritten rather than aligned line by line, bounding the alignment's memory.
+
+```bash
+go test ./validator -bench BenchmarkValidateAllEntityTags -run '^$' -benchmem -count=3
+```
+
 ### Duplicate Detection
 
 `DuplicateDetector.FindDuplicates` is the most expensive validator, and

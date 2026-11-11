@@ -158,6 +158,9 @@ type QualityAnalyzer struct {
 	references   *ReferenceValidator
 	duplicates   *DuplicateDetector
 	tagValidator *TagValidator
+
+	// checkEntityTags adds the ENTITY_TAGS_DIVERGED check (WithEntityTagsCheck).
+	checkEntityTags bool
 }
 
 // QualityOption is a functional option for configuring QualityAnalyzer.
@@ -183,6 +186,18 @@ func WithDuplicateConfig(config *DuplicateConfig) QualityOption {
 func WithTagRegistry(registry *TagRegistry) QualityOption {
 	return func(a *QualityAnalyzer) {
 		a.tagValidator = NewTagValidator(registry, true)
+	}
+}
+
+// WithEntityTagsCheck returns a QualityOption that adds the
+// ENTITY_TAGS_DIVERGED check to the report's conformance issues. That check
+// encodes and decodes the document to compare its typed fields with its raw
+// Tags, about a round trip's cost (see docs/guides/performance.md), so it is
+// off by default. It is the analyzer's counterpart of
+// ValidatorConfig.CheckEntityTags.
+func WithEntityTagsCheck() QualityOption {
+	return func(a *QualityAnalyzer) {
+		a.checkEntityTags = true
 	}
 }
 
@@ -283,12 +298,15 @@ func (a *QualityAnalyzer) runTagValidator(doc *gedcom.Document, report *QualityR
 // runConformanceChecks runs the spec-conformance checks that ValidateAll runs
 // and the record-quality validators above do not, so the report's counts are
 // not clean for a document ValidateAll flags. The record-level checks come
-// from recordChecks, which ValidateAll also calls; the header and encoding
-// checks mirror ValidateAll's own calls.
+// from recordChecks, which ValidateAll also calls; the header, entity-tags and
+// encoding checks mirror ValidateAll's own calls.
 func (a *QualityAnalyzer) runConformanceChecks(doc *gedcom.Document, report *QualityReport) {
 	var issues []Issue
 	issues = append(issues, NewHeaderValidator().ValidateHeader(doc)...)
 	issues = append(issues, recordChecks(doc, NewXRefValidator(), NewNoteValidator())...)
+	if a.checkEntityTags {
+		issues = append(issues, validateEntityTags(doc)...)
+	}
 	issues = append(issues, NewEncodingValidator().Validate(doc)...)
 	report.ConformanceIssues = append(report.ConformanceIssues, issues...)
 }

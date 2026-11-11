@@ -66,8 +66,13 @@ type Record struct {
 	// round of reads, and is silently absent from the file. There is no error
 	// and no diagnostic.
 	//
-	// Two supported ways to change what a decoded record encodes to:
+	// Three supported ways to change what a decoded record encodes to:
 	//
+	//   - Edit the typed fields, then call encoder.SyncTags on the document.
+	//     It applies the difference to Tags structure by structure and keeps
+	//     every raw tag the edit did not touch, including those the typed
+	//     model does not represent. validator.CodeEntityTagsDiverged reports
+	//     a record whose edits still need it.
 	//   - Edit the matching entry in Tags.
 	//   - Set Tags to nil, so the encoder re-derives the whole record from
 	//     Entity: its typed fields first, then the extension (_-prefixed)
@@ -77,8 +82,10 @@ type Record struct {
 	//     SNOTE takes its value and CONT/CONC lines from the entity's Text
 	//     when that is non-empty.
 	//
-	// The converter keeps both in step and is the safe option when converting
-	// between GEDCOM versions.
+	// Use one route per document. SyncTags makes the typed fields win, so it
+	// reverts an edit made to Tags alone, and converter.Convert edits Tags
+	// without keeping every Entity field in step: encode and decode converted
+	// output before making typed edits on it.
 	Tags []*Tag
 
 	// LineNumber is the line number where the record starts

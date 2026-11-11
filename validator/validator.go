@@ -69,6 +69,17 @@ type ValidatorConfig struct {
 	// This is useful for large files where early termination is desired.
 	MaxErrors int
 
+	// CheckEntityTags enables the ENTITY_TAGS_DIVERGED check, which reports
+	// the header and each record whose typed fields would encode differently
+	// from its raw Tags -- a typed edit Encode would silently drop (see
+	// encoder.SyncTags). It encodes and decodes the document to compare, about
+	// doubling ValidateAll's time (docs/guides/performance.md), and on a
+	// decoded document no one has edited it can never fire, so it is off by
+	// default: turn it on to check edited documents before encoding them.
+	// [Validator.QualityReport] honors it too.
+	// Default: false.
+	CheckEntityTags bool
+
 	// SkipRules specifies issue codes to exclude from validation results.
 	// Issues with codes matching any entry in this slice are filtered out.
 	// Example: []string{"W001", "I002"} to skip warning W001 and info I002.
@@ -176,6 +187,9 @@ func (v *Validator) getQualityAnalyzer() *QualityAnalyzer {
 			}
 			if v.config.TagRegistry != nil {
 				opts = append(opts, WithTagRegistry(v.config.TagRegistry))
+			}
+			if v.config.CheckEntityTags {
+				opts = append(opts, WithEntityTagsCheck())
 			}
 		}
 		v.quality = NewQualityAnalyzer(opts...)
@@ -290,6 +304,15 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	// header and encoding calls in this function have their counterparts in
 	// QualityAnalyzer.runConformanceChecks.
 	allIssues = append(allIssues, recordChecks(doc, v.getXRefValidator(), v.getNoteValidator())...)
+
+	// Report typed edits the encoder would not write, when asked to. It is
+	// outside recordChecks because it reads the document's raw tags back
+	// through the decoder, about a round trip's cost, so it is opt-in
+	// (CheckEntityTags), and a caller who also lists its code in SkipRules
+	// does not pay for it.
+	if v.config != nil && v.config.CheckEntityTags && !v.skips(CodeEntityTagsDiverged) {
+		allIssues = append(allIssues, validateEntityTags(doc)...)
+	}
 
 	// Run duplicate detection and convert to issues, unless it was skipped.
 	// LimitIssues report any surname group that exceeded MaxGroupSize, so the
@@ -493,6 +516,19 @@ func (v *Validator) filterByStrictness(issues []Issue) []Issue {
 	result = v.applyMaxErrors(result)
 
 	return result
+}
+
+// skips reports whether SkipRules lists code.
+func (v *Validator) skips(code string) bool {
+	if v.config == nil {
+		return false
+	}
+	for _, skipped := range v.config.SkipRules {
+		if skipped == code {
+			return true
+		}
+	}
+	return false
 }
 
 // filterBySkipRules removes issues whose code matches any entry in SkipRules.

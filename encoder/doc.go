@@ -80,9 +80,15 @@
 // here: editing a typed field does not change encoded output. Setting
 // indi.Name().Full, fam.Attributes[0].Value or any other typed field on a
 // decoded record succeeds in memory, survives a round of reads, and is silently
-// absent from the file — no error, no diagnostic. Edit the matching entry in
-// Record.Tags instead, or set Record.Tags to nil to have the record rebuilt
-// from Entity. The converter keeps both in step.
+// absent from the file. Call [SyncTags] after the edit: it applies the change
+// to Record.Tags and Header.Tags one structure at a time and keeps every raw
+// tag the edit did not touch, and validator.CodeEntityTagsDiverged reports a
+// document that still needs it. Otherwise edit the matching entry in
+// Record.Tags, or set Record.Tags to nil to have the record rebuilt from
+// Entity. Use one route per document: SyncTags makes the typed fields win, so
+// it reverts an edit made to Tags alone. The converter edits Tags without
+// keeping every Entity field in step, so encode and decode its output before
+// making typed edits on it.
 //
 // A record rebuilt from its Entity is written in two parts. The typed fields
 // come first, as tags; for a NOTE or SNOTE the entity's Text supplies the
@@ -121,9 +127,12 @@
 // consulted on this path, and the header-substructure views (SourceVersion,
 // SourceName, SourceCorporation, Destination, Time, PlaceForm) are never
 // consulted at all. Setting doc.Header.SourceSystem on a decoded
-// document and encoding it does not change the output; edit the corresponding
-// entry in doc.Header.Tags instead. This is the trade the library makes for a
-// lossless header: what was read is what is written.
+// document and encoding it does not change the output; call [SyncTags] first,
+// which carries the scalar fields into Tags, or edit the corresponding entry
+// in doc.Header.Tags. SyncTags does not carry the substructure views.
+//
+// This is the trade the library makes for a lossless header: what was read is
+// what is written.
 //
 // A document assembled in memory has no tags, so its header is built from those
 // typed fields instead.
