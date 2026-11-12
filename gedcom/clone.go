@@ -20,7 +20,11 @@ func (d *Document) Clone() *Document {
 	for i, record := range d.Records {
 		copiedRecord := record.Clone()
 		copied.Records[i] = copiedRecord
-		if copiedRecord != nil && copiedRecord.XRef != "" {
+		if copiedRecord == nil || copiedRecord.XRef == "" {
+			continue
+		}
+		// The first record defining an XRef keeps it (see XRefMap).
+		if _, exists := copied.XRefMap[copiedRecord.XRef]; !exists {
 			copied.XRefMap[copiedRecord.XRef] = copiedRecord
 		}
 	}

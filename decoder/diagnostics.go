@@ -79,6 +79,9 @@ const (
 const (
 	// CodeUnknownTag indicates an unrecognized tag was encountered.
 	// These tags are preserved in raw form but not parsed into typed fields.
+	// It is also reported for a level-0 record whose tag is neither a standard
+	// record type nor an extension ("_" prefix), including a standard type in
+	// the wrong case ("indi"); the record is kept with that Type and no entity.
 	CodeUnknownTag = "UNKNOWN_TAG"
 
 	// CodeInvalidValue indicates a value doesn't match the expected format.
@@ -95,6 +98,13 @@ const (
 	// up to the next level-0 line, are skipped rather than attached to the
 	// preceding record. The message names the skipped line range.
 	CodeSkippedRecord = "SKIPPED_RECORD"
+
+	// CodeDuplicateXRef indicates a level-0 record defines a cross-reference
+	// identifier an earlier record already defined. It carries SeverityError
+	// and the line of the redefinition; the message names the first
+	// definition's line. Both records are kept in Document.Records, and
+	// Document.XRefMap (so every pointer) resolves to the first.
+	CodeDuplicateXRef = "DUPLICATE_XREF"
 )
 
 // Diagnostic represents a single issue encountered during parsing or decoding.

@@ -105,7 +105,9 @@ func TestCorpusVendorFiles(t *testing.T) {
 			// header tags, and this file's header has one -- "1 TIME 14:54"
 			// beside "1 DATE" rather than under it (HEAD.DATE.TIME). It is
 			// the only header tag the change flags anywhere in the corpus.
-			diags: map[string]int{CodeUnknownTag: 162},
+			// 162 -> 163 for issue #724: the nonstandard level-0 record
+			// "0 @R1@ TITL" is reported as an unknown record type.
+			diags: map[string]int{CodeUnknownTag: 163},
 		},
 		{
 			path:        "../testdata/edge-cases/vendor-ancestris11-export.ged",
@@ -226,7 +228,9 @@ func TestCorpusVendorFiles(t *testing.T) {
 			vendor:      gedcom.VendorEasyTree,
 			individuals: 69,
 			families:    19,
-			diags:       map[string]int{CodeUnknownTag: 34},
+			// 34 -> 41 for issue #724: the seven nonstandard level-0
+			// "0 @Cn@ CSTA" records are reported as unknown record types.
+			diags: map[string]int{CodeUnknownTag: 41},
 		},
 		{
 			path:        "../testdata/edge-cases/synium-7.0-utf8.ged",
