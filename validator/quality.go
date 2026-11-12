@@ -49,13 +49,19 @@ type QualityReport struct {
 	// than taking len() of this slice.
 	DuplicateIssues []Issue `json:"duplicate_issues"`
 
+	// CompletenessIssues holds the data-quality heuristics: missing birth
+	// dates and sources (SeverityInfo), and the nameless individuals
+	// (CodeMissingName) and memberless families (CodeEmptyFamily) that
+	// [Validator.ValidateAll] also reports at SeverityWarning. None is a spec
+	// rule.
 	CompletenessIssues []Issue `json:"completeness_issues"`
 	CustomTagIssues    []Issue `json:"custom_tag_issues"`
 
 	// ConformanceIssues holds the spec-conformance checks that
 	// [Validator.ValidateAll] also runs and the categories above do not
-	// cover: the header, encoding and record-level checks. With them the
-	// report's counts cover the same issue set as ValidateAll.
+	// cover: the header, encoding and record-level checks. With them and the
+	// heuristics in CompletenessIssues, the report's counts cover the same
+	// issue set as ValidateAll.
 	ConformanceIssues []Issue `json:"conformance_issues"`
 
 	// Summary counts
@@ -253,7 +259,9 @@ func (a *QualityAnalyzer) Analyze(doc *gedcom.Document) *QualityReport {
 	a.runTagValidator(doc, report)
 	a.runConformanceChecks(doc, report)
 
-	// Calculate completeness metrics and generate completeness issues
+	// Calculate completeness metrics and generate completeness issues,
+	// including the record-structure heuristics ValidateAll also reports.
+	report.CompletenessIssues = append(report.CompletenessIssues, validateRecordStructure(doc)...)
 	a.calculateCompleteness(individuals, report)
 
 	// Aggregate issues by severity
@@ -352,16 +360,6 @@ func (a *QualityAnalyzer) calculateCompleteness(individuals []*gedcom.Individual
 			report.IndividualsWithPlaces++
 		}
 
-		// Check names
-		if len(ind.Names) == 0 {
-			issue := NewIssue(
-				SeverityInfo,
-				CodeMissingName,
-				"individual has no name recorded",
-				ind.XRef,
-			)
-			report.CompletenessIssues = append(report.CompletenessIssues, issue)
-		}
 	}
 
 	// Calculate percentages

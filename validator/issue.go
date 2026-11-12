@@ -111,15 +111,18 @@ const (
 
 // Error codes for record structure validation.
 const (
-	// CodeMissingRequiredField indicates an individual record has no NAME.
-	// It carries SeverityWarning -- the GEDCOM specifications allow an
-	// individual with no name, but a nameless person is rarely intended -- the
-	// line of the record, and the missing tag under Details["field"].
+	// CodeMissingRequiredField was reported for an individual record with no
+	// NAME.
+	//
+	// Deprecated: no check reports it. INDI.NAME is optional ({0:M}) in GEDCOM
+	// 5.5, 5.5.1 and 7.0, so a nameless individual is reported as the
+	// data-quality heuristic [CodeMissingName] instead.
 	CodeMissingRequiredField = "MISSING_REQUIRED_FIELD"
 
 	// CodeEmptyFamily indicates a family record has no HUSB, WIFE or CHIL. It
-	// carries SeverityWarning, as the specifications allow such a family, and
-	// the line of the record.
+	// is a data-quality heuristic, not a spec rule: every GEDCOM version
+	// allows such a family. It carries SeverityWarning and the line of the
+	// record, and [QualityReport] files it under CompletenessIssues.
 	CodeEmptyFamily = "EMPTY_FAMILY"
 )
 
@@ -153,7 +156,12 @@ const (
 	// CodeMissingDeathDate indicates a deceased individual has no death date recorded.
 	CodeMissingDeathDate = "MISSING_DEATH_DATE"
 
-	// CodeMissingName indicates an individual has no name recorded.
+	// CodeMissingName indicates an individual record has no level-1 NAME tag
+	// and no typed name. It is a data-quality heuristic, not a spec rule:
+	// INDI.NAME is optional in every GEDCOM version, but a nameless person is
+	// rarely intended. It carries SeverityWarning, the line of the record and
+	// "NAME" under Details["field"]; [Validator.ValidateAll] reports it and
+	// [QualityReport] files it under CompletenessIssues.
 	CodeMissingName = "MISSING_NAME"
 
 	// CodeNoSources indicates a record has no source citations.

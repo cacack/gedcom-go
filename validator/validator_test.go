@@ -17,9 +17,9 @@ import (
 // tests below that exercise those checks on 5.5 fixtures without a SUBM ignore
 // every other code (notably MISSING_SUBM) rather than build full headers.
 var structureCodes = map[string]bool{
-	CodeBrokenXRef:           true,
-	CodeMissingRequiredField: true,
-	CodeEmptyFamily:          true,
+	CodeBrokenXRef:  true,
+	CodeMissingName: true,
+	CodeEmptyFamily: true,
 }
 
 // issuesFromErrors unwraps each Validate element to its *Issue, failing the
@@ -270,11 +270,11 @@ func TestValidateMissingName(t *testing.T) {
 
 	got := structureIssues(t, New().Validate(doc))
 	if len(got) != 1 {
-		t.Fatalf("structure issues = %v, want exactly one MISSING_REQUIRED_FIELD", got)
+		t.Fatalf("structure issues = %v, want exactly one MISSING_NAME", got)
 	}
 	issue := got[0]
-	if issue.Code != CodeMissingRequiredField || issue.Severity != SeverityWarning {
-		t.Errorf("issue = %v, want SeverityWarning %s", issue, CodeMissingRequiredField)
+	if issue.Code != CodeMissingName || issue.Severity != SeverityWarning {
+		t.Errorf("issue = %v, want SeverityWarning %s", issue, CodeMissingName)
 	}
 	if issue.LineNumber != 4 || issue.RecordXRef != "@I1@" || issue.Details["field"] != "NAME" {
 		t.Errorf("issue = %+v, want line 4, @I1@, field NAME", issue)
@@ -307,7 +307,7 @@ func TestValidateRecordStructure_TypedEntityOnly(t *testing.T) {
 }
 
 // structureRulesFixture raises each record-structure code on a known line:
-// BROKEN_XREF on lines 14 (ASSO) and 18 (nested SOUR), MISSING_REQUIRED_FIELD
+// BROKEN_XREF on lines 14 (ASSO) and 18 (nested SOUR), MISSING_NAME
 // on line 19 (@I2@) and EMPTY_FAMILY on line 21 (@F1@), whose event-level
 // "2 HUSB" is an age structure rather than a member.
 const structureRulesFixture = `0 HEAD
@@ -317,7 +317,7 @@ const structureRulesFixture = `0 HEAD
 2 VERS 5.5.1
 2 FORM LINEAGE-LINKED
 1 CHAR UTF-8
-1 NOTE Record-structure rule fixture: BROKEN_XREF, MISSING_REQUIRED_FIELD and EMPTY_FAMILY, each on a known line.
+1 NOTE Record-structure rule fixture: BROKEN_XREF, MISSING_NAME and EMPTY_FAMILY, each on a known line.
 0 @U1@ SUBM
 1 NAME Test Submitter
 0 @I1@ INDI

@@ -132,9 +132,10 @@ func (c pointerCounts) take(tag, xref string) bool {
 	return true
 }
 
-// validateRecordStructure reports individuals with no name
-// (CodeMissingRequiredField) and families with no members (CodeEmptyFamily),
-// each carrying the line number of the record's level-0 line.
+// validateRecordStructure reports individuals with no name (CodeMissingName)
+// and families with no members (CodeEmptyFamily), each carrying the line number
+// of the record's level-0 line. Both are data-quality heuristics at
+// SeverityWarning, not spec rules: every GEDCOM version allows either record.
 //
 // Both the raw tags and the typed entity are consulted, so a record built in
 // code with a typed entity and no Tags -- which the encoder writes from the
@@ -150,7 +151,7 @@ func validateRecordStructure(doc *gedcom.Document) []Issue {
 			if !individualHasName(record) {
 				issues = append(issues, NewIssue(
 					SeverityWarning,
-					CodeMissingRequiredField,
+					CodeMissingName,
 					"Individual record has no NAME",
 					record.XRef,
 				).

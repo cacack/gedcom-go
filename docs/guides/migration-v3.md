@@ -1781,6 +1781,11 @@ matching. A type assertion on `*validator.ValidationError` stops compiling; a
 bare `err.(validator.Issue)` compiles but never matches, since the elements are
 pointers.
 
+From v3.7.0 a nameless individual is reported as `validator.CodeMissingName`
+(`"MISSING_NAME"`) instead: `INDI.NAME` is optional in every GEDCOM version, so
+`CodeMissingRequiredField` is deprecated and no longer emitted. See
+[Behaviour changes in minor releases](../governance/policies/api-stability.md#behaviour-changes-in-minor-releases).
+
 What changes without a compile error is **what `Validate` returns**:
 
 - **Many more findings.** v2's `Validate` ran three rules and read none of its
