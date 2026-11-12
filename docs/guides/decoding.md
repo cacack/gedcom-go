@@ -81,7 +81,7 @@ Parse-level errors (severity: ERROR):
 | `INVALID_LEVEL` | Level number could not be parsed, is negative, or exceeds 99 (line dropped) |
 | `INVALID_XREF` | Cross-reference identifier that is malformed (contains a space in a document whose header does not declare GEDCOM 5.5 or 5.5.1, or has no closing `@`) or that the grammar forbids where it appears (`0 @X1@ HEAD`, `0 @X1@ TRLR`); the line is kept as a record wherever recovery is possible — see [FEATURES.md](../../FEATURES.md#lenient-parsing--diagnostics) |
 | `EMPTY_LINE` | Unexpected blank line |
-| `INVALID_ENCODING` | Byte that is not valid UTF-8 in input read as UTF-8 (declared `UTF-8` or `ASCII`, or no recognized `CHAR`); replaced with U+FFFD and decoding continues. One per byte; the message names the byte and its column |
+| `INVALID_ENCODING` | Byte that is not valid UTF-8 in input read as UTF-8 (declared `UTF-8` or `ASCII`, or no recognized `CHAR`); replaced with U+FFFD and decoding continues. One per byte, up to `MaxInvalidEncodingDiagnostics` (100), then one diagnostic counting the rest; the message names the byte and its column |
 
 Entity-level warnings (severity: WARNING):
 

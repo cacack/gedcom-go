@@ -96,12 +96,15 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 
 	// Wrap reader with UTF-8 validation. Lenient mode replaces each invalid
 	// UTF-8 byte with U+FFFD and reports it, rather than losing everything
-	// after it (#710).
-	var encodingDiags Diagnostics
+	// after it (#710). The callback must be set even when diagnostics are
+	// not collected: a nil callback fails on the first invalid byte.
+	var encodingDiags invalidUTF8Diagnostics
 	var readerOpts charset.ReaderOptions
 	if !opts.StrictMode {
 		readerOpts.OnInvalidUTF8 = func(e *charset.ErrInvalidUTF8) {
-			encodingDiags = append(encodingDiags, invalidUTF8Diagnostic(e))
+			if collect {
+				encodingDiags.add(e)
+			}
 		}
 	}
 	validatedReader := charset.NewReaderWithOptions(r, readerOpts)
@@ -163,7 +166,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	} else {
 		// Lenient mode: convert parse errors to diagnostics and continue.
 		// Encoding repairs come first: they happen below the parser.
-		diagnostics = encodingDiags
+		diagnostics = encodingDiags.result()
 		diagnostics = append(diagnostics, convertParseErrors(parseErrors)...)
 		if len(parseErrors) > 0 {
 			firstParseErr = parseErrors[0]
@@ -282,6 +285,44 @@ func convertParseErrors(parseErrors []*parser.ParseError) Diagnostics {
 		diagnostics = append(diagnostics, NewParseError(pe.Line, code, pe.Message, pe.Context))
 	}
 	return diagnostics
+}
+
+// MaxInvalidEncodingDiagnostics is the number of per-byte CodeInvalidEncoding
+// diagnostics a lenient decode reports before it stops reporting bytes one by
+// one. Every invalid byte is still replaced; the bytes past the cap are counted
+// in one closing CodeInvalidEncoding diagnostic, so input that is mostly not
+// UTF-8 (a binary file, or a long legacy-encoded export) cannot make the
+// diagnostics grow with the file.
+const MaxInvalidEncodingDiagnostics = 100
+
+// invalidUTF8Diagnostics accumulates the bytes a lenient decode replaced,
+// keeping at most MaxInvalidEncodingDiagnostics of them as diagnostics.
+type invalidUTF8Diagnostics struct {
+	diags         Diagnostics
+	suppressed    int
+	firstOverLine int
+}
+
+func (c *invalidUTF8Diagnostics) add(e *charset.ErrInvalidUTF8) {
+	if len(c.diags) < MaxInvalidEncodingDiagnostics {
+		c.diags = append(c.diags, invalidUTF8Diagnostic(e))
+		return
+	}
+	if c.suppressed == 0 {
+		c.firstOverLine = e.Line
+	}
+	c.suppressed++
+}
+
+// result returns the per-byte diagnostics followed, if the cap was reached, by
+// one diagnostic counting the bytes not reported individually, at the line of
+// the first of them.
+func (c *invalidUTF8Diagnostics) result() Diagnostics {
+	if c.suppressed == 0 {
+		return c.diags
+	}
+	return append(c.diags, NewParseError(c.firstOverLine, CodeInvalidEncoding,
+		fmt.Sprintf("%d further invalid UTF-8 bytes, from this line on, replaced with U+FFFD and not reported individually", c.suppressed), ""))
 }
 
 // invalidUTF8Diagnostic reports an invalid UTF-8 byte that lenient mode

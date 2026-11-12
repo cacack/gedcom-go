@@ -60,7 +60,8 @@ type DecodeOptions struct {
 	//     decoding continues, so a stray Windows-1252 byte costs one character
 	//     rather than the rest of the file; a CodeInvalidEncoding diagnostic
 	//     (SeverityError) is emitted per byte, at its line, with its column in
-	//     the message
+	//     the message, up to [MaxInvalidEncodingDiagnostics]; one further
+	//     diagnostic counts the bytes past that
 	//   - Diagnostics are collected for all issues encountered
 	//   - Use [DecodeWithDiagnostics] to access diagnostics
 	//   - A partial document is returned if any valid records exist

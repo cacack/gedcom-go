@@ -151,3 +151,64 @@ func TestDecodeLenientInvalidUTF8DiagnosticsPerByte(t *testing.T) {
 		t.Errorf("individual = %+v, want the NAME kept with both bytes replaced", indi)
 	}
 }
+
+// Input that is mostly not UTF-8 must not grow the diagnostics with the file:
+// past MaxInvalidEncodingDiagnostics the bytes are still replaced, but are
+// counted in one closing diagnostic instead of reported one by one.
+func TestDecodeLenientInvalidUTF8DiagnosticsCapped(t *testing.T) {
+	const extra = 50
+	var sb strings.Builder
+	sb.WriteString("0 HEAD\n0 @I1@ INDI\n")
+	for i := 0; i < MaxInvalidEncodingDiagnostics; i++ {
+		sb.WriteString("1 NOTE \xE9\n") // lines 3 .. MaxInvalidEncodingDiagnostics+2
+	}
+	sb.WriteString("1 NOTE " + strings.Repeat("\xFF", extra) + "\n")
+	sb.WriteString("0 TRLR\n")
+	overLine := MaxInvalidEncodingDiagnostics + 3
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(sb.String()), DefaultOptions())
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	var enc Diagnostics
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeInvalidEncoding {
+			enc = append(enc, d)
+		}
+	}
+	if len(enc) != MaxInvalidEncodingDiagnostics+1 {
+		t.Fatalf("got %d INVALID_ENCODING diagnostics, want %d per-byte plus one summary", len(enc), MaxInvalidEncodingDiagnostics+1)
+	}
+	lastByte := enc[MaxInvalidEncodingDiagnostics-1]
+	if lastByte.Line != MaxInvalidEncodingDiagnostics+2 || lastByte.Message != "invalid UTF-8 byte 0xE9 at column 8 replaced with U+FFFD" {
+		t.Errorf("last per-byte diagnostic = line %d %q, want the 0xE9 on line %d", lastByte.Line, lastByte.Message, MaxInvalidEncodingDiagnostics+2)
+	}
+	summary := enc[MaxInvalidEncodingDiagnostics]
+	wantMsg := fmt.Sprintf("%d further invalid UTF-8 bytes, from this line on, replaced with U+FFFD and not reported individually", extra)
+	if summary.Line != overLine || summary.Message != wantMsg || summary.Severity != SeverityError {
+		t.Errorf("summary = line %d %v %q, want line %d error %q", summary.Line, summary.Severity, summary.Message, overLine, wantMsg)
+	}
+
+	notes := result.Document.GetIndividual("@I1@").InlineNotes
+	if len(notes) != MaxInvalidEncodingDiagnostics+1 || notes[len(notes)-1] != strings.Repeat("�", extra) {
+		t.Errorf("notes = %q, want every byte past the cap still replaced", notes)
+	}
+}
+
+// Decode discards diagnostics, so it must not build them for invalid bytes,
+// yet must still recover from those bytes.
+func TestDecodeLenientInvalidUTF8NotCollectedWhenDiscarded(t *testing.T) {
+	input, _ := invalidUTF8Probe("1 CHAR UTF-8")
+	result, err := decode(strings.NewReader(input), DefaultOptions(), false)
+	if err != nil {
+		t.Fatalf("decode() error = %v, want the bad byte recovered", err)
+	}
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeInvalidEncoding {
+			t.Errorf("decode(collect=false) kept %v, want encoding diagnostics discarded", d)
+		}
+	}
+	if n := len(result.Document.Individuals()); n != 100 {
+		t.Errorf("decoded %d individuals, want 100", n)
+	}
+}

@@ -69,8 +69,9 @@ const (
 	// encoding: a byte outside any valid UTF-8 sequence in input read as
 	// UTF-8 (declared UTF-8 or ASCII, or undeclared). In lenient mode the byte
 	// is replaced with U+FFFD and decoding continues; one diagnostic is
-	// emitted per byte, with its column in the message. Strict mode fails
-	// with a *charset.ErrInvalidUTF8 instead.
+	// emitted per byte, with its column in the message, for the first
+	// [MaxInvalidEncodingDiagnostics] bytes, and one more counts any bytes
+	// after those. Strict mode fails with a *charset.ErrInvalidUTF8 instead.
 	CodeInvalidEncoding = "INVALID_ENCODING"
 )
 

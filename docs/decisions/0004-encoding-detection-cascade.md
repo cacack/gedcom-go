@@ -78,7 +78,10 @@ depends on the decoding mode ([#710](https://github.com/cacack/gedcom-go/issues/
 - **Lenient mode** replaces each invalid byte with U+FFFD and reports it as an
   `INVALID_ENCODING` diagnostic with its line and column, then continues. The
   line and every record after it are kept; only the character the byte stood
-  for is lost, and the diagnostic says where.
+  for is lost, and the diagnostic says where. Per-byte diagnostics stop at
+  `decoder.MaxInvalidEncodingDiagnostics` (100); one more counts the bytes
+  after that, so a file that is mostly not UTF-8 cannot grow the diagnostics
+  with its size (the same bound-the-output stance as ADR 0009).
 
 Replacement rather than reinterpreting the byte as Windows-1252 keeps the
 cascade free of heuristics (Option B below): a guess could be wrong as often as
