@@ -24,6 +24,11 @@ func (r *Record) Find(path ...string) *Tag {
 // are skipped, a tag below level 1 ends every branch, and a tag whose level
 // skips past its parent's child level (a level 3 directly under a level 1)
 // matches no path.
+//
+// A tag's Value is one physical line. The decoder keeps CONT and CONC lines as
+// separate child tags, so a continued value's later segments are in Subtree
+// (or FindAll with a trailing "CONT" or "CONC"), not in Value; setting Value
+// replaces only the first segment and leaves those children in place.
 func (r *Record) FindAll(path ...string) []*Tag {
 	if r == nil {
 		return nil
@@ -33,11 +38,12 @@ func (r *Record) FindAll(path ...string) []*Tag {
 
 // Subtree returns t followed by every tag nested beneath it, the contiguous
 // run of r.Tags that starts at t and ends before the next tag at t's level or
-// shallower. It returns nil when t is not in r.Tags (compared by pointer) or
-// r is nil.
+// shallower, as measured by t's current Level. It returns nil when t is not
+// in r.Tags (compared by pointer) or r is nil.
 //
 // The result is a view of r.Tags, not a copy: its elements are the record's
-// tags. Its capacity is capped at its length, so appending to it copies
+// tags, including any nil entries inside the run (the decoder never stores
+// nil, but a hand-built Tags slice may). Its capacity is capped at its length, so appending to it copies
 // rather than overwriting the tags that follow.
 func (r *Record) Subtree(t *Tag) []*Tag {
 	if r == nil {

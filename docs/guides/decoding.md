@@ -220,6 +220,10 @@ for _, resi := range rec.FindAll("RESI") {     // every level-1 RESI, in order
 }
 ```
 
+A tag's `Value` is a single physical line: the decoder keeps `CONT` and `CONC`
+lines as child tags, so a continued value's remaining text is in its `Subtree`,
+not in `Value`.
+
 A path starts at level 1 and each element is one level deeper, so
 `Find("NAME")` is a name of the record, never a `NAME` nested under another
 structure. `Find` returns the first match in document order, or nil;

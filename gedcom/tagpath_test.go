@@ -102,6 +102,9 @@ func TestRecordSubtree(t *testing.T) {
 	if !slices.Equal(got, tags[6:12]) {
 		t.Fatalf("Subtree(BIRT) = %v, want tags[6:12]", got)
 	}
+	if got[4] != nil {
+		t.Errorf("Subtree(BIRT)[4] = %+v, want the nil entry kept in the view", got[4])
+	}
 	if cap(got) != len(got) {
 		t.Errorf("Subtree capacity = %d, want %d", cap(got), len(got))
 	}
