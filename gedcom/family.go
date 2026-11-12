@@ -25,6 +25,16 @@ type Family struct {
 	// XRef slice, so it stays in Tags (ADR 0010).
 	Children []string
 
+	// ChildLinks are the per-child relationships to the father and mother
+	// that vendor exports record under a CHIL line as _FREL and _MREL
+	// (Family Tree Maker, Ancestry, Legacy), in file order. A CHIL with
+	// neither tag has no entry, so Children stays the list of children and
+	// ChildLinks only adds to it. The encoder writes each link under the
+	// first CHIL in Children with the same XRef that has no link yet; a link
+	// whose XRef is not in Children is not written. On a decoded family,
+	// edits reach the output only through encoder.SyncTags. See ChildLink.
+	ChildLinks []ChildLink
+
 	// Events contains family events (marriage, divorce, etc.) in file order.
 	//
 	// It also holds GEDCOM 7.0 negative assertions (n NO <EVENT>), decoded as
@@ -80,6 +90,48 @@ type Family struct {
 	// the extension (_-prefixed) level-1 tags here after its typed fields.
 	// See Record.Tags for the rule that governs what a decoded record writes.
 	Tags []*Tag
+}
+
+// ChildLink is a child's relationship to each parent of a family, from the
+// vendor extensions _FREL (to the father) and _MREL (to the mother) beneath
+// the family's CHIL line:
+//
+//	1 CHIL @I3@
+//	2 _FREL Natural
+//	2 _MREL Adopted
+//
+// The values are kept as written (Natural, Adopted, Step, Foster, Guardian,
+// ...); an absent tag leaves its field empty. This is how Family Tree Maker,
+// Ancestry and Legacy record adoption and step relationships, which GEDCOM
+// models only as a single PEDI on the child's FAMC (FamilyLink.Pedigree).
+type ChildLink struct {
+	// XRef is the child the relationships describe, matching an entry in
+	// Family.Children.
+	XRef string
+
+	// FatherRelation is the _FREL value: the child's relationship to the
+	// family's husband.
+	FatherRelation string
+
+	// MotherRelation is the _MREL value: the child's relationship to the
+	// family's wife.
+	MotherRelation string
+}
+
+// LinkForChild returns the first ChildLink whose XRef is xref, or nil if the
+// family records no relationship for that child. The pointer refers into
+// ChildLinks, so writes through it edit the family; appending to ChildLinks
+// may invalidate it. Safe on a nil receiver.
+func (f *Family) LinkForChild(xref string) *ChildLink {
+	if f == nil {
+		return nil
+	}
+	for k := range f.ChildLinks {
+		if f.ChildLinks[k].XRef == xref {
+			return &f.ChildLinks[k]
+		}
+	}
+	return nil
 }
 
 // AllNotes returns this family's inline notes followed by the text of any

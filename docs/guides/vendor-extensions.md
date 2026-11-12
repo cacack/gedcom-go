@@ -112,6 +112,7 @@ order. Unrecognized sources return `VendorUnknown` — never an error.
 |-----|----------|--------|
 | `_APID` | source citation | **typed:** `SourceCitation.AncestryAPID` |
 | `_TREE` | header (`HEAD.SOUR`) | **typed:** `Header.AncestryTreeID` |
+| `_FREL`, `_MREL` | family `CHIL` | **typed:** `Family.ChildLinks` (see [`_FREL` / `_MREL`](#_frel--_mrel--child-relationships)) |
 | `_MILT` | individual | raw `Tags` (validated by registry) |
 | `_DEST` | emigration/immigration event | raw `Tags` (validated by registry) |
 | `_PRIM` | media object | raw `Tags` (validated by registry, Y/N) |
@@ -196,12 +197,13 @@ field but are preserved in raw `Tags` (see the escape-hatch example above).
 ## MyHeritage
 
 MyHeritage exports are detected (`VendorMyHeritage`) and preserved losslessly.
-Apart from `_UID` (below), none of its extensions have typed accessors; all are
-reachable via raw `Tags` (records) and `Header.Tags` (header).
+Apart from `_UID` and `_MARNM` (below), none of its extensions have typed
+accessors; all are reachable via raw `Tags` (records) and `Header.Tags` (header).
 
 | Tag | Location | Notes |
 |-----|----------|-------|
 | `_UID` | individual, family, event | **typed:** `UIDs` (see [`_UID`](#_uid--record-and-event-identifiers)) |
+| `_MARNM` | individual `NAME` | **typed:** `PersonalName.MarriedName` (see [`_MARNM`](#_marnm--married-names)) |
 | `RIN` | individual | per-record identifier, preserved in raw `Tags` |
 | `_RTLSAVE`, `_PROJECT_GUID`, `_EXPORTED_FROM_SITE_ID` | header | preserved in `Header.Tags` |
 
@@ -227,7 +229,8 @@ Gramps, Legacy Family Tree, Heredis, Family Historian, Family Tree Maker and
 the other vendors in the [detection table](#vendor-detection) are parsed and
 their custom tags preserved losslessly via raw `Tags`. Exports from software
 that detection does not recognize fall through to `VendorUnknown` but are still
-fully preserved. See [compatibility](../governance/policies/compatibility.md) for the per-vendor support
+fully preserved. Legacy's `_FREL`/`_MREL` are typed, as for Family Tree Maker
+(see [`_FREL` / `_MREL`](#_frel--_mrel--child-relationships)). See [compatibility](../governance/policies/compatibility.md) for the per-vendor support
 matrix and tested fixtures.
 
 ## `_UID` — record and event identifiers
@@ -260,6 +263,73 @@ for _, uid := range indi.UIDs { // "_UID" in a 5.5.1 export, "UID" in 7.0
 }
 ```
 
+## `_FREL` / `_MREL` — child relationships
+
+Family Tree Maker, Ancestry and Legacy record a child's relationship to each
+parent beneath the family's `CHIL` line: 1,245 `_FREL` and 1,183 `_MREL` in
+`pres2020.ged` alone. GEDCOM itself has only `PEDI` on the child's `FAMC`,
+which these exports rarely write, so this is where adoption, step and foster
+relationships live.
+
+```
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+2 _FREL Natural
+2 _MREL Step
+```
+
+- **Decoding** adds a `gedcom.ChildLink{XRef, FatherRelation, MotherRelation}`
+  to `Family.ChildLinks` for each `CHIL` with either tag, in file order, with
+  the values as written (`Natural`, `Adopted`, `Step`, `Foster`, `Guardian`,
+  ...). A `CHIL` with neither has no entry; `Children` is unchanged.
+  `Family.LinkForChild(xref)` returns a child's link, or nil.
+- **Encoding** a family from its entity writes each link as `_FREL`/`_MREL`
+  under the first `CHIL` of its `XRef`. A link whose `XRef` is not in
+  `Children` is not written.
+- **Converting** to a later version adds a `PEDI` to the child's `FAMC` when
+  the mapping is unambiguous: each parent the family names (`HUSB` for
+  `_FREL`, `WIFE` for `_MREL`) has a relationship, every one maps to the same
+  `PEDI` value (`Adopted` → `adopted`, `Foster` → `foster`, `Sealing` →
+  `sealing`; upper case for 7.0), and that value is not birth. So
+  `_FREL Adopted` with `_MREL Adopted` adds `PEDI adopted`, while
+  `Natural`/`Step`, or Legacy's `_FREL Adopted` alone in a family with a wife,
+  adds nothing. An existing `PEDI` is kept, and the vendor tags stay. Each
+  `PEDI` added is a `Normalized` note under `PEDIGREE_FROM_VENDOR_TAG`.
+
+```go
+fam := doc.GetFamily("@F1@")
+if link := fam.LinkForChild("@I3@"); link != nil {
+    fmt.Println(link.FatherRelation, link.MotherRelation) // "Natural Step"
+}
+```
+
+## `_MARNM` — married names
+
+MyHeritage Family Tree Builder writes a married surname as `_MARNM` beneath the
+`NAME` (724 in `mhftb8-export.ged`), the only place it survives in those
+exports.
+
+```
+1 NAME Margaret Agnes /Franke/
+2 GIVN Margaret Agnes
+2 SURN Franke
+2 _MARNM Gascoigne
+```
+
+- **Decoding** fills `PersonalName.MarriedName` ("Gascoigne"), as written.
+- **Encoding** a name from its entity writes it back as `_MARNM`.
+- **Converting** to 7.0 adds a `NAME` with `TYPE MARRIED` after the name, which
+  is how 7.0 records a married name: `1 NAME Margaret Agnes /Gascoigne/` with
+  `2 TYPE MARRIED`. The `_MARNM` value replaces the name's surname; a value
+  holding a slash is taken as a full name and used as it is. A matching
+  `TYPE MARRIED` name already present is not added again, and `_MARNM` stays.
+  Each name added is a `Normalized` note under `MARRIED_NAME_FROM_VENDOR_TAG`.
+
+As with every converter transform, these act on `Record.Tags`; a hand-built
+record with no `Tags` is not changed.
+
 ## Typed vs preserved-raw — quick reference
 
 | Tag | Vendor | Typed field / method | Preserved raw |
@@ -270,6 +340,8 @@ for _, uid := range indi.UIDs { // "_UID" in a 5.5.1 export, "UID" in 7.0
 | `EXID` | FamilySearch (7.0) | `Individual.ExternalIDs`, `Source.ExternalIDs` | ✓ |
 | `_MILT`, `_DEST`, `_PRIM`, `_PHOTO` | Ancestry | — | ✓ |
 | `_FSORD`, `_FSTAG`, `_HASH`, `_LHASH` | FamilySearch | — | ✓ |
+| `_FREL`, `_MREL` | Family Tree Maker, Ancestry, Legacy | `Family.ChildLinks` (`.LinkForChild()`) | ✓ |
+| `_MARNM` | MyHeritage | `PersonalName.MarriedName` | ✓ |
 | `_UID` | MyHeritage, PAF, RootsMagic, Legacy, Family Historian | `UIDs` on `Individual`, `Family`, `Source`, `MediaObject`, `Event`, `Attribute` | ✓ |
 | `RIN`, header exts | MyHeritage | — | ✓ |
 | `_PRIM`, `_SDATE`, `_TMPLT` | RootsMagic | — | ✓ |

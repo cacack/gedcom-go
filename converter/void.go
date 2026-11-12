@@ -205,6 +205,7 @@ func (p *voidPruner) family(f *gedcom.Family) {
 	p.clear(&f.Husband)
 	p.clear(&f.Wife)
 	f.Children = p.strings(f.Children)
+	f.ChildLinks = deleteVoid(p, f.ChildLinks, func(l gedcom.ChildLink) string { return l.XRef })
 	f.NoteXRefs = p.strings(f.NoteXRefs)
 	f.SourceCitations = p.citations(f.SourceCitations)
 	f.Media = p.mediaLinks(f.Media)

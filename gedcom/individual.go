@@ -108,6 +108,13 @@ type PersonalName struct {
 	// SurnamePrefix is the surname prefix (e.g., "von", "de", "van der")
 	SurnamePrefix string
 
+	// MarriedName is the married name from the vendor extension _MARNM
+	// (MyHeritage), kept as written. MyHeritage writes the married surname
+	// alone ("Gascoigne"); GEDCOM 7.0 instead records a married name as a
+	// separate NAME with TYPE MARRIED, which converter.Convert adds from the
+	// record's _MARNM tag (so only for a record that has Tags).
+	MarriedName string
+
 	// Type is the name type (e.g., "birth", "married", "aka")
 	Type string
 

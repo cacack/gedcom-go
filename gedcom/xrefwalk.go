@@ -536,6 +536,9 @@ func walkFamily(f *Family, cb refCallback) {
 	for k := range f.Children {
 		cb(&f.Children[k])
 	}
+	for k := range f.ChildLinks {
+		cb(&f.ChildLinks[k].XRef)
+	}
 	walkNotes(f.NoteXRefs, cb)
 	walkCitations(f.SourceCitations, cb)
 	walkMediaLinks(f.Media, cb)

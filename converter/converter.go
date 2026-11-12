@@ -183,6 +183,7 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 //nolint:unparam // error return kept for API consistency with other converters
 func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
 	transformHeader(doc, gedcom.Version551, report)
+	synthesizePedigrees(doc, report, gedcom.Version551)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
 	}
@@ -213,6 +214,8 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
 	transformUIDTags(doc, report, gedcom.Version70)
+	synthesizePedigrees(doc, report, gedcom.Version70)
+	marriedNamesToV7(doc, report)
 	variations.report(doc, report, gedcom.Version70)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)
@@ -261,6 +264,8 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 	transformMediaTypes(doc, gedcom.Version70, report)
 	transformHeader(doc, gedcom.Version70, report)
 	transformUIDTags(doc, report, gedcom.Version70)
+	synthesizePedigrees(doc, report, gedcom.Version70)
+	marriedNamesToV7(doc, report)
 	variations.report(doc, report, gedcom.Version70)
 	if opts.ReportPreservedTags {
 		recordPreservedUnknownTags(doc, report)

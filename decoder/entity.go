@@ -332,6 +332,8 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCol
 				name.Nickname = collector.text(tagToken(tag.Value))
 			case "SPFX":
 				name.SurnamePrefix = collector.text(tagToken(tag.Value))
+			case "_MARNM":
+				name.MarriedName = collector.text(tagToken(tag.Value))
 			case "TYPE":
 				name.Type = collector.text(tag.Value)
 				name.TypePhrase = collector.text(findSubordinate(tags, i, "PHRASE"))
@@ -1204,7 +1206,14 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			fam.WifePhrase = collector.text(findSubordinate(record.Tags, i, "PHRASE"))
 
 		case "CHIL":
-			fam.Children = append(fam.Children, tagToken(tag.Value))
+			child := tagToken(tag.Value)
+			fam.Children = append(fam.Children, child)
+			father := collector.text(tagToken(findSubordinate(record.Tags, i, "_FREL")))
+			mother := collector.text(tagToken(findSubordinate(record.Tags, i, "_MREL")))
+			if father != "" || mother != "" {
+				fam.ChildLinks = append(fam.ChildLinks,
+					gedcom.ChildLink{XRef: child, FatherRelation: father, MotherRelation: mother})
+			}
 
 		case "NCHI", "FACT":
 			attr := parseAttribute(record.Tags, i, tag.Tag, familyOwner, collector)
