@@ -36,6 +36,7 @@ const recordMetadata551 = `0 HEAD
 0 @N1@ NOTE Note text
 1 REFN N-1
 2 TYPE note number
+1 _UID n-1
 1 SOUR @S1@
 2 PAGE p. 7
 1 CHAN
@@ -125,6 +126,9 @@ func TestRecordMetadataTyped551(t *testing.T) {
 	}
 	if note.ChangeDate == nil || note.ChangeDate.Date != "3 MAR 2002" {
 		t.Errorf("Note.ChangeDate = %+v, want DATE 3 MAR 2002", note.ChangeDate)
+	}
+	if want := []string{"n-1"}; !reflect.DeepEqual(note.UIDs, want) {
+		t.Errorf("Note.UIDs = %q, want %q", note.UIDs, want)
 	}
 }
 

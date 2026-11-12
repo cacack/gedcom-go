@@ -243,9 +243,8 @@ GEDCOM 7.0 standardised as `UID`. The library treats the two as one
 identifier under two spellings:
 
 - **Decoding** fills `UIDs` from either tag on `Individual`, `Family`,
-  `Source`, `MediaObject`, `Event` and `Attribute`, in file order. The raw
-  `_UID` tag stays in `Tags`. A `_UID` on a `SUBM` record, which has no `UIDs`
-  field, stays in `Tags` only.
+  `Source`, `MediaObject`, `Repository`, `Submitter`, `Note`, `SharedNote`,
+  `Event` and `Attribute`, in file order. The raw `_UID` tag stays in `Tags`.
 - **Encoding** a record from its entity writes `UIDs` as `_UID` when the
   output version is 5.5 or 5.5.1, and as `UID` for 7.0 (or when the version is
   unknown). `Document.MinimumVersion` therefore does not count UIDs as a 7.0

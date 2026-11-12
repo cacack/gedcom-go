@@ -410,6 +410,7 @@ func (n *Note) Clone() *Note {
 		Text:        n.Text,
 		ChangeDate:  cloneChangeDate(n.ChangeDate),
 		RefNumbers:  cloneRefNumbers(n.RefNumbers),
+		UIDs:        cloneStringSlice(n.UIDs),
 		ExternalIDs: cloneExternalIDs(n.ExternalIDs),
 		Tags:        CloneTags(n.Tags),
 	}

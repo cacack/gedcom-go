@@ -10,9 +10,9 @@ import "github.com/cacack/gedcom-go/v3/gedcom"
 //
 // Both representations are rewritten: the record's Type and Entity (a Note
 // becomes a SharedNote with the same XRef, Text, SourceCitations, ChangeDate,
-// RefNumbers and ExternalIDs), and each pointer in record.Tags and
-// doc.Header.Tags. Typed NoteXRefs are left
-// as they are; the encoder writes one naming an SNOTE record as SNOTE.
+// RefNumbers, UIDs and ExternalIDs), and each pointer in record.Tags and
+// doc.Header.Tags. Typed NoteXRefs are left as they are; the encoder writes
+// one naming an SNOTE record as SNOTE.
 // A NOTE pointer that names no NOTE record is left unchanged.
 //
 // It runs after normalizeXRefsForV7, so records and pointers already carry
@@ -38,6 +38,7 @@ func upgradeNoteRecordsForV7(doc *gedcom.Document, report *gedcom.ConversionRepo
 				SourceCitations: note.SourceCitations,
 				ChangeDate:      note.ChangeDate,
 				RefNumbers:      note.RefNumbers,
+				UIDs:            note.UIDs,
 				ExternalIDs:     note.ExternalIDs,
 				// The record's tags, as the decoder fills SharedNote.Tags:
 				// note.Tags still holds the CONC/CONT lines folded away by

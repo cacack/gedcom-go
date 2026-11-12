@@ -23,12 +23,12 @@ func TestRecordMetadataClearedTagsRoundTrip(t *testing.T) {
 				"0 @U1@ SUBM\n1 NAME Submitter\n1 _UID u-1\n1 CHAN\n2 DATE 1 JAN 2000\n3 TIME 10:20:30\n2 NOTE Changed\n" +
 				"0 @R1@ REPO\n1 NAME Archive\n1 REFN R-1\n2 TYPE shelf\n1 CHAN\n2 DATE 2 FEB 2001\n" +
 				"0 @S1@ SOUR\n1 TITL Register\n" +
-				"0 @N1@ NOTE Note text\n1 REFN N-1\n2 TYPE note number\n1 SOUR @S1@\n2 PAGE p. 7\n1 CHAN\n2 DATE 3 MAR 2002\n" +
+				"0 @N1@ NOTE Note text\n1 REFN N-1\n2 TYPE note number\n1 _UID n-1\n1 SOUR @S1@\n2 PAGE p. 7\n1 CHAN\n2 DATE 3 MAR 2002\n" +
 				"0 TRLR\n",
 			want: []string{
 				"0 @U1@ SUBM\n1 NAME Submitter\n1 _UID u-1\n1 CHAN\n2 DATE 1 JAN 2000\n3 TIME 10:20:30\n2 NOTE Changed\n",
 				"0 @R1@ REPO\n1 NAME Archive\n1 REFN R-1\n2 TYPE shelf\n1 CHAN\n2 DATE 2 FEB 2001\n",
-				"0 @N1@ NOTE Note text\n1 REFN N-1\n2 TYPE note number\n1 SOUR @S1@\n2 PAGE p. 7\n1 CHAN\n2 DATE 3 MAR 2002\n",
+				"0 @N1@ NOTE Note text\n1 REFN N-1\n2 TYPE note number\n1 _UID n-1\n1 SOUR @S1@\n2 PAGE p. 7\n1 CHAN\n2 DATE 3 MAR 2002\n",
 			},
 		},
 		{

@@ -21,6 +21,12 @@ type Note struct {
 	// with its optional TYPE, in file order.
 	RefNumbers []RefNumber
 
+	// UIDs are unique identifiers, in file order. 5.5.1 defines no UID; the
+	// vendor _UID (or a stray UID) is read here, and the encoder writes them
+	// as _UID for 5.5/5.5.1 output, so a NOTE record converted to and from a
+	// 7.0 SNOTE keeps them (SharedNote.UIDs).
+	UIDs []string
+
 	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
 	// Links this record to external systems like FamilySearch, Ancestry, etc.
 	ExternalIDs []*ExternalID

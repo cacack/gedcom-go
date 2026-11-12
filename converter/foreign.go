@@ -122,8 +122,9 @@ type foreignDrop struct {
 //
 // It runs after every pass that maps a structure into its target form, so it
 // removes only what is left: what has no target form at all. A record with no
-// Tags is written from its entity, which carries only typed fields, and is
-// not walked.
+// Tags is written from its entity and is not walked; the one typed field
+// such a record can hold that the target lacks, and no earlier pass clears,
+// is cleared instead (clearForeignEntityFields).
 func dropForeignStructures(doc *gedcom.Document, dir *foreignStructures, report *gedcom.ConversionReport, targetVersion gedcom.Version) {
 	var drops []foreignDrop
 	if doc.Header != nil {
@@ -134,7 +135,7 @@ func dropForeignStructures(doc *gedcom.Document, dir *foreignStructures, report 
 		}
 	}
 	for _, record := range doc.Records {
-		if record == nil || len(record.Tags) == 0 {
+		if record == nil {
 			continue
 		}
 		root := string(record.Type)
@@ -142,7 +143,11 @@ func dropForeignStructures(doc *gedcom.Document, dir *foreignStructures, report 
 			root = alias
 		}
 		var dropped [][]string
-		record.Tags, dropped = dir.walk(record.Tags, root)
+		if len(record.Tags) == 0 {
+			dropped = dir.clearForeignEntityFields(record, root)
+		} else {
+			record.Tags, dropped = dir.walk(record.Tags, root)
+		}
 		for _, path := range dropped {
 			drops = append(drops, foreignDrop{recordType: string(record.Type), xref: record.XRef, path: path})
 		}
@@ -159,10 +164,7 @@ func (dir *foreignStructures) walk(tags []*gedcom.Tag, root string) (kept []*ged
 		tag        string
 		candidates []candidate // what this tag can be in the source; nil when unknown
 	}
-	var top []candidate
-	for _, s := range dir.source[""][root] {
-		top = append(top, candidate{structure: s})
-	}
+	top := dir.recordCandidates(root)
 	if len(top) == 0 {
 		return tags, nil
 	}
@@ -206,6 +208,37 @@ func (dir *foreignStructures) walk(tags []*gedcom.Tag, root string) (kept []*ged
 		return tags, dropped
 	}
 	return out, dropped
+}
+
+// recordCandidates returns what the top-level tag root can be in the source.
+func (dir *foreignStructures) recordCandidates(root string) []candidate {
+	var top []candidate
+	for _, s := range dir.source[""][root] {
+		top = append(top, candidate{structure: s})
+	}
+	return top
+}
+
+// clearForeignEntityFields clears, on the entity of a record with no Tags,
+// each typed field the encoder writes as a level-1 structure the target
+// lacks, and returns a path per value cleared, as walk does per block. Only
+// Submitter.RefNumbers needs it: REFN is 7.0-only on SUBM but valid on the
+// other records, so it is not in v7OnlyTags, whose fields
+// clearV7OnlyEntityFields clears earlier.
+func (dir *foreignStructures) clearForeignEntityFields(record *gedcom.Record, root string) [][]string {
+	subm, ok := record.Entity.(*gedcom.Submitter)
+	if !ok || subm == nil || len(subm.RefNumbers) == 0 {
+		return nil
+	}
+	if _, foreign := dir.classify(dir.recordCandidates(root), "REFN"); !foreign {
+		return nil
+	}
+	dropped := make([][]string, len(subm.RefNumbers))
+	for i := range dropped {
+		dropped[i] = []string{"REFN"}
+	}
+	subm.RefNumbers = nil
+	return dropped
 }
 
 // skipBlock returns the index just past the block tags[i] opens, and out

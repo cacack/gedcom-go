@@ -211,8 +211,8 @@ if indi.FamilySearchID != "" {
 ### `_UID` (MyHeritage, PAF, RootsMagic, Legacy, Family Historian)
 
 `_UID` fills the same `UIDs` fields as GEDCOM 7.0's `UID`, on `Individual`,
-`Family`, `Source`, `MediaObject`, `Event` and `Attribute`; the raw tag stays
-in `Tags`. The encoder writes `UIDs` as `_UID` for 5.5/5.5.1 output and `UID`
+`Family`, `Source`, `MediaObject`, `Repository`, `Submitter`, `Note`,
+`SharedNote`, `Event` and `Attribute`; the raw tag stays in `Tags`. The encoder writes `UIDs` as `_UID` for 5.5/5.5.1 output and `UID`
 for 7.0. See [vendor extensions](docs/guides/vendor-extensions.md#_uid--record-and-event-identifiers).
 
 ### `_FREL`/`_MREL` (Family Tree Maker, Ancestry, Legacy) and `_MARNM` (MyHeritage)
@@ -649,7 +649,8 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 
 - Cross-reference ID (`@N1@`)
 - Text content with continuation
-- `SourceCitations` (SOUR), `ChangeDate` (CHAN) and `RefNumbers` (REFN)
+- `SourceCitations` (SOUR), `ChangeDate` (CHAN), `RefNumbers` (REFN) and
+  `UIDs` (the vendor `_UID`; 5.5.1 defines no UID)
 - Split note fields on note-bearing records (Individual, Family, Source,
   Repository, Submitter, Submission, MediaObject) and on the note-bearing substructures
   (PersonalName, Event, Attribute, SourceCitation, LDSOrdinance, ChangeDate, Association,
@@ -1210,7 +1211,7 @@ silently.
   `Individual`, `Family`, `Source`, `MediaObject`, `Repository`, `Submitter`, `Note`
   and `SharedNote` (`RefNumbers`); every occurrence is kept in file order
 - UID - Unique identifiers, as `UIDs []string` on `Individual`, `Family`, `Source`,
-  `MediaObject`, `Repository`, `Submitter`, `SharedNote`, `Event` and `Attribute`;
+  `MediaObject`, `Repository`, `Submitter`, `Note`, `SharedNote`, `Event` and `Attribute`;
   every occurrence is kept in file order
 - CHAN - Change date with DATE and TIME, as `ChangeDate` on every record type
   except `Header`
@@ -1708,7 +1709,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | Date epochs and phrases | Both | Spells the B.C. epoch `BCE` for 7.0 (from `B.C.`, `BC`, `B.C.E.`) and `B.C.` for 5.x; moves `INT <date> (<phrase>)` to `DATE <date>` + `PHRASE` and `(<phrase>)` to an empty `DATE` + `PHRASE` for 7.0, and folds a `DATE` + `PHRASE` back into those forms for 5.x. A phrase with no target form is reported (DataLoss `Date phrases` and a Preserved note on the upgrade; the `PHRASE tags` DataLoss on the downgrade) |
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |
 | Long lines to CONC | Downgrade from 7.0 | Splits a value line past 5.x's 255-character limit onto CONC tags, between two non-spaces, so the encoded output has no over-length line and decodes back to the same text |
-| `SNOTE` → Note records | Downgrade from 7.0 | `SNOTE` records become `NOTE` records, and `SNOTE` pointers become `NOTE` pointers; the record's `MIME` and `LANG` are removed and reported as data loss |
+| `SNOTE` → Note records | Downgrade from 7.0 | `SNOTE` records become `NOTE` records, and `SNOTE` pointers become `NOTE` pointers; the record's `MIME` and `LANG` are removed and reported as data loss; an entity-only `SUBM`'s `RefNumbers` (`REFN`, which 5.5.1 `SUBM` lacks) are cleared and reported as `SUBM.REFN structures` |
 | 7.0-only tags removed | Downgrade from 7.0 | `EXID`, `TRAN`, `PHRASE` and `CREA` are removed from `Record.Tags` with their subordinates, and from the typed entity's record-level fields, and reported as data loss |
 | `RESN` values | Both | Restriction keywords at any level are upper-cased for 7.0 and lower-cased for 5.x (`RESTRICTION_VALUES_MAPPED`); a 7.0 list downgrades to its most protective keyword (privacy, confidential, locked), the rest reported as data loss |
 | `UID` ↔ `_UID` | Both | `_UID`, the extension every 5.5.x desktop producer writes for the identifier 7.0 standardised as `UID`, is renamed to `UID` on an upgrade wherever 7.0 defines `UID` (level 1 of a record, level 2 under an event or attribute) and `UID` to `_UID` at any level on a downgrade (`UID_FROM_VENDOR_TAG`, `UID_TO_VENDOR_TAG`); neither is data loss |
@@ -1822,7 +1823,7 @@ Full support for encoding typed entities back to GEDCOM format:
 | Repository | Name, address, contact info (phone, email, fax, website), notes, change/creation dates, REFN, UID |
 | Submitter | Name, address, contact info, languages, change/creation dates, REFN, UID |
 | Submission | Submitter ref, FAMF, TEMP, ANCE, DESC, ORDI, RIN, notes, change date |
-| Note | Text with continuation lines, citations, REFN, change date |
+| Note | Text with continuation lines, citations, REFN, UID, change date |
 | MediaObject | Files, formats, translations, citations |
 
 A line break in a value is written as `CONT` lines. A line break in a tag name or identifier (`Tag.Tag`, `Tag.XRef`, `Record.Type`, `Record.XRef`, `Header.Submitter`, or an entity field that becomes a tag name such as `Event.Type`) has no GEDCOM spelling, so encoding returns `encoder.ErrLineBreak` rather than writing a line that could re-decode as a forged record.

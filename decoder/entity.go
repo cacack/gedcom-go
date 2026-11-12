@@ -2052,7 +2052,10 @@ func parseNote(record *gedcom.Record, collector *diagnosticCollector) *gedcom.No
 		case "REFN":
 			note.RefNumbers = append(note.RefNumbers, parseRefNumber(record.Tags, i, collector))
 
-		case "MIME", "LANG", "TRAN", "UID", "RIN":
+		case "UID", "_UID":
+			note.UIDs = append(note.UIDs, collector.text(tag.Value))
+
+		case "MIME", "LANG", "TRAN", "RIN":
 			// Known tags not yet parsed into typed fields (RIN: #730)
 
 		default:

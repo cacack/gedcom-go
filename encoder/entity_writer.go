@@ -704,6 +704,9 @@ func noteToTags(note *gedcom.Note, opts *EncodeOptions) []*gedcom.Tag {
 	// Reference numbers (level 1) - REFN, each with its optional TYPE
 	tags := refNumbersToTags(note.RefNumbers, opts)
 
+	// UIDs (level 1) - _UID for 5.5/5.5.1 output
+	tags = append(tags, uidsToTags(note.UIDs, 1, opts)...)
+
 	// Source citations (level 1) - SOUR
 	for _, cite := range note.SourceCitations {
 		tags = append(tags, sourceCitationToTags(cite, 1, opts)...)

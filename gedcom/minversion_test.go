@@ -41,6 +41,10 @@ func TestDocument_RequiresGEDCOM7_True(t *testing.T) {
 			doc:  &Document{Records: []*Record{{Type: RecordTypeSubmitter, Entity: &Submitter{CreationDate: &ChangeDate{Date: "1 JAN 2020"}}}}},
 		},
 		{
+			name: "REFN on submitter",
+			doc:  &Document{Records: []*Record{{Type: RecordTypeSubmitter, Entity: &Submitter{RefNumbers: []RefNumber{{Value: "1"}}}}}},
+		},
+		{
 			name: "EXID on note",
 			doc:  &Document{Records: []*Record{{Type: RecordTypeNote, Entity: &Note{ExternalIDs: []*ExternalID{{Value: "x"}}}}}},
 		},
