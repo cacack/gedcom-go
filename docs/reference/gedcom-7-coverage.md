@@ -105,11 +105,11 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 1269 | 91.4% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1284 | 92.4% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 83 | 6.0% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 79 | 5.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 1 | 0.1% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 36 | 2.6% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 25 | 1.8% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
 ### By top-level structure
 
@@ -118,8 +118,8 @@ The structure each pair is nested under at level 0.
 | Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |
 |---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|
 | `INDI` | 873 | 840 | 0 | 24 | 0 | 9 |
-| `FAM` | 392 | 337 | 0 | 37 | 0 | 18 |
-| `SOUR` | 29 | 18 | 0 | 2 | 0 | 9 |
+| `FAM` | 392 | 341 | 0 | 35 | 0 | 16 |
+| `SOUR` | 29 | 29 | 0 | 0 | 0 | 0 |
 | `HEAD` | 27 | 22 | 0 | 5 | 0 | 0 |
 | `REPO` | 21 | 17 | 0 | 4 | 0 | 0 |
 | `OBJE` | 17 | 17 | 0 | 0 | 0 | 0 |
@@ -801,9 +801,9 @@ Substructures of `SOUR`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `DATA` | `SOUR-DATA` | typed |
-| `EVEN` | `SOUR-EVEN` | raw (accepted) |
+| `EVEN` | `SOUR-EVEN` | typed |
 | `NOTE` | `NOTE` | typed |
-| `OBJE` | `OBJE` | raw (accepted) |
+| `OBJE` | `OBJE` | typed |
 | `PAGE` | `PAGE` | typed |
 | `QUAY` | `QUAY` | typed |
 | `SNOTE` | `SNOTE` | typed |
@@ -823,8 +823,8 @@ Substructures of `SOUR-EVEN`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (undiagnosed) |
-| `ROLE` | `ROLE` | raw (undiagnosed) |
+| `PHRASE` | `PHRASE` | typed |
+| `ROLE` | `ROLE` | typed |
 
 ### `FAM.WIFE`
 
@@ -2282,11 +2282,11 @@ Substructures of `record-SOUR`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `ABBR` | `ABBR` | raw (accepted) |
+| `ABBR` | `ABBR` | typed |
 | `AUTH` | `AUTH` | typed |
 | `CHAN` | `CHAN` | typed |
 | `CREA` | `CREA` | typed |
-| `DATA` | `DATA` | raw (accepted) |
+| `DATA` | `DATA` | typed |
 | `EXID` | `EXID` | typed |
 | `NOTE` | `NOTE` | typed |
 | `OBJE` | `OBJE` | typed |
@@ -2304,10 +2304,10 @@ Substructures of `DATA`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `AGNC` | `AGNC` | raw (undiagnosed) |
-| `EVEN` | `DATA-EVEN` | raw (undiagnosed) |
-| `NOTE` | `NOTE` | raw (undiagnosed) |
-| `SNOTE` | `SNOTE` | raw (undiagnosed) |
+| `AGNC` | `AGNC` | typed |
+| `EVEN` | `DATA-EVEN` | typed |
+| `NOTE` | `NOTE` | typed |
+| `SNOTE` | `SNOTE` | typed |
 
 ### `SOUR.DATA.EVEN`
 
@@ -2315,8 +2315,8 @@ Substructures of `DATA-EVEN`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `DATE` | `DATA-EVEN-DATE` | raw (undiagnosed) |
-| `PLAC` | `PLAC` | raw (undiagnosed) |
+| `DATE` | `DATA-EVEN-DATE` | typed |
+| `PLAC` | `PLAC` | typed |
 
 ### `SOUR.DATA.EVEN.DATE`
 
@@ -2324,7 +2324,7 @@ Substructures of `DATA-EVEN-DATE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `PHRASE` | `PHRASE` | raw (undiagnosed) |
+| `PHRASE` | `PHRASE` | typed |
 
 ### `SOUR.REPO`
 
@@ -2350,8 +2350,8 @@ Substructures of `TEXT`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `LANG` | `LANG` | raw (undiagnosed) |
-| `MIME` | `MIME` | raw (undiagnosed) |
+| `LANG` | `LANG` | typed |
+| `MIME` | `MIME` | typed |
 
 ### `SUBM`
 

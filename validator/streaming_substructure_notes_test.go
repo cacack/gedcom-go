@@ -55,6 +55,15 @@ const substructureNotesGEDCOM = `0 HEAD
 2 NOTE @NX11@
 1 OBJE @M1@
 2 NOTE @NX12@
+1 DATA
+2 EVEN BIRT
+3 PLAC Ogdenville
+4 NOTE @NX13@
+2 NOTE @NX14@
+0 @I3@ INDI
+1 SOUR @S1@
+2 OBJE @M1@
+3 NOTE @NX15@
 0 @R1@ REPO
 1 NAME Archive
 0 @M1@ OBJE
@@ -105,6 +114,9 @@ func TestStreamingValidator_SubstructureNotePointers(t *testing.T) {
 		"@NX10@": {"@F1@", "Events[0].PlaceDetail.NoteXRefs[0]"},
 		"@NX11@": {"@S1@", "RepositoryLinks[0].NoteXRefs[0]"},
 		"@NX12@": {"@S1@", "Media[0].NoteXRefs[0]"},
+		"@NX13@": {"@S1@", "Data.Events[0].PlaceDetail.NoteXRefs[0]"},
+		"@NX14@": {"@S1@", "Data.NoteXRefs[0]"},
+		"@NX15@": {"@I3@", "SourceCitations[0].Media[0].NoteXRefs[0]"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("orphaned NOTE issues =\n  %v\nwant\n  %v", got, want)
@@ -128,6 +140,7 @@ func TestStreamingValidator_SubstructureNotePointers_NilElements(t *testing.T) {
 		XRef:            "@S1@",
 		RepositoryLinks: []*gedcom.SourceRepositoryLink{nil},
 		Media:           []*gedcom.MediaLink{nil},
+		Data:            &gedcom.SourceData{Events: []*gedcom.SourceDataEvent{nil}},
 	}
 	sv.ValidateRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind})
 	sv.ValidateRecord(&gedcom.Record{XRef: "@S1@", Type: gedcom.RecordTypeSource, Entity: src})

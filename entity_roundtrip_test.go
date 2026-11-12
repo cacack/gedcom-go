@@ -67,6 +67,9 @@ func sampleEntities() []struct {
 					// retyped Text to, with the CONT fold #442 asked for.
 					SourceCitations: []*gedcom.SourceCitation{{
 						SourceXRef: "@S1@",
+						// EVEN with ROLE, and OBJE (#737).
+						Event: &gedcom.SourceCitationEvent{Type: "BIRT", Role: "CHIL"},
+						Media: []*gedcom.MediaLink{{MediaXRef: "@O1@"}},
 						Data: &gedcom.SourceCitationData{
 							Date: "6 AUG 1901",
 							Text: []*gedcom.SourceText{
@@ -99,6 +102,16 @@ func sampleEntities() []struct {
 			Author:      "City Clerk\nBoston, Massachusetts",
 			Publication: "Boston, 1930\nReprinted 1961",
 			Text:        "First line of the source text.\nSecond line of the source text.",
+			// ABBR and DATA (#737).
+			Abbreviation: "Boston VR II",
+			Data: &gedcom.SourceData{
+				Events: []*gedcom.SourceDataEvent{{
+					Types: "BIRT, MARR", Date: "FROM 1900 TO 1930",
+					PlaceDetail: &gedcom.PlaceDetail{Name: "Boston, Massachusetts"},
+				}},
+				Agency:      "City of Boston",
+				InlineNotes: []string{"Indexed by year."},
+			},
 		}},
 		{"Repository", "@R1@", gedcom.RecordTypeRepository, &gedcom.Repository{
 			XRef: "@R1@",

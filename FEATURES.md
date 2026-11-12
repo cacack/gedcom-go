@@ -74,9 +74,9 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [884 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (88.6%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,186 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (90.1%) | Most common format |
-| GEDCOM 7.0 | Every readable line preserved | [1,269 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (91.4%) | Latest standard |
+| GEDCOM 5.5 | Every readable line preserved | [896 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (89.8%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,200 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (91.2%) | Most common format |
+| GEDCOM 7.0 | Every readable line preserved | [1,284 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (92.4%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch versions such as `VERS 7.0.14` detect as 7.0; a `0 @X1@ HEAD` record is not the header and never sets the version)
 - Heuristic-based detection for malformed headers
@@ -94,8 +94,8 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,269 of 7.0's structures reach the typed model, 884 of
-5.5's, and 1,186 of 5.5.1's.
+document built for it: 1,284 of 7.0's structures reach the typed model, 896 of
+5.5's, and 1,200 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -589,7 +589,13 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 ### Sources (SOUR)
 
 - Cross-reference ID (`@S1@`)
-- Title, author, publication info
+- Title, author, publication info, and the filing abbreviation
+  (`Abbreviation`, ABBR)
+- Source text (`Text`) with its GEDCOM 7.0 `MIME`/`LANG` (`TextMIME`,
+  `TextLanguage`)
+- What the source records (`Data`, DATA): each recorded event set
+  (`Events`, one per EVEN) with its period (DATE, plus 7.0 PHRASE) and
+  jurisdiction (PLAC), the responsible agency (AGNC), and notes
 - Every repository link (`RepositoryLinks`, one per `REPO`) — by XRef or inline
   by name — with its per-link notes (NOTE/SNOTE) and its call numbers
   (`CallNumbers`), each CALN keeping its own MEDI media type and 7.0 MEDI
@@ -757,6 +763,9 @@ At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
 - DATA - Citation data with DATE and every repeated TEXT
   (`SourceCitationData.Text []*SourceText`, in document order), each with
   CONT/CONC folded into `Value` and GEDCOM 7.0 `MIME`/`LANG` typed
+- EVEN - The event type the source records and the subject's ROLE in it
+  (`SourceCitationEvent`), with GEDCOM 7.0 PHRASEs on both
+- OBJE - Multimedia links on the citation (`Media`)
 - Notes on citations
 
 ## Place Structure
@@ -1730,7 +1739,7 @@ Full support for encoding typed entities back to GEDCOM format:
 |-------------|------------------|
 | Individual | Names, sex, events, attributes, family links, associations, LDS ordinances, citations, notes, media |
 | Family | Spouse/child refs, events, LDS ordinances, citations, notes, media |
-| Source | Title, author, publication, text, repository ref/inline, notes, media |
+| Source | Data (events recorded, agency, notes), title, abbreviation, author, publication, text (with MIME/LANG), repository ref/inline, notes, media |
 | Repository | Name, address, contact info (phone, email, fax, website), notes |
 | Submitter | Name, address, contact info, languages |
 | Submission | Submitter ref, FAMF, TEMP, ANCE, DESC, ORDI, RIN, notes, change date |

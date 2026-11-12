@@ -234,6 +234,14 @@ func (p *voidPruner) source(s *gedcom.Source) {
 	}
 	s.NoteXRefs = p.strings(s.NoteXRefs)
 	s.Media = p.mediaLinks(s.Media)
+	if s.Data != nil {
+		s.Data.NoteXRefs = p.strings(s.Data.NoteXRefs)
+		for _, e := range s.Data.Events {
+			if e != nil {
+				p.place(e.PlaceDetail)
+			}
+		}
+	}
 	p.changeDate(s.ChangeDate)
 	p.changeDate(s.CreationDate)
 	s.Tags = p.tags(s.Tags)
@@ -295,6 +303,7 @@ func (p *voidPruner) citations(cites []*gedcom.SourceCitation) []*gedcom.SourceC
 	for _, c := range cites {
 		if c != nil {
 			c.NoteXRefs = p.strings(c.NoteXRefs)
+			c.Media = p.mediaLinks(c.Media)
 		}
 	}
 	return cites

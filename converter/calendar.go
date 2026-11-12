@@ -39,7 +39,8 @@ var calendarKeywordToEscape = map[string]string{
 //     ordinances of individuals and families, with ParsedDate.Original kept in
 //     step (the parsed calendar itself is unchanged), and the DATA.DATE of
 //     every source citation on individual, family, media and shared note
-//     records, their events, attributes and associations.
+//     records, their events, attributes and associations, and the
+//     DATA.EVEN.DATE of every source record.
 //
 // Each rewrite is reported as a Normalized note. A calendar with no standard
 // equivalent (an escape such as @#DROMAN@ or @#DUNKNOWN@, or a 7.0 extension
@@ -141,8 +142,8 @@ func (t *calendarTranslator) translateTags(tags []*gedcom.Tag, recordType, xref 
 	}
 }
 
-// translateEntity rewrites the typed dates of an individual, family, media or
-// shared note record. Other record types carry no calendar dates.
+// translateEntity rewrites the typed dates of an individual, family, media,
+// shared note or source record. Other record types carry no calendar dates.
 func (t *calendarTranslator) translateEntity(record *gedcom.Record, report bool) {
 	base := datePath{recordType: string(record.Type), xref: record.XRef}
 	if ind, ok := record.GetIndividual(); ok && ind != nil {
@@ -161,6 +162,21 @@ func (t *calendarTranslator) translateEntity(record *gedcom.Record, report bool)
 		t.translateCitations(media.SourceCitations, report, base)
 	} else if snote, ok := record.GetSharedNote(); ok && snote != nil {
 		t.translateCitations(snote.SourceCitations, report, base)
+	} else if src, ok := record.GetSource(); ok && src != nil {
+		t.translateSourceData(src.Data, report, base)
+	}
+}
+
+// translateSourceData rewrites the DATE of each event a source record's DATA
+// records.
+func (t *calendarTranslator) translateSourceData(data *gedcom.SourceData, report bool, at datePath) {
+	if data == nil {
+		return
+	}
+	for _, e := range data.Events {
+		if e != nil {
+			t.translate(&e.Date, nil, report, at.at("DATA", "EVEN", "DATE"))
+		}
 	}
 }
 
