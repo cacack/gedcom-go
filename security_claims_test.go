@@ -6,6 +6,10 @@ package gedcomgo
 // on one or the other, omitted osv-scanner, and called the module pre-1.0 with
 // one supported line while release-2.x was wired into CI and release-please.
 // This checks both against .github/workflows/.
+//
+// Limits: a scanner's cadence is its workflow file's triggers, not its job's
+// `if:` gate, and the prose after the table (push branches, fuzz targets) is
+// not checked.
 
 import (
 	"path/filepath"
@@ -51,6 +55,8 @@ var sarifCategoryScanner = map[string]string{
 type scanCadence struct{ pullRequest, nightly, weekly bool }
 
 var (
+	// pullRequestTrigger assumes block-style `on:` keys indented two spaces;
+	// a mismatch after reformatting a workflow is this regex's, not SECURITY.md's.
 	pullRequestTrigger = regexp.MustCompile(`(?m)^ {2}pull_request:`)
 	cronSchedule       = regexp.MustCompile(`cron: '([^']+)'`)
 	sarifCategory      = regexp.MustCompile(`(?m)^\s+category: "?([^"\s]+)"?\s*$`)

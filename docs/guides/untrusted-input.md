@@ -26,7 +26,7 @@ yours to set.
 | Nesting depth | `parser.MaxNestingDepth` (100: levels 0–99) | No; fixed by the two-digit level field | The line is a parse error. Strict mode fails; lenient mode drops the line with an `INVALID_LEVEL` diagnostic. |
 | Charset header probe | 64 KiB | No | `CHAR` is looked for in the first 64 KiB only. A `CHAR` line past that is not seen, so the encoding falls back to detection from the bytes ([ADR 0004](../decisions/0004-encoding-detection-cascade.md)). The rest of the file is still read. |
 | ANSEL combining marks held | `charset.MaxPendingCombining` (16) | No | A longer run of marks is written out standalone in groups of 16, not rejected. |
-| Diagnostics returned | `DecodeOptions.MaxDiagnostics`, default `decoder.DefaultMaxDiagnostics` (100,000) | Yes; a negative value (`decoder.UnlimitedDiagnostics`) removes it | The first ones are kept and one `DIAGNOSTICS_TRUNCATED` diagnostic counts the rest. Errors for an XRef containing a space are kept past the cap. See [Bounds on Diagnostics](decoding.md#bounds-on-diagnostics). |
+| Diagnostics returned | `DecodeOptions.MaxDiagnostics`, default `decoder.DefaultMaxDiagnostics` (100,000) | Yes; a negative value (`decoder.UnlimitedDiagnostics`) removes it | The first ones are kept and one `DIAGNOSTICS_TRUNCATED` diagnostic counts the rest. Errors for an XRef containing a space are held past the cap while decoding, but the returned list is still capped. See [Bounds on Diagnostics](decoding.md#bounds-on-diagnostics). |
 | Unknown-tag diagnostics per tag name | `decoder.MaxUnknownTagDiagnosticsPerTag` (10) | No | The rest of that tag's lines are counted in one closing diagnostic. Every line stays in `Record.Tags`. Unknown level-0 record types are not capped. |
 | Invalid-UTF-8 diagnostics | `decoder.MaxInvalidEncodingDiagnostics` (100) | No | Every invalid byte is still replaced; the rest are counted in one closing diagnostic. |
 | Input echoed per diagnostic or `ParseError` | `parser.MaxContextBytes` (256) | No | `Message` and `Context` are clipped at a UTF-8 boundary and end in `…`. Values in the document are never clipped. |
@@ -50,7 +50,7 @@ between the typical and worst cases;
 | `CONC`/`CONT` chain length | Your input limit | Each line is under 1 MiB, but a chain has no length limit, and its joined value is held next to its raw lines. `Decode` of one note with 2 M `CONC` lines: 36 MB → 453 MB peak, 214 MB retained. |
 | Name and value length | `MaxLineBytes`, or a `CONC` chain | Duplicate detection compares only `MaxNameRunes`; nothing else shortens them. |
 | `LazyParser` index entries | Your input limit | About 170 bytes per record with an XRef. 2 M minimal records (27 MB) → 466 MB peak, 333 MB retained. Records without an XRef are not indexed. |
-| Diagnostics for XRefs containing a space | Your input limit | Kept past `MaxDiagnostics`, as the parser keeps their lines. |
+| Parse errors for XRefs containing a space, held while decoding | Your input limit | Held past `MaxDiagnostics` until decoding ends, as the parser keeps their lines; the returned `Diagnostics` are still capped at `MaxDiagnostics+1`. |
 
 Validation, conversion, encoding and merging work on a decoded `Document`, so
 their memory follows the document's; give them a `Context` deadline.
