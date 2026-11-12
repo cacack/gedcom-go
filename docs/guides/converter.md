@@ -91,6 +91,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar escapes (`@#DJULIAN@`) converted to keywords (`JULIAN`) |
 | Date epochs | `DATE_EPOCH_CONVERTED` | `B.C.`, `BC` and `B.C.E.` spelled `BCE`; see [Date epochs and phrases](#date-epochs-and-phrases) |
 | Date phrases | `DATE_PHRASE_CONVERTED` | `INT <date> (<phrase>)` becomes `DATE <date>` + `PHRASE`, `(<phrase>)` an empty `DATE` + `PHRASE` |
+| Enumerations | `ENUMERATION_CONVERTED` | Enumerated payloads translated to the 7.0 vocabulary (`PEDI birth` → `PEDI BIRTH`, `ASSO.RELA` → `ROLE`, `AGE CHILD` → `AGE < 8y` + `PHRASE`); see [Enumeration Mappings](#enumeration-mappings) |
 | Vendor `_UID` | `UID_FROM_VENDOR_TAG` | A `_UID` tag becomes the 7.0 `UID` it standardised wherever 7.0 defines `UID`: at level 1 of an `INDI`, `FAM`, `SOUR`, `REPO`, `OBJE`, `SNOTE` or `SUBM` record, and at level 2 under an individual or family event or attribute. A `_UID` elsewhere (under `NAME`, say) stays an extension. The value is carried unchanged, as 7.0 asks for an existing identifier; each rename is a `Normalized` note, naming the enclosing event for a nested one |
 | `RESN` | `RESTRICTION_VALUES_MAPPED` | Restriction notice keywords at any level become upper case (`privacy` -> `PRIVACY`); a `Normalized` note each. A value that is not `confidential`, `locked` or `privacy` is left as written |
 | Vendor `_FREL`/`_MREL` | `PEDIGREE_FROM_VENDOR_TAG` | A child's `FAMC` gains a `PEDI` from the `_FREL`/`_MREL` under the family's `CHIL` when the mapping is unambiguous: each parent the family names has a relationship, all map to one value (`Adopted`, `Foster`, `Sealing`), and it is not `Natural`/`Birth`. `Step`, `Guardian` and other values have no `PEDI` and add none; a `FAMC` that already has a `PEDI` is kept. The vendor tags stay; each `PEDI` added is a `Normalized` note |
@@ -122,6 +123,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Date epochs | `DATE_EPOCH_CONVERTED` | `BCE` spelled `B.C.` |
 | Date phrases | `DATE_PHRASE_CONVERTED` | `DATE <date>` + `PHRASE` becomes `INT <date> (<phrase>)`, an empty `DATE` + `PHRASE` becomes `(<phrase>)` |
 | `RESN` | `RESTRICTION_VALUES_MAPPED` | Restriction notice keywords at any level become lower case (`LOCKED` -> `locked`); a `Normalized` note each. 5.x takes one value, so a 7.0 list (`CONFIDENTIAL, LOCKED`) keeps its most protective keyword (privacy, then confidential, then locked) and the rest is reported as `DataLoss` (`RESN restriction lists`) |
+| Enumerations | `ENUMERATION_CONVERTED` | Enumerated payloads translated to the 5.x vocabulary (`PEDI BIRTH` → `PEDI birth`, `ASSO.ROLE` → `RELA`); see [Enumeration Mappings](#enumeration-mappings) |
 | `UID` to vendor `_UID` | `UID_TO_VENDOR_TAG` | Every `UID` tag, at any level, becomes `_UID`, the extension 5.5.x producers use for the same identifier; each is a `Normalized` note, and `UID` is not data loss |
 | `LANG` | -- | `HEAD.LANG` and `SUBM.LANG` BCP 47 tags become 5.x language names by primary subtag: `de` -> `German` is `Normalized`, `en-US` -> `English` (region lost) is `Approximated`. A value already a 5.x name is left alone; a tag with no name is kept verbatim with an `Approximated` note |
 | `HEAD.SOUR` | `HEAD_SOUR_ADDED` | Added as `gedcom-go` when the header names no source system (required by 5.5 and 5.5.1) |
@@ -259,6 +261,54 @@ A phrase with no target form is reported rather than guessed at:
   line break, or one that would push the `DATE` line past 255 characters is
   dropped and reported under `PHRASE tags`.
 
+## Enumeration Mappings
+
+Converting to or from 7.0 translates every enumerated payload in
+`Record.Tags` between the 5.5/5.5.1 spelling and the 7.0 enumeration
+(`testdata/spec/gedcom-7.0/enumerationsets.tsv`). Each rewrite is a
+`Normalized` note. `RESN` is translated by its own step (`RESTRICTION_VALUES_MAPPED`, above).
+
+| Structure | 5.5/5.5.1 | 7.0 |
+|-----------|-----------|-----|
+| `INDI.SEX` | `M`, `F`, `U` | `M`, `F`, `U`, `X` |
+| `INDI.NAME.TYPE` | `aka`, `birth`, `immigrant`, `maiden`, `married`, free text | `AKA` ... `MARRIED`, `PROFESSIONAL`, `OTHER` + `PHRASE` |
+| `FAMC.PEDI` | `adopted`, `birth`, `foster`, `sealing` | `ADOPTED` ... `SEALING`, `OTHER` + `PHRASE` |
+| `FAMC.STAT` | `challenged`, `disproven`, `proven` | `CHALLENGED`, `DISPROVEN`, `PROVEN` |
+| LDS ordinance `STAT` | `PRE-1970`, `DNS/CAN`, ... | `PRE_1970`, `DNS_CAN`, ... |
+| `MEDI` (and 5.5.1 `OBJE.FILE.FORM.TYPE`) | `audio`, `photo`, ..., free text | `AUDIO`, `PHOTO`, ..., `OTHER` + `PHRASE` (`OBJE.FILE.FORM.MEDI`) |
+| `ASSO` role | `RELA <text>` | `ROLE <enum>` |
+| `SOUR.EVEN.ROLE` | `CHIL` ... `SPOU`, `(<descriptor>)` | `ROLE <enum>` |
+| `AGE` | `CHILD`, `INFANT`, `STILLBORN`, `<8`, `11m99y` | `< 8y`, `< 1y`, `0y` + `PHRASE <keyword>`; `< 8y`, `99y 11m` |
+
+To 7.0, a value matching an enumeration case-insensitively takes its 7.0
+spelling; a value an open set (one with `OTHER`) does not list becomes `OTHER`
+with the value as its `PHRASE`. A `RELA` or role descriptor that is a role
+name (`friend` → `FRIEND`) maps to it directly; one that is a role's word
+(`neighbor`, `godparent`, `witness`) maps to that role with the word kept as
+`PHRASE` (`NGHBR` + `PHRASE neighbor`), as the gedcom7code `rela_1` test pair
+does; anything else is `OTHER` + `PHRASE`. A 5.x age is rewritten in 7.0
+syntax: a bare count is years, units are lowercased and ordered, and the bound
+is followed by a space.
+
+To 5.x, a 7.0 value takes the 5.x spelling. `OTHER` + `PHRASE` in a payload
+that admits free text (`NAME.TYPE`, `MEDI`) becomes the phrase; a 7.0 value
+5.x does not define but whose payload admits free text (`NAME.TYPE
+PROFESSIONAL`) is kept as that text. `ASSO.ROLE` becomes `RELA`, written as
+its `PHRASE` when it has one and the role's word (`WITN` → `witness`)
+otherwise; a `SOUR.EVEN.ROLE` other than `CHIL`, `HUSB`, `WIFE`, `MOTH`,
+`FATH`, `SPOU` becomes a parenthesised descriptor (`CLERGY` → `(clergy)`). An
+`AGE` whose `PHRASE` is `CHILD`, `INFANT` or `STILLBORN` (any case) becomes
+that keyword; any other age loses the space after its bound and has its weeks
+counted as days. A `PHRASE` folded in this way is removed; any other is
+removed and reported as `PHRASE tags` data loss.
+
+A value with no equivalent in the target -- `SEX X` or `PEDI OTHER` to 5.x,
+an unknown value in a closed set, or an age that does
+not parse -- is left unchanged and reported as a `Preserved` note and, once
+per conversion, as `Enumerated values` data loss naming the affected records,
+so `StrictDataLoss` rejects the conversion. Records without `Tags` (built in
+code) are written from their entity and are not translated.
+
 ## Data Loss Reference
 
 ### 5.5 / 5.5.1 -> 7.0
@@ -270,6 +320,7 @@ A phrase with no target form is reported rather than guessed at:
 | `SUBN records` | 7.0 has no submission record. Every `0 @S1@ SUBN` record and the `HEAD.SUBN` pointer are removed before any other step; `AffectedRecords` lists the removed records, and each record (`Submission @S1@`) and the pointer (`Header > SUBN`) is also a `Dropped` note. The submitter (`SUBM`) records stay |
 | `HEAD.FILE structures` (and any other 5.5.1 structure 7.0 does not define) | Removed with its subordinates; see [Version-foreign structures](#version-foreign-structures) |
 | `FONE tags`, `ROMN tags` | 5.5.1 phonetic and romanized variations (under `NAME` or `PLAC`); 7.0 replaced them with `TRAN`, which names a language rather than the `TYPE` scheme, so they are not mapped. See [Name variations](#name-variations-fone-romn) |
+| Enumerated values | A value a closed 7.0 set does not list (an unknown `SEX` or `FAMC.STAT` value, say) or an `AGE` that does not parse is kept unchanged and is not valid 7.0; each is a `Preserved` note. See [Enumeration Mappings](#enumeration-mappings) |
 
 The `SNOTE` records this direction produces become `NOTE` records again when
 converted back down to 5.x (see below).
@@ -285,6 +336,7 @@ converted back down to 5.x (see below).
 | CREA tags | Creation date not supported |
 | `@VOID@` null pointers | 5.x has no null pointer; a kept `@VOID@` would dangle |
 | `<parent>.<tag> structures` (`MARR.SDATE`, `INDI.INIL`, `NOTE.LANG`, ...) | To 5.5.1: a structure 5.5.1 does not define, removed with its subordinates; see [Version-foreign structures](#version-foreign-structures) |
+| Enumerated values | A value with no 5.x equivalent (`SEX X`, `PEDI OTHER`, an age that does not parse) is kept unchanged and is not valid 5.x; each is a `Preserved` note. See [Enumeration Mappings](#enumeration-mappings) |
 
 Each `EXID`, `TRAN`, `PHRASE` and `CREA` is removed from the record's
 `Record.Tags` with its subordinate lines, at any level, so the output matches

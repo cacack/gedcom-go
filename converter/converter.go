@@ -260,6 +260,7 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		func() { transformLanguages(doc, gedcom.Version70, report) },
 		func() { upgradeNoteRecordsForV7(doc, report) },
 		func() { transformMediaTypes(doc, gedcom.Version70, report) },
+		func() { transformEnumerations(doc, gedcom.Version70, report) },
 		func() { transformHeader(doc, gedcom.Version70, report) },
 		func() { transformUIDTags(doc, report, gedcom.Version70) },
 		func() { synthesizePedigrees(doc, report, gedcom.Version70) },
@@ -322,6 +323,7 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 		func() { transformLanguages(doc, gedcom.Version70, report) },
 		func() { upgradeNoteRecordsForV7(doc, report) },
 		func() { transformMediaTypes(doc, gedcom.Version70, report) },
+		func() { transformEnumerations(doc, gedcom.Version70, report) },
 		func() { transformHeader(doc, gedcom.Version70, report) },
 		func() { transformUIDTags(doc, report, gedcom.Version70) },
 		func() { synthesizePedigrees(doc, report, gedcom.Version70) },
@@ -370,6 +372,8 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		// does not fold into its DATE value.
 		func() { transformDateSyntax(doc, gedcom.Version55, report) },
 		func() { transformMediaTypes(doc, gedcom.Version55, report) },
+		// Before dropV7OnlyTags, which reports each PHRASE this does not fold in.
+		func() { transformEnumerations(doc, gedcom.Version55, report) },
 		func() { transformLanguages(doc, gedcom.Version55, report) },
 		// Before transformHeader, which orders what this adds.
 		func() { addRequiredHeaderStructures(doc, gedcom.Version55, report) },
@@ -413,6 +417,8 @@ func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 		// does not fold into its DATE value.
 		func() { transformDateSyntax(doc, gedcom.Version551, report) },
 		func() { transformMediaTypes(doc, gedcom.Version551, report) },
+		// Before dropV7OnlyTags, which reports each PHRASE this does not fold in.
+		func() { transformEnumerations(doc, gedcom.Version551, report) },
 		func() { transformLanguages(doc, gedcom.Version551, report) },
 		// Before transformHeader, which orders what this adds.
 		func() { addRequiredHeaderStructures(doc, gedcom.Version551, report) },
