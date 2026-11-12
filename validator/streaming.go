@@ -124,7 +124,7 @@ func NewStreamingValidator(opts StreamingOptions) *StreamingValidator {
 //   - RecordTypeSource: reference collection only (for orphan detection in
 //     Finalize); no source-content validation
 //   - RecordTypeRepository, RecordTypeNote, RecordTypeSubmitter,
-//     RecordTypeObject, others: not validated (the record is still
+//     RecordTypeMedia, others: not validated (the record is still
 //     registered for XRef tracking, but no rules are evaluated)
 //
 // Callers who need full validation coverage for all record types should use

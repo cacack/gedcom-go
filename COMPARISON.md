@@ -4,350 +4,149 @@
 
 ## Overview
 
-This document compares gedcom-go (github.com/cacack/gedcom-go) against competing GEDCOM libraries across multiple languages. The comparison covers feature completeness, API design, performance characteristics, and ecosystem health to help users choose the right library and identify improvement opportunities for gedcom-go.
+This document compares gedcom-go (github.com/cacack/gedcom-go) against other
+GEDCOM libraries, in Go and in other languages, to help users choose a library
+and to show where gedcom-go has gaps.
 
 **Comparison scope:**
-- Go libraries: elliotchance/gedcom, iand/gedcom, funwithbots/go-gedcom
-- Cross-language references: Java (gedcom4j, gedcom5-java), Python (python-gedcom, python-gedcom7), TypeScript (read-gedcom, js-gedcom), Rust (rust-gedcom), C# (GeneGenie.Gedcom)
+- Go libraries: elliotchance/gedcom, iand/gedcom, deaddr0p/go-gedcom (formerly
+  funwithbots/go-gedcom), MJKWoolnough/gedcom
+- Other languages: Rust (oxidged, gedlint), C# (GedcomSharp,
+  ArmidaleSoftware/gedcom7), Python (python-gedcom7, python-gedcom), Java
+  (gedcom5-java, gedcom4j), TypeScript/JavaScript (read-gedcom, js-gedcom)
 
-**Research date:** January 2026
-
----
-
-## Quick Comparison
-
-| Aspect | gedcom-go | elliotchance | iand | funwithbots |
-|--------|-----------|--------------|------|-------------|
-| **Language** | Go | Go | Go | Go |
-| **License** | MIT | MIT | Unlicense | GPL-3.0 |
-| **GEDCOM 5.5** | Full | Full | ~80% | No |
-| **GEDCOM 5.5.1** | Full | Full | Partial | No |
-| **GEDCOM 7.0** | Full | No | No | Full |
-| **Auto-detect version** | Yes | No | No | No |
-| **Streaming** | Yes | No | Yes | Unknown |
-| **ANSEL encoding** | Full | No | Limited | Unknown |
-| **UTF-16** | Full | Unknown | No | Unknown |
-| **Minimal dependencies** | Yes* | No | Yes | Unknown |
-| **Test coverage** | ≥85% CI floor (~96%) | Unknown | Unknown | Unknown |
-| **Active (2024+)** | Yes | No (Nov 2023) | Yes (Aug 2024) | No (Aug 2023) |
-| **Stars** | - | 119 | 41 | 8 |
-
-\* gedcom-go uses only `golang.org/x/text` for encoding transforms (standard extended library)
+**Research date:** November 2026. Every cell below was checked against the
+library's repository (README, `go.mod`, source or release list) on that date. A
+property that could not be established was left out rather than marked
+"Unknown". gedcom-go's own claims link to [FEATURES.md](FEATURES.md), which is
+authoritative for them.
 
 ---
 
-## Detailed Comparisons
+## Go Libraries
 
-### GEDCOM Version Support
-
-| Library | 5.5 | 5.5.1 | 7.0 | Auto-detect | Multi-version API |
-|---------|-----|-------|-----|-------------|-------------------|
-| **gedcom-go** | Full | Full | Full | Yes | Yes |
-| elliotchance/gedcom | Full | Full | No | No | Partial |
-| iand/gedcom | ~80% | Partial | No | No | No |
-| funwithbots/go-gedcom | No | No | Full | N/A | No |
-| gedcom4j (Java) | Full | Full | No | Unknown | Partial |
-| gedcom5-java (Java) | Full | Partial | No | Unknown | No |
-| python-gedcom | Full | No | No | No | No |
-| python-gedcom7 | No | No | Full | N/A | No |
-| read-gedcom (TS) | Full | Full | No | Unknown | Partial |
-| js-gedcom | Partial | Partial | Full | Yes | Yes |
+| | gedcom-go | elliotchance | iand | deaddr0p (funwithbots) | MJKWoolnough |
+|---|---|---|---|---|---|
+| **License** | MIT | MIT | Unlicense | GPL-3.0 | ISC |
+| **GEDCOM 5.5 / 5.5.1** | Read + write | Read + write | Read + write (core records) | No (roadmap) | Read (5.5) |
+| **GEDCOM 7.0** | Read + write | No | Read + write (since 2026) | Read + write (7.0.11) | No |
+| **Version conversion** | 5.5 ↔ 5.5.1 ↔ 7.0 | No | No | No (roadmap) | No |
+| **Record-at-a-time reading** | Yes | No | No (`Decode` returns the whole file) | No | Yes (`Reader.Record`) |
+| **ANSEL decoding** | Yes | No | No | No | No (ANSEL bytes are accepted, not converted) |
+| **UTF-16** | Yes | No | No | No | No |
+| **Direct dependencies** | 1 (`golang.org/x/text`) | 6 | 1 (`go-cmp`) | 4 | 1 |
+| **Latest release** | v3.6.0 (Nov 2026) | v39.6.0 (Nov 2023) | v0.2.20 (May 2026) | v0.1.2 (Aug 2023) | v1.0.1 (tag) |
+| **Stars** | 7 | 124 | 41 | 8 | 2 |
 
 **Analysis:**
-- gedcom-go is one of only two Go libraries supporting all three GEDCOM versions
-- The combination of 5.5/5.5.1/7.0 support with auto-detection is rare across all languages
-- Most libraries force users to choose between legacy (5.x) or modern (7.0) support
+- iand/gedcom added GEDCOM 7.0 reading and writing in February 2026
+  (iand/gedcom PR #50), including `TRAN`, so gedcom-go is no longer the only Go
+  library with 5.5, 5.5.1 and 7.0, nor the only one handling transliterations.
+- gedcom-go remains the only Go library here that converts between versions,
+  decodes ANSEL and UTF-16, and reads record by record.
+- elliotchance/gedcom is the broadest Go toolkit (query language, HTML output,
+  comparison and merging) but has had no release since 2023 and does not read
+  GEDCOM 7.0.
 
-### Feature Matrix
+### API Shape
 
-| Feature | gedcom-go | elliotchance | iand | funwithbots | gedcom5-java |
-|---------|-----------|--------------|------|-------------|--------------|
-| **Parsing** | Full | Full | ~80% | Full | Full |
-| **Encoding/Writing** | Full | Full | No | Unknown | Full |
-| **Validation** | Full | Extensive | Basic | Full | Full |
-| **Round-trip** | Yes | Yes | No | Unknown | Yes (94%) |
-| **Streaming** | Yes | No | Yes | Unknown | No |
-| **Cross-ref resolution** | O(1) | Yes | Yes | Unknown | Yes |
-| **Relationship traversal** | Via API | Rich API | Basic | Unknown | Full |
-| **Query language** | No | Yes (gedcomq) | No | No | No |
-| **CLI tools** | No | Yes | No | Yes | No |
+gedcom-go, elliotchance/gedcom, iand/gedcom and MJKWoolnough/gedcom read from an
+`io.Reader` (elliotchance/gedcom also offers `NewDocumentFromGEDCOMFile`);
+deaddr0p/go-gedcom reads a file name or a `bufio.Scanner`. MJKWoolnough/gedcom yields one record per
+`Reader.Record` call; iand/gedcom and gedcom-go decode a whole document into
+typed structs. gedcom-go additionally exposes `parser.Records` and
+`decoder.DecodeRecord` for record-at-a-time typed access — see
+[FEATURES.md](FEATURES.md) for the full API.
 
-### Record Type Support
+---
 
-| Record Type | gedcom-go | elliotchance | iand | funwithbots |
-|-------------|-----------|--------------|------|-------------|
-| Individual (INDI) | Full | Full | Yes | Yes |
-| Family (FAM) | Full | Full | Yes | Yes |
-| Source (SOUR) | Full | Full | Yes | Unknown |
-| Repository (REPO) | Full | Full | Yes | Unknown |
-| Note (NOTE) | Full | Full | Yes | Unknown |
-| Media (OBJE) | Full | Full | Yes | Unknown |
-| Submitter (SUBM) | Full | Full | Yes | Unknown |
-| Submission (SUBN) | Partial | Unknown | Yes | Unknown |
+## Other Languages
 
-**All major record types are supported by gedcom-go with full subordinate tag parsing.**
+| Library | Language | License | Versions | Notable | Latest release |
+|---------|----------|---------|----------|---------|----------------|
+| [oxidged](https://github.com/trois-six/oxidged) | Rust | MIT | 5.5.1, 7.0, 7.1 draft (read + write) | Conversion, streaming, GEDZIP, ANSEL/UTF-16, producer profiles, editing | v0.3.2 (Oct 2026) |
+| [gedlint](https://github.com/pmontp19/gedlint) | Rust | MIT | 5.5.1, 7.0 | A linter (CLI, GitHub Action, web viewer), not a library | v0.12.0 (Oct 2026) |
+| [GedcomSharp](https://github.com/gordon-matt/GedcomSharp) | C# | MIT | 5.5, 5.5.1, 5.5.5, 7.0 (read + write) | GEDZIP, GEDCOM X, ANSEL/UTF-16 | v1.0.1 (Nov 2026) |
+| [ArmidaleSoftware/gedcom7](https://github.com/ArmidaleSoftware/gedcom7) | C# | MIT | 7.0 | Validator and FamilySearch compatibility tooling | v1.6.2 (Aug 2026) |
+| [python-gedcom7](https://github.com/DavidMStraub/python-gedcom7) | Python | MIT | 7.0 (read + write since 1.x) | Strict: rejects non-conforming input | v1.2.0 (Oct 2026) |
+| [python-gedcom](https://github.com/nickreynke/python-gedcom) | Python | GPL-2.0 | 5.5 | | v1.1.0 (Feb 2026) |
+| [gedcom5-java](https://github.com/FamilySearch/gedcom5-java) | Java | Apache-2.0 | 5.x (read + write) | A "de facto" model: common non-standard tags in, rarely used standard tags out | 1.15.0 (tag) |
+| [gedcom4j](https://github.com/frizbog/gedcom4j) | Java | MIT | 5.5, 5.5.1 (read + write) | Last commit Jun 2023 | 4.0.1 (tag) |
+| [read-gedcom](https://github.com/arbre-app/read-gedcom) | TypeScript | MIT | 5.5.5-oriented (read) | Encoding detection incl. UTF-16, CP1252, CP850 | 0.3.2 (Jun 2022) |
+| [js-gedcom](https://github.com/gedcom7code/js-gedcom) | JavaScript | MIT | 7.0 (read + write) | Type-checker and validator | No releases; last commit Feb 2024 |
 
-### Data Handling
-
-| Data Type | gedcom-go | elliotchance | iand | read-gedcom |
-|-----------|-----------|--------------|------|-------------|
-| **Date modifiers** | ABT, CAL, EST, BEF, AFT | Full | Basic | Full |
-| **Date ranges** | BET...AND, FROM...TO | Full | No | Yes |
-| **Partial dates** | Year, Month-Year | Full | Basic | Yes |
-| **B.C. dates** | Full | Unknown | Unknown | Unknown |
-| **Dual dating** | Full (1750/51) | Unknown | Unknown | Unknown |
-| **Date phrases** | Full | Full | Unknown | Yes |
-| **Calendar systems** | Gregorian, Julian, Hebrew, French Republican | Unknown | Unknown | Multi-calendar |
-| **Places with coords** | Full (MAP/LATI/LONG) | Yes | Unknown | Unknown |
-| **Name components** | Full (GIVN, SURN, etc.) | Full | Yes | Yes |
-| **Name transliterations** | Full (GEDCOM 7.0 TRAN) | No | No | No |
-| **LDS ordinances** | Full | Full | Unknown | Unknown |
-| **Associations** | Full (with PHRASE) | Yes | Unknown | Unknown |
-| **Source citations** | Full (with QUAY) | Full | Yes | Yes |
+rust-gedcom (last commit Jan 2023) and GeneGenie.Gedcom (last commit Mar 2025),
+listed in earlier editions, are superseded in their languages by oxidged and by
+GedcomSharp and ArmidaleSoftware/gedcom7 respectively.
 
 **Analysis:**
-- gedcom-go has comprehensive date handling including rarely-supported features (B.C., dual dating, non-Gregorian calendars)
-- Name transliterations (GEDCOM 7.0 TRAN) are unique to gedcom-go among Go libraries
-- Calendar system support (Hebrew, Julian, French Republican) is a differentiator
-
-### Character Encoding
-
-| Encoding | gedcom-go | elliotchance | iand | gedcom4j | gedcom5-java | read-gedcom |
-|----------|-----------|--------------|------|----------|--------------|-------------|
-| UTF-8 | Full | Full | Yes | Yes | Yes | Yes |
-| UTF-8 BOM | Full | Yes | Unknown | Unknown | Unknown | Yes |
-| UTF-16 LE | Full | Unknown | No | Unknown | Unknown | Yes |
-| UTF-16 BE | Full | Unknown | No | Unknown | Unknown | Yes |
-| ANSEL | Full | No | Limited | Yes | Yes | No |
-| ASCII | Full | Yes | Yes | Yes | Yes | Yes |
-| LATIN1 | Full | Unknown | Unknown | Unknown | Unknown | Yes |
-| Auto-detect | Full | No | Limited | Unknown | Unknown | Yes |
-
-**Analysis:**
-- gedcom-go has the most comprehensive encoding support among Go libraries
-- ANSEL support (critical for legacy GEDCOM files) sets gedcom-go apart from elliotchance/gedcom
-- Auto-detection from both BOM and CHAR header tag provides robust handling
-
-### API Design Comparison
-
-#### gedcom-go
-
-```go
-// Clean io.Reader/io.Writer interfaces
-doc, err := decoder.Decode(reader)
-
-// O(1) cross-reference lookup
-person := doc.GetIndividual("@I1@")
-
-// Typed entity access
-for _, individual := range doc.Individuals() {
-    fmt.Println(individual.FullName())
-}
-
-// Structured date parsing with lossless representation
-date, _ := gedcom.ParseDate("ABT 1850")
-date.Modifier  // ModifierAbout
-date.Year      // 1850
-date.String()  // "ABT 1850" (original preserved)
-```
-
-**Strengths:**
-- Standard Go idioms (io.Reader/io.Writer, error returns)
-- Minimal dependencies: only `golang.org/x/text` (Go's extended standard library); no third-party dependencies
-- Type-safe entity access
-- Lossless representation (original values preserved)
-- Comprehensive godoc documentation
-
-#### elliotchance/gedcom
-
-```go
-document := gedcom.NewDocumentFromGEDCOMFile("family.ged")
-individuals := document.Individuals()
-for _, ind := range individuals {
-    name := ind.Name()
-    birth, place := ind.Birth()
-}
-```
-
-**Strengths:**
-- Rich convenience accessors (.Parents(), .Spouses())
-- Deep comparison and merging algorithms
-- Query language (gedcomq) inspired by jq
-- Extensive validation warnings
-
-**Weaknesses:**
-- File-based API (not io.Reader)
-- Large dependency footprint
-- No GEDCOM 7.0 support
-
-#### iand/gedcom
-
-```go
-d := gedcom.NewDecoder(bytes.NewReader(data))
-g, err := d.Decode()
-for _, rec := range g.Individual {
-    println(rec.Name[0].Name)
-}
-```
-
-**Strengths:**
-- Clean, minimal API
-- Streaming-capable design
-- Public domain license
-
-**Weaknesses:**
-- Only ~80% spec coverage
-- Limited date parsing
-- No encoder
-
-### Performance Characteristics
-
-| Metric | gedcom-go | elliotchance | iand |
-|--------|-----------|--------------|------|
-| Published benchmarks | Yes — parser/decode/encode/validate | Unknown | Unknown |
-| Validator allocations | Zero | Unknown | Unknown |
-| Streaming support | Yes | No | Yes |
-| Large file handling | Good | Memory-intensive | Good |
-
-Figures (and the environment they were measured on) live in
-[docs/guides/performance.md](docs/guides/performance.md); run `make bench` to reproduce
-them on your own hardware.
-
-**Notes:**
-- gedcom-go has documented benchmarks with regression testing
-- Zero-allocation validator is notable for large-scale processing
-- Streaming design enables efficient memory usage for large files
-
-### Ecosystem and Maintenance
-
-| Library | Last Release | Commits | Stars | Documentation | Examples |
-|---------|--------------|---------|-------|---------------|----------|
-| **gedcom-go** | Active (2026) | Active | - | pkg.go.dev, USAGE.md | Yes |
-| elliotchance/gedcom | Nov 2023 | 171 releases | 119 | pkg.go.dev | CLI-focused |
-| iand/gedcom | Aug 2024 | Moderate | 41 | pkg.go.dev | Basic |
-| funwithbots/go-gedcom | Aug 2023 | Low | 8 | README only | Minimal |
-| gedcom4j | ~2020 | 877 | 58 | Site expired | JavaDoc |
-| gedcom5-java | ~2020 | High | 87 | README | Yes |
-| python-gedcom | Apr 2019 | Low | 170 | readthedocs | Basic |
-| read-gedcom | Jun 2022 | Moderate | 24 | docs.arbre.app | Yes |
+- oxidged and GedcomSharp are the closest peers outside Go: both read and write
+  several versions, preserve unknown data, and decode legacy encodings.
+- Both go further than gedcom-go in two places: GEDZIP packages, and (oxidged)
+  the GEDCOM 7.1 draft.
 
 ---
 
 ## gedcom-go Strengths
 
-### 1. Multi-Version Support (Unique in Go)
-gedcom-go is the only Go library supporting GEDCOM 5.5, 5.5.1, AND 7.0 with automatic version detection. This is also rare across all languages.
-
-### 2. Lossless Representation
-Following the project constitution, gedcom-go preserves original values while providing parsed convenience methods. Date "ABT 1850" stores both the modifier enum AND the original string.
-
-### 3. Comprehensive Encoding Support
-Full support for UTF-8, UTF-16 (LE/BE), ANSEL, ASCII, and LATIN1 with automatic detection. This exceeds most competitors, particularly ANSEL support which is critical for legacy files.
-
-### 4. Calendar System Support
-Parsing for Gregorian, Julian, Hebrew, and French Republican calendars with proper month code handling. Few libraries support non-Gregorian calendars.
-
-### 5. GEDCOM 7.0 Features
-Name transliterations (TRAN), association phrases (ASSO/PHRASE), and structured source citations from the newest standard.
-
-### 6. Performance with Documentation
-Benchmarked performance with regression testing. Zero-allocation validator for efficient large-scale processing.
-
-### 7. API Design
-Clean Go idioms with io.Reader/io.Writer interfaces, comprehensive godoc, and example code.
-
-### 8. Vendor Extension Support
-Structured parsing for Ancestry (_APID, _TREE) and FamilySearch (_FSFTID) extensions with URL helpers.
-
-### 9. MIT License
-Permissive license enables maximum adoption, unlike GPL-licensed competitors (funwithbots, python-gedcom).
+1. **Version conversion in Go.** The only Go library here that converts 5.5 ↔
+   5.5.1 ↔ 7.0.
+2. **Lossless representation.** Every readable line is kept, typed or not
+   ([ADR 0003](docs/decisions/0003-lossless-dual-storage.md)); dates keep their
+   original text beside the parsed form.
+3. **Encodings.** UTF-8, UTF-16 LE/BE, ANSEL, ASCII, Windows-1252/1250 and DOS
+   and Mac code pages, detected automatically
+   ([FEATURES.md](FEATURES.md#character-encoding)). No other Go library here
+   decodes ANSEL or UTF-16.
+4. **Measured coverage.** Typed coverage of each version is measured, not
+   claimed ([FEATURES.md](FEATURES.md#multi-version-support)).
+5. **Streaming.** Record-at-a-time parse, typed decode, validation and encoding.
+6. **Document operations.** Traversal, subset extraction, deep copy, merge and
+   duplicate detection ([FEATURES.md](FEATURES.md#document-operations)).
+7. **Validation.** Structural, version-specific and semantic checks (death
+   before birth, child before parent, and others), plus a quality report.
+8. **Published benchmarks.** Figures and the environment they were measured on
+   live in [docs/guides/performance.md](docs/guides/performance.md).
 
 ---
 
 ## gedcom-go Gaps
 
-### High Priority (for my-family use case)
+Since the January 2026 edition, relationship traversal, semantic validation
+warnings, document merging and duplicate detection, and progress callbacks have
+all shipped and are no longer gaps.
 
-| Gap | Available In | Priority | Notes |
-|-----|--------------|----------|-------|
-| **Relationship traversal API** | elliotchance | High | .Parents(), .Spouses(), .Children() accessors would simplify navigation |
-| **Deep comparison/merging** | elliotchance | Medium | Useful for deduplication and tree merging |
-
-### Medium Priority (best-in-class)
-
-| Gap | Available In | Priority | Notes |
-|-----|--------------|----------|-------|
-| **Query language** | elliotchance (gedcomq) | Medium | jq-like querying for complex searches |
-| **Validation warnings** | elliotchance | Medium | Semantic warnings (ChildBornBeforeParent, etc.) |
-| **Date similarity scoring** | elliotchance | Low | Fuzzy date matching for record linkage |
-| **HTML generation** | elliotchance | Low | Library-focused, but useful for tooling |
-
-### Low Priority (nice-to-have)
-
-| Gap | Available In | Priority | Notes |
-|-----|--------------|----------|-------|
-| **Progress callbacks** | python-gedcom, read-gedcom | Low | For large file UI feedback |
-| **JSON serialization** | rust-gedcom, gedcom5-java | Low | Alternative output format |
+| Gap | Available In | Notes |
+|-----|--------------|-------|
+| **GEDZIP packages** | oxidged, GedcomSharp, ArmidaleSoftware/gedcom7 | Tracked as [#127](https://github.com/cacack/gedcom-go/issues/127) |
+| **GEDCOM 7.1 draft** | oxidged | gedcom-go reads `VERS 7.1` as 7.0 |
+| **Query language** | elliotchance (gedcomq) | jq-like querying |
+| **HTML generation** | elliotchance | Library-focused, but useful for tooling |
+| **Alternative serializations** | oxidged (serde), GedcomSharp (GEDCOM X) | gedcom-go writes GEDCOM only |
 
 ### Not Gaps (by design)
 
 | Feature | Notes |
 |---------|-------|
-| CLI tools | Library-first design; CLI would be separate package |
-| GUI | Out of scope for library |
+| CLI tools | Library-first design; a CLI would be a separate package |
+| GUI | Out of scope for a library |
 | Database storage | Application-level concern |
-
----
-
-## Recommendations
-
-### Near-term Improvements
-
-1. **Relationship Traversal API** (High)
-   - Add `Individual.Parents()`, `Individual.Spouses()`, `Individual.Children()` convenience methods
-   - Add `Family.Members()` for all individuals in a family
-   - Follows elliotchance pattern but with gedcom-go's type-safe design
-
-2. **Semantic Validation Warnings** (Medium)
-   - Add optional validation layer for logical checks:
-     - Birth before parent's birth
-     - Death before birth
-     - Age reasonableness
-   - Keep separate from structural validation
-
-### Future Considerations
-
-3. **Record Comparison** (Medium)
-   - Compare two individuals/families for potential matches
-   - Useful for deduplication in genealogy workflows
-
-4. **Query Interface** (Low)
-   - Consider fluent query API for complex searches
-   - Could be simpler than full query language
 
 ---
 
 ## Methodology
 
 ### Data Sources
-- GitHub repositories (stars, commits, releases, last activity)
-- Package documentation (pkg.go.dev, readthedocs, etc.)
-- README files and feature lists
-- Source code examination for API design
-- Direct testing where feasible
-
-### Evaluation Criteria
-- Feature completeness against GEDCOM specifications
-- API design quality and Go idiomaticness
-- Documentation quality and availability
-- Maintenance activity and community health
-- License compatibility
+- GitHub repositories: README, license, `go.mod`, releases and tags, last
+  commit, stars
+- Source code, where a README did not settle a cell (encodings, record-at-a-time
+  reading, writing)
 
 ### Limitations
-- Performance comparisons are limited where benchmarks unavailable
-- Some features marked "Unknown" when documentation insufficient
-- Star counts reflect popularity, not necessarily quality
-- Research reflects snapshot at comparison date
+- No performance comparison: few libraries publish benchmarks, and none on a
+  shared environment
+- Star counts reflect popularity, not quality
+- The research is a snapshot at the date above
 
 ---
 
@@ -355,19 +154,10 @@ Permissive license enables maximum adoption, unlike GPL-licensed competitors (fu
 
 ### Go Libraries
 - [cacack/gedcom-go](https://github.com/cacack/gedcom-go) - This library
-- [elliotchance/gedcom](https://github.com/elliotchance/gedcom) - MIT, most feature-rich Go library
-- [iand/gedcom](https://github.com/iand/gedcom) - Unlicense, streaming-focused
-- [funwithbots/go-gedcom](https://github.com/funwithbots/go-gedcom) - GPL-3.0, GEDCOM 7.0 only
-
-### Other Languages
-- [gedcom4j](https://github.com/frizbog/gedcom4j) - Java, MIT
-- [gedcom5-java](https://github.com/FamilySearch/gedcom5-java) - Java, Apache-2.0
-- [python-gedcom](https://github.com/nickreynke/python-gedcom) - Python, GPL-2.0
-- [python-gedcom7](https://github.com/DavidMStraub/python-gedcom7) - Python, MIT
-- [read-gedcom](https://github.com/arbre-app/read-gedcom) - TypeScript, MIT
-- [js-gedcom](https://github.com/gedcom7code/js-gedcom) - JavaScript, MIT/Unlicense
-- [rust-gedcom](https://github.com/pirtleshell/rust-gedcom) - Rust, MIT
-- [GeneGenie.Gedcom](https://github.com/TheGeneGenieProject/GeneGenie.Gedcom) - C#, AGPL-3.0
+- [elliotchance/gedcom](https://github.com/elliotchance/gedcom) - MIT, broadest Go toolkit
+- [iand/gedcom](https://github.com/iand/gedcom) - Unlicense, 5.5/5.5.1/7.0
+- [deaddr0p/go-gedcom](https://github.com/deaddr0p/go-gedcom) - GPL-3.0, GEDCOM 7.0 only (formerly funwithbots/go-gedcom)
+- [MJKWoolnough/gedcom](https://github.com/MJKWoolnough/gedcom) - ISC, 5.5 reader
 
 ### GEDCOM Specifications
 - [GEDCOM 5.5 Specification](https://www.gedcom.org/gedcom.html)
