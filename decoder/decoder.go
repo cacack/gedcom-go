@@ -614,12 +614,7 @@ func buildRecords(doc *gedcom.Document, lines []*parser.Line, collector *diagnos
 			}
 
 			// Start new record
-			currentRecord = &gedcom.Record{
-				XRef:       line.XRef,
-				Type:       gedcom.RecordType(line.Tag),
-				Value:      line.Value,
-				LineNumber: line.LineNumber,
-			}
+			currentRecord = newRecord(line)
 
 			// Index in XRefMap if it has an XRef
 			if line.XRef != "" {
@@ -631,19 +626,7 @@ func buildRecords(doc *gedcom.Document, lines []*parser.Line, collector *diagnos
 
 		// Add tags to current record
 		if currentRecord != nil {
-			// XRef is carried through even at level >= 1. Well-formed GEDCOM
-			// never has an XRef there, so this is empty for valid input; it is
-			// non-empty only when splitSpacedXRef recovered a malformed
-			// identifier (e.g. "1 @I 1@ NOTE"). Lossless representation
-			// requires keeping it rather than dropping it on the floor.
-			tag := &gedcom.Tag{
-				Level:      line.Level,
-				Tag:        line.Tag,
-				Value:      line.Value,
-				XRef:       line.XRef,
-				LineNumber: line.LineNumber,
-			}
-			currentTags = append(currentTags, tag)
+			currentTags = append(currentTags, newTag(line))
 		}
 	}
 
@@ -651,6 +634,33 @@ func buildRecords(doc *gedcom.Document, lines []*parser.Line, collector *diagnos
 	if currentRecord != nil {
 		currentRecord.Tags = currentTags
 		doc.Records = append(doc.Records, currentRecord)
+	}
+}
+
+// newRecord returns the record a level-0 line starts, with no Tags yet.
+func newRecord(line *parser.Line) *gedcom.Record {
+	return &gedcom.Record{
+		XRef:       line.XRef,
+		Type:       gedcom.RecordType(line.Tag),
+		Value:      line.Value,
+		LineNumber: line.LineNumber,
+	}
+}
+
+// newTag returns the raw tag a subordinate line is kept as.
+//
+// XRef is carried through even at level >= 1. Well-formed GEDCOM never has an
+// XRef there, so this is empty for valid input; it is non-empty only when
+// splitSpacedXRef recovered a malformed identifier (e.g. "1 @I 1@ NOTE").
+// Lossless representation requires keeping it rather than dropping it on the
+// floor.
+func newTag(line *parser.Line) *gedcom.Tag {
+	return &gedcom.Tag{
+		Level:      line.Level,
+		Tag:        line.Tag,
+		Value:      line.Value,
+		XRef:       line.XRef,
+		LineNumber: line.LineNumber,
 	}
 }
 

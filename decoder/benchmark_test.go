@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/charset"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/parser"
 )
 
@@ -122,6 +123,34 @@ func BenchmarkStreamingParseLarge(b *testing.B) {
 		}
 		if iterErr != nil {
 			b.Fatal(iterErr)
+		}
+	}
+}
+
+// BenchmarkStreamingDecodeRecordLarge is BenchmarkStreamingParseLarge with
+// every record decoded to a typed record by DecodeRecord, the streaming
+// counterpart of BenchmarkDecodeLarge. The difference from
+// BenchmarkStreamingParseLarge is what DecodeRecord costs.
+//
+//	go test -bench='DecodeLarge|StreamingParseLarge|StreamingDecodeRecordLarge' -benchmem ./decoder/
+func BenchmarkStreamingDecodeRecordLarge(b *testing.B) {
+	data, err := os.ReadFile("../testdata/gedcom-5.5/pres2020.ged")
+	if err != nil {
+		b.Skip("Test file not found:", err)
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		r := charset.NewReader(bytes.NewReader(data))
+		for raw, perr := range parser.Records(r) {
+			if perr != nil {
+				b.Fatal(perr)
+			}
+			if _, err := DecodeRecord(raw, gedcom.Version55, nil); err != nil {
+				b.Fatal(err)
+			}
 		}
 	}
 }
