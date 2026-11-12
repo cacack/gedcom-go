@@ -410,6 +410,12 @@ positive value is used as given. The new untyped constant
 | any of the three | `0` in v3 | — | the default: `0.8`, `0.7` and `2` respectively |
 | any of the three | positive | used as given | unchanged |
 
+Since v3.7.0 `MaxBirthYearDiff` is also a veto
+([#728](https://github.com/cacack/gedcom-go/issues/728)): two exact birth years
+further apart than it rule a pair out, so under `ZeroThreshold` any difference
+between exact years drops the pair rather than only withholding credit. To keep
+birth years from ever vetoing, set a large positive value instead.
+
 If you wrote a partial literal, you almost certainly wanted the v3 behaviour
 and need to do nothing. Only a literal that set one of these fields to `0` *on
 purpose* needs `ZeroThreshold`.

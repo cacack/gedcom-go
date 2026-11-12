@@ -58,12 +58,14 @@ func TestCheckReasonableAge_CrossCalendar(t *testing.T) {
 }
 
 func TestFindDuplicates_CrossCalendarBirthYears(t *testing.T) {
+	const noPair = "(no pair)"
 	tests := []struct {
 		name         string
 		date1, date2 string
-		wantReason   string // the birth-year reason expected; "" means none
+		wantReason   string // the birth-year reason expected, or noPair
 	}{
-		{"Hebrew and Gregorian with close year numbers", "@#DHEBREW@ 1900", "1900", ""},
+		// Thousands of years apart, so the birth years veto the pair (#728).
+		{"Hebrew and Gregorian with close year numbers", "@#DHEBREW@ 1900", "1900", noPair},
 		{"Hebrew and Gregorian in the same year", "@#DHEBREW@ 1 TSH 5660", "1899", "same birth year"},
 		{"Julian late December is the next Gregorian year", "@#DJULIAN@ 25 DEC 1700", "1701", "same birth year"},
 		{"two Gregorian dates as before", "1900", "1901", "birth year within 1 years"},
@@ -80,6 +82,12 @@ func TestFindDuplicates_CrossCalendarBirthYears(t *testing.T) {
 				},
 			}
 			duplicates := NewDuplicateDetector(nil).FindDuplicates(doc)
+			if tt.wantReason == noPair {
+				if len(duplicates) != 0 {
+					t.Errorf("want no pair, got reasons %v", duplicates[0].MatchReasons)
+				}
+				return
+			}
 			if len(duplicates) != 1 {
 				t.Fatalf("Expected 1 duplicate pair, got %d", len(duplicates))
 			}

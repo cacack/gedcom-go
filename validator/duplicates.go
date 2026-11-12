@@ -4,6 +4,9 @@
 // Duplicate detection is a common need in genealogy software where the same person
 // may be entered multiple times from different sources. This package provides
 // configurable matching thresholds for name comparison and date proximity.
+// Contradictions veto a pair outright: exact birth years further apart than
+// DuplicateConfig.MaxBirthYearDiff, or two known sexes (M, F or X, compared
+// case-insensitively) that differ. The sex veto has no switch.
 
 package validator
 
@@ -81,7 +84,8 @@ const UnlimitedNameRunes = -1
 //
 //	MinNameSimilarity  no given-name gate; any pair of given names is accepted
 //	MinConfidence      every pair that passes the other gates is reported
-//	MaxBirthYearDiff   only an identical birth year earns birth-date credit
+//	MaxBirthYearDiff   only an identical birth year earns birth-date credit;
+//	                   any difference between exact dates vetoes the pair
 const ZeroThreshold = -1
 
 // Default thresholds applied by duplicate detection when the corresponding
@@ -118,13 +122,21 @@ type DuplicateConfig struct {
 
 	// MaxBirthYearDiff is the maximum difference in birth years that still earns
 	// partial birth-date credit. An identical birth year always earns full credit.
+	// It is also a veto: when both birth dates are exact (no ABT, BEF, AFT, BET,
+	// FROM or other modifier) and their years differ by more than
+	// MaxBirthYearDiff, the pair is never reported, whatever its other scores,
+	// so a namesake father and son are not taken for one person. An approximate
+	// or range date outside the window only withholds credit. A birth date
+	// with no known year (missing, a phrase, year 0) neither earns credit nor
+	// vetoes (see RequireBirthDate). A large positive value effectively turns
+	// the veto off.
 	// Years are compared astronomically, so 1 BCE and 1 CE are one year apart.
 	// Dates in the same calendar compare Year as written; dates in different
 	// calendars are compared as the Gregorian years of their first days, reading
 	// a dual date in New Style.
 	//
 	//	0        use the default (2)
-	//	negative only an identical birth year earns credit ([ZeroThreshold])
+	//	negative only an identical birth year earns credit; any other exact year vetoes ([ZeroThreshold])
 	//	positive use that value
 	//
 	// Default: 2
@@ -385,6 +397,11 @@ type DuplicateReport struct {
 // FindDuplicates analyzes all individuals in the document and returns potential duplicates.
 // The algorithm groups individuals by normalized surname for efficiency, then compares
 // pairs within each surname group.
+//
+// Contradictions veto a pair whatever its score: exact birth years further
+// apart than DuplicateConfig.MaxBirthYearDiff, or two known sexes (M, F or X,
+// compared case-insensitively; empty and U are unknown) that differ. The sex
+// veto has no switch.
 //
 // Complexity is O(Σ kᵢ²) over the surname groups, which
 // DuplicateConfig.MaxGroupSize bounds to O(n · MaxGroupSize / 2) pair
@@ -695,18 +712,28 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 		return DuplicatePair{}, false
 	}
 
+	// Exact birth years further apart than MaxBirthYearDiff contradict a match,
+	// so they veto the pair rather than merely withholding credit (#728). An
+	// approximate, bounded or range date compares only its first year, which
+	// need not contradict the other date, so it withholds credit instead.
 	if yearDiff, ok := birthYearsApart(birthDate1, birthDate2); ok {
-		if yearDiff == 0 {
+		switch {
+		case yearDiff == 0:
 			confidence += 0.2
 			reasons = append(reasons, "same birth year")
-		} else if yearDiff <= d.config.MaxBirthYearDiff {
+		case yearDiff <= d.config.MaxBirthYearDiff:
 			confidence += 0.1
 			reasons = append(reasons, fmt.Sprintf("birth year within %d years", yearDiff))
+		case isExactDate(birthDate1) && isExactDate(birthDate2):
+			return DuplicatePair{}, false
 		}
 	}
 
-	// Compare sex
-	if ind1.Sex != "" && ind2.Sex != "" && ind1.Sex == ind2.Sex {
+	// Compare sex: two known sexes that differ veto the pair (#728).
+	if sex1, sex2 := knownSex(ind1.Sex), knownSex(ind2.Sex); sex1 != "" && sex2 != "" {
+		if sex1 != sex2 {
+			return DuplicatePair{}, false
+		}
 		confidence += 0.1
 		reasons = append(reasons, "same sex")
 	}
@@ -722,6 +749,22 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 		Confidence:   confidence,
 		MatchReasons: reasons,
 	}, true
+}
+
+// isExactDate reports whether d names a single date: no modifier (ABT, BEF,
+// BET, FROM and the rest) and no range end.
+func isExactDate(d *gedcom.Date) bool {
+	return d.Modifier == gedcom.ModifierNone && d.EndDate == nil
+}
+
+// knownSex returns sex upper-cased and trimmed, or "" when it records no
+// known sex: empty or U (unknown). M, F and the GEDCOM 7.0 X are known.
+func knownSex(sex string) string {
+	sex = strings.ToUpper(strings.TrimSpace(sex))
+	if sex == "U" {
+		return ""
+	}
+	return sex
 }
 
 // normalizeName normalizes a name for comparison.
