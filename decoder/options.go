@@ -67,7 +67,8 @@ type DecodeOptions struct {
 	//     (SeverityError) is emitted per byte, at its line, with its column in
 	//     the message, up to [MaxInvalidEncodingDiagnostics]; one further
 	//     diagnostic counts the bytes past that
-	//   - Diagnostics are collected for all issues encountered
+	//   - Diagnostics are collected for all issues encountered, up to
+	//     MaxDiagnostics
 	//   - Use [DecodeWithDiagnostics] to access diagnostics
 	//   - A partial document is returned if any valid records exist
 	//
@@ -82,6 +83,46 @@ type DecodeOptions struct {
 	// TotalSize is the expected total size of the input in bytes.
 	// Set to 0 (default) if unknown; will be reported as -1 to the callback.
 	TotalSize int64
+
+	// MaxDiagnostics bounds the diagnostics a lenient decode reports, so that
+	// input which is mostly malformed cannot make them, and the memory they
+	// hold, grow with the file (#744). Zero means [DefaultMaxDiagnostics];
+	// [UnlimitedDiagnostics] (any negative value) removes the bound.
+	//
+	// The first MaxDiagnostics diagnostics, in the order they are reported,
+	// are kept. When any are left out, one CodeDiagnosticsTruncated
+	// diagnostic is appended after them, counting those left out, so the
+	// result holds at most MaxDiagnostics+1 entries. The document is the same
+	// whatever the bound: it limits only what is reported. It has no effect
+	// in strict mode, which reports no diagnostics.
+	MaxDiagnostics int
+}
+
+// DefaultMaxDiagnostics is the number of diagnostics a lenient decode reports
+// when [DecodeOptions.MaxDiagnostics] is zero.
+//
+// Real exports can report many: testdata/edge-cases/mhftb8-export.ged, a
+// 2.4 MB MyHeritage file, reports 14,597, nearly all UNKNOWN_TAG warnings for
+// vendor tags, so the bound is set well above that. It still caps the memory
+// diagnostics hold at a few tens of megabytes whatever the input: 18 MB of
+// garbage lines, which gave 1,000,000 diagnostics and about 400 MB of memory
+// unbounded, decodes in about 60 MB.
+const DefaultMaxDiagnostics = 100000
+
+// UnlimitedDiagnostics removes the diagnostics bound when assigned to
+// [DecodeOptions.MaxDiagnostics]. It exists because the field's zero value
+// means "use DefaultMaxDiagnostics", not "no limit", so opting out has to be
+// explicit. Only use it on input you control: on hostile input the
+// diagnostics grow with the file.
+const UnlimitedDiagnostics = -1
+
+// diagnosticsLimit resolves MaxDiagnostics: the bound to apply, or a negative
+// value for none.
+func (o *DecodeOptions) diagnosticsLimit() int {
+	if o.MaxDiagnostics == 0 {
+		return DefaultMaxDiagnostics
+	}
+	return o.MaxDiagnostics
 }
 
 // DefaultOptions returns the default decoding options.

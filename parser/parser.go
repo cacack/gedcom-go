@@ -7,6 +7,8 @@ import (
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/cacack/gedcom-go/v3/internal/clip"
 )
 
 // ErrXRefContainsSpace is wrapped by the [ParseError] reported for an XRef
@@ -52,6 +54,22 @@ type ParseOptions struct {
 	// applies only when Lenient is true; strict mode already stops on the
 	// first error.
 	TolerateOnly error
+
+	// Filter, if set, is consulted in lenient mode for each line error, in
+	// input order, and the error is collected only if its KeepError returns
+	// true (and MaxErrors has not been reached). It lets a caller bound what
+	// is kept while still seeing every error, for instance to count those it
+	// drops. The error that stops parsing under TolerateOnly is collected
+	// without consulting it.
+	Filter ErrorFilter
+}
+
+// ErrorFilter decides which lenient-mode errors [Parser.ParseWithOptions]
+// collects; see [ParseOptions.Filter]. It is an interface rather than a func
+// so that ParseOptions stays comparable; use a comparable implementation,
+// such as a pointer.
+type ErrorFilter interface {
+	KeepError(*ParseError) bool
 }
 
 // NewParser creates a new Parser instance.
@@ -107,6 +125,12 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 	// Parse level (first part)
 	level, err := strconv.Atoi(parts[0])
 	if err != nil {
+		// The *strconv.NumError quotes the whole field; clip it like Context
+		// so the error does not keep the full line alive.
+		var numErr *strconv.NumError
+		if errors.As(err, &numErr) {
+			numErr.Num = strings.Clone(clip.String(numErr.Num, MaxContextBytes))
+		}
 		return nil, wrapParseError(p.lineNumber, "invalid level number", line, err)
 	}
 
@@ -309,12 +333,8 @@ func (p *Parser) parseSpacedXRef(level int, line, xref, rest string) (*Line, err
 		}
 		return nil, err
 	}
-	return p.recoverXRefLine(level, xref, rest, fields[0]), &ParseError{
-		Line:    p.lineNumber,
-		Message: "xref contains a space: " + xref,
-		Context: line,
-		Err:     ErrXRefContainsSpace,
-	}
+	return p.recoverXRefLine(level, xref, rest, fields[0]),
+		wrapParseError(p.lineNumber, "xref contains a space: "+xref, line, ErrXRefContainsSpace)
 }
 
 // parseUnterminatedXRef parses a level-0 line whose XRef has no closing "@",
@@ -470,18 +490,7 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 			}
 
 			// Lenient mode: collect the error and continue
-			var parseErr *ParseError
-			if pe, ok := err.(*ParseError); ok {
-				parseErr = pe
-			} else {
-				// Wrap non-ParseError errors
-				parseErr = &ParseError{
-					Line:    p.lineNumber,
-					Message: err.Error(),
-					Context: text,
-					Err:     err,
-				}
-			}
+			parseErr := p.asParseError(err, text)
 
 			// A recovered line (e.g. an XRef containing a space) is kept so the
 			// record survives; otherwise the problematic line is skipped.
@@ -492,6 +501,9 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 			// MaxErrors, so truncated lines never come back without a cause.
 			if opts.TolerateOnly != nil && !errors.Is(parseErr, opts.TolerateOnly) {
 				return lines, append(parseErrors, parseErr), nil
+			}
+			if opts.Filter != nil && !opts.Filter.KeepError(parseErr) {
+				continue
 			}
 			// Only collect if under MaxErrors limit (0 = unlimited)
 			if opts.MaxErrors == 0 || len(parseErrors) < opts.MaxErrors {
@@ -509,6 +521,15 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 	}
 
 	return lines, parseErrors, nil
+}
+
+// asParseError returns err as a *ParseError, wrapping it at the current line
+// with text as its context when it is not one.
+func (p *Parser) asParseError(err error, text string) *ParseError {
+	if pe, ok := err.(*ParseError); ok {
+		return pe
+	}
+	return wrapParseError(p.lineNumber, err.Error(), text, err)
 }
 
 // lineScanner reads GEDCOM lines, handling all line ending styles: LF, CRLF,
