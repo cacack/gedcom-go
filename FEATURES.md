@@ -975,7 +975,7 @@ err := date.Validate()
 
 - Uses `time.Date()` normalization (no reimplemented calendar math)
 - Skips validation for partial dates (lossless representation)
-- Only Gregorian dates are validated; non-Gregorian calendars return nil
+- Julian, Hebrew and French Republican dates are checked against their own calendar (`@#DJULIAN@ 30 FEB 1700`, `@#DHEBREW@ 1 ADS 5785` in a common year, `@#DFRENCH R@ 6 COMP 5` are invalid), with the bound `Bounds` uses; `ToGregorian` returns an error for them instead of rolling them over
 - Detects invalid day/month combinations (Feb 30, Jun 31)
 - Handles leap years correctly (Feb 29 2000 valid, 1900 invalid)
 - Checks both endpoints of ranges and periods (`BET 1900 AND 31 FEB 1901` is invalid)
@@ -1186,11 +1186,13 @@ using `gedcom.Date.Validate`. Every `DATE` is checked: events, attributes, LDS
 ordinances, citations, `CHAN` and `HEAD.DATE`. Each issue carries the DATE line and,
 in `Details`, the tag holding the date (`tag`, e.g. `BIRT`), its path below the record
 (`path`, e.g. `BIRT.SOUR.DATA.DATE`) and the raw `value`. Partial dates (`ABT 1900`,
-`FEB 1900`) and non-Gregorian calendars are not checked for their day. A dual-dated (Old Style)
-value such as `29 FEB 1723/24` is checked only against the longest its month can be,
+`FEB 1900`) are not checked for their day. Julian, Hebrew and French Republican dates are
+checked on their own calendar, so `@#DJULIAN@ 30 FEB 1700` and `@#DHEBREW@ 30 ADR 5785` are
+reported; a dual-dated Julian date is checked in its New Style year. A dual-dated (Old Style)
+Gregorian value such as `29 FEB 1723/24` is checked only against the longest its month can be,
 so its leap day passes but `30 FEB 1723/24` is reported. A dual year that is not the
 year following the first, such as `1750/53` or `1850/1860`, is reported too, even on a
-partial or non-Gregorian date. A range or period that ends before it starts, such as
+partial date. A range or period that ends before it starts, such as
 `BET 1860 AND 1850`, is reported too. A one- or two-digit dual year resolves forward, so
 `1699/00` is 1699 and 1700. A record built in code, with no raw tags, is checked
 through its typed events, attributes and LDS ordinances; those issues carry line 0 and

@@ -55,6 +55,13 @@ func TestInvalidDateReported(t *testing.T) {
 		{"reversed range", []string{"1 BIRT", "2 DATE BET 1860 AND 1850"}, "BIRT", "BIRT.DATE", 8},
 		{"reversed period", []string{"1 RESI", "2 DATE FROM 1860 TO 1850"}, "RESI", "RESI.DATE", 8},
 		{"reversed range with dual-dated end", []string{"1 BIRT", "2 DATE BET 1 MAR 1724 AND 29 FEB 1723/24"}, "BIRT", "BIRT.DATE", 8},
+		{"Julian 30 FEB", []string{"1 BIRT", "2 DATE @#DJULIAN@ 30 FEB 1700"}, "BIRT", "BIRT.DATE", 8},
+		{"Julian dual-dated 30 FEB", []string{"1 BIRT", "2 DATE @#DJULIAN@ 30 FEB 1723/24"}, "BIRT", "BIRT.DATE", 8},
+		{"Julian 29 FEB in a common year", []string{"1 BIRT", "2 DATE @#DJULIAN@ 29 FEB 1723"}, "BIRT", "BIRT.DATE", 8},
+		{"Hebrew 30 Adar in a common year", []string{"1 BIRT", "2 DATE @#DHEBREW@ 30 ADR 5785"}, "BIRT", "BIRT.DATE", 8},
+		{"Hebrew Adar II in a common year", []string{"1 BIRT", "2 DATE @#DHEBREW@ 1 ADS 5785"}, "BIRT", "BIRT.DATE", 8},
+		{"French Republican 31 VEND", []string{"1 BIRT", "2 DATE @#DFRENCH R@ 31 VEND 8"}, "BIRT", "BIRT.DATE", 8},
+		{"French Republican 6 COMP in a common year", []string{"1 BIRT", "2 DATE @#DFRENCH R@ 6 COMP 5"}, "BIRT", "BIRT.DATE", 8},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -79,15 +86,20 @@ func TestInvalidDateReported(t *testing.T) {
 	}
 }
 
-// TestInvalidDateNotReported pins that valid, partial and non-Gregorian dates,
-// which Date.Validate skips by design, raise no INVALID_DATE.
+// TestInvalidDateNotReported pins that valid dates on any calendar, and partial
+// dates, which Date.Validate skips by design, raise no INVALID_DATE.
 func TestInvalidDateNotReported(t *testing.T) {
 	for _, date := range []string{
 		"29 FEB 2000",
 		"ABT 1900",
 		"FEB 1900",
 		"BET 1900 AND 1901",
-		"@#DJULIAN@ 31 FEB 1900",
+		"@#DJULIAN@ 29 FEB 1900",
+		"@#DJULIAN@ 29 FEB 1723/24",
+		"@#DHEBREW@ 1 ADS 5784",
+		"@#DHEBREW@ ADS 5785",
+		"@#DFRENCH R@ 5 COMP 3",
+		"@#DFRENCH R@ 6 COMP 3",
 		"29 FEB 1723/24",
 		"BET 1 JAN 1723/24 AND 29 FEB 1723/24",
 		"BET JAN 1850 AND 1850",

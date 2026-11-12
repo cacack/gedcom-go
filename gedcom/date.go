@@ -605,25 +605,41 @@ func parseDayMonthYear(fields []string, date *Date) error {
 // Returns the month number (1-13 depending on calendar) or an error if invalid.
 // Month codes are case-insensitive.
 func parseMonthForCalendar(s string, calendar Calendar) (int, error) {
-	upperMonth := strings.ToUpper(s)
-
-	var monthMap map[string]int
-	switch calendar {
-	case CalendarGregorian, CalendarJulian:
-		monthMap = monthNames
-	case CalendarHebrew:
-		monthMap = hebrewMonthNames
-	case CalendarFrenchRepublican:
-		monthMap = frenchMonthNames
-	default:
+	monthMap := calendarMonths(calendar)
+	if monthMap == nil {
 		return 0, fmt.Errorf("unsupported calendar type: %s", calendar)
 	}
 
-	month, ok := monthMap[upperMonth]
+	month, ok := monthMap[strings.ToUpper(s)]
 	if !ok {
 		return 0, fmt.Errorf("invalid month code '%s' for %s calendar", s, calendar)
 	}
 	return month, nil
+}
+
+// calendarMonths returns the month codes of calendar, or nil for an unknown
+// calendar.
+func calendarMonths(calendar Calendar) map[string]int {
+	switch calendar {
+	case CalendarGregorian, CalendarJulian:
+		return monthNames
+	case CalendarHebrew:
+		return hebrewMonthNames
+	case CalendarFrenchRepublican:
+		return frenchMonthNames
+	}
+	return nil
+}
+
+// monthCode returns the GEDCOM code of month on calendar (FEB, ADS, VEND),
+// or the month number when calendar has no such month.
+func monthCode(calendar Calendar, month int) string {
+	for code, n := range calendarMonths(calendar) {
+		if n == month {
+			return code
+		}
+	}
+	return strconv.Itoa(month)
 }
 
 // parseYearWithDual parses a year field that may contain dual dating (e.g., "1750/51" or "1750/1751").
@@ -747,7 +763,7 @@ func indexFoldASCII(s, substr string) int {
 // Validate checks if the date is semantically valid (e.g., no day overflow like Feb 30).
 // For ranges (BET...AND) and periods (FROM...TO), both the start date and EndDate
 // are checked independently; the first error is returned, and an error in the end
-// date is prefixed with "invalid end date". A partial or non-Gregorian endpoint is
+// date is prefixed with "invalid end date". A partial endpoint's day is
 // skipped without skipping the other one. When both endpoints pass, a range or
 // period whose start is entirely after its end (BET 1860 AND 1850) is an error;
 // endpoints of differing precision that overlap (BET JAN 1850 AND 1850) are not.
@@ -757,9 +773,15 @@ func indexFoldASCII(s, substr string) int {
 // day or year of 0, so a 0 here always means absent.
 // The dual-year check runs on every date, partial or not, on any calendar: a
 // DualYear that is not the year following Year (e.g. "1750/53") is an error.
-// The day check is skipped for partial dates (day, month, or year is 0) and
-// non-Gregorian calendars; the validator package relies on this, clearing Day
-// to check only a dual year, so keep partial dates skipped.
+// The day check is skipped for partial dates (day, month, or year is 0); the
+// validator package relies on this, clearing Day to check only a dual year,
+// so keep partial dates skipped.
+// Julian, Hebrew and French Republican dates are checked with the bound
+// Bounds uses, so a day or month the calendar does not have that year
+// (@#DJULIAN@ 30 FEB 1700, @#DHEBREW@ 1 ADS 5785, @#DFRENCH R@ 6 COMP 5) is
+// an error naming the date and calendar; a dual Julian date is checked in its
+// New Style year (see Bounds). Until #720, 6 COMP of French Republican years
+// III, VII and XI, the historical sextile years, is accepted.
 // Gregorian dates are checked on the proleptic Gregorian calendar using astronomical
 // years (1 BCE = year 0, a leap year), matching the calendar conversions; error
 // messages report the era year as written.
@@ -833,7 +855,9 @@ func (d *Date) validateDualYear() error {
 
 // validateDay checks a single date (ignoring EndDate) for day overflow.
 // ToTime also relies on it to reject dates that time.Date would roll over
-// (e.g. 31 FEB 1900 becoming 3 MAR 1900), so loosening this check loosens ToTime.
+// (e.g. 31 FEB 1900 becoming 3 MAR 1900), and ToGregorian to reject
+// non-Gregorian days that the calendar arithmetic would roll over (30 FEB
+// 1700 Julian becoming 12 MAR 1700), so loosening this check loosens both.
 // ToTime deliberately does not check the dual year: a time.Time has no use for it.
 func (d *Date) validateDay() error {
 	// Skip validation for partial dates
@@ -841,9 +865,8 @@ func (d *Date) validateDay() error {
 		return nil
 	}
 
-	// Only validate Gregorian calendar for now
 	if d.Calendar != CalendarGregorian {
-		return nil
+		return d.validateCalendarDay()
 	}
 
 	// Use time.Date to check if the date normalizes (indicating overflow)
@@ -867,6 +890,38 @@ func (d *Date) validateDay() error {
 	}
 
 	return nil
+}
+
+// validateCalendarDay checks a non-Gregorian date's day and month, or its
+// month alone when Day is 0, with the bound Bounds uses (boundsInYear), in
+// the year ToGregorian converts from: a dual date's New Style year when
+// known, else Year.
+func (d *Date) validateCalendarDay() error {
+	inYear := d.inNewStyle().Year
+	if inYear < -maxBoundsYear || inYear > maxBoundsYear {
+		return nil // beyond what Bounds places; Validate reports the year itself
+	}
+	if _, _, ok := d.boundsInYear(inYear); ok {
+		return nil
+	}
+	if d.Calendar == CalendarFrenchRepublican && d.Month == 13 && d.Day == 6 &&
+		(inYear == 3 || inYear == 7 || inYear == 11) {
+		// The calendar in force had sextile years III, VII and XI, not the
+		// Romme years calendarToJDN uses (#720); do not report a real day.
+		return nil
+	}
+	var written string
+	if d.Day != 0 {
+		written = strconv.Itoa(d.Day) + " "
+	}
+	year := strconv.Itoa(d.Year)
+	if d.DualYear != 0 {
+		year += "/" + strconv.Itoa(d.DualYear)
+	}
+	if d.IsBC {
+		year += " BCE"
+	}
+	return fmt.Errorf("invalid date: %s%s %s does not exist on the %s calendar", written, monthCode(d.Calendar, d.Month), year, d.Calendar)
 }
 
 // getMonthName returns the full month name for a month number (1-12).
@@ -1236,7 +1291,13 @@ func calendarToJDN(cal Calendar, year, month, day int) (int, error) {
 //
 // For dates already in Gregorian calendar, returns a copy of self.
 // For partial dates (missing day or month), converts available components.
-// Returns error if year is 0 (date too incomplete to convert).
+// Returns error if year is 0 (date too incomplete to convert), or if a
+// non-Gregorian date names a day or month its calendar does not have that
+// year (@#DJULIAN@ 30 FEB 1700, @#DHEBREW@ 30 ADR 5785, and the month-only
+// @#DHEBREW@ ADS 5785, which Validate skips as partial); such a date is never
+// rolled over into the following month. Until #720, the leap day 6 COMP of
+// French Republican years III, VII and XI is accepted and converted with the
+// Romme leap rule.
 //
 // Ranges and periods are converted as a unit: the EndDate is converted too,
 // and a failure there fails the whole conversion rather than returning a
@@ -1291,6 +1352,16 @@ func (d *Date) toGregorianComponents() (*Date, error) {
 	// Need at least a year to convert
 	if d.Year == 0 {
 		return nil, fmt.Errorf("cannot convert date to Gregorian: year is missing")
+	}
+	// A day the calendar does not have would roll over into the next month,
+	// and so would a month-only date naming a month the year lacks
+	// (ADS 5785), which validateDay skips as partial
+	check := d.validateDay
+	if d.Day == 0 && d.Month != 0 {
+		check = d.validateCalendarDay
+	}
+	if err := check(); err != nil {
+		return nil, fmt.Errorf("cannot convert date to Gregorian: %w", err)
 	}
 
 	// Convert to JDN first, reading a dual date in its New Style year

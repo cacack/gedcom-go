@@ -71,8 +71,9 @@ const (
 	// such as 31 FEB 1900 or 29 FEB 1900, including the end date of a range
 	// or period, or whose dual year is not the following year (1750/53), or
 	// a range or period that ends before it starts (BET 1860 AND 1850).
-	// The dual year is checked on every date; the day is not checked on
-	// partial dates or non-Gregorian calendars, as in gedcom.Date.Validate.
+	// The dual year is checked on every date; the day is checked on
+	// Gregorian, Julian, Hebrew and French Republican dates but not on
+	// partial dates, as in gedcom.Date.Validate.
 	// A value gedcom.ParseDate rejects, such as 0 JAN 1850, is not reported
 	// here; the decoder reports it as an INVALID_VALUE diagnostic.
 	CodeInvalidDate = "INVALID_DATE"
