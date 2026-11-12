@@ -85,6 +85,9 @@ const (
 	// It is also reported for a level-0 record whose tag is neither a standard
 	// record type nor an extension ("_" prefix), including a standard type in
 	// the wrong case ("indi"); the record is kept with that Type and no entity.
+	// A subordinate tag is reported once per line for its first
+	// [MaxUnknownTagDiagnosticsPerTag] lines; one further diagnostic, at the
+	// next line with that tag, counts the lines not reported individually.
 	CodeUnknownTag = "UNKNOWN_TAG"
 
 	// CodeInvalidValue indicates a value doesn't match the expected format.

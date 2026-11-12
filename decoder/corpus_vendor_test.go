@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,6 +38,28 @@ func diagHistogram(diags Diagnostics) map[string]int {
 		hist[d.Code]++
 	}
 	return hist
+}
+
+// unknownTagLines returns the tag a CodeUnknownTag diagnostic reports and the
+// number of lines it stands for: one, or for the summary written past
+// MaxUnknownTagDiagnosticsPerTag, the lines it counts. ok is false for any
+// other diagnostic.
+func unknownTagLines(d Diagnostic) (tag string, lines int, ok bool) {
+	if d.Code != CodeUnknownTag {
+		return "", 0, false
+	}
+	tag, found := strings.CutPrefix(d.Message, "unknown tag: ")
+	if !found {
+		return "", 0, false
+	}
+	tag, rest, summary := strings.Cut(tag, " (")
+	if !summary {
+		return tag, 1, true
+	}
+	if _, err := fmt.Sscanf(rest, "%d more lines", &lines); err != nil {
+		return "", 0, false
+	}
+	return tag, lines, true
 }
 
 // TestCorpusVendorFiles decodes every corpus fixture and asserts the exact
@@ -105,7 +128,11 @@ func TestCorpusVendorFiles(t *testing.T) {
 			// the only header tag the change flags anywhere in the corpus.
 			// 162 -> 163 for issue #724: the nonstandard level-0 record
 			// "0 @R1@ TITL" is reported as an unknown record type.
-			diags: map[string]int{CodeUnknownTag: 163},
+			// 163 -> 138 for issue #730: 25 "PLAC.SOUR" citations are 5.5
+			// standard. 138 -> 29 as the 110 NUMB and 21 level-2 ALIA lines
+			// are each reported 10 times plus one summary
+			// (MaxUnknownTagDiagnosticsPerTag): 138 - 110 - 21 + 11 + 11.
+			diags: map[string]int{CodeUnknownTag: 29},
 		},
 		{
 			path:        "../testdata/edge-cases/vendor-ancestris11-export.ged",
@@ -152,7 +179,11 @@ func TestCorpusVendorFiles(t *testing.T) {
 			// of those now-walked subtrees contains a "2 RIN MH:..." that is
 			// reported in their place (#375 recognizes RIN at INDI level 1,
 			// but the subordinate-structure table still flags it).
-			diags: map[string]int{CodeUnknownTag: 14480, CodeInvalidValue: 117},
+			// #730: the 2,863 FAM.RIN are standard and no longer reported,
+			// and the 11,607 nonstandard event-level RIN are reported 10
+			// times plus one summary (MaxUnknownTagDiagnosticsPerTag); the
+			// other 10 are inline OBJE.FORM. 10 + 1 + 10 = 21.
+			diags: map[string]int{CodeUnknownTag: 21, CodeInvalidValue: 117},
 		},
 		{
 			path:        "../testdata/edge-cases/vendor-myroots-palmos.ged",
@@ -214,8 +245,9 @@ func TestCorpusVendorFiles(t *testing.T) {
 			individuals: 2145,
 			families:    1042,
 			// The one CP437 byte decodes as 'é' (#735); QUAY is written
-			// directly under events (see misplacedTags).
-			diags: map[string]int{CodeInvalidValue: 1, CodeUnknownTag: 1206},
+			// directly under events (see misplacedTags): 10 reported plus
+			// one summary counting the other 1,196 (#730).
+			diags: map[string]int{CodeInvalidValue: 1, CodeUnknownTag: 11},
 		},
 		{
 			path:        "../testdata/encoding/ibm-windows-easytree.ged",
@@ -228,7 +260,9 @@ func TestCorpusVendorFiles(t *testing.T) {
 			families:    19,
 			// 34 -> 41 for issue #724: the seven nonstandard level-0
 			// "0 @Cn@ CSTA" records are reported as unknown record types.
-			diags: map[string]int{CodeUnknownTag: 41},
+			// 41 -> 38 for issue #730: 14 HIST and 11 SOUR.NAME are each
+			// capped at 10 plus one summary (MaxUnknownTagDiagnosticsPerTag).
+			diags: map[string]int{CodeUnknownTag: 38},
 		},
 		{
 			path:        "../testdata/edge-cases/synium-7.0-utf8.ged",
@@ -244,7 +278,10 @@ func TestCorpusVendorFiles(t *testing.T) {
 			// INVALID_VALUE: "Abt."/"Bef."/"about" qualifiers and a full
 			// month name ("August 1978"); abbreviated months in mixed case
 			// ("10 Dec 1868") parse cleanly.
-			diags:  map[string]int{CodeUnknownTag: 470, CodeInvalidValue: 19},
+			// 470 -> 467 for issue #730 (the three REPO.CREA are
+			// standard), then -> 69 as each tag past
+			// MaxUnknownTagDiagnosticsPerTag is summarized in one diagnostic.
+			diags:  map[string]int{CodeUnknownTag: 69, CodeInvalidValue: 19},
 			strict: true,
 		},
 		{
@@ -316,9 +353,11 @@ func TestCorpusVendorFiles(t *testing.T) {
 			vendor:      gedcom.VendorFamilyHistorian,
 			individuals: 208,
 			families:    62,
-			// All 62 are the standard 5.5.1 FAM.RIN ("1 RIN MH:F2"), which
-			// parseFamily does not recognize yet.
-			diags:  map[string]int{CodeUnknownTag: 62},
+			// The 62 UNKNOWN_TAG were the standard 5.5.1 FAM.RIN
+			// ("1 RIN MH:F2"), recognized since #730. The entry is dropped
+			// rather than set to 0 because the table asserts
+			// len(hist) == len(tt.diags).
+			diags:  map[string]int{},
 			strict: true,
 		},
 		{
@@ -673,8 +712,8 @@ func TestCorpusVendorTMG12NumbTags(t *testing.T) {
 
 	numb := 0
 	for _, d := range result.Diagnostics {
-		if d.Code == CodeUnknownTag && strings.Contains(d.Message, "NUMB") {
-			numb++
+		if tag, lines, ok := unknownTagLines(d); ok && tag == "NUMB" {
+			numb += lines
 		}
 	}
 	if numb != 110 {

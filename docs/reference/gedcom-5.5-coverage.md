@@ -181,8 +181,8 @@ specification PDFs, which is described in
 |--------|------:|------:|------:|------:|---------|
 | typed | 884 | 88.6% | 1186 | 90.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 81 | 8.1% | 102 | 7.8% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
-| raw (flagged) | 15 | 1.5% | 10 | 0.8% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
+| raw (accepted) | 93 | 9.3% | 108 | 8.2% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (flagged) | 3 | 0.3% | 4 | 0.3% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 18 | 1.8% | 18 | 1.4% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
@@ -732,7 +732,7 @@ Measured at `FAM` in 5.5, 5.5.1.
 | `REFN` | `FAM_RECORD.FAM.REFN` | typed | typed | `{0:M}` |
 | `RESI` | `FAMILY_EVENT_STRUCTURE.RESI` | — | typed | `{0:M}` |
 | `RESN` | `FAM_RECORD.FAM.RESN` | — | raw (accepted) | `{0:1}` |
-| `RIN` | `FAM_RECORD.FAM.RIN` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `RIN` | `FAM_RECORD.FAM.RIN` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `SLGS` | `LDS_SPOUSE_SEALING.SLGS` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
@@ -2095,18 +2095,18 @@ Measured at `OBJE` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `BLOB` | `MULTIMEDIA_RECORD.OBJE.BLOB` | raw (flagged) | — | `{1:1}` |
+| `BLOB` | `MULTIMEDIA_RECORD.OBJE.BLOB` | raw (accepted) | — | `{1:1}` |
 | `CHAN` | `CHANGE_DATE.CHAN` | typed | typed | `{0:1}` |
 | `FILE` | `MULTIMEDIA_RECORD.OBJE.FILE` | — | typed | `{1:M}` |
-| `FORM` | `MULTIMEDIA_RECORD.OBJE.FORM` | raw (flagged) | — | `{1:1}` |
+| `FORM` | `MULTIMEDIA_RECORD.OBJE.FORM` | raw (accepted) | — | `{1:1}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_RECORD.OBJE.OBJE` | raw (flagged) | — | `{0:1}` |
+| `OBJE` | `MULTIMEDIA_RECORD.OBJE.OBJE` | raw (accepted) | — | `{0:1}` |
 | `REFN` | `MULTIMEDIA_RECORD.OBJE.REFN` | typed | typed | `{0:M}` |
-| `RIN` | `MULTIMEDIA_RECORD.OBJE.RIN` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `RIN` | `MULTIMEDIA_RECORD.OBJE.RIN` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | — | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | — | typed | `{0:M}` |
-| `TITL` | `MULTIMEDIA_RECORD.OBJE.TITL` | raw (flagged) | — | `{0:1}` |
+| `TITL` | `MULTIMEDIA_RECORD.OBJE.TITL` | raw (accepted) | — | `{0:1}` |
 
 ### `MULTIMEDIA_RECORD.OBJE.BLOB`
 
@@ -2151,7 +2151,7 @@ Measured at `NOTE` in 5.5, 5.5.1.
 | `CONC` | `NOTE_RECORD.NOTE.CONC` | typed | typed | `{0:M}` |
 | `CONT` | `NOTE_RECORD.NOTE.CONT` | typed | typed | `{0:M}` |
 | `REFN` | `NOTE_RECORD.NOTE.REFN` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `RIN` | `NOTE_RECORD.NOTE.RIN` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `RIN` | `NOTE_RECORD.NOTE.RIN` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | raw (accepted) | raw (accepted) | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | raw (accepted) | raw (accepted) | `{0:M}` |
 
@@ -2257,8 +2257,8 @@ Measured at `FAM.ANUL.PLAC` in 5.5, 5.5.1.
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `ROMN` | `PLACE_STRUCTURE.PLAC.ROMN` | — | raw (accepted) | `{0:M}` |
-| `SOUR` | `SOURCE_CITATION.SOUR` | raw (flagged) | — | `{0:M}` |
-| `SOUR` | `SOURCE_CITATION.SOUR#2` | raw (flagged) | — | `{0:M}` |
+| `SOUR` | `SOURCE_CITATION.SOUR` | raw (accepted) | — | `{0:M}` |
+| `SOUR` | `SOURCE_CITATION.SOUR#2` | raw (accepted) | — | `{0:M}` |
 
 ### `PLACE_STRUCTURE.PLAC.FONE`
 
@@ -2300,7 +2300,7 @@ Measured at `REPO` in 5.5, 5.5.1.
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
 | `REFN` | `REPOSITORY_RECORD.REPO.REFN` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `RIN` | `REPOSITORY_RECORD.REPO.RIN` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `RIN` | `REPOSITORY_RECORD.REPO.RIN` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
 ### `REPOSITORY_RECORD.REPO.REFN`
@@ -2393,7 +2393,7 @@ Measured at `SOUR` in 5.5, 5.5.1.
 | `PUBL` | `SOURCE_RECORD.SOUR.PUBL` | typed | typed | `{0:1}` |
 | `REFN` | `SOURCE_RECORD.SOUR.REFN` | typed | typed | `{0:M}` |
 | `REPO` | `SOURCE_REPOSITORY_CITATION.REPO` | typed | typed | `{0:1}` in 5.5; `{0:M}` in 5.5.1 |
-| `RIN` | `SOURCE_RECORD.SOUR.RIN` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `RIN` | `SOURCE_RECORD.SOUR.RIN` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `TEXT` | `SOURCE_RECORD.SOUR.TEXT` | typed | typed | `{0:1}` |
 | `TITL` | `SOURCE_RECORD.SOUR.TITL` | typed | typed | `{0:1}` |
 
@@ -2522,6 +2522,6 @@ Measured at `SUBM` in 5.5, 5.5.1.
 | `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (accepted) | raw (accepted) | `{0:M}` |
 | `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
-| `RFN` | `SUBMITTER_RECORD.SUBM.RFN` | raw (flagged) | raw (flagged) | `{0:1}` |
+| `RFN` | `SUBMITTER_RECORD.SUBM.RFN` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `RIN` | `SUBMITTER_RECORD.SUBM.RIN` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `WWW` | `ADDRESS_STRUCTURE.WWW` | — | raw (accepted) | `{0:3}` |

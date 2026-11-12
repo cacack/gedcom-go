@@ -107,8 +107,8 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 |--------|-----------:|------:|---------|
 | typed | 1269 | 91.4% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 77 | 5.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
-| raw (flagged) | 7 | 0.5% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
+| raw (accepted) | 83 | 6.0% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (flagged) | 1 | 0.1% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 36 | 2.6% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
 ### By top-level structure
@@ -121,10 +121,10 @@ The structure each pair is nested under at level 0.
 | `FAM` | 392 | 337 | 0 | 37 | 0 | 18 |
 | `SOUR` | 29 | 18 | 0 | 2 | 0 | 9 |
 | `HEAD` | 27 | 22 | 0 | 5 | 0 | 0 |
-| `REPO` | 21 | 17 | 0 | 3 | 1 | 0 |
+| `REPO` | 21 | 17 | 0 | 4 | 0 | 0 |
 | `OBJE` | 17 | 17 | 0 | 0 | 0 | 0 |
-| `SUBM` | 16 | 9 | 0 | 5 | 2 | 0 |
-| `SNOTE` | 12 | 9 | 0 | 0 | 3 | 0 |
+| `SUBM` | 16 | 9 | 0 | 7 | 0 | 0 |
+| `SNOTE` | 12 | 9 | 0 | 3 | 0 | 0 |
 | `CONT` | 1 | 0 | 0 | 0 | 1 | 0 |
 | `TRLR` | 1 | 0 | 0 | 1 | 0 | 0 |
 
@@ -2225,7 +2225,7 @@ Substructures of `record-REPO`.
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
 | `CHAN` | `CHAN` | raw (accepted) |
-| `CREA` | `CREA` | raw (flagged) |
+| `CREA` | `CREA` | raw (accepted) |
 | `EMAIL` | `EMAIL` | typed |
 | `EXID` | `EXID` | typed |
 | `FAX` | `FAX` | typed |
@@ -2258,14 +2258,14 @@ Substructures of `record-SNOTE`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `CHAN` | `CHAN` | typed |
-| `CREA` | `CREA` | raw (flagged) |
+| `CREA` | `CREA` | raw (accepted) |
 | `EXID` | `EXID` | typed |
 | `LANG` | `LANG` | typed |
 | `MIME` | `MIME` | typed |
-| `REFN` | `REFN` | raw (flagged) |
+| `REFN` | `REFN` | raw (accepted) |
 | `SOUR` | `SOUR` | typed |
 | `TRAN` | `NOTE-TRAN` | typed |
-| `UID` | `UID` | raw (flagged) |
+| `UID` | `UID` | raw (accepted) |
 
 ### `SNOTE.TRAN`
 
@@ -2361,7 +2361,7 @@ Substructures of `record-SUBM`.
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
 | `CHAN` | `CHAN` | raw (accepted) |
-| `CREA` | `CREA` | raw (flagged) |
+| `CREA` | `CREA` | raw (accepted) |
 | `EMAIL` | `EMAIL` | typed |
 | `EXID` | `EXID` | typed |
 | `FAX` | `FAX` | raw (accepted) |
@@ -2370,7 +2370,7 @@ Substructures of `record-SUBM`.
 | `NOTE` | `NOTE` | typed |
 | `OBJE` | `OBJE` | raw (accepted) |
 | `PHON` | `PHON` | typed |
-| `REFN` | `REFN` | raw (flagged) |
+| `REFN` | `REFN` | raw (accepted) |
 | `SNOTE` | `SNOTE` | typed |
 | `UID` | `UID` | raw (accepted) |
 | `WWW` | `WWW` | raw (accepted) |

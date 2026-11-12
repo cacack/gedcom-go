@@ -252,6 +252,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 
 	// Merge entity-level diagnostics with parser diagnostics
 	diagnostics = append(diagnostics, collector.diagnostics...)
+	diagnostics = append(diagnostics, collector.unknownTagSummaries()...)
 
 	return &DecodeResult{
 		Document:    doc,
