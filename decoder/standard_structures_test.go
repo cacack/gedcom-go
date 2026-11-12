@@ -238,4 +238,18 @@ func TestUnknownTagDiagnosticsCappedPerTag(t *testing.T) {
 	if rins != events {
 		t.Errorf("Record.Tags holds %d RIN lines, want all %d", rins, events)
 	}
+
+	// The corpus tests count lines through unknownTagLines; tie its parse to
+	// the summary format written by unknownTagSummaries.
+	perTag := map[string]int{}
+	for _, d := range result.Diagnostics {
+		tag, lines, ok := unknownTagLines(d)
+		if d.Code == CodeUnknownTag && !ok {
+			t.Errorf("unknownTagLines cannot parse %q", d.Message)
+		}
+		perTag[tag] += lines
+	}
+	if perTag["RIN"] != events || perTag["ZZZZ"] != 1 {
+		t.Errorf("unknownTagLines totals = %v, want RIN:%d ZZZZ:1", perTag, events)
+	}
 }

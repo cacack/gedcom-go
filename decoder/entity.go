@@ -174,6 +174,12 @@ func (c *diagnosticCollector) addUnknownTag(lineNumber int, tag, content string)
 // addUnknownTagOutside55 reports tag, a structure only GEDCOM 5.5 defines, as
 // unknown in a document that declares another version. A document declaring no
 // version this package recognizes is not reported.
+//
+// Only 5.5 structures that later versions moved or dropped are gated this way.
+// Record identifiers that one version defines and another replaced (RIN, RFN,
+// AFN; 7.0 CREA, REFN, UID, INIL) are accepted in every version, as on INDI
+// since #375: they carry the same meaning wherever they appear, and real
+// exports mix them across versions.
 func (c *diagnosticCollector) addUnknownTagOutside55(tag *gedcom.Tag) {
 	if c != nil && c.version != "" && c.version != gedcom.Version55 {
 		c.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)

@@ -88,6 +88,9 @@ const (
 	// A subordinate tag is reported once per line for its first
 	// [MaxUnknownTagDiagnosticsPerTag] lines; one further diagnostic, at the
 	// next line with that tag, counts the lines not reported individually.
+	// The allowance is per tag name across the whole document, whatever the
+	// record or parent structure; the counting diagnostics have an empty
+	// Context and follow all other diagnostics, ordered by line.
 	CodeUnknownTag = "UNKNOWN_TAG"
 
 	// CodeInvalidValue indicates a value doesn't match the expected format.
