@@ -1527,3 +1527,21 @@ func TestClonePersonalNameVariations(t *testing.T) {
 		t.Error("nil Phonetic should stay nil")
 	}
 }
+
+// The AGE fields an event and an attribute carry (issue #736) survive a clone.
+func TestCloneKeepsAges(t *testing.T) {
+	ev := &Event{
+		Type: EventMarriage, Age: "30y", AgePhrase: "About thirty",
+		HusbandAge: "25y", HusbandAgePhrase: "Twenty-five", WifeAge: "22y", WifeAgePhrase: "Twenty-two",
+	}
+	if got := cloneEvent(ev); !reflect.DeepEqual(got, ev) {
+		t.Errorf("cloneEvent() = %+v, want %+v", got, ev)
+	}
+	at := &Attribute{
+		Type: "FACT", Age: "30y", AgePhrase: "About thirty",
+		HusbandAge: "40y", HusbandAgePhrase: "Forty", WifeAge: "38y", WifeAgePhrase: "Thirty-eight",
+	}
+	if got := cloneAttribute(at); !reflect.DeepEqual(got, at) {
+		t.Errorf("cloneAttribute() = %+v, want %+v", got, at)
+	}
+}

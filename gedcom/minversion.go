@@ -15,8 +15,9 @@ package gedcom
 //   - SDATE event sort dates
 //   - TRAN name transliterations
 //   - PHRASE on associations, and the typed PHRASE beside a value
-//     (TypePhrase, PedigreePhrase, RolePhrase, AgePhrase, SortDatePhrase,
-//     AdoptedByPhrase, HusbandPhrase, WifePhrase, MediaPhrase)
+//     (TypePhrase, PedigreePhrase, RolePhrase, AgePhrase, HusbandAgePhrase,
+//     WifeAgePhrase, SortDatePhrase, AdoptedByPhrase, HusbandPhrase,
+//     WifePhrase, MediaPhrase)
 //   - TIME beneath an LDS status date (LDSOrdinance.StatusTime)
 //   - DATE PHRASE on event, attribute and LDS ordinance dates
 //     (ParsedDate.PhraseSubstructure; a 5.5.1 "(text)" date phrase is not one)
@@ -191,7 +192,8 @@ func eventRequiresGEDCOM7(ev *Event) bool {
 	// NO (negative assertion) and SDATE (sort date) are 7.0-only. UIDs are
 	// not: see individualRequiresGEDCOM7.
 	if ev.IsNegative || ev.SortDate != "" ||
-		ev.AgePhrase != "" || ev.SortDatePhrase != "" || ev.AdoptedByPhrase != "" || ev.ParsedDate.PhraseSubstructure(ev.Date) != "" {
+		ev.AgePhrase != "" || ev.HusbandAgePhrase != "" || ev.WifeAgePhrase != "" ||
+		ev.SortDatePhrase != "" || ev.AdoptedByPhrase != "" || ev.ParsedDate.PhraseSubstructure(ev.Date) != "" {
 		return true
 	}
 	// An ASSO on an event is 7.0-only by position: 5.5 and 5.5.1 define
@@ -205,15 +207,16 @@ func eventRequiresGEDCOM7(ev *Event) bool {
 }
 
 // attributeRequiresGEDCOM7 reports whether an attribute carries a
-// structure only GEDCOM 7.0 defines. SDATE on an attribute, and an ASSO
-// with a PHRASE, are 7.0-only; the encoder emits them unconditionally, so a
-// document holding one cannot honestly be labelled 5.5.1. UIDs are not
+// structure only GEDCOM 7.0 defines. SDATE on an attribute, a typed PHRASE,
+// and an ASSO with a PHRASE, are 7.0-only; the encoder emits them
+// unconditionally, so a document holding one cannot honestly be labelled 5.5.1. UIDs are not
 // checked: see individualRequiresGEDCOM7.
 func attributeRequiresGEDCOM7(at *Attribute) bool {
 	if at == nil {
 		return false
 	}
-	if at.SortDate != "" || at.SortDatePhrase != "" ||
+	if at.SortDate != "" || at.SortDatePhrase != "" || at.AgePhrase != "" ||
+		at.HusbandAgePhrase != "" || at.WifeAgePhrase != "" ||
 		at.ParsedDate.PhraseSubstructure(at.Date) != "" {
 		return true
 	}

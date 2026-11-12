@@ -360,6 +360,32 @@ type Attribute struct {
 	// Cause is the cause of the attribute (CAUS subordinate)
 	Cause string
 
+	// Age is the age at the time the attribute applied (AGE subordinate)
+	Age string
+
+	// AgePhrase is the PHRASE under AGE (GEDCOM 7.0), the age in prose.
+	// Written only beneath an Age.
+	AgePhrase string
+
+	// HusbandAge is the husband's age at the time of the attribute (AGE
+	// beneath the HUSB subordinate, FAMILY_EVENT_DETAIL). Only a family's
+	// attributes and events carry one: the decoder fills it there alone, and
+	// the encoder writes it only beneath a family's.
+	HusbandAge string
+
+	// HusbandAgePhrase is the PHRASE under that AGE (GEDCOM 7.0). Written
+	// only beneath a HusbandAge.
+	HusbandAgePhrase string
+
+	// WifeAge is the wife's age at the time of the attribute (AGE beneath the
+	// WIFE subordinate, FAMILY_EVENT_DETAIL), under the same rules as
+	// HusbandAge.
+	WifeAge string
+
+	// WifeAgePhrase is the PHRASE under that AGE (GEDCOM 7.0). Written only
+	// beneath a WifeAge.
+	WifeAgePhrase string
+
 	// Agency is the responsible agency (AGNC subordinate)
 	Agency string
 

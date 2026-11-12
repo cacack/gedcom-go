@@ -18,6 +18,9 @@ func TestRequiresGEDCOM7_AttributeMarkers(t *testing.T) {
 		attr *Attribute
 	}{
 		{"SDATE on an attribute", &Attribute{Type: "OCCU", SortDate: "1900-01-01"}},
+		{"AGE PHRASE on an attribute", &Attribute{Type: "OCCU", Age: "30y", AgePhrase: "About thirty"}},
+		{"HUSB AGE PHRASE on an attribute", &Attribute{Type: "FACT", HusbandAge: "40y", HusbandAgePhrase: "About forty"}},
+		{"WIFE AGE PHRASE on an attribute", &Attribute{Type: "FACT", WifeAge: "38y", WifeAgePhrase: "Late thirties"}},
 		{"ASSO with PHRASE on an attribute", &Attribute{
 			Type:         "OCCU",
 			Associations: []*Association{{IndividualXRef: "@I2@", Phrase: "godparent"}},
@@ -117,6 +120,12 @@ func TestRequiresGEDCOM7_TypedPhrases(t *testing.T) {
 		{"FAMC.PEDI", indi(&Individual{ChildInFamilies: []FamilyLink{{FamilyXRef: "@F1@", Pedigree: "OTHER", PedigreePhrase: "p"}}})},
 		{"ASSO.ROLE", indi(&Individual{Associations: []*Association{{IndividualXRef: "@I2@", Role: "OTHER", RolePhrase: "p"}}})},
 		{"event AGE", indi(&Individual{Events: []*Event{{Type: EventBirth, Age: "3y", AgePhrase: "p"}}})},
+		{"family event HUSB.AGE", &Record{XRef: "@F1@", Type: RecordTypeFamily, Entity: &Family{
+			Events: []*Event{{Type: EventMarriage, HusbandAge: "25y", HusbandAgePhrase: "p"}},
+		}}},
+		{"family event WIFE.AGE", &Record{XRef: "@F1@", Type: RecordTypeFamily, Entity: &Family{
+			Events: []*Event{{Type: EventMarriage, WifeAge: "22y", WifeAgePhrase: "p"}},
+		}}},
 		{"event SDATE", indi(&Individual{Events: []*Event{{Type: EventBirth, SortDatePhrase: "p"}}})},
 		{"attribute SDATE", indi(&Individual{Attributes: []*Attribute{{Type: "OCCU", SortDatePhrase: "p"}}})},
 		{"FAM.HUSB", &Record{XRef: "@F1@", Type: RecordTypeFamily, Entity: &Family{Husband: "@I1@", HusbandPhrase: "p"}}},

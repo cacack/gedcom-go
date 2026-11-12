@@ -369,7 +369,8 @@ beside it, and written back beneath that value
 | `ASSO` | `Association.Phrase` |
 | `ASSO.ROLE` | `Association.RolePhrase` |
 | `ADOP.FAMC.ADOP` | `Event.AdoptedByPhrase` |
-| Event `AGE` | `Event.AgePhrase` (an empty `AGE` with a `PHRASE` is a phrase-only age, with `Age` empty; the encoder writes it as an empty `AGE` for 7.0 output only) |
+| Event/attribute `AGE` | `Event.AgePhrase`, `Attribute.AgePhrase` (an empty `AGE` with a `PHRASE` is a phrase-only age, with `Age` empty; the encoder writes it as an empty `AGE` for 7.0 output only) |
+| Family event/attribute `HUSB.AGE`, `WIFE.AGE` | `HusbandAgePhrase`, `WifeAgePhrase` on `Event` and `Attribute` |
 | Event/attribute `SDATE` | `Event.SortDatePhrase`, `Attribute.SortDatePhrase` |
 | `FAM.HUSB`, `FAM.WIFE` | `Family.HusbandPhrase`, `Family.WifePhrase` |
 | `FILE.FORM.MEDI` | `MediaFile.MediaPhrase` |
@@ -714,7 +715,7 @@ family — decodes the shared `EVENT_DETAIL` structure into typed fields:
 | PLAC | `Event.PlaceDetail` (FORM, MAP/LATI/LONG), read via `Event.PlaceName()`, written via `Event.SetPlaceName()` |
 | TYPE | `Event.EventTypeDetail` |
 | CAUS | `Event.Cause` |
-| AGE | `Event.Age` |
+| AGE | `Event.Age`, `Event.AgePhrase` |
 | AGNC | `Event.Agency` |
 | RELI | `Event.ReligiousAffiliation` |
 | ADDR | `Event.Address` |
@@ -730,10 +731,12 @@ family — decodes the shared `EVENT_DETAIL` structure into typed fields:
 `gedcom.Attribute` names the same fields, so an attribute reads the same way as
 an event.
 
-`HUSB` and `WIFE` (spouse ages, `FAMILY_EVENT_DETAIL`) are accepted under a
-family's events and attributes and kept raw in `Record.Tags`; under an
-individual's events or attributes, where the grammar has no such position,
-they are reported as `UNKNOWN_TAG`.
+`HUSB` and `WIFE` (spouse ages, `FAMILY_EVENT_DETAIL`) under a family's events
+and attributes decode their `AGE` into `HusbandAge`/`WifeAge` (with
+`HusbandAgePhrase`/`WifeAgePhrase`) on `Event` and `Attribute`, and are written
+back directly beneath the event or attribute line. Under an individual's events
+or attributes, where the grammar has no such position, they are reported as
+`UNKNOWN_TAG`, left untyped, and never written from the entity.
 
 ## Attributes
 

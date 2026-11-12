@@ -105,11 +105,11 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 1286 | 92.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1301 | 93.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 77 | 5.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 64 | 4.6% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 1 | 0.1% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 25 | 1.8% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 23 | 1.7% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
 ### By top-level structure
 
@@ -117,8 +117,8 @@ The structure each pair is nested under at level 0.
 
 | Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |
 |---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|
-| `INDI` | 873 | 841 | 0 | 23 | 0 | 9 |
-| `FAM` | 392 | 342 | 0 | 34 | 0 | 16 |
+| `INDI` | 873 | 854 | 0 | 10 | 0 | 9 |
+| `FAM` | 392 | 344 | 0 | 34 | 0 | 14 |
 | `SOUR` | 29 | 29 | 0 | 0 | 0 | 0 |
 | `HEAD` | 27 | 22 | 0 | 5 | 0 | 0 |
 | `REPO` | 21 | 17 | 0 | 4 | 0 | 0 |
@@ -230,7 +230,7 @@ Substructures of `HUSB`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `AGE` | `AGE` | raw (undiagnosed) |
+| `AGE` | `AGE` | typed |
 
 ### `FAM.ANUL.PLAC`
 
@@ -278,7 +278,7 @@ Substructures of `WIFE`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `AGE` | `AGE` | raw (undiagnosed) |
+| `AGE` | `AGE` | typed |
 
 ### `FAM.ASSO`
 
@@ -1229,7 +1229,7 @@ Substructures of `CAST`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
@@ -1433,7 +1433,7 @@ Substructures of `DSCR`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
@@ -1460,7 +1460,7 @@ Substructures of `EDUC`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
@@ -1555,7 +1555,7 @@ Substructures of `INDI-FACT`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
@@ -1672,7 +1672,7 @@ Substructures of `IDNO`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
@@ -1780,7 +1780,7 @@ Substructures of `NATI`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
@@ -1834,7 +1834,7 @@ Substructures of `INDI-NCHI`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
@@ -1861,7 +1861,7 @@ Substructures of `NMR`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
@@ -1888,7 +1888,7 @@ Substructures of `OCCU`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
@@ -1969,7 +1969,7 @@ Substructures of `PROP`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
@@ -1996,7 +1996,7 @@ Substructures of `INDI-RELI`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
@@ -2092,7 +2092,7 @@ Substructures of `SSN`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
@@ -2119,7 +2119,7 @@ Substructures of `INDI-TITL`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `AGE` | `AGE` | raw (accepted) |
+| `AGE` | `AGE` | typed |
 | `AGNC` | `AGNC` | typed |
 | `ASSO` | `ASSO` | typed |
 | `CAUS` | `CAUS` | typed |
