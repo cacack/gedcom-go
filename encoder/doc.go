@@ -136,7 +136,7 @@
 // SOUR subtree and header notes all survive a round-trip. The typed scalar
 // fields (Version, Encoding, SourceSystem, Date, Language, Submitter) are NOT
 // consulted on this path, and the header-substructure views (SourceVersion,
-// SourceName, SourceCorporation, Destination, Time, PlaceForm) are never
+// SourceName, SourceCorporation, SourceData, Destination, Time, PlaceForm) are never
 // consulted at all. Setting doc.Header.SourceSystem on a decoded
 // document and encoding it does not change the output; call [SyncTags] first,
 // which carries the scalar fields into Tags, or edit the corresponding entry

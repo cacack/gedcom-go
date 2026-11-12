@@ -9,7 +9,7 @@ import (
 )
 
 // TestDecodeHeaderStructures verifies that the standard header structures
-// HEAD.SOUR.VERS/NAME/CORP, HEAD.DEST, HEAD.DATE.TIME and HEAD.PLAC.FORM
+// HEAD.SOUR.VERS/NAME/CORP/DATA, HEAD.DEST, HEAD.DATE.TIME and HEAD.PLAC.FORM
 // reach typed fields on gedcom.Header (issue #676).
 func TestDecodeHeaderStructures(t *testing.T) {
 	tests := []struct {
@@ -66,6 +66,11 @@ func TestDecodeHeaderStructures(t *testing.T) {
 					Fax:     []string{"555-0000"},
 					Website: []string{"www.example.com"},
 				},
+				SourceData: &gedcom.HeaderSourceData{
+					Name:      "Some Data",
+					Date:      "1 JAN 2000",
+					Copyright: "Data copyright",
+				},
 				Destination: "ANSTFILE",
 				Date:        "7 AUG 2026",
 				Time:        "13:45:02",
@@ -85,6 +90,10 @@ func TestDecodeHeaderStructures(t *testing.T) {
 4 ADR1 1 Infinite Loop
 4 CITY Cupertino
 3 WWW https://example.com
+2 DATA Example Data
+3 DATE 2 FEB 2020
+4 TIME 08:09
+3 COPR Example Data copyright
 1 DEST https://example.org
 1 DATE 7 AUG 2026
 2 TIME 01:02:03.5Z
@@ -99,6 +108,12 @@ func TestDecodeHeaderStructures(t *testing.T) {
 					Name:    "Example Inc",
 					Address: &gedcom.Address{Line1: "1 Infinite Loop", City: "Cupertino"},
 					Website: []string{"https://example.com"},
+				},
+				SourceData: &gedcom.HeaderSourceData{
+					Name:      "Example Data",
+					Date:      "2 FEB 2020",
+					Time:      "08:09",
+					Copyright: "Example Data copyright",
 				},
 				Destination: "https://example.org",
 				Date:        "7 AUG 2026",
@@ -130,6 +145,7 @@ func TestDecodeHeaderStructures(t *testing.T) {
 				SourceVersion:     h.SourceVersion,
 				SourceName:        h.SourceName,
 				SourceCorporation: h.SourceCorporation,
+				SourceData:        h.SourceData,
 				Destination:       h.Destination,
 				Date:              h.Date,
 				Time:              h.Time,
@@ -170,7 +186,73 @@ func TestDecodeHeaderStructuresIgnoreOtherLevels(t *testing.T) {
 	}
 	h := doc.Header
 	if h.SourceVersion != "" || h.SourceName != "" || h.SourceCorporation != nil ||
-		h.Destination != "" || h.Time != "" || h.PlaceForm != "" {
+		h.Destination != "" || h.Time != "" || h.PlaceForm != "" || h.Date != "" {
 		t.Errorf("unexpected typed values: %+v", h)
+	}
+}
+
+// TestDecodeHeaderLanguageAndCopyrightLevel1Only verifies that Header.Language
+// and Header.Copyright are read from HEAD.LANG and HEAD.COPR only, so a 7.0
+// HEAD.NOTE.LANG or a HEAD.SOUR.DATA.COPR, before or after them, does not
+// overwrite or stand in for them (issue #785).
+func TestDecodeHeaderLanguageAndCopyrightLevel1Only(t *testing.T) {
+	tests := []struct {
+		name          string
+		header        string
+		wantLanguage  string
+		wantCopyright string
+		wantDataCopr  string
+	}{
+		{
+			name:         "data COPR without file COPR",
+			header:       "1 SOUR X\n2 DATA D\n3 COPR C\n",
+			wantDataCopr: "C",
+		},
+		{
+			name:          "file COPR before data COPR",
+			header:        "1 COPR F\n1 SOUR X\n2 DATA D\n3 COPR C\n",
+			wantCopyright: "F",
+			wantDataCopr:  "C",
+		},
+		{
+			name:          "file COPR after data COPR",
+			header:        "1 SOUR X\n2 DATA D\n3 COPR C\n1 COPR F\n",
+			wantCopyright: "F",
+			wantDataCopr:  "C",
+		},
+		{
+			// The shape of oxidged's full70.ged: HEAD.LANG, then a header
+			// NOTE with its own LANG.
+			name:         "note LANG after file LANG",
+			header:       "1 LANG en-US\n1 NOTE A note\n2 LANG en\n",
+			wantLanguage: "en-US",
+		},
+		{
+			name:   "note LANG without file LANG",
+			header: "1 NOTE A note\n2 LANG en\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := "0 HEAD\n1 GEDC\n2 VERS 7.0\n" + tt.header + "0 TRLR\n"
+			doc, err := Decode(strings.NewReader(input))
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+			h := doc.Header
+			if h.Language != tt.wantLanguage {
+				t.Errorf("Language = %q, want %q", h.Language, tt.wantLanguage)
+			}
+			if h.Copyright != tt.wantCopyright {
+				t.Errorf("Copyright = %q, want %q", h.Copyright, tt.wantCopyright)
+			}
+			gotDataCopr := ""
+			if h.SourceData != nil {
+				gotDataCopr = h.SourceData.Copyright
+			}
+			if gotDataCopr != tt.wantDataCopr {
+				t.Errorf("SourceData.Copyright = %q, want %q", gotDataCopr, tt.wantDataCopr)
+			}
+		})
 	}
 }

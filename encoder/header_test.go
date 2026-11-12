@@ -834,6 +834,51 @@ func TestHeaderDateIgnoresSourceDataDate(t *testing.T) {
 	}
 }
 
+// TestHeaderSourceDataRoundTrip pins #785: HEAD.SOUR.DATA, typed as
+// Header.SourceData, is written back from Header.Tags byte-identically, and
+// reads back to the same view, with the file's LANG and COPR unaffected by the
+// nested NOTE.LANG and DATA.COPR.
+func TestHeaderSourceDataRoundTrip(t *testing.T) {
+	input := "0 HEAD\n" +
+		"1 GEDC\n" +
+		"2 VERS 7.0\n" +
+		"1 SOUR TestApp\n" +
+		"2 DATA Source Data\n" +
+		"3 DATE 1 JAN 1999\n" +
+		"4 TIME 12:30\n" +
+		"3 COPR Data copyright\n" +
+		"1 COPR File copyright\n" +
+		"1 LANG en-US\n" +
+		"1 NOTE A note\n" +
+		"2 LANG en\n" +
+		"0 TRLR\n"
+	want := gedcom.HeaderSourceData{Name: "Source Data", Date: "1 JAN 1999", Time: "12:30", Copyright: "Data copyright"}
+
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if got := buf.String(); got != input {
+		t.Fatalf("header did not round-trip byte-identically:\ngot:\n%s\nwant:\n%s", got, input)
+	}
+
+	back, err := decoder.Decode(&buf)
+	if err != nil {
+		t.Fatalf("decode output: %v", err)
+	}
+	h := back.Header
+	if h.SourceData == nil || *h.SourceData != want {
+		t.Errorf("SourceData = %+v, want %+v", h.SourceData, want)
+	}
+	if h.Copyright != "File copyright" || h.Language != "en-US" {
+		t.Errorf("Copyright, Language = %q, %q; want File copyright, en-US", h.Copyright, h.Language)
+	}
+}
+
 // TestHeaderRetargetAddsGEDCForm pins #674: a header whose GEDC lacks FORM --
 // a 7.0 source retargeted without the converter -- gets the FORM 5.5 and 5.5.1
 // require, after VERS as their grammar orders it. A FORM already there is kept,

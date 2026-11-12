@@ -179,11 +179,19 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
+<<<<<<< HEAD
 | typed | 915 | 91.7% | 1225 | 93.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 74 | 7.4% | 85 | 6.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 0 | 0.0% | 0 | 0.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 9 | 0.9% | 6 | 0.5% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+=======
+| typed | 899 | 90.1% | 1207 | 91.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
+| raw (accepted) | 85 | 8.5% | 97 | 7.4% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (flagged) | 3 | 0.3% | 2 | 0.2% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
+| raw (undiagnosed) | 11 | 1.1% | 10 | 0.8% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+>>>>>>> 30fc1e5 (fix(decoder): read Header.Language and Copyright at level 1 and type HEAD.SOUR.DATA)
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -193,9 +201,15 @@ pairs under it reach the typed model.
 
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
+<<<<<<< HEAD
 | `FAM` | 219 / 254 | 289 / 324 |
 | `HEAD` | 18 / 28 | 21 / 33 |
 | `INDI` | 610 / 625 | 831 / 855 |
+=======
+| `FAM` | 213 / 254 | 282 / 324 |
+| `HEAD` | 20 / 28 | 23 / 33 |
+| `INDI` | 598 / 625 | 818 / 855 |
+>>>>>>> 30fc1e5 (fix(decoder): read Header.Language and Copyright at level 1 and type HEAD.SOUR.DATA)
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 6 / 12 | 12 / 13 |
 | `REPO` | 13 / 17 | 17 / 21 |
@@ -831,7 +845,7 @@ Measured at `HEAD.SOUR` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `CORP` | `HEADER.HEAD.SOUR.CORP` | typed | typed | `{0:1}` |
-| `DATA` | `HEADER.HEAD.SOUR.DATA` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `DATA` | `HEADER.HEAD.SOUR.DATA` | typed | typed | `{0:1}` |
 | `NAME` | `HEADER.HEAD.SOUR.NAME` | typed | typed | `{0:1}` |
 | `VERS` | `HEADER.HEAD.SOUR.VERS` | typed | typed | `{0:1}` |
 
@@ -854,7 +868,7 @@ Measured at `HEAD.SOUR.DATA` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `COPR` | `HEADER.HEAD.SOUR.DATA.COPR` | typed | typed | `{0:1}` |
-| `DATE` | `HEADER.HEAD.SOUR.DATA.DATE` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `DATE` | `HEADER.HEAD.SOUR.DATA.DATE` | typed | typed | `{0:1}` |
 
 ### `HEADER.HEAD.SOUR.DATA.COPR`
 

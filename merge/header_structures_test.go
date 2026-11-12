@@ -59,15 +59,15 @@ func TestCombineHeaderStructuresPromote(t *testing.T) {
 	// its VERS must not be promoted. doc1 has no DEST or PLAC, so doc2's are
 	// adopted along with their views.
 	doc1 := decodeHeaderDoc(t, "1 SOUR A\n")
-	doc2 := decodeHeaderDoc(t, "1 SOUR B\n2 VERS 2\n2 CORP Corp B\n3 PHON 555\n1 DEST Y\n1 PLAC\n2 FORM City\n")
+	doc2 := decodeHeaderDoc(t, "1 SOUR B\n2 VERS 2\n2 CORP Corp B\n3 PHON 555\n2 DATA Data B\n3 COPR (c) B\n1 DEST Y\n1 PLAC\n2 FORM City\n")
 
 	got, _, err := merge.Combine(doc1, doc2, merge.CombineOptions{})
 	if err != nil {
 		t.Fatalf("Combine: %v", err)
 	}
 	h := got.Header
-	if h.SourceVersion != "" || h.SourceCorporation != nil {
-		t.Errorf("doc2's SOUR views promoted although its SOUR was dropped: %q %+v", h.SourceVersion, h.SourceCorporation)
+	if h.SourceVersion != "" || h.SourceCorporation != nil || h.SourceData != nil {
+		t.Errorf("doc2's SOUR views promoted although its SOUR was dropped: %q %+v %+v", h.SourceVersion, h.SourceCorporation, h.SourceData)
 	}
 	if h.Destination != "Y" || h.PlaceForm != "City" {
 		t.Errorf("Destination, PlaceForm = %q, %q; want Y, City", h.Destination, h.PlaceForm)
@@ -83,6 +83,12 @@ func TestCombineHeaderStructuresPromote(t *testing.T) {
 	h = got.Header
 	if h.SourceVersion != "2" || h.SourceCorporation == nil || h.SourceCorporation.Name != "Corp B" {
 		t.Fatalf("doc2's SOUR views not promoted: %q %+v", h.SourceVersion, h.SourceCorporation)
+	}
+	if h.SourceData == nil || h.SourceData.Name != "Data B" || h.SourceData.Copyright != "(c) B" {
+		t.Fatalf("doc2's SourceData not promoted: %+v", h.SourceData)
+	}
+	if h.SourceData == doc2.Header.SourceData {
+		t.Error("promoted SourceData shares memory with doc2")
 	}
 	h.SourceCorporation.Phone[0] = "changed"
 	if doc2.Header.SourceCorporation.Phone[0] != "555" {

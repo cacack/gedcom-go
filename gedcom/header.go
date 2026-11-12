@@ -71,6 +71,13 @@ type Header struct {
 	// is a read view: Tags governs encoding and the encoder never writes it.
 	SourceCorporation *Corporation
 
+	// SourceData is the electronic data source the file was taken from
+	// (HEAD.SOUR.DATA), or nil when the tag is absent. Its Copyright is the
+	// source data's copyright, not the file's: that is Copyright. Like
+	// SourceVersion, it is a read view: Tags governs encoding and the encoder
+	// never writes it.
+	SourceData *HeaderSourceData
+
 	// Destination is the system the file is intended for (HEAD.DEST),
 	// verbatim. Empty when the tag is absent. Like SourceVersion, it is a read
 	// view: Tags governs encoding and the encoder never writes it.
@@ -91,10 +98,14 @@ type Header struct {
 	// memory, with no Tags, gets "1 DATE" and no TIME line.
 	Time string
 
-	// Language is the primary language used in the file (optional)
+	// Language is the primary language used in the file, from HEAD.LANG
+	// (optional). A LANG nested deeper, such as a 7.0 HEAD.NOTE.LANG, is the
+	// language of that structure and does not set it.
 	Language string
 
-	// Copyright notice (optional)
+	// Copyright is the file's copyright notice, from HEAD.COPR (optional).
+	// HEAD.SOUR.DATA.COPR is the source data's copyright and is
+	// SourceData.Copyright instead.
 	Copyright string
 
 	// Submitter is the cross-reference pointer to the SUBM record that
@@ -132,6 +143,24 @@ type Header struct {
 	// after the edit, edit the matching tag, or, to change version, use the
 	// converter. See the encoder package documentation for the full rule.
 	Tags []*Tag
+}
+
+// HeaderSourceData is the DATA structure under HEAD.SOUR: the electronic data
+// source the file was taken from, such as a published CD. Each field is
+// verbatim and empty when its tag is absent. Like the Header fields that hold
+// it, it is a read view: Header.Tags governs encoding.
+type HeaderSourceData struct {
+	// Name is the name of the source data (the DATA value).
+	Name string
+
+	// Date is the source data's publication date (DATA.DATE), verbatim.
+	Date string
+
+	// Time is the time of that date (DATA.DATE.TIME, GEDCOM 7.0), verbatim.
+	Time string
+
+	// Copyright is the source data's copyright notice (DATA.COPR).
+	Copyright string
 }
 
 // Corporation is the CORP structure under HEAD.SOUR: the business that owns

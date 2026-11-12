@@ -122,12 +122,20 @@ func TestHeaderClone(t *testing.T) {
 			Copyright:        "(c) 2024",
 			Submitter:        "@SUBM1@",
 			AncestryTreeID:   "tree123",
+			SourceData:       &HeaderSourceData{Name: "Data", Date: "1 JAN 2000", Time: "10:00", Copyright: "(c) data"},
 			Tags: []*Tag{
 				{Level: 1, Tag: "TEST", Value: "value"},
 			},
 		}
 
 		copied := original.Clone()
+
+		if copied.SourceData == original.SourceData {
+			t.Error("SourceData should be deep copied")
+		}
+		if *copied.SourceData != *original.SourceData {
+			t.Errorf("SourceData = %+v, want %+v", copied.SourceData, original.SourceData)
+		}
 
 		if copied == original {
 			t.Error("Copy should have different pointer")
