@@ -780,7 +780,8 @@ func indexFoldASCII(s, substr string) int {
 // Bounds uses, so a day or month the calendar does not have that year
 // (@#DJULIAN@ 30 FEB 1700, @#DHEBREW@ 1 ADS 5785, @#DFRENCH R@ 6 COMP 5) is
 // an error naming the date and calendar; a dual Julian date is checked in its
-// New Style year (see Bounds).
+// New Style year (see Bounds). Until #720, 6 COMP of French Republican years
+// III, VII and XI, the historical sextile years, is accepted.
 // Gregorian dates are checked on the proleptic Gregorian calendar using astronomical
 // years (1 BCE = year 0, a leap year), matching the calendar conversions; error
 // messages report the era year as written.
@@ -891,9 +892,10 @@ func (d *Date) validateDay() error {
 	return nil
 }
 
-// validateCalendarDay checks a complete non-Gregorian date's day and month
-// with the bound Bounds uses (boundsInYear), in the year ToGregorian converts
-// from: a dual date's New Style year when known, else Year.
+// validateCalendarDay checks a non-Gregorian date's day and month, or its
+// month alone when Day is 0, with the bound Bounds uses (boundsInYear), in
+// the year ToGregorian converts from: a dual date's New Style year when
+// known, else Year.
 func (d *Date) validateCalendarDay() error {
 	inYear := d.inNewStyle().Year
 	if inYear < -maxBoundsYear || inYear > maxBoundsYear {
@@ -902,6 +904,16 @@ func (d *Date) validateCalendarDay() error {
 	if _, _, ok := d.boundsInYear(inYear); ok {
 		return nil
 	}
+	if d.Calendar == CalendarFrenchRepublican && d.Month == 13 && d.Day == 6 &&
+		(inYear == 3 || inYear == 7 || inYear == 11) {
+		// The calendar in force had sextile years III, VII and XI, not the
+		// Romme years calendarToJDN uses (#720); do not report a real day.
+		return nil
+	}
+	var written string
+	if d.Day != 0 {
+		written = strconv.Itoa(d.Day) + " "
+	}
 	year := strconv.Itoa(d.Year)
 	if d.DualYear != 0 {
 		year += "/" + strconv.Itoa(d.DualYear)
@@ -909,7 +921,7 @@ func (d *Date) validateCalendarDay() error {
 	if d.IsBC {
 		year += " BCE"
 	}
-	return fmt.Errorf("invalid date: %d %s %s does not exist on the %s calendar", d.Day, monthCode(d.Calendar, d.Month), year, d.Calendar)
+	return fmt.Errorf("invalid date: %s%s %s does not exist on the %s calendar", written, monthCode(d.Calendar, d.Month), year, d.Calendar)
 }
 
 // getMonthName returns the full month name for a month number (1-12).
@@ -1279,10 +1291,13 @@ func calendarToJDN(cal Calendar, year, month, day int) (int, error) {
 //
 // For dates already in Gregorian calendar, returns a copy of self.
 // For partial dates (missing day or month), converts available components.
-// Returns error if year is 0 (date too incomplete to convert), or if the date
-// names a day or month its calendar does not have that year
-// (@#DJULIAN@ 30 FEB 1700, @#DHEBREW@ 30 ADR 5785), which Validate also
-// rejects; such a date is never rolled over into the following month.
+// Returns error if year is 0 (date too incomplete to convert), or if a
+// non-Gregorian date names a day or month its calendar does not have that
+// year (@#DJULIAN@ 30 FEB 1700, @#DHEBREW@ 30 ADR 5785, and the month-only
+// @#DHEBREW@ ADS 5785, which Validate skips as partial); such a date is never
+// rolled over into the following month. Until #720, the leap day 6 COMP of
+// French Republican years III, VII and XI is accepted and converted with the
+// Romme leap rule.
 //
 // Ranges and periods are converted as a unit: the EndDate is converted too,
 // and a failure there fails the whole conversion rather than returning a
@@ -1338,8 +1353,14 @@ func (d *Date) toGregorianComponents() (*Date, error) {
 	if d.Year == 0 {
 		return nil, fmt.Errorf("cannot convert date to Gregorian: year is missing")
 	}
-	// A day the calendar does not have would roll over into the next month
-	if err := d.validateDay(); err != nil {
+	// A day the calendar does not have would roll over into the next month,
+	// and so would a month-only date naming a month the year lacks
+	// (ADS 5785), which validateDay skips as partial
+	check := d.validateDay
+	if d.Day == 0 && d.Month != 0 {
+		check = d.validateCalendarDay
+	}
+	if err := check(); err != nil {
 		return nil, fmt.Errorf("cannot convert date to Gregorian: %w", err)
 	}
 

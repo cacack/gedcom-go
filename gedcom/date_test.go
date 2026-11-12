@@ -1457,6 +1457,51 @@ func TestDate_Validate_NonGregorian(t *testing.T) {
 	if err := date.Validate(); err == nil || !strings.Contains(err.Error(), "1 13 2020 does not exist on the Julian calendar") {
 		t.Errorf("Validate() = %v, want an error naming 1 13 2020 on the Julian calendar", err)
 	}
+
+	// The historical sextile years III, VII and XI had a 6 COMP, though the
+	// Romme rule Bounds uses does not (#720): it must not be reported.
+	for _, value := range []string{"@#DFRENCH R@ 6 COMP 3", "@#DFRENCH R@ 6 COMP 7", "@#DFRENCH R@ 6 COMP 11"} {
+		date, err := ParseDate(value)
+		if err != nil {
+			t.Fatalf("ParseDate(%q) error = %v", value, err)
+		}
+		if err := date.Validate(); err != nil {
+			t.Errorf("Validate(%q) = %v, want nil", value, err)
+		}
+		if _, err := date.ToGregorian(); err != nil {
+			t.Errorf("ToGregorian(%q) error = %v, want nil", value, err)
+		}
+	}
+
+	// A month-only date is partial, so Validate skips it, but ToGregorian
+	// must not roll a month the year lacks into the next one.
+	adarII, err := ParseDate("@#DHEBREW@ ADS 5785")
+	if err != nil {
+		t.Fatalf("ParseDate error = %v", err)
+	}
+	if err := adarII.Validate(); err != nil {
+		t.Errorf("Validate() = %v, want nil for a partial date", err)
+	}
+	if greg, err := adarII.ToGregorian(); err == nil || !strings.Contains(err.Error(), "ADS 5785 does not exist on the Hebrew calendar") {
+		t.Errorf("ToGregorian() = %+v, %v, want error naming ADS 5785 on the Hebrew calendar", greg, err)
+	}
+	adarII5784, err := ParseDate("@#DHEBREW@ ADS 5784")
+	if err != nil {
+		t.Fatalf("ParseDate error = %v", err)
+	}
+	if greg, err := adarII5784.ToGregorian(); err != nil || greg.Year != 2024 || greg.Month != 3 || greg.Day != 0 {
+		t.Errorf("ToGregorian(ADS 5784) = %+v, %v, want MAR 2024", greg, err)
+	}
+
+	// Across calendars YearsBetween converts through ToGregorian, so an
+	// impossible day is an error rather than a rolled-over count.
+	julian, err := ParseDate("@#DJULIAN@ 30 FEB 1700")
+	if err != nil {
+		t.Fatalf("ParseDate error = %v", err)
+	}
+	if _, _, err := YearsBetween(julian, &Date{Day: 1, Month: 1, Year: 1800}); err == nil || !strings.Contains(err.Error(), "30 FEB 1700 does not exist on the Julian calendar") {
+		t.Errorf("YearsBetween() error = %v, want error naming 30 FEB 1700 on the Julian calendar", err)
+	}
 }
 
 // TestParseDate_JulianCalendar tests Julian calendar date parsing

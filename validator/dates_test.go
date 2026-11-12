@@ -99,6 +99,7 @@ func TestInvalidDateNotReported(t *testing.T) {
 		"@#DHEBREW@ 1 ADS 5784",
 		"@#DHEBREW@ ADS 5785",
 		"@#DFRENCH R@ 5 COMP 3",
+		"@#DFRENCH R@ 6 COMP 3",
 		"29 FEB 1723/24",
 		"BET 1 JAN 1723/24 AND 29 FEB 1723/24",
 		"BET JAN 1850 AND 1850",

@@ -19,9 +19,10 @@ import (
 // validateDates reports every date in doc that gedcom.Date.Validate rejects,
 // as a CodeInvalidDate warning, on every calendar Validate checks: Gregorian,
 // Julian, Hebrew and French Republican. Dates Validate skips by design --
-// partial dates such as "FEB 1900" or "ABT 1900" -- are not reported, nor a leap day on a dual-dated (Old Style) endpoint such
-// as "29 FEB 1723/24", nor a value ParseDate cannot parse at all (the decoder
-// already reports that as a diagnostic).
+// partial dates such as "FEB 1900" or "ABT 1900" -- are not reported, nor a
+// leap day on a dual-dated (Old Style) endpoint such as "29 FEB 1723/24",
+// nor a value ParseDate cannot parse at all (the decoder already reports
+// that as a diagnostic).
 //
 // Raw tags are walked where a record has them, so every DATE is checked --
 // events, attributes, LDS ordinances, citations, CHAN -- and the issue
