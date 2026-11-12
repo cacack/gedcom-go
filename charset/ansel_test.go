@@ -263,9 +263,9 @@ func TestNewAnselReader_InvalidBytes(t *testing.T) {
 			if err == nil {
 				t.Error("Expected error for invalid ANSEL byte, got nil")
 			}
-			anselErr, ok := err.(*ErrInvalidANSEL)
+			anselErr, ok := err.(*InvalidANSELError)
 			if !ok {
-				t.Errorf("Expected *ErrInvalidANSEL, got %T", err)
+				t.Errorf("Expected *InvalidANSELError, got %T", err)
 			} else if anselErr.Byte != tt.input[0] {
 				t.Errorf("Error byte = 0x%02X, want 0x%02X", anselErr.Byte, tt.input[0])
 			}
@@ -296,9 +296,9 @@ func TestNewAnselReader_UndefinedCombining(t *testing.T) {
 			if err == nil {
 				t.Error("Expected error for undefined combining mark, got nil")
 			}
-			_, ok := err.(*ErrInvalidANSEL)
+			_, ok := err.(*InvalidANSELError)
 			if !ok {
-				t.Errorf("Expected *ErrInvalidANSEL, got %T", err)
+				t.Errorf("Expected *InvalidANSELError, got %T", err)
 			}
 		})
 	}
@@ -373,16 +373,16 @@ func TestNewAnselReader_UndefinedExtendedLatin(t *testing.T) {
 			if err == nil {
 				t.Error("Expected error for undefined ANSEL byte, got nil")
 			}
-			_, ok := err.(*ErrInvalidANSEL)
+			_, ok := err.(*InvalidANSELError)
 			if !ok {
-				t.Errorf("Expected *ErrInvalidANSEL, got %T", err)
+				t.Errorf("Expected *InvalidANSELError, got %T", err)
 			}
 		})
 	}
 }
 
 func TestErrInvalidANSEL_Error(t *testing.T) {
-	err := &ErrInvalidANSEL{Line: 5, Column: 10, Byte: 0x80}
+	err := &InvalidANSELError{Line: 5, Column: 10, Byte: 0x80}
 	want := "invalid ANSEL byte 0x80 at line 5, column 10"
 	if err.Error() != want {
 		t.Errorf("Error() = %q, want %q", err.Error(), want)
@@ -391,9 +391,9 @@ func TestErrInvalidANSEL_Error(t *testing.T) {
 
 // ADR 0007 makes ErrorLine() the cross-layer contract for a reader error that
 // knows its own physical line; the parser matches on the method, so the ANSEL
-// error must expose it as ErrInvalidUTF8 does (issue #403).
+// error must expose it as InvalidUTF8Error does (issue #403).
 func TestErrInvalidANSEL_ErrorLine(t *testing.T) {
-	err := &ErrInvalidANSEL{Line: 5, Column: 10, Byte: 0x80}
+	err := &InvalidANSELError{Line: 5, Column: 10, Byte: 0x80}
 	if got := err.ErrorLine(); got != 5 {
 		t.Errorf("ErrorLine() = %d, want 5", got)
 	}
@@ -432,9 +432,9 @@ func TestNewAnselReader_LineColumnTracking(t *testing.T) {
 		t.Fatal("Expected error for invalid byte")
 	}
 
-	anselErr, ok := err.(*ErrInvalidANSEL)
+	anselErr, ok := err.(*InvalidANSELError)
 	if !ok {
-		t.Fatalf("Expected *ErrInvalidANSEL, got %T", err)
+		t.Fatalf("Expected *InvalidANSELError, got %T", err)
 	}
 
 	if anselErr.Line != 3 {
@@ -466,9 +466,9 @@ func TestNewAnselReader_LineTrackingLineEndings(t *testing.T) {
 			r := newAnselReader(strings.NewReader(input))
 			_, err := io.ReadAll(r)
 
-			var anselErr *ErrInvalidANSEL
+			var anselErr *InvalidANSELError
 			if !errors.As(err, &anselErr) {
-				t.Fatalf("ReadAll() error = %v (%T), want *ErrInvalidANSEL", err, err)
+				t.Fatalf("ReadAll() error = %v (%T), want *InvalidANSELError", err, err)
 			}
 			if anselErr.Line != 4 || anselErr.Column != 4 {
 				t.Errorf("error at line %d, column %d; want line 4, column 4",

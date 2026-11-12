@@ -589,7 +589,7 @@ func TestParseReadErrorReportsPhysicalLine(t *testing.T) {
 // The trade is favourable and deliberate -- the alternative is keeping a
 // silently shortened line in the document, which is the ADR 0007 violation this
 // fix exists to remove -- but it is a real regression for the one error type
-// that still lacks ErrorLine(). charset.ErrInvalidANSEL is that type; giving it
+// that still lacks ErrorLine(). charset.InvalidANSELError is that type; giving it
 // ErrorLine() is tracked as #403 and makes this fallback moot. Pinned here so
 // the behaviour is a recorded decision rather than an accident.
 func TestParseReadErrorFallbackLineAfterDroppedTail(t *testing.T) {

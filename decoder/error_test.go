@@ -244,9 +244,9 @@ func TestDecodePartialRecoveryUpToInvalidByte(t *testing.T) {
 		t.Fatal("DecodeWithDiagnostics() error = nil, want the read failure")
 	}
 
-	var anselErr *charset.ErrInvalidANSEL
+	var anselErr *charset.InvalidANSELError
 	if !errors.As(err, &anselErr) {
-		t.Fatalf("error = %v (%T), want a wrapped *charset.ErrInvalidANSEL", err, err)
+		t.Fatalf("error = %v (%T), want a wrapped *charset.InvalidANSELError", err, err)
 	}
 	if anselErr.Line != 6 || anselErr.Column != 10 {
 		t.Errorf("error at line %d, column %d; want line 6, column 10", anselErr.Line, anselErr.Column)
@@ -287,9 +287,9 @@ func TestDecodeInvalidFirstByteHasNoPartialDocument(t *testing.T) {
 	if result != nil {
 		t.Errorf("DecodeWithDiagnostics() result = %+v, want nil when no line could be parsed", result)
 	}
-	var anselErr *charset.ErrInvalidANSEL
+	var anselErr *charset.InvalidANSELError
 	if !errors.As(err, &anselErr) {
-		t.Fatalf("error = %v (%T), want a wrapped *charset.ErrInvalidANSEL", err, err)
+		t.Fatalf("error = %v (%T), want a wrapped *charset.InvalidANSELError", err, err)
 	}
 }
 

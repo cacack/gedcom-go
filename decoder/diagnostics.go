@@ -71,7 +71,7 @@ const (
 	// is replaced with U+FFFD and decoding continues; one diagnostic is
 	// emitted per byte, with its column in the message, for the first
 	// [MaxInvalidEncodingDiagnostics] bytes, and one more counts any bytes
-	// after those. Strict mode fails with a *charset.ErrInvalidUTF8 instead.
+	// after those. Strict mode fails with a *charset.InvalidUTF8Error instead.
 	CodeInvalidEncoding = "INVALID_ENCODING"
 )
 
