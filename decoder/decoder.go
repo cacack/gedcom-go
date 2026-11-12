@@ -94,8 +94,17 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 		}
 	}
 
-	// Wrap reader with UTF-8 validation
-	validatedReader := charset.NewReader(r)
+	// Wrap reader with UTF-8 validation. Lenient mode replaces each invalid
+	// UTF-8 byte with U+FFFD and reports it, rather than losing everything
+	// after it (#710).
+	var encodingDiags Diagnostics
+	var readerOpts charset.ReaderOptions
+	if !opts.StrictMode {
+		readerOpts.OnInvalidUTF8 = func(e *charset.ErrInvalidUTF8) {
+			encodingDiags = append(encodingDiags, invalidUTF8Diagnostic(e))
+		}
+	}
+	validatedReader := charset.NewReaderWithOptions(r, readerOpts)
 
 	// Wrap with progress tracking if callback provided
 	finalReader := validatedReader
@@ -152,8 +161,10 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 		}
 		lines = parsedLines
 	} else {
-		// Lenient mode: convert parse errors to diagnostics and continue
-		diagnostics = convertParseErrors(parseErrors)
+		// Lenient mode: convert parse errors to diagnostics and continue.
+		// Encoding repairs come first: they happen below the parser.
+		diagnostics = encodingDiags
+		diagnostics = append(diagnostics, convertParseErrors(parseErrors)...)
 		if len(parseErrors) > 0 {
 			firstParseErr = parseErrors[0]
 		}
@@ -271,6 +282,14 @@ func convertParseErrors(parseErrors []*parser.ParseError) Diagnostics {
 		diagnostics = append(diagnostics, NewParseError(pe.Line, code, pe.Message, pe.Context))
 	}
 	return diagnostics
+}
+
+// invalidUTF8Diagnostic reports an invalid UTF-8 byte that lenient mode
+// replaced with U+FFFD. It is an error, not a warning: the character the byte
+// stood for is lost, though the line it is on is kept.
+func invalidUTF8Diagnostic(e *charset.ErrInvalidUTF8) Diagnostic {
+	return NewParseError(e.Line, CodeInvalidEncoding,
+		fmt.Sprintf("invalid UTF-8 byte 0x%02X at column %d replaced with U+FFFD", e.Byte, e.Column), "")
 }
 
 // classifyParseError maps a parse error message to a diagnostic code.

@@ -40,7 +40,7 @@ Support status for common genealogy software:
 | Ancestris | ✅ Real export tested (v11) |
 | Family Tree Maker | ⚠️ Current versions untested (real FTM 17 export ✅) |
 
-Plus vintage-platform coverage (PAF, Family Origins, The Master Genealogist, My Roots, EasyTree, webtreeprint) from real vendored exports. Brother's Keeper is vendored as a **known failure** (CP437 encoding unsupported) — see the compatibility matrix. Real exports from MacFamilyTree 11 (GEDCOM 7.0), Reunion 14, webtrees, Geneanet and Family Historian 7 are vendored too; their `CHAR ANSI` exports over Windows-1250 bytes are a **known gap** (read as Windows-1252).
+Plus vintage-platform coverage (PAF, Family Origins, The Master Genealogist, My Roots, EasyTree, webtreeprint) from real vendored exports. Brother's Keeper is vendored as a **known failure** (CP437 encoding unsupported; lenient mode keeps every record but not its CP437 characters) — see the compatibility matrix. Real exports from MacFamilyTree 11 (GEDCOM 7.0), Reunion 14, webtrees, Geneanet and Family Historian 7 are vendored too; their `CHAR ANSI` exports over Windows-1250 bytes are a **known gap** (read as Windows-1252).
 
 Full compatibility matrix: [docs/governance/policies/compatibility.md](docs/governance/policies/compatibility.md)
 

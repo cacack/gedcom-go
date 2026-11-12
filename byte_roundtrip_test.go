@@ -113,14 +113,17 @@ var bodyKnownBad = map[string]string{
 	"testdata/malformed/level-jump-skip.ged":        "over-jumped level is clamped by recovery",
 	"testdata/malformed/level-jump-subordinate.ged": "over-jumped level is clamped by recovery",
 	"testdata/malformed/level-over-99.ged":          "level 100 line is skipped by recovery",
+
+	// Read as UTF-8 since CP437 (CHAR IBMPC) is unsupported; lenient recovery
+	// replaces its one non-UTF-8 byte with U+FFFD rather than failing (#710).
+	"testdata/encoding/ibmpc-cp437-broskeep.ged": "invalid byte is replaced with U+FFFD by recovery",
 }
 
 // undecodable lists fixtures that do not survive decode or encode at all, so
 // there are no bytes to compare. Kept explicit so the count cannot drift.
 var undecodable = map[string]string{
-	"testdata/encoding/ibmpc-cp437-broskeep.ged": "invalid byte for the declared encoding",
-	"testdata/gedcom7code/5/char_utf16be-1.ged":  "BOM-less UTF-16 is not detected; read as UTF-8",
-	"testdata/gedcom7code/5/char_utf16le-1.ged":  "BOM-less UTF-16 is not detected; read as UTF-8",
+	"testdata/gedcom7code/5/char_utf16be-1.ged": "BOM-less UTF-16 is not detected; read as UTF-8",
+	"testdata/gedcom7code/5/char_utf16le-1.ged": "BOM-less UTF-16 is not detected; read as UTF-8",
 }
 
 // valuelessLine matches a line carrying no value: "1 CONT", "0 @I1@ INDI".

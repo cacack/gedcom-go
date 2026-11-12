@@ -26,6 +26,10 @@ type DecodeOptions struct {
 	//     only once the header is known: GEDCOM 5.5 and 5.5.1 allow one, so
 	//     it is not an error in a document whose header declares either
 	//     version, and the first such XRef is the error otherwise
+	//   - A byte that is not valid UTF-8, in input read as UTF-8 (declared
+	//     UTF-8 or ASCII, or no recognized CHAR), fails the decode: the
+	//     error wraps a *charset.ErrInvalidUTF8 giving its line, column and
+	//     value
 	//   - The error is returned with a nil document or result
 	//   - Use for files that must be fully valid or rejected
 	//
@@ -51,6 +55,12 @@ type DecodeOptions struct {
 	//     becomes an ordinary record with Type "HEAD"/"TRLR", keeping its
 	//     subordinate lines; a CodeInvalidXRef diagnostic is emitted
 	//     (SeverityError), in addition to the one for a malformed identifier
+	//   - A byte that is not valid UTF-8, in input read as UTF-8 (declared
+	//     UTF-8 or ASCII, or no recognized CHAR), is replaced with U+FFFD and
+	//     decoding continues, so a stray Windows-1252 byte costs one character
+	//     rather than the rest of the file; a CodeInvalidEncoding diagnostic
+	//     (SeverityError) is emitted per byte, at its line, with its column in
+	//     the message
 	//   - Diagnostics are collected for all issues encountered
 	//   - Use [DecodeWithDiagnostics] to access diagnostics
 	//   - A partial document is returned if any valid records exist

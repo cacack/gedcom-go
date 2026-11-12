@@ -64,6 +64,29 @@ Recognized values: `UTF-8`, `UNICODE`, `ANSEL`, `ANSI`, `ASCII`, `UTF-16`
 - Most new GEDCOM files are UTF-8
 - Invalid UTF-8 sequences detected during parsing
 
+### When the UTF-8 default is wrong
+
+Input read as UTF-8 — declared `UTF-8` or `ASCII`, an unrecognized `CHAR` such
+as `IBMPC`, or no `CHAR` at all — is not always UTF-8. Windows exports that
+declare UTF-8 but carry a few Windows-1252 bytes (pasted notes, old place names)
+are common. The cascade does not guess again; what happens to such a byte
+depends on the decoding mode ([#710](https://github.com/cacack/gedcom-go/issues/710)):
+
+- **Strict mode** fails at the first invalid byte with `*charset.ErrInvalidUTF8`
+  (line, column, byte), wrapped in a `*parser.ParseError`. No document is
+  returned.
+- **Lenient mode** replaces each invalid byte with U+FFFD and reports it as an
+  `INVALID_ENCODING` diagnostic with its line and column, then continues. The
+  line and every record after it are kept; only the character the byte stood
+  for is lost, and the diagnostic says where.
+
+Replacement rather than reinterpreting the byte as Windows-1252 keeps the
+cascade free of heuristics (Option B below): a guess could be wrong as often as
+it is right (the CP437 corpus fixture is one such file), while U+FFFD with a
+diagnostic is never wrong about what it did. The recovery lives in the charset
+reader, opted into with `charset.ReaderOptions.OnInvalidUTF8`; `NewReader`
+keeps failing on the first invalid byte.
+
 ## Considered Options
 
 ### Option A: Require Explicit Declaration

@@ -207,7 +207,14 @@ func TestCorpusVendorFiles(t *testing.T) {
 		{
 			path:        "../testdata/encoding/ibmpc-cp437-broskeep.ged",
 			description: "Brother's Keeper 5.2 - CHAR IBMPC with real CP437 byte (unsupported encoding)",
-			wantErr:     "error reading input",
+			version:     gedcom.Version55,
+			encoding:    gedcom.Encoding("IBMPC"),
+			source:      "BROSKEEP",
+			individuals: 2145,
+			families:    1042,
+			// The one CP437 byte is replaced with U+FFFD (#710); QUAY is
+			// written directly under events (see misplacedTags).
+			diags: map[string]int{CodeInvalidEncoding: 1, CodeInvalidValue: 1, CodeUnknownTag: 1206},
 		},
 		{
 			path:        "../testdata/encoding/ibm-windows-easytree.ged",
@@ -733,9 +740,9 @@ func TestCorpusVendorCP1252C1Range(t *testing.T) {
 
 // TestCorpusVendorCP437KnownFailure documents the decoder's current behavior
 // on the Brother's Keeper 5.2 export: CHAR IBMPC with a genuine CP437 byte
-// (0x82 'é' in "Frémont"). CP437 conversion is unsupported, so decoding fails
-// with an input-read error, and lenient mode still recovers a partial
-// document up to the offending byte.
+// (0x82 'é' in "Frémont"). CP437 conversion is unsupported, so strict decoding
+// fails with an input-read error, and lenient mode replaces the byte with
+// U+FFFD and decodes the whole file (#710).
 //
 // The offending byte sits at physical line 15398, column 43 (file offset
 // 252364), and the reported location must say so: the parser's own line
@@ -744,14 +751,14 @@ func TestCorpusVendorCP1252C1Range(t *testing.T) {
 // counter stopped at 15209, because the charset reader dropped the whole
 // chunk holding the bad byte and the parser then counted the truncated
 // residue as a line of its own. If CP437 support ever lands, this test should
-// be rewritten to assert a successful decode.
+// be rewritten to assert a successful strict decode.
 func TestCorpusVendorCP437KnownFailure(t *testing.T) {
 	f := corpusOpen(t, "../testdata/encoding/ibmpc-cp437-broskeep.ged")
 	defer f.Close()
 
-	_, err := Decode(f)
+	_, err := DecodeWithOptions(f, &DecodeOptions{StrictMode: true})
 	if err == nil {
-		t.Fatal("Decode() succeeded on CP437 file; if CP437 support was added, update this test")
+		t.Fatal("strict Decode() succeeded on CP437 file; if CP437 support was added, update this test")
 	}
 	if !strings.Contains(err.Error(), "error reading input") {
 		t.Errorf("Decode() error = %v, want substring %q", err, "error reading input")
@@ -773,22 +780,28 @@ func TestCorpusVendorCP437KnownFailure(t *testing.T) {
 			utf8Err.Line, utf8Err.Column)
 	}
 
-	// Lenient mode returns the partial document alongside the error.
+	// Lenient mode replaces the byte and keeps going. Before #710 it
+	// returned the error with a partial document of 1808 individuals,
+	// everything up to line 15397.
 	f2 := corpusOpen(t, "../testdata/encoding/ibmpc-cp437-broskeep.ged")
 	defer f2.Close()
 
 	result, err := DecodeWithDiagnostics(f2, DefaultOptions())
-	if err == nil {
-		t.Fatal("DecodeWithDiagnostics() succeeded on CP437 file; if CP437 support was added, update this test")
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v, want the invalid byte recovered", err)
 	}
-	if result == nil || result.Document == nil {
-		t.Fatal("DecodeWithDiagnostics() returned nil result; want partial document alongside the error")
+	if got := len(result.Document.Individuals()); got != 2145 {
+		t.Errorf("Individuals() = %d, want all 2145", got)
 	}
-	// 1808 = the 1784 recovered before #382 plus the 24 level-0 INDI lines in
-	// the 189-line chunk the charset reader used to discard (lenient parsing
-	// reaches line 15397 now, where it stopped at 15208 before).
-	if got := len(result.Document.Individuals()); got != 1808 {
-		t.Errorf("partial document Individuals() = %d, want 1808", got)
+	var enc []Diagnostic
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeInvalidEncoding {
+			enc = append(enc, d)
+		}
+	}
+	want := "invalid UTF-8 byte 0x82 at column 43 replaced with U+FFFD"
+	if len(enc) != 1 || enc[0].Line != 15398 || enc[0].Message != want {
+		t.Errorf("INVALID_ENCODING diagnostics = %+v, want one at line 15398: %q", enc, want)
 	}
 }
 
