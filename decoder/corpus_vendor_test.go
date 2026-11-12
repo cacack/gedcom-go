@@ -210,6 +210,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version55,
 			encoding:    gedcom.Encoding("IBMPC"),
 			source:      "BROSKEEP",
+			vendor:      gedcom.VendorBrothersKeeper,
 			individuals: 2145,
 			families:    1042,
 			// The one CP437 byte is replaced with U+FFFD (#710); QUAY is
