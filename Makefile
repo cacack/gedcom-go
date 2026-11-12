@@ -1,7 +1,7 @@
 # Makefile for gedcom-go
 # Go genealogy library for parsing and validating GEDCOM files
 
-.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint security clean coverage-html install-tools build build-examples tidy check check-coverage spec-coverage all setup-hooks setup preflight api-check fetch-corpora
+.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint security clean coverage-html install-tools build build-examples examples tidy check check-coverage spec-coverage all setup-hooks setup preflight api-check fetch-corpora
 
 # Default target
 .DEFAULT_GOAL := help
@@ -240,22 +240,40 @@ setup: download install-tools setup-hooks ## Set up complete dev environment
 	@echo "    make fmt            Format code"
 	@echo ""
 
-examples: ## Run all examples
+examples: ## Run all examples against testdata
 	@echo "Running parse example..."
-	@cd examples/parse && $(GOCMD) run main.go ../../testdata/gedcom-5.5/minimal.ged
+	@cd examples/parse && $(GOCMD) run . ../../testdata/gedcom-5.5/minimal.ged
 	@echo ""
 	@echo "Running validate example..."
-	@cd examples/validate && $(GOCMD) run main.go ../../testdata/gedcom-5.5/minimal.ged
+	@cd examples/validate && $(GOCMD) run . ../../testdata/gedcom-7.0/minimal70.ged
 	@echo ""
 	@echo "Running query example..."
-	@cd examples/query && $(GOCMD) run main.go ../../testdata/gedcom-5.5/minimal.ged
+	@cd examples/query && $(GOCMD) run . ../../testdata/gedcom-5.5/minimal.ged
+	@echo ""
+	@echo "Running encode example..."
+	@cd examples/encode && $(GOCMD) run .
+	@echo ""
+	@echo "Running stream example..."
+	@cd examples/stream && $(GOCMD) run . ../../testdata/gedcom-5.5/minimal.ged
+	@echo ""
+	@echo "Running date-parsing example..."
+	@cd examples/date-parsing && $(GOCMD) run .
+	@echo ""
+	@echo "Running convert example..."
+	@cd examples/convert && $(GOCMD) run . ../../testdata/gedcom-5.5.1/comprehensive.ged 7.0
+	@echo ""
+	@echo "Running merge example..."
+	@cd examples/merge && $(GOCMD) run . ../../testdata/gedcom-5.5.1/comprehensive.ged ../../testdata/gedcom-5.5.1/attribute-event-detail.ged
+	@echo ""
+	@echo "Running diagnostics example..."
+	@cd examples/diagnostics && $(GOCMD) run . ../../testdata/malformed/invalid-level.ged
+	@echo ""
+	@echo "Running lazy example..."
+	@cd examples/lazy && $(GOCMD) run . ../../testdata/gedcom-5.5.1/comprehensive.ged @I1@ @F1@
 
-build-examples: ## Build all examples (without running)
+build-examples: ## Build every example under examples/ (without running)
 	@echo "Building examples..."
-	$(GOBUILD) -o /dev/null ./examples/parse
-	$(GOBUILD) -o /dev/null ./examples/encode
-	$(GOBUILD) -o /dev/null ./examples/query
-	$(GOBUILD) -o /dev/null ./examples/validate
+	$(GOBUILD) ./examples/...
 	@echo "✓ All examples build successfully"
 
 verify: ## Verify dependencies
@@ -338,11 +356,7 @@ preflight: ## Run CI's code checks locally before pushing (not PR title, commit 
 	@echo "✓ Coverage thresholds met"
 	@echo ""
 	@echo "→ [8/10] Building examples..."
-	@$(GOBUILD) -o /dev/null ./examples/parse
-	@$(GOBUILD) -o /dev/null ./examples/encode
-	@$(GOBUILD) -o /dev/null ./examples/query
-	@$(GOBUILD) -o /dev/null ./examples/validate
-	@echo "✓ Examples build"
+	@$(MAKE) --no-print-directory build-examples
 	@echo ""
 	@echo "→ [9/10] Running security scans..."
 	@GOSEC=$$(command -v gosec || echo "$$HOME/go/bin/gosec"); \
