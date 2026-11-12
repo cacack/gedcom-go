@@ -86,6 +86,19 @@ var v5Enums = map[enumKind]map[string]string{
 	enumAdoptedBy: {"HUSB": "HUSB", "WIFE": "WIFE", "BOTH": "BOTH"},
 }
 
+// v7Values is, for each enumerated payload in v7Enums, the set of values
+// GEDCOM 7.0 defines for it.
+var v7Values = func() map[enumKind]map[string]bool {
+	m := make(map[enumKind]map[string]bool, len(v7Enums))
+	for kind, values := range v7Enums {
+		m[kind] = make(map[string]bool, len(values))
+		for _, v := range values {
+			m[kind][v] = true
+		}
+	}
+	return m
+}()
+
 // v5OpenEnums are the 5.x payloads that admit user-defined text, so a 7.0
 // value they do not define (NAME.TYPE PROFESSIONAL, MEDI OTHER) is kept as
 // that text, and an OTHER with a PHRASE becomes the phrase.
@@ -137,13 +150,16 @@ var v5AgeKeywords = map[string]string{"CHILD": "< 8y", "INFANT": "< 1y", "STILLB
 // removed; one that is not is left for dropV7OnlyTags to report.
 //
 // Each rewrite is a Normalized note. A value with no equivalent in the target
-// (SEX X, PEDI OTHER, an age that does not parse) is left unchanged, reported
-// as a Preserved note and, once per conversion, as DataLoss naming the
-// affected records, so StrictDataLoss rejects it. RESN is left to
-// transformRestrictions.
+// (SEX X, PEDI OTHER) is left unchanged, reported as a Preserved note and,
+// once per conversion, as DataLoss naming the affected records, so
+// StrictDataLoss rejects it. A value its source version does not define
+// either (an AGE that does not parse, an unknown value in a closed set) is
+// left unchanged and reported as a Preserved note only: the conversion loses
+// nothing that was valid. RESN is left to transformRestrictions.
 //
 // Only record.Tags is rewritten; a record without Tags is written from its
-// entity and is left alone.
+// entity and is left alone. Nor is anything beneath an extension tag, whose
+// substructures the specification does not define.
 func transformEnumerations(doc *gedcom.Document, target gedcom.Version, report *gedcom.ConversionReport) {
 	t := &enumTranslator{target: target, toV7: target == gedcom.Version70, report: report}
 	for _, record := range doc.Records {
@@ -188,8 +204,9 @@ type enumResult struct {
 	// existing PHRASE was folded into value and is removed (to 5.x).
 	phrase    string
 	usePhrase bool
-	// unmapped says the value has no target equivalent and is left as is.
-	unmapped bool
+	// unmapped says the value has no target equivalent and is left as is;
+	// invalid says it is not a valid source-version value either.
+	unmapped, invalid bool
 }
 
 // translateTags returns tags with every enumerated payload translated.
@@ -251,7 +268,7 @@ func (t *enumTranslator) translate(tags []*gedcom.Tag, i int, kind enumKind, pat
 	}
 
 	if r.unmapped {
-		t.reportUnmapped(BuildNestedPath(recordType, xref, path...), tag.Tag, tag.Value, xref)
+		t.reportUnmapped(BuildNestedPath(recordType, xref, path...), tag.Tag, tag.Value, xref, r.invalid)
 		return nil, nil
 	}
 	if r.tag == tag.Tag && r.value == tag.Value && (r.phrase == "" || phraseTag != nil) && !r.usePhrase {
@@ -286,14 +303,22 @@ func (t *enumTranslator) translate(tags []*gedcom.Tag, i int, kind enumKind, pat
 	return added, consumed
 }
 
-// reportUnmapped reports a value with no equivalent in the target version.
-func (t *enumTranslator) reportUnmapped(where, tag, value, xref string) {
+// reportUnmapped reports a value with no equivalent in the target version: as
+// data loss too, unless it was not a valid source-version value either.
+func (t *enumTranslator) reportUnmapped(where, tag, value, xref string, invalid bool) {
+	reason := "No GEDCOM " + t.target.String() + " equivalent for this " + tag + " value; left unchanged"
+	if invalid {
+		reason = "Not a valid " + tag + " value in the source GEDCOM version either; left unchanged"
+	}
 	t.report.AddPreserved(gedcom.ConversionNote{
 		Path:     where,
 		Original: value,
 		Result:   value,
-		Reason:   "No GEDCOM " + t.target.String() + " equivalent for this " + tag + " value; left unchanged",
+		Reason:   reason,
 	})
+	if invalid {
+		return
+	}
 	if t.unmappedSeen == nil {
 		t.unmappedSeen = make(map[string]bool)
 	}
@@ -323,10 +348,20 @@ func subordinatePhrase(tags []*gedcom.Tag, i int) *gedcom.Tag {
 // enumKindAt names the enumerated payload at path (tag names by level, the
 // last being the tag itself) in a record of recordType, for a conversion to
 // 7.0 when toV7 is set and to 5.x otherwise. Only the association tag differs
-// by direction: 5.x RELA, 7.0 ROLE.
+// by direction: 5.x RELA, 7.0 ROLE. Nothing in an extension record or beneath
+// an extension tag is one: the specification does not define their
+// substructures.
 //
 //nolint:gocyclo // One case per enumerated structure; splitting it would scatter the table
 func enumKindAt(recordType string, path []string, toV7 bool) enumKind {
+	if strings.HasPrefix(recordType, "_") {
+		return enumNone
+	}
+	for _, p := range path {
+		if strings.HasPrefix(p, "_") {
+			return enumNone
+		}
+	}
 	tag := path[len(path)-1]
 	parent, grandparent := recordType, ""
 	if len(path) >= 2 {
@@ -360,6 +395,8 @@ func enumKindAt(recordType string, path []string, toV7 bool) enumKind {
 		if ordinanceTags[parent] {
 			return enumOrdinanceStatus
 		}
+	// MEDI and AGE are legal under many parents, so outside extensions they
+	// are matched by tag alone.
 	case "MEDI":
 		if !toV7 && isRecordMediaForm(recordType, path) {
 			return enumRecordMedia
@@ -429,7 +466,9 @@ func upgradeEnum(kind enumKind, tag, value string) enumResult {
 		}
 	}
 	if r.unmapped {
-		return enumResult{tag: tag, value: value, unmapped: true}
+		// Every 5.x value 5.x defines has a 7.0 equivalent, so one without is
+		// not a valid 5.x value either.
+		return enumResult{tag: tag, value: value, unmapped: true, invalid: true}
 	}
 	return r
 }
@@ -476,17 +515,18 @@ func downgradeEnum(kind enumKind, tag, value, phrase string) enumResult {
 			break
 		}
 		r.value, r.unmapped = downgradeAge(value)
+		r.invalid = r.unmapped
 	default:
 		if v, ok := v5Enums[kind][upper]; ok {
 			r.value = v
 		} else if !v5OpenEnums[kind] {
-			r.unmapped = true
+			r.unmapped, r.invalid = true, !v7Values[kind][upper]
 		} else if upper == "OTHER" && phrase != "" {
 			r.value, r.usePhrase = phrase, true
 		}
 	}
 	if r.unmapped {
-		return enumResult{tag: tag, value: value, unmapped: true}
+		return enumResult{tag: tag, value: value, unmapped: true, invalid: r.invalid}
 	}
 	return r
 }

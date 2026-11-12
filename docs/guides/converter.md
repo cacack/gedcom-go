@@ -302,12 +302,16 @@ that keyword; any other age loses the space after its bound and has its weeks
 counted as days. A `PHRASE` folded in this way is removed; any other is
 removed and reported as `PHRASE tags` data loss.
 
-A value with no equivalent in the target -- `SEX X` or `PEDI OTHER` to 5.x,
-an unknown value in a closed set, or an age that does
-not parse -- is left unchanged and reported as a `Preserved` note and, once
-per conversion, as `Enumerated values` data loss naming the affected records,
-so `StrictDataLoss` rejects the conversion. Records without `Tags` (built in
-code) are written from their entity and are not translated.
+A valid source value with no equivalent in the target -- `SEX X` or `PEDI
+OTHER` to 5.x -- is left unchanged and reported as a `Preserved` note and,
+once per conversion, as `Enumerated values` data loss naming the affected
+records, so `StrictDataLoss` rejects the conversion. A value the source version does not define either -- an unknown value in a
+closed set, or an age that does not parse, such as a 5.x `AGE Abt 45` -- is
+left unchanged and reported as a `Preserved` note only: the conversion loses
+nothing, so `StrictDataLoss` does not reject it. Payloads in an extension
+record or beneath an extension tag (`_FOO.AGE`) are not translated, and
+records without `Tags` (built in code) are written from their entity and are
+not translated either.
 
 ## Data Loss Reference
 
@@ -320,7 +324,7 @@ code) are written from their entity and are not translated.
 | `SUBN records` | 7.0 has no submission record. Every `0 @S1@ SUBN` record and the `HEAD.SUBN` pointer are removed before any other step; `AffectedRecords` lists the removed records, and each record (`Submission @S1@`) and the pointer (`Header > SUBN`) is also a `Dropped` note. The submitter (`SUBM`) records stay |
 | `HEAD.FILE structures` (and any other 5.5.1 structure 7.0 does not define) | Removed with its subordinates; see [Version-foreign structures](#version-foreign-structures) |
 | `FONE tags`, `ROMN tags` | 5.5.1 phonetic and romanized variations (under `NAME` or `PLAC`); 7.0 replaced them with `TRAN`, which names a language rather than the `TYPE` scheme, so they are not mapped. See [Name variations](#name-variations-fone-romn) |
-| Enumerated values | A value a closed 7.0 set does not list (an unknown `SEX` or `FAMC.STAT` value, say) or an `AGE` that does not parse is kept unchanged and is not valid 7.0; each is a `Preserved` note. See [Enumeration Mappings](#enumeration-mappings) |
+| Enumerated values | Not data loss: every valid 5.x value has a 7.0 equivalent. A value 5.x does not define either (an unknown `SEX` or `FAMC.STAT` value, an `AGE` that does not parse) is kept unchanged, is not valid 7.0, and is a `Preserved` note only. See [Enumeration Mappings](#enumeration-mappings) |
 
 The `SNOTE` records this direction produces become `NOTE` records again when
 converted back down to 5.x (see below).
@@ -336,7 +340,7 @@ converted back down to 5.x (see below).
 | CREA tags | Creation date not supported |
 | `@VOID@` null pointers | 5.x has no null pointer; a kept `@VOID@` would dangle |
 | `<parent>.<tag> structures` (`MARR.SDATE`, `INDI.INIL`, `NOTE.LANG`, ...) | To 5.5.1: a structure 5.5.1 does not define, removed with its subordinates; see [Version-foreign structures](#version-foreign-structures) |
-| Enumerated values | A value with no 5.x equivalent (`SEX X`, `PEDI OTHER`, an age that does not parse) is kept unchanged and is not valid 5.x; each is a `Preserved` note. See [Enumeration Mappings](#enumeration-mappings) |
+| Enumerated values | A valid 7.0 value with no 5.x equivalent (`SEX X`, `PEDI OTHER`) is kept unchanged and is not valid 5.x; each is a `Preserved` note. One 7.0 does not define either (an age that does not parse) is a `Preserved` note only, not data loss. See [Enumeration Mappings](#enumeration-mappings) |
 
 Each `EXID`, `TRAN`, `PHRASE` and `CREA` is removed from the record's
 `Record.Tags` with its subordinate lines, at any level, so the output matches

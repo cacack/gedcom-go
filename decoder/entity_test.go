@@ -6098,3 +6098,17 @@ func TestBoundaryCoordinatesAreQuiet(t *testing.T) {
 		})
 	}
 }
+
+// TestParseMediaFileTypeSpelling pins that a 5.5.1 multimedia record's
+// FILE.FORM.TYPE fills MediaType, as 7.0's FILE.FORM.MEDI does.
+func TestParseMediaFileTypeSpelling(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @O1@ OBJE\n1 FILE photo.jpg\n2 FORM jpg\n3 TYPE photo\n0 TRLR\n"
+	doc, err := Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode failed: %v", err)
+	}
+	media := doc.GetMediaObject("@O1@")
+	if media == nil || len(media.Files) != 1 || media.Files[0].MediaType != "photo" {
+		t.Fatalf("media = %+v, want one file with MediaType photo", media)
+	}
+}

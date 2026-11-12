@@ -226,10 +226,12 @@ func TestConvertEnumerationsStrict(t *testing.T) {
 }
 
 func TestConvertAgeSyntax(t *testing.T) {
+	// An age that does not parse is invalid in its source version too: kept,
+	// a Preserved note, and not data loss.
 	tests := []struct {
 		name, from, to string
 		target         gedcom.Version
-		unmapped       bool
+		invalid        bool
 	}{
 		{"bare count", "0", "2 AGE 0y", gedcom.Version70, false},
 		{"spaced unit", "> 0 Y", "2 AGE > 0y", gedcom.Version70, false},
@@ -253,8 +255,11 @@ func TestConvertAgeSyntax(t *testing.T) {
 			if !strings.Contains(out, "1 BIRT\n"+tt.to+"\n") {
 				t.Errorf("output lacks %q:\n%s", tt.to, out)
 			}
-			if got := hasDataLoss(report, "Enumerated values", "@I1@"); got != tt.unmapped {
-				t.Errorf("data loss reported = %v, want %v", got, tt.unmapped)
+			if hasDataLoss(report, "Enumerated values", "@I1@") {
+				t.Errorf("age reported as data loss: %+v", report.DataLoss)
+			}
+			if got := hasNote(report.Preserved, tt.from, tt.from); got != tt.invalid {
+				t.Errorf("Preserved note = %v, want %v: %+v", got, tt.invalid, report.Preserved)
 			}
 		})
 	}
@@ -268,4 +273,119 @@ func assertNormalized(t *testing.T, report *gedcom.ConversionReport, path, origi
 		}
 	}
 	t.Errorf("no Normalized note %s: %q -> %q in %+v", path, original, result, report.Normalized)
+}
+
+// TestConvertEnumerationsSourceInvalid pins that a value its source version
+// does not define either is kept and noted, but is not data loss, so a strict
+// conversion of a file with free-text ages still succeeds.
+func TestConvertEnumerationsSourceInvalid(t *testing.T) {
+	opts := converter.DefaultOptions()
+	opts.StrictDataLoss = true
+	tests := []struct {
+		name, vers, record, value string
+		target                    gedcom.Version
+	}{
+		{"free-text age to 7.0", "5.5.1", "1 BIRT\n2 AGE Abt 45", "Abt 45", gedcom.Version70},
+		{"unknown SEX to 5.5.1", "7.0", "1 SEX Q", "Q", gedcom.Version551},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc := decodeEnumInput(t, "0 HEAD\n1 GEDC\n2 VERS "+tt.vers+"\n0 @I1@ INDI\n"+tt.record+"\n0 TRLR\n")
+			_, report, err := converter.ConvertWithOptions(doc, tt.target, opts)
+			if err != nil {
+				t.Fatalf("strict conversion failed: %v (data loss %+v)", err, report.DataLoss)
+			}
+			if !hasNote(report.Preserved, tt.value, tt.value) {
+				t.Errorf("no Preserved note for %q: %+v", tt.value, report.Preserved)
+			}
+		})
+	}
+}
+
+// TestConvertEnumerationsSkipExtensions pins that payloads beneath an
+// extension tag, or in an extension record, are left alone: the
+// specification does not define them.
+func TestConvertEnumerationsSkipExtensions(t *testing.T) {
+	opts := converter.DefaultOptions()
+	opts.StrictDataLoss = true
+	doc := decodeEnumInput(t, "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 _FOO\n2 AGE 11m99y\n2 MEDI Unknown thing\n1 BIRT\n2 _X\n3 AGE Unknown\n0 @X1@ _LOC\n1 MEDI Unknown thing\n0 TRLR\n")
+	converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, opts)
+	if err != nil {
+		t.Fatalf("strict conversion failed: %v (data loss %+v)", err, report.DataLoss)
+	}
+	out := encode(t, converted)
+	assertBlocks(t, out, []string{
+		"1 _FOO\n2 AGE 11m99y\n2 MEDI Unknown thing",
+		"2 _X\n3 AGE Unknown",
+		"0 @X1@ _LOC\n1 MEDI Unknown thing",
+	}, nil)
+	for _, n := range report.Normalized {
+		if strings.Contains(n.Path, "_FOO") || strings.Contains(n.Path, "_X") || strings.Contains(n.Path, "@X1@") {
+			t.Errorf("extension payload rewritten: %+v", n)
+		}
+	}
+}
+
+// TestConvertRecordMediaTypeTyped pins that the typed MediaType follows the
+// OBJE.FILE.FORM media type through a conversion in both directions: 7.0
+// MEDI becomes 5.5.1 TYPE, which the decoder reads back.
+func TestConvertRecordMediaTypeTyped(t *testing.T) {
+	down, _, out := convertAndEncode(t, decodeEnumInput(t, enum70Input), gedcom.Version551)
+	if !strings.Contains(out, "\n3 TYPE photo\n") {
+		t.Fatalf("output lacks TYPE photo:\n%s", out)
+	}
+	media := down.GetMediaObject("@O1@")
+	if media == nil || len(media.Files) != 1 || media.Files[0].MediaType != "photo" {
+		t.Fatalf("downgraded media = %+v, want MediaType photo", media)
+	}
+
+	up, _, _ := convertAndEncode(t, decodeEnumInput(t, enum551Input), gedcom.Version70)
+	media = up.GetMediaObject("@O1@")
+	if media == nil || len(media.Files) != 1 || media.Files[0].MediaType != "PHOTO" {
+		t.Fatalf("upgraded media = %+v, want MediaType PHOTO", media)
+	}
+}
+
+// TestEnumTablesRoundTrip walks the vocabulary tables: every 7.0 value with a
+// 5.x spelling converts down to it and back up to itself.
+func TestEnumTablesRoundTrip(t *testing.T) {
+	cases := []struct{ record, v7 string }{
+		{"1 SEX %s", "M"}, {"1 SEX %s", "F"}, {"1 SEX %s", "U"},
+		{"1 RESN %s", "CONFIDENTIAL"}, {"1 RESN %s", "LOCKED"}, {"1 RESN %s", "PRIVACY"},
+	}
+	for _, v := range []string{"AKA", "BIRTH", "IMMIGRANT", "MAIDEN", "MARRIED"} {
+		cases = append(cases, struct{ record, v7 string }{"1 NAME A /B/\n2 TYPE %s", v})
+	}
+	for _, v := range []string{"ADOPTED", "BIRTH", "FOSTER", "SEALING"} {
+		cases = append(cases, struct{ record, v7 string }{"1 FAMC @F1@\n2 PEDI %s", v})
+	}
+	for _, v := range []string{"CHALLENGED", "DISPROVEN", "PROVEN"} {
+		cases = append(cases, struct{ record, v7 string }{"1 FAMC @F1@\n2 STAT %s", v})
+	}
+	for _, v := range []string{"HUSB", "WIFE", "BOTH"} {
+		cases = append(cases, struct{ record, v7 string }{"1 FAMC @F1@\n2 ADOP %s", v})
+	}
+	// Not INIL: 5.5.1 does not define it, so the downgrade drops it (#705).
+	for _, ord := range []string{"BAPL", "CONL", "ENDL", "SLGC"} {
+		for _, v := range []string{"BIC", "CANCELED", "CHILD", "COMPLETED", "DNS", "DNS_CAN", "EXCLUDED", "INFANT", "PRE_1970", "STILLBORN", "SUBMITTED", "UNCLEARED"} {
+			cases = append(cases, struct{ record, v7 string }{"1 " + ord + "\n2 STAT %s", v})
+		}
+	}
+	for _, v := range []string{"AUDIO", "BOOK", "CARD", "ELECTRONIC", "FICHE", "FILM", "MAGAZINE", "MANUSCRIPT", "MAP", "NEWSPAPER", "PHOTO", "TOMBSTONE", "VIDEO"} {
+		cases = append(cases, struct{ record, v7 string }{"1 SEX M\n0 @O1@ OBJE\n1 FILE a.jpg\n2 FORM image/jpeg\n3 MEDI %s", v})
+	}
+	for _, c := range cases {
+		line := strings.Replace(c.record, "%s", c.v7, 1)
+		doc := decodeEnumInput(t, "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n"+line+"\n0 @F1@ FAM\n0 @S1@ SOUR\n0 TRLR\n")
+		down, report, _ := convertAndEncode(t, doc, gedcom.Version551)
+		for _, d := range report.DataLoss {
+			if d.Feature == "Enumerated values" {
+				t.Errorf("%q has no 5.5.1 spelling: %+v", line, report.Preserved)
+			}
+		}
+		_, _, out := convertAndEncode(t, down, gedcom.Version70)
+		if !strings.Contains(out, line+"\n") {
+			t.Errorf("%q did not round-trip through 5.5.1:\n%s", line, out)
+		}
+	}
 }
