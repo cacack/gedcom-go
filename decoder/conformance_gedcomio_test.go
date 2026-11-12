@@ -27,11 +27,9 @@ var gedcomioStrictKnownFailures = map[string]string{}
 var gedcomioLenientKnownFailures = map[string]string{}
 
 // gedcomioVersionKnownFailures lists files not decoded as GEDCOM 7.0. Every
-// file is 7.0 or 7.1, and a later 7.x minor is read as 7.0 (#741).
-var gedcomioVersionKnownFailures = map[string]string{
-	"gedcom71/minimal71.ged":        "VERS 7.1 is not recognised and no 7.0-only tag rescues the guess, so it decodes as 5.5 (#741)",
-	"gedcom71/minimal71/gedcom.ged": "VERS 7.1 is not recognised and no 7.0-only tag rescues the guess, so it decodes as 5.5 (#741)",
-}
+// file is 7.0 or 7.1, and a later 7.x minor is read as 7.0 (#741). Empty:
+// every file decodes as 7.0.
+var gedcomioVersionKnownFailures = map[string]string{}
 
 func TestGEDCOMIOTestFilesDecode(t *testing.T) {
 	dir, lock := corpora.GEDCOMIO(t)
@@ -78,6 +76,12 @@ func TestGEDCOMIOTestFilesDecode(t *testing.T) {
 						t.Errorf("now decodes as 7.0; remove %q from gedcomioVersionKnownFailures (was: %s)", e.Path, reason)
 					case got != gedcom.Version70 && !known:
 						t.Errorf("decoded as %q, want 7.0, and the file is not listed in gedcomioVersionKnownFailures", got)
+					}
+					// The declared minor is kept: 7.1 files declare "7.1" (#741).
+					suite, _, _ := strings.Cut(e.Path, "/")
+					want := map[string]gedcom.Version{"gedcom70": gedcom.Version70, "gedcom71": "7.1"}[suite]
+					if got := doc.Header.DeclaredVersion; got != want {
+						t.Errorf("DeclaredVersion = %q, want %q", got, want)
 					}
 				})
 			})

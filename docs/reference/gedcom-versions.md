@@ -223,10 +223,10 @@ Order reversal is required when converting between ANSEL and UTF-8.
 This library auto-detects the GEDCOM version by:
 
 1. Parsing the header looking for `HEAD.GEDC.VERS` path
-2. Extracting version from the `VERS` tag value (`5.5`, `5.5.1`, `7.0`, or a GEDCOM 7 patch version `7.0.N`, which counts as 7.0)
+2. Extracting version from the `VERS` tag value (`5.5`, `5.5.1`, or a GEDCOM 7 version `7.N` or `7.N.M`, which counts as 7.0; vendor spellings such as `5.51` or `5.5.1 (GEDCOM)` are read as the version they mean, with an `INVALID_VALUE` diagnostic)
 3. If missing/ambiguous, analyzing tag names against version-specific lists
 
-The detected version is stored in `Document.Header.Version`; a `7.0.N` patch version is normalized to `7.0` there, and the exact `VERS` value is kept in `Header.Tags`.
+The detected version is stored in `Document.Header.Version`; any GEDCOM 7 version is normalized to `7.0` there, `Header.DeclaredVersion` keeps the declared major.minor (`7.1` for `VERS 7.1.0`), and the exact `VERS` value is kept in `Header.Tags`.
 
 ## Related Documentation
 

@@ -192,6 +192,28 @@ func TestDetectVersion(t *testing.T) {
 			},
 			want: gedcom.Version551,
 		},
+		// A later GEDCOM 7 minor is read as 7.0, with no 7.0-only tag to
+		// rescue a guess (gedcom.io minimal71.ged), and vendor spellings as
+		// the version they plainly mean (#741).
+		{
+			name: "header 7.1 is 7.0",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "VERS", Value: "7.1"},
+				{Level: 0, Tag: "TRLR"},
+			},
+			want: gedcom.Version70,
+		},
+		{
+			name: "header 5.5.5 is 5.5.1",
+			lines: []*parser.Line{
+				{Level: 0, Tag: "HEAD"},
+				{Level: 1, Tag: "GEDC"},
+				{Level: 2, Tag: "VERS", Value: "5.5.5"},
+			},
+			want: gedcom.Version551,
+		},
 	}
 
 	for _, tt := range tests {
@@ -224,7 +246,11 @@ func TestDeclaredVersion(t *testing.T) {
 		{"7.0", header("7.0"), gedcom.Version70},
 		{"7.0 patch", header("7.0.14"), gedcom.Version70},
 		{"7.0 patch 1", header("7.0.1"), gedcom.Version70},
-		{"unrecognized", header("7.1"), ""},
+		{"7.1 keeps its minor", header("7.1"), "7.1"},
+		{"7.1 patch", header("7.1.0"), "7.1"},
+		{"vendor 5.51", header("5.51"), gedcom.Version551},
+		{"vendor trailing text", header("5.5.1 (GEDCOM)"), gedcom.Version551},
+		{"unrecognized", header("7.0.x"), ""},
 		{"no GEDC", []*parser.Line{{Level: 0, Tag: "HEAD"}, {Level: 1, Tag: "SOUR"}}, ""},
 		{"no header", []*parser.Line{{Level: 0, Tag: "INDI"}, {Level: 1, Tag: "EMAIL"}}, ""},
 		// A level-0 HEAD with an XRef is a record, not the header (#579).

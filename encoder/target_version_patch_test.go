@@ -101,24 +101,50 @@ func TestTargetVersionPaddedUnchanged(t *testing.T) {
 }
 
 // TestTargetVersionUnrecognizedNot70 pins that a value the normalization rule
-// does not recognize, such as 7.1, is not taken for 7.0: CONC splitting still
-// applies and no DATE PHRASE is written. VERS is written as given.
+// does not recognize, such as 7.0.x, is not taken for 7.0: CONC splitting
+// still applies and no DATE PHRASE is written. VERS is written as given.
 func TestTargetVersionUnrecognizedNot70(t *testing.T) {
 	for encName, encode := range nameVariationEncoders {
 		t.Run(encName, func(t *testing.T) {
-			opts := &EncodeOptions{TargetVersion: "7.1"}
+			opts := &EncodeOptions{TargetVersion: "7.0.x"}
 			out := encodeWithFunc(t, encode, decodeEntityOnly(t, longNote551), opts)
-			if !strings.Contains(out, "\n2 VERS 7.1\n") {
-				t.Errorf("output does not declare VERS 7.1:\n%s", out)
+			if !strings.Contains(out, "\n2 VERS 7.0.x\n") {
+				t.Errorf("output does not declare VERS 7.0.x:\n%s", out)
 			}
 			if !hasTagLine(out, "CONC") {
-				t.Errorf("7.1 output was not CONC-split:\n%s", out)
+				t.Errorf("7.0.x output was not CONC-split:\n%s", out)
 			}
 
 			out = encodeWithFunc(t, encode, decodeEntityOnly(t, datePhraseInput70), opts)
 			if hasTagLine(out, "PHRASE") {
-				t.Errorf("7.1 output has a PHRASE line:\n%s", out)
+				t.Errorf("7.0.x output has a PHRASE line:\n%s", out)
 			}
 		})
+	}
+}
+
+// TestTargetVersionLater7MinorIs70 pins that a later GEDCOM 7 minor, and the
+// vendor spelling 7, are read by the gates as 7.0, the rule the decoder reads
+// GEDC.VERS with (#741): no CONC splitting, and DATE PHRASE is written. VERS
+// is written as given.
+func TestTargetVersionLater7MinorIs70(t *testing.T) {
+	for _, target := range []gedcom.Version{"7.1", "7.1.0", "7"} {
+		for encName, encode := range nameVariationEncoders {
+			t.Run(string(target)+"/"+encName, func(t *testing.T) {
+				opts := &EncodeOptions{TargetVersion: target}
+				out := encodeWithFunc(t, encode, decodeEntityOnly(t, longNote551), opts)
+				if !strings.Contains(out, "\n2 VERS "+string(target)+"\n") {
+					t.Errorf("output does not declare VERS %s:\n%s", target, out)
+				}
+				if hasTagLine(out, "CONC") {
+					t.Errorf("%s output was CONC-split:\n%s", target, out)
+				}
+
+				out = encodeWithFunc(t, encode, decodeEntityOnly(t, datePhraseInput70), opts)
+				if !strings.Contains(out, "\n3 PHRASE about 1850\n") {
+					t.Errorf("%s output lost the DATE PHRASE:\n%s", target, out)
+				}
+			})
+		}
 	}
 }

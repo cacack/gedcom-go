@@ -198,7 +198,9 @@ func TestDeclaredVersion(t *testing.T) {
 		{"5.5.1", spacedXRefDoc("5.5.1"), gedcom.Version551},
 		{"7.0", spacedXRefDoc("7.0"), gedcom.Version70},
 		{"7.0 patch", spacedXRefDoc("7.0.14"), gedcom.Version70},
-		{"unrecognized", spacedXRefDoc("7.1"), ""},
+		{"7.1 keeps its minor", spacedXRefDoc("7.1"), "7.1"},
+		{"vendor 5.51", spacedXRefDoc("5.51"), gedcom.Version551},
+		{"unrecognized", spacedXRefDoc("7.0.x"), ""},
 		{"no header", "0 @I1@ INDI\n1 NAME A /B/\n0 TRLR\n", ""},
 	}
 	for _, tt := range tests {

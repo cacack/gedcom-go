@@ -13,12 +13,13 @@ import (
 // not a declaration, as in the decoder, so it never stands in for a silent
 // header. Its lines still feed the tag heuristics, like any other record's.
 // Returns Version55 as the default if detection fails.
-// A GEDCOM 7 patch version (VERS 7.0.N) is reported as [gedcom.Version70];
-// the exact VERS value stays in the decoded header's raw Tags.
+// Every GEDCOM 7 minor and patch version (VERS 7.0.N, 7.1, 7.1.N) is reported
+// as [gedcom.Version70], and a vendor spelling of a known version (5.51, 551,
+// 5.5.5, or a version followed by other text) as that version; the exact VERS
+// value stays in the decoded header's raw Tags.
 func DetectVersion(lines []*parser.Line) gedcom.Version {
 	// Try to detect from header first
-	version := detectFromHeader(lines)
-	if version != "" {
+	if version := detectFromHeader(lines).Version; version != "" {
 		return version
 	}
 
@@ -32,9 +33,13 @@ func DetectVersion(lines []*parser.Line) gedcom.Version {
 // guesses, so a caller can apply a version-specific rule only to a document
 // that asked for it. Only the real header counts: the GEDCOM grammar gives HEAD
 // no identifier, so a `0 @X1@ HEAD` record is ignored, as the decoder does.
-// A GEDCOM 7 patch version (VERS 7.0.N) is reported as [gedcom.Version70].
+// A GEDCOM 7 patch version (VERS 7.0.N) is reported as [gedcom.Version70]; a
+// later GEDCOM 7 minor keeps its major.minor, so VERS 7.1 and 7.1.0 are "7.1",
+// a version this package has no constant for, whose rules are 7.0's (see
+// [DetectVersion]). A vendor spelling of a known version, such as 5.51, is
+// reported as that version.
 func DeclaredVersion(lines []*parser.Line) gedcom.Version {
-	return detectFromHeader(lines)
+	return detectFromHeader(lines).Declared
 }
 
 // detectFromHeader looks for the version in the GEDCOM header.
@@ -42,24 +47,24 @@ func DeclaredVersion(lines []*parser.Line) gedcom.Version {
 //
 //	0 HEAD
 //	1 GEDC
-//	2 VERS 5.5 (or 5.5.1, or 7.0, or a 7.0.N patch version)
+//	2 VERS 5.5 (or 5.5.1, or 7.0, or a 7.N or 7.N.M version)
 //
 // A level-0 HEAD carrying an XRef is not a header: the GEDCOM grammar gives
 // HEAD no identifier.
-func detectFromHeader(lines []*parser.Line) gedcom.Version {
+func detectFromHeader(lines []*parser.Line) gedcvers.Resolution {
 	inHead := false
 	inGedc := false
 
 	for _, line := range lines {
-		if version := processHeaderLine(line, &inHead, &inGedc); version != "" {
-			return version
+		if r := processHeaderLine(line, &inHead, &inGedc); r.Version != "" {
+			return r
 		}
 	}
 
-	return ""
+	return gedcvers.Resolution{}
 }
 
-func processHeaderLine(line *parser.Line, inHead, inGedc *bool) gedcom.Version {
+func processHeaderLine(line *parser.Line, inHead, inGedc *bool) gedcvers.Resolution {
 	// Handle level 0 tags
 	if line.Level == 0 {
 		return handleLevel0(line, inHead)
@@ -70,30 +75,22 @@ func processHeaderLine(line *parser.Line, inHead, inGedc *bool) gedcom.Version {
 		return handleLevel1(line, inGedc)
 	}
 
-	// Handle level 2 VERS tag within GEDC; 7.0.N is 7.0 (see gedcvers.Parse).
+	// Handle level 2 VERS tag within GEDC; 7.1 is 7.0 (see gedcvers.Resolve).
 	if *inHead && *inGedc && line.Level == 2 && line.Tag == "VERS" {
-		return gedcvers.Parse(line.Value)
+		return gedcvers.Resolve(line.Value)
 	}
 
-	return ""
+	return gedcvers.Resolution{}
 }
 
-func handleLevel0(line *parser.Line, inHead *bool) gedcom.Version {
-	if line.Tag == "HEAD" && line.XRef == "" {
-		*inHead = true
-	} else {
-		*inHead = false
-	}
-	return ""
+func handleLevel0(line *parser.Line, inHead *bool) gedcvers.Resolution {
+	*inHead = line.Tag == "HEAD" && line.XRef == ""
+	return gedcvers.Resolution{}
 }
 
-func handleLevel1(line *parser.Line, inGedc *bool) gedcom.Version {
-	if line.Tag == "GEDC" {
-		*inGedc = true
-	} else {
-		*inGedc = false
-	}
-	return ""
+func handleLevel1(line *parser.Line, inGedc *bool) gedcvers.Resolution {
+	*inGedc = line.Tag == "GEDC"
+	return gedcvers.Resolution{}
 }
 
 // detectFromTags uses tag-based heuristics to guess the GEDCOM version.

@@ -112,8 +112,9 @@ func outputVersion(header *gedcom.Header, opts *EncodeOptions) gedcom.Version {
 
 // gateVersion returns the version the encoder's version gates compare against
 // for output version v: the version gedcvers.Parse recognizes it as, the rule
-// the decoder applies to GEDC.VERS, so a GEDCOM 7 patch version such as 7.0.14
-// is 7.0 (issue #696). A value it does not recognize, such as 7.1, is kept as
+// the decoder applies to GEDC.VERS, so a GEDCOM 7 patch or minor version such
+// as 7.0.14 or 7.1 is 7.0 (issues #696, #741), and a vendor spelling such as
+// 5.51 is 5.5.1. A value it does not recognize, such as 7.0.x, is kept as
 // given: it is not 7.0, and not any other version either. So is a value with
 // surrounding whitespace, which Parse would trim: the gates read it exactly as
 // they did before #696, as an unrecognized version.

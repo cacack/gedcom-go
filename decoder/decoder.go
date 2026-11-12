@@ -12,6 +12,7 @@ import (
 	"github.com/cacack/gedcom-go/v3/charset"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/internal/ctxcheck"
+	"github.com/cacack/gedcom-go/v3/internal/gedcvers"
 	"github.com/cacack/gedcom-go/v3/parser"
 	"github.com/cacack/gedcom-go/v3/version"
 )
@@ -170,7 +171,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// Detect GEDCOM version
 	detectedVersion := version.DetectVersion(parsedLines)
 	// The identifier grammar follows only the version the header declares:
-	// a guessed version (no header, or an unrecognized VERS such as 7.1)
+	// a guessed version (no header, or an unrecognized VERS such as 7.0.x)
 	// must not relax it to the 5.5 grammar.
 	xrefVersion := version.DeclaredVersion(parsedLines)
 	parseErrors = dropPermittedXRefErrors(parsedLines, parseErrors, xrefVersion)
@@ -527,7 +528,8 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 // VERS under GEDC or a DATE.TIME under SOUR.DATA is not mistaken for one.
 // Unknown subordinates are left to reportUnknownHeaderTags, so the CORP address
 // is parsed with a collector that discards diagnostics, to avoid reporting them
-// twice; collector supplies the version text values are unescaped for.
+// twice; collector supplies the version text values are unescaped for, and
+// receives the diagnostic for a normalized GEDC.VERS.
 func parseHeaderStructures(h *gedcom.Header, collector *diagnosticCollector) {
 	quiet := collector.quiet()
 	parent := ""
@@ -553,8 +555,22 @@ func parseHeaderStructures(h *gedcom.Header, collector *diagnosticCollector) {
 			h.Time = quiet.text(tag.Value)
 		case "PLAC.FORM":
 			h.PlaceForm = quiet.text(tag.Value)
+		case "GEDC.VERS":
+			reportNormalizedVersion(tag, collector)
 		}
 	}
+}
+
+// reportNormalizedVersion reports a GEDC.VERS value that is not a conforming
+// version string but is read as the version it plainly means, such as 5.51 for
+// 5.5.1 (see gedcvers.Resolve), so the reading is not silent (#741).
+func reportNormalizedVersion(vers *gedcom.Tag, collector *diagnosticCollector) {
+	r := gedcvers.Resolve(vers.Value)
+	if !r.Normalized {
+		return
+	}
+	collector.addInvalidValue(vers.LineNumber, "GEDC.VERS", vers.Value,
+		fmt.Sprintf("%q is not a GEDCOM version string; normalized to %s", vers.Value, r.Declared))
 }
 
 // parseHeaderCorporation builds the CORP structure at tags[corpIdx] from its

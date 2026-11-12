@@ -188,7 +188,7 @@ func writeHeaderTags(w io.Writer, tags []*gedcom.Tag, opts *EncodeOptions) error
 	// GEDC goes where the target grammar puts it: before the first level-1
 	// structure ranked after it, not at the end of the header (#465).
 	// Only consulted when a target is set, where opts.version is that target as
-	// the version gates read it (7.0.N ranks as 7.0).
+	// the version gates read it (7.0.N and 7.1 rank as 7.0).
 	needGEDC := opts.TargetVersion != "" && !hasGEDC(filtered)
 	gedcRank := headergrammar.Rank(opts.version, "GEDC")
 
@@ -431,7 +431,7 @@ func headerFieldTags(header *gedcom.Header, opts *EncodeOptions) ([]*gedcom.Tag,
 	// arbitrary; it is kept in the sequence so a hand-built header that sets
 	// Encoding still gets the line it asked for.
 	//
-	// The order reads the gated version (7.0.N is 7.0); VERS above keeps the
+	// The order reads the gated version (7.0.N and 7.1 are 7.0); VERS above keeps the
 	// value as given (issue #696).
 	groups := [][]*gedcom.Tag{sour, date, subm, gedc, char, lang}
 	if opts.is70() {
