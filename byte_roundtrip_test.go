@@ -56,7 +56,9 @@ var headerKnownBad = map[string]string{
 	"testdata/gedcom-5.5/torture-test/TGC551LF.ged": "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom-5.5/torture-test/TGC55C.ged":   "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom-5.5/torture-test/TGC55CLF.ged": "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom7code/5/char_utf16be-1.ged":     "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom7code/5/char_utf16be-2.ged":     "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom7code/5/char_utf16le-1.ged":     "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom7code/5/char_utf16le-2.ged":     "non-UTF-8 source; payload transcoded",
 
 	// The encoder synthesizes what a header must have when the source has no
@@ -74,7 +76,7 @@ var headerKnownBad = map[string]string{
 // difference. Delete an entry when its issue is fixed.
 var bodyKnownBad = map[string]string{
 	// Not a bug: these sources are not UTF-8, so their record bytes are ANSEL,
-	// CP1252 or UTF-16 in the original and UTF-8 in the output. Byte comparison
+	// CP1252, CP437 or UTF-16 in the original and UTF-8 in the output. Byte comparison
 	// against an untranscoded original cannot match, whatever the encoder does.
 	//
 	// They were attributed to #425 while the output also declared the source
@@ -89,13 +91,16 @@ var bodyKnownBad = map[string]string{
 	"testdata/encoding/brotherskeeper-5.5.1-w1250.ged":  "non-UTF-8 source; payload transcoded",
 	"testdata/encoding/familyhistorian-5.5.1-w1250.ged": "non-UTF-8 source; payload transcoded",
 	"testdata/encoding/geneanet-5.5.1-w1250.ged":        "non-UTF-8 source; payload transcoded",
+	"testdata/encoding/ibmpc-cp437-broskeep.ged":        "non-UTF-8 source; payload transcoded",
 	"testdata/encoding/utf16be.ged":                     "non-UTF-8 source; payload transcoded",
 	"testdata/encoding/utf16le.ged":                     "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom-5.5/torture-test/TGC551.ged":       "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom-5.5/torture-test/TGC551LF.ged":     "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom-5.5/torture-test/TGC55C.ged":       "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom-5.5/torture-test/TGC55CLF.ged":     "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom7code/5/char_utf16be-1.ged":         "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom7code/5/char_utf16be-2.ged":         "non-UTF-8 source; payload transcoded",
+	"testdata/gedcom7code/5/char_utf16le-1.ged":         "non-UTF-8 source; payload transcoded",
 	"testdata/gedcom7code/5/char_utf16le-2.ged":         "non-UTF-8 source; payload transcoded",
 
 	// Lenient recovery rewrites the line rather than preserving it. Arguably
@@ -113,18 +118,11 @@ var bodyKnownBad = map[string]string{
 	"testdata/malformed/level-jump-skip.ged":        "over-jumped level is clamped by recovery",
 	"testdata/malformed/level-jump-subordinate.ged": "over-jumped level is clamped by recovery",
 	"testdata/malformed/level-over-99.ged":          "level 100 line is skipped by recovery",
-
-	// Read as UTF-8 since CP437 (CHAR IBMPC) is unsupported; lenient recovery
-	// replaces its one non-UTF-8 byte with U+FFFD rather than failing (#710).
-	"testdata/encoding/ibmpc-cp437-broskeep.ged": "invalid byte is replaced with U+FFFD by recovery",
 }
 
 // undecodable lists fixtures that do not survive decode or encode at all, so
 // there are no bytes to compare. Kept explicit so the count cannot drift.
-var undecodable = map[string]string{
-	"testdata/gedcom7code/5/char_utf16be-1.ged": "BOM-less UTF-16 is not detected; read as UTF-8",
-	"testdata/gedcom7code/5/char_utf16le-1.ged": "BOM-less UTF-16 is not detected; read as UTF-8",
-}
+var undecodable = map[string]string{}
 
 // valuelessLine matches a line carrying no value: "1 CONT", "0 @I1@ INDI".
 // GEDCOM makes the delimiter space optional when the value is empty, so

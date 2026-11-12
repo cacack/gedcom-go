@@ -51,11 +51,6 @@ var conversionKnownGaps = map[string]string{
 	"atsign.ged 5->7": "@@ inside a payload is not unescaped on decode (#708)",
 	"atsign.ged 7->5": "not invertible: 7/ already rewrote the @#D...@ escapes in note text that 5/ keeps",
 
-	"char_utf16be-1.ged 5->7": "BOM-less UTF-16 is not detected; decode fails",
-	"char_utf16be-1.ged 7->5": "BOM-less UTF-16 is not detected; the 5/ side cannot be read",
-	"char_utf16le-1.ged 5->7": "BOM-less UTF-16 is not detected; decode fails",
-	"char_utf16le-1.ged 7->5": "BOM-less UTF-16 is not detected; the 5/ side cannot be read",
-
 	"date-all.ged 5->7":          "dual-year dates are not rewritten to BET/AND + PHRASE (#722)",
 	"date-all.ged 7->5":          "BET/AND + PHRASE is not restored to the dual-year form (#722)",
 	"date-dual-invalid.ged 5->7": "dual-year dates are not rewritten to BET/AND + PHRASE (#722)",

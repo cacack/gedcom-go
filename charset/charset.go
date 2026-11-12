@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 )
@@ -31,7 +32,17 @@ const (
 	// EncodingLATIN1 indicates a single-byte Latin encoding, declared as
 	// ANSI, LATIN1 or ISO-8859-1. It is decoded as Windows-1252, which matches
 	// ISO-8859-1 on every printable byte and is what ANSI files contain.
+	// WINDOWS-1252, CP1252 and WIN-1252 declare it too.
 	EncodingLATIN1
+	// EncodingCP437 indicates IBM code page 437 (the original IBM PC set),
+	// declared as IBMPC, IBM PC, CP437 or IBM-437.
+	EncodingCP437
+	// EncodingCP850 indicates IBM code page 850 (DOS Latin-1), declared as
+	// CP850 or IBM-850.
+	EncodingCP850
+	// EncodingMacRoman indicates Mac OS Roman, declared as MACINTOSH, MAC or
+	// MACROMAN.
+	EncodingMacRoman
 )
 
 // ErrInvalidUTF8 is returned when invalid UTF-8 sequences are encountered.
@@ -75,9 +86,13 @@ var _ interface{ ErrorLine() int } = (*ErrInvalidUTF8)(nil)
 // Supported encodings:
 //   - UTF-16 LE (BOM: 0xFF 0xFE) - Converted to UTF-8
 //   - UTF-16 BE (BOM: 0xFE 0xFF) - Converted to UTF-8
+//   - UTF-16 without a BOM, recognised by a first line starting "0 " in
+//     UTF-16 (0x30 0x00 0x20 0x00 or 0x00 0x30 0x00 0x20) - Converted to UTF-8
 //   - UTF-8 (BOM: 0xEF 0xBB 0xBF) - BOM removed, validated
-//   - ANSEL (CHAR tag: ANSEL) - Converted to UTF-8, validated
-//   - No BOM or CHAR tag - Assumed UTF-8, validated
+//   - Any other encoding named by the header's CHAR tag (see
+//     DetectEncodingFromHeader for the recognised values) - Converted to
+//     UTF-8, validated
+//   - No BOM or recognised CHAR tag - Assumed UTF-8, validated
 func NewReader(r io.Reader) io.Reader {
 	return NewReaderWithOptions(r, ReaderOptions{})
 }
@@ -108,6 +123,15 @@ func NewReaderWithOptions(r io.Reader, opts ReaderOptions) io.Reader {
 		// replaying reader, which delivers the bytes already read and then
 		// reports the read error in place.
 		return newUTF8Reader(detectedReader, opts, false)
+	}
+
+	// Without a BOM, UTF-16 shows itself in the first line's "0 ": the
+	// header's CHAR tag cannot be read until the byte layout is known.
+	if bomEnc == EncodingUnknown {
+		detectedReader, bomEnc, err = sniffUTF16(detectedReader)
+		if err != nil {
+			return newUTF8Reader(detectedReader, opts, false)
+		}
 	}
 
 	// If BOM indicates UTF-16, use that encoding (takes precedence)
@@ -519,6 +543,30 @@ func DetectBOM(r io.Reader) (io.Reader, Encoding, error) {
 	return newReader, encoding, nil
 }
 
+// sniffUTF16 recognises UTF-16 without a BOM by its first four bytes, which in
+// a GEDCOM file are the level "0" and the space after it: 0x30 0x00 0x20 0x00
+// in little-endian and 0x00 0x30 0x00 0x20 in big-endian. Neither can open a
+// GEDCOM file in any 8-bit encoding. It returns a reader replaying every byte
+// of r, and EncodingUnknown when the bytes do not match.
+//
+// On a read error other than io.EOF, the returned reader replays the bytes
+// read before it and then returns the error, as DetectBOM's does.
+func sniffUTF16(r io.Reader) (io.Reader, Encoding, error) {
+	buf := make([]byte, 4)
+	n, err := readPrefix(r, buf)
+	if err != nil && err != io.EOF {
+		return io.MultiReader(bytes.NewReader(buf[:n]), errReader{err: err}), EncodingUnknown, err
+	}
+	replay := io.MultiReader(bytes.NewReader(buf[:n]), r)
+	switch {
+	case n == 4 && bytes.Equal(buf, []byte{'0', 0x00, ' ', 0x00}):
+		return replay, EncodingUTF16LE, nil
+	case n == 4 && bytes.Equal(buf, []byte{0x00, '0', 0x00, ' '}):
+		return replay, EncodingUTF16BE, nil
+	}
+	return replay, EncodingUnknown, nil
+}
+
 // newUTF16Reader creates a reader that converts UTF-16 encoded data to UTF-8.
 // The bigEndian parameter specifies whether the input is UTF-16 BE (true) or LE (false).
 // The returned reader automatically handles the conversion.
@@ -544,10 +592,45 @@ const headerProbeLimit = 64 << 10
 // while probing, so a short header costs one small read rather than the cap.
 const headerProbeChunk = 4 << 10
 
-// charTagPattern matches the GEDCOM CHAR tag that declares the character encoding.
+// charTagPattern matches the GEDCOM CHAR tag that declares the character encoding
+// and captures its whole value, up to the end of the line, so a value with a
+// space in it ("IBM PC") is read whole rather than as its first word.
 // Pattern handles both CR and LF line endings, and is case-insensitive.
-// Matches: "1 CHAR ANSEL", "1 CHAR UTF-8", "1 CHAR ASCII", etc.
-var charTagPattern = regexp.MustCompile(`(?i)[\r\n]1\s+CHAR\s+(\S+)`)
+// Matches: "1 CHAR ANSEL", "1 CHAR UTF-8", "1 CHAR IBM PC", etc.
+var charTagPattern = regexp.MustCompile(`(?i)[\r\n]1[ \t]+CHAR[ \t]+([^\r\n]+)`)
+
+// charValues maps each recognised CHAR value, upper-cased and with its blanks
+// collapsed to single spaces, to the encoding it declares.
+var charValues = map[string]Encoding{
+	"ANSEL": EncodingANSEL,
+	"ASCII": EncodingASCII,
+	"UTF-8": EncodingUTF8,
+	"UTF8":  EncodingUTF8,
+	// UNICODE in a header readable byte by byte is UTF-8; UTF-16 without a
+	// BOM is recognised before the header is read (see sniffUTF16).
+	"UNICODE": EncodingUTF8,
+	// UTF-16 is handled by BOM detection, but recognize the tag
+	"UTF-16":   EncodingUTF16LE,
+	"UTF-16LE": EncodingUTF16LE,
+	"UTF-16BE": EncodingUTF16BE,
+	// Windows-1252, which also serves ISO-8859-1 (#564)
+	"ANSI":         EncodingLATIN1,
+	"LATIN1":       EncodingLATIN1,
+	"ISO-8859-1":   EncodingLATIN1,
+	"WINDOWS-1252": EncodingLATIN1,
+	"CP1252":       EncodingLATIN1,
+	"WIN-1252":     EncodingLATIN1,
+	// DOS and Mac code pages (#735)
+	"IBMPC":     EncodingCP437,
+	"IBM PC":    EncodingCP437,
+	"CP437":     EncodingCP437,
+	"IBM-437":   EncodingCP437,
+	"CP850":     EncodingCP850,
+	"IBM-850":   EncodingCP850,
+	"MACINTOSH": EncodingMacRoman,
+	"MAC":       EncodingMacRoman,
+	"MACROMAN":  EncodingMacRoman,
+}
 
 // DetectEncodingFromHeader peeks at the GEDCOM header to find the CHAR tag.
 // It returns a reader that replays every byte of r, the detected encoding,
@@ -555,8 +638,14 @@ var charTagPattern = regexp.MustCompile(`(?i)[\r\n]1\s+CHAR\s+(\S+)`)
 //
 // Only the header is read: probing stops at the first level-0 line after
 // HEAD, at end of input, or after 64 KiB, whichever comes first. The CHAR tag
-// is searched for within that header; if it is not found, EncodingUnknown is
-// returned and the caller should assume UTF-8. The rest of r is not read until
+// is searched for within that header; if it is not found, or its value is not
+// recognised, EncodingUnknown is returned and the caller should assume UTF-8.
+//
+// Recognised values, matched without regard to case: ANSEL; ASCII; UTF-8,
+// UTF8 and UNICODE (UTF-8); UTF-16, UTF-16LE and UTF-16BE; ANSI, LATIN1,
+// ISO-8859-1, WINDOWS-1252, CP1252 and WIN-1252 (EncodingLATIN1, decoded as
+// Windows-1252); IBMPC, IBM PC, CP437 and IBM-437 (EncodingCP437); CP850 and
+// IBM-850 (EncodingCP850); MACINTOSH, MAC and MACROMAN (EncodingMacRoman). The rest of r is not read until
 // the returned reader is, so a read error past the probe surfaces from it.
 func DetectEncodingFromHeader(r io.Reader) (io.Reader, Encoding, error) {
 	probe, headerLen, err := probeHeader(r)
@@ -571,30 +660,15 @@ func DetectEncodingFromHeader(r io.Reader) (io.Reader, Encoding, error) {
 // charEncoding returns the encoding declared by the first CHAR tag in header,
 // or EncodingUnknown if there is none or its value is not recognized.
 func charEncoding(header []byte) Encoding {
-	encoding := EncodingUnknown
 	matches := charTagPattern.FindSubmatch(header)
-	if len(matches) >= 2 {
-		charValue := strings.ToUpper(string(matches[1]))
-		switch charValue {
-		case "ANSEL":
-			encoding = EncodingANSEL
-		case "ASCII":
-			encoding = EncodingASCII
-		case "UTF-8":
-			encoding = EncodingUTF8
-		case "UNICODE":
-			// UNICODE typically means UTF-8 in GEDCOM context
-			encoding = EncodingUTF8
-		// UTF-16 is handled by BOM detection, but recognize the tag
-		case "UTF-16", "UTF-16LE":
-			encoding = EncodingUTF16LE
-		case "UTF-16BE":
-			encoding = EncodingUTF16BE
-		case "LATIN1", "ISO-8859-1", "ANSI":
-			encoding = EncodingLATIN1
-		}
+	if len(matches) < 2 {
+		return EncodingUnknown
 	}
-	return encoding
+	value := strings.Join(strings.Fields(strings.ToUpper(string(matches[1]))), " ")
+	if enc, ok := charValues[value]; ok {
+		return enc
+	}
+	return EncodingUnknown
 }
 
 // probeHeader reads r until the header is complete (see
@@ -686,6 +760,8 @@ func (s *headerScanner) step(c byte) bool {
 //   - EncodingANSEL: ANSEL to UTF-8 conversion, then validation
 //   - EncodingLATIN1: Windows-1252 to UTF-8 conversion, then validation; the
 //     five bytes Windows-1252 leaves undefined keep their ISO-8859-1 code points
+//   - EncodingCP437, EncodingCP850, EncodingMacRoman: code page to UTF-8
+//     conversion, then validation; every byte has a character, so none is lost
 //   - EncodingUTF16LE: UTF-16 LE to UTF-8 conversion, then validation
 //   - EncodingUTF16BE: UTF-16 BE to UTF-8 conversion, then validation
 //   - EncodingUTF8, EncodingASCII, EncodingUnknown: UTF-8 validation only
@@ -704,6 +780,12 @@ func newReaderWithEncoding(r io.Reader, enc Encoding, opts ReaderOptions) io.Rea
 	case EncodingLATIN1:
 		// ANSI, LATIN1 and ISO-8859-1 files are decoded as Windows-1252 (#564)
 		convertedReader = transform.NewReader(r, windows1252Decoder{})
+	case EncodingCP437:
+		convertedReader = transform.NewReader(r, charmap.CodePage437.NewDecoder())
+	case EncodingCP850:
+		convertedReader = transform.NewReader(r, charmap.CodePage850.NewDecoder())
+	case EncodingMacRoman:
+		convertedReader = transform.NewReader(r, charmap.Macintosh.NewDecoder())
 	case EncodingUTF16LE:
 		// UTF-16 LE needs conversion to UTF-8
 		convertedReader = newUTF16Reader(r, false)

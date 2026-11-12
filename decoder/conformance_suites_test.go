@@ -29,17 +29,11 @@ var conformanceSuiteDirs = []string{
 }
 
 // strictKnownFailures lists files whose strict decode returns an error.
-var strictKnownFailures = map[string]string{
-	"testdata/gedcom7code/5/char_utf16be-1.ged": "BOM-less UTF-16 is not detected; read as UTF-8",
-	"testdata/gedcom7code/5/char_utf16le-1.ged": "BOM-less UTF-16 is not detected; read as UTF-8",
-}
+var strictKnownFailures = map[string]string{}
 
 // lenientKnownFailures lists files whose lenient decode returns an error or
 // an error-severity diagnostic.
-var lenientKnownFailures = map[string]string{
-	"testdata/gedcom7code/5/char_utf16be-1.ged": "BOM-less UTF-16 is not detected; read as UTF-8",
-	"testdata/gedcom7code/5/char_utf16le-1.ged": "BOM-less UTF-16 is not detected; read as UTF-8",
-}
+var lenientKnownFailures = map[string]string{}
 
 func conformanceSuiteFiles(t *testing.T) []string {
 	t.Helper()
