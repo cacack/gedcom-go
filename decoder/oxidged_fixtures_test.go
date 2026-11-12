@@ -34,30 +34,8 @@ const oxidgedDir = "../testdata/oxidged"
 // oxidgedUnknownTagGaps lists standard tags the decoder reports as
 // UNKNOWN_TAG, keyed "file:line TAG", with the issue responsible.
 var oxidgedUnknownTagGaps = map[string]string{
-	"full551.ged:166 CONC":    "#734: DSCR payload continuation",
-	"full551.ged:167 CONT":    "#734: DSCR payload continuation",
 	"full551.ged:247 CONT":    "#738: inline-text citation continuation",
-	"full551.ged:307 RIN":     "#730: RIN on FAM",
-	"full551.ged:329 RIN":     "#730: RIN on OBJE",
-	"full551.ged:342 RIN":     "#730: RIN on NOTE",
-	"full551.ged:356 RIN":     "#730: RIN on REPO",
-	"full551.ged:386 RIN":     "#730: RIN on SOUR",
-	"full551.ged:60 RFN":      "#730: RFN on SUBM",
-	"maximal551.ged:167 CONC": "#734: DSCR payload continuation",
-	"maximal551.ged:168 CONT": "#734: DSCR payload continuation",
 	"maximal551.ged:248 CONT": "#738: inline-text citation continuation",
-	"maximal551.ged:308 RIN":  "#730: RIN on FAM",
-	"maximal551.ged:330 RIN":  "#730: RIN on OBJE",
-	"maximal551.ged:343 RIN":  "#730: RIN on NOTE",
-	"maximal551.ged:357 RIN":  "#730: RIN on REPO",
-	"maximal551.ged:387 RIN":  "#730: RIN on SOUR",
-	"maximal551.ged:61 RFN":   "#730: RFN on SUBM",
-	"full70.ged:43 REFN":      "#730: REFN on SUBM",
-	"full70.ged:53 CREA":      "#730: CREA on SUBM",
-	"full70.ged:361 CREA":     "#730: CREA on REPO",
-	"full70.ged:372 REFN":     "#730: REFN on SNOTE",
-	"full70.ged:374 UID":      "#730: UID on SNOTE",
-	"full70.ged:379 CREA":     "#730: CREA on SNOTE",
 }
 
 // oxidgedTypedGaps lists lines whose structure the coverage reports mark
@@ -88,12 +66,6 @@ var oxidgedTypedGaps = map[string]string{
 	"full70.ged:62 INDI.NAME.GIVN":                   "#787: a repeated GIVN keeps only the last",
 	"full70.ged:92 INDI.BIRT.PLAC.EXID.TYPE":         "#787: PLAC.EXID untyped",
 	"full70.ged:123 INDI.BIRT.SOUR.DATA.DATE.PHRASE": "#787: citation DATA.DATE PHRASE untyped",
-	"full70.ged:134 INDI.BIRT.SOUR.OBJE.CROP":        "#737: citation OBJE untyped",
-	"full70.ged:135 INDI.BIRT.SOUR.OBJE.CROP.TOP":    "#737: citation OBJE untyped",
-	"full70.ged:136 INDI.BIRT.SOUR.OBJE.CROP.LEFT":   "#737: citation OBJE untyped",
-	"full70.ged:137 INDI.BIRT.SOUR.OBJE.CROP.HEIGHT": "#737: citation OBJE untyped",
-	"full70.ged:138 INDI.BIRT.SOUR.OBJE.CROP.WIDTH":  "#737: citation OBJE untyped",
-	"full70.ged:139 INDI.BIRT.SOUR.OBJE.TITL":        "#737: citation OBJE untyped",
 	"full70.ged:196 INDI.INIL.STAT.DATE":             "#386: INIL left raw by decision",
 	"full70.ged:240 INDI.NOTE.TRAN.LANG":             "#787: inline NOTE TRAN untyped",
 	"full70.ged:284 FAM.MARR.HUSB.AGE.PHRASE":        "#736: family event HUSB/WIFE AGE untyped",
@@ -101,7 +73,6 @@ var oxidgedTypedGaps = map[string]string{
 	"full70.ged:362 REPO.CREA.DATE":                  "#786: REPO CREA untyped",
 	"full70.ged:373 SNOTE.REFN.TYPE":                 "#786: SNOTE REFN untyped",
 	"full70.ged:380 SNOTE.CREA.DATE":                 "#786: SNOTE CREA untyped",
-	"full70.ged:387 SOUR.DATA.EVEN.PLAC.FORM":        "#737: SOUR.DATA untyped",
 }
 
 // oxidgedFiles returns the vendored .ged files, failing if there are none.
