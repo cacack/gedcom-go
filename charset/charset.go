@@ -35,9 +35,14 @@ const (
 )
 
 // ErrInvalidUTF8 is returned when invalid UTF-8 sequences are encountered.
+// It is also what [ReaderOptions.OnInvalidUTF8] receives for each byte it
+// replaces.
 type ErrInvalidUTF8 struct {
 	Line   int
 	Column int
+	// Byte is the offending byte: the first byte that is not part of a valid
+	// UTF-8 sequence.
+	Byte byte
 }
 
 func (e *ErrInvalidUTF8) Error() string {
@@ -74,22 +79,40 @@ var _ interface{ ErrorLine() int } = (*ErrInvalidUTF8)(nil)
 //   - ANSEL (CHAR tag: ANSEL) - Converted to UTF-8, validated
 //   - No BOM or CHAR tag - Assumed UTF-8, validated
 func NewReader(r io.Reader) io.Reader {
+	return NewReaderWithOptions(r, ReaderOptions{})
+}
+
+// ReaderOptions configures [NewReaderWithOptions]. The zero value gives the
+// behaviour of [NewReader].
+type ReaderOptions struct {
+	// OnInvalidUTF8, when non-nil, makes the reader recover from invalid
+	// UTF-8 instead of failing: each byte that is not part of a valid UTF-8
+	// sequence is replaced with U+FFFD (the Unicode replacement character)
+	// and reported to OnInvalidUTF8 with its line, column and value, once
+	// per byte, and reading continues. When nil, the first such byte fails
+	// the read with *ErrInvalidUTF8.
+	//
+	// This applies to the UTF-8 validation every input passes through, so in
+	// practice to input read as UTF-8: declared UTF-8 or ASCII, or undeclared.
+	// It does not change ANSEL decoding, which reports an invalid ANSEL byte
+	// with *ErrInvalidANSEL either way.
+	OnInvalidUTF8 func(*ErrInvalidUTF8)
+}
+
+// NewReaderWithOptions is [NewReader] configured by opts.
+func NewReaderWithOptions(r io.Reader, opts ReaderOptions) io.Reader {
 	// First check for BOM (UTF-16, UTF-8 BOM)
 	detectedReader, bomEnc, err := DetectBOM(r)
 	if err != nil {
 		// If BOM detection fails, fall back to UTF-8 validation of the
 		// replaying reader, which delivers the bytes already read and then
 		// reports the read error in place.
-		return &utf8Reader{
-			reader: detectedReader,
-			line:   1,
-			column: 1,
-		}
+		return newUTF8Reader(detectedReader, opts, false)
 	}
 
 	// If BOM indicates UTF-16, use that encoding (takes precedence)
 	if bomEnc == EncodingUTF16LE || bomEnc == EncodingUTF16BE {
-		return NewReaderWithEncoding(detectedReader, bomEnc)
+		return newReaderWithEncoding(detectedReader, bomEnc, opts)
 	}
 
 	// Check header for CHAR declaration
@@ -98,16 +121,24 @@ func NewReader(r io.Reader) io.Reader {
 		// If header detection fails, fall back to UTF-8 validation of the
 		// bytes already probed, then report the read error in place so the
 		// consumed prefix is neither lost nor silently skipped.
-		return &utf8Reader{
-			reader: io.MultiReader(bytes.NewReader(probe), errReader{err: err}),
-			line:   1,
-			column: 1,
-		}
+		return newUTF8Reader(io.MultiReader(bytes.NewReader(probe), errReader{err: err}), opts, false)
 	}
 
 	// Use detected encoding (or UTF-8 if unknown)
 	headerReader := io.MultiReader(bytes.NewReader(probe), detectedReader)
-	return NewReaderWithEncoding(headerReader, charEncoding(probe[:headerLen]))
+	return newReaderWithEncoding(headerReader, charEncoding(probe[:headerLen]), opts)
+}
+
+// newUTF8Reader returns a utf8Reader over r. bomSkipped reports whether a
+// UTF-8 BOM has already been handled, so the reader need not look for one.
+func newUTF8Reader(r io.Reader, opts ReaderOptions, bomSkipped bool) *utf8Reader {
+	return &utf8Reader{
+		reader:     r,
+		line:       1,
+		column:     1,
+		bomSkipped: bomSkipped,
+		onInvalid:  opts.OnInvalidUTF8,
+	}
 }
 
 // readPrefix reads from r until buf is full or a read returns an error. Unlike
@@ -136,9 +167,10 @@ type utf8Reader struct {
 	column     int
 	lastWasCR  bool // previous byte was CR, so a following LF completes one CRLF break
 	bomSkipped bool
-	pending    []byte // Incomplete UTF-8 sequence from previous read
-	complete   []byte // Complete UTF-8 bytes ready to return
-	err        error  // Sticky failure, surfaced once complete has drained
+	pending    []byte                // Incomplete UTF-8 sequence from previous read
+	complete   []byte                // Complete UTF-8 bytes ready to return
+	err        error                 // Sticky failure, surfaced once complete has drained
+	onInvalid  func(*ErrInvalidUTF8) // When non-nil, replace invalid bytes and report them here
 }
 
 func (u *utf8Reader) Read(p []byte) (n int, err error) {
@@ -167,15 +199,32 @@ func (u *utf8Reader) Read(p []byte) (n int, err error) {
 	n, err = u.readAndProcess(p)
 
 	if err == io.EOF && len(u.pending) > 0 {
+		if u.onInvalid != nil {
+			// The input ended inside a sequence: it can never complete, so
+			// replace its bytes like any other invalid ones. End of input
+			// is reported on the next read, once they have drained.
+			return u.flushPending(p, n), nil
+		}
 		if n > 0 || len(u.complete) > 0 {
 			// Return valid bytes first; error will surface on next read
 			// when pending bytes are re-evaluated
 			return n, nil
 		}
-		return 0, &ErrInvalidUTF8{Line: u.line, Column: u.column}
+		return 0, &ErrInvalidUTF8{Line: u.line, Column: u.column, Byte: u.pending[0]}
 	}
 
 	return n, err
+}
+
+// flushPending delivers the incomplete sequence held at end of input, with its
+// bytes replaced, after the n bytes already written to p. It returns the new
+// total written to p; anything that does not fit joins u.complete.
+func (u *utf8Reader) flushPending(p []byte, n int) int {
+	out := u.replaceInvalid(u.pending)
+	u.pending = nil
+	m := copy(p[n:], out)
+	u.complete = append(u.complete, out[m:]...)
+	return n + m
 }
 
 func (u *utf8Reader) drainComplete(p []byte) (int, bool) {
@@ -239,6 +288,15 @@ func (u *utf8Reader) processWorkBuffer(p, workBuf []byte, workN int) (int, error
 		return 0, nil
 	}
 
+	if u.onInvalid != nil {
+		out := u.replaceInvalid(workBuf[:workN])
+		n := copy(p, out)
+		if n < len(out) {
+			u.complete = append([]byte(nil), out[n:]...)
+		}
+		return n, nil
+	}
+
 	goodLen, verr := u.validateAndTrack(workBuf[:workN])
 	if verr != nil {
 		// Everything ahead of the offending byte is valid UTF-8 and is the
@@ -296,12 +354,37 @@ func (u *utf8Reader) findInvalidUTF8(p []byte) (int, error) {
 		if r == utf8.RuneError && size == 1 {
 			// u.line/u.column already track the offending byte: the loop
 			// advanced them over every rune preceding it.
-			return i, &ErrInvalidUTF8{Line: u.line, Column: u.column}
+			return i, &ErrInvalidUTF8{Line: u.line, Column: u.column, Byte: p[i]}
 		}
 		u.advance(p[i], size)
 		i += size
 	}
 	return len(p), nil
+}
+
+// replaceInvalid advances the cursor over p and returns it with each byte that
+// is not part of a valid UTF-8 sequence replaced by U+FFFD, reporting each one
+// to u.onInvalid. It returns p itself when p is valid.
+func (u *utf8Reader) replaceInvalid(p []byte) []byte {
+	if utf8.Valid(p) {
+		u.updatePosition(p)
+		return p
+	}
+	out := make([]byte, 0, len(p)+2*utf8.UTFMax)
+	for i := 0; i < len(p); {
+		r, size := utf8.DecodeRune(p[i:])
+		if r == utf8.RuneError && size == 1 {
+			u.onInvalid(&ErrInvalidUTF8{Line: u.line, Column: u.column, Byte: p[i]})
+			out = utf8.AppendRune(out, utf8.RuneError)
+		} else {
+			out = append(out, p[i:i+size]...)
+		}
+		// The cursor counts input bytes, so a replaced byte advances it by
+		// one column whatever its replacement's width.
+		u.advance(p[i], size)
+		i += size
+	}
+	return out
 }
 
 func (u *utf8Reader) updatePosition(p []byte) {
@@ -607,6 +690,11 @@ func (s *headerScanner) step(c byte) bool {
 //   - EncodingUTF16BE: UTF-16 BE to UTF-8 conversion, then validation
 //   - EncodingUTF8, EncodingASCII, EncodingUnknown: UTF-8 validation only
 func NewReaderWithEncoding(r io.Reader, enc Encoding) io.Reader {
+	return newReaderWithEncoding(r, enc, ReaderOptions{})
+}
+
+// newReaderWithEncoding is NewReaderWithEncoding configured by opts.
+func newReaderWithEncoding(r io.Reader, enc Encoding, opts ReaderOptions) io.Reader {
 	var convertedReader io.Reader
 
 	switch enc {
@@ -630,11 +718,6 @@ func NewReaderWithEncoding(r io.Reader, enc Encoding) io.Reader {
 		convertedReader = r
 	}
 
-	// Wrap with UTF-8 validator
-	return &utf8Reader{
-		reader:     convertedReader,
-		line:       1,
-		column:     1,
-		bomSkipped: true, // Assume BOM already handled
-	}
+	// Wrap with UTF-8 validator; the BOM has already been handled
+	return newUTF8Reader(convertedReader, opts, true)
 }
