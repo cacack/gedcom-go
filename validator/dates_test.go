@@ -52,6 +52,9 @@ func TestInvalidDateReported(t *testing.T) {
 		{"dual-dated range end", []string{"1 BIRT", "2 DATE BET 1 JAN 1723/24 AND 32 JAN 1723/24"}, "BIRT", "BIRT.DATE", 8},
 		{"dual year not following", []string{"1 BIRT", "2 DATE 1750/53"}, "BIRT", "BIRT.DATE", 8},
 		{"dual-dated day with dual year not following", []string{"1 BIRT", "2 DATE 29 FEB 1723/1722"}, "BIRT", "BIRT.DATE", 8},
+		{"reversed range", []string{"1 BIRT", "2 DATE BET 1860 AND 1850"}, "BIRT", "BIRT.DATE", 8},
+		{"reversed period", []string{"1 RESI", "2 DATE FROM 1860 TO 1850"}, "RESI", "RESI.DATE", 8},
+		{"reversed range with dual-dated end", []string{"1 BIRT", "2 DATE BET 1 MAR 1724 AND 29 FEB 1723/24"}, "BIRT", "BIRT.DATE", 8},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -87,6 +90,8 @@ func TestInvalidDateNotReported(t *testing.T) {
 		"@#DJULIAN@ 31 FEB 1900",
 		"29 FEB 1723/24",
 		"BET 1 JAN 1723/24 AND 29 FEB 1723/24",
+		"BET JAN 1850 AND 1850",
+		"BET 15 JAN 1850 AND JAN 1850",
 		"1 JAN 1699/00",
 		"(sometime in spring)",
 		"not a date at all",
@@ -168,5 +173,22 @@ func TestInvalidDateTypedEntity(t *testing.T) {
 			got[i].Details["path"] != wantPath || got[i].LineNumber != 0 {
 			t.Errorf("issue %d = %v, want %s %s at path %s, line 0", i, got[i], w.xref, w.tag, wantPath)
 		}
+	}
+}
+
+// TestDateErrorReversedRangeNoOriginal pins that a hand-built reversed range
+// with no Original is reported with the same message gedcom.Date.Validate
+// gives, not with an empty quoted value.
+func TestDateErrorReversedRangeNoOriginal(t *testing.T) {
+	date := &gedcom.Date{
+		Modifier: gedcom.ModifierBetween, Year: 1860,
+		EndDate: &gedcom.Date{Year: 1850},
+	}
+	want := "invalid date range: the end date is before the start date"
+	if err := date.Validate(); err == nil || err.Error() != want {
+		t.Fatalf("Validate() error = %v, want %q", err, want)
+	}
+	if err := dateError(date); err == nil || err.Error() != want {
+		t.Errorf("dateError() error = %v, want %q", err, want)
 	}
 }

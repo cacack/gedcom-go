@@ -220,6 +220,12 @@ var frenchMonthNames = map[string]int{
 //
 // Both calendar forms are accepted regardless of the document's GEDCOM version;
 // ParseDate does not check version conformance.
+//
+// A day or year is unsigned decimal digits: a sign ("-1850", "+5 JAN 1850")
+// is an error naming the component, as is a day or year written as 0, which
+// no calendar has (0 is the "absent" value of Day and Year). A B.C. year takes
+// a BC suffix. A reversed range such as "BET 1860 AND 1850" parses; Validate
+// reports it.
 func ParseDate(s string) (*Date, error) {
 	if s == "" {
 		return nil, fmt.Errorf("empty date string")
@@ -573,9 +579,12 @@ func parseMonthYear(fields []string, date *Date) error {
 
 // parseDayMonthYear parses a full day-month-year date.
 func parseDayMonthYear(fields []string, date *Date) error {
-	day, err := strconv.Atoi(fields[0])
+	day, err := parseDateNumber("day", fields[0])
 	if err != nil {
-		return fmt.Errorf("invalid day: %s", fields[0])
+		return err
+	}
+	if day == 0 {
+		return fmt.Errorf("invalid day: %s (a day of the month is 1-31)", fields[0])
 	}
 	month, err := parseMonthForCalendar(fields[1], date.Calendar)
 	if err != nil {
@@ -628,16 +637,19 @@ func parseYearWithDual(s string, isBC bool) (primaryYear, dualYear int, err erro
 			return 0, 0, fmt.Errorf("invalid dual year format: %s", s)
 		}
 
-		primaryYear, err := strconv.Atoi(parts[0])
+		primaryYear, err := parseDateNumber("primary year in dual date", parts[0])
 		if err != nil {
-			return 0, 0, fmt.Errorf("invalid primary year in dual date: %s", parts[0])
+			return 0, 0, err
+		}
+		if primaryYear == 0 {
+			return 0, 0, errNoYearZero(parts[0])
 		}
 
 		// Parse secondary year - may be 2-digit or 4-digit
 		secondaryStr := parts[1]
-		secondaryYear, err := strconv.Atoi(secondaryStr)
+		secondaryYear, err := parseDateNumber("secondary year in dual date", secondaryStr)
 		if err != nil {
-			return 0, 0, fmt.Errorf("invalid secondary year in dual date: %s", secondaryStr)
+			return 0, 0, err
 		}
 
 		switch len(secondaryStr) {
@@ -645,17 +657,45 @@ func parseYearWithDual(s string, isBC bool) (primaryYear, dualYear int, err erro
 			secondaryYear = followingYearEndingIn(primaryYear, secondaryYear, 10, isBC)
 		case 2:
 			secondaryYear = followingYearEndingIn(primaryYear, secondaryYear, 100, isBC)
+		default:
+			// A longer dual year is a whole year, not a suffix, so it cannot be 0.
+			if secondaryYear == 0 {
+				return 0, 0, errNoYearZero(secondaryStr)
+			}
 		}
 
 		return primaryYear, secondaryYear, nil
 	}
 
 	// No dual year
-	year, err := strconv.Atoi(s)
+	year, err := parseDateNumber("year", s)
 	if err != nil {
-		return 0, 0, fmt.Errorf("invalid year: %s", s)
+		return 0, 0, err
+	}
+	if year == 0 {
+		return 0, 0, errNoYearZero(s)
 	}
 	return year, 0, nil
+}
+
+// parseDateNumber parses the day or year field s, which must be unsigned
+// decimal digits: a B.C. year is written with a BC suffix, never a minus sign.
+// component names the field in the error.
+func parseDateNumber(component, s string) (int, error) {
+	if s != "" && (s[0] == '-' || s[0] == '+') {
+		return 0, fmt.Errorf("invalid %s: %s (a date number has no sign; write a B.C. year with a BC suffix)", component, s)
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("invalid %s: %s", component, s)
+	}
+	return n, nil
+}
+
+// errNoYearZero reports a year written as 0: no supported calendar has one,
+// and 1 B.C. is followed by A.D. 1.
+func errNoYearZero(s string) error {
+	return fmt.Errorf("invalid year: %s (there is no year 0; 1 BC is followed by AD 1)", s)
 }
 
 // followingYearEndingIn returns the nearest year after primary, in the
@@ -708,8 +748,13 @@ func indexFoldASCII(s, substr string) int {
 // For ranges (BET...AND) and periods (FROM...TO), both the start date and EndDate
 // are checked independently; the first error is returned, and an error in the end
 // date is prefixed with "invalid end date". A partial or non-Gregorian endpoint is
-// skipped without skipping the other one.
-// Each endpoint gets two checks, in order: its dual year, then its day.
+// skipped without skipping the other one. When both endpoints pass, a range or
+// period whose start is entirely after its end (BET 1860 AND 1850) is an error;
+// endpoints of differing precision that overlap (BET JAN 1850 AND 1850) are not.
+// Each endpoint gets three checks, in order: its year range, its dual year,
+// then its day. The year-range check runs on every date: a Year beyond
+// 1,000,000 either side of the epoch is an error. ParseDate rejects a written
+// day or year of 0, so a 0 here always means absent.
 // The dual-year check runs on every date, partial or not, on any calendar: a
 // DualYear that is not the year following Year (e.g. "1750/53") is an error.
 // The day check is skipped for partial dates (day, month, or year is 0) and
@@ -728,15 +773,46 @@ func (d *Date) Validate() error {
 			return fmt.Errorf("invalid end date: %w", err)
 		}
 	}
-	return nil
+	return d.validateOrder()
 }
 
-// validateEndpoint checks a single date (ignoring EndDate): its dual year, then its day.
+// validateEndpoint checks a single date (ignoring EndDate): its year range,
+// its dual year, then its day.
 func (d *Date) validateEndpoint() error {
+	if err := d.validateYearRange(); err != nil {
+		return err
+	}
 	if err := d.validateDualYear(); err != nil {
 		return err
 	}
 	return d.validateDay()
+}
+
+// validateYearRange checks that Year is within maxBoundsYear of the epoch, so
+// year arithmetic on the date (dual-year checks, Bounds) cannot overflow.
+func (d *Date) validateYearRange() error {
+	if d.Year < -maxBoundsYear || d.Year > maxBoundsYear {
+		return fmt.Errorf("invalid date: year %d is beyond %d", d.Year, maxBoundsYear)
+	}
+	return nil
+}
+
+// validateOrder checks that a range or period does not end before it starts:
+// the start's earliest day must not follow the end's latest day. Endpoints
+// Bounds cannot place are not compared.
+func (d *Date) validateOrder() error {
+	if d.EndDate == nil {
+		return nil
+	}
+	startEarliest, _, startOK := d.endpointBounds()
+	_, endLatest, endOK := d.EndDate.endpointBounds()
+	if !startOK || !endOK || startEarliest <= endLatest {
+		return nil
+	}
+	if d.Original != "" {
+		return fmt.Errorf("invalid date range %q: the end date is before the start date", d.Original)
+	}
+	return fmt.Errorf("invalid date range: the end date is before the start date")
 }
 
 // validateDualYear checks that a DualYear is the year following Year,
@@ -1016,8 +1092,8 @@ func (d *Date) inNewStyle() *Date {
 }
 
 // maxBoundsYear is the largest year, before or after the epoch, that Bounds
-// places. Larger years are not genealogical dates, and keeping them out keeps
-// the day arithmetic from overflowing.
+// places and Validate accepts. Larger years are not genealogical dates, and
+// keeping them out keeps the day arithmetic from overflowing.
 const maxBoundsYear = 1_000_000
 
 // boundsInYear bounds the date's day and month, or its whole month or year

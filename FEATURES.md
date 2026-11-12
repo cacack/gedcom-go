@@ -960,7 +960,11 @@ err := date.Validate()
 - Detects invalid day/month combinations (Feb 30, Jun 31)
 - Handles leap years correctly (Feb 29 2000 valid, 1900 invalid)
 - Checks both endpoints of ranges and periods (`BET 1900 AND 31 FEB 1901` is invalid)
+- Rejects a range or period that ends before it starts (`BET 1860 AND 1850`, `FROM 1860 TO 1850`); endpoints of differing precision that overlap (`BET JAN 1850 AND 1850`) are valid
+- Rejects a year more than 1,000,000 either side of the epoch, so arithmetic on a hand-built `Date` cannot overflow
 - BCE dates use the proleptic Gregorian calendar with astronomical years (1 BCE = year 0, so Feb 29 1 BCE is valid and Feb 29 4 BCE is not)
+
+`ParseDate` itself rejects a day or year written as `0` (`0 JAN 1850`, `1 JAN 0`, `0 BC`) — no calendar has one, and `0` is the "absent" value — and a signed day or year (`-1850`, `+1850`, `-5 JAN 1850`); write a B.C. year with a `BC` suffix. The decoder reports such a value as `INVALID_VALUE` and keeps it in the raw tags; the validator's `INVALID_DATE` check does not see it.
 
 ### Calendar Systems
 
@@ -1166,7 +1170,8 @@ in `Details`, the tag holding the date (`tag`, e.g. `BIRT`), its path below the 
 value such as `29 FEB 1723/24` is checked only against the longest its month can be,
 so its leap day passes but `30 FEB 1723/24` is reported. A dual year that is not the
 year following the first, such as `1750/53` or `1850/1860`, is reported too, even on a
-partial or non-Gregorian date. A one- or two-digit dual year resolves forward, so
+partial or non-Gregorian date. A range or period that ends before it starts, such as
+`BET 1860 AND 1850`, is reported too. A one- or two-digit dual year resolves forward, so
 `1699/00` is 1699 and 1700. A record built in code, with no raw tags, is checked
 through its typed events, attributes and LDS ordinances; those issues carry line 0 and
 a `path` of just `<TYPE>.DATE`. `ValidateAll` and `QualityReport` run this check;
@@ -1174,7 +1179,7 @@ a `path` of just `<TYPE>.DATE`. `ValidateAll` and `QualityReport` run this check
 
 | Error Code | Severity | Description |
 |------------|----------|-------------|
-| INVALID_DATE | Warning | Date (or range/period end date) names a day its month does not have, or a dual year that is not the following year |
+| INVALID_DATE | Warning | Date (or range/period end date) names a day its month does not have, or a dual year that is not the following year, or a range or period ends before it starts |
 
 **Orphaned Reference Detection:**
 

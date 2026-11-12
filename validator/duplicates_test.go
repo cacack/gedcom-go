@@ -754,6 +754,7 @@ func TestFindDuplicates_BCEBirthYears(t *testing.T) {
 	tests := []struct {
 		name         string
 		date1, date2 string
+		built1       *gedcom.Date // used instead of date1 for a value ParseDate rejects
 		maxYearDiff  int
 		wantReason   string // the birth-year reason expected; "" means none
 	}{
@@ -761,18 +762,21 @@ func TestFindDuplicates_BCEBirthYears(t *testing.T) {
 		{name: "44 BCE vs 44 CE are 87 years apart", date1: "44 BC", date2: "44", maxYearDiff: 100, wantReason: "birth year within 87 years"},
 		{name: "44 BCE vs 44 BCE", date1: "1 JAN 44 BC", date2: "15 MAR 44 BC", wantReason: "same birth year"},
 		{name: "1 BCE vs 1 CE within range", date1: "1 BC", date2: "1", wantReason: "birth year within 1 years"},
-		{name: "malformed 0 BC earns no year credit", date1: "0 BC", date2: "1", wantReason: ""},
-		{name: "CE year 0 earns no year credit", date1: "0", date2: "1 BC", wantReason: ""},
-		{name: "negative CE year earns no year credit", date1: "-43", date2: "44 BC", wantReason: ""},
+		{name: "malformed 0 BC earns no year credit", built1: &gedcom.Date{Original: "0 BC", Year: 0, IsBC: true}, date2: "1", wantReason: ""},
+		{name: "CE year 0 earns no year credit", built1: &gedcom.Date{Original: "0"}, date2: "1 BC", wantReason: ""},
+		{name: "negative CE year earns no year credit", built1: &gedcom.Date{Original: "-43", Year: -43}, date2: "44 BC", wantReason: ""},
 		{name: "phrase-only dates earn no year credit", date1: "(unknown)", date2: "(unknown)", wantReason: ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			newInd := func(xref, date string) *gedcom.Individual {
-				parsed, err := gedcom.ParseDate(date)
-				if err != nil {
-					t.Fatalf("ParseDate(%q): %v", date, err)
+			newInd := func(xref, date string, built *gedcom.Date) *gedcom.Individual {
+				parsed := built
+				if parsed == nil {
+					var err error
+					if parsed, err = gedcom.ParseDate(date); err != nil {
+						t.Fatalf("ParseDate(%q): %v", date, err)
+					}
 				}
 				return &gedcom.Individual{
 					XRef:   xref,
@@ -781,8 +785,8 @@ func TestFindDuplicates_BCEBirthYears(t *testing.T) {
 					Events: []*gedcom.Event{{Type: gedcom.EventBirth, ParsedDate: parsed}},
 				}
 			}
-			ind1 := newInd("@I1@", tt.date1)
-			ind2 := newInd("@I2@", tt.date2)
+			ind1 := newInd("@I1@", tt.date1, tt.built1)
+			ind2 := newInd("@I2@", tt.date2, nil)
 			doc := &gedcom.Document{
 				Records: []*gedcom.Record{
 					{XRef: ind1.XRef, Type: gedcom.RecordTypeIndividual, Entity: ind1},
