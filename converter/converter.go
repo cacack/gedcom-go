@@ -245,9 +245,9 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		func() { variations = removeNameVariations(doc) },
 		func() { transformTextForVersion(doc, gedcom.Version70, report) },
 		func() { normalizeXRefsForV7(doc, report) },
-		// After XRef normalization, so the records it reports (dual-year DataLoss
-		// AffectedRecords) are named by their XRefs in the converted document.
-		func() { transformDateCalendars(doc, gedcom.Version70, report) },
+		// After XRef normalization, so the records it reports (dual-year and
+		// date-phrase DataLoss AffectedRecords) are named by their XRefs in the converted document.
+		func() { transformDateSyntax(doc, gedcom.Version70, report) },
 		// After XRef normalization, so a new OBJE record's XRef is checked
 		// against final ones, and before the media type translation, so its FORM
 		// is translated with every other record's.
@@ -301,9 +301,9 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 		func() { variations = removeNameVariations(doc) },
 		func() { transformTextForVersion(doc, gedcom.Version70, report) },
 		func() { normalizeXRefsForV7(doc, report) },
-		// After XRef normalization, so the records it reports (dual-year DataLoss
-		// AffectedRecords) are named by their XRefs in the converted document.
-		func() { transformDateCalendars(doc, gedcom.Version70, report) },
+		// After XRef normalization, so the records it reports (dual-year and
+		// date-phrase DataLoss AffectedRecords) are named by their XRefs in the converted document.
+		func() { transformDateSyntax(doc, gedcom.Version70, report) },
 		// After XRef normalization, so a new OBJE record's XRef is checked
 		// against final ones, and before the media type translation, so its FORM
 		// is translated with every other record's.
@@ -346,7 +346,9 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 			}
 		},
 		func() { transformTextForVersion(doc, gedcom.Version55, report) },
-		func() { transformDateCalendars(doc, gedcom.Version55, report) },
+		// Before dropV7OnlyTags, which drops and reports each date PHRASE this
+		// does not fold into its DATE value.
+		func() { transformDateSyntax(doc, gedcom.Version55, report) },
 		func() { transformMediaTypes(doc, gedcom.Version55, report) },
 		func() { transformLanguages(doc, gedcom.Version55, report) },
 		// Before transformHeader, which orders what this adds.
@@ -382,7 +384,9 @@ func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 			}
 		},
 		func() { transformTextForVersion(doc, gedcom.Version551, report) },
-		func() { transformDateCalendars(doc, gedcom.Version551, report) },
+		// Before dropV7OnlyTags, which drops and reports each date PHRASE this
+		// does not fold into its DATE value.
+		func() { transformDateSyntax(doc, gedcom.Version551, report) },
 		func() { transformMediaTypes(doc, gedcom.Version551, report) },
 		func() { transformLanguages(doc, gedcom.Version551, report) },
 		// Before transformHeader, which orders what this adds.
