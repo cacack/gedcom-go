@@ -18,7 +18,9 @@
 // The encoder escapes the values it writes from typed fields and the decoder
 // unescapes the values it reads into them, so the two must agree, which is why
 // the rule lives here once. Pointer fields and raw [gedcom.Tag] values go
-// through neither: a pointer is not text, and raw tags are the wire form.
+// through neither: a pointer is not text, and raw tags are the wire form. The
+// converter moves raw values from one version's wire form to another's with
+// [Reescape] (issue #773).
 package atsign
 
 import (
@@ -70,6 +72,52 @@ func Unescape(s string, v gedcom.Version) string {
 			i++
 		}
 		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
+// Reescape returns s, a line value as written in GEDCOM version from, as it is
+// written in version to: Escape(Unescape(s, from), to), so it holds the same
+// text in both. Only a change between the 5.5/5.5.1 rule and the 7.0 one
+// changes s.
+//
+// One thing is not text and is kept as written: a 5.5/5.5.1 escape sequence,
+// such as an "@#DROMAN@ 1700" calendar escape the converter has no 7.0
+// keyword for, is not doubled when it starts a line of 7.0 output, nor is the
+// "@#" that opens an unterminated one ("@#DJULIAN 1700"). s must not be a
+// pointer, which is never text either.
+func Reescape(s string, from, to gedcom.Version) string {
+	if doublesEvery(from) == doublesEvery(to) || strings.IndexByte(s, '@') < 0 {
+		return s
+	}
+	if doublesEvery(to) {
+		return escapeEvery(Unescape(s, from))
+	}
+	// 5.5/5.5.1 to 7.0: a literal "@" ("@@", or a lone "@" a producer did
+	// not double) is doubled only at the start of a line.
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] != '@' {
+			b.WriteByte(s[i])
+			continue
+		}
+		if n := escapeSequenceLen(s[i:]); n > 0 {
+			b.WriteString(s[i : i+n])
+			i += n - 1
+			continue
+		}
+		if strings.HasPrefix(s[i:], "@#") {
+			b.WriteByte('@')
+			continue
+		}
+		if atLineStart(s, i) {
+			b.WriteByte('@')
+		}
+		b.WriteByte('@')
+		if strings.HasPrefix(s[i:], "@@") {
+			i++
+		}
 	}
 	return b.String()
 }

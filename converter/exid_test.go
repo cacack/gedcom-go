@@ -95,7 +95,7 @@ func TestTransformEXIDToVendorTags_FamilySearchArkToFSFTID(t *testing.T) {
 
 func TestTransformEXIDToVendorTags_PointerShapedValueEscaped(t *testing.T) {
 	// A FamilySearch ARK EXID whose value is itself pointer-shaped (e.g. "@I2@")
-	// must be escaped to "@@I2@" in the synthesized _FSFTID so the XRef walk and
+	// must be escaped to "@@I2@@" in the synthesized _FSFTID so the XRef walk and
 	// strict parsers do not mistake the literal identifier for a cross-reference
 	// pointer (issue #346). A normal ARK id passes through unchanged.
 	tests := []struct {
@@ -103,8 +103,10 @@ func TestTransformEXIDToVendorTags_PointerShapedValueEscaped(t *testing.T) {
 		value string
 		want  string
 	}{
-		{"pointer-shaped value escaped", "@I2@", "@@I2@"},
+		{"pointer-shaped value escaped", "@I2@", "@@I2@@"},
+		{"escaped pointer-shaped value", "@@I2@", "@@I2@@"},
 		{"leading-@ non-pointer value escaped", "@foo", "@@foo"},
+		{"interior @ doubled", "a@b", "a@@b"},
 		{"normal ARK value unchanged", "KWCJ-QN7", "KWCJ-QN7"},
 	}
 

@@ -307,6 +307,11 @@ func summarizeXRefs(xrefs []string) string {
 // checkHeaderCompat returns an error if doc1 and doc2 have
 // incompatible Version or Encoding fields. Empty values are treated as
 // "unknown" and never conflict. ignoreEncoding skips the Encoding check.
+//
+// Requiring one Version is also what lets Combine copy raw Tag values as they
+// are: 5.5/5.5.1 and 7.0 escape "@" in text differently, so a value carried
+// across versions would need re-escaping, as the converter does (issue #773).
+// A decoded document always has a Version; only a hand-built one can be empty.
 func checkHeaderCompat(h1, h2 *gedcom.Header, ignoreEncoding bool) error {
 	if h1 == nil || h2 == nil {
 		return nil

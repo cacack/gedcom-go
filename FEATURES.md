@@ -1685,6 +1685,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | `RESN` values | Both | Restriction keywords at any level are upper-cased for 7.0 and lower-cased for 5.x (`RESTRICTION_VALUES_MAPPED`); a 7.0 list downgrades to its most protective keyword (privacy, confidential, locked), the rest reported as data loss |
 | `UID` ↔ `_UID` | Both | `_UID`, the extension every 5.5.x desktop producer writes for the identifier 7.0 standardised as `UID`, is renamed to `UID` on an upgrade wherever 7.0 defines `UID` (level 1 of a record, level 2 under an event or attribute) and `UID` to `_UID` at any level on a downgrade (`UID_FROM_VENDOR_TAG`, `UID_TO_VENDOR_TAG`); neither is data loss |
 | `FONE`/`ROMN` removed | To 7.0 or 5.5 | 5.5.1 phonetic and romanized variations are removed from `Record.Tags` with their subordinates (under `NAME` or `PLAC`), and from `PersonalName.Phonetic`/`Romanized`, and reported as data loss; they are not mapped to 7.0 `TRAN` |
+| `@` escaping | 5.5/5.5.1 ↔ 7.0 | Every raw text value (`Tags`, a record's level-0 value) is re-escaped from the source version's `@` rule to the target's, so it reads as the same text: 5.x `a@@b` becomes 7.0 `a@b` and back, and a leading `@@` stays doubled. Pointers and 5.x escape sequences (`@#DROMAN@`) are left as they are (`AT_SIGN_REESCAPED`) |
 | `@VOID@` pointers removed | Downgrade from 7.0 | 5.x has no null pointer, so each structure whose pointer is `@VOID@` (`FAMC`, `CHIL`, `SOUR` citation, `SNOTE`, ...) is removed with its subordinates from `Tags` and the typed entity; `HUSB`, `WIFE`, LDS `FAMC` and header `SUBM` fields are cleared. Reported as data loss |
 | `_FREL`/`_MREL` → `FAMC.PEDI` | Upgrade | A child's `FAMC` gains the `PEDI` (`adopted`, `foster`, `sealing`) that every relationship the family's parents have agrees on, when that is not birth; reported as `PEDIGREE_FROM_VENDOR_TAG` |
 | `_MARNM` → `TYPE MARRIED` name | Upgrade to 7.0 | A `NAME` carrying `_MARNM` is followed by a new `NAME` with `TYPE MARRIED`; reported as `MARRIED_NAME_FROM_VENDOR_TAG` |
@@ -1821,6 +1822,9 @@ pushes a line past `MaxLineLength`, and never falls inside an `@@` pair. Pointer
 and read as they are, so a decoded record re-encodes byte for byte and a `Tags`
 value must already be in its wire form. A one-line `NOTE`/`SNOTE` record whose
 `Record.Value` still reads as its entity's `Text` keeps that value as written.
+`converter.Convert` between 5.5/5.5.1 and 7.0 rewrites every raw text value from
+the source rule to the target's (`a@@b` ↔ `a@b`; `@@lead` stays), leaving
+pointers and 5.x escape sequences as they are.
 
 ### Round-Trip Encoding
 
