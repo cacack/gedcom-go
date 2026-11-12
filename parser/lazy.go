@@ -44,7 +44,7 @@ func (p *LazyParser) BuildIndex() error {
 // before each record it indexes and, once ctx is done, stops and returns ctx's
 // error wrapped (errors.Is matches context.Canceled or
 // context.DeadlineExceeded). A cancelled build leaves the parser's index as it
-// was, and the reader where the scan stopped.
+// was, and the reader where the scan stopped. A nil ctx is never cancelled.
 func (p *LazyParser) BuildIndexContext(ctx context.Context) error {
 	// Seek to beginning
 	if _, err := p.rs.Seek(0, io.SeekStart); err != nil {

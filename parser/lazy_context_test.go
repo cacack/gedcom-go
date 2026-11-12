@@ -37,3 +37,17 @@ func TestLazyParserBuildIndexContextCompletes(t *testing.T) {
 		t.Errorf("XRefs() = %s, want %s", got, want)
 	}
 }
+
+// TestLazyParserBuildIndexContextNil pins that a nil context is never
+// cancelled, as everywhere else that takes a Context (#743), instead of
+// panicking (ADR 0007).
+func TestLazyParserBuildIndexContextNil(t *testing.T) {
+	lp := NewLazyParser(strings.NewReader(lazyContextInput))
+	//nolint:staticcheck // SA1012: a nil context is the input under test
+	if err := lp.BuildIndexContext(nil); err != nil {
+		t.Fatalf("BuildIndexContext(nil): %v", err)
+	}
+	if got, want := strings.Join(lp.XRefs(), ","), "@I1@,@I2@,@I3@"; got != want {
+		t.Errorf("XRefs() = %s, want %s", got, want)
+	}
+}
