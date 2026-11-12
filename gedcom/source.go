@@ -26,11 +26,12 @@ type Source struct {
 	Text string
 
 	// TextMIME is the media type of Text (TEXT.MIME, GEDCOM 7.0), e.g.
-	// "text/plain" or "text/html". Empty when absent.
+	// "text/plain" or "text/html". Empty when absent. Written only beneath
+	// a non-empty Text.
 	TextMIME string
 
 	// TextLanguage is the BCP 47 language tag of Text (TEXT.LANG, GEDCOM
-	// 7.0). Empty when absent.
+	// 7.0). Empty when absent. Written only beneath a non-empty Text.
 	TextLanguage string
 
 	// Data describes what the source records (DATA tag): the events it

@@ -45,6 +45,20 @@ func TestDocument_RequiresGEDCOM7_True(t *testing.T) {
 			doc:  &Document{Records: []*Record{{Type: RecordTypeSource, Entity: &Source{Media: []*MediaLink{{Crop: &CropRegion{Width: 5, Height: 5}}}}}}},
 		},
 		{
+			name: "MIME on source TEXT",
+			doc:  &Document{Records: []*Record{{Type: RecordTypeSource, Entity: &Source{Text: "x", TextMIME: "text/html"}}}},
+		},
+		{
+			name: "LANG on source TEXT",
+			doc:  &Document{Records: []*Record{{Type: RecordTypeSource, Entity: &Source{Text: "x", TextLanguage: "en"}}}},
+		},
+		{
+			name: "DATE PHRASE on source DATA event",
+			doc: &Document{Records: []*Record{{Type: RecordTypeSource, Entity: &Source{Data: &SourceData{Events: []*SourceDataEvent{
+				nil, {Types: "BIRT", Date: "1900", DatePhrase: "the year 1900"},
+			}}}}}},
+		},
+		{
 			name: "EXID on family",
 			doc:  &Document{Records: []*Record{{Type: RecordTypeFamily, Entity: &Family{ExternalIDs: []*ExternalID{{Value: "x"}}}}}},
 		},
@@ -202,6 +216,7 @@ func TestDocument_RequiresGEDCOM7_False(t *testing.T) {
 			name: "plain source and submitter records",
 			doc: &Document{Records: []*Record{
 				{Type: RecordTypeSource, Entity: &Source{Title: "Census"}},
+				{Type: RecordTypeSource, Entity: &Source{Text: "x", Data: &SourceData{Agency: "A", Events: []*SourceDataEvent{nil, {Types: "BIRT", Date: "1900"}}}}},
 				{Type: RecordTypeSubmitter, Entity: &Submitter{Name: "Jane"}},
 				{Type: RecordTypeNote, Entity: &Note{Text: "hi"}},
 			}},
