@@ -128,7 +128,8 @@ type Event struct {
 	// generic EVEN, or any text an exporter writes on a named event, such as
 	// the census detail FTM puts on RESI. The bare "Y" occurrence flag of a
 	// named event is not a description and leaves it empty, as does a 7.0
-	// NO assertion.
+	// NO assertion; that flag is kept only in the raw tags and the encoder
+	// does not write it back from the typed model.
 	Description string
 
 	// EventTypeDetail provides a descriptive type of the event (TYPE subordinate)

@@ -47,18 +47,22 @@ func TestEventPayloadDescription(t *testing.T) {
 	if indi == nil {
 		t.Fatal("individual @I1@ not decoded")
 	}
-	want := map[gedcom.EventType]string{
-		gedcom.EventResidence: "Age: 57; Occupation: Farmer; Birthplace: Virginia\nsecond line",
-		gedcom.EventDeath:     "",
-		gedcom.EventBirth:     "",
-		"EVEN":                "Racehorse",
+	want := []struct {
+		typ  gedcom.EventType
+		desc string
+	}{
+		{gedcom.EventResidence, "Age: 57; Occupation: Farmer; Birthplace: Virginia\nsecond line"},
+		{gedcom.EventDeath, ""},
+		{gedcom.EventBirth, ""},
+		{"EVEN", "Racehorse"},
 	}
 	if len(indi.Events) != len(want) {
 		t.Fatalf("len(Events) = %d, want %d", len(indi.Events), len(want))
 	}
-	for _, ev := range indi.Events {
-		if ev.Description != want[ev.Type] {
-			t.Errorf("%s Description = %q, want %q", ev.Type, ev.Description, want[ev.Type])
+	for i, w := range want {
+		ev := indi.Events[i]
+		if ev.Type != w.typ || ev.Description != w.desc {
+			t.Errorf("Events[%d] = {%s %q}, want {%s %q}", i, ev.Type, ev.Description, w.typ, w.desc)
 		}
 	}
 	if ev := indi.Events[0]; ev.Date != "1860" {
@@ -69,13 +73,20 @@ func TestEventPayloadDescription(t *testing.T) {
 	if fam == nil {
 		t.Fatal("family @F1@ not decoded")
 	}
-	famWant := map[gedcom.EventType]string{
-		gedcom.EventMarriage: "",
-		gedcom.EventCensus:   "Household of two",
+	famWant := []struct {
+		typ  gedcom.EventType
+		desc string
+	}{
+		{gedcom.EventMarriage, ""},
+		{gedcom.EventCensus, "Household of two"},
 	}
-	for _, ev := range fam.Events {
-		if ev.Description != famWant[ev.Type] {
-			t.Errorf("FAM %s Description = %q, want %q", ev.Type, ev.Description, famWant[ev.Type])
+	if len(fam.Events) != len(famWant) {
+		t.Fatalf("len(FAM Events) = %d, want %d", len(fam.Events), len(famWant))
+	}
+	for i, w := range famWant {
+		ev := fam.Events[i]
+		if ev.Type != w.typ || ev.Description != w.desc {
+			t.Errorf("FAM Events[%d] = {%s %q}, want {%s %q}", i, ev.Type, ev.Description, w.typ, w.desc)
 		}
 	}
 }
