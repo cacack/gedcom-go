@@ -74,9 +74,9 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [896 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (89.8%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,202 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (91.3%) | Most common format |
-| GEDCOM 7.0 | Every readable line preserved | [1,284 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (92.4%) | Latest standard |
+| GEDCOM 5.5 | Every readable line preserved | [897 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (89.9%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,204 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (91.5%) | Most common format |
+| GEDCOM 7.0 | Every readable line preserved | [1,286 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (92.6%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch versions such as `VERS 7.0.14` detect as 7.0; a `0 @X1@ HEAD` record is not the header and never sets the version)
 - Heuristic-based detection for malformed headers
@@ -94,8 +94,8 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,284 of 7.0's structures reach the typed model, 896 of
-5.5's, and 1,202 of 5.5.1's.
+document built for it: 1,286 of 7.0's structures reach the typed model, 897 of
+5.5's, and 1,204 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -563,6 +563,8 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 ### Individuals (INDI)
 
 - Cross-reference ID (`@I1@`)
+- Restriction notice (`Restriction`, RESN: `confidential`, `locked`, `privacy`;
+  a 7.0 list such as `CONFIDENTIAL, LOCKED`)
 - Names with components (given, surname, prefix, suffix, nickname)
 - Name types (birth, married, aka)
 - Sex (M/F/X/U)
@@ -578,6 +580,7 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 ### Families (FAM)
 
 - Cross-reference ID (`@F1@`)
+- Restriction notice (`Restriction`, RESN)
 - Husband/Wife references
 - Children references
 - Family events (see Events section)
@@ -1677,6 +1680,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | Long lines to CONC | Downgrade from 7.0 | Splits a value line past 5.x's 255-character limit onto CONC tags, between two non-spaces, so the encoded output has no over-length line and decodes back to the same text |
 | `SNOTE` → Note records | Downgrade from 7.0 | `SNOTE` records become `NOTE` records, and `SNOTE` pointers become `NOTE` pointers; the record's `MIME` and `LANG` are removed and reported as data loss |
 | 7.0-only tags removed | Downgrade from 7.0 | `EXID`, `TRAN`, `PHRASE` and `CREA` are removed from `Record.Tags` with their subordinates, and from the typed entity's record-level fields, and reported as data loss |
+| `RESN` values | Both | Restriction keywords at any level are upper-cased for 7.0 and lower-cased for 5.x (`RESTRICTION_VALUES_MAPPED`); a 7.0 list downgrades to its most protective keyword (privacy, confidential, locked), the rest reported as data loss |
 | `UID` ↔ `_UID` | Both | `_UID`, the extension every 5.5.x desktop producer writes for the identifier 7.0 standardised as `UID`, is renamed to `UID` on an upgrade wherever 7.0 defines `UID` (level 1 of a record, level 2 under an event or attribute) and `UID` to `_UID` at any level on a downgrade (`UID_FROM_VENDOR_TAG`, `UID_TO_VENDOR_TAG`); neither is data loss |
 | `FONE`/`ROMN` removed | To 7.0 or 5.5 | 5.5.1 phonetic and romanized variations are removed from `Record.Tags` with their subordinates (under `NAME` or `PLAC`), and from `PersonalName.Phonetic`/`Romanized`, and reported as data loss; they are not mapped to 7.0 `TRAN` |
 | `@VOID@` pointers removed | Downgrade from 7.0 | 5.x has no null pointer, so each structure whose pointer is `@VOID@` (`FAMC`, `CHIL`, `SOUR` citation, `SNOTE`, ...) is removed with its subordinates from `Tags` and the typed entity; `HUSB`, `WIFE`, LDS `FAMC` and header `SUBM` fields are cleared. Reported as data loss |

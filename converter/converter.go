@@ -260,6 +260,7 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		func() { transformUIDTags(doc, report, gedcom.Version70) },
 		func() { synthesizePedigrees(doc, report, gedcom.Version70) },
 		func() { marriedNamesToV7(doc, report) },
+		func() { transformRestrictions(doc, report, gedcom.Version70) },
 		func() { variations.report(doc, report, gedcom.Version70) },
 		// No dropForeignStructures: structures_gen.go has no 5.5 graph yet (#794).
 		func() { opts.reportPreservedTags(doc, report) },
@@ -316,6 +317,7 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 		func() { transformUIDTags(doc, report, gedcom.Version70) },
 		func() { synthesizePedigrees(doc, report, gedcom.Version70) },
 		func() { marriedNamesToV7(doc, report) },
+		func() { transformRestrictions(doc, report, gedcom.Version70) },
 		func() { variations.report(doc, report, gedcom.Version70) },
 		// Last, so only what no pass above mapped into a 7.0 form is dropped.
 		func() { dropForeignStructures(doc, foreign551To70, report, gedcom.Version70) },
@@ -358,6 +360,7 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		func() { transformUIDTags(doc, report, gedcom.Version55) },
 		func() { dropV7OnlyTags(doc, report, gedcom.Version55) },
 		func() { downgradeSharedNotes(doc, report, gedcom.Version55) },
+		func() { transformRestrictions(doc, report, gedcom.Version55) },
 		// No dropForeignStructures: structures_gen.go has no 5.5 graph yet, so only
 		// dropV7OnlyTags's list is removed (#794).
 		func() { opts.reportPreservedTags(doc, report) },
@@ -396,8 +399,11 @@ func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 		func() { transformUIDTags(doc, report, gedcom.Version551) },
 		func() { dropV7OnlyTags(doc, report, gedcom.Version551) },
 		func() { downgradeSharedNotes(doc, report, gedcom.Version551) },
-		// Last, so only what no pass above mapped into a 5.5.1 form is dropped.
+		// Last of the structural passes, so only what no pass above mapped
+		// into a 5.5.1 form is dropped.
 		func() { dropForeignStructures(doc, foreign70To551, report, gedcom.Version551) },
+		// After the drop, so no RESN it removes (OBJE.RESN) is reported here.
+		func() { transformRestrictions(doc, report, gedcom.Version551) },
 		func() { opts.reportPreservedTags(doc, report) },
 		func() {
 			report.AddTransformation(gedcom.Transformation{

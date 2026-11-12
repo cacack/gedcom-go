@@ -204,6 +204,11 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 
 	var tags []*gedcom.Tag
 
+	// Restriction notice (level 1) - RESN, first as every version orders it
+	if indi.Restriction != "" {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "RESN", Value: opts.text(indi.Restriction)})
+	}
+
 	// Names (level 1)
 	for _, name := range indi.Names {
 		tags = append(tags, nameToTags(name, 1, opts)...)
@@ -294,6 +299,11 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	}
 
 	var tags []*gedcom.Tag
+
+	// Restriction notice (level 1) - RESN, first as every version orders it
+	if fam.Restriction != "" {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "RESN", Value: opts.text(fam.Restriction)})
+	}
 
 	// Husband (level 1) - HUSB
 	if fam.Husband != "" {

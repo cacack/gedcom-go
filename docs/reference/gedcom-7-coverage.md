@@ -105,9 +105,9 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 1284 | 92.4% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1286 | 92.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 79 | 5.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 77 | 5.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 1 | 0.1% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 25 | 1.8% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
@@ -117,8 +117,8 @@ The structure each pair is nested under at level 0.
 
 | Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |
 |---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|
-| `INDI` | 873 | 840 | 0 | 24 | 0 | 9 |
-| `FAM` | 392 | 341 | 0 | 35 | 0 | 16 |
+| `INDI` | 873 | 841 | 0 | 23 | 0 | 9 |
+| `FAM` | 392 | 342 | 0 | 34 | 0 | 16 |
 | `SOUR` | 29 | 29 | 0 | 0 | 0 | 0 |
 | `HEAD` | 27 | 22 | 0 | 5 | 0 | 0 |
 | `REPO` | 21 | 17 | 0 | 4 | 0 | 0 |
@@ -179,7 +179,7 @@ Substructures of `record-FAM`.
 | `OBJE` | `OBJE` | typed |
 | `REFN` | `REFN` | typed |
 | `RESI` | `FAM-RESI` | typed |
-| `RESN` | `RESN` | raw (accepted) |
+| `RESN` | `RESN` | typed |
 | `SLGS` | `SLGS` | typed |
 | `SNOTE` | `SNOTE` | typed |
 | `SOUR` | `SOUR` | typed |
@@ -973,7 +973,7 @@ Substructures of `record-INDI`.
 | `REFN` | `REFN` | typed |
 | `RELI` | `INDI-RELI` | typed |
 | `RESI` | `INDI-RESI` | typed |
-| `RESN` | `RESN` | raw (accepted) |
+| `RESN` | `RESN` | typed |
 | `RETI` | `RETI` | typed |
 | `SEX` | `SEX` | typed |
 | `SLGC` | `SLGC` | typed |
