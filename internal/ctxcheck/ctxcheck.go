@@ -21,8 +21,8 @@ func Err(ctx context.Context) error {
 
 // Clone is d.Clone() checking ctx before each record: once ctx is done it
 // stops and returns ctx's error and no document. A nil d is cloned to nil.
-// Everything but the records is copied by Document.Clone itself, so the two
-// cannot drift apart.
+// Everything but the records is copied by Document.Clone itself; the record
+// loop mirrors Document.Clone's, and TestClone pins that the two agree.
 func Clone(ctx context.Context, d *gedcom.Document) (*gedcom.Document, error) {
 	if err := Err(ctx); err != nil {
 		return nil, err
