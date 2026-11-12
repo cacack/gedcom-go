@@ -12,7 +12,12 @@ type ProgressCallback func(bytesRead, totalBytes int64)
 // The nesting ceiling is not configurable: the GEDCOM grammar's two-digit
 // level field fixes it at parser.MaxNestingDepth-1 (99).
 type DecodeOptions struct {
-	// Context allows cancellation and timeout control
+	// Context allows cancellation and timeout control. It is checked before
+	// the decode starts, on every read of the input and before each record's
+	// entity is built, so a cancelled or expired context stops the decode
+	// within one read buffer or one record. The decode then returns the
+	// context's error (match it with errors.Is against context.Canceled or
+	// context.DeadlineExceeded) and no document. Nil means no cancellation.
 	Context context.Context
 
 	// StrictMode controls how parsing errors are handled. It has the same

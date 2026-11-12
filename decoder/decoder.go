@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/cacack/gedcom-go/v3/charset"
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/ctxcheck"
 	"github.com/cacack/gedcom-go/v3/parser"
 	"github.com/cacack/gedcom-go/v3/version"
 )
@@ -87,12 +89,8 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	}
 
 	// Check context cancellation before starting
-	if opts.Context != nil {
-		select {
-		case <-opts.Context.Done():
-			return nil, opts.Context.Err()
-		default:
-		}
+	if err := ctxcheck.Err(opts.Context); err != nil {
+		return nil, err
 	}
 
 	// Wrap reader with UTF-8 validation. Lenient mode replaces each invalid
@@ -118,6 +116,12 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 			totalSize: opts.TotalSize,
 			callback:  opts.OnProgress,
 		}
+	}
+
+	// Check the context on every read, so a cancelled decode stops reading
+	// within one buffer of input rather than after the whole of it (#743).
+	if opts.Context != nil {
+		finalReader = &contextReader{ctx: opts.Context, reader: finalReader}
 	}
 
 	// Parse with appropriate mode
@@ -147,6 +151,12 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 		parseOpts.TolerateOnly = parser.ErrXRefContainsSpace
 	}
 	parsedLines, parseErrors, fe := p.ParseWithOptions(finalReader, parseOpts)
+
+	// A cancelled context stops the parse with a read error; report the
+	// context's error itself, not that read error or the partial document.
+	if err := ctxcheck.Err(opts.Context); err != nil {
+		return nil, err
+	}
 
 	// Detect GEDCOM version
 	detectedVersion := version.DetectVersion(parsedLines)
@@ -184,15 +194,6 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 		}
 
 		lines = parsedLines
-	}
-
-	// Check context after parsing
-	if opts.Context != nil {
-		select {
-		case <-opts.Context.Done():
-			return nil, opts.Context.Err()
-		default:
-		}
 	}
 
 	// Check if we have any data to work with
@@ -241,7 +242,9 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	doc.Header.DeclaredVersion = xrefVersion
 
 	// Convert raw tags to proper entity types
-	populateEntities(doc, collector)
+	if err := populateEntities(opts.Context, doc, collector); err != nil {
+		return nil, err
+	}
 
 	// Merge entity-level diagnostics with parser diagnostics
 	diagnostics = append(diagnostics, collector.diagnostics...)
@@ -847,4 +850,19 @@ func (c *diagnosticCollector) addXRefOnStructuralLine(line *parser.Line) {
 		fmt.Sprintf("xref not allowed on %s: %s", line.Tag, line.XRef),
 		lineContext(line),
 	))
+}
+
+// contextReader fails each Read with ctx's error once ctx is done, so the
+// parser stops at its next read instead of consuming the rest of the input.
+type contextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+// Read implements io.Reader.
+func (c *contextReader) Read(buf []byte) (int, error) {
+	if err := c.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return c.reader.Read(buf)
 }
