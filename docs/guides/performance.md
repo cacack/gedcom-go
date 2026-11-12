@@ -326,7 +326,7 @@ time is reported because wall time varied with machine load:
 |---|---|---|
 | `parser.Records` only | 8.0 s | 34 MB |
 | `parser.Records` → `DecodeRecord` | 16.4 s | 64 MB |
-| `parser.Records` → `DecodeRecord` → `StreamingValidator` | 30.4 s | 897 MB (see [Streaming Validator](#streaming-validator)) |
+| `parser.Records` → `DecodeRecord` → `StreamingValidator` | — | 136 MB (see [Streaming Validator](#streaming-validator)) |
 | `decoder.Decode` (batch), 100,000-individual 47 MB subset | — | 823 MB |
 
 `DecodeRecord` costs about 5.6 µs of CPU per record on that file, and peak
@@ -374,16 +374,28 @@ go test -v -run TestMemory ./encoder/
 
 | Document Size | Batch Validator | Stream Validator | Memory (Stream) |
 |---------------|-----------------|------------------|-----------------|
-| 1K individuals | 6.6 µs / 0 B | 7.2 µs | O(unique XRefs) |
-| 10K individuals | 66 µs / 0 B | 72 µs | O(unique XRefs) |
-| 100K individuals | 660 µs / 0 B | 720 µs | O(unique XRefs) |
+| 1K individuals | 6.6 µs / 0 B | 7.2 µs | O(declared XRefs) |
+| 10K individuals | 66 µs / 0 B | 72 µs | O(declared XRefs) |
+| 100K individuals | 660 µs / 0 B | 720 µs | O(declared XRefs) |
 
 `ValidateRecord` needs each record's typed `Entity`: feed it records from
 `decoder.DecodeRecord` (see [Typed Streaming](#typed-streaming-decoderdecoderecord)).
 A record built from raw lines alone is registered as declared but nothing in
 it is checked, so a pipeline that skips `DecodeRecord` reports no issues.
 
-Stream validator memory scales with unique cross-references (needed for orphan-reference detection at `Finalize()`), not total record count. That is still large for a large file: on the 1.5 M-record file above, where every record is declared and referenced, the validator's cross-reference state reached about 500 MB of heap (897 MB peak RSS), against 64 MB for the parse-and-decode pipeline alone. Note that streaming validation currently covers Individual and Family records fully and collects cross-references from Source records; Repository, Note, Multimedia Object, and Submitter records are not validated in streaming mode — use batch `validator.Validate()` if you need coverage for those types.
+Stream validator memory scales with the number of declared XRefs, plus the references to XRefs not yet declared (needed for orphan-reference detection at `Finalize()`), not with total record count. Each distinct XRef is stored once, in a few dozen bytes; a reference to a record already seen is checked at once and not kept; and a forward reference is kept as three integers until its record arrives. A file that writes all individuals before all families therefore holds every individual-to-family reference until the families come.
+
+Measured on two synthetic GEDCOM 5.5.1 files of 1,000,000 individuals and 500,000 families (1.5 M records; every record declared and referenced; all individuals first) on an 8-core arm64 machine. The first gives each individual one FAMS and each family a HUSB and a WIFE; the second adds a FAMC to nearly every individual and two CHIL to half the families, doubling the forward references:
+
+| File | Pipeline | Peak RSS | Heap before `Finalize` |
+|---|---|---|---|
+| FAMS, HUSB, WIFE (459 MB) | `parser.Records` → `DecodeRecord` | 23 MB | — |
+| | … → `StreamingValidator`, before #778 | 829 MB | 413 MB |
+| | … → `StreamingValidator` | 136 MB | 53 MB |
+| adds FAMC, CHIL (345 MB) | … → `StreamingValidator`, before #778 | 1,251 MB | 546 MB |
+| | … → `StreamingValidator` | 159 MB | 64 MB |
+
+The whole pipeline's CPU time also fell, from 25.4 s to 11.3 s of user time on the first file. Peak RSS varies by about ±10 MB between runs. Note that streaming validation currently covers Individual and Family records fully and collects cross-references from Source records; Repository, Note, Multimedia Object, and Submitter records are not validated in streaming mode — use batch `validator.Validate()` if you need coverage for those types.
 
 ### Incremental Parser
 
@@ -430,7 +442,7 @@ Encoding detection in `charset.NewReader` reads only the header (at most 64 KiB)
    }
    enc.WriteTrailer()
 
-   // Streaming validate - O(unique XRefs) memory. ValidateRecord needs
+   // Streaming validate - O(declared XRefs) memory. ValidateRecord needs
    // typed records: decode each raw record first.
    v := validator.NewStreamingValidator(opts)
    for raw, err := range parser.Records(reader) {
@@ -474,7 +486,7 @@ Encoding detection in `charset.NewReader` reads only the header (at most 64 KiB)
 
 3. **Memory Budget**:
    - Batch APIs: budget ~13-20x file size peak RSS (measured: 46MB file -> ~930MB peak; 676MB -> 8.6GB)
-   - Streaming APIs: O(1) to O(unique XRefs) regardless of file size
+   - Streaming APIs: O(1) to O(declared XRefs) regardless of file size
 
 4. **Processing Time**: Budget ~30ms per MB (100MB file -> ~3 seconds)
 

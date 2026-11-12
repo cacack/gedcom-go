@@ -14,18 +14,31 @@ func TestNewStreamingValidator(t *testing.T) {
 	if sv == nil {
 		t.Fatal("NewStreamingValidator() returned nil")
 	}
-	if sv.seenXRefs == nil {
-		t.Error("seenXRefs map not initialized")
-	}
-	if sv.usedXRefs == nil {
-		t.Error("usedXRefs map not initialized")
-	}
-	if sv.xrefTypes == nil {
-		t.Error("xrefTypes map not initialized")
-	}
 	if sv.dateLogic == nil {
 		t.Error("dateLogic validator not initialized")
 	}
+}
+
+// pendingUsages returns the references sv holds to xref, an XRef no
+// validated record declares, in the order they were made.
+func pendingUsages(sv *StreamingValidator, xref string) []usageLocation {
+	var got []usageLocation
+	sv.refs.orphans(func(x string, usage usageLocation) {
+		if x == xref {
+			got = append(got, usage)
+		}
+	})
+	return got
+}
+
+// isDeclared reports whether a record validated by sv declares xref.
+func isDeclared(sv *StreamingValidator, xref string) bool {
+	for id := range sv.refs.xrefs.ends.len() {
+		if sv.refs.xrefs.get(uint32(id)) == xref { //nolint:gosec // test-sized
+			return sv.refs.info.at(id).declared()
+		}
+	}
+	return false
 }
 
 func TestNewStreamingValidator_WithOptions(t *testing.T) {
@@ -69,8 +82,8 @@ func TestStreamingValidator_ValidateRecord_ValidIndividual(t *testing.T) {
 	}
 
 	// Verify XRef was registered
-	if _, exists := sv.seenXRefs["@I1@"]; !exists {
-		t.Error("XRef @I1@ should be registered in seenXRefs")
+	if !isDeclared(sv, "@I1@") {
+		t.Error("XRef @I1@ should be registered as declared")
 	}
 }
 
@@ -92,17 +105,9 @@ func TestStreamingValidator_ValidateRecord_RegistersXRefs(t *testing.T) {
 	// Verify all XRefs were registered
 	expectedXRefs := []string{"@I1@", "@I2@", "@F1@", "@S1@"}
 	for _, xref := range expectedXRefs {
-		if _, exists := sv.seenXRefs[xref]; !exists {
-			t.Errorf("XRef %s should be registered in seenXRefs", xref)
+		if !isDeclared(sv, xref) {
+			t.Errorf("XRef %s should be registered as declared", xref)
 		}
-	}
-
-	// Verify record types were registered
-	if sv.xrefTypes["@I1@"] != gedcom.RecordTypeIndividual {
-		t.Errorf("Expected @I1@ type Individual, got %v", sv.xrefTypes["@I1@"])
-	}
-	if sv.xrefTypes["@F1@"] != gedcom.RecordTypeFamily {
-		t.Errorf("Expected @F1@ type Family, got %v", sv.xrefTypes["@F1@"])
 	}
 }
 
@@ -125,15 +130,15 @@ func TestStreamingValidator_ValidateRecord_CollectsFAMC(t *testing.T) {
 	sv.ValidateRecord(record)
 
 	// Verify FAMC references were collected
-	if len(sv.usedXRefs["@F1@"]) != 1 {
-		t.Errorf("Expected 1 usage for @F1@, got %d", len(sv.usedXRefs["@F1@"]))
+	if len(pendingUsages(sv, "@F1@")) != 1 {
+		t.Errorf("Expected 1 usage for @F1@, got %d", len(pendingUsages(sv, "@F1@")))
 	}
-	if len(sv.usedXRefs["@F2@"]) != 1 {
-		t.Errorf("Expected 1 usage for @F2@, got %d", len(sv.usedXRefs["@F2@"]))
+	if len(pendingUsages(sv, "@F2@")) != 1 {
+		t.Errorf("Expected 1 usage for @F2@, got %d", len(pendingUsages(sv, "@F2@")))
 	}
 
 	// Verify usage details
-	usage := sv.usedXRefs["@F1@"][0]
+	usage := pendingUsages(sv, "@F1@")[0]
 	if usage.RecordXRef != "@I1@" {
 		t.Errorf("Expected RecordXRef @I1@, got %s", usage.RecordXRef)
 	}
@@ -161,11 +166,11 @@ func TestStreamingValidator_ValidateRecord_CollectsFAMS(t *testing.T) {
 	sv.ValidateRecord(record)
 
 	// Verify FAMS references were collected
-	if len(sv.usedXRefs["@F1@"]) != 1 {
-		t.Errorf("Expected 1 usage for @F1@, got %d", len(sv.usedXRefs["@F1@"]))
+	if len(pendingUsages(sv, "@F1@")) != 1 {
+		t.Errorf("Expected 1 usage for @F1@, got %d", len(pendingUsages(sv, "@F1@")))
 	}
 
-	usage := sv.usedXRefs["@F1@"][0]
+	usage := pendingUsages(sv, "@F1@")[0]
 	if usage.Context != "FAMS" {
 		t.Errorf("Expected Context FAMS, got %s", usage.Context)
 	}
@@ -190,11 +195,11 @@ func TestStreamingValidator_ValidateRecord_CollectsSOUR(t *testing.T) {
 	sv.ValidateRecord(record)
 
 	// Verify SOUR references were collected
-	if len(sv.usedXRefs["@S1@"]) != 1 {
-		t.Errorf("Expected 1 usage for @S1@, got %d", len(sv.usedXRefs["@S1@"]))
+	if len(pendingUsages(sv, "@S1@")) != 1 {
+		t.Errorf("Expected 1 usage for @S1@, got %d", len(pendingUsages(sv, "@S1@")))
 	}
 
-	usage := sv.usedXRefs["@S1@"][0]
+	usage := pendingUsages(sv, "@S1@")[0]
 	if usage.Context != "SOUR" {
 		t.Errorf("Expected Context SOUR, got %s", usage.Context)
 	}
@@ -218,27 +223,27 @@ func TestStreamingValidator_ValidateRecord_CollectsHUSBWIFECHIL(t *testing.T) {
 	sv.ValidateRecord(record)
 
 	// Verify HUSB reference
-	if len(sv.usedXRefs["@I1@"]) != 1 {
-		t.Errorf("Expected 1 usage for @I1@, got %d", len(sv.usedXRefs["@I1@"]))
+	if len(pendingUsages(sv, "@I1@")) != 1 {
+		t.Errorf("Expected 1 usage for @I1@, got %d", len(pendingUsages(sv, "@I1@")))
 	}
-	if sv.usedXRefs["@I1@"][0].Context != "HUSB" {
-		t.Errorf("Expected Context HUSB, got %s", sv.usedXRefs["@I1@"][0].Context)
+	if pendingUsages(sv, "@I1@")[0].Context != "HUSB" {
+		t.Errorf("Expected Context HUSB, got %s", pendingUsages(sv, "@I1@")[0].Context)
 	}
 
 	// Verify WIFE reference
-	if len(sv.usedXRefs["@I2@"]) != 1 {
-		t.Errorf("Expected 1 usage for @I2@, got %d", len(sv.usedXRefs["@I2@"]))
+	if len(pendingUsages(sv, "@I2@")) != 1 {
+		t.Errorf("Expected 1 usage for @I2@, got %d", len(pendingUsages(sv, "@I2@")))
 	}
-	if sv.usedXRefs["@I2@"][0].Context != "WIFE" {
-		t.Errorf("Expected Context WIFE, got %s", sv.usedXRefs["@I2@"][0].Context)
+	if pendingUsages(sv, "@I2@")[0].Context != "WIFE" {
+		t.Errorf("Expected Context WIFE, got %s", pendingUsages(sv, "@I2@")[0].Context)
 	}
 
 	// Verify CHIL references
-	if len(sv.usedXRefs["@I3@"]) != 1 {
-		t.Errorf("Expected 1 usage for @I3@, got %d", len(sv.usedXRefs["@I3@"]))
+	if len(pendingUsages(sv, "@I3@")) != 1 {
+		t.Errorf("Expected 1 usage for @I3@, got %d", len(pendingUsages(sv, "@I3@")))
 	}
-	if sv.usedXRefs["@I3@"][0].Context != "CHIL" {
-		t.Errorf("Expected Context CHIL, got %s", sv.usedXRefs["@I3@"][0].Context)
+	if pendingUsages(sv, "@I3@")[0].Context != "CHIL" {
+		t.Errorf("Expected Context CHIL, got %s", pendingUsages(sv, "@I3@")[0].Context)
 	}
 }
 
@@ -298,8 +303,8 @@ func TestStreamingValidator_ValidateRecord_SkipsEmptyXRefs(t *testing.T) {
 	sv.ValidateRecord(record)
 
 	// Should only have 3 used XRefs: @F1@, @F2@, @S1@
-	if len(sv.usedXRefs) != 3 {
-		t.Errorf("Expected 3 used XRefs, got %d", len(sv.usedXRefs))
+	if sv.UsedXRefCount() != 3 {
+		t.Errorf("Expected 3 used XRefs, got %d", sv.UsedXRefCount())
 	}
 }
 
@@ -518,25 +523,22 @@ func TestStreamingValidator_Reset(t *testing.T) {
 	sv.ValidateRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind})
 
 	// Verify data was added
-	if len(sv.seenXRefs) == 0 {
-		t.Error("seenXRefs should have data before reset")
+	if sv.SeenXRefCount() == 0 {
+		t.Error("SeenXRefCount should be non-zero before reset")
 	}
-	if len(sv.usedXRefs) == 0 {
-		t.Error("usedXRefs should have data before reset")
+	if sv.UsedXRefCount() == 0 {
+		t.Error("UsedXRefCount should be non-zero before reset")
 	}
 
 	// Reset
 	sv.Reset()
 
 	// Verify data was cleared
-	if len(sv.seenXRefs) != 0 {
-		t.Error("seenXRefs should be empty after reset")
+	if sv.SeenXRefCount() != 0 {
+		t.Error("SeenXRefCount should be 0 after reset")
 	}
-	if len(sv.usedXRefs) != 0 {
-		t.Error("usedXRefs should be empty after reset")
-	}
-	if len(sv.xrefTypes) != 0 {
-		t.Error("xrefTypes should be empty after reset")
+	if sv.UsedXRefCount() != 0 {
+		t.Error("UsedXRefCount should be 0 after reset")
 	}
 }
 
@@ -640,8 +642,8 @@ func TestStreamingValidator_MemoryUsage(t *testing.T) {
 	}
 
 	// The @F1@ usage should have 1000 entries though
-	if len(sv.usedXRefs["@F1@"]) != 1000 {
-		t.Errorf("@F1@ should have 1000 usages, got %d", len(sv.usedXRefs["@F1@"]))
+	if len(pendingUsages(sv, "@F1@")) != 1000 {
+		t.Errorf("@F1@ should have 1000 usages, got %d", len(pendingUsages(sv, "@F1@")))
 	}
 }
 
@@ -807,7 +809,7 @@ func TestStreamingValidator_NoteReferences(t *testing.T) {
 // TestStreamingValidator_InlineNotesAreNotReferences pins the fix that came with
 // the removal of the deprecated Notes field (#473). The collectors used to read
 // that field, which interleaved shared-note pointers with inline note text and
-// fed every non-empty entry into usedXRefs without a pointer test -- so a record
+// fed every non-empty entry into the reference set without a pointer test -- so a record
 // carrying ordinary note prose was reported as an orphaned NOTE reference to a
 // record whose XRef was the prose itself. Reading NoteXRefs, which the decoder
 // fills only with pointer-shaped values, removes the false positive.
@@ -1012,9 +1014,9 @@ func TestStreamingValidator_RecordWithNoXRef(t *testing.T) {
 		t.Errorf("Expected 0 issues for record with no XRef, got %d", len(issues))
 	}
 
-	// Empty XRef should not be added to seenXRefs
-	if _, exists := sv.seenXRefs[""]; exists {
-		t.Error("Empty XRef should not be added to seenXRefs")
+	// Empty XRef should not be registered as declared
+	if isDeclared(sv, "") {
+		t.Error("Empty XRef should not be registered as declared")
 	}
 }
 
@@ -1036,7 +1038,7 @@ func TestStreamingValidator_NilEntity(t *testing.T) {
 	}
 
 	// XRef should still be registered even with nil Entity
-	if _, exists := sv.seenXRefs["@I1@"]; !exists {
+	if !isDeclared(sv, "@I1@") {
 		t.Error("XRef should be registered even with nil Entity")
 	}
 }
