@@ -1817,6 +1817,36 @@ func TestFindDuplicates_ContradictionsVeto(t *testing.T) {
 			wantReasons: []string{"exact surname match", "exact given name match", "birth year within 2 years", "same sex"},
 		},
 		{
+			name:  "range overlapping an exact year is not vetoed",
+			year1: "BET 1850 AND 1860", year2: "1858", sex1: "M", sex2: "M",
+			wantReasons: []string{"exact surname match", "exact given name match", "same sex"},
+		},
+		{
+			name:  "FROM...TO period is not vetoed",
+			year1: "FROM 1820 TO 1860", year2: "1850", sex1: "M", sex2: "M",
+			wantReasons: []string{"exact surname match", "exact given name match", "same sex"},
+		},
+		{
+			name:  "AFT bound is not vetoed",
+			year1: "AFT 1820", year2: "1850", sex1: "M", sex2: "M",
+			wantReasons: []string{"exact surname match", "exact given name match", "same sex"},
+		},
+		{
+			name:  "BEF bound is not vetoed",
+			year1: "BEF 1860", year2: "1820", sex1: "M", sex2: "M",
+			wantReasons: []string{"exact surname match", "exact given name match", "same sex"},
+		},
+		{
+			name:  "ABT date past the window is not vetoed",
+			year1: "ABT 1850", year2: "1853", sex1: "M", sex2: "M",
+			wantReasons: []string{"exact surname match", "exact given name match", "same sex"},
+		},
+		{
+			name:  "ABT date within the window still earns credit",
+			year1: "ABT 1850", year2: "1851", sex1: "M", sex2: "M",
+			wantReasons: []string{"exact surname match", "exact given name match", "birth year within 1 years", "same sex"},
+		},
+		{
 			name:  "missing birth year neither vetoes nor earns credit",
 			year1: "1850", year2: "", sex1: "M", sex2: "M",
 			config:      DuplicateConfig{MinConfidence: ZeroThreshold},
