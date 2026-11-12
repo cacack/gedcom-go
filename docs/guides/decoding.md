@@ -202,16 +202,34 @@ per context, and regenerated from the decoder so it cannot drift:
 untyped (`RIN` and `AFN` on an individual, for example).
 
 `Tags` holds the record's subordinate lines (level 1 and deeper) as a flat
-slice; `Level` gives the nesting:
+slice; `Level` gives the nesting. Read it by path with `Find`, `FindAll` and
+`Subtree` rather than tracking levels by hand:
 
 ```go
 rec := doc.XRefMap["@I1@"]
-for _, tag := range rec.Tags {
-    if tag.Level == 1 && tag.Tag == "RIN" {
-        fmt.Println("RIN:", tag.Value)
+if rin := rec.Find("RIN"); rin != nil {       // level-1 RIN only
+    fmt.Println("RIN:", rin.Value)
+}
+if plac := rec.Find("BIRT", "PLAC"); plac != nil { // the PLAC under a level-1 BIRT
+    fmt.Println("Birth place:", plac.Value)
+}
+for _, resi := range rec.FindAll("RESI") {     // every level-1 RESI, in order
+    for _, tag := range rec.Subtree(resi) {    // the RESI line and all lines beneath it
+        fmt.Println(tag.Level, tag.Tag, tag.Value)
     }
 }
 ```
+
+A tag's `Value` is a single physical line: the decoder keeps `CONT` and `CONC`
+lines as child tags, so a continued value's remaining text is in its `Subtree`,
+not in `Value`.
+
+A path starts at level 1 and each element is one level deeper, so
+`Find("NAME")` is a name of the record, never a `NAME` nested under another
+structure. `Find` returns the first match in document order, or nil;
+`FindAll` returns every match. The tags returned are the record's own, so
+editing one edits the record. `Header` has the same three methods:
+`doc.Header.Find("SOUR", "VERS")` is `HEAD.SOUR.VERS`.
 
 If you need a structure often enough that a typed field would help, open an
 issue: falling back to `Tags` silently keeps that demand invisible.
@@ -295,10 +313,10 @@ it too, and `validator.WithEntityTagsCheck()` turns it on for a
 Two lower-level alternatives:
 
 ```go
-// 1. Edit the raw tag. Only level-1 NAME lines are the record's names; a NAME
-//    deeper down belongs to something else.
-for _, tag := range rec.Tags {
-    if tag.Level == 1 && tag.Tag == "NAME" && tag.Value == "John /Doe/" {
+// 1. Edit the raw tag. FindAll("NAME") yields only the level-1 NAME lines,
+//    the record's names; a NAME deeper down belongs to something else.
+for _, tag := range rec.FindAll("NAME") {
+    if tag.Value == "John /Doe/" {
         tag.Value = "Jane /Roe/"
     }
 }

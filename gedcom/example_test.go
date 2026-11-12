@@ -532,3 +532,97 @@ func ExampleNewDocument() {
 	// 1 SEX F
 	// 0 TRLR
 }
+
+// pathExampleData is the input shared by the Record path helper examples.
+const pathExampleData = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 SOUR FamilyApp
+2 VERS 4.2
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+2 DATE 1 JAN 1900
+2 PLAC Boston, Massachusetts
+3 MAP
+4 LATI N42.36
+4 LONG W71.06
+1 RESI
+2 PLAC Chicago, Illinois
+1 RESI
+2 PLAC Denver, Colorado
+1 _UID 6B3F0D7C
+0 TRLR`
+
+// ExampleRecord_Find reads a structure from the raw tags by path, without a
+// level-tracking loop.
+func ExampleRecord_Find() {
+	doc, err := decoder.Decode(strings.NewReader(pathExampleData))
+	if err != nil {
+		log.Fatal(err)
+	}
+	rec := doc.XRefMap["@I1@"]
+
+	if plac := rec.Find("BIRT", "PLAC"); plac != nil {
+		fmt.Println("Birth place:", plac.Value)
+	}
+	if uid := rec.Find("_UID"); uid != nil {
+		fmt.Println("UID:", uid.Value)
+	}
+
+	// Output:
+	// Birth place: Boston, Massachusetts
+	// UID: 6B3F0D7C
+}
+
+// ExampleRecord_FindAll collects every tag at a path, in document order.
+func ExampleRecord_FindAll() {
+	doc, err := decoder.Decode(strings.NewReader(pathExampleData))
+	if err != nil {
+		log.Fatal(err)
+	}
+	rec := doc.XRefMap["@I1@"]
+
+	for _, plac := range rec.FindAll("RESI", "PLAC") {
+		fmt.Println("Residence:", plac.Value)
+	}
+
+	// Output:
+	// Residence: Chicago, Illinois
+	// Residence: Denver, Colorado
+}
+
+// ExampleRecord_Subtree returns a tag together with everything nested beneath
+// it.
+func ExampleRecord_Subtree() {
+	doc, err := decoder.Decode(strings.NewReader(pathExampleData))
+	if err != nil {
+		log.Fatal(err)
+	}
+	rec := doc.XRefMap["@I1@"]
+
+	for _, tag := range rec.Subtree(rec.Find("BIRT", "PLAC")) {
+		fmt.Println(strings.TrimSpace(fmt.Sprint(tag.Level, " ", tag.Tag, " ", tag.Value)))
+	}
+
+	// Output:
+	// 2 PLAC Boston, Massachusetts
+	// 3 MAP
+	// 4 LATI N42.36
+	// 4 LONG W71.06
+}
+
+// ExampleHeader_Find reads a header structure by path.
+func ExampleHeader_Find() {
+	doc, err := decoder.Decode(strings.NewReader(pathExampleData))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if vers := doc.Header.Find("SOUR", "VERS"); vers != nil {
+		fmt.Println("Source version:", vers.Value)
+	}
+
+	// Output:
+	// Source version: 4.2
+}
