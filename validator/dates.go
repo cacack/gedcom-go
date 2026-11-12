@@ -1,5 +1,5 @@
 // dates.go reports dates that do not exist on their calendar, such as
-// 31 FEB 1900, as CodeInvalidDate.
+// 31 FEB 1900, or ranges that end before they start, as CodeInvalidDate.
 //
 // The decoder parses such a date without complaint -- its grammar is valid --
 // so gedcom.Date.Validate, which checks the day against the month and year,
@@ -142,17 +142,30 @@ func appendDateIssue(issues []Issue, recordXRef, holder, path string, date *gedc
 // dual year is Old Style: its January to March fall in the second year, on the
 // Julian calendar, so Validate's Gregorian check against the first year would
 // reject real leap days. A day no year allows, such as 30 FEB 1723/24, is
-// still reported, as is a dual year that is not the following year.
+// still reported, as is a dual year that is not the following year. A range
+// or period that ends before it starts is reported as Validate reports it.
 func dateError(date *gedcom.Date) error {
 	start := *date
 	start.EndDate = nil
 	if err := endpointError(&start); err != nil {
 		return err
 	}
-	if end := date.EndDate; end != nil {
-		if err := endpointError(end); err != nil {
-			return fmt.Errorf("invalid end date: %w", err)
-		}
+	end := date.EndDate
+	if end == nil {
+		return nil
+	}
+	if err := endpointError(end); err != nil {
+		return fmt.Errorf("invalid end date: %w", err)
+	}
+	// Validate's remaining check is the order. It is not called on the whole
+	// range, which would recheck a dual-dated endpoint's day strictly, so the
+	// endpoints are bounded alone, as Validate bounds them.
+	endOnly := *end
+	start.Modifier, endOnly.Modifier, endOnly.EndDate = gedcom.ModifierNone, gedcom.ModifierNone, nil
+	startEarliest, _, startOK := start.Bounds()
+	_, endLatest, endOK := endOnly.Bounds()
+	if startOK && endOK && startEarliest > endLatest {
+		return fmt.Errorf("invalid date range %q: the end date is before the start date", date.Original)
 	}
 	return nil
 }

@@ -69,7 +69,8 @@ const (
 
 	// CodeInvalidDate indicates a date that does not exist on its calendar,
 	// such as 31 FEB 1900 or 29 FEB 1900, including the end date of a range
-	// or period, or whose dual year is not the following year (1750/53).
+	// or period, or whose dual year is not the following year (1750/53), or
+	// a range or period that ends before it starts (BET 1860 AND 1850).
 	// The dual year is checked on every date; the day is not checked on
 	// partial dates or non-Gregorian calendars, as in gedcom.Date.Validate.
 	CodeInvalidDate = "INVALID_DATE"

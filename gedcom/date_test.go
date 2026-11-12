@@ -1,6 +1,7 @@
 package gedcom
 
 import (
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -2480,13 +2481,12 @@ func TestDate_ToGregorian_StructuralFields(t *testing.T) {
 // fails the whole conversion instead of yielding a range that quietly lost its
 // endpoint (ADR 0007: never a silently wrong result).
 func TestDate_ToGregorian_EndDateError(t *testing.T) {
-	date, err := ParseDate("@#DJULIAN@ BET 1700 AND 0")
+	// ParseDate rejects a written year 0, so clear the end year by hand.
+	date, err := ParseDate("@#DJULIAN@ BET 1700 AND 1750")
 	if err != nil {
 		t.Fatalf("ParseDate() error = %v", err)
 	}
-	if date.EndDate == nil || date.EndDate.Year != 0 {
-		t.Fatalf("setup: want end date with year 0, got %+v", date.EndDate)
-	}
+	date.EndDate.Year = 0
 
 	greg, err := date.ToGregorian()
 	if err == nil {
@@ -3425,4 +3425,182 @@ func TestParseDate_InterpretedWithBC(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestParseDate_RejectsDayZeroAndYearZero pins issue #701: no calendar has a
+// day 0 or a year 0, and 0 is the "absent" sentinel for both fields, so a
+// written 0 must be refused rather than read as a partial date.
+func TestParseDate_RejectsDayZeroAndYearZero(t *testing.T) {
+	tests := []struct {
+		input   string
+		wantErr string
+	}{
+		{"0 JAN 1850", "invalid day: 0 (a day of the month is 1-31)"},
+		{"00 JAN 1850", "invalid day: 00 (a day of the month is 1-31)"},
+		{"@#DHEBREW@ 0 TSH 5785", "invalid day: 0 (a day of the month is 1-31)"},
+		{"1 JAN 0", "invalid year: 0 (there is no year 0"},
+		{"0 BC", "invalid year: 0 (there is no year 0"},
+		{"0", "invalid year: 0 (there is no year 0"},
+		{"JAN 0000", "invalid year: 0000 (there is no year 0"},
+		{"0/1", "invalid year: 0 (there is no year 0"},
+		{"BET 1850 AND 0", "invalid end date in range: invalid year: 0 (there is no year 0"},
+		{"FROM 0 JAN 1850 TO 1860", "invalid start date in period: invalid day: 0"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := ParseDate(tt.input)
+			if err == nil {
+				t.Fatalf("ParseDate(%q) = %+v, want error containing %q", tt.input, got, tt.wantErr)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("ParseDate(%q) error = %q, want it to contain %q", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestParseDate_RejectsSignedNumbers pins issue #701: strconv.Atoi accepted a
+// sign, so "-1850" parsed as year -1850 with IsBC false and passed Validate.
+// A B.C. year is written with a BC suffix; the error names the component.
+func TestParseDate_RejectsSignedNumbers(t *testing.T) {
+	tests := []struct {
+		input   string
+		wantErr string
+	}{
+		{"-1850", "invalid year: -1850 (a date number has no sign"},
+		{"+1850", "invalid year: +1850 (a date number has no sign"},
+		{"JAN -1850", "invalid year: -1850 (a date number has no sign"},
+		{"@#DHEBREW@ -5785", "invalid year: -5785 (a date number has no sign"},
+		{"-5 JAN 1850", "invalid day: -5 (a date number has no sign"},
+		{"+5 JAN 1850", "invalid day: +5 (a date number has no sign"},
+		{"-1750/51", "invalid primary year in dual date: -1750 (a date number has no sign"},
+		{"1750/-1", "invalid secondary year in dual date: -1 (a date number has no sign"},
+		{"1750/+51", "invalid secondary year in dual date: +51 (a date number has no sign"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := ParseDate(tt.input)
+			if err == nil {
+				t.Fatalf("ParseDate(%q) = %+v, want error containing %q", tt.input, got, tt.wantErr)
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("ParseDate(%q) error = %q, want it to contain %q", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// TestParseDate_LeadingZerosStillParse pins that refusing a sign and a
+// written 0 leaves zero-padded numbers alone.
+func TestParseDate_LeadingZerosStillParse(t *testing.T) {
+	date, err := ParseDate("01 JAN 0850")
+	if err != nil {
+		t.Fatalf("ParseDate error = %v", err)
+	}
+	if date.Day != 1 || date.Month != 1 || date.Year != 850 {
+		t.Errorf("got %d/%d/%d, want 1/1/850", date.Day, date.Month, date.Year)
+	}
+}
+
+// TestDate_Validate_ReversedRange pins issue #701: a range or period whose
+// start is entirely after its end is an error naming the range, while
+// endpoints of differing precision that overlap stay valid.
+func TestDate_Validate_ReversedRange(t *testing.T) {
+	reversed := []string{
+		"BET 1860 AND 1850",
+		"FROM 1860 TO 1850",
+		"BET 2 JAN 1850 AND 1 JAN 1850",
+		"BET FEB 1850 AND JAN 1850",
+		"BET 1850 BC AND 1860 BC",
+		"BET 1 AND 1 BC",
+		"BET @#DJULIAN@ 1 JAN 1700 AND @#DGREGORIAN@ 5 JAN 1700",
+		"BET 11 FEB 1731/32 AND 1 DEC 1731", // New Style: 11 FEB 1732
+	}
+	for _, input := range reversed {
+		t.Run(input, func(t *testing.T) {
+			date, err := ParseDate(input)
+			if err != nil {
+				t.Fatalf("ParseDate error = %v", err)
+			}
+			err = date.Validate()
+			want := `invalid date range "` + input + `": the end date is before the start date`
+			if err == nil || err.Error() != want {
+				t.Errorf("Validate() = %v, want %q", err, want)
+			}
+		})
+	}
+
+	ordered := []string{
+		"BET JAN 1850 AND 1850",
+		"BET 1850 AND JAN 1850",
+		"BET 15 JAN 1850 AND JAN 1850",
+		"BET 1850 AND 1850",
+		"FROM 1850 TO 1860",
+		"BET 1860 BC AND 1850 BC",
+		"BET 1 BC AND 1",
+		"BET @#DJULIAN@ 1 JAN 1700 AND @#DGREGORIAN@ 12 JAN 1700",
+		"BET 20 DEC 1731 AND 11 FEB 1731/32",
+	}
+	for _, input := range ordered {
+		t.Run(input, func(t *testing.T) {
+			date, err := ParseDate(input)
+			if err != nil {
+				t.Fatalf("ParseDate error = %v", err)
+			}
+			if err := date.Validate(); err != nil {
+				t.Errorf("Validate() = %v, want nil", err)
+			}
+		})
+	}
+
+	t.Run("hand-built", func(t *testing.T) {
+		date := &Date{Year: 1860, Modifier: ModifierBetween, EndDate: &Date{Year: 1850}}
+		want := "invalid date range: the end date is before the start date"
+		if err := date.Validate(); err == nil || err.Error() != want {
+			t.Errorf("Validate() = %v, want %q", err, want)
+		}
+	})
+}
+
+// TestDate_Validate_YearRange pins issue #701: a year beyond maxBoundsYear
+// either side of the epoch is an error, so arithmetic on a hand-built Date
+// (dual-year checks, Bounds) cannot overflow.
+func TestDate_Validate_YearRange(t *testing.T) {
+	tests := []struct {
+		name    string
+		date    *Date
+		wantErr string // "" means valid
+	}{
+		{"MaxInt year with huge day", &Date{Year: math.MaxInt, Day: 99999999999}, "invalid date: year 9223372036854775807 is beyond 1000000"},
+		{"MinInt year", &Date{Year: math.MinInt}, "is beyond 1000000"},
+		{"just beyond", &Date{Year: maxBoundsYear + 1}, "invalid date: year 1000001 is beyond 1000000"},
+		{"MaxInt year with dual year", &Date{Year: math.MaxInt, DualYear: math.MinInt}, "is beyond 1000000"},
+		{"end date beyond", &Date{Year: 1850, Modifier: ModifierBetween, EndDate: &Date{Year: -maxBoundsYear - 1}}, "invalid end date: invalid date: year -1000001 is beyond 1000000"},
+		{"at the limit", &Date{Year: maxBoundsYear}, ""},
+		{"at the negative limit", &Date{Year: -maxBoundsYear}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.date.Validate()
+			if tt.wantErr == "" {
+				if err != nil {
+					t.Errorf("Validate() = %v, want nil", err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("Validate() = %v, want error containing %q", err, tt.wantErr)
+			}
+		})
+	}
+
+	t.Run("parsed", func(t *testing.T) {
+		date, err := ParseDate("1 JAN 99999999")
+		if err != nil {
+			t.Fatalf("ParseDate error = %v", err)
+		}
+		if err := date.Validate(); err == nil || !strings.Contains(err.Error(), "year 99999999 is beyond 1000000") {
+			t.Errorf("Validate() = %v, want year-range error", err)
+		}
+	})
 }
