@@ -21,8 +21,8 @@ Auto-detect and handle GEDCOM 5.5, 5.5.1, and 7.0 transparently. Roundtrip fidel
 ### 3. Real-World Compatibility
 Handle files from Ancestry, FamilySearch, RootsMagic, Gramps, and other vendors — including their quirks and extensions.
 
-### 4. Zero Dependencies
-Standard library only. No dependency trees to audit, no version conflicts for consumers.
+### 4. Minimal Dependencies
+One dependency, `golang.org/x/text`, and no third-party ones: almost nothing to audit, no version conflicts for consumers. [FEATURES.md](FEATURES.md#api-design) carries the authoritative statement.
 
 ### 5. Streaming & Performance
 Process multi-million record files with constant memory. Indexed random access without loading everything.
@@ -102,7 +102,7 @@ Milestones are named by theme, not version: release-please derives the version f
 ## Inspirations
 
 - **GEDCOM Specification** — The standard itself (5.5, 5.5.1, 7.0)
-- **Go Standard Library** — API design patterns, documentation style, zero-dependency philosophy
+- **Go Standard Library** — API design patterns, documentation style, minimal-dependency philosophy
 - **Evidence Explained** — Citation standards and genealogical methodology
 - **encoding/json, encoding/xml** — Go's approach to serialization libraries
 

@@ -355,7 +355,7 @@ fmt.Println(person.BirthPlace()) // "" when there is no birth or place
 After exploring these examples, you can:
 
 1. Read the [USAGE.md](../USAGE.md) guide for comprehensive documentation
-2. Check the [API documentation](https://pkg.go.dev/github.com/cacack/gedcom-go)
+2. Check the [API documentation](https://pkg.go.dev/github.com/cacack/gedcom-go/v3)
 3. Look at the [test files](../decoder/decoder_test.go) for more advanced usage
 4. Start building your own genealogy application!
 

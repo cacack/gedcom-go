@@ -85,7 +85,7 @@ go get github.com/cacack/gedcom-go/v3
 
 Requirements:
 - Go 1.25 or later
-- No external dependencies (uses only the Go standard library)
+- One dependency, `golang.org/x/text`, fetched by `go get` (see [FEATURES.md](FEATURES.md#api-design))
 
 ## Quick Start
 
@@ -950,90 +950,14 @@ fmt.Printf("%s has %d children\n",
 
 ## Performance
 
-### Benchmarks
+Benchmark figures, memory budgets and tuning advice live in one place,
+[docs/guides/performance.md](docs/guides/performance.md), measured on a stated
+environment; run `make bench` to reproduce them on your own hardware.
 
-Performance characteristics on Apple M2 (from actual benchmarks):
-
-| File Size | Time/Operation | Memory | Allocations | Throughput |
-|-----------|----------------|--------|-------------|------------|
-| ~170B (minimal) | 7 µs | 7 KB | 69 | - |
-| ~15KB (small) | 381 µs | 214 KB | 3,530 | ~40 MB/s |
-| ~458KB (medium) | 17 ms | 8.5 MB | 139K | ~27 MB/s |
-| ~1.1MB (large) | 32 ms | 14 MB | 214K | ~32 MB/s |
-
-**Key Metrics:**
-
-- **Throughput**: ~30-40 MB/s for typical files
-- **Memory overhead**: ~1.2-1.3x file size (due to parsing structures)
-- **Scalability**: Linear performance scaling with file size
-
-### Optimization Tips
-
-1. **Stream Processing**: The decoder uses stream-based parsing, so you don't need to load entire files into memory first:
-   ```go
-   // Good - streams directly
-   f, _ := os.Open("large.ged")
-   doc, _ := decoder.Decode(f)
-
-   // Avoid - loads entire file first
-   data, _ := os.ReadFile("large.ged")
-   doc, _ := decoder.Decode(bytes.NewReader(data))
-   ```
-
-2. **Reuse Validators**: Create one validator instance per document:
-   ```go
-   v := validator.New()
-   errs := v.Validate(doc)
-   ```
-
-3. **Use Buffered Readers**: For network streams or slow I/O, use buffering:
-   ```go
-   import "bufio"
-
-   reader := bufio.NewReaderSize(networkStream, 64*1024)
-   doc, err := decoder.Decode(reader)
-   ```
-
-4. **Selective Processing**: If you only need certain record types, filter early:
-   ```go
-   individualCount := 0
-   for _, record := range doc.Records {
-       if record.Type == gedcom.RecordTypeIndividual {
-           individualCount++
-           // Process only individuals
-       }
-   }
-   ```
-
-5. **Batch Operations**: When processing multiple files, consider concurrent processing:
-   ```go
-   var wg sync.WaitGroup
-   for _, filename := range files {
-       wg.Add(1)
-       go func(fn string) {
-           defer wg.Done()
-           f, _ := os.Open(fn)
-           defer f.Close()
-           doc, _ := decoder.Decode(f)
-           // Process doc...
-       }(filename)
-   }
-   wg.Wait()
-   ```
-
-### Memory Management
-
-The library is designed for efficient memory usage:
-
-- **Streaming parser**: Processes line-by-line, not loading entire file
-- **Incremental building**: Constructs document structure as it parses
-- **No caching**: Doesn't cache intermediate results (keeps memory footprint low)
-- **XRefMap**: Uses Go's efficient map implementation for O(1) lookups
-
-For very large files (>100MB), consider:
-- Processing in chunks if possible
-- Using the low-level parser directly for custom streaming logic
-- Increasing system resources (Go runtime handles memory automatically)
+`decoder.Decode` builds the whole `Document` in memory. For files too large for
+that, use the record-at-a-time APIs shown in
+[Streaming Large Files](#streaming-large-files), and see
+[When to Use Streaming APIs](docs/guides/performance.md#when-to-use-streaming-apis).
 
 ## Best Practices
 

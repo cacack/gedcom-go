@@ -69,7 +69,7 @@ GEDCOM file → charset.NewReader() → parser.Parse() → decoder.buildDocument
 
 - **`gedcom.Document`**: Root container with `Header`, `Records`, `XRefMap` for O(1) lookup
 - **`gedcom.Record`**: Wrapper holding typed data (`Individual`, `Family`, `Source`, etc.)
-- **`gedcom.Individual`**: Person with `Names`, `Events`, `Attributes`, `FamilyChild`, `FamilySpouse`
+- **`gedcom.Individual`**: Person with `Names`, `Events`, `Attributes`, `ChildInFamilies`, `SpouseInFamilies`
 - **`gedcom.Family`**: Family unit with `Husband`, `Wife`, `Children` (as XRef strings)
 - **`parser.Line`**: Raw parsed line with `Level`, `XRef`, `Tag`, `Value`, `LineNumber`
 
