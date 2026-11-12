@@ -130,6 +130,9 @@ var misplacedTags = map[string]map[string]int{
 	"geneanet-5.5.1-utf8.ged": {
 		"TYPE": 5, // 5.5 ASSO.TYPE in a 5.5.1 file, which dropped it
 	},
+	"ibmpc-cp437-broskeep.ged": {
+		"QUAY": 1206, // written directly under events instead of under a SOUR citation
+	},
 	"synium-7.0-utf8.ged": {
 		"PLAC": 15,  // written directly on OBJE/SOUR records
 		"AGNC": 10,  // belongs under SOUR.DATA, written directly on SOUR records

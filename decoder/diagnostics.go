@@ -64,6 +64,15 @@ const (
 
 	// CodeEmptyLine indicates an unexpected empty line in the GEDCOM data.
 	CodeEmptyLine = "EMPTY_LINE"
+
+	// CodeInvalidEncoding indicates a byte that is not valid in the input's
+	// encoding: a byte outside any valid UTF-8 sequence in input read as
+	// UTF-8 (declared UTF-8 or ASCII, or undeclared). In lenient mode the byte
+	// is replaced with U+FFFD and decoding continues; one diagnostic is
+	// emitted per byte, with its column in the message, for the first
+	// [MaxInvalidEncodingDiagnostics] bytes, and one more counts any bytes
+	// after those. Strict mode fails with a *charset.ErrInvalidUTF8 instead.
+	CodeInvalidEncoding = "INVALID_ENCODING"
 )
 
 // Entity-level diagnostic codes for semantic issues during entity population.

@@ -223,28 +223,33 @@ func TestTruncatedFiles(t *testing.T) {
 // tail those bytes end in, so nothing shortened enters the document and the
 // reader error is what gets reported.
 //
+// The bad byte is ANSEL: lenient mode recovers from invalid UTF-8 instead
+// (#710, TestDecodeLenientReplacesInvalidUTF8), so ANSEL is the charset error
+// that still interrupts a lenient decode.
+//
 // Deliberately independent of any buffer size: the assertion is "every
 // complete line before the bad byte survives", which holds at whatever offset
 // the chunk boundary happens to fall.
 func TestDecodePartialRecoveryUpToInvalidByte(t *testing.T) {
-	// Four complete lines, then a fifth cut short by an invalid byte.
+	// Five complete lines, then a sixth cut short by an invalid byte.
 	const input = "0 HEAD\n" +
+		"1 CHAR ANSEL\n" +
 		"1 SOUR TEST\n" +
 		"0 @I1@ INDI\n" +
 		"1 NAME John /Smith/\n" +
-		"1 NOTE Fr\xFF"
+		"1 NOTE Fr\x80"
 
 	result, err := DecodeWithDiagnostics(strings.NewReader(input), DefaultOptions())
 	if err == nil {
 		t.Fatal("DecodeWithDiagnostics() error = nil, want the read failure")
 	}
 
-	var utf8Err *charset.ErrInvalidUTF8
-	if !errors.As(err, &utf8Err) {
-		t.Fatalf("error = %v (%T), want a wrapped *charset.ErrInvalidUTF8", err, err)
+	var anselErr *charset.ErrInvalidANSEL
+	if !errors.As(err, &anselErr) {
+		t.Fatalf("error = %v (%T), want a wrapped *charset.ErrInvalidANSEL", err, err)
 	}
-	if utf8Err.Line != 5 || utf8Err.Column != 10 {
-		t.Errorf("error at line %d, column %d; want line 5, column 10", utf8Err.Line, utf8Err.Column)
+	if anselErr.Line != 6 || anselErr.Column != 10 {
+		t.Errorf("error at line %d, column %d; want line 6, column 10", anselErr.Line, anselErr.Column)
 	}
 	if strings.Contains(err.Error(), "at least level and tag") {
 		t.Errorf("error = %v, want the read failure, not a syntax error about the truncated line", err)
@@ -275,16 +280,16 @@ func TestDecodePartialRecoveryUpToInvalidByte(t *testing.T) {
 // invalid there is nothing to recover, so the result is nil and the read
 // failure is returned on its own.
 func TestDecodeInvalidFirstByteHasNoPartialDocument(t *testing.T) {
-	result, err := DecodeWithDiagnostics(strings.NewReader("\xFF0 HEAD\n0 TRLR\n"), DefaultOptions())
+	result, err := DecodeWithDiagnostics(strings.NewReader("\x800 HEAD\n1 CHAR ANSEL\n0 TRLR\n"), DefaultOptions())
 	if err == nil {
 		t.Fatal("DecodeWithDiagnostics() error = nil, want the read failure")
 	}
 	if result != nil {
 		t.Errorf("DecodeWithDiagnostics() result = %+v, want nil when no line could be parsed", result)
 	}
-	var utf8Err *charset.ErrInvalidUTF8
-	if !errors.As(err, &utf8Err) {
-		t.Fatalf("error = %v (%T), want a wrapped *charset.ErrInvalidUTF8", err, err)
+	var anselErr *charset.ErrInvalidANSEL
+	if !errors.As(err, &anselErr) {
+		t.Fatalf("error = %v (%T), want a wrapped *charset.ErrInvalidANSEL", err, err)
 	}
 }
 

@@ -54,6 +54,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | Code | Meaning | Recovery |
 |------|---------|----------|
 | `EMPTY_LINE` | Blank line in the data | Skipped |
+| `INVALID_ENCODING` | A byte that is not valid UTF-8 in input read as UTF-8 (declared `UTF-8` or `ASCII`, or no recognized `CHAR`), such as a stray Windows-1252 `é` | Byte replaced with U+FFFD and the rest of the line and file kept; one diagnostic per byte, with its line and column, up to 100 bytes, then one counting the rest |
 | `INVALID_LEVEL` | Unparseable, negative, or over-99 level number | Line skipped |
 | `INVALID_XREF` | Cross-reference identifier that is malformed (contains a space in a document whose header does not declare GEDCOM 5.5 or 5.5.1, or has no closing `@`) or that the grammar forbids where it appears (`0 @X1@ HEAD`, `0 @X1@ TRLR`) | Identifier recovered verbatim so the record and its subordinate lines survive; because nothing is invented, an unterminated `@I1` is stored as `@I1` and ordinary `@I1@` pointers elsewhere do not resolve to it. An XRef on `HEAD`/`TRLR`, well-formed or recovered (`0 @I1 HEAD`), makes the line an ordinary record (`Type` `"HEAD"`/`"TRLR"`, `Entity == nil`) instead of the document's header or trailer, so the real header is never overwritten. Reported but *not* recovered when a level-0 identifier has no usable record tag after it (`0 @I1@`, `0 @I 1@`, `0 @I1`): the line keeps its pre-existing parse, so the record survives, owning its subordinate lines, but with `Type` set to the identifier and an empty `XRef`, absent from `XRefMap` — see [compatibility.md](docs/governance/policies/compatibility.md#encoding-and-grammar-limitations). An identifier recovered on a level >= 1 line (`1 @I 1@ NOTE x`) is kept on the raw `gedcom.Tag.XRef` and re-encoded verbatim |
 | `BAD_LEVEL_JUMP` | Indentation skips one or more levels (e.g., `1 BIRT` → `4 DATE`) | Level clamped to `prev + 1` so the subordinate attaches to its natural parent |
@@ -62,7 +63,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | `MISSING_REQUIRED` | Required subordinate tag is missing | Reported; decoding continues |
 | `SKIPPED_RECORD` | A record's level-0 line was dropped, so its subordinate lines are skipped instead of attaching to the preceding record | Record dropped; decoding continues |
 
-Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns the first syntax error.
+Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns the first syntax error, or the first invalid UTF-8 byte as a `*charset.ErrInvalidUTF8`.
 
 ## Multi-Version Support
 
@@ -103,12 +104,12 @@ of what it added is what this library has yet to type — so the shares rank the
 work left per version, not the versions.
 
 **Re-encoding.** Not byte-for-byte, and this is measured too. Of 162 corpus
-fixtures, 3 do not survive decode and encode at all; of the 159 that do, 148
+fixtures, 2 do not survive decode and encode at all; of the 160 that do, 149
 reproduce their header byte for byte and 136 reproduce their record body.
 `byte_roundtrip_test.go` names the reason behind every exception. What remains
 in the body count is not a defect but a limit of byte comparison itself: a
 source that was not UTF-8 has been transcoded, so its bytes cannot match
-whatever the encoder does, and eight fixtures with malformed lines are rewritten by lenient
+whatever the encoder does, and nine fixtures with malformed lines or bytes are rewritten by lenient
 recovery rather than preserved — a difference kept on the list so that the
 decision to accept it stays explicit.
 
@@ -371,6 +372,8 @@ others listed in the ADR) stays in `Record.Tags`.
 | LATIN1 / ANSI / ISO-8859-1 | Full | Decoded as Windows-1252 (curly quotes, dashes, `€`); the five bytes Windows-1252 leaves undefined keep their ISO-8859-1 code points |
 | UTF-16 LE/BE | Full | With BOM detection |
 | ANSEL | Full | With combining diacritical reordering; a mark with no base character stays on the line it came from |
+
+A byte that is not valid UTF-8 in input read as UTF-8 fails a strict decode; lenient decoding replaces it with U+FFFD and reports `INVALID_ENCODING` (see [Lenient Parsing & Diagnostics](#lenient-parsing--diagnostics)). `charset.NewReaderWithOptions` with `ReaderOptions.OnInvalidUTF8` gives the same recovery outside the decoder.
 
 The charset declaration is `HEAD.CHAR` at level 1 only. Charset detection, `Header.Encoding` and the encoder's rewrite of `CHAR` to `UTF-8` all read that one line; a `CHAR` nested deeper in the header (`2 CHAR` under `SOUR`, say) is not a declaration, is kept in `Header.Tags` and written back verbatim.
 
