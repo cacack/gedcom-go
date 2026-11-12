@@ -258,7 +258,9 @@ const (
 // against the specification's structure tables for the declared version. The
 // check is opt-in: ValidatorConfig.CheckGrammar, or WithGrammarCheck for a
 // QualityAnalyzer. Every issue carries Details["version"], the version whose
-// grammar was applied, and Details["tag"], the tag at fault.
+// grammar was applied, and Details["tag"], the tag at fault. A header that
+// declares no version (no HEAD.GEDC.VERS) is not held to any grammar: only
+// the missing VERS, or GEDC, is reported, with an empty Details["version"].
 const (
 	// CodeUnexpectedSubstructure indicates a standard tag the version's
 	// grammar does not permit where it stands, either under its
@@ -309,6 +311,13 @@ const (
 	// INFANT, PRE_1970, SUBMITTED and UNCLEARED (a Warning).
 	CodeDeprecatedStructure = "DEPRECATED_STRUCTURE"
 )
+
+// grammarCodes lists the grammar conformance check's codes.
+var grammarCodes = []string{
+	CodeUnexpectedSubstructure, CodeVersionForeignStructure, CodeMissingRequiredSubstructure,
+	CodeCardinalityExceeded, CodeInvalidEnumValue, CodeInvalidPayload, CodeInvalidRecordXRef,
+	CodeDeprecatedStructure,
+}
 
 // Issue represents a validation finding with severity, context, and actionable information.
 type Issue struct {

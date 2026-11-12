@@ -1327,7 +1327,11 @@ specification inventories under `testdata/spec`, turned into Go tables by
 and so is `CONC` in 5.5/5.5.1. 7.0 enumeration values are compared
 case-sensitively and extension values are accepted; 5.5.x values are compared
 without regard to case. A declared version the tables do not cover (7.1) is
-not checked. Every issue carries `Details["version"]` and `Details["tag"]`.
+not checked. A header with no `GEDC.VERS` is not held to the decoder's guessed
+version: only the missing `VERS` (or `GEDC`) is reported, with an empty
+`Details["version"]`. The check stops early once `ValidateOptions.Context` is
+done, and is not run when `SkipRules` lists all of its codes. Every issue
+carries `Details["version"]` and `Details["tag"]`.
 
 | Error Code | Severity | Description |
 |------------|----------|-------------|

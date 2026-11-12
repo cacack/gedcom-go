@@ -23,8 +23,9 @@ datatypes, 7.0 record identifier form, version-foreign tags and 7.0 deprecations
 - It reads the raw `Tags` (ADR-0003), not the typed entities, because the grammar is about
   lines, and the typed model deliberately keeps what the grammar forbids.
 - It applies the **declared** version (`Header.DeclaredVersion`), never the decoder's
-  guess, so a 7.1 file is not held to 7.0's tables. A header with no `GEDC.VERS` at all
-  falls back to `Header.Version`.
+  guess, so a 7.1 file is not held to 7.0's tables. A decoded header with no `GEDC.VERS`
+  gets only that missing line reported; only a header built in memory (no `Tags`) falls
+  back to `Header.Version`.
 
 ## Context
 

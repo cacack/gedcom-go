@@ -15,6 +15,7 @@
 package validator
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"sort"
@@ -191,18 +192,25 @@ type grammarChecker struct {
 // validateGrammar runs the grammar conformance check: every structure in the
 // header and records, read from their raw Tags, against the tables for the
 // version the header declares (see grammarVersion). A document whose version
-// the tables do not cover, such as 7.1, is not checked. Nor are the substructures of a header
-// with no Tags, or of a record with no Tags and no LineNumber: both were
-// built in memory, and the encoder writes them from their typed fields.
+// the tables do not cover, such as 7.1, is not checked. A decoded header that
+// declares no version gets only the missing HEAD.GEDC.VERS (or HEAD.GEDC)
+// reported: the decoder's guessed version is not a grammar the file claimed.
+// Nor are the substructures of a header with no Tags, or of a record with no
+// Tags and no LineNumber, checked: both were built in memory, and the encoder
+// writes them from their typed fields. The walk stops early, with the issues
+// found so far, once ctx is done.
 //
 // Extension structures (tags starting with "_") and their substructures are
 // skipped. CONT is permitted under any structure. In 5.5 and 5.5.1 so is
 // CONC, which the printed grammar lists only where it expects long values but
 // which writers split any line with; in 7.0, which removed CONC, it is
 // reported as a version-foreign structure.
-func validateGrammar(doc *gedcom.Document) []Issue {
+func validateGrammar(ctx context.Context, doc *gedcom.Document) []Issue {
 	if doc == nil || doc.Header == nil {
 		return nil
+	}
+	if len(doc.Header.Tags) > 0 && !declaresVersion(doc.Header.Tags) {
+		return missingDeclaration(doc.Header.Tags)
 	}
 	g := grammarFor(grammarVersion(doc.Header))
 	if g == nil {
@@ -213,6 +221,9 @@ func validateGrammar(doc *gedcom.Document) []Issue {
 		c.checkStructure("", 0, g.records["HEAD"], "HEAD", buildGrammarTree(doc.Header.Tags))
 	}
 	for _, record := range doc.Records {
+		if ctx.Err() != nil {
+			break
+		}
 		if record != nil {
 			c.checkRecord(record)
 		}
@@ -221,28 +232,65 @@ func validateGrammar(doc *gedcom.Document) []Issue {
 }
 
 // grammarVersion returns the version whose grammar applies: the one the
-// header declares (DeclaredVersion). A VERS the decoder does not recognize,
-// such as 7.1, selects none, so a 7.1 file is not held to 7.0's tables. A
-// header with no GEDC.VERS at all -- one built in memory, or a file missing
-// the required line -- has no declaration to contradict, so the decoder's
-// Version is used.
+// header declares (DeclaredVersion), or for a header built in memory (no
+// Tags) its Version.
 func grammarVersion(h *gedcom.Header) gedcom.Version {
 	if h.DeclaredVersion != "" {
 		return h.DeclaredVersion
 	}
+	if len(h.Tags) == 0 {
+		return h.Version
+	}
+	// Deliberately none: a VERS the decoder does not recognize, such as 7.1,
+	// must not be held to another version's tables, nor a missing VERS to
+	// the decoder's guess.
+	return ""
+}
+
+// declaresVersion reports whether header tags carry a HEAD.GEDC.VERS with a
+// value.
+func declaresVersion(tags []*gedcom.Tag) bool {
+	_, ok := findGEDC(tags)
+	return ok
+}
+
+// findGEDC returns the first HEAD.GEDC among header tags (nil if none) and whether
+// a GEDC carries a VERS with a value.
+func findGEDC(tags []*gedcom.Tag) (gedc *gedcom.Tag, hasVers bool) {
 	inGEDC := false
-	for _, tag := range h.Tags {
+	for _, tag := range tags {
 		if tag == nil {
 			continue
 		}
 		switch {
 		case tag.Level == 1:
 			inGEDC = tag.Tag == "GEDC"
+			if inGEDC && gedc == nil {
+				gedc = tag
+			}
 		case inGEDC && tag.Level == 2 && tag.Tag == "VERS" && tag.Value != "":
-			return ""
+			return gedc, true
 		}
 	}
-	return h.Version
+	return gedc, false
+}
+
+// missingDeclaration reports the HEAD.GEDC.VERS, or the HEAD.GEDC, that every
+// version requires and a header declaring no version lacks. No grammar was
+// applied, so Details["version"] is empty. A missing GEDC is reported on
+// line 0, as other missing header lines are.
+func missingDeclaration(tags []*gedcom.Tag) []Issue {
+	gedc, _ := findGEDC(tags)
+	superTag, tag, line := "HEAD", "GEDC", 0
+	if gedc != nil {
+		superTag, tag, line = "GEDC", "VERS", gedc.LineNumber
+	}
+	return []Issue{NewIssue(SeverityError, CodeMissingRequiredSubstructure,
+		fmt.Sprintf("%s requires a %s substructure; with no declared version the grammar is not checked", superTag, tag), "").
+		WithLineNumber(line).
+		WithDetail("tag", tag).
+		WithDetail("superstructure", superTag).
+		WithDetail("version", "")}
 }
 
 // grammarNode is one line of a record or header with its substructures.

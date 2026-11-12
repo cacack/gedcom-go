@@ -406,10 +406,11 @@ func (v *Validator) checks(ctx context.Context, doc *gedcom.Document, limitIssue
 		},
 		// The grammar conformance check, when asked to. It walks every line
 		// of the document against the version's structure tables, so it is
-		// opt-in (CheckGrammar).
+		// opt-in (CheckGrammar), stops early once ctx is done, and is not run
+		// when SkipRules lists every one of its codes.
 		func() []Issue {
-			if v.config != nil && v.config.CheckGrammar {
-				return validateGrammar(doc)
+			if v.config != nil && v.config.CheckGrammar && !v.skipsAll(grammarCodes) {
+				return validateGrammar(ctx, doc)
 			}
 			return nil
 		},
@@ -619,6 +620,16 @@ func (v *Validator) skips(code string) bool {
 		}
 	}
 	return false
+}
+
+// skipsAll reports whether SkipRules lists every one of codes.
+func (v *Validator) skipsAll(codes []string) bool {
+	for _, code := range codes {
+		if !v.skips(code) {
+			return false
+		}
+	}
+	return true
 }
 
 // filterBySkipRules removes issues whose code matches any entry in SkipRules.

@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -9,18 +10,6 @@ import (
 	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
-
-// grammarCodes are the codes the grammar check reports.
-var grammarCodes = []string{
-	CodeUnexpectedSubstructure,
-	CodeVersionForeignStructure,
-	CodeMissingRequiredSubstructure,
-	CodeCardinalityExceeded,
-	CodeInvalidEnumValue,
-	CodeInvalidPayload,
-	CodeInvalidRecordXRef,
-	CodeDeprecatedStructure,
-}
 
 func decodeGrammarDoc(t *testing.T, src string) *gedcom.Document {
 	t.Helper()
@@ -43,7 +32,7 @@ func grammarFindings(issues []Issue) []string {
 
 func assertGrammar(t *testing.T, src string, want ...string) []Issue {
 	t.Helper()
-	issues := validateGrammar(decodeGrammarDoc(t, src))
+	issues := validateGrammar(context.Background(), decodeGrammarDoc(t, src))
 	if got := grammarFindings(issues); !slices.Equal(got, want) {
 		t.Errorf("grammar findings\n got: %q\nwant: %q", got, want)
 	}
@@ -119,12 +108,11 @@ func TestGrammar_Cardinality(t *testing.T) {
 }
 
 func TestGrammar_RequiredSubstructures(t *testing.T) {
-	issues := assertGrammar(t, "0 HEAD\n1 GEDC\n1 SCHMA\n0 @U1@ SUBM\n0 @I1@ INDI\n1 BAPL\n2 STAT CHILD\n1 EXID 1\n2 TYPE https://x\n0 TRLR\n",
-		"MISSING_REQUIRED_SUBSTRUCTURE L2 VERS",
-		"MISSING_REQUIRED_SUBSTRUCTURE L4 NAME",
-		"MISSING_REQUIRED_SUBSTRUCTURE L7 DATE")
-	if got := issues[0].Details["superstructure"]; got != "GEDC" {
-		t.Errorf("superstructure = %q, want GEDC", got)
+	issues := assertGrammar(t, head70+"1 SCHMA\n0 @U1@ SUBM\n0 @I1@ INDI\n1 BAPL\n2 STAT CHILD\n1 EXID 1\n2 TYPE https://x\n0 TRLR\n",
+		"MISSING_REQUIRED_SUBSTRUCTURE L5 NAME",
+		"MISSING_REQUIRED_SUBSTRUCTURE L8 DATE")
+	if got := issues[0].Details["superstructure"]; got != "SUBM" {
+		t.Errorf("superstructure = %q, want SUBM", got)
 	}
 	// 5.5.1 requires HEAD.SOUR, CHAR and GEDC.FORM; HEAD.SUBM is left to
 	// MISSING_SUBM, and a missing header line is reported on line 0.
@@ -223,31 +211,84 @@ func TestGrammar_Continuations(t *testing.T) {
 }
 
 func TestGrammar_NotChecked(t *testing.T) {
-	if got := validateGrammar(nil); got != nil {
+	if got := validateGrammar(context.Background(), nil); got != nil {
 		t.Errorf("nil document: %v", got)
 	}
-	if got := validateGrammar(&gedcom.Document{}); got != nil {
+	if got := validateGrammar(context.Background(), &gedcom.Document{}); got != nil {
 		t.Errorf("no header: %v", got)
 	}
 	// A version the tables do not cover, and records built in memory with
 	// no Tags (the encoder writes them from their entities).
 	doc := &gedcom.Document{
-		Header:  &gedcom.Header{Version: "4.0", Tags: []*gedcom.Tag{{Level: 1, Tag: "BOGUS"}}},
+		Header:  &gedcom.Header{Version: "4.0"},
 		Records: []*gedcom.Record{{XRef: "@I1@", Type: gedcom.RecordTypeIndividual}},
 	}
-	if got := validateGrammar(doc); got != nil {
+	if got := validateGrammar(context.Background(), doc); got != nil {
 		t.Errorf("unknown version: %v", got)
 	}
 	// A declared version the tables do not cover is not checked against the
 	// decoder's guess.
-	if got := validateGrammar(decodeGrammarDoc(t, "0 HEAD\n1 GEDC\n2 VERS 7.1\n1 TITL t\n0 @I1@ INDI\n1 SEX Q\n0 TRLR\n")); got != nil {
+	if got := validateGrammar(context.Background(), decodeGrammarDoc(t, "0 HEAD\n1 GEDC\n2 VERS 7.1\n1 TITL t\n0 @I1@ INDI\n1 SEX Q\n0 TRLR\n")); got != nil {
 		t.Errorf("7.1 document: %v", got)
 	}
 	doc.Header = &gedcom.Header{Version: gedcom.Version70}
 	doc.Records = append(doc.Records, nil, &gedcom.Record{XRef: "@I2@", Type: gedcom.RecordTypeIndividual,
 		Tags: []*gedcom.Tag{nil, {Level: 1, Tag: "SEX", Value: "Q", LineNumber: 9}}})
-	if got := grammarFindings(validateGrammar(doc)); !slices.Equal(got, []string{"INVALID_ENUM_VALUE L9 SEX"}) {
+	if got := grammarFindings(validateGrammar(context.Background(), doc)); !slices.Equal(got, []string{"INVALID_ENUM_VALUE L9 SEX"}) {
 		t.Errorf("in-memory document: %q", got)
+	}
+}
+
+// A decoded header with no GEDC.VERS is not held to the decoder's guessed
+// version: only the missing declaration is reported, though the records would
+// break the guessed 7.0 grammar (EXID, SEX Z, a lowercase identifier).
+func TestGrammar_NoDeclaredVersion(t *testing.T) {
+	issues := assertGrammar(t, "0 HEAD\n1 GEDC\n0 @i1@ INDI\n1 SEX Z\n1 EXID 1\n1 NOTE a\n2 CONC b\n0 TRLR\n",
+		"MISSING_REQUIRED_SUBSTRUCTURE L2 VERS")
+	if got := issues[0].Details; got["superstructure"] != "GEDC" || got["version"] != "" {
+		t.Errorf("details = %v, want superstructure GEDC and no version", got)
+	}
+	// A VERS with no value declares nothing either.
+	assertGrammar(t, "0 HEAD\n1 GEDC\n2 VERS\n0 @I1@ INDI\n1 SEX Z\n0 TRLR\n",
+		"MISSING_REQUIRED_SUBSTRUCTURE L2 VERS")
+	// With no GEDC at all, GEDC is what is missing.
+	issues = assertGrammar(t, "0 HEAD\n1 SOUR x\n0 @I1@ INDI\n1 SEX Z\n1 EXID 1\n0 TRLR\n",
+		"MISSING_REQUIRED_SUBSTRUCTURE L0 GEDC")
+	if got := issues[0].Details["superstructure"]; got != "HEAD" {
+		t.Errorf("superstructure = %q, want HEAD", got)
+	}
+}
+
+func TestGrammar_StopsWhenContextDone(t *testing.T) {
+	doc := decodeGrammarDoc(t, head70+"0 @I1@ INDI\n1 SEX Z\n0 TRLR\n")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if got := grammarFindings(validateGrammar(ctx, doc)); len(got) != 0 {
+		t.Errorf("cancelled walk checked records: %q", got)
+	}
+}
+
+func TestGrammar_DeprecationKeysExist(t *testing.T) {
+	for id := range deprecated70 {
+		if grammar70.structures[id] == nil {
+			t.Errorf("deprecated70 key %q is not a 7.0 structure id", id)
+		}
+	}
+	for id, values := range deprecatedEnum70 {
+		def := grammar70.structures[id]
+		if def == nil {
+			t.Errorf("deprecatedEnum70 key %q is not a 7.0 structure id", id)
+			continue
+		}
+		for v := range values {
+			if !slices.Contains(def.enum, v) {
+				t.Errorf("deprecatedEnum70[%q] value %q is not in its enumeration %v", id, v, def.enum)
+			}
+		}
+	}
+	// EXID, whose missing TYPE checkDeprecated reports, must be one too.
+	if grammar70.structures["EXID"] == nil {
+		t.Error(`"EXID" is not a 7.0 structure id`)
 	}
 }
 
@@ -291,5 +332,12 @@ func TestGrammar_OptInThroughValidatorAndQualityReport(t *testing.T) {
 	skipped := NewWithOptions(&ValidateOptions{CheckGrammar: true, SkipRules: []string{CodeInvalidEnumValue}})
 	if hasGrammar(skipped.ValidateAll(doc)) {
 		t.Error("SkipRules did not drop the grammar code")
+	}
+	if !New().skipsAll(nil) || skipped.skipsAll(grammarCodes) {
+		t.Error("skipsAll: wrong answer for an empty list or a partial SkipRules")
+	}
+	all := NewWithOptions(&ValidateOptions{CheckGrammar: true, SkipRules: grammarCodes})
+	if !all.skipsAll(grammarCodes) || hasGrammar(all.ValidateAll(doc)) {
+		t.Error("SkipRules listing every grammar code did not skip the check")
 	}
 }

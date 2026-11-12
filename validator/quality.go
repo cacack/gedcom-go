@@ -279,7 +279,7 @@ func (a *QualityAnalyzer) Analyze(doc *gedcom.Document) *QualityReport {
 	a.runTagValidator(doc, report)
 	a.runConformanceChecks(doc, report)
 	if a.checkGrammar {
-		report.GrammarIssues = append(report.GrammarIssues, validateGrammar(doc)...)
+		report.GrammarIssues = append(report.GrammarIssues, validateGrammar(context.Background(), doc)...)
 	}
 
 	// Calculate completeness metrics and generate completeness issues,

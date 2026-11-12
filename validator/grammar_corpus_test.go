@@ -2,6 +2,7 @@ package validator
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"slices"
@@ -23,7 +24,7 @@ func grammarIssuesForFile(t *testing.T, path string) (issues []Issue, lines []st
 		t.Fatalf("Decode %s: %v", path, err)
 	}
 	lines = strings.Split(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n")
-	return validateGrammar(doc), lines
+	return validateGrammar(context.Background(), doc), lines
 }
 
 // gedcom7code's 5/age-invalid.ged holds one malformed 5.5.1 AGE_AT_EVENT per
