@@ -155,6 +155,11 @@ func (v *Validator) ValidateAll(doc *Document) []Issue {
 | `QualityAnalyzer` | Source coverage, data completeness |
 | `TagValidator` | Custom tag validity, placement |
 
+> **Extended in v3**: the opt-in grammar conformance check
+> (`ValidatorConfig.CheckGrammar`) holds every structure against tables generated
+> from the vendored specification inventories. See
+> [ADR-011](0011-grammar-conformance-check.md).
+
 ### Streaming Validator
 
 For large files, a streaming variant validates records incrementally:

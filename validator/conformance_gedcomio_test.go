@@ -41,12 +41,16 @@ var gedcomioDesignedWarnings = []designedWarning{
 	{"deprecated ord-STAT values COMPLETED, EXCLUDED, PRE_1970, UNCLEARED, SUBMITTED, INFANT (enumset-ord-STAT)", []string{"STAT"}, []int{19, 23, 26, 29, 34, 37, 40}},
 }
 
-// gedcomioWarningGaps lists designed warnings we do not raise, by name.
-var gedcomioWarningGaps = map[string]string{
-	"deprecated ADR1/ADR2/ADR3 (ADDRESS_STRUCTURE)":                                                             "no deprecation checks (#742)",
-	"deprecated HEAD.SOUR.DATA (HEADER)":                                                                        "no deprecation checks (#742)",
-	"deprecated EXID without EXID.TYPE (IDENTIFIER_STRUCTURE)":                                                  "no deprecation checks (#742)",
-	"deprecated ord-STAT values COMPLETED, EXCLUDED, PRE_1970, UNCLEARED, SUBMITTED, INFANT (enumset-ord-STAT)": "no enumeration status checks (#742)",
+// gedcomioWarningGaps lists, per file, designed warnings we do not raise, by
+// name. The grammar check (CheckGrammar, #742) raises all of them as
+// DEPRECATED_STRUCTURE in a file it checks.
+var gedcomioWarningGaps = map[string]map[string]string{
+	"gedcom71/warnings71.ged": {
+		"deprecated ADR1/ADR2/ADR3 (ADDRESS_STRUCTURE)":                                                             "the grammar tables are 7.0's; a 7.1 file is not checked (#742)",
+		"deprecated HEAD.SOUR.DATA (HEADER)":                                                                        "the grammar tables are 7.0's; a 7.1 file is not checked (#742)",
+		"deprecated EXID without EXID.TYPE (IDENTIFIER_STRUCTURE)":                                                  "the grammar tables are 7.0's; a 7.1 file is not checked (#742)",
+		"deprecated ord-STAT values COMPLETED, EXCLUDED, PRE_1970, UNCLEARED, SUBMITTED, INFANT (enumset-ord-STAT)": "the grammar tables are 7.0's; a 7.1 file is not checked (#742)",
+	},
 }
 
 // gedcomioWarningExtras lists, per file, the issues we raise that no designed
@@ -67,6 +71,7 @@ func TestGEDCOMIOWarningsFiles(t *testing.T) {
 	v := NewWithOptions(&ValidateOptions{
 		TagRegistry:        NewTagRegistry(),
 		ValidateCustomTags: true,
+		CheckGrammar:       true,
 		Strictness:         StrictnessStrict,
 	})
 	for _, file := range gedcomioWarningFiles {
@@ -91,7 +96,7 @@ func TestGEDCOMIOWarningsFiles(t *testing.T) {
 						t.Fatalf("line %d is %q, not one of %v; fix gedcomioDesignedWarnings", l, lines[l-1], w.tags)
 					}
 				}
-				reason, gap := gedcomioWarningGaps[w.name]
+				reason, gap := gedcomioWarningGaps[file][w.name]
 				switch {
 				case raised && gap:
 					t.Errorf("now raised: %s; remove it from gedcomioWarningGaps (was: %s)", w.name, reason)

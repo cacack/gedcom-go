@@ -83,6 +83,20 @@ type ValidatorConfig struct {
 	// Default: false.
 	CheckEntityTags bool
 
+	// CheckGrammar enables the grammar conformance check, which holds every
+	// structure in the header and records against the specification's
+	// structure tables for the version the header declares: substructures
+	// not permitted where they stand or defined only by another version,
+	// required substructures that are missing, cardinality, enumeration
+	// values, payload datatypes (exact dates, times, ages, language tags,
+	// integers, pointers) and, in 7.0, record identifier form and deprecated
+	// structures. Its codes are listed with [CodeUnexpectedSubstructure].
+	// Extension tags ("_X") and their substructures are not checked.
+	// [Validator.QualityReport] honors it too, filing the issues under
+	// GrammarIssues.
+	// Default: false.
+	CheckGrammar bool
+
 	// Context allows cancellation and timeout control of
 	// [Validator.ValidateAllWithError], which checks it between checks and,
 	// in the costliest checks, before each record, and returns its error
@@ -200,6 +214,9 @@ func (v *Validator) getQualityAnalyzer() *QualityAnalyzer {
 			}
 			if v.config.CheckEntityTags {
 				opts = append(opts, WithEntityTagsCheck())
+			}
+			if v.config.CheckGrammar {
+				opts = append(opts, WithGrammarCheck())
 			}
 		}
 		v.quality = NewQualityAnalyzer(opts...)
@@ -384,6 +401,16 @@ func (v *Validator) checks(ctx context.Context, doc *gedcom.Document, limitIssue
 		func() []Issue {
 			if v.config != nil && v.config.CheckEntityTags && !v.skips(CodeEntityTagsDiverged) {
 				return validateEntityTags(doc)
+			}
+			return nil
+		},
+		// The grammar conformance check, when asked to. It walks every line
+		// of the document against the version's structure tables, so it is
+		// opt-in (CheckGrammar), stops early once ctx is done, and is not run
+		// when SkipRules lists every one of its codes.
+		func() []Issue {
+			if v.config != nil && v.config.CheckGrammar && !v.skipsAll(grammarCodes) {
+				return validateGrammar(ctx, doc)
 			}
 			return nil
 		},
@@ -593,6 +620,16 @@ func (v *Validator) skips(code string) bool {
 		}
 	}
 	return false
+}
+
+// skipsAll reports whether SkipRules lists every one of codes.
+func (v *Validator) skipsAll(codes []string) bool {
+	for _, code := range codes {
+		if !v.skips(code) {
+			return false
+		}
+	}
+	return true
 }
 
 // filterBySkipRules removes issues whose code matches any entry in SkipRules.

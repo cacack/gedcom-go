@@ -19,6 +19,7 @@ docs/reference/gedcom-7-coverage.md text eol=lf
 docs/reference/gedcom-5.5-coverage.md text eol=lf
 testdata/spec/** text eol=lf
 converter/structures_gen.go text eol=lf
+validator/grammar_tables.go text eol=lf
 
 # Its hash keys the CI cache of the fetched corpora; keep it identical on
 # every platform.

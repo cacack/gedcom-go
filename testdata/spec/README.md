@@ -5,7 +5,10 @@ what that specification defines. `decoder/spec7_coverage_test.go` and
 `decoder/spec55_coverage_test.go` read them to derive
 [`docs/reference/gedcom-7-coverage.md`](../../docs/reference/gedcom-7-coverage.md)
 and
-[`docs/reference/gedcom-5.5-coverage.md`](../../docs/reference/gedcom-5.5-coverage.md).
+[`docs/reference/gedcom-5.5-coverage.md`](../../docs/reference/gedcom-5.5-coverage.md),
+and `internal/cmd/gengrammar` generates the validator's grammar tables
+(`validator/grammar_tables.go`) from them; see
+[ADR 0011](../../docs/decisions/0011-grammar-conformance-check.md).
 
 | Directory | Where it came from |
 |-----------|--------------------|
@@ -36,11 +39,11 @@ permission and outside 5.5.1's silence, only the derived data is kept.
 
 ## Files the 5.5.x directories add
 
-Beyond `substructures.tsv` and `payloads.tsv`, which every version has:
+Beyond `substructures.tsv`, `cardinalities.tsv` and `payloads.tsv`, which every
+version has:
 
 | File | Contents |
 |------|----------|
-| `cardinalities.tsv` | (superstructure, structure, cardinality) triples |
 | `primitives.tsv` | Value type, field size, the literal values it enumerates, and the alternatives it prints as placeholders (`<user defined>`, `<LANGUAGE_ID>`) |
 | `defects.tsv` | Places the printed grammar does not say what it means, with the reading taken |
 
@@ -146,4 +149,5 @@ re-run the transcription — see
 
 ```bash
 make spec-coverage
+go generate ./validator
 ```

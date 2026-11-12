@@ -146,6 +146,22 @@ rewritten rather than aligned line by line, bounding the alignment's memory.
 go test ./validator -bench BenchmarkValidateAllEntityTags -run '^$' -benchmem -count=3
 ```
 
+### Grammar Check
+
+The grammar conformance check (opt-in via `ValidateOptions.CheckGrammar`)
+walks every line of the header and records once against the version's
+structure tables, so its cost is linear in the number of lines. On
+`pres2020.ged`, with duplicate detection off:
+
+| `ValidateAll` | Time/Op | Memory | Allocations |
+|---------------|---------|--------|-------------|
+| Without the check (default) | 34 ms | 9.9 MB | 406k |
+| With the check | 45 ms | 12.1 MB | 484k |
+
+```bash
+go test ./validator -bench BenchmarkValidateAllGrammar -run '^$' -benchmem -count=3
+```
+
 ### Duplicate Detection
 
 `DuplicateDetector.FindDuplicates` is the most expensive validator, and

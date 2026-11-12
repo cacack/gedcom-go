@@ -254,6 +254,71 @@ const (
 	CodeEntityTagsDiverged = "ENTITY_TAGS_DIVERGED"
 )
 
+// Error codes for the grammar conformance check, which holds every structure
+// against the specification's structure tables for the declared version. The
+// check is opt-in: ValidatorConfig.CheckGrammar, or WithGrammarCheck for a
+// QualityAnalyzer. Every issue carries Details["version"], the version whose
+// grammar was applied, and Details["tag"], the tag at fault. A header that
+// declares no version (no HEAD.GEDC.VERS) is not held to any grammar: only
+// the missing VERS, or GEDC, is reported, with an empty Details["version"].
+const (
+	// CodeUnexpectedSubstructure indicates a standard tag the version's
+	// grammar does not permit where it stands, either under its
+	// superstructure (Details["superstructure"]) or at level 0 (an Error).
+	CodeUnexpectedSubstructure = "UNEXPECTED_SUBSTRUCTURE"
+
+	// CodeVersionForeignStructure indicates a tag the declared version does
+	// not define anywhere but another version does, such as SNOTE or EXID in
+	// a 5.5.1 file, or CONC in a 7.0 file (an Error). Details["defined_in"]
+	// names the version that defines it.
+	CodeVersionForeignStructure = "VERSION_FOREIGN_STRUCTURE"
+
+	// CodeMissingRequiredSubstructure indicates a structure lacking a
+	// substructure its grammar requires, such as HEAD.GEDC.VERS or a 7.0
+	// SUBM.NAME (an Error). It is reported on the superstructure's line.
+	// HEAD.SUBM in 5.5.x is left to CodeMissingSUBM.
+	CodeMissingRequiredSubstructure = "MISSING_REQUIRED_SUBSTRUCTURE"
+
+	// CodeCardinalityExceeded indicates a substructure repeated more often
+	// than its cardinality allows, such as a second SEX (an Error). Each
+	// occurrence past the limit is reported; Details["cardinality"] is the
+	// limit, as "{0:1}".
+	CodeCardinalityExceeded = "CARDINALITY_EXCEEDED"
+
+	// CodeInvalidEnumValue indicates an enumerated payload that is not one of
+	// its values, such as SEX Z or PEDI BOGUS (an Error). 7.0 values are
+	// compared case-sensitively and extension values ("_X") are accepted;
+	// 5.5.x values are compared without regard to case. Details["value"] is
+	// the value and Details["allowed"] the comma-separated set.
+	CodeInvalidEnumValue = "INVALID_ENUM_VALUE"
+
+	// CodeInvalidPayload indicates a payload that is not of its structure's
+	// datatype (an Error): an exact date (CHAN.DATE, HEAD.DATE), a time, an
+	// age, a language tag, a non-negative integer, a record pointer, or Y.
+	// Details["datatype"] names the datatype and Details["value"] the payload.
+	// Dates other than exact dates are CodeInvalidDate's.
+	CodeInvalidPayload = "INVALID_PAYLOAD"
+
+	// CodeInvalidRecordXRef indicates a 5.5.x level-0 record with no
+	// cross-reference identifier, or a 7.0 record identifier using
+	// characters outside A-Z, 0-9 and _, or the reserved null pointer @VOID@
+	// (an Error). 7.0 permits a record with no identifier.
+	CodeInvalidRecordXRef = "INVALID_RECORD_XREF"
+
+	// CodeDeprecatedStructure indicates a 7.0 structure or enumeration value
+	// the specification deprecates: ADR1, ADR2, ADR3, HEAD.SOUR.DATA, an
+	// EXID without a TYPE, and the ordinance statuses COMPLETED, EXCLUDED,
+	// INFANT, PRE_1970, SUBMITTED and UNCLEARED (a Warning).
+	CodeDeprecatedStructure = "DEPRECATED_STRUCTURE"
+)
+
+// grammarCodes lists the grammar conformance check's codes.
+var grammarCodes = []string{
+	CodeUnexpectedSubstructure, CodeVersionForeignStructure, CodeMissingRequiredSubstructure,
+	CodeCardinalityExceeded, CodeInvalidEnumValue, CodeInvalidPayload, CodeInvalidRecordXRef,
+	CodeDeprecatedStructure,
+}
+
 // Issue represents a validation finding with severity, context, and actionable information.
 type Issue struct {
 	// Severity indicates the importance level of this issue.

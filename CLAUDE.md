@@ -139,6 +139,7 @@ Key design decisions are documented in `docs/decisions/`:
 | 0008 | Validator architecture (pluggable, configurable) |
 | 0009 | Bounded duplicate detection (per-group cap, skip whole) |
 | 0010 | GEDCOM 7.0 PHRASE as a sibling `<Value>Phrase` field |
+| 0011 | Grammar conformance check generated from the vendored spec tables |
 
 ### Workflow for New Ideas
 
