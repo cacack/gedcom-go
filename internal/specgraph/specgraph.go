@@ -42,7 +42,7 @@ type Pair struct {
 // structure", then one tab-separated row per pair. prefix is trimmed from
 // every structure name.
 func Load(path, prefix string) (Graph, error) {
-	f, err := os.Open(path) //nolint:gosec // development-time tool reading vendored spec data
+	f, err := os.Open(path) // #nosec G304 -- development-time tool reading the vendored spec data
 	if err != nil {
 		return nil, err
 	}
