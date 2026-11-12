@@ -647,6 +647,11 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 - Cross-reference ID (`@M1@`)
 - File references and formats
 - Titles
+- Inline media links (5.5/5.5.1 `OBJE` with no pointer): `MediaLink.Files` holds
+  each `FILE` with its `FORM` and `MEDI`, in the 5.5.1 layout (`FORM` under
+  `FILE`) and the 5.5 one (`FORM` beside it). Encoding from the typed model
+  writes the output version's layout, and for 7.0, which has no inline link,
+  an `OBJE` record the link points to
 
 ## Events
 

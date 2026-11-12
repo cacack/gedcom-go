@@ -155,9 +155,9 @@ func TestDegenerateMediaLinkSkipped(t *testing.T) {
 	out := encodeIndividual(t, gedcom.Version551, &gedcom.Individual{Media: []*gedcom.MediaLink{
 		{}, // nothing to write: skipped rather than written as a bare OBJE
 		{MediaXRef: "@O1@"},
-		{Title: "Inline, file not typed yet (#733)"},
+		{Title: "Inline, no file"},
 	}})
-	want := "0 @I1@ INDI\n1 OBJE @O1@\n1 OBJE\n2 TITL Inline, file not typed yet (#733)\n0 TRLR\n"
+	want := "0 @I1@ INDI\n1 OBJE @O1@\n1 OBJE\n2 TITL Inline, no file\n0 TRLR\n"
 	if !strings.Contains(out, want) {
 		t.Errorf("want\n%s\ngot:\n%s", want, out)
 	}

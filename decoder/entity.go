@@ -2245,10 +2245,16 @@ func parseMediaTranslation(tags []*gedcom.Tag, tranIdx, baseLevel int, collector
 }
 
 // parseMediaLink extracts a MediaLink from OBJE reference tag and its subordinates.
+//
+// An inline link (5.5/5.5.1, no pointer) carries its files in FILE lines,
+// read as on the OBJE record (#733). 5.5.1 writes FORM under FILE; 5.5 writes
+// it beside FILE, and that FORM fills the Form of each file that has none (or,
+// with no FILE, of a file with no FileRef).
 func parseMediaLink(tags []*gedcom.Tag, objeIdx, baseLevel int, collector *diagnosticCollector) *gedcom.MediaLink {
 	link := &gedcom.MediaLink{
 		MediaXRef: tagToken(tags[objeIdx].Value),
 	}
+	form := ""
 
 	for i := objeIdx + 1; i < len(tags); i++ {
 		tag := tags[i]
@@ -2267,12 +2273,31 @@ func parseMediaLink(tags []*gedcom.Tag, objeIdx, baseLevel int, collector *diagn
 				link.NoteXRefs, link.InlineNotes = appendRecordNote(
 					tags, i, link.NoteXRefs, link.InlineNotes, collector)
 			case "FILE":
-				// Known tag for inline media references
+				link.Files = append(link.Files, parseMediaFile(tags, i, tag.Level, collector))
+			case "FORM":
+				// The 5.5 layout. Kept whatever the version, and reported in a
+				// document declaring another, as ASSO.TYPE is (MyHeritage FTB
+				// writes it in 5.5.1).
+				if form == "" {
+					form = collector.text(tag.Value)
+				}
+				collector.addUnknownTagOutside55(tag)
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
 				}
 			}
+		}
+	}
+
+	if form != "" && len(link.Files) == 0 {
+		// A FORM with no FILE still names the format, so it is kept in a file
+		// with no FileRef rather than left to the raw tags.
+		link.Files = append(link.Files, &gedcom.MediaFile{})
+	}
+	for _, file := range link.Files {
+		if file.Form == "" {
+			file.Form = form
 		}
 	}
 

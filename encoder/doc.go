@@ -54,6 +54,13 @@
 //     alone rather than dropped, as is every STAT in 5.5 output, and TIME
 //     (StatusTime) is 7.0 only. An event's FAMC (Event.FamilyXRef) is written
 //     only on a BIRT, CHR or ADOP event, and its ADOP only on an ADOP event.
+//     An inline media link (gedcom.MediaLink with Files and no MediaXRef) is
+//     written with FORM beside FILE for 5.5 output and FORM under FILE
+//     otherwise; 7.0 has no inline link, so [EncodeWithOptions] and
+//     [EncodeStreamingWithOptions] write it as a pointer to an OBJE record
+//     they append before TRLR, identified "@INLINE_OBJEn@" (the first n no
+//     record uses). A bare [StreamEncoder] cannot see the whole document and
+//     writes it inline.
 //     With no known output version (no TargetVersion and no header version)
 //     none of these is dropped, and the role is ROLE.
 //     Every version-specific rule (these, CONC splitting, SNOTE pointers,

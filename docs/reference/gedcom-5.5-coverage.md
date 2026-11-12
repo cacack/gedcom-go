@@ -2067,8 +2067,8 @@ Measured at `FAM.OBJE` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `FILE` | `MULTIMEDIA_LINK.OBJE#2.FILE` | raw (accepted) | raw (accepted) | `{1:1}` in 5.5; `{1:M}` in 5.5.1 |
-| `FORM` | `MULTIMEDIA_LINK.OBJE#2.FORM` | raw (flagged) | — | `{1:1}` |
+| `FILE` | `MULTIMEDIA_LINK.OBJE#2.FILE` | typed | typed | `{1:1}` in 5.5; `{1:M}` in 5.5.1 |
+| `FORM` | `MULTIMEDIA_LINK.OBJE#2.FORM` | typed | — | `{1:1}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | — | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | — | `{0:M}` |
 | `TITL` | `MULTIMEDIA_LINK.OBJE#2.TITL` | typed | typed | `{0:1}` |
@@ -2079,7 +2079,7 @@ Measured at `FAM.OBJE.FILE` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `FORM` | `MULTIMEDIA_LINK.OBJE#2.FILE.FORM` | — | raw (undiagnosed) | `{1:1}` |
+| `FORM` | `MULTIMEDIA_LINK.OBJE#2.FILE.FORM` | — | typed | `{1:1}` |
 
 ### `MULTIMEDIA_LINK.OBJE#2.FILE.FORM`
 
@@ -2087,7 +2087,7 @@ Measured at `FAM.OBJE.FILE.FORM` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `MEDI` | `MULTIMEDIA_LINK.OBJE#2.FILE.FORM.MEDI` | — | raw (undiagnosed) | `{0:1}` |
+| `MEDI` | `MULTIMEDIA_LINK.OBJE#2.FILE.FORM.MEDI` | — | typed | `{0:1}` |
 
 ### `MULTIMEDIA_RECORD.OBJE`
 
