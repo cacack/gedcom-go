@@ -19,8 +19,6 @@ func TestRequiresGEDCOM7_AttributeMarkers(t *testing.T) {
 	}{
 		{"SDATE on an attribute", &Attribute{Type: "OCCU", SortDate: "1900-01-01"}},
 		{"AGE PHRASE on an attribute", &Attribute{Type: "OCCU", Age: "30y", AgePhrase: "About thirty"}},
-		{"HUSB AGE PHRASE on an attribute", &Attribute{Type: "FACT", HusbandAge: "40y", HusbandAgePhrase: "About forty"}},
-		{"WIFE AGE PHRASE on an attribute", &Attribute{Type: "FACT", WifeAge: "38y", WifeAgePhrase: "Late thirties"}},
 		{"ASSO with PHRASE on an attribute", &Attribute{
 			Type:         "OCCU",
 			Associations: []*Association{{IndividualXRef: "@I2@", Phrase: "godparent"}},
@@ -139,6 +137,43 @@ func TestRequiresGEDCOM7_TypedPhrases(t *testing.T) {
 			doc := &Document{Records: []*Record{tt.rec}}
 			if !doc.RequiresGEDCOM7() {
 				t.Errorf("RequiresGEDCOM7() = false, want true")
+			}
+		})
+	}
+}
+
+// A spouse-age PHRASE needs 7.0 on a family's event or attribute, where the
+// encoder writes it, and not on an individual's, where it writes nothing.
+func TestRequiresGEDCOM7_SpouseAgePhraseFamilyOnly(t *testing.T) {
+	tests := []struct {
+		name  string
+		event *Event
+		attr  *Attribute
+	}{
+		{"event HUSB.AGE", &Event{Type: EventMarriage, HusbandAge: "25y", HusbandAgePhrase: "p"}, nil},
+		{"event WIFE.AGE", &Event{Type: EventMarriage, WifeAgePhrase: "p"}, nil},
+		{"attribute HUSB.AGE", nil, &Attribute{Type: "FACT", HusbandAge: "40y", HusbandAgePhrase: "p"}},
+		{"attribute WIFE.AGE", nil, &Attribute{Type: "FACT", WifeAge: "38y", WifeAgePhrase: "p"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var events []*Event
+			var attrs []*Attribute
+			if tt.event != nil {
+				events = []*Event{tt.event}
+			}
+			if tt.attr != nil {
+				attrs = []*Attribute{tt.attr}
+			}
+			fam := &Document{Records: []*Record{{XRef: "@F1@", Type: RecordTypeFamily,
+				Entity: &Family{XRef: "@F1@", Events: events, Attributes: attrs}}}}
+			if !fam.RequiresGEDCOM7() {
+				t.Errorf("family: RequiresGEDCOM7() = false, want true")
+			}
+			indi := &Document{Records: []*Record{{XRef: "@I1@", Type: RecordTypeIndividual,
+				Entity: &Individual{XRef: "@I1@", Events: events, Attributes: attrs}}}}
+			if indi.RequiresGEDCOM7() {
+				t.Errorf("individual: RequiresGEDCOM7() = true, want false")
 			}
 		})
 	}
