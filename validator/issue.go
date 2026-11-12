@@ -116,7 +116,8 @@ const (
 	//
 	// Deprecated: no check reports it. INDI.NAME is optional ({0:M}) in GEDCOM
 	// 5.5, 5.5.1 and 7.0, so a nameless individual is reported as the
-	// data-quality heuristic [CodeMissingName] instead.
+	// data-quality heuristic [CodeMissingName] instead. A SkipRules entry or
+	// code match on this constant now matches nothing; use [CodeMissingName].
 	CodeMissingRequiredField = "MISSING_REQUIRED_FIELD"
 
 	// CodeEmptyFamily indicates a family record has no HUSB, WIFE or CHIL. It

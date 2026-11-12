@@ -359,7 +359,6 @@ func (a *QualityAnalyzer) calculateCompleteness(individuals []*gedcom.Individual
 		if a.hasPlace(ind) {
 			report.IndividualsWithPlaces++
 		}
-
 	}
 
 	// Calculate percentages
