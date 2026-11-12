@@ -104,3 +104,29 @@ func TestUpgradeWithoutInlineSourceCitationAddsNothing(t *testing.T) {
 		}
 	}
 }
+
+// TestUpgradeInlineSourceCitationSkipsDanglingXRef: the promoted record's
+// XRef is not one a dangling pointer already names, so a citation of a
+// missing source is not silently re-bound to the promoted record.
+func TestUpgradeInlineSourceCitationSkipsDanglingXRef(t *testing.T) {
+	const doc = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 SOUR @S1@
+2 PAGE 12
+1 SOUR Family bible
+0 TRLR
+`
+	_, _, out := convertText(t, doc, gedcom.Version70)
+	for _, want := range []string{
+		"0 @S2@ SOUR\n1 NOTE Family bible\n0 @I1@ INDI\n1 SOUR @S1@\n2 PAGE 12\n1 SOUR @S2@\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "0 @S1@ SOUR") {
+		t.Errorf("promoted record took the dangling pointer's XRef:\n%s", out)
+	}
+}

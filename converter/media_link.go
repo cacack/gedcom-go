@@ -172,15 +172,31 @@ func blockEnd(tags []*gedcom.Tag, i int) int {
 	return end
 }
 
-// xrefsInUse returns every XRef doc's records and XRefMap hold.
+// xrefsInUse returns every XRef doc's records and XRefMap hold, and every
+// XRef a pointer in the header or a record names, so a new record never
+// takes the XRef of a dangling pointer and silently becomes its target.
 func xrefsInUse(doc *gedcom.Document) map[string]bool {
 	used := map[string]bool{}
+	addPointers := func(tags []*gedcom.Tag) {
+		for _, t := range tags {
+			if t == nil {
+				continue
+			}
+			if v := strings.TrimSpace(t.Value); doc.IsPointerXRef(v) {
+				used[v] = true
+			}
+		}
+	}
 	for xref := range doc.XRefMap {
 		used[xref] = true
+	}
+	if doc.Header != nil {
+		addPointers(doc.Header.Tags)
 	}
 	for _, r := range doc.Records {
 		if r != nil {
 			used[r.XRef] = true
+			addPointers(r.Tags)
 		}
 	}
 	return used
