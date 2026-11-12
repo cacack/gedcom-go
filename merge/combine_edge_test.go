@@ -304,3 +304,21 @@ func TestCombine_EqualSchemasNoConflict(t *testing.T) {
 		}
 	}
 }
+
+// TestCombine_Doc2InternalDuplicateKeepsFirst pins that a duplicate XRef
+// inside doc2 resolves to its first definition in the combined XRefMap, as
+// Document.XRefMap documents, while both records are kept.
+func TestCombine_Doc2InternalDuplicateKeepsFirst(t *testing.T) {
+	first, second := indRec("@I1@"), indRec("@I1@")
+	out, _, err := merge.Combine(docWith(indRec("@I9@")), docWith(first, second), merge.CombineOptions{})
+	if err != nil {
+		t.Fatalf("Combine: %v", err)
+	}
+	if len(out.Records) != 3 {
+		t.Fatalf("Records = %d, want all 3 kept", len(out.Records))
+	}
+	got := out.XRefMap["@I1@"]
+	if got == nil || got != out.Records[1] || got == out.Records[2] {
+		t.Errorf("XRefMap[@I1@] = %p, want doc2's first definition %p", got, out.Records[1])
+	}
+}

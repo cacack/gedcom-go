@@ -16,8 +16,8 @@ type Document struct {
 	//
 	// When two records in Records share an XRef, which is malformed, the map
 	// holds the first: the decoder keeps both records, maps the first and
-	// reports the second as DUPLICATE_XREF, and Clone and Subset follow the
-	// same first-definition rule.
+	// reports the second as DUPLICATE_XREF, and Clone, Subset and merge.Combine
+	// follow the same first-definition rule.
 	XRefMap map[string]*Record
 
 	// Vendor identifies the software that created this GEDCOM file.
