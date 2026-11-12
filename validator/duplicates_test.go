@@ -3,6 +3,7 @@ package validator
 import (
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -757,8 +758,10 @@ func TestFindDuplicates_BCEBirthYears(t *testing.T) {
 		built1       *gedcom.Date // used instead of date1 for a value ParseDate rejects
 		maxYearDiff  int
 		wantReason   string // the birth-year reason expected; "" means none
+		wantNoPair   bool   // the years are too far apart to report a pair (#728)
 	}{
-		{name: "44 BCE vs 44 CE outside default range", date1: "44 BC", date2: "44", wantReason: ""},
+		{name: "44 BCE vs 44 CE outside default range", date1: "44 BC", date2: "44", wantNoPair: true},
+		{name: "50 BCE vs 50 CE outside default range", date1: "50 BC", date2: "50", wantNoPair: true},
 		{name: "44 BCE vs 44 CE are 87 years apart", date1: "44 BC", date2: "44", maxYearDiff: 100, wantReason: "birth year within 87 years"},
 		{name: "44 BCE vs 44 BCE", date1: "1 JAN 44 BC", date2: "15 MAR 44 BC", wantReason: "same birth year"},
 		{name: "1 BCE vs 1 CE within range", date1: "1 BC", date2: "1", wantReason: "birth year within 1 years"},
@@ -795,6 +798,12 @@ func TestFindDuplicates_BCEBirthYears(t *testing.T) {
 			}
 
 			duplicates := NewDuplicateDetector(&DuplicateConfig{MaxBirthYearDiff: tt.maxYearDiff}).FindDuplicates(doc)
+			if tt.wantNoPair {
+				if len(duplicates) != 0 {
+					t.Errorf("want no pair, got %+v", duplicates[0])
+				}
+				return
+			}
 			if len(duplicates) != 1 {
 				t.Fatalf("Expected 1 duplicate pair, got %d", len(duplicates))
 			}
@@ -1745,6 +1754,98 @@ func TestCompareGivenNames_EarlyExitEquivalence(t *testing.T) {
 			if (got < tt.minSimilarity) != (exact < tt.minSimilarity) {
 				t.Errorf("compareGivenNames(%q, %q, %v) = %v flips the accept/reject verdict "+
 					"against the exact %v", tt.g1, tt.g2, tt.minSimilarity, got, exact)
+			}
+		})
+	}
+}
+
+// TestFindDuplicates_ContradictionsVeto pins #728: birth years further apart
+// than MaxBirthYearDiff, or two known sexes that differ, rule a pair out
+// however well the names match, rather than merely withholding credit.
+func TestFindDuplicates_ContradictionsVeto(t *testing.T) {
+	tests := []struct {
+		name         string
+		year1, year2 string
+		sex1, sex2   string
+		config       DuplicateConfig
+		wantReasons  []string // nil means no pair is reported
+	}{
+		{
+			name:  "namesake father and son 30 years apart",
+			year1: "1820", year2: "1850", sex1: "M", sex2: "M",
+		},
+		{
+			name:  "one year past the window",
+			year1: "1850", year2: "1853", sex1: "M", sex2: "M",
+		},
+		{
+			name:  "ZeroThreshold vetoes any year difference",
+			year1: "1850", year2: "1851", sex1: "M", sex2: "M",
+			config: DuplicateConfig{MinConfidence: ZeroThreshold, MaxBirthYearDiff: ZeroThreshold},
+		},
+		{
+			name:  "male and female",
+			year1: "1850", year2: "1850", sex1: "M", sex2: "F",
+		},
+		{
+			name:  "female and GEDCOM 7.0 X",
+			year1: "1850", year2: "1850", sex1: "F", sex2: "X",
+		},
+		{
+			name:  "sex compared case-insensitively",
+			year1: "1850", year2: "1850", sex1: "m", sex2: "M",
+			wantReasons: []string{"exact surname match", "exact given name match", "same birth year", "same sex"},
+		},
+		{
+			name:  "unknown sex neither vetoes nor earns credit",
+			year1: "1850", year2: "1850", sex1: "U", sex2: "F",
+			wantReasons: []string{"exact surname match", "exact given name match", "same birth year"},
+		},
+		{
+			name:  "two unknown sexes earn no credit",
+			year1: "1850", year2: "1850", sex1: "U", sex2: "U",
+			wantReasons: []string{"exact surname match", "exact given name match", "same birth year"},
+		},
+		{
+			name:  "missing sex neither vetoes nor earns credit",
+			year1: "1850", year2: "1850", sex1: "", sex2: "M",
+			wantReasons: []string{"exact surname match", "exact given name match", "same birth year"},
+		},
+		{
+			name:  "within the window still reported",
+			year1: "1850", year2: "1852", sex1: "M", sex2: "M",
+			wantReasons: []string{"exact surname match", "exact given name match", "birth year within 2 years", "same sex"},
+		},
+		{
+			name:  "missing birth year neither vetoes nor earns credit",
+			year1: "1850", year2: "", sex1: "M", sex2: "M",
+			config:      DuplicateConfig{MinConfidence: ZeroThreshold},
+			wantReasons: []string{"exact surname match", "exact given name match", "same sex"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ind1 := bornIn(t, "@I1@", "John /Smith/", tt.year1)
+			ind2 := &gedcom.Individual{XRef: "@I2@", Names: []*gedcom.PersonalName{{Full: "John /Smith/"}}}
+			if tt.year2 != "" {
+				ind2 = bornIn(t, "@I2@", "John /Smith/", tt.year2)
+			}
+			ind1.Sex, ind2.Sex = tt.sex1, tt.sex2
+			config := tt.config
+
+			got := NewDuplicateDetector(&config).FindDuplicates(twoIndividualDoc(ind1, ind2))
+			if tt.wantReasons == nil {
+				if len(got) != 0 {
+					t.Errorf("want no pair, got confidence %.2f reasons %v", got[0].Confidence, got[0].MatchReasons)
+				}
+				return
+			}
+			if len(got) != 1 {
+				t.Fatalf("want one pair with reasons %v, got %d pairs", tt.wantReasons, len(got))
+			}
+			if !slices.Equal(got[0].MatchReasons, tt.wantReasons) {
+				t.Errorf("reasons = %v, want %v", got[0].MatchReasons, tt.wantReasons)
 			}
 		})
 	}

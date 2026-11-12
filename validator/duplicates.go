@@ -81,7 +81,8 @@ const UnlimitedNameRunes = -1
 //
 //	MinNameSimilarity  no given-name gate; any pair of given names is accepted
 //	MinConfidence      every pair that passes the other gates is reported
-//	MaxBirthYearDiff   only an identical birth year earns birth-date credit
+//	MaxBirthYearDiff   only an identical birth year earns birth-date credit;
+//	                   any difference vetoes the pair
 const ZeroThreshold = -1
 
 // Default thresholds applied by duplicate detection when the corresponding
@@ -118,13 +119,17 @@ type DuplicateConfig struct {
 
 	// MaxBirthYearDiff is the maximum difference in birth years that still earns
 	// partial birth-date credit. An identical birth year always earns full credit.
+	// It is also a veto: when both birth years are known and differ by more than
+	// MaxBirthYearDiff, the pair is never reported, whatever its other scores, so
+	// a namesake father and son are not taken for one person. A missing birth
+	// year neither earns credit nor vetoes (see RequireBirthDate).
 	// Years are compared astronomically, so 1 BCE and 1 CE are one year apart.
 	// Dates in the same calendar compare Year as written; dates in different
 	// calendars are compared as the Gregorian years of their first days, reading
 	// a dual date in New Style.
 	//
 	//	0        use the default (2)
-	//	negative only an identical birth year earns credit ([ZeroThreshold])
+	//	negative only an identical birth year earns credit; any other vetoes ([ZeroThreshold])
 	//	positive use that value
 	//
 	// Default: 2
@@ -695,18 +700,26 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 		return DuplicatePair{}, false
 	}
 
+	// Birth years further apart than MaxBirthYearDiff contradict a match, so
+	// they veto the pair rather than merely withholding credit (#728).
 	if yearDiff, ok := birthYearsApart(birthDate1, birthDate2); ok {
-		if yearDiff == 0 {
+		switch {
+		case yearDiff == 0:
 			confidence += 0.2
 			reasons = append(reasons, "same birth year")
-		} else if yearDiff <= d.config.MaxBirthYearDiff {
+		case yearDiff <= d.config.MaxBirthYearDiff:
 			confidence += 0.1
 			reasons = append(reasons, fmt.Sprintf("birth year within %d years", yearDiff))
+		default:
+			return DuplicatePair{}, false
 		}
 	}
 
-	// Compare sex
-	if ind1.Sex != "" && ind2.Sex != "" && ind1.Sex == ind2.Sex {
+	// Compare sex: two known sexes that differ veto the pair (#728).
+	if sex1, sex2 := knownSex(ind1.Sex), knownSex(ind2.Sex); sex1 != "" && sex2 != "" {
+		if sex1 != sex2 {
+			return DuplicatePair{}, false
+		}
 		confidence += 0.1
 		reasons = append(reasons, "same sex")
 	}
@@ -722,6 +735,16 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 		Confidence:   confidence,
 		MatchReasons: reasons,
 	}, true
+}
+
+// knownSex returns sex upper-cased and trimmed, or "" when it records no
+// known sex: empty or U (unknown). M, F and the GEDCOM 7.0 X are known.
+func knownSex(sex string) string {
+	sex = strings.ToUpper(strings.TrimSpace(sex))
+	if sex == "U" {
+		return ""
+	}
+	return sex
 }
 
 // normalizeName normalizes a name for comparison.
