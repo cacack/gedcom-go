@@ -52,8 +52,8 @@ for _, t := range indi.Tags {
 
 ## Vendor detection
 
-The originating software is detected from the `HEAD.SOUR` value and exposed on
-`Document.Vendor`:
+The originating software is detected from the header's `HEAD.SOUR` subtree and
+exposed on `Document.Vendor`:
 
 ```go
 doc, _ := decoder.Decode(file)
@@ -69,10 +69,37 @@ fmt.Println(doc.Vendor.String())  // "ancestry", "familysearch", ... or "unknown
 fmt.Println(doc.Vendor.IsKnown()) // false for VendorUnknown
 ```
 
-Detection is case-insensitive substring matching (`gedcom.DetectVendor`).
-Recognized vendors: `VendorAncestry` (includes FamilyTreeMaker),
-`VendorFamilySearch`, `VendorRootsMagic`, `VendorLegacy`, `VendorGramps`,
-`VendorMyHeritage`. Unrecognized sources return `VendorUnknown` — never an error.
+`gedcom.DetectVendorFromHeader` (which the decoder calls) tries `HEAD.SOUR`,
+then `HEAD.SOUR.NAME`, then `HEAD.SOUR.CORP`, and returns the first vendor
+found; `gedcom.DetectVendor` matches one string. A name matches anywhere in the
+value once case, spaces and punctuation are dropped (`Family Tree Maker`,
+`FamilyTreeMaker` and `FAMILY_TREE_MAKER` are all `familytreemaker`); a short
+code such as `FTM` matches only as a whole word. Rules are checked in table
+order. Unrecognized sources return `VendorUnknown` — never an error.
+
+| Constant | Matches (case, spacing and punctuation ignored) | Real exports in `testdata/` |
+|----------|------------------------------------------------|-----------------------------|
+| `VendorAncestry` | `ancestry`, `familytreemaker`, word `FTM` | Ancestry.com Family Trees, Family Tree Maker (`SOUR FTM`) |
+| `VendorFamilySearch` | `familysearch` | |
+| `VendorRootsMagic` | `rootsmagic` | RootsMagic |
+| `VendorLegacy` | `legacy` | Legacy |
+| `VendorGramps` | `gramps` | Gramps |
+| `VendorMyHeritage` | `myheritage`; `HEAD.SOUR._RTLSAVE` when nothing else matches | `MYHERITAGE`, Family Tree Builder 8 (empty `SOUR`) |
+| `VendorPAF` | `personalancestralfile`, word `PAF` | `PAF`, `PAF 2.2` |
+| `VendorAncestris` | `ancestris` | `ANCESTRIS` |
+| `VendorHeredis` | `heredis` | `HEREDIS 14 PC` |
+| `VendorFamilyHistorian` | `familyhistorian` | `FAMILY_HISTORIAN` |
+| `VendorBrothersKeeper` | `broskeep`, `brotherskeeper` | `BROSKEEP` |
+| `VendorTMG` | `mastergenealogist`, word `TMG` | `TMG 1.2a` |
+| `VendorFamilyOrigins` | `familyorigins` | `FamilyOrigins` |
+| `VendorEasyTree` | `easytree` | `EasyTree` |
+| `VendorGEDitCOM` | `geditcom` | `GEDitCOM` |
+| `VendorWebtrees` | `webtrees` | `webtrees` |
+| `VendorGeneanet` | `geneanet` | `Geneanet` |
+| `VendorMyRoots` | `myroots` | `My_Roots` |
+| `VendorWebTreePrint` | `webtreeprint` | `webtreeprint.com` |
+| `VendorReunion` | `reunion` | `Reunion` |
+| `VendorMacFamilyTree` | `macfamilytree`, `syniumfamilytree` | `SyniumFamilyTree` |
 
 > **Note:** Some vendors do not claim authorship in `HEAD.SOUR`. FamilySearch,
 > for example, preserves the *original* authoring system, so a FamilySearch
@@ -196,11 +223,11 @@ validation registry; apart from `_UID` (below), none have typed accessors.
 
 ## Other vendors
 
-Gramps, Legacy Family Tree, Heredis, Family Historian, and FamilyTreeMaker
-exports are parsed and their custom tags preserved losslessly via raw `Tags`.
-Gramps and Legacy are recognized by vendor detection (`VendorGramps`,
-`VendorLegacy`); the others fall through to `VendorUnknown` but are still fully
-preserved. See [compatibility](../governance/policies/compatibility.md) for the per-vendor support
+Gramps, Legacy Family Tree, Heredis, Family Historian, Family Tree Maker and
+the other vendors in the [detection table](#vendor-detection) are parsed and
+their custom tags preserved losslessly via raw `Tags`. Exports from software
+that detection does not recognize fall through to `VendorUnknown` but are still
+fully preserved. See [compatibility](../governance/policies/compatibility.md) for the per-vendor support
 matrix and tested fixtures.
 
 ## `_UID` — record and event identifiers

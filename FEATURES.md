@@ -132,18 +132,17 @@ triggers — both are valid in 5.5.1.
 
 ## Vendor Detection
 
-Automatic detection of the originating software from `HEAD.SOUR`:
+Automatic detection of the originating software from `HEAD.SOUR`, then
+`HEAD.SOUR.NAME`, then `HEAD.SOUR.CORP` (`gedcom.DetectVendorFromHeader`).
+Recognized: Ancestry (including Family Tree Maker), FamilySearch, RootsMagic,
+Legacy, Gramps, MyHeritage (including Family Tree Builder's empty-`SOUR`
+exports, via `HEAD.SOUR._RTLSAVE`), PAF, Ancestris, Heredis, Family Historian,
+Brother's Keeper, The Master Genealogist, Family Origins, EasyTree, GEDitCOM,
+webtrees, Geneanet, My Roots, webtreeprint.com, Reunion and MacFamilyTree. The
+strings each matches are in the
+[vendor extensions guide](docs/guides/vendor-extensions.md#vendor-detection).
 
-| Vendor | Detection Patterns |
-|--------|-------------------|
-| Ancestry | ancestry, familytreemaker |
-| FamilySearch | familysearch |
-| RootsMagic | rootsmagic |
-| Legacy | legacy |
-| Gramps | gramps |
-| MyHeritage | myheritage |
-
-- Case-insensitive substring matching
+- Case-insensitive; spacing and punctuation ignored; short codes (`FTM`, `PAF`, `TMG`) match whole words only
 - Exposed via `Document.Vendor` field
 - Helper methods: `Vendor.String()`, `Vendor.IsKnown()`
 - Unknown sources return `VendorUnknown` (never errors)

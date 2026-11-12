@@ -88,20 +88,42 @@ We do **not** mean:
 
 ## Vendor Detection
 
-The library automatically detects the source software from the `HEAD.SOUR` tag. This enables:
+The library automatically detects the source software from the header's
+`HEAD.SOUR`, `HEAD.SOUR.NAME` and `HEAD.SOUR.CORP` values. This enables:
 
 - Logging which software created a file
-- Future vendor-specific parsing behaviors if needed
+- Choosing a validation registry (`validator.RegistryForVendor`)
 
-Detection is implemented in [`gedcom/vendor.go`](../../../gedcom/vendor.go).
+Detection is implemented in [`gedcom/vendor.go`](../../../gedcom/vendor.go);
+the strings each vendor matches are listed in the
+[vendor extensions guide](../../guides/vendor-extensions.md#vendor-detection).
 
 Currently detected vendors:
-- Ancestry.com (including FamilyTreeMaker)
+- Ancestry.com (including Family Tree Maker)
 - FamilySearch
 - RootsMagic
 - Legacy Family Tree
 - Gramps
-- MyHeritage
+- MyHeritage (including Family Tree Builder exports with an empty `HEAD.SOUR`)
+- PAF (Personal Ancestral File)
+- Ancestris
+- Heredis
+- Family Historian
+- Brother's Keeper
+- The Master Genealogist
+- Family Origins
+- EasyTree
+- GEDitCOM
+- webtrees
+- Geneanet
+- My Roots
+- webtreeprint.com
+- Reunion
+- MacFamilyTree
+
+Every real export in `testdata/` is detected except
+`edge-cases/bare-header-geo-coords.ged`, whose header is a bare `0 HEAD` with
+nothing that names its producer.
 
 ## Test Data Sources
 

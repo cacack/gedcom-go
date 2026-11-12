@@ -53,6 +53,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 		version     gedcom.Version
 		encoding    gedcom.Encoding // raw CHAR value as stored in Header.Encoding
 		source      string
+		vendor      gedcom.Vendor // Document.Vendor (issue #731)
 		individuals int
 		families    int
 		diags       map[string]int
@@ -64,6 +65,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version551,
 			encoding:    gedcom.EncodingUTF8,
 			source:      "Legacy",
+			vendor:      gedcom.VendorLegacy,
 			individuals: 1288,
 			families:    495,
 			diags:       map[string]int{CodeInvalidValue: 14},
@@ -74,6 +76,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version55,
 			encoding:    gedcom.EncodingUTF8,
 			source:      "PAF",
+			vendor:      gedcom.VendorPAF,
 			individuals: 33,
 			families:    14,
 			diags:       map[string]int{},
@@ -84,6 +87,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version55,
 			encoding:    gedcom.Encoding("ANSI"),
 			source:      "FamilyOrigins",
+			vendor:      gedcom.VendorFamilyOrigins,
 			individuals: 529,
 			families:    114,
 			diags:       map[string]int{CodeInvalidValue: 639},
@@ -94,6 +98,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version55,
 			encoding:    gedcom.Encoding("IBMPC"),
 			source:      "TMG 1.2a",
+			vendor:      gedcom.VendorTMG,
 			individuals: 110,
 			families:    58,
 			// 161 -> 162 for issue #449: buildHeader now reports unknown
@@ -108,6 +113,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version551,
 			encoding:    gedcom.EncodingUTF8,
 			source:      "ANCESTRIS",
+			vendor:      gedcom.VendorAncestris,
 			individuals: 303,
 			families:    139,
 			// 12 individual EVEN structures are decoded rather than flagged
@@ -138,6 +144,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version551,
 			encoding:    gedcom.EncodingUTF8,
 			source:      "",
+			vendor:      gedcom.VendorMyHeritage,
 			individuals: 4683,
 			families:    2863,
 			// UnknownTag is unchanged by issue #378 because the counts
@@ -153,6 +160,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version55,
 			encoding:    gedcom.EncodingANSEL,
 			source:      "My_Roots",
+			vendor:      gedcom.VendorMyRoots,
 			individuals: 20,
 			families:    11,
 			diags:       map[string]int{CodeInvalidValue: 2},
@@ -163,6 +171,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version55,
 			encoding:    gedcom.EncodingUTF8,
 			source:      "webtreeprint.com",
+			vendor:      gedcom.VendorWebTreePrint,
 			individuals: 14,
 			families:    4,
 			diags:       map[string]int{CodeInvalidValue: 1},
@@ -173,6 +182,9 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version551, // fallback when the header declares nothing
 			encoding:    gedcom.Encoding(""),
 			source:      "",
+			// The header has no subordinates at all, so nothing names the
+			// producer; this is the one real export detection cannot cover.
+			vendor:      gedcom.VendorUnknown,
 			individuals: 15,
 			families:    7,
 			diags:       map[string]int{},
@@ -183,6 +195,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version55,
 			encoding:    gedcom.Encoding("ANSI"),
 			source:      "FTM",
+			vendor:      gedcom.VendorAncestry,
 			individuals: 178,
 			families:    113,
 			// All 78 UNKNOWN_TAG diagnostics are gone: 67 individual EVEN
@@ -202,6 +215,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version55,
 			encoding:    gedcom.Encoding("IBM WINDOWS"),
 			source:      "EasyTree",
+			vendor:      gedcom.VendorEasyTree,
 			individuals: 69,
 			families:    19,
 			diags:       map[string]int{CodeUnknownTag: 34},
@@ -212,6 +226,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version70,
 			encoding:    gedcom.EncodingUTF8,
 			source:      "SyniumFamilyTree",
+			vendor:      gedcom.VendorMacFamilyTree,
 			individuals: 88,
 			families:    108,
 			// UNKNOWN_TAG: CREA/CHAN under events and names, FILN, AGNC,
@@ -228,6 +243,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version551,
 			encoding:    gedcom.EncodingUTF8,
 			source:      "Reunion",
+			vendor:      gedcom.VendorReunion,
 			individuals: 377,
 			families:    284,
 			diags:       map[string]int{CodeUnknownTag: 1, CodeInvalidValue: 1},
@@ -239,6 +255,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version551,
 			encoding:    gedcom.EncodingUTF8,
 			source:      "Geneanet",
+			vendor:      gedcom.VendorGeneanet,
 			individuals: 195,
 			families:    71,
 			diags:       map[string]int{CodeUnknownTag: 5},
@@ -250,6 +267,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version551,
 			encoding:    gedcom.Encoding("ANSI"),
 			source:      "Geneanet",
+			vendor:      gedcom.VendorGeneanet,
 			individuals: 270,
 			families:    176,
 			diags:       map[string]int{CodeUnknownTag: 1},
@@ -261,6 +279,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version551,
 			encoding:    gedcom.EncodingUTF8,
 			source:      "webtrees",
+			vendor:      gedcom.VendorWebtrees,
 			individuals: 110,
 			families:    68,
 			diags:       map[string]int{CodeUnknownTag: 2, CodeInvalidValue: 4},
@@ -272,6 +291,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version551,
 			encoding:    gedcom.EncodingUTF8,
 			source:      "FAMILY_HISTORIAN",
+			vendor:      gedcom.VendorFamilyHistorian,
 			individuals: 198,
 			families:    173,
 			diags:       map[string]int{CodeUnknownTag: 6},
@@ -283,6 +303,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version551,
 			encoding:    gedcom.Encoding("ANSI"),
 			source:      "FAMILY_HISTORIAN",
+			vendor:      gedcom.VendorFamilyHistorian,
 			individuals: 208,
 			families:    62,
 			// All 62 are the standard 5.5.1 FAM.RIN ("1 RIN MH:F2"), which
@@ -296,6 +317,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version551,
 			encoding:    gedcom.Encoding("ANSI"),
 			source:      "BROSKEEP",
+			vendor:      gedcom.VendorBrothersKeeper,
 			individuals: 257,
 			families:    206,
 			diags:       map[string]int{CodeInvalidValue: 103},
@@ -307,6 +329,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			version:     gedcom.Version551,
 			encoding:    gedcom.EncodingUTF8,
 			source:      "Ancestry.com Family Trees",
+			vendor:      gedcom.VendorAncestry,
 			individuals: 12,
 			families:    13,
 			diags:       map[string]int{CodeUnknownTag: 15, CodeInvalidValue: 19},
@@ -347,6 +370,9 @@ func TestCorpusVendorFiles(t *testing.T) {
 			}
 			if doc.Header.SourceSystem != tt.source {
 				t.Errorf("Header.SourceSystem = %q, want %q", doc.Header.SourceSystem, tt.source)
+			}
+			if doc.Vendor != tt.vendor {
+				t.Errorf("Vendor = %q, want %q", doc.Vendor, tt.vendor)
 			}
 			if got := len(doc.Individuals()); got != tt.individuals {
 				t.Errorf("Individuals() = %d, want %d", got, tt.individuals)
