@@ -149,7 +149,8 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	var budget *diagnosticBudget
 	if opts.StrictMode {
 		parseOpts.TolerateOnly = parser.ErrXRefContainsSpace
-	} else if budget = newDiagnosticBudget(opts.diagnosticsLimit()); budget != nil {
+	} else {
+		budget = newDiagnosticBudget(opts.diagnosticsLimit())
 		parseOpts.Filter = budget
 	}
 	parsedLines, parseErrors, fe := p.ParseWithOptions(finalReader, parseOpts)
@@ -236,7 +237,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// A dropped level-0 line takes its record's subordinate lines with it, so
 	// they are not attached to the preceding record (#723).
 	if !opts.StrictMode {
-		lines = skipOrphanedRecords(lines, parseErrors, collector)
+		lines = skipOrphanedRecords(lines, budget.levelZero, parseErrors, collector)
 		normalizeLevelJumps(lines, collector)
 	}
 

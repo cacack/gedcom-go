@@ -56,11 +56,11 @@ type ParseOptions struct {
 	TolerateOnly error
 
 	// Filter, if set, is consulted in lenient mode for each line error, in
-	// input order, and the error is collected only if its KeepError returns
-	// true (and MaxErrors has not been reached). It lets a caller bound what
-	// is kept while still seeing every error, for instance to count those it
-	// drops. The error that stops parsing under TolerateOnly is collected
-	// without consulting it.
+	// input order, before MaxErrors is applied, and the error is collected
+	// only if its KeepError returns true (and MaxErrors has not been
+	// reached). It lets a caller bound what is kept while still seeing every
+	// error, for instance to count those it drops. The error that stops
+	// parsing under TolerateOnly is collected without consulting it.
 	Filter ErrorFilter
 }
 
@@ -68,8 +68,13 @@ type ParseOptions struct {
 // collects; see [ParseOptions.Filter]. It is an interface rather than a func
 // so that ParseOptions stays comparable; use a comparable implementation,
 // such as a pointer.
+//
+// KeepError receives the error and the full text of the line it rejected.
+// The error's Context is clipped to MaxContextBytes; text is not, so a
+// filter that classifies the line reads it rather than Context. Retaining
+// text keeps the whole line in memory.
 type ErrorFilter interface {
-	KeepError(*ParseError) bool
+	KeepError(pe *ParseError, text string) bool
 }
 
 // NewParser creates a new Parser instance.
@@ -502,7 +507,7 @@ func (p *Parser) ParseWithOptions(r io.Reader, opts *ParseOptions) (
 			if opts.TolerateOnly != nil && !errors.Is(parseErr, opts.TolerateOnly) {
 				return lines, append(parseErrors, parseErr), nil
 			}
-			if opts.Filter != nil && !opts.Filter.KeepError(parseErr) {
+			if opts.Filter != nil && !opts.Filter.KeepError(parseErr, text) {
 				continue
 			}
 			// Only collect if under MaxErrors limit (0 = unlimited)

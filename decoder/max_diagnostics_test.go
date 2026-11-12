@@ -256,3 +256,49 @@ func TestMaxDiagnosticsBoundsMemory(t *testing.T) {
 	}
 	t.Logf("result holds %d MB of heap", held>>20)
 }
+
+// TestMaxDiagnosticsBoundsDroppedLevelZeroErrors checks that rejected lines
+// shaped like level-0 lines count against the bound while parsing (#744):
+// the parser keeps only the first limit of their errors, yet every one still
+// skips its record and is counted in the notice.
+func TestMaxDiagnosticsBoundsDroppedLevelZeroErrors(t *testing.T) {
+	var sb strings.Builder
+	sb.WriteString("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n")
+	for i := 1; i <= 5; i++ {
+		fmt.Fprintf(&sb, "x0 @I%d@ INDI\n1 NAME N%d\n", i, i)
+	}
+	sb.WriteString("0 TRLR\n")
+	input := sb.String()
+
+	budget := newDiagnosticBudget(2)
+	_, errs, fatal := parser.NewParser().ParseWithOptions(strings.NewReader(input),
+		&parser.ParseOptions{Lenient: true, Filter: budget})
+	if fatal != nil {
+		t.Fatalf("ParseWithOptions() fatal = %v", fatal)
+	}
+	var kept []int
+	for _, pe := range errs {
+		kept = append(kept, pe.Line)
+	}
+	if want := []int{4, 6}; !reflect.DeepEqual(kept, want) {
+		t.Errorf("kept parse errors on lines %v, want %v", kept, want)
+	}
+	if want := []int{4, 6, 8, 10, 12}; !reflect.DeepEqual(budget.levelZero, want) {
+		t.Errorf("levelZero = %v, want %v", budget.levelZero, want)
+	}
+
+	opts := DefaultOptions()
+	opts.MaxDiagnostics = 2
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), opts)
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	if n := len(result.Document.Individuals()); n != 0 {
+		t.Errorf("got %d individuals, want every record skipped", n)
+	}
+	// 5 parse errors and 5 skipped records; 2 are reported.
+	if got := result.Diagnostics; len(got) != 3 || got[0].Line != 4 || got[1].Line != 6 ||
+		!strings.HasPrefix(got[2].Message, "8 further ") {
+		t.Errorf("diagnostics = %v, want lines 4 and 6 then a notice counting 8", got)
+	}
+}

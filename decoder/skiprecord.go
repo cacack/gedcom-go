@@ -17,34 +17,42 @@ import (
 // becomes the first individual's second name, and the document is plausible
 // and wrong. Skipping the block loses that record, but visibly.
 //
-// A record's block runs from its dropped level-0 line up to, not including,
-// the next kept level-0 line. Both lines and parseErrors are in input order.
+// levelZero holds the line numbers of the dropped level-0 lines
+// (diagnosticBudget.levelZero). A record's block runs from its dropped level-0
+// line up to, not including, the next kept level-0 line. lines, levelZero and
+// parseErrors are in input order. A dropped line whose error the budget left
+// out still skips its record; its diagnostic, which could only fall past the
+// bound, is then built without the line's context and counted as left out.
 // The returned slice shares no backing array with lines when any line is
 // removed; otherwise it is lines itself.
-func skipOrphanedRecords(lines []*parser.Line, parseErrors []*parser.ParseError, collector *diagnosticCollector) []*parser.Line {
+func skipOrphanedRecords(lines []*parser.Line, levelZero []int, parseErrors []*parser.ParseError, collector *diagnosticCollector) []*parser.Line {
 	var kept []*parser.Line
 	modified := false
-	i := 0
-	for _, pe := range parseErrors {
-		if !isDroppedLevelZero(pe) {
-			continue
-		}
+	i, j := 0, 0
+	for _, dropped := range levelZero {
 		// Copy the lines before the dropped line. A kept line at the error's
 		// own line number means the parser recovered it, so it is not dropped.
-		for i < len(lines) && lines[i].LineNumber < pe.Line {
+		for i < len(lines) && lines[i].LineNumber < dropped {
 			kept = append(kept, lines[i])
 			i++
 		}
-		if i < len(lines) && lines[i].LineNumber == pe.Line {
+		if i < len(lines) && lines[i].LineNumber == dropped {
 			continue
 		}
 		modified = true
-		last := pe.Line
+		last := dropped
 		for i < len(lines) && lines[i].Level != 0 {
 			last = lines[i].LineNumber
 			i++
 		}
-		collector.addSkippedRecord(pe, last)
+		for j < len(parseErrors) && parseErrors[j].Line < dropped {
+			j++
+		}
+		context := ""
+		if j < len(parseErrors) && parseErrors[j].Line == dropped {
+			context = parseErrors[j].Context
+		}
+		collector.addSkippedRecord(dropped, last, context)
 	}
 	if !modified {
 		return lines
@@ -52,16 +60,16 @@ func skipOrphanedRecords(lines []*parser.Line, parseErrors []*parser.ParseError,
 	return append(kept, lines[i:]...)
 }
 
-// isDroppedLevelZero reports whether pe rejected a line that was meant as a
-// level-0 line. Its first field must be "0" once any non-digit prefix is
+// isDroppedLevelZero reports whether text, a line the parser rejected, was
+// meant as a level-0 line. Its first field must be "0" once any non-digit prefix is
 // removed ("\uFEFF0 @I2@ INDI", "x0 HEAD"), and the rest must have the shape of
 // a record line: an xref followed by an uppercase or extension tag
 // ("@I2@ INDI"), or a bare HEAD or TRLR. A line that is exactly "0" counts too.
 // The shape test keeps stray text inside a record ("£0 10s paid for burial",
 // "page 0 of 3") from being taken for a record boundary, which would discard
 // the rest of a correctly parented record.
-func isDroppedLevelZero(pe *parser.ParseError) bool {
-	fields := strings.Fields(pe.Context)
+func isDroppedLevelZero(text string) bool {
+	fields := strings.Fields(text)
 	if len(fields) == 0 {
 		return false
 	}
@@ -98,21 +106,22 @@ func isTagShaped(s string) bool {
 	return s != ""
 }
 
-// addSkippedRecord records that the record starting at pe's line was skipped,
-// through line last. Severity is SeverityError: the record's data is lost.
-func (c *diagnosticCollector) addSkippedRecord(pe *parser.ParseError, last int) {
+// addSkippedRecord records that the record starting at line first was
+// skipped, through line last; context is the dropped line's. Severity is
+// SeverityError: the record's data is lost.
+func (c *diagnosticCollector) addSkippedRecord(first, last int, context string) {
 	if !c.collecting() {
 		return
 	}
-	lineRange := fmt.Sprintf("line %d", pe.Line)
-	if last > pe.Line {
-		lineRange = fmt.Sprintf("lines %d-%d", pe.Line, last)
+	lineRange := fmt.Sprintf("line %d", first)
+	if last > first {
+		lineRange = fmt.Sprintf("lines %d-%d", first, last)
 	}
 	c.add(NewDiagnostic(
-		pe.Line,
+		first,
 		SeverityError,
 		CodeSkippedRecord,
 		fmt.Sprintf("record skipped (%s): its level-0 line could not be parsed, so its subordinate lines were not attached to the preceding record", lineRange),
-		pe.Context,
+		context,
 	))
 }

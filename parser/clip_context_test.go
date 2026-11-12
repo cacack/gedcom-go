@@ -57,21 +57,27 @@ func TestParseErrorClipsContext(t *testing.T) {
 }
 
 // keepFunc adapts a func to ErrorFilter for tests.
-type keepFunc struct{ f func(*ParseError) bool }
+type keepFunc struct {
+	f func(*ParseError, string) bool
+}
 
-func (k *keepFunc) KeepError(pe *ParseError) bool { return k.f(pe) }
+func (k *keepFunc) KeepError(pe *ParseError, text string) bool { return k.f(pe, text) }
 
 // TestParseWithOptionsFilter checks the Filter sees every lenient error in
-// input order, that only those it keeps are collected, and that the error
+// input order with the full, unclipped text of each line, that only those it
+// keeps are collected, and that the error
 // stopping a TolerateOnly parse is collected without consulting it.
 func TestParseWithOptionsFilter(t *testing.T) {
-	input := "0 HEAD\nbad a\nbad b\nbad c\n0 TRLR\n"
+	long := "bad " + strings.Repeat("c", 2*MaxContextBytes)
+	input := "0 HEAD\nbad a\nbad b\n" + long + "\n0 TRLR\n"
 
 	var seen []int
+	var texts []string
 	lines, errs, fatal := NewParser().ParseWithOptions(strings.NewReader(input), &ParseOptions{
 		Lenient: true,
-		Filter: &keepFunc{func(pe *ParseError) bool {
+		Filter: &keepFunc{func(pe *ParseError, text string) bool {
 			seen = append(seen, pe.Line)
+			texts = append(texts, text)
 			return pe.Line != 3
 		}},
 	})
@@ -80,6 +86,9 @@ func TestParseWithOptionsFilter(t *testing.T) {
 	}
 	if want := []int{2, 3, 4}; !reflect.DeepEqual(seen, want) {
 		t.Errorf("Filter saw lines %v, want %v", seen, want)
+	}
+	if want := []string{"bad a", "bad b", long}; !reflect.DeepEqual(texts, want) {
+		t.Errorf("Filter saw texts %q, want %q", texts, want)
 	}
 	var kept []int
 	for _, pe := range errs {
@@ -96,7 +105,7 @@ func TestParseWithOptionsFilter(t *testing.T) {
 	_, errs, _ = NewParser().ParseWithOptions(strings.NewReader(input), &ParseOptions{
 		Lenient:      true,
 		TolerateOnly: ErrXRefContainsSpace,
-		Filter:       &keepFunc{func(*ParseError) bool { called = true; return false }},
+		Filter:       &keepFunc{func(*ParseError, string) bool { called = true; return false }},
 	})
 	if called || len(errs) != 1 || errs[0].Line != 2 {
 		t.Errorf("TolerateOnly parse: Filter called = %v, errors = %v; want the stopping error on line 2, unconsulted", called, errs)

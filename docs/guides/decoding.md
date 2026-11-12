@@ -164,7 +164,9 @@ reported: the document is the same whatever they are.
   diagnostic is appended counting the rest, so the result holds at most
   `MaxDiagnostics+1`. The cap is applied while decoding, not afterwards: 18 MB
   of garbage lines, which produced 1,000,000 diagnostics and about 400 MB of
-  memory unbounded, decodes in about 60 MB. Real files come nowhere near the
+  memory unbounded, decodes in about 60 MB. One kind of error is held whole
+  past the cap: an XRef containing a space, whose line the parser keeps, so
+  those errors grow with the document, as its lines do. Real files come nowhere near the
   default: the most in the test corpus is 14,597, from a 2.4 MB MyHeritage
   export full of vendor tags.
 - **How much of the input each echoes.** A diagnostic's `Message` and

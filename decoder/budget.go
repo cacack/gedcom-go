@@ -3,6 +3,7 @@ package decoder
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/cacack/gedcom-go/v3/parser"
 )
@@ -13,9 +14,19 @@ import (
 // collector at most limit diagnostics (keep), so a file of garbage lines
 // costs memory in proportion to the bound, not to the file. apply then cuts
 // the combined list to limit and appends the CodeDiagnosticsTruncated notice
-// counting everything left out at any stage.
+// counting everything left out at any stage. Every omitted diagnostic passes
+// through drop exactly once, so that count is exact.
+//
+// It is also where a lenient decode learns which rejected lines were level-0
+// lines (levelZero): KeepError sees each line's full text, which a
+// ParseError's clipped Context may not hold.
 type diagnosticBudget struct {
 	limit int
+
+	// levelZero holds, in input order, the line number of every rejected line
+	// that was meant as a level-0 line (isDroppedLevelZero), whether or not
+	// its error was kept. skipOrphanedRecords skips the record each began.
+	levelZero []int
 
 	// parseKept is the number of bounded parse errors kept.
 	parseKept int
@@ -26,11 +37,11 @@ type diagnosticBudget struct {
 	worst      Severity
 }
 
-// newDiagnosticBudget returns the budget for limit, or nil, which keeps
-// everything, when limit is negative (unlimited).
+// newDiagnosticBudget returns the budget for limit; a negative limit
+// (unlimited) keeps everything.
 func newDiagnosticBudget(limit int) *diagnosticBudget {
 	if limit < 0 {
-		return nil
+		limit = math.MaxInt
 	}
 	return &diagnosticBudget{limit: limit}
 }
@@ -52,15 +63,18 @@ func (b *diagnosticBudget) drop(sev Severity) {
 	b.suppressed++
 }
 
-// KeepError implements parser.ErrorFilter. Two kinds of error are kept
-// whatever the budget, because the document is built from them, so bounding
-// them would make the document depend on MaxDiagnostics: an XRef containing a
-// space (dropPermittedXRefErrors decides from it whether the identifier is
-// valid for the version) and a dropped level-0 line (skipOrphanedRecords
-// skips the record it began). apply still bounds the diagnostics they become.
-// Every other parse error counts against the budget.
-func (b *diagnosticBudget) KeepError(pe *parser.ParseError) bool {
-	if errors.Is(pe, parser.ErrXRefContainsSpace) || isDroppedLevelZero(pe) {
+// KeepError implements parser.ErrorFilter. It records each dropped level-0
+// line in levelZero, from text, so the document does not depend on whether
+// the error is kept or on how its Context is clipped. An XRef containing a
+// space is kept whatever the budget: dropPermittedXRefErrors decides from it
+// whether the identifier is valid for the version, and the parser keeps the
+// line it rejected, so these errors grow with the document, not beyond it.
+// apply still bounds the diagnostics they become. Every other parse error
+// counts against the budget.
+func (b *diagnosticBudget) KeepError(pe *parser.ParseError, text string) bool {
+	if isDroppedLevelZero(text) {
+		b.levelZero = append(b.levelZero, pe.Line)
+	} else if errors.Is(pe, parser.ErrXRefContainsSpace) {
 		return true
 	}
 	if !b.keep(b.parseKept, SeverityError) {
@@ -72,7 +86,7 @@ func (b *diagnosticBudget) KeepError(pe *parser.ParseError) bool {
 
 // apply returns the first limit of ds followed, when anything was left out
 // here or earlier, by one CodeDiagnosticsTruncated diagnostic counting it. A
-// nil budget returns ds unchanged. It is called once, on the complete list.
+// nil budget (strict mode) returns ds unchanged. It is called once, on the complete list.
 func (b *diagnosticBudget) apply(ds Diagnostics) Diagnostics {
 	if b == nil {
 		return ds
