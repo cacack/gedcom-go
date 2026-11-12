@@ -877,8 +877,10 @@ The payload and ADR1-ADR3 are independent fields: `Full` is filled only from
 the ADDR line and its continuations, `Line1`-`Line3` only from ADR1-ADR3, and
 the entity writer writes each tag from its own field. An exporter that writes
 both (RootsMagic, GEDitCOM) round-trips both. GEDCOM 7.0 deprecates ADR1-ADR3,
-so `Full` is the address text to read. The grammar gives ADR1-ADR3 no CONT, so a
-line break in a hand-built `Line1`-`Line3` is written as a space.
+so `Full` is the address text to read. `Address.Text()` returns `Full` when set,
+otherwise the non-empty `Line1`-`Line3` joined by newlines, for callers that want
+the address text whichever form the exporter wrote. The grammar gives ADR1-ADR3
+no CONT, so a line break in a hand-built `Line1`-`Line3` is written as a space.
 
 The contact tags PHON, EMAIL, FAX and WWW are siblings of ADDR in the
 grammar, not part of it, and each is `{0:3}`. They are typed on the owning

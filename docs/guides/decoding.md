@@ -421,6 +421,18 @@ cannot tell a cosmetic space from a significant one.
 A value that is nothing but spaces is reported as empty: `1 CONT ` and `1 CONT`
 both yield `""`.
 
+**Address Text**
+
+`Address.Full` holds the `ADDR` payload and `Line1`-`Line3` hold `ADR1`-`ADR3`
+only; the decoder never copies one into the other. GEDCOM 7.0 and most exports
+write the payload, but some files carry only `ADR1`-`ADR3`. To read the address
+text whichever form the file used, call `Text()`: it returns `Full` when set,
+otherwise the non-empty lines joined by `"\n"`, and `""` for a nil address.
+
+```go
+fmt.Println(event.Address.Text()) // "" when the event has no ADDR
+```
+
 **Header Reconstruction**
 
 The header is rebuilt from `Document.Header` fields. Non-standard header tags not mapped to typed fields may not round-trip.
