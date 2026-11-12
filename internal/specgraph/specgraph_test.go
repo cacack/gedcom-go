@@ -1,0 +1,190 @@
+package specgraph
+
+import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+)
+
+func writeTSV(t *testing.T, rows ...string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "substructures.tsv")
+	text := "superstructure\ttag\tstructure\n" + strings.Join(rows, "\n") + "\n"
+	if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestLoad(t *testing.T) {
+	g, err := Load(writeTSV(t,
+		"\tINDI\tp/INDI",
+		"p/INDI\tNOTE\tp/NOTE#2",
+		"p/INDI\tNOTE\tp/NOTE",
+	), "p/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := Graph{"": {"INDI": {"INDI"}}, "INDI": {"NOTE": {"NOTE", "NOTE#2"}}}
+	if !reflect.DeepEqual(g, want) {
+		t.Errorf("Load = %v, want %v", g, want)
+	}
+}
+
+func TestLoadRejectsMalformed(t *testing.T) {
+	dir := t.TempDir()
+	for name, text := range map[string]string{
+		"noheader": "\tINDI\tINDI\n",
+		"fields":   "superstructure\ttag\tstructure\nINDI\tNAME\n",
+	} {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Load(path, ""); err == nil {
+			t.Errorf("%s: Load succeeded", name)
+		}
+	}
+	if _, err := Load(filepath.Join(dir, "missing"), ""); err == nil {
+		t.Error("missing file: Load succeeded")
+	}
+}
+
+// TestForeign covers each outcome: a pair the target lacks everywhere, one it
+// lacks only under one parent (a triple), and nothing reported beneath a
+// foreign structure.
+func TestForeign(t *testing.T) {
+	src := Graph{
+		"":     {"INDI": {"INDI"}},
+		"INDI": {"BIRT": {"BIRT"}, "CHAN": {"CHAN"}, "INIL": {"INIL"}},
+		"BIRT": {"DATE": {"DATE"}},
+		"CHAN": {"DATE": {"DATE"}},
+		"DATE": {"TIME": {"TIME"}},
+		"INIL": {"DATE": {"DATE"}},
+	}
+	tgt := Graph{
+		"":       {"INDI": {"R.INDI"}},
+		"R.INDI": {"BIRT": {"R.BIRT"}, "CHAN": {"R.CHAN"}},
+		"R.BIRT": {"DATE": {"R.DATE"}},
+		"R.CHAN": {"DATE": {"R.CHAN.DATE"}},
+		"R.CHAN.DATE": {
+			"TIME": {"R.TIME"},
+		},
+	}
+	pairs, triples, mixed := Foreign(src, tgt)
+	if want := []Pair{{"INDI", "INIL"}}; !reflect.DeepEqual(pairs, want) {
+		t.Errorf("pairs = %v, want %v", pairs, want)
+	}
+	if want := []Triple{{"BIRT", "DATE", "TIME"}}; !reflect.DeepEqual(triples, want) {
+		t.Errorf("triples = %v, want %v", triples, want)
+	}
+	if len(mixed) != 0 {
+		t.Errorf("mixed = %v, want none", mixed)
+	}
+}
+
+// TestForeignMixed: a structure the target lacks under one path and has under
+// another with the same parent cannot be decided and is returned as mixed.
+func TestForeignMixed(t *testing.T) {
+	src := Graph{
+		"":  {"A": {"A"}, "B": {"B"}},
+		"A": {"X": {"X"}},
+		"B": {"X": {"X"}},
+		"X": {"Y": {"Y"}},
+		"Y": {"Z": {"Z"}},
+	}
+	tgt := Graph{
+		"":    {"A": {"tA"}, "B": {"tB"}},
+		"tA":  {"X": {"tX1"}},
+		"tB":  {"X": {"tX2"}},
+		"tX1": {"Y": {"tY1"}},
+		"tX2": {"Y": {"tY2"}},
+		"tY1": {"Z": {"tZ"}},
+	}
+	_, triples, mixed := Foreign(src, tgt)
+	if len(triples) != 0 {
+		t.Errorf("triples = %v, want none", triples)
+	}
+	if want := []Triple{{"X", "Y", "Z"}}; !reflect.DeepEqual(mixed, want) {
+		t.Errorf("mixed = %v, want %v", mixed, want)
+	}
+}
+
+// TestVendoredSpecsDecideEveryPair pins that the vendored 7.0 and 5.5.1
+// graphs leave nothing undecided, so the generated table drops every
+// version-foreign structure. A specification update that adds a mixed case
+// fails here, to be resolved before the table is regenerated.
+func TestVendoredSpecsDecideEveryPair(t *testing.T) {
+	g70, err := Load("../../testdata/spec/gedcom-7.0/substructures.tsv", V7Prefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g551, err := Load("../../testdata/spec/gedcom-5.5.1/substructures.tsv", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, graphs := range map[string][2]Graph{"7.0->5.5.1": {g70, g551}, "5.5.1->7.0": {g551, g70}} {
+		pairs, _, mixed := Foreign(graphs[0], graphs[1])
+		if len(pairs) == 0 {
+			t.Errorf("%s: no foreign pairs", name)
+		}
+		if len(mixed) != 0 {
+			t.Errorf("%s: undecided pairs %v", name, mixed)
+		}
+	}
+	// Spot checks of what each direction must drop or map.
+	pairs, _, _ := Foreign(g70, g551)
+	for _, p := range []Pair{{"record-INDI", "INIL"}, {"BIRT", "SDATE"}, {"record-FAM", "FACT"}, {"FORM", "MEDI"}} {
+		if !containsPair(pairs, p) {
+			t.Errorf("7.0->5.5.1 lacks %v", p)
+		}
+	}
+	pairs, _, _ = Foreign(g551, g70)
+	for _, p := range []Pair{{"INDIVIDUAL_RECORD.INDI", "AFN"}, {"HEADER.HEAD", "FILE"}, {"MULTIMEDIA_LINK.OBJE#2", "FILE"}} {
+		if !containsPair(pairs, p) {
+			t.Errorf("5.5.1->7.0 lacks %v", p)
+		}
+	}
+}
+
+func containsPair(pairs []Pair, p Pair) bool {
+	for _, q := range pairs {
+		if q == p {
+			return true
+		}
+	}
+	return false
+}
+
+func TestGenerateMissingSpec(t *testing.T) {
+	if _, err := Generate(t.TempDir()); err == nil {
+		t.Error("Generate succeeded with no spec files")
+	}
+}
+
+func TestGenerate(t *testing.T) {
+	src, err := Generate("../../testdata/spec")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(src)
+	for _, want := range []string{
+		"// Code generated by internal/cmd/genforeign",
+		`{"record-INDI", "INIL"}:`,
+		`{"INDIVIDUAL_RECORD.INDI", "AFN"}:`,
+		`{"HEAD-SOUR-DATA", "DATE-exact", "TIME"}:`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("generated source lacks %q", want)
+		}
+	}
+	again, err := Generate("../../testdata/spec")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(again) != text {
+		t.Error("Generate is not deterministic")
+	}
+}

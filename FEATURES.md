@@ -1609,6 +1609,11 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | `GEDC.VERS` | All, including same-version | `VERS` set to the target under `GEDC`; added under an existing `GEDC` that has none, even when source and target versions match |
 | Typed entities | All, and a same-version conversion that rewrites a copy (7.0 XRef normalization, `GEDC.VERS` repair) | Every record with `Tags` has its `Entity` re-derived from the converted `Tags` (`decoder.SyncEntities`), so the typed model reads what the output encodes; a record with no `Tags` keeps its `Entity` |
 | `GEDC.FORM` | To 5.5/5.5.1 | `2 FORM LINEAGE-LINKED` added under `GEDC` when missing (`GEDC_FORM_ADDED`), as both versions require; removed on the way to 7.0 (`GEDC_FORM_REMOVED`) |
+| Version-foreign structures | 7.0 ↔ 5.5.1 | Every structure the source version defines and the target does not (7.0 `SDATE`, `INIL`, `CROP`, `FAM.FACT`, event `ASSO`, `NOTE.LANG`; 5.5.1 `HEAD.FILE`, ...) is removed from `Tags` with its subordinates and reported as data loss, per a table generated from the vendored specification files (`go generate ./converter`) |
+| Inline media links → `OBJE` records | Upgrade to 7.0 | A pointer-less `OBJE` link carrying its `FILE` becomes a new `OBJE` record and a pointer to it (`INLINE_OBJE_TO_RECORD`) |
+| `AFN`/`RFN`/`RIN` → `EXID` | Upgrade to 7.0 | Each becomes an `EXID` with its registered `TYPE` URI (`https://gedcom.io/terms/v7/AFN`, `RIN#<HEAD.SOUR>`, `RFN#<resource>`) (`IDENTIFIER_TO_EXID`) |
+| `LANG` names ↔ BCP 47 | Both | `HEAD.LANG` and `SUBM.LANG` map between 5.x language names and BCP 47 tags (`English` ↔ `en`); a lossy or unknown mapping is an `Approximated` note |
+| Required 5.x header | Downgrade from 7.0 | `HEAD.SOUR` (`gedcom-go`) and `HEAD.SUBM` added when missing, with a `SUBM` record (`NAME Unknown`) when the document has none |
 
 ### API
 
