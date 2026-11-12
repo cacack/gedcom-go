@@ -854,6 +854,7 @@ func cloneSourceCitation(sc *SourceCitation) *SourceCitation {
 
 	copied := &SourceCitation{
 		SourceXRef:  sc.SourceXRef,
+		InlineText:  sc.InlineText,
 		Page:        sc.Page,
 		NoteXRefs:   cloneStringSlice(sc.NoteXRefs),
 		InlineNotes: cloneStringSlice(sc.InlineNotes),

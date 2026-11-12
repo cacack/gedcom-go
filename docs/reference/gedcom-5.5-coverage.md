@@ -2332,8 +2332,8 @@ Measured at `FAM.SOUR` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `CONC` | `SOURCE_CITATION.SOUR#2.CONC` | raw (flagged) | raw (flagged) | `{0:M}` |
-| `CONT` | `SOURCE_CITATION.SOUR#2.CONT` | raw (flagged) | raw (flagged) | `{0:M}` |
+| `CONC` | `SOURCE_CITATION.SOUR#2.CONC` | typed | typed | `{0:M}` |
+| `CONT` | `SOURCE_CITATION.SOUR#2.CONT` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `OBJE` | `MULTIMEDIA_LINK.OBJE` | — | typed | `{0:M}` |

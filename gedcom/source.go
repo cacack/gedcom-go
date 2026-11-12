@@ -181,8 +181,18 @@ type SourceText struct {
 
 // SourceCitation represents a citation of a source with location and quality information.
 type SourceCitation struct {
-	// SourceXRef is the cross-reference to the source record (e.g., "@S1@")
+	// SourceXRef is the cross-reference to the source record (e.g., "@S1@").
+	// It is empty for an inline citation (see InlineText).
 	SourceXRef string
+
+	// InlineText is the source description of a GEDCOM 5.5/5.5.1 citation
+	// written without a source record ("1 SOUR Family bible ..."), with its
+	// CONT continuations joined by "\n" and CONC continuations concatenated.
+	// It is set only when the SOUR payload is not a pointer, in which case
+	// SourceXRef is empty. The encoder writes it as the SOUR value when
+	// SourceXRef is empty; GEDCOM 7.0 has no inline citation, and
+	// converter.Convert promotes one to a SOUR record on upgrade.
+	InlineText string
 
 	// Page is the page or location within the source (e.g., "Page 42, Entry 103").
 	// CONT continuation lines are folded in on decode, joined with "\n"; CONC
