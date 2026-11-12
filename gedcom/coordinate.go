@@ -5,6 +5,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/cacack/gedcom-go/v3/internal/errmark"
 )
 
 // ParseCoordinate parses a GEDCOM coordinate string ("N42.3601", "W71.0589")
@@ -24,25 +26,26 @@ import (
 // component carries no information about whether it is a latitude or a
 // longitude. Callers are responsible for using N/S for latitudes and E/W for
 // longitudes; Coordinates.AsDecimal enforces this. Returns an error for empty
-// or malformed input.
+// or malformed input, wrapping ErrEmptyCoordinate or ErrInvalidCoordinate
+// respectively; ParseLatitude, ParseLongitude and AsDecimal do the same.
 func ParseCoordinate(s string) (float64, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
-		return 0, fmt.Errorf("empty coordinate")
+		return 0, errmark.Mark(ErrEmptyCoordinate, fmt.Errorf("empty coordinate"))
 	}
 
 	direction := s[0]
 	num := s[1:]
 	if strings.HasPrefix(num, "+") || strings.HasPrefix(num, "-") {
-		return 0, fmt.Errorf("coordinate value must be unsigned, got %q", s)
+		return 0, errmark.Mark(ErrInvalidCoordinate, fmt.Errorf("coordinate value must be unsigned, got %q", s))
 	}
 	if !isPlainDecimal(num) {
-		return 0, fmt.Errorf("coordinate value must be a decimal number, got %q", s)
+		return 0, errmark.Mark(ErrInvalidCoordinate, fmt.Errorf("coordinate value must be a decimal number, got %q", s))
 	}
 
 	value, err := strconv.ParseFloat(num, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid coordinate %q: %w", s, err)
+		return 0, errmark.Mark(ErrInvalidCoordinate, fmt.Errorf("invalid coordinate %q: %w", s, err))
 	}
 
 	switch direction {
@@ -51,7 +54,7 @@ func ParseCoordinate(s string) (float64, error) {
 	case 'S', 's', 'W', 'w':
 		return -value, nil
 	default:
-		return 0, fmt.Errorf("invalid direction %q in coordinate %q", string(direction), s)
+		return 0, errmark.Mark(ErrInvalidCoordinate, fmt.Errorf("invalid direction %q in coordinate %q", string(direction), s))
 	}
 }
 
@@ -134,7 +137,7 @@ func (c *Coordinates) AsDecimal() (lat, long float64, err error) {
 		return 0, 0, nil
 	}
 	if latStr == "" || longStr == "" {
-		return 0, 0, fmt.Errorf("incomplete coordinates: latitude %q, longitude %q", c.Latitude, c.Longitude)
+		return 0, 0, errmark.Mark(ErrInvalidCoordinate, fmt.Errorf("incomplete coordinates: latitude %q, longitude %q", c.Latitude, c.Longitude))
 	}
 
 	lat, err = latitudeAxis.parse(c.Latitude)
@@ -186,10 +189,10 @@ func (a axis) directions() string {
 func (a axis) parse(raw string) (float64, error) {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
-		return 0, fmt.Errorf("empty %s", a.name)
+		return 0, errmark.Mark(ErrEmptyCoordinate, fmt.Errorf("empty %s", a.name))
 	}
 	if !a.accepts(trimmed[0]) {
-		return 0, fmt.Errorf("%s must use %s direction, got %q", a.name, a.directions(), raw)
+		return 0, errmark.Mark(ErrInvalidCoordinate, fmt.Errorf("%s must use %s direction, got %q", a.name, a.directions(), raw))
 	}
 
 	value, err := ParseCoordinate(trimmed)
@@ -200,10 +203,10 @@ func (a axis) parse(raw string) (float64, error) {
 	// explicit so a future relaxation there cannot silently reintroduce a NaN
 	// success return: NaN fails both range comparisons below.
 	if math.IsNaN(value) || math.IsInf(value, 0) {
-		return 0, fmt.Errorf("%s %q is not a finite number", a.name, raw)
+		return 0, errmark.Mark(ErrInvalidCoordinate, fmt.Errorf("%s %q is not a finite number", a.name, raw))
 	}
 	if value < a.lo || value > a.hi {
-		return 0, fmt.Errorf("%s %g out of range [%g, %g]", a.name, value, a.lo, a.hi)
+		return 0, errmark.Mark(ErrInvalidCoordinate, fmt.Errorf("%s %g out of range [%g, %g]", a.name, value, a.lo, a.hi))
 	}
 
 	return value, nil
