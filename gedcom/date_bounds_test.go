@@ -49,6 +49,8 @@ func TestDate_Bounds(t *testing.T) {
 		{"French year", "@#DFRENCH R@ 8", FrenchToJDN(8, 1, 1), FrenchToJDN(9, 1, 1) - 1},
 		{"French Fructidor", "@#DFRENCH R@ FRUC 8", FrenchToJDN(8, 12, 1), FrenchToJDN(8, 12, 30)},
 		{"French complementary days", "@#DFRENCH R@ COMP 8", FrenchToJDN(8, 13, 1), FrenchToJDN(9, 1, 1) - 1},
+		{"French sixth complementary day", "@#DFRENCH R@ 6 COMP 3", g(1795, 9, 22), g(1795, 9, 22)},
+		{"French 18 Brumaire", "@#DFRENCH R@ 18 BRUM 8", g(1799, 11, 9), g(1799, 11, 9)},
 
 		// A dual date is read in New Style: the dual year from 1 January to
 		// 24 March, the first year from 25 March. Where the date does not say
@@ -114,6 +116,7 @@ func TestDate_Bounds_NotOK(t *testing.T) {
 		{"range with yearless end date", &Date{Year: 1850, Modifier: ModifierFromTo, EndDate: &Date{}}},
 		{"day past the end of the month", mustParse(t, "31 FEB 1850")},
 		{"sixth complementary day in a common year", mustParse(t, "@#DFRENCH R@ 6 COMP 8")},
+		{"sixth complementary day in common year 4", mustParse(t, "@#DFRENCH R@ 6 COMP 4")},
 		{"Adar II in a common Hebrew year", mustParse(t, "@#DHEBREW@ ADS 5785")},
 		{"day in Adar II in a common Hebrew year", mustParse(t, "@#DHEBREW@ 1 ADS 5785")},
 		{"negative day", &Date{Year: 1850, Month: 3, Day: -1}},

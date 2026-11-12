@@ -901,26 +901,32 @@ func TestIsFrenchLeapYear(t *testing.T) {
 		year int
 		want bool
 	}{
-		// Based on actual calendar: FR year N is leap if Gregorian year (1792+N) is leap
-		{1, false},  // Year 1 (Sep 22, 1792 - Sep 21, 1793), Gregorian 1793 not leap
-		{2, false},  // Year 2 (Sep 22, 1793 - Sep 21, 1794), Gregorian 1794 not leap
-		{3, false},  // Year 3 (Sep 22, 1794 - Sep 21, 1795), Gregorian 1795 not leap
-		{4, true},   // Year 4 (Sep 22, 1795 - Sep 21, 1796), Gregorian 1796 IS leap
-		{5, false},  // Year 5 (Sep 22, 1796 - Sep 21, 1797), Gregorian 1797 not leap
-		{6, false},  // Year 6 (Sep 22, 1797 - Sep 21, 1798), Gregorian 1798 not leap
-		{7, false},  // Year 7 (Sep 22, 1798 - Sep 21, 1799), Gregorian 1799 not leap
-		{8, false},  // Year 8 (Sep 22, 1799 - Sep 21, 1800), Gregorian 1800 not leap (century)
-		{9, false},  // Year 9 (Sep 22, 1800 - Sep 21, 1801), Gregorian 1801 not leap
-		{10, false}, // Year 10 (Sep 22, 1801 - Sep 21, 1802), Gregorian 1802 not leap
-		{11, false}, // Year 11 (Sep 22, 1802 - Sep 21, 1803), Gregorian 1803 not leap
-		{12, true},  // Year 12 (Sep 22, 1803 - Sep 21, 1804), Gregorian 1804 IS leap
-		{13, false}, // Year 13 (Sep 22, 1804 - Sep 21, 1805), Gregorian 1805 not leap
-		{14, false}, // Year 14 (Sep 22, 1805 - Sep 21, 1806), Gregorian 1806 not leap
+		// Years 1-14, the calendar as used: sextile years 3, 7 and 11,
+		// fixed by the autumnal equinox (issue #720).
+		{1, false},
+		{2, false},
+		{3, true}, // Year III (Sep 22, 1794 - Sep 22, 1795)
+		{4, false},
+		{5, false},
+		{6, false},
+		{7, true}, // Year VII (Sep 22, 1798 - Sep 22, 1799)
+		{8, false},
+		{9, false},
+		{10, false},
+		{11, true}, // Year XI (Sep 23, 1802 - Sep 23, 1803)
+		{12, false},
+		{13, false},
+		{14, false},
 
-		// Test pattern continues beyond historical range
-		{15, false}, // Year 15 (Sep 22, 1806 - Sep 21, 1807), Gregorian 1807 not leap
-		{16, true},  // Year 16 (Sep 22, 1807 - Sep 21, 1808), Gregorian 1808 IS leap
-		{20, true},  // Year 20 (Sep 22, 1811 - Sep 21, 1812), Gregorian 1812 IS leap
+		// Beyond year 14, Romme's rule: divisible by 4, except centuries
+		// not divisible by 400.
+		{15, false},
+		{16, true},
+		{20, true},
+		{100, false},
+		{400, true},
+		{0, true},
+		{-4, true},
 	}
 
 	for _, tt := range tests {
@@ -955,14 +961,14 @@ func TestFrenchToJDN(t *testing.T) {
 			year:  8,
 			month: 1,
 			day:   1,
-			want:  2378396, // September 22, 1799
+			want:  2378397, // September 23, 1799
 		},
 		{
 			name:  "1 Vendémiaire 14",
 			year:  14,
 			month: 1,
 			day:   1,
-			want:  2380587, // September 22, 1805
+			want:  2380588, // September 23, 1805
 		},
 
 		// Test each month type
@@ -1008,11 +1014,18 @@ func TestFrenchToJDN(t *testing.T) {
 
 		// Test leap year complementary days
 		{
-			name:  "6 Complementary 4 (leap year, 6th day)",
-			year:  4,
+			name:  "6 Complementary 3 (sextile year, 6th day)",
+			year:  3,
 			month: 13,
 			day:   6,
-			want:  2377300, // Year 4 is a leap year
+			want:  2376935, // Year 3 is sextile: September 22, 1795
+		},
+		{
+			name:  "1 Vendémiaire 4 (after a sextile year)",
+			year:  4,
+			month: 1,
+			day:   1,
+			want:  2376936, // September 23, 1795
 		},
 
 		// Test year boundaries
@@ -1061,15 +1074,15 @@ func TestJDNToFrench(t *testing.T) {
 			wantDay:   1,
 		},
 		{
-			name:      "JDN 2378396 (1 Vendémiaire 8)",
-			jdn:       2378396,
+			name:      "JDN 2378397 (1 Vendémiaire 8)",
+			jdn:       2378397,
 			wantYear:  8,
 			wantMonth: 1,
 			wantDay:   1,
 		},
 		{
-			name:      "JDN 2380587 (1 Vendémiaire 14)",
-			jdn:       2380587,
+			name:      "JDN 2380588 (1 Vendémiaire 14)",
+			jdn:       2380588,
 			wantYear:  14,
 			wantMonth: 1,
 			wantDay:   1,
@@ -1118,9 +1131,9 @@ func TestJDNToFrench(t *testing.T) {
 
 		// Test leap year complementary days
 		{
-			name:      "JDN 2377300 (6 Complementary 4, leap year)",
-			jdn:       2377300,
-			wantYear:  4,
+			name:      "JDN 2376935 (6 Complementary 3, sextile year)",
+			jdn:       2376935,
+			wantYear:  3,
 			wantMonth: 13,
 			wantDay:   6,
 		},
@@ -1169,7 +1182,8 @@ func TestFrenchJDNRoundTrip(t *testing.T) {
 		{"Last regular month", 1, 12, 30},
 		{"First complementary day", 1, 13, 1},
 		{"Last complementary day (non-leap)", 1, 13, 5},
-		{"Last complementary day (leap year 4)", 4, 13, 6},
+		{"Last complementary day (sextile year 3)", 3, 13, 6},
+		{"Last complementary day (sextile year 11)", 11, 13, 6},
 		{"Year 2 start", 2, 1, 1},
 		{"Year 3 start", 3, 1, 1},
 		{"Year 8 start", 8, 1, 1},
@@ -1211,24 +1225,15 @@ func TestFrenchToGregorian(t *testing.T) {
 			gregorianMon:  9,
 			gregorianDay:  22,
 		},
-		{
-			name:          "1 Vendémiaire 8 = Sep 22, 1799",
-			frenchYear:    8,
-			frenchMonth:   1,
-			frenchDay:     1,
-			gregorianYear: 1799,
-			gregorianMon:  9,
-			gregorianDay:  22,
-		},
-		{
-			name:          "1 Vendémiaire 14 = Sep 22, 1805",
-			frenchYear:    14,
-			frenchMonth:   1,
-			frenchDay:     1,
-			gregorianYear: 1805,
-			gregorianMon:  9,
-			gregorianDay:  22,
-		},
+		// The historical dates from issue #720.
+		{"1 Vendémiaire 4 = Sep 23, 1795", 4, 1, 1, 1795, 9, 23},
+		{"1 Vendémiaire 8 = Sep 23, 1799", 8, 1, 1, 1799, 9, 23},
+		{"18 Brumaire 8 = Nov 9, 1799", 8, 2, 18, 1799, 11, 9},
+		{"1 Pluviôse 8 = Jan 21, 1800", 8, 5, 1, 1800, 1, 21},
+		{"1 Vendémiaire 12 = Sep 24, 1803", 12, 1, 1, 1803, 9, 24},
+		{"1 Vendémiaire 14 = Sep 23, 1805", 14, 1, 1, 1805, 9, 23},
+		{"10 Nivôse 14 = Dec 31, 1805", 14, 4, 10, 1805, 12, 31},
+		{"1 Vendémiaire 15 = Sep 23, 1806", 15, 1, 1, 1806, 9, 23},
 	}
 
 	for _, tt := range tests {

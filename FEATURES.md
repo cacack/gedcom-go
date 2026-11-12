@@ -1181,7 +1181,9 @@ Style year is unknown (`1731/32`, `MAR 1731/32`, an invalid suffix such as
 converts from `Year` and still loses its dual year,
 so validate the source to catch an invalid one. An endpoint too
 incomplete to convert (year 0) fails the whole conversion rather than dropping
-silently.
+silently. French Republican years I–XIV follow the calendar as used, with
+sextile years III, VII and XI (`@#DFRENCH R@ 18 BRUM 8` is 9 November 1799);
+Romme's rule extends it beyond year XIV.
 
 ## Metadata
 
