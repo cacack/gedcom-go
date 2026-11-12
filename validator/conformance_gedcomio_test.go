@@ -53,12 +53,12 @@ var gedcomioWarningGaps = map[string]string{
 // warning explains, as "CODE line N".
 var gedcomioWarningExtras = map[string][]string{
 	"gedcom70/warnings70.ged": {
-		"EMPTY_FAMILY line 16",           // a memberless FAM is legal; false verdict (#721)
-		"MISSING_REQUIRED_FIELD line 31", // INDI.NAME is {0:M} in 7.0; false verdict (#721)
+		"EMPTY_FAMILY line 16", // a legal memberless FAM: data-quality heuristic, warning (#721)
+		"MISSING_NAME line 31", // INDI.NAME is {0:M} in 7.0: data-quality heuristic, warning (#721)
 	},
 	"gedcom71/warnings71.ged": {
-		"EMPTY_FAMILY line 16",           // as above (#721)
-		"MISSING_REQUIRED_FIELD line 31", // as above (#721)
+		"EMPTY_FAMILY line 16", // as above (#721)
+		"MISSING_NAME line 31", // as above (#721)
 	},
 }
 
@@ -102,6 +102,9 @@ func TestGEDCOMIOWarningsFiles(t *testing.T) {
 
 			var extras []string
 			for _, i := range issues {
+				if i.Severity == SeverityError {
+					t.Errorf("%s line %d is an ERROR; the file is valid", i.Code, i.LineNumber)
+				}
 				if !explained[i.LineNumber] {
 					extras = append(extras, fmt.Sprintf("%s line %d", i.Code, i.LineNumber))
 				}

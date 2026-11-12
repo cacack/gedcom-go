@@ -265,13 +265,13 @@ func (v *Validator) Validate(doc *gedcom.Document) []error {
 
 // recordChecks runs the record-level spec-conformance checks shared by
 // [Validator.ValidateAll] and [QualityAnalyzer.Analyze], so a check added here
-// reaches both: raw pointers, record structure, nil elements (which only a
-// hand-built document holds), date validity (dates that do not exist, e.g.
-// 31 FEB), XRef length and note pointers.
+// reaches both: raw pointers, nil elements (which only a hand-built document
+// holds), date validity (dates that do not exist, e.g. 31 FEB), XRef length
+// and note pointers. The record-structure heuristics are not conformance
+// checks; both callers run validateRecordStructure themselves.
 func recordChecks(doc *gedcom.Document, xrefs *XRefValidator, notes *NoteValidator) []Issue {
 	var issues []Issue
 	issues = append(issues, validateBrokenXRefs(doc)...)
-	issues = append(issues, validateRecordStructure(doc)...)
 	issues = append(issues, validateNilElements(doc)...)
 	issues = append(issues, validateDates(doc)...)
 	issues = append(issues, xrefs.ValidateXRefs(doc)...)
@@ -304,6 +304,10 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	// header and encoding calls in this function have their counterparts in
 	// QualityAnalyzer.runConformanceChecks.
 	allIssues = append(allIssues, recordChecks(doc, v.getXRefValidator(), v.getNoteValidator())...)
+
+	// Report nameless individuals and memberless families: data-quality
+	// heuristics, which QualityAnalyzer.Analyze files as completeness issues.
+	allIssues = append(allIssues, validateRecordStructure(doc)...)
 
 	// Report typed edits the encoder would not write, when asked to. It is
 	// outside recordChecks because it reads the document's raw tags back

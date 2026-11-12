@@ -1,10 +1,15 @@
 package validator
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"os"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
@@ -1110,8 +1115,9 @@ func TestQualityReport_RunsEveryValidateAllCheck(t *testing.T) {
 	doc70.Header = &gedcom.Header{Version: gedcom.Version70, Encoding: gedcom.EncodingANSEL}
 
 	// The remaining record-level checks: a raw ASSO pointer to no record, a
-	// family with no members, a date that does not exist, and a media object
-	// whose two note slices overlap.
+	// date that does not exist, and a media object whose two note slices
+	// overlap. Its memberless family is a heuristic, filed as a completeness
+	// issue (see TestQualityReport_StructureHeuristicsAreCompleteness).
 	named := &gedcom.Individual{XRef: "@I1@", Names: []*gedcom.PersonalName{{Full: "John /Doe/"}}}
 	docRecords := makeDocument([]*gedcom.Individual{named}, []*gedcom.Family{{XRef: "@F1@"}})
 	docRecords.Header = &gedcom.Header{Date: "31 FEB 1900"}
@@ -1136,7 +1142,7 @@ func TestQualityReport_RunsEveryValidateAllCheck(t *testing.T) {
 		{"5.5.1 header, xref and nil element", doc551, []string{CodeMissingSUBM, CodeXRefTooLong, CodeNilElement}},
 		{"7.0 encoding", doc70, []string{CodeInvalidEncodingForVersion}},
 		{"pointer, structure, date and note", docRecords,
-			[]string{CodeBrokenXRef, CodeEmptyFamily, CodeInvalidDate, CodeOverlappingNotePointers}},
+			[]string{CodeBrokenXRef, CodeInvalidDate, CodeOverlappingNotePointers}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1162,5 +1168,77 @@ func TestQualityReport_RunsEveryValidateAllCheck(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestQualityReport_StructureHeuristicsAreCompleteness pins #721: a nameless
+// INDI and a memberless FAM are legal in every GEDCOM version, so they are
+// reported as data-quality heuristics -- MISSING_NAME and EMPTY_FAMILY at
+// SeverityWarning, under CompletenessIssues -- never as MISSING_REQUIRED_FIELD,
+// an ERROR or a conformance issue, and each record is reported once.
+func TestQualityReport_StructureHeuristicsAreCompleteness(t *testing.T) {
+	doc, err := decoder.Decode(strings.NewReader(`0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 SEX F
+0 @F1@ FAM
+0 TRLR
+`))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+
+	report := NewWithOptions(&ValidateOptions{Strictness: StrictnessStrict}).QualityReport(doc)
+
+	type finding struct {
+		code, xref string
+		line       int
+		severity   Severity
+	}
+	var got []finding
+	for _, i := range report.CompletenessIssues {
+		if i.Code == CodeMissingName || i.Code == CodeEmptyFamily {
+			got = append(got, finding{i.Code, i.RecordXRef, i.LineNumber, i.Severity})
+		}
+	}
+	want := []finding{
+		{CodeMissingName, "@I1@", 4, SeverityWarning},
+		{CodeEmptyFamily, "@F1@", 6, SeverityWarning},
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("CompletenessIssues heuristics = %+v, want %+v", got, want)
+	}
+	if len(report.Errors) != 0 {
+		t.Errorf("Errors = %v, want none", report.Errors)
+	}
+	if len(report.ConformanceIssues) != 0 {
+		t.Errorf("ConformanceIssues = %v, want none: the heuristics are not spec rules", report.ConformanceIssues)
+	}
+	for _, i := range append(append(append([]Issue{}, report.Errors...), report.Warnings...), report.Info...) {
+		if i.Code == CodeMissingRequiredField {
+			t.Errorf("report holds %v, want no MISSING_REQUIRED_FIELD", i)
+		}
+	}
+}
+
+// TestValidateAll_EnumExtHasNoErrors pins #721 on gedcom7code's valid
+// 7/enum-ext.ged: its @5@ INDI has no level-1 NAME, which is a MISSING_NAME
+// warning, not an error.
+func TestValidateAll_EnumExtHasNoErrors(t *testing.T) {
+	data, err := os.ReadFile("../testdata/gedcom7code/7/enum-ext.ged")
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	doc, err := decoder.Decode(bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	var got []string
+	for _, i := range NewWithOptions(&ValidateOptions{Strictness: StrictnessStrict}).ValidateAll(doc) {
+		got = append(got, fmt.Sprintf("%s %s line %d", i.Severity, i.Code, i.LineNumber))
+	}
+	if want := []string{"WARNING MISSING_NAME line 22"}; !slices.Equal(got, want) {
+		t.Errorf("ValidateAll = %q, want %q", got, want)
 	}
 }

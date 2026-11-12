@@ -1110,7 +1110,7 @@ silently.
 - Proper hierarchy (levels increment by 1)
 - Required tags present (HEAD, TRLR)
 - Valid cross-references: every pointer in a record's raw tags must name an existing record (`BROKEN_XREF`, with the pointing line; the typed `ORPHANED_*` codes cover FAMC/FAMS/SOUR/HUSB/WIFE/CHIL). `@VOID@` is exempt as the null pointer when `Header.Version` is 7.0, or when no version is declared and no record is named `@VOID@`; in a document declaring 5.5/5.5.1 a dangling `@VOID@` is reported
-- Individuals with no NAME (`MISSING_REQUIRED_FIELD`, warning) and families with no HUSB/WIFE/CHIL (`EMPTY_FAMILY`, warning), each with the record's line
+- Data-quality heuristics, not spec rules (every GEDCOM version allows both records): individuals with no NAME (`MISSING_NAME`, warning) and families with no HUSB/WIFE/CHIL (`EMPTY_FAMILY`, warning), each with the record's line. `MISSING_REQUIRED_FIELD` is deprecated and no longer reported
 
 ### Version-Specific Validation
 - Tag validity per GEDCOM version
@@ -1279,7 +1279,7 @@ Two notes for callers upgrading. `DUPLICATE_DETECTION_LIMITED` is a `Warning`, s
 
 **Quality Report:**
 
-Comprehensive quality assessment with metrics and issue aggregation. The report runs every check `ValidateAll` runs, so its counts are never clean for a document `ValidateAll` flags. The spec-conformance checks — header, broken pointers, record structure, nil elements, date validity, XRef length, note pointers and encoding — land in `ConformanceIssues` (JSON `conformance_issues`) beside the record-quality categories. Unlike `ValidateAll`, the report reports every severity and applies none of `Strictness`, `SkipRules`, `MaxErrors`, `SkipDuplicateDetection` or `SkipEncodingValidation`; filter its issues yourself if you need those.
+Comprehensive quality assessment with metrics and issue aggregation. The report runs every check `ValidateAll` runs, so its counts are never clean for a document `ValidateAll` flags. The spec-conformance checks — header, broken pointers, nil elements, date validity, XRef length, note pointers and encoding — land in `ConformanceIssues` (JSON `conformance_issues`) beside the record-quality categories; the nameless-individual (`MISSING_NAME`) and memberless-family (`EMPTY_FAMILY`) heuristics land in `CompletenessIssues`. Unlike `ValidateAll`, the report reports every severity and applies none of `Strictness`, `SkipRules`, `MaxErrors`, `SkipDuplicateDetection` or `SkipEncodingValidation`; filter its issues yourself if you need those.
 
 ```go
 report := v.QualityReport(doc)

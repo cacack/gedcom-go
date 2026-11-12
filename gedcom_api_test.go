@@ -361,7 +361,7 @@ const testGedcomValid = `0 HEAD
 
 // testGedcomThreeIssues reports, at the default strictness, one issue of each
 // of the three record-structure codes, in this order: BROKEN_XREF (line 9),
-// MISSING_REQUIRED_FIELD (line 8) and EMPTY_FAMILY (line 10).
+// MISSING_NAME (line 8) and EMPTY_FAMILY (line 10).
 const testGedcomThreeIssues = `0 HEAD
 1 SOUR TestSoftware
 1 SUBM @U1@
@@ -398,7 +398,7 @@ func TestValidateWithOptionsHonoursOptions(t *testing.T) {
 	}
 
 	all := codes(ValidateWithOptions(doc, nil))
-	want := []string{validator.CodeBrokenXRef, validator.CodeMissingRequiredField, validator.CodeEmptyFamily}
+	want := []string{validator.CodeBrokenXRef, validator.CodeMissingName, validator.CodeEmptyFamily}
 	if !slices.Equal(all, want) {
 		t.Fatalf("ValidateWithOptions(nil) codes = %v, want %v", all, want)
 	}
@@ -411,7 +411,7 @@ func TestValidateWithOptionsHonoursOptions(t *testing.T) {
 	})
 
 	t.Run("SkipRules", func(t *testing.T) {
-		got := codes(ValidateWithOptions(doc, &ValidateOptions{SkipRules: []string{validator.CodeMissingRequiredField}}))
+		got := codes(ValidateWithOptions(doc, &ValidateOptions{SkipRules: []string{validator.CodeMissingName}}))
 		wantSkipped := []string{validator.CodeBrokenXRef, validator.CodeEmptyFamily}
 		if !slices.Equal(got, wantSkipped) {
 			t.Errorf("SkipRules codes = %v, want %v", got, wantSkipped)

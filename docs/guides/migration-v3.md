@@ -1781,6 +1781,11 @@ matching. A type assertion on `*validator.ValidationError` stops compiling; a
 bare `err.(validator.Issue)` compiles but never matches, since the elements are
 pointers.
 
+From v3.7.0 a nameless individual is reported as `validator.CodeMissingName`
+(`"MISSING_NAME"`) instead: `INDI.NAME` is optional in every GEDCOM version, so
+`CodeMissingRequiredField` is deprecated and no longer emitted. See
+[Behaviour changes in minor releases](../governance/policies/api-stability.md#behaviour-changes-in-minor-releases).
+
 What changes without a compile error is **what `Validate` returns**:
 
 - **Many more findings.** v2's `Validate` ran three rules and read none of its
@@ -1791,8 +1796,9 @@ What changes without a compile error is **what `Validate` returns**:
 - **Options now apply.** `Strictness`, `MaxErrors`, `SkipRules` and every other
   `ValidateOptions` field affect `Validate` exactly as they affect
   `ValidateAll`; v2's `Validate` read none of them.
-- **Severities.** `BROKEN_XREF` is `SeverityError`. `MISSING_REQUIRED_FIELD`
-  and `EMPTY_FAMILY` are `SeverityWarning` — both are legal per the GEDCOM
+- **Severities.** `BROKEN_XREF` is `SeverityError`. `MISSING_NAME`
+  (`MISSING_REQUIRED_FIELD` before v3.7.0) and `EMPTY_FAMILY` are
+  `SeverityWarning` — both are legal per the GEDCOM
   specifications — so `StrictnessRelaxed` drops them.
 - **Different code for the six typed pointers, no double reports.** A broken
   level-1 `FAMC`, `FAMS` or `SOUR` on an individual, or `HUSB`, `WIFE` or
@@ -1804,9 +1810,9 @@ What changes without a compile error is **what `Validate` returns**:
   `HUSB` lines in a malformed family — is still reported as `BROKEN_XREF`.
   `BROKEN_XREF` covers every other raw pointer (`ASSO`, `NOTE`, nested `SOUR`,
   `OBJE`, …) and ignores the 7.0 `@VOID@` sentinel and `CONT`/`CONC` text.
-- **Only level-1 tags count.** `MISSING_REQUIRED_FIELD` looks for a level-1
-  `NAME`; `EMPTY_FAMILY` for a level-1 `HUSB`, `WIFE` or `CHIL`. v2 matched at
-  any level, so a family whose only "member" was a `2 HUSB` age structure under
+- **Only level-1 tags count.** `MISSING_NAME` (`MISSING_REQUIRED_FIELD` before
+  v3.7.0) looks for a level-1 `NAME`; `EMPTY_FAMILY` for a level-1 `HUSB`,
+  `WIFE` or `CHIL`. v2 matched at any level, so a family whose only "member" was a `2 HUSB` age structure under
   an event passed. A record built in code with a typed entity and no raw tags
   is judged by the entity.
 - **Line numbers and text.** All three codes, and the `ORPHANED_*` codes, now
