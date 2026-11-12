@@ -1,5 +1,7 @@
 package gedcom
 
+import "strings"
+
 // Repository represents a physical or digital location where sources are stored.
 type Repository struct {
 	// XRef is the cross-reference identifier for this repository
@@ -135,13 +137,15 @@ type Address struct {
 	// joined by "\n" and its CONC lines concatenated. It may span several
 	// lines and is empty when the ADDR line has no value. The encoder writes
 	// the ADDR value from Full alone, never from Line1-Line3, so a hand-built
-	// address sets Full for its ADDR text.
+	// address sets Full for its ADDR text. To read the address text whichever
+	// of Full or Line1-Line3 holds it, call Text.
 	Full string
 
 	// Line1 is the ADR1 value only. It is empty when the address has no ADR1,
 	// even when the ADDR payload is set; the payload lives in Full. Like
 	// Line2 and Line3 it is a single line: the grammar gives ADR1-ADR3 no
-	// CONT, so the encoder writes a line break in one as a space.
+	// CONT, so the encoder writes a line break in one as a space. To read the
+	// address text whichever of Full or Line1-Line3 holds it, call Text.
 	Line1 string
 
 	// Line2 is the ADR2 value (optional)
@@ -166,3 +170,27 @@ type Address struct {
 // Address must stay comparable: every subordinate of ADDR is {0:1}, so no
 // field needs a slice or map. Adding one makes this line fail to compile.
 var _ = map[Address]struct{}{}
+
+// Text returns the address text: Full when it is non-empty, otherwise the
+// non-empty values of Line1, Line2 and Line3 joined by "\n". It returns ""
+// when none is set or a is nil. City, State, PostalCode and Country are not
+// included. Values are returned as decoded, without trimming.
+//
+// Use it when you want "the address" and do not care which form the exporter
+// wrote: GEDCOM 7.0 and most 5.5.1 exports carry only the ADDR payload (Full),
+// while some files carry only ADR1-ADR3.
+func (a *Address) Text() string {
+	if a == nil {
+		return ""
+	}
+	if a.Full != "" {
+		return a.Full
+	}
+	lines := make([]string, 0, 3)
+	for _, line := range []string{a.Line1, a.Line2, a.Line3} {
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
