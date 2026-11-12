@@ -74,9 +74,9 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [897 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (89.9%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,205 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (91.6%) | Most common format |
-| GEDCOM 7.0 | Every readable line preserved | [1,286 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (92.6%) | Latest standard |
+| GEDCOM 5.5 | Every readable line preserved | [911 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (91.3%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,220 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (92.7%) | Most common format |
+| GEDCOM 7.0 | Every readable line preserved | [1,301 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (93.7%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch and minor versions such as `VERS 7.0.14` or `7.1` detect as 7.0, with `Header.DeclaredVersion` keeping `7.1`; vendor spellings `5.51`, `551`, `5.5.5`, `55`, `7` and a version followed by text such as `5.5.1 (GEDCOM)` read as the version they mean, with an `INVALID_VALUE` diagnostic on `GEDC.VERS`; a `0 @X1@ HEAD` record is not the header and never sets the version)
 - Heuristic-based detection for malformed headers
@@ -94,8 +94,8 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,286 of 7.0's structures reach the typed model, 897 of
-5.5's, and 1,205 of 5.5.1's.
+document built for it: 1,301 of 7.0's structures reach the typed model, 911 of
+5.5's, and 1,220 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -369,7 +369,8 @@ beside it, and written back beneath that value
 | `ASSO` | `Association.Phrase` |
 | `ASSO.ROLE` | `Association.RolePhrase` |
 | `ADOP.FAMC.ADOP` | `Event.AdoptedByPhrase` |
-| Event `AGE` | `Event.AgePhrase` (an empty `AGE` with a `PHRASE` is a phrase-only age, with `Age` empty; the encoder writes it as an empty `AGE` for 7.0 output only) |
+| Event/attribute `AGE` | `Event.AgePhrase`, `Attribute.AgePhrase` (an empty `AGE` with a `PHRASE` is a phrase-only age, with `Age` empty; the encoder writes it as an empty `AGE` for 7.0 output only) |
+| Family event/attribute `HUSB.AGE`, `WIFE.AGE` | `HusbandAgePhrase`, `WifeAgePhrase` on `Event` and `Attribute` |
 | Event/attribute `SDATE` | `Event.SortDatePhrase`, `Attribute.SortDatePhrase` |
 | `FAM.HUSB`, `FAM.WIFE` | `Family.HusbandPhrase`, `Family.WifePhrase` |
 | `FILE.FORM.MEDI` | `MediaFile.MediaPhrase` |
@@ -645,7 +646,6 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 
 - Cross-reference ID (`@M1@`)
 - File references and formats
-- Media type (`MediaFile.MediaType`): 7.0 `FILE.FORM.MEDI`, or 5.5.1 `FILE.FORM.TYPE`; the entity writer writes `TYPE` for 5.5/5.5.1 output and `MEDI` otherwise
 - Titles
 
 ## Events
@@ -714,7 +714,7 @@ family — decodes the shared `EVENT_DETAIL` structure into typed fields:
 | PLAC | `Event.PlaceDetail` (FORM, MAP/LATI/LONG), read via `Event.PlaceName()`, written via `Event.SetPlaceName()` |
 | TYPE | `Event.EventTypeDetail` |
 | CAUS | `Event.Cause` |
-| AGE | `Event.Age` |
+| AGE | `Event.Age`, `Event.AgePhrase` |
 | AGNC | `Event.Agency` |
 | RELI | `Event.ReligiousAffiliation` |
 | ADDR | `Event.Address` |
@@ -730,10 +730,12 @@ family — decodes the shared `EVENT_DETAIL` structure into typed fields:
 `gedcom.Attribute` names the same fields, so an attribute reads the same way as
 an event.
 
-`HUSB` and `WIFE` (spouse ages, `FAMILY_EVENT_DETAIL`) are accepted under a
-family's events and attributes and kept raw in `Record.Tags`; under an
-individual's events or attributes, where the grammar has no such position,
-they are reported as `UNKNOWN_TAG`.
+`HUSB` and `WIFE` (spouse ages, `FAMILY_EVENT_DETAIL`) under a family's events
+and attributes decode their `AGE` into `HusbandAge`/`WifeAge` (with
+`HusbandAgePhrase`/`WifeAgePhrase`) on `Event` and `Attribute`, and are written
+back directly beneath the event or attribute line. Under an individual's events
+or attributes, where the grammar has no such position, they are reported as
+`UNKNOWN_TAG`, left untyped, and never written from the entity.
 
 ## Attributes
 
@@ -896,7 +898,7 @@ structure as `[]string` fields named `Phone`, `Email`, `Fax` and `Website`:
 
 ## Name Structure
 
-- Full name with surname delimiters (`/surname/`): `Given /Surname/ Suffix` fills `Given`, `Surname` and `Suffix` when `GIVN`, `SURN` or `NSFX` is absent; with more than two slashes the last pair delimits the surname
+- Full name with surname delimiters (`/surname/`)
 - GIVN - Given name
 - SURN - Surname
 - NPFX - Name prefix (Dr., Rev.)
@@ -1142,11 +1144,6 @@ years, exact, err := gedcom.YearsBetween(birthDate, deathDate)
 // leave oldest at math.MaxInt; ok is false when the event is provably before birth
 youngest, oldest, ok := gedcom.AgeAt(birthDate, deathDate)
 
-// Minimum-age checks use AgeAt, as the validator does; errors wrap
-// gedcom.ErrBelowMinimumAge or gedcom.ErrEventBeforeBirth (test with errors.Is)
-err = gedcom.ValidateParentChildDates(parentBirth, childBirth, 12)
-err = gedcom.ValidateMarriageDates(marriage, spouseBirth1, spouseBirth2, 12)
-
 // Convert to time.Time (complete, valid Gregorian dates only; 31 FEB errors; BCE uses astronomical years, 44 BCE -> -43)
 t, err := date.ToTime()
 
@@ -1182,9 +1179,7 @@ Style year is unknown (`1731/32`, `MAR 1731/32`, an invalid suffix such as
 converts from `Year` and still loses its dual year,
 so validate the source to catch an invalid one. An endpoint too
 incomplete to convert (year 0) fails the whole conversion rather than dropping
-silently. French Republican years I–XIV follow the calendar as used, with
-sextile years III, VII and XI (`@#DFRENCH R@ 18 BRUM 8` is 9 November 1799);
-Romme's rule extends it beyond year XIV.
+silently.
 
 ## Metadata
 
@@ -1685,7 +1680,6 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | Note records → `SNOTE` | Upgrade to 7.0 | `NOTE` records become `SNOTE` shared note records, and `NOTE` pointers to them become `SNOTE` pointers |
 | Dual-year dates | Upgrade to 7.0 | Kept as written (`1731/32`, which 7.0 cannot express) and reported as DataLoss and a Preserved note per date |
 | Media types | Both | Maps between legacy (JPG) and IANA (image/jpeg) |
-| Enumerations | To or from 7.0 | Translates enumerated payloads (`SEX`, `NAME.TYPE`, `PEDI`, `FAMC.STAT`, LDS `STAT`, `MEDI`, `ADOP`, `SOUR.EVEN.ROLE`) between the 5.x and 7.0 vocabularies, maps `ASSO.RELA` ↔ `ROLE` (+ `PHRASE`), and rewrites `AGE` between 5.x and 7.0 syntax (`CHILD` ↔ `< 8y` + `PHRASE`); a value with no target equivalent (`SEX X` to 5.x) is kept and reported as data loss; one the source version does not define either (an `AGE` that does not parse) is kept and reported as Preserved only; payloads beneath extension tags are left alone |
 | Date calendars | Both | Maps calendar escapes (`@#DJULIAN@`) to 7.0 keywords (`JULIAN`) and back, per date in ranges and periods; non-standard calendars are left unchanged and reported as Preserved. A non-Gregorian calendar on a header date converted to 7.0 (`HEAD.DATE`, `HEAD.SOUR.DATA.DATE`, which 7.0 types as calendar-free `DateExact`) is left unchanged and reported as Preserved, needing attention |
 | Date epochs and phrases | Both | Spells the B.C. epoch `BCE` for 7.0 (from `B.C.`, `BC`, `B.C.E.`) and `B.C.` for 5.x; moves `INT <date> (<phrase>)` to `DATE <date>` + `PHRASE` and `(<phrase>)` to an empty `DATE` + `PHRASE` for 7.0, and folds a `DATE` + `PHRASE` back into those forms for 5.x. A phrase with no target form is reported (DataLoss `Date phrases` and a Preserved note on the upgrade; the `PHRASE tags` DataLoss on the downgrade) |
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |

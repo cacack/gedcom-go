@@ -68,3 +68,7 @@ Where the qualified value has no typed field, its `PHRASE` stays in
   `<Value>Phrase` rule. `INDI.ADOP.FAMC.ADOP` was deferred until
   [#740](https://github.com/cacack/gedcom-go/issues/740) typed the adoption
   `FAMC`; its `PHRASE` is now `Event.AdoptedByPhrase`.
+  [#736](https://github.com/cacack/gedcom-go/issues/736) typed `AGE` on an
+  attribute and the spouse `HUSB.AGE`/`WIFE.AGE` on a family's events and
+  attributes; their `PHRASE`s are `Attribute.AgePhrase` and
+  `HusbandAgePhrase`/`WifeAgePhrase` on `Event` and `Attribute`.

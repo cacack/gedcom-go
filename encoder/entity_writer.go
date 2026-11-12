@@ -1,6 +1,7 @@
 package encoder
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -335,12 +336,20 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 
 	// Events (level 1) - MARR, DIV, etc.
 	for _, event := range fam.Events {
-		tags = append(tags, eventToTags(event, 1, opts)...)
+		if event == nil {
+			continue
+		}
+		tags = append(tags, withSpouseAges(eventToTags(event, 1, opts),
+			event.HusbandAge, event.HusbandAgePhrase, event.WifeAge, event.WifeAgePhrase, opts)...)
 	}
 
 	// Attributes (level 1) - NCHI, FACT (CENS and RESI decode as Events), etc.
 	for _, attr := range fam.Attributes {
-		tags = append(tags, attributeToTags(attr, 1, opts)...)
+		if attr == nil {
+			continue
+		}
+		tags = append(tags, withSpouseAges(attributeToTags(attr, 1, opts),
+			attr.HusbandAge, attr.HusbandAgePhrase, attr.WifeAge, attr.WifeAgePhrase, opts)...)
 	}
 
 	// LDS Ordinances (level 1) - SLGS
@@ -902,8 +911,8 @@ func nameVariationToTags(v *gedcom.NameVariation, tagName string, level int, opt
 // eventDetail is the EVENT_DETAIL substructure set that gedcom.Event and
 // gedcom.Attribute hold under identically named fields. Both writers fill one
 // in and hand it to eventDetailToTags so the shared block has a single writer
-// instead of two copies that drift apart. Attribute leaves age empty: AGE is
-// the one EVENT_DETAIL member gedcom.Attribute does not model.
+// instead of two copies that drift apart. The spouse ages of
+// FAMILY_EVENT_DETAIL are not part of it: see spouseAgesToTags.
 type eventDetail struct {
 	date                 string
 	parsedDate           *gedcom.Date
@@ -1066,6 +1075,32 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 	return tags
 }
 
+// withSpouseAges inserts the spouse ages of FAMILY_EVENT_DETAIL (HUSB and
+// WIFE, each with its AGE and 7.0 PHRASE) directly beneath the event or
+// attribute line that heads tags, where the grammar lists them. Only a
+// family's events and attributes take them, so only familyToTags calls it: a
+// spouse age set on an individual's event is not written as a structure no
+// version allows (the decoder reports one there as UNKNOWN_TAG).
+func withSpouseAges(tags []*gedcom.Tag, husbandAge, husbandPhrase, wifeAge, wifePhrase string, opts *EncodeOptions) []*gedcom.Tag {
+	if len(tags) == 0 {
+		return tags
+	}
+	level := tags[0].Level + 1
+	var ages []*gedcom.Tag
+	for _, spouse := range []struct{ tag, age, phrase string }{
+		{"HUSB", husbandAge, husbandPhrase},
+		{"WIFE", wifeAge, wifePhrase},
+	} {
+		age := ageToTags(spouse.age, spouse.phrase, level+1, opts)
+		if age == nil {
+			continue
+		}
+		ages = append(ages, &gedcom.Tag{Level: level, Tag: spouse.tag})
+		ages = append(ages, age...)
+	}
+	return slices.Insert(tags, 1, ages...)
+}
+
 // eventTakesFamilyLink reports whether event may carry a FAMC: an individual's
 // BIRT, CHR or ADOP that occurred (a 7.0 NO assertion has no substructure but
 // DATE, NOTE and SOUR). It mirrors the decoder's parseEventFamilyLink.
@@ -1097,6 +1132,8 @@ func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*
 		placeDetail:          attr.PlaceDetail,
 		typeDetail:           attr.TypeDetail,
 		cause:                attr.Cause,
+		age:                  attr.Age,
+		agePhrase:            attr.AgePhrase,
 		agency:               attr.Agency,
 		religiousAffiliation: attr.ReligiousAffiliation,
 		address:              attr.Address,

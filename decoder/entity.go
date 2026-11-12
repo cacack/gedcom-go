@@ -822,6 +822,12 @@ type eventDetail struct {
 	parsedDate      **gedcom.Date
 	placeDetail     **gedcom.PlaceDetail
 	cause           *string
+	age             *string
+	agePhrase       *string
+	husbandAge      *string
+	husbandPhrase   *string
+	wifeAge         *string
+	wifePhrase      *string
 	agency          *string
 	religion        *string
 	address         **gedcom.Address
@@ -861,6 +867,12 @@ func eventDetailOf(e *gedcom.Event, owner detailOwner) eventDetail {
 		parsedDate:      &e.ParsedDate,
 		placeDetail:     &e.PlaceDetail,
 		cause:           &e.Cause,
+		age:             &e.Age,
+		agePhrase:       &e.AgePhrase,
+		husbandAge:      &e.HusbandAge,
+		husbandPhrase:   &e.HusbandAgePhrase,
+		wifeAge:         &e.WifeAge,
+		wifePhrase:      &e.WifeAgePhrase,
 		agency:          &e.Agency,
 		religion:        &e.ReligiousAffiliation,
 		address:         &e.Address,
@@ -888,6 +900,12 @@ func eventDetailOfAttribute(a *gedcom.Attribute, owner detailOwner) eventDetail 
 		parsedDate:      &a.ParsedDate,
 		placeDetail:     &a.PlaceDetail,
 		cause:           &a.Cause,
+		age:             &a.Age,
+		agePhrase:       &a.AgePhrase,
+		husbandAge:      &a.HusbandAge,
+		husbandPhrase:   &a.HusbandAgePhrase,
+		wifeAge:         &a.WifeAge,
+		wifePhrase:      &a.WifeAgePhrase,
 		agency:          &a.Agency,
 		religion:        &a.ReligiousAffiliation,
 		address:         &a.Address,
@@ -909,9 +927,8 @@ func eventDetailOfAttribute(a *gedcom.Attribute, owner detailOwner) eventDetail 
 
 // parseEventDetailTag decodes the EVENT_DETAIL subtag at tags[i] into detail.
 // It covers every substructure gedcom.Event and gedcom.Attribute share; the
-// tags that belong to only one of them (TYPE, and AGE, which is typed on an
-// event and not on an attribute) stay with their own parser, which delegates
-// here for the rest.
+// tags that land in differently named fields (TYPE) or belong to events only
+// (FAMC) stay with their own parser, which delegates here for the rest.
 // Unrecognized standard tags are reported to collector (ADR 0007).
 //
 // The switch branches on the owning record, never on event versus attribute:
@@ -931,6 +948,9 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 		*detail.placeDetail = parsePlaceDetail(tags, i, tag.Level, collector)
 	case "CAUS":
 		*detail.cause = collector.text(tag.Value)
+	case "AGE":
+		*detail.age = collector.text(tag.Value)
+		*detail.agePhrase = collector.text(findSubordinate(tags, i, "PHRASE"))
 	case "AGNC":
 		*detail.agency = collector.text(tag.Value)
 	case "RELI":
@@ -966,11 +986,21 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 			tags, i, *detail.noteXRefs, *detail.inlineNotes, collector)
 	case "HUSB", "WIFE":
 		// FAMILY_EVENT_DETAIL: the spouse ages on a family event or family
-		// attribute (maximal70.ged carries one under FAM.FACT). Known tags not
-		// yet parsed into typed fields. An individual's events and attributes
-		// have no such position, so there the tag is nonstandard.
-		if detail.owner == individualOwner {
+		// attribute (maximal70.ged carries one under FAM.FACT). An
+		// individual's events and attributes have no such position, so there
+		// the tag is nonstandard.
+		switch detail.owner {
+		case individualOwner:
 			collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+		case familyOwner:
+			age, phrase := detail.husbandAge, detail.husbandPhrase
+			if tag.Tag == "WIFE" {
+				age, phrase = detail.wifeAge, detail.wifePhrase
+			}
+			if ageIdx := findSubordinateIndex(tags, i, "AGE"); ageIdx >= 0 {
+				*age = collector.text(tags[ageIdx].Value)
+				*phrase = collector.text(findSubordinate(tags, ageIdx, "PHRASE"))
+			}
 		}
 	default:
 		if !strings.HasPrefix(tag.Tag, "_") {
@@ -1044,9 +1074,6 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailO
 			switch tag.Tag {
 			case "TYPE":
 				event.EventTypeDetail = collector.text(tag.Value)
-			case "AGE":
-				event.Age = collector.text(tag.Value)
-				event.AgePhrase = collector.text(findSubordinate(tags, i, "PHRASE"))
 			case "FAMC":
 				if !parseEventFamilyLink(event, tags, i, tags[eventIdx].Tag, owner, collector) {
 					parseEventDetailTag(&detail, tags, i, collector)
@@ -1248,10 +1275,6 @@ func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string, owner detai
 				attr.TypeDetail = collector.text(tag.Value)
 			case "CONT", "CONC":
 				// Folded into Value above.
-			case "AGE":
-				// Known tag not parsed into a typed field: gedcom.Attribute has
-				// no Age counterpart to Event.Age, and nothing asks for one. The
-				// raw tag remains on the owning record's Tags (ADR 0003).
 			default:
 				// Everything else is EVENT_DETAIL, shared with parseEvent.
 				parseEventDetailTag(&detail, tags, i, collector)

@@ -15,8 +15,9 @@ package gedcom
 //   - SDATE event sort dates
 //   - TRAN name transliterations
 //   - PHRASE on associations, and the typed PHRASE beside a value
-//     (TypePhrase, PedigreePhrase, RolePhrase, AgePhrase, SortDatePhrase,
-//     AdoptedByPhrase, HusbandPhrase, WifePhrase, MediaPhrase)
+//     (TypePhrase, PedigreePhrase, RolePhrase, AgePhrase, HusbandAgePhrase
+//     and WifeAgePhrase on a family's events and attributes, SortDatePhrase, AdoptedByPhrase, HusbandPhrase,
+//     WifePhrase, MediaPhrase)
 //   - TIME beneath an LDS status date (LDSOrdinance.StatusTime)
 //   - DATE PHRASE on event, attribute and LDS ordinance dates
 //     (ParsedDate.PhraseSubstructure; a 5.5.1 "(text)" date phrase is not one)
@@ -172,16 +173,29 @@ func familyRequiresGEDCOM7(f *Family) bool {
 		return true
 	}
 	for _, ev := range f.Events {
-		if eventRequiresGEDCOM7(ev) {
+		if familyEventRequiresGEDCOM7(ev) {
 			return true
 		}
 	}
 	for _, at := range f.Attributes {
-		if attributeRequiresGEDCOM7(at) {
+		if familyAttributeRequiresGEDCOM7(at) {
 			return true
 		}
 	}
 	return false
+}
+
+// familyEventRequiresGEDCOM7 and familyAttributeRequiresGEDCOM7 add the
+// spouse-age PHRASEs (HUSB.AGE.PHRASE, WIFE.AGE.PHRASE) to the shared checks.
+// They apply to a family's events and attributes only: the encoder writes
+// spouse ages nowhere else, so one set on an individual's event produces no
+// 7.0-only output.
+func familyEventRequiresGEDCOM7(ev *Event) bool {
+	return eventRequiresGEDCOM7(ev) || (ev != nil && (ev.HusbandAgePhrase != "" || ev.WifeAgePhrase != ""))
+}
+
+func familyAttributeRequiresGEDCOM7(at *Attribute) bool {
+	return attributeRequiresGEDCOM7(at) || (at != nil && (at.HusbandAgePhrase != "" || at.WifeAgePhrase != ""))
 }
 
 func eventRequiresGEDCOM7(ev *Event) bool {
@@ -205,15 +219,16 @@ func eventRequiresGEDCOM7(ev *Event) bool {
 }
 
 // attributeRequiresGEDCOM7 reports whether an attribute carries a
-// structure only GEDCOM 7.0 defines. SDATE on an attribute, and an ASSO
-// with a PHRASE, are 7.0-only; the encoder emits them unconditionally, so a
-// document holding one cannot honestly be labelled 5.5.1. UIDs are not
-// checked: see individualRequiresGEDCOM7.
+// structure only GEDCOM 7.0 defines. SDATE on an attribute, a typed PHRASE,
+// and an ASSO with a PHRASE, are 7.0-only; the encoder emits them
+// unconditionally, so a document holding one cannot honestly be labelled
+// 5.5.1. Spouse-age phrases are checked by familyAttributeRequiresGEDCOM7, and UIDs
+// not at all: see individualRequiresGEDCOM7.
 func attributeRequiresGEDCOM7(at *Attribute) bool {
 	if at == nil {
 		return false
 	}
-	if at.SortDate != "" || at.SortDatePhrase != "" ||
+	if at.SortDate != "" || at.SortDatePhrase != "" || at.AgePhrase != "" ||
 		at.ParsedDate.PhraseSubstructure(at.Date) != "" {
 		return true
 	}

@@ -179,11 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 897 | 89.9% | 1205 | 91.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 911 | 91.3% | 1220 | 92.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 87 | 8.7% | 99 | 7.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 75 | 7.5% | 86 | 6.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 3 | 0.3% | 2 | 0.2% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 11 | 1.1% | 10 | 0.8% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 9 | 0.9% | 8 | 0.6% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -193,9 +193,9 @@ pairs under it reach the typed model.
 
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
-| `FAM` | 213 / 254 | 282 / 324 |
+| `FAM` | 215 / 254 | 284 / 324 |
 | `HEAD` | 18 / 28 | 21 / 33 |
-| `INDI` | 598 / 625 | 818 / 855 |
+| `INDI` | 610 / 625 | 831 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 6 / 12 | 12 / 13 |
 | `REPO` | 13 / 17 | 17 / 21 |
@@ -337,7 +337,7 @@ Measured at `FAM.ANUL.HUSB` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `AGE` | `FAMILY_EVENT_DETAIL.HUSB.AGE` | — | raw (undiagnosed) | `{1:1}` |
+| `AGE` | `FAMILY_EVENT_DETAIL.HUSB.AGE` | — | typed | `{1:1}` |
 
 ### `FAMILY_EVENT_DETAIL.WIFE`
 
@@ -345,7 +345,7 @@ Measured at `FAM.ANUL.WIFE` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `AGE` | `FAMILY_EVENT_DETAIL.WIFE.AGE` | — | raw (undiagnosed) | `{1:1}` |
+| `AGE` | `FAMILY_EVENT_DETAIL.WIFE.AGE` | — | typed | `{1:1}` |
 
 ### `FAMILY_EVENT_STRUCTURE.ANUL`
 
@@ -745,7 +745,7 @@ Measured at `FAM.ANUL.HUSB` in 5.5.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `AGE` | `FAM_RECORD.FAM.FAMILY_EVENT_STRUCTURE.HUSB.AGE` | raw (undiagnosed) | — | `{1:1}` |
+| `AGE` | `FAM_RECORD.FAM.FAMILY_EVENT_STRUCTURE.HUSB.AGE` | typed | — | `{1:1}` |
 
 ### `FAM_RECORD.FAM.FAMILY_EVENT_STRUCTURE.WIFE`
 
@@ -753,7 +753,7 @@ Measured at `FAM.ANUL.WIFE` in 5.5.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `AGE` | `FAM_RECORD.FAM.FAMILY_EVENT_STRUCTURE.WIFE.AGE` | raw (undiagnosed) | — | `{1:1}` |
+| `AGE` | `FAM_RECORD.FAM.FAMILY_EVENT_STRUCTURE.WIFE.AGE` | typed | — | `{1:1}` |
 
 ### `FAM_RECORD.FAM.REFN`
 
@@ -872,8 +872,8 @@ Measured at `INDI.CAST` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
@@ -899,8 +899,8 @@ Measured at `INDI.DSCR` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `CONC` | `INDIVIDUAL_ATTRIBUTE_STRUCTURE.DSCR.CONC` | — | typed | `{0:M}` |
@@ -928,8 +928,8 @@ Measured at `INDI.EDUC` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
@@ -955,7 +955,7 @@ Measured at `INDI.FACT` in 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | — | typed | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | — | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | — | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | — | typed | `{0:1}` |
@@ -981,8 +981,8 @@ Measured at `INDI.IDNO` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
@@ -1008,8 +1008,8 @@ Measured at `INDI.NATI` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
@@ -1035,8 +1035,8 @@ Measured at `INDI.NCHI` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
@@ -1062,8 +1062,8 @@ Measured at `INDI.NMR` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
@@ -1089,8 +1089,8 @@ Measured at `INDI.OCCU` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
@@ -1116,8 +1116,8 @@ Measured at `INDI.PROP` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
@@ -1143,8 +1143,8 @@ Measured at `INDI.RELI` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
@@ -1197,8 +1197,8 @@ Measured at `INDI.SSN` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
@@ -1224,8 +1224,8 @@ Measured at `INDI.TITL` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `AGE` | `EVENT_DETAIL.AGE` | raw (accepted) | — | `{0:1}` |
-| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
+| `AGE` | `EVENT_DETAIL.AGE` | typed | — | `{0:1}` |
+| `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | typed | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
