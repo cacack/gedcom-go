@@ -214,7 +214,10 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 
 	// Lenient mode: recover from malformed indentation in real-world exports by
 	// clamping over-jumped levels to prevLevel+1 and emitting CodeBadLevelJump.
+	// A dropped level-0 line takes its record's subordinate lines with it, so
+	// they are not attached to the preceding record (#723).
 	if !opts.StrictMode {
+		lines = skipOrphanedRecords(lines, parseErrors, collector)
 		normalizeLevelJumps(lines, collector)
 	}
 
