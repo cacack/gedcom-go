@@ -59,8 +59,8 @@ func TestUpgrade551MapsVersionForeignStructures(t *testing.T) {
 			"1 EXID 9876\n2 TYPE https://gedcom.io/terms/v7/RIN#My%20System\n",
 		"1 _CUSTOM kept\n2 RIN 1\n", // under an extension: not governed, kept
 		"1 OBJE @O2@\n1 BIRT\n2 OBJE @O3@\n",
-		"0 @O2@ OBJE\n1 FILE photo.jpg\n2 FORM jpg\n2 TITL A photo\n",
-		"0 @O3@ OBJE\n1 FILE birth.jpg\n2 FORM jpg\n",
+		"0 @O2@ OBJE\n1 FILE photo.jpg\n2 FORM image/jpeg\n2 TITL A photo\n",
+		"0 @O3@ OBJE\n1 FILE birth.jpg\n2 FORM image/jpeg\n",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output lacks %q:\n%s", want, out)
@@ -116,7 +116,7 @@ func TestUpgrade55PromotesInlineMediaLink(t *testing.T) {
 0 TRLR
 `
 	converted, report, out := convertText(t, doc55, gedcom.Version70)
-	if want := "0 @O1@ OBJE\n1 FILE portrait.bmp\n2 FORM bmp\n2 TITL Portrait\n1 NOTE A note\n"; !strings.Contains(out, want) {
+	if want := "0 @O1@ OBJE\n1 FILE portrait.bmp\n2 FORM image/bmp\n2 TITL Portrait\n1 NOTE A note\n"; !strings.Contains(out, want) {
 		t.Errorf("output lacks %q:\n%s", want, out)
 	}
 	// A link with no FILE has nothing a 7.0 OBJE record could hold, so it is
@@ -340,11 +340,11 @@ func TestDowngrade70To55DemotesMediaRecords(t *testing.T) {
 
 	for _, want := range []string{
 		"0 @I1@ INDI\n" +
-			"1 OBJE\n2 FORM image/jpeg\n2 TITL Pointer title\n2 FILE a.jpg\n3 _FX kept under FILE\n2 NOTE A note\n2 _EXT kept\n" +
-			"1 OBJE\n2 FORM application/pdf\n2 TITL Pointer title\n2 FILE b.pdf\n2 NOTE A note\n" +
+			"1 OBJE\n2 FORM JPG\n2 TITL Pointer title\n2 FILE a.jpg\n3 _FX kept under FILE\n2 NOTE A note\n2 _EXT kept\n" +
+			"1 OBJE\n2 FORM PDF\n2 TITL Pointer title\n2 FILE b.pdf\n2 NOTE A note\n" +
 			"1 BIRT\n" +
-			"2 OBJE\n3 FORM image/jpeg\n3 TITL File title\n3 FILE a.jpg\n4 _FX kept under FILE\n3 NOTE A note\n" +
-			"2 OBJE\n3 FORM application/pdf\n3 FILE b.pdf\n3 NOTE A note\n",
+			"2 OBJE\n3 FORM JPG\n3 TITL File title\n3 FILE a.jpg\n4 _FX kept under FILE\n3 NOTE A note\n" +
+			"2 OBJE\n3 FORM PDF\n3 FILE b.pdf\n3 NOTE A note\n",
 		// A record with no FILE is not demoted.
 		"1 OBJE @O3@\n", "0 @O3@ OBJE\n",
 	} {
@@ -437,7 +437,7 @@ func TestDowngrade70To55KeepsOversizedMediaRecord(t *testing.T) {
 	if converted.XRefMap["@O1@"] == nil || !strings.Contains(out, "1 OBJE @O1@\n") {
 		t.Fatal("oversized record @O1@ was demoted")
 	}
-	if converted.XRefMap["@O2@"] != nil || !strings.Contains(out, "1 OBJE\n2 FORM image/jpeg\n2 FILE b.jpg\n") {
+	if converted.XRefMap["@O2@"] != nil || !strings.Contains(out, "1 OBJE\n2 FORM JPG\n2 FILE b.jpg\n") {
 		t.Errorf("small record @O2@ was not demoted")
 	}
 	if !hasDataLoss(report, "Oversized OBJE records", "@O1@") || hasDataLoss(report, "Oversized OBJE records", "@O2@") {
@@ -520,7 +520,7 @@ func TestUpgrade55NestsMediaRecordForms(t *testing.T) {
 0 TRLR
 `
 	_, report, out := convertText(t, doc55, gedcom.Version70)
-	if want := "0 @O1@ OBJE\n1 FILE photo.jpg\n2 FORM jpeg\n2 TITL Portrait\n"; !strings.Contains(out, want) {
+	if want := "0 @O1@ OBJE\n1 FILE photo.jpg\n2 FORM image/jpeg\n2 TITL Portrait\n"; !strings.Contains(out, want) {
 		t.Errorf("output lacks %q:\n%s", want, out)
 	}
 	if !hasNormalized(report, "MediaObject @O1@ > FILE", "OBJE record FORM/TITL beside FILE", "FORM/TITL under FILE") {
