@@ -128,6 +128,12 @@ const (
 	// allows such a family. It carries SeverityWarning and the line of the
 	// record, and [QualityReport] files it under CompletenessIssues.
 	CodeEmptyFamily = "EMPTY_FAMILY"
+
+	// CodeDuplicateXRef indicates two or more records share a cross-reference
+	// identifier. It carries SeverityError and is reported once per record
+	// after the first, with that record's line; the message names the line
+	// of the first definition, which Document.XRefMap resolves pointers to.
+	CodeDuplicateXRef = "DUPLICATE_XREF"
 )
 
 // Error codes for duplicate detection.

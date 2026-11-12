@@ -1,6 +1,6 @@
 // structure.go provides the record-structure checks run by ValidateAll:
-// pointers to records that do not exist, individuals with no NAME, and
-// families with no members.
+// pointers to records that do not exist, XRefs defined by more than one
+// record, individuals with no NAME, and families with no members.
 //
 // These three rules predate the Issue model. Until v3 they were reachable only
 // through the []error Validate path, as bare string codes with no line number.
@@ -130,6 +130,39 @@ func (c pointerCounts) take(tag, xref string) bool {
 	}
 	c[key]--
 	return true
+}
+
+// validateDuplicateXRefs reports every record that reuses an XRef an earlier
+// record in doc.Records already defined, as CodeDuplicateXRef with the line of
+// the redefinition. Records are compared to each other, not to doc.XRefMap, so
+// a hand-built document whose map holds only one of the records is still
+// reported.
+func validateDuplicateXRefs(doc *gedcom.Document) []Issue {
+	var issues []Issue
+	first := make(map[string]*gedcom.Record)
+	for _, record := range doc.Records {
+		if record == nil || record.XRef == "" {
+			continue
+		}
+		prev, exists := first[record.XRef]
+		if !exists {
+			first[record.XRef] = record
+			continue
+		}
+		issues = append(issues, duplicateXRefIssue(record, prev.LineNumber))
+	}
+	return issues
+}
+
+// duplicateXRefIssue reports record as a redefinition of an XRef first defined
+// at firstLine (0 when unknown, as for a record built in code).
+func duplicateXRefIssue(record *gedcom.Record, firstLine int) Issue {
+	msg := fmt.Sprintf("XRef %s is defined by more than one record", record.XRef)
+	if firstLine > 0 {
+		msg = fmt.Sprintf("XRef %s is already defined at line %d", record.XRef, firstLine)
+	}
+	return NewIssue(SeverityError, CodeDuplicateXRef, msg, record.XRef).
+		WithLineNumber(record.LineNumber)
 }
 
 // validateRecordStructure reports individuals with no name (CodeMissingName)
