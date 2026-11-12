@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0](https://github.com/cacack/gedcom-go/compare/v3.5.0...v3.6.0) (2026-11-11)
+
+
+### Features
+
+* **decoder:** add SyncEntities to rebuild typed entities from Tags ([eb04976](https://github.com/cacack/gedcom-go/commit/eb04976d64085130afc275839e30ebc89b8283d2)), closes [#772](https://github.com/cacack/gedcom-go/issues/772)
+* **decoder:** type event FAMC, LDS STAT.DATE and 5.5 ASSO.TYPE ([9eb0001](https://github.com/cacack/gedcom-go/commit/9eb0001e7cf44f35104a7eebe457d5328b9a59fd)), closes [#740](https://github.com/cacack/gedcom-go/issues/740)
+* **encoder:** add SyncTags to carry typed edits into raw tags ([8bb1d64](https://github.com/cacack/gedcom-go/commit/8bb1d643984645c6f871ef19e4af9872a028cc34)), closes [#725](https://github.com/cacack/gedcom-go/issues/725)
+* **encoder:** reject input the decoder cannot read back ([5f99d02](https://github.com/cacack/gedcom-go/commit/5f99d029fe70d39ff122fb1e18a17313e8f860c0)), closes [#726](https://github.com/cacack/gedcom-go/issues/726)
+* **gedcom:** add nil-safe name and first-event accessors ([535f476](https://github.com/cacack/gedcom-go/commit/535f476ec317e29d28c4a6a132ff92580a825733)), closes [#714](https://github.com/cacack/gedcom-go/issues/714)
+* **validator:** make ENTITY_TAGS_DIVERGED opt-in via CheckEntityTags ([70b2269](https://github.com/cacack/gedcom-go/commit/70b22692ed66fa9f95fa207c067a810f31c8868c)), closes [#725](https://github.com/cacack/gedcom-go/issues/725)
+* **validator:** report typed edits the encoder would not write ([d1efac7](https://github.com/cacack/gedcom-go/commit/d1efac74b9a6be0d20e0b93b65b023e30d53e9cd)), closes [#725](https://github.com/cacack/gedcom-go/issues/725)
+
+
+### Bug Fixes
+
+* **converter:** re-derive typed entities from the converted Tags ([827f3f4](https://github.com/cacack/gedcom-go/commit/827f3f4c614781e09a9fdfb43959166a349a4973)), closes [#772](https://github.com/cacack/gedcom-go/issues/772)
+* **decoder:** unescape typed text by the version the document is read as ([97b57d2](https://github.com/cacack/gedcom-go/commit/97b57d2c7610dc559279b55538f5db389143b40a)), closes [#708](https://github.com/cacack/gedcom-go/issues/708)
+* **encoder,decoder:** escape @ in typed text by the output version's rule ([3bdc802](https://github.com/cacack/gedcom-go/commit/3bdc802f76df0aa16eb3dbad2c6662f144a2bb0c)), closes [#708](https://github.com/cacack/gedcom-go/issues/708)
+* **encoder:** bound the SyncTags alignment of a changed tag group ([943dbc7](https://github.com/cacack/gedcom-go/commit/943dbc7870c2d058445d28a91172e8958e89808a)), closes [#725](https://github.com/cacack/gedcom-go/issues/725)
+* **encoder:** do not carry Header.Encoding into a 7.0 header in SyncTags ([a751d75](https://github.com/cacack/gedcom-go/commit/a751d75c99eda5aaa40e936be2ff996fc65b3a7f)), closes [#725](https://github.com/cacack/gedcom-go/issues/725)
+* **encoder:** escape typed text before the CONC split ([1386a8b](https://github.com/cacack/gedcom-go/commit/1386a8b407df1d1cc126e714ebca93247d43d434)), closes [#708](https://github.com/cacack/gedcom-go/issues/708)
+* **encoder:** keep spaced and subordinate identifiers readable on encode ([52bcb27](https://github.com/cacack/gedcom-go/commit/52bcb271280de159ec1e97e5909f628037d658d0)), closes [#726](https://github.com/cacack/gedcom-go/issues/726)
+* **encoder:** keep undated LDS STAT and gate event FAMC by event type ([c386af4](https://github.com/cacack/gedcom-go/commit/c386af4f315747d343527e6848b3aebfb0e4a658)), closes [#740](https://github.com/cacack/gedcom-go/issues/740)
+* **encoder:** report raw tags the encoder refuses as ErrSyncBaseline ([53dc404](https://github.com/cacack/gedcom-go/commit/53dc40450c8b993441c2395a11838c736092cffd)), closes [#725](https://github.com/cacack/gedcom-go/issues/725)
+* **encoder:** write ASSO, LDS STAT and event FAMC valid for the output version ([9550bfc](https://github.com/cacack/gedcom-go/commit/9550bfceda73c388bd428db579d3bbb950fd0a68)), closes [#740](https://github.com/cacack/gedcom-go/issues/740)
+* **gedcom:** keep the ADDR payload apart from ADR1 in Address ([27f8e1f](https://github.com/cacack/gedcom-go/commit/27f8e1f7c77ea2c711004b95950a040656506f69)), closes [#706](https://github.com/cacack/gedcom-go/issues/706)
+* **validator:** report when ENTITY_TAGS_DIVERGED cannot be checked ([2bdaac4](https://github.com/cacack/gedcom-go/commit/2bdaac4385e593f5aadf4fb618ad2ec7f92cf5e8)), closes [#725](https://github.com/cacack/gedcom-go/issues/725)
+
 ## [3.5.0](https://github.com/cacack/gedcom-go/compare/v3.4.0...v3.5.0) (2026-11-09)
 
 
