@@ -54,3 +54,15 @@ func TestStreamingValidator_DuplicateXRef(t *testing.T) {
 		t.Errorf("xrefTypes[@S1@] = %q, want the first definition's type SOUR", sv.xrefTypes["@S1@"])
 	}
 }
+
+// TestStreamingValidator_DuplicateXRef_Reset pins that Reset forgets seen
+// XRefs, so a reused validator does not report the next file's records as
+// redefinitions.
+func TestStreamingValidator_DuplicateXRef_Reset(t *testing.T) {
+	sv := NewStreamingValidator(StreamingOptions{})
+	sv.ValidateRecord(&gedcom.Record{XRef: "@S1@", Type: gedcom.RecordTypeSource, LineNumber: 3})
+	sv.Reset()
+	if issues := sv.ValidateRecord(&gedcom.Record{XRef: "@S1@", Type: gedcom.RecordTypeSource, LineNumber: 3}); len(issues) != 0 {
+		t.Errorf("after Reset issues = %v, want none", issues)
+	}
+}

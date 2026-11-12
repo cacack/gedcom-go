@@ -98,6 +98,32 @@ func TestDecodeWithDiagnostics_UnknownRecordType(t *testing.T) {
 	}
 }
 
+// TestDecodeWithDiagnostics_UnknownRecordTypeExemptions pins that level-0
+// lines already reported as INVALID_XREF (an XRef on HEAD or TRLR, an XRef
+// with no tag) are not also reported as unknown record types.
+func TestDecodeWithDiagnostics_UnknownRecordTypeExemptions(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @X1@ HEAD\n" + // line 4
+		"0 @X2@\n" + // line 5
+		"0 @X3@ TRLR\n" + // line 6
+		"0 TRLR\n"
+
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := diagnosticsWithCode(result.Diagnostics, CodeUnknownTag); len(got) != 0 {
+		t.Errorf("UNKNOWN_TAG diagnostics = %v, want none", got)
+	}
+	lines := map[int]bool{}
+	for _, d := range diagnosticsWithCode(result.Diagnostics, CodeInvalidXRef) {
+		lines[d.Line] = true
+	}
+	if !lines[4] || !lines[5] || !lines[6] {
+		t.Errorf("INVALID_XREF lines = %v, want 4, 5 and 6", lines)
+	}
+}
+
 // diagnosticsWithCode returns the diagnostics in ds that carry code.
 func diagnosticsWithCode(ds Diagnostics, code string) Diagnostics {
 	var out Diagnostics

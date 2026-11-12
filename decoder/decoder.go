@@ -677,6 +677,7 @@ func buildRecords(doc *gedcom.Document, lines []*parser.Line, collector *diagnos
 			// Start new record
 			currentRecord = newRecord(line)
 
+			checkRecordType(line, collector)
 			indexRecord(doc, currentRecord, line, collector)
 
 			continue
@@ -724,20 +725,31 @@ func newTag(line *parser.Line) *gedcom.Tag {
 	}
 }
 
-// indexRecord adds a record just started from a level-0 line to doc.XRefMap,
-// reporting an unknown record type or a redefined XRef to collector.
-func indexRecord(doc *gedcom.Document, record *gedcom.Record, line *parser.Line, collector *diagnosticCollector) {
-	// A level-0 tag outside the standard record set is kept as a record of
-	// that type, with no entity. Extension records ("_CUSTOM") are allowed;
-	// anything else is reported. HEAD and TRLR reaching here carry an XRef and
-	// were reported by buildRecords, and a tag starting with "@" is a level-0
-	// XRef with no tag, which the parser already reported as INVALID_XREF.
-	if line.Tag != "HEAD" && line.Tag != "TRLR" &&
-		!strings.HasPrefix(line.Tag, "_") && !strings.HasPrefix(line.Tag, "@") &&
-		!standardRecordTypes[record.Type] {
+// checkRecordType reports a level-0 line whose tag is not a record type the
+// decoder knows. Such a line is still kept as a record of that type, with no
+// entity.
+func checkRecordType(line *parser.Line, collector *diagnosticCollector) {
+	if isUnknownRecordTag(line.Tag) {
 		collector.addUnknownRecordType(line)
 	}
+}
 
+// isUnknownRecordTag reports whether a level-0 tag is outside the standard
+// record set and not otherwise accounted for. Extension records ("_CUSTOM")
+// are allowed. HEAD and TRLR only start a record when they carry an XRef,
+// which buildRecords reports as INVALID_XREF. A tag starting with "@" is a
+// level-0 XRef with no tag, which the parser already reported as INVALID_XREF.
+func isUnknownRecordTag(tag string) bool {
+	if tag == "HEAD" || tag == "TRLR" ||
+		strings.HasPrefix(tag, "_") || strings.HasPrefix(tag, "@") {
+		return false
+	}
+	return !standardRecordTypes[gedcom.RecordType(tag)]
+}
+
+// indexRecord adds a record just started from a level-0 line to doc.XRefMap,
+// reporting a redefined XRef to collector.
+func indexRecord(doc *gedcom.Document, record *gedcom.Record, line *parser.Line, collector *diagnosticCollector) {
 	// Index in XRefMap if it has an XRef. The first definition of an XRef
 	// wins: a later record reusing it stays in Records (nothing is dropped)
 	// but pointers keep resolving to the first, and the redefinition is
