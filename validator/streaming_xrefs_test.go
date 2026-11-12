@@ -187,3 +187,60 @@ func TestStreamingValidator_DuplicateXRef_Lines(t *testing.T) {
 		}
 	}
 }
+
+// TestBlocks_AppendTruncateAcrossBoundary pins that blocks keeps its
+// elements across block boundaries, and that truncating to any length,
+// including a boundary and zero, leaves a list that appends correctly.
+func TestBlocks_AppendTruncateAcrossBoundary(t *testing.T) {
+	for _, cut := range []int{0, 1, blockLen - 1, blockLen, blockLen + 1, 2 * blockLen} {
+		var l blocks[int]
+		for i := range 2*blockLen + 5 {
+			l.append(i)
+		}
+		l.truncate(cut)
+		if l.len() != cut {
+			t.Fatalf("truncate(%d): len = %d", cut, l.len())
+		}
+		for i := range blockLen + 3 {
+			l.append(-i - 1)
+		}
+		for i := range l.len() {
+			want := i
+			if i >= cut {
+				want = -(i - cut) - 1
+			}
+			if got := *l.at(i); got != want {
+				t.Fatalf("truncate(%d): at(%d) = %d, want %d", cut, i, got, want)
+			}
+		}
+	}
+}
+
+// TestXRefTable_InternStableAcrossRehash pins that interning gives each
+// distinct string one dense id, that get returns the string, and that ids
+// survive the index growing.
+func TestXRefTable_InternStableAcrossRehash(t *testing.T) {
+	x := newXRefTable()
+	const n = 3 * blockLen // forces many rehashes and several ends blocks
+	key := func(i int) string { return fmt.Sprintf("@I%d@", i) }
+	if id := x.intern(""); id != 0 || x.get(0) != "" {
+		t.Fatalf(`intern("") = %d, get = %q`, id, x.get(0))
+	}
+	for i := range n {
+		if id := x.intern(key(i)); id != uint32(i+1) { //nolint:gosec // small test values
+			t.Fatalf("intern(%q) = %d, want %d", key(i), id, i+1)
+		}
+	}
+	if id := x.intern(""); id != 0 {
+		t.Fatalf(`re-intern("") = %d, want 0`, id)
+	}
+	for i := range n {
+		id := uint32(i + 1) //nolint:gosec // small test values
+		if got := x.intern(key(i)); got != id {
+			t.Fatalf("re-intern(%q) = %d, want %d", key(i), got, id)
+		}
+		if got := x.get(id); got != key(i) {
+			t.Fatalf("get(%d) = %q, want %q", id, got, key(i))
+		}
+	}
+}
