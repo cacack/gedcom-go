@@ -283,17 +283,17 @@ func headerEncoding(enc charset.Encoding) gedcom.Encoding {
 	case charset.EncodingLATIN1:
 		return gedcom.EncodingLATIN1
 	case charset.EncodingWindows1250:
-		return "WINDOWS-1250"
+		return gedcom.EncodingWindows1250
 	case charset.EncodingCP437:
-		return "CP437"
+		return gedcom.EncodingCP437
 	case charset.EncodingCP850:
-		return "CP850"
+		return gedcom.EncodingCP850
 	case charset.EncodingMacRoman:
-		return "MACROMAN"
+		return gedcom.EncodingMacRoman
 	case charset.EncodingUTF16LE:
-		return "UTF-16LE"
+		return gedcom.EncodingUTF16LE
 	case charset.EncodingUTF16BE:
-		return "UTF-16BE"
+		return gedcom.EncodingUTF16BE
 	default:
 		return gedcom.EncodingUTF8
 	}
