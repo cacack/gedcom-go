@@ -1,8 +1,9 @@
 package gedcom
 
 // RefNumber represents a user reference number (REFN tag) with its optional
-// TYPE subordinate. REFN is repeatable on INDI, FAM, SOUR and OBJE records in
-// both GEDCOM 5.5.1 and 7.0, so records carry a []RefNumber in file order.
+// TYPE subordinate. REFN is repeatable on INDI, FAM, SOUR, OBJE and REPO
+// records in both GEDCOM 5.5.1 and 7.0, on the 5.5.1 NOTE record, and on the
+// 7.0 SUBM and SNOTE records, so records carry a []RefNumber in file order.
 //
 // GEDCOM structure:
 //

@@ -11,6 +11,16 @@ type Note struct {
 	// SharedNote.Text: one field, one representation.
 	Text string
 
+	// SourceCitations are source citations with page/quality details (SOUR).
+	SourceCitations []*SourceCitation
+
+	// ChangeDate is when the record was last modified (CHAN tag)
+	ChangeDate *ChangeDate
+
+	// RefNumbers are user reference numbers (REFN tags, repeatable), each
+	// with its optional TYPE, in file order.
+	RefNumbers []RefNumber
+
 	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
 	// Links this record to external systems like FamilySearch, Ancestry, etc.
 	ExternalIDs []*ExternalID

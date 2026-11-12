@@ -195,15 +195,15 @@ func v7OnlyEntityFields(entity any) (crea **gedcom.ChangeDate, exids *[]*gedcom.
 		}
 	case *gedcom.Submitter:
 		if e != nil {
-			return nil, &e.ExternalIDs, nil
+			return &e.CreationDate, &e.ExternalIDs, nil
 		}
 	case *gedcom.Repository:
 		if e != nil {
-			return nil, &e.ExternalIDs, nil
+			return &e.CreationDate, &e.ExternalIDs, nil
 		}
 	case *gedcom.SharedNote:
 		if e != nil {
-			return nil, &e.ExternalIDs, &e.Translations
+			return &e.CreationDate, &e.ExternalIDs, &e.Translations
 		}
 	}
 	return nil, nil, nil
@@ -265,7 +265,8 @@ var sharedNoteOnlyTags = []string{"MIME", "LANG"}
 // (issue #570).
 //
 // Both representations are rewritten: the record's Type and Entity (a
-// SharedNote becomes a Note with the same XRef, Text and Tags), and each
+// SharedNote becomes a Note with the same XRef, Text, SourceCitations,
+// ChangeDate, RefNumbers and Tags), and each
 // SNOTE tag in record.Tags and doc.Header.Tags. The record's level-1 MIME and
 // LANG, which a 5.x NOTE record does not define, are removed from its Tags
 // and reported as data loss (from the entity's MIME and Language for a record
@@ -301,9 +302,12 @@ func downgradeSharedNotes(doc *gedcom.Document, report *gedcom.ConversionReport,
 		record.Type = gedcom.RecordTypeNote
 		if note != nil {
 			record.Entity = &gedcom.Note{
-				XRef: note.XRef,
-				Text: note.Text,
-				Tags: record.Tags,
+				XRef:            note.XRef,
+				Text:            note.Text,
+				SourceCitations: note.SourceCitations,
+				ChangeDate:      note.ChangeDate,
+				RefNumbers:      note.RefNumbers,
+				Tags:            record.Tags,
 			}
 		}
 		records++

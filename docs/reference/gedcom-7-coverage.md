@@ -123,8 +123,8 @@ The structure each pair is nested under at level 0.
 | `HEAD` | 27 | 24 | 0 | 3 | 0 | 0 |
 | `REPO` | 21 | 17 | 0 | 4 | 0 | 0 |
 | `OBJE` | 17 | 17 | 0 | 0 | 0 | 0 |
-| `SUBM` | 16 | 9 | 0 | 7 | 0 | 0 |
-| `SNOTE` | 12 | 9 | 0 | 3 | 0 | 0 |
+| `SUBM` | 16 | 13 | 0 | 3 | 0 | 0 |
+| `SNOTE` | 12 | 12 | 0 | 0 | 0 | 0 |
 | `CONT` | 1 | 0 | 0 | 0 | 1 | 0 |
 | `TRLR` | 1 | 0 | 0 | 1 | 0 | 0 |
 
@@ -2224,17 +2224,17 @@ Substructures of `record-REPO`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `CHAN` | `CHAN` | raw (accepted) |
-| `CREA` | `CREA` | raw (accepted) |
+| `CHAN` | `CHAN` | typed |
+| `CREA` | `CREA` | typed |
 | `EMAIL` | `EMAIL` | typed |
 | `EXID` | `EXID` | typed |
 | `FAX` | `FAX` | typed |
 | `NAME` | `NAME` | typed |
 | `NOTE` | `NOTE` | typed |
 | `PHON` | `PHON` | typed |
-| `REFN` | `REFN` | raw (accepted) |
+| `REFN` | `REFN` | typed |
 | `SNOTE` | `SNOTE` | typed |
-| `UID` | `UID` | raw (accepted) |
+| `UID` | `UID` | typed |
 | `WWW` | `WWW` | typed |
 
 ### `REPO.ADDR`
@@ -2258,14 +2258,14 @@ Substructures of `record-SNOTE`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `CHAN` | `CHAN` | typed |
-| `CREA` | `CREA` | raw (accepted) |
+| `CREA` | `CREA` | typed |
 | `EXID` | `EXID` | typed |
 | `LANG` | `LANG` | typed |
 | `MIME` | `MIME` | typed |
-| `REFN` | `REFN` | raw (accepted) |
+| `REFN` | `REFN` | typed |
 | `SOUR` | `SOUR` | typed |
 | `TRAN` | `NOTE-TRAN` | typed |
-| `UID` | `UID` | raw (accepted) |
+| `UID` | `UID` | typed |
 
 ### `SNOTE.TRAN`
 
@@ -2360,8 +2360,8 @@ Substructures of `record-SUBM`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `ADDR` | `ADDR` | typed |
-| `CHAN` | `CHAN` | raw (accepted) |
-| `CREA` | `CREA` | raw (accepted) |
+| `CHAN` | `CHAN` | typed |
+| `CREA` | `CREA` | typed |
 | `EMAIL` | `EMAIL` | typed |
 | `EXID` | `EXID` | typed |
 | `FAX` | `FAX` | raw (accepted) |
@@ -2370,7 +2370,7 @@ Substructures of `record-SUBM`.
 | `NOTE` | `NOTE` | typed |
 | `OBJE` | `OBJE` | raw (accepted) |
 | `PHON` | `PHON` | typed |
-| `REFN` | `REFN` | raw (accepted) |
+| `REFN` | `REFN` | typed |
 | `SNOTE` | `SNOTE` | typed |
-| `UID` | `UID` | raw (accepted) |
+| `UID` | `UID` | typed |
 | `WWW` | `WWW` | raw (accepted) |

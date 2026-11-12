@@ -302,8 +302,11 @@ snote := doc.GetSharedNote("@N1@")
 | Language | BCP 47 language tag |
 | Translations | Translated versions with their own MIME/Language |
 | SourceCitations | Source citations on the note |
+| RefNumbers | User reference numbers (REFN) with their TYPE |
+| UIDs | Unique identifiers (UID) |
 | ExternalIDs | External identifiers (EXID) |
-| ChangeDate | Last modification date |
+| ChangeDate | Last modification date (CHAN) |
+| CreationDate | Creation date (CREA) |
 
 Supported on: Document (as top-level records accessible via `SharedNotes()` and `GetSharedNote()`), MediaObject (as `SharedNoteXRefs`)
 
@@ -624,11 +627,15 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 - Contact details as ordered slices, every repeat kept (each is `{0:3}`):
   `Phone` (PHON), `Email` (EMAIL), `Fax` (FAX) and `Website` (WWW)
 - Notes
+- `ChangeDate` (CHAN), `CreationDate` (CREA, 7.0), `RefNumbers` (REFN) and
+  `UIDs` (UID)
 
 ### Submitters (SUBM)
 
 - Cross-reference ID (`@U1@`)
 - Name, address, language
+- `ChangeDate` (CHAN), `CreationDate` (CREA, 7.0), `RefNumbers` (REFN, 7.0)
+  and `UIDs` (UID)
 
 ### Submissions (SUBN, GEDCOM 5.5/5.5.1)
 
@@ -642,6 +649,7 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 
 - Cross-reference ID (`@N1@`)
 - Text content with continuation
+- `SourceCitations` (SOUR), `ChangeDate` (CHAN) and `RefNumbers` (REFN)
 - Split note fields on note-bearing records (Individual, Family, Source,
   Repository, Submitter, Submission, MediaObject) and on the note-bearing substructures
   (PersonalName, Event, Attribute, SourceCitation, LDSOrdinance, ChangeDate, Association,
@@ -1199,13 +1207,14 @@ silently.
 ## Metadata
 
 - REFN - Reference numbers with their `TYPE` subordinate, as `[]gedcom.RefNumber` on
-  `Individual`, `Family`, `Source` and `MediaObject` (`RefNumbers`); every occurrence is
-  kept in file order. `REFN` on `Repository`, `Note`, `SharedNote` and `Submitter`
-  records is preserved in raw tags only
+  `Individual`, `Family`, `Source`, `MediaObject`, `Repository`, `Submitter`, `Note`
+  and `SharedNote` (`RefNumbers`); every occurrence is kept in file order
 - UID - Unique identifiers, as `UIDs []string` on `Individual`, `Family`, `Source`,
-  `MediaObject`, `Event` and `Attribute`; every occurrence is kept in file order
-- CHAN - Change date with DATE and TIME
-- CREA - Creation date (GEDCOM 7.0)
+  `MediaObject`, `Repository`, `Submitter`, `SharedNote`, `Event` and `Attribute`;
+  every occurrence is kept in file order
+- CHAN - Change date with DATE and TIME, as `ChangeDate` on every record type
+  except `Header`
+- CREA - Creation date (GEDCOM 7.0), as `CreationDate` on every 7.0 record type
 
 ## Validation
 
@@ -1810,10 +1819,10 @@ Full support for encoding typed entities back to GEDCOM format:
 | Individual | Names, sex, events, attributes, family links, associations, LDS ordinances, citations, notes, media |
 | Family | Spouse/child refs, events, LDS ordinances, citations, notes, media |
 | Source | Data (events recorded, agency, notes), title, abbreviation, author, publication, text (with MIME/LANG), repository ref/inline, notes, media |
-| Repository | Name, address, contact info (phone, email, fax, website), notes |
-| Submitter | Name, address, contact info, languages |
+| Repository | Name, address, contact info (phone, email, fax, website), notes, change/creation dates, REFN, UID |
+| Submitter | Name, address, contact info, languages, change/creation dates, REFN, UID |
 | Submission | Submitter ref, FAMF, TEMP, ANCE, DESC, ORDI, RIN, notes, change date |
-| Note | Text with continuation lines |
+| Note | Text with continuation lines, citations, REFN, change date |
 | MediaObject | Files, formats, translations, citations |
 
 A line break in a value is written as `CONT` lines. A line break in a tag name or identifier (`Tag.Tag`, `Tag.XRef`, `Record.Type`, `Record.XRef`, `Header.Submitter`, or an entity field that becomes a tag name such as `Event.Type`) has no GEDCOM spelling, so encoding returns `encoder.ErrLineBreak` rather than writing a line that could re-decode as a forged record.

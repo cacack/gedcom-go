@@ -282,7 +282,7 @@ func hasChildren(tags []*gedcom.Tag, i int) bool {
 }
 
 // translateEntity rewrites the typed dates of an individual, family, media,
-// shared note or source record. Other record types carry no calendar dates.
+// note, shared note or source record. Other record types carry no calendar dates.
 func (t *dateTranslator) translateEntity(record *gedcom.Record, report bool) {
 	base := datePath{recordType: string(record.Type), xref: record.XRef}
 	if ind, ok := record.GetIndividual(); ok && ind != nil {
@@ -301,6 +301,8 @@ func (t *dateTranslator) translateEntity(record *gedcom.Record, report bool) {
 		t.translateCitations(media.SourceCitations, report, base)
 	} else if snote, ok := record.GetSharedNote(); ok && snote != nil {
 		t.translateCitations(snote.SourceCitations, report, base)
+	} else if note, ok := record.GetNote(); ok && note != nil {
+		t.translateCitations(note.SourceCitations, report, base)
 	} else if src, ok := record.GetSource(); ok && src != nil {
 		t.translateSourceData(src.Data, report, base)
 	}

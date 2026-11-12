@@ -592,6 +592,8 @@ func walkRepository(r *Repository, cb refCallback) {
 		return
 	}
 	walkNotes(r.NoteXRefs, cb)
+	walkChangeDate(r.ChangeDate, cb)
+	walkChangeDate(r.CreationDate, cb)
 	for _, t := range r.Tags {
 		walkTag(t, cb)
 	}
@@ -601,6 +603,8 @@ func walkNote(n *Note, cb refCallback) {
 	if n == nil {
 		return
 	}
+	walkCitations(n.SourceCitations, cb)
+	walkChangeDate(n.ChangeDate, cb)
 	for _, t := range n.Tags {
 		walkTag(t, cb)
 	}
@@ -625,6 +629,8 @@ func walkSubmitter(s *Submitter, cb refCallback) {
 		return
 	}
 	walkNotes(s.NoteXRefs, cb)
+	walkChangeDate(s.ChangeDate, cb)
+	walkChangeDate(s.CreationDate, cb)
 	for _, t := range s.Tags {
 		walkTag(t, cb)
 	}
@@ -648,6 +654,7 @@ func walkSharedNote(s *SharedNote, cb refCallback) {
 	}
 	walkCitations(s.SourceCitations, cb)
 	walkChangeDate(s.ChangeDate, cb)
+	walkChangeDate(s.CreationDate, cb)
 	for _, t := range s.Tags {
 		walkTag(t, cb)
 	}

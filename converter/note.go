@@ -9,10 +9,9 @@ import "github.com/cacack/gedcom-go/v3/gedcom"
 // note is lost (issue #567).
 //
 // Both representations are rewritten: the record's Type and Entity (a Note
-// becomes a SharedNote with the same XRef, Text and ExternalIDs; the typed
-// SourceCitations and ChangeDate, which Note never parsed, stay empty though
-// the SOUR and CHAN lines remain in record.Tags and are written), and
-// each pointer in record.Tags and doc.Header.Tags. Typed NoteXRefs are left
+// becomes a SharedNote with the same XRef, Text, SourceCitations, ChangeDate,
+// RefNumbers and ExternalIDs), and each pointer in record.Tags and
+// doc.Header.Tags. Typed NoteXRefs are left
 // as they are; the encoder writes one naming an SNOTE record as SNOTE.
 // A NOTE pointer that names no NOTE record is left unchanged.
 //
@@ -34,9 +33,12 @@ func upgradeNoteRecordsForV7(doc *gedcom.Document, report *gedcom.ConversionRepo
 		record.Type = gedcom.RecordTypeSharedNote
 		if note, ok := record.Entity.(*gedcom.Note); ok && note != nil {
 			record.Entity = &gedcom.SharedNote{
-				XRef:        note.XRef,
-				Text:        note.Text,
-				ExternalIDs: note.ExternalIDs,
+				XRef:            note.XRef,
+				Text:            note.Text,
+				SourceCitations: note.SourceCitations,
+				ChangeDate:      note.ChangeDate,
+				RefNumbers:      note.RefNumbers,
+				ExternalIDs:     note.ExternalIDs,
 				// The record's tags, as the decoder fills SharedNote.Tags:
 				// note.Tags still holds the CONC/CONT lines folded away by
 				// consolidateCONCAndCONT, which an entity-built encode of a
