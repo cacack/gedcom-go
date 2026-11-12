@@ -70,6 +70,60 @@ func TestUnescape(t *testing.T) {
 	}
 }
 
+func TestReescape(t *testing.T) {
+	v55, v551, v70 := gedcom.Version55, gedcom.Version551, gedcom.Version70
+	tests := []struct {
+		name     string
+		in       string
+		from, to gedcom.Version
+		want     string
+	}{
+		{"5.5.1 to 7.0 interior", "a@@b", v551, v70, "a@b"},
+		{"5.5.1 to 7.0 leading", "@@lead", v551, v70, "@@lead"},
+		{"5.5 to 7.0 leading after LF", "x\n@@y z@@w", v55, v70, "x\n@@y z@w"},
+		{"5.5.1 to 7.0 lone at is text", "@x a@b", v551, v70, "@@x a@b"},
+		{"5.5.1 to 7.0 calendar escape kept", "@#DROMAN@ 1700", v551, v70, "@#DROMAN@ 1700"},
+		{"5.5.1 to 7.0 unterminated escape kept", "@#DJULIAN 1700", v551, v70, "@#DJULIAN 1700"},
+		{"5.5.1 to 7.0 escaped escape is text", "@@#DX@@ 1", v551, v70, "@@#DX@ 1"},
+		{"5.5.1 to 7.0 pair before escape", "@@@#DX@ 1", v551, v70, "@@@#DX@ 1"},
+		{"7.0 to 5.5.1 interior", "a@b", v70, v551, "a@@b"},
+		{"7.0 to 5.5 leading", "@@lead", v70, v55, "@@lead"},
+		{"7.0 to 5.5.1 interior pair is two", "a@@b", v70, v551, "a@@@@b"},
+		{"7.0 to 5.5.1 leading after LF", "x\n@@y", v70, v551, "x\n@@y"},
+		{"5.5 to 5.5.1 unchanged", "a@@b", v55, v551, "a@@b"},
+		{"7.0 to 7.0 unchanged", "a@b", v70, v70, "a@b"},
+		{"no at", "plain", v551, v70, "plain"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Reescape(tt.in, tt.from, tt.to); got != tt.want {
+				t.Errorf("Reescape(%q, %q, %q) = %q, want %q", tt.in, tt.from, tt.to, got, tt.want)
+			}
+		})
+	}
+}
+
+// FuzzReescape asserts that Reescape carries text between versions: the value
+// one version writes for s becomes the value the other writes. A text holding
+// "@#" is exempt from 5.x to 7.0, where an escape sequence is kept as written.
+func FuzzReescape(f *testing.F) {
+	for _, seed := range []string{"", "@", "@@", "a@b", "@lead", "x\n@y", "@#DJULIAN@ 1700", "@@#X@ y"} {
+		f.Add(seed)
+	}
+	f.Fuzz(func(t *testing.T, s string) {
+		for _, from := range versions {
+			for _, to := range versions {
+				if doublesEvery(from) && !doublesEvery(to) && strings.Contains(s, "@#") {
+					continue
+				}
+				if got, want := Reescape(Escape(s, from), from, to), Escape(s, to); got != want {
+					t.Fatalf("Reescape(Escape(%q, %q), %q, %q) = %q, want %q", s, from, from, to, got, want)
+				}
+			}
+		}
+	})
+}
+
 // FuzzEscape asserts the two properties the encoder and decoder rely on, for
 // every version: Unescape inverts Escape, and an escaped value is never a
 // pointer, so typed text cannot re-decode as a link to a record (#708).

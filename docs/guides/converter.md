@@ -99,6 +99,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | `AFN`, `RFN`, `RIN` | `IDENTIFIER_TO_EXID` | A record's level-1 `AFN`, `RFN` or `RIN` becomes an `EXID` with the registered `TYPE`: `https://gedcom.io/terms/v7/AFN`; `.../RIN#<HEAD.SOUR>` (no fragment when the header names no source system); `.../RFN#<resource>` with the value after the resource's colon (`RFN Resource:5431` -> `EXID 5431`), or the bare `RFN` URI and the whole value when there is no colon. Each is a `Normalized` note |
 | `LANG` | -- | `HEAD.LANG` and `SUBM.LANG` language names become BCP 47 tags (`English` -> `en`, case-insensitive), a `Normalized` note each. A value already tag-shaped is left alone; any other name is kept verbatim with an `Approximated` note |
 | Version-foreign structures | `FOREIGN_STRUCTURES_DROPPED` | From 5.5.1 only: see [Version-foreign structures](#version-foreign-structures) |
+| `@` escaping | `AT_SIGN_REESCAPED` | 5.x doubles every literal `@` in text, 7.0 only a leading one, so every raw text value is rewritten for 7.0 (`a@@b` -> `a@b`; `@@lead` and a leading `@@` on a `CONT` line stay). Pointers, tag names, XRefs and 5.x escape sequences such as an unmapped `@#DROMAN@` are left as they are; each rewrite is a `Normalized` note |
 | Header update | `VERSION_UPGRADE` | Header version updated to 7.0 |
 
 ### Upgrade 5.5 to 5.5.1
@@ -114,6 +115,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Transformation | Type | Description |
 |---------------|------|-------------|
 | Newlines to CONT | `CONT_EXPANDED` | Embedded newlines expanded to CONT tags |
+| `@` escaping | `AT_SIGN_REESCAPED` | Every literal `@` in a raw text value doubled for 5.x (`a@b` -> `a@@b`, `@@lead` stays), before `CONC` splitting so no pair is split; pointers are left as they are. Each rewrite is a `Normalized` note |
 | Long lines to CONC | `CONC_ADDED` | A value line too long for 5.x's 255-character limit split onto CONC tags, between two non-spaces, including a level-0 `SNOTE` record's text; each split value is a `Normalized` note |
 | Media types | `MEDIA_TYPE_MAPPED` | IANA formats converted to legacy |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar keywords (`JULIAN`) converted to escapes (`@#DJULIAN@`) |
