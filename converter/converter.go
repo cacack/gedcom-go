@@ -5,6 +5,7 @@ import (
 
 	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/ctxcheck"
 )
 
 // Convert converts a GEDCOM document to the target version using default options.
@@ -46,6 +47,9 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 	}
 	if !targetVersion.IsValid() {
 		return nil, nil, fmt.Errorf("invalid target version: %s", targetVersion)
+	}
+	if err := opts.cancelled(); err != nil {
+		return nil, nil, err
 	}
 
 	// A nil header carries no version, so it falls through to the default below.
@@ -115,7 +119,10 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 	}
 
 	// Deep copy to avoid mutating original
-	converted := doc.Clone()
+	converted, err := ctxcheck.Clone(opts.Context, doc)
+	if err != nil {
+		return nil, nil, cancelledErr(err)
+	}
 
 	// Create report
 	report := &gedcom.ConversionReport{
@@ -124,7 +131,6 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 	}
 
 	// Route to appropriate converter
-	var err error
 	switch {
 	case sourceVersion == gedcom.Version55 && targetVersion == gedcom.Version551:
 		err = convert55To551(converted, report, opts)
@@ -171,7 +177,14 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 
 	// Validate if requested
 	if opts.Validate {
-		_ = validateConverted(converted, report)
+		_ = validateConverted(opts.Context, converted, report)
+	}
+
+	// The steps since the last check, validation among them, may have been
+	// cut short.
+	if err := opts.cancelled(); err != nil {
+		report.Success = false
+		return nil, report, err
 	}
 
 	report.Success = true
@@ -179,166 +192,166 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 }
 
 // convert55To551 converts GEDCOM 5.5 to 5.5.1.
-//
-//nolint:unparam // error return kept for API consistency with other converters
 func convert55To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
-	transformHeader(doc, gedcom.Version551, report)
-	synthesizePedigrees(doc, report, gedcom.Version551)
-	if opts.ReportPreservedTags {
-		recordPreservedUnknownTags(doc, report)
-	}
-	report.AddTransformation(gedcom.Transformation{
-		Type:        "VERSION_UPGRADE",
-		Description: "Upgraded from GEDCOM 5.5 to 5.5.1 (backward compatible)",
-		Count:       1,
-	})
-	return nil
+	return opts.runSteps(
+		func() { transformHeader(doc, gedcom.Version551, report) },
+		func() { synthesizePedigrees(doc, report, gedcom.Version551) },
+		func() { opts.reportPreservedTags(doc, report) },
+		func() {
+			report.AddTransformation(gedcom.Transformation{
+				Type:        "VERSION_UPGRADE",
+				Description: "Upgraded from GEDCOM 5.5 to 5.5.1 (backward compatible)",
+				Count:       1,
+			})
+		},
+	)
 }
 
 // convert55To70 converts GEDCOM 5.5 to 7.0.
-//
-//nolint:unparam // error return kept for API consistency with other converters
 func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
-	// First, so no later transform reports a change inside a removed record.
-	dropSubmissionRecords(doc, report)
-	// 5.5 does not define FONE/ROMN either, but a nonconforming 5.5 file can
-	// carry them, and 7.0 output must not. Removed before the text and XRef
-	// transforms for the same reason; reported after XRef normalization.
-	variations := removeNameVariations(doc)
-	transformTextForVersion(doc, gedcom.Version70, report)
-	normalizeXRefsForV7(doc, report)
-	// After XRef normalization, so the records it reports (dual-year DataLoss
-	// AffectedRecords) are named by their XRefs in the converted document.
-	transformDateCalendars(doc, gedcom.Version70, report)
-	upgradeNoteRecordsForV7(doc, report)
-	transformMediaTypes(doc, gedcom.Version70, report)
-	transformHeader(doc, gedcom.Version70, report)
-	transformUIDTags(doc, report, gedcom.Version70)
-	synthesizePedigrees(doc, report, gedcom.Version70)
-	marriedNamesToV7(doc, report)
-	variations.report(doc, report, gedcom.Version70)
-	if opts.ReportPreservedTags {
-		recordPreservedUnknownTags(doc, report)
-	}
-	report.AddTransformation(gedcom.Transformation{
-		Type:        "VERSION_UPGRADE",
-		Description: "Upgraded from GEDCOM 5.5 to 7.0",
-		Count:       1,
-	})
-	return nil
+	var variations droppedNameVariations
+	return opts.runSteps(
+		// First, so no later transform reports a change inside a removed record.
+		func() { dropSubmissionRecords(doc, report) },
+		// 5.5 does not define FONE/ROMN either, but a nonconforming 5.5 file can
+		// carry them, and 7.0 output must not. Removed before the text and XRef
+		// transforms for the same reason; reported after XRef normalization.
+		func() { variations = removeNameVariations(doc) },
+		func() { transformTextForVersion(doc, gedcom.Version70, report) },
+		func() { normalizeXRefsForV7(doc, report) },
+		// After XRef normalization, so the records it reports (dual-year DataLoss
+		// AffectedRecords) are named by their XRefs in the converted document.
+		func() { transformDateCalendars(doc, gedcom.Version70, report) },
+		func() { upgradeNoteRecordsForV7(doc, report) },
+		func() { transformMediaTypes(doc, gedcom.Version70, report) },
+		func() { transformHeader(doc, gedcom.Version70, report) },
+		func() { transformUIDTags(doc, report, gedcom.Version70) },
+		func() { synthesizePedigrees(doc, report, gedcom.Version70) },
+		func() { marriedNamesToV7(doc, report) },
+		func() { variations.report(doc, report, gedcom.Version70) },
+		func() { opts.reportPreservedTags(doc, report) },
+		func() {
+			report.AddTransformation(gedcom.Transformation{
+				Type:        "VERSION_UPGRADE",
+				Description: "Upgraded from GEDCOM 5.5 to 7.0",
+				Count:       1,
+			})
+		},
+	)
 }
 
 // convert551To55 converts GEDCOM 5.5.1 to 5.5.
-//
-//nolint:unparam // error return kept for API consistency with other converters
 func convert551To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
-	transformHeader(doc, gedcom.Version55, report)
-	record551Tags(doc, report)
-	dropNameVariations(doc, report, gedcom.Version55)
-	if opts.ReportPreservedTags {
-		recordPreservedUnknownTags(doc, report)
-	}
-	report.AddTransformation(gedcom.Transformation{
-		Type:        "VERSION_DOWNGRADE",
-		Description: "Downgraded from GEDCOM 5.5.1 to 5.5",
-		Count:       1,
-	})
-	return nil
+	return opts.runSteps(
+		func() { transformHeader(doc, gedcom.Version55, report) },
+		func() { record551Tags(doc, report) },
+		func() { dropNameVariations(doc, report, gedcom.Version55) },
+		func() { opts.reportPreservedTags(doc, report) },
+		func() {
+			report.AddTransformation(gedcom.Transformation{
+				Type:        "VERSION_DOWNGRADE",
+				Description: "Downgraded from GEDCOM 5.5.1 to 5.5",
+				Count:       1,
+			})
+		},
+	)
 }
 
 // convert551To70 converts GEDCOM 5.5.1 to 7.0.
-//
-//nolint:unparam // error return kept for API consistency with other converters
 func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
-	// First, so no later transform reports a change inside a removed record.
-	dropSubmissionRecords(doc, report)
-	// Removed before the text and XRef transforms for the same reason, and
-	// reported after XRef normalization, so records are named by new XRefs.
-	variations := removeNameVariations(doc)
-	transformTextForVersion(doc, gedcom.Version70, report)
-	normalizeXRefsForV7(doc, report)
-	// After XRef normalization, so the records it reports (dual-year DataLoss
-	// AffectedRecords) are named by their XRefs in the converted document.
-	transformDateCalendars(doc, gedcom.Version70, report)
-	upgradeNoteRecordsForV7(doc, report)
-	transformMediaTypes(doc, gedcom.Version70, report)
-	transformHeader(doc, gedcom.Version70, report)
-	transformUIDTags(doc, report, gedcom.Version70)
-	synthesizePedigrees(doc, report, gedcom.Version70)
-	marriedNamesToV7(doc, report)
-	variations.report(doc, report, gedcom.Version70)
-	if opts.ReportPreservedTags {
-		recordPreservedUnknownTags(doc, report)
-	}
-	report.AddTransformation(gedcom.Transformation{
-		Type:        "VERSION_UPGRADE",
-		Description: "Upgraded from GEDCOM 5.5.1 to 7.0",
-		Count:       1,
-	})
-	return nil
+	var variations droppedNameVariations
+	return opts.runSteps(
+		// First, so no later transform reports a change inside a removed record.
+		func() { dropSubmissionRecords(doc, report) },
+		// Removed before the text and XRef transforms for the same reason, and
+		// reported after XRef normalization, so records are named by new XRefs.
+		func() { variations = removeNameVariations(doc) },
+		func() { transformTextForVersion(doc, gedcom.Version70, report) },
+		func() { normalizeXRefsForV7(doc, report) },
+		// After XRef normalization, so the records it reports (dual-year DataLoss
+		// AffectedRecords) are named by their XRefs in the converted document.
+		func() { transformDateCalendars(doc, gedcom.Version70, report) },
+		func() { upgradeNoteRecordsForV7(doc, report) },
+		func() { transformMediaTypes(doc, gedcom.Version70, report) },
+		func() { transformHeader(doc, gedcom.Version70, report) },
+		func() { transformUIDTags(doc, report, gedcom.Version70) },
+		func() { synthesizePedigrees(doc, report, gedcom.Version70) },
+		func() { marriedNamesToV7(doc, report) },
+		func() { variations.report(doc, report, gedcom.Version70) },
+		func() { opts.reportPreservedTags(doc, report) },
+		func() {
+			report.AddTransformation(gedcom.Transformation{
+				Type:        "VERSION_UPGRADE",
+				Description: "Upgraded from GEDCOM 5.5.1 to 7.0",
+				Count:       1,
+			})
+		},
+	)
 }
 
 // convert70To55 converts GEDCOM 7.0 to 5.5.
-//
-//nolint:unparam // error return kept for API consistency with other converters
 func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
-	// Drop negative assertions and @VOID@ pointers first, so no later
-	// transform reports a change to text inside a block that is then removed.
-	dropNegativeAssertions(doc, report, gedcom.Version55)
-	dropVoidPointers(doc, report, gedcom.Version55)
-	// 7.0 does not define FONE/ROMN, but a nonconforming 7.0 file or a
-	// hand-built document can carry them, and 5.5 output must not.
-	dropNameVariations(doc, report, gedcom.Version55)
-	if opts.MapEXIDToVendorTags {
-		transformEXIDToVendorTags(doc, report, gedcom.Version55)
-	}
-	transformTextForVersion(doc, gedcom.Version55, report)
-	transformDateCalendars(doc, gedcom.Version55, report)
-	transformMediaTypes(doc, gedcom.Version55, report)
-	transformHeader(doc, gedcom.Version55, report)
-	// Before dropV7OnlyTags, which reports whatever 7.0-only tag remains.
-	transformUIDTags(doc, report, gedcom.Version55)
-	dropV7OnlyTags(doc, report, gedcom.Version55)
-	downgradeSharedNotes(doc, report, gedcom.Version55)
-	if opts.ReportPreservedTags {
-		recordPreservedUnknownTags(doc, report)
-	}
-	report.AddTransformation(gedcom.Transformation{
-		Type:        "VERSION_DOWNGRADE",
-		Description: "Downgraded from GEDCOM 7.0 to 5.5",
-		Count:       1,
-	})
-	return nil
+	return opts.runSteps(
+		// Drop negative assertions and @VOID@ pointers first, so no later
+		// transform reports a change to text inside a block that is then removed.
+		func() { dropNegativeAssertions(doc, report, gedcom.Version55) },
+		func() { dropVoidPointers(doc, report, gedcom.Version55) },
+		// 7.0 does not define FONE/ROMN, but a nonconforming 7.0 file or a
+		// hand-built document can carry them, and 5.5 output must not.
+		func() { dropNameVariations(doc, report, gedcom.Version55) },
+		func() {
+			if opts.MapEXIDToVendorTags {
+				transformEXIDToVendorTags(doc, report, gedcom.Version55)
+			}
+		},
+		func() { transformTextForVersion(doc, gedcom.Version55, report) },
+		func() { transformDateCalendars(doc, gedcom.Version55, report) },
+		func() { transformMediaTypes(doc, gedcom.Version55, report) },
+		func() { transformHeader(doc, gedcom.Version55, report) },
+		// Before dropV7OnlyTags, which reports whatever 7.0-only tag remains.
+		func() { transformUIDTags(doc, report, gedcom.Version55) },
+		func() { dropV7OnlyTags(doc, report, gedcom.Version55) },
+		func() { downgradeSharedNotes(doc, report, gedcom.Version55) },
+		func() { opts.reportPreservedTags(doc, report) },
+		func() {
+			report.AddTransformation(gedcom.Transformation{
+				Type:        "VERSION_DOWNGRADE",
+				Description: "Downgraded from GEDCOM 7.0 to 5.5",
+				Count:       1,
+			})
+		},
+	)
 }
 
 // convert70To551 converts GEDCOM 7.0 to 5.5.1.
-//
-//nolint:unparam // error return kept for API consistency with other converters
 func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts *ConvertOptions) error {
-	// Drop negative assertions and @VOID@ pointers first, so no later
-	// transform reports a change to text inside a block that is then removed.
-	dropNegativeAssertions(doc, report, gedcom.Version551)
-	dropVoidPointers(doc, report, gedcom.Version551)
-	if opts.MapEXIDToVendorTags {
-		transformEXIDToVendorTags(doc, report, gedcom.Version551)
-	}
-	transformTextForVersion(doc, gedcom.Version551, report)
-	transformDateCalendars(doc, gedcom.Version551, report)
-	transformMediaTypes(doc, gedcom.Version551, report)
-	transformHeader(doc, gedcom.Version551, report)
-	// Before dropV7OnlyTags, which reports whatever 7.0-only tag remains.
-	transformUIDTags(doc, report, gedcom.Version551)
-	dropV7OnlyTags(doc, report, gedcom.Version551)
-	downgradeSharedNotes(doc, report, gedcom.Version551)
-	if opts.ReportPreservedTags {
-		recordPreservedUnknownTags(doc, report)
-	}
-	report.AddTransformation(gedcom.Transformation{
-		Type:        "VERSION_DOWNGRADE",
-		Description: "Downgraded from GEDCOM 7.0 to 5.5.1",
-		Count:       1,
-	})
-	return nil
+	return opts.runSteps(
+		// Drop negative assertions and @VOID@ pointers first, so no later
+		// transform reports a change to text inside a block that is then removed.
+		func() { dropNegativeAssertions(doc, report, gedcom.Version551) },
+		func() { dropVoidPointers(doc, report, gedcom.Version551) },
+		func() {
+			if opts.MapEXIDToVendorTags {
+				transformEXIDToVendorTags(doc, report, gedcom.Version551)
+			}
+		},
+		func() { transformTextForVersion(doc, gedcom.Version551, report) },
+		func() { transformDateCalendars(doc, gedcom.Version551, report) },
+		func() { transformMediaTypes(doc, gedcom.Version551, report) },
+		func() { transformHeader(doc, gedcom.Version551, report) },
+		// Before dropV7OnlyTags, which reports whatever 7.0-only tag remains.
+		func() { transformUIDTags(doc, report, gedcom.Version551) },
+		func() { dropV7OnlyTags(doc, report, gedcom.Version551) },
+		func() { downgradeSharedNotes(doc, report, gedcom.Version551) },
+		func() { opts.reportPreservedTags(doc, report) },
+		func() {
+			report.AddTransformation(gedcom.Transformation{
+				Type:        "VERSION_DOWNGRADE",
+				Description: "Downgraded from GEDCOM 7.0 to 5.5.1",
+				Count:       1,
+			})
+		},
+	)
 }
 
 // record551Tags notes 5.5.1-specific tags that may not be recognized in 5.5.
@@ -448,5 +461,25 @@ func recordPreservedTagsRecursive(tag *gedcom.Tag, recordType, xref string, repo
 			Result:   tag.Tag,
 			Reason:   "Vendor extension preserved through conversion",
 		})
+	}
+}
+
+// runSteps runs each conversion step in order, checking the options' Context
+// before each, and returns its error, wrapped, once it is done.
+func (opts *ConvertOptions) runSteps(steps ...func()) error {
+	for _, step := range steps {
+		if err := opts.cancelled(); err != nil {
+			return err
+		}
+		step()
+	}
+	return nil
+}
+
+// reportPreservedTags records the preserved unknown tags in report when the
+// options ask for it (ReportPreservedTags).
+func (opts *ConvertOptions) reportPreservedTags(doc *gedcom.Document, report *gedcom.ConversionReport) {
+	if opts.ReportPreservedTags {
+		recordPreservedUnknownTags(doc, report)
 	}
 }

@@ -156,7 +156,9 @@ func (e *StreamEncoder) WriteHeader(h *gedcom.Header) error {
 // package documentation for the full nil policy.
 //
 // Returns ErrHeaderNotWritten if the header has not been written,
-// or ErrEncodingComplete if the encoding is already complete.
+// or ErrEncodingComplete if the encoding is already complete. Once the
+// options' Context is done it writes nothing and returns that context's error,
+// wrapped, which the encoder keeps (see [EncodeOptions.Context]).
 func (e *StreamEncoder) WriteRecord(r *gedcom.Record) error {
 	if e.err != nil {
 		return e.err
@@ -176,6 +178,11 @@ func (e *StreamEncoder) WriteRecord(r *gedcom.Record) error {
 	// "records written" for a record that produced no bytes.
 	if r == nil {
 		return nil
+	}
+
+	if err := e.options.cancelled(); err != nil {
+		e.err = err
+		return err
 	}
 
 	if err := writeRecord(e.writer, r, e.options, e.sharedNotes); err != nil {

@@ -97,6 +97,9 @@ func EncodeWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeOptions) e
 	// Write records
 	sharedNotes := sharedNotePointers(doc, opts)
 	for _, record := range doc.Records {
+		if err := opts.cancelled(); err != nil {
+			return err
+		}
 		if err := writeRecord(w, record, opts, sharedNotes); err != nil {
 			return err
 		}

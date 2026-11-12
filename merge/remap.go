@@ -1,6 +1,7 @@
 package merge
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -65,6 +66,12 @@ const voidXRef = "@VOID@"
 //	    return "@A_" + old[1:]
 //	})
 func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedcom.Document, map[string]string, error) {
+	return remapXRefs(context.Background(), doc, transform)
+}
+
+// remapXRefs is RemapXRefs checking ctx before each record it maps and
+// copies (see cloneDoc), failing as cancelled does once ctx is done.
+func remapXRefs(ctx context.Context, doc *gedcom.Document, transform func(old string) string) (*gedcom.Document, map[string]string, error) {
 	if doc == nil {
 		return nil, nil, errors.New("merge: doc is nil")
 	}
@@ -78,6 +85,9 @@ func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedco
 	seenNew := make(map[string]string)
 
 	for _, r := range doc.Records {
+		if err := cancelled(ctx); err != nil {
+			return nil, nil, err
+		}
 		if r == nil || (r.XRef != voidXRef && !doc.IsPointerXRef(r.XRef)) {
 			continue
 		}
@@ -102,7 +112,10 @@ func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedco
 		mapping[r.XRef] = newXRef
 	}
 
-	out := doc.Clone()
+	out, err := cloneDoc(ctx, doc)
+	if err != nil {
+		return nil, nil, err
+	}
 	gedcom.Apply(out, mapping)
 
 	// Return a defensive copy so caller mutations don't surprise us or

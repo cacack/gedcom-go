@@ -11,6 +11,7 @@
 package validator
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"sort"
@@ -419,6 +420,12 @@ func (d *DuplicateDetector) FindDuplicates(doc *gedcom.Document) []DuplicatePair
 // comparisons. Any group larger than the cap is skipped whole and reported in
 // DuplicateReport.LimitIssues.
 func (d *DuplicateDetector) FindDuplicatesReport(doc *gedcom.Document) DuplicateReport {
+	return d.findDuplicatesReport(context.Background(), doc)
+}
+
+// findDuplicatesReport is FindDuplicatesReport stopping early, with the pairs
+// found so far, once ctx is done; it checks ctx before each surname group.
+func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedcom.Document) DuplicateReport {
 	if doc == nil {
 		return DuplicateReport{}
 	}
@@ -438,6 +445,9 @@ func (d *DuplicateDetector) FindDuplicatesReport(doc *gedcom.Document) Duplicate
 
 	// Compare pairs within each surname group
 	for surname, group := range surnameGroups {
+		if ctx.Err() != nil {
+			break
+		}
 		if len(group) < 2 {
 			continue
 		}

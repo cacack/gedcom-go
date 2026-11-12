@@ -42,8 +42,8 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | Operation | Options type | Facade entry point | Common knobs |
 |-----------|--------------|--------------------|--------------|
 | Decode | `decoder.DecodeOptions` | `gedcomgo.DecodeWithOptions` | `Context`, `StrictMode`, `OnProgress`, `TotalSize` |
-| Encode | `encoder.EncodeOptions` | `gedcomgo.EncodeWithOptions` | `LineEnding`, `MaxLineLength`, `DisableLineWrap`, `TargetVersion`, `DropUnknownTags` |
-| Validate | `validator.ValidateOptions` | `gedcomgo.ValidateAllWithOptions` | `Strictness`, `MaxErrors`, `SkipRules`, `DateLogic`, `Duplicates`, `TagRegistry`, `ValidateCustomTags`, `SkipEncodingValidation`, `SkipDuplicateDetection` |
+| Encode | `encoder.EncodeOptions` | `gedcomgo.EncodeWithOptions` | `LineEnding`, `MaxLineLength`, `DisableLineWrap`, `TargetVersion`, `DropUnknownTags`, `Context` |
+| Validate | `validator.ValidateOptions` | `gedcomgo.ValidateAllWithOptions` | `Strictness`, `MaxErrors`, `SkipRules`, `DateLogic`, `Duplicates`, `TagRegistry`, `ValidateCustomTags`, `SkipEncodingValidation`, `SkipDuplicateDetection`, `Context` |
 
 `gedcomgo.DefaultDecodeOptions()`, `DefaultEncodeOptions()`, and `DefaultValidateOptions()` return populated defaults you can tweak. `validator.ValidateOptions` is an alias for the original `validator.ValidatorConfig`; both names work interchangeably. The `[]error` validation path has its own configurable entry point, `gedcomgo.ValidateWithOptions(doc, opts)`, alongside `ValidateAllWithOptions`; both run the same checks and honour every `ValidateOptions` field, including `MaxErrors` and `SkipRules`.
 
@@ -1519,7 +1519,9 @@ doc, err := decoder.DecodeWithOptions(reader, opts)
 
 ### Context Support
 
-Cancel long-running decodes with context:
+Cancel long-running decodes with context. The decode checks the context on
+every read of the input and before building each record's entity, so it stops
+shortly after the context is done, having read little more of the input:
 
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -1531,6 +1533,18 @@ if errors.Is(err, context.DeadlineExceeded) {
     log.Println("Decode timed out")
 }
 ```
+
+The later stages take the same context, so one deadline can bound the whole
+pipeline. Each checks it as it goes and returns its error wrapped, so
+`errors.Is` matches it as above:
+
+| Operation | Where the context goes | Checked |
+|-----------|------------------------|---------|
+| `validator.Validator.ValidateAllWithError` | `ValidateOptions.Context` | Between checks, and per record in date logic, nil-element and duplicate detection. `ValidateAll` and `Validate` stop early too but cannot report it |
+| `converter.ConvertWithOptions` | `ConvertOptions.Context` | Per conversion step, and per record while copying the document and validating the result |
+| `encoder.EncodeWithOptions`, `EncodeStreamingWithOptions`, `StreamEncoder.WriteRecord` | `EncodeOptions.Context` | Per record |
+| `merge.Combine` | `CombineOptions.Context` | Per record compared, remapped and copied |
+| `parser.LazyParser.BuildIndexContext` | its `ctx` argument | Per record indexed |
 
 ## Version Conversion
 
