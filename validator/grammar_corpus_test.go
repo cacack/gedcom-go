@@ -105,7 +105,7 @@ func TestGrammar_VendoredFixtures(t *testing.T) {
 	}
 	seen := map[string]bool{}
 	for _, path := range files {
-		name := filepath.ToSlash(strings.TrimPrefix(path, "../testdata/"))
+		name := filepath.ToSlash(strings.TrimPrefix(path, filepath.Join("..", "testdata")+string(filepath.Separator)))
 		if name == "gedcom7code/5/age-invalid.ged" {
 			continue // TestGrammar_GEDCOM7CodeAgeFiles
 		}

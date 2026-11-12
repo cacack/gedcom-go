@@ -152,7 +152,7 @@ func TestGenerateErrors(t *testing.T) {
 		files   map[string]string
 		want    string
 	}{
-		"missing dir":          {"", nil, "no such file"},
+		"missing dir":          {"", nil, "substructures.tsv"},
 		"columns":              {"gedcom-5.5", map[string]string{"payloads.tsv": "structure\tpayload\nonly-one\n"}, "columns"},
 		"no cardinality":       {"gedcom-5.5.1", map[string]string{"substructures.tsv": sub, "cardinalities.tsv": "a\tb\tc\n"}, "no cardinality"},
 		"bad cardinality":      {"gedcom-5.5.1", map[string]string{"substructures.tsv": sub, "cardinalities.tsv": "a\tb\tc\nI\tS\tz\n"}, "cardinality"},
