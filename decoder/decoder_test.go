@@ -619,9 +619,42 @@ func TestDecodeVendorDetection(t *testing.T) {
 			input: `0 HEAD
 1 GEDC
 2 VERS 5.5
-1 SOUR GEDitCOM
+1 SOUR SomeRandomApp
 0 TRLR`,
 			wantVendor: gedcom.VendorUnknown,
+		},
+		{
+			name: "FTM vendor detected from SOUR.NAME and SOUR.CORP",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+1 SOUR XYZ
+2 NAME Family Tree Maker for Windows
+2 CORP The Software MacKiev Company
+0 TRLR`,
+			wantVendor: gedcom.VendorAncestry,
+		},
+		{
+			name: "Vendor detected from SOUR.CORP alone",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5
+1 SOUR XYZ
+2 CORP Calico Pie Limited Family Historian
+0 TRLR`,
+			wantVendor: gedcom.VendorFamilyHistorian,
+		},
+		{
+			name: "MyHeritage FTB with empty SOUR detected from _RTLSAVE",
+			input: `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 SOUR
+2 NAME
+2 _RTLSAVE RTL
+2 CORP
+0 TRLR`,
+			wantVendor: gedcom.VendorMyHeritage,
 		},
 		{
 			name: "Unknown vendor when no SOUR tag",

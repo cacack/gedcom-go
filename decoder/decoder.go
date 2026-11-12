@@ -430,8 +430,8 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 		doc.Header.Version = ver
 	}
 
-	// Detect vendor from source system
-	doc.Vendor = gedcom.DetectVendor(doc.Header.SourceSystem)
+	// Detect vendor from HEAD.SOUR, SOUR.NAME and SOUR.CORP
+	doc.Vendor = gedcom.DetectVendorFromHeader(doc.Header)
 
 	reportUnknownHeaderTags(doc.Header.Tags, collector)
 }
