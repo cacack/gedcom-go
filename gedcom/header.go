@@ -12,9 +12,12 @@ type Header struct {
 	// set by the decoder, by converter.Convert to a different version or
 	// when it adds a missing GEDC.VERS, and by merge.Combine when doc1 declares none. It is empty when the file
 	// declares no version or one this package does not recognize, so unlike
-	// Version it is never a guess. It selects the identifier grammar
-	// Document.IsPointerXRef applies: GEDCOM 5.5 and 5.5.1 allow spaces in
-	// pointers ("@N 1@"); 7.0 and an empty value do not.
+	// Version it is never a guess. A GEDCOM 7 patch level is dropped (7.0.14
+	// is Version70), but a later 7 minor keeps its major.minor: VERS 7.1 is
+	// "7.1" here while Version is 7.0, whose rules it is read by. A vendor
+	// spelling of a known version, such as 5.51, is that version. It selects
+	// the identifier grammar Document.IsPointerXRef applies: GEDCOM 5.5 and
+	// 5.5.1 allow spaces in pointers ("@N 1@"); 7.x and an empty value do not.
 	//
 	// Setting Version does not set it, nor the reverse: the two are
 	// independent fields. NewDocument sets both from one version; code that

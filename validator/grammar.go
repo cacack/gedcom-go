@@ -241,7 +241,7 @@ func grammarVersion(h *gedcom.Header) gedcom.Version {
 	if len(h.Tags) == 0 {
 		return h.Version
 	}
-	// Deliberately none: a VERS the decoder does not recognize, such as 7.1,
+	// Deliberately none: a VERS the decoder does not recognize, such as 7.0.x,
 	// must not be held to another version's tables, nor a missing VERS to
 	// the decoder's guess.
 	return ""

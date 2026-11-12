@@ -78,7 +78,7 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 | GEDCOM 5.5.1 | Every readable line preserved | [1,204 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (91.5%) | Most common format |
 | GEDCOM 7.0 | Every readable line preserved | [1,286 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (92.6%) | Latest standard |
 
-- Automatic version detection from header (GEDCOM 7 patch versions such as `VERS 7.0.14` detect as 7.0; a `0 @X1@ HEAD` record is not the header and never sets the version)
+- Automatic version detection from header (GEDCOM 7 patch and minor versions such as `VERS 7.0.14` or `7.1` detect as 7.0, with `Header.DeclaredVersion` keeping `7.1`; vendor spellings `5.51`, `551`, `5.5.5`, `55`, `7` and a version followed by text such as `5.5.1 (GEDCOM)` read as the version they mean, with an `INVALID_VALUE` diagnostic on `GEDC.VERS`; a `0 @X1@ HEAD` record is not the header and never sets the version)
 - Heuristic-based detection for malformed headers
 - Version-aware validation rules
 
@@ -1350,8 +1350,9 @@ specification inventories under `testdata/spec`, turned into Go tables by
 (`_X`) and their substructures are not checked; `CONT` is accepted anywhere,
 and so is `CONC` in 5.5/5.5.1. 7.0 enumeration values are compared
 case-sensitively and extension values are accepted; 5.5.x values are compared
-without regard to case. A declared version the tables do not cover (7.1) is
-not checked. A header with no `GEDC.VERS` is not held to the decoder's guessed
+without regard to case. A declared version the tables do not cover (7.1,
+which `Header.DeclaredVersion` keeps though the file is read as 7.0) is not
+checked. A header with no `GEDC.VERS` is not held to the decoder's guessed
 version: only the missing `VERS` (or `GEDC`) is reported, with an empty
 `Details["version"]`. The check stops early once `ValidateOptions.Context` is
 done, and is not run when `SkipRules` lists all of its codes. Every issue
@@ -1731,7 +1732,7 @@ See [docs/guides/converter.md](docs/guides/converter.md) for detailed documentat
 
 - Write valid GEDCOM files
 - Configurable line endings (LF, CRLF)
-- GEDCOM 5.5, 5.5.1, 7.0 output; a GEDCOM 7 patch version (`TargetVersion: "7.0.14"`, or such a `Header.Version`) is written as 7.0 by every version-specific rule, by the same rule the decoder reads `VERS 7.0.N` with, while `GEDC.VERS` keeps the value as given
+- GEDCOM 5.5, 5.5.1, 7.0 output; a GEDCOM 7 patch or minor version (`TargetVersion: "7.0.14"` or `"7.1"`, or such a `Header.Version`) is written as 7.0 by every version-specific rule, and a vendor spelling such as `"5.51"` as the version it means, by the same rule the decoder reads `GEDC.VERS` with, while `GEDC.VERS` keeps the value as given
 - Header written from the source's `Header.Tags` in source order, so a same-version re-encode is byte-identical; a `GEDC` the encoder has to add for `TargetVersion` is placed where the target grammar puts it, and a 5.5/5.5.1 `GEDC` it writes (added, or from a hand-built header) carries `FORM LINEAGE-LINKED`
 - UTF-8 output
 

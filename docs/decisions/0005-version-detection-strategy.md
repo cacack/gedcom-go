@@ -49,7 +49,7 @@ The question: how do we reliably determine which version rules to apply?
 2 VERS 7.0
 ```
 
-Parsed and trusted when present and valid. A GEDCOM 7 patch version (`7.0.N`, N all ASCII digits) counts as 7.0; malformed values such as `7.0.x` or `7.1` are not recognized: `DetectVersion` falls through to tag-based detection, while `DeclaredVersion` returns no version.
+Parsed and trusted when present and valid. Every GEDCOM 7 minor and patch version (`7.N` or `7.N.M`, all ASCII digits) counts as 7.0, as the GEDCOM 7 version guide asks: a later minor is read as the same major, its new structures as extensions; `DeclaredVersion` keeps the declared major.minor (`7.1`). Vendor spellings of a known version (`5.51`, `551`, `5.5.5`, `55`, `7`, or a version followed by other text such as `5.5.1 (GEDCOM)`) are read as that version, and the decoder reports `INVALID_VALUE` on the `VERS` line (#741). Malformed values such as `7.0.x` are not recognized: `DetectVersion` falls through to tag-based detection, while `DeclaredVersion` returns no version.
 
 ### Fallback: Tag-Based Detection
 

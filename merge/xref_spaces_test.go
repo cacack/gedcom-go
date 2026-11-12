@@ -137,7 +137,7 @@ func TestCombine_SpacedXRefDoc1Undeclared(t *testing.T) {
 // unrecognized VERS: doc1's GEDC wins in the encoded header, so the field
 // must not claim doc2's version (#591).
 func TestCombine_DeclaredVersionNotPromotedOverDoc1GEDC(t *testing.T) {
-	doc1, err := decoder.Decode(strings.NewReader(spacedXRefDoc("5.5.5")))
+	doc1, err := decoder.Decode(strings.NewReader(spacedXRefDoc("5.5.x")))
 	if err != nil {
 		t.Fatalf("Decode doc1: %v", err)
 	}

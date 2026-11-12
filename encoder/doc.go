@@ -57,9 +57,11 @@
 //     With no known output version (no TargetVersion and no header version)
 //     none of these is dropped, and the role is ROLE.
 //     Every version-specific rule (these, CONC splitting, SNOTE pointers,
-//     header order) reads a GEDCOM 7 patch version such as "7.0.14" as 7.0,
-//     as the decoder reads VERS; GEDC.VERS is still written as given. A value
-//     the decoder does not recognize either, such as "7.1", is not 7.0.
+//     header order) reads a GEDCOM 7 patch or minor version such as "7.0.14"
+//     or "7.1" as 7.0, and a vendor spelling such as "5.51" as the version it
+//     means, as the decoder reads VERS; GEDC.VERS is still written as given.
+//     A value the decoder does not recognize either, such as "7.0.x", is not
+//     7.0.
 //   - DropUnknownTags     — false (the zero value) keeps custom _UNDERSCORE
 //     tags. True drops each one with its whole subtree, and drops a record
 //     whose own type is a custom tag ("0 _EVDEF") entirely rather than

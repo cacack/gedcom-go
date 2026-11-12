@@ -183,3 +183,56 @@ func TestConvertSameVersion70AddsVERSAndRenamesXRefs(t *testing.T) {
 		t.Errorf("want exactly one VERS 7.0 directly under GEDC:\n%s", out)
 	}
 }
+
+// TestConvertSameVersionRewritesVendorVERS pins #741 on the same-version path:
+// a vendor spelling such as 5.51, read as 5.5.1, is rewritten to the
+// conforming version on a copy, while a later 7 minor (a conforming
+// declaration) is left as declared and the input returned as is.
+func TestConvertSameVersionRewritesVendorVERS(t *testing.T) {
+	tests := []struct {
+		vers     string
+		target   gedcom.Version
+		wantVers string
+		wantSame bool
+	}{
+		{"5.51", gedcom.Version551, "5.5.1", false},
+		{"5.5.1 (GEDCOM)", gedcom.Version551, "5.5.1", false},
+		{"55", gedcom.Version55, "5.5", false},
+		{"7", gedcom.Version70, "7.0", false},
+		{"7.1", gedcom.Version70, "7.1", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.vers, func(t *testing.T) {
+			input := "0 HEAD\n1 GEDC\n2 VERS " + tt.vers + "\n1 CHAR UTF-8\n0 @I1@ INDI\n0 TRLR\n"
+			doc, err := decoder.Decode(strings.NewReader(input))
+			if err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			got, _, err := converter.Convert(doc, tt.target)
+			if err != nil {
+				t.Fatalf("Convert: %v", err)
+			}
+			if (got == doc) != tt.wantSame {
+				t.Errorf("returned the input = %v, want %v", got == doc, tt.wantSame)
+			}
+			if !strings.Contains(headerString(t, doc), "2 VERS "+tt.vers+"\n") {
+				t.Errorf("Convert mutated the input VERS %q", tt.vers)
+			}
+			if out := headerString(t, got); !strings.Contains(out, "1 GEDC\n2 VERS "+tt.wantVers+"\n") {
+				t.Errorf("want GEDC.VERS %q:\n%s", tt.wantVers, out)
+			}
+			if !tt.wantSame && got.Header.DeclaredVersion != tt.target {
+				t.Errorf("DeclaredVersion = %q, want %q", got.Header.DeclaredVersion, tt.target)
+			}
+		})
+	}
+}
+
+func headerString(t *testing.T, doc *gedcom.Document) string {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, doc); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	return buf.String()
+}

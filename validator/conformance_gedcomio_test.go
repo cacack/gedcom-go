@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
+	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/internal/corpora"
 )
 
@@ -117,6 +118,36 @@ func TestGEDCOMIOWarningsFiles(t *testing.T) {
 			slices.Sort(extras)
 			if want := gedcomioWarningExtras[file]; !slices.Equal(extras, want) {
 				t.Errorf("issues no designed warning explains changed; update gedcomioWarningExtras[%q]\n got: %q\nwant: %q", file, extras, want)
+			}
+		})
+	}
+}
+
+// TestGEDCOMIO71FilesNoMissingSUBM pins that every gedcom.io 7.1 file is read
+// as 7.x, where HEAD.SUBM is optional, so none is reported MISSING_SUBM: VERS
+// 7.1 was once unrecognized and minimal71.ged guessed as 5.5 (#741).
+func TestGEDCOMIO71FilesNoMissingSUBM(t *testing.T) {
+	dir, lock := corpora.GEDCOMIO(t)
+	for _, e := range lock.Entries {
+		if !strings.HasPrefix(e.Path, "gedcom71/") || !strings.HasSuffix(e.Path, ".ged") {
+			continue
+		}
+		t.Run(e.Path, func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(e.Path))) // #nosec G304 -- a pinned lock entry under the fetched corpus dir
+			if err != nil {
+				t.Fatalf("ReadFile: %v", err)
+			}
+			doc, err := decoder.Decode(bytes.NewReader(data))
+			if err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+			if doc.Header.Version != gedcom.Version70 || doc.Header.DeclaredVersion != "7.1" {
+				t.Errorf("Version, DeclaredVersion = %q, %q; want 7.0, 7.1", doc.Header.Version, doc.Header.DeclaredVersion)
+			}
+			for _, i := range New().ValidateAll(doc) {
+				if i.Code == CodeMissingSUBM {
+					t.Errorf("MISSING_SUBM reported: %s", i.Message)
+				}
 			}
 		})
 	}
