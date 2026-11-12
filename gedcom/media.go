@@ -57,6 +57,11 @@ type MediaLink struct {
 	// FORM fills the Form of each file that has none, or with no FILE is kept
 	// in a file with an empty FileRef. Empty on a pointer link; the encoder
 	// ignores Files on a link that has a MediaXRef.
+	//
+	// 5.5 output is lossy: it writes one FORM, the first non-empty Form, and
+	// each non-empty FileRef, dropping MediaType, Title and Translations.
+	// 5.5.1 and 7.0 output write a file with an empty FileRef as a FILE with
+	// no value, under which its FORM is written.
 	Files []*MediaFile
 
 	// MediaXRef is the pointer to the OBJE record (e.g., "@O1@")

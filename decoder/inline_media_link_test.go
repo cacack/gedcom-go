@@ -85,6 +85,17 @@ func TestInlineMediaLinkFiles(t *testing.T) {
 			wantTitle: "Pic",
 		},
 		{
+			// The one 5.5 FORM fills every file's Form.
+			name: "5.5 layout with two files",
+			vers: "5.5",
+			body: `0 @I1@ INDI
+1 OBJE
+2 FILE a.jpg
+2 FORM jpg
+2 FILE b.jpg`,
+			wantFiles: []gedcom.MediaFile{{FileRef: "a.jpg", Form: "jpg"}, {FileRef: "b.jpg", Form: "jpg"}},
+		},
+		{
 			name: "pointer link has no files",
 			vers: "5.5.1",
 			body: `0 @I1@ INDI

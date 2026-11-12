@@ -1121,6 +1121,25 @@ func TestCloneMediaLinkWithCrop(t *testing.T) {
 	}
 }
 
+// TestCloneMediaLinkFiles: an inline link's Files (#733) are deep-copied, so
+// a write through the clone never reaches the original.
+func TestCloneMediaLinkFiles(t *testing.T) {
+	original := &MediaLink{Files: []*MediaFile{{FileRef: "a.jpg", Form: "jpg", MediaType: "photo"}}}
+
+	copied := cloneMediaLink(original)
+	if !reflect.DeepEqual(copied.Files, original.Files) {
+		t.Fatalf("Files = %+v, want %+v", copied.Files, original.Files)
+	}
+	if copied.Files[0] == original.Files[0] {
+		t.Fatal("Files[0] should be a deep copy")
+	}
+	copied.Files[0].FileRef = "modified"
+	copied.Files = append(copied.Files, &MediaFile{FileRef: "b.jpg"})
+	if original.Files[0].FileRef != "a.jpg" || len(original.Files) != 1 {
+		t.Errorf("original changed through the clone: %+v", original.Files)
+	}
+}
+
 func TestCloneSourceCitationFull(t *testing.T) {
 	original := &SourceCitation{
 		SourceXRef:   "@S1@",

@@ -153,3 +153,68 @@ func TestInlineMediaLinkRoundTrip(t *testing.T) {
 		})
 	}
 }
+
+// TestInlineMediaLink55Layout pins the lossy 5.5 layout: one FORM (the first
+// non-empty), every non-empty FileRef, and no FILE for a file with no
+// FileRef, which holds a FORM decoded with no FILE.
+func TestInlineMediaLink55Layout(t *testing.T) {
+	tests := []struct {
+		name string
+		link *gedcom.MediaLink
+		want string
+	}{
+		{
+			name: "FORM only",
+			link: &gedcom.MediaLink{Title: "Pic", Files: []*gedcom.MediaFile{{Form: "jpg"}}},
+			want: "1 OBJE\n2 FORM jpg\n2 TITL Pic\n0 TRLR\n",
+		},
+		{
+			name: "two files, two forms",
+			link: &gedcom.MediaLink{Files: []*gedcom.MediaFile{
+				{FileRef: "a.jpg", MediaType: "photo"},
+				{FileRef: "b.png", Form: "png", Title: "B"},
+				{FileRef: "c.gif", Form: "gif"},
+			}},
+			want: "1 OBJE\n2 FORM png\n2 FILE a.jpg\n2 FILE b.png\n2 FILE c.gif\n0 TRLR\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := encodeIndividual(t, gedcom.Version55, &gedcom.Individual{Media: []*gedcom.MediaLink{tt.link}})
+			if !strings.Contains(out, tt.want) {
+				t.Errorf("want\n%s\ngot:\n%s", tt.want, out)
+			}
+		})
+	}
+}
+
+// TestMediaRecordTypeWrittenForOutputVersion: the 5.5.1 OBJE record writes a
+// file's MediaType as FORM.TYPE, which the decoder reads (#733); the inline
+// link and 7.0 write MEDI.
+func TestMediaRecordTypeWrittenForOutputVersion(t *testing.T) {
+	tests := []struct {
+		version gedcom.Version
+		want    string
+	}{
+		{gedcom.Version551, "0 @O1@ OBJE\n1 FILE a.jpg\n2 FORM jpg\n3 TYPE photo\n"},
+		{gedcom.Version70, "0 @O1@ OBJE\n1 FILE a.jpg\n2 FORM jpg\n3 MEDI PHOTO\n"},
+	}
+	for _, tt := range tests {
+		t.Run(string(tt.version), func(t *testing.T) {
+			mediaType := "photo"
+			if tt.version == gedcom.Version70 {
+				mediaType = "PHOTO"
+			}
+			doc := &gedcom.Document{
+				Header: &gedcom.Header{Version: tt.version},
+				Records: []*gedcom.Record{{Type: gedcom.RecordTypeMedia, XRef: "@O1@", Entity: &gedcom.MediaObject{
+					XRef:  "@O1@",
+					Files: []*gedcom.MediaFile{{FileRef: "a.jpg", Form: "jpg", MediaType: mediaType}},
+				}}},
+			}
+			if out := encodeToString(t, doc); !strings.Contains(out, tt.want) {
+				t.Errorf("want\n%s\ngot:\n%s", tt.want, out)
+			}
+		})
+	}
+}

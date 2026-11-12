@@ -625,7 +625,7 @@ func TestToTagsWriters_NilArgument(t *testing.T) {
 		{"changeDateToTags", func() []*gedcom.Tag { return changeDateToTags(nil, 1, "CHAN", opts) }},
 		{"mediaLinkToTags", func() []*gedcom.Tag { return mediaLinkToTags(nil, 1, nil) }},
 		{"cropRegionToTags", func() []*gedcom.Tag { return cropRegionToTags(nil, 2) }},
-		{"mediaFileToTags", func() []*gedcom.Tag { return mediaFileToTags(nil, 1, nil) }},
+		{"mediaFileToTags", func() []*gedcom.Tag { return mediaFileToTags(nil, 1, "MEDI", nil) }},
 		{"mediaTranslationToTags", func() []*gedcom.Tag { return mediaTranslationToTags(nil, 2, nil) }},
 		{"sharedNoteTranslationToTags", func() []*gedcom.Tag { return sharedNoteTranslationToTags(nil, 1, opts) }},
 		{"externalIDsToTags", func() []*gedcom.Tag { return externalIDsToTags([]*gedcom.ExternalID{nil}, 1, nil) }},
