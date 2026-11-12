@@ -264,6 +264,8 @@ To opt into strict parsing (fail on the first syntax error, no diagnostics colle
 - **API Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go/v3](https://pkg.go.dev/github.com/cacack/gedcom-go/v3)
 - **GEDCOM 7.0 Coverage**: [docs/reference/gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) - What this library does with every structure the 7.0 standard defines, derived by decoding rather than estimated
 - **GEDCOM 5.5/5.5.1 Coverage**: [docs/reference/gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md) - The same for both 5.5 versions, transcribed from the specifications' Lineage-Linked Grammar
+- **Untrusted Input**: [docs/guides/untrusted-input.md](docs/guides/untrusted-input.md) - Every bound on hostile input, the memory each API needs per input byte, and how to size an input limit
+- **Security Policy**: [SECURITY.md](SECURITY.md) - Supported versions, reporting a vulnerability, and the scanners that run
 - **Vendor Extensions**: [docs/guides/vendor-extensions.md](docs/guides/vendor-extensions.md) - Vendor-specific tag support (`_APID`, `_FSFTID`, etc.)
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 

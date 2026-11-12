@@ -2,12 +2,24 @@
 
 ## Supported Versions
 
-`gedcom-go` is pre-1.0. Security fixes are applied to the latest published minor release. Once a 1.0 release is cut, this policy will be updated to cover multiple supported versions.
+Security fixes are released on the latest minor of the current major, and
+backported to the last minor of the previous major from its maintenance
+branch (`release-2.x`; see
+[api-stability.md](docs/governance/policies/api-stability.md#cutting-the-last-minor-of-a-major-line)).
 
 | Version | Supported          |
 | ------- | ------------------ |
-| Latest  | :white_check_mark: |
-| Older   | :x:                |
+| 3.x (latest minor) | :white_check_mark: |
+| 2.5.x   | :white_check_mark: security fixes only |
+| < 2.5   | :x:                |
+
+## Decoding Untrusted Input
+
+What the library bounds on hostile input, what it does not, and how to size an
+input limit for each API is in
+[docs/guides/untrusted-input.md](docs/guides/untrusted-input.md). Memory that
+grows with input within those documented multipliers is expected behaviour,
+not a vulnerability; a panic, or memory beyond them, is.
 
 ## Reporting a Vulnerability
 
@@ -50,14 +62,22 @@ Out of scope:
 
 ## Security Tooling
 
-This project runs automated security scans on every pull request and nightly:
+These scanners run automatically. Results, except gitleaks' and dependency
+review's, are uploaded to the repository's Security tab.
 
-- [CodeQL](https://github.com/cacack/gedcom-go/actions/workflows/codeql.yml) — static analysis
-- [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) — Go vulnerability database
-- [gosec](https://github.com/securego/gosec) — Go security linter
-- [Trivy](https://trivy.dev/) — filesystem vulnerability scanning
-- [Semgrep](https://semgrep.dev/) — rule-based SAST
-- [gitleaks](https://github.com/gitleaks/gitleaks) — secret detection
-- [OSSF Scorecard](https://github.com/cacack/gedcom-go/actions/workflows/scorecard.yml) — supply-chain posture
+| Scanner | Pull requests | Nightly | Weekly |
+| ------- | ------------- | ------- | ------ |
+| [CodeQL](https://github.com/cacack/gedcom-go/actions/workflows/codeql.yml) (static analysis) | yes | | yes |
+| [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) (Go vulnerability database) | yes | yes | |
+| [gosec](https://github.com/securego/gosec) (Go security linter) | yes | yes | |
+| [Trivy](https://trivy.dev/) (filesystem vulnerability scan) | yes | yes | |
+| [osv-scanner](https://google.github.io/osv-scanner/) (OSV vulnerability scan) | yes | | |
+| [Semgrep](https://semgrep.dev/) (rule-based SAST) | yes | | |
+| [gitleaks](https://github.com/gitleaks/gitleaks) (secret detection) | yes | | |
+| [Dependency Review](https://github.com/actions/dependency-review-action) (new vulnerable or disallowed dependencies) | yes | | |
+| [OSSF Scorecard](https://github.com/cacack/gedcom-go/actions/workflows/scorecard.yml) (supply-chain posture) | | | yes |
 
-Results are uploaded to the repository's Security tab.
+Every pull-request scanner but Dependency Review also runs on pushes to
+`main`, and all but CodeQL run on the `release-2.x` maintenance branch.
+Scorecard also runs on pushes to `main`. The parser, charset reader, date
+parser and encoder are fuzzed nightly.

@@ -159,6 +159,9 @@ line limit then handles as above.
 
 ## Bounds on Diagnostics
 
+[Decoding Untrusted Input](untrusted-input.md) lists every bound in one table,
+with the dimensions that remain unbounded and the memory each API needs.
+
 Two bounds keep what a lenient decode reports from growing with hostile or
 corrupt input, alongside the line limit above. Both apply only to what is
 reported: the document is the same whatever they are.
