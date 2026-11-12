@@ -285,3 +285,29 @@ func TestConvertMarriedNameNotDuplicated(t *testing.T) {
 		t.Errorf("MARRIED_NAME_FROM_VENDOR_TAG count = %d, want 1", got)
 	}
 }
+
+// TestConvertMarriedNameReplacesLastSlashPair checks that the married name
+// replaces the slash pair the decoder reads as the surname (the last pair),
+// so it reads back with the married surname.
+func TestConvertMarriedNameReplacesLastSlashPair(t *testing.T) {
+	src := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n" +
+		"0 @I1@ INDI\n1 NAME John /de la /Smith/ III\n2 _MARNM Doe\n" +
+		"0 @I2@ INDI\n1 NAME Ann /Smith\n2 _MARNM Doe\n0 TRLR\n"
+	converted, _, err := Convert(decodeText(t, src), gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	for _, tc := range []struct{ xref, full, given, suffix string }{
+		{"@I1@", "John /de la /Doe/ III", "John", "III"},
+		{"@I2@", "Ann /Doe/", "Ann", ""},
+	} {
+		names := converted.GetIndividual(tc.xref).Names
+		if len(names) != 2 {
+			t.Fatalf("%s has %d names, want 2", tc.xref, len(names))
+		}
+		m := names[1]
+		if m.Type != "MARRIED" || m.Full != tc.full || m.Given != tc.given || m.Surname != "Doe" || m.Suffix != tc.suffix {
+			t.Errorf("%s married name = %+v, want Full %q Surname Doe", tc.xref, *m, tc.full)
+		}
+	}
+}

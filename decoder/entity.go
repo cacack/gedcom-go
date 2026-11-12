@@ -398,7 +398,9 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 // the last, both trimmed. A value with one slash has no closing slash, so the
 // rest of it is the surname; one with none is all given name. Text between
 // earlier slashes ("John /de la /Smith/") is malformed and is kept only in
-// PersonalName.Full.
+// PersonalName.Full. A slash inside the suffix cannot be told from a closing
+// one, so "John /Smith/ Jr./Sr" reads as surname " Jr." and suffix "Sr". An
+// unclosed surname is trimmed, as it has no closing slash to keep it.
 func splitPersonalName(full string) (given, surname, suffix string) {
 	first := strings.Index(full, "/")
 	if first < 0 {

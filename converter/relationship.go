@@ -217,22 +217,24 @@ func marriedNamesToV7(doc *gedcom.Document, report *gedcom.ConversionReport) {
 
 // marriedNameValue returns the NAME value of the married name: married itself
 // when it holds a slash (a full name), otherwise name with its /surname/
-// replaced by /married/, or /married/ appended when name has no surname.
+// replaced by /married/, or /married/ appended when name has no surname. As
+// in the decoder, the last slash pair delimits the surname, so the married
+// name reads back with married as its Surname.
 func marriedNameValue(name, married string) string {
 	if strings.Contains(married, "/") {
 		return married
 	}
 	name = strings.TrimSpace(name)
 	surname := "/" + married + "/"
-	start := strings.Index(name, "/")
-	if start < 0 {
+	last := strings.LastIndex(name, "/")
+	if last < 0 {
 		return strings.TrimSpace(name + " " + surname)
 	}
-	end := strings.Index(name[start+1:], "/")
-	if end < 0 {
-		return name[:start] + surname
+	open := strings.LastIndex(name[:last], "/")
+	if open < 0 {
+		return name[:last] + surname
 	}
-	return name[:start] + surname + name[start+1+end+1:]
+	return name[:open] + surname + name[last+1:]
 }
 
 // hasMarriedName reports whether tags hold a level-1 NAME of value whose TYPE

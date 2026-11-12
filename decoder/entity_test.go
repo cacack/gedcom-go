@@ -231,6 +231,10 @@ func TestParsePersonalNameSuffixAndSlashes(t *testing.T) {
 		{"NSFX wins over trailing text", "1 NAME John /Smith/ Jr.\n2 NSFX Sr.", "John", "Smith", "Sr."},
 		{"more than two slashes", "1 NAME John /de la /Smith/", "John", "Smith", ""},
 		{"more than two slashes with suffix", "1 NAME John /de la /Smith/ III", "John", "Smith", "III"},
+		// A slash in the suffix cannot be told from a closing one, so the
+		// last pair still delimits the surname.
+		{"slash in suffix", "1 NAME John /Smith/ Jr./Sr", "John", " Jr.", "Sr"},
+		{"padded surname kept as written", "1 NAME John / Smith /", "John", " Smith ", ""},
 		{"no suffix", "1 NAME John /Smith/", "John", "Smith", ""},
 		{"unclosed surname", "1 NAME John /Smith", "John", "Smith", ""},
 	}
