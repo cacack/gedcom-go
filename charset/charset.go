@@ -609,7 +609,8 @@ var charValues = map[string]Encoding{
 	// UNICODE in a header readable byte by byte is UTF-8; UTF-16 without a
 	// BOM is recognised before the header is read (see sniffUTF16).
 	"UNICODE": EncodingUTF8,
-	// UTF-16 is handled by BOM detection, but recognize the tag
+	// UTF-16 input is recognised before the header is read (DetectBOM,
+	// sniffUTF16); a header readable byte by byte that says UTF-16 maps to LE
 	"UTF-16":   EncodingUTF16LE,
 	"UTF-16LE": EncodingUTF16LE,
 	"UTF-16BE": EncodingUTF16BE,
@@ -641,12 +642,16 @@ var charValues = map[string]Encoding{
 // is searched for within that header; if it is not found, or its value is not
 // recognised, EncodingUnknown is returned and the caller should assume UTF-8.
 //
-// Recognised values, matched without regard to case: ANSEL; ASCII; UTF-8,
-// UTF8 and UNICODE (UTF-8); UTF-16, UTF-16LE and UTF-16BE; ANSI, LATIN1,
-// ISO-8859-1, WINDOWS-1252, CP1252 and WIN-1252 (EncodingLATIN1, decoded as
-// Windows-1252); IBMPC, IBM PC, CP437 and IBM-437 (EncodingCP437); CP850 and
-// IBM-850 (EncodingCP850); MACINTOSH, MAC and MACROMAN (EncodingMacRoman). The rest of r is not read until
-// the returned reader is, so a read error past the probe surfaces from it.
+// Recognised values, matched whole and without regard to case: ANSEL; ASCII;
+// UTF-8, UTF8 and UNICODE (UTF-8); UTF-16, UTF-16LE and UTF-16BE; ANSI,
+// LATIN1, ISO-8859-1, WINDOWS-1252, CP1252 and WIN-1252 (EncodingLATIN1,
+// decoded as Windows-1252); IBMPC, IBM PC, CP437 and IBM-437 (EncodingCP437);
+// CP850 and IBM-850 (EncodingCP850); MACINTOSH, MAC and MACROMAN
+// (EncodingMacRoman). A bare UTF-16 value carries no byte order and is
+// reported as EncodingUTF16LE; the BOM, when present, decides instead.
+//
+// The rest of r is not read until the returned reader is, so a read error
+// past the probe surfaces from it.
 func DetectEncodingFromHeader(r io.Reader) (io.Reader, Encoding, error) {
 	probe, headerLen, err := probeHeader(r)
 	if err != nil {

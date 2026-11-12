@@ -26,7 +26,10 @@ func (e Encoding) String() string {
 	return string(e)
 }
 
-// IsValid returns true if the encoding is a recognized GEDCOM encoding.
+// IsValid returns true if the encoding is one of the constants above. It does
+// not report what the charset package can decode: Header.Encoding holds the
+// CHAR value as written, so a value charset decodes (IBMPC, WINDOWS-1252,
+// MACINTOSH and others) can still return false here.
 func (e Encoding) IsValid() bool {
 	switch e {
 	case EncodingUTF8, EncodingANSEL, EncodingASCII, EncodingLATIN1, EncodingUNICODE:
