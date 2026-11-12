@@ -248,9 +248,6 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		// After XRef normalization, so the records it reports (dual-year and
 		// date-phrase DataLoss AffectedRecords) are named by their XRefs in the converted document.
 		func() { transformDateSyntax(doc, gedcom.Version70, report) },
-		// After the CONC/CONT fold and the date phrase split, so every text
-		// value is escaped whole and where it ends up (issue #773).
-		func() { reescapeRawText(doc, gedcom.Version55, gedcom.Version70, report) },
 		// After XRef normalization, so a new OBJE record's XRef is checked
 		// against final ones, and before the media type translation, so its FORM
 		// is translated with every other record's.
@@ -264,6 +261,11 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		func() { synthesizePedigrees(doc, report, gedcom.Version70) },
 		func() { marriedNamesToV7(doc, report) },
 		func() { transformRestrictions(doc, report, gedcom.Version70) },
+		// After the CONC/CONT fold and the date phrase split, so every text
+		// value is escaped whole and where it ends up, and after the passes
+		// that cut or splice values (RFN, RIN fragment, _MARNM), so they see
+		// 5.x form and their results are escaped once (issue #773).
+		func() { reescapeRawText(doc, gedcom.Version55, gedcom.Version70, report) },
 		func() { variations.report(doc, report, gedcom.Version70) },
 		// No dropForeignStructures: structures_gen.go has no 5.5 graph yet (#794).
 		func() { opts.reportPreservedTags(doc, report) },
@@ -308,9 +310,6 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 		// After XRef normalization, so the records it reports (dual-year and
 		// date-phrase DataLoss AffectedRecords) are named by their XRefs in the converted document.
 		func() { transformDateSyntax(doc, gedcom.Version70, report) },
-		// After the CONC/CONT fold and the date phrase split, so every text
-		// value is escaped whole and where it ends up (issue #773).
-		func() { reescapeRawText(doc, gedcom.Version551, gedcom.Version70, report) },
 		// After XRef normalization, so a new OBJE record's XRef is checked
 		// against final ones, and before the media type translation, so its FORM
 		// is translated with every other record's.
@@ -324,6 +323,11 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 		func() { synthesizePedigrees(doc, report, gedcom.Version70) },
 		func() { marriedNamesToV7(doc, report) },
 		func() { transformRestrictions(doc, report, gedcom.Version70) },
+		// After the CONC/CONT fold and the date phrase split, so every text
+		// value is escaped whole and where it ends up, and after the passes
+		// that cut or splice values (RFN, RIN fragment, _MARNM), so they see
+		// 5.x form and their results are escaped once (issue #773).
+		func() { reescapeRawText(doc, gedcom.Version551, gedcom.Version70, report) },
 		func() { variations.report(doc, report, gedcom.Version70) },
 		// Last, so only what no pass above mapped into a 7.0 form is dropped.
 		func() { dropForeignStructures(doc, foreign551To70, report, gedcom.Version70) },
@@ -353,8 +357,9 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 				transformEXIDToVendorTags(doc, report, gedcom.Version55)
 			}
 		},
-		// Before the CONT/CONC expansion, which must not split an "@@", and
-		// the PHRASE fold, which takes the PHRASE's 5.x form (issue #773).
+		// After the EXID mapping, whose _FSFTID leading-"@" doubling it
+		// completes; before the CONT/CONC expansion, which must not split an
+		// "@@", and the PHRASE fold, which takes the PHRASE's 5.x form (#773).
 		func() { reescapeRawText(doc, gedcom.Version70, gedcom.Version55, report) },
 		func() { transformTextForVersion(doc, gedcom.Version55, report) },
 		// Before dropV7OnlyTags, which drops and reports each date PHRASE this
@@ -395,8 +400,9 @@ func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 				transformEXIDToVendorTags(doc, report, gedcom.Version551)
 			}
 		},
-		// Before the CONT/CONC expansion, which must not split an "@@", and
-		// the PHRASE fold, which takes the PHRASE's 5.x form (issue #773).
+		// After the EXID mapping, whose _FSFTID leading-"@" doubling it
+		// completes; before the CONT/CONC expansion, which must not split an
+		// "@@", and the PHRASE fold, which takes the PHRASE's 5.x form (#773).
 		func() { reescapeRawText(doc, gedcom.Version70, gedcom.Version551, report) },
 		func() { transformTextForVersion(doc, gedcom.Version551, report) },
 		// Before dropV7OnlyTags, which drops and reports each date PHRASE this

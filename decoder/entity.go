@@ -348,10 +348,10 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			indi.UIDs = append(indi.UIDs, collector.text(tag.Value))
 
 		case "_FSFTID":
-			// Text like any other: a leading "@@" (written by the encoder, or
-			// by the EXID->_FSFTID converter's gedcom.EscapeLeadingAt) is a
-			// literal "@", so FamilySearchID / FamilySearchURL() get the
-			// logical id; the raw tag retains "@@".
+			// Text like any other: an "@@" (written by the encoder, or by the
+			// EXID->_FSFTID converter, which doubles every "@" under the 5.x
+			// rule, #773) is a literal "@", so FamilySearchID /
+			// FamilySearchURL() get the logical id; the raw tag retains "@@".
 			indi.FamilySearchID = collector.text(tag.Value)
 
 		case "EXID":

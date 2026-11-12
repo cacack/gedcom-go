@@ -198,3 +198,33 @@ func findTagIn(tags []*gedcom.Tag, name string) *gedcom.Tag {
 	}
 	return nil
 }
+
+// TestConvertReescapesSplicedValues checks the passes that cut or splice a
+// value on the way to 7.0 (RFN to EXID, _MARNM to NAME, HEAD.SOUR to the RIN
+// fragment) see it in 5.x form, so the result is escaped once, whole.
+func TestConvertReescapesSplicedValues(t *testing.T) {
+	const input = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 SOUR @@sys
+0 @I1@ INDI
+1 NAME Jane /Doe/
+2 _MARNM @@Smith
+1 RFN res:@@I1@@
+1 RIN 7
+0 TRLR
+`
+	out, _, _ := convertAndEncode(t, input, gedcom.Version70)
+	assertLines(t, out,
+		"1 NAME Jane /@Smith/",
+		"1 EXID @@I1@",
+		"2 TYPE https://gedcom.io/terms/v7/RIN#@sys",
+	)
+	for _, bad := range []string{"1 EXID @I1@", "1 NAME Jane /@@Smith/"} {
+		if strings.Contains(out, bad+"\n") {
+			t.Errorf("output holds %q:\n%s", bad, out)
+		}
+	}
+}

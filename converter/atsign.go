@@ -21,9 +21,10 @@ const atSignReescapeReason = "GEDCOM 5.x doubles every \"@\" in text and GEDCOM 
 // transformation.
 //
 // It must run once, on values still in source wire form: on an upgrade to 7.0
-// after the CONC/CONT fold (7.0 escapes an "@" after a line break) and the date
-// phrase split (a 5.x phrase moved to a PHRASE is then escaped as one); on a
-// downgrade before both (the fold of a PHRASE into its DATE takes its 5.x
+// after the CONC/CONT fold (7.0 escapes an "@" after a line break), the date
+// phrase split (a 5.x phrase moved to a PHRASE is then escaped as one) and
+// every pass that cuts or splices a value (a 7.0 "@" changes meaning when it
+// moves to or from the start of a line); on a downgrade before both (the fold of a PHRASE into its DATE takes its 5.x
 // form, and an "@@" is never split across CONC lines).
 func reescapeRawText(doc *gedcom.Document, from, to gedcom.Version, report *gedcom.ConversionReport) {
 	count := 0
