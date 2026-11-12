@@ -7,7 +7,7 @@ package decoder
 // author who wrote our own fixtures.
 //
 // TestConformanceSuitesDecode covers strict and lenient decoding of them; the
-// encoder package's TestOxidgedEntityRoundTrip covers the write path. The two
+// encoder package's TestClearedTagsRoundTrip covers the write path. The two
 // checks here are what neither of those can see:
 //
 //   - every standard (non-underscore) tag is recognized: no UNKNOWN_TAG;
