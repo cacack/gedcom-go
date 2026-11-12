@@ -1,5 +1,12 @@
 package converter
 
+import (
+	"context"
+	"fmt"
+
+	"github.com/cacack/gedcom-go/v3/internal/ctxcheck"
+)
+
 // ConvertOptions configures the conversion behavior.
 //
 // A nil *ConvertOptions means DefaultOptions(). Any non-nil pointer is taken
@@ -42,6 +49,15 @@ type ConvertOptions struct {
 	// Zero value: false (the EXID is reported under DataLoss instead).
 	// DefaultOptions sets it true.
 	MapEXIDToVendorTags bool
+
+	// Context allows cancellation and timeout control. The conversion checks
+	// it before each conversion step and, while copying the document and
+	// validating the result, before each record. Once it is done the
+	// conversion stops and returns no document and the context's error
+	// wrapped (errors.Is matches context.Canceled or
+	// context.DeadlineExceeded); the caller's document is never modified.
+	// Zero value: nil (no cancellation).
+	Context context.Context
 }
 
 // DefaultOptions returns the default conversion options.
@@ -52,4 +68,18 @@ func DefaultOptions() *ConvertOptions {
 		ReportPreservedTags: true,
 		MapEXIDToVendorTags: true,
 	}
+}
+
+// cancelled returns the options' Context error, wrapped, once that context is
+// done, and nil otherwise or when no context is set.
+func (opts *ConvertOptions) cancelled() error {
+	return cancelledErr(ctxcheck.Err(opts.Context))
+}
+
+// cancelledErr wraps a context error as a cancelled conversion; nil stays nil.
+func cancelledErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("conversion cancelled: %w", err)
 }

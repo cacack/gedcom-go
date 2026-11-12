@@ -17,6 +17,7 @@
 package validator
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -38,7 +39,7 @@ import (
 // A nil pointer that is not a slice element -- an unset optional field such as
 // Event.ParsedDate, a nil Header, a Record with no Entity at all -- is not
 // reported: it is how a document says "absent", not a lost element.
-func validateNilElements(doc *gedcom.Document) []Issue {
+func validateNilElements(ctx context.Context, doc *gedcom.Document) []Issue {
 	w := &nilWalker{}
 	xrefCount := make(map[string]int, len(doc.Records))
 	for _, record := range doc.Records {
@@ -50,6 +51,10 @@ func validateNilElements(doc *gedcom.Document) []Issue {
 		w.walk(reflect.ValueOf(doc.Header).Elem(), "Header")
 	}
 	for i, record := range doc.Records {
+		// Stops early, with the issues found so far, once ctx is done.
+		if ctx.Err() != nil {
+			break
+		}
 		w.xref = ""
 		path := fmt.Sprintf("Records[%d]", i)
 		if record == nil {

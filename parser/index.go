@@ -1,11 +1,14 @@
 package parser
 
 import (
+	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
 	"sort"
+
+	"github.com/cacack/gedcom-go/v3/internal/ctxcheck"
 )
 
 // IndexEntry represents a single record's location in a GEDCOM file.
@@ -58,10 +61,19 @@ func NewRecordIndex() *RecordIndex {
 // The reader should be positioned at the start of the file.
 // After building, the reader position is at EOF.
 func BuildIndex(r io.Reader) (*RecordIndex, error) {
+	return buildIndex(context.Background(), r)
+}
+
+// buildIndex is BuildIndex checking ctx before each record. On cancellation it
+// returns ctx's error, wrapped. A nil ctx is never cancelled.
+func buildIndex(ctx context.Context, r io.Reader) (*RecordIndex, error) {
 	idx := NewRecordIndex()
 
 	it := NewRecordIteratorWithOffset(r)
 	for it.Next() {
+		if err := ctxcheck.Err(ctx); err != nil {
+			return nil, fmt.Errorf("building index: %w", err)
+		}
 		rec := it.Record()
 		entry := IndexEntry{
 			XRef:       rec.XRef,

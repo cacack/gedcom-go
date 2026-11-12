@@ -204,6 +204,11 @@ func Validate(doc *Document) []error {
 // SkipRules drops the listed codes, MaxErrors caps the count, and the
 // remaining fields configure or disable individual checks. No field is
 // ignored.
+//
+// A done Context stops validation early, and only the issues found before
+// it are returned, with nothing marking them incomplete: a caller that sets
+// Context should check the context's Err afterwards, or call
+// validator.NewWithOptions(opts).ValidateAllWithError, which reports it.
 func ValidateWithOptions(doc *Document, opts *ValidateOptions) []error {
 	return validator.NewWithOptions(opts).Validate(doc)
 }
@@ -222,6 +227,11 @@ func ValidateAll(doc *Document) []Issue {
 
 // ValidateAllWithOptions runs comprehensive validation with the given options.
 // If opts is nil, default options are used.
+//
+// A done Context stops validation early, and only the issues found before
+// it are returned, with nothing marking them incomplete: a caller that sets
+// Context should check the context's Err afterwards, or call
+// validator.NewWithOptions(opts).ValidateAllWithError, which reports it.
 func ValidateAllWithOptions(doc *Document, opts *ValidateOptions) []Issue {
 	return validator.NewWithOptions(opts).ValidateAll(doc)
 }

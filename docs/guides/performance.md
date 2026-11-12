@@ -476,7 +476,13 @@ Encoding detection in `charset.NewReader` reads only the header (at most 64 KiB)
 
 ### For Web Services
 
-1. **Set Timeouts**: Use `context` for long-running operations
+1. **Set Timeouts**: Give every stage the same deadline, not just the decode.
+   `DecodeOptions`, `ValidateOptions`, `ConvertOptions`, `EncodeOptions` and
+   `merge.CombineOptions` each take a `Context`, and `LazyParser` has
+   `BuildIndexContext`; each stops shortly after the context is done and
+   returns its error wrapped, so `errors.Is(err, context.DeadlineExceeded)`
+   works. On the validator, call `ValidateAllWithError`: `ValidateAll` has no
+   error to report the cancellation with
 2. **Limit File Sizes**: Prevent DoS attacks with `io.LimitReader`
 3. **Memory Profiling**: Monitor for memory leaks
 4. **Bound Duplicate Detection**: It is capped by default

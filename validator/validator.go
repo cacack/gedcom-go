@@ -1,6 +1,9 @@
 package validator
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
@@ -79,6 +82,13 @@ type ValidatorConfig struct {
 	// [Validator.QualityReport] honors it too.
 	// Default: false.
 	CheckEntityTags bool
+
+	// Context allows cancellation and timeout control of
+	// [Validator.ValidateAllWithError], which checks it between checks and,
+	// in the costliest checks, before each record, and returns its error
+	// once it is done. [Validator.ValidateAll] and [Validator.Validate] stop
+	// early too, but cannot report it. Nil means no cancellation.
+	Context context.Context
 
 	// SkipRules specifies issue codes to exclude from validation results.
 	// Issues with codes matching any entry in this slice are filtered out.
@@ -269,11 +279,13 @@ func (v *Validator) Validate(doc *gedcom.Document) []error {
 // hand-built document holds), date validity (dates that do not exist, e.g.
 // 31 FEB), XRef length and note pointers. The record-structure heuristics are
 // not conformance checks; both callers run validateRecordStructure themselves.
-func recordChecks(doc *gedcom.Document, xrefs *XRefValidator, notes *NoteValidator) []Issue {
+//
+// The nil-element walk, the costliest of them, stops early once ctx is done.
+func recordChecks(ctx context.Context, doc *gedcom.Document, xrefs *XRefValidator, notes *NoteValidator) []Issue {
 	var issues []Issue
 	issues = append(issues, validateBrokenXRefs(doc)...)
 	issues = append(issues, validateDuplicateXRefs(doc)...)
-	issues = append(issues, validateNilElements(doc)...)
+	issues = append(issues, validateNilElements(ctx, doc)...)
 	issues = append(issues, validateDates(doc)...)
 	issues = append(issues, xrefs.ValidateXRefs(doc)...)
 	issues = append(issues, notes.ValidateNotePointers(doc)...)
@@ -284,63 +296,49 @@ func recordChecks(doc *gedcom.Document, xrefs *XRefValidator, notes *NoteValidat
 // Issues with severity levels. Issues are filtered by the configured
 // Strictness and SkipRules and then capped at MaxErrors.
 // [Validator.Validate] returns the same result as []error.
+//
+// When the configured Context is done, ValidateAll stops early and returns
+// only what it found before stopping, which it cannot mark as incomplete:
+// a caller that sets Context should call [Validator.ValidateAllWithError],
+// which reports the cancellation, or check the context's Err afterwards.
 func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
+	issues, _ := v.ValidateAllWithError(doc)
+	return issues
+}
+
+// ValidateAllWithError is [Validator.ValidateAll] reporting cancellation. It
+// checks the configured Context (see [ValidatorConfig.Context]) between checks
+// and, in the costliest checks, before each record. Once the context is done
+// it stops and returns the issues found so far, which are incomplete, with the
+// context's error wrapped (errors.Is matches context.Canceled or
+// context.DeadlineExceeded). Otherwise the error is nil and the issues are
+// exactly ValidateAll's.
+func (v *Validator) ValidateAllWithError(doc *gedcom.Document) ([]Issue, error) {
 	if doc == nil {
-		return nil
+		return nil, nil
+	}
+
+	ctx := context.Background()
+	if v.config != nil && v.config.Context != nil {
+		ctx = v.config.Context
 	}
 
 	var allIssues []Issue
-
-	// Run header validation
-	allIssues = append(allIssues, v.getHeaderValidator().ValidateHeader(doc)...)
-
-	// Run date logic validation
-	allIssues = append(allIssues, v.getDateLogicValidator().Validate(doc)...)
-
-	// Run reference validation
-	allIssues = append(allIssues, v.getReferenceValidator().Validate(doc)...)
-
-	// Run the record-level conformance checks. QualityAnalyzer.Analyze runs
-	// the same helper; a new check belongs there rather than here, and the
-	// header and encoding calls in this function have their counterparts in
-	// QualityAnalyzer.runConformanceChecks.
-	allIssues = append(allIssues, recordChecks(doc, v.getXRefValidator(), v.getNoteValidator())...)
-
-	// Report nameless individuals and memberless families: data-quality
-	// heuristics, which QualityAnalyzer.Analyze files as completeness issues.
-	allIssues = append(allIssues, validateRecordStructure(doc)...)
-
-	// Report typed edits the encoder would not write, when asked to. It is
-	// outside recordChecks because it reads the document's raw tags back
-	// through the decoder, about a round trip's cost, so it is opt-in
-	// (CheckEntityTags), and a caller who also lists its code in SkipRules
-	// does not pay for it.
-	if v.config != nil && v.config.CheckEntityTags && !v.skips(CodeEntityTagsDiverged) {
-		allIssues = append(allIssues, validateEntityTags(doc)...)
-	}
-
-	// Run duplicate detection and convert to issues, unless it was skipped.
-	// LimitIssues report any surname group that exceeded MaxGroupSize, so the
-	// caller can tell "no duplicates" from "not everything was compared". They
-	// are held back and prepended below rather than appended here — see the
-	// note at the prepend.
+	// limitIssues report any surname group that exceeded MaxGroupSize, so
+	// the caller can tell "no duplicates" from "not everything was
+	// compared". They are held back and prepended below rather than
+	// appended with the rest — see the note at the prepend.
 	var limitIssues []Issue
-	if v.config == nil || !v.config.SkipDuplicateDetection {
-		report := v.getDuplicateDetector().FindDuplicatesReport(doc)
-		for _, pair := range report.Pairs {
-			allIssues = append(allIssues, pair.ToIssue())
+
+	for _, check := range v.checks(ctx, doc, &limitIssues) {
+		if err := ctx.Err(); err != nil {
+			return v.filterByStrictness(allIssues), fmt.Errorf("validation cancelled: %w", err)
 		}
-		limitIssues = report.LimitIssues
+		allIssues = append(allIssues, check()...)
 	}
-
-	// Run custom tag validation if a registry is configured
-	if v.config != nil && v.config.TagRegistry != nil {
-		allIssues = append(allIssues, v.getTagValidator().Validate(doc)...)
-	}
-
-	// Run encoding validation (GEDCOM 7.0 specific)
-	if v.config == nil || !v.config.SkipEncodingValidation {
-		allIssues = append(allIssues, v.getEncodingValidator().Validate(doc)...)
+	// A check that stopped early returned only part of its findings.
+	if err := ctx.Err(); err != nil {
+		return v.filterByStrictness(allIssues), fmt.Errorf("validation cancelled: %w", err)
 	}
 
 	// Put the "detection was incomplete" notice first. filterByStrictness ends
@@ -355,7 +353,68 @@ func (v *Validator) ValidateAll(doc *gedcom.Document) []Issue {
 	}
 
 	// Filter by strictness
-	return v.filterByStrictness(allIssues)
+	return v.filterByStrictness(allIssues), nil
+}
+
+// checks returns ValidateAll's checks in the order they run. Duplicate
+// detection stores its limit notices in limitIssues rather than returning
+// them, for ValidateAllWithError to place first.
+func (v *Validator) checks(ctx context.Context, doc *gedcom.Document, limitIssues *[]Issue) []func() []Issue {
+	return []func() []Issue{
+		// Header validation
+		func() []Issue { return v.getHeaderValidator().ValidateHeader(doc) },
+		// Date logic validation
+		func() []Issue { return v.getDateLogicValidator().validate(ctx, doc) },
+		// Reference validation
+		func() []Issue { return v.getReferenceValidator().Validate(doc) },
+		// The record-level conformance checks. QualityAnalyzer.Analyze runs
+		// the same helper; a new check belongs there rather than here, and
+		// the header and encoding checks in this function have their
+		// counterparts in QualityAnalyzer.runConformanceChecks.
+		func() []Issue { return recordChecks(ctx, doc, v.getXRefValidator(), v.getNoteValidator()) },
+		// Nameless individuals and memberless families: data-quality
+		// heuristics, which QualityAnalyzer.Analyze files as completeness
+		// issues.
+		func() []Issue { return validateRecordStructure(doc) },
+		// Typed edits the encoder would not write, when asked to. It is
+		// outside recordChecks because it reads the document's raw tags back
+		// through the decoder, about a round trip's cost, so it is opt-in
+		// (CheckEntityTags), and a caller who also lists its code in
+		// SkipRules does not pay for it.
+		func() []Issue {
+			if v.config != nil && v.config.CheckEntityTags && !v.skips(CodeEntityTagsDiverged) {
+				return validateEntityTags(doc)
+			}
+			return nil
+		},
+		// Duplicate detection, converted to issues, unless it was skipped.
+		func() []Issue {
+			if v.config != nil && v.config.SkipDuplicateDetection {
+				return nil
+			}
+			report := v.getDuplicateDetector().findDuplicatesReport(ctx, doc)
+			*limitIssues = report.LimitIssues
+			issues := make([]Issue, 0, len(report.Pairs))
+			for _, pair := range report.Pairs {
+				issues = append(issues, pair.ToIssue())
+			}
+			return issues
+		},
+		// Custom tag validation, if a registry is configured
+		func() []Issue {
+			if v.config != nil && v.config.TagRegistry != nil {
+				return v.getTagValidator().Validate(doc)
+			}
+			return nil
+		},
+		// Encoding validation (GEDCOM 7.0 specific)
+		func() []Issue {
+			if v.config == nil || !v.config.SkipEncodingValidation {
+				return v.getEncodingValidator().Validate(doc)
+			}
+			return nil
+		},
+	}
 }
 
 // ValidateDateLogic runs date logic validation and returns any issues found.

@@ -11,6 +11,7 @@
 package validator
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -74,12 +75,21 @@ func NewDateLogicValidator(config *DateLogicConfig) *DateLogicValidator {
 
 // Validate runs all date logic validations on the document and returns any issues found.
 func (v *DateLogicValidator) Validate(doc *gedcom.Document) []Issue {
+	return v.validate(context.Background(), doc)
+}
+
+// validate is Validate stopping early, with the issues found so far, once ctx
+// is done; it checks ctx before each individual.
+func (v *DateLogicValidator) validate(ctx context.Context, doc *gedcom.Document) []Issue {
 	if doc == nil {
 		return nil
 	}
 
 	var issues []Issue
 	for _, ind := range doc.Individuals() {
+		if ctx.Err() != nil {
+			break
+		}
 		issues = append(issues, v.ValidateIndividual(doc, ind)...)
 	}
 	return issues

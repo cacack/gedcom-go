@@ -1,12 +1,14 @@
 package merge
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/ctxcheck"
 )
 
 // CollisionStrategy chooses how to handle XRef collisions between
@@ -50,6 +52,14 @@ type CombineOptions struct {
 	// mismatch is recorded as a HeaderConflict{Field: "Encoding"}. The
 	// zero value refuses the mismatch with ErrIncompatibleHeader.
 	IgnoreEncodingMismatch bool
+	// Context allows cancellation and timeout control. Combine checks it
+	// before it starts and before each record it compares, remaps or
+	// copies; once it is done
+	// Combine stops and returns a nil document and report and the context's
+	// error wrapped (errors.Is matches context.Canceled or
+	// context.DeadlineExceeded). The inputs are never modified either way.
+	// The zero value (nil) means no cancellation.
+	Context context.Context
 }
 
 // CombineReport describes what Combine did on success. Combine returns
@@ -125,6 +135,9 @@ func Combine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Document
 	if doc2 == nil {
 		return nil, nil, errors.New("merge: doc2 is nil")
 	}
+	if err := cancelled(opts.Context); err != nil {
+		return nil, nil, err
+	}
 
 	// Check version/encoding compatibility BEFORE doing any work.
 	if err := checkHeaderCompat(doc1.Header, doc2.Header, opts.IgnoreEncodingMismatch); err != nil {
@@ -132,7 +145,10 @@ func Combine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Document
 	}
 
 	// Detect collisions between doc1 and doc2 XRefs.
-	collisions := findCollisions(doc1, doc2)
+	collisions := findCollisions(opts.Context, doc1, doc2)
+	if err := cancelled(opts.Context); err != nil {
+		return nil, nil, err
+	}
 
 	// Apply the requested collision strategy to produce a remapped
 	// version of doc2. RemapXRefs clones doc2 internally, so doc2
@@ -152,7 +168,10 @@ func Combine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Document
 
 	// Clone doc1 so we never mutate the input. Records will be
 	// concatenated into this output.
-	out := doc1.Clone()
+	out, err := cloneDoc(opts.Context, doc1)
+	if err != nil {
+		return nil, nil, err
+	}
 	if out.XRefMap == nil {
 		out.XRefMap = make(map[string]*gedcom.Record)
 	}
@@ -307,15 +326,23 @@ func checkHeaderCompat(h1, h2 *gedcom.Header, ignoreEncoding bool) error {
 
 // findCollisions returns the sorted list of XRefs present in both
 // doc1 and doc2.
-func findCollisions(doc1, doc2 *gedcom.Document) []string {
+func findCollisions(ctx context.Context, doc1, doc2 *gedcom.Document) []string {
 	set1 := make(map[string]bool)
 	for _, r := range doc1.Records {
+		// Stops early, with a partial answer, once ctx is done; Combine
+		// checks ctx before using it.
+		if ctxcheck.Err(ctx) != nil {
+			return nil
+		}
 		if r != nil && r.XRef != "" {
 			set1[r.XRef] = true
 		}
 	}
 	var collisions []string
 	for _, r := range doc2.Records {
+		if ctxcheck.Err(ctx) != nil {
+			return nil
+		}
 		if r == nil || r.XRef == "" {
 			continue
 		}
@@ -337,14 +364,15 @@ func applyStrategy(doc1, doc2 *gedcom.Document, collisions []string, opts Combin
 		}
 		// No remap needed; just clone doc2 so the caller can safely
 		// concatenate without aliasing the input.
-		return doc2.Clone(), nil, nil
+		out, err := cloneDoc(opts.Context, doc2)
+		return out, nil, err
 
 	case PrefixDoc2:
-		return applyPrefixStrategy(doc1, doc2, collisions, opts.Prefix)
+		return applyPrefixStrategy(opts.Context, doc1, doc2, collisions, opts.Prefix)
 
 	case RenumberDoc2:
 		transform := renumberTransform(doc1, doc2, collisions)
-		out, mapping, err := RemapXRefs(doc2, transform)
+		out, mapping, err := remapXRefs(opts.Context, doc2, transform)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -366,7 +394,7 @@ func applyStrategy(doc1, doc2 *gedcom.Document, collisions []string, opts Combin
 // prefix, remap only colliding XRefs, then verify the remap didn't
 // create a fresh collision with doc1 (e.g. doc1 already had the
 // prefixed name).
-func applyPrefixStrategy(doc1, doc2 *gedcom.Document, collisions []string, prefix string) (*gedcom.Document, map[string]string, error) {
+func applyPrefixStrategy(ctx context.Context, doc1, doc2 *gedcom.Document, collisions []string, prefix string) (*gedcom.Document, map[string]string, error) {
 	if prefix == "" {
 		return nil, nil, &CombineError{Kind: "missing-prefix"}
 	}
@@ -375,7 +403,7 @@ func applyPrefixStrategy(doc1, doc2 *gedcom.Document, collisions []string, prefi
 		collisionSet[c] = true
 	}
 	transform := prefixTransform(prefix, collisionSet)
-	out, mapping, err := RemapXRefs(doc2, transform)
+	out, mapping, err := remapXRefs(ctx, doc2, transform)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -864,4 +892,23 @@ func describeSchema(s *gedcom.SchemaDefinition) string {
 		return ""
 	}
 	return fmt.Sprintf("%d tag mapping(s)", len(s.TagMappings))
+}
+
+// cancelled returns ctx's error, wrapped, once ctx is done, and nil otherwise
+// or when ctx is nil.
+func cancelled(ctx context.Context) error {
+	if err := ctxcheck.Err(ctx); err != nil {
+		return fmt.Errorf("merge: cancelled: %w", err)
+	}
+	return nil
+}
+
+// cloneDoc is doc.Clone() checking ctx before each record, failing as
+// cancelled does once ctx is done.
+func cloneDoc(ctx context.Context, doc *gedcom.Document) (*gedcom.Document, error) {
+	out, err := ctxcheck.Clone(ctx, doc)
+	if err != nil {
+		return nil, cancelled(ctx)
+	}
+	return out, nil
 }

@@ -1,12 +1,14 @@
 package decoder
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/internal/atsign"
+	"github.com/cacack/gedcom-go/v3/internal/ctxcheck"
 )
 
 // tagToken returns a tag value with surrounding whitespace removed, for a typed
@@ -108,14 +110,14 @@ func (c *diagnosticCollector) isPointer(s string) bool {
 }
 
 // addUnknownTag records an unknown tag diagnostic.
-func (c *diagnosticCollector) addUnknownTag(lineNumber int, tag, context string) {
+func (c *diagnosticCollector) addUnknownTag(lineNumber int, tag, content string) {
 	if c.collecting() {
 		c.add(NewDiagnostic(
 			lineNumber,
 			SeverityWarning,
 			CodeUnknownTag,
 			fmt.Sprintf("unknown tag: %s", tag),
-			context,
+			content,
 		))
 	}
 }
@@ -135,10 +137,15 @@ func (c *diagnosticCollector) addInvalidValue(lineNumber int, tag, value, reason
 
 // populateEntities converts raw tags in each record into proper entities.
 // If collector is nil, no diagnostics are collected (backward compatible behavior).
-func populateEntities(doc *gedcom.Document, collector *diagnosticCollector) {
+// It checks ctx before each record and returns ctx's error once it is done.
+func populateEntities(ctx context.Context, doc *gedcom.Document, collector *diagnosticCollector) error {
 	for _, record := range doc.Records {
+		if err := ctxcheck.Err(ctx); err != nil {
+			return err
+		}
 		populateRecordEntity(record, collector)
 	}
+	return nil
 }
 
 // populateRecordEntity sets record.Entity to the entity its type parses into

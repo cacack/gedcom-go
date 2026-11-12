@@ -1,11 +1,14 @@
 package encoder
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/internal/atsign"
 	"github.com/cacack/gedcom-go/v3/internal/concsplit"
+	"github.com/cacack/gedcom-go/v3/internal/ctxcheck"
 	"github.com/cacack/gedcom-go/v3/internal/gedcvers"
 )
 
@@ -59,6 +62,15 @@ type EncodeOptions struct {
 	// "0 _EVDEF") is dropped in full -- writing the level-0 line while stripping
 	// its children would leave a stub that carries no data.
 	DropUnknownTags bool
+
+	// Context allows cancellation and timeout control. [EncodeWithOptions],
+	// [EncodeStreamingWithOptions] and [StreamEncoder.WriteRecord] check it
+	// before each record; once it is done they stop writing and return its
+	// error wrapped (errors.Is matches context.Canceled or
+	// context.DeadlineExceeded), leaving the output incomplete. A
+	// [StreamEncoder] keeps that error, as it does a write error.
+	// Nil (the zero value) means no cancellation.
+	Context context.Context
 
 	// version is the resolved output version, set by forOutput. Writers must
 	// be reached only with options forOutput returned; on any other options it
@@ -186,4 +198,16 @@ func (opts *EncodeOptions) effectiveMaxLineLength() int {
 		return DefaultMaxLineLength
 	}
 	return opts.MaxLineLength
+}
+
+// cancelled returns opts.Context's error, wrapped, once that context is done,
+// and nil otherwise or when no context is set.
+func (opts *EncodeOptions) cancelled() error {
+	if opts == nil {
+		return nil
+	}
+	if err := ctxcheck.Err(opts.Context); err != nil {
+		return fmt.Errorf("encoding cancelled: %w", err)
+	}
+	return nil
 }

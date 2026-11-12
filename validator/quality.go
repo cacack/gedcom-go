@@ -7,6 +7,7 @@
 package validator
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -311,7 +312,7 @@ func (a *QualityAnalyzer) runTagValidator(doc *gedcom.Document, report *QualityR
 func (a *QualityAnalyzer) runConformanceChecks(doc *gedcom.Document, report *QualityReport) {
 	var issues []Issue
 	issues = append(issues, NewHeaderValidator().ValidateHeader(doc)...)
-	issues = append(issues, recordChecks(doc, NewXRefValidator(), NewNoteValidator())...)
+	issues = append(issues, recordChecks(context.Background(), doc, NewXRefValidator(), NewNoteValidator())...)
 	if a.checkEntityTags {
 		issues = append(issues, validateEntityTags(doc)...)
 	}

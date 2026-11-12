@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"context"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -17,7 +18,7 @@ func TestValidateConverted(t *testing.T) {
 		}
 		report := &gedcom.ConversionReport{}
 
-		err := validateConverted(doc, report)
+		err := validateConverted(context.Background(), doc, report)
 
 		// validateConverted should never return an error
 		if err != nil {
@@ -49,7 +50,7 @@ func TestValidateConverted(t *testing.T) {
 		}
 		report := &gedcom.ConversionReport{}
 
-		err := validateConverted(doc, report)
+		err := validateConverted(context.Background(), doc, report)
 
 		if err != nil {
 			t.Errorf("validateConverted() error = %v", err)

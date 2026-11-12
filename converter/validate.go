@@ -1,6 +1,8 @@
 package converter
 
 import (
+	"context"
+
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/validator"
 )
@@ -16,8 +18,8 @@ import (
 // the check is skipped.
 //
 //nolint:unparam // error return kept for potential future validation failures
-func validateConverted(doc *gedcom.Document, report *gedcom.ConversionReport) error {
-	v := validator.NewWithOptions(&validator.ValidateOptions{SkipDuplicateDetection: true})
+func validateConverted(ctx context.Context, doc *gedcom.Document, report *gedcom.ConversionReport) error {
+	v := validator.NewWithOptions(&validator.ValidateOptions{SkipDuplicateDetection: true, Context: ctx})
 	errs := v.Validate(doc)
 
 	// Convert errors to strings for report
