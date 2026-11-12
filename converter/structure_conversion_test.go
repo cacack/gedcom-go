@@ -128,10 +128,10 @@ func TestUpgrade55PromotesInlineMediaLink(t *testing.T) {
 	}
 }
 
-func TestFreeMediaXRefSkipsUsed(t *testing.T) {
+func TestFreeXRefSkipsUsed(t *testing.T) {
 	used := map[string]bool{"@O1@": true, "@O2@": true}
-	if xref, next := freeMediaXRef(used, 1); xref != "@O3@" || next != 4 {
-		t.Errorf("freeMediaXRef = %q, %d", xref, next)
+	if xref, next := freeXRef(used, "O", 1); xref != "@O3@" || next != 4 {
+		t.Errorf("freeXRef = %q, %d", xref, next)
 	}
 }
 

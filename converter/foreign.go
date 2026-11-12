@@ -72,9 +72,6 @@ var foreign551To70 = &foreignStructures{
 	// ASSO.RELA and the record FILE.FORM.TYPE become ROLE and MEDI (the
 	// enumeration translation, #704).
 	mappedElsewhere: map[string]bool{"RELA": true, "TYPE": true},
-	// An inline source citation ("1 SOUR text" with its TEXT) has no 7.0
-	// form short of a new SOUR record, which no pass creates yet (#793).
-	exempt: map[structurePair]bool{{"SOURCE_CITATION.SOUR#2", "TEXT"}: true},
 }
 
 // foreignDrop is one structure dropForeignStructures removed.

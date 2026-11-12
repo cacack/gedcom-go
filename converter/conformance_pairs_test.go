@@ -68,7 +68,6 @@ var conversionKnownGaps = map[string]string{
 
 	"obsolete-1.ged 7->5": "not invertible: 7/ has no SUBN record to restore",
 
-	"sour-1.ged 5->7": "inline-text SOUR citations are not promoted to SOUR records (#793)",
 	"sour-1.ged 7->5": "not invertible: the SOUR record is kept as a record; 5/ uses the inline form",
 
 	"tiny-1.ged 7->5": "not invertible: the downgrade adds the HEAD.SUBM and SUBM record 5.5.1 requires (#705); 5/ omits both",

@@ -256,6 +256,10 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		// against final ones, and before the media type translation, so its FORM
 		// is translated with every other record's.
 		func() { promoteInlineMediaLinks(doc, report) },
+		// After text consolidation and XRef normalization, like the media
+		// promotion, and before dropForeignStructures, which would otherwise
+		// drop the citation's TEXT.
+		func() { promoteInlineSourceCitations(doc, report) },
 		func() { transformIdentifiersToEXID(doc, report) },
 		func() { transformLanguages(doc, gedcom.Version70, report) },
 		func() { upgradeNoteRecordsForV7(doc, report) },
@@ -319,6 +323,10 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 		// against final ones, and before the media type translation, so its FORM
 		// is translated with every other record's.
 		func() { promoteInlineMediaLinks(doc, report) },
+		// After text consolidation and XRef normalization, like the media
+		// promotion, and before dropForeignStructures, which would otherwise
+		// drop the citation's TEXT.
+		func() { promoteInlineSourceCitations(doc, report) },
 		func() { transformIdentifiersToEXID(doc, report) },
 		func() { transformLanguages(doc, gedcom.Version70, report) },
 		func() { upgradeNoteRecordsForV7(doc, report) },

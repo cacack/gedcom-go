@@ -51,7 +51,7 @@ func promoteInlineMediaLinks(doc *gedcom.Document, report *gedcom.ConversionRepo
 				continue
 			}
 			var xref string
-			xref, next = freeMediaXRef(used, next)
+			xref, next = freeXRef(used, "O", next)
 			used[xref] = true
 			promoted := &gedcom.Record{XRef: xref, Type: gedcom.RecordTypeMedia, Tags: tags}
 			added = append(added, promoted)
@@ -137,11 +137,11 @@ func relevel(tags []*gedcom.Tag, linkLevel int) []*gedcom.Tag {
 	return out
 }
 
-// freeMediaXRef returns the first @O<n>@, from n, not in used, and the n to
+// freeXRef returns the first @<prefix><n>@, from n, not in used, and the n to
 // continue from.
-func freeMediaXRef(used map[string]bool, n int) (xref string, next int) {
+func freeXRef(used map[string]bool, prefix string, n int) (xref string, next int) {
 	for {
-		xref = "@O" + strconv.Itoa(n) + "@"
+		xref = "@" + prefix + strconv.Itoa(n) + "@"
 		n++
 		if !used[xref] {
 			return xref, n
