@@ -96,8 +96,10 @@ func EncodeWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeOptions) e
 		return err
 	}
 
-	// Write records
+	// Write records, then the OBJE records promoted from inline media links
+	// for 7.0 output
 	sharedNotes := sharedNotePointers(doc, opts)
+	opts.inlineMedia = inlineMediaPromotion(doc, opts)
 	for _, record := range doc.Records {
 		if err := opts.cancelled(); err != nil {
 			return err
@@ -105,6 +107,9 @@ func EncodeWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeOptions) e
 		if err := writeRecord(w, record, opts, sharedNotes); err != nil {
 			return err
 		}
+	}
+	if err := opts.inlineMedia.writeRecords(w, opts, sharedNotes); err != nil {
+		return err
 	}
 
 	// Write trailer

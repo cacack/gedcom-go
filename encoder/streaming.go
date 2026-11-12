@@ -85,6 +85,11 @@ type StreamEncoder struct {
 	// has the whole document to build it from; a bare StreamEncoder leaves it
 	// nil, so every note pointer it writes stays NOTE.
 	sharedNotes *sharedNoteSet
+
+	// inlineMedia is the inlineMediaPromotion set, likewise built only by
+	// EncodeStreamingWithOptions; WriteTrailer writes its records. A bare
+	// StreamEncoder writes an inline media link inline.
+	inlineMedia *inlineMediaSet
 }
 
 // Errors returned by StreamEncoder for invalid state transitions.
@@ -137,6 +142,7 @@ func (e *StreamEncoder) WriteHeader(h *gedcom.Header) error {
 	// The header fixes the output version, which decides whether long values
 	// may be split with CONC (not in 7.0) for the header and every record.
 	e.options = e.options.forOutput(h)
+	e.options.inlineMedia = e.inlineMedia
 
 	if err := writeHeader(e.writer, h, e.options); err != nil {
 		e.err = err
@@ -211,6 +217,11 @@ func (e *StreamEncoder) WriteTrailer() error {
 		// Valid states, proceed
 	case stateComplete:
 		return ErrTrailerAlreadyWritten
+	}
+
+	if err := e.inlineMedia.writeRecords(e.writer, e.options, e.sharedNotes); err != nil {
+		e.err = err
+		return err
 	}
 
 	if err := writeTrailer(e.writer, e.options); err != nil {
@@ -297,6 +308,7 @@ func EncodeStreamingWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeO
 
 	enc := NewStreamEncoderWithOptions(w, opts)
 	enc.sharedNotes = sharedNotePointers(doc, enc.options)
+	enc.inlineMedia = inlineMediaPromotion(doc, enc.options)
 
 	if err := enc.WriteHeader(doc.Header); err != nil {
 		return fmt.Errorf("write header: %w", err)

@@ -687,9 +687,14 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 
 	var tags []*gedcom.Tag
 
-	// Files (level 1) - FILE
+	// Files (level 1) - FILE. A 5.5/5.5.1 record writes the media type as
+	// FORM.TYPE where the link and 7.0 write FORM.MEDI.
+	mediaTypeTag := "MEDI"
+	if opts.outputIs(gedcom.Version55) || opts.outputIs(gedcom.Version551) {
+		mediaTypeTag = "TYPE"
+	}
 	for _, file := range media.Files {
-		tags = append(tags, mediaFileToTags(file, 1, opts)...)
+		tags = append(tags, mediaFileToTags(file, 1, mediaTypeTag, opts)...)
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long).
@@ -1510,6 +1515,12 @@ func changeDateToTags(cd *gedcom.ChangeDate, level int, tagName string, opts *En
 }
 
 // mediaLinkToTags converts a MediaLink to GEDCOM tags at the specified level.
+//
+// An inline link (Files and no MediaXRef, issue #733) is written in the layout
+// of the output version: for 5.5 FORM beside FILE, the first file's FORM only,
+// as 5.5 has no MEDI and no FILE.TITL; for 7.0, which has no inline link, as
+// a pointer to an OBJE record holding the files (see inlineMediaSet); and
+// otherwise in the 5.5.1 layout, FILE with FORM and MEDI beneath it.
 func mediaLinkToTags(link *gedcom.MediaLink, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if link == nil {
 		return nil
@@ -1519,10 +1530,20 @@ func mediaLinkToTags(link *gedcom.MediaLink, level int, opts *EncodeOptions) []*
 		return nil
 	}
 
+	xref := link.MediaXRef
+	inline := xref == "" && len(link.Files) > 0
+	if inline && opts.is70() && opts.inlineMedia != nil {
+		xref, inline = opts.inlineMedia.promote(link), false
+	}
+
 	var tags []*gedcom.Tag
 
 	// OBJE tag with media XRef
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: "OBJE", Value: link.MediaXRef})
+	tags = append(tags, &gedcom.Tag{Level: level, Tag: "OBJE", Value: xref})
+
+	if inline {
+		tags = append(tags, inlineMediaFilesToTags(link.Files, level+1, opts)...)
+	}
 
 	// Subordinate tags at level+1
 	if link.Crop != nil {
@@ -1539,18 +1560,43 @@ func mediaLinkToTags(link *gedcom.MediaLink, level int, opts *EncodeOptions) []*
 	return tags
 }
 
+// inlineMediaFilesToTags writes an inline link's files at level, in the 5.5
+// layout for 5.5 output and the 5.5.1 layout otherwise (see mediaLinkToTags).
+func inlineMediaFilesToTags(files []*gedcom.MediaFile, level int, opts *EncodeOptions) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+	if !opts.outputIs(gedcom.Version55) {
+		for _, file := range files {
+			tags = append(tags, mediaFileToTags(file, level, "MEDI", opts)...)
+		}
+		return tags
+	}
+	for _, file := range files {
+		if file != nil && file.Form != "" {
+			tags = append(tags, &gedcom.Tag{Level: level, Tag: "FORM", Value: opts.text(file.Form)})
+			break
+		}
+	}
+	for _, file := range files {
+		// A file with no FileRef holds a FORM decoded with no FILE; the FORM
+		// above carries it, so no empty FILE is invented.
+		if file != nil && file.FileRef != "" {
+			tags = append(tags, &gedcom.Tag{Level: level, Tag: "FILE", Value: opts.text(file.FileRef)})
+		}
+	}
+	return tags
+}
+
 // mediaLinkIsDegenerate reports whether a link carries neither a pointer nor
 // any subordinate data (issue #740). Encoding one would emit a bare `1 OBJE`
 // that carries nothing, so it is skipped, as repositoryLinkIsDegenerate skips
 // a bare REPO.
 //
-// A link with no pointer but a title, crop or note is an inline link whose
-// FILE the typed model does not hold yet (issue #733). It is still written,
-// without the FILE every 5.x version requires: skipping it would drop the
-// typed data it does carry.
+// A link with no pointer and no Files but a title, crop or note is still
+// written, without the FILE every 5.x version requires: skipping it would drop
+// the typed data it does carry.
 func mediaLinkIsDegenerate(link *gedcom.MediaLink) bool {
 	hasNotes := len(link.NoteXRefs) > 0 || len(link.InlineNotes) > 0
-	return link.MediaXRef == "" && link.Title == "" && link.Crop == nil && !hasNotes
+	return link.MediaXRef == "" && len(link.Files) == 0 && link.Title == "" && link.Crop == nil && !hasNotes
 }
 
 // cropRegionToTags converts a CropRegion to GEDCOM tags at the specified level.
@@ -1581,8 +1627,10 @@ func cropRegionToTags(crop *gedcom.CropRegion, level int) []*gedcom.Tag {
 	return tags
 }
 
-// mediaFileToTags converts a MediaFile to GEDCOM tags at the specified level.
-func mediaFileToTags(file *gedcom.MediaFile, level int, opts *EncodeOptions) []*gedcom.Tag {
+// mediaFileToTags converts a MediaFile to GEDCOM tags at the specified level,
+// writing MediaType under FORM as mediaTypeTag (MEDI, or the 5.5.1 OBJE
+// record's TYPE).
+func mediaFileToTags(file *gedcom.MediaFile, level int, mediaTypeTag string, opts *EncodeOptions) []*gedcom.Tag {
 	if file == nil {
 		return nil
 	}
@@ -1596,14 +1644,9 @@ func mediaFileToTags(file *gedcom.MediaFile, level int, opts *EncodeOptions) []*
 	if file.Form != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FORM", Value: opts.text(file.Form)})
 
-		// The media type at level+2: TYPE in a 5.5/5.5.1 multimedia record,
-		// MEDI in 7.0.
+		// MEDI (or TYPE) subordinate at level+2
 		if file.MediaType != "" {
-			mediaTag := "MEDI"
-			if opts.outputIs(gedcom.Version55) || opts.outputIs(gedcom.Version551) {
-				mediaTag = "TYPE"
-			}
-			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: mediaTag, Value: opts.text(file.MediaType)})
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: mediaTypeTag, Value: opts.text(file.MediaType)})
 			tags = appendPhrase(tags, file.MediaPhrase, level+3, opts)
 		}
 	}

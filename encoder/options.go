@@ -76,6 +76,11 @@ type EncodeOptions struct {
 	// be reached only with options forOutput returned; on any other options it
 	// is empty, which reads as an unknown version (not 7.0, lacking nothing).
 	version gedcom.Version
+
+	// inlineMedia promotes inline media links to OBJE records for 7.0 output
+	// (inlineMediaPromotion). Set only by the writers that hold the whole
+	// document and write its records; nil elsewhere, such as in SyncTags.
+	inlineMedia *inlineMediaSet
 }
 
 // DefaultOptions returns the default encoding options.

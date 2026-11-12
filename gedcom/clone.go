@@ -933,6 +933,13 @@ func cloneMediaLink(ml *MediaLink) *MediaLink {
 		}
 	}
 
+	if ml.Files != nil {
+		copied.Files = make([]*MediaFile, len(ml.Files))
+		for k, f := range ml.Files {
+			copied.Files[k] = cloneMediaFile(f)
+		}
+	}
+
 	return copied
 }
 

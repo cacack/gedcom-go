@@ -42,9 +42,27 @@ type MediaFile struct {
 
 // MediaLink represents a reference to a multimedia object (GEDCOM 7.0 MULTIMEDIA_LINK).
 // Used when entities (individuals, families, events) reference media objects.
+//
+// A link is either a pointer to an OBJE record (MediaXRef set) or, in GEDCOM
+// 5.5 and 5.5.1, an inline link that names its files itself (MediaXRef empty,
+// Files set). GEDCOM 7.0 has no inline link; see the encoder package for how
+// one is written for 7.0 output.
 type MediaLink struct {
 	// Crop is an optional crop region for images
 	Crop *CropRegion
+
+	// Files are the files of an inline link (GEDCOM 5.5/5.5.1 "OBJE" with no
+	// pointer): FILE with its FORM and MEDI (or the record-style TYPE). In the
+	// 5.5 layout, where FORM is written beside FILE rather than under it, that
+	// FORM fills the Form of each file that has none, or with no FILE is kept
+	// in a file with an empty FileRef. Empty on a pointer link; the encoder
+	// ignores Files on a link that has a MediaXRef.
+	//
+	// 5.5 output is lossy: it writes one FORM, the first non-empty Form, and
+	// each non-empty FileRef, dropping MediaType, Title and Translations.
+	// 5.5.1 and 7.0 output write a file with an empty FileRef as a FILE with
+	// no value, under which its FORM is written.
+	Files []*MediaFile
 
 	// MediaXRef is the pointer to the OBJE record (e.g., "@O1@")
 	MediaXRef string
