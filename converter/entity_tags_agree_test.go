@@ -59,10 +59,7 @@ func entityDiffs(a, b reflect.Value, path string, diffs *[]string) {
 // responsible. In both, the decoder drops text it does not fold from the
 // typed value while the converter carries it in Tags. Self-cleaning: an entry
 // that starts agreeing fails the test asking to be removed.
-var entityTagsKnownDisagreements = map[string]string{
-	"full551.ged/5.5.1->7.0: INDI @I1@":    "#738: inline-text citation truncated into SourceXRef",
-	"maximal551.ged/5.5.1->7.0: INDI @I1@": "#738: inline-text citation truncated into SourceXRef",
-}
+var entityTagsKnownDisagreements = map[string]string{}
 
 // TestConvertedEntitiesAgreeWithTags asserts that, for every fixture and every
 // target version, each converted record's typed Entity is what decoding its

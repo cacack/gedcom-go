@@ -33,10 +33,7 @@ const oxidgedDir = "../testdata/oxidged"
 
 // oxidgedUnknownTagGaps lists standard tags the decoder reports as
 // UNKNOWN_TAG, keyed "file:line TAG", with the issue responsible.
-var oxidgedUnknownTagGaps = map[string]string{
-	"full551.ged:247 CONT":    "#738: inline-text citation continuation",
-	"maximal551.ged:248 CONT": "#738: inline-text citation continuation",
-}
+var oxidgedUnknownTagGaps = map[string]string{}
 
 // oxidgedTypedGaps lists lines whose structure the coverage reports mark
 // typed but which do not reach the typed model in these files, keyed
@@ -68,7 +65,6 @@ var oxidgedTypedGaps = map[string]string{
 	"full70.ged:123 INDI.BIRT.SOUR.DATA.DATE.PHRASE": "#787: citation DATA.DATE PHRASE untyped",
 	"full70.ged:196 INDI.INIL.STAT.DATE":             "#386: INIL left raw by decision",
 	"full70.ged:240 INDI.NOTE.TRAN.LANG":             "#787: inline NOTE TRAN untyped",
-	"full70.ged:284 FAM.MARR.HUSB.AGE.PHRASE":        "#736: family event HUSB/WIFE AGE untyped",
 	"full70.ged:360 REPO.CHAN.DATE":                  "#786: REPO CHAN untyped",
 	"full70.ged:362 REPO.CREA.DATE":                  "#786: REPO CREA untyped",
 	"full70.ged:373 SNOTE.REFN.TYPE":                 "#786: SNOTE REFN untyped",

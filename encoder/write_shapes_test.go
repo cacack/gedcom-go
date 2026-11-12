@@ -182,10 +182,7 @@ var clearedTagsRoundTripFiles = []string{
 // still finds, keyed "file: XREF .Field.Path" (or "file: XREF level-1 TAG"),
 // with the issue responsible. Self-cleaning: an entry that no longer occurs
 // fails the test asking to be removed.
-var clearedTagsRoundTripGaps = map[string]string{
-	"maximal551.ged: @MX76@.Events[0].Media (len 0, want 2)": "#733: an inline OBJE with only FILE is skipped",
-	"maximal551.ged: @MX77@.Media (len 0, want 1)":           "#733: an inline OBJE with only FILE is skipped",
-}
+var clearedTagsRoundTripGaps = map[string]string{}
 
 // TestClearedTagsRoundTrip: decode -> clear Tags -> encode -> decode has zero
 // typed differences, and no record writes a level-1 structure more often than
