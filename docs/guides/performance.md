@@ -277,6 +277,59 @@ go test -bench='DecodeLarge|StreamingParseLarge' -benchmem ./decoder/
 go test -v -run TestMemory ./decoder/
 ```
 
+### Typed Streaming: `decoder.DecodeRecord`
+
+`parser.Records`, `parser.RecordIterator` and `parser.LazyParser` (iteration
+and `FindRecord`) are raw: each yields a `*parser.RawRecord` of parsed lines,
+with no `Individual`, `Family` or other typed entity. `decoder.DecodeRecord`
+turns one raw record into the `*gedcom.Record` `decoder.Decode` gives it, so
+typed access no longer needs a whole `Document`:
+
+```go
+var ver gedcom.Version
+for raw, err := range parser.Records(charset.NewReader(f)) {
+    if err != nil {
+        return err
+    }
+    if raw.Type == "HEAD" {
+        ver = version.DeclaredVersion(raw.Lines) // the header comes first
+    }
+    record, err := decoder.DecodeRecord(raw, ver, nil)
+    if err != nil {
+        return err
+    }
+    // record.Entity is typed, as in a decoded Document
+}
+```
+
+Measured on a synthetic GEDCOM 5.5.1 file of 1,000,000 individuals and 500,000
+families (1.5 M records, 481 MB) on an 8-core arm64 machine with 16 GB. CPU
+time is reported because wall time varied with machine load:
+
+| Pipeline | CPU time | Peak RSS |
+|---|---|---|
+| `parser.Records` only | 8.0 s | 34 MB |
+| `parser.Records` → `DecodeRecord` | 16.4 s | 64 MB |
+| `parser.Records` → `DecodeRecord` → `StreamingValidator` | 30.4 s | 897 MB (see [Streaming Validator](#streaming-validator)) |
+| `decoder.Decode` (batch), 100,000-individual 47 MB subset | — | 823 MB |
+
+`DecodeRecord` costs about 5.6 µs of CPU per record on that file, and peak
+memory stays flat. On `pres2020.ged` it allocates about 3.7 KB in 30
+allocations per record (`BenchmarkStreamingDecodeRecordLarge` against
+`BenchmarkStreamingParseLarge`). Parse and decode together allocate about what
+`Decode` does for the file (23.8 MB against 22.1 MB), but none of it outlives
+the record. A `LazyParser.FindRecord` lookup
+followed by `DecodeRecord` took about 2 ms for one record of the 1.5 M.
+
+Batch `Decode` peak RSS is about 13–17× the file size: 823 MB for the 47 MB
+subset above, and 8.6 GB (73 s) for a 676 MB file of the same shape in an
+earlier measurement. Above a few hundred megabytes, typed access is practical
+only through `DecodeRecord`.
+
+```bash
+go test -bench='DecodeLarge|StreamingParseLarge|StreamingDecodeRecordLarge' -benchmem ./decoder/
+```
+
 ### Streaming Encoder
 
 The throughput benchmarks below construct records inside the loop for the streaming path (matching how real streaming consumers produce records on the fly) and use a pre-built `Document` for the batch path (because batch *requires* the full Document to exist before it can run):
@@ -309,7 +362,12 @@ go test -v -run TestMemory ./encoder/
 | 10K individuals | 66 µs / 0 B | 72 µs | O(unique XRefs) |
 | 100K individuals | 660 µs / 0 B | 720 µs | O(unique XRefs) |
 
-Stream validator memory scales with unique cross-references (needed for orphan-reference detection at `Finalize()`), not total record count. Note that streaming validation currently covers Individual and Family records fully and collects cross-references from Source records; Repository, Note, Multimedia Object, and Submitter records are not validated in streaming mode — use batch `validator.Validate()` if you need coverage for those types.
+`ValidateRecord` needs each record's typed `Entity`: feed it records from
+`decoder.DecodeRecord` (see [Typed Streaming](#typed-streaming-decoderdecoderecord)).
+A record built from raw lines alone is registered as declared but nothing in
+it is checked, so a pipeline that skips `DecodeRecord` reports no issues.
+
+Stream validator memory scales with unique cross-references (needed for orphan-reference detection at `Finalize()`), not total record count. That is still large for a large file: on the 1.5 M-record file above, where every record is declared and referenced, the validator's cross-reference state reached about 500 MB of heap (897 MB peak RSS), against 64 MB for the parse-and-decode pipeline alone. Note that streaming validation currently covers Individual and Family records fully and collects cross-references from Source records; Repository, Note, Multimedia Object, and Submitter records are not validated in streaming mode — use batch `validator.Validate()` if you need coverage for those types.
 
 ### Incremental Parser
 
@@ -322,6 +380,12 @@ Stream validator memory scales with unique cross-references (needed for orphan-r
 | Save/Load index | ~0.5 ms | O(records) | Persist for reuse |
 
 **Key Insight**: Index enables O(1) random access; iteration uses O(1) memory per record.
+
+The index is held in memory whole. On the 1.5 M-record file above it retained
+167 MB of heap after building (about 117 B per entry), with peak RSS of 625 MB
+while building; an earlier measurement saw 337 MB of heap (about 230 B per
+entry) before collection. Saved, it took 52 MB on disk. Records the index finds
+are raw: decode them with `decoder.DecodeRecord` for typed access.
 
 ### When to Use Streaming APIs
 
@@ -350,9 +414,17 @@ Encoding detection in `charset.NewReader` reads only the header (at most 64 KiB)
    }
    enc.WriteTrailer()
 
-   // Streaming validate - O(unique XRefs) memory
+   // Streaming validate - O(unique XRefs) memory. ValidateRecord needs
+   // typed records: decode each raw record first.
    v := validator.NewStreamingValidator(opts)
-   for _, record := range records {
+   for raw, err := range parser.Records(reader) {
+       if err != nil {
+           return err
+       }
+       record, err := decoder.DecodeRecord(raw, ver, nil)
+       if err != nil {
+           return err
+       }
        issues := v.ValidateRecord(record)
    }
    finalIssues := v.Finalize()
@@ -380,11 +452,12 @@ Encoding detection in `charset.NewReader` reads only the header (at most 64 KiB)
    ```go
    lp := parser.NewLazyParser(file)
    lp.LoadIndex(indexFile)  // Skip O(n) scan if index exists
-   record, _ := lp.FindRecord("@I12345@")  // O(1) lookup
+   raw, _ := lp.FindRecord("@I12345@")  // O(1) lookup, raw lines
+   record, _ := decoder.DecodeRecord(raw, ver, nil)  // typed
    ```
 
 3. **Memory Budget**:
-   - Batch APIs: budget ~20x file size peak RSS (measured: 46MB file -> ~930MB peak)
+   - Batch APIs: budget ~13-20x file size peak RSS (measured: 46MB file -> ~930MB peak; 676MB -> 8.6GB)
    - Streaming APIs: O(1) to O(unique XRefs) regardless of file size
 
 4. **Processing Time**: Budget ~30ms per MB (100MB file -> ~3 seconds)
