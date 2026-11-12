@@ -44,9 +44,9 @@ func (e *UnknownXRefError) Is(target error) bool {
 //
 // Header policy: the returned document always has a non-nil Header.
 // When the source has a Header, the new one carries Version,
-// DeclaredVersion, Encoding, SourceSystem, SourceVersion, SourceName,
-// SourceCorporation, Destination, Date, Time, Language, Copyright, PlaceForm,
-// AncestryTreeID, and Schema from it. When the source's Header is nil,
+// DeclaredVersion, Encoding, DetectedEncoding, SourceSystem, SourceVersion,
+// SourceName, SourceCorporation, Destination, Date, Time, Language, Copyright,
+// PlaceForm, AncestryTreeID, and Schema from it. When the source's Header is nil,
 // an empty *Header is returned so callers can safely access
 // sub.Header.Version without a nil check. The Submitter pointer names
 // part of the document's own structure rather than something the
@@ -228,6 +228,7 @@ func subsetHeader(src *Document, closure map[string]bool) *Header {
 		Version:           src.Header.Version,
 		DeclaredVersion:   src.Header.DeclaredVersion,
 		Encoding:          src.Header.Encoding,
+		DetectedEncoding:  src.Header.DetectedEncoding,
 		SourceSystem:      src.Header.SourceSystem,
 		SourceVersion:     src.Header.SourceVersion,
 		SourceName:        src.Header.SourceName,

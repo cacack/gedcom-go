@@ -2439,3 +2439,190 @@ func TestUTF8Reader_TransientErrorKeepsPendingBytes(t *testing.T) {
 		t.Errorf("Read() data = %q, want %q", got, doc)
 	}
 }
+
+// TestNewDetectingReader pins the UTF-8 tiers of the detection cascade
+// (#709): a UTF-8 BOM wins over any CHAR, and valid multi-byte UTF-8 under a
+// legacy 8-bit declaration is decoded as UTF-8; genuine legacy bytes are not.
+func TestNewDetectingReader(t *testing.T) {
+	head := func(char string) string { return "0 HEAD\n1 CHAR " + char + "\n0 @I1@ INDI\n1 NAME " }
+	tests := []struct {
+		name     string
+		input    string
+		want     string // decoded text after the head
+		wantDet  Detection
+		mismatch bool
+	}{
+		{"ANSEL over UTF-8", head("ANSEL") + "José /Muñoz/\n", "José /Muñoz/\n",
+			Detection{Declared: EncodingANSEL, Applied: EncodingUTF8}, true},
+		{"ANSI over UTF-8", head("ANSI") + "Müller /François/\n", "Müller /François/\n",
+			Detection{Declared: EncodingLATIN1, Applied: EncodingUTF8}, true},
+		{"LATIN1 over UTF-8 curly quotes", head("LATIN1") + "“x”\n", "“x”\n",
+			Detection{Declared: EncodingLATIN1, Applied: EncodingUTF8}, true},
+		{"ASCII over UTF-8", head("ASCII") + "Müller\n", "Müller\n",
+			Detection{Declared: EncodingASCII, Applied: EncodingUTF8}, true},
+		{"UTF-8 BOM over ANSEL", "\xEF\xBB\xBF" + head("ANSEL") + "José\n", "José\n",
+			Detection{BOM: EncodingUTF8, Declared: EncodingANSEL, Applied: EncodingUTF8}, true},
+		{"UTF-8 BOM over UTF-16", "\xEF\xBB\xBF" + head("UTF-16") + "José\n", "José\n",
+			Detection{BOM: EncodingUTF8, Declared: EncodingUTF16LE, Applied: EncodingUTF8}, true},
+		{"UTF-8 BOM over ASCII-only ANSEL", "\xEF\xBB\xBF" + head("ANSEL") + "Jose\n", "Jose\n",
+			Detection{BOM: EncodingUTF8, Declared: EncodingANSEL, Applied: EncodingUTF8}, true},
+		{"UTF-8 BOM and CHAR UTF-8", "\xEF\xBB\xBF" + head("UTF-8") + "José\n", "José\n",
+			Detection{BOM: EncodingUTF8, Declared: EncodingUTF8, Applied: EncodingUTF8}, false},
+		{"UTF-8 BOM and no CHAR", "\xEF\xBB\xBF0 HEAD\n0 @I1@ INDI\n1 NAME José\n", "José\n",
+			Detection{BOM: EncodingUTF8, Applied: EncodingUTF8}, false},
+		{"genuine ANSEL", head("ANSEL") + "Jos\xE2e\n", "José\n",
+			Detection{Declared: EncodingANSEL, Applied: EncodingANSEL}, false},
+		{"genuine Windows-1252", head("ANSI") + "M\xFCller\n", "Müller\n",
+			Detection{Declared: EncodingLATIN1, Applied: EncodingLATIN1}, false},
+		{"ASCII-only ANSEL", head("ANSEL") + "Jose\n", "Jose\n",
+			Detection{Declared: EncodingANSEL, Applied: EncodingANSEL}, false},
+		// One invalid sequence anywhere in the probe keeps the declaration.
+		{"UTF-8 then Windows-1252", head("ANSI") + "Müller M\xFCller\n", "MÃ¼ller Müller\n",
+			Detection{Declared: EncodingLATIN1, Applied: EncodingLATIN1}, false},
+		{"no CHAR", "0 HEAD\n0 @I1@ INDI\n1 NAME José\n", "José\n",
+			Detection{Applied: EncodingUTF8}, false},
+		{"WINDOWS-1252 over UTF-8", head("WINDOWS-1252") + "Müller\n", "Müller\n",
+			Detection{Declared: EncodingLATIN1, Applied: EncodingUTF8}, true},
+		// Only the declarations #709 names are judged: IBMPC stays CP437.
+		{"IBMPC over UTF-8", head("IBMPC") + "José\n", "Jos├⌐\n",
+			Detection{Declared: EncodingCP437, Applied: EncodingCP437}, false},
+		{"unrecognized CHAR", head("IBM WINDOWS") + "José\n", "José\n",
+			Detection{Applied: EncodingUTF8}, false},
+	}
+	for _, tt := range tests {
+		for _, oneByte := range []bool{false, true} {
+			name := tt.name
+			var src io.Reader = strings.NewReader(tt.input)
+			if oneByte {
+				name += "/one-byte reads"
+				src = iotest.OneByteReader(src)
+			}
+			t.Run(name, func(t *testing.T) {
+				r, det := NewDetectingReader(src, ReaderOptions{})
+				got, err := io.ReadAll(r)
+				if err != nil {
+					t.Fatalf("ReadAll() error = %v", err)
+				}
+				if det != tt.wantDet {
+					t.Errorf("Detection = %+v, want %+v", det, tt.wantDet)
+				}
+				if det.Mismatch() != tt.mismatch {
+					t.Errorf("Mismatch() = %v, want %v", det.Mismatch(), tt.mismatch)
+				}
+				_, text, _ := strings.Cut(string(got), "1 NAME ")
+				if text != tt.want {
+					t.Errorf("decoded %q, want %q", text, tt.want)
+				}
+			})
+		}
+	}
+}
+
+// TestNewDetectingReader_Options checks how the UTF-8 tier meets the
+// ReaderOptions for CHAR ANSI: a named code page is still overridden by UTF-8
+// bytes, and an overridden file draws no ambiguous-code-page report.
+func TestNewDetectingReader_Options(t *testing.T) {
+	const utf8Input = "0 HEAD\n1 CHAR ANSI\n0 @I1@ INDI\n1 NAME Müller\n"
+	const w1252Input = "0 HEAD\n1 CHAR ANSI\n0 @I1@ INDI\n1 NAME M\xE8ller\n"
+	tests := []struct {
+		name      string
+		input     string
+		ansi      Encoding
+		wantDet   Detection
+		wantText  string
+		wantCalls int
+	}{
+		{"named code page over UTF-8", utf8Input, EncodingWindows1250,
+			Detection{Declared: EncodingWindows1250, Applied: EncodingUTF8}, "Müller", 0},
+		{"named code page over its bytes", w1252Input, EncodingWindows1250,
+			Detection{Declared: EncodingWindows1250, Applied: EncodingWindows1250}, "Mčller", 0},
+		{"unnamed code page over UTF-8", utf8Input, EncodingUnknown,
+			Detection{Declared: EncodingLATIN1, Applied: EncodingUTF8}, "Müller", 0},
+		{"unnamed code page over its bytes", w1252Input, EncodingUnknown,
+			Detection{Declared: EncodingLATIN1, Applied: EncodingLATIN1}, "Mèller", 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			calls := 0
+			opts := ReaderOptions{ANSI: tt.ansi, OnAmbiguousANSI: func(*AmbiguousANSI) { calls++ }}
+			r, det := NewDetectingReader(strings.NewReader(tt.input), opts)
+			got, err := io.ReadAll(r)
+			if err != nil {
+				t.Fatalf("ReadAll() error = %v", err)
+			}
+			if det != tt.wantDet {
+				t.Errorf("Detection = %+v, want %+v", det, tt.wantDet)
+			}
+			if !strings.Contains(string(got), "1 NAME "+tt.wantText+"\n") {
+				t.Errorf("decoded %q, want NAME %q", got, tt.wantText)
+			}
+			if calls != tt.wantCalls {
+				t.Errorf("OnAmbiguousANSI called %d times, want %d", calls, tt.wantCalls)
+			}
+		})
+	}
+}
+
+// TestNewDetectingReader_UTF16WithoutBOM checks that UTF-16 recognised by its
+// first line is applied but not reported as a byte order mark.
+func TestNewDetectingReader_UTF16WithoutBOM(t *testing.T) {
+	input := []byte{'0', 0, ' ', 0, 'H', 0, 'E', 0, 'A', 0, 'D', 0, '\n', 0}
+	r, det := NewDetectingReader(bytes.NewReader(input), ReaderOptions{})
+	got, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	if want := (Detection{Applied: EncodingUTF16LE}); det != want {
+		t.Errorf("Detection = %+v, want %+v", det, want)
+	}
+	if string(got) != "0 HEAD\n" {
+		t.Errorf("decoded %q, want %q", got, "0 HEAD\n")
+	}
+}
+
+// TestNewDetectingReader_SniffsPastTheHeader checks that UTF-8 first seen in
+// a record after the header's probe chunk is still recognized, up to the
+// 64 KiB probe limit, and not beyond it.
+func TestNewDetectingReader_SniffsPastTheHeader(t *testing.T) {
+	filler := strings.Repeat("1 NOTE "+strings.Repeat("x", 90)+"\n", 100) // ~10 KiB
+	tests := []struct {
+		name    string
+		repeat  int
+		applied Encoding
+	}{
+		{"within the probe limit", 1, EncodingUTF8},
+		{"beyond the probe limit", 7, EncodingANSEL},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := "0 HEAD\n1 CHAR ANSEL\n0 @I1@ INDI\n" + strings.Repeat(filler, tt.repeat) + "1 NAME José\n0 TRLR\n"
+			r, det := NewDetectingReader(strings.NewReader(input), ReaderOptions{})
+			got, err := io.ReadAll(r)
+			if det.Applied != tt.applied {
+				t.Errorf("Applied = %v, want %v", det.Applied, tt.applied)
+			}
+			if tt.applied == EncodingUTF8 && (err != nil || string(got) != input) {
+				t.Errorf("ReadAll() = %d bytes, %v; want the input unchanged", len(got), err)
+			}
+		})
+	}
+}
+
+// TestNewDetectingReader_ExtendProbeReadError checks that a read error while
+// extending the probe is reported after the bytes read before it.
+func TestNewDetectingReader_ExtendProbeReadError(t *testing.T) {
+	boom := errors.New("boom")
+	prefix := "0 HEAD\n1 CHAR ANSEL\n0 @I1@ INDI\n1 NAME José\n"
+	src := io.MultiReader(strings.NewReader(prefix[:30]), strings.NewReader(prefix[30:]), &errorReader{err: boom})
+	r, det := NewDetectingReader(iotest.OneByteReader(src), ReaderOptions{})
+	got, err := io.ReadAll(r)
+	if !errors.Is(err, boom) {
+		t.Errorf("ReadAll() error = %v, want %v", err, boom)
+	}
+	if string(got) != prefix {
+		t.Errorf("ReadAll() = %q, want %q", got, prefix)
+	}
+	if det.Applied != EncodingUTF8 {
+		t.Errorf("Applied = %v, want UTF-8", det.Applied)
+	}
+}

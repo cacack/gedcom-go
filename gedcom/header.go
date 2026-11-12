@@ -28,8 +28,19 @@ type Header struct {
 	// DeclaredVersion.
 	DeclaredVersion Version
 
-	// Encoding is the character encoding used in the file
+	// Encoding is the character encoding the file declares (HEAD.CHAR),
+	// verbatim. It may differ from the encoding the decoder applied: see
+	// DetectedEncoding.
 	Encoding Encoding
+
+	// DetectedEncoding is the encoding the decoder actually decoded the
+	// file's bytes as: EncodingUTF8, EncodingANSEL, EncodingASCII,
+	// EncodingLATIN1, "UTF-16LE" or "UTF-16BE". It differs from Encoding when
+	// a byte order mark overrode the declaration or bytes declared as ANSEL,
+	// ANSI/LATIN1 or ASCII were recognized as UTF-8; the decoder then reports
+	// a CHARSET_MISMATCH diagnostic. It is empty for a header built in memory.
+	// It is a read view filled by the decoder: the encoder never writes it.
+	DetectedEncoding Encoding
 
 	// SourceSystem identifies the software that created the file
 	SourceSystem string

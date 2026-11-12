@@ -114,7 +114,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 			}
 		}
 	}
-	validatedReader := charset.NewReaderWithOptions(r, readerOpts)
+	validatedReader, detection := charset.NewDetectingReader(r, readerOpts)
 
 	// Wrap with progress tracking if callback provided
 	finalReader := validatedReader
@@ -252,6 +252,10 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// Build document from lines
 	doc := buildDocument(lines, detectedVersion, collector)
 	doc.Header.DeclaredVersion = xrefVersion
+	doc.Header.DetectedEncoding = headerEncoding(detection.Applied)
+	if detection.Mismatch() {
+		collector.addCharsetMismatch(lines, doc.Header)
+	}
 
 	// Convert raw tags to proper entity types
 	if err := populateEntities(opts.Context, doc, collector); err != nil {
@@ -266,6 +270,64 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 		Document:    doc,
 		Diagnostics: budget.apply(diagnostics),
 	}, fatalErr
+}
+
+// headerEncoding names a charset encoding as a gedcom.Encoding, for
+// Header.DetectedEncoding.
+func headerEncoding(enc charset.Encoding) gedcom.Encoding {
+	switch enc {
+	case charset.EncodingANSEL:
+		return gedcom.EncodingANSEL
+	case charset.EncodingASCII:
+		return gedcom.EncodingASCII
+	case charset.EncodingLATIN1:
+		return gedcom.EncodingLATIN1
+	case charset.EncodingWindows1250:
+		return "WINDOWS-1250"
+	case charset.EncodingCP437:
+		return "CP437"
+	case charset.EncodingCP850:
+		return "CP850"
+	case charset.EncodingMacRoman:
+		return "MACROMAN"
+	case charset.EncodingUTF16LE:
+		return "UTF-16LE"
+	case charset.EncodingUTF16BE:
+		return "UTF-16BE"
+	default:
+		return gedcom.EncodingUTF8
+	}
+}
+
+// addCharsetMismatch reports that the input was decoded as h.DetectedEncoding
+// rather than the h.Encoding its HEAD.CHAR line declares (#709). The
+// diagnostic is placed on that line.
+func (c *diagnosticCollector) addCharsetMismatch(lines []*parser.Line, h *gedcom.Header) {
+	if !c.collecting() {
+		return
+	}
+	lineNumber, lineText := 0, ""
+	inHead := false
+	for _, line := range lines {
+		if line.Level == 0 {
+			if inHead {
+				break
+			}
+			inHead = line.Tag == "HEAD" && line.XRef == ""
+			continue
+		}
+		if inHead && line.Level == 1 && line.Tag == "CHAR" {
+			lineNumber, lineText = line.LineNumber, strings.TrimRight("1 CHAR "+line.Value, " ")
+			break
+		}
+	}
+	c.add(NewDiagnostic(
+		lineNumber,
+		SeverityWarning,
+		CodeCharsetMismatch,
+		fmt.Sprintf("header declares CHAR %s but the input was decoded as %s", h.Encoding, h.DetectedEncoding),
+		lineText,
+	))
 }
 
 // dropPermittedXRefErrors removes from errs each parser.ErrXRefContainsSpace

@@ -43,7 +43,8 @@ EF BB BF    → UTF-8 (with BOM)
 ```
 
 - BOM is unambiguous physical evidence
-- Takes precedence over any header declaration
+- Takes precedence over any header declaration, including a UTF-8 BOM over
+  `CHAR ANSEL` or `CHAR ANSI` ([#709](https://github.com/cacack/gedcom-go/issues/709))
 - Without a BOM, UTF-16 is recognised by the first line's level and space,
   `30 00 20 00` (LE) or `00 30 00 20` (BE): every GEDCOM file opens with
   `0 `, and no 8-bit encoding writes a NUL there. This is not a heuristic in
@@ -63,7 +64,7 @@ EF BB BF    → UTF-8 (with BOM)
 Recognized values are listed under [Supported Encodings](#supported-encodings).
 
 - Only checked if neither a BOM nor the first line indicated UTF-16
-- Respects file's self-declared encoding
+- Respects file's self-declared encoding, subject to tier 2a
 - The whole value is read, case-insensitively and with runs of blanks taken
   as one space, so `IBM PC` is a value of its own rather than `IBM`; an
   unrecognized value (`IBM WINDOWS`) falls through to Tier 3
@@ -89,6 +90,33 @@ a plausible `č`. Rather than guess (Option B), the rule is
   an `AMBIGUOUS_CODEPAGE` warning. The output is unchanged. The report fires on
   genuine Windows-1252 files too (any `è`, `à` or `ñ`); it says the reading is
   unverified, not that it is wrong, and naming `EncodingLATIN1` silences it.
+
+### Tier 2a: UTF-8 Sniffing Over a Legacy Declaration
+
+Added by [#709](https://github.com/cacack/gedcom-go/issues/709). When `CHAR`
+declares `ANSEL`, `ASCII`, or a Windows-1252 value (`ANSI`, `LATIN1`,
+`ISO-8859-1`, `WINDOWS-1252`, ...), the first 64 KiB of input are read and
+judged: if they contain at least one valid multi-byte UTF-8 sequence and no
+invalid one, the input is decoded as UTF-8. `ANSI` is judged whatever code page
+`charset.ReaderOptions.ANSI` names, and an overridden `ANSI` file draws no
+`AMBIGUOUS_CODEPAGE` report.
+
+- "Declares ANSEL/ANSI, writes UTF-8" is among the commonest defects of
+  hand-edited and web-exported files, and decoding such a file as declared
+  yields mojibake or a mid-file read error
+- Valid multi-byte UTF-8 is practically never genuine ANSEL or Windows-1252:
+  ANSEL combining marks precede an ASCII base letter, and Windows-1252
+  accented letters are followed by ASCII, both invalid as UTF-8
+- One invalid sequence anywhere in the 64 KiB keeps the declaration, so a
+  mixed file is never half-sniffed within the probe; one whose legacy bytes
+  first appear after it fails UTF-8 validation there
+- Every override — this tier, or a UTF-8 BOM over a `CHAR` that disagrees —
+  is reported: the decoder emits `CHARSET_MISMATCH`, `Header.Encoding` keeps
+  the declared value and `Header.DetectedEncoding` the applied one
+  (`charset.Detection` below the decoder)
+
+This is the narrow, bounded form of the heuristic detection rejected below:
+it only ever chooses UTF-8, and only over a declaration the bytes contradict.
 
 ### Tier 3: UTF-8 Default (Fallback)
 
@@ -135,7 +163,9 @@ keeps failing on the first invalid byte.
 
 - **Pros**: Works without declarations
 - **Cons**: Can misdetect, adds complexity/dependencies, slower
-- **Verdict**: Rejected - unnecessary for GEDCOM's limited encoding set
+- **Verdict**: Rejected - unnecessary for GEDCOM's limited encoding set. The
+  one exception, UTF-8 over a legacy declaration (tier 2a), needs no
+  statistics: UTF-8 validity is a structural test
 
 ### Option C: Cascade with UTF-8 Default (Selected)
 
@@ -159,23 +189,15 @@ keeps failing on the first invalid byte.
 
 ## Implementation
 
+`charset.NewDetectingReader` runs the cascade and returns a `Detection`
+(`BOM`, `Declared`, `Applied`, `Mismatch()`); `charset.NewReader` is the same
+without it. In outline:
+
 ```go
-func NewReader(r io.Reader) (io.Reader, error) {
-    // Tier 1: Check for BOM
-    detectedReader, bomEnc, err := DetectBOM(r)
-    if bomEnc == EncodingUTF16LE || bomEnc == EncodingUTF16BE {
-        return NewReaderWithEncoding(detectedReader, bomEnc)
-    }
-
-    // Tier 2: Check GEDCOM header
-    headerReader, headerEnc, err := DetectEncodingFromHeader(detectedReader)
-    if headerEnc != EncodingUnknown {
-        return NewReaderWithEncoding(headerReader, headerEnc)
-    }
-
-    // Tier 3: Default to UTF-8
-    return NewReaderWithEncoding(headerReader, EncodingUTF8)
-}
+// Tier 1: BOM. UTF-16 is decoded at once; a UTF-8 BOM wins over CHAR.
+// Tier 2: CHAR in the header probe.
+// Tier 2a: a legacy CHAR over a UTF-8-valid 64 KiB probe applies UTF-8.
+// Tier 3: UTF-8 when nothing is declared or the value is unrecognized.
 ```
 
 ## Supported Encodings

@@ -113,12 +113,16 @@ var _ interface{ ErrorLine() int } = (*InvalidUTF8Error)(nil)
 //   - UTF-16 BE (BOM: 0xFE 0xFF) - Converted to UTF-8
 //   - UTF-16 without a BOM, recognised by a first line starting "0 " in
 //     UTF-16 (0x30 0x00 0x20 0x00 or 0x00 0x30 0x00 0x20) - Converted to UTF-8
-//   - UTF-8 (BOM: 0xEF 0xBB 0xBF) - BOM removed, validated
+//   - UTF-8 (BOM: 0xEF 0xBB 0xBF) - BOM removed, validated; overrides CHAR
 //   - Any other encoding named by the header's CHAR tag (see
 //     DetectEncodingFromHeader for the recognised values) - Converted to
 //     UTF-8, validated. CHAR ANSI is read as Windows-1252;
 //     [NewReaderWithOptions] can name its code page ([ReaderOptions.ANSI])
 //   - No BOM or recognised CHAR tag - Assumed UTF-8, validated
+//
+// A CHAR tag declaring ANSEL, ANSI, LATIN1 or ASCII is overridden when the
+// first 64 KiB are valid UTF-8 containing at least one multi-byte sequence;
+// see NewDetectingReader, which also reports what was declared and applied.
 func NewReader(r io.Reader) io.Reader {
 	return NewReaderWithOptions(r, ReaderOptions{})
 }
@@ -181,27 +185,81 @@ type AmbiguousANSI struct {
 
 // NewReaderWithOptions is [NewReader] configured by opts.
 func NewReaderWithOptions(r io.Reader, opts ReaderOptions) io.Reader {
+	reader, _ := NewDetectingReader(r, opts)
+	return reader
+}
+
+// Detection describes how NewDetectingReader chose the encoding of its input.
+type Detection struct {
+	// BOM is the encoding named by the input's byte order mark, or
+	// EncodingUnknown when it has none.
+	BOM Encoding
+
+	// Declared is the encoding the header's CHAR tag declares, or
+	// EncodingUnknown when there is no CHAR tag or its value is not
+	// recognized. For CHAR ANSI it is the code page ReaderOptions.ANSI
+	// names, or EncodingLATIN1. It is not read when the input is UTF-16.
+	Declared Encoding
+
+	// Applied is the encoding the input is decoded as. It is EncodingUTF8
+	// when nothing else is declared, and never EncodingUnknown.
+	Applied Encoding
+}
+
+// Mismatch reports whether the input was decoded as something other than
+// what its CHAR tag declares: a UTF-8 BOM overrode the declaration, or the
+// bytes declared as a legacy 8-bit encoding were recognized as UTF-8.
+func (d Detection) Mismatch() bool {
+	return d.Declared != EncodingUnknown && d.Declared != d.Applied
+}
+
+// NewDetectingReader is [NewReaderWithOptions] that also reports the
+// encoding detected.
+//
+// The cascade is: a UTF-16 BOM, or UTF-16 recognised by its first line; then
+// a UTF-8 BOM, which wins over any CHAR declaration; then the CHAR tag; then
+// UTF-8. A CHAR tag declaring ANSEL, ASCII, or a Windows-1252 value (ANSI,
+// LATIN1, ISO-8859-1, WINDOWS-1252, ...) is overridden by UTF-8 when the
+// first 64 KiB of input contain at least one valid multi-byte UTF-8 sequence
+// and no invalid one: valid multi-byte UTF-8 is practically never genuine
+// ANSEL or Windows-1252 text, while "declares ANSEL, writes UTF-8" is a
+// common defect of hand-edited and web-exported files. CHAR ANSI is
+// overridden whatever code page [ReaderOptions.ANSI] names. Only those
+// 64 KiB are judged, so an input whose legacy bytes first appear after them
+// fails UTF-8 validation there (or, with [ReaderOptions.OnInvalidUTF8], has
+// them replaced). Detection.Mismatch reports each override.
+//
+// For these declarations the 64 KiB are read before NewDetectingReader
+// returns; for any other, only the header is.
+//
+// On a read error during detection, the returned reader delivers the bytes
+// read before it and then returns the error, as NewReader's does.
+func NewDetectingReader(r io.Reader, opts ReaderOptions) (io.Reader, Detection) {
+	det := Detection{Applied: EncodingUTF8}
+
 	// First check for BOM (UTF-16, UTF-8 BOM)
 	detectedReader, bomEnc, err := DetectBOM(r)
 	if err != nil {
 		// If BOM detection fails, fall back to UTF-8 validation of the
 		// replaying reader, which delivers the bytes already read and then
 		// reports the read error in place.
-		return newUTF8Reader(detectedReader, opts, false)
+		return newUTF8Reader(detectedReader, opts, false), det
 	}
+	det.BOM = bomEnc
 
 	// Without a BOM, UTF-16 shows itself in the first line's "0 ": the
 	// header's CHAR tag cannot be read until the byte layout is known.
 	if bomEnc == EncodingUnknown {
 		detectedReader, bomEnc, err = sniffUTF16(detectedReader)
 		if err != nil {
-			return newUTF8Reader(detectedReader, opts, false)
+			return newUTF8Reader(detectedReader, opts, false), det
 		}
 	}
 
 	// If BOM indicates UTF-16, use that encoding (takes precedence)
 	if bomEnc == EncodingUTF16LE || bomEnc == EncodingUTF16BE {
-		return newReaderWithEncoding(detectedReader, bomEnc, opts)
+		det.Applied = bomEnc
+		return newReaderWithEncoding(detectedReader, bomEnc, opts), det
 	}
 
 	// Check header for CHAR declaration
@@ -210,22 +268,44 @@ func NewReaderWithOptions(r io.Reader, opts ReaderOptions) io.Reader {
 		// If header detection fails, fall back to UTF-8 validation of the
 		// bytes already probed, then report the read error in place so the
 		// consumed prefix is neither lost nor silently skipped.
-		return newUTF8Reader(io.MultiReader(bytes.NewReader(probe), errReader{err: err}), opts, false)
+		return newUTF8Reader(io.MultiReader(bytes.NewReader(probe), errReader{err: err}), opts, false), det
+	}
+	return readDeclared(detectedReader, probe, headerLen, opts, det)
+}
+
+// readDeclared finishes NewDetectingReader once the header has been probed:
+// it reads the CHAR declaration from probe[:headerLen], applies the UTF-8
+// tiers, and returns the reader over probe followed by the rest of r.
+func readDeclared(r io.Reader, probe []byte, headerLen int, opts ReaderOptions, det Detection) (io.Reader, Detection) {
+	value := charValue(probe[:headerLen])
+	declared := charValues[value] // a miss is EncodingUnknown
+	det.Declared = declared
+	if value == "ANSI" && isANSICodePage(opts.ANSI) {
+		det.Declared = opts.ANSI
 	}
 
-	// Use detected encoding (or UTF-8 if unknown)
-	headerReader := io.MultiReader(bytes.NewReader(probe), detectedReader)
-	value := charValue(probe[:headerLen])
-	enc := charValues[value]
-	if value == "ANSI" {
-		switch {
-		case isANSICodePage(opts.ANSI):
-			enc = opts.ANSI
-		case opts.OnAmbiguousANSI != nil:
-			headerReader = &ansiScanner{reader: headerReader, cursor: newCursor(), report: opts.OnAmbiguousANSI}
+	rest := r
+	switch {
+	case det.BOM == EncodingUTF8:
+		// The BOM is physical evidence; the declaration is only a label.
+	case isLegacy8Bit(declared):
+		var err error
+		probe, err = extendProbe(r, probe)
+		if err != nil {
+			rest = errReader{err: err}
 		}
+		if !looksLikeUTF8(probe) {
+			det.Applied = det.Declared
+		}
+	case det.Declared != EncodingUnknown:
+		det.Applied = det.Declared
 	}
-	return newReaderWithEncoding(headerReader, enc, opts)
+
+	headerReader := io.MultiReader(bytes.NewReader(probe), rest)
+	if value == "ANSI" && !isANSICodePage(opts.ANSI) && det.Applied == det.Declared && opts.OnAmbiguousANSI != nil {
+		headerReader = &ansiScanner{reader: headerReader, cursor: newCursor(), report: opts.OnAmbiguousANSI}
+	}
+	return newReaderWithEncoding(headerReader, det.Applied, opts), det
 }
 
 // isANSICodePage reports whether enc is a single-byte code page that
@@ -278,6 +358,46 @@ func newUTF8Reader(r io.Reader, opts ReaderOptions, bomSkipped bool) *utf8Reader
 		bomSkipped: bomSkipped,
 		onInvalid:  opts.OnInvalidUTF8,
 	}
+}
+
+// isLegacy8Bit reports whether enc is a declaration that UTF-8 sniffing may
+// override (see NewDetectingReader).
+func isLegacy8Bit(enc Encoding) bool {
+	return enc == EncodingANSEL || enc == EncodingLATIN1 || enc == EncodingASCII
+}
+
+// extendProbe reads more of r onto probe, until probe holds headerProbeLimit
+// bytes or r is exhausted, so looksLikeUTF8 judges the whole 64 KiB probe and
+// not just the header: the header rarely holds any non-ASCII text, and judging
+// a short prefix would let a later legacy byte through. On a read error it
+// returns the bytes read before it, alongside the error.
+func extendProbe(r io.Reader, probe []byte) ([]byte, error) {
+	more := make([]byte, headerProbeLimit-len(probe))
+	n, err := readPrefix(r, more)
+	probe = append(probe, more[:n]...)
+	if err == io.EOF {
+		err = nil
+	}
+	return probe, err
+}
+
+// firstNonASCII returns the offset of the first byte of p at or above 0x80,
+// or -1 if there is none.
+func firstNonASCII(p []byte) int {
+	for i, b := range p {
+		if b >= utf8.RuneSelf {
+			return i
+		}
+	}
+	return -1
+}
+
+// looksLikeUTF8 reports whether probe holds at least one multi-byte UTF-8
+// sequence and no invalid one. A sequence cut off by the end of probe is
+// ignored: the probe may end mid-character.
+func looksLikeUTF8(probe []byte) bool {
+	probe = probe[:findLastCompleteUTF8(probe)]
+	return firstNonASCII(probe) >= 0 && utf8.Valid(probe)
 }
 
 // readPrefix reads from r until buf is full or a read returns an error. Unlike
