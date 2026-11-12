@@ -307,10 +307,8 @@ func familyToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 		tags = appendPhrase(tags, fam.WifePhrase, 2, opts)
 	}
 
-	// Children (level 1) - CHIL
-	for _, child := range fam.Children {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "CHIL", Value: child})
-	}
+	// Children (level 1) - CHIL, each with its _FREL/_MREL from ChildLinks
+	tags = append(tags, childrenToTags(fam, opts)...)
 
 	// Events (level 1) - MARR, DIV, etc.
 	for _, event := range fam.Events {
@@ -652,6 +650,31 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 	return tags
 }
 
+// childrenToTags converts a family's Children to CHIL tags. Each ChildLink
+// is written beneath the first CHIL of its XRef not already given one, as
+// _FREL and _MREL; a link whose XRef is not among Children is not written.
+func childrenToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
+	var tags []*gedcom.Tag
+	used := make([]bool, len(fam.ChildLinks))
+	for _, child := range fam.Children {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "CHIL", Value: child})
+		for k, link := range fam.ChildLinks {
+			if used[k] || link.XRef != child {
+				continue
+			}
+			used[k] = true
+			if link.FatherRelation != "" {
+				tags = append(tags, &gedcom.Tag{Level: 2, Tag: "_FREL", Value: opts.text(link.FatherRelation)})
+			}
+			if link.MotherRelation != "" {
+				tags = append(tags, &gedcom.Tag{Level: 2, Tag: "_MREL", Value: opts.text(link.MotherRelation)})
+			}
+			break
+		}
+	}
+	return tags
+}
+
 // nameToTags converts a PersonalName to GEDCOM tags at the specified level.
 func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*gedcom.Tag {
 	if name == nil {
@@ -681,6 +704,9 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 	}
 	if name.SurnamePrefix != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SPFX", Value: opts.text(name.SurnamePrefix)})
+	}
+	if name.MarriedName != "" {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "_MARNM", Value: opts.text(name.MarriedName)})
 	}
 	if name.Type != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "TYPE", Value: opts.text(name.Type)})

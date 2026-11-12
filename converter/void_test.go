@@ -154,7 +154,8 @@ func TestDowngradeDropsVoidPointersFromEntity(t *testing.T) {
 	}
 	fam := &gedcom.Family{
 		XRef: "@F1@", Husband: void, Wife: void, Children: []string{void, "@I1@"},
-		NoteXRefs: []string{void}, SourceCitations: cite(), Media: media(),
+		ChildLinks: []gedcom.ChildLink{{XRef: void, FatherRelation: "Adopted"}, {XRef: "@I1@", MotherRelation: "Step"}},
+		NoteXRefs:  []string{void}, SourceCitations: cite(), Media: media(),
 		Events: []*gedcom.Event{event()}, Attributes: []*gedcom.Attribute{attr()},
 		LDSOrdinances: ords(), ChangeDate: cd(), CreationDate: cd(),
 	}

@@ -124,6 +124,7 @@ func fullyPopulatedRecords() []*Record {
 		Husband:         "@F_HUSB@",
 		Wife:            "@F_WIFE@",
 		Children:        []string{"@F_CHIL@"},
+		ChildLinks:      []ChildLink{{XRef: "@F_CHIL_LINK@", FatherRelation: "Adopted"}},
 		NoteXRefs:       []string{"@F_NX@"},
 		SourceCitations: []*SourceCitation{cite("@F_SOUR@")},
 		Media:           []*MediaLink{medialink("@F_OBJE@", "@F_OBJE_NX@")},

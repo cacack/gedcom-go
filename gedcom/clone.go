@@ -206,6 +206,7 @@ func (f *Family) Clone() *Family {
 		Wife:          f.Wife,
 		WifePhrase:    f.WifePhrase,
 		Children:      cloneStringSlice(f.Children),
+		ChildLinks:    cloneChildLinks(f.ChildLinks),
 		NoteXRefs:     cloneStringSlice(f.NoteXRefs),
 		InlineNotes:   cloneStringSlice(f.InlineNotes),
 		RefNumbers:    cloneRefNumbers(f.RefNumbers),
@@ -553,6 +554,7 @@ func clonePersonalName(n *PersonalName) *PersonalName {
 		Suffix:        n.Suffix,
 		Nickname:      n.Nickname,
 		SurnamePrefix: n.SurnamePrefix,
+		MarriedName:   n.MarriedName,
 		Type:          n.Type,
 		TypePhrase:    n.TypePhrase,
 		NoteXRefs:     cloneStringSlice(n.NoteXRefs),
@@ -977,6 +979,15 @@ func cloneFamilyLinks(links []FamilyLink) []FamilyLink {
 
 // cloneRefNumbers returns a copy of s. RefNumber holds only strings, so a
 // shallow element copy is a deep copy.
+func cloneChildLinks(s []ChildLink) []ChildLink {
+	if s == nil {
+		return nil
+	}
+	copied := make([]ChildLink, len(s))
+	copy(copied, s)
+	return copied
+}
+
 func cloneRefNumbers(s []RefNumber) []RefNumber {
 	if s == nil {
 		return nil
