@@ -72,8 +72,10 @@ type Header struct {
 	SourceCorporation *Corporation
 
 	// SourceData is the electronic data source the file was taken from
-	// (HEAD.SOUR.DATA), or nil when the tag is absent. Its Copyright is the
-	// source data's copyright, not the file's: that is Copyright. Like
+	// (HEAD.SOUR.DATA), or nil when the tag is absent; a DATA with no
+	// subordinates gives a non-nil value with empty fields. Its Copyright is
+	// the source data's copyright, with CONT/CONC lines folded in, not the
+	// file's: that is Copyright. Like
 	// SourceVersion, it is a read view: Tags governs encoding and the encoder
 	// never writes it.
 	SourceData *HeaderSourceData

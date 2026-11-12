@@ -648,7 +648,8 @@ func reportNormalizedVersion(vers *gedcom.Tag, collector *diagnosticCollector) {
 }
 
 // parseHeaderSourceData builds the DATA structure at tags[dataIdx] from its
-// DATE (with the DATE's TIME) and COPR subordinates.
+// DATE (with the DATE's TIME) and COPR subordinates. COPR is multi-line text,
+// so its CONT/CONC lines are folded in.
 func parseHeaderSourceData(tags []*gedcom.Tag, dataIdx int, quiet *diagnosticCollector) *gedcom.HeaderSourceData {
 	data := &gedcom.HeaderSourceData{Name: quiet.text(tags[dataIdx].Value)}
 	level := tags[dataIdx].Level
@@ -662,7 +663,7 @@ func parseHeaderSourceData(tags []*gedcom.Tag, dataIdx int, quiet *diagnosticCol
 			case "DATE":
 				data.Date = quiet.text(tag.Value)
 			case "COPR":
-				data.Copyright = quiet.text(tag.Value)
+				data.Copyright = quiet.text(foldedValue(tags, i))
 			}
 		case tag.Level == level+2 && parent == "DATE" && tag.Tag == "TIME":
 			data.Time = quiet.text(tag.Value)

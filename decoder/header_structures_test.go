@@ -221,6 +221,12 @@ func TestDecodeHeaderLanguageAndCopyrightLevel1Only(t *testing.T) {
 			wantDataCopr:  "C",
 		},
 		{
+			name:          "data COPR with continuation lines",
+			header:        "1 COPR F\n1 SOUR X\n2 DATA D\n3 COPR Line one\n4 CONT Line two\n4 CONT and three\n",
+			wantCopyright: "F",
+			wantDataCopr:  "Line one\nLine two\nand three",
+		},
+		{
 			// The shape of oxidged's full70.ged: HEAD.LANG, then a header
 			// NOTE with its own LANG.
 			name:         "note LANG after file LANG",
