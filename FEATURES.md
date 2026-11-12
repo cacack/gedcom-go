@@ -205,6 +205,16 @@ if indi.FamilySearchID != "" {
 in `Tags`. The encoder writes `UIDs` as `_UID` for 5.5/5.5.1 output and `UID`
 for 7.0. See [vendor extensions](docs/guides/vendor-extensions.md#_uid--record-and-event-identifiers).
 
+### `_FREL`/`_MREL` (Family Tree Maker, Ancestry, Legacy) and `_MARNM` (MyHeritage)
+
+`_FREL` and `_MREL` under a family's `CHIL` fill `Family.ChildLinks` (`XRef`,
+`FatherRelation`, `MotherRelation`; `Family.LinkForChild(xref)` looks one up),
+leaving `Children` unchanged. `_MARNM` under `INDI.NAME` fills
+`PersonalName.MarriedName`. The encoder writes both back as the vendor tags. On
+an upgrade the converter adds `FAMC.PEDI` from an unambiguous non-natural
+relationship, and on an upgrade to 7.0 a `TYPE MARRIED` name from `_MARNM`. See
+[vendor extensions](docs/guides/vendor-extensions.md#_frel--_mrel--child-relationships).
+
 ### Round-Trip Preservation
 
 All vendor extensions are preserved during encode/decode cycles. Custom tags not explicitly parsed are retained in the raw `Tags` field on each entity.
@@ -1558,6 +1568,8 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | `UID` ↔ `_UID` | Both | `_UID`, the extension every 5.5.x desktop producer writes for the identifier 7.0 standardised as `UID`, is renamed to `UID` on an upgrade wherever 7.0 defines `UID` (level 1 of a record, level 2 under an event or attribute) and `UID` to `_UID` at any level on a downgrade (`UID_FROM_VENDOR_TAG`, `UID_TO_VENDOR_TAG`); neither is data loss |
 | `FONE`/`ROMN` removed | To 7.0 or 5.5 | 5.5.1 phonetic and romanized variations are removed from `Record.Tags` with their subordinates (under `NAME` or `PLAC`), and from `PersonalName.Phonetic`/`Romanized`, and reported as data loss; they are not mapped to 7.0 `TRAN` |
 | `@VOID@` pointers removed | Downgrade from 7.0 | 5.x has no null pointer, so each structure whose pointer is `@VOID@` (`FAMC`, `CHIL`, `SOUR` citation, `SNOTE`, ...) is removed with its subordinates from `Tags` and the typed entity; `HUSB`, `WIFE`, LDS `FAMC` and header `SUBM` fields are cleared. Reported as data loss |
+| `_FREL`/`_MREL` → `FAMC.PEDI` | Upgrade | A child's `FAMC` gains the `PEDI` (`adopted`, `foster`, `sealing`) that every relationship the family's parents have agrees on, when that is not birth; reported as `PEDIGREE_FROM_VENDOR_TAG` |
+| `_MARNM` → `TYPE MARRIED` name | Upgrade to 7.0 | A `NAME` carrying `_MARNM` is followed by a new `NAME` with `TYPE MARRIED`; reported as `MARRIED_NAME_FROM_VENDOR_TAG` |
 | FamilySearch ARK EXID → `_FSFTID` | Downgrade from 7.0 | Maps to the vendor tag instead of dropping the ID (when `MapEXIDToVendorTags`) |
 | Header grammar order | Both | Level-1 `HEAD` structures, including any the conversion adds (`GEDC`, `CHAR`), are placed in the target version's grammar order (`GEDC` first for 7.0, after `COPR` for 5.x); structures the target grammar does not define go last, in source order |
 | `GEDC.VERS` | All, including same-version | `VERS` set to the target under `GEDC`; added under an existing `GEDC` that has none, even when source and target versions match |

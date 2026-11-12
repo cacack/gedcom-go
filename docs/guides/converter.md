@@ -90,6 +90,8 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Media types | `MEDIA_TYPE_MAPPED` | Legacy formats (JPG) converted to IANA (image/jpeg) |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar escapes (`@#DJULIAN@`) converted to keywords (`JULIAN`) |
 | Vendor `_UID` | `UID_FROM_VENDOR_TAG` | A `_UID` tag becomes the 7.0 `UID` it standardised wherever 7.0 defines `UID`: at level 1 of an `INDI`, `FAM`, `SOUR`, `REPO`, `OBJE`, `SNOTE` or `SUBM` record, and at level 2 under an individual or family event or attribute. A `_UID` elsewhere (under `NAME`, say) stays an extension. The value is carried unchanged, as 7.0 asks for an existing identifier; each rename is a `Normalized` note, naming the enclosing event for a nested one |
+| Vendor `_FREL`/`_MREL` | `PEDIGREE_FROM_VENDOR_TAG` | A child's `FAMC` gains a `PEDI` from the `_FREL`/`_MREL` under the family's `CHIL` when the mapping is unambiguous: each parent the family names has a relationship, all map to one value (`Adopted`, `Foster`, `Sealing`), and it is not `Natural`/`Birth`. `Step`, `Guardian` and other values have no `PEDI` and add none; a `FAMC` that already has a `PEDI` is kept. The vendor tags stay; each `PEDI` added is a `Normalized` note |
+| Vendor `_MARNM` | `MARRIED_NAME_FROM_VENDOR_TAG` | A `NAME` with `_MARNM` is followed by a new `NAME` with `TYPE MARRIED`: the original name with the `_MARNM` surname in place of its own, or the `_MARNM` value itself when it is a full name (has a slash). A matching `TYPE MARRIED` name already present is not added again. `_MARNM` stays; each name added is a `Normalized` note |
 | Header update | `VERSION_UPGRADE` | Header version updated to 7.0 |
 
 ### Upgrade 5.5 to 5.5.1
@@ -97,6 +99,7 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Transformation | Type | Description |
 |---------------|------|-------------|
 | Header update | `VERSION_UPGRADE` | Backward compatible upgrade |
+| Vendor `_FREL`/`_MREL` | `PEDIGREE_FROM_VENDOR_TAG` | As for the upgrade to 7.0, with the `PEDI` value in lower case (`adopted`) |
 | GEDC.FORM | `GEDC_FORM_ADDED` | `2 FORM LINEAGE-LINKED` added under `GEDC` when missing |
 
 ### Downgrade from GEDCOM 7.0
