@@ -261,6 +261,11 @@ To opt into strict parsing (fail on the first syntax error, no diagnostics colle
   - [`examples/query`](examples/query) - Navigating and querying genealogy data
   - [`examples/validate`](examples/validate) - Validating GEDCOM files
   - [`examples/stream`](examples/stream) - Streaming parse and encode for very large files
+  - [`examples/date-parsing`](examples/date-parsing) - Parsing GEDCOM date values
+  - [`examples/convert`](examples/convert) - Converting between GEDCOM versions and reading the report
+  - [`examples/merge`](examples/merge) - Combining two documents with XRef collision handling
+  - [`examples/diagnostics`](examples/diagnostics) - Seeing what lenient decoding recovered from
+  - [`examples/lazy`](examples/lazy) - Indexed random access to records in a large file
 - **API Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go/v3](https://pkg.go.dev/github.com/cacack/gedcom-go/v3)
 - **GEDCOM 7.0 Coverage**: [docs/reference/gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) - What this library does with every structure the 7.0 standard defines, derived by decoding rather than estimated
 - **GEDCOM 5.5/5.5.1 Coverage**: [docs/reference/gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md) - The same for both 5.5 versions, transcribed from the specifications' Lineage-Linked Grammar
