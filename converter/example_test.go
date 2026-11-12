@@ -1,6 +1,7 @@
 package converter_test
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -196,4 +197,53 @@ func ExampleBuildNestedPath() {
 	// Output:
 	// Individual @I1@ > BIRT > DATE
 	// Header > CHAR
+}
+
+// ExampleConvertWithOptions_strictDataLoss shows refusing a lossy conversion
+// with StrictDataLoss and detecting the refusal with errors.Is and ErrDataLoss.
+func ExampleConvertWithOptions_strictDataLoss() {
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 EXID 12345
+0 TRLR`
+
+	doc, err := decoder.Decode(strings.NewReader(gedcomData))
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
+	}
+
+	opts := converter.DefaultOptions()
+	opts.StrictDataLoss = true
+
+	_, report, err := converter.ConvertWithOptions(doc, gedcom.Version55, opts)
+	if errors.Is(err, converter.ErrDataLoss) {
+		fmt.Printf("Refused: %d item(s) would be lost\n", len(report.DataLoss))
+		return
+	}
+	fmt.Println("Converted")
+
+	// Output:
+	// Refused: 1 item(s) would be lost
+}
+
+// ExampleConvert_errors shows matching the argument and version errors of
+// Convert with errors.Is.
+func ExampleConvert_errors() {
+	_, _, err := converter.Convert(nil, gedcom.Version70)
+	fmt.Println(errors.Is(err, converter.ErrNilDocument))
+
+	_, _, err = converter.Convert(&gedcom.Document{}, "6.0")
+	fmt.Println(errors.Is(err, converter.ErrInvalidVersion))
+
+	doc := &gedcom.Document{Header: &gedcom.Header{Version: "4.0"}}
+	_, _, err = converter.Convert(doc, gedcom.Version70)
+	fmt.Println(errors.Is(err, converter.ErrUnsupportedConversion))
+
+	// Output:
+	// true
+	// true
+	// true
 }
