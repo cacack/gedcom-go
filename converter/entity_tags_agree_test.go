@@ -60,8 +60,8 @@ func entityDiffs(a, b reflect.Value, path string, diffs *[]string) {
 // typed value while the converter carries it in Tags. Self-cleaning: an entry
 // that starts agreeing fails the test asking to be removed.
 var entityTagsKnownDisagreements = map[string]string{
-	"full551.ged/5.5.1->7.0: INDI @I1@":    "#734 (DSCR CONC/CONT) and #738 (inline-text citation)",
-	"maximal551.ged/5.5.1->7.0: INDI @I1@": "#734 (DSCR CONC/CONT) and #738 (inline-text citation)",
+	"full551.ged/5.5.1->7.0: INDI @I1@":    "#738: inline-text citation truncated into SourceXRef",
+	"maximal551.ged/5.5.1->7.0: INDI @I1@": "#738: inline-text citation truncated into SourceXRef",
 }
 
 // TestConvertedEntitiesAgreeWithTags asserts that, for every fixture and every
