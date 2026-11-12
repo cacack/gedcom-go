@@ -30,7 +30,7 @@ func TestDetectVendor(t *testing.T) {
 			want:         VendorUnknown,
 		},
 		{
-			name:         "webtreeprint is not webtrees",
+			name:         "webtreeprint does not contain webtrees",
 			sourceSystem: "webtreeprint.com",
 			want:         VendorWebTreePrint,
 		},
@@ -55,7 +55,11 @@ func TestDetectVendor(t *testing.T) {
 		{name: "My Roots", sourceSystem: "My_Roots", want: VendorMyRoots},
 		{name: "Reunion", sourceSystem: "Reunion", want: VendorReunion},
 		{name: "MacFamilyTree", sourceSystem: "SyniumFamilyTree", want: VendorMacFamilyTree},
-		{name: "Ancestris is not Ancestry", sourceSystem: "Ancestris", want: VendorAncestris},
+
+		// Rule order: a string naming two vendors goes to the earlier rule.
+		{name: "earlier rule wins over legacy", sourceSystem: "Ancestry Legacy", want: VendorAncestry},
+		{name: "legacy wins over later reunion", sourceSystem: "Legacy Reunion", want: VendorLegacy},
+		{name: "myheritage wins over later myroots", sourceSystem: "MyHeritage My Roots", want: VendorMyHeritage},
 
 		// Ancestry variants
 		{

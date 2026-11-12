@@ -95,7 +95,10 @@ type vendorRule struct {
 	codes  []string
 }
 
-// vendorRules is checked in order; the first match wins.
+// vendorRules is checked in order; the first match wins, so order is part of
+// the behaviour. Names are unanchored substrings, so a generic word such as
+// "legacy" or "reunion" also matches inside unrelated text; keep earlier
+// rules the more specific ones (pinned by TestDetectVendor).
 var vendorRules = []vendorRule{
 	{VendorAncestry, []string{"ancestry", "familytreemaker"}, []string{"ftm"}},
 	{VendorFamilySearch, []string{"familysearch"}, nil},
