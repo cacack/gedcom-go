@@ -260,29 +260,148 @@ GEDCOM output:
 
 ---
 
+### 6. Date Parsing - GEDCOM Date Values
+
+**Location**: [`date-parsing/main.go`](date-parsing/main.go)
+
+**What it does**: Parses a range of GEDCOM date values (exact dates, modifiers such as `ABT`, ranges and periods) and shows their parsed parts, calendar and comparison.
+
+**How to run**:
+```bash
+cd examples/date-parsing
+go run main.go
+```
+
+---
+
+### 7. Convert - Converting Between GEDCOM Versions
+
+**Location**: [`convert/main.go`](convert/main.go)
+
+**What it does**: Converts a file to another GEDCOM version with `converter.Convert` and prints the conversion report: transformations, data loss, and the per-path notes for what was dropped, approximated, normalized or preserved. With an output path it also writes the converted document.
+
+**How to run**:
+```bash
+cd examples/convert
+go run main.go ../../testdata/gedcom-5.5.1/comprehensive.ged 7.0
+
+# Also write the converted file
+go run main.go ../../testdata/gedcom-5.5.1/comprehensive.ged 7.0 /tmp/converted.ged
+```
+
+**Example output** (abridged):
+```text
+Converted ../../testdata/gedcom-5.5.1/comprehensive.ged: 5.5.1 -> 7.0
+Success: true
+
+=== Transformations (5) ===
+  NOTE_RECORD_TO_SNOTE x2: Converted NOTE records to SNOTE records
+  ...
+=== Dropped (1) ===
+  Header > FILE: "FILE" -> "" (Structure not defined in GEDCOM 7.0)
+...
+=== Normalized (4) ===
+  Header > LANG: "English" -> "en" (GEDCOM 7.0 identifies languages by BCP 47 tag)
+  ...
+```
+
+---
+
+### 8. Merge - Combining Two Documents
+
+**Location**: [`merge/main.go`](merge/main.go)
+
+**What it does**: Combines two files of the same GEDCOM version with `merge.Combine`, renumbering any XRef of the second file that collides with the first (`RenumberDoc2`), and prints the combine report: which XRefs were renumbered and which header values were dropped in favour of the first file's.
+
+**How to run**:
+```bash
+cd examples/merge
+go run main.go ../../testdata/gedcom-5.5.1/comprehensive.ged ../../testdata/gedcom-5.5.1/attribute-event-detail.ged
+
+# Also write the combined file
+go run main.go ../../testdata/gedcom-5.5.1/comprehensive.ged ../../testdata/gedcom-5.5.1/attribute-event-detail.ged /tmp/combined.ged
+```
+
+**Example output**:
+```text
+First:    15 records
+Second:   2 records
+Combined: 17 records (8 individuals, 3 families)
+
+=== Renumbered XRefs from the second file (1) ===
+  @I1@ -> @I8@
+
+=== Header conflicts (4) ===
+  SourceSystem: first "FamilyTreeMaker", second "gedcom-go"
+  ...
+```
+
+---
+
+### 9. Diagnostics - Seeing What Lenient Decoding Recovered
+
+**Location**: [`diagnostics/main.go`](diagnostics/main.go)
+
+**What it does**: Decodes a file with `decoder.DecodeWithDiagnostics` and lists every diagnostic with its line, severity, code and offending content. Lenient decoding (the default) recovers from or skips malformed lines; the diagnostics say where and how.
+
+**How to run**:
+```bash
+cd examples/diagnostics
+go run main.go ../../testdata/malformed/invalid-level.ged
+```
+
+**Example output**:
+```text
+GEDCOM File: ../../testdata/malformed/invalid-level.ged
+Records decoded: 1
+Diagnostics: 2 (0 error(s), 2 warning(s))
+
+  [WARNING] line 6: BAD_LEVEL_JUMP: level jumped from 1 to 99 (skipping 97 level(s)); clamped to 2 for recovery (context: "INVALID")
+  [WARNING] line 6: UNKNOWN_TAG: unknown tag: INVALID (context: "Deep nesting beyond reasonable limit")
+```
+
+---
+
+### 10. Lazy - Indexed Random Access
+
+**Location**: [`lazy/main.go`](lazy/main.go)
+
+**What it does**: Builds a record index with `parser.LazyParser`, then parses only the records asked for by XRef and turns each into a typed record with `decoder.DecodeRecord`, without decoding the rest of the file. `LazyParser` reads the file's bytes without charset conversion, so use it on UTF-8 files; a file that starts with a byte-order mark is not yet supported ([#792](https://github.com/cacack/gedcom-go/issues/792)).
+
+**How to run**:
+```bash
+cd examples/lazy
+go run main.go ../../testdata/gedcom-5.5.1/comprehensive.ged @I1@ @F1@
+```
+
+**Example output**:
+```text
+Indexed ../../testdata/gedcom-5.5.1/comprehensive.ged: 17 records
+Version: 5.5.1
+
+@I1@ INDI at byte 928 (38 lines)
+  Individual: William /Smith/
+  Born: 15 JUN 1950
+
+@F1@ FAM at byte 2434 (11 lines)
+  Family: husband @I1@, wife @I2@, 1 child(ren)
+```
+
+**Use cases**:
+- Looking up a few records in a large file
+- Saving an index (`SaveIndex`) to skip the indexing pass next time
+
+---
+
 ## Running All Examples
 
-You can test all examples at once using the test data provided:
+Run every example against the test data from the project root:
 
 ```bash
-# From the project root
-cd examples
-
-# Run parse example
-cd parse && go run main.go ../../testdata/gedcom-5.5/minimal.ged && cd ..
-
-# Run query example
-cd query && go run main.go ../../testdata/gedcom-5.5/royal92.ged && cd ..
-
-# Run validate example
-cd validate && go run main.go ../../testdata/gedcom-7.0/minimal70.ged && cd ..
-
-# Run stream example (streaming parse + streaming encode)
-cd stream && go run main.go ../../testdata/gedcom-5.5/pres2020.ged /tmp/streamed.ged && cd ..
-
-# Run encode example
-cd encode && go run main.go /tmp/output.ged && cd ..
+make examples
 ```
+
+CI runs the same target, and `make build-examples` builds every directory under `examples/`.
 
 ## Test Data
 
