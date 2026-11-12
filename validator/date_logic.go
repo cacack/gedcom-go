@@ -13,6 +13,7 @@ package validator
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
@@ -301,7 +302,8 @@ func orderVerb(severity Severity) string {
 }
 
 // checkReasonableAge checks if an individual's lifespan exceeds the maximum reasonable age.
-// Returns an Issue with Warning severity if the age exceeds the configured maximum.
+// Returns an Issue with Warning severity if the age at death, as maxAge reads
+// it from gedcom.AgeAt, exceeds the configured maximum.
 func (v *DateLogicValidator) checkReasonableAge(ind *gedcom.Individual) *Issue {
 	birthDate := ind.BirthDate()
 	deathDate := ind.DeathDate()
@@ -311,18 +313,18 @@ func (v *DateLogicValidator) checkReasonableAge(ind *gedcom.Individual) *Issue {
 		return nil
 	}
 
-	// Calculate years between birth and death
-	years, _, err := gedcom.YearsBetween(birthDate, deathDate)
-	if err != nil {
+	youngest, oldest, ok := gedcom.AgeAt(birthDate, deathDate)
+	if !ok {
 		return nil
 	}
 
 	// Check if age exceeds maximum
-	if years > v.config.MaxReasonableAge {
+	if years, prefix := maxAge(youngest, oldest); years > v.config.MaxReasonableAge {
 		issue := NewIssue(
 			SeverityWarning,
 			CodeImpossibleAge,
-			fmt.Sprintf("age of %d years exceeds maximum reasonable age of %d", years, v.config.MaxReasonableAge),
+			fmt.Sprintf("age of %s%d years exceeds maximum reasonable age of %d",
+				prefix, years, v.config.MaxReasonableAge),
 			ind.XRef,
 		).
 			WithDetail("age", fmt.Sprintf("%d", years)).
@@ -365,18 +367,24 @@ func (v *DateLogicValidator) checkReasonableParentAge(doc *gedcom.Document, ind 
 			continue
 		}
 
-		// Calculate parent's age when child was born
-		parentAge, _, err := gedcom.YearsBetween(parentBirth, childBirth)
-		if err != nil {
+		// The range of the parent's age when the child was born
+		youngest, oldest, ok := gedcom.AgeAt(parentBirth, childBirth)
+		if !ok {
 			continue
 		}
 
-		// Check if parent was too young
-		if parentAge < v.config.MinParentAge {
+		// Check if parent was too young: even the oldest age the dates allow
+		// is below the minimum. An unbounded oldest age cannot be.
+		if parentAge := oldest; parentAge < v.config.MinParentAge {
+			prefix := ""
+			if youngest != oldest {
+				prefix = "at most "
+			}
 			issue := NewIssue(
 				SeverityWarning,
 				CodeUnreasonableParentAge,
-				fmt.Sprintf("parent was %d years old at child's birth (minimum: %d)", parentAge, v.config.MinParentAge),
+				fmt.Sprintf("parent was %s%d years old at child's birth (minimum: %d)",
+					prefix, parentAge, v.config.MinParentAge),
 				ind.XRef,
 			).
 				WithRelatedXRef(child.XRef).
@@ -388,7 +396,7 @@ func (v *DateLogicValidator) checkReasonableParentAge(doc *gedcom.Document, ind 
 		}
 
 		// Check if parent was too old
-		if parentAge > maxParentAge {
+		if parentAge, prefix := maxAge(youngest, oldest); parentAge > maxParentAge {
 			parentType := "father"
 			if ind.Sex == "F" {
 				parentType = "mother"
@@ -396,7 +404,8 @@ func (v *DateLogicValidator) checkReasonableParentAge(doc *gedcom.Document, ind 
 			issue := NewIssue(
 				SeverityWarning,
 				CodeUnreasonableParentAge,
-				fmt.Sprintf("%s was %d years old at child's birth (maximum: %d)", parentType, parentAge, maxParentAge),
+				fmt.Sprintf("%s was %s%d years old at child's birth (maximum: %d)",
+					parentType, prefix, parentAge, maxParentAge),
 				ind.XRef,
 			).
 				WithRelatedXRef(child.XRef).
@@ -409,4 +418,20 @@ func (v *DateLogicValidator) checkReasonableParentAge(doc *gedcom.Document, ind 
 	}
 
 	return issues
+}
+
+// maxAge reads the age checked against a maximum from a gedcom.AgeAt range:
+// the oldest age the dates allow, so a finding is reported when the age may
+// exceed the maximum, or the youngest when an open-ended date (BEF, AFT, FROM,
+// TO) leaves the oldest unbounded. prefix qualifies an inexact age for an
+// issue message: "up to " or "at least ", or empty when the age is exact.
+func maxAge(youngest, oldest int) (age int, prefix string) {
+	switch oldest {
+	case math.MaxInt:
+		return youngest, "at least "
+	case youngest:
+		return oldest, ""
+	default:
+		return oldest, "up to "
+	}
 }

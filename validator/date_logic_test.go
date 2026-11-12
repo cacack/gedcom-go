@@ -908,3 +908,104 @@ func TestErrorCodeUnreasonableParentAge(t *testing.T) {
 		t.Errorf("CodeUnreasonableParentAge = %q, want %q", CodeUnreasonableParentAge, "UNREASONABLE_PARENT_AGE")
 	}
 }
+
+// TestDateLogicValidator_AgesFromAgeAt pins that the age checks read the
+// oldest age gedcom.AgeAt allows rather than a year difference (#752).
+func TestDateLogicValidator_AgesFromAgeAt(t *testing.T) {
+	v := NewDateLogicValidator(nil)
+	withDates := func(birth, death string) *gedcom.Individual {
+		ind := &gedcom.Individual{XRef: "@I1@"}
+		for _, e := range []struct {
+			typ  gedcom.EventType
+			date string
+		}{{gedcom.EventBirth, birth}, {gedcom.EventDeath, death}} {
+			d, err := gedcom.ParseDate(e.date)
+			if err != nil {
+				t.Fatalf("ParseDate(%q): %v", e.date, err)
+			}
+			ind.Events = append(ind.Events, &gedcom.Event{Type: e.typ, Date: e.date, ParsedDate: d})
+		}
+		return ind
+	}
+
+	t.Run("month precision bounds the age", func(t *testing.T) {
+		// DEC 1800 to JAN 1921 is at most 120 years; year subtraction said 121.
+		if issue := v.checkReasonableAge(withDates("DEC 1800", "JAN 1921")); issue != nil {
+			t.Errorf("unexpected issue: %s", issue.Message)
+		}
+	})
+
+	t.Run("inexact age says up to", func(t *testing.T) {
+		issue := v.checkReasonableAge(withDates("1800", "1921"))
+		if issue == nil {
+			t.Fatal("expected IMPOSSIBLE_AGE")
+		}
+		want := "age of up to 121 years exceeds maximum reasonable age of 120"
+		if issue.Message != want || issue.Details["age"] != "121" {
+			t.Errorf("Message = %q, age = %q; want %q, 121", issue.Message, issue.Details["age"], want)
+		}
+	})
+
+	t.Run("exact age has no prefix", func(t *testing.T) {
+		issue := v.checkReasonableAge(withDates("1 JAN 1800", "1 JAN 1921"))
+		if issue == nil {
+			t.Fatal("expected IMPOSSIBLE_AGE")
+		}
+		if want := "age of 121 years exceeds maximum reasonable age of 120"; issue.Message != want {
+			t.Errorf("Message = %q, want %q", issue.Message, want)
+		}
+	})
+
+	t.Run("death before birth is not an age", func(t *testing.T) {
+		// Year subtraction took the absolute value and reported 150 years.
+		if issue := v.checkReasonableAge(withDates("1950", "1800")); issue != nil {
+			t.Errorf("unexpected issue: %s", issue.Message)
+		}
+	})
+
+	t.Run("open-ended date reads the youngest age", func(t *testing.T) {
+		if issue := v.checkReasonableAge(withDates("1800", "AFT 1850")); issue != nil {
+			t.Errorf("unexpected issue: %s", issue.Message)
+		}
+		issue := v.checkReasonableAge(withDates("BEF 1700", "1850"))
+		if issue == nil {
+			t.Fatal("expected IMPOSSIBLE_AGE")
+		}
+		if want := "age of at least 149 years exceeds maximum reasonable age of 120"; issue.Message != want {
+			t.Errorf("Message = %q, want %q", issue.Message, want)
+		}
+	})
+
+	t.Run("parent too young says at most", func(t *testing.T) {
+		parent := withDates("1950", "2000")
+		parent.Sex = "M"
+		parent.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
+		child := withDates("1960", "2000")
+		child.XRef = "@I2@"
+		fam := &gedcom.Family{XRef: "@F1@", Husband: "@I1@", Children: []string{"@I2@"}}
+		doc := makeDocument([]*gedcom.Individual{parent, child}, []*gedcom.Family{fam})
+		issues := v.checkReasonableParentAge(doc, parent)
+		if len(issues) != 1 {
+			t.Fatalf("issues = %v, want one", issues)
+		}
+		if want := "parent was at most 10 years old at child's birth (minimum: 12)"; issues[0].Message != want {
+			t.Errorf("Message = %q, want %q", issues[0].Message, want)
+		}
+	})
+
+	t.Run("parent with open-ended birth reads the youngest age", func(t *testing.T) {
+		parent := withDates("BEF 1800", "2000")
+		parent.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
+		child := withDates("1960", "2000")
+		child.XRef = "@I2@"
+		fam := &gedcom.Family{XRef: "@F1@", Husband: "@I1@", Children: []string{"@I2@"}}
+		doc := makeDocument([]*gedcom.Individual{parent, child}, []*gedcom.Family{fam})
+		issues := v.checkReasonableParentAge(doc, parent)
+		if len(issues) != 1 {
+			t.Fatalf("issues = %v, want one", issues)
+		}
+		if want := "father was at least 159 years old at child's birth (maximum: 90)"; issues[0].Message != want {
+			t.Errorf("Message = %q, want %q", issues[0].Message, want)
+		}
+	})
+}

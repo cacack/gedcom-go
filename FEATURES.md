@@ -1127,6 +1127,11 @@ years, exact, err := gedcom.YearsBetween(birthDate, deathDate)
 // dates in different calendars are converted to Gregorian first (Hebrew 1 TSH 5660 to 1 JAN 1950 is 50);
 // a year-only date converts from its first day, so Hebrew 5660 counts as Gregorian 1899
 
+// Age in completed years as the range both dates allow (Bounds semantics):
+// "1900" to "1950" is 49..50; exact when youngest == oldest; open-ended dates
+// leave oldest at math.MaxInt; ok is false when the event is provably before birth
+youngest, oldest, ok := gedcom.AgeAt(birthDate, deathDate)
+
 // Convert to time.Time (complete, valid Gregorian dates only; 31 FEB errors; BCE uses astronomical years, 44 BCE -> -43)
 t, err := date.ToTime()
 
@@ -2116,6 +2121,8 @@ Navigate family relationships with convenience methods that eliminate manual cro
 | `Children(doc)` | `[]*Individual` | Children from all FAMS families |
 | `FamiliesAsChild(doc)` | `[]*Family` | Families where individual is a child |
 | `FamiliesAsSpouse(doc)` | `[]*Family` | Families where individual is a spouse |
+| `ParentLinks(doc)` | `[]ParentLink` | Parents with the linking family and the child's `Pedigree` (birth, adopted, ...) |
+| `Siblings(doc)` | `[]Sibling` | Full siblings (same FAMC family), then half siblings (a parent's other families), each with `Family` and `Half` |
 
 **Family Methods:**
 

@@ -588,28 +588,16 @@ func (i *Individual) FamilySearchURL() string {
 // The doc parameter is required for O(1) cross-reference lookups.
 // Returns an empty slice if doc is nil, no parents are found, or if
 // family/individual xrefs are invalid. Invalid xrefs are silently skipped.
-// Order is preserved from the GEDCOM file.
+// Order is preserved from the GEDCOM file. ParentLinks returns the same
+// parents with the family and pedigree that link them.
 func (i *Individual) Parents(doc *Document) []*Individual {
-	if doc == nil {
+	links := i.ParentLinks(doc)
+	if links == nil {
 		return nil
 	}
-
-	var parents []*Individual
-	for _, link := range i.ChildInFamilies {
-		fam := doc.GetFamily(link.FamilyXRef)
-		if fam == nil {
-			continue
-		}
-		if fam.Husband != "" {
-			if husband := doc.GetIndividual(fam.Husband); husband != nil {
-				parents = append(parents, husband)
-			}
-		}
-		if fam.Wife != "" {
-			if wife := doc.GetIndividual(fam.Wife); wife != nil {
-				parents = append(parents, wife)
-			}
-		}
+	parents := make([]*Individual, len(links))
+	for n, link := range links {
+		parents[n] = link.Individual
 	}
 	return parents
 }
@@ -721,4 +709,115 @@ func (i *Individual) FamiliesAsSpouse(doc *Document) []*Family {
 		}
 	}
 	return families
+}
+
+// ParentLink is one parent of an individual together with the family that
+// links them and the child's pedigree in that family.
+type ParentLink struct {
+	// Individual is the parent: the family's husband or wife.
+	Individual *Individual
+
+	// Family is the family in which the child is a child (the FAMC target).
+	Family *Family
+
+	// Pedigree is the child's FamilyLink.Pedigree for Family ("birth",
+	// "adopted", "foster", "sealing", ...), kept as written; empty when the
+	// FAMC line carries no PEDI.
+	Pedigree string
+}
+
+// ParentLinks returns the same parents as Parents, in the same order, each
+// with the family that links them and the pedigree of that link, so birth and
+// adoptive parents can be told apart.
+//
+// The doc parameter is required for O(1) cross-reference lookups.
+// Returns an empty slice if doc is nil or no parents are found. Invalid
+// family or individual xrefs are silently skipped.
+func (i *Individual) ParentLinks(doc *Document) []ParentLink {
+	if doc == nil {
+		return nil
+	}
+
+	var links []ParentLink
+	for _, link := range i.ChildInFamilies {
+		fam := doc.GetFamily(link.FamilyXRef)
+		if fam == nil {
+			continue
+		}
+		for _, xref := range []string{fam.Husband, fam.Wife} {
+			if xref == "" {
+				continue
+			}
+			if parent := doc.GetIndividual(xref); parent != nil {
+				links = append(links, ParentLink{Individual: parent, Family: fam, Pedigree: link.Pedigree})
+			}
+		}
+	}
+	return links
+}
+
+// Sibling is one sibling of an individual.
+type Sibling struct {
+	// Individual is the sibling.
+	Individual *Individual
+
+	// Family is the family through which they are siblings: for a full
+	// sibling, a family both are children of; for a half sibling, the other
+	// family of the shared parent, which the sibling is a child of.
+	Family *Family
+
+	// Half is true when the sibling is a child of one of the individual's
+	// parents in a family the individual is not a child of, such as a child
+	// of a parent's other marriage.
+	Half bool
+}
+
+// Siblings returns this individual's siblings: first the other children of
+// each family the individual is a child of (full siblings, Half false), then
+// the children of each parent's other families (half siblings, Half true).
+// Each sibling appears once, as full if it qualifies as both; the individual
+// itself is never included.
+//
+// Full and half are read from the family records, not from pedigree: children
+// of the same family are full siblings even when one is adopted. Use
+// ParentLinks on each to compare pedigrees.
+//
+// The doc parameter is required for O(1) cross-reference lookups.
+// Returns an empty slice if doc is nil or no siblings are found. Invalid
+// family or individual xrefs are silently skipped. Order follows the GEDCOM
+// file: families in FAMC order, parents as Parents returns them, then each
+// parent's families in FAMS order.
+func (i *Individual) Siblings(doc *Document) []Sibling {
+	if doc == nil {
+		return nil
+	}
+
+	seen := map[string]bool{i.XRef: true}
+	var siblings []Sibling
+	addChildren := func(fam *Family, half bool) {
+		for _, xref := range fam.Children {
+			if seen[xref] {
+				continue
+			}
+			if child := doc.GetIndividual(xref); child != nil {
+				seen[xref] = true
+				siblings = append(siblings, Sibling{Individual: child, Family: fam, Half: half})
+			}
+		}
+	}
+
+	ownFamilies := i.FamiliesAsChild(doc)
+	isOwn := make(map[*Family]bool, len(ownFamilies))
+	for _, fam := range ownFamilies {
+		isOwn[fam] = true
+		addChildren(fam, false)
+	}
+	for _, parent := range i.Parents(doc) {
+		for _, fam := range parent.FamiliesAsSpouse(doc) {
+			if !isOwn[fam] {
+				addChildren(fam, true)
+			}
+		}
+	}
+	return siblings
 }
