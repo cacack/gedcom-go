@@ -103,3 +103,22 @@ func TestInlineNoteDetailsOutOfStep(t *testing.T) {
 		t.Errorf("tags = %+v, want only the NOTE line", tags)
 	}
 }
+
+// TestNamePieceEmptyFirstWithRepeats: an empty first value followed by
+// repeats is written as an empty line, so a re-decode keeps the split
+// between the first value and the repeats instead of promoting the first
+// repeat.
+func TestNamePieceEmptyFirstWithRepeats(t *testing.T) {
+	tags := appendNamePiece(nil, "GIVN", "", []string{"Alexander"}, 2, nil)
+	var got []string
+	for _, tag := range tags {
+		got = append(got, fmt.Sprintf("%d %s %q", tag.Level, tag.Tag, tag.Value))
+	}
+	want := []string{`2 GIVN ""`, `2 GIVN "Alexander"`}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("tags = %v, want %v", got, want)
+	}
+	if tags := appendNamePiece(nil, "GIVN", "", nil, 2, nil); len(tags) != 0 {
+		t.Errorf("empty piece without repeats wrote %+v, want nothing", tags)
+	}
+}

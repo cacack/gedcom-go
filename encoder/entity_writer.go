@@ -875,9 +875,11 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 
 // appendNamePiece appends a name piece's line at level when first is
 // non-empty, then one line for each repeat in more (GEDCOM 7.0 allows a
-// name piece to repeat).
+// name piece to repeat). An empty first value is still written when repeats
+// follow, so the decoder reads them back as repeats rather than promoting
+// the first repeat into the first value.
 func appendNamePiece(tags []*gedcom.Tag, tag, first string, more []string, level int, opts *EncodeOptions) []*gedcom.Tag {
-	if first != "" {
+	if first != "" || len(more) > 0 {
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: tag, Value: opts.text(first)})
 	}
 	for _, v := range more {
