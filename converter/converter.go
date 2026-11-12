@@ -261,6 +261,7 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		func() { synthesizePedigrees(doc, report, gedcom.Version70) },
 		func() { marriedNamesToV7(doc, report) },
 		func() { variations.report(doc, report, gedcom.Version70) },
+		// No dropForeignStructures: structures_gen.go has no 5.5 graph yet (#794).
 		func() { opts.reportPreservedTags(doc, report) },
 		func() {
 			report.AddTransformation(gedcom.Transformation{
@@ -355,6 +356,8 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		func() { transformUIDTags(doc, report, gedcom.Version55) },
 		func() { dropV7OnlyTags(doc, report, gedcom.Version55) },
 		func() { downgradeSharedNotes(doc, report, gedcom.Version55) },
+		// No dropForeignStructures: structures_gen.go has no 5.5 graph yet, so only
+		// dropV7OnlyTags's list is removed (#794).
 		func() { opts.reportPreservedTags(doc, report) },
 		func() {
 			report.AddTransformation(gedcom.Transformation{

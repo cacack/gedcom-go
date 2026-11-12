@@ -132,6 +132,50 @@ func TestMaximal70To551HasNoForeignStructures(t *testing.T) {
 	}
 }
 
+// TestSharedNoteForeignStructuresDropped70To551: a shared note is renamed
+// NOTE before the drop pass, and its 7.0-only substructures are still
+// dropped and reported, not written into the 5.5.1 output.
+func TestSharedNoteForeignStructuresDropped70To551(t *testing.T) {
+	const in = `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @S1@ SOUR
+1 TITL Source
+0 @N1@ SNOTE Shared text
+1 SOUR @S1@
+2 DATA
+3 DATE 1 JAN 2000
+4 TIME 10:00
+2 NOTE Inner
+3 LANG en
+0 TRLR
+`
+	converted, report, out := convertText(t, in, gedcom.Version551)
+	note := converted.GetRecord("@N1@")
+	if note == nil || note.Type != gedcom.RecordTypeNote {
+		t.Fatalf("@N1@ = %+v, want a NOTE record", note)
+	}
+	if undefined := undefinedStructures(specStructures551, "NOTE", note.Tags, nil); len(undefined) > 0 {
+		t.Errorf("NOTE record keeps structures 5.5.1 does not define: %v", undefined)
+	}
+	for _, line := range []string{"4 TIME 10:00", "3 LANG en"} {
+		if strings.Contains(out, line) {
+			t.Errorf("output keeps %q:\n%s", line, out)
+		}
+	}
+	for _, path := range []string{
+		"Note @N1@ > SOUR > DATA > DATE > TIME",
+		"Note @N1@ > SOUR > NOTE > LANG",
+	} {
+		if !hasDropped(report, path) {
+			t.Errorf("report has no Dropped note for %q: %+v", path, report.Dropped)
+		}
+	}
+	if !strings.Contains(out, "3 DATE 1 JAN 2000") || !strings.Contains(out, "2 NOTE Inner") {
+		t.Errorf("output lost structures 5.5.1 defines:\n%s", out)
+	}
+}
+
 func hasDropped(report *gedcom.ConversionReport, path string) bool {
 	for _, n := range report.Dropped {
 		if n.Path == path {

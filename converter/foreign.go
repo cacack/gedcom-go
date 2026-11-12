@@ -55,6 +55,9 @@ var foreign70To551 = &foreignStructures{
 	source:    specStructures70,
 	foreign:   foreignStructures70To551,
 	foreignIn: foreignStructuresIn70To551,
+	// downgradeSharedNotes has renamed every SNOTE record NOTE by then; a 7.0
+	// source has no NOTE records of its own.
+	aliases: map[gedcom.RecordType]string{gedcom.RecordTypeNote: "SNOTE"},
 	// ASSO.ROLE and FORM.MEDI become RELA and TYPE (the enumeration
 	// translation, #704).
 	mappedElsewhere: map[string]bool{"ROLE": true, "MEDI": true},
