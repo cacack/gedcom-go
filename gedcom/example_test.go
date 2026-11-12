@@ -3,9 +3,12 @@ package gedcom_test
 import (
 	"errors"
 	"fmt"
+	"log"
+	"os"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
+	"github.com/cacack/gedcom-go/v3/encoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
@@ -504,4 +507,28 @@ func ExampleParseLatitude_errors() {
 	// " ": no coordinate
 	// "E42.3601": malformed: latitude must use N/S direction, got "E42.3601"
 	// "N42.3601": ok
+}
+
+// ExampleNewDocument builds a minimal GEDCOM 7.0 document from typed structs.
+// AddRecord keeps XRefMap in step with Records, and a record with no Tags is
+// encoded from its Entity.
+func ExampleNewDocument() {
+	doc := gedcom.NewDocument(gedcom.Version70)
+	err := doc.AddRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual,
+		Entity: &gedcom.Individual{XRef: "@I1@", Sex: "F",
+			Names: []*gedcom.PersonalName{{Full: "Ada /Lovelace/"}}}})
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := encoder.Encode(os.Stdout, doc); err != nil {
+		log.Fatal(err)
+	}
+	// Output:
+	// 0 HEAD
+	// 1 GEDC
+	// 2 VERS 7.0
+	// 0 @I1@ INDI
+	// 1 NAME Ada /Lovelace/
+	// 1 SEX F
+	// 0 TRLR
 }

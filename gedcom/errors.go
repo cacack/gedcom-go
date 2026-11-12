@@ -19,3 +19,13 @@ var ErrEmptyCoordinate = errors.New("empty coordinate")
 // malformed, uses the wrong direction, is out of range, or (for AsDecimal) is
 // missing one component of the pair.
 var ErrInvalidCoordinate = errors.New("invalid coordinate")
+
+// ErrNilDocument is returned by Document.AddRecord called on a nil *Document.
+var ErrNilDocument = errors.New("nil document")
+
+// ErrNilRecord is returned by Document.AddRecord for a nil *Record.
+var ErrNilRecord = errors.New("nil record")
+
+// ErrDuplicateXRef is wrapped by the Document.AddRecord error for a record
+// whose XRef the document already indexes. The error's message names the XRef.
+var ErrDuplicateXRef = errors.New("duplicate xref")

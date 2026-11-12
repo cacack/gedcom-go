@@ -400,6 +400,28 @@ The charset declaration is `HEAD.CHAR` at level 1 only. Charset detection, `Head
 
 ## Document Operations
 
+### Building Documents
+
+`gedcom.NewDocument(version)` returns an empty document ready to fill: a
+header with `Version` set, and `DeclaredVersion` too when the version is one
+the library recognizes (so the document uses that version's pointer grammar),
+an empty `Records` slice, an empty `XRefMap` and a `Trailer`.
+
+```go
+doc := gedcom.NewDocument(gedcom.Version70)
+err := doc.AddRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual,
+    Entity: &gedcom.Individual{XRef: "@I1@", Names: []*gedcom.PersonalName{{Full: "Ada /Lovelace/"}}}})
+```
+
+- `Document.AddRecord` appends a record and indexes it in `XRefMap`, so
+  `GetIndividual`, `Parents` and the other lookups find it
+- A record whose XRef is already indexed is rejected with an error wrapping
+  `gedcom.ErrDuplicateXRef`, leaving the document unchanged; a nil record or
+  document returns `gedcom.ErrNilRecord` / `gedcom.ErrNilDocument`
+- A record with an empty XRef is appended but not indexed
+- `Document.ReindexXRefs` rebuilds `XRefMap` from `Records` after direct
+  edits; the first record wins when two share an XRef, as in the decoder
+
 ### Graph Traversal
 
 Transitive walks across family links, returning XRef sets that compose into other operations (e.g., `Subset`):
