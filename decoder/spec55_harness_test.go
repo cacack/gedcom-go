@@ -10,6 +10,7 @@ package decoder
 // report makes in prose, so degradation fails loudly instead.
 
 import (
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -281,6 +282,69 @@ func TestSpec55DefectsAreRecorded(t *testing.T) {
 					"line as printed, what is wrong, and what was read instead",
 					edition.version, d)
 			}
+		}
+	}
+}
+
+// TestSpec55EnumerationsAreTranscribed checks the value sets the primitive
+// definitions print, in the shapes that once defeated the transcription: lists
+// that wrap, literals carrying "-" or "/", alternatives that are placeholders
+// rather than literals, a table split across a page, values defined only in
+// prose, and a list the prose beneath it contradicts. A definition that only
+// looks like a list -- a syntax, as DATE and AGE_AT_EVENT are -- must read as
+// none.
+func TestSpec55EnumerationsAreTranscribed(t *testing.T) {
+	tests := []struct {
+		version      string
+		primitive    string
+		contains     []string
+		placeholders string
+	}{
+		{"5.5.1", "SEX_VALUE", []string{"M", "F", "U"}, ""},
+		{"5.5", "SEX_VALUE", []string{"M", "F"}, ""},
+		{"5.5.1", "SOURCE_MEDIA_TYPE", []string{"audio", "tombstone", "video"}, ""},
+		{"5.5.1", "LDS_BAPTISM_DATE_STATUS", []string{"PRE-1970", "UNCLEARED"}, ""},
+		{"5.5.1", "LDS_ENDOWMENT_DATE_STATUS", []string{"STILLBORN", "INFANT"}, ""},
+		{"5.5.1", "LDS_SPOUSE_SEALING_DATE_STATUS", []string{"DNS/CAN"}, ""},
+		{"5.5.1", "CHARACTER_SET", []string{"ANSEL", "UTF-8"}, ""},
+		{"5.5.1", "GEDCOM_FORM", []string{"LINEAGE-LINKED"}, ""},
+		{"5.5.1", "LANGUAGE_ID", []string{"Afrikaans", "Wendic", "Amharic", "Yiddish"}, ""},
+		{"5.5.1", "MONTH_HEBR", []string{"TSH", "ELL"}, ""},
+		{"5.5.1", "DATE_CALENDAR_ESCAPE", []string{"@#DFRENCH R@", "@#DUNKNOWN@"}, ""},
+		{"5.5.1", "NAME_TYPE", []string{"aka", "married"}, "<user defined>"},
+		{"5.5.1", "ROLE_IN_EVENT", []string{"CHIL", "SPOU"}, "(<ROLE_DESCRIPTOR>)"},
+		{"5.5", "ROLE_IN_EVENT", []string{"CHIL", "SPOU"}, "(<ROLE_DESCRIPTOR>)"},
+		{"5.5.1", "LANGUAGE_OF_TEXT", nil, "<LANGUAGE_ID>"},
+		{"5.5.1", "DATE", nil, ""},
+		{"5.5.1", "AGE_AT_EVENT", nil, ""},
+	}
+
+	rows := map[string]map[string][]string{}
+	for _, edition := range spec55Editions {
+		rows[edition.version] = map[string][]string{}
+		for _, row := range specTSV(t, edition.dir, "primitives.tsv",
+			"primitive", "size", "values", "placeholders") {
+			rows[edition.version][row[0]] = row
+		}
+	}
+
+	for _, tt := range tests {
+		row, ok := rows[tt.version][tt.primitive]
+		if !ok {
+			t.Errorf("%s: %s is not transcribed", tt.version, tt.primitive)
+			continue
+		}
+		values := strings.Split(row[2], "|")
+		if tt.contains == nil && row[2] != "" {
+			t.Errorf("%s: %s reads values %q from what is a syntax", tt.version, tt.primitive, row[2])
+		}
+		for _, want := range tt.contains {
+			if !slices.Contains(values, want) {
+				t.Errorf("%s: %s values %q lack %q", tt.version, tt.primitive, row[2], want)
+			}
+		}
+		if row[3] != tt.placeholders {
+			t.Errorf("%s: %s placeholders = %q, want %q", tt.version, tt.primitive, row[3], tt.placeholders)
 		}
 	}
 }

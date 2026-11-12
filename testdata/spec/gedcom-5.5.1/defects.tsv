@@ -8,16 +8,20 @@ HEADER	+3 COPR <COPYRIGHT_SOURCE_DATA> {0:1) p.44	the cardinality closes with ")
 HEADER	+3 DATE <PUBLICATION_DATE> {0:1) p.59	the cardinality closes with ")", not "}"	read as {0:1}
 INDIVIDUAL_EVENT_DETAIL	n <<EVENT_DETAIL >> {1:1} p.32	the substructure name has a stray space before ">>"	read as <<EVENT_DETAIL>>
 INDIVIDUAL_RECORD	n @XREF:INDI@ INDI {1:1}	the cross-reference is written without its angle brackets	read as @<XREF:INDI>@
+LDS_ENDOWMENT_DATE_STATUS	LDS_ENDOWMENT_DATE_STATUS: = {Size=5:10}	the list omits INFANT, which the definitions beneath it define	read with INFANT added
 LINEAGE_LINKED_GEDCOM	0 <<HEADER >> {1:1} p.23	the substructure name has a stray space before ">>"	read as <<HEADER>>
 LINEAGE_LINKED_GEDCOM	0 <<RECORD >> {1:M} p.24	the substructure name has a stray space before ">>"	read as <<RECORD>>
 MONTH	MONTH: = {Size=3}	the size annotation states one width, not a range	read as a maximum of 3 with no minimum
 MONTH_FREN	MONTH_FREN: = {Size=4}	the size annotation states one width, not a range	read as a maximum of 4 with no minimum
 MONTH_HEBR	MONTH_HEBR: = {Size=3}	the size annotation states one width, not a range	read as a maximum of 3 with no minimum
+MULTIMEDIA_LINK	+1 FILE <MULTIMEDIA_FILE_REFN> {1:M} p.54	the value type MULTIMEDIA_FILE_REFN is not defined	left as printed
 MULTIMEDIA_LINK	n OBJE	the line states no cardinality	read as the cardinality of the splice that reaches it, which is the only bound stated for it anywhere
 MULTIMEDIA_LINK	n OBJE @<XREF:OBJE> @ {1:1} p.26	the cross-reference payload is spelled irregularly	read as @<XREF:OBJE>@
 MULTIMEDIA_LINK	|	a branch separator appears outside any "[ ... ]"	read as an alternation spanning the whole block
+MULTIMEDIA_RECORD	+1 FILE <MULTIMEDIA_FILE_REFN> {1:M} p.54	the value type MULTIMEDIA_FILE_REFN is not defined	left as printed
 MULTIMEDIA_RECORD	n @XREF:OBJE@ OBJE {1:1}	the cross-reference is written without its angle brackets	read as @<XREF:OBJE>@
 PERSONAL_NAME_PIECES	n SPFX <NAME_PIECE_SURNAME_PREFIX {0:1} p.56	the value type is missing an angle bracket	read as the value type named in "<NAME_PIECE_SURNAME_PREFIX"
+SEX_VALUE	SEX_VALUE:= {Size=1:7}	the values are defined in prose but not listed	read as the values M, F, U
 SOURCE_REPOSITORY_CITATION	n REPO [ @XREF:REPO@ | <NULL>] {1:1} p.27	the cross-reference payload is spelled irregularly	read as @<XREF:REPO>@
 SUBMISSION_RECORD	+1 SUBM @XREF:SUBM@ {0:1} p.28	the cross-reference payload is spelled irregularly	read as @<XREF:SUBM>@
 SUBMISSION_RECORD	n @XREF:SUBN@ SUBN {1:1}	the cross-reference is written without its angle brackets	read as @<XREF:SUBN>@

@@ -24,7 +24,7 @@ What comes out, per version, under testdata/spec/:
     substructures.tsv   superstructure, tag, structure
     cardinalities.tsv   superstructure, structure, cardinality
     payloads.tsv        structure, payload
-    primitives.tsv      primitive, size, values
+    primitives.tsv      primitive, size, values, placeholders
     defects.tsv         block, line, problem, reading
     SOURCE              provenance of the PDF this was read from
 
@@ -178,8 +178,8 @@ def transcribe(pdf, edition):
               [(s, g.structures[s].payload) for s in used])
 
     write_tsv(os.path.join(directory, 'primitives.tsv'),
-              ('primitive', 'size', 'values'),
-              [(name, p['size'], '|'.join(p['values']))
+              ('primitive', 'size', 'values', 'placeholders'),
+              [(name, p['size'], '|'.join(p['values']), '|'.join(p['placeholders']))
                for name, p in sorted(g.primitives.items())])
 
     write_tsv(os.path.join(directory, 'defects.tsv'),

@@ -41,7 +41,7 @@ Beyond `substructures.tsv` and `payloads.tsv`, which every version has:
 | File | Contents |
 |------|----------|
 | `cardinalities.tsv` | (superstructure, structure, cardinality) triples |
-| `primitives.tsv` | (value type, field size, literal values) triples |
+| `primitives.tsv` | Value type, field size, the literal values it enumerates, and the alternatives it prints as placeholders (`<user defined>`, `<LANGUAGE_ID>`) |
 | `defects.tsv` | Places the printed grammar does not say what it means, with the reading taken |
 
 ## How the transcription was checked
@@ -107,6 +107,36 @@ those three are the same disagreement seen from both sides:
 | Here: `TITL` under `MULTIMEDIA_LINK`'s second `OBJE`. Gedcom.pm: under its `FILE` | 5.5.1 prints `TITL` at `+1`, under `OBJE`. Its `MULTIMEDIA_RECORD` puts the equivalent under `FILE`, so the specification is internally inconsistent; Gedcom.pm harmonizes the two and this does not |
 | Here: `MEDI` under that `FORM`. Gedcom.pm: `TYPE` | The same inconsistency: 5.5.1 writes `MEDI` in `MULTIMEDIA_LINK` and `TYPE` in `MULTIMEDIA_RECORD` for the same thing |
 | Gedcom.pm: `DATE` under `LDS_INDIVIDUAL_ORDINANCE.CONL.STAT` | A naming artifact, not a disagreement about the grammar. `BAPL` and `CONL` are one alternation line here, so their shared substructures are named for the first; Gedcom.pm writes the branches separately and names them twice. Both allow the same lines |
+
+### Against oxidged's 5.5.1 errata
+
+[oxidged](https://github.com/trois-six/oxidged) (Rust, MIT) builds its 5.5.1
+tables from this transcription and corrects it with
+`tools/spec-tables/551-errata.tsv`, read here at commit `97f0629`: 23 rows,
+each checked against the PDF. Most found one real gap — the transcription read
+a primitive's values only from a list on one line made of plain words, so a list
+that wraps, a value with `-` or `/` in it, or a `<user defined>` alternative
+left the set empty. `grammar.py` now reads those, and the rows it fixes are
+corrected at the source rather than patched into the TSVs.
+
+| Row | Verdict | Why |
+|-----|---------|-----|
+| `SEX_VALUE` M, F, U | Accepted | p.61 defines the three values in prose with no list above them. Read from the definitions and recorded as a defect (5.5 defines M and F the same way) |
+| `SOURCE_MEDIA_TYPE` | Accepted | p.62's list wraps across two lines |
+| `LDS_BAPTISM_DATE_STATUS`, `LDS_CHILD_SEALING_DATE_STATUS`, `LDS_SPOUSE_SEALING_DATE_STATUS` | Accepted | pp.51–52: lists that wrap, with `PRE-1970` and `DNS/CAN` as values |
+| `LDS_ENDOWMENT_DATE_STATUS` | Accepted | p.52's list omits `INFANT`, which the definitions beneath it define. Read with it added, and recorded as a defect |
+| `NAME_TYPE`, `PHONETIC_TYPE`, `ROMANIZED_TYPE`, `ROLE_IN_EVENT` (open) | Accepted | pp.56–61. The literals go to `values`; `<user defined>` and `(<ROLE_DESCRIPTOR>)` go to `placeholders`, so the set reads as open |
+| `CHARACTER_SET` | Accepted | p.44: `UTF-8` was not read as a value |
+| `GEDCOM_FORM` | Accepted | p.50: `LINEAGE-LINKED` was not read as a value |
+| `LANGUAGE_ID` | Accepted | pp.50–51: the table opens with a sentence and is printed as two lists, either side of a page break. Both are read |
+| `LANGUAGE_OF_TEXT`, `LANGUAGE_PREFERENCE` → `LANGUAGE_ID` | Accepted | p.51 defines each as `[ <LANGUAGE_ID> ]`, now in `placeholders` |
+| `MULTIMEDIA_FILE_REFN` → `MULTIMEDIA_FILE_REFERENCE` | Accepted as a defect | pp.26 and 37: both `FILE` lines name a value type no definition has; p.54, where they point, defines `MULTIMEDIA_FILE_REFERENCE`. Recorded, and the payload left as printed: which primitive was meant is a judgement, not a transcription. The harness already gives both names the same value |
+| Calendars `GREGORIAN`, `JULIAN`, `HEBREW`, `FRENCH R` | Accepted in part | The escapes (p.45's `DATE_CALENDAR_ESCAPE`) and the three month lists (`MONTH`, `MONTH_HEBR`, `MONTH_FREN`, pp.52–53) are now read. Which months go with which calendar, and the `B.C.` epoch, are date *syntax* (`DATE_GREG` and the rest), out of scope here: the transcription records value sets, and `gedcom.Date` parses the syntax |
+| Calendars `ROMAN`, `UNKNOWN` | Accepted | Both are in `DATE_CALENDAR_ESCAPE`'s list, p.45. That ROMAN is "for future definition" is prose, out of scope |
+| `INDIVIDUAL_EVENT_STRUCTURE.EVEN` payload | Rejected | p.35 prints `n EVEN {1:1}` with no payload, and the example beneath it writes `1 EVEN` bare, typed only by `2 TYPE`. The transcription is right about what the grammar says; reading a payload into it would correct the specification, not the transcription |
+
+The Appendix B and Gedcom.pm results above do not change: the structure set is
+untouched, and only `primitives.tsv` and `defects.tsv` move.
 
 ## Updating
 

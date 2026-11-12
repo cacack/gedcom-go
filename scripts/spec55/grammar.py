@@ -56,10 +56,19 @@ BLOCK = re.compile(r'^([A-Z][A-Z0-9_]*)\s*:\s*=\s*$')
 PRIMITIVE = re.compile(
     r'^([A-Z][A-Z0-9_]*)\s*:\s*=\s*\{\s*(Size|SIZE)\s*=\s*(\d+)\s*(?::\s*(\d+)\s*)?\}\s*$')
 
-# An enumeration of literal values, as some primitives are defined by. Only the
-# single-line form is read; the multi-line ones (AGE_AT_EVENT) describe a syntax
-# rather than a value set, and the harness knows how to build those.
-ENUM = re.compile(r'^\[\s*([A-Za-z0-9_]+(?:\s*\|\s*[A-Za-z0-9_]+)+)\s*\]\s*$')
+# One alternative of a bracketed list in a primitive definition. A literal is a
+# value written as it is used -- "M", "PRE-1970", "DNS/CAN", "@#DFRENCH R@" -- and
+# a placeholder is an angle-bracketed name standing for values the list does not
+# spell out: another primitive ("<LANGUAGE_ID>"), "<user defined>", or the
+# parenthesized "(<ROLE_DESCRIPTOR>)". A list is an enumeration only if every
+# alternative is one or the other; "[ ABT <DATE> | CAL <DATE> ]" and the like
+# describe a syntax rather than a value set, and the harness knows how to build
+# those.
+LITERAL = re.compile(r'^[A-Za-z0-9@#][A-Za-z0-9_@#./ -]*$')
+PLACEHOLDER = re.compile(r'^\(?\s*<[^<>]+>\s*\)?$')
+
+# A value defined in prose beneath a primitive: "M = Male", "INFANT = Died...".
+DEFINITION = re.compile(r'^([A-Z0-9][A-Z0-9/-]*)\s*=\s+\S')
 
 # The level marker opening a grammar line. "n" is the block's own base level,
 # "+k" is k levels below it, and "0" is the absolute level the whole-file
@@ -124,6 +133,8 @@ class Entry:
     # Set on a "<<NAME>>" line instead.
     reference: str = ''
     children: list = field(default_factory=list)
+    # The grammar line as printed, for a defect found after the line is parsed.
+    line: str = ''
 
 
 def multiply(outer, inner, exclusive=False):
@@ -159,7 +170,7 @@ class Grammar:
         self.blocks = {}
         # Structure identity -> the entry that defines it.
         self.structures = {}
-        # Primitive name -> {'size': 'lo:hi', 'values': [...]}.
+        # Primitive name -> {'size': 'lo:hi', 'values': [...], 'placeholders': [...]}.
         self.primitives = {}
         # Blocks whose base-level entries are branches of an alternation, and
         # so are alternatives to each other rather than siblings.
@@ -381,6 +392,7 @@ def parse(lines):
                  'its last branch ends anyway')
 
     _parse_primitives(g, lines[i:])
+    _check_value_types(g)
     return g
 
 
@@ -471,6 +483,7 @@ def _parse_line(g, block, line, stack, counts):
             structure=_identity(block, path, counts),
             payload=payload,
             xref=xref,
+            line=line,
         ))
     for entry in entries:
         g.structures[entry.structure] = entry
@@ -513,6 +526,7 @@ def _normalize_payload(g, block, line, payload):
 
 def _parse_primitives(g, lines):
     """Read the primitive (value type) definitions that follow the grammar."""
+    definitions = []
     name = None
     for line in lines:
         header = PRIMITIVE.match(line)
@@ -525,14 +539,107 @@ def _parse_primitives(g, lines):
                 g.defect(name, line, 'the size annotation states one width, not a range',
                          f'read as a maximum of {header.group(3)} with no minimum')
             low, high = (header.group(3), header.group(4)) if header.group(4) else ('', header.group(3))
-            g.primitives[name] = {'size': f'{low}:{high}', 'values': []}
+            g.primitives[name] = {'size': f'{low}:{high}', 'values': [], 'placeholders': []}
+            definitions.append((name, line, []))
+        elif name is not None:
+            definitions[-1][2].append(line)
+
+    for name, header, body in definitions:
+        _read_values(g, name, header, body)
+
+
+def _read_values(g, name, header, body):
+    """Read the values one primitive's definition enumerates.
+
+    Every bracketed list in the definition is read, not only one directly
+    beneath the header: 5.5.1's LANGUAGE_ID opens with a sentence and prints its
+    table as two lists, either side of a page break. A list may wrap across
+    lines. The definition enumerates values only if every list in it closes,
+    stands alone, and holds nothing but literals and placeholders; otherwise it
+    describes a syntax, and reads none.
+
+    The prose beneath a list then defines each value ("CHILD = Died before..."),
+    and is checked against it, because the two are not always the same set.
+    """
+    lists, syntax, closed = 0, False, False
+    values, placeholders = [], []
+    text, depth = '', 0
+    for line in body:
+        if closed and line.startswith('<'):
+            # DATE: "[ <DATE_CALENDAR_ESCAPE> | <NULL>]" then "<DATE_CALENDAR>"
+            # -- the list is one term of a sequence, not the whole definition.
+            syntax = True
+        closed = False
+        if not depth and not line.startswith('['):
             continue
-        if name is None:
+        text += ' ' + line
+        depth += line.count('[') - line.count(']')
+        if depth > 0:
             continue
-        enum = ENUM.match(line)
-        if enum and not g.primitives[name]['values']:
-            g.primitives[name]['values'] = [v.strip() for v in enum.group(1).split('|')]
-        elif not enum and not line.startswith('['):
-            # Only the enumeration immediately following the header belongs to
-            # it; prose after that describes the values rather than listing more.
-            name = None
+        lists += 1
+        closed = True
+        alternatives = _alternatives(text.strip())
+        text, depth = '', 0
+        if alternatives is None:
+            syntax = True
+            continue
+        for alternative in alternatives:
+            (values if LITERAL.match(alternative) else placeholders).append(alternative)
+    if syntax:
+        # AGE_AT_EVENT's second list reads like literals ("YYy MMm DDDd"), but
+        # its first, "[ < | > | <NULL>]", shows the definition is a syntax.
+        values, placeholders = [], []
+
+    defined = []
+    for line in body:
+        m = DEFINITION.match(line)
+        if m and m.group(1) not in defined:
+            defined.append(m.group(1))
+
+    if values:
+        for value in defined:
+            if value not in values:
+                g.defect(name, ' '.join(header.split()),
+                         f'the list omits {value}, which the definitions beneath it define',
+                         f'read with {value} added')
+                values.append(value)
+    elif not lists and not placeholders and defined:
+        # SEX_VALUE: the values are defined one per line with no list above them.
+        g.defect(name, ' '.join(header.split()),
+                 'the values are defined in prose but not listed',
+                 f'read as the values {", ".join(defined)}')
+        values = defined
+
+    g.primitives[name]['values'] = values
+    g.primitives[name]['placeholders'] = placeholders
+
+
+def _alternatives(text):
+    """Split one closed "[ a | b ]" list into its alternatives, or None if it is
+    not an enumeration."""
+    if not (text.startswith('[') and text.endswith(']')):
+        return None
+    alternatives = []
+    for alternative in text[1:-1].split('|'):
+        alternative = ' '.join(alternative.split())
+        if PLACEHOLDER.match(alternative):
+            # 5.5 prints "(<ROLE_DESCRIPTOR> )"; the space is not part of it.
+            alternative = re.sub(r'\s*([()])\s*', r'\1', alternative)
+        elif not LITERAL.match(alternative):
+            return None
+        alternatives.append(alternative)
+    return alternatives
+
+
+def _check_value_types(g):
+    """Record a payload naming a value type no primitive definition defines.
+
+    The payload is left as printed: which primitive was meant is a judgement,
+    and making it is not this transcription's job.
+    """
+    for structure, entry in sorted(g.structures.items()):
+        for value_type in re.findall(r'<([A-Z][A-Z0-9_]*)>', entry.payload):
+            if value_type not in g.primitives:
+                g.defect(structure.split('.', 1)[0], entry.line,
+                         f'the value type {value_type} is not defined',
+                         'left as printed')

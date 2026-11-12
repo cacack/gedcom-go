@@ -124,7 +124,7 @@ func loadSpec55(t *testing.T, edition spec55Edition) *spec55Spec {
 		"superstructure", "structure", "cardinality") {
 		s.cardinalities[[2]string{row[0], row[1]}] = row[2]
 	}
-	for _, row := range specTSV(t, edition.dir, "primitives.tsv", "primitive", "size", "values") {
+	for _, row := range specTSV(t, edition.dir, "primitives.tsv", "primitive", "size", "values", "placeholders") {
 		if row[2] != "" {
 			values := strings.Split(row[2], "|")
 			s.enumValues["<"+row[0]+">"] = values[len(values)-1]
