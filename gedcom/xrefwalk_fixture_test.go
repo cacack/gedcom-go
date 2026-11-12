@@ -28,6 +28,7 @@ func carrierTypeNames() map[string]bool {
 	return map[string]bool{
 		"*gedcom.ChangeDate":             true,
 		"*gedcom.PlaceDetail":            true,
+		"*gedcom.SourceData":             true,
 		"[]*gedcom.SourceRepositoryLink": true,
 		"[]*gedcom.Association":          true,
 		"[]*gedcom.Attribute":            true,

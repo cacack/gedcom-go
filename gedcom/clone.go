@@ -263,16 +263,20 @@ func (s *Source) Clone() *Source {
 	}
 
 	copied := &Source{
-		XRef:        s.XRef,
-		Title:       s.Title,
-		Author:      s.Author,
-		Publication: s.Publication,
-		Text:        s.Text,
-		NoteXRefs:   cloneStringSlice(s.NoteXRefs),
-		InlineNotes: cloneStringSlice(s.InlineNotes),
-		RefNumbers:  cloneRefNumbers(s.RefNumbers),
-		UIDs:        cloneStringSlice(s.UIDs),
-		ExternalIDs: cloneExternalIDs(s.ExternalIDs),
+		XRef:         s.XRef,
+		Title:        s.Title,
+		Author:       s.Author,
+		Publication:  s.Publication,
+		Abbreviation: s.Abbreviation,
+		Text:         s.Text,
+		TextMIME:     s.TextMIME,
+		TextLanguage: s.TextLanguage,
+		Data:         cloneSourceData(s.Data),
+		NoteXRefs:    cloneStringSlice(s.NoteXRefs),
+		InlineNotes:  cloneStringSlice(s.InlineNotes),
+		RefNumbers:   cloneRefNumbers(s.RefNumbers),
+		UIDs:         cloneStringSlice(s.UIDs),
+		ExternalIDs:  cloneExternalIDs(s.ExternalIDs),
 	}
 
 	if s.RepositoryLinks != nil {
@@ -315,6 +319,37 @@ func (r *Repository) Clone() *Repository {
 		ExternalIDs: cloneExternalIDs(r.ExternalIDs),
 		Tags:        CloneTags(r.Tags),
 	}
+}
+
+// cloneSourceData returns a deep copy of a source record's DATA structure.
+// Returns nil if d is nil.
+func cloneSourceData(d *SourceData) *SourceData {
+	if d == nil {
+		return nil
+	}
+
+	copied := &SourceData{
+		Agency:      d.Agency,
+		NoteXRefs:   cloneStringSlice(d.NoteXRefs),
+		InlineNotes: cloneStringSlice(d.InlineNotes),
+	}
+
+	if d.Events != nil {
+		copied.Events = make([]*SourceDataEvent, len(d.Events))
+		for k, ev := range d.Events {
+			if ev == nil {
+				continue
+			}
+			copied.Events[k] = &SourceDataEvent{
+				Types:       ev.Types,
+				Date:        ev.Date,
+				DatePhrase:  ev.DatePhrase,
+				PlaceDetail: clonePlaceDetail(ev.PlaceDetail),
+			}
+		}
+	}
+
+	return copied
 }
 
 // cloneSourceRepositoryLink returns a deep copy of a SourceRepositoryLink.
@@ -832,6 +867,18 @@ func cloneSourceCitation(sc *SourceCitation) *SourceCitation {
 				text := *t
 				copied.Data.Text[k] = &text
 			}
+		}
+	}
+
+	if sc.Event != nil {
+		event := *sc.Event
+		copied.Event = &event
+	}
+
+	if sc.Media != nil {
+		copied.Media = make([]*MediaLink, len(sc.Media))
+		for k, media := range sc.Media {
+			copied.Media[k] = cloneMediaLink(media)
 		}
 	}
 

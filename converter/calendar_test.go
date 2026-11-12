@@ -190,6 +190,35 @@ func TestConvertDateCalendarFamilyEntity(t *testing.T) {
 	})
 }
 
+// TestConvertDateCalendarSourceDataEntity covers the typed DATA.EVEN.DATE of a
+// source record built in code, which the encoder writes from the entity
+// (issue #737).
+func TestConvertDateCalendarSourceDataEntity(t *testing.T) {
+	src := &gedcom.Source{
+		XRef: "@S1@",
+		Data: &gedcom.SourceData{Events: []*gedcom.SourceDataEvent{
+			nil,
+			{Types: "BIRT", Date: "FROM @#DJULIAN@ 1700 TO @#DJULIAN@ 1710"},
+		}},
+	}
+	record := &gedcom.Record{XRef: "@S1@", Type: gedcom.RecordTypeSource, Entity: src}
+	doc := &gedcom.Document{
+		Header:  &gedcom.Header{Version: gedcom.Version551},
+		Records: []*gedcom.Record{record},
+		XRefMap: map[string]*gedcom.Record{"@S1@": record},
+	}
+
+	got, report, err := converter.Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	out, _ := got.GetRecord("@S1@").GetSource()
+	if want := "FROM JULIAN 1700 TO JULIAN 1710"; out.Data.Events[1].Date != want {
+		t.Errorf("Data.Events[1].Date = %q, want %q", out.Data.Events[1].Date, want)
+	}
+	assertNotePaths(t, report.Normalized, []string{"Source @S1@ > DATA > EVEN > DATE"})
+}
+
 // TestConvertDateCalendarCitationEntity covers the typed citation DATA.DATE
 // values of a document built in code, which the encoder writes from the entity.
 func TestConvertDateCalendarCitationEntity(t *testing.T) {

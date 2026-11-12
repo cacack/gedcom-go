@@ -370,9 +370,17 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 
 	var tags []*gedcom.Tag
 
+	// Data (level 1) - DATA, with the events recorded, agency and notes
+	tags = append(tags, sourceDataToTags(src.Data, opts)...)
+
 	// Title (level 1) - TITL
 	if src.Title != "" {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "TITL", Value: opts.text(src.Title)})
+	}
+
+	// Abbreviation (level 1) - ABBR
+	if src.Abbreviation != "" {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "ABBR", Value: opts.text(src.Abbreviation)})
 	}
 
 	// Author (level 1) - AUTH
@@ -388,6 +396,7 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	// Text (level 1) - TEXT (with CONT/CONC for multiline/long)
 	if src.Text != "" {
 		tags = append(tags, textToTags(src.Text, 1, "TEXT", opts)...)
+		tags = appendTextQualifiers(tags, src.TextMIME, src.TextLanguage, 2, opts)
 	}
 
 	// Repository links (level 1) - REPO, one per link
@@ -422,6 +431,48 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	// External IDs (level 1) - EXID (GEDCOM 7.0)
 	tags = append(tags, externalIDsToTags(src.ExternalIDs, 1, opts)...)
 
+	return tags
+}
+
+// sourceDataToTags converts a source record's DATA structure to GEDCOM tags at
+// level 1: DATA, each EVEN with its DATE (and PHRASE) and PLAC, AGNC, and
+// notes.
+func sourceDataToTags(data *gedcom.SourceData, opts *EncodeOptions) []*gedcom.Tag {
+	if data == nil {
+		return nil
+	}
+
+	tags := []*gedcom.Tag{{Level: 1, Tag: "DATA"}}
+	for _, event := range data.Events {
+		if event == nil {
+			continue
+		}
+		tags = append(tags, &gedcom.Tag{Level: 2, Tag: "EVEN", Value: opts.text(event.Types)})
+		if event.Date != "" {
+			tags = append(tags, &gedcom.Tag{Level: 3, Tag: "DATE", Value: opts.text(event.Date)})
+			tags = appendPhrase(tags, event.DatePhrase, 4, opts)
+		}
+		if event.PlaceDetail != nil {
+			tags = append(tags, placeToTags(event.PlaceDetail, 3, opts)...)
+		}
+	}
+	if data.Agency != "" {
+		tags = append(tags, &gedcom.Tag{Level: 2, Tag: "AGNC", Value: opts.text(data.Agency)})
+	}
+	tags = append(tags, notesToTags(data.NoteXRefs, data.InlineNotes, 2, opts)...)
+
+	return tags
+}
+
+// appendTextQualifiers appends the GEDCOM 7.0 MIME and LANG qualifiers of a
+// TEXT line at level, each only when set.
+func appendTextQualifiers(tags []*gedcom.Tag, mime, lang string, level int, opts *EncodeOptions) []*gedcom.Tag {
+	if mime != "" {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "MIME", Value: opts.text(mime)})
+	}
+	if lang != "" {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "LANG", Value: opts.text(lang)})
+	}
 	return tags
 }
 
@@ -1068,6 +1119,21 @@ func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOp
 		tags = append(tags, sourceCitationDataToTags(cite.Data, level+1, opts)...)
 	}
 
+	// Event cited from - EVEN, with its PHRASE and ROLE (and ROLE.PHRASE)
+	if event := cite.Event; event != nil {
+		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "EVEN", Value: opts.text(event.Type)})
+		tags = appendPhrase(tags, event.Phrase, level+2, opts)
+		if event.Role != "" {
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "ROLE", Value: opts.text(event.Role)})
+			tags = appendPhrase(tags, event.RolePhrase, level+3, opts)
+		}
+	}
+
+	// Media links - OBJE
+	for _, media := range cite.Media {
+		tags = append(tags, mediaLinkToTags(media, level+1, opts)...)
+	}
+
 	// Notes - NOTE (with CONT/CONC for multiline/long)
 	tags = append(tags, notesToTags(cite.NoteXRefs, cite.InlineNotes, level+1, opts)...)
 
@@ -1103,12 +1169,7 @@ func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int, opts *
 			continue
 		}
 		tags = append(tags, textToTags(text.Value, level+1, "TEXT", opts)...)
-		if text.MIME != "" {
-			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "MIME", Value: opts.text(text.MIME)})
-		}
-		if text.Language != "" {
-			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "LANG", Value: opts.text(text.Language)})
-		}
+		tags = appendTextQualifiers(tags, text.MIME, text.Language, level+2, opts)
 	}
 
 	return tags

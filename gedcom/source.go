@@ -18,8 +18,26 @@ type Source struct {
 	// Publication is publication information.
 	Publication string
 
+	// Abbreviation is a short title used for sorting, filing and retrieving
+	// the source (ABBR tag).
+	Abbreviation string
+
 	// Text is the actual text from the source.
 	Text string
+
+	// TextMIME is the media type of Text (TEXT.MIME, GEDCOM 7.0), e.g.
+	// "text/plain" or "text/html". Empty when absent. Written only beneath
+	// a non-empty Text.
+	TextMIME string
+
+	// TextLanguage is the BCP 47 language tag of Text (TEXT.LANG, GEDCOM
+	// 7.0). Empty when absent. Written only beneath a non-empty Text.
+	TextLanguage string
+
+	// Data describes what the source records (DATA tag): the events it
+	// covers, the agency responsible for it, and notes about it. nil when the
+	// record has no DATA substructure.
+	Data *SourceData
 
 	// RepositoryLinks are the source's repository links, one per REPO
 	// substructure, in source order. Each carries the repository pointer
@@ -70,6 +88,65 @@ type Source struct {
 // do not resolve are skipped. Returns nil when there are no notes.
 func (s *Source) AllNotes(doc *Document) []string {
 	return allNotes(doc, s.InlineNotes, s.NoteXRefs)
+}
+
+// SourceData is the DATA substructure of a source record: the events the
+// source records, the agency responsible for the original data, and notes
+// about the data. It has the same shape in GEDCOM 5.5, 5.5.1 and 7.0 (7.0 adds
+// SNOTE, which lands in NoteXRefs like a NOTE pointer).
+type SourceData struct {
+	// Events are the kinds of events the source records, one per DATA.EVEN
+	// substructure, in source order.
+	Events []*SourceDataEvent
+
+	// Agency is the person, agency or entity responsible for the original
+	// data (DATA.AGNC).
+	Agency string
+
+	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
+	NoteXRefs []string
+
+	// InlineNotes are note text values written directly under DATA.
+	InlineNotes []string
+}
+
+// SourceDataEvent is one DATA.EVEN substructure of a source record: a set of
+// event types the source records, with the period and place it covers.
+type SourceDataEvent struct {
+	// Types is the EVEN payload as written: a comma-separated list of event
+	// tags such as "BIRT, DEAT, MARR".
+	Types string
+
+	// Date is the period the recorded events cover (DATE, a date period such
+	// as "FROM 1820 TO 1825"). Empty when absent.
+	Date string
+
+	// DatePhrase is the PHRASE under DATE (GEDCOM 7.0). Written only beneath
+	// a Date.
+	DatePhrase string
+
+	// PlaceDetail is the jurisdiction the recorded events cover (PLAC). nil
+	// when absent.
+	PlaceDetail *PlaceDetail
+}
+
+// SourceCitationEvent is the EVEN substructure of a source citation: the type
+// of event the cited source records, and the role the citing record's subject
+// played in it.
+type SourceCitationEvent struct {
+	// Type is the EVEN payload: the event type cited from, e.g. "BIRT".
+	Type string
+
+	// Phrase is the PHRASE under EVEN (GEDCOM 7.0).
+	Phrase string
+
+	// Role is the subject's role in the event (ROLE), e.g. "CHIL" or
+	// "WITN". Empty when absent.
+	Role string
+
+	// RolePhrase is the PHRASE under ROLE (GEDCOM 7.0), typically describing
+	// a ROLE OTHER. Written only beneath a Role.
+	RolePhrase string
 }
 
 // SourceCitationData represents extracted text and date from a source citation.
@@ -125,6 +202,13 @@ type SourceCitation struct {
 
 	// Data contains optional extracted text and date from the source
 	Data *SourceCitationData
+
+	// Event is the event the cited source records and the subject's role in
+	// it (EVEN, with ROLE). nil when the citation has no EVEN.
+	Event *SourceCitationEvent
+
+	// Media are references to media objects attached to the citation (OBJE).
+	Media []*MediaLink
 
 	// AncestryAPID is the Ancestry Permanent Identifier from the _APID tag.
 	// This is an Ancestry.com vendor extension that links the citation to a

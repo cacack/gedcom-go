@@ -20,6 +20,10 @@ package gedcom
 //   - TIME beneath an LDS status date (LDSOrdinance.StatusTime)
 //   - DATE PHRASE on event, attribute and LDS ordinance dates
 //     (ParsedDate.PhraseSubstructure; a 5.5.1 "(text)" date phrase is not one)
+//   - MIME and LANG beneath a source record's TEXT (Source.TextMIME,
+//     Source.TextLanguage)
+//   - DATE PHRASE beneath a source record's DATA.EVEN
+//     (SourceDataEvent.DatePhrase)
 //   - CROP media crop regions
 //   - TRAN media-file translations
 //   - SNOTE references from media objects
@@ -63,7 +67,8 @@ func recordRequiresGEDCOM7(rec *Record) bool {
 		return familyRequiresGEDCOM7(e)
 	case *Source:
 		return len(e.ExternalIDs) > 0 || e.CreationDate != nil ||
-			mediaLinksRequireGEDCOM7(e.Media)
+			mediaLinksRequireGEDCOM7(e.Media) || sourceTextRequiresGEDCOM7(e) ||
+			sourceDataRequiresGEDCOM7(e.Data)
 	case *MediaObject:
 		return mediaObjectRequiresGEDCOM7(e)
 	// Repository, Submitter, and Note have no CreationDate field (only
@@ -258,6 +263,26 @@ func mediaObjectRequiresGEDCOM7(m *MediaObject) bool {
 func mediaLinksRequireGEDCOM7(links []*MediaLink) bool {
 	for _, l := range links {
 		if l != nil && l.Crop != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// sourceTextRequiresGEDCOM7 reports whether a source record's TEXT carries a
+// MIME or LANG qualifier, both GEDCOM 7.0-only substructures.
+func sourceTextRequiresGEDCOM7(s *Source) bool {
+	return s.TextMIME != "" || s.TextLanguage != ""
+}
+
+// sourceDataRequiresGEDCOM7 reports whether any DATA.EVEN.DATE carries a
+// PHRASE, a GEDCOM 7.0-only substructure.
+func sourceDataRequiresGEDCOM7(d *SourceData) bool {
+	if d == nil {
+		return false
+	}
+	for _, ev := range d.Events {
+		if ev != nil && ev.DatePhrase != "" {
 			return true
 		}
 	}

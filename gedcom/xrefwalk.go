@@ -572,6 +572,14 @@ func walkSource(s *Source, cb refCallback) {
 		}
 	}
 	walkMediaLinks(s.Media, cb)
+	if s.Data != nil {
+		walkNotes(s.Data.NoteXRefs, cb)
+		for _, ev := range s.Data.Events {
+			if ev != nil {
+				walkPlaceDetail(ev.PlaceDetail, cb)
+			}
+		}
+	}
 	walkChangeDate(s.ChangeDate, cb)
 	walkChangeDate(s.CreationDate, cb)
 	for _, t := range s.Tags {
@@ -683,6 +691,7 @@ func walkCitations(citations []*SourceCitation, cb refCallback) {
 		}
 		cb(&sc.SourceXRef)
 		walkNotes(sc.NoteXRefs, cb)
+		walkMediaLinks(sc.Media, cb)
 	}
 }
 

@@ -179,11 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 884 | 88.6% | 1186 | 90.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 896 | 89.8% | 1200 | 91.2% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 93 | 9.3% | 108 | 8.2% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 88 | 8.8% | 101 | 7.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 3 | 0.3% | 4 | 0.3% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 18 | 1.8% | 18 | 1.4% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 11 | 1.1% | 11 | 0.8% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -193,13 +193,13 @@ pairs under it reach the typed model.
 
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
-| `FAM` | 209 / 254 | 275 / 324 |
+| `FAM` | 213 / 254 | 281 / 324 |
 | `HEAD` | 18 / 28 | 21 / 33 |
 | `INDI` | 597 / 625 | 815 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 6 / 12 | 11 / 13 |
 | `REPO` | 13 / 17 | 17 / 21 |
-| `SOUR` | 25 / 34 | 25 / 34 |
+| `SOUR` | 33 / 34 | 33 / 34 |
 | `SUBM` | 5 / 10 | 8 / 15 |
 | `SUBN` | 8 / 8 | 11 / 11 |
 | `TRLR` | 0 / 1 | 0 / 1 |
@@ -2318,11 +2318,11 @@ Measured at `FAM.SOUR` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `DATA` | `SOURCE_CITATION.SOUR.DATA` | typed | typed | `{0:1}` |
-| `EVEN` | `SOURCE_CITATION.SOUR.EVEN` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `EVEN` | `SOURCE_CITATION.SOUR.EVEN` | typed | typed | `{0:1}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | typed | typed | `{0:M}` |
 | `PAGE` | `SOURCE_CITATION.SOUR.PAGE` | typed | typed | `{0:1}` |
 | `QUAY` | `SOURCE_CITATION.SOUR.QUAY` | typed | typed | `{0:1}` |
 
@@ -2336,8 +2336,8 @@ Measured at `FAM.SOUR` in 5.5, 5.5.1.
 | `CONT` | `SOURCE_CITATION.SOUR#2.CONT` | raw (flagged) | raw (flagged) | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE` | — | raw (accepted) | `{0:M}` |
-| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | — | raw (accepted) | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE` | — | typed | `{0:M}` |
+| `OBJE` | `MULTIMEDIA_LINK.OBJE#2` | — | typed | `{0:M}` |
 | `QUAY` | `SOURCE_CITATION.SOUR#2.QUAY` | — | typed | `{0:1}` |
 | `TEXT` | `SOURCE_CITATION.SOUR#2.TEXT` | raw (accepted) | raw (accepted) | `{0:M}` |
 
@@ -2374,7 +2374,7 @@ Measured at `FAM.SOUR.EVEN` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ROLE` | `SOURCE_CITATION.SOUR.EVEN.ROLE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `ROLE` | `SOURCE_CITATION.SOUR.EVEN.ROLE` | typed | typed | `{0:1}` |
 
 ### `SOURCE_RECORD.SOUR`
 
@@ -2382,10 +2382,10 @@ Measured at `SOUR` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `ABBR` | `SOURCE_RECORD.SOUR.ABBR` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `ABBR` | `SOURCE_RECORD.SOUR.ABBR` | typed | typed | `{0:1}` |
 | `AUTH` | `SOURCE_RECORD.SOUR.AUTH` | typed | typed | `{0:1}` |
 | `CHAN` | `CHANGE_DATE.CHAN` | typed | typed | `{0:1}` |
-| `DATA` | `SOURCE_RECORD.SOUR.DATA` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `DATA` | `SOURCE_RECORD.SOUR.DATA` | typed | typed | `{0:1}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `OBJE` | `MULTIMEDIA_LINK.OBJE` | typed | typed | `{0:M}` |
@@ -2412,10 +2412,10 @@ Measured at `SOUR.DATA` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `AGNC` | `SOURCE_RECORD.SOUR.DATA.AGNC` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `EVEN` | `SOURCE_RECORD.SOUR.DATA.EVEN` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
-| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | raw (undiagnosed) | raw (undiagnosed) | `{0:M}` |
+| `AGNC` | `SOURCE_RECORD.SOUR.DATA.AGNC` | typed | typed | `{0:1}` |
+| `EVEN` | `SOURCE_RECORD.SOUR.DATA.EVEN` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
+| `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 
 ### `SOURCE_RECORD.SOUR.DATA.EVEN`
 
@@ -2423,8 +2423,8 @@ Measured at `SOUR.DATA.EVEN` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `DATE` | `SOURCE_RECORD.SOUR.DATA.EVEN.DATE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
-| `PLAC` | `SOURCE_RECORD.SOUR.DATA.EVEN.PLAC` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `DATE` | `SOURCE_RECORD.SOUR.DATA.EVEN.DATE` | typed | typed | `{0:1}` |
+| `PLAC` | `SOURCE_RECORD.SOUR.DATA.EVEN.PLAC` | typed | typed | `{0:1}` |
 
 ### `SOURCE_RECORD.SOUR.PUBL`
 

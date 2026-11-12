@@ -39,6 +39,7 @@ func fullyPopulatedRecords() []*Record {
 		return &SourceCitation{
 			SourceXRef: x,
 			NoteXRefs:  []string{"@CITE_NX@"},
+			Media:      []*MediaLink{{MediaXRef: "@CITE_OBJE@", NoteXRefs: []string{"@CITE_OBJE_NX@"}}},
 		}
 	}
 	assoc := func(x string) *Association {
@@ -143,8 +144,12 @@ func fullyPopulatedRecords() []*Record {
 			// A second link: every REPO link must be walked, not only the first.
 			{XRef: "@S_REPO2@", NoteXRefs: []string{"@S_REPO2_NX@"}},
 		},
-		NoteXRefs:    []string{"@S_NX@"},
-		Media:        []*MediaLink{medialink("@S_OBJE@", "@S_OBJE_NX@")},
+		NoteXRefs: []string{"@S_NX@"},
+		Media:     []*MediaLink{medialink("@S_OBJE@", "@S_OBJE_NX@")},
+		Data: &SourceData{
+			Events:    []*SourceDataEvent{{Types: "BIRT", PlaceDetail: place("S_DATA_EVEN")}},
+			NoteXRefs: []string{"@S_DATA_NX@"},
+		},
 		ChangeDate:   chg("S"),
 		CreationDate: chg("SCREA"),
 		Tags:         rawTags("S"),

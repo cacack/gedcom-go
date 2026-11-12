@@ -353,6 +353,14 @@ func (sv *StreamingValidator) collectSourceReferences(src *gedcom.Source) {
 		}
 	}
 	sv.collectMediaLinkNotes(src.XRef, "", src.Media)
+	if src.Data != nil {
+		sv.collectNoteXRefs(src.XRef, "Data.", src.Data.NoteXRefs)
+		for i, ev := range src.Data.Events {
+			if ev != nil {
+				sv.collectPlaceDetailNotes(src.XRef, fmt.Sprintf("Data.Events[%d].", i), ev.PlaceDetail)
+			}
+		}
+	}
 	sv.collectChangeDateNotes(src.XRef, "ChangeDate.", src.ChangeDate)
 	sv.collectChangeDateNotes(src.XRef, "CreationDate.", src.CreationDate)
 }
@@ -391,7 +399,9 @@ func (sv *StreamingValidator) collectAssociationNotes(recordXRef, prefix string,
 func (sv *StreamingValidator) collectCitationNotes(recordXRef, prefix string, citations []*gedcom.SourceCitation) {
 	for i, citation := range citations {
 		if citation != nil {
-			sv.collectNoteXRefs(recordXRef, fmt.Sprintf("%sSourceCitations[%d].", prefix, i), citation.NoteXRefs)
+			citePrefix := fmt.Sprintf("%sSourceCitations[%d].", prefix, i)
+			sv.collectNoteXRefs(recordXRef, citePrefix, citation.NoteXRefs)
+			sv.collectMediaLinkNotes(recordXRef, citePrefix, citation.Media)
 		}
 	}
 }

@@ -679,14 +679,7 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 			case "PAGE":
 				cite.Page = collector.text(foldedValue(tags, i))
 			case "QUAY":
-				// Parse quality as integer (0-3). QUAY 0 is a real assertion,
-				// so the pointer is set for every in-range value.
-				if q, err := strconv.Atoi(tag.Value); err == nil && q >= 0 && q <= 3 {
-					quality := q
-					cite.Quality = &quality
-				} else {
-					collector.addInvalidValue(tag.LineNumber, "QUAY", tag.Value, "expected integer 0-3")
-				}
+				cite.Quality = parseQuality(tag, collector)
 			case "DATA":
 				// Parse DATA subordinates at baseLevel+2
 				cite.Data = parseSourceCitationData(tags, i, baseLevel+1, collector)
@@ -695,8 +688,13 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 				cite.AncestryAPID = gedcom.ParseAPID(collector.text(tag.Value))
 			case "NOTE", "SNOTE":
 				cite.NoteXRefs, cite.InlineNotes = appendRecordNote(tags, i, cite.NoteXRefs, cite.InlineNotes, collector)
-			case "OBJE", "EVEN", "TEXT":
-				// Known tags not yet parsed into typed fields
+			case "EVEN":
+				cite.Event = parseSourceCitationEvent(tags, i, collector)
+			case "OBJE":
+				cite.Media = append(cite.Media, parseMediaLink(tags, i, tag.Level, collector))
+			case "TEXT":
+				// Known tag not yet parsed into a typed field (the 5.5/5.5.1
+				// inline-description form of a citation)
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -706,6 +704,49 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 	}
 
 	return cite
+}
+
+// parseQuality parses a citation's QUAY value as an integer 0-3, reporting any
+// other value. QUAY 0 is a real assertion, so the result is non-nil for every
+// in-range value.
+func parseQuality(tag *gedcom.Tag, collector *diagnosticCollector) *int {
+	q, err := strconv.Atoi(tag.Value)
+	if err != nil || q < 0 || q > 3 {
+		collector.addInvalidValue(tag.LineNumber, "QUAY", tag.Value, "expected integer 0-3")
+		return nil
+	}
+	return &q
+}
+
+// parseSourceCitationEvent extracts the EVEN substructure of a source citation
+// starting at evenIdx: the event type cited from, its GEDCOM 7.0 PHRASE, and
+// the ROLE (with its PHRASE) the subject played in it.
+func parseSourceCitationEvent(tags []*gedcom.Tag, evenIdx int, collector *diagnosticCollector) *gedcom.SourceCitationEvent {
+	baseLevel := tags[evenIdx].Level
+	event := &gedcom.SourceCitationEvent{Type: collector.text(tags[evenIdx].Value)}
+
+	for i := evenIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level != baseLevel+1 {
+			continue
+		}
+		switch tag.Tag {
+		case "PHRASE":
+			event.Phrase = collector.text(tag.Value)
+		case "ROLE":
+			event.Role = collector.text(tag.Value)
+			event.RolePhrase = collector.text(findSubordinate(tags, i, "PHRASE"))
+		default:
+			if !strings.HasPrefix(tag.Tag, "_") {
+				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+			}
+		}
+	}
+
+	return event
 }
 
 // parseSourceCitationData extracts source citation data from tags starting at dataIdx.
@@ -741,34 +782,11 @@ func parseSourceCitationData(tags []*gedcom.Tag, dataIdx, baseLevel int, collect
 // starting at textIdx. CONT/CONC continuation lines fold into Value (issue
 // #442), and the GEDCOM 7.0 MIME and LANG qualifiers are typed.
 func parseSourceText(tags []*gedcom.Tag, textIdx int, collector *diagnosticCollector) *gedcom.SourceText {
-	baseLevel := tags[textIdx].Level
 	// foldedValue reuses tag.Value when there is no continuation, which saves
 	// a copy and an allocation per citation (measured by
 	// BenchmarkDecodeCitationHeavy).
 	text := &gedcom.SourceText{Value: collector.text(foldedValue(tags, textIdx))}
-
-	for i := textIdx + 1; i < len(tags); i++ {
-		tag := tags[i]
-		if tag.Level <= baseLevel {
-			break
-		}
-		if tag.Level != baseLevel+1 {
-			continue
-		}
-		switch tag.Tag {
-		case "CONT", "CONC":
-			// Already folded into Value above.
-		case "MIME":
-			text.MIME = collector.text(tag.Value)
-		case "LANG":
-			text.Language = collector.text(tag.Value)
-		default:
-			if !strings.HasPrefix(tag.Tag, "_") {
-				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
-			}
-		}
-	}
-
+	text.MIME, text.Language = parseTextQualifiers(tags, textIdx, collector)
 	return text
 }
 
@@ -1402,8 +1420,13 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			src.Author = collector.text(foldedValue(record.Tags, i))
 		case "PUBL":
 			src.Publication = collector.text(foldedValue(record.Tags, i))
+		case "ABBR":
+			src.Abbreviation = collector.text(tag.Value)
 		case "TEXT":
 			src.Text = collector.text(foldedValue(record.Tags, i))
+			src.TextMIME, src.TextLanguage = parseTextQualifiers(record.Tags, i, collector)
+		case "DATA":
+			src.Data = parseSourceData(record.Tags, i, collector)
 		case "REPO":
 			src.RepositoryLinks = append(src.RepositoryLinks, parseSourceRepositoryLink(record.Tags, i, collector))
 		case "NOTE", "SNOTE":
@@ -1421,8 +1444,8 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			src.UIDs = append(src.UIDs, collector.text(tag.Value))
 		case "EXID":
 			src.ExternalIDs = append(src.ExternalIDs, parseExternalID(record.Tags, i, collector))
-		case "DATA", "ABBR", "RIN":
-			// Known tags not yet parsed into typed fields (RIN: #730)
+		case "RIN":
+			// Known tag not yet parsed into a typed field (#730)
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
 				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -1431,6 +1454,97 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 	}
 
 	return src
+}
+
+// parseTextQualifiers reads the GEDCOM 7.0 MIME and LANG qualifiers of the
+// TEXT tag at textIdx, diagnosing any other non-continuation subordinate.
+func parseTextQualifiers(tags []*gedcom.Tag, textIdx int, collector *diagnosticCollector) (mime, lang string) {
+	baseLevel := tags[textIdx].Level
+	for i := textIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level != baseLevel+1 {
+			continue
+		}
+		switch tag.Tag {
+		case "CONT", "CONC":
+			// Folded into the value by the caller.
+		case "MIME":
+			mime = collector.text(tag.Value)
+		case "LANG":
+			lang = collector.text(tag.Value)
+		default:
+			if !strings.HasPrefix(tag.Tag, "_") {
+				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+			}
+		}
+	}
+	return mime, lang
+}
+
+// parseSourceData extracts the DATA substructure of a source record starting
+// at dataIdx: the events recorded (EVEN, each with DATE and PLAC), the
+// responsible agency (AGNC), and notes.
+func parseSourceData(tags []*gedcom.Tag, dataIdx int, collector *diagnosticCollector) *gedcom.SourceData {
+	baseLevel := tags[dataIdx].Level
+	data := &gedcom.SourceData{}
+
+	for i := dataIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level != baseLevel+1 {
+			continue
+		}
+		switch tag.Tag {
+		case "EVEN":
+			data.Events = append(data.Events, parseSourceDataEvent(tags, i, collector))
+		case "AGNC":
+			data.Agency = collector.text(tag.Value)
+		case "NOTE", "SNOTE":
+			data.NoteXRefs, data.InlineNotes = appendRecordNote(tags, i, data.NoteXRefs, data.InlineNotes, collector)
+		default:
+			if !strings.HasPrefix(tag.Tag, "_") {
+				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+			}
+		}
+	}
+
+	return data
+}
+
+// parseSourceDataEvent extracts one DATA.EVEN substructure of a source record
+// starting at evenIdx: the recorded event types, the period (DATE, with its
+// GEDCOM 7.0 PHRASE) and the jurisdiction (PLAC) they cover.
+func parseSourceDataEvent(tags []*gedcom.Tag, evenIdx int, collector *diagnosticCollector) *gedcom.SourceDataEvent {
+	baseLevel := tags[evenIdx].Level
+	event := &gedcom.SourceDataEvent{Types: collector.text(tags[evenIdx].Value)}
+
+	for i := evenIdx + 1; i < len(tags); i++ {
+		tag := tags[i]
+		if tag.Level <= baseLevel {
+			break
+		}
+		if tag.Level != baseLevel+1 {
+			continue
+		}
+		switch tag.Tag {
+		case "DATE":
+			event.Date = collector.text(tag.Value)
+			event.DatePhrase = collector.text(findSubordinate(tags, i, "PHRASE"))
+		case "PLAC":
+			event.PlaceDetail = parsePlaceDetail(tags, i, tag.Level, collector)
+		default:
+			if !strings.HasPrefix(tag.Tag, "_") {
+				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+			}
+		}
+	}
+
+	return event
 }
 
 // parseSourceRepositoryLink extracts the structured REPO link of a source from
