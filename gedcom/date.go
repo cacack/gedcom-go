@@ -657,6 +657,11 @@ func parseYearWithDual(s string, isBC bool) (primaryYear, dualYear int, err erro
 			secondaryYear = followingYearEndingIn(primaryYear, secondaryYear, 10, isBC)
 		case 2:
 			secondaryYear = followingYearEndingIn(primaryYear, secondaryYear, 100, isBC)
+		default:
+			// A longer dual year is a whole year, not a suffix, so it cannot be 0.
+			if secondaryYear == 0 {
+				return 0, 0, errNoYearZero(secondaryStr)
+			}
 		}
 
 		return primaryYear, secondaryYear, nil

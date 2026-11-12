@@ -164,10 +164,13 @@ func dateError(date *gedcom.Date) error {
 	start.Modifier, endOnly.Modifier, endOnly.EndDate = gedcom.ModifierNone, gedcom.ModifierNone, nil
 	startEarliest, _, startOK := start.Bounds()
 	_, endLatest, endOK := endOnly.Bounds()
-	if startOK && endOK && startEarliest > endLatest {
+	if !startOK || !endOK || startEarliest <= endLatest {
+		return nil
+	}
+	if date.Original != "" {
 		return fmt.Errorf("invalid date range %q: the end date is before the start date", date.Original)
 	}
-	return nil
+	return fmt.Errorf("invalid date range: the end date is before the start date")
 }
 
 // maxDaysInMonth is the longest each month (1-12) can be in any year.

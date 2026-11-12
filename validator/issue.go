@@ -73,6 +73,8 @@ const (
 	// a range or period that ends before it starts (BET 1860 AND 1850).
 	// The dual year is checked on every date; the day is not checked on
 	// partial dates or non-Gregorian calendars, as in gedcom.Date.Validate.
+	// A value gedcom.ParseDate rejects, such as 0 JAN 1850, is not reported
+	// here; the decoder reports it as an INVALID_VALUE diagnostic.
 	CodeInvalidDate = "INVALID_DATE"
 
 	// CodeUnreasonableParentAge indicates a parent's age at child's birth is implausible.

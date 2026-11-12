@@ -962,9 +962,9 @@ err := date.Validate()
 - Checks both endpoints of ranges and periods (`BET 1900 AND 31 FEB 1901` is invalid)
 - Rejects a range or period that ends before it starts (`BET 1860 AND 1850`, `FROM 1860 TO 1850`); endpoints of differing precision that overlap (`BET JAN 1850 AND 1850`) are valid
 - Rejects a year more than 1,000,000 either side of the epoch, so arithmetic on a hand-built `Date` cannot overflow
-
-`ParseDate` itself rejects a day or year written as `0` (`0 JAN 1850`, `1 JAN 0`, `0 BC`) — no calendar has one, and `0` is the "absent" value — and a signed day or year (`-1850`, `+1850`, `-5 JAN 1850`); write a B.C. year with a `BC` suffix. The decoder reports such a value as `INVALID_VALUE` and keeps it in the raw tags.
 - BCE dates use the proleptic Gregorian calendar with astronomical years (1 BCE = year 0, so Feb 29 1 BCE is valid and Feb 29 4 BCE is not)
+
+`ParseDate` itself rejects a day or year written as `0` (`0 JAN 1850`, `1 JAN 0`, `0 BC`) — no calendar has one, and `0` is the "absent" value — and a signed day or year (`-1850`, `+1850`, `-5 JAN 1850`); write a B.C. year with a `BC` suffix. The decoder reports such a value as `INVALID_VALUE` and keeps it in the raw tags; the validator's `INVALID_DATE` check does not see it.
 
 ### Calendar Systems
 

@@ -175,3 +175,20 @@ func TestInvalidDateTypedEntity(t *testing.T) {
 		}
 	}
 }
+
+// TestDateErrorReversedRangeNoOriginal pins that a hand-built reversed range
+// with no Original is reported with the same message gedcom.Date.Validate
+// gives, not with an empty quoted value.
+func TestDateErrorReversedRangeNoOriginal(t *testing.T) {
+	date := &gedcom.Date{
+		Modifier: gedcom.ModifierBetween, Year: 1860,
+		EndDate: &gedcom.Date{Year: 1850},
+	}
+	want := "invalid date range: the end date is before the start date"
+	if err := date.Validate(); err == nil || err.Error() != want {
+		t.Fatalf("Validate() error = %v, want %q", err, want)
+	}
+	if err := dateError(date); err == nil || err.Error() != want {
+		t.Errorf("dateError() error = %v, want %q", err, want)
+	}
+}

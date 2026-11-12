@@ -3443,6 +3443,8 @@ func TestParseDate_RejectsDayZeroAndYearZero(t *testing.T) {
 		{"0", "invalid year: 0 (there is no year 0"},
 		{"JAN 0000", "invalid year: 0000 (there is no year 0"},
 		{"0/1", "invalid year: 0 (there is no year 0"},
+		{"1750/0000", "invalid year: 0000 (there is no year 0"},
+		{"1 JAN 1750/000", "invalid year: 000 (there is no year 0"},
 		{"BET 1850 AND 0", "invalid end date in range: invalid year: 0 (there is no year 0"},
 		{"FROM 0 JAN 1850 TO 1860", "invalid start date in period: invalid day: 0"},
 	}
