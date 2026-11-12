@@ -60,7 +60,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | `UNKNOWN_TAG` | Unrecognized tag in a record or the header; underscore-prefixed extension tags are not reported | Preserved in raw form (`Record.Tags`, `Header.Tags`) |
 | `INVALID_VALUE` | Value doesn't match the expected format | Raw value preserved |
 | `MISSING_REQUIRED` | Required subordinate tag is missing | Reported; decoding continues |
-| `SKIPPED_RECORD` | An entire record was skipped due to errors | Record dropped; decoding continues |
+| `SKIPPED_RECORD` | A record's level-0 line was dropped, so its subordinate lines are skipped instead of attaching to the preceding record | Record dropped; decoding continues |
 
 Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns the first syntax error.
 

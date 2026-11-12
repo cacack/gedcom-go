@@ -90,7 +90,7 @@ Entity-level warnings (severity: WARNING):
 | `UNKNOWN_TAG` | Unrecognized tag (preserved in raw form) |
 | `INVALID_VALUE` | Value doesn't match expected format |
 | `MISSING_REQUIRED` | Required subordinate tag is missing |
-| `SKIPPED_RECORD` | Entire record skipped due to errors |
+| `SKIPPED_RECORD` | Entire record skipped due to errors: a level-0 line was dropped, so its subordinate lines (up to the next level-0 line, range in the message) were skipped rather than attached to the preceding record |
 
 ### Working with Diagnostics
 

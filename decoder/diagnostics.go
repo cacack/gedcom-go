@@ -80,6 +80,10 @@ const (
 	CodeMissingRequired = "MISSING_REQUIRED"
 
 	// CodeSkippedRecord indicates an entire record was skipped due to errors.
+	// In lenient mode it is emitted when a record's level-0 line is dropped
+	// (alongside that line's parse diagnostic): the record's subordinate lines,
+	// up to the next level-0 line, are skipped rather than attached to the
+	// preceding record. The message names the skipped line range.
 	CodeSkippedRecord = "SKIPPED_RECORD"
 )
 
