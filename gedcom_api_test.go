@@ -748,12 +748,9 @@ func TestRoundTrip(t *testing.T) {
 		// ansi-cp1252 came back double-encoded ("La Coruña" -> "La CoruÃ±a").
 		// No fixture from this directory was in any round-trip table before
 		// (issue #425).
-		// ibmpc-cp437-broskeep.ged and ibm-windows-easytree.ged are excluded:
-		// they fail the *first* decode ("1 CHAR IBMPC"), which charset/ does not
-		// implement. That is a decoder gap, not a round-trip one, so it does not
-		// belong to this table.
 		"testdata/encoding/ansel-lf.ged",
 		"testdata/encoding/ansi-cp1252-ftm17.ged",
+		"testdata/encoding/ibmpc-cp437-broskeep.ged", // CHAR IBMPC, decoded as CP437 (#735)
 		"testdata/encoding/utf16le.ged",
 		"testdata/encoding/utf16be.ged",
 		"testdata/encoding/utf8-bom.ged",

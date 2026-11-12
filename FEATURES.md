@@ -105,12 +105,12 @@ of what it added is what this library has yet to type — so the shares rank the
 work left per version, not the versions.
 
 **Re-encoding.** Not byte-for-byte, and this is measured too. Of 162 corpus
-fixtures, 2 do not survive decode and encode at all; of the 160 that do, 149
+fixtures, 0 do not survive decode and encode at all; of the 162 that do, 149
 reproduce their header byte for byte and 136 reproduce their record body.
 `byte_roundtrip_test.go` names the reason behind every exception. What remains
 in the body count is not a defect but a limit of byte comparison itself: a
 source that was not UTF-8 has been transcoded, so its bytes cannot match
-whatever the encoder does, and nine fixtures with malformed lines or bytes are rewritten by lenient
+whatever the encoder does, and eight fixtures with malformed lines are rewritten by lenient
 recovery rather than preserved — a difference kept on the list so that the
 decision to accept it stays explicit.
 
@@ -380,11 +380,16 @@ others listed in the ADR) stays in `Record.Tags`.
 |----------|--------|-------|
 | UTF-8 | Full | With BOM detection |
 | ASCII | Full | Subset of UTF-8 |
-| LATIN1 / ANSI / ISO-8859-1 | Full | Decoded as Windows-1252 (curly quotes, dashes, `€`); the five bytes Windows-1252 leaves undefined keep their ISO-8859-1 code points |
-| UTF-16 LE/BE | Full | With BOM detection |
+| LATIN1 / ANSI / ISO-8859-1 / WINDOWS-1252 / CP1252 / WIN-1252 | Full | Decoded as Windows-1252 (curly quotes, dashes, `€`); the five bytes Windows-1252 leaves undefined keep their ISO-8859-1 code points |
+| IBMPC / IBM PC / CP437 / IBM-437 | Full | IBM code page 437 (Brother's Keeper, The Master Genealogist) |
+| CP850 / IBM-850 | Full | IBM code page 850 (DOS Latin-1) |
+| MACINTOSH / MAC / MACROMAN | Full | Mac OS Roman |
+| UTF-16 LE/BE | Full | With BOM detection; without a BOM, recognised by the first line's `0 ` (as GEDCOM 5.5 `CHAR UNICODE` files are written) |
 | ANSEL | Full | With combining diacritical reordering; a mark with no base character stays on the line it came from |
 
 A byte that is not valid UTF-8 in input read as UTF-8 fails a strict decode; lenient decoding replaces it with U+FFFD and reports `INVALID_ENCODING` (see [Lenient Parsing & Diagnostics](#lenient-parsing--diagnostics)). `charset.NewReaderWithOptions` with `ReaderOptions.OnInvalidUTF8` gives the same recovery outside the decoder.
+
+`CHAR` values are matched without regard to case, and the whole value is read, so `IBM PC` is one value; `UTF8` is accepted for `UTF-8`. An unrecognised value (`IBM WINDOWS`, say) is read as UTF-8 and kept as written in `Header.Encoding`.
 
 The charset declaration is `HEAD.CHAR` at level 1 only. Charset detection, `Header.Encoding` and the encoder's rewrite of `CHAR` to `UTF-8` all read that one line; a `CHAR` nested deeper in the header (`2 CHAR` under `SOUR`, say) is not a declaration, is kept in `Header.Tags` and written back verbatim.
 

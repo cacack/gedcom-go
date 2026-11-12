@@ -1,13 +1,11 @@
 package decoder
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/cacack/gedcom-go/v3/charset"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
@@ -208,16 +206,16 @@ func TestCorpusVendorFiles(t *testing.T) {
 		},
 		{
 			path:        "../testdata/encoding/ibmpc-cp437-broskeep.ged",
-			description: "Brother's Keeper 5.2 - CHAR IBMPC with real CP437 byte (unsupported encoding)",
+			description: "Brother's Keeper 5.2 - CHAR IBMPC with real CP437 byte",
 			version:     gedcom.Version55,
 			encoding:    gedcom.Encoding("IBMPC"),
 			source:      "BROSKEEP",
 			vendor:      gedcom.VendorBrothersKeeper,
 			individuals: 2145,
 			families:    1042,
-			// The one CP437 byte is replaced with U+FFFD (#710); QUAY is
-			// written directly under events (see misplacedTags).
-			diags: map[string]int{CodeInvalidEncoding: 1, CodeInvalidValue: 1, CodeUnknownTag: 1206},
+			// The one CP437 byte decodes as 'é' (#735); QUAY is written
+			// directly under events (see misplacedTags).
+			diags: map[string]int{CodeInvalidValue: 1, CodeUnknownTag: 1206},
 		},
 		{
 			path:        "../testdata/encoding/ibm-windows-easytree.ged",
@@ -743,70 +741,30 @@ func TestCorpusVendorCP1252C1Range(t *testing.T) {
 	}
 }
 
-// TestCorpusVendorCP437KnownFailure documents the decoder's current behavior
-// on the Brother's Keeper 5.2 export: CHAR IBMPC with a genuine CP437 byte
-// (0x82 'é' in "Frémont"). CP437 conversion is unsupported, so strict decoding
-// fails with an input-read error, and lenient mode replaces the byte with
-// U+FFFD and decodes the whole file (#710).
-//
-// The offending byte sits at physical line 15398, column 43 (file offset
-// 252364), and the reported location must say so: the parser's own line
-// counter stops at 15397, the last complete line ahead of the bad byte, so a
-// fallback to it would name the wrong line (issue #376). Before #382 that
-// counter stopped at 15209, because the charset reader dropped the whole
-// chunk holding the bad byte and the parser then counted the truncated
-// residue as a line of its own. If CP437 support ever lands, this test should
-// be rewritten to assert a successful strict decode.
-func TestCorpusVendorCP437KnownFailure(t *testing.T) {
-	f := corpusOpen(t, "../testdata/encoding/ibmpc-cp437-broskeep.ged")
-	defer f.Close()
-
-	_, err := DecodeWithOptions(f, &DecodeOptions{StrictMode: true})
-	if err == nil {
-		t.Fatal("strict Decode() succeeded on CP437 file; if CP437 support was added, update this test")
-	}
-	if !strings.Contains(err.Error(), "error reading input") {
-		t.Errorf("Decode() error = %v, want substring %q", err, "error reading input")
-	}
-	// The physical line of the offending byte, not the parser's stale counter.
-	if !strings.Contains(err.Error(), "line 15398") {
-		t.Errorf("Decode() error = %v, want substring %q", err, "line 15398")
-	}
-	if strings.Contains(err.Error(), "line 15397") {
-		t.Errorf("Decode() error = %v reports the parser's line counter, want the offending byte's line", err)
-	}
-
-	var utf8Err *charset.ErrInvalidUTF8
-	if !errors.As(err, &utf8Err) {
-		t.Fatalf("Decode() error = %v, want a wrapped *charset.ErrInvalidUTF8", err)
-	}
-	if utf8Err.Line != 15398 || utf8Err.Column != 43 {
-		t.Errorf("charset error at line %d, column %d; want line 15398, column 43",
-			utf8Err.Line, utf8Err.Column)
-	}
-
-	// Lenient mode replaces the byte and keeps going. Before #710 it
-	// returned the error with a partial document of 1808 individuals,
-	// everything up to line 15397.
-	f2 := corpusOpen(t, "../testdata/encoding/ibmpc-cp437-broskeep.ged")
-	defer f2.Close()
-
-	result, err := DecodeWithDiagnostics(f2, DefaultOptions())
-	if err != nil {
-		t.Fatalf("DecodeWithDiagnostics() error = %v, want the invalid byte recovered", err)
-	}
-	if got := len(result.Document.Individuals()); got != 2145 {
-		t.Errorf("Individuals() = %d, want all 2145", got)
-	}
-	var enc []Diagnostic
-	for _, d := range result.Diagnostics {
-		if d.Code == CodeInvalidEncoding {
-			enc = append(enc, d)
+// TestCorpusVendorCP437 decodes the Brother's Keeper 5.2 export, CHAR IBMPC
+// with a genuine CP437 byte (0x82 'é' in "Frémont" at line 15398), as CP437
+// (#735). Before, CP437 was unsupported and the file was read as UTF-8: strict
+// decoding failed at that byte and lenient mode replaced it with U+FFFD.
+func TestCorpusVendorCP437(t *testing.T) {
+	const want = "Was elected in 1856 over John C. Frémont and Millard Fillmore by a popular"
+	for _, strict := range []bool{true, false} {
+		f := corpusOpen(t, "../testdata/encoding/ibmpc-cp437-broskeep.ged")
+		result, err := DecodeWithDiagnostics(f, &DecodeOptions{StrictMode: strict})
+		f.Close()
+		if err != nil {
+			t.Fatalf("StrictMode=%v: DecodeWithDiagnostics() error = %v", strict, err)
 		}
-	}
-	want := "invalid UTF-8 byte 0x82 at column 43 replaced with U+FFFD"
-	if len(enc) != 1 || enc[0].Line != 15398 || enc[0].Message != want {
-		t.Errorf("INVALID_ENCODING diagnostics = %+v, want one at line 15398: %q", enc, want)
+		if got := len(result.Document.Individuals()); got != 2145 {
+			t.Errorf("StrictMode=%v: Individuals() = %d, want all 2145", strict, got)
+		}
+		for _, d := range result.Diagnostics {
+			if d.Code == CodeInvalidEncoding {
+				t.Errorf("StrictMode=%v: unexpected %s diagnostic: %+v", strict, CodeInvalidEncoding, d)
+			}
+		}
+		if !hasTagValue(result.Document, "NOTE", want) {
+			t.Errorf("StrictMode=%v: no NOTE line %q; the CP437 byte 0x82 was not decoded as 'é'", strict, want)
+		}
 	}
 }
 
@@ -947,4 +905,17 @@ func TestCorpusVendorANSIOver1250KnownGap(t *testing.T) {
 			}
 		})
 	}
+}
+
+// hasTagValue reports whether any record in doc has a tag named tag whose own
+// value (without its CONT/CONC lines) is value.
+func hasTagValue(doc *gedcom.Document, tag, value string) bool {
+	for _, rec := range doc.Records {
+		for _, t := range rec.Tags {
+			if t.Tag == tag && t.Value == value {
+				return true
+			}
+		}
+	}
+	return false
 }

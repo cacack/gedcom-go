@@ -734,8 +734,11 @@ The library supports multiple character encodings:
 - UTF-8 (recommended for new files)
 - ANSEL (legacy GEDCOM standard)
 - ASCII
-- LATIN1, ANSI or ISO-8859-1 (decoded as Windows-1252)
-- UNICODE (UTF-16)
+- LATIN1, ANSI, ISO-8859-1, WINDOWS-1252, CP1252 or WIN-1252 (decoded as Windows-1252)
+- IBMPC, IBM PC, CP437 or IBM-437 (IBM code page 437)
+- CP850 or IBM-850 (IBM code page 850)
+- MACINTOSH, MAC or MACROMAN (Mac OS Roman)
+- UTF-16 LE/BE, with or without a BOM (often declared `UNICODE`)
 
 ### Automatic Encoding Detection
 

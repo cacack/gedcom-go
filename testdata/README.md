@@ -137,8 +137,7 @@ Real vintage exports vendored byte-identical (aside from submitter-contact redac
 - **ansi-cp1252-ftm17.ged** (213K) - FTM 17.0.0.440 export, `CHAR ANSI` with genuine Windows-1252 bytes (ñ, ó, £)
   - Tests ANSI→UTF-8 conversion of bytes 0xA0–0xFF; it has no byte in 0x80–0x9F (see `ansi-cp1252-c1-range.ged`)
 - **ibmpc-cp437-broskeep.ged** (380K) - Brother's Keeper 5.2 export, `CHAR IBMPC` with a real CP437 byte (0x82 'é')
-  - Known-unsupported encoding: strict decode fails by design; lenient mode recovers a partial document
-  - Documents current behavior until CP437 support lands (`TestCorpusVendorCP437KnownFailure`)
+  - Decodes as CP437 in strict mode with "Frémont" intact (`TestCorpusVendorCP437`, #735)
 - **ibm-windows-easytree.ged** (17K) - EasyTree V1.0 export with nonstandard `CHAR IBM WINDOWS`
   - Tests raw CHAR value preservation in `Header.Encoding`
 
@@ -320,7 +319,7 @@ submitter contact values. Exercised by `decoder/corpus_vendor_test.go`.
 | edge-cases/vendor-webtreeprint.ged | bronte.ged | webtreeprint.com 1.0 web generator |
 | edge-cases/bare-header-geo-coords.ged | input.ged | Unknown tool; bare `0 HEAD`, PLAC MAP coordinates |
 | encoding/ansi-cp1252-ftm17.ged | famous family trees/royalty/Irish+Kings.ged | FTM 17 export, CHAR ANSI with real Windows-1252 bytes |
-| encoding/ibmpc-cp437-broskeep.ged | famous family trees/US presidents/US+Presidents+Trees+I.ged | Brother's Keeper 5.2, CHAR IBMPC with real CP437 bytes (known-unsupported; decode fails by design) |
+| encoding/ibmpc-cp437-broskeep.ged | famous family trees/US presidents/US+Presidents+Trees+I.ged | Brother's Keeper 5.2, CHAR IBMPC with real CP437 bytes (decoded as CP437) |
 | encoding/ibm-windows-easytree.ged | famous family trees/US presidents/Kennedy+Family.ged | EasyTree V1.0, nonstandard `CHAR IBM WINDOWS` |
 
 The scale fixture `gedcom-5.5.1/longsword.ged` (see above) comes from the same corpus.
