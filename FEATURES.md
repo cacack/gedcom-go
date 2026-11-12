@@ -1141,6 +1141,11 @@ years, exact, err := gedcom.YearsBetween(birthDate, deathDate)
 // leave oldest at math.MaxInt; ok is false when the event is provably before birth
 youngest, oldest, ok := gedcom.AgeAt(birthDate, deathDate)
 
+// Minimum-age checks use AgeAt, as the validator does; errors wrap
+// gedcom.ErrBelowMinimumAge or gedcom.ErrEventBeforeBirth (test with errors.Is)
+err = gedcom.ValidateParentChildDates(parentBirth, childBirth, 12)
+err = gedcom.ValidateMarriageDates(marriage, spouseBirth1, spouseBirth2, 12)
+
 // Convert to time.Time (complete, valid Gregorian dates only; 31 FEB errors; BCE uses astronomical years, 44 BCE -> -43)
 t, err := date.ToTime()
 
