@@ -97,7 +97,12 @@ cross-references are written with and without theirs, and two lines state no
 cardinality at all.
 
 The primitive definitions are no cleaner: one states `SIZE` where the rest state
-`Size`, and four give a single width where the rest give a range.
+`Size`, and four give a single width where the rest give a range. Their value
+sets are read from the bracketed lists, wrapped or not; a list whose
+alternatives are not all literals or placeholders, or that is one term of a
+longer sequence, is a syntax (`DATE`, `AGE_AT_EVENT`) and yields no values.
+Where the definitions beneath a list name a value the list omits, or define
+values with no list at all, that is recorded too.
 
 **Nothing is corrected.** Every defect is recorded to `defects.tsv` with the
 line as printed and the reading taken, and published in the coverage report. A

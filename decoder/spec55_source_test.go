@@ -89,6 +89,8 @@ type spec55Spec struct {
 	// them. Last rather than first for the reason 7.0's harness takes the last:
 	// CERTAINTY_ASSESSMENT begins with "0", which is what its typed field holds
 	// when the line is absent, so a probe carrying it would measure nothing.
+	// The transcriber appends values a list omits (INFANT), so those are the
+	// ones probed. Placeholders are not probed: any value would do for them.
 	enumValues map[string]string
 
 	// defects are the specification-text problems the transcription hit.
@@ -124,7 +126,7 @@ func loadSpec55(t *testing.T, edition spec55Edition) *spec55Spec {
 		"superstructure", "structure", "cardinality") {
 		s.cardinalities[[2]string{row[0], row[1]}] = row[2]
 	}
-	for _, row := range specTSV(t, edition.dir, "primitives.tsv", "primitive", "size", "values") {
+	for _, row := range specTSV(t, edition.dir, "primitives.tsv", "primitive", "size", "values", "placeholders") {
 		if row[2] != "" {
 			values := strings.Split(row[2], "|")
 			s.enumValues["<"+row[0]+">"] = values[len(values)-1]

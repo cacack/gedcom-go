@@ -10,6 +10,7 @@ MONTH_HEBR	MONTH_HEBR: = {Size=3}	the size annotation states one width, not a ra
 MULTIMEDIA_RECORD	n @XREF:OBJE@ OBJE {1:1}	the cross-reference is written without its angle brackets	read as @<XREF:OBJE>@
 NOTE_STRUCTURE	n NOTE [SUBMITTER_TEXT> | <NULL>] {1:1} p.54	the value type is missing an angle bracket	read as the value type named in "[SUBMITTER_TEXT> | <NULL>]"
 PERSONAL_NAME_STRUCTURE	+1 SPFX <NAME_PIECE_SURNAME_PREFIX {0:1} p.49	the value type is missing an angle bracket	read as the value type named in "<NAME_PIECE_SURNAME_PREFIX"
+SEX_VALUE	SEX_VALUE: = {Size=1:7}	the values are defined in prose but not listed	read as the values M, F
 SOURCE_PUBLICATION_FACTS	SOURCE_PUBLICATION_FACTS: = {Size=248}	the size annotation states one width, not a range	read as a maximum of 248 with no minimum
 SOURCE_REPOSITORY_CITATION	[	an alternation is opened and never closed	read as closing at the end of the block, which is where its last branch ends anyway
 SOURCE_REPOSITORY_CITATION	n REPO @XREF:REPO@ {1:1} p.55	the cross-reference payload is spelled irregularly	read as @<XREF:REPO>@
