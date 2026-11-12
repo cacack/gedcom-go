@@ -330,9 +330,8 @@ When `StrictDataLoss` is enabled, the conversion fails if any data would be lost
 opts := converter.DefaultOptions()
 opts.StrictDataLoss = true
 converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version55, opts)
-if err != nil {
-    // Error: "conversion would result in data loss (strict mode enabled)"
-    // Check report.DataLoss for details
+if errors.Is(err, converter.ErrDataLoss) {
+    // Refused: report.DataLoss lists what would have been lost
 }
 ```
 

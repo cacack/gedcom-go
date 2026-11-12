@@ -64,7 +64,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | `MISSING_REQUIRED` | Required subordinate tag is missing | Reported; decoding continues |
 | `SKIPPED_RECORD` | A record's level-0 line was dropped, so its subordinate lines are skipped instead of attaching to the preceding record | Record dropped; decoding continues |
 
-Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns the first syntax error, or the first invalid UTF-8 byte as a `*charset.ErrInvalidUTF8`.
+Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns the first syntax error, or the first invalid UTF-8 byte as a `*charset.InvalidUTF8Error` (matchable with `errors.Is(err, charset.ErrInvalidUTF8Sequence)`).
 
 ## Multi-Version Support
 
@@ -389,6 +389,8 @@ others listed in the ADR) stays in `Record.Tags`.
 
 A byte that is not valid UTF-8 in input read as UTF-8 fails a strict decode; lenient decoding replaces it with U+FFFD and reports `INVALID_ENCODING` (see [Lenient Parsing & Diagnostics](#lenient-parsing--diagnostics)). `charset.NewReaderWithOptions` with `ReaderOptions.OnInvalidUTF8` gives the same recovery outside the decoder.
 
+An invalid byte is reported as a `*charset.InvalidUTF8Error` or `*charset.InvalidANSELError` (recover the byte and position with `errors.As`), which match `charset.ErrInvalidUTF8Sequence` and `charset.ErrInvalidANSELByte` with `errors.Is`. The former type names `ErrInvalidUTF8` and `ErrInvalidANSEL` remain as deprecated aliases.
+
 `CHAR` values are matched without regard to case, and the whole value is read, so `IBM PC` is one value; `UTF8` is accepted for `UTF-8`. An unrecognised value (`IBM WINDOWS`, say) is read as UTF-8 and kept as written in `Header.Encoding`.
 
 The charset declaration is `HEAD.CHAR` at level 1 only. Charset detection, `Header.Encoding` and the encoder's rewrite of `CHAR` to `UTF-8` all read that one line; a `CHAR` nested deeper in the header (`2 CHAR` under `SOUR`, say) is not a declaration, is kept in `Header.Tags` and written back verbatim.
@@ -508,7 +510,11 @@ Differing non-empty header versions or encodings are refused
 with `ErrIncompatibleHeader`; set `CombineOptions.IgnoreEncodingMismatch`
 to merge documents whose declared encodings differ (text is UTF-8 in
 memory either way) — doc1's encoding is kept and the difference is
-reported as a `HeaderConflict`.
+reported as a `HeaderConflict`. Argument errors wrap `merge.ErrNilDocument`
+(a nil document) or `merge.ErrInvalidOptions` (an unknown strategy, a
+`PrefixDoc2` with no `Prefix`, a nil transform), so `errors.Is` separates
+them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
+`ErrInvalidRemap`.
 
 ## Record Types
 
@@ -791,6 +797,8 @@ lat, err = gedcom.ParseCoordinate("N42.3601")   // 42.3601
 _, err = gedcom.ParseCoordinate("N-42.3601")    // error: value must be unsigned
 ```
 
+Every coordinate error wraps `gedcom.ErrEmptyCoordinate` (an empty or blank component) or `gedcom.ErrInvalidCoordinate` (anything else), so callers branch with `errors.Is` rather than on the message.
+
 `AsDecimal` returns `(0, 0, nil)` when the pair is empty (nil receiver or both components blank) and an error when only one is present. Valid coordinates at the origin (`N0`/`E0`) also return `(0, 0, nil)` — use `IsEmpty` to distinguish the absent case.
 
 The sign is carried by the direction letter, so an explicitly signed value such as `N-42.3601` is rejected rather than silently inverted. Only plain decimals parse: numeric spellings that `strconv.ParseFloat` would otherwise accept — `NaN`, infinities (`inf`, `infinity`), hexadecimal float literals (`0x1p3`), exponent notation (`1e2`) and Go underscore separators (`1_000`) — are all errors. A `nil` error from `AsDecimal` therefore guarantees both values are finite and within `[-90, 90]` and `[-180, 180]`.
@@ -984,6 +992,8 @@ err := date.Validate()
 - BCE dates use the proleptic Gregorian calendar with astronomical years (1 BCE = year 0, so Feb 29 1 BCE is valid and Feb 29 4 BCE is not)
 
 `ParseDate` itself rejects a day or year written as `0` (`0 JAN 1850`, `1 JAN 0`, `0 BC`) — no calendar has one, and `0` is the "absent" value — and a signed day or year (`-1850`, `+1850`, `-5 JAN 1850`); write a B.C. year with a `BC` suffix. The decoder reports such a value as `INVALID_VALUE` and keeps it in the raw tags; the validator's `INVALID_DATE` check does not see it.
+
+Every `ParseDate` error wraps `gedcom.ErrEmptyDate` (empty or blank input) or `gedcom.ErrInvalidDate` (anything else), so `errors.Is` tells an absent date from a malformed one; the message still says what is wrong.
 
 ### Calendar Systems
 
@@ -1619,6 +1629,8 @@ if report.HasDataLoss() {
     }
 }
 ```
+
+Failures are matchable with `errors.Is`: `converter.ErrNilDocument`, `ErrInvalidVersion` (target), `ErrUnsupportedConversion` (no path from the source version) and `ErrDataLoss` (refused under `StrictDataLoss`; the report returned with it lists the loss).
 
 See [docs/guides/converter.md](docs/guides/converter.md) for detailed documentation.
 
