@@ -1,0 +1,391 @@
+0 HEAD
+1 SOUR SAMPLE_SYS
+2 VERS 1.0
+2 NAME Sample System
+2 CORP Sample Corp
+3 ADDR 1 Example Street
+4 CONT Exampletown
+4 ADR1 1 Example Street
+4 CITY Exampletown
+4 POST 00000
+4 CTRY Nowhere
+3 PHON 000-000-0000
+3 EMAIL corp@@example.invalid
+3 WWW www.example.invalid
+2 DATA Sample Data Set
+3 DATE 1 JAN 2000
+3 COPR Copyright line one
+4 CONT Copyright line two
+1 DEST TARGET_SYS
+1 DATE 2 FEB 2001
+2 TIME 13:45:30.25
+1 SUBM @U1@
+1 SUBN @SN1@
+1 FILE sample.ged
+1 COPR File copyright
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+1 LANG English
+1 PLAC
+2 FORM City, County, State, Country
+1 NOTE Header note line one
+2 CONT Header note line two
+0 @SN1@ SUBN
+1 SUBM @U1@
+1 FAMF Sample family file
+1 TEMP SLAKE
+1 ANCE 3
+1 DESC 2
+1 ORDI yes
+1 RIN 100
+1 NOTE Submission note
+1 CHAN
+2 DATE 3 MAR 2002
+3 TIME 10:00:00
+0 @U1@ SUBM
+1 NAME Sample Submitter
+1 ADDR 2 Example Road
+2 CONT Sampleville
+2 CITY Sampleville
+1 PHON 111-111-1111
+1 PHON 222-222-2222
+1 EMAIL sub@@example.invalid
+1 FAX 333-333-3333
+1 WWW www.sub.example.invalid
+1 OBJE @M1@
+1 LANG English
+1 LANG French
+1 RFN 12345
+1 RIN 200
+1 NOTE Submitter note
+1 CHAN
+2 DATE 4 APR 2003
+2 NOTE Change note
+0 @I1@ INDI
+1 RESN locked
+1 NAME Alpha Beta /Example/ Jr.
+2 TYPE birth
+2 NPFX Dr.
+2 GIVN Alpha, Beta
+2 NICK Al
+2 SPFX van, der
+2 SURN Example
+2 NSFX Jr.
+2 NOTE Name note
+2 SOUR @S1@
+3 PAGE p. 1
+2 FONE Alfa /Eksampl/
+3 TYPE user defined phonetic
+3 GIVN Alfa
+3 SURN Eksampl
+2 ROMN Alpha /Example/
+3 TYPE romaji
+3 GIVN Alpha
+3 SURN Example
+1 NAME Alpha /Other/
+2 TYPE aka
+1 SEX M
+1 BIRT Y
+2 TYPE Natural
+2 DATE ABT 1 JAN 1800
+2 PLAC Village, County, State, Country
+3 FORM City, County, State, Country
+3 FONE Vilaj
+4 TYPE kana
+3 ROMN Village
+4 TYPE pinyin
+3 MAP
+4 LATI N18.150944
+4 LONG E168.150944
+3 NOTE Place note
+2 ADDR Birth house
+3 CONT Village
+3 CITY Village
+2 PHON 444-444-4444
+2 AGNC Birth agency
+2 RELI Birth religion
+2 CAUS Birth cause
+2 RESN privacy
+2 NOTE Birth note
+2 SOUR @S1@
+2 OBJE @M1@
+2 AGE 0d
+2 FAMC @F1@
+1 CHR
+2 DATE 2 JAN 1800
+1 DEAT Y
+2 DATE BEF 1870
+2 AGE > 69y 11m 2d
+1 BURI
+2 DATE AFT 1869
+1 CREM
+2 DATE BET 1869 AND 1870
+1 ADOP
+2 DATE FROM 1801 TO 1802
+2 FAMC @F2@
+3 ADOP BOTH
+1 BAPM
+2 DATE INT 3 JAN 1800 (third day)
+1 BARM
+2 DATE (unknown date)
+1 BASM
+2 DATE EST 1813
+1 BLES
+2 DATE CAL 1813
+1 CHRA
+2 DATE @#DJULIAN@ 15 APR 1699/00
+1 CONF
+2 DATE @#DHEBREW@ 1 TSH 5600
+1 FCOM
+2 DATE @#DFRENCH R@ 1 VEND 10
+1 ORDN
+2 DATE 100 B.C.
+1 NATU
+2 DATE JAN 1830
+1 EMIG
+2 DATE FROM 1830
+1 IMMI
+2 DATE TO 1831
+1 CENS
+2 DATE 1840
+1 PROB
+2 DATE @#DUNKNOWN@ 1871
+1 WILL
+2 DATE @#DROMAN@ 1860
+1 GRAD
+2 TYPE College
+1 RETI
+2 DATE ABT @#DJULIAN@ 1865
+1 EVEN
+2 TYPE Land Lease
+2 DATE 2 OCT 1837
+1 CAST Sample caste
+1 DSCR Description line one
+2 CONC  continued
+2 CONT second line
+1 EDUC Sample education
+1 IDNO 00-000-0000
+2 TYPE Sample registry
+1 NATI Sample origin
+1 NCHI 2
+1 NMR 1
+1 OCCU Sample occupation
+2 DATE FROM 1820 TO 1860
+2 AGE CHILD
+1 PROP Sample property
+1 RELI Sample religion
+1 RESI
+2 ADDR 3 Example Lane
+2 EMAIL resi@@example.invalid
+1 SSN 000000000
+1 TITL Sample title
+1 FACT Woodworking
+2 TYPE Skills
+1 BAPL
+2 DATE 1 JAN 1900
+2 TEMP SLAKE
+2 PLAC Temple place
+2 STAT COMPLETED
+3 DATE 2 JAN 1900
+2 NOTE BAPL note
+2 SOUR @S1@
+1 CONL
+2 STAT PRE-1970
+3 DATE 1 JAN 1960
+1 ENDL
+2 STAT INFANT
+3 DATE 1 JAN 1960
+1 SLGC
+2 FAMC @F1@
+2 STAT BIC
+3 DATE 1 JAN 1960
+1 FAMC @F1@
+2 PEDI birth
+2 STAT proven
+2 NOTE FAMC note
+1 FAMC @F2@
+2 PEDI adopted
+1 FAMS @F3@
+2 NOTE FAMS note
+1 SUBM @U1@
+1 ASSO @I2@
+2 RELA Godfather
+2 SOUR @S1@
+2 NOTE Asso note
+1 ALIA @I2@
+1 ANCI @U1@
+1 DESI @U1@
+1 RFN 999:123
+1 AFN AFN123
+1 REFN REF-1
+2 TYPE First type
+1 REFN REF-2
+2 TYPE Second type
+1 RIN 300
+1 CHAN
+2 DATE 5 MAY 2004
+3 TIME 11:11:11
+2 NOTE Indi change note
+1 NOTE Individual note
+2 CONT second line
+1 NOTE @N1@
+1 SOUR @S1@
+2 PAGE Film: 1234, Frame: 5
+2 EVEN BIRT
+3 ROLE (Neighbour)
+2 DATA
+3 DATE 1 JAN 1801
+3 TEXT Text one
+4 CONC  continued
+3 TEXT Text two
+2 OBJE @M1@
+2 NOTE Citation note
+2 QUAY 3
+1 SOUR Free text source description
+2 CONT second line
+2 TEXT Free text quote
+2 NOTE Free citation note
+2 QUAY 0
+1 OBJE @M1@
+1 OBJE
+2 FILE photo.jpg
+3 FORM jpg
+4 MEDI photo
+2 TITL Inline photo
+0 @I2@ INDI
+1 NAME Gamma /Example/
+1 SEX F
+0 @I3@ INDI
+1 NAME Delta /Example/
+1 SEX U
+0 @F1@ FAM
+1 RESN confidential
+1 HUSB @I2@
+1 WIFE @I3@
+1 CHIL @I1@
+1 NCHI 1
+1 SUBM @U1@
+1 ANUL
+2 DATE 1 JAN 1850
+1 CENS
+2 DATE 1850
+1 DIV Y
+1 DIVF
+2 DATE 1851
+1 ENGA
+2 DATE 1795
+1 MARB
+2 DATE 1796
+1 MARC
+2 DATE 1796
+1 MARR Y
+2 TYPE Religious
+2 HUSB
+3 AGE 25y
+2 WIFE
+3 AGE 22y
+2 DATE 1 JUN 1797
+2 PLAC Chapel, County, State, Country
+1 MARL
+2 DATE 1797
+1 MARS
+2 DATE 1797
+1 RESI
+2 DATE 1800
+1 EVEN Sample family event
+2 TYPE Custom
+1 SLGS
+2 DATE 1 JAN 1950
+2 TEMP SLAKE
+2 STAT DNS/CAN
+3 DATE 2 JAN 1950
+1 REFN FREF-1
+2 TYPE Fam type
+1 REFN FREF-2
+1 RIN 400
+1 CHAN
+2 DATE 6 JUN 2005
+1 NOTE Family note
+1 SOUR @S1@
+1 OBJE @M1@
+0 @F2@ FAM
+1 HUSB @I2@
+0 @F3@ FAM
+1 WIFE @I3@
+0 @M1@ OBJE
+1 FILE photo1.jpg
+2 FORM jpg
+3 TYPE photo
+2 TITL First file
+1 FILE sound1.wav
+2 FORM wav
+3 TYPE audio
+2 TITL Second file
+1 REFN MREF-1
+2 TYPE Media type
+1 REFN MREF-2
+1 RIN 500
+1 NOTE Media note
+1 SOUR @S1@
+2 PAGE first
+1 SOUR @S1@
+2 PAGE second
+1 CHAN
+2 DATE 7 JUL 2006
+0 @N1@ NOTE Shared note line one
+1 CONT Shared note line two
+1 REFN NREF-1
+2 TYPE Note type
+1 REFN NREF-2
+1 RIN 600
+1 SOUR @S1@
+2 PAGE note page
+1 CHAN
+2 DATE 8 AUG 2007
+0 @R1@ REPO
+1 NAME Sample Repository
+1 ADDR 4 Example Avenue
+2 CITY Repotown
+1 PHON 555-555-5555
+1 NOTE Repo note
+1 REFN RREF-1
+2 TYPE Repo type
+1 REFN RREF-2
+1 RIN 700
+1 CHAN
+2 DATE 9 SEP 2008
+0 @S1@ SOUR
+1 DATA
+2 EVEN BIRT, DEAT, MARR
+3 DATE FROM 1800 TO 1850
+3 PLAC County, State
+2 EVEN CENS
+3 DATE FROM 1850 TO 1900
+2 AGNC Sample agency
+2 NOTE Data note
+1 AUTH Sample author
+2 CONT second line
+1 TITL Sample title
+2 CONC  continued
+1 ABBR Sample abbr
+1 PUBL Sample publication
+1 TEXT Sample text
+1 REPO @R1@
+2 NOTE Repo citation note
+2 CALN CALL-1
+3 MEDI book
+2 CALN CALL-2
+3 MEDI film
+1 REPO
+2 NOTE Informal repository
+1 REFN SREF-1
+2 TYPE Source type
+1 REFN SREF-2
+1 RIN 800
+1 CHAN
+2 DATE 10 OCT 2009
+1 NOTE Source note
+1 OBJE @M1@
+0 TRLR

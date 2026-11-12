@@ -20,12 +20,14 @@ import (
 // file that starts failing without an entry fails as a regression.
 
 // conformanceSuiteDirs are the vendored suites, one directory of .ged files
-// each: gedcom7code/test-files, and the gedcom.io 7.0 test files held so far.
+// each: gedcom7code/test-files, the gedcom.io 7.0 test files held so far, and
+// oxidged's hand-written every-structure files (#763).
 // See testdata/README.md for provenance.
 var conformanceSuiteDirs = []string{
 	"../testdata/gedcom7code/5",
 	"../testdata/gedcom7code/7",
 	"../testdata/gedcom-7.0/familysearch-examples",
+	"../testdata/oxidged",
 }
 
 // strictKnownFailures lists files whose strict decode returns an error.

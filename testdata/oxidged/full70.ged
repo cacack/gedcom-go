@@ -1,0 +1,423 @@
+0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+2 TAG _SKYPEID http://xmlns.example.org/skypeID
+2 TAG _MEMBER http://xmlns.example.org/member
+1 SOUR EXAMPLE_APP
+2 VERS 1.2.3
+2 NAME Example Application
+2 CORP Example Software Ltd
+3 ADDR 1 Sample Road
+4 CITY Sampletown
+3 PHON +1 555 0100
+3 PHON +1 555 0101
+3 EMAIL support@example.invalid
+3 FAX +1 555 0102
+3 WWW https://example.invalid
+2 DATA Example Data Set
+3 DATE 1 JAN 2020
+4 TIME 10:00:00Z
+3 COPR Data copyright statement
+1 DEST OTHER_APP
+1 DATE 2 FEB 2021
+2 TIME 12:34:56.789
+1 SUBM @U1@
+1 COPR Copyright statement
+1 LANG en-US
+1 PLAC
+2 FORM City, County, State, Country
+1 NOTE Header note
+2 MIME text/plain
+2 LANG en
+0 @U1@ SUBM
+1 NAME Sample Submitter
+1 ADDR 2 Sample Street
+2 CITY Sampleville
+1 PHON +1 555 0200
+1 EMAIL submitter@example.invalid
+1 EMAIL second@example.invalid
+1 OBJE @M1@
+1 LANG en
+1 LANG fr
+1 REFN SUBM-REF-1
+2 TYPE local
+1 UID 0aa1b2c3-0000-4000-8000-000000000001
+1 EXID 12345
+2 TYPE http://authority.example.invalid/id
+1 NOTE Submitter note
+1 CHAN
+2 DATE 3 MAR 2021
+3 TIME 01:02:03
+2 NOTE Change note
+1 CREA
+2 DATE 1 MAR 2021
+3 TIME 00:00:01
+0 @I1@ INDI
+1 RESN CONFIDENTIAL, LOCKED
+1 NAME Alex /Sample/ Jr.
+2 TYPE OTHER
+3 PHRASE Stage name
+2 NPFX Dr.
+2 GIVN Alex
+2 GIVN Alexander
+2 NICK Lex
+2 SPFX van
+2 SURN Sample
+2 NSFX Jr.
+2 TRAN Алекс /Сэмпл/
+3 LANG ru
+3 GIVN Алекс
+3 SURN Сэмпл
+2 NOTE Name note
+2 SOUR @S1@
+3 PAGE p. 1
+1 NAME Alex /Other/
+2 TYPE AKA
+1 SEX X
+1 BIRT
+2 TYPE Home birth
+2 DATE 1 JAN 1900
+3 TIME 03:00
+3 PHRASE New Year's Day 1900
+2 PLAC Sampletown, Sample County, Sample State, Sampleland
+3 FORM City, County, State, Country
+3 LANG en
+3 TRAN Ville-Exemple, Comté, État, Pays
+4 LANG fr
+3 MAP
+4 LATI N10.5
+4 LONG W20.25
+3 EXID 999
+4 TYPE http://places.example.invalid/id
+3 NOTE Place note
+2 ADDR 10 Birth Lane
+3 ADR1 10 Birth Lane
+3 CITY Sampletown
+3 STAE Sample State
+3 POST 00000
+3 CTRY Sampleland
+2 PHON +1 555 0300
+2 EMAIL birth@example.invalid
+2 FAX +1 555 0301
+2 WWW https://birth.example.invalid
+2 AGNC Sample Hospital
+2 RELI Sample religion
+2 CAUS Natural
+2 RESN PRIVACY
+2 SDATE 1 JAN 1900
+3 TIME 03:00
+3 PHRASE sort phrase
+2 ASSO @I2@
+3 PHRASE Attending midwife
+3 ROLE OTHER
+4 PHRASE Midwife
+3 NOTE Association note
+3 SOUR @S1@
+2 NOTE Birth note
+2 SOUR @S1@
+3 PAGE Entry 42
+3 DATA
+4 DATE 2 JAN 1900
+5 TIME 08:00
+5 PHRASE the day after
+4 TEXT Transcribed entry
+5 MIME text/plain
+5 LANG en
+4 TEXT Second transcription
+3 EVEN BIRT
+4 PHRASE Birth register
+4 ROLE CHIL
+5 PHRASE Newborn
+3 QUAY 3
+3 OBJE @M1@
+4 CROP
+5 TOP 10
+5 LEFT 20
+5 HEIGHT 30
+5 WIDTH 40
+4 TITL Cropped register
+3 NOTE Citation note
+2 OBJE @M1@
+3 TITL Birth photo
+2 UID 0aa1b2c3-0000-4000-8000-000000000002
+2 UID 0aa1b2c3-0000-4000-8000-000000000003
+2 AGE 0y
+3 PHRASE newborn
+2 FAMC @F1@
+1 ADOP Y
+2 DATE BEF 1910
+2 FAMC @F2@
+3 ADOP BOTH
+4 PHRASE Both foster parents
+1 CHR
+2 DATE ABT JULIAN 1900
+2 FAMC @F1@
+1 DEAT
+2 DATE FROM GREGORIAN 1950 TO JULIAN 1951
+2 AGE > 50y 3m 2w 1d
+3 PHRASE Over fifty
+1 BURI
+2 DATE
+3 PHRASE Some time after death
+1 EVEN Sample event text
+2 TYPE Custom event
+1 CREM Y
+1 OCCU Sample occupation
+2 TYPE Main job
+2 DATE BET 1920 AND 1940
+2 AGE < 70y
+2 SDATE 1920
+1 IDNO 123-45
+2 TYPE National register
+1 NCHI 2
+1 NMR 1
+1 FACT Sample fact
+2 TYPE Hobby
+1 DSCR Tall
+1 RESI Sample residence
+2 DATE TO 1930
+1 NO MARR
+2 DATE TO 24 MAR 1880
+3 PHRASE until 1880
+2 NOTE Never married note
+2 SOUR @S1@
+1 BAPL
+2 DATE 1 JAN 1950
+2 TEMP SLAKE
+2 PLAC Sample Temple City
+2 STAT COMPLETED
+3 DATE 2 JAN 1950
+4 TIME 10:00
+2 NOTE Ordinance note
+2 SOUR @S1@
+1 INIL
+2 STAT PRE_1970
+3 DATE 3 JAN 1950
+1 SLGC
+2 DATE 4 JAN 1950
+2 FAMC @F1@
+2 STAT DNS_CAN
+3 DATE 5 JAN 1950
+1 FAMC @F1@
+2 PEDI OTHER
+3 PHRASE Guardianship
+2 STAT CHALLENGED
+3 PHRASE Doubted by one source
+2 NOTE Family link note
+1 FAMC @F2@
+2 PEDI ADOPTED
+1 FAMS @F3@
+2 NOTE Spouse link note
+1 SUBM @U1@
+1 ASSO @VOID@
+2 PHRASE Mr Example
+2 ROLE OTHER
+3 PHRASE Teacher
+1 ASSO @I2@
+2 ROLE GODP
+1 ALIA @I3@
+2 PHRASE Possibly the same person
+1 ALIA @I4@
+1 ANCI @U1@
+1 ANCI @U2@
+1 DESI @U1@
+1 REFN REF-1
+2 TYPE local
+1 REFN REF-2
+1 UID 0aa1b2c3-0000-4000-8000-000000000004
+1 UID 0aa1b2c3-0000-4000-8000-000000000005
+1 EXID 77
+2 TYPE http://authority.example.invalid/person
+1 EXID 78
+1 NOTE Line one
+2 CONT  indented second line
+2 CONT
+2 CONT @@handle and @other
+2 MIME text/plain
+2 LANG en
+2 TRAN Ligne une
+3 LANG fr
+2 SOUR @S1@
+1 SNOTE @N1@
+1 SOUR @S1@
+1 SOUR @VOID@
+2 PAGE Unpublished family letter
+1 OBJE @M1@
+2 CROP
+3 TOP 1
+3 LEFT 2
+2 TITL Portrait
+1 CHAN
+2 DATE 4 APR 2021
+3 TIME 11:11:11Z
+2 NOTE Last edit
+1 CREA
+2 DATE 1 APR 2021
+1 _SKYPEID example.person
+2 _MEMBER Example club
+0 @I2@ INDI
+1 NAME Sam /Sample/
+1 SEX F
+1 FAMS @F1@
+0 @I3@ INDI
+1 SEX M
+0 @I4@ INDI
+1 SEX U
+0 @F1@ FAM
+1 RESN PRIVACY
+1 NCHI 3
+2 TYPE Living children
+2 HUSB
+3 AGE 30y
+2 DATE 1930
+2 SOUR @S1@
+2 NOTE Count note
+1 RESI Shared home
+2 DATE 1925
+1 FACT Sample family fact
+2 TYPE Pets
+1 MARR Y
+2 TYPE Civil
+2 HUSB
+3 AGE 25y
+4 PHRASE twenty-five
+2 WIFE
+3 AGE 23y
+2 DATE 10 JUN 1925
+2 PLAC Sampletown
+1 EVEN Handfasting
+2 TYPE Ceremony
+1 NO DIV
+1 HUSB @I3@
+2 PHRASE Stepfather
+1 WIFE @I2@
+1 CHIL @I1@
+2 PHRASE Eldest
+1 CHIL @VOID@
+2 PHRASE Unknown child
+1 ASSO @I4@
+2 ROLE WITN
+1 SUBM @U1@
+1 SLGS
+2 DATE 1 FEB 1960
+2 STAT CANCELED
+3 DATE 2 FEB 1960
+1 REFN FAM-1
+1 UID 0aa1b2c3-0000-4000-8000-000000000006
+1 EXID FX1
+2 TYPE http://authority.example.invalid/family
+1 NOTE Family note
+1 SOUR @S1@
+1 OBJE @M1@
+1 CHAN
+2 DATE 5 MAY 2021
+1 CREA
+2 DATE 1 MAY 2021
+0 @F2@ FAM
+1 WIFE @I2@
+0 @F3@ FAM
+1 HUSB @I1@
+0 @M1@ OBJE
+1 RESN LOCKED
+1 FILE media/photo.jpg
+2 FORM image/jpeg
+3 MEDI PHOTO
+2 TITL Sample photo
+2 TRAN media/photo-small.jpg
+3 FORM image/jpeg
+1 FILE https://example.invalid/scan.pdf
+2 FORM application/pdf
+3 MEDI OTHER
+4 PHRASE Scanned letter
+1 REFN OBJ-1
+1 UID 0aa1b2c3-0000-4000-8000-000000000007
+1 EXID OX1
+2 TYPE http://authority.example.invalid/media
+1 NOTE Media note
+1 SOUR @S2@
+2 PAGE first
+1 SOUR @S2@
+2 PAGE second
+1 CHAN
+2 DATE 6 JUN 2021
+1 CREA
+2 DATE 1 JUN 2021
+0 @R1@ REPO
+1 NAME Sample Archive
+1 ADDR 3 Archive Way
+2 CITY Archiveton
+1 PHON +1 555 0400
+1 EMAIL archive@example.invalid
+1 FAX +1 555 0401
+1 WWW https://archive.example.invalid
+1 NOTE Repository note
+1 REFN REPO-1
+1 UID 0aa1b2c3-0000-4000-8000-000000000008
+1 EXID RX1
+2 TYPE http://authority.example.invalid/repo
+1 CHAN
+2 DATE 7 JUL 2021
+1 CREA
+2 DATE 1 JUL 2021
+0 @N1@ SNOTE Shared note text
+1 CONT second line
+1 MIME text/plain
+1 LANG en
+1 TRAN Texte de note partagée
+2 LANG fr
+2 MIME text/plain
+1 SOUR @S1@
+2 PAGE note page
+1 REFN SN-1
+2 TYPE local
+1 UID 0aa1b2c3-0000-4000-8000-000000000009
+1 EXID NX1
+2 TYPE http://authority.example.invalid/note
+1 CHAN
+2 DATE 8 AUG 2021
+1 CREA
+2 DATE 1 AUG 2021
+0 @S1@ SOUR
+1 DATA
+2 EVEN BIRT, DEAT
+3 DATE FROM 1890 TO 1950
+4 PHRASE Register span
+3 PLAC Sampletown
+4 FORM City
+2 EVEN MARR
+2 AGNC Sample Registry
+2 NOTE Data note
+1 AUTH Sample Author
+1 TITL Sample Register
+1 ABBR SR
+1 PUBL Sample Publisher
+1 TEXT Full text of the source
+2 MIME text/plain
+2 LANG en
+1 REPO @R1@
+2 NOTE Repo citation note
+2 CALN CALL-1
+3 MEDI BOOK
+2 CALN CALL-2
+3 MEDI OTHER
+4 PHRASE Wax cylinder
+1 REPO @VOID@
+2 CALN CALL-3
+1 REFN SRC-1
+1 UID 0aa1b2c3-0000-4000-8000-000000000010
+1 EXID SX1
+2 TYPE http://authority.example.invalid/source
+1 NOTE Source note
+1 OBJE @M1@
+1 CHAN
+2 DATE 9 SEP 2021
+1 CREA
+2 DATE 1 SEP 2021
+0 @S2@ SOUR
+1 TITL Second source
+0 @U2@ SUBM
+1 NAME Second Submitter
+0 _CUSTOMREC Extension record
+1 _SUB value
+0 TRLR

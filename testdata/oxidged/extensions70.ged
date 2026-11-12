@@ -1,0 +1,33 @@
+0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+2 TAG _REC https://example.com/terms/record
+2 TAG _STRUCT https://example.com/terms/structure
+2 TAG _ALIAS https://example.com/terms/structure
+2 TAG _ENUMVAL https://example.com/terms/enum-value
+2 TAG _CAL https://example.com/terms/calendar
+2 TAG _MON https://example.com/terms/month
+2 TAG _CREATOR https://gedcom.io/terms/v7/record-SUBM
+2 TAG _PHRASE https://gedcom.io/terms/v7/PHRASE
+0 @I1@ INDI
+1 NAME Ann /Example/
+1 SEX F
+1 _STRUCT Extension structure value
+2 _ALIAS Same URI under another tag
+2 DATE 1 JAN 1900
+1 FAMC @F1@
+2 PEDI _ENUMVAL
+1 BIRT
+2 DATE _CAL 1 _MON 1900
+2 _PHRASE Born far from the parish
+1 _CREATOR @U1@
+1 _UNDOCUMENTED Kept although no URI is declared
+0 @F1@ FAM
+1 CHIL @I1@
+0 @U1@ SUBM
+1 NAME Example Submitter
+0 @X1@ _REC Extension record
+1 _STRUCT Nested extension structure
+1 NOTE A standard structure under an extension record
+0 TRLR
