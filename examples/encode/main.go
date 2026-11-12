@@ -13,78 +13,60 @@ import (
 
 func main() {
 	// Create a simple GEDCOM document
-	doc := &gedcom.Document{
-		Header: &gedcom.Header{
-			Version:      "5.5",
-			Encoding:     "UTF-8",
-			SourceSystem: "go-gedcom example",
-			Language:     "English",
-		},
-		Records: []*gedcom.Record{
-			// Individual record
-			{
+	doc := gedcom.NewDocument(gedcom.Version55)
+	doc.Header.Encoding = "UTF-8"
+	doc.Header.SourceSystem = "go-gedcom example"
+	doc.Header.Language = "English"
+
+	// Records carry only typed Entities; the encoder builds their tags from
+	// the typed fields (set Record.Tags only for structures the model lacks).
+	records := []*gedcom.Record{
+		// Individual record
+		{
+			XRef: "@I1@",
+			Type: gedcom.RecordTypeIndividual,
+			Entity: &gedcom.Individual{
 				XRef: "@I1@",
-				Type: gedcom.RecordTypeIndividual,
-				Tags: []*gedcom.Tag{
-					{Level: 1, Tag: "NAME", Value: "John /Doe/"},
-					{Level: 2, Tag: "GIVN", Value: "John"},
-					{Level: 2, Tag: "SURN", Value: "Doe"},
-					{Level: 1, Tag: "SEX", Value: "M"},
-					{Level: 1, Tag: "BIRT"},
-					{Level: 2, Tag: "DATE", Value: "1 JAN 1900"},
-					{Level: 2, Tag: "PLAC", Value: "New York, USA"},
+				Names: []*gedcom.PersonalName{
+					{Full: "John /Doe/", Given: "John", Surname: "Doe"},
 				},
-				Entity: &gedcom.Individual{
-					XRef: "@I1@",
-					Names: []*gedcom.PersonalName{
-						{Full: "John /Doe/", Given: "John", Surname: "Doe"},
-					},
-					Sex: "M",
-				},
-			},
-			// Another individual
-			{
-				XRef: "@I2@",
-				Type: gedcom.RecordTypeIndividual,
-				Tags: []*gedcom.Tag{
-					{Level: 1, Tag: "NAME", Value: "Jane /Smith/"},
-					{Level: 2, Tag: "GIVN", Value: "Jane"},
-					{Level: 2, Tag: "SURN", Value: "Smith"},
-					{Level: 1, Tag: "SEX", Value: "F"},
-				},
-				Entity: &gedcom.Individual{
-					XRef: "@I2@",
-					Names: []*gedcom.PersonalName{
-						{Full: "Jane /Smith/", Given: "Jane", Surname: "Smith"},
-					},
-					Sex: "F",
-				},
-			},
-			// Family record
-			{
-				XRef: "@F1@",
-				Type: gedcom.RecordTypeFamily,
-				Tags: []*gedcom.Tag{
-					{Level: 1, Tag: "HUSB", Value: "@I1@"},
-					{Level: 1, Tag: "WIFE", Value: "@I2@"},
-					{Level: 1, Tag: "MARR"},
-					{Level: 2, Tag: "DATE", Value: "15 JUN 1925"},
-					{Level: 2, Tag: "PLAC", Value: "Boston, Massachusetts, USA"},
-				},
-				Entity: &gedcom.Family{
-					XRef:    "@F1@",
-					Husband: "@I1@",
-					Wife:    "@I2@",
+				Sex: "M",
+				Events: []*gedcom.Event{
+					{Type: gedcom.EventBirth, Date: "1 JAN 1900", PlaceDetail: &gedcom.PlaceDetail{Name: "New York, USA"}},
 				},
 			},
 		},
-		XRefMap: make(map[string]*gedcom.Record),
+		// Another individual
+		{
+			XRef: "@I2@",
+			Type: gedcom.RecordTypeIndividual,
+			Entity: &gedcom.Individual{
+				XRef: "@I2@",
+				Names: []*gedcom.PersonalName{
+					{Full: "Jane /Smith/", Given: "Jane", Surname: "Smith"},
+				},
+				Sex: "F",
+			},
+		},
+		// Family record
+		{
+			XRef: "@F1@",
+			Type: gedcom.RecordTypeFamily,
+			Entity: &gedcom.Family{
+				XRef:    "@F1@",
+				Husband: "@I1@",
+				Wife:    "@I2@",
+				Events: []*gedcom.Event{
+					{Type: gedcom.EventMarriage, Date: "15 JUN 1925", PlaceDetail: &gedcom.PlaceDetail{Name: "Boston, Massachusetts, USA"}},
+				},
+			},
+		},
 	}
 
-	// Build the XRefMap
-	for _, record := range doc.Records {
-		if record.XRef != "" {
-			doc.XRefMap[record.XRef] = record
+	// AddRecord appends each record and indexes it for XRef lookup
+	for _, record := range records {
+		if err := doc.AddRecord(record); err != nil {
+			log.Fatalf("Failed to add record: %v", err)
 		}
 	}
 

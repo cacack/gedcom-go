@@ -16,9 +16,13 @@ type Header struct {
 	// Document.IsPointerXRef applies: GEDCOM 5.5 and 5.5.1 allow spaces in
 	// pointers ("@N 1@"); 7.0 and an empty value do not.
 	//
-	// Setting Version does not set it: code that builds a Document must set
-	// DeclaredVersion itself to opt in to the 5.5/5.5.1 grammar, and code
-	// that rewrites the header's GEDC.VERS must update it to match.
+	// Setting Version does not set it, nor the reverse: the two are
+	// independent fields. NewDocument sets both from one version; code that
+	// builds a Header literal must set DeclaredVersion itself to opt in to the
+	// 5.5/5.5.1 grammar, and code that rewrites the header's GEDC.VERS must
+	// update it to match. For a header with no Tags the encoder writes
+	// GEDC.VERS from Version (or EncodeOptions.TargetVersion), never from
+	// DeclaredVersion.
 	DeclaredVersion Version
 
 	// Encoding is the character encoding used in the file

@@ -6,9 +6,11 @@
 //
 // # Basic Usage
 //
-//	doc := &gedcom.Document{
-//	    Header: &gedcom.Header{Version: "5.5", Encoding: "UTF-8"},
-//	    Records: records,
+//	doc := gedcom.NewDocument(gedcom.Version55)
+//	for _, r := range records {
+//	    if err := doc.AddRecord(r); err != nil {
+//	        log.Fatal(err)
+//	    }
 //	}
 //
 //	f, err := os.Create("output.ged")

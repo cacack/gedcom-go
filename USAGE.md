@@ -624,48 +624,35 @@ for code, issues := range issuesByCode {
 
 ### Creating a Simple Document
 
+`gedcom.NewDocument` returns an empty document whose header declares the
+version (`Header.Version` and `Header.DeclaredVersion` both set), and
+`Document.AddRecord` appends a record and indexes it in `XRefMap`, so lookups
+such as `GetIndividual` and `Parents` find it. A record built with only an
+`Entity` (no `Tags`) is encoded from its typed fields. A minimal GEDCOM 7.0
+file:
+
 ```go
-import (
-    "github.com/cacack/gedcom-go/v3/encoder"
-    "github.com/cacack/gedcom-go/v3/gedcom"
-)
-
-// Create document
-doc := &gedcom.Document{
-    Header: &gedcom.Header{
-        Version:      "5.5",
-        Encoding:     "UTF-8",
-        SourceSystem: "MyApp",
-        Language:     "English",
-    },
-    Records:  []*gedcom.Record{},
-    XRefMap:  make(map[string]*gedcom.Record),
+doc := gedcom.NewDocument(gedcom.Version70)
+err := doc.AddRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual,
+    Entity: &gedcom.Individual{XRef: "@I1@", Sex: "F",
+        Names: []*gedcom.PersonalName{{Full: "Ada /Lovelace/"}}}})
+if err != nil {
+    log.Fatal(err) // wraps gedcom.ErrDuplicateXRef if @I1@ is already in doc
 }
-
-// Add individuals, families, etc. (see below)
-
-// Write to file
-f, _ := os.Create("output.ged")
-defer f.Close()
-encoder.Encode(f, doc)
+err = encoder.Encode(os.Stdout, doc)
 ```
+
+Header fields such as `SourceSystem` and `Language` can be set on
+`doc.Header` before encoding. If you edit `doc.Records` directly instead of
+through `AddRecord`, call `doc.ReindexXRefs()` afterwards to rebuild
+`XRefMap`.
 
 ### Adding Individuals
 
 ```go
-// Create individual record
-individual := &gedcom.Record{
+err := doc.AddRecord(&gedcom.Record{
     XRef: "@I1@",
     Type: gedcom.RecordTypeIndividual,
-    Tags: []*gedcom.Tag{
-        {Level: 1, Tag: "NAME", Value: "John /Doe/"},
-        {Level: 2, Tag: "GIVN", Value: "John"},
-        {Level: 2, Tag: "SURN", Value: "Doe"},
-        {Level: 1, Tag: "SEX", Value: "M"},
-        {Level: 1, Tag: "BIRT"},
-        {Level: 2, Tag: "DATE", Value: "1 JAN 1900"},
-        {Level: 2, Tag: "PLAC", Value: "New York, USA"},
-    },
     Entity: &gedcom.Individual{
         XRef: "@I1@",
         Names: []*gedcom.PersonalName{
@@ -675,27 +662,17 @@ individual := &gedcom.Record{
         Events: []*gedcom.Event{
             {Type: "BIRT", Date: "1 JAN 1900", PlaceDetail: &gedcom.PlaceDetail{Name: "New York, USA"}},
         },
+        SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
     },
-}
-
-// Add to document
-doc.Records = append(doc.Records, individual)
-doc.XRefMap[individual.XRef] = individual
+})
 ```
 
 ### Adding Families
 
 ```go
-family := &gedcom.Record{
+err := doc.AddRecord(&gedcom.Record{
     XRef: "@F1@",
     Type: gedcom.RecordTypeFamily,
-    Tags: []*gedcom.Tag{
-        {Level: 1, Tag: "HUSB", Value: "@I1@"},
-        {Level: 1, Tag: "WIFE", Value: "@I2@"},
-        {Level: 1, Tag: "MARR"},
-        {Level: 2, Tag: "DATE", Value: "15 JUN 1925"},
-        {Level: 2, Tag: "PLAC", Value: "Boston, Massachusetts, USA"},
-    },
     Entity: &gedcom.Family{
         XRef:    "@F1@",
         Husband: "@I1@",
@@ -704,11 +681,13 @@ family := &gedcom.Record{
             {Type: "MARR", Date: "15 JUN 1925", PlaceDetail: &gedcom.PlaceDetail{Name: "Boston, Massachusetts, USA"}},
         },
     },
-}
-
-doc.Records = append(doc.Records, family)
-doc.XRefMap[family.XRef] = family
+})
 ```
+
+Set `Tags` instead of (or as well as) `Entity` only when you need to write
+structures the typed model has no field for: `Tags` is authoritative when
+encoding, and the encoder builds tags from `Entity` only for a record that has
+none (see `Record.Tags`).
 
 ### Encoding with Options
 
