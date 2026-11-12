@@ -34,7 +34,9 @@ func pedigreeForRelation(relation string) string {
 // relationship, every relationship maps to the same PEDI value, and that
 // value is not birth (the GEDCOM default, which adding would only restate).
 // A FAMC that already has a PEDI, or a child with no FAMC to the family, is
-// left alone. The vendor tags stay where they are. Each PEDI added is a
+// left alone. It reads the CHIL and FAMC tags, not Family.ChildLinks, so a
+// record with no Tags gets no PEDI. The vendor tags stay where they are.
+// Each PEDI added is a
 // Normalized note under one PEDIGREE_FROM_VENDOR_TAG transformation.
 func synthesizePedigrees(doc *gedcom.Document, report *gedcom.ConversionReport, targetVersion gedcom.Version) {
 	pedigrees := familyPedigrees(doc)
@@ -157,8 +159,11 @@ func agreedPedigree(father, mother string, husband, wife bool) string {
 // NAME structure. The new NAME follows the one carrying _MARNM, with the
 // _MARNM value as its surname in place of that name's surname (or the whole
 // value, when _MARNM has a slash and so is a full name already). A matching
-// TYPE MARRIED name the individual already has is not added again. _MARNM
-// stays where it is. Each NAME added is a Normalized note under one
+// TYPE MARRIED name the individual already has, or that an earlier _MARNM
+// on the same individual added, is not added again. _MARNM
+// stays where it is. It reads the NAME tags, not PersonalName.MarriedName, so
+// a record with no Tags gets no new NAME. Each NAME added is a Normalized
+// note under one
 // MARRIED_NAME_FROM_VENDOR_TAG transformation.
 func marriedNamesToV7(doc *gedcom.Document, report *gedcom.ConversionReport) {
 	total := 0
@@ -181,7 +186,7 @@ func marriedNamesToV7(doc *gedcom.Document, report *gedcom.ConversionReport) {
 				continue
 			}
 			value := marriedNameValue(tag.Value, married)
-			if hasMarriedName(record.Tags, value) {
+			if hasMarriedName(record.Tags, value) || hasMarriedName(out, value) {
 				continue
 			}
 			pending = []*gedcom.Tag{

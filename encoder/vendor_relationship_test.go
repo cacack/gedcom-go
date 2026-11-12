@@ -87,3 +87,26 @@ func TestSyncTagsCarriesChildLinkEdit(t *testing.T) {
 		t.Errorf("SyncTags removed %q and added %q, want only _MREL Step -> Adopted", removed, added)
 	}
 }
+
+// TestEntityWritesDuplicateChildLinksInOrder checks that a child listed twice
+// gets its links in order, one per CHIL line.
+func TestEntityWritesDuplicateChildLinksInOrder(t *testing.T) {
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version551},
+		Records: []*gedcom.Record{
+			{XRef: "@F1@", Type: gedcom.RecordTypeFamily, Entity: &gedcom.Family{
+				XRef:     "@F1@",
+				Children: []string{"@I2@", "@I3@", "@I2@"},
+				ChildLinks: []gedcom.ChildLink{
+					{XRef: "@I2@", FatherRelation: "Adopted"},
+					{XRef: "@I2@", FatherRelation: "Step"},
+				},
+			}},
+		},
+	}
+	out := encodeToString(t, doc)
+	want := "1 CHIL @I2@\n2 _FREL Adopted\n1 CHIL @I3@\n1 CHIL @I2@\n2 _FREL Step\n"
+	if !strings.Contains(out, want) {
+		t.Errorf("output lacks %q:\n%s", want, out)
+	}
+}

@@ -977,7 +977,7 @@ func cloneFamilyLinks(links []FamilyLink) []FamilyLink {
 	return copied
 }
 
-// cloneRefNumbers returns a copy of s. RefNumber holds only strings, so a
+// cloneChildLinks returns a copy of s. ChildLink holds only strings, so a
 // shallow element copy is a deep copy.
 func cloneChildLinks(s []ChildLink) []ChildLink {
 	if s == nil {
@@ -988,6 +988,8 @@ func cloneChildLinks(s []ChildLink) []ChildLink {
 	return copied
 }
 
+// cloneRefNumbers returns a copy of s. RefNumber holds only strings, so a
+// shallow element copy is a deep copy.
 func cloneRefNumbers(s []RefNumber) []RefNumber {
 	if s == nil {
 		return nil

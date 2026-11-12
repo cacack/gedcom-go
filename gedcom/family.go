@@ -29,7 +29,10 @@ type Family struct {
 	// that vendor exports record under a CHIL line as _FREL and _MREL
 	// (Family Tree Maker, Ancestry, Legacy), in file order. A CHIL with
 	// neither tag has no entry, so Children stays the list of children and
-	// ChildLinks only adds to it. See ChildLink.
+	// ChildLinks only adds to it. The encoder writes each link under the
+	// first CHIL in Children with the same XRef that has no link yet; a link
+	// whose XRef is not in Children is not written. On a decoded family,
+	// edits reach the output only through encoder.SyncTags. See ChildLink.
 	ChildLinks []ChildLink
 
 	// Events contains family events (marriage, divorce, etc.) in file order.
@@ -117,7 +120,8 @@ type ChildLink struct {
 
 // LinkForChild returns the first ChildLink whose XRef is xref, or nil if the
 // family records no relationship for that child. The pointer refers into
-// ChildLinks, so writes through it edit the family. Safe on a nil receiver.
+// ChildLinks, so writes through it edit the family; appending to ChildLinks
+// may invalidate it. Safe on a nil receiver.
 func (f *Family) LinkForChild(xref string) *ChildLink {
 	if f == nil {
 		return nil

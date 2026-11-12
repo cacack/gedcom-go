@@ -263,3 +263,25 @@ func transformationCount(report *gedcom.ConversionReport, typ string) int {
 	}
 	return 0
 }
+
+// TestConvertMarriedNameNotDuplicated checks that two NAMEs yielding the same
+// married name add it once, not once per _MARNM.
+func TestConvertMarriedNameNotDuplicated(t *testing.T) {
+	src := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n" +
+		"0 @I1@ INDI\n1 NAME Ann /Smith/\n2 _MARNM Jones\n1 NAME Ann /Smith/\n2 _MARNM Jones\n0 TRLR\n"
+	converted, report, err := Convert(decodeText(t, src), gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	want := []string{
+		"1 NAME Ann /Smith/", "2 _MARNM Jones",
+		"1 NAME Ann /Jones/", "2 TYPE MARRIED",
+		"1 NAME Ann /Smith/", "2 _MARNM Jones",
+	}
+	if got := tagLines(converted.XRefMap["@I1@"]); !reflect.DeepEqual(got, want) {
+		t.Errorf("@I1@ Tags =\n%q\nwant\n%q", got, want)
+	}
+	if got := transformationCount(report, "MARRIED_NAME_FROM_VENDOR_TAG"); got != 1 {
+		t.Errorf("MARRIED_NAME_FROM_VENDOR_TAG count = %d, want 1", got)
+	}
+}

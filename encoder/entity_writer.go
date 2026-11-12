@@ -655,21 +655,28 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 // _FREL and _MREL; a link whose XRef is not among Children is not written.
 func childrenToTags(fam *gedcom.Family, opts *EncodeOptions) []*gedcom.Tag {
 	var tags []*gedcom.Tag
-	used := make([]bool, len(fam.ChildLinks))
+	// pending queues each child's links in order, so matching is linear in
+	// the family size rather than children x links.
+	var pending map[string][]gedcom.ChildLink
+	if len(fam.ChildLinks) > 0 {
+		pending = make(map[string][]gedcom.ChildLink, len(fam.ChildLinks))
+		for _, link := range fam.ChildLinks {
+			pending[link.XRef] = append(pending[link.XRef], link)
+		}
+	}
 	for _, child := range fam.Children {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "CHIL", Value: child})
-		for k, link := range fam.ChildLinks {
-			if used[k] || link.XRef != child {
-				continue
-			}
-			used[k] = true
-			if link.FatherRelation != "" {
-				tags = append(tags, &gedcom.Tag{Level: 2, Tag: "_FREL", Value: opts.text(link.FatherRelation)})
-			}
-			if link.MotherRelation != "" {
-				tags = append(tags, &gedcom.Tag{Level: 2, Tag: "_MREL", Value: opts.text(link.MotherRelation)})
-			}
-			break
+		queue := pending[child]
+		if len(queue) == 0 {
+			continue
+		}
+		link := queue[0]
+		pending[child] = queue[1:]
+		if link.FatherRelation != "" {
+			tags = append(tags, &gedcom.Tag{Level: 2, Tag: "_FREL", Value: opts.text(link.FatherRelation)})
+		}
+		if link.MotherRelation != "" {
+			tags = append(tags, &gedcom.Tag{Level: 2, Tag: "_MREL", Value: opts.text(link.MotherRelation)})
 		}
 	}
 	return tags
