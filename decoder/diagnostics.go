@@ -123,6 +123,14 @@ const (
 	// definition's line. Both records are kept in Document.Records, and
 	// Document.XRefMap (so every pointer) resolves to the first.
 	CodeDuplicateXRef = "DUPLICATE_XREF"
+
+	// CodeCharsetMismatch indicates the input was decoded in an encoding other
+	// than the one its HEAD.CHAR line declares: a UTF-8 BOM overrode the
+	// declaration, or bytes declared as ANSEL, ANSI/LATIN1 or ASCII were
+	// recognized as UTF-8 (see charset.NewDetectingReader). Header.Encoding
+	// keeps the declared value and Header.DetectedEncoding names the one
+	// applied. Emitted as SeverityWarning, on the CHAR line.
+	CodeCharsetMismatch = "CHARSET_MISMATCH"
 )
 
 // CodeDiagnosticsTruncated reports that a lenient decode left diagnostics out

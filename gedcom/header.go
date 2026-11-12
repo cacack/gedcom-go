@@ -28,8 +28,28 @@ type Header struct {
 	// DeclaredVersion.
 	DeclaredVersion Version
 
-	// Encoding is the character encoding used in the file
+	// Encoding is the character encoding the file declares (HEAD.CHAR),
+	// verbatim. It may differ from the encoding the decoder applied: see
+	// DetectedEncoding.
 	Encoding Encoding
+
+	// DetectedEncoding is the encoding the decoder actually decoded the
+	// file's bytes as: EncodingUTF8, EncodingANSEL, EncodingASCII,
+	// EncodingLATIN1, EncodingWindows1250, EncodingCP437, EncodingCP850,
+	// EncodingMacRoman, EncodingUTF16LE or EncodingUTF16BE. It uses a
+	// normalized vocabulary while Encoding is the declared token verbatim,
+	// so the two often differ as strings without any conflict (for example
+	// "ANSI" vs LATIN1, "UNICODE" vs UTF-16LE, or an absent CHAR vs UTF-8):
+	// do not compare them to detect a mismatch. The signal for a declaration
+	// the decoder overrode (a UTF-8 BOM, or bytes declared as ANSEL,
+	// ASCII or a Windows-1252 value recognized as UTF-8) is the CHARSET_MISMATCH
+	// diagnostic. It is empty for a header built in memory.
+	//
+	// It is a read view filled by the decoder and describes the decoded
+	// input only: the encoder never writes it, and the converter and merge
+	// do not maintain it (a converted header keeps the source's value, and a
+	// merged header keeps doc1's).
+	DetectedEncoding Encoding
 
 	// SourceSystem identifies the software that created the file
 	SourceSystem string

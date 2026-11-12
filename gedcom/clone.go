@@ -46,6 +46,7 @@ func (h *Header) Clone() *Header {
 		Version:           h.Version,
 		DeclaredVersion:   h.DeclaredVersion,
 		Encoding:          h.Encoding,
+		DetectedEncoding:  h.DetectedEncoding,
 		SourceSystem:      h.SourceSystem,
 		SourceVersion:     h.SourceVersion,
 		SourceName:        h.SourceName,

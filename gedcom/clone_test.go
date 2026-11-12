@@ -113,14 +113,15 @@ func TestHeaderClone(t *testing.T) {
 
 	t.Run("copies all header fields", func(t *testing.T) {
 		original := &Header{
-			Version:        Version551,
-			Encoding:       EncodingUTF8,
-			SourceSystem:   "TestSystem",
-			Date:           "1 JAN 2024",
-			Language:       "English",
-			Copyright:      "(c) 2024",
-			Submitter:      "@SUBM1@",
-			AncestryTreeID: "tree123",
+			Version:          Version551,
+			Encoding:         EncodingANSEL,
+			DetectedEncoding: EncodingUTF8,
+			SourceSystem:     "TestSystem",
+			Date:             "1 JAN 2024",
+			Language:         "English",
+			Copyright:        "(c) 2024",
+			Submitter:        "@SUBM1@",
+			AncestryTreeID:   "tree123",
 			Tags: []*Tag{
 				{Level: 1, Tag: "TEST", Value: "value"},
 			},
@@ -136,6 +137,9 @@ func TestHeaderClone(t *testing.T) {
 		}
 		if copied.Encoding != original.Encoding {
 			t.Errorf("Encoding = %v, want %v", copied.Encoding, original.Encoding)
+		}
+		if copied.DetectedEncoding != original.DetectedEncoding {
+			t.Errorf("DetectedEncoding = %v, want %v", copied.DetectedEncoding, original.DetectedEncoding)
 		}
 		if copied.SourceSystem != original.SourceSystem {
 			t.Errorf("SourceSystem = %v, want %v", copied.SourceSystem, original.SourceSystem)

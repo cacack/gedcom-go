@@ -65,6 +65,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | `MISSING_REQUIRED` | Required subordinate tag is missing | Reported; decoding continues |
 | `SKIPPED_RECORD` | A record's level-0 line was dropped, so its subordinate lines are skipped instead of attaching to the preceding record | Record dropped; decoding continues |
 | `DIAGNOSTICS_TRUNCATED` | More diagnostics than `DecodeOptions.MaxDiagnostics` (default 100,000; `decoder.UnlimitedDiagnostics` removes the bound) | The first ones are kept and this one, last, counts the rest; the document is unaffected |
+| `CHARSET_MISMATCH` | The input was decoded in an encoding other than its `HEAD.CHAR` declares: a UTF-8 BOM overrode the declaration, or bytes declared `ANSEL`, `ANSI`/`LATIN1` or `ASCII` were valid UTF-8 | Decoded as UTF-8; `Header.Encoding` keeps the declared value and `Header.DetectedEncoding` names the applied one. Reported as a warning on the `CHAR` line |
 
 A diagnostic's `Message` and `Context`, and a `parser.ParseError`'s, echo at most `parser.MaxContextBytes` (256) bytes of the input, followed by `…` when clipped, so a malformed 1 MiB line does not yield a 1 MiB error string.
 
@@ -405,6 +406,8 @@ An invalid byte is reported as a `*charset.InvalidUTF8Error` or `*charset.Invali
 
 The charset declaration is `HEAD.CHAR` at level 1 only. Charset detection, `Header.Encoding` and the encoder's rewrite of `CHAR` to `UTF-8` all read that one line; a `CHAR` nested deeper in the header (`2 CHAR` under `SOUR`, say) is not a declaration, is kept in `Header.Tags` and written back verbatim.
 
+Bytes win over labels where they are unambiguous. A UTF-8 BOM overrides any `CHAR` value, and a `CHAR` of `ANSEL`, `ANSI`/`LATIN1`/`ISO-8859-1` or `ASCII` is overridden when the first 64 KiB of input hold at least one valid multi-byte UTF-8 sequence and no invalid one — the common "declares ANSEL, writes UTF-8" defect. Either override emits `CHARSET_MISMATCH`; `Header.Encoding` keeps what the file declares and `Header.DetectedEncoding` records what it was decoded as. `charset.NewDetectingReader` exposes the same decision (`charset.Detection`) below the decoder.
+
 ## Document Operations
 
 ### Building Documents
@@ -462,8 +465,8 @@ and emits a valid document. The source is not mutated.
 sub, err := doc.Subset(doc.Descendants("@I1@"))
 ```
 
-- Header carries Version, DeclaredVersion, Encoding, SourceSystem,
-  SourceVersion, SourceName, SourceCorporation, Destination, Date, Time,
+- Header carries Version, DeclaredVersion, Encoding, DetectedEncoding,
+  SourceSystem, SourceVersion, SourceName, SourceCorporation, Destination, Date, Time,
   Language, Copyright, PlaceForm, AncestryTreeID, and Schema from the source
 - Spaced pointers (`@N 1@`) are followed in a document whose header
   declares GEDCOM 5.5 or 5.5.1 (`Header.DeclaredVersion`), as they are by

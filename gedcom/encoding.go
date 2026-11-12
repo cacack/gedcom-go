@@ -19,6 +19,21 @@ const (
 
 	// EncodingUNICODE is an alias for UTF-8 used in some GEDCOM files
 	EncodingUNICODE Encoding = "UNICODE"
+
+	// EncodingUTF16LE and EncodingUTF16BE name the UTF-16 byte orders the
+	// decoder can apply. They appear only in Header.DetectedEncoding: they are
+	// not HEAD.CHAR values, so IsValid reports false for them.
+	EncodingUTF16LE Encoding = "UTF-16LE"
+	EncodingUTF16BE Encoding = "UTF-16BE"
+
+	// EncodingWindows1250, EncodingCP437, EncodingCP850 and EncodingMacRoman
+	// name the other code pages the decoder can apply. Like the UTF-16
+	// values they appear only in Header.DetectedEncoding, and IsValid
+	// reports false for them.
+	EncodingWindows1250 Encoding = "WINDOWS-1250"
+	EncodingCP437       Encoding = "CP437"
+	EncodingCP850       Encoding = "CP850"
+	EncodingMacRoman    Encoding = "MACROMAN"
 )
 
 // String returns the string representation of the encoding.

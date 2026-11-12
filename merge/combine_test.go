@@ -595,6 +595,29 @@ func TestCombine_HeaderFieldConflictsRecorded(t *testing.T) {
 	}
 }
 
+// TestCombine_DetectedEncodingKeptFromDoc1 pins the documented contract of
+// Header.DetectedEncoding under merge: it describes doc1's decoded input and
+// is never reconciled with doc2, even when Encoding is promoted from doc2.
+func TestCombine_DetectedEncodingKeptFromDoc1(t *testing.T) {
+	doc1 := buildDoc("a_")
+	doc2 := buildDoc("b_")
+	doc1.Header.Encoding = ""
+	doc1.Header.DetectedEncoding = gedcom.EncodingUTF8
+	doc2.Header.Encoding = gedcom.EncodingANSEL
+	doc2.Header.DetectedEncoding = gedcom.EncodingANSEL
+
+	out, _, err := merge.Combine(doc1, doc2, merge.CombineOptions{})
+	if err != nil {
+		t.Fatalf("Combine returned error: %v", err)
+	}
+	if out.Header.Encoding != gedcom.EncodingANSEL {
+		t.Errorf("Encoding = %q, want ANSEL promoted from doc2", out.Header.Encoding)
+	}
+	if out.Header.DetectedEncoding != gedcom.EncodingUTF8 {
+		t.Errorf("DetectedEncoding = %q, want doc1's UTF-8", out.Header.DetectedEncoding)
+	}
+}
+
 func TestCombine_Doc1EmptyHeaderFieldPromotesDoc2(t *testing.T) {
 	doc1 := buildDoc("a_")
 	doc2 := buildDoc("b_")

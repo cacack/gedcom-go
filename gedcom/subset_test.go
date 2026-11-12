@@ -422,6 +422,7 @@ func TestSubset_HeaderScalarFieldsCarriedAcross(t *testing.T) {
 	doc.Header.Language = "English"
 	doc.Header.Copyright = "(c) 2026"
 	doc.Header.AncestryTreeID = "tree123"
+	doc.Header.DetectedEncoding = EncodingANSEL
 
 	sub, err := doc.Subset([]string{"@I1@"})
 	if err != nil {
@@ -429,6 +430,7 @@ func TestSubset_HeaderScalarFieldsCarriedAcross(t *testing.T) {
 	}
 	got, want := sub.Header, doc.Header
 	if got.Version != want.Version || got.Encoding != want.Encoding ||
+		got.DetectedEncoding != want.DetectedEncoding ||
 		got.SourceSystem != want.SourceSystem || got.Date != want.Date ||
 		got.Language != want.Language || got.Copyright != want.Copyright ||
 		got.AncestryTreeID != want.AncestryTreeID {
