@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -99,9 +100,10 @@ func TestSkipOrphanedRecords(t *testing.T) {
 		{Line: 7, Message: "invalid level number", Context: "x0 @I3@ INDI"},
 		{Line: 9, Message: "xref is missing its closing @", Context: "0 @I5 INDI"},
 	}
+	// Lines 3 and 7 are the level-0 lines diagnosticBudget.KeepError records.
 	collector := &diagnosticCollector{}
 
-	got := skipOrphanedRecords(lines, errs, collector)
+	got := skipOrphanedRecords(lines, []int{3, 7}, errs, collector)
 
 	var nums []int
 	for _, l := range got {
@@ -119,7 +121,7 @@ func TestSkipOrphanedRecords(t *testing.T) {
 	if len(collector.diagnostics) != 2 {
 		t.Fatalf("diagnostics = %v, want two SKIPPED_RECORD", collector.diagnostics)
 	}
-	if d := collector.diagnostics[0]; d.Line != 3 || !strings.Contains(d.Message, "lines 3-6") {
+	if d := collector.diagnostics[0]; d.Line != 3 || !strings.Contains(d.Message, "lines 3-6") || d.Context != "\uFEFF0 @I2@ INDI" {
 		t.Errorf("first diagnostic = %s, want line 3 naming lines 3-6", d.String())
 	}
 	if d := collector.diagnostics[1]; d.Line != 7 || !strings.Contains(d.Message, "(line 7)") {
@@ -134,7 +136,7 @@ func TestSkipOrphanedRecords_NothingDropped(t *testing.T) {
 	}
 	errs := []*parser.ParseError{{Line: 2, Message: "empty line", Context: ""}}
 
-	got := skipOrphanedRecords(lines, errs, nil)
+	got := skipOrphanedRecords(lines, nil, errs, nil)
 
 	if len(got) != 2 || got[0] != lines[0] || got[1] != lines[1] {
 		t.Errorf("got %v, want lines unchanged", got)
@@ -172,5 +174,38 @@ func TestDecodeWithDiagnostics_StrayInRecordLineKeepsRecord(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestDecodeWithDiagnostics_LongDroppedLevelZeroSkipsRecord pins that a
+// dropped level-0 line is recognised from its full text, not from the
+// ParseError's Context, which is clipped to parser.MaxContextBytes (#744):
+// an xref running past the clip must still skip its record.
+func TestDecodeWithDiagnostics_LongDroppedLevelZeroSkipsRecord(t *testing.T) {
+	input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+		"0 @I1@ INDI\n1 NAME First /One/\n" +
+		"x0 @I" + strings.Repeat("2", parser.MaxContextBytes) + "@ INDI\n1 NAME Second /Two/\n" +
+		"0 TRLR\n"
+	result, err := DecodeWithDiagnostics(strings.NewReader(input), DefaultOptions())
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	var names []string
+	for _, ind := range result.Document.Individuals() {
+		for _, n := range ind.Names {
+			names = append(names, ind.XRef+" "+n.Full)
+		}
+	}
+	if want := []string{"@I1@ First /One/"}; !reflect.DeepEqual(names, want) {
+		t.Errorf("names = %q, want %q: the second name must not attach to @I1@", names, want)
+	}
+	var skipped []string
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeSkippedRecord {
+			skipped = append(skipped, d.Message)
+		}
+	}
+	if len(skipped) != 1 || !strings.Contains(skipped[0], "lines 6-7") {
+		t.Errorf("SKIPPED_RECORD diagnostics = %q, want one naming lines 6-7", skipped)
 	}
 }

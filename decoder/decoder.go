@@ -23,7 +23,8 @@ type DecodeResult struct {
 	// In lenient mode, this may be a partial document if some lines failed to parse.
 	Document *gedcom.Document
 
-	// Diagnostics contains all issues encountered during parsing.
+	// Diagnostics contains the issues encountered during parsing, up to
+	// [DecodeOptions.MaxDiagnostics].
 	// Empty if parsing was successful or StrictMode was enabled.
 	Diagnostics Diagnostics
 }
@@ -143,12 +144,14 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// error that stands. It stops at the first error of any other kind,
 	// which stands whatever the version, so a garbage input is not read and
 	// buffered in full before being rejected.
-	parseOpts := &parser.ParseOptions{
-		Lenient:   true,
-		MaxErrors: 0, // Collect all errors
-	}
+	parseOpts := &parser.ParseOptions{Lenient: true}
+	// budget bounds lenient diagnostics; strict mode reports none.
+	var budget *diagnosticBudget
 	if opts.StrictMode {
 		parseOpts.TolerateOnly = parser.ErrXRefContainsSpace
+	} else {
+		budget = newDiagnosticBudget(opts.diagnosticsLimit())
+		parseOpts.Filter = budget
 	}
 	parsedLines, parseErrors, fe := p.ParseWithOptions(finalReader, parseOpts)
 
@@ -206,7 +209,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 		}
 		result := &DecodeResult{
 			Document:    doc,
-			Diagnostics: diagnostics,
+			Diagnostics: budget.apply(diagnostics),
 		}
 
 		// If lines were rejected, report the first one so callers keep the
@@ -226,6 +229,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 		version:     xrefVersion,
 		textVersion: detectedVersion,
 		discard:     opts.StrictMode || !collect,
+		budget:      budget,
 	}
 
 	// Lenient mode: recover from malformed indentation in real-world exports by
@@ -233,7 +237,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// A dropped level-0 line takes its record's subordinate lines with it, so
 	// they are not attached to the preceding record (#723).
 	if !opts.StrictMode {
-		lines = skipOrphanedRecords(lines, parseErrors, collector)
+		lines = skipOrphanedRecords(lines, budget.levelZero, parseErrors, collector)
 		normalizeLevelJumps(lines, collector)
 	}
 
@@ -251,7 +255,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 
 	return &DecodeResult{
 		Document:    doc,
-		Diagnostics: diagnostics,
+		Diagnostics: budget.apply(diagnostics),
 	}, fatalErr
 }
 

@@ -472,7 +472,7 @@ func TestParseErrorUnwrap(t *testing.T) {
 		baseErr := fmt.Errorf("base error")
 		parseErr := wrapParseError(1, "wrapped message", "context", baseErr)
 
-		unwrapped := parseErr.(*ParseError).Unwrap()
+		unwrapped := parseErr.Unwrap()
 		if unwrapped != baseErr {
 			t.Errorf("Unwrap() = %v, want %v", unwrapped, baseErr)
 		}

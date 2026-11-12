@@ -63,6 +63,9 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | `INVALID_VALUE` | Value doesn't match the expected format | Raw value preserved |
 | `MISSING_REQUIRED` | Required subordinate tag is missing | Reported; decoding continues |
 | `SKIPPED_RECORD` | A record's level-0 line was dropped, so its subordinate lines are skipped instead of attaching to the preceding record | Record dropped; decoding continues |
+| `DIAGNOSTICS_TRUNCATED` | More diagnostics than `DecodeOptions.MaxDiagnostics` (default 100,000; `decoder.UnlimitedDiagnostics` removes the bound) | The first ones are kept and this one, last, counts the rest; the document is unaffected |
+
+A diagnostic's `Message` and `Context`, and a `parser.ParseError`'s, echo at most `parser.MaxContextBytes` (256) bytes of the input, followed by `…` when clipped, so a malformed 1 MiB line does not yield a 1 MiB error string.
 
 Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns the first syntax error, or the first invalid UTF-8 byte as a `*charset.ErrInvalidUTF8`.
 

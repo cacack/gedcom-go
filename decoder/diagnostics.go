@@ -10,6 +10,9 @@ package decoder
 import (
 	"fmt"
 	"strings"
+
+	"github.com/cacack/gedcom-go/v3/internal/clip"
+	"github.com/cacack/gedcom-go/v3/parser"
 )
 
 // Severity represents the severity level of a diagnostic.
@@ -107,6 +110,14 @@ const (
 	CodeDuplicateXRef = "DUPLICATE_XREF"
 )
 
+// CodeDiagnosticsTruncated reports that a lenient decode left diagnostics out
+// because [DecodeOptions.MaxDiagnostics] was reached. It is always the last
+// diagnostic, its message gives the number left out, and its Line is 0, since
+// it reports on the decode rather than on one line. Its severity is the
+// highest among the diagnostics left out, so [Diagnostics.HasErrors] stays
+// true when an error was one of them.
+const CodeDiagnosticsTruncated = "DIAGNOSTICS_TRUNCATED"
+
 // Diagnostic represents a single issue encountered during parsing or decoding.
 // It can represent both parser-level errors and entity-level warnings.
 type Diagnostic struct {
@@ -119,10 +130,15 @@ type Diagnostic struct {
 	// Code is a machine-readable identifier for the diagnostic type.
 	Code string
 
-	// Message is a human-readable description of the issue.
+	// Message is a human-readable description of the issue. One built by
+	// [NewDiagnostic], as every diagnostic the decoder reports is, holds at
+	// most parser.MaxContextBytes bytes, so a value it quotes is clipped.
 	Message string
 
-	// Context provides the actual content that caused the issue.
+	// Context provides the actual content that caused the issue. One built by
+	// [NewDiagnostic] is clipped like Message: at most parser.MaxContextBytes
+	// bytes, cut back to the start of a UTF-8 character and followed by "…".
+	// The full content is not retained.
 	Context string
 }
 
@@ -158,14 +174,15 @@ func (d Diagnostic) Error() string {
 	return d.String()
 }
 
-// NewDiagnostic creates a new Diagnostic with the given parameters.
+// NewDiagnostic creates a new Diagnostic with the given parameters. Message
+// and context are clipped to parser.MaxContextBytes (see [Diagnostic]).
 func NewDiagnostic(line int, severity Severity, code, message, context string) Diagnostic {
 	return Diagnostic{
 		Line:     line,
 		Severity: severity,
 		Code:     code,
-		Message:  message,
-		Context:  context,
+		Message:  clip.String(message, parser.MaxContextBytes),
+		Context:  clip.String(context, parser.MaxContextBytes),
 	}
 }
 

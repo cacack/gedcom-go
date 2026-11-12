@@ -53,6 +53,9 @@ type diagnosticCollector struct {
 	// discard drops diagnostics instead of accumulating them, for a decode
 	// that reports none but still needs version.
 	discard bool
+
+	// budget bounds the diagnostics kept; nil keeps them all.
+	budget *diagnosticBudget
 }
 
 // quiet returns a collector that discards diagnostics but carries c's
@@ -73,11 +76,16 @@ func (c *diagnosticCollector) collecting() bool {
 	return c != nil && !c.discard
 }
 
-// add appends a diagnostic to the collector if it is collecting.
+// add appends a diagnostic to the collector if it is collecting, unless the
+// budget is spent, in which case it is only counted.
 func (c *diagnosticCollector) add(d Diagnostic) {
-	if c.collecting() {
-		c.diagnostics = append(c.diagnostics, d)
+	if !c.collecting() {
+		return
 	}
+	if c.budget != nil && !c.budget.keep(len(c.diagnostics), d.Severity) {
+		return
+	}
+	c.diagnostics = append(c.diagnostics, d)
 }
 
 // text returns a typed text value read from a line: the value with the "@"

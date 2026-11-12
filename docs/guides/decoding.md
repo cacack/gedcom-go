@@ -68,7 +68,7 @@ for _, d := range result.Diagnostics {
 
 - **Skips or recovers malformed lines**: Invalid lines are recorded as diagnostics; where a line can be recovered (see the table below) it is kept, so a diagnostic does not always mean the data is gone
 - **Preserves valid records**: All parseable data is kept
-- **Collects all issues**: Every problem is recorded with line number and context
+- **Collects all issues**: Every problem is recorded with line number and context, up to `DecodeOptions.MaxDiagnostics` (see [Bounds on Diagnostics](#bounds-on-diagnostics))
 - **Returns error only if completely unparseable**: Empty or fully-corrupt files
 
 ### Diagnostic Codes
@@ -93,6 +93,12 @@ Entity-level warnings (severity: WARNING):
 | `INVALID_VALUE` | Value doesn't match expected format |
 | `MISSING_REQUIRED` | Required subordinate tag is missing |
 | `SKIPPED_RECORD` | A record's level-0 line was dropped, so its subordinate lines (up to the next level-0 line, range in the message) were skipped rather than attached to the preceding record. Emitted alongside the dropped line's own parse diagnostic |
+
+Reported last, with Line 0:
+
+| Code | Meaning |
+|------|---------|
+| `DIAGNOSTICS_TRUNCATED` | `DecodeOptions.MaxDiagnostics` was reached; the message counts the diagnostics left out. Its severity is the highest among them, so `HasErrors()` stays true when an error was left out |
 
 ### Working with Diagnostics
 
@@ -144,6 +150,31 @@ marks, and writes a longer run out standalone in groups of that size rather
 than rejecting it. Real text never approaches the bound (ANSEL allows two
 marks on a base), so this applies only to hostile or corrupt input, which the
 line limit then handles as above.
+
+## Bounds on Diagnostics
+
+Two bounds keep what a lenient decode reports from growing with hostile or
+corrupt input, alongside the line limit above. Both apply only to what is
+reported: the document is the same whatever they are.
+
+- **How many.** `DecodeOptions.MaxDiagnostics` caps the diagnostics returned.
+  Zero means `decoder.DefaultMaxDiagnostics` (100,000);
+  `decoder.UnlimitedDiagnostics` (any negative value) removes the cap. The
+  first ones, in reported order, are kept, and one `DIAGNOSTICS_TRUNCATED`
+  diagnostic is appended counting the rest, so the result holds at most
+  `MaxDiagnostics+1`. The cap is applied while decoding, not afterwards: 18 MB
+  of garbage lines, which produced 1,000,000 diagnostics and about 400 MB of
+  memory unbounded, decodes in about 60 MB. One kind of error is held whole
+  past the cap: an XRef containing a space, whose line the parser keeps, so
+  those errors grow with the document, as its lines do. Real files come nowhere near the
+  default: the most in the test corpus is 14,597, from a 2.4 MB MyHeritage
+  export full of vendor tags.
+- **How much of the input each echoes.** A diagnostic's `Message` and
+  `Context`, and a `parser.ParseError`'s, hold at most `parser.MaxContextBytes`
+  (256) bytes of input, cut back to a UTF-8 character boundary and followed by
+  `…`. The full line is not retained, so a malformed line at the 1 MiB limit
+  yields an error string of a few hundred bytes, safe to log or return to a
+  user. The typed and raw values in the document are never clipped.
 
 ## Reading Data the Typed Model Does Not Cover
 
