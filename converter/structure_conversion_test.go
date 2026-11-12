@@ -128,10 +128,10 @@ func TestUpgrade55PromotesInlineMediaLink(t *testing.T) {
 	}
 }
 
-func TestFreeMediaXRefSkipsUsed(t *testing.T) {
+func TestFreeXRefSkipsUsed(t *testing.T) {
 	used := map[string]bool{"@O1@": true, "@O2@": true}
-	if xref, next := freeMediaXRef(used, 1); xref != "@O3@" || next != 4 {
-		t.Errorf("freeMediaXRef = %q, %d", xref, next)
+	if xref, next := freeXRef(used, "O", 1); xref != "@O3@" || next != 4 {
+		t.Errorf("freeXRef = %q, %d", xref, next)
 	}
 }
 
@@ -284,4 +284,14 @@ func hasTransformation(report *gedcom.ConversionReport, typ string) bool {
 		}
 	}
 	return false
+}
+
+// TestUpgradeInlineMediaLinkSkipsDanglingXRef: a promoted OBJE record does
+// not take the XRef a dangling pointer names, which would re-bind it.
+func TestUpgradeInlineMediaLinkSkipsDanglingXRef(t *testing.T) {
+	const doc = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 OBJE @O1@\n1 OBJE\n2 FILE photo.jpg\n3 FORM jpg\n0 TRLR\n"
+	_, _, out := convertText(t, doc, gedcom.Version70)
+	if want := "0 @I1@ INDI\n1 OBJE @O1@\n1 OBJE @O2@\n0 @O2@ OBJE\n1 FILE photo.jpg\n"; !strings.Contains(out, want) {
+		t.Errorf("output lacks %q:\n%s", want, out)
+	}
 }

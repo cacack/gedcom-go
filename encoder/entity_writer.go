@@ -1166,8 +1166,13 @@ func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOp
 
 	var tags []*gedcom.Tag
 
-	// SOUR tag with source XRef
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: "SOUR", Value: cite.SourceXRef})
+	// SOUR tag with source XRef, or, for a 5.5/5.5.1 citation without a source
+	// record, its description (with CONT/CONC for multiline/long).
+	if cite.SourceXRef == "" && cite.InlineText != "" {
+		tags = append(tags, textToTags(cite.InlineText, level, "SOUR", opts)...)
+	} else {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: "SOUR", Value: cite.SourceXRef})
+	}
 
 	// Subordinate tags at level+1
 	if cite.Page != "" {

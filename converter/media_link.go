@@ -51,7 +51,7 @@ func promoteInlineMediaLinks(doc *gedcom.Document, report *gedcom.ConversionRepo
 				continue
 			}
 			var xref string
-			xref, next = freeMediaXRef(used, next)
+			xref, next = freeXRef(used, "O", next)
 			used[xref] = true
 			promoted := &gedcom.Record{XRef: xref, Type: gedcom.RecordTypeMedia, Tags: tags}
 			added = append(added, promoted)
@@ -137,11 +137,11 @@ func relevel(tags []*gedcom.Tag, linkLevel int) []*gedcom.Tag {
 	return out
 }
 
-// freeMediaXRef returns the first @O<n>@, from n, not in used, and the n to
+// freeXRef returns the first @<prefix><n>@, from n, not in used, and the n to
 // continue from.
-func freeMediaXRef(used map[string]bool, n int) (xref string, next int) {
+func freeXRef(used map[string]bool, prefix string, n int) (xref string, next int) {
 	for {
-		xref = "@O" + strconv.Itoa(n) + "@"
+		xref = "@" + prefix + strconv.Itoa(n) + "@"
 		n++
 		if !used[xref] {
 			return xref, n
@@ -172,15 +172,31 @@ func blockEnd(tags []*gedcom.Tag, i int) int {
 	return end
 }
 
-// xrefsInUse returns every XRef doc's records and XRefMap hold.
+// xrefsInUse returns every XRef doc's records and XRefMap hold, and every
+// XRef a pointer in the header or a record names, so a new record never
+// takes the XRef of a dangling pointer and silently becomes its target.
 func xrefsInUse(doc *gedcom.Document) map[string]bool {
 	used := map[string]bool{}
+	addPointers := func(tags []*gedcom.Tag) {
+		for _, t := range tags {
+			if t == nil {
+				continue
+			}
+			if v := strings.TrimSpace(t.Value); doc.IsPointerXRef(v) {
+				used[v] = true
+			}
+		}
+	}
 	for xref := range doc.XRefMap {
 		used[xref] = true
+	}
+	if doc.Header != nil {
+		addPointers(doc.Header.Tags)
 	}
 	for _, r := range doc.Records {
 		if r != nil {
 			used[r.XRef] = true
+			addPointers(r.Tags)
 		}
 	}
 	return used

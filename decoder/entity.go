@@ -681,9 +681,9 @@ func parseExternalID(tags []*gedcom.Tag, exidIdx int, collector *diagnosticColle
 
 // parseSourceCitation extracts a source citation from tags starting at sourIdx.
 func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *diagnosticCollector) *gedcom.SourceCitation {
-	cite := &gedcom.SourceCitation{
-		SourceXRef: tagToken(tags[sourIdx].Value),
-	}
+	cite := &gedcom.SourceCitation{}
+	cite.SourceXRef, cite.InlineText = citationPayload(tags, sourIdx, collector)
+	inline := cite.SourceXRef == ""
 
 	// Look for subordinate tags at baseLevel+1
 	for i := sourIdx + 1; i < len(tags); i++ {
@@ -712,6 +712,11 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 			case "TEXT":
 				// Known tag not yet parsed into a typed field (the 5.5/5.5.1
 				// inline-description form of a citation)
+			case "CONC", "CONT":
+				// Folded into InlineText; a pointer has no continuation.
+				if !inline {
+					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+				}
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -721,6 +726,17 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 	}
 
 	return cite
+}
+
+// citationPayload splits a SOUR citation's payload into its source pointer or
+// its 5.5/5.5.1 inline source description, as pointerOrText does for NOTE.
+// "@VOID@", the GEDCOM 7.0 null pointer, fails the pointer test but is a
+// pointer here, not a description.
+func citationPayload(tags []*gedcom.Tag, sourIdx int, collector *diagnosticCollector) (xref, text string) {
+	if v := tagToken(tags[sourIdx].Value); v == voidXRef {
+		return v, ""
+	}
+	return pointerOrText(tags, sourIdx, collector)
 }
 
 // parseQuality parses a citation's QUAY value as an integer 0-3, reporting any
@@ -1914,19 +1930,31 @@ func foldContinuation(b *strings.Builder, tag *gedcom.Tag) {
 func appendRecordNote(
 	tags []*gedcom.Tag, noteIdx int, xrefs, inline []string, collector *diagnosticCollector,
 ) (newXRefs, newInline []string) {
-	tag := tags[noteIdx]
-	// The pointer test runs on the trimmed value, and only a value that passes
-	// it is stored trimmed. "1 NOTE  @N1@" is a padded pointer (#426 keeps every
-	// space past the delimiter), and testing the raw value would classify it as
-	// inline text, silently dropping the link to the shared note. Inline text
-	// keeps its raw value, because there a leading space is payload.
-	if ptr := tagToken(tag.Value); collector.isPointer(ptr) {
-		// XRef pointer to a shared note: the GEDCOM specs do not permit
-		// subordinate CONT/CONC lines here, so there is nothing to fold in.
+	ptr, text := pointerOrText(tags, noteIdx, collector)
+	if ptr != "" {
 		return append(xrefs, ptr), inline
 	}
+	return xrefs, append(inline, text)
+}
 
-	return xrefs, append(inline, collector.text(foldedValue(tags, noteIdx)))
+// voidXRef is the GEDCOM 7.0 null pointer, which gedcom.IsPointerXRef rejects.
+const voidXRef = "@VOID@"
+
+// pointerOrText reads the payload of tags[idx], a line whose value is either
+// an XRef pointer or text (NOTE, and the 5.5/5.5.1 SOUR citation), returning
+// exactly one of ptr or text non-empty (both empty for an empty value).
+//
+// The pointer test runs on the trimmed value, and only a value that passes
+// it is stored trimmed. "1 NOTE  @N1@" is a padded pointer (#426 keeps every
+// space past the delimiter), and testing the raw value would classify it as
+// text, silently dropping the link. Text keeps its raw value, because there a
+// leading space is payload, with its CONT/CONC lines folded in; a pointer
+// takes no continuation lines, so there is nothing to fold.
+func pointerOrText(tags []*gedcom.Tag, idx int, collector *diagnosticCollector) (ptr, text string) {
+	if p := tagToken(tags[idx].Value); collector.isPointer(p) {
+		return p, ""
+	}
+	return "", collector.text(foldedValue(tags, idx))
 }
 
 // foldedValue returns the value of tags[idx] with its direct CONT/CONC

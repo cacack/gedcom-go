@@ -74,8 +74,8 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [913 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (91.5%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,223 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (92.9%) | Most common format |
+| GEDCOM 5.5 | Every readable line preserved | [915 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (91.7%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,225 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (93.1%) | Most common format |
 | GEDCOM 7.0 | Every readable line preserved | [1,301 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (93.7%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch and minor versions such as `VERS 7.0.14` or `7.1` detect as 7.0, with `Header.DeclaredVersion` keeping `7.1`; vendor spellings `5.51`, `551`, `5.5.5`, `55`, `7` and a version followed by text such as `5.5.1 (GEDCOM)` read as the version they mean, with an `INVALID_VALUE` diagnostic on `GEDC.VERS`; a `0 @X1@ HEAD` record is not the header and never sets the version)
@@ -94,8 +94,8 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,301 of 7.0's structures reach the typed model, 913 of
-5.5's, and 1,223 of 5.5.1's.
+document built for it: 1,301 of 7.0's structures reach the typed model, 915 of
+5.5's, and 1,225 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -1705,6 +1705,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | `GEDC.FORM` | To 5.5/5.5.1 | `2 FORM LINEAGE-LINKED` added under `GEDC` when missing (`GEDC_FORM_ADDED`), as both versions require; removed on the way to 7.0 (`GEDC_FORM_REMOVED`) |
 | Version-foreign structures | 7.0 ↔ 5.5.1 | Every structure the source version defines and the target does not (7.0 `SDATE`, `INIL`, `CROP`, `FAM.FACT`, event `ASSO`, `NOTE.LANG`; 5.5.1 `HEAD.FILE`, ...) is removed from `Tags` with its subordinates and reported as data loss, per a table generated from the vendored specification files (`go generate ./converter`) |
 | Inline media links → `OBJE` records | Upgrade to 7.0 | A pointer-less `OBJE` link carrying its `FILE` becomes a new `OBJE` record and a pointer to it (`INLINE_OBJE_TO_RECORD`) |
+| Inline source citations → `SOUR` records | Upgrade to 7.0 | A `SOUR <description>` citation points to a new `SOUR` record whose `NOTE` is the description, its `TEXT` moved under `DATA` (`INLINE_SOUR_TO_RECORD`); an empty `SOUR` points to `@VOID@` (`EMPTY_SOUR_TO_VOID`) |
 | `AFN`/`RFN`/`RIN` → `EXID` | Upgrade to 7.0 | Each becomes an `EXID` with its registered `TYPE` URI (`https://gedcom.io/terms/v7/AFN`, `RIN#<HEAD.SOUR>`, `RFN#<resource>`) (`IDENTIFIER_TO_EXID`) |
 | `LANG` names ↔ BCP 47 | Both | `HEAD.LANG` and `SUBM.LANG` map between 5.x language names and BCP 47 tags (`English` ↔ `en`); a lossy or unknown mapping is an `Approximated` note |
 | Required 5.x header | Downgrade from 7.0 | `HEAD.SOUR` (`gedcom-go`) and `HEAD.SUBM` added when missing, with a `SUBM` record (`NAME Unknown`) when the document has none |
