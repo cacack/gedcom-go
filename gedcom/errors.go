@@ -29,3 +29,13 @@ var ErrNilRecord = errors.New("nil record")
 // ErrDuplicateXRef is wrapped by the Document.AddRecord error for a record
 // whose XRef the document already indexes. The error's message names the XRef.
 var ErrDuplicateXRef = errors.New("duplicate xref")
+
+// ErrBelowMinimumAge is wrapped by the ValidateParentChildDates and
+// ValidateMarriageDates error for a parent or spouse younger than the minimum
+// age. The error's message gives the age.
+var ErrBelowMinimumAge = errors.New("below minimum age")
+
+// ErrEventBeforeBirth is wrapped by the ValidateParentChildDates and
+// ValidateMarriageDates error for a child's birth or marriage provably before
+// the parent's or spouse's birth. The error's message gives both dates.
+var ErrEventBeforeBirth = errors.New("event before birth")

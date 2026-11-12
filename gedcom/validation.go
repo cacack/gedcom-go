@@ -25,7 +25,8 @@ func ValidateBirthBeforeDeath(birth, death *Date) error {
 // ValidateParentChildDates validates that a parent was at least minParentAge years old
 // when a child was born. Returns nil if either date is nil or has no Bounds, or if
 // the parent may have met the minimum age. Returns an error if the parent was too
-// young, or if the child's birth is provably before the parent's.
+// young (wrapping ErrBelowMinimumAge), or if the child's birth is provably
+// before the parent's (wrapping ErrEventBeforeBirth).
 //
 // The age is AgeAt's, the rule the validator's UNREASONABLE_PARENT_AGE check
 // applies: a partial date spans its whole period, and the parent is too young
@@ -43,8 +44,10 @@ func ValidateParentChildDates(parentBirth, childBirth *Date, minParentAge int) e
 
 // ValidateMarriageDates validates that both spouses were at least minMarriageAge years old
 // at the time of marriage. Returns nil if there is insufficient date data to validate.
-// Returns an error if either spouse was too young at the marriage date, or if the
-// marriage is provably before that spouse's birth.
+// Returns an error if either spouse was too young at the marriage date (wrapping
+// ErrBelowMinimumAge), or if the marriage is provably before that spouse's birth
+// (wrapping ErrEventBeforeBirth). The first spouse is checked first, and only
+// the first failure is returned.
 //
 // Ages are computed as ValidateParentChildDates computes them, with AgeAt: a
 // spouse is too young only when even the oldest age the dates allow is below
@@ -80,8 +83,8 @@ func checkMinimumAge(who, event string, birth, eventDate *Date, minAge int) erro
 		_, _, birthOK := birth.Bounds()
 		_, _, eventOK := eventDate.Bounds()
 		if birthOK && eventOK {
-			return fmt.Errorf("%s date (%s) is before %s birth date (%s)",
-				event, eventDate.Original, who+"'s", birth.Original)
+			return fmt.Errorf("%s date (%s) is before %s birth date (%s): %w",
+				event, eventDate.Original, who+"'s", birth.Original, ErrEventBeforeBirth)
 		}
 		return nil // Insufficient data to validate
 	}
@@ -91,8 +94,8 @@ func checkMinimumAge(who, event string, birth, eventDate *Date, minAge int) erro
 		if youngest != oldest {
 			prefix = "at most "
 		}
-		return fmt.Errorf("%s would have been %s%d years old at %s (minimum: %d)",
-			who, prefix, oldest, event, minAge)
+		return fmt.Errorf("%s would have been %s%d years old at %s (minimum: %d): %w",
+			who, prefix, oldest, event, minAge, ErrBelowMinimumAge)
 	}
 
 	return nil

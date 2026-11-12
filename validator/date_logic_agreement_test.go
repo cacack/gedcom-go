@@ -1,7 +1,7 @@
 package validator
 
 import (
-	"strings"
+	"errors"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -56,10 +56,10 @@ func TestMinimumAgeAgreesWithValidator(t *testing.T) {
 			}
 
 			parentErr := gedcom.ValidateParentChildDates(birth, event, minAge)
-			parentTooYoung := parentErr != nil && strings.Contains(parentErr.Error(), "years old")
+			parentTooYoung := errors.Is(parentErr, gedcom.ErrBelowMinimumAge)
 
 			marriageErr := gedcom.ValidateMarriageDates(event, birth, nil, minAge)
-			marriageTooYoung := marriageErr != nil && strings.Contains(marriageErr.Error(), "years old")
+			marriageTooYoung := errors.Is(marriageErr, gedcom.ErrBelowMinimumAge)
 
 			if validatorTooYoung != p.tooYoung {
 				t.Errorf("validator too young = %v, want %v", validatorTooYoung, p.tooYoung)

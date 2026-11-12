@@ -1,6 +1,7 @@
 package gedcom
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -243,10 +244,15 @@ func TestValidateParentChildDates(t *testing.T) {
 				} else if !strings.Contains(err.Error(), tt.errMsg) {
 					t.Errorf("ValidateParentChildDates() error = %v, want error containing %q", err, tt.errMsg)
 				}
-			} else {
-				if err != nil {
-					t.Errorf("ValidateParentChildDates() unexpected error = %v", err)
+				wantKind := ErrBelowMinimumAge
+				if strings.Contains(tt.errMsg, "is before") {
+					wantKind = ErrEventBeforeBirth
 				}
+				if err != nil && !errors.Is(err, wantKind) {
+					t.Errorf("ValidateParentChildDates() error = %v, want errors.Is %v", err, wantKind)
+				}
+			} else if err != nil {
+				t.Errorf("ValidateParentChildDates() unexpected error = %v", err)
 			}
 		})
 	}
@@ -434,10 +440,15 @@ func TestValidateMarriageDates(t *testing.T) {
 				} else if !strings.Contains(err.Error(), tt.errMsg) {
 					t.Errorf("ValidateMarriageDates() error = %v, want error containing %q", err, tt.errMsg)
 				}
-			} else {
-				if err != nil {
-					t.Errorf("ValidateMarriageDates() unexpected error = %v", err)
+				wantKind := ErrBelowMinimumAge
+				if strings.Contains(tt.errMsg, "is before") {
+					wantKind = ErrEventBeforeBirth
 				}
+				if err != nil && !errors.Is(err, wantKind) {
+					t.Errorf("ValidateMarriageDates() error = %v, want errors.Is %v", err, wantKind)
+				}
+			} else if err != nil {
+				t.Errorf("ValidateMarriageDates() unexpected error = %v", err)
 			}
 		})
 	}
