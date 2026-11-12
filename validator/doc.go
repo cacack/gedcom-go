@@ -53,6 +53,18 @@
 // [Validator.FindPotentialDuplicates] to tell an empty result from an
 // incomplete one.
 //
+// # Grammar Conformance
+//
+// Set [ValidatorConfig.CheckGrammar] to hold every structure against the
+// specification's structure tables for the declared version: substructure
+// placement, cardinality, required substructures, enumeration values, payload
+// datatypes, version-foreign tags and 7.0 deprecations
+// ([CodeUnexpectedSubstructure] and the codes listed with it). It is off by
+// default; the tables are generated from testdata/spec by go generate.
+//
+//	v := validator.NewWithOptions(&validator.ValidateOptions{CheckGrammar: true})
+//	issues := v.ValidateAll(doc)
+//
 // # Quality Reports
 //
 // Combine validation issues with completeness statistics. The report runs the

@@ -22,6 +22,7 @@ project's MIT license.
 | File | Contents |
 |------|----------|
 | `substructures.tsv` | (superstructure type, substructure tag, substructure type) triples |
+| `cardinalities.tsv` | (superstructure type, substructure type, cardinality) triples |
 | `payloads.tsv` | (structure type, payload type) pairs |
 | `enumerations.tsv` | (structure type, enumeration set) pairs |
 | `enumerationsets.tsv` | (enumeration set, enumeration value) pairs |
@@ -35,14 +36,18 @@ it.
 
 `decoder/spec7_coverage_test.go` derives
 [`docs/reference/gedcom-7-coverage.md`](../../../docs/reference/gedcom-7-coverage.md)
-from these files. They are test data only: no library code reads them, and they
-add no runtime dependency.
+from these files, and `internal/cmd/gengrammar` generates the validator's grammar
+tables (`validator/grammar_tables.go`) from them at `go generate` time. They are
+test data only: no library code reads them at run time, and they add no runtime
+dependency.
 
 ## Updating
 
-Re-download the four TSVs plus `LICENSE` and `NOTICE` from a single upstream
-commit, update `SOURCE`, then regenerate the coverage document:
+Re-download the five TSVs plus `LICENSE` and `NOTICE` from a single upstream
+commit, update `SOURCE`, then regenerate the coverage document and the
+validator's grammar tables:
 
 ```bash
 make spec-coverage
+go generate ./validator
 ```

@@ -1176,9 +1176,7 @@ silently.
 - Data-quality heuristics, not spec rules (every GEDCOM version allows both records): individuals with no NAME (`MISSING_NAME`, warning) and families with no HUSB/WIFE/CHIL (`EMPTY_FAMILY`, warning), each with the record's line. `MISSING_REQUIRED_FIELD` is deprecated and no longer reported
 
 ### Version-Specific Validation
-- Tag validity per GEDCOM version
-- Required subordinate tags
-- Deprecated tag warnings
+- Tag validity per GEDCOM version, required subordinate tags, cardinality, enumerations, payload datatypes and 7.0 deprecations: the opt-in grammar conformance check (see Grammar Conformance below)
 - XRef length validation (20-char limit for GEDCOM 5.5/5.5.1, unlimited for 7.0)
 - Header SUBM cardinality (required for 5.5/5.5.1, optional for 7.0)
 
@@ -1316,6 +1314,35 @@ typed fields (by hand) are reported too.
 |------------|----------|-------------|
 | ENTITY_TAGS_DIVERGED | Warning | Typed fields and raw Tags of a decoded record or header disagree; `encoder.SyncTags` rewrites Tags from the typed fields |
 | ENTITY_TAGS_DIVERGED | Info | `encoder.SyncTags` fails on the document, so the comparison was not made; `Details["error"]` holds the error |
+
+**Grammar Conformance:**
+
+`ValidateOptions.CheckGrammar` holds every structure in the header and records
+against the structure tables of the version the header declares — the
+specification inventories under `testdata/spec`, turned into Go tables by
+`go generate ./validator` (`internal/cmd/gengrammar`). It is opt-in, and
+`QualityReport` honors it too, listing the findings under `GrammarIssues`
+(`validator.WithGrammarCheck()` for a `QualityAnalyzer`). Extension tags
+(`_X`) and their substructures are not checked; `CONT` is accepted anywhere,
+and so is `CONC` in 5.5/5.5.1. 7.0 enumeration values are compared
+case-sensitively and extension values are accepted; 5.5.x values are compared
+without regard to case. A declared version the tables do not cover (7.1) is
+not checked. Every issue carries `Details["version"]` and `Details["tag"]`.
+
+| Error Code | Severity | Description |
+|------------|----------|-------------|
+| UNEXPECTED_SUBSTRUCTURE | Error | A standard tag the version does not permit where it stands (`Details["superstructure"]`), or at level 0 |
+| VERSION_FOREIGN_STRUCTURE | Error | A tag only another version defines: `SNOTE`, `EXID`, `UID`, `CREA`, `SDATE` in 5.5.1; `CONC` in 7.0 (`Details["defined_in"]`) |
+| MISSING_REQUIRED_SUBSTRUCTURE | Error | A required substructure is absent: `HEAD.GEDC.VERS`, 5.5.x `HEAD.SOUR`/`CHAR`/`GEDC.FORM`, 7.0 `SUBM.NAME`, ordinance `STAT.DATE`. 5.5.x `HEAD.SUBM` stays `MISSING_SUBM` |
+| CARDINALITY_EXCEEDED | Error | A substructure repeated past its cardinality, e.g. a second `SEX` or `GEDC` (`Details["cardinality"]`) |
+| INVALID_ENUM_VALUE | Error | An enumerated payload outside its set: `SEX`, `PEDI`, `RESN`, `ROLE`, `MEDI`, `ADOP`, `STAT`, `NAME.TYPE`, `QUAY`, 5.5.x `CHAR` and `LANG` (`Details["value"]`, `Details["allowed"]`) |
+| INVALID_PAYLOAD | Error | A payload not of its datatype: exact date (`CHAN.DATE`, `HEAD.DATE`), time, age, language tag, integer, pointer, `Y` (`Details["datatype"]`) |
+| INVALID_RECORD_XREF | Error | A 7.0 record identifier outside `A-Z 0-9 _` or `@VOID@`; a 5.5.x record with no identifier |
+| DEPRECATED_STRUCTURE | Warning | A 7.0 deprecation: `ADR1`-`ADR3`, `HEAD.SOUR.DATA`, `EXID` without `TYPE`, ordinance statuses `COMPLETED`, `EXCLUDED`, `INFANT`, `PRE_1970`, `SUBMITTED`, `UNCLEARED` |
+
+gedcom.io's 7.0 test files report nothing but `warnings70.ged`'s designed
+deprecations, and gedcom7code's `5/age-invalid.ged` one `INVALID_PAYLOAD` per
+malformed `AGE`. Design: [ADR 0011](docs/decisions/0011-grammar-conformance-check.md).
 
 **Duplicate Detection:**
 

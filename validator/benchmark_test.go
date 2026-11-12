@@ -108,6 +108,36 @@ func BenchmarkValidateAllEntityTags(b *testing.B) {
 	}
 }
 
+// BenchmarkValidateAllGrammar measures what the grammar check adds to
+// ValidateAll on pres2020.ged, with and without it (CheckGrammar), duplicate
+// detection off in both.
+func BenchmarkValidateAllGrammar(b *testing.B) {
+	f, err := os.Open("../testdata/gedcom-5.5/pres2020.ged")
+	if err != nil {
+		b.Fatal(err)
+	}
+	doc, err := decoder.Decode(f)
+	_ = f.Close()
+	if err != nil {
+		b.Fatal(err)
+	}
+	for _, bc := range []struct {
+		name  string
+		check bool
+	}{
+		{"with-check", true},
+		{"without-check", false},
+	} {
+		b.Run(bc.name, func(b *testing.B) {
+			v := NewWithOptions(&ValidateOptions{SkipDuplicateDetection: true, CheckGrammar: bc.check})
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				_ = v.ValidateAll(doc)
+			}
+		})
+	}
+}
+
 // BenchmarkValidateWithErrors benchmarks validating a document with broken references
 func BenchmarkValidateWithErrors(b *testing.B) {
 	doc := generateInvalidDocument(100)

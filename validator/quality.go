@@ -65,6 +65,12 @@ type QualityReport struct {
 	// issue set as ValidateAll.
 	ConformanceIssues []Issue `json:"conformance_issues"`
 
+	// GrammarIssues holds the grammar conformance check's issues
+	// ([CodeUnexpectedSubstructure] and the codes listed with it). It is
+	// filled only when the check is enabled (ValidatorConfig.CheckGrammar or
+	// WithGrammarCheck) and is empty otherwise.
+	GrammarIssues []Issue `json:"grammar_issues"`
+
 	// Summary counts
 	TotalIssues  int `json:"total_issues"`
 	ErrorCount   int `json:"error_count"`
@@ -168,6 +174,9 @@ type QualityAnalyzer struct {
 
 	// checkEntityTags adds the ENTITY_TAGS_DIVERGED check (WithEntityTagsCheck).
 	checkEntityTags bool
+
+	// checkGrammar adds the grammar conformance check (WithGrammarCheck).
+	checkGrammar bool
 }
 
 // QualityOption is a functional option for configuring QualityAnalyzer.
@@ -208,6 +217,15 @@ func WithEntityTagsCheck() QualityOption {
 	}
 }
 
+// WithGrammarCheck returns a QualityOption that adds the grammar
+// conformance check, filing its issues under GrammarIssues. It is the
+// analyzer's counterpart of ValidatorConfig.CheckGrammar.
+func WithGrammarCheck() QualityOption {
+	return func(a *QualityAnalyzer) {
+		a.checkGrammar = true
+	}
+}
+
 // NewQualityAnalyzer creates a new QualityAnalyzer with the given options.
 // By default, it creates validators with their default configurations.
 func NewQualityAnalyzer(opts ...QualityOption) *QualityAnalyzer {
@@ -238,6 +256,7 @@ func (a *QualityAnalyzer) Analyze(doc *gedcom.Document) *QualityReport {
 		CompletenessIssues: []Issue{},
 		CustomTagIssues:    []Issue{},
 		ConformanceIssues:  []Issue{},
+		GrammarIssues:      []Issue{},
 	}
 
 	if doc == nil {
@@ -259,6 +278,9 @@ func (a *QualityAnalyzer) Analyze(doc *gedcom.Document) *QualityReport {
 	a.runDuplicateDetector(doc, report)
 	a.runTagValidator(doc, report)
 	a.runConformanceChecks(doc, report)
+	if a.checkGrammar {
+		report.GrammarIssues = append(report.GrammarIssues, validateGrammar(doc)...)
+	}
 
 	// Calculate completeness metrics and generate completeness issues,
 	// including the record-structure heuristics ValidateAll also reports.
@@ -391,6 +413,7 @@ func (a *QualityAnalyzer) aggregateIssues(report *QualityReport) {
 	allIssues = append(allIssues, report.CompletenessIssues...)
 	allIssues = append(allIssues, report.CustomTagIssues...)
 	allIssues = append(allIssues, report.ConformanceIssues...)
+	allIssues = append(allIssues, report.GrammarIssues...)
 
 	// Sort by severity (Errors first, then Warnings, then Info)
 	sort.Slice(allIssues, func(i, j int) bool {
