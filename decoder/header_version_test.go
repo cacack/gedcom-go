@@ -10,7 +10,8 @@ import (
 // TestHeaderVersionNormalization pins how a GEDC.VERS value is read (#741): a
 // later GEDCOM 7 minor as 7.0 keeping its declared minor, with no diagnostic,
 // and a vendor spelling of a known version as that version, with an
-// INVALID_VALUE warning on the VERS line saying it was normalized.
+// INVALID_VALUE warning on the VERS line saying it was normalized; an
+// unrecognized value falls back to tag detection with no diagnostic.
 func TestHeaderVersionNormalization(t *testing.T) {
 	tests := []struct {
 		vers         string
@@ -27,6 +28,10 @@ func TestHeaderVersionNormalization(t *testing.T) {
 		{"5.5.5", gedcom.Version551, gedcom.Version551, `"5.5.5" is not a GEDCOM version string; normalized to 5.5.1`},
 		{"5.5.1 (GEDCOM)", gedcom.Version551, gedcom.Version551, `"5.5.1 (GEDCOM)" is not a GEDCOM version string; normalized to 5.5.1`},
 		{"7", gedcom.Version70, gedcom.Version70, `"7" is not a GEDCOM version string; normalized to 7.0`},
+		// Unrecognized: detected by tag fallback, deliberately with no
+		// INVALID_VALUE (there is no version to say it was normalized to).
+		{"7.0.x", gedcom.Version55, "", ""},
+		{"8.0", gedcom.Version55, "", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.vers, func(t *testing.T) {

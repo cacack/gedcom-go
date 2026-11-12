@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/gedcvers"
 	"github.com/cacack/gedcom-go/v3/internal/headergrammar"
 )
 
@@ -88,10 +89,12 @@ func addGEDCForm(header *gedcom.Header) bool {
 	return true
 }
 
-// gedcLacksVers reports whether the raw header tags have a level-1 GEDC with no
-// VERS under it. A header with no GEDC at all is not reported: on the
-// same-version path there is no structure to complete.
-func gedcLacksVers(header *gedcom.Header) bool {
+// gedcNeedsVers reports whether the raw header tags have a level-1 GEDC whose
+// VERS the same-version path must write: none under it (#615), or one holding
+// a vendor spelling such as 5.51 that is read as the version it means but is
+// not a conforming version string (#741). A header with no GEDC at all is not
+// reported: on the same-version path there is no structure to complete.
+func gedcNeedsVers(header *gedcom.Header) bool {
 	if header == nil {
 		return false
 	}
@@ -106,7 +109,7 @@ func gedcLacksVers(header *gedcom.Header) bool {
 			continue
 		}
 		if inGEDC && tag.Level == 2 && tag.Tag == "VERS" {
-			return false
+			return gedcvers.Resolve(tag.Value).Normalized
 		}
 	}
 	return hasGEDC
@@ -124,7 +127,7 @@ func gedcLacksVers(header *gedcom.Header) bool {
 // system's own version, which a conversion must not touch.
 //
 // encoder.writeHeaderTags walks the same structure for its TargetVersion
-// override, and gedcLacksVers decides whether the same-version path calls this;
+// override, and gedcNeedsVers decides whether the same-version path calls this;
 // all three must agree on what "inside GEDC" means. The encoder's walk is
 // deliberately not shared -- see the note there -- so a change to any of them
 // should be checked against the others.

@@ -563,7 +563,9 @@ func parseHeaderStructures(h *gedcom.Header, collector *diagnosticCollector) {
 
 // reportNormalizedVersion reports a GEDC.VERS value that is not a conforming
 // version string but is read as the version it plainly means, such as 5.51 for
-// 5.5.1 (see gedcvers.Resolve), so the reading is not silent (#741).
+// 5.5.1 (see gedcvers.Resolve), so the reading is not silent (#741). A value
+// Resolve does not recognize is deliberately not reported: the version is then
+// detected from the file's tags, and no value was normalized.
 func reportNormalizedVersion(vers *gedcom.Tag, collector *diagnosticCollector) {
 	r := gedcvers.Resolve(vers.Value)
 	if !r.Normalized {
