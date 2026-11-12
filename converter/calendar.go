@@ -52,7 +52,9 @@ var calendarKeywordToEscape = map[string]string{
 //     source record. An event, attribute or ordinance ParsedDate is kept in
 //     step: its Original follows a calendar or epoch rewrite, and a moved
 //     phrase re-parses it as decoding the output would, with Phrase holding
-//     the 7.0 PHRASE.
+//     the 7.0 PHRASE. An SDATE phrase moves between SortDate and
+//     SortDatePhrase, and a source DATA.EVEN.DATE phrase between Date and
+//     DatePhrase.
 //
 // Each rewrite is reported as a Normalized note and counted in the
 // DATE_CALENDAR_CONVERTED, DATE_EPOCH_CONVERTED or DATE_PHRASE_CONVERTED
@@ -337,51 +339,69 @@ func (t *dateTranslator) translateSourceData(data *gedcom.SourceData, report boo
 // and on the citations and associations beneath them.
 func (t *dateTranslator) translateFacts(events []*gedcom.Event, attributes []*gedcom.Attribute, ordinances []*gedcom.LDSOrdinance, report bool, base datePath) {
 	for _, e := range events {
-		if e != nil {
-			at := base.at(string(e.Type))
-			t.translateDated(&e.Date, &e.SortDate, &e.ParsedDate, report, at)
-			t.translateCitations(e.SourceCitations, report, at)
-			t.translateAssociations(e.Associations, report, at)
+		if e == nil {
+			continue
 		}
+		at := base.at(string(e.Type))
+		t.translateDated(&e.Date, &e.ParsedDate, report, at)
+		t.translateSortDate(&e.SortDate, &e.SortDatePhrase, report, at)
+		t.translateCitations(e.SourceCitations, report, at)
+		t.translateAssociations(e.Associations, report, at)
 	}
 	for _, a := range attributes {
-		if a != nil {
-			at := base.at(string(a.Type))
-			t.translateDated(&a.Date, &a.SortDate, &a.ParsedDate, report, at)
-			t.translateCitations(a.SourceCitations, report, at)
-			t.translateAssociations(a.Associations, report, at)
+		if a == nil {
+			continue
 		}
+		at := base.at(string(a.Type))
+		t.translateDated(&a.Date, &a.ParsedDate, report, at)
+		t.translateSortDate(&a.SortDate, &a.SortDatePhrase, report, at)
+		t.translateCitations(a.SourceCitations, report, at)
+		t.translateAssociations(a.Associations, report, at)
 	}
 	for _, o := range ordinances {
 		if o != nil {
-			t.translateDated(&o.Date, nil, &o.ParsedDate, report, base.at(string(o.Type)))
+			t.translateDated(&o.Date, &o.ParsedDate, report, base.at(string(o.Type)))
 		}
 	}
 }
 
-// translateDated rewrites a fact's DATE, keeping *parsed in step, and, when
-// sortDate is non-nil, its SDATE. The DATE's phrase is the 7.0 PHRASE the
-// encoder writes from parsed (gedcom.Date.PhraseSubstructure).
-func (t *dateTranslator) translateDated(date, sortDate *string, parsed **gedcom.Date, report bool, at datePath) {
+// translateDated rewrites a fact's DATE, keeping *parsed in step. The DATE's
+// phrase is the 7.0 PHRASE the encoder writes from parsed
+// (gedcom.Date.PhraseSubstructure).
+func (t *dateTranslator) translateDated(date *string, parsed **gedcom.Date, report bool, at datePath) {
 	original := *date
-	phrase := (*parsed).PhraseSubstructure(original)
-	var slot dateSlot
-	if t.target == gedcom.Version70 {
-		slot.movable = phrase == ""
-	} else if phrase != "" {
-		// An event, attribute or ordinance DATE is a level-2 line.
-		slot = dateSlot{phrase: phrase, movable: true, maxLen: maxValueLength(2, "", "DATE", 3)}
-	}
-	r := t.translate(date, slot, report, at.at("DATE"))
+	r := t.translate(date, t.factSlot("DATE", (*parsed).PhraseSubstructure(original)), report, at.at("DATE"))
 	switch {
 	case r.moved:
 		*parsed = parsedAfterMove(r)
 	case *parsed != nil && *date != original:
 		(*parsed).Original = *date
 	}
-	if sortDate != nil {
-		t.translate(sortDate, dateSlot{}, report, at.at("SDATE"))
+}
+
+// translateSortDate rewrites an event or attribute SDATE and moves its phrase
+// between the value and *phrase (the SDATE PHRASE) as translateTags does for
+// the same SDATE in record.Tags, so the two representations agree.
+func (t *dateTranslator) translateSortDate(sortDate, phrase *string, report bool, at datePath) {
+	r := t.translate(sortDate, t.factSlot("SDATE", *phrase), report, at.at("SDATE"))
+	switch {
+	case r.phrase != "":
+		*phrase = r.phrase
+	case r.folded:
+		*phrase = ""
 	}
+}
+
+// factSlot returns the dateSlot of an event, attribute or ordinance DATE or
+// SDATE (tag), a level-2 line, whose 7.0 PHRASE is phrase.
+func (t *dateTranslator) factSlot(tag, phrase string) dateSlot {
+	if t.target == gedcom.Version70 {
+		return dateSlot{movable: phrase == ""}
+	}
+	if phrase == "" {
+		return dateSlot{}
+	}
+	return dateSlot{phrase: phrase, movable: true, maxLen: maxValueLength(2, "", tag, 3)}
 }
 
 // parsedAfterMove returns the parsed form of a date whose phrase r moved, as

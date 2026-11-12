@@ -1,6 +1,7 @@
 package converter_test
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -157,24 +158,204 @@ func TestConvertDatePhraseUnmappedTo70(t *testing.T) {
 	}
 }
 
-// TestConvertDatePhraseExactDateTo70 covers a phrase in a CHAN.DATE, which
-// 7.0 types as DateExact with no PHRASE: it is reported, not moved.
-func TestConvertDatePhraseExactDateTo70(t *testing.T) {
-	doc := calendarDoc(gedcom.Version551, "1850")
-	doc.Records[0].Tags = append(doc.Records[0].Tags,
-		&gedcom.Tag{Level: 1, Tag: "CHAN"},
-		&gedcom.Tag{Level: 2, Tag: "DATE", Value: "(sometime)"},
-	)
-	got, report, err := converter.Convert(doc, gedcom.Version70)
-	if err != nil {
-		t.Fatalf("Convert: %v", err)
+// tagValues returns "LEVEL TAG VALUE" for each tag, nil tags as "<nil>".
+func tagValues(tags []*gedcom.Tag) []string {
+	var lines []string
+	for _, tag := range tags {
+		if tag == nil {
+			lines = append(lines, "<nil>")
+			continue
+		}
+		lines = append(lines, strings.TrimSpace(fmt.Sprintf("%d %s %s", tag.Level, tag.Tag, tag.Value)))
 	}
-	if _, ok := birthPhrase(got); ok {
-		t.Error("PHRASE added under CHAN.DATE")
+	return lines
+}
+
+// TestConvertDatePhraseNotMovableTo70 covers 5.x phrases sitting where 7.0
+// can carry no new PHRASE: a DateExact (CHAN.DATE, CREA.DATE, HEAD.DATE) or
+// a DATE that already has one. Each is left unchanged, with no PHRASE added,
+// and reported as a Preserved note and Date phrases DataLoss.
+func TestConvertDatePhraseNotMovableTo70(t *testing.T) {
+	tests := []struct {
+		name     string
+		header   bool // the tags belong to the header, not @I1@
+		tags     []*gedcom.Tag
+		wantPath string
+	}{
+		{
+			name:     "CHAN.DATE",
+			tags:     []*gedcom.Tag{{Level: 1, Tag: "CHAN"}, {Level: 2, Tag: "DATE", Value: "(sometime)"}},
+			wantPath: "Individual @I1@ > CHAN > DATE",
+		},
+		{
+			name:     "CREA.DATE",
+			tags:     []*gedcom.Tag{{Level: 1, Tag: "CREA"}, {Level: 2, Tag: "DATE", Value: "INT 1850 (circa)"}},
+			wantPath: "Individual @I1@ > CREA > DATE",
+		},
+		{
+			name:     "HEAD.DATE",
+			header:   true,
+			tags:     []*gedcom.Tag{{Level: 1, Tag: "DATE", Value: "INT 1 JAN 2000 (new year)"}},
+			wantPath: "Header > DATE",
+		},
+		{
+			name: "DATE with a PHRASE",
+			tags: []*gedcom.Tag{
+				{Level: 1, Tag: "DEAT"},
+				{Level: 2, Tag: "DATE", Value: "INT 1850 (circa)"},
+				{Level: 3, Tag: "PHRASE", Value: "already here"},
+			},
+			wantPath: "Individual @I1@ > DEAT > DATE",
+		},
 	}
-	if !slices.Contains(dataLossFeatures(report), "Date phrases") {
-		t.Errorf("DataLoss = %+v, want a Date phrases item", report.DataLoss)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc := calendarDoc(gedcom.Version551, "1850")
+			var date *gedcom.Tag
+			for _, tag := range tt.tags {
+				if tag.Tag == "DATE" {
+					date = tag
+				}
+			}
+			value := date.Value
+			if tt.header {
+				doc.Header.Tags = tt.tags
+			} else {
+				doc.Records[0].Tags = append(doc.Records[0].Tags, tt.tags...)
+			}
+			want := tagValues(tt.tags)
+
+			got, report, err := converter.Convert(doc, gedcom.Version70)
+			if err != nil {
+				t.Fatalf("Convert: %v", err)
+			}
+			tags := got.GetRecord("@I1@").Tags[2:]
+			if tt.header {
+				tags = got.Header.Tags[len(got.Header.Tags)-len(tt.tags):]
+			}
+			if lines := tagValues(tags); !slices.Equal(lines, want) {
+				t.Errorf("tags = %q, want them unchanged %q", lines, want)
+			}
+			if !hasNoteAt(report.Preserved, gedcom.ConversionNote{Path: tt.wantPath, Original: value, Result: value}) {
+				t.Errorf("no Preserved note at %q for %q in %+v", tt.wantPath, value, report.Preserved)
+			}
+			if !slices.Contains(dataLossFeatures(report), "Date phrases") {
+				t.Errorf("DataLoss = %+v, want a Date phrases item", report.DataLoss)
+			}
+		})
 	}
+}
+
+// TestConvertDatePhraseTagWalk covers the tag rewrite across a record with
+// several dates and a nil tag: every PHRASE lands right after its own DATE
+// and every other tag keeps its place, in both directions.
+func TestConvertDatePhraseTagWalk(t *testing.T) {
+	t.Run("to 7.0", func(t *testing.T) {
+		doc := calendarDoc(gedcom.Version551, "INT 1850 (first)")
+		doc.Records[0].Tags = append(doc.Records[0].Tags,
+			&gedcom.Tag{Level: 2, Tag: "PLAC", Value: "Here"},
+			nil,
+			&gedcom.Tag{Level: 1, Tag: "DEAT"},
+			&gedcom.Tag{Level: 2, Tag: "DATE", Value: "(second)"},
+			&gedcom.Tag{Level: 2, Tag: "SOUR", Value: "@S1@"},
+			&gedcom.Tag{Level: 3, Tag: "DATA"},
+			&gedcom.Tag{Level: 4, Tag: "DATE", Value: "INT 1900"},
+		)
+		got, _, err := converter.Convert(doc, gedcom.Version70)
+		if err != nil {
+			t.Fatalf("Convert: %v", err)
+		}
+		want := []string{
+			"1 BIRT", "2 DATE 1850", "3 PHRASE first", "2 PLAC Here", "<nil>",
+			"1 DEAT", "2 DATE", "3 PHRASE second", "2 SOUR @S1@", "3 DATA", "4 DATE 1900",
+		}
+		if lines := tagValues(got.GetRecord("@I1@").Tags); !slices.Equal(lines, want) {
+			t.Errorf("tags =\n%q\nwant\n%q", lines, want)
+		}
+	})
+	t.Run("to 5.5.1", func(t *testing.T) {
+		doc := phraseDoc("1850", "first")
+		doc.Records[0].Tags = append(doc.Records[0].Tags,
+			&gedcom.Tag{Level: 2, Tag: "PLAC", Value: "Here"},
+			nil,
+			&gedcom.Tag{Level: 1, Tag: "DEAT"},
+			&gedcom.Tag{Level: 2, Tag: "DATE"},
+			&gedcom.Tag{Level: 3, Tag: "PHRASE", Value: "second"},
+			&gedcom.Tag{Level: 1, Tag: "BURI"},
+			&gedcom.Tag{Level: 2, Tag: "DATE", Value: "1900"},
+			&gedcom.Tag{Level: 3, Tag: "PHRASE", Value: "third"},
+			&gedcom.Tag{Level: 4, Tag: "_EXT", Value: "child"},
+		)
+		got, report, err := converter.Convert(doc, gedcom.Version551)
+		if err != nil {
+			t.Fatalf("Convert: %v", err)
+		}
+		// The PHRASE with a substructure is not folded: dropV7OnlyTags drops it.
+		want := []string{
+			"1 BIRT", "2 DATE INT 1850 (first)", "2 PLAC Here", "<nil>",
+			"1 DEAT", "2 DATE (second)", "1 BURI", "2 DATE 1900",
+		}
+		if lines := tagValues(got.GetRecord("@I1@").Tags); !slices.Equal(lines, want) {
+			t.Errorf("tags =\n%q\nwant\n%q", lines, want)
+		}
+		if !slices.Contains(dataLossFeatures(report), "PHRASE tags") {
+			t.Errorf("DataLoss = %+v, want a PHRASE tags item for the unfolded PHRASE", report.DataLoss)
+		}
+	})
+}
+
+// TestConvertDatePhraseSortDate covers an SDATE phrase: the entity's
+// SortDate and SortDatePhrase move it exactly as the SDATE tag and its
+// PHRASE do, so both representations agree.
+func TestConvertDatePhraseSortDate(t *testing.T) {
+	t.Run("to 7.0", func(t *testing.T) {
+		for _, withTags := range []bool{true, false} {
+			doc := calendarDoc(gedcom.Version551, "1850")
+			record := doc.Records[0]
+			record.Tags = append(record.Tags, &gedcom.Tag{Level: 2, Tag: "SDATE", Value: "INT 1850 (about)"})
+			ind, _ := record.GetIndividual()
+			ind.Events[0].SortDate = "INT 1850 (about)"
+			if !withTags {
+				record.Tags = nil
+			}
+			got, report, err := converter.Convert(doc, gedcom.Version70)
+			if err != nil {
+				t.Fatalf("Convert: %v", err)
+			}
+			out, _ := got.GetRecord("@I1@").GetIndividual()
+			if e := out.Events[0]; e.SortDate != "1850" || e.SortDatePhrase != "about" {
+				t.Errorf("tags %v: SortDate = %q, SortDatePhrase = %q, want 1850 and about", withTags, e.SortDate, e.SortDatePhrase)
+			}
+			if withTags {
+				want := []string{"1 BIRT", "2 DATE 1850", "2 SDATE 1850", "3 PHRASE about"}
+				if lines := tagValues(got.GetRecord("@I1@").Tags); !slices.Equal(lines, want) {
+					t.Errorf("tags = %q, want %q", lines, want)
+				}
+			} else if text := encode(t, got); !strings.Contains(text, "2 SDATE 1850\n3 PHRASE about\n") {
+				t.Errorf("7.0 output lacks SDATE and PHRASE:\n%s", text)
+			}
+			if len(report.DataLoss) != 0 {
+				t.Errorf("tags %v: DataLoss = %+v", withTags, report.DataLoss)
+			}
+		}
+	})
+	t.Run("to 5.5.1", func(t *testing.T) {
+		doc := calendarDoc(gedcom.Version70, "1850")
+		ind, _ := doc.Records[0].GetIndividual()
+		ind.Events[0].SortDate, ind.Events[0].SortDatePhrase = "1850", "about"
+		doc.Records[0].Tags = nil
+		got, _, err := converter.Convert(doc, gedcom.Version551)
+		if err != nil {
+			t.Fatalf("Convert: %v", err)
+		}
+		out, _ := got.GetRecord("@I1@").GetIndividual()
+		if e := out.Events[0]; e.SortDatePhrase != "" {
+			t.Errorf("SortDatePhrase = %q left for 5.5.1 (SortDate %q)", e.SortDatePhrase, e.SortDate)
+		}
+		if text := encode(t, got); strings.Contains(text, "PHRASE") {
+			t.Errorf("5.5.1 output keeps a PHRASE:\n%s", text)
+		}
+	})
 }
 
 // TestConvertDateEpochAndPhraseTo5x covers issue #722 downgrading: BCE

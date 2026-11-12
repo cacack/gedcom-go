@@ -239,7 +239,8 @@ whose `Original` or `Result` shows the phrase as `1850 + PHRASE about
 eighteen fifty`. Typed dates follow: `Event.Date`, `Attribute.Date` and
 `LDSOrdinance.Date` change with the raw tag, and their `ParsedDate` is
 re-parsed as decoding the output would give it, with `Phrase` holding a 7.0
-`PHRASE`.
+`PHRASE`. An `SDATE` phrase moves the same way, between `SortDate` and
+`SortDatePhrase`.
 
 A phrase with no target form is reported rather than guessed at:
 
