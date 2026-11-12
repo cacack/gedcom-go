@@ -2,6 +2,8 @@
 
 This directory contains practical examples demonstrating how to use the `gedcom-go` library. Each example is a standalone Go program that showcases specific features and common use cases.
 
+The example output below was captured from the testdata files each command names. Counts, byte offsets and renumbered XRefs follow those files and the library's current behaviour, so your run may differ if either has changed; `make examples` shows the current output.
+
 ## Available Examples
 
 ### 1. Parse - Basic Parsing and Information Display

@@ -240,6 +240,8 @@ setup: download install-tools setup-hooks ## Set up complete dev environment
 	@echo "    make fmt            Format code"
 	@echo ""
 
+# examples_claims_test.go reads this recipe: keep one `cd examples/<name> && ` line
+# per example and no blank lines inside it (the test stops at the first one).
 examples: ## Run all examples against testdata
 	@echo "Running parse example..."
 	@cd examples/parse && $(GOCMD) run . ../../testdata/gedcom-5.5/minimal.ged
