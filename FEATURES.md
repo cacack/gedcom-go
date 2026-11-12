@@ -100,7 +100,8 @@ The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
 A structure without typed access is read from `Record.Tags`, which is a
-supported access path, not a workaround — see
+supported access path, not a workaround, read by path with
+`Record.Find`, `FindAll` and `Subtree` (and the same on `Header`) — see
 [Reading Data the Typed Model Does Not Cover](docs/guides/decoding.md#reading-data-the-typed-model-does-not-cover).
 
 Read each percentage against its own version, not against the others. The three

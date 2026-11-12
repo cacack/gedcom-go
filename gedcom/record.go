@@ -56,7 +56,8 @@ type Record struct {
 	//
 	// Tags is complete; Entity is a typed projection over the structures this
 	// library models. Reading a structure that has no typed field from Tags is
-	// supported, not a workaround. docs/reference/gedcom-7-coverage.md and
+	// supported, not a workaround; Find, FindAll and Subtree read it by path.
+	// docs/reference/gedcom-7-coverage.md and
 	// docs/reference/gedcom-5.5-coverage.md list which structures are typed.
 	//
 	// Tags is authoritative when encoding. The encoder writes Tags verbatim
