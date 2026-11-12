@@ -66,8 +66,10 @@ func TestDowngradeDropsVoidPointers(t *testing.T) {
 			if fam := converted.GetFamily("@F1@"); fam.Wife != "" || len(fam.Children) != 0 || fam.Husband != "@I1@" {
 				t.Errorf("family pointers = %q %q %v, want @I1@, \"\", none", fam.Husband, fam.Wife, fam.Children)
 			}
-			if converted.Header.Submitter != "" {
-				t.Errorf("Header.Submitter = %q, want cleared", converted.Header.Submitter)
+			// The @VOID@ pointer is cleared; the SUBM 5.x requires is then
+			// added, pointing at a real record (#705).
+			if sub := converted.Header.Submitter; sub == "@VOID@" || converted.GetSubmitter(sub) == nil {
+				t.Errorf("Header.Submitter = %q, want the @VOID@ replaced by a SUBM record's XRef", sub)
 			}
 
 			var loss *gedcom.DataLossItem

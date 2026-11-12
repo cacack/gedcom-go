@@ -92,6 +92,10 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Vendor `_UID` | `UID_FROM_VENDOR_TAG` | A `_UID` tag becomes the 7.0 `UID` it standardised wherever 7.0 defines `UID`: at level 1 of an `INDI`, `FAM`, `SOUR`, `REPO`, `OBJE`, `SNOTE` or `SUBM` record, and at level 2 under an individual or family event or attribute. A `_UID` elsewhere (under `NAME`, say) stays an extension. The value is carried unchanged, as 7.0 asks for an existing identifier; each rename is a `Normalized` note, naming the enclosing event for a nested one |
 | Vendor `_FREL`/`_MREL` | `PEDIGREE_FROM_VENDOR_TAG` | A child's `FAMC` gains a `PEDI` from the `_FREL`/`_MREL` under the family's `CHIL` when the mapping is unambiguous: each parent the family names has a relationship, all map to one value (`Adopted`, `Foster`, `Sealing`), and it is not `Natural`/`Birth`. `Step`, `Guardian` and other values have no `PEDI` and add none; a `FAMC` that already has a `PEDI` is kept. The vendor tags stay; each `PEDI` added is a `Normalized` note |
 | Vendor `_MARNM` | `MARRIED_NAME_FROM_VENDOR_TAG` | A `NAME` with `_MARNM` is followed by a new `NAME` with `TYPE MARRIED`: the original name with the `_MARNM` surname in place of its own, or the `_MARNM` value itself when it is a full name (has a slash). A matching `TYPE MARRIED` name already present is not added again. `_MARNM` stays; each name added is a `Normalized` note |
+| Inline media links | `INLINE_OBJE_TO_RECORD` | An `OBJE` link with no pointer, carrying its `FILE` in place (5.5.1 `FILE`/`FORM`/`TITL`, or 5.5 `FORM` beside `FILE`), becomes a new `OBJE` record at the first free `@O<n>@` and a pointer to it, as the 7.0 migration guide gives; a link-level `TITL` and `FORM` go under the first `FILE`, `NOTE` and extensions stay at record level. A link with no `FILE` is left as it is. Each is a `Normalized` note at the link's path |
+| `AFN`, `RFN`, `RIN` | `IDENTIFIER_TO_EXID` | A record's level-1 `AFN`, `RFN` or `RIN` becomes an `EXID` with the registered `TYPE`: `https://gedcom.io/terms/v7/AFN`; `.../RIN#<HEAD.SOUR>` (no fragment when the header names no source system); `.../RFN#<resource>` with the value after the resource's colon (`RFN Resource:5431` -> `EXID 5431`), or the bare `RFN` URI and the whole value when there is no colon. Each is a `Normalized` note |
+| `LANG` | -- | `HEAD.LANG` and `SUBM.LANG` language names become BCP 47 tags (`English` -> `en`, case-insensitive), a `Normalized` note each. A value already tag-shaped is left alone; any other name is kept verbatim with an `Approximated` note |
+| Version-foreign structures | `FOREIGN_STRUCTURES_DROPPED` | From 5.5.1 only: see [Version-foreign structures](#version-foreign-structures) |
 | Header update | `VERSION_UPGRADE` | Header version updated to 7.0 |
 
 ### Upgrade 5.5 to 5.5.1
@@ -111,8 +115,40 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Media types | `MEDIA_TYPE_MAPPED` | IANA formats converted to legacy |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar keywords (`JULIAN`) converted to escapes (`@#DJULIAN@`) |
 | `UID` to vendor `_UID` | `UID_TO_VENDOR_TAG` | Every `UID` tag, at any level, becomes `_UID`, the extension 5.5.x producers use for the same identifier; each is a `Normalized` note, and `UID` is not data loss |
+| `LANG` | -- | `HEAD.LANG` and `SUBM.LANG` BCP 47 tags become 5.x language names by primary subtag: `de` -> `German` is `Normalized`, `en-US` -> `English` (region lost) is `Approximated`. A value already a 5.x name is left alone; a tag with no name is kept verbatim with an `Approximated` note |
+| `HEAD.SOUR` | `HEAD_SOUR_ADDED` | Added as `gedcom-go` when the header names no source system (required by 5.5 and 5.5.1) |
+| `HEAD.SUBM` | `HEAD_SUBM_ADDED`, `SUBM_RECORD_ADDED` | Added when missing (required by 5.5 and 5.5.1), pointing at the first `SUBM` record; when there is none, a `SUBM` record with `NAME Unknown` is added at the first free `@SUBM<n>@` |
+| Version-foreign structures | `FOREIGN_STRUCTURES_DROPPED` | To 5.5.1 only: see [Version-foreign structures](#version-foreign-structures) |
 | Header update | `VERSION_DOWNGRADE` | Header version updated |
 | GEDC.FORM | `GEDC_FORM_ADDED` | `2 FORM LINEAGE-LINKED` added under `GEDC` when missing (required by 5.5 and 5.5.1) |
+
+### Version-foreign structures
+
+Between 7.0 and 5.5.1, after every mapping above, the converter removes each
+structure the source version defines and the target does not, with its
+subordinate lines, from the header and every record's `Tags`: 7.0's `SDATE`,
+`INIL`, `CROP`, `FAM.FACT`, `ASSO` under an event or a family, `TIME` on an
+event date, `NOTE.LANG`/`MIME`/`SOUR`, `TEXT.LANG`/`MIME`, `PLAC.LANG`,
+`SUBM.REFN`, `OBJE.RESN`, `NCHI` substructures and the header note's
+`TRAN`, `MIME` and `LANG` on a downgrade; 5.5.1's `HEAD.FILE` on an upgrade.
+Each is a `Dropped` note at its full path (`Family @F1@ > MARR > SDATE`), and
+each parent.tag pair one data loss entry (`MARR.SDATE structures`) naming the
+records it was dropped from.
+
+What counts as foreign is generated from the vendored specification files
+(`testdata/spec/*/substructures.tsv`) into `converter/structures_gen.go` by
+`go generate ./converter`: the pairs (superstructure, tag) the target has no
+structure for wherever their superstructure is reached, and, where that
+depends on where the superstructure sits (7.0 allows `TIME` on every exact
+date, 5.5.1 only on a `CHAN` date), the triples with the superstructure's
+parent. A tag is read in its source context, so an extension tag, a
+nonconforming tag and everything under either are kept, as are `CONT` and
+`CONC`. Two pairs are left to the enumeration translation, which maps rather
+than drops them: `ASSO.RELA`/`ROLE` and the record `FILE.FORM.TYPE`/`MEDI`.
+An inline source citation's `TEXT` (5.5.1 `SOUR <text>` / `TEXT`) is kept,
+since 7.0 has no inline citation and nothing converts one to a record yet ([#793](https://github.com/cacack/gedcom-go/issues/793)). A
+record with no `Tags` is written from its entity and not walked. Conversions
+to and from 5.5 do not drop version-foreign structures yet ([#794](https://github.com/cacack/gedcom-go/issues/794)).
 
 Every conversion sets the header's `GEDC.VERS` to the target version, rewriting
 any existing `VERS` under any `GEDC`. If no `GEDC` has a `VERS`, one is added
@@ -188,6 +224,7 @@ must conform to the target version.
 |---------|--------|
 | Dual-year dates | 7.0 has no dual-year syntax (`11 FEB 1731/32`); the date is left unchanged, so the output is not valid 7.0 for it. Each such date is also a `Preserved` note at its path, and `AffectedRecords` lists each record holding one. Dual years inside a date phrase (`(born 1799/00)`) are not flagged |
 | `SUBN records` | 7.0 has no submission record. Every `0 @S1@ SUBN` record and the `HEAD.SUBN` pointer are removed before any other step; `AffectedRecords` lists the removed records, and each record (`Submission @S1@`) and the pointer (`Header > SUBN`) is also a `Dropped` note. The submitter (`SUBM`) records stay |
+| `HEAD.FILE structures` (and any other 5.5.1 structure 7.0 does not define) | Removed with its subordinates; see [Version-foreign structures](#version-foreign-structures) |
 | `FONE tags`, `ROMN tags` | 5.5.1 phonetic and romanized variations (under `NAME` or `PLAC`); 7.0 replaced them with `TRAN`, which names a language rather than the `TYPE` scheme, so they are not mapped. See [Name variations](#name-variations-fone-romn) |
 
 The `SNOTE` records this direction produces become `NOTE` records again when
@@ -203,6 +240,7 @@ converted back down to 5.x (see below).
 | PHRASE tags | Phrase annotations not supported |
 | CREA tags | Creation date not supported |
 | `@VOID@` null pointers | 5.x has no null pointer; a kept `@VOID@` would dangle |
+| `<parent>.<tag> structures` (`MARR.SDATE`, `INDI.INIL`, `NOTE.LANG`, ...) | To 5.5.1: a structure 5.5.1 does not define, removed with its subordinates; see [Version-foreign structures](#version-foreign-structures) |
 
 Each `EXID`, `TRAN`, `PHRASE` and `CREA` is removed from the record's
 `Record.Tags` with its subordinate lines, at any level, so the output matches

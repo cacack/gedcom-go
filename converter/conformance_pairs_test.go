@@ -76,8 +76,10 @@ var conversionKnownGaps = map[string]string{
 	"rela_1.ged 5->7": "ASSO.RELA is not mapped to ROLE + PHRASE (#704)",
 	"rela_1.ged 7->5": "ASSO.ROLE + PHRASE is not mapped to RELA (#704)",
 
-	"sour-1.ged 5->7": "inline-text SOUR citations are not promoted to SOUR records",
+	"sour-1.ged 5->7": "inline-text SOUR citations are not promoted to SOUR records (#793)",
 	"sour-1.ged 7->5": "not invertible: the SOUR record is kept as a record; 5/ uses the inline form",
+
+	"tiny-1.ged 7->5": "not invertible: the downgrade adds the HEAD.SUBM and SUBM record 5.5.1 requires (#705); 5/ omits both",
 
 	"xref-case.ged 5->7": "HEAD.SUBM @test@ resolves case-insensitively to @TEST@; the suite treats it as dangling (@VOID@)",
 	"xref-case.ged 7->5": "not invertible: HEAD.SUBM @VOID@ is dropped; 5/ holds a dangling @test@",

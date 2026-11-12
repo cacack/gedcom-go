@@ -248,6 +248,12 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		// After XRef normalization, so the records it reports (dual-year DataLoss
 		// AffectedRecords) are named by their XRefs in the converted document.
 		func() { transformDateCalendars(doc, gedcom.Version70, report) },
+		// After XRef normalization, so a new OBJE record's XRef is checked
+		// against final ones, and before the media type translation, so its FORM
+		// is translated with every other record's.
+		func() { promoteInlineMediaLinks(doc, report) },
+		func() { transformIdentifiersToEXID(doc, report) },
+		func() { transformLanguages(doc, gedcom.Version70, report) },
 		func() { upgradeNoteRecordsForV7(doc, report) },
 		func() { transformMediaTypes(doc, gedcom.Version70, report) },
 		func() { transformHeader(doc, gedcom.Version70, report) },
@@ -255,6 +261,7 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		func() { synthesizePedigrees(doc, report, gedcom.Version70) },
 		func() { marriedNamesToV7(doc, report) },
 		func() { variations.report(doc, report, gedcom.Version70) },
+		// No dropForeignStructures: structures_gen.go has no 5.5 graph yet (#794).
 		func() { opts.reportPreservedTags(doc, report) },
 		func() {
 			report.AddTransformation(gedcom.Transformation{
@@ -297,6 +304,12 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 		// After XRef normalization, so the records it reports (dual-year DataLoss
 		// AffectedRecords) are named by their XRefs in the converted document.
 		func() { transformDateCalendars(doc, gedcom.Version70, report) },
+		// After XRef normalization, so a new OBJE record's XRef is checked
+		// against final ones, and before the media type translation, so its FORM
+		// is translated with every other record's.
+		func() { promoteInlineMediaLinks(doc, report) },
+		func() { transformIdentifiersToEXID(doc, report) },
+		func() { transformLanguages(doc, gedcom.Version70, report) },
 		func() { upgradeNoteRecordsForV7(doc, report) },
 		func() { transformMediaTypes(doc, gedcom.Version70, report) },
 		func() { transformHeader(doc, gedcom.Version70, report) },
@@ -304,6 +317,8 @@ func convert551To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 		func() { synthesizePedigrees(doc, report, gedcom.Version70) },
 		func() { marriedNamesToV7(doc, report) },
 		func() { variations.report(doc, report, gedcom.Version70) },
+		// Last, so only what no pass above mapped into a 7.0 form is dropped.
+		func() { dropForeignStructures(doc, foreign551To70, report, gedcom.Version70) },
 		func() { opts.reportPreservedTags(doc, report) },
 		func() {
 			report.AddTransformation(gedcom.Transformation{
@@ -333,11 +348,16 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		func() { transformTextForVersion(doc, gedcom.Version55, report) },
 		func() { transformDateCalendars(doc, gedcom.Version55, report) },
 		func() { transformMediaTypes(doc, gedcom.Version55, report) },
+		func() { transformLanguages(doc, gedcom.Version55, report) },
+		// Before transformHeader, which orders what this adds.
+		func() { addRequiredHeaderStructures(doc, gedcom.Version55, report) },
 		func() { transformHeader(doc, gedcom.Version55, report) },
 		// Before dropV7OnlyTags, which reports whatever 7.0-only tag remains.
 		func() { transformUIDTags(doc, report, gedcom.Version55) },
 		func() { dropV7OnlyTags(doc, report, gedcom.Version55) },
 		func() { downgradeSharedNotes(doc, report, gedcom.Version55) },
+		// No dropForeignStructures: structures_gen.go has no 5.5 graph yet, so only
+		// dropV7OnlyTags's list is removed (#794).
 		func() { opts.reportPreservedTags(doc, report) },
 		func() {
 			report.AddTransformation(gedcom.Transformation{
@@ -364,11 +384,16 @@ func convert70To551(doc *gedcom.Document, report *gedcom.ConversionReport, opts 
 		func() { transformTextForVersion(doc, gedcom.Version551, report) },
 		func() { transformDateCalendars(doc, gedcom.Version551, report) },
 		func() { transformMediaTypes(doc, gedcom.Version551, report) },
+		func() { transformLanguages(doc, gedcom.Version551, report) },
+		// Before transformHeader, which orders what this adds.
+		func() { addRequiredHeaderStructures(doc, gedcom.Version551, report) },
 		func() { transformHeader(doc, gedcom.Version551, report) },
 		// Before dropV7OnlyTags, which reports whatever 7.0-only tag remains.
 		func() { transformUIDTags(doc, report, gedcom.Version551) },
 		func() { dropV7OnlyTags(doc, report, gedcom.Version551) },
 		func() { downgradeSharedNotes(doc, report, gedcom.Version551) },
+		// Last, so only what no pass above mapped into a 5.5.1 form is dropped.
+		func() { dropForeignStructures(doc, foreign70To551, report, gedcom.Version551) },
 		func() { opts.reportPreservedTags(doc, report) },
 		func() {
 			report.AddTransformation(gedcom.Transformation{
