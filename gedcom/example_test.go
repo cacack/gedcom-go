@@ -626,3 +626,86 @@ func ExampleHeader_Find() {
 	// Output:
 	// Source version: 4.2
 }
+
+// ExampleAgeAt shows the age range two partial dates allow.
+func ExampleAgeAt() {
+	birth, _ := gedcom.ParseDate("1850")
+	death, _ := gedcom.ParseDate("12 MAR 1921")
+
+	youngest, oldest, ok := gedcom.AgeAt(birth, death)
+	fmt.Println(youngest, oldest, ok)
+
+	birth, _ = gedcom.ParseDate("15 MAR 1920")
+	death, _ = gedcom.ParseDate("14 MAR 1985")
+	youngest, oldest, _ = gedcom.AgeAt(birth, death)
+	fmt.Printf("exact: %v, age %d\n", youngest == oldest, youngest)
+
+	// Output:
+	// 70 71 true
+	// exact: true, age 64
+}
+
+const relativesGEDCOM = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Smith/
+1 FAMS @F1@
+1 FAMS @F2@
+0 @I2@ INDI
+1 NAME Mary /Jones/
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Ann /Brown/
+1 FAMS @F2@
+0 @I4@ INDI
+1 NAME Tom /Smith/
+1 FAMC @F1@
+2 PEDI birth
+0 @I5@ INDI
+1 NAME Sue /Smith/
+1 FAMC @F1@
+2 PEDI adopted
+0 @I6@ INDI
+1 NAME Bob /Smith/
+1 FAMC @F2@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I4@
+1 CHIL @I5@
+0 @F2@ FAM
+1 HUSB @I1@
+1 WIFE @I3@
+1 CHIL @I6@
+0 TRLR`
+
+// ExampleIndividual_ParentLinks tells birth and adoptive parents apart.
+func ExampleIndividual_ParentLinks() {
+	doc, _ := decoder.Decode(strings.NewReader(relativesGEDCOM))
+
+	for _, link := range doc.GetIndividual("@I5@").ParentLinks(doc) {
+		fmt.Printf("%s (%s, %s)\n", link.Individual.FullName(), link.Family.XRef, link.Pedigree)
+	}
+
+	// Output:
+	// John /Smith/ (@F1@, adopted)
+	// Mary /Jones/ (@F1@, adopted)
+}
+
+// ExampleIndividual_Siblings lists full and half siblings.
+func ExampleIndividual_Siblings() {
+	doc, _ := decoder.Decode(strings.NewReader(relativesGEDCOM))
+
+	for _, sibling := range doc.GetIndividual("@I4@").Siblings(doc) {
+		kind := "full"
+		if sibling.Half {
+			kind = "half"
+		}
+		fmt.Printf("%s: %s sibling via %s\n", sibling.Individual.FullName(), kind, sibling.Family.XRef)
+	}
+
+	// Output:
+	// Sue /Smith/: full sibling via @F1@
+	// Bob /Smith/: half sibling via @F2@
+}

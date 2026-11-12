@@ -1531,3 +1531,49 @@ func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
 	}
 	return yearDiff, false, nil
 }
+
+// AgeAt returns the age, in completed years, of someone born on birth when
+// event happened, as the range the two dates allow on Bounds semantics: a
+// partial date spans its whole period, so a year-only birth of 1900 and a
+// death in 1950 give youngest 49 and oldest 50. The age is exact when
+// youngest equals oldest, as it is for two complete dates.
+//
+// Ages are counted in proleptic Gregorian years from the dates' Julian Day
+// Numbers, whatever calendar either date is in; a birthday on 29 February is
+// reached on 1 March in a common year. Like Bounds, AgeAt does not widen an
+// ABT, CAL or EST date, so check Modifier when an approximate age matters.
+//
+// youngest is 0 when birth is AFT or FROM or event is BEF or TO, or when the
+// event may fall before the birth; oldest is math.MaxInt when birth is BEF or
+// TO or event is AFT or FROM. Ages are never negative.
+//
+// ok is false when either date has no Bounds, or the event is provably before
+// the birth (its latest day is before birth's earliest).
+func AgeAt(birth, event *Date) (youngest, oldest int, ok bool) {
+	birthEarliest, birthLatest, birthOK := birth.Bounds()
+	eventEarliest, eventLatest, eventOK := event.Bounds()
+	if !birthOK || !eventOK || eventLatest < birthEarliest {
+		return 0, 0, false
+	}
+
+	oldest = math.MaxInt
+	if birthEarliest != math.MinInt && eventLatest != math.MaxInt {
+		oldest = completedYears(birthEarliest, eventLatest)
+	}
+	if birthLatest != math.MaxInt && eventEarliest != math.MinInt && eventEarliest >= birthLatest {
+		youngest = completedYears(birthLatest, eventEarliest)
+	}
+	return youngest, oldest, true
+}
+
+// completedYears counts the Gregorian anniversaries of day from reached by day
+// to, both Julian Day Numbers with from <= to.
+func completedYears(from, to int) int {
+	fromYear, fromMonth, fromDay := JDNToGregorian(from)
+	toYear, toMonth, toDay := JDNToGregorian(to)
+	years := toYear - fromYear
+	if toMonth < fromMonth || (toMonth == fromMonth && toDay < fromDay) {
+		years--
+	}
+	return years
+}
