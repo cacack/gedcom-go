@@ -79,7 +79,8 @@ const (
 	// CodeMissingRequired indicates a required subordinate tag is missing.
 	CodeMissingRequired = "MISSING_REQUIRED"
 
-	// CodeSkippedRecord indicates an entire record was skipped due to errors.
+	// CodeSkippedRecord indicates a record was skipped because its level-0 line
+	// could not be parsed.
 	// In lenient mode it is emitted when a record's level-0 line is dropped
 	// (alongside that line's parse diagnostic): the record's subordinate lines,
 	// up to the next level-0 line, are skipped rather than attached to the

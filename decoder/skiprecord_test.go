@@ -140,3 +140,37 @@ func TestSkipOrphanedRecords_NothingDropped(t *testing.T) {
 		t.Errorf("got %v, want lines unchanged", got)
 	}
 }
+
+// TestDecodeWithDiagnostics_StrayInRecordLineKeepsRecord pins that a rejected
+// line inside a record whose first field merely ends in "0" is not taken for a
+// dropped level-0 line: the lines after it stay under their record.
+func TestDecodeWithDiagnostics_StrayInRecordLineKeepsRecord(t *testing.T) {
+	for _, bad := range []string{"£0 10s 6d paid for burial", "A0 poster", "$0", "L0 NAME x", "x0 @I9@ lowercase"} {
+		t.Run(bad, func(t *testing.T) {
+			input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n" +
+				"0 @I1@ INDI\n1 NAME John /Smith/\n" +
+				bad + "\n1 SEX M\n1 FAMS @F1@\n" +
+				"0 @F1@ FAM\n1 HUSB @I1@\n0 TRLR\n"
+
+			result, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			john := result.Document.GetIndividual("@I1@")
+			if john == nil {
+				t.Fatal("@I1@ should exist")
+			}
+			if john.Sex != "M" {
+				t.Errorf("@I1@ Sex = %q, want \"M\" (the line after the stray line must stay)", john.Sex)
+			}
+			if len(john.SpouseInFamilies) != 1 || john.SpouseInFamilies[0].FamilyXRef != "@F1@" {
+				t.Errorf("@I1@ SpouseInFamilies = %+v, want @F1@", john.SpouseInFamilies)
+			}
+			for _, d := range result.Diagnostics {
+				if d.Code == CodeSkippedRecord {
+					t.Errorf("unexpected %s", d.String())
+				}
+			}
+		})
+	}
+}

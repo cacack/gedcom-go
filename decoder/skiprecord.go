@@ -53,18 +53,49 @@ func skipOrphanedRecords(lines []*parser.Line, parseErrors []*parser.ParseError,
 }
 
 // isDroppedLevelZero reports whether pe rejected a line that was meant as a
-// level-0 line: its first field is "0" once any non-digit prefix is removed,
-// as in "\uFEFF0 @I2@ INDI" or "x0 HEAD". A line that is only "0"
-// (no tag) counts too. The test looks at the first field alone, so prose that
-// happens to contain " 0 " further along ("page 0 of 3") is not mistaken for a
-// record boundary.
+// level-0 line. Its first field must be "0" once any non-digit prefix is
+// removed ("\uFEFF0 @I2@ INDI", "x0 HEAD"), and the rest must have the shape of
+// a record line: an xref followed by an uppercase or extension tag
+// ("@I2@ INDI"), or a bare HEAD or TRLR. A line that is exactly "0" counts too.
+// The shape test keeps stray text inside a record ("£0 10s paid for burial",
+// "page 0 of 3") from being taken for a record boundary, which would discard
+// the rest of a correctly parented record.
 func isDroppedLevelZero(pe *parser.ParseError) bool {
 	fields := strings.Fields(pe.Context)
 	if len(fields) == 0 {
 		return false
 	}
+	if len(fields) == 1 {
+		return fields[0] == "0"
+	}
 	level := strings.TrimLeftFunc(fields[0], func(r rune) bool { return r < '0' || r > '9' })
-	return level == "0"
+	if level != "0" {
+		return false
+	}
+	if isXRef(fields[1]) {
+		return len(fields) >= 3 && isTagShaped(fields[2])
+	}
+	return len(fields) == 2 && (fields[1] == "HEAD" || fields[1] == "TRLR")
+}
+
+// isXRef reports whether s has the shape of a cross-reference: "@" + at least
+// one character + "@".
+func isXRef(s string) bool {
+	return len(s) >= 3 && s[0] == '@' && s[len(s)-1] == '@'
+}
+
+// isTagShaped reports whether s looks like a GEDCOM tag: an uppercase letter or
+// underscore, then uppercase letters, digits or underscores.
+func isTagShaped(s string) bool {
+	for i, r := range s {
+		switch {
+		case r == '_', r >= 'A' && r <= 'Z':
+		case i > 0 && r >= '0' && r <= '9':
+		default:
+			return false
+		}
+	}
+	return s != ""
 }
 
 // addSkippedRecord records that the record starting at pe's line was skipped,
