@@ -58,10 +58,10 @@ func (v *ReferenceValidator) Validate(doc *gedcom.Document) []Issue {
 	var issues []Issue
 
 	// Walk the records, not doc.Individuals()/Families(), so each entity's
-	// pointer lines come from the record it was decoded from. The decoder
-	// does not reject duplicate XRefs and XRefMap keeps only the last record
-	// per XRef, so a lookup through XRefMap would give every duplicate the
-	// last one's lines (ADR 0007).
+	// pointer lines come from the record it was decoded from. Duplicate XRefs
+	// are reported (DUPLICATE_XREF) but kept, and XRefMap holds only the
+	// first record per XRef, so a lookup through XRefMap would give every
+	// duplicate the first one's lines (ADR 0007).
 	for _, record := range doc.Records {
 		if record == nil {
 			continue
@@ -224,7 +224,7 @@ type pointerLines struct {
 
 // newPointerLines returns a line finder over record, the record the checked
 // entity was decoded from, which must be non-nil. Do not look the record up by
-// XRef: with duplicate XRefs, doc.XRefMap holds only the last one.
+// XRef: with duplicate XRefs, doc.XRefMap holds only the first one.
 func newPointerLines(record *gedcom.Record) *pointerLines {
 	return &pointerLines{record: record, seen: map[string]int{}}
 }

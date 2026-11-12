@@ -181,9 +181,9 @@ specification PDFs, which is described in
 |--------|------:|------:|------:|------:|---------|
 | typed | 884 | 88.6% | 1186 | 90.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 80 | 8.0% | 101 | 7.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 81 | 8.1% | 102 | 7.8% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 15 | 1.5% | 10 | 0.8% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 19 | 1.9% | 19 | 1.4% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 18 | 1.8% | 18 | 1.4% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -272,7 +272,7 @@ Structures that appear at the top of a document.
 | `SOUR` | `SOURCE_RECORD.SOUR` | typed | typed | `{0:M}` |
 | `SUBM` | `SUBMITTER_RECORD.SUBM` | typed | typed | `{0:M}` |
 | `SUBN` | `SUBMISSION_RECORD.SUBN` | typed | typed | `{0:1}` |
-| `TRLR` | `LINEAGE_LINKED_GEDCOM.TRLR` | raw (undiagnosed) | raw (undiagnosed) | `{1:1}` |
+| `TRLR` | `LINEAGE_LINKED_GEDCOM.TRLR` | raw (accepted) | raw (accepted) | `{1:1}` |
 
 ### `ADDRESS_STRUCTURE.ADDR`
 

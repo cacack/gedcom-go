@@ -107,9 +107,9 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 |--------|-----------:|------:|---------|
 | typed | 1269 | 91.4% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 76 | 5.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
-| raw (flagged) | 6 | 0.4% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 38 | 2.7% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (accepted) | 77 | 5.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (flagged) | 7 | 0.5% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
+| raw (undiagnosed) | 36 | 2.6% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
 ### By top-level structure
 
@@ -125,8 +125,8 @@ The structure each pair is nested under at level 0.
 | `OBJE` | 17 | 17 | 0 | 0 | 0 | 0 |
 | `SUBM` | 16 | 9 | 0 | 5 | 2 | 0 |
 | `SNOTE` | 12 | 9 | 0 | 0 | 3 | 0 |
-| `CONT` | 1 | 0 | 0 | 0 | 0 | 1 |
-| `TRLR` | 1 | 0 | 0 | 0 | 0 | 1 |
+| `CONT` | 1 | 0 | 0 | 0 | 1 | 0 |
+| `TRLR` | 1 | 0 | 0 | 1 | 0 | 0 |
 
 ## Inventory
 
@@ -138,7 +138,7 @@ Structures that appear at the top of a document.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `CONT` | `CONT` | raw (undiagnosed) |
+| `CONT` | `CONT` | raw (flagged) |
 | `FAM` | `record-FAM` | typed |
 | `HEAD` | `HEAD` | typed |
 | `INDI` | `record-INDI` | typed |
@@ -147,7 +147,7 @@ Structures that appear at the top of a document.
 | `SNOTE` | `record-SNOTE` | typed |
 | `SOUR` | `record-SOUR` | typed |
 | `SUBM` | `record-SUBM` | typed |
-| `TRLR` | `TRLR` | raw (undiagnosed) |
+| `TRLR` | `TRLR` | raw (accepted) |
 
 ### `FAM`
 

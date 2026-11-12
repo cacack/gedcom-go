@@ -157,11 +157,14 @@ func Combine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Document
 		out.XRefMap = make(map[string]*gedcom.Record)
 	}
 
-	// Append doc2's (already remapped) records.
+	// Append doc2's (already remapped) records. An XRef already in the
+	// map keeps its first definition, the rule Document.XRefMap documents.
 	for _, r := range remappedDoc2.Records {
 		out.Records = append(out.Records, r)
 		if r != nil && r.XRef != "" {
-			out.XRefMap[r.XRef] = r
+			if _, exists := out.XRefMap[r.XRef]; !exists {
+				out.XRefMap[r.XRef] = r
+			}
 		}
 	}
 

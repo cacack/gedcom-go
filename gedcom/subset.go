@@ -131,7 +131,10 @@ func (d *Document) Subset(xrefs []string) (*Document, error) {
 		}
 		copied := record.Clone()
 		out.Records = append(out.Records, copied)
-		out.XRefMap[copied.XRef] = copied
+		// The first record defining an XRef keeps it (see XRefMap).
+		if _, exists := out.XRefMap[copied.XRef]; !exists {
+			out.XRefMap[copied.XRef] = copied
+		}
 	}
 
 	return out, nil

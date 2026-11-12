@@ -72,8 +72,9 @@ type usageLocation struct {
 type StreamingValidator struct {
 	opts StreamingOptions
 
-	// seenXRefs tracks all declared XRefs (record identifiers).
-	seenXRefs map[string]struct{}
+	// seenXRefs tracks all declared XRefs (record identifiers), each with
+	// the line of the record that first declared it.
+	seenXRefs map[string]int
 
 	// usedXRefs maps each referenced XRef to where it's used.
 	usedXRefs map[string][]usageLocation
@@ -93,7 +94,7 @@ type StreamingValidator struct {
 func NewStreamingValidator(opts StreamingOptions) *StreamingValidator {
 	return &StreamingValidator{
 		opts:      opts,
-		seenXRefs: make(map[string]struct{}),
+		seenXRefs: make(map[string]int),
 		usedXRefs: make(map[string][]usageLocation),
 		xrefTypes: make(map[string]gedcom.RecordType),
 		dateLogic: NewDateLogicValidator(opts.DateLogic),
@@ -110,7 +111,8 @@ func NewStreamingValidator(opts StreamingOptions) *StreamingValidator {
 // first, as the ValidateRecord example shows.
 //
 // This method:
-//   - Registers the record's XRef as declared
+//   - Registers the record's XRef as declared, reporting CodeDuplicateXRef
+//     if an earlier record already declared it
 //   - Validates record structure and entity-specific rules
 //   - Collects XRef references for deferred validation
 //   - Returns immediate issues (malformed dates, invalid structure, etc.)
@@ -138,10 +140,15 @@ func (sv *StreamingValidator) ValidateRecord(record *gedcom.Record) []Issue {
 
 	var issues []Issue
 
-	// Register this record's XRef as declared
+	// Register this record's XRef as declared. A redefinition is reported
+	// at once, and the first declaration stays registered.
 	if record.XRef != "" {
-		sv.seenXRefs[record.XRef] = struct{}{}
-		sv.xrefTypes[record.XRef] = record.Type
+		if firstLine, exists := sv.seenXRefs[record.XRef]; exists {
+			issues = append(issues, duplicateXRefIssue(record, firstLine))
+		} else {
+			sv.seenXRefs[record.XRef] = record.LineNumber
+			sv.xrefTypes[record.XRef] = record.Type
+		}
 	}
 
 	// Validate based on record type
@@ -525,7 +532,7 @@ func (sv *StreamingValidator) createOrphanedReferenceIssue(xref string, usage us
 
 // Reset clears all internal state, allowing the validator to be reused.
 func (sv *StreamingValidator) Reset() {
-	sv.seenXRefs = make(map[string]struct{})
+	sv.seenXRefs = make(map[string]int)
 	sv.usedXRefs = make(map[string][]usageLocation)
 	sv.xrefTypes = make(map[string]gedcom.RecordType)
 }

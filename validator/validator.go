@@ -265,13 +265,14 @@ func (v *Validator) Validate(doc *gedcom.Document) []error {
 
 // recordChecks runs the record-level spec-conformance checks shared by
 // [Validator.ValidateAll] and [QualityAnalyzer.Analyze], so a check added here
-// reaches both: raw pointers, nil elements (which only a hand-built document
-// holds), date validity (dates that do not exist, e.g. 31 FEB), XRef length
-// and note pointers. The record-structure heuristics are not conformance
-// checks; both callers run validateRecordStructure themselves.
+// reaches both: raw pointers, duplicate XRefs, nil elements (which only a
+// hand-built document holds), date validity (dates that do not exist, e.g.
+// 31 FEB), XRef length and note pointers. The record-structure heuristics are
+// not conformance checks; both callers run validateRecordStructure themselves.
 func recordChecks(doc *gedcom.Document, xrefs *XRefValidator, notes *NoteValidator) []Issue {
 	var issues []Issue
 	issues = append(issues, validateBrokenXRefs(doc)...)
+	issues = append(issues, validateDuplicateXRefs(doc)...)
 	issues = append(issues, validateNilElements(doc)...)
 	issues = append(issues, validateDates(doc)...)
 	issues = append(issues, xrefs.ValidateXRefs(doc)...)

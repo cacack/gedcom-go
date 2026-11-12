@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/charset"
@@ -676,10 +677,8 @@ func buildRecords(doc *gedcom.Document, lines []*parser.Line, collector *diagnos
 			// Start new record
 			currentRecord = newRecord(line)
 
-			// Index in XRefMap if it has an XRef
-			if line.XRef != "" {
-				doc.XRefMap[line.XRef] = currentRecord
-			}
+			checkRecordType(line, collector)
+			indexRecord(doc, currentRecord, line, collector)
 
 			continue
 		}
@@ -726,6 +725,110 @@ func newTag(line *parser.Line) *gedcom.Tag {
 	}
 }
 
+// checkRecordType reports a level-0 line whose tag is not a record type the
+// decoder knows. Such a line is still kept as a record of that type, with no
+// entity.
+func checkRecordType(line *parser.Line, collector *diagnosticCollector) {
+	if isUnknownRecordTag(line.Tag) {
+		collector.addUnknownRecordType(line)
+	}
+}
+
+// isUnknownRecordTag reports whether a level-0 tag is outside the standard
+// record set and not otherwise accounted for. Extension records ("_CUSTOM")
+// are allowed. HEAD and TRLR only start a record when they carry an XRef,
+// which buildRecords reports as INVALID_XREF. A tag starting with "@" is a
+// level-0 XRef with no tag, which the parser already reported as INVALID_XREF.
+func isUnknownRecordTag(tag string) bool {
+	if tag == "HEAD" || tag == "TRLR" ||
+		strings.HasPrefix(tag, "_") || strings.HasPrefix(tag, "@") {
+		return false
+	}
+	return !standardRecordTypes[gedcom.RecordType(tag)]
+}
+
+// indexRecord adds a record just started from a level-0 line to doc.XRefMap,
+// reporting a redefined XRef to collector.
+func indexRecord(doc *gedcom.Document, record *gedcom.Record, line *parser.Line, collector *diagnosticCollector) {
+	// Index in XRefMap if it has an XRef. The first definition of an XRef
+	// wins: a later record reusing it stays in Records (nothing is dropped)
+	// but pointers keep resolving to the first, and the redefinition is
+	// reported.
+	if line.XRef != "" {
+		if first, exists := doc.XRefMap[line.XRef]; exists {
+			collector.addDuplicateXRef(line, first.LineNumber)
+		} else {
+			doc.XRefMap[line.XRef] = record
+		}
+	}
+}
+
+// standardRecordTypes is the set of level-0 record tags the GEDCOM 5.5, 5.5.1
+// and 7.0 grammars define, other than HEAD and TRLR.
+var standardRecordTypes = map[gedcom.RecordType]bool{
+	gedcom.RecordTypeIndividual: true,
+	gedcom.RecordTypeFamily:     true,
+	gedcom.RecordTypeSource:     true,
+	gedcom.RecordTypeRepository: true,
+	gedcom.RecordTypeNote:       true,
+	gedcom.RecordTypeMedia:      true,
+	gedcom.RecordTypeSubmitter:  true,
+	gedcom.RecordTypeSubmission: true,
+	gedcom.RecordTypeSharedNote: true,
+}
+
+// lineContext reconstructs a line from its parsed fields, the same shape the
+// parser reports raw lines in, for a diagnostic's Context.
+func lineContext(line *parser.Line) string {
+	parts := []string{strconv.Itoa(line.Level)}
+	if line.XRef != "" {
+		parts = append(parts, line.XRef)
+	}
+	parts = append(parts, line.Tag)
+	if line.Value != "" {
+		parts = append(parts, line.Value)
+	}
+	return strings.Join(parts, " ")
+}
+
+// addDuplicateXRef records a level-0 line that defines an XRef an earlier
+// record already defined (firstLine). SeverityError: every pointer to the
+// XRef is ambiguous, and the decoder resolves it to the first definition.
+func (c *diagnosticCollector) addDuplicateXRef(line *parser.Line, firstLine int) {
+	if !c.collecting() {
+		return
+	}
+	c.add(NewDiagnostic(
+		line.LineNumber,
+		SeverityError,
+		CodeDuplicateXRef,
+		fmt.Sprintf("duplicate xref %s: already defined at line %d; pointers resolve to the first definition", line.XRef, firstLine),
+		lineContext(line),
+	))
+}
+
+// addUnknownRecordType records a level-0 line whose tag is neither a standard
+// record type nor an extension ("_" prefix), as CodeUnknownTag with
+// SeverityWarning, the code and severity unknown subordinate tags use. A tag
+// that is a standard record type in another case ("indi") is named as such:
+// tags are case-sensitive, so the record still gets no entity.
+func (c *diagnosticCollector) addUnknownRecordType(line *parser.Line) {
+	if !c.collecting() {
+		return
+	}
+	msg := fmt.Sprintf("unknown record type: %s", line.Tag)
+	if upper := strings.ToUpper(line.Tag); standardRecordTypes[gedcom.RecordType(upper)] {
+		msg += fmt.Sprintf(" (tags are case-sensitive; did you mean %s?)", upper)
+	}
+	c.add(NewDiagnostic(
+		line.LineNumber,
+		SeverityWarning,
+		CodeUnknownTag,
+		msg,
+		lineContext(line),
+	))
+}
+
 // addXRefOnStructuralLine records a level-0 HEAD or TRLR line that carries a
 // cross-reference identifier the GEDCOM grammar does not allow there.
 //
@@ -737,15 +840,11 @@ func (c *diagnosticCollector) addXRefOnStructuralLine(line *parser.Line) {
 	if !c.collecting() {
 		return
 	}
-	// Context is the offending line reconstructed from its parsed fields, the
-	// same shape the parser reports raw lines in. TrimRight drops the trailing
-	// separator when there is no value, which is the usual case.
-	context := strings.TrimRight(fmt.Sprintf("%d %s %s %s", line.Level, line.XRef, line.Tag, line.Value), " ")
 	c.add(NewDiagnostic(
 		line.LineNumber,
 		SeverityError,
 		CodeInvalidXRef,
 		fmt.Sprintf("xref not allowed on %s: %s", line.Tag, line.XRef),
-		context,
+		lineContext(line),
 	))
 }

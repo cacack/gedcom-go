@@ -82,13 +82,14 @@ Parse-level errors (severity: ERROR):
 | `INVALID_XREF` | Cross-reference identifier that is malformed (contains a space in a document whose header does not declare GEDCOM 5.5 or 5.5.1, or has no closing `@`) or that the grammar forbids where it appears (`0 @X1@ HEAD`, `0 @X1@ TRLR`); the line is kept as a record wherever recovery is possible — see [FEATURES.md](../../FEATURES.md#lenient-parsing--diagnostics) |
 | `EMPTY_LINE` | Unexpected blank line |
 | `INVALID_ENCODING` | Byte that is not valid UTF-8 in input read as UTF-8 (declared `UTF-8` or `ASCII`, or no recognized `CHAR`); replaced with U+FFFD and decoding continues. One per byte, up to `MaxInvalidEncodingDiagnostics` (100), then one diagnostic counting the rest; the message names the byte and its column |
+| `DUPLICATE_XREF` | A level-0 record redefines an XRef an earlier record defined; both records are kept and `XRefMap` resolves to the first |
 
 Entity-level warnings (severity: WARNING):
 
 | Code | Meaning |
 |------|---------|
 | `BAD_LEVEL_JUMP` | Invalid level increment (e.g., 0 to 2); line clamped to `prev + 1` and kept |
-| `UNKNOWN_TAG` | Unrecognized tag (preserved in raw form) |
+| `UNKNOWN_TAG` | Unrecognized tag (preserved in raw form), including a level-0 record type outside the standard set that is not `_`-prefixed |
 | `INVALID_VALUE` | Value doesn't match expected format |
 | `MISSING_REQUIRED` | Required subordinate tag is missing |
 | `SKIPPED_RECORD` | A record's level-0 line was dropped, so its subordinate lines (up to the next level-0 line, range in the message) were skipped rather than attached to the preceding record. Emitted alongside the dropped line's own parse diagnostic |
