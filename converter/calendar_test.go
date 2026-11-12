@@ -63,7 +63,7 @@ func TestConvertDateCalendarSyntax(t *testing.T) {
 		{"range to 7.0", gedcom.Version551, gedcom.Version70, "BET @#DJULIAN@ 1700 AND @#DGREGORIAN@ 1710", "BET JULIAN 1700 AND GREGORIAN 1710"},
 		{"period to 7.0", gedcom.Version551, gedcom.Version70, "FROM @#DHEBREW@ 5500 TO @#DFRENCH R@ 10", "FROM HEBREW 5500 TO FRENCH_R 10"},
 		{"approximation to 7.0", gedcom.Version551, gedcom.Version70, "ABT @#DJULIAN@ MAR 1066", "ABT JULIAN MAR 1066"},
-		{"phrase text untouched to 7.0", gedcom.Version551, gedcom.Version70, "INT @#DJULIAN@ 1700 (@#DJULIAN@ by the family)", "INT JULIAN 1700 (@#DJULIAN@ by the family)"},
+		{"phrase text untouched to 7.0", gedcom.Version551, gedcom.Version70, "ABT @#DJULIAN@ 1700 (@#DJULIAN@ by the family)", "ABT JULIAN 1700 (@#DJULIAN@ by the family)"},
 		{"gregorian to 5.5.1", gedcom.Version70, gedcom.Version551, "GREGORIAN 1 JAN 1700", "@#DGREGORIAN@ 1 JAN 1700"},
 		{"julian to 5.5.1", gedcom.Version70, gedcom.Version551, "JULIAN 1 JAN 1700", "@#DJULIAN@ 1 JAN 1700"},
 		{"hebrew to 5.5", gedcom.Version70, gedcom.Version55, "HEBREW 1 TSH 5500", "@#DHEBREW@ 1 TSH 5500"},

@@ -89,6 +89,8 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Note pointers | `NOTE_POINTER_TO_SNOTE` | `NOTE @N1@` pointers to a converted note record become `SNOTE @N1@`, at any level; inline note text and pointers no record defines stay `NOTE` |
 | Media types | `MEDIA_TYPE_MAPPED` | Legacy formats (JPG) converted to IANA (image/jpeg) |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar escapes (`@#DJULIAN@`) converted to keywords (`JULIAN`) |
+| Date epochs | `DATE_EPOCH_CONVERTED` | `B.C.`, `BC` and `B.C.E.` spelled `BCE`; see [Date epochs and phrases](#date-epochs-and-phrases) |
+| Date phrases | `DATE_PHRASE_CONVERTED` | `INT <date> (<phrase>)` becomes `DATE <date>` + `PHRASE`, `(<phrase>)` an empty `DATE` + `PHRASE` |
 | Vendor `_UID` | `UID_FROM_VENDOR_TAG` | A `_UID` tag becomes the 7.0 `UID` it standardised wherever 7.0 defines `UID`: at level 1 of an `INDI`, `FAM`, `SOUR`, `REPO`, `OBJE`, `SNOTE` or `SUBM` record, and at level 2 under an individual or family event or attribute. A `_UID` elsewhere (under `NAME`, say) stays an extension. The value is carried unchanged, as 7.0 asks for an existing identifier; each rename is a `Normalized` note, naming the enclosing event for a nested one |
 | Vendor `_FREL`/`_MREL` | `PEDIGREE_FROM_VENDOR_TAG` | A child's `FAMC` gains a `PEDI` from the `_FREL`/`_MREL` under the family's `CHIL` when the mapping is unambiguous: each parent the family names has a relationship, all map to one value (`Adopted`, `Foster`, `Sealing`), and it is not `Natural`/`Birth`. `Step`, `Guardian` and other values have no `PEDI` and add none; a `FAMC` that already has a `PEDI` is kept. The vendor tags stay; each `PEDI` added is a `Normalized` note |
 | Vendor `_MARNM` | `MARRIED_NAME_FROM_VENDOR_TAG` | A `NAME` with `_MARNM` is followed by a new `NAME` with `TYPE MARRIED`: the original name with the `_MARNM` surname in place of its own, or the `_MARNM` value itself when it is a full name (has a slash). A matching `TYPE MARRIED` name already present is not added again. `_MARNM` stays; each name added is a `Normalized` note |
@@ -114,6 +116,8 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Long lines to CONC | `CONC_ADDED` | A value line too long for 5.x's 255-character limit split onto CONC tags, between two non-spaces, including a level-0 `SNOTE` record's text; each split value is a `Normalized` note |
 | Media types | `MEDIA_TYPE_MAPPED` | IANA formats converted to legacy |
 | Date calendars | `DATE_CALENDAR_CONVERTED` | Calendar keywords (`JULIAN`) converted to escapes (`@#DJULIAN@`) |
+| Date epochs | `DATE_EPOCH_CONVERTED` | `BCE` spelled `B.C.` |
+| Date phrases | `DATE_PHRASE_CONVERTED` | `DATE <date>` + `PHRASE` becomes `INT <date> (<phrase>)`, an empty `DATE` + `PHRASE` becomes `(<phrase>)` |
 | `UID` to vendor `_UID` | `UID_TO_VENDOR_TAG` | Every `UID` tag, at any level, becomes `_UID`, the extension 5.5.x producers use for the same identifier; each is a `Normalized` note, and `UID` is not data loss |
 | `LANG` | -- | `HEAD.LANG` and `SUBM.LANG` BCP 47 tags become 5.x language names by primary subtag: `de` -> `German` is `Normalized`, `en-US` -> `English` (region lost) is `Approximated`. A value already a 5.x name is left alone; a tag with no name is kept verbatim with an `Approximated` note |
 | `HEAD.SOUR` | `HEAD_SOUR_ADDED` | Added as `gedcom-go` when the header names no source system (required by 5.5 and 5.5.1) |
@@ -216,12 +220,48 @@ the target version for that date. This is not data loss, so `StrictDataLoss`
 does not reject it: check `report.Preserved` for these notes when the output
 must conform to the target version.
 
+## Date Epochs and Phrases
+
+GEDCOM 7.0 spells the B.C. epoch only `BCE`, and has neither the `INT`
+modifier nor a parenthesized date phrase: a phrase goes in a `PHRASE`
+substructure of the `DATE`. Converting to or from 7.0 rewrites each date:
+
+| 5.5/5.5.1 | 7.0 |
+|-----------|-----|
+| `44 B.C.` (also `BC`, `B.C.E.`) | `44 BCE` |
+| `INT 1850 (about eighteen fifty)` | `DATE 1850` + `PHRASE about eighteen fifty` |
+| `INT 1850` | `DATE 1850` |
+| `(unknown)` | empty `DATE` + `PHRASE unknown` |
+
+The downgrade writes `B.C.` and folds a `PHRASE` back into the value, so both
+lossless 5.x forms survive a round trip. Each rewrite is a Normalized note
+whose `Original` or `Result` shows the phrase as `1850 + PHRASE about
+eighteen fifty`. Typed dates follow: `Event.Date`, `Attribute.Date` and
+`LDSOrdinance.Date` change with the raw tag, and their `ParsedDate` is
+re-parsed as decoding the output would give it, with `Phrase` holding a 7.0
+`PHRASE`. An `SDATE` phrase moves the same way, between `SortDate` and
+`SortDatePhrase`.
+
+A phrase with no target form is reported rather than guessed at:
+
+- To 7.0, a phrase that is neither `INT <date> (<phrase>)` nor the whole value
+  (`ABT 1850 (circa)`), or that sits where 7.0 allows no `PHRASE` (an exact
+  date such as `CHAN.DATE` or `HEAD.DATE`, a `DATE` that already has a
+  `PHRASE`, or a typed citation or header date on a record built in code), is
+  left in the value. The output is not valid 7.0 for that date: it is a
+  `Preserved` note and part of the `Date phrases` DataLoss item.
+- To 5.x, a `PHRASE` beside a value `INT` cannot qualify (a range, period or
+  approximation such as `ABT 1850`), one whose text holds a parenthesis or a
+  line break, or one that would push the `DATE` line past 255 characters is
+  dropped and reported under `PHRASE tags`.
+
 ## Data Loss Reference
 
 ### 5.5 / 5.5.1 -> 7.0
 
 | Feature | Reason |
 |---------|--------|
+| Date phrases | A 5.x date phrase with no 7.0 form (`ABT 1850 (circa)`, or one where no `PHRASE` can go) is left in the value, so the output is not valid 7.0 for it; each is also a `Preserved` note. See [Date epochs and phrases](#date-epochs-and-phrases) |
 | Dual-year dates | 7.0 has no dual-year syntax (`11 FEB 1731/32`); the date is left unchanged, so the output is not valid 7.0 for it. Each such date is also a `Preserved` note at its path, and `AffectedRecords` lists each record holding one. Dual years inside a date phrase (`(born 1799/00)`) are not flagged |
 | `SUBN records` | 7.0 has no submission record. Every `0 @S1@ SUBN` record and the `HEAD.SUBN` pointer are removed before any other step; `AffectedRecords` lists the removed records, and each record (`Submission @S1@`) and the pointer (`Header > SUBN`) is also a `Dropped` note. The submitter (`SUBM`) records stay |
 | `HEAD.FILE structures` (and any other 5.5.1 structure 7.0 does not define) | Removed with its subordinates; see [Version-foreign structures](#version-foreign-structures) |
@@ -237,7 +277,7 @@ converted back down to 5.x (see below).
 | NO tags | Negative assertions not supported; removed from the output (the `NO` line and its subordinates, and the negated event from `Individual.Events` / `Family.Events`) |
 | EXID tags | External identifiers not supported |
 | TRAN tags | Translation records not supported |
-| PHRASE tags | Phrase annotations not supported |
+| PHRASE tags | Phrase annotations not supported. A date `PHRASE` is folded into the value instead where 5.x has a form for it (see [Date epochs and phrases](#date-epochs-and-phrases)) |
 | CREA tags | Creation date not supported |
 | `@VOID@` null pointers | 5.x has no null pointer; a kept `@VOID@` would dangle |
 | `<parent>.<tag> structures` (`MARR.SDATE`, `INDI.INIL`, `NOTE.LANG`, ...) | To 5.5.1: a structure 5.5.1 does not define, removed with its subordinates; see [Version-foreign structures](#version-foreign-structures) |
