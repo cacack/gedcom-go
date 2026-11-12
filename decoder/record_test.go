@@ -20,7 +20,8 @@ import (
 // streamDecode decodes data record by record, the way a streaming caller
 // would: the declared version is read from the HEAD record, yielded first.
 // ok is false when the streaming parser cannot read data, which it rejects on
-// the first malformed line where Decode recovers.
+// the first malformed line where Decode recovers; a DecodeRecord error fails
+// the test, so a regression cannot hide as a skipped file.
 func streamDecode(t *testing.T, data []byte) (records []*gedcom.Record, ok bool) {
 	t.Helper()
 	var ver gedcom.Version
@@ -33,7 +34,7 @@ func streamDecode(t *testing.T, data []byte) (records []*gedcom.Record, ok bool)
 		}
 		rec, err := DecodeRecord(raw, ver, nil)
 		if err != nil {
-			return nil, false
+			t.Fatalf("DecodeRecord(%s %s, line %d): %v", raw.XRef, raw.Type, raw.Lines[0].LineNumber, err)
 		}
 		if (rec.Type == "HEAD" || rec.Type == "TRLR") && rec.XRef == "" {
 			continue // Decode keeps these in Header and Trailer
@@ -211,7 +212,7 @@ func TestDecodeRecord_Errors(t *testing.T) {
 	}{
 		{"nil record", nil, nil, "no lines"},
 		{"no lines", &parser.RawRecord{}, nil, "no lines"},
-		{"subordinate first line", &parser.RawRecord{Lines: []*parser.Line{{Level: 1, Tag: "NAME"}}}, nil, "not level 0"},
+		{"subordinate first line", &parser.RawRecord{Lines: []*parser.Line{{Level: 1, Tag: "NAME", LineNumber: 7}}}, nil, "(line 7) is not level 0"},
 		{"canceled context", valid, &DecodeOptions{Context: canceled}, context.Canceled.Error()},
 	}
 	for _, tt := range tests {

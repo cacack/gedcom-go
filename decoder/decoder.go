@@ -630,7 +630,9 @@ func buildRecords(doc *gedcom.Document, lines []*parser.Line, collector *diagnos
 		}
 	}
 
-	// Save last record
+	// Save last record. DecodeRecord assembles a single record the same way
+	// (newRecord, newTag, nil Tags when there are no subordinates); keep the
+	// two in step.
 	if currentRecord != nil {
 		currentRecord.Tags = currentTags
 		doc.Records = append(doc.Records, currentRecord)

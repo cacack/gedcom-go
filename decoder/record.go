@@ -2,6 +2,7 @@ package decoder
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/parser"
@@ -24,8 +25,11 @@ import (
 //
 // opts is read for StrictMode and Context only; nil means [DefaultOptions].
 // When StrictMode is false, over-jumped levels are clamped as [Decode] clamps
-// them, on a copy: raw is never modified. When Context is done, its error is
-// returned.
+// them, on a copy: raw is never modified. When it is true, levels are kept as
+// written, as [Decode] keeps them in strict mode, and no error is returned for
+// them: the errors strict mode adds are syntax errors, which the streaming
+// parsers report before a record reaches DecodeRecord. When Context is done,
+// its error is returned.
 //
 // A HEAD or TRLR record decodes to a Record of that Type holding its Tags and
 // no Entity; [Decode] keeps the real header and trailer in Document.Header and
@@ -48,7 +52,7 @@ func DecodeRecord(raw *parser.RawRecord, ver gedcom.Version, opts *DecodeOptions
 		return nil, errors.New("decode record: no lines")
 	}
 	if raw.Lines[0].Level != 0 {
-		return nil, errors.New("decode record: first line is not level 0")
+		return nil, fmt.Errorf("decode record: first line (line %d) is not level 0", raw.Lines[0].LineNumber)
 	}
 
 	textVersion := ver
