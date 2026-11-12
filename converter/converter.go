@@ -89,7 +89,11 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 			// without a deep copy. Clone keeps every record, pointer and the
 			// declared version, so the mapping applies to the copy unchanged.
 			if mapping, dangling := buildXRefMapping(doc); len(mapping) > 0 {
-				converted = doc.Clone()
+				copied, err := ctxcheck.Clone(opts.Context, doc)
+				if err != nil {
+					return nil, nil, cancelledErr(err)
+				}
+				converted = copied
 				applyV7XRefMapping(converted, mapping, dangling, report)
 			}
 		}
@@ -98,7 +102,11 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 		// conversion would add it (#615); a declared VERS is left alone.
 		if gedcLacksVers(converted.Header) {
 			if converted == doc {
-				converted = doc.Clone()
+				copied, err := ctxcheck.Clone(opts.Context, doc)
+				if err != nil {
+					return nil, nil, cancelledErr(err)
+				}
+				converted = copied
 			}
 			updateVersionTag(converted.Header, targetVersion)
 			// The header now declares VERS, so its identifier grammar

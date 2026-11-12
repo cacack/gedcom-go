@@ -69,10 +69,52 @@ func TestConvertContextCancelledAtEveryCheck(t *testing.T) {
 			t.Fatal("conversion never completes")
 		}
 	}
-	// Start, the copy (itself and its two records), and each of the 13
-	// 5.5.1 -> 7.0 steps, at the least.
-	if minChecks := 1 + 3 + 13; checks < minChecks {
+	// Start (1), the copy (itself and its two records: 3), each of the 12
+	// 5.5.1 -> 7.0 steps, and the check after validation (1), at the least.
+	if minChecks := 1 + 3 + 12 + 1; checks < minChecks {
 		t.Errorf("conversion checked the context %d times, want at least %d", checks, minChecks)
 	}
 	t.Logf("conversion checked the context %d times", checks)
+}
+
+// TestConvertSameVersionContextCancelledWhileCopying pins that the 7.0 -> 7.0
+// path, which deep-copies the document to rename XRefs or add a missing VERS,
+// checks the context while copying as ConvertOptions.Context documents (#743):
+// cancelled after the start check it returns no document and an error
+// wrapping context.Canceled, and leaves the input unmodified.
+func TestConvertSameVersionContextCancelledWhileCopying(t *testing.T) {
+	inputs := map[string]string{
+		"xref rename":  "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I.1@ INDI\n1 NAME A /B/\n0 TRLR\n",
+		"missing VERS": "0 HEAD\n1 GEDC\n0 @I1@ INDI\n1 NAME A /B/\n0 TRLR\n",
+	}
+	for name, input := range inputs {
+		t.Run(name, func(t *testing.T) {
+			doc, err := decoder.Decode(strings.NewReader(input))
+			if err != nil {
+				t.Fatalf("Decode: %v", err)
+			}
+			doc.Header.Version = gedcom.Version70
+			want, _, err := ConvertWithOptions(doc, gedcom.Version70, DefaultOptions())
+			if err != nil {
+				t.Fatalf("uncancelled conversion: %v", err)
+			}
+			if want == doc {
+				t.Fatal("input needs no copy; the test would not reach the copy")
+			}
+			before := doc.Clone()
+
+			opts := DefaultOptions()
+			opts.Context = ctxcheck.CancelAfter(1)
+			got, _, err := ConvertWithOptions(doc, gedcom.Version70, opts)
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("err = %v, want one wrapping context.Canceled", err)
+			}
+			if got != nil {
+				t.Error("got a document, want nil")
+			}
+			if !reflect.DeepEqual(doc, before) {
+				t.Error("input document modified")
+			}
+		})
+	}
 }
