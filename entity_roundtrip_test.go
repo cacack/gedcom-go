@@ -55,8 +55,9 @@ func sampleEntities() []struct {
 		entity interface{}
 	}{
 		{"Individual", "@I1@", gedcom.RecordTypeIndividual, &gedcom.Individual{
-			XRef: "@I1@",
-			Sex:  "M",
+			XRef:        "@I1@",
+			Restriction: "privacy", // RESN (#739)
+			Sex:         "M",
 			Names: []*gedcom.PersonalName{
 				{Full: "John /Smith/", Given: "John", Surname: "Smith"},
 			},
@@ -85,10 +86,11 @@ func sampleEntities() []struct {
 			},
 		}},
 		{"Family", "@F1@", gedcom.RecordTypeFamily, &gedcom.Family{
-			XRef:     "@F1@",
-			Husband:  "@I1@",
-			Wife:     "@I2@",
-			Children: []string{"@I3@"},
+			XRef:        "@F1@",
+			Restriction: "confidential", // RESN (#739)
+			Husband:     "@I1@",
+			Wife:        "@I2@",
+			Children:    []string{"@I3@"},
 			Events: []*gedcom.Event{
 				{Type: "MARR", Date: "1 JAN 1925", PlaceDetail: &gedcom.PlaceDetail{Name: "Boston, Massachusetts"}},
 			},

@@ -5,6 +5,13 @@ type Individual struct {
 	// XRef is the cross-reference identifier for this individual
 	XRef string
 
+	// Restriction is the record's restriction notice (RESN): "confidential",
+	// "locked" or "privacy" in GEDCOM 5.5/5.5.1, upper case and possibly a
+	// comma-separated list ("CONFIDENTIAL, LOCKED") in 7.0. It is the flag an
+	// application checks before publishing a person. Same type and spelling
+	// rules as Event.Restriction.
+	Restriction string
+
 	// Names contains all name variants for this person
 	Names []*PersonalName
 

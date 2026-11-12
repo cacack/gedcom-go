@@ -126,6 +126,7 @@ func (i *Individual) Clone() *Individual {
 
 	copied := &Individual{
 		XRef:             i.XRef,
+		Restriction:      i.Restriction,
 		Sex:              i.Sex,
 		ChildInFamilies:  cloneFamilyLinks(i.ChildInFamilies),
 		SpouseInFamilies: cloneFamilyLinks(i.SpouseInFamilies),
@@ -201,6 +202,7 @@ func (f *Family) Clone() *Family {
 
 	copied := &Family{
 		XRef:          f.XRef,
+		Restriction:   f.Restriction,
 		Husband:       f.Husband,
 		HusbandPhrase: f.HusbandPhrase,
 		Wife:          f.Wife,

@@ -5,6 +5,10 @@ type Family struct {
 	// XRef is the cross-reference identifier for this family
 	XRef string
 
+	// Restriction is the record's restriction notice (RESN); see
+	// Individual.Restriction.
+	Restriction string
+
 	// Husband is the XRef to the husband individual
 	Husband string
 

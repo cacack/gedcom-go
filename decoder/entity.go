@@ -357,7 +357,10 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "EXID":
 			indi.ExternalIDs = append(indi.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
-		case "ALIA", "AFN", "RFN", "RIN", "ANCI", "DESI", "SUBM", "RESN", "INIL":
+		case "RESN":
+			indi.Restriction = collector.text(tag.Value)
+
+		case "ALIA", "AFN", "RFN", "RIN", "ANCI", "DESI", "SUBM", "INIL":
 			// Standard INDI substructures not yet parsed into typed fields; the
 			// raw tags remain on Individual.Tags (ADR 0003). Recognizing them
 			// keeps UNKNOWN_TAG meaning "nonstandard tag" for callers who filter
@@ -1394,7 +1397,10 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "EXID":
 			fam.ExternalIDs = append(fam.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
-		case "RESN", "SUBM", "ASSO", "RIN":
+		case "RESN":
+			fam.Restriction = collector.text(tag.Value)
+
+		case "SUBM", "ASSO", "RIN":
 			// Known tags not yet parsed into typed fields; the raw tags remain
 			// on Family.Tags (ADR 0003). Recognizing them keeps UNKNOWN_TAG
 			// meaning "nonstandard tag" for callers who filter on it (#375).
