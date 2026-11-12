@@ -118,7 +118,7 @@ func TestDowngradeDropsVoidPointers(t *testing.T) {
 func TestDowngradeDropsVoidPointersFromEntity(t *testing.T) {
 	void := "@VOID@"
 	cite := func() []*gedcom.SourceCitation {
-		return []*gedcom.SourceCitation{{SourceXRef: void}, {SourceXRef: "@S1@", NoteXRefs: []string{void}}}
+		return []*gedcom.SourceCitation{{SourceXRef: void}, {SourceXRef: "@S1@", NoteXRefs: []string{void}, Media: []*gedcom.MediaLink{{MediaXRef: void}}}}
 	}
 	media := func() []*gedcom.MediaLink {
 		return []*gedcom.MediaLink{{MediaXRef: void}, {MediaXRef: "@M1@", NoteXRefs: []string{void}}}
@@ -164,6 +164,9 @@ func TestDowngradeDropsVoidPointersFromEntity(t *testing.T) {
 	src := &gedcom.Source{
 		XRef: "@S1@", RepositoryLinks: []*gedcom.SourceRepositoryLink{{XRef: void}, {XRef: "@R1@", NoteXRefs: []string{void}}},
 		NoteXRefs: []string{void}, Media: media(), ChangeDate: cd(), CreationDate: cd(),
+		Data: &gedcom.SourceData{NoteXRefs: []string{void}, Events: []*gedcom.SourceDataEvent{
+			nil, {Types: "BIRT", PlaceDetail: &gedcom.PlaceDetail{Name: "X", NoteXRefs: []string{void}}},
+		}},
 	}
 	obje := &gedcom.MediaObject{XRef: "@M1@", NoteXRefs: []string{void}, SharedNoteXRefs: []string{void},
 		SourceCitations: cite(), ChangeDate: cd(), CreationDate: cd()}
