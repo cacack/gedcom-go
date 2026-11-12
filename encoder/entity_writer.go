@@ -999,8 +999,9 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "NO", Value: string(event.Type)})
 	} else {
 		// Description is the event line's own payload (the descriptor on a
-		// generic EVEN); empty for every event the decoder types by tag.
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: string(event.Type), Value: opts.text(event.Description)})
+		// generic EVEN, any exporter text on a named event), written with
+		// CONT/CONC lines as the output version allows (#734).
+		tags = append(tags, textToTags(event.Description, level, string(event.Type), opts)...)
 	}
 
 	// Subordinate tags at level+1
@@ -1065,8 +1066,9 @@ func attributeToTags(attr *gedcom.Attribute, level int, opts *EncodeOptions) []*
 		return nil
 	}
 
-	// Attribute tag (OCCU, EDUC, etc.) with value
-	tags := []*gedcom.Tag{{Level: level, Tag: string(attr.Type), Value: opts.text(attr.Value)}}
+	// Attribute tag (OCCU, EDUC, etc.) with value, continued on CONT/CONC
+	// lines as the output version allows (#734).
+	tags := textToTags(attr.Value, level, string(attr.Type), opts)
 
 	// Subordinate tags at level+1
 	return append(tags, eventDetailToTags(&eventDetail{
