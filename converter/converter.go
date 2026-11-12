@@ -1,12 +1,30 @@
 package converter
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/internal/ctxcheck"
 )
+
+// ErrNilDocument is returned by Convert and ConvertWithOptions when doc is nil.
+var ErrNilDocument = errors.New("document is nil")
+
+// ErrInvalidVersion is wrapped by the error Convert and ConvertWithOptions
+// return when the target version is not one gedcom.Version.IsValid accepts.
+var ErrInvalidVersion = errors.New("invalid target version")
+
+// ErrUnsupportedConversion is wrapped by the error Convert and
+// ConvertWithOptions return when no conversion path joins the document's
+// version to the target version.
+var ErrUnsupportedConversion = errors.New("unsupported conversion")
+
+// ErrDataLoss is wrapped by the error ConvertWithOptions returns when
+// ConvertOptions.StrictDataLoss is set and the conversion would lose data.
+// The report returned with it lists what would be lost.
+var ErrDataLoss = errors.New("conversion would result in data loss")
 
 // Convert converts a GEDCOM document to the target version using default options.
 //
@@ -40,13 +58,13 @@ func Convert(doc *gedcom.Document, targetVersion gedcom.Version) (*gedcom.Docume
 //nolint:gocyclo // Routing to 6 conversion paths requires this branching structure
 func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts *ConvertOptions) (*gedcom.Document, *gedcom.ConversionReport, error) {
 	if doc == nil {
-		return nil, nil, fmt.Errorf("document is nil")
+		return nil, nil, ErrNilDocument
 	}
 	if opts == nil {
 		opts = DefaultOptions()
 	}
 	if !targetVersion.IsValid() {
-		return nil, nil, fmt.Errorf("invalid target version: %s", targetVersion)
+		return nil, nil, fmt.Errorf("%w: %s", ErrInvalidVersion, targetVersion)
 	}
 	if err := opts.cancelled(); err != nil {
 		return nil, nil, err
@@ -153,7 +171,7 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 	case sourceVersion == gedcom.Version70 && targetVersion == gedcom.Version551:
 		err = convert70To551(converted, report, opts)
 	default:
-		return nil, nil, fmt.Errorf("unsupported conversion: %s to %s", sourceVersion, targetVersion)
+		return nil, nil, fmt.Errorf("%w: %s to %s", ErrUnsupportedConversion, sourceVersion, targetVersion)
 	}
 
 	if err != nil {
@@ -164,7 +182,7 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 	// Check for data loss in strict mode
 	if opts.StrictDataLoss && report.HasDataLoss() {
 		report.Success = false
-		return nil, report, fmt.Errorf("conversion would result in data loss (strict mode enabled)")
+		return nil, report, fmt.Errorf("%w (strict mode enabled)", ErrDataLoss)
 	}
 
 	// Update header version. A nil header is treated as an empty one (as the

@@ -2,6 +2,7 @@ package charset_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -172,4 +173,40 @@ func ExampleValidateString() {
 	// Output:
 	// Valid UTF-8: true
 	// Invalid UTF-8: false
+}
+
+// ExampleNewReader_invalidUTF8 shows detecting invalid UTF-8 with errors.Is
+// and ErrInvalidUTF8Sequence, and recovering its position with errors.As.
+func ExampleNewReader_invalidUTF8() {
+	data := []byte("0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Ren\xE9\n0 TRLR\n")
+
+	_, err := io.ReadAll(charset.NewReader(bytes.NewReader(data)))
+	fmt.Println("invalid UTF-8:", errors.Is(err, charset.ErrInvalidUTF8Sequence))
+
+	var utf8Err *charset.InvalidUTF8Error
+	if errors.As(err, &utf8Err) {
+		fmt.Printf("byte 0x%02X at line %d\n", utf8Err.Byte, utf8Err.Line)
+	}
+
+	// Output:
+	// invalid UTF-8: true
+	// byte 0xE9 at line 4
+}
+
+// ExampleNewReader_invalidANSEL shows detecting an invalid ANSEL byte with
+// errors.Is and ErrInvalidANSELByte, and recovering it with errors.As.
+func ExampleNewReader_invalidANSEL() {
+	data := []byte("0 HEAD\n1 CHAR ANSEL\n0 @I1@ INDI\n1 NAME A\x80\n0 TRLR\n")
+
+	_, err := io.ReadAll(charset.NewReader(bytes.NewReader(data)))
+	fmt.Println("invalid ANSEL:", errors.Is(err, charset.ErrInvalidANSELByte))
+
+	var anselErr *charset.InvalidANSELError
+	if errors.As(err, &anselErr) {
+		fmt.Printf("byte 0x%02X at line %d\n", anselErr.Byte, anselErr.Line)
+	}
+
+	// Output:
+	// invalid ANSEL: true
+	// byte 0x80 at line 4
 }

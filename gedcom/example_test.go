@@ -1,6 +1,7 @@
 package gedcom_test
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -461,4 +462,46 @@ func ExampleDocument_MinimumVersion() {
 	// Output:
 	// requires 7.0: true
 	// minimum version: 7.0
+}
+
+// ExampleParseDate_errors shows telling an absent date from a malformed one
+// with errors.Is and the ErrEmptyDate and ErrInvalidDate sentinels.
+func ExampleParseDate_errors() {
+	for _, s := range []string{"", "25 DEC 2020", "32 FOO 1850"} {
+		_, err := gedcom.ParseDate(s)
+		switch {
+		case errors.Is(err, gedcom.ErrEmptyDate):
+			fmt.Printf("%q: no date\n", s)
+		case errors.Is(err, gedcom.ErrInvalidDate):
+			fmt.Printf("%q: malformed: %v\n", s, err)
+		default:
+			fmt.Printf("%q: ok\n", s)
+		}
+	}
+
+	// Output:
+	// "": no date
+	// "25 DEC 2020": ok
+	// "32 FOO 1850": malformed: invalid month code 'FOO' for Gregorian calendar
+}
+
+// ExampleParseLatitude_errors shows matching coordinate failures with
+// errors.Is and the ErrEmptyCoordinate and ErrInvalidCoordinate sentinels.
+func ExampleParseLatitude_errors() {
+	for _, s := range []string{" ", "E42.3601", "N42.3601"} {
+		_, err := gedcom.ParseLatitude(s)
+		switch {
+		case errors.Is(err, gedcom.ErrEmptyCoordinate):
+			fmt.Printf("%q: no coordinate\n", s)
+		case errors.Is(err, gedcom.ErrInvalidCoordinate):
+			fmt.Printf("%q: malformed: %v\n", s, err)
+		default:
+			fmt.Printf("%q: ok\n", s)
+		}
+	}
+
+	// Output:
+	// " ": no coordinate
+	// "E42.3601": malformed: latitude must use N/S direction, got "E42.3601"
+	// "N42.3601": ok
 }

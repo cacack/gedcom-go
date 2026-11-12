@@ -2,6 +2,7 @@ package charset
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -45,10 +46,24 @@ const (
 	EncodingMacRoman
 )
 
-// ErrInvalidUTF8 is returned when invalid UTF-8 sequences are encountered.
+// ErrInvalidUTF8Sequence is matched, with errors.Is, by every
+// *InvalidUTF8Error. Use errors.As with *InvalidUTF8Error to recover the
+// offending byte and its position.
+//
+// It is distinct from encoder.ErrInvalidUTF8, which the encoder returns for a
+// document value that is not valid UTF-8; neither matches the other.
+var ErrInvalidUTF8Sequence = errors.New("invalid UTF-8 sequence")
+
+// ErrInvalidUTF8 is the former name of InvalidUTF8Error.
+//
+// Deprecated: Use InvalidUTF8Error with errors.As, or ErrInvalidUTF8Sequence
+// with errors.Is. This alias will be removed in v4.0.0.
+type ErrInvalidUTF8 = InvalidUTF8Error
+
+// InvalidUTF8Error is returned when invalid UTF-8 sequences are encountered.
 // It is also what [ReaderOptions.OnInvalidUTF8] receives for each byte it
-// replaces.
-type ErrInvalidUTF8 struct {
+// replaces. It matches ErrInvalidUTF8Sequence with errors.Is.
+type InvalidUTF8Error struct {
 	Line   int
 	Column int
 	// Byte is the offending byte: the first byte that is not part of a valid
@@ -56,20 +71,25 @@ type ErrInvalidUTF8 struct {
 	Byte byte
 }
 
-func (e *ErrInvalidUTF8) Error() string {
+func (e *InvalidUTF8Error) Error() string {
 	return fmt.Sprintf("invalid UTF-8 sequence at line %d, column %d", e.Line, e.Column)
+}
+
+// Is reports whether target is ErrInvalidUTF8Sequence.
+func (e *InvalidUTF8Error) Is(target error) bool {
+	return target == ErrInvalidUTF8Sequence
 }
 
 // ErrorLine reports the physical line of the offending byte. Line-oriented
 // readers above this layer (the parser) only know how far their own input
 // reached, which lags the failure when a read is rejected mid-chunk; this
 // method lets them adopt the accurate location instead.
-func (e *ErrInvalidUTF8) ErrorLine() int {
+func (e *InvalidUTF8Error) ErrorLine() int {
 	return e.Line
 }
 
 // The parser matches on this method, not on the concrete type, so pin it here.
-var _ interface{ ErrorLine() int } = (*ErrInvalidUTF8)(nil)
+var _ interface{ ErrorLine() int } = (*InvalidUTF8Error)(nil)
 
 // NewReader wraps an io.Reader to provide encoding detection and UTF-8 validation.
 // It first checks for a BOM (Byte Order Mark), then looks for a CHAR tag in the
@@ -105,13 +125,13 @@ type ReaderOptions struct {
 	// sequence is replaced with U+FFFD (the Unicode replacement character)
 	// and reported to OnInvalidUTF8 with its line, column and value, once
 	// per byte, and reading continues. When nil, the first such byte fails
-	// the read with *ErrInvalidUTF8.
+	// the read with *InvalidUTF8Error.
 	//
 	// This applies to the UTF-8 validation every input passes through, so in
 	// practice to input read as UTF-8: declared UTF-8 or ASCII, or undeclared.
 	// It does not change ANSEL decoding, which reports an invalid ANSEL byte
-	// with *ErrInvalidANSEL either way.
-	OnInvalidUTF8 func(*ErrInvalidUTF8)
+	// with *InvalidANSELError either way.
+	OnInvalidUTF8 func(*InvalidUTF8Error)
 }
 
 // NewReaderWithOptions is [NewReader] configured by opts.
@@ -191,10 +211,10 @@ type utf8Reader struct {
 	column     int
 	lastWasCR  bool // previous byte was CR, so a following LF completes one CRLF break
 	bomSkipped bool
-	pending    []byte                // Incomplete UTF-8 sequence from previous read
-	complete   []byte                // Complete UTF-8 bytes ready to return
-	err        error                 // Sticky failure, surfaced once complete has drained
-	onInvalid  func(*ErrInvalidUTF8) // When non-nil, replace invalid bytes and report them here
+	pending    []byte                  // Incomplete UTF-8 sequence from previous read
+	complete   []byte                  // Complete UTF-8 bytes ready to return
+	err        error                   // Sticky failure, surfaced once complete has drained
+	onInvalid  func(*InvalidUTF8Error) // When non-nil, replace invalid bytes and report them here
 }
 
 func (u *utf8Reader) Read(p []byte) (n int, err error) {
@@ -234,7 +254,7 @@ func (u *utf8Reader) Read(p []byte) (n int, err error) {
 			// when pending bytes are re-evaluated
 			return n, nil
 		}
-		return 0, &ErrInvalidUTF8{Line: u.line, Column: u.column, Byte: u.pending[0]}
+		return 0, &InvalidUTF8Error{Line: u.line, Column: u.column, Byte: u.pending[0]}
 	}
 
 	return n, err
@@ -378,7 +398,7 @@ func (u *utf8Reader) findInvalidUTF8(p []byte) (int, error) {
 		if r == utf8.RuneError && size == 1 {
 			// u.line/u.column already track the offending byte: the loop
 			// advanced them over every rune preceding it.
-			return i, &ErrInvalidUTF8{Line: u.line, Column: u.column, Byte: p[i]}
+			return i, &InvalidUTF8Error{Line: u.line, Column: u.column, Byte: p[i]}
 		}
 		u.advance(p[i], size)
 		i += size
@@ -398,7 +418,7 @@ func (u *utf8Reader) replaceInvalid(p []byte) []byte {
 	for i := 0; i < len(p); {
 		r, size := utf8.DecodeRune(p[i:])
 		if r == utf8.RuneError && size == 1 {
-			u.onInvalid(&ErrInvalidUTF8{Line: u.line, Column: u.column, Byte: p[i]})
+			u.onInvalid(&InvalidUTF8Error{Line: u.line, Column: u.column, Byte: p[i]})
 			out = utf8.AppendRune(out, utf8.RuneError)
 		} else {
 			out = append(out, p[i:i+size]...)

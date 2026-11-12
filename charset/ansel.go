@@ -10,31 +10,49 @@
 package charset
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"unicode/utf8"
 )
 
-// ErrInvalidANSEL is returned when an invalid ANSEL byte sequence is encountered.
-type ErrInvalidANSEL struct {
+// ErrInvalidANSELByte is matched, with errors.Is, by every
+// *InvalidANSELError. Use errors.As with *InvalidANSELError to recover the
+// offending byte and its position.
+var ErrInvalidANSELByte = errors.New("invalid ANSEL byte")
+
+// ErrInvalidANSEL is the former name of InvalidANSELError.
+//
+// Deprecated: Use InvalidANSELError with errors.As, or ErrInvalidANSELByte
+// with errors.Is. This alias will be removed in v4.0.0.
+type ErrInvalidANSEL = InvalidANSELError
+
+// InvalidANSELError is returned when an invalid ANSEL byte sequence is
+// encountered. It matches ErrInvalidANSELByte with errors.Is.
+type InvalidANSELError struct {
 	Line   int
 	Column int
 	Byte   byte
 }
 
-func (e *ErrInvalidANSEL) Error() string {
+func (e *InvalidANSELError) Error() string {
 	return fmt.Sprintf("invalid ANSEL byte 0x%02X at line %d, column %d", e.Byte, e.Line, e.Column)
 }
 
-// ErrorLine reports the physical line of the offending byte, as ErrInvalidUTF8
+// Is reports whether target is ErrInvalidANSELByte.
+func (e *InvalidANSELError) Is(target error) bool {
+	return target == ErrInvalidANSELByte
+}
+
+// ErrorLine reports the physical line of the offending byte, as InvalidUTF8Error
 // does for the UTF-8 path. See ADR 0007: a reader error that knows its own line
 // exposes this so the parser can adopt it over its own lagging counter.
-func (e *ErrInvalidANSEL) ErrorLine() int {
+func (e *InvalidANSELError) ErrorLine() int {
 	return e.Line
 }
 
 // The parser matches on this method, not on the concrete type, so pin it here.
-var _ interface{ ErrorLine() int } = (*ErrInvalidANSEL)(nil)
+var _ interface{ ErrorLine() int } = (*InvalidANSELError)(nil)
 
 // MaxPendingCombining bounds how many ANSEL combining marks the reader
 // buffers while waiting for the base character they precede. ANSEL places a
@@ -188,7 +206,7 @@ func (r *anselReader) processByte(b byte) error {
 		combining, ok := anselCombining[b]
 		if !ok {
 			// Undefined combining mark in range (0xFC, 0xFD)
-			return &ErrInvalidANSEL{Line: r.line, Column: r.column, Byte: b}
+			return &InvalidANSELError{Line: r.line, Column: r.column, Byte: b}
 		}
 		// A run longer than any text produces is written out as it stands
 		// rather than held, so memory stays bounded whatever the input (#716).
@@ -215,7 +233,7 @@ func (r *anselReader) processByte(b byte) error {
 		// - 0xAF, 0xBB: Undefined in ANSEL extended Latin range
 		// - 0xC9-0xCC, 0xD0-0xDF: Undefined in ANSEL
 		// - 0xFF: Undefined in ANSEL
-		return &ErrInvalidANSEL{Line: r.line, Column: r.column, Byte: b}
+		return &InvalidANSELError{Line: r.line, Column: r.column, Byte: b}
 	}
 
 	// A line terminator is never a base character. Marks pending before one

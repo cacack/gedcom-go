@@ -33,7 +33,7 @@ type DecodeOptions struct {
 	//     version, and the first such XRef is the error otherwise
 	//   - A byte that is not valid UTF-8, in input read as UTF-8 (declared
 	//     UTF-8 or ASCII, or no recognized CHAR), fails the decode: the
-	//     error wraps a *charset.ErrInvalidUTF8 giving its line, column and
+	//     error wraps a *charset.InvalidUTF8Error giving its line, column and
 	//     value
 	//   - The error is returned with a nil document or result
 	//   - Use for files that must be fully valid or rejected

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/cacack/gedcom-go/v3/internal/errmark"
 )
 
 // Calendar represents the calendar system used for a date.
@@ -226,7 +228,25 @@ var frenchMonthNames = map[string]int{
 // no calendar has (0 is the "absent" value of Day and Year). A B.C. year takes
 // a BC suffix. A reversed range such as "BET 1860 AND 1850" parses; Validate
 // reports it.
+//
+// Every error wraps ErrEmptyDate when s is empty or only whitespace, and
+// ErrInvalidDate otherwise; match them with errors.Is.
 func ParseDate(s string) (*Date, error) {
+	date, err := parseDate(s)
+	if err != nil {
+		// "Empty" is a property of the whole input, decided here rather than
+		// at the error site: an empty component inside a non-blank date
+		// ("ABT", "BC") is an invalid date, not an empty one.
+		if strings.TrimSpace(s) == "" {
+			return nil, errmark.Mark(ErrEmptyDate, err)
+		}
+		return nil, errmark.Mark(ErrInvalidDate, err)
+	}
+	return date, nil
+}
+
+// parseDate is ParseDate without the sentinel classification of its errors.
+func parseDate(s string) (*Date, error) {
 	if s == "" {
 		return nil, fmt.Errorf("empty date string")
 	}

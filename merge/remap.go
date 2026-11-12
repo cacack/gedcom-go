@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/errmark"
 )
 
 // voidXRef is the GEDCOM 7.0 null pointer. IsPointerXRef rejects it, but a
@@ -53,11 +54,12 @@ const voidXRef = "@VOID@"
 // *RemapError to recover the offending input/output pair. RemapXRefs
 // does not return a partially-remapped document.
 //
-// If doc is nil or transform is nil, RemapXRefs returns a plain error
-// (errors.New) — these conditions are programmer mistakes rather than
-// data problems and intentionally do NOT wrap ErrInvalidRemap. Callers
-// using errors.Is(err, ErrInvalidRemap) to distinguish data errors from
-// programmer errors will get the expected false on nil-input.
+// If doc is nil, RemapXRefs returns an error wrapping ErrNilDocument; if
+// transform is nil, one wrapping ErrInvalidOptions. These conditions are
+// programmer mistakes rather than data problems and intentionally do NOT
+// wrap ErrInvalidRemap. Callers using errors.Is(err, ErrInvalidRemap) to
+// distinguish data errors from programmer errors will get the expected
+// false on nil-input.
 //
 // Example transform that prefixes every XRef:
 //
@@ -73,10 +75,10 @@ func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedco
 // copies (see cloneDoc), failing as cancelled does once ctx is done.
 func remapXRefs(ctx context.Context, doc *gedcom.Document, transform func(old string) string) (*gedcom.Document, map[string]string, error) {
 	if doc == nil {
-		return nil, nil, errors.New("merge: doc is nil")
+		return nil, nil, errmark.Mark(ErrNilDocument, errors.New("merge: doc is nil"))
 	}
 	if transform == nil {
-		return nil, nil, errors.New("merge: transform is nil")
+		return nil, nil, errmark.Mark(ErrInvalidOptions, errors.New("merge: transform is nil"))
 	}
 
 	mapping := make(map[string]string)

@@ -143,9 +143,9 @@ func TestNewReader_LineTracking(t *testing.T) {
 		t.Fatal("Expected error for invalid UTF-8")
 	}
 
-	utf8Err, ok := err.(*ErrInvalidUTF8)
+	utf8Err, ok := err.(*InvalidUTF8Error)
 	if !ok {
-		t.Fatalf("Expected *ErrInvalidUTF8, got %T", err)
+		t.Fatalf("Expected *InvalidUTF8Error, got %T", err)
 	}
 
 	if utf8Err.Line != 2 {
@@ -181,9 +181,9 @@ func TestNewReader_LineTrackingLineEndings(t *testing.T) {
 			r := NewReader(strings.NewReader(input))
 			_, err := io.ReadAll(r)
 
-			var utf8Err *ErrInvalidUTF8
+			var utf8Err *InvalidUTF8Error
 			if !errors.As(err, &utf8Err) {
-				t.Fatalf("ReadAll() error = %v (%T), want *ErrInvalidUTF8", err, err)
+				t.Fatalf("ReadAll() error = %v (%T), want *InvalidUTF8Error", err, err)
 			}
 			if utf8Err.Line != 4 || utf8Err.Column != 4 {
 				t.Errorf("error at line %d, column %d; want line 4, column 4",
@@ -196,17 +196,17 @@ func TestNewReader_LineTrackingLineEndings(t *testing.T) {
 func TestErrInvalidUTF8_Error(t *testing.T) {
 	tests := []struct {
 		name string
-		err  *ErrInvalidUTF8
+		err  *InvalidUTF8Error
 		want string
 	}{
 		{
 			name: "line 1 column 1",
-			err:  &ErrInvalidUTF8{Line: 1, Column: 1},
+			err:  &InvalidUTF8Error{Line: 1, Column: 1},
 			want: "invalid UTF-8 sequence at line 1, column 1",
 		},
 		{
 			name: "line 10 column 25",
-			err:  &ErrInvalidUTF8{Line: 10, Column: 25},
+			err:  &InvalidUTF8Error{Line: 10, Column: 25},
 			want: "invalid UTF-8 sequence at line 10, column 25",
 		},
 	}
@@ -348,7 +348,7 @@ func TestNewReader_InvalidUTF8InMiddle(t *testing.T) {
 	// in the same read or not. We're mainly testing that the code
 	// handles this case without crashing.
 	if err != nil {
-		utf8Err, ok := err.(*ErrInvalidUTF8)
+		utf8Err, ok := err.(*InvalidUTF8Error)
 		if ok {
 			// Valid error response
 			if utf8Err.Line < 1 {
@@ -439,9 +439,9 @@ func TestNewReader_InvalidUTF8AfterValidChars(t *testing.T) {
 		t.Fatal("Expected error for invalid UTF-8")
 	}
 
-	utf8Err, ok := err.(*ErrInvalidUTF8)
+	utf8Err, ok := err.(*InvalidUTF8Error)
 	if !ok {
-		t.Fatalf("Expected *ErrInvalidUTF8, got %T", err)
+		t.Fatalf("Expected *InvalidUTF8Error, got %T", err)
 	}
 
 	// Error should be detected on line 1
@@ -466,9 +466,9 @@ func TestNewReader_InvalidUTF8WithNewlineInBuffer(t *testing.T) {
 		t.Fatal("Expected error for invalid UTF-8")
 	}
 
-	utf8Err, ok := err.(*ErrInvalidUTF8)
+	utf8Err, ok := err.(*InvalidUTF8Error)
 	if !ok {
-		t.Fatalf("Expected *ErrInvalidUTF8, got %T", err)
+		t.Fatalf("Expected *InvalidUTF8Error, got %T", err)
 	}
 
 	// Error should be detected on line 2 (after the newline)
@@ -1810,8 +1810,8 @@ func TestNewReader_UTF8IncompleteAtEOF(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected error for incomplete UTF-8 at EOF")
 			}
-			if _, ok := err.(*ErrInvalidUTF8); !ok {
-				t.Errorf("expected *ErrInvalidUTF8, got %T", err)
+			if _, ok := err.(*InvalidUTF8Error); !ok {
+				t.Errorf("expected *InvalidUTF8Error, got %T", err)
 			}
 		})
 	}
@@ -1855,8 +1855,8 @@ func TestNewReader_UTF8IncompleteAtEOF_ValidBytesReturned(t *testing.T) {
 	if n2 != 0 {
 		t.Errorf("Second read: got n=%d, want n=0", n2)
 	}
-	if _, ok := err2.(*ErrInvalidUTF8); !ok {
-		t.Errorf("Second read: got err=%T, want *ErrInvalidUTF8", err2)
+	if _, ok := err2.(*InvalidUTF8Error); !ok {
+		t.Errorf("Second read: got err=%T, want *InvalidUTF8Error", err2)
 	}
 }
 
@@ -1924,8 +1924,8 @@ func TestNewReader_UTF8IncompleteAtEOF_SmallOutputBuffer(t *testing.T) {
 	if n4 != 0 {
 		t.Errorf("Fourth read: got n=%d, want n=0", n4)
 	}
-	if _, ok := err4.(*ErrInvalidUTF8); !ok {
-		t.Errorf("Fourth read: got err=%T, want *ErrInvalidUTF8", err4)
+	if _, ok := err4.(*InvalidUTF8Error); !ok {
+		t.Errorf("Fourth read: got err=%T, want *InvalidUTF8Error", err4)
 	}
 }
 
@@ -2018,9 +2018,9 @@ func TestNewReader_DeliversValidPrefixBeforeError(t *testing.T) {
 		t.Errorf("ReadAll() = %q, want %q", got, wantPrefix)
 	}
 
-	var utf8Err *ErrInvalidUTF8
+	var utf8Err *InvalidUTF8Error
 	if !errors.As(err, &utf8Err) {
-		t.Fatalf("ReadAll() error = %v (%T), want *ErrInvalidUTF8", err, err)
+		t.Fatalf("ReadAll() error = %v (%T), want *InvalidUTF8Error", err, err)
 	}
 	if utf8Err.Line != 2 || utf8Err.Column != 8 {
 		t.Errorf("error at line %d, column %d; want line 2, column 8", utf8Err.Line, utf8Err.Column)
@@ -2050,9 +2050,9 @@ func TestNewReader_ValidPrefixOutrunningTheReadBuffer(t *testing.T) {
 	if string(got) != wantPrefix {
 		t.Errorf("one-byte reads yielded %q, want %q", got, wantPrefix)
 	}
-	var utf8Err *ErrInvalidUTF8
+	var utf8Err *InvalidUTF8Error
 	if !errors.As(err, &utf8Err) {
-		t.Fatalf("Read() error = %v (%T), want *ErrInvalidUTF8", err, err)
+		t.Fatalf("Read() error = %v (%T), want *InvalidUTF8Error", err, err)
 	}
 }
 
@@ -2092,9 +2092,9 @@ func TestNewReader_ValidationFailureIsSticky(t *testing.T) {
 		first = err
 	}
 
-	var utf8Err *ErrInvalidUTF8
+	var utf8Err *InvalidUTF8Error
 	if !errors.As(first, &utf8Err) {
-		t.Fatalf("Read() error = %v (%T), want *ErrInvalidUTF8", first, first)
+		t.Fatalf("Read() error = %v (%T), want *InvalidUTF8Error", first, first)
 	}
 	if string(got) != "0 HEAD\n1 NAME " {
 		t.Errorf("delivered %q, want %q", got, "0 HEAD\n1 NAME ")
@@ -2127,9 +2127,9 @@ func TestNewReader_NoValidPrefixToDeliver(t *testing.T) {
 	if n != 0 {
 		t.Errorf("Read() = %d bytes (%q), want none", n, buf[:n])
 	}
-	var utf8Err *ErrInvalidUTF8
+	var utf8Err *InvalidUTF8Error
 	if !errors.As(err, &utf8Err) {
-		t.Fatalf("Read() error = %v (%T), want *ErrInvalidUTF8", err, err)
+		t.Fatalf("Read() error = %v (%T), want *InvalidUTF8Error", err, err)
 	}
 	if utf8Err.Line != 1 || utf8Err.Column != 1 {
 		t.Errorf("error at line %d, column %d; want line 1, column 1", utf8Err.Line, utf8Err.Column)
@@ -2349,18 +2349,18 @@ func TestUTF8Reader_HandleBOMValidatesPrefix(t *testing.T) {
 		wantErr error
 	}{
 		{"character split across prefix", []readStep{{"ab\xC3\xA9cd", nil}}, "ab\xC3\xA9cd", nil},
-		{"invalid prefix", []readStep{{"\xFFabc", nil}}, "", &ErrInvalidUTF8{}},
-		{"UTF-16 BOM with read error", []readStep{{"\xFF\xFEa", testErr}, {"bc", nil}}, "", &ErrInvalidUTF8{}},
+		{"invalid prefix", []readStep{{"\xFFabc", nil}}, "", &InvalidUTF8Error{}},
+		{"UTF-16 BOM with read error", []readStep{{"\xFF\xFEa", testErr}, {"bc", nil}}, "", &InvalidUTF8Error{}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := io.ReadAll(newBOMCheckingUTF8Reader(&scriptedReader{steps: tt.steps}))
-			var invalid *ErrInvalidUTF8
+			var invalid *InvalidUTF8Error
 			switch {
 			case tt.wantErr == nil && err != nil:
 				t.Errorf("ReadAll() error = %v, want nil", err)
 			case tt.wantErr != nil && !errors.As(err, &invalid):
-				t.Errorf("ReadAll() error = %v, want *ErrInvalidUTF8", err)
+				t.Errorf("ReadAll() error = %v, want *InvalidUTF8Error", err)
 			}
 			if string(got) != tt.want {
 				t.Errorf("ReadAll() data = %q, want %q", got, tt.want)
@@ -2377,9 +2377,9 @@ func TestNewReader_UTF16BOMReadErrorNotPassedRaw(t *testing.T) {
 	src := &scriptedReader{steps: []readStep{{"\xFF\xFEa", testErr}, {"bc", nil}}}
 
 	got, err := io.ReadAll(NewReader(src))
-	var invalid *ErrInvalidUTF8
+	var invalid *InvalidUTF8Error
 	if !errors.As(err, &invalid) {
-		t.Errorf("ReadAll() error = %v, want *ErrInvalidUTF8", err)
+		t.Errorf("ReadAll() error = %v, want *InvalidUTF8Error", err)
 	}
 	if len(got) != 0 {
 		t.Errorf("ReadAll() data = %q, want none", got)

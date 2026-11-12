@@ -104,9 +104,9 @@ func TestDecodeStrictRejectsInvalidUTF8(t *testing.T) {
 	if !errors.As(err, &parseErr) || parseErr.Line != 25 || !strings.Contains(err.Error(), "error reading input") {
 		t.Fatalf("error = %v, want an \"error reading input\" *parser.ParseError at line 25", err)
 	}
-	var utf8Err *charset.ErrInvalidUTF8
-	if !errors.As(err, &utf8Err) || *utf8Err != (charset.ErrInvalidUTF8{Line: 25, Column: 11, Byte: 0xE9}) {
-		t.Errorf("error = %v, want a wrapped *charset.ErrInvalidUTF8 at line 25, column 11, byte 0xE9", err)
+	var utf8Err *charset.InvalidUTF8Error
+	if !errors.As(err, &utf8Err) || *utf8Err != (charset.InvalidUTF8Error{Line: 25, Column: 11, Byte: 0xE9}) {
+		t.Errorf("error = %v, want a wrapped *charset.InvalidUTF8Error at line 25, column 11, byte 0xE9", err)
 	}
 }
 

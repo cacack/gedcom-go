@@ -9,6 +9,7 @@ import (
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/internal/ctxcheck"
+	"github.com/cacack/gedcom-go/v3/internal/errmark"
 )
 
 // CollisionStrategy chooses how to handle XRef collisions between
@@ -126,14 +127,15 @@ type HeaderConflict struct {
 //
 // Returns an error if either doc is nil, if the opts are invalid for
 // the chosen strategy, or if any header compatibility check fails.
-// The error wraps ErrIncompatibleHeader for compat failures and
+// The error wraps ErrNilDocument for a nil doc, ErrInvalidOptions for
+// invalid opts, ErrIncompatibleHeader for compat failures and
 // ErrXRefCollision for collision failures.
 func Combine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Document, *CombineReport, error) {
 	if doc1 == nil {
-		return nil, nil, errors.New("merge: doc1 is nil")
+		return nil, nil, errmark.Mark(ErrNilDocument, errors.New("merge: doc1 is nil"))
 	}
 	if doc2 == nil {
-		return nil, nil, errors.New("merge: doc2 is nil")
+		return nil, nil, errmark.Mark(ErrNilDocument, errors.New("merge: doc2 is nil"))
 	}
 	if err := cancelled(opts.Context); err != nil {
 		return nil, nil, err
@@ -287,6 +289,8 @@ func (e *CombineError) Is(target error) bool {
 		return e.Kind == "version" || e.Kind == "encoding"
 	case ErrXRefCollision:
 		return e.Kind == "collision" || e.Kind == "prefix-collision" || e.Kind == "renumber-collision"
+	case ErrInvalidOptions:
+		return e.Kind == "missing-prefix"
 	}
 	return false
 }
@@ -387,7 +391,7 @@ func applyStrategy(doc1, doc2 *gedcom.Document, collisions []string, opts Combin
 		}
 		return out, mapping, nil
 	}
-	return nil, nil, fmt.Errorf("merge: unknown CollisionStrategy %d", opts.CollisionStrategy)
+	return nil, nil, errmark.Mark(ErrInvalidOptions, fmt.Errorf("merge: unknown CollisionStrategy %d", opts.CollisionStrategy))
 }
 
 // applyPrefixStrategy implements the PrefixDoc2 path: validate the

@@ -49,7 +49,7 @@ func newParseError(line int, message, context string) error {
 }
 
 // lineLocatedError is implemented by reader errors that know the physical line
-// of the byte that failed, such as charset.ErrInvalidUTF8.
+// of the byte that failed, such as charset.InvalidUTF8Error.
 type lineLocatedError interface {
 	ErrorLine() int
 }

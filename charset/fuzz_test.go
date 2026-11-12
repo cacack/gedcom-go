@@ -55,10 +55,10 @@ func FuzzNewReader(f *testing.F) {
 		// invalid ANSEL byte, still can.
 		reported := 0
 		lr := NewReaderWithOptions(bytes.NewReader(data), ReaderOptions{
-			OnInvalidUTF8: func(*ErrInvalidUTF8) { reported++ },
+			OnInvalidUTF8: func(*InvalidUTF8Error) { reported++ },
 		})
 		out, err := io.ReadAll(io.LimitReader(lr, int64(4*len(data))+64))
-		var utf8Err *ErrInvalidUTF8
+		var utf8Err *InvalidUTF8Error
 		if errors.As(err, &utf8Err) {
 			t.Fatalf("lenient read failed with %v", err)
 		}

@@ -101,7 +101,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	var encodingDiags invalidUTF8Diagnostics
 	var readerOpts charset.ReaderOptions
 	if !opts.StrictMode {
-		readerOpts.OnInvalidUTF8 = func(e *charset.ErrInvalidUTF8) {
+		readerOpts.OnInvalidUTF8 = func(e *charset.InvalidUTF8Error) {
 			if collect {
 				encodingDiags.add(e)
 			}
@@ -311,7 +311,7 @@ type invalidUTF8Diagnostics struct {
 	firstOverLine int
 }
 
-func (c *invalidUTF8Diagnostics) add(e *charset.ErrInvalidUTF8) {
+func (c *invalidUTF8Diagnostics) add(e *charset.InvalidUTF8Error) {
 	if len(c.diags) < MaxInvalidEncodingDiagnostics {
 		c.diags = append(c.diags, invalidUTF8Diagnostic(e))
 		return
@@ -336,7 +336,7 @@ func (c *invalidUTF8Diagnostics) result() Diagnostics {
 // invalidUTF8Diagnostic reports an invalid UTF-8 byte that lenient mode
 // replaced with U+FFFD. It is an error, not a warning: the character the byte
 // stood for is lost, though the line it is on is kept.
-func invalidUTF8Diagnostic(e *charset.ErrInvalidUTF8) Diagnostic {
+func invalidUTF8Diagnostic(e *charset.InvalidUTF8Error) Diagnostic {
 	return NewParseError(e.Line, CodeInvalidEncoding,
 		fmt.Sprintf("invalid UTF-8 byte 0x%02X at column %d replaced with U+FFFD", e.Byte, e.Column), "")
 }

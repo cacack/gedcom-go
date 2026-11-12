@@ -1,6 +1,7 @@
 package merge_test
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -95,4 +96,32 @@ func Example_combine() {
 	// combined has 2 records
 	// doc1 individual: Alice
 	// doc2 individual: Bob
+}
+
+// ExampleCombine_errors shows telling a caller mistake from a data
+// problem with errors.Is: ErrNilDocument and ErrInvalidOptions report
+// bad arguments, ErrXRefCollision a property of the documents.
+func ExampleCombine_errors() {
+	newDoc := func() *gedcom.Document {
+		rec := &gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual}
+		return &gedcom.Document{
+			Header:  &gedcom.Header{Version: gedcom.Version70},
+			Records: []*gedcom.Record{rec},
+			XRefMap: map[string]*gedcom.Record{"@I1@": rec},
+		}
+	}
+
+	_, _, err := merge.Combine(nil, newDoc(), merge.CombineOptions{})
+	fmt.Println("nil document:", errors.Is(err, merge.ErrNilDocument))
+
+	_, _, err = merge.Combine(newDoc(), newDoc(), merge.CombineOptions{CollisionStrategy: merge.PrefixDoc2})
+	fmt.Println("missing prefix:", errors.Is(err, merge.ErrInvalidOptions))
+
+	_, _, err = merge.Combine(newDoc(), newDoc(), merge.CombineOptions{})
+	fmt.Println("collision:", errors.Is(err, merge.ErrXRefCollision))
+
+	// Output:
+	// nil document: true
+	// missing prefix: true
+	// collision: true
 }

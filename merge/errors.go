@@ -5,6 +5,15 @@ import (
 	"fmt"
 )
 
+// ErrNilDocument is wrapped by the error Combine and RemapXRefs return
+// when a document argument is nil.
+var ErrNilDocument = errors.New("document is nil")
+
+// ErrInvalidOptions is wrapped by the error Combine returns for options
+// it cannot apply (an unknown CollisionStrategy, or PrefixDoc2 with an
+// empty Prefix) and by the error RemapXRefs returns for a nil transform.
+var ErrInvalidOptions = errors.New("invalid merge options")
+
 // ErrInvalidRemap is returned by RemapXRefs when the caller-supplied
 // transform produces output that cannot be applied — either a malformed
 // XRef or a collision with another transform output in the same call.
