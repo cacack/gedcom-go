@@ -17,9 +17,9 @@ import (
 )
 
 // validateDates reports every date in doc that gedcom.Date.Validate rejects,
-// as a CodeInvalidDate warning. Dates Validate skips by design -- partial
-// dates such as "FEB 1900" or "ABT 1900", and non-Gregorian calendars -- are
-// not reported, nor a leap day on a dual-dated (Old Style) endpoint such
+// as a CodeInvalidDate warning, on every calendar Validate checks: Gregorian,
+// Julian, Hebrew and French Republican. Dates Validate skips by design --
+// partial dates such as "FEB 1900" or "ABT 1900" -- are not reported, nor a leap day on a dual-dated (Old Style) endpoint such
 // as "29 FEB 1723/24", nor a value ParseDate cannot parse at all (the decoder
 // already reports that as a diagnostic).
 //
@@ -176,12 +176,12 @@ func dateError(date *gedcom.Date) error {
 // maxDaysInMonth is the longest each month (1-12) can be in any year.
 var maxDaysInMonth = [13]int{0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
 
-// endpointError checks one date with no EndDate. A dual-dated date has its
-// dual year checked by Validate and, if Gregorian, its day checked against
+// endpointError checks one date with no EndDate. A Gregorian dual-dated date
+// has its dual year checked by Validate and its day checked against
 // maxDaysInMonth; any other date goes to Validate, which skips partial dates
-// and non-Gregorian calendars.
+// and checks a dual Julian date's day in its New Style year.
 func endpointError(d *gedcom.Date) error {
-	if d.DualYear == 0 {
+	if d.DualYear == 0 || d.Calendar != gedcom.CalendarGregorian {
 		return d.Validate()
 	}
 	yearOnly := *d
@@ -191,7 +191,7 @@ func endpointError(d *gedcom.Date) error {
 	if err := yearOnly.Validate(); err != nil {
 		return err
 	}
-	if d.Calendar != gedcom.CalendarGregorian || d.Month < 1 || d.Month > 12 || d.Day == 0 {
+	if d.Month < 1 || d.Month > 12 || d.Day == 0 {
 		return nil
 	}
 	if longest := maxDaysInMonth[d.Month]; d.Day > longest {

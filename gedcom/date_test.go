@@ -1383,18 +1383,79 @@ func TestDate_ToGregorian_GregorianDualYearKept(t *testing.T) {
 	}
 }
 
-// TestDate_Validate_NonGregorian tests that non-Gregorian calendars skip validation
+// TestDate_Validate_NonGregorian pins issue #727: Julian, Hebrew and French
+// Republican days the calendar does not have fail Validate with an error
+// naming the date and calendar, and ToGregorian refuses them instead of
+// rolling them over; the days next to them still pass and convert.
 func TestDate_Validate_NonGregorian(t *testing.T) {
-	date := &Date{
-		Day:      32,
-		Month:    13,
-		Year:     2020,
-		Calendar: CalendarJulian,
+	invalid := []struct {
+		value, want string
+	}{
+		{"@#DJULIAN@ 30 FEB 1700", "30 FEB 1700 does not exist on the Julian calendar"},
+		{"JULIAN 30 FEB 1700", "30 FEB 1700 does not exist on the Julian calendar"},
+		{"@#DJULIAN@ 29 FEB 1723", "29 FEB 1723 does not exist on the Julian calendar"},
+		{"@#DJULIAN@ 31 FEB 1900", "31 FEB 1900 does not exist on the Julian calendar"},
+		{"@#DJULIAN@ 30 FEB 1723/24", "30 FEB 1723/1724 does not exist on the Julian calendar"},
+		{"@#DJULIAN@ 29 FEB 2 BC", "29 FEB 2 BCE does not exist on the Julian calendar"},
+		{"@#DHEBREW@ 30 ADR 5785", "30 ADR 5785 does not exist on the Hebrew calendar"},
+		{"@#DHEBREW@ 1 ADS 5785", "1 ADS 5785 does not exist on the Hebrew calendar"},
+		{"@#DFRENCH R@ 31 VEND 8", "31 VEND 8 does not exist on the French Republican calendar"},
+		{"@#DFRENCH R@ 6 COMP 5", "6 COMP 5 does not exist on the French Republican calendar"},
+		{"BET @#DJULIAN@ 1 JAN 1700 AND @#DJULIAN@ 30 FEB 1700", "invalid date: 30 FEB 1700 does not exist on the Julian calendar"},
+	}
+	for _, tt := range invalid {
+		t.Run(tt.value, func(t *testing.T) {
+			date, err := ParseDate(tt.value)
+			if err != nil {
+				t.Fatalf("ParseDate error = %v", err)
+			}
+			if err := date.Validate(); err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("Validate() = %v, want error containing %q", err, tt.want)
+			}
+			if greg, err := date.ToGregorian(); err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("ToGregorian() = %+v, %v, want error containing %q", greg, err, tt.want)
+			}
+			if _, err := date.ToTime(); err == nil {
+				t.Error("ToTime() error = nil, want an error")
+			}
+		})
 	}
 
-	err := date.Validate()
-	if err != nil {
-		t.Errorf("Validate() for non-Gregorian should return nil, got %v", err)
+	valid := []struct {
+		value                  string
+		wantYear, wantM, wantD int
+	}{
+		{"@#DJULIAN@ 29 FEB 1700", 1700, 3, 11},
+		{"@#DJULIAN@ 29 FEB 1723/24", 1724, 3, 11},
+		{"@#DHEBREW@ 29 ADR 5785", 2025, 3, 29},
+		{"@#DHEBREW@ 1 ADS 5784", 2024, 3, 11},
+		// Years 1-3 avoid the sextile-year question of #720.
+		{"@#DFRENCH R@ 30 VEND 1", 1792, 10, 21},
+		{"@#DFRENCH R@ 5 COMP 3", 1795, 9, 21},
+	}
+	for _, tt := range valid {
+		t.Run(tt.value, func(t *testing.T) {
+			date, err := ParseDate(tt.value)
+			if err != nil {
+				t.Fatalf("ParseDate error = %v", err)
+			}
+			if err := date.Validate(); err != nil {
+				t.Errorf("Validate() = %v, want nil", err)
+			}
+			greg, err := date.ToGregorian()
+			if err != nil {
+				t.Fatalf("ToGregorian() error = %v", err)
+			}
+			if greg.Year != tt.wantYear || greg.Month != tt.wantM || greg.Day != tt.wantD {
+				t.Errorf("ToGregorian() = %d-%d-%d, want %d-%d-%d", greg.Year, greg.Month, greg.Day, tt.wantYear, tt.wantM, tt.wantD)
+			}
+		})
+	}
+
+	// A hand-built Julian date with a month the calendar lacks fails too.
+	date := &Date{Day: 1, Month: 13, Year: 2020, Calendar: CalendarJulian}
+	if err := date.Validate(); err == nil || !strings.Contains(err.Error(), "1 13 2020 does not exist on the Julian calendar") {
+		t.Errorf("Validate() = %v, want an error naming 1 13 2020 on the Julian calendar", err)
 	}
 }
 
