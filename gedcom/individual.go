@@ -588,28 +588,16 @@ func (i *Individual) FamilySearchURL() string {
 // The doc parameter is required for O(1) cross-reference lookups.
 // Returns an empty slice if doc is nil, no parents are found, or if
 // family/individual xrefs are invalid. Invalid xrefs are silently skipped.
-// Order is preserved from the GEDCOM file.
+// Order is preserved from the GEDCOM file. ParentLinks returns the same
+// parents with the family and pedigree that link them.
 func (i *Individual) Parents(doc *Document) []*Individual {
-	if doc == nil {
+	links := i.ParentLinks(doc)
+	if links == nil {
 		return nil
 	}
-
-	var parents []*Individual
-	for _, link := range i.ChildInFamilies {
-		fam := doc.GetFamily(link.FamilyXRef)
-		if fam == nil {
-			continue
-		}
-		if fam.Husband != "" {
-			if husband := doc.GetIndividual(fam.Husband); husband != nil {
-				parents = append(parents, husband)
-			}
-		}
-		if fam.Wife != "" {
-			if wife := doc.GetIndividual(fam.Wife); wife != nil {
-				parents = append(parents, wife)
-			}
-		}
+	parents := make([]*Individual, len(links))
+	for n, link := range links {
+		parents[n] = link.Individual
 	}
 	return parents
 }

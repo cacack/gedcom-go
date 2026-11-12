@@ -1548,7 +1548,9 @@ func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
 // TO or event is AFT or FROM. Ages are never negative.
 //
 // ok is false when either date has no Bounds, or the event is provably before
-// the birth (its latest day is before birth's earliest).
+// the birth (its latest day is before birth's earliest). To tell the two
+// apart, call Bounds on each date: if both succeed, the event is before the
+// birth.
 func AgeAt(birth, event *Date) (youngest, oldest int, ok bool) {
 	birthEarliest, birthLatest, birthOK := birth.Bounds()
 	eventEarliest, eventLatest, eventOK := event.Bounds()
