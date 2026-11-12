@@ -134,7 +134,8 @@ encoder.EncodeWithOptions(w, doc, opts)
 uses any 7.0-only feature the library models: `SCHMA`, `SNOTE` records, `EXID`,
 `CREA`, negative events (`NO`), event sort dates (`SDATE`), name transliterations
 (`TRAN`), association `PHRASE` and the other typed `PHRASE` fields, media
-`CROP`, media-file `TRAN`, and `SNOTE` references. INT (interpreted) dates and non-Gregorian calendars are **not** 7.0
+`CROP`, media-file `TRAN`, `SNOTE` references, and on source citations
+`TEXT.MIME`/`LANG`, `EVEN`/`ROLE` `PHRASE` and media `CROP`. INT (interpreted) dates and non-Gregorian calendars are **not** 7.0
 triggers — both are valid in 5.5.1.
 
 ## Vendor Detection

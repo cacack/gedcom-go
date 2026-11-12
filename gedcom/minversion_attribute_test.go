@@ -77,8 +77,8 @@ func TestRequiresGEDCOM7_EventAssociation(t *testing.T) {
 }
 
 // An INDI-level ASSO without PHRASE stays 5.5.1: 5.5.1 has INDI.ASSO, and
-// PHRASE is the only 7.0 addition there. This is the asymmetry that makes
-// associationPhraseRequiresGEDCOM7 the wrong test for events.
+// only its 7.0 substructures raise the version. This is the asymmetry that
+// makes individualAssociationsRequireGEDCOM7 the wrong test for events.
 func TestRequiresGEDCOM7_IndividualAssociationWithoutPhrase(t *testing.T) {
 	doc := &Document{Records: []*Record{{
 		XRef: "@I1@", Type: RecordTypeIndividual,

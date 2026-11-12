@@ -28,6 +28,11 @@ package gedcom
 //   - CROP media crop regions
 //   - TRAN media-file translations
 //   - SNOTE references from media objects
+//   - on source citations (SourceCitation) held by individuals, families,
+//     names, associations, events, attributes and media objects: MIME and
+//     LANG beneath DATA.TEXT (SourceText.MIME, SourceText.Language), PHRASE
+//     beneath EVEN and its ROLE (SourceCitationEvent.Phrase, RolePhrase),
+//     and CROP on the citation's media links
 //
 // Note that INT (interpreted) dates and non-Gregorian calendar dates are NOT
 // treated as 7.0-only, because both are valid in GEDCOM 5.5.1. Nor are UIDs:
@@ -109,11 +114,11 @@ func individualRequiresGEDCOM7(i *Individual) bool {
 	// _UID for 5.5/5.5.1 output, so a record carrying one is representable
 	// there (#715).
 	if len(i.ExternalIDs) > 0 || i.CreationDate != nil ||
-		mediaLinksRequireGEDCOM7(i.Media) {
+		mediaLinksRequireGEDCOM7(i.Media) || citationsRequireGEDCOM7(i.SourceCitations) {
 		return true
 	}
 	if namesRequireGEDCOM7(i.Names) || pedigreePhraseRequiresGEDCOM7(i.ChildInFamilies) ||
-		associationPhraseRequiresGEDCOM7(i.Associations) || ldsOrdinancesRequireGEDCOM7(i.LDSOrdinances) {
+		individualAssociationsRequireGEDCOM7(i.Associations) || ldsOrdinancesRequireGEDCOM7(i.LDSOrdinances) {
 		return true
 	}
 	for _, ev := range i.Events {
@@ -130,10 +135,11 @@ func individualRequiresGEDCOM7(i *Individual) bool {
 }
 
 // namesRequireGEDCOM7 reports whether any name carries a TRAN or a TYPE
-// PHRASE, both 7.0-only.
+// PHRASE, both 7.0-only, or a citation needing 7.0.
 func namesRequireGEDCOM7(names []*PersonalName) bool {
 	for _, n := range names {
-		if n != nil && (len(n.Transliterations) > 0 || n.TypePhrase != "") {
+		if n != nil && (len(n.Transliterations) > 0 || n.TypePhrase != "" ||
+			citationsRequireGEDCOM7(n.SourceCitations)) {
 			return true
 		}
 	}
@@ -169,7 +175,7 @@ func familyRequiresGEDCOM7(f *Family) bool {
 	}
 	if len(f.ExternalIDs) > 0 || f.CreationDate != nil ||
 		f.HusbandPhrase != "" || f.WifePhrase != "" || mediaLinksRequireGEDCOM7(f.Media) ||
-		ldsOrdinancesRequireGEDCOM7(f.LDSOrdinances) {
+		ldsOrdinancesRequireGEDCOM7(f.LDSOrdinances) || citationsRequireGEDCOM7(f.SourceCitations) {
 		return true
 	}
 	for _, ev := range f.Events {
@@ -215,7 +221,7 @@ func eventRequiresGEDCOM7(ev *Event) bool {
 	if len(ev.Associations) > 0 {
 		return true
 	}
-	return mediaLinksRequireGEDCOM7(ev.Media)
+	return mediaLinksRequireGEDCOM7(ev.Media) || citationsRequireGEDCOM7(ev.SourceCitations)
 }
 
 // attributeRequiresGEDCOM7 reports whether an attribute carries a
@@ -236,18 +242,21 @@ func attributeRequiresGEDCOM7(at *Attribute) bool {
 	if len(at.Associations) > 0 {
 		return true
 	}
-	return mediaLinksRequireGEDCOM7(at.Media)
+	return mediaLinksRequireGEDCOM7(at.Media) || citationsRequireGEDCOM7(at.SourceCitations)
 }
 
-// associationPhraseRequiresGEDCOM7 reports whether any association carries a
-// PHRASE, on the ASSO or its ROLE, which 5.5.1 has no equivalent for.
+// individualAssociationsRequireGEDCOM7 reports whether any association
+// carries a PHRASE, on the ASSO or its ROLE, which 5.5.1 has no equivalent
+// for, or a citation needing 7.0.
 //
 // This is the right test only for Individual.Associations, where 5.5.1
-// already has INDI.ASSO and PHRASE is the sole 7.0 addition. On an event or
-// attribute the structure itself is 7.0-only, so those callers test presence.
-func associationPhraseRequiresGEDCOM7(assocs []*Association) bool {
+// already has INDI.ASSO, so only its 7.0 substructures (PHRASE, and 7.0-only
+// citation parts) raise the version. On an event or attribute the structure
+// itself is 7.0-only, so those callers test presence.
+func individualAssociationsRequireGEDCOM7(assocs []*Association) bool {
 	for _, a := range assocs {
-		if a != nil && (a.Phrase != "" || a.RolePhrase != "") {
+		if a != nil && (a.Phrase != "" || a.RolePhrase != "" ||
+			citationsRequireGEDCOM7(a.SourceCitations)) {
 			return true
 		}
 	}
@@ -262,7 +271,7 @@ func mediaObjectRequiresGEDCOM7(m *MediaObject) bool {
 	// RESN substructure. RESN inside EVENT_DETAIL is a different position and
 	// is 5.5.1-valid, which is why Event/Attribute do not check it.
 	if len(m.ExternalIDs) > 0 || m.CreationDate != nil || len(m.SharedNoteXRefs) > 0 ||
-		m.Restriction != "" {
+		m.Restriction != "" || citationsRequireGEDCOM7(m.SourceCitations) {
 		return true
 	}
 	for _, f := range m.Files {
@@ -299,6 +308,33 @@ func sourceDataRequiresGEDCOM7(d *SourceData) bool {
 	for _, ev := range d.Events {
 		if ev != nil && ev.DatePhrase != "" {
 			return true
+		}
+	}
+	return false
+}
+
+// citationsRequireGEDCOM7 reports whether any source citation carries a
+// GEDCOM 7.0-only substructure: MIME or LANG beneath a DATA.TEXT, PHRASE
+// beneath EVEN or its ROLE, or CROP on a media link. The citation's DATA.DATE
+// is a plain string with no typed PHRASE, so it is not inspected.
+func citationsRequireGEDCOM7(cits []*SourceCitation) bool {
+	for _, c := range cits {
+		if c == nil {
+			continue
+		}
+		if c.Event != nil && (c.Event.Phrase != "" || c.Event.RolePhrase != "") {
+			return true
+		}
+		if mediaLinksRequireGEDCOM7(c.Media) {
+			return true
+		}
+		if c.Data == nil {
+			continue
+		}
+		for _, t := range c.Data.Text {
+			if t != nil && (t.MIME != "" || t.Language != "") {
+				return true
+			}
 		}
 	}
 	return false
