@@ -1,6 +1,10 @@
 package decoder
 
-import "context"
+import (
+	"context"
+
+	"github.com/cacack/gedcom-go/v3/charset"
+)
 
 // ProgressCallback reports parsing progress during GEDCOM decoding.
 // bytesRead is the cumulative bytes read so far.
@@ -96,6 +100,20 @@ type DecodeOptions struct {
 	// whatever the bound: it limits only what is reported. It has no effect
 	// in strict mode, which reports no diagnostics.
 	MaxDiagnostics int
+
+	// ANSIEncoding is the code page a header declaring CHAR ANSI is decoded
+	// as. ANSI names no code page of its own: Central European producers
+	// (Geneanet, Family Historian, Brother's Keeper) write it over
+	// Windows-1250 bytes, which read as Windows-1252 turn "č", "Č", "ć"
+	// and "đ" into "è", "È", "æ" and "ð". Set charset.EncodingWindows1250 for
+	// such files. The zero value, charset.EncodingUnknown, reads ANSI as
+	// Windows-1252 and, in lenient mode, emits one CodeAmbiguousCodePage
+	// warning at the first byte that would read differently as Windows-1250;
+	// setting charset.EncodingLATIN1 reads it as Windows-1252 without that
+	// warning. See [charset.ReaderOptions.ANSI] for the code pages accepted; any
+	// other value is treated as the zero value. No
+	// other CHAR value is affected.
+	ANSIEncoding charset.Encoding
 }
 
 // DefaultMaxDiagnostics is the number of diagnostics a lenient decode reports

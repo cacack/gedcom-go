@@ -70,6 +70,26 @@ Recognized values are listed under [Supported Encodings](#supported-encodings).
 - `UNICODE` in a header readable byte by byte is UTF-8; a UTF-16 `UNICODE`
   file was already caught in Tier 1
 
+### `CHAR ANSI` names no code page
+
+`ANSI` means the producing system's Windows code page: Windows-1252 in Western
+Europe and the Americas, Windows-1250 in Central Europe, where Geneanet,
+Family Historian 7 and Brother's Keeper 7 all write `CHAR ANSI` over
+Windows-1250 bytes. The bytes cannot settle it: `0xE8` is a plausible `è` and
+a plausible `č`. Rather than guess (Option B), the rule is
+([#759](https://github.com/cacack/gedcom-go/issues/759)):
+
+- `ANSI` is read as Windows-1252, unless the caller names its code page with
+  `charset.ReaderOptions.ANSI` (`decoder.DecodeOptions.ANSIEncoding`), such as
+  `charset.EncodingWindows1250`. No other `CHAR` value is affected: `LATIN1`,
+  `ISO-8859-1` and `WINDOWS-1252` name their code page.
+- When the caller has not named it, the first byte whose Windows-1252 and
+  Windows-1250 readings differ is reported once
+  (`charset.ReaderOptions.OnAmbiguousANSI`), which a lenient decode turns into
+  an `AMBIGUOUS_CODEPAGE` warning. The output is unchanged. The report fires on
+  genuine Windows-1252 files too (any `è`, `à` or `ñ`); it says the reading is
+  unverified, not that it is wrong, and naming `EncodingLATIN1` silences it.
+
 ### Tier 3: UTF-8 Default (Fallback)
 
 - Modern standard, backward compatible with ASCII
@@ -166,7 +186,8 @@ func NewReader(r io.Reader) (io.Reader, error) {
 | UTF-16 LE | `FF FE`, or none with `30 00 20 00` first | `UTF-16`, `UTF-16LE`; `UNICODE` by its bytes | Windows common |
 | UTF-16 BE | `FE FF`, or none with `00 30 00 20` first | `UTF-16BE`; `UNICODE` by its bytes | Rare |
 | ANSEL | - | `ANSEL` | Legacy genealogy |
-| LATIN1 | - | `ANSI`, `LATIN1`, `ISO-8859-1`, `WINDOWS-1252`, `CP1252`, `WIN-1252` | European legacy; decoded as Windows-1252 ([#564](https://github.com/cacack/gedcom-go/issues/564)) |
+| LATIN1 | - | `ANSI`, `LATIN1`, `ISO-8859-1`, `WINDOWS-1252`, `CP1252`, `WIN-1252` | European legacy; decoded as Windows-1252 ([#564](https://github.com/cacack/gedcom-go/issues/564)); `ANSI` can be named another code page |
+| Windows-1250 | - | none; named for `ANSI` by the caller | Central European ([#759](https://github.com/cacack/gedcom-go/issues/759)) |
 | CP437 | - | `IBMPC`, `IBM PC`, `CP437`, `IBM-437` | IBM PC; Brother's Keeper, TMG ([#735](https://github.com/cacack/gedcom-go/issues/735)) |
 | CP850 | - | `CP850`, `IBM-850` | DOS Latin-1 ([#735](https://github.com/cacack/gedcom-go/issues/735)) |
 | Mac OS Roman | - | `MACINTOSH`, `MAC`, `MACROMAN` | Classic Mac ([#735](https://github.com/cacack/gedcom-go/issues/735)) |

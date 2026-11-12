@@ -84,6 +84,12 @@ Parse-level errors (severity: ERROR):
 | `INVALID_ENCODING` | Byte that is not valid UTF-8 in input read as UTF-8 (declared `UTF-8` or `ASCII`, or no recognized `CHAR`); replaced with U+FFFD and decoding continues. One per byte, up to `MaxInvalidEncodingDiagnostics` (100), then one diagnostic counting the rest; the message names the byte and its column |
 | `DUPLICATE_XREF` | A level-0 record redefines an XRef an earlier record defined; both records are kept and `XRefMap` resolves to the first |
 
+Parse-level warning (severity: WARNING):
+
+| Code | Meaning |
+|------|---------|
+| `AMBIGUOUS_CODEPAGE` | `CHAR ANSI` over a byte that reads differently in Windows-1252 and Windows-1250 (`0xE8` is `è` or `č`). The file is read as Windows-1252; one diagnostic at the first such byte. Set `DecodeOptions.ANSIEncoding` to `charset.EncodingWindows1250` for Central European files (Geneanet, Family Historian, Brother's Keeper), or `charset.EncodingLATIN1` to confirm Windows-1252 |
+
 Entity-level warnings (severity: WARNING):
 
 | Code | Meaning |

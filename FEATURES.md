@@ -41,7 +41,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 
 | Operation | Options type | Facade entry point | Common knobs |
 |-----------|--------------|--------------------|--------------|
-| Decode | `decoder.DecodeOptions` | `gedcomgo.DecodeWithOptions` | `Context`, `StrictMode`, `OnProgress`, `TotalSize` |
+| Decode | `decoder.DecodeOptions` | `gedcomgo.DecodeWithOptions` | `Context`, `StrictMode`, `OnProgress`, `TotalSize`, `ANSIEncoding` |
 | Encode | `encoder.EncodeOptions` | `gedcomgo.EncodeWithOptions` | `LineEnding`, `MaxLineLength`, `DisableLineWrap`, `TargetVersion`, `DropUnknownTags`, `Context` |
 | Validate | `validator.ValidateOptions` | `gedcomgo.ValidateAllWithOptions` | `Strictness`, `MaxErrors`, `SkipRules`, `DateLogic`, `Duplicates`, `TagRegistry`, `ValidateCustomTags`, `SkipEncodingValidation`, `SkipDuplicateDetection`, `Context` |
 
@@ -55,6 +55,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 |------|---------|----------|
 | `EMPTY_LINE` | Blank line in the data | Skipped |
 | `INVALID_ENCODING` | A byte that is not valid UTF-8 in input read as UTF-8 (declared `UTF-8` or `ASCII`, or no recognized `CHAR`), such as a stray Windows-1252 `é` | Byte replaced with U+FFFD and the rest of the line and file kept; one diagnostic per byte, with its line and column, up to 100 bytes, then one counting the rest |
+| `AMBIGUOUS_CODEPAGE` | `CHAR ANSI` over a byte that Windows-1252 and Windows-1250 read differently (`0xE8`: `è` or `č`); a warning | File still read as Windows-1252; one diagnostic, at the first such byte, naming both readings. Not emitted when `DecodeOptions.ANSIEncoding` names the code page |
 | `INVALID_LEVEL` | Unparseable, negative, or over-99 level number | Line skipped |
 | `INVALID_XREF` | Cross-reference identifier that is malformed (contains a space in a document whose header does not declare GEDCOM 5.5 or 5.5.1, or has no closing `@`) or that the grammar forbids where it appears (`0 @X1@ HEAD`, `0 @X1@ TRLR`) | Identifier recovered verbatim so the record and its subordinate lines survive; because nothing is invented, an unterminated `@I1` is stored as `@I1` and ordinary `@I1@` pointers elsewhere do not resolve to it. An XRef on `HEAD`/`TRLR`, well-formed or recovered (`0 @I1 HEAD`), makes the line an ordinary record (`Type` `"HEAD"`/`"TRLR"`, `Entity == nil`) instead of the document's header or trailer, so the real header is never overwritten. Reported but *not* recovered when a level-0 identifier has no usable record tag after it (`0 @I1@`, `0 @I 1@`, `0 @I1`): the line keeps its pre-existing parse, so the record survives, owning its subordinate lines, but with `Type` set to the identifier and an empty `XRef`, absent from `XRefMap` — see [compatibility.md](docs/governance/policies/compatibility.md#encoding-and-grammar-limitations). An identifier recovered on a level >= 1 line (`1 @I 1@ NOTE x`) is kept on the raw `gedcom.Tag.XRef` and re-encoded verbatim |
 | `BAD_LEVEL_JUMP` | Indentation skips one or more levels (e.g., `1 BIRT` → `4 DATE`) | Level clamped to `prev + 1` so the subordinate attaches to its natural parent |
@@ -383,7 +384,8 @@ others listed in the ADR) stays in `Record.Tags`.
 |----------|--------|-------|
 | UTF-8 | Full | With BOM detection |
 | ASCII | Full | Subset of UTF-8 |
-| LATIN1 / ANSI / ISO-8859-1 / WINDOWS-1252 / CP1252 / WIN-1252 | Full | Decoded as Windows-1252 (curly quotes, dashes, `€`); the five bytes Windows-1252 leaves undefined keep their ISO-8859-1 code points |
+| LATIN1 / ANSI / ISO-8859-1 / WINDOWS-1252 / CP1252 / WIN-1252 | Full | Decoded as Windows-1252 (curly quotes, dashes, `€`); the five bytes Windows-1252 leaves undefined keep their ISO-8859-1 code points. `ANSI` alone can be read as another code page (see below) |
+| Windows-1250 | Full | Central European; no `CHAR` value declares it. Named for `CHAR ANSI` with `DecodeOptions.ANSIEncoding`, or passed to `charset.NewReaderWithEncoding` |
 | IBMPC / IBM PC / CP437 / IBM-437 | Full | IBM code page 437 (Brother's Keeper, The Master Genealogist) |
 | CP850 / IBM-850 | Full | IBM code page 850 (DOS Latin-1) |
 | MACINTOSH / MAC / MACROMAN | Full | Mac OS Roman |
@@ -393,6 +395,8 @@ others listed in the ADR) stays in `Record.Tags`.
 A byte that is not valid UTF-8 in input read as UTF-8 fails a strict decode; lenient decoding replaces it with U+FFFD and reports `INVALID_ENCODING` (see [Lenient Parsing & Diagnostics](#lenient-parsing--diagnostics)). `charset.NewReaderWithOptions` with `ReaderOptions.OnInvalidUTF8` gives the same recovery outside the decoder.
 
 An invalid byte is reported as a `*charset.InvalidUTF8Error` or `*charset.InvalidANSELError` (recover the byte and position with `errors.As`), which match `charset.ErrInvalidUTF8Sequence` and `charset.ErrInvalidANSELByte` with `errors.Is`. The former type names `ErrInvalidUTF8` and `ErrInvalidANSEL` remain as deprecated aliases.
+
+`CHAR ANSI` names no code page: it is whatever Windows code page the producing system used, and Central European producers (Geneanet, Family Historian 7, Brother's Keeper 7) write it over Windows-1250 bytes. Set `DecodeOptions.ANSIEncoding` (or `charset.ReaderOptions.ANSI`) to `charset.EncodingWindows1250` for such files. Left unset, `ANSI` is read as Windows-1252 and a lenient decode emits one `AMBIGUOUS_CODEPAGE` warning at the first byte the two code pages read differently; set `charset.EncodingLATIN1` to read Windows-1252 without it. The declared value is kept in `Header.Encoding` either way.
 
 `CHAR` values are matched without regard to case, and the whole value is read, so `IBM PC` is one value; `UTF8` is accepted for `UTF-8`. An unrecognised value (`IBM WINDOWS`, say) is read as UTF-8 and kept as written in `Header.Encoding`.
 
@@ -1529,6 +1533,7 @@ Full control over decoding behavior with `DecodeOptions`:
 | `StrictMode` | `bool` | Reject non-standard extensions |
 | `OnProgress` | `ProgressCallback` | Progress reporting callback |
 | `TotalSize` | `int64` | Expected file size for progress percentage |
+| `ANSIEncoding` | `charset.Encoding` | Code page for `CHAR ANSI` (zero: Windows-1252, with an `AMBIGUOUS_CODEPAGE` warning when bytes differ from Windows-1250) |
 
 The nesting ceiling is not an option: the GEDCOM grammar's two-digit level
 field fixes it at `parser.MaxNestingDepth-1` (99).

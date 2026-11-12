@@ -44,6 +44,11 @@ const (
 	// EncodingMacRoman indicates Mac OS Roman, declared as MACINTOSH, MAC or
 	// MACROMAN.
 	EncodingMacRoman
+	// EncodingWindows1250 indicates Windows-1250 (Central European). No CHAR
+	// value declares it: Central European producers write CHAR ANSI over
+	// Windows-1250 bytes, so a caller names it with [ReaderOptions.ANSI], or
+	// passes it to [NewReaderWithEncoding].
+	EncodingWindows1250
 )
 
 // ErrInvalidUTF8Sequence is matched, with errors.Is, by every
@@ -111,7 +116,8 @@ var _ interface{ ErrorLine() int } = (*InvalidUTF8Error)(nil)
 //   - UTF-8 (BOM: 0xEF 0xBB 0xBF) - BOM removed, validated
 //   - Any other encoding named by the header's CHAR tag (see
 //     DetectEncodingFromHeader for the recognised values) - Converted to
-//     UTF-8, validated
+//     UTF-8, validated. CHAR ANSI is read as Windows-1252;
+//     [NewReaderWithOptions] can name its code page ([ReaderOptions.ANSI])
 //   - No BOM or recognised CHAR tag - Assumed UTF-8, validated
 func NewReader(r io.Reader) io.Reader {
 	return NewReaderWithOptions(r, ReaderOptions{})
@@ -132,6 +138,45 @@ type ReaderOptions struct {
 	// It does not change ANSEL decoding, which reports an invalid ANSEL byte
 	// with *InvalidANSELError either way.
 	OnInvalidUTF8 func(*InvalidUTF8Error)
+
+	// ANSI is the encoding a header declaring CHAR ANSI is decoded as. ANSI
+	// names no code page of its own: it is whatever Windows code page the
+	// producing system used, Windows-1252 in Western Europe and the Americas
+	// but Windows-1250 in Central Europe. EncodingUnknown, the zero value,
+	// decodes it as Windows-1252 (EncodingLATIN1). A single-byte code page
+	// is used as [NewReaderWithEncoding] would use it: EncodingLATIN1,
+	// EncodingWindows1250, EncodingCP437, EncodingCP850 or EncodingMacRoman.
+	// Any other value, such as EncodingUTF8 or EncodingUTF16LE, names no
+	// code page and is treated as EncodingUnknown. It does not affect any
+	// other CHAR value, nor LATIN1, ISO-8859-1 or WINDOWS-1252, which name
+	// their code page.
+	ANSI Encoding
+
+	// OnAmbiguousANSI, when non-nil and ANSI is EncodingUnknown, is called
+	// for the first byte of a CHAR ANSI input whose Windows-1252 reading
+	// differs from its Windows-1250 one, such as 0xE8 ("è" or "č"), and
+	// at most once per input. Decoding is unchanged: the byte is still read
+	// as Windows-1252. The report says that the file's letters may be wrong
+	// and that ANSI can name the code page. It is not called when ANSI names
+	// a code page, or for input whose bytes read the same in both code
+	// pages.
+	OnAmbiguousANSI func(*AmbiguousANSI)
+}
+
+// AmbiguousANSI describes the first byte of a CHAR ANSI input that reads
+// differently in Windows-1252 and Windows-1250; see
+// [ReaderOptions.OnAmbiguousANSI].
+type AmbiguousANSI struct {
+	// Line and Column locate the byte, counting lines as [InvalidUTF8Error]
+	// does and columns in bytes.
+	Line   int
+	Column int
+	// Byte is the byte itself.
+	Byte byte
+	// Windows1252 is the byte's Windows-1252 reading, which the reader
+	// delivers; Windows1250 is its Windows-1250 reading.
+	Windows1252 rune
+	Windows1250 rune
 }
 
 // NewReaderWithOptions is [NewReader] configured by opts.
@@ -170,7 +215,58 @@ func NewReaderWithOptions(r io.Reader, opts ReaderOptions) io.Reader {
 
 	// Use detected encoding (or UTF-8 if unknown)
 	headerReader := io.MultiReader(bytes.NewReader(probe), detectedReader)
-	return newReaderWithEncoding(headerReader, charEncoding(probe[:headerLen]), opts)
+	value := charValue(probe[:headerLen])
+	enc := charValues[value]
+	if value == "ANSI" {
+		switch {
+		case isANSICodePage(opts.ANSI):
+			enc = opts.ANSI
+		case opts.OnAmbiguousANSI != nil:
+			headerReader = &ansiScanner{reader: headerReader, cursor: newCursor(), report: opts.OnAmbiguousANSI}
+		}
+	}
+	return newReaderWithEncoding(headerReader, enc, opts)
+}
+
+// isANSICodePage reports whether enc is a single-byte code page that
+// [ReaderOptions.ANSI] can name.
+func isANSICodePage(enc Encoding) bool {
+	switch enc {
+	case EncodingLATIN1, EncodingWindows1250, EncodingCP437, EncodingCP850, EncodingMacRoman:
+		return true
+	}
+	return false
+}
+
+// ansiScanner passes CHAR ANSI input through unchanged, reporting the first
+// byte whose Windows-1252 and Windows-1250 readings differ. Once it has
+// reported, it stops looking.
+type ansiScanner struct {
+	reader io.Reader
+	cursor
+	report func(*AmbiguousANSI) // nil once reported
+}
+
+func (s *ansiScanner) Read(p []byte) (int, error) {
+	n, err := s.reader.Read(p)
+	if s.report == nil {
+		return n, err
+	}
+	for _, b := range p[:n] {
+		if windows1252Table[b] != windows1250Table[b] {
+			s.report(&AmbiguousANSI{
+				Line:        s.line,
+				Column:      s.column,
+				Byte:        b,
+				Windows1252: windows1252Table[b],
+				Windows1250: windows1250Table[b],
+			})
+			s.report = nil
+			break
+		}
+		s.advance(b, 1)
+	}
+	return n, err
 }
 
 // newUTF8Reader returns a utf8Reader over r. bomSkipped reports whether a
@@ -178,8 +274,7 @@ func NewReaderWithOptions(r io.Reader, opts ReaderOptions) io.Reader {
 func newUTF8Reader(r io.Reader, opts ReaderOptions, bomSkipped bool) *utf8Reader {
 	return &utf8Reader{
 		reader:     r,
-		line:       1,
-		column:     1,
+		cursor:     newCursor(),
 		bomSkipped: bomSkipped,
 		onInvalid:  opts.OnInvalidUTF8,
 	}
@@ -205,11 +300,19 @@ type errReader struct{ err error }
 
 func (r errReader) Read([]byte) (int, error) { return 0, r.err }
 
+// cursor tracks a 1-based line and byte column across reads.
+type cursor struct {
+	line      int
+	column    int
+	lastWasCR bool // previous byte was CR, so a following LF completes one CRLF break
+}
+
+// newCursor returns a cursor at line 1, column 1.
+func newCursor() cursor { return cursor{line: 1, column: 1} }
+
 type utf8Reader struct {
-	reader     io.Reader
-	line       int
-	column     int
-	lastWasCR  bool // previous byte was CR, so a following LF completes one CRLF break
+	reader io.Reader
+	cursor
 	bomSkipped bool
 	pending    []byte                  // Incomplete UTF-8 sequence from previous read
 	complete   []byte                  // Complete UTF-8 bytes ready to return
@@ -442,21 +545,21 @@ func (u *utf8Reader) updatePosition(p []byte) {
 // (parser.lineScanner): LF, CRLF and a bare CR each end one line. Tracking
 // lastWasCR across calls keeps a CRLF pair split over two reads from counting
 // twice. Columns are counted in bytes.
-func (u *utf8Reader) advance(b byte, width int) {
-	wasCR := u.lastWasCR
-	u.lastWasCR = b == '\r'
+func (c *cursor) advance(b byte, width int) {
+	wasCR := c.lastWasCR
+	c.lastWasCR = b == '\r'
 
 	switch b {
 	case '\r':
-		u.line++
-		u.column = 1
+		c.line++
+		c.column = 1
 	case '\n':
 		if !wasCR {
-			u.line++
+			c.line++
 		}
-		u.column = 1
+		c.column = 1
 	default:
-		u.column += width
+		c.column += width
 	}
 }
 
@@ -685,15 +788,17 @@ func DetectEncodingFromHeader(r io.Reader) (io.Reader, Encoding, error) {
 // charEncoding returns the encoding declared by the first CHAR tag in header,
 // or EncodingUnknown if there is none or its value is not recognized.
 func charEncoding(header []byte) Encoding {
+	return charValues[charValue(header)] // a miss is EncodingUnknown
+}
+
+// charValue returns the value of the first CHAR tag in header, upper-cased and
+// with its blanks collapsed as charValues keys are, or "" if there is none.
+func charValue(header []byte) string {
 	matches := charTagPattern.FindSubmatch(header)
 	if len(matches) < 2 {
-		return EncodingUnknown
+		return ""
 	}
-	value := strings.Join(strings.Fields(strings.ToUpper(string(matches[1]))), " ")
-	if enc, ok := charValues[value]; ok {
-		return enc
-	}
-	return EncodingUnknown
+	return strings.Join(strings.Fields(strings.ToUpper(string(matches[1]))), " ")
 }
 
 // probeHeader reads r until the header is complete (see
@@ -785,6 +890,8 @@ func (s *headerScanner) step(c byte) bool {
 //   - EncodingANSEL: ANSEL to UTF-8 conversion, then validation
 //   - EncodingLATIN1: Windows-1252 to UTF-8 conversion, then validation; the
 //     five bytes Windows-1252 leaves undefined keep their ISO-8859-1 code points
+//   - EncodingWindows1250: Windows-1250 to UTF-8 conversion, then validation;
+//     the bytes Windows-1250 leaves undefined keep their ISO-8859-1 code points
 //   - EncodingCP437, EncodingCP850, EncodingMacRoman: code page to UTF-8
 //     conversion, then validation; every byte has a character, so none is lost
 //   - EncodingUTF16LE: UTF-16 LE to UTF-8 conversion, then validation
@@ -804,7 +911,9 @@ func newReaderWithEncoding(r io.Reader, enc Encoding, opts ReaderOptions) io.Rea
 		convertedReader = newAnselReader(r)
 	case EncodingLATIN1:
 		// ANSI, LATIN1 and ISO-8859-1 files are decoded as Windows-1252 (#564)
-		convertedReader = transform.NewReader(r, windows1252Decoder{})
+		convertedReader = transform.NewReader(r, windows1252Decoder())
+	case EncodingWindows1250:
+		convertedReader = transform.NewReader(r, windows1250Decoder())
 	case EncodingCP437:
 		convertedReader = transform.NewReader(r, charmap.CodePage437.NewDecoder())
 	case EncodingCP850:

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/v3/charset"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
@@ -232,8 +233,10 @@ func TestCorpusVendorFiles(t *testing.T) {
 			// All 78 UNKNOWN_TAG diagnostics are gone: 67 individual EVEN
 			// structures are decoded (#378) and 11 ALIA are recognized as
 			// standard (#375). The entry is dropped rather than set to 0
-			// because the table asserts len(hist) == len(tt.diags).
-			diags: map[string]int{},
+			// because the table asserts len(hist) == len(tt.diags). Its
+			// "ñ" (0xF1) reads as "ń" in Windows-1250, so CHAR ANSI is
+			// reported as ambiguous (#759).
+			diags: map[string]int{CodeAmbiguousCodePage: 1},
 		},
 		{
 			path:        "../testdata/encoding/ibmpc-cp437-broskeep.ged",
@@ -310,14 +313,14 @@ func TestCorpusVendorFiles(t *testing.T) {
 		},
 		{
 			path:        "../testdata/encoding/geneanet-5.5.1-w1250.ged",
-			description: "Geneanet - CHAR ANSI over Windows-1250 bytes (decoded as Windows-1252; known gap)",
+			description: "Geneanet - CHAR ANSI over Windows-1250 bytes (read as Windows-1252 unless ANSIEncoding names it; AMBIGUOUS_CODEPAGE)",
 			version:     gedcom.Version551,
 			encoding:    gedcom.Encoding("ANSI"),
 			source:      "Geneanet",
 			vendor:      gedcom.VendorGeneanet,
 			individuals: 270,
 			families:    176,
-			diags:       map[string]int{CodeUnknownTag: 1},
+			diags:       map[string]int{CodeUnknownTag: 1, CodeAmbiguousCodePage: 1},
 			strict:      true,
 		},
 		{
@@ -346,7 +349,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 		},
 		{
 			path:        "../testdata/encoding/familyhistorian-5.5.1-w1250.ged",
-			description: "Family Historian 7.0.24 - CHAR ANSI over Windows-1250 bytes (decoded as Windows-1252; known gap)",
+			description: "Family Historian 7.0.24 - CHAR ANSI over Windows-1250 bytes (read as Windows-1252 unless ANSIEncoding names it; AMBIGUOUS_CODEPAGE)",
 			version:     gedcom.Version551,
 			encoding:    gedcom.Encoding("ANSI"),
 			source:      "FAMILY_HISTORIAN",
@@ -354,10 +357,8 @@ func TestCorpusVendorFiles(t *testing.T) {
 			individuals: 208,
 			families:    62,
 			// The 62 UNKNOWN_TAG were the standard 5.5.1 FAM.RIN
-			// ("1 RIN MH:F2"), recognized since #730. The entry is dropped
-			// rather than set to 0 because the table asserts
-			// len(hist) == len(tt.diags).
-			diags:  map[string]int{},
+			// ("1 RIN MH:F2"), recognized since #730.
+			diags:  map[string]int{CodeAmbiguousCodePage: 1},
 			strict: true,
 		},
 		{
@@ -369,7 +370,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			vendor:      gedcom.VendorBrothersKeeper,
 			individuals: 257,
 			families:    206,
-			diags:       map[string]int{CodeInvalidValue: 103},
+			diags:       map[string]int{CodeInvalidValue: 103, CodeAmbiguousCodePage: 1},
 			strict:      true,
 		},
 		{
@@ -909,39 +910,87 @@ func TestCorpusVendorReunionCROnly(t *testing.T) {
 	}
 }
 
-// TestCorpusVendorANSIOver1250KnownGap documents the decoder's current
-// behavior on exports declaring CHAR ANSI over Windows-1250 bytes (Geneanet,
-// Family Historian 7, Brother's Keeper 7). ANSI is decoded as Windows-1252,
-// so letters the two code pages share (š, ž, Š, Ž) arrive intact, but
-// 0xE8 Windows-1250 "č" arrives as "è" with no diagnostic. If Windows-1250
-// support lands, this test should be rewritten to expect "č".
-func TestCorpusVendorANSIOver1250KnownGap(t *testing.T) {
+// TestCorpusVendorANSIOver1250 checks the exports declaring CHAR ANSI over
+// Windows-1250 bytes (Geneanet, Family Historian 7, Brother's Keeper 7) both
+// ways (#759). With DecodeOptions.ANSIEncoding set to Windows-1250, "č"
+// (0xE8) and "Č" (0xC8) decode correctly and nothing is reported as
+// ambiguous. Without it the Windows-1252 reading ("è", "È") is unchanged, and
+// one AMBIGUOUS_CODEPAGE warning names the first byte that differs. Letters
+// the two code pages share (š, ž) are correct either way.
+func TestCorpusVendorANSIOver1250(t *testing.T) {
 	tests := []struct {
-		path string
-		xref string
-		got  string // current, Windows-1252 reading
+		path       string
+		xref       string
+		name1250   string // the name read as Windows-1250
+		name1252   string // the same name read as Windows-1252
+		place1250  string // a PLAC value holding "Č", read as Windows-1250
+		place1252  string
+		firstLine  int // line of the first byte reading differently in the two
+		firstMatch string
 	}{
-		{"../testdata/encoding/geneanet-5.5.1-w1250.ged", "@I3@", "Matevž2 /Logariè/"},
-		{"../testdata/encoding/familyhistorian-5.5.1-w1250.ged", "@I1@", "Vinko3 /Jenkoiè/"},
-		{"../testdata/encoding/brotherskeeper-5.5.1-w1250.ged", "@I1@", "Marjeta2 /Oblakiè/"},
+		{"../testdata/encoding/geneanet-5.5.1-w1250.ged", "@I3@",
+			"Matevž2 /Logarič/", "Matevž2 /Logariè/",
+			"Bohinjska Češnjica 75", "Bohinjska Èešnjica 75",
+			18, `byte 0xE8 at column 23 is 'è', but 'č' in Windows-1250`},
+		{"../testdata/encoding/familyhistorian-5.5.1-w1250.ged", "@I1@",
+			"Vinko3 /Jenkoič/", "Vinko3 /Jenkoiè/",
+			"Ljubljana - Črnuče", "Ljubljana - Èrnuèe",
+			17, `byte 0xE8 at column 22 is 'è', but 'č' in Windows-1250`},
+		{"../testdata/encoding/brotherskeeper-5.5.1-w1250.ged", "@I1@",
+			"Marjeta2 /Oblakič/", "Marjeta2 /Oblakiè/",
+			"Črni Vrh nad Idrijo, Slovenija", "Èrni Vrh nad Idrijo, Slovenija",
+			13, `byte 0xE8 at column 24 is 'è', but 'č' in Windows-1250`},
+	}
+	decode := func(t *testing.T, path string, opts *DecodeOptions) *DecodeResult {
+		t.Helper()
+		f := corpusOpen(t, path)
+		defer f.Close()
+		result, err := DecodeWithDiagnostics(f, opts)
+		if err != nil {
+			t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+		}
+		return result
+	}
+	check := func(t *testing.T, doc *gedcom.Document, xref, name, place string) {
+		t.Helper()
+		ind := doc.GetIndividual(xref)
+		if ind == nil || len(ind.Names) == 0 {
+			t.Fatalf("%s has no decoded name", xref)
+		}
+		if ind.Names[0].Full != name {
+			t.Errorf("%s name = %q, want %q", xref, ind.Names[0].Full, name)
+		}
+		if !hasTagValue(doc, "PLAC", place) {
+			t.Errorf("no PLAC %q", place)
+		}
 	}
 	for _, tt := range tests {
 		t.Run(filepath.Base(tt.path), func(t *testing.T) {
-			f := corpusOpen(t, tt.path)
-			defer f.Close()
-
-			doc, err := Decode(f)
-			if err != nil {
-				t.Fatalf("Decode() error = %v", err)
-			}
-			ind := doc.GetIndividual(tt.xref)
-			if ind == nil || len(ind.Names) == 0 {
-				t.Fatalf("%s has no decoded name", tt.xref)
-			}
-			if ind.Names[0].Full != tt.got {
-				t.Errorf("%s name = %q, want current Windows-1252 reading %q; if Windows-1250 support landed, update this test",
-					tt.xref, ind.Names[0].Full, tt.got)
-			}
+			t.Run("Windows-1250", func(t *testing.T) {
+				result := decode(t, tt.path, &DecodeOptions{ANSIEncoding: charset.EncodingWindows1250})
+				check(t, result.Document, tt.xref, tt.name1250, tt.place1250)
+				if n := diagHistogram(result.Diagnostics)[CodeAmbiguousCodePage]; n != 0 {
+					t.Errorf("%d AMBIGUOUS_CODEPAGE diagnostics, want none once the code page is named", n)
+				}
+			})
+			t.Run("default", func(t *testing.T) {
+				result := decode(t, tt.path, DefaultOptions())
+				check(t, result.Document, tt.xref, tt.name1252, tt.place1252)
+				var found []Diagnostic
+				for _, d := range result.Diagnostics {
+					if d.Code == CodeAmbiguousCodePage {
+						found = append(found, d)
+					}
+				}
+				if len(found) != 1 {
+					t.Fatalf("AMBIGUOUS_CODEPAGE diagnostics = %v, want exactly one", found)
+				}
+				d := found[0]
+				if d.Line != tt.firstLine || d.Severity != SeverityWarning || !strings.Contains(d.Message, tt.firstMatch) {
+					t.Errorf("diagnostic = line %d %v %q; want line %d, WARNING, containing %q",
+						d.Line, d.Severity, d.Message, tt.firstLine, tt.firstMatch)
+				}
+			})
 		})
 	}
 }

@@ -76,6 +76,15 @@ const (
 	// [MaxInvalidEncodingDiagnostics] bytes, and one more counts any bytes
 	// after those. Strict mode fails with a *charset.InvalidUTF8Error instead.
 	CodeInvalidEncoding = "INVALID_ENCODING"
+
+	// CodeAmbiguousCodePage indicates a header declaring CHAR ANSI, which
+	// names no code page, over bytes that read differently as Windows-1252
+	// and Windows-1250. The file is decoded as Windows-1252 either way; if it
+	// came from a Central European system, letters such as "č" have arrived
+	// as "è". It is a SeverityWarning, emitted at most once per decode, in
+	// lenient mode, at the first such byte, and never when
+	// DecodeOptions.ANSIEncoding names the code page.
+	CodeAmbiguousCodePage = "AMBIGUOUS_CODEPAGE"
 )
 
 // Entity-level diagnostic codes for semantic issues during entity population.

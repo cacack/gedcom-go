@@ -99,11 +99,17 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// after it (#710). The callback must be set even when diagnostics are
 	// not collected: a nil callback fails on the first invalid byte.
 	var encodingDiags invalidUTF8Diagnostics
-	var readerOpts charset.ReaderOptions
+	var codePageDiags Diagnostics
+	readerOpts := charset.ReaderOptions{ANSI: opts.ANSIEncoding}
 	if !opts.StrictMode {
 		readerOpts.OnInvalidUTF8 = func(e *charset.InvalidUTF8Error) {
 			if collect {
 				encodingDiags.add(e)
+			}
+		}
+		if collect {
+			readerOpts.OnAmbiguousANSI = func(a *charset.AmbiguousANSI) {
+				codePageDiags = append(codePageDiags, ambiguousANSIDiagnostic(a))
 			}
 		}
 	}
@@ -180,7 +186,8 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	} else {
 		// Lenient mode: convert parse errors to diagnostics and continue.
 		// Encoding repairs come first: they happen below the parser.
-		diagnostics = encodingDiags.result()
+		diagnostics = append(diagnostics, codePageDiags...)
+		diagnostics = append(diagnostics, encodingDiags.result()...)
 		diagnostics = append(diagnostics, convertParseErrors(parseErrors)...)
 		if len(parseErrors) > 0 {
 			firstParseErr = parseErrors[0]
@@ -340,6 +347,15 @@ func (c *invalidUTF8Diagnostics) result() Diagnostics {
 func invalidUTF8Diagnostic(e *charset.InvalidUTF8Error) Diagnostic {
 	return NewParseError(e.Line, CodeInvalidEncoding,
 		fmt.Sprintf("invalid UTF-8 byte 0x%02X at column %d replaced with U+FFFD", e.Byte, e.Column), "")
+}
+
+// ambiguousANSIDiagnostic reports that a CHAR ANSI file holds a byte whose
+// Windows-1252 reading, the one delivered, differs from its Windows-1250
+// one. It is a warning: the file decoded, but its letters may be wrong.
+func ambiguousANSIDiagnostic(a *charset.AmbiguousANSI) Diagnostic {
+	return NewDiagnostic(a.Line, SeverityWarning, CodeAmbiguousCodePage,
+		fmt.Sprintf("CHAR ANSI read as Windows-1252: byte 0x%02X at column %d is %q, but %q in Windows-1250; set DecodeOptions.ANSIEncoding to name the code page",
+			a.Byte, a.Column, a.Windows1252, a.Windows1250), "")
 }
 
 // classifyParseError maps a parse error message to a diagnostic code.

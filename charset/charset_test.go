@@ -810,7 +810,7 @@ func (r *partialReader) Read(p []byte) (n int, err error) {
 // newBOMCheckingUTF8Reader returns a utf8Reader that has not yet skipped a
 // BOM, so its first Read exercises handleBOM.
 func newBOMCheckingUTF8Reader(r io.Reader) *utf8Reader {
-	return &utf8Reader{reader: r, line: 1, column: 1}
+	return &utf8Reader{reader: r, cursor: newCursor()}
 }
 
 func TestUTF8Reader_HandleBOMWithUTF8BOM(t *testing.T) {
@@ -1642,7 +1642,7 @@ func TestWindows1252DecoderShortDst(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			nDst, nSrc, err := windows1252Decoder{}.Transform(make([]byte, tt.dstLen), tt.src, true)
+			nDst, nSrc, err := windows1252Decoder().Transform(make([]byte, tt.dstLen), tt.src, true)
 			if !errors.Is(err, transform.ErrShortDst) {
 				t.Fatalf("err = %v, want ErrShortDst", err)
 			}
@@ -1836,8 +1836,7 @@ func TestNewReader_UTF8IncompleteAtEOF_ValidBytesReturned(t *testing.T) {
 
 	ur := &utf8Reader{
 		reader:     &eofWithDataReader{data: input},
-		line:       1,
-		column:     1,
+		cursor:     newCursor(),
 		bomSkipped: true,
 	}
 
@@ -1865,8 +1864,7 @@ func TestNewReader_UTF8IncompleteAtEOF_ZeroLengthBuffer(t *testing.T) {
 
 	ur := &utf8Reader{
 		reader:     &eofWithDataReader{data: input},
-		line:       1,
-		column:     1,
+		cursor:     newCursor(),
 		bomSkipped: true,
 	}
 
@@ -1886,8 +1884,7 @@ func TestNewReader_UTF8IncompleteAtEOF_SmallOutputBuffer(t *testing.T) {
 
 	ur := &utf8Reader{
 		reader:     &eofWithDataReader{data: input},
-		line:       1,
-		column:     1,
+		cursor:     newCursor(),
 		bomSkipped: true,
 	}
 
