@@ -215,6 +215,49 @@ func TestParsePersonalNameFromFull(t *testing.T) {
 	}
 }
 
+// TestParsePersonalNameSuffixAndSlashes covers the NAME_PERSONAL shapes of
+// issue #756: text after the surname slashes is the suffix unless NSFX says
+// otherwise, and with more than two slashes the last pair delimits the
+// surname. Full always keeps the value as written.
+func TestParsePersonalNameSuffixAndSlashes(t *testing.T) {
+	tests := []struct {
+		name                   string
+		lines                  string
+		given, surname, suffix string
+	}{
+		{"suffix after surname", "1 NAME John /Smith/ Jr.", "John", "Smith", "Jr."},
+		{"multi-word suffix", "1 NAME Robert /CAPET/ de CLERMONT", "Robert", "CAPET", "de CLERMONT"},
+		{"no given name", "1 NAME /Kamanawa/ I", "", "Kamanawa", "I"},
+		{"NSFX wins over trailing text", "1 NAME John /Smith/ Jr.\n2 NSFX Sr.", "John", "Smith", "Sr."},
+		{"more than two slashes", "1 NAME John /de la /Smith/", "John", "Smith", ""},
+		{"more than two slashes with suffix", "1 NAME John /de la /Smith/ III", "John", "Smith", "III"},
+		{"no suffix", "1 NAME John /Smith/", "John", "Smith", ""},
+		{"unclosed surname", "1 NAME John /Smith", "John", "Smith", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n" + tt.lines + "\n0 TRLR\n"
+			doc, err := Decode(strings.NewReader(input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			indi := doc.GetIndividual("@I1@")
+			if indi == nil || len(indi.Names) != 1 {
+				t.Fatalf("want one name, got %+v", indi)
+			}
+			n := indi.Names[0]
+			if n.Given != tt.given || n.Surname != tt.surname || n.Suffix != tt.suffix {
+				t.Errorf("Given/Surname/Suffix = %q/%q/%q, want %q/%q/%q",
+					n.Given, n.Surname, n.Suffix, tt.given, tt.surname, tt.suffix)
+			}
+			full := strings.TrimPrefix(strings.SplitN(tt.lines, "\n", 2)[0], "1 NAME ")
+			if n.Full != full {
+				t.Errorf("Full = %q, want %q", n.Full, full)
+			}
+		})
+	}
+}
+
 func TestParseNoSurname(t *testing.T) {
 	gedcom := `0 HEAD
 1 GEDC

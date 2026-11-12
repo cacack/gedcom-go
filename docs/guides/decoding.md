@@ -283,9 +283,10 @@ decode and encode to, and applies the difference:
 - A structure added to the typed model is inserted beside its siblings; one
   removed from it is removed, with everything beneath it.
 - Afterwards the tags read back as the typed fields. The decoder fills
-  `PersonalName.Given` and `Surname` from the `NAME` value when there is no
-  `GIVN` or `SURN`, so editing `Full` alone writes the old given name and
-  surname as `GIVN` and `SURN`. Edit them together.
+  `PersonalName.Given`, `Surname` and `Suffix` from the `NAME` value when
+  there is no `GIVN`, `SURN` or `NSFX`, so editing `Full` alone writes the old
+  given name, surname and suffix as `GIVN`, `SURN` and `NSFX`. Edit them
+  together.
 
 The header fields it carries are those a hand-built header is written from:
 `SourceSystem`, `Date`, `Submitter`, `Language`, `Version`, and whether

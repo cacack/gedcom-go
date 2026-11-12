@@ -106,7 +106,8 @@ type PersonalName struct {
 	// Prefix is the name prefix (e.g., "Dr.", "Sir")
 	Prefix string
 
-	// Suffix is the name suffix (e.g., "Jr.", "III")
+	// Suffix is the name suffix (e.g., "Jr.", "III"): the NSFX value, else
+	// the text after the surname slashes in Full ("John /Smith/ Jr.")
 	Suffix string
 
 	// Nickname is the person's nickname (e.g., "Bill" for William)

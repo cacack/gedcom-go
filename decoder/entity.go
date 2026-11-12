@@ -390,26 +390,38 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 	return indi
 }
 
+// splitPersonalName splits a NAME value, "Given /Surname/ Suffix" in the
+// 5.5.1 NAME_PERSONAL grammar, into its given name, surname and suffix.
+//
+// The surname is the text between the last two slashes, kept as written; the
+// given name is the text before the first slash and the suffix the text after
+// the last, both trimmed. A value with one slash has no closing slash, so the
+// rest of it is the surname; one with none is all given name. Text between
+// earlier slashes ("John /de la /Smith/") is malformed and is kept only in
+// PersonalName.Full.
+func splitPersonalName(full string) (given, surname, suffix string) {
+	first := strings.Index(full, "/")
+	if first < 0 {
+		return strings.TrimSpace(full), "", ""
+	}
+	given = strings.TrimSpace(full[:first])
+	last := strings.LastIndex(full, "/")
+	if last == first {
+		return given, strings.TrimSpace(full[first+1:]), ""
+	}
+	open := strings.LastIndex(full[:last], "/")
+	return given, full[open+1 : last], strings.TrimSpace(full[last+1:])
+}
+
 //nolint:gocyclo // Name parsing requires handling many tag types and edge cases
 func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCollector) *gedcom.PersonalName {
 	name := &gedcom.PersonalName{
 		Full: collector.text(tags[nameIdx].Value),
 	}
 
-	// Parse the full name to extract given and surname
-	// GEDCOM format: "Given /Surname/"
-	full := collector.text(tags[nameIdx].Value)
-	if slashIdx := strings.Index(full, "/"); slashIdx >= 0 {
-		name.Given = strings.TrimSpace(full[:slashIdx])
-		surname := full[slashIdx+1:]
-		if endSlash := strings.Index(surname, "/"); endSlash >= 0 {
-			name.Surname = surname[:endSlash]
-		} else {
-			name.Surname = strings.TrimSpace(surname)
-		}
-	} else {
-		name.Given = strings.TrimSpace(full)
-	}
+	// Seed the name parts from the NAME value; GIVN, SURN and NSFX below
+	// override them.
+	name.Given, name.Surname, name.Suffix = splitPersonalName(name.Full)
 
 	// Look for subordinate tags (level 2)
 	for i := nameIdx + 1; i < len(tags); i++ {
