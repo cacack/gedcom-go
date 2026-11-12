@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cacack/gedcom-go/v3/charset"
 	"github.com/cacack/gedcom-go/v3/decoder"
+	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/parser"
 	"github.com/cacack/gedcom-go/v3/validator"
+	"github.com/cacack/gedcom-go/v3/version"
 )
 
 // Example demonstrates basic document validation. Each error Validate
@@ -248,6 +252,57 @@ func ExampleNewStreamingValidator() {
 
 	// Output:
 	// Total issues: 1
+}
+
+// ExampleStreamingValidator_ValidateRecord validates a file record by record,
+// without decoding it into a Document: parser.Records reads raw records and
+// decoder.DecodeRecord gives each one the typed Entity ValidateRecord reads.
+func ExampleStreamingValidator_ValidateRecord() {
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Smith/
+1 BIRT
+2 DATE 1 JAN 1900
+1 DEAT
+2 DATE 1 JAN 1850
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I999@
+0 TRLR`
+
+	var sv *validator.StreamingValidator
+	var ver gedcom.Version
+	var issues []validator.Issue
+	for raw, err := range parser.Records(charset.NewReader(strings.NewReader(gedcomData))) {
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		if raw.Type == "HEAD" {
+			// The header comes first and declares the version.
+			ver = version.DeclaredVersion(raw.Lines)
+		}
+		if sv == nil {
+			sv = validator.NewStreamingValidator(validator.StreamingOptions{Version: ver})
+		}
+		record, err := decoder.DecodeRecord(raw, ver, nil)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		issues = append(issues, sv.ValidateRecord(record)...)
+	}
+	issues = append(issues, sv.Finalize()...)
+
+	for _, issue := range issues {
+		fmt.Println(issue.Code, issue.RecordXRef)
+	}
+
+	// Output:
+	// DEATH_BEFORE_BIRTH @I1@
+	// ORPHANED_WIFE @F1@
 }
 
 // ExampleStreamingValidator_Reset shows reusing a streaming validator.

@@ -1367,11 +1367,23 @@ Memory-efficient validation for very large files without loading the entire docu
 
 ```go
 // Validate records incrementally during parsing
-v := validator.NewStreamingValidator(validator.StreamingOptions{})
-
-for _, record := range records {
-    issues := v.ValidateRecord(record)  // Immediate issues (date logic, structure)
-    for _, issue := range issues {
+var v *validator.StreamingValidator
+var ver gedcom.Version
+for raw, err := range parser.Records(charset.NewReader(file)) {
+    if err != nil {
+        return err
+    }
+    if raw.Type == "HEAD" {
+        ver = version.DeclaredVersion(raw.Lines) // the header comes first
+    }
+    if v == nil {
+        v = validator.NewStreamingValidator(validator.StreamingOptions{Version: ver})
+    }
+    record, err := decoder.DecodeRecord(raw, ver, nil) // typed Entity
+    if err != nil {
+        return err
+    }
+    for _, issue := range v.ValidateRecord(record) { // Immediate issues (date logic, structure)
         fmt.Printf("[%s] %s\n", issue.Severity, issue.Message)
     }
 }
@@ -1379,6 +1391,11 @@ for _, record := range records {
 // Check cross-references after all records processed
 finalIssues := v.Finalize()  // Orphaned reference detection
 ```
+
+`ValidateRecord` reads the record's typed `Entity`. The streaming parsers yield
+raw lines only, so decode each record with `decoder.DecodeRecord` first (see
+[Typed Records](#typed-records)): a record holding only raw `Tags` is
+registered as declared but nothing in it is checked.
 
 Set `StreamingOptions.Version` to the document's GEDCOM version: the streaming
 validator never sees the header, and `Finalize` needs it to treat `@VOID@` as
@@ -1813,6 +1830,36 @@ if err := it.Err(); err != nil {
 | `RawRecord.Lines` | All parsed lines for this record |
 | `RawRecord.ByteOffset` | Starting byte position: absolute in the file for `LazyParser` iterators, relative to the start of the reader for `Records`/`NewRecordIterator` |
 | `RawRecord.ByteLength` | Total bytes for this record |
+
+### Typed Records
+
+`parser.Records`, `RecordIterator` and `LazyParser` yield `*parser.RawRecord`:
+raw lines, with no typed entity. `decoder.DecodeRecord` turns one into the
+`*gedcom.Record` `decoder.Decode` would give it — same `Entity`, `Tags` and
+fields — without building a `Document`:
+
+```go
+// ver is the version the header declares: version.DeclaredVersion(head.Lines)
+raw, err := lp.FindRecord("@I1@")
+if err != nil {
+    return err
+}
+record, err := decoder.DecodeRecord(raw, ver, nil)
+if err != nil {
+    return err
+}
+person, _ := record.GetIndividual()
+```
+
+| Behaviour | Detail |
+|-----------|--------|
+| Version | The declared version decides the identifier grammar and `@@` unescaping; `""` reads text by the 5.5 rule |
+| Options | `StrictMode` and `Context` only; lenient mode clamps level jumps as `Decode` does, on a copy |
+| HEAD / TRLR | A `Record` of that `Type` with its `Tags` and no `Entity` |
+| Errors | Nil or empty record, or a first line that is not level 0 |
+| Diagnostics | Not reported; use `DecodeWithDiagnostics` for those |
+
+Costs are in [the performance guide](docs/guides/performance.md#typed-streaming-decoderdecoderecord).
 
 ### Record Index
 

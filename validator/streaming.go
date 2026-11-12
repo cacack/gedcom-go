@@ -103,6 +103,12 @@ func NewStreamingValidator(opts StreamingOptions) *StreamingValidator {
 // ValidateRecord validates a single record and returns immediate issues.
 // Cross-reference issues are deferred to Finalize().
 //
+// The record must carry its typed Entity, as records from the decoder do. A
+// record holding only raw Tags (one built from a parser.RawRecord by hand)
+// is registered as declared but nothing in it is validated or collected, so
+// it reports no issues; decode each streamed record with decoder.DecodeRecord
+// first, as the ValidateRecord example shows.
+//
 // This method:
 //   - Registers the record's XRef as declared
 //   - Validates record structure and entity-specific rules

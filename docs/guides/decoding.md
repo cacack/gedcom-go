@@ -379,6 +379,11 @@ Tags with empty values are preserved: `1 BIRT` becomes `1 BIRT` (not `1 BIRT ` w
 | `Decode(r)` | N/A — use `DecodeWithOptions` | Always; no diagnostics |
 | `DecodeWithOptions(r, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns document, no diagnostics |
 | `DecodeWithDiagnostics(r, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns `DecodeResult` with diagnostics |
+| `DecodeRecord(raw, ver, opts)` | `opts.StrictMode=true`: level jumps kept as written | `opts.StrictMode=false`: level jumps clamped; one typed record, no diagnostics |
+
+`DecodeRecord` decodes one `*parser.RawRecord` from a streaming parser into the
+typed `*gedcom.Record` `Decode` would produce for it; see
+[Typed Streaming](performance.md#typed-streaming-decoderdecoderecord).
 
 ## Related Documentation
 
