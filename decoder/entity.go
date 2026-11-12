@@ -2166,13 +2166,14 @@ func parseMediaFile(tags []*gedcom.Tag, fileIdx, baseLevel int, collector *diagn
 			switch tag.Tag {
 			case "FORM":
 				file.Form = collector.text(tag.Value)
-				// Look for MEDI at baseLevel+2
+				// The media type at baseLevel+2: MEDI in 7.0, TYPE in a
+				// 5.5.1 multimedia record.
 				for j := i + 1; j < len(tags); j++ {
 					mediTag := tags[j]
 					if mediTag.Level <= baseLevel+1 {
 						break
 					}
-					if mediTag.Level == baseLevel+2 && mediTag.Tag == "MEDI" {
+					if mediTag.Level == baseLevel+2 && (mediTag.Tag == "MEDI" || mediTag.Tag == "TYPE") {
 						file.MediaType = collector.text(mediTag.Value)
 						file.MediaPhrase = collector.text(findSubordinate(tags, j, "PHRASE"))
 						break

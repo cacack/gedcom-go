@@ -43,10 +43,9 @@ const gedcom7codeDir = "../testdata/gedcom7code"
 // way up (SUBN, @#D...@ inside note text) or chose a record over an inline
 // form, the 5/ file is one of several faithful downgrades, not the only one.
 var conversionKnownGaps = map[string]string{
-	"age-invalid.ged 5->7": "AGE payloads are not rewritten to 7.0 age syntax (0 -> 0y) (#704)",
-	"age-invalid.ged 7->5": "7.0 age syntax (0y) is not rewritten to 5.5.1 (#704)",
-	"age-valid.ged 5->7":   "AGE keywords are not moved into PHRASE (#704)",
-	"age-valid.ged 7->5":   "7.0 AGE + PHRASE is not restored to the 5.5.1 keyword (#704)",
+	"age-invalid.ged 7->5": "not invertible: 7/ normalized ages (0 -> 0y, 0 Y -> 0y) whose 5/ spellings vary",
+	"age-valid.ged 5->7":   "7/ adds a DEAT (AGE 0y + PHRASE Stillborn) that 5/ does not have",
+	"age-valid.ged 7->5":   "7/ adds a DEAT that 5/ does not have, and 7/ normalized 0Y to 0y",
 
 	"atsign.ged 5->7": "@@ inside a payload is not unescaped on decode (#708)",
 	"atsign.ged 7->5": "not invertible: 7/ already rewrote the @#D...@ escapes in note text that 5/ keeps",
@@ -57,7 +56,6 @@ var conversionKnownGaps = map[string]string{
 	"date-dual-invalid.ged 7->5": "BET/AND + PHRASE is not restored to the dual-year form (#722)",
 
 	"enum-ext.ged 5->7": "extension record tag _LOC is not documented in SCHMA",
-	"enum-ext.ged 7->5": "NAME.TYPE OTHER + PHRASE is not restored to free text (#704)",
 
 	"filename-1.ged 5->7": "FILE paths are not rewritten as file:// URIs (#705)",
 	"filename-1.ged 7->5": "file:// URIs are not rewritten as 5.5.1 paths (#705)",
@@ -69,12 +67,6 @@ var conversionKnownGaps = map[string]string{
 	"obje-1.ged 7->5": "not invertible: the OBJE record is kept as a record; 5/ uses the inline form",
 
 	"obsolete-1.ged 7->5": "not invertible: 7/ has no SUBN record to restore",
-
-	"pedi-1.ged 5->7": "PEDI enumeration case is not converted (#704)",
-	"pedi-1.ged 7->5": "PEDI enumeration case is not converted (#704)",
-
-	"rela_1.ged 5->7": "ASSO.RELA is not mapped to ROLE + PHRASE (#704)",
-	"rela_1.ged 7->5": "ASSO.ROLE + PHRASE is not mapped to RELA (#704)",
 
 	"sour-1.ged 5->7": "inline-text SOUR citations are not promoted to SOUR records (#793)",
 	"sour-1.ged 7->5": "not invertible: the SOUR record is kept as a record; 5/ uses the inline form",

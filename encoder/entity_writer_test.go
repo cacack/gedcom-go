@@ -1630,6 +1630,21 @@ func TestMediaFileToTags(t *testing.T) {
 	}
 }
 
+// TestMediaFileToTagsMediaTypeSpelling pins the media type's tag by output
+// version: TYPE in a 5.5/5.5.1 multimedia record, MEDI in 7.0.
+func TestMediaFileToTagsMediaTypeSpelling(t *testing.T) {
+	file := &gedcom.MediaFile{FileRef: "photo.jpg", Form: "jpg", MediaType: "photo"}
+	for version, want := range map[gedcom.Version]string{
+		gedcom.Version55: "TYPE", gedcom.Version551: "TYPE", gedcom.Version70: "MEDI",
+	} {
+		opts := (&EncodeOptions{TargetVersion: version}).forOutput(nil)
+		tags := mediaFileToTags(file, 1, opts)
+		if len(tags) != 3 || tags[2].Level != 3 || tags[2].Tag != want || tags[2].Value != "photo" {
+			t.Errorf("%s: media type written as %+v, want 3 %s photo", version, tags[len(tags)-1], want)
+		}
+	}
+}
+
 func TestMediaTranslationToTags(t *testing.T) {
 	tests := []struct {
 		name     string

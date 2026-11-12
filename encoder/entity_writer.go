@@ -1559,9 +1559,14 @@ func mediaFileToTags(file *gedcom.MediaFile, level int, opts *EncodeOptions) []*
 	if file.Form != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "FORM", Value: opts.text(file.Form)})
 
-		// MEDI subordinate at level+2
+		// The media type at level+2: TYPE in a 5.5/5.5.1 multimedia record,
+		// MEDI in 7.0.
 		if file.MediaType != "" {
-			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "MEDI", Value: opts.text(file.MediaType)})
+			mediaTag := "MEDI"
+			if opts.outputIs(gedcom.Version55) || opts.outputIs(gedcom.Version551) {
+				mediaTag = "TYPE"
+			}
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: mediaTag, Value: opts.text(file.MediaType)})
 			tags = appendPhrase(tags, file.MediaPhrase, level+3, opts)
 		}
 	}

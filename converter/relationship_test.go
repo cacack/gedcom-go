@@ -110,11 +110,11 @@ func TestConvertSynthesizesPedigree(t *testing.T) {
 				"@I2@": {"1 FAMC @F1@", "2 PEDI " + tt.adopted, "2 NOTE adopted by both"},
 				// Step has no PEDI value; Natural is the default; a missing
 				// _MREL for a family with a WIFE is unknown; an existing PEDI
-				// is kept.
+				// is kept, in the target spelling (#704).
 				"@I3@": {"1 FAMC @F1@"},
 				"@I4@": {"1 FAMC @F1@"},
 				"@I5@": {"1 FAMC @F1@"},
-				"@I6@": {"1 FAMC @F1@", "2 PEDI foster"},
+				"@I6@": {"1 FAMC @F1@", "2 PEDI " + tt.foster},
 				// A family naming only a husband needs only _FREL.
 				"@I7@": {"1 FAMC @F2@", "2 PEDI " + tt.foster},
 			}
@@ -130,7 +130,7 @@ func TestConvertSynthesizesPedigree(t *testing.T) {
 
 			var notes []gedcom.ConversionNote
 			for _, n := range report.Normalized {
-				if strings.HasSuffix(n.Path, "FAMC > PEDI") {
+				if strings.HasSuffix(n.Path, "FAMC > PEDI") && strings.HasPrefix(n.Reason, "Pedigree written") {
 					notes = append(notes, n)
 				}
 			}

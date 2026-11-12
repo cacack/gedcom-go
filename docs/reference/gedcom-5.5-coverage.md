@@ -179,11 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 897 | 89.9% | 1204 | 91.5% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 897 | 89.9% | 1205 | 91.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 87 | 8.7% | 99 | 7.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 3 | 0.3% | 2 | 0.2% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 11 | 1.1% | 11 | 0.8% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 11 | 1.1% | 10 | 0.8% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -197,7 +197,7 @@ pairs under it reach the typed model.
 | `HEAD` | 18 / 28 | 21 / 33 |
 | `INDI` | 598 / 625 | 818 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
-| `OBJE` | 6 / 12 | 11 / 13 |
+| `OBJE` | 6 / 12 | 12 / 13 |
 | `REPO` | 13 / 17 | 17 / 21 |
 | `SOUR` | 33 / 34 | 33 / 34 |
 | `SUBM` | 5 / 10 | 8 / 15 |
@@ -2131,7 +2131,7 @@ Measured at `OBJE.FILE.FORM` in 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `TYPE` | `MULTIMEDIA_RECORD.OBJE.FILE.FORM.TYPE` | — | raw (undiagnosed) | `{0:1}` |
+| `TYPE` | `MULTIMEDIA_RECORD.OBJE.FILE.FORM.TYPE` | — | typed | `{0:1}` |
 
 ### `MULTIMEDIA_RECORD.OBJE.REFN`
 

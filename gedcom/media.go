@@ -25,7 +25,8 @@ type MediaFile struct {
 	// Form is the MIME type (required in GEDCOM 7.0, e.g., "image/jpeg", "video/mp4")
 	Form string
 
-	// MediaType is the category (MEDI tag): AUDIO, BOOK, CARD, ELECTRONIC, PHOTO, VIDEO, etc.
+	// MediaType is the category (MEDI tag; FORM.TYPE in a 5.5.1 multimedia
+	// record): AUDIO, BOOK, CARD, ELECTRONIC, PHOTO, VIDEO, etc.
 	MediaType string
 
 	// MediaPhrase is the PHRASE under MEDI (GEDCOM 7.0), typically
