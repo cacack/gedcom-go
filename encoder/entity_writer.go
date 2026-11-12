@@ -1091,13 +1091,12 @@ func withSpouseAges(tags []*gedcom.Tag, husbandAge, husbandPhrase, wifeAge, wife
 		{"HUSB", husbandAge, husbandPhrase},
 		{"WIFE", wifeAge, wifePhrase},
 	} {
-		if spouse.age == "" {
+		age := ageToTags(spouse.age, spouse.phrase, level+1, opts)
+		if age == nil {
 			continue
 		}
-		ages = append(ages,
-			&gedcom.Tag{Level: level, Tag: spouse.tag},
-			&gedcom.Tag{Level: level + 1, Tag: "AGE", Value: opts.text(spouse.age)})
-		ages = appendPhrase(ages, spouse.phrase, level+2, opts)
+		ages = append(ages, &gedcom.Tag{Level: level, Tag: spouse.tag})
+		ages = append(ages, age...)
 	}
 	return slices.Insert(tags, 1, ages...)
 }

@@ -123,3 +123,54 @@ func TestSpouseAgesOnlyUnderFamily(t *testing.T) {
 		t.Errorf("familyToTags() = %q, want %q", got, want)
 	}
 }
+
+// A phrase-only spouse age (an empty HUSB.AGE or WIFE.AGE with a PHRASE, as
+// #795 allows for AGE) is written for 7.0 output and, like any phrase-only
+// AGE, dropped with its HUSB/WIFE line for 5.5.1, where AGE requires a value.
+func TestSpouseAgePhraseWithoutValue(t *testing.T) {
+	const input = "0 HEAD\n1 GEDC\n2 VERS 7.0\n" +
+		"0 @F1@ FAM\n1 MARR\n2 HUSB\n3 AGE\n4 PHRASE Young\n2 WIFE\n3 AGE 22y\n" +
+		"1 FACT Farmers\n2 TYPE Livelihood\n2 WIFE\n3 AGE\n4 PHRASE Middle-aged\n" +
+		"0 TRLR\n"
+	for _, tc := range []struct {
+		target gedcom.Version
+		want   []string
+		absent []string
+	}{
+		{gedcom.Version70, []string{
+			"1 MARR\n2 HUSB\n3 AGE\n4 PHRASE Young\n2 WIFE\n3 AGE 22y\n",
+			"1 FACT Farmers\n2 WIFE\n3 AGE\n4 PHRASE Middle-aged\n2 TYPE Livelihood\n",
+		}, nil},
+		{gedcom.Version551, []string{
+			"1 MARR\n2 WIFE\n3 AGE 22y\n",
+			"1 FACT Farmers\n2 TYPE Livelihood\n",
+		}, []string{"HUSB", "PHRASE"}},
+	} {
+		t.Run(string(tc.target), func(t *testing.T) {
+			doc, err := decoder.Decode(strings.NewReader(input))
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+			for _, rec := range doc.Records {
+				rec.Tags = nil // force the entity path
+			}
+			opts := DefaultOptions()
+			opts.TargetVersion = tc.target
+			var buf bytes.Buffer
+			if err := EncodeWithOptions(&buf, doc, opts); err != nil {
+				t.Fatalf("Encode() error = %v", err)
+			}
+			out := buf.String()
+			for _, want := range tc.want {
+				if !strings.Contains(out, want) {
+					t.Errorf("output missing %q:\n%s", want, out)
+				}
+			}
+			for _, tag := range tc.absent {
+				if strings.Contains(out, " "+tag) {
+					t.Errorf("output contains %s:\n%s", tag, out)
+				}
+			}
+		})
+	}
+}
