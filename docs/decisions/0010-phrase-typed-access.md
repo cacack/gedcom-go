@@ -72,3 +72,7 @@ Where the qualified value has no typed field, its `PHRASE` stays in
   attribute and the spouse `HUSB.AGE`/`WIFE.AGE` on a family's events and
   attributes; their `PHRASE`s are `Attribute.AgePhrase` and
   `HusbandAgePhrase`/`WifeAgePhrase` on `Event` and `Attribute`.
+- A source citation's `DATA.DATE` `PHRASE` is `SourceCitationData.DatePhrase`
+  ([#787](https://github.com/cacack/gedcom-go/issues/787)), beside the
+  `DATE`'s `TIME` in `SourceCitationData.Time`. Like a phrase-only `AGE`, a
+  phrase-only date writes an empty `DATE` for 7.0 output only.

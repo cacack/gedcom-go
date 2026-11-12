@@ -154,6 +154,15 @@ type SourceCitationData struct {
 	// Date is the date extracted from the source
 	Date string
 
+	// Time is the TIME under DATE (GEDCOM 7.0), e.g. "08:00". Written only
+	// beneath a Date, or beneath an empty DATE for 7.0 output.
+	Time string
+
+	// DatePhrase is the PHRASE under DATE (GEDCOM 7.0). Written only beneath
+	// a Date, or beneath an empty DATE for 7.0 output, which 7.0 permits for a
+	// phrase-only date.
+	DatePhrase string
+
 	// Text holds the passages quoted from the source, one entry per DATA.TEXT
 	// line in document order. TEXT is repeatable ({0:M}) under a citation's
 	// DATA in every GEDCOM version, so a citation quoting two passages carries

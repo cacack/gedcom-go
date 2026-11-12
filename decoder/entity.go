@@ -327,7 +327,11 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 			indi.SourceCitations = append(indi.SourceCitations, cite)
 
 		case "NOTE", "SNOTE":
+			inline := len(indi.InlineNotes)
 			indi.NoteXRefs, indi.InlineNotes = appendRecordNote(record.Tags, i, indi.NoteXRefs, indi.InlineNotes, collector)
+			if len(indi.InlineNotes) > inline {
+				indi.InlineNoteDetails = appendInlineNoteDetail(indi.InlineNoteDetails, inline, record.Tags, i, collector)
+			}
 
 		case "OBJE":
 			link := parseMediaLink(record.Tags, i, tag.Level, collector)
@@ -424,6 +428,7 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCol
 	// Seed the name parts from the NAME value; GIVN, SURN and NSFX below
 	// override them.
 	name.Given, name.Surname, name.Suffix = splitPersonalName(name.Full)
+	var seen namePiecesSeen
 
 	// Look for subordinate tags (level 2)
 	for i := nameIdx + 1; i < len(tags); i++ {
@@ -434,17 +439,18 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCol
 		if tag.Level == 2 {
 			switch tag.Tag {
 			case "GIVN":
-				name.Given = collector.text(tagToken(tag.Value))
+				setNamePiece(&name.Given, &name.AdditionalGiven, &seen.given, collector.text(tagToken(tag.Value)))
 			case "SURN":
-				name.Surname = collector.text(tagToken(tag.Value))
+				setNamePiece(&name.Surname, &name.AdditionalSurnames, &seen.surname, collector.text(tagToken(tag.Value)))
 			case "NPFX":
-				name.Prefix = collector.text(tagToken(tag.Value))
+				setNamePiece(&name.Prefix, &name.AdditionalPrefixes, &seen.prefix, collector.text(tagToken(tag.Value)))
 			case "NSFX":
-				name.Suffix = collector.text(tagToken(tag.Value))
+				setNamePiece(&name.Suffix, &name.AdditionalSuffixes, &seen.suffix, collector.text(tagToken(tag.Value)))
 			case "NICK":
-				name.Nickname = collector.text(tagToken(tag.Value))
+				setNamePiece(&name.Nickname, &name.AdditionalNicknames, &seen.nickname, collector.text(tagToken(tag.Value)))
 			case "SPFX":
-				name.SurnamePrefix = collector.text(tagToken(tag.Value))
+				setNamePiece(&name.SurnamePrefix, &name.AdditionalSurnamePrefixes, &seen.surnamePrefix,
+					collector.text(tagToken(tag.Value)))
 			case "_MARNM":
 				name.MarriedName = collector.text(tagToken(tag.Value))
 			case "TYPE":
@@ -472,6 +478,24 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCol
 	}
 
 	return name
+}
+
+// namePiecesSeen records which name pieces parsePersonalName has read, so a
+// repeated piece is told from the first.
+type namePiecesSeen struct {
+	given, surname, prefix, suffix, nickname, surnamePrefix bool
+}
+
+// setNamePiece stores one name-piece value: the first of its tag replaces
+// *field (and any value seeded from the NAME payload), and each later one,
+// which GEDCOM 7.0 allows, is appended to *more.
+func setNamePiece(field *string, more *[]string, seen *bool, value string) {
+	if *seen {
+		*more = append(*more, value)
+		return
+	}
+	*field = value
+	*seen = true
 }
 
 // parseNameTransliteration extracts a transliteration from tags starting at tranIdx.
@@ -796,6 +820,8 @@ func parseSourceCitationData(tags []*gedcom.Tag, dataIdx, baseLevel int, collect
 			switch tag.Tag {
 			case "DATE":
 				data.Date = collector.text(tag.Value)
+				data.Time = collector.text(findSubordinate(tags, i, "TIME"))
+				data.DatePhrase = collector.text(findSubordinate(tags, i, "PHRASE"))
 			case "TEXT":
 				// TEXT is {0:M}: append, never overwrite, so every passage
 				// survives in document order (issue #497).
@@ -1203,10 +1229,12 @@ func parsePlaceDetail(tags []*gedcom.Tag, placIdx, baseLevel int, collector *dia
 				place.Form = collector.text(tag.Value)
 			case "MAP":
 				place.Coordinates = parseCoordinates(tags, i, tag.Level, collector)
+			case "EXID":
+				place.ExternalIDs = append(place.ExternalIDs, parseExternalID(tags, i, collector))
 			case "NOTE", "SNOTE":
 				place.NoteXRefs, place.InlineNotes = appendRecordNote(
 					tags, i, place.NoteXRefs, place.InlineNotes, collector)
-			case "FONE", "ROMN", "TRAN", "EXID", "LANG":
+			case "FONE", "ROMN", "TRAN", "LANG":
 				// Known tags not yet parsed into typed fields
 			case "SOUR":
 				// The 5.5 citation of the place name, kept raw and reported
@@ -1983,6 +2011,41 @@ func pointerOrText(tags []*gedcom.Tag, idx int, collector *diagnosticCollector) 
 		return p, ""
 	}
 	return "", collector.text(foldedValue(tags, idx))
+}
+
+// appendInlineNoteDetail reads the GEDCOM 7.0 MIME, LANG and TRAN beneath
+// the inline NOTE at tags[noteIdx], the owner's InlineNotes[note], and stores
+// them as details[note]. A note without any leaves details as it is; one with
+// some first pads details with nil so its entries line up with InlineNotes.
+func appendInlineNoteDetail(
+	details []*gedcom.InlineNoteDetail, note int, tags []*gedcom.Tag, noteIdx int, collector *diagnosticCollector,
+) []*gedcom.InlineNoteDetail {
+	var detail *gedcom.InlineNoteDetail
+	baseLevel := tags[noteIdx].Level
+	for i := noteIdx + 1; i < len(tags) && tags[i].Level > baseLevel; i++ {
+		tag := tags[i]
+		if tag.Level != baseLevel+1 || (tag.Tag != "MIME" && tag.Tag != "LANG" && tag.Tag != "TRAN") {
+			continue
+		}
+		if detail == nil {
+			detail = &gedcom.InlineNoteDetail{}
+		}
+		switch tag.Tag {
+		case "MIME":
+			detail.MIME = collector.text(tag.Value)
+		case "LANG":
+			detail.Language = collector.text(tag.Value)
+		case "TRAN":
+			detail.Translations = append(detail.Translations, parseSharedNoteTranslation(tags, i, collector))
+		}
+	}
+	if detail == nil {
+		return details
+	}
+	for len(details) < note {
+		details = append(details, nil)
+	}
+	return append(details, detail)
 }
 
 // foldedValue returns the value of tags[idx] with its direct CONT/CONC

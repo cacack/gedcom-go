@@ -48,6 +48,14 @@ type Individual struct {
 	// (1 NOTE <text> form, including CONT/CONC continuations).
 	InlineNotes []string
 
+	// InlineNoteDetails holds the GEDCOM 7.0 substructures of the inline
+	// notes (MIME, LANG and TRAN): InlineNoteDetails[i] describes
+	// InlineNotes[i]. It is nil when no inline note has any; otherwise an
+	// entry is nil, or absent past the end, for a note without them. An entry
+	// past the end of InlineNotes is not written. Keep the two slices in step
+	// when adding or removing a note.
+	InlineNoteDetails []*InlineNoteDetail
+
 	// Media are references to media objects with optional crop/title
 	Media []*MediaLink
 
@@ -97,7 +105,9 @@ type PersonalName struct {
 	// Full is the full name (e.g., "John /Doe/")
 	Full string
 
-	// Given is the given (first) name
+	// Given is the given (first) name: the first GIVN value, else the text
+	// before the surname slashes in Full. A repeated GIVN is in
+	// AdditionalGiven.
 	Given string
 
 	// Surname is the family name
@@ -116,6 +126,20 @@ type PersonalName struct {
 
 	// SurnamePrefix is the surname prefix (e.g., "von", "de", "van der")
 	SurnamePrefix string
+
+	// AdditionalGiven, AdditionalSurnames, AdditionalPrefixes,
+	// AdditionalSuffixes, AdditionalNicknames and AdditionalSurnamePrefixes
+	// hold the second and later GIVN, SURN, NPFX, NSFX, NICK and SPFX values
+	// of this name, in file order. GEDCOM 7.0 allows each name piece to
+	// repeat; the first value is in Given, Surname, Prefix, Suffix, Nickname
+	// or SurnamePrefix, and the encoder writes these after it. GEDCOM 5.5 and
+	// 5.5.1 allow one of each, so they are nil for a conforming 5.x name.
+	AdditionalGiven           []string
+	AdditionalSurnames        []string
+	AdditionalPrefixes        []string
+	AdditionalSuffixes        []string
+	AdditionalNicknames       []string
+	AdditionalSurnamePrefixes []string
 
 	// MarriedName is the married name from the vendor extension _MARNM
 	// (MyHeritage), kept as written. MyHeritage writes the married surname

@@ -118,7 +118,7 @@ The structure each pair is nested under at level 0.
 | Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |
 |---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|
 | `INDI` | 873 | 854 | 0 | 10 | 0 | 9 |
-| `FAM` | 392 | 344 | 0 | 34 | 0 | 14 |
+| `FAM` | 392 | 345 | 0 | 33 | 0 | 14 |
 | `SOUR` | 29 | 29 | 0 | 0 | 0 | 0 |
 | `HEAD` | 27 | 24 | 0 | 3 | 0 | 0 |
 | `REPO` | 21 | 21 | 0 | 0 | 0 | 0 |
@@ -238,7 +238,7 @@ Substructures of `PLAC`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `EXID` | `EXID` | raw (accepted) |
+| `EXID` | `EXID` | typed |
 | `FORM` | `PLAC-FORM` | typed |
 | `LANG` | `LANG` | raw (accepted) |
 | `MAP` | `MAP` | typed |

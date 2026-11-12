@@ -654,6 +654,9 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
   SourceRepositoryLink, MediaLink, FamilyLink, PlaceDetail): `NoteXRefs` holds
   XRef pointers to shared NOTE/SNOTE records, `InlineNotes` holds note text
   written directly on the structure, with `CONT`/`CONC` folded.
+- GEDCOM 7.0 `MIME`, `LANG` and `TRAN` beneath an individual's inline notes:
+  `Individual.InlineNoteDetails[i]` (`InlineNoteDetail`) describes
+  `InlineNotes[i]`
 - `AllNotes(doc)` helper returns inline note text plus the resolved text of
   any shared notes referenced by XRef; also available on `Event` and
   `Attribute`
@@ -732,7 +735,7 @@ family — decodes the shared `EVENT_DETAIL` structure into typed fields:
 | Tag | Field |
 |-----|-------|
 | DATE | `Event.Date`, `Event.ParsedDate` |
-| PLAC | `Event.PlaceDetail` (FORM, MAP/LATI/LONG), read via `Event.PlaceName()`, written via `Event.SetPlaceName()` |
+| PLAC | `Event.PlaceDetail` (FORM, MAP/LATI/LONG, EXID), read via `Event.PlaceName()`, written via `Event.SetPlaceName()` |
 | TYPE | `Event.EventTypeDetail` |
 | CAUS | `Event.Cause` |
 | AGE | `Event.Age`, `Event.AgePhrase` |
@@ -792,7 +795,8 @@ At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
 - Referenced citations (via @SOUR@ xref)
 - PAGE - Specific location in source
 - QUAY - Quality/certainty assessment (0-3)
-- DATA - Citation data with DATE and every repeated TEXT
+- DATA - Citation data with DATE (and its GEDCOM 7.0 `TIME` and `PHRASE` as
+  `SourceCitationData.Time` and `DatePhrase`) and every repeated TEXT
   (`SourceCitationData.Text []*SourceText`, in document order), each with
   CONT/CONC folded into `Value` and GEDCOM 7.0 `MIME`/`LANG` typed
 - EVEN - The event type the source records and the subject's ROLE in it
@@ -804,6 +808,7 @@ At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
 
 - Place name with hierarchy (comma-separated)
 - MAP coordinates (LATI, LONG)
+- EXID external identifiers (GEDCOM 7.0, `PlaceDetail.ExternalIDs`)
 - Place notes
 
 ### Place Name Accessors
@@ -926,6 +931,9 @@ structure as `[]string` fields named `Phone`, `Email`, `Fax` and `Website`:
 - NSFX - Name suffix (Jr., III)
 - SPFX - Surname prefix (de, van, von)
 - NICK - Nickname
+- Repeated name pieces (GEDCOM 7.0 allows each to repeat): the first value
+  in `Given`, `Surname`, `Prefix`, `Suffix`, `Nickname` or `SurnamePrefix`,
+  the rest in file order in `AdditionalGiven`, `AdditionalSurnames`, and so on
 - TYPE - Name type (birth, married, aka)
 - SOUR - Source citations on the name (`PersonalName.SourceCitations`)
 - NOTE, SNOTE - Notes on the name (`PersonalName.NoteXRefs`, `PersonalName.InlineNotes`)

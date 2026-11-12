@@ -94,6 +94,10 @@ type PlaceDetail struct {
 	// Coordinates are optional geographic coordinates (MAP/LATI/LONG)
 	Coordinates *Coordinates
 
+	// ExternalIDs are external identifiers of the place (EXID tags, GEDCOM
+	// 7.0), such as a gazetteer entry.
+	ExternalIDs []*ExternalID
+
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
 	NoteXRefs []string
 
