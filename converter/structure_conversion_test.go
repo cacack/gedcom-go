@@ -1,9 +1,12 @@
 package converter
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/v3/decoder"
+	"github.com/cacack/gedcom-go/v3/encoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
@@ -374,6 +377,124 @@ func TestDowngrade70To55DemotesMediaRecords(t *testing.T) {
 	}
 	if !hasTransformation(report, "OBJE_RECORD_TO_INLINE") {
 		t.Errorf("no OBJE_RECORD_TO_INLINE transformation: %+v", report.Transformations)
+	}
+	// The BIRT link holds the file's TITL, so it is not lost.
+	if hasDropped(report, "MediaObject @O1@ > FILE > TITL") {
+		t.Errorf("file TITL reported lost though a link holds it: %+v", report.Dropped)
+	}
+	// 5.5 has no FORM.TYPE, so the record's MEDI is lost, not renamed first.
+	for _, n := range report.Normalized {
+		if strings.HasPrefix(n.Path, "MediaObject @O1@ > FILE > FORM") {
+			t.Errorf("record MEDI reported as translated before it is dropped: %+v", n)
+		}
+	}
+}
+
+// TestDowngrade70To55ReportsOverriddenFileTitle: when every pointer carries
+// its own TITL, no inline link holds the file's TITL, so it is reported lost.
+func TestDowngrade70To55ReportsOverriddenFileTitle(t *testing.T) {
+	const doc70 = `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 OBJE @O1@
+2 TITL Pointer title
+0 @O1@ OBJE
+1 FILE a.jpg
+2 FORM image/jpeg
+2 TITL File title
+0 TRLR
+`
+	_, report, out := convertText(t, doc70, gedcom.Version55)
+	if strings.Contains(out, "File title") {
+		t.Fatalf("output keeps the file TITL:\n%s", out)
+	}
+	if !hasDropped(report, "MediaObject @O1@ > FILE > TITL") {
+		t.Errorf("no Dropped note for the overridden file TITL: %+v", report.Dropped)
+	}
+	if !hasDataLoss(report, "OBJE record structures", "@O1@") {
+		t.Errorf("DataLoss = %+v", report.DataLoss)
+	}
+}
+
+// TestDowngrade70To55KeepsOversizedMediaRecord: a record whose inline links
+// would copy more than maxInlineMediaTags tags (pointers * files) is kept as
+// it is and reported, while a small record after it is still demoted.
+func TestDowngrade70To55KeepsOversizedMediaRecord(t *testing.T) {
+	const files, pointers = 1025, 400 // 400 * 1025 * 3 tags > maxInlineMediaTags
+	var b strings.Builder
+	b.WriteString("0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n")
+	for range pointers {
+		b.WriteString("1 OBJE @O1@\n")
+	}
+	b.WriteString("1 OBJE @O2@\n0 @O1@ OBJE\n")
+	for range files {
+		b.WriteString("1 FILE a.jpg\n2 FORM image/jpeg\n")
+	}
+	b.WriteString("0 @O2@ OBJE\n1 FILE b.jpg\n2 FORM image/jpeg\n0 TRLR\n")
+
+	converted, report, out := convertText(t, b.String(), gedcom.Version55)
+	if converted.XRefMap["@O1@"] == nil || !strings.Contains(out, "1 OBJE @O1@\n") {
+		t.Fatal("oversized record @O1@ was demoted")
+	}
+	if converted.XRefMap["@O2@"] != nil || !strings.Contains(out, "1 OBJE\n2 FORM image/jpeg\n2 FILE b.jpg\n") {
+		t.Errorf("small record @O2@ was not demoted")
+	}
+	if !hasDataLoss(report, "Oversized OBJE records", "@O1@") || hasDataLoss(report, "Oversized OBJE records", "@O2@") {
+		t.Errorf("DataLoss = %+v", report.DataLoss)
+	}
+	found := false
+	for _, n := range report.Preserved {
+		found = found || n.Path == "MediaObject @O1@"
+	}
+	if !found {
+		t.Errorf("no Preserved note for @O1@: %+v", report.Preserved)
+	}
+}
+
+// TestDowngrade70To55KeepsMediaRecordWithTypedPointer: a record with no
+// Tags is written from its entity, whose pointer the demotion cannot
+// rewrite, so the OBJE record it points to is kept rather than left dangling.
+func TestDowngrade70To55KeepsMediaRecordWithTypedPointer(t *testing.T) {
+	doc, err := decoder.Decode(strings.NewReader(`0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 OBJE @O1@
+0 @O1@ OBJE
+1 FILE a.jpg
+2 FORM image/jpeg
+0 @O2@ OBJE
+1 FILE b.jpg
+2 FORM image/jpeg
+0 TRLR
+`))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	built := &gedcom.Record{XRef: "@I2@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{
+		XRef: "@I2@", Media: []*gedcom.MediaLink{{MediaXRef: "@O2@"}},
+	}}
+	doc.Records = append(doc.Records, built)
+	doc.XRefMap["@I2@"] = built
+
+	converted, report, err := Convert(doc, gedcom.Version55)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, converted); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	out := buf.String()
+	if converted.XRefMap["@O2@"] == nil || !strings.Contains(out, "0 @O2@ OBJE\n") || !strings.Contains(out, "1 OBJE @O2@\n") {
+		t.Errorf("record @O2@ that a built record points to was not kept:\n%s", out)
+	}
+	if converted.XRefMap["@O1@"] != nil || strings.Contains(out, "0 @O1@ OBJE") {
+		t.Errorf("record @O1@ was not demoted:\n%s", out)
+	}
+	if !hasDataLoss(report, "OBJE records with typed pointers", "@O2@") || hasDataLoss(report, "OBJE records with typed pointers", "@O1@") {
+		t.Errorf("DataLoss = %+v", report.DataLoss)
 	}
 }
 

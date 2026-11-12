@@ -194,11 +194,14 @@ func xrefsInUse(doc *gedcom.Document) map[string]bool {
 // link:
 //
 //	1 OBJE @O1@                1 OBJE
-//	2 TITL Portrait      ->    2 FORM jpg
+//	2 TITL Portrait      ->    2 FORM image/jpeg
 //	0 @O1@ OBJE                2 TITL Portrait
 //	1 FILE photo.jpg           2 FILE photo.jpg
 //	2 FORM image/jpeg          2 NOTE A note
 //	1 NOTE A note
+//
+// (The FORM keeps its Tags value; transformMediaTypes translates only the
+// typed field, #777.)
 //
 // Every pointer to the record becomes one inline link per FILE, holding that
 // file's FORM, TITL (the pointer's own TITL in preference) and the record's
@@ -207,7 +210,9 @@ func xrefsInUse(doc *gedcom.Document) map[string]bool {
 // other structures (REFN, RIN, CHAN, extensions) and a FILE's other
 // substructures (FORM.MEDI, TRAN) -- is reported as Dropped and DataLoss, and
 // so is a record no structure points to, whose files have nowhere to go. A
-// record with no FILE, or no Tags, is left alone.
+// record with no FILE, or no Tags, is left alone, and so is one a record
+// with no Tags points to (written from its entity, whose pointer would
+// dangle) or whose links would take the copies past maxInlineMediaTags.
 //
 // It runs after dropForeignStructures, which keeps the record's FILE for it
 // (foreign70To55.exempt) and has already removed the 7.0-only parts of the
@@ -224,6 +229,11 @@ func demoteMediaRecords(doc *gedcom.Document, report *gedcom.ConversionReport) {
 	if len(records) == 0 {
 		return
 	}
+	keepTypedPointerMediaRecords(doc, records, report)
+	keepOversizedMediaRecords(doc, records, report)
+	if len(records) == 0 {
+		return
+	}
 	linked, links := inlineMediaPointers(doc, records, report)
 	removeDemotedMediaRecords(doc, records, linked, report)
 	report.AddTransformation(gedcom.Transformation{
@@ -231,6 +241,96 @@ func demoteMediaRecords(doc *gedcom.Document, report *gedcom.ConversionReport) {
 		Description: "Converted OBJE record pointers to inline multimedia links",
 		Count:       links,
 	})
+}
+
+// keepTypedPointerMediaRecords removes from records each record a record
+// with no Tags points to: that record is written from its entity, which
+// inlineMediaPointers does not rewrite, so removing the target would leave
+// its pointer dangling. Each kept record is a Preserved note and `OBJE records
+// with typed pointers` data loss, since its FILE is not valid 5.5.
+func keepTypedPointerMediaRecords(doc *gedcom.Document, records map[string]*mediaRecordParts, report *gedcom.ConversionReport) {
+	keep := map[string]bool{}
+	for _, record := range doc.Records {
+		if record != nil && len(record.Tags) == 0 {
+			gedcom.Visit(record, func(xref string) {
+				if records[xref] != nil {
+					keep[xref] = true
+				}
+			})
+		}
+	}
+	const reason = "A record with no Tags points to this OBJE record, so it and its FILE are kept, which is not valid GEDCOM 5.5"
+	keepMediaRecords(doc, records, keep, "OBJE records with typed pointers", reason, report)
+}
+
+// keepMediaRecords removes the records in keep from records, in document
+// order, reporting each as a Preserved note and all as one data loss item.
+func keepMediaRecords(doc *gedcom.Document, records map[string]*mediaRecordParts, keep map[string]bool, feature, reason string, report *gedcom.ConversionReport) {
+	var kept []string
+	for _, record := range doc.Records {
+		if record == nil || records[record.XRef] == nil || !keep[record.XRef] {
+			continue
+		}
+		delete(records, record.XRef)
+		kept = append(kept, record.XRef)
+		report.AddPreserved(gedcom.ConversionNote{
+			Path:     BuildRecordPath(string(record.Type), record.XRef),
+			Original: "OBJE",
+			Result:   "OBJE",
+			Reason:   reason,
+		})
+	}
+	if len(kept) > 0 {
+		report.AddDataLoss(gedcom.DataLossItem{Feature: feature, Reason: reason, AffectedRecords: kept})
+	}
+}
+
+// maxInlineMediaTags caps the tags demoteMediaRecords copies into inline
+// links across a document. Each pointer gets a link per FILE, each with the
+// record's NOTEs, so a hostile file can ask for pointers * files * notes tags
+// from a few lines of each; a real one copies a few per pointer. Past the
+// cap a record is kept as it is rather than demoted (in the spirit of ADR
+// 0009's bounded work).
+const maxInlineMediaTags = 1 << 20
+
+// keepOversizedMediaRecords removes from records, in document order, each
+// record whose inline links would take the copies past maxInlineMediaTags,
+// leaving it and its pointers in place. Each is a Preserved note and
+// `Oversized OBJE records` data loss, since its FILE is not valid 5.5.
+func keepOversizedMediaRecords(doc *gedcom.Document, records map[string]*mediaRecordParts, report *gedcom.ConversionReport) {
+	cost := map[string]int{}
+	for _, record := range doc.Records {
+		if record == nil || records[record.XRef] != nil {
+			continue
+		}
+		for i, tag := range record.Tags {
+			if tag == nil || tag.Tag != "OBJE" || tag.Level < 1 {
+				continue
+			}
+			xref := strings.TrimSpace(tag.Value)
+			if parts := records[xref]; parts != nil {
+				// An upper bound: the pointer's subordinates are copied at
+				// most once per file.
+				pointerSubs := blockEnd(record.Tags, i) - i - 1
+				cost[xref] = min(cost[xref]+parts.linkTags()+len(parts.files)*pointerSubs, maxInlineMediaTags+1)
+			}
+		}
+	}
+
+	keep := map[string]bool{}
+	total := 0
+	for _, record := range doc.Records {
+		if record == nil || records[record.XRef] == nil {
+			continue
+		}
+		if total+cost[record.XRef] <= maxInlineMediaTags {
+			total += cost[record.XRef]
+		} else {
+			keep[record.XRef] = true
+		}
+	}
+	const reason = "Its inline links would exceed the conversion's size bound; the OBJE record and its FILE are kept, which is not valid GEDCOM 5.5"
+	keepMediaRecords(doc, records, keep, "Oversized OBJE records", reason, report)
 }
 
 // inlineMediaPointers replaces each pointer to one of records with its inline
@@ -291,14 +391,20 @@ func removeDemotedMediaRecords(doc *gedcom.Document, records map[string]*mediaRe
 			})
 			continue
 		}
-		for _, p := range records[record.XRef].lost {
+		parts := records[record.XRef]
+		for _, f := range parts.files {
+			if len(f.title) > 0 && !f.titleUsed {
+				parts.lost = append(parts.lost, []string{"FILE", "TITL"})
+			}
+		}
+		for _, p := range parts.lost {
 			report.AddDropped(gedcom.ConversionNote{
 				Path:     BuildNestedPath(string(record.Type), record.XRef, p...),
 				Original: p[len(p)-1],
 				Reason:   reason,
 			})
 		}
-		if len(records[record.XRef].lost) > 0 {
+		if len(parts.lost) > 0 {
 			lost = append(lost, record.XRef)
 		}
 	}
@@ -321,9 +427,21 @@ type mediaRecordParts struct {
 }
 
 // mediaFileParts is one FILE of the record: the FILE (with what stays under
-// it, at level 2), and its FORM and TITL blocks, each at level 2.
+// it, at level 2), and its FORM and TITL blocks, each at level 2. titleUsed
+// says some link holds the TITL; every pointer with its own TITL replaces it.
 type mediaFileParts struct {
 	file, form, title []*gedcom.Tag
+	titleUsed         bool
+}
+
+// linkTags is the number of tags the record's inline links for one pointer
+// copy, less the pointer's own subordinates.
+func (parts *mediaRecordParts) linkTags() int {
+	n := 0
+	for _, f := range parts.files {
+		n += 1 + len(f.form) + len(f.title) + len(f.file) + len(parts.notes)
+	}
+	return n
 }
 
 // splitMediaRecord sorts an OBJE record's tags into mediaRecordParts, or
@@ -416,6 +534,7 @@ func (parts *mediaRecordParts) inlineLinks(level int, pointerSubs []*gedcom.Tag)
 			out = append(out, shiftLevels(title, 0)...)
 		} else {
 			out = append(out, shiftLevels(f.title, level-1)...)
+			parts.files[n].titleUsed = true
 		}
 		out = append(out, shiftLevels(f.file, level)...)
 		out = append(out, shiftLevels(parts.notes, level)...)
