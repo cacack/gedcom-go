@@ -32,7 +32,13 @@ package gedcom
 //     names, associations, events, attributes and media objects: MIME and
 //     LANG beneath DATA.TEXT (SourceText.MIME, SourceText.Language), PHRASE
 //     beneath EVEN and its ROLE (SourceCitationEvent.Phrase, RolePhrase),
-//     and CROP on the citation's media links
+//     TIME and PHRASE beneath DATA.DATE (SourceCitationData.Time,
+//     DatePhrase), and CROP on the citation's media links
+//   - EXID beneath a PLAC (PlaceDetail.ExternalIDs)
+//   - MIME, LANG and TRAN beneath an individual's inline NOTE
+//     (Individual.InlineNoteDetails)
+//   - repeated name pieces (PersonalName.AdditionalGiven and its siblings),
+//     since 5.5.1 allows one of each
 //
 // Note that INT (interpreted) dates and non-Gregorian calendar dates are NOT
 // treated as 7.0-only, because both are valid in GEDCOM 5.5.1. Nor are UIDs:
@@ -121,7 +127,8 @@ func individualRequiresGEDCOM7(i *Individual) bool {
 		return true
 	}
 	if namesRequireGEDCOM7(i.Names) || pedigreePhraseRequiresGEDCOM7(i.ChildInFamilies) ||
-		individualAssociationsRequireGEDCOM7(i.Associations) || ldsOrdinancesRequireGEDCOM7(i.LDSOrdinances) {
+		individualAssociationsRequireGEDCOM7(i.Associations) || ldsOrdinancesRequireGEDCOM7(i.LDSOrdinances) ||
+		inlineNoteDetailsRequireGEDCOM7(i.InlineNoteDetails) {
 		return true
 	}
 	for _, ev := range i.Events {
@@ -137,12 +144,39 @@ func individualRequiresGEDCOM7(i *Individual) bool {
 	return false
 }
 
-// namesRequireGEDCOM7 reports whether any name carries a TRAN or a TYPE
-// PHRASE, both 7.0-only, or a citation needing 7.0.
+// namesRequireGEDCOM7 reports whether any name carries a TRAN, a TYPE
+// PHRASE, a repeated name piece or a 7.0-only citation substructure.
 func namesRequireGEDCOM7(names []*PersonalName) bool {
 	for _, n := range names {
-		if n != nil && (len(n.Transliterations) > 0 || n.TypePhrase != "" ||
-			citationsRequireGEDCOM7(n.SourceCitations)) {
+		if n == nil {
+			continue
+		}
+		if len(n.Transliterations) > 0 || n.TypePhrase != "" || namePiecesRepeat(n) ||
+			citationsRequireGEDCOM7(n.SourceCitations) {
+			return true
+		}
+	}
+	return false
+}
+
+// namePiecesRepeat reports whether any name piece has a second value, which
+// 7.0 allows ({0:M}) and 5.5.1 does not ({0:1}).
+func namePiecesRepeat(n *PersonalName) bool {
+	return len(n.AdditionalGiven) > 0 || len(n.AdditionalSurnames) > 0 ||
+		len(n.AdditionalPrefixes) > 0 || len(n.AdditionalSuffixes) > 0 ||
+		len(n.AdditionalNicknames) > 0 || len(n.AdditionalSurnamePrefixes) > 0
+}
+
+// placeRequiresGEDCOM7 reports whether a place carries an EXID, 7.0-only.
+func placeRequiresGEDCOM7(p *PlaceDetail) bool {
+	return p != nil && len(p.ExternalIDs) > 0
+}
+
+// inlineNoteDetailsRequireGEDCOM7 reports whether any inline note carries a
+// MIME, LANG or TRAN, all 7.0-only.
+func inlineNoteDetailsRequireGEDCOM7(details []*InlineNoteDetail) bool {
+	for _, d := range details {
+		if d != nil && (d.MIME != "" || d.Language != "" || len(d.Translations) > 0) {
 			return true
 		}
 	}
@@ -214,7 +248,8 @@ func eventRequiresGEDCOM7(ev *Event) bool {
 	// NO (negative assertion) and SDATE (sort date) are 7.0-only. UIDs are
 	// not: see individualRequiresGEDCOM7.
 	if ev.IsNegative || ev.SortDate != "" ||
-		ev.AgePhrase != "" || ev.SortDatePhrase != "" || ev.AdoptedByPhrase != "" || ev.ParsedDate.PhraseSubstructure(ev.Date) != "" {
+		ev.AgePhrase != "" || ev.SortDatePhrase != "" || ev.AdoptedByPhrase != "" || ev.ParsedDate.PhraseSubstructure(ev.Date) != "" ||
+		placeRequiresGEDCOM7(ev.PlaceDetail) {
 		return true
 	}
 	// An ASSO on an event is 7.0-only by position: 5.5 and 5.5.1 define
@@ -238,7 +273,8 @@ func attributeRequiresGEDCOM7(at *Attribute) bool {
 		return false
 	}
 	if at.SortDate != "" || at.SortDatePhrase != "" || at.AgePhrase != "" ||
-		at.ParsedDate.PhraseSubstructure(at.Date) != "" {
+		at.ParsedDate.PhraseSubstructure(at.Date) != "" ||
+		placeRequiresGEDCOM7(at.PlaceDetail) {
 		return true
 	}
 	// As on an event, an ASSO under an attribute has no 5.5.1 position.
@@ -303,13 +339,13 @@ func sourceTextRequiresGEDCOM7(s *Source) bool {
 }
 
 // sourceDataRequiresGEDCOM7 reports whether any DATA.EVEN.DATE carries a
-// PHRASE, a GEDCOM 7.0-only substructure.
+// PHRASE or any DATA.EVEN.PLAC an EXID, both GEDCOM 7.0-only substructures.
 func sourceDataRequiresGEDCOM7(d *SourceData) bool {
 	if d == nil {
 		return false
 	}
 	for _, ev := range d.Events {
-		if ev != nil && ev.DatePhrase != "" {
+		if ev != nil && (ev.DatePhrase != "" || placeRequiresGEDCOM7(ev.PlaceDetail)) {
 			return true
 		}
 	}
@@ -317,9 +353,9 @@ func sourceDataRequiresGEDCOM7(d *SourceData) bool {
 }
 
 // citationsRequireGEDCOM7 reports whether any source citation carries a
-// GEDCOM 7.0-only substructure: MIME or LANG beneath a DATA.TEXT, PHRASE
-// beneath EVEN or its ROLE, or CROP on a media link. The citation's DATA.DATE
-// is a plain string with no typed PHRASE, so it is not inspected.
+// GEDCOM 7.0-only substructure: MIME or LANG beneath a DATA.TEXT, TIME or
+// PHRASE beneath DATA.DATE, PHRASE beneath EVEN or its ROLE, or CROP on a
+// media link.
 func citationsRequireGEDCOM7(cits []*SourceCitation) bool {
 	for _, c := range cits {
 		if c == nil {
@@ -333,6 +369,9 @@ func citationsRequireGEDCOM7(cits []*SourceCitation) bool {
 		}
 		if c.Data == nil {
 			continue
+		}
+		if c.Data.Time != "" || c.Data.DatePhrase != "" {
+			return true
 		}
 		for _, t := range c.Data.Text {
 			if t != nil && (t.MIME != "" || t.Language != "") {

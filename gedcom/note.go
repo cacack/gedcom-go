@@ -44,6 +44,9 @@ type Note struct {
 // the MIME type and language of the text and its translations. It mirrors
 // the same fields of SharedNote. Citations beneath an inline note are not
 // typed; they stay in Record.Tags (ADR 0003).
+//
+// Only Individual carries it (Individual.InlineNoteDetails) so far; the same
+// substructures beneath any other owner's inline note stay in Record.Tags.
 type InlineNoteDetail struct {
 	// MIME is the media type of the note text (NOTE.MIME), e.g. "text/html".
 	MIME string
