@@ -45,6 +45,6 @@ func TestInlineSourceCitationEntityRoundTrip(t *testing.T) {
 func TestSourceCitationPointerWinsOverInlineText(t *testing.T) {
 	tags := sourceCitationToTags(&gedcom.SourceCitation{SourceXRef: "@S1@", InlineText: "ignored"}, 1, DefaultOptions())
 	if len(tags) != 1 || tags[0].Tag != "SOUR" || tags[0].Value != "@S1@" {
-		t.Errorf("tags = %+v, want one SOUR @S1@", tags[0])
+		t.Errorf("tags = %+v, want one SOUR @S1@", tags)
 	}
 }
