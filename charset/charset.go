@@ -143,10 +143,13 @@ type ReaderOptions struct {
 	// names no code page of its own: it is whatever Windows code page the
 	// producing system used, Windows-1252 in Western Europe and the Americas
 	// but Windows-1250 in Central Europe. EncodingUnknown, the zero value,
-	// decodes it as Windows-1252 (EncodingLATIN1). Any other value is used
-	// as [NewReaderWithEncoding] would use it, typically EncodingLATIN1 or
-	// EncodingWindows1250. It does not affect any other CHAR value, nor
-	// LATIN1, ISO-8859-1 or WINDOWS-1252, which name their code page.
+	// decodes it as Windows-1252 (EncodingLATIN1). A single-byte code page
+	// is used as [NewReaderWithEncoding] would use it: EncodingLATIN1,
+	// EncodingWindows1250, EncodingCP437, EncodingCP850 or EncodingMacRoman.
+	// Any other value, such as EncodingUTF8 or EncodingUTF16LE, names no
+	// code page and is treated as EncodingUnknown. It does not affect any
+	// other CHAR value, nor LATIN1, ISO-8859-1 or WINDOWS-1252, which name
+	// their code page.
 	ANSI Encoding
 
 	// OnAmbiguousANSI, when non-nil and ANSI is EncodingUnknown, is called
@@ -154,8 +157,9 @@ type ReaderOptions struct {
 	// differs from its Windows-1250 one, such as 0xE8 ("è" or "č"), and
 	// at most once per input. Decoding is unchanged: the byte is still read
 	// as Windows-1252. The report says that the file's letters may be wrong
-	// and that ANSI can name the code page. It is not called when ANSI is
-	// set, or for input whose bytes read the same in both code pages.
+	// and that ANSI can name the code page. It is not called when ANSI names
+	// a code page, or for input whose bytes read the same in both code
+	// pages.
 	OnAmbiguousANSI func(*AmbiguousANSI)
 }
 
@@ -215,13 +219,23 @@ func NewReaderWithOptions(r io.Reader, opts ReaderOptions) io.Reader {
 	enc := charValues[value]
 	if value == "ANSI" {
 		switch {
-		case opts.ANSI != EncodingUnknown:
+		case isANSICodePage(opts.ANSI):
 			enc = opts.ANSI
 		case opts.OnAmbiguousANSI != nil:
 			headerReader = &ansiScanner{reader: headerReader, cursor: newCursor(), report: opts.OnAmbiguousANSI}
 		}
 	}
 	return newReaderWithEncoding(headerReader, enc, opts)
+}
+
+// isANSICodePage reports whether enc is a single-byte code page that
+// [ReaderOptions.ANSI] can name.
+func isANSICodePage(enc Encoding) bool {
+	switch enc {
+	case EncodingLATIN1, EncodingWindows1250, EncodingCP437, EncodingCP850, EncodingMacRoman:
+		return true
+	}
+	return false
 }
 
 // ansiScanner passes CHAR ANSI input through unchanged, reporting the first

@@ -4,6 +4,7 @@ import (
 	"io"
 	"strings"
 	"testing"
+	"testing/iotest"
 )
 
 // ansiInput is a CHAR ANSI header followed by body, every line LF-terminated.
@@ -35,6 +36,13 @@ func TestReaderOptions_ANSI(t *testing.T) {
 		{"ANSI named Windows-1252", "ANSI", EncodingLATIN1, "1 NAME Janè Èaæ ðuro /Logariè/\n"},
 		{"ANSI named Windows-1250", "ANSI", EncodingWindows1250, "1 NAME Janč Čać đuro /Logarič/\n"},
 		{"lower-case ansi named Windows-1250", "ansi", EncodingWindows1250, "1 NAME Janč Čać đuro /Logarič/\n"},
+		{"ANSI named CP850", "ANSI", EncodingCP850, "1 NAME JanÞ ╚aµ \u00aduro /LogariÞ/\n"},
+		// Values naming no single-byte code page fall back to the default
+		// rather than validating the bytes as UTF-8 or UTF-16.
+		{"ANSI named UTF-8 is Windows-1252", "ANSI", EncodingUTF8, "1 NAME Janè Èaæ ðuro /Logariè/\n"},
+		{"ANSI named UTF-16LE is Windows-1252", "ANSI", EncodingUTF16LE, "1 NAME Janè Èaæ ðuro /Logariè/\n"},
+		{"ANSI named ANSEL is Windows-1252", "ANSI", EncodingANSEL, "1 NAME Janè Èaæ ðuro /Logariè/\n"},
+		{"ANSI out of range is Windows-1252", "ANSI", Encoding(255), "1 NAME Janè Èaæ ðuro /Logariè/\n"},
 		// The option is for ANSI alone: these values name their code page.
 		{"WINDOWS-1252 ignores ANSI", "WINDOWS-1252", EncodingWindows1250, "1 NAME Janè Èaæ ðuro /Logariè/\n"},
 		{"LATIN1 ignores ANSI", "LATIN1", EncodingWindows1250, "1 NAME Janè Èaæ ðuro /Logariè/\n"},
@@ -67,6 +75,25 @@ func TestReaderOptions_OnAmbiguousANSI(t *testing.T) {
 	}
 	if wantOut := ansiInput("ANSI", "1 NAME René šž\r\n1 NOTE ok\r\n1 NOTE Logariè È\n"); out != wantOut {
 		t.Errorf("decoded %q, want %q", out, wantOut)
+	}
+}
+
+// TestReaderOptions_OnAmbiguousANSI_OneByteReads checks that the reported
+// position survives reads that split the input, including a CRLF split
+// between two reads, and that a value naming no code page still reports.
+func TestReaderOptions_OnAmbiguousANSI_OneByteReads(t *testing.T) {
+	input := ansiInput("ANSI", "1 NAME Ren\xE9\r\n1 NOTE ok\r\n1 NOTE Logari\xE8\n")
+	var got []AmbiguousANSI
+	r := NewReaderWithOptions(iotest.OneByteReader(strings.NewReader(input)), ReaderOptions{
+		ANSI:            EncodingUTF8,
+		OnAmbiguousANSI: func(a *AmbiguousANSI) { got = append(got, *a) },
+	})
+	if _, err := io.ReadAll(r); err != nil {
+		t.Fatalf("ReadAll() error = %v", err)
+	}
+	want := AmbiguousANSI{Line: 6, Column: 14, Byte: 0xE8, Windows1252: 'è', Windows1250: 'č'}
+	if len(got) != 1 || got[0] != want {
+		t.Fatalf("reports = %+v, want exactly [%+v]", got, want)
 	}
 }
 

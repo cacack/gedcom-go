@@ -110,7 +110,8 @@ type DecodeOptions struct {
 	// Windows-1252 and, in lenient mode, emits one CodeAmbiguousCodePage
 	// warning at the first byte that would read differently as Windows-1250;
 	// setting charset.EncodingLATIN1 reads it as Windows-1252 without that
-	// warning. See [charset.ReaderOptions.ANSI] for the values accepted. No
+	// warning. See [charset.ReaderOptions.ANSI] for the code pages accepted; any
+	// other value is treated as the zero value. No
 	// other CHAR value is affected.
 	ANSIEncoding charset.Encoding
 }
