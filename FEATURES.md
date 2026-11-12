@@ -369,7 +369,7 @@ beside it, and written back beneath that value
 | `ASSO` | `Association.Phrase` |
 | `ASSO.ROLE` | `Association.RolePhrase` |
 | `ADOP.FAMC.ADOP` | `Event.AdoptedByPhrase` |
-| Event `AGE` | `Event.AgePhrase` |
+| Event `AGE` | `Event.AgePhrase` (an empty `AGE` with a `PHRASE` is a phrase-only age, with `Age` empty; the encoder writes it as an empty `AGE` for 7.0 output only) |
 | Event/attribute `SDATE` | `Event.SortDatePhrase`, `Attribute.SortDatePhrase` |
 | `FAM.HUSB`, `FAM.WIFE` | `Family.HusbandPhrase`, `Family.WifePhrase` |
 | `FILE.FORM.MEDI` | `MediaFile.MediaPhrase` |

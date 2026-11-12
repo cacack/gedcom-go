@@ -142,7 +142,9 @@ type Event struct {
 	Age string
 
 	// AgePhrase is the PHRASE under AGE (GEDCOM 7.0), the age in prose.
-	// Written only beneath an Age.
+	// Written beneath its AGE line. With Age empty it is a phrase-only age,
+	// which 7.0 allows: 7.0 output writes an empty AGE line to carry it, and
+	// 5.x output, where AGE requires a value, writes neither.
 	AgePhrase string
 
 	// Agency is the responsible agency (AGNC subordinate)

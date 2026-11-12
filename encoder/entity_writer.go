@@ -76,6 +76,19 @@ func appendPhrase(tags []*gedcom.Tag, phrase string, level int, opts *EncodeOpti
 	return append(tags, &gedcom.Tag{Level: level, Tag: "PHRASE", Value: opts.text(phrase)})
 }
 
+// ageToTags writes an AGE line at level with its GEDCOM 7.0 PHRASE beneath.
+// A phrase-only age (GEDCOM 7.0 allows an empty AGE payload qualified only by
+// a PHRASE) writes an AGE with an empty value so the PHRASE has a line to
+// qualify, for 7.0 output only: 5.x output writes no empty AGE line, as
+// dateToTags writes no empty DATE line there.
+func ageToTags(age, phrase string, level int, opts *EncodeOptions) []*gedcom.Tag {
+	if age == "" && (phrase == "" || !opts.is70()) {
+		return nil
+	}
+	tags := []*gedcom.Tag{{Level: level, Tag: "AGE", Value: opts.text(age)}}
+	return appendPhrase(tags, phrase, level+1, opts)
+}
+
 // dateToTags writes a DATE line at level with its GEDCOM 7.0 PHRASE beneath.
 // The PHRASE comes from parsed.PhraseSubstructure and is written for 7.0
 // output only; 5.x output drops it rather than folding it into the value, as
@@ -941,10 +954,7 @@ func eventDetailToTags(d *eventDetail, level int, opts *EncodeOptions) []*gedcom
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "CAUS", Value: opts.text(d.cause)})
 	}
 
-	if d.age != "" {
-		tags = append(tags, &gedcom.Tag{Level: level, Tag: "AGE", Value: opts.text(d.age)})
-		tags = appendPhrase(tags, d.agePhrase, level+1, opts)
-	}
+	tags = append(tags, ageToTags(d.age, d.agePhrase, level, opts)...)
 
 	if d.agency != "" {
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "AGNC", Value: opts.text(d.agency)})
