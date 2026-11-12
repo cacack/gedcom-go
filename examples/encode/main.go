@@ -18,38 +18,28 @@ func main() {
 	doc.Header.SourceSystem = "go-gedcom example"
 	doc.Header.Language = "English"
 
+	// Records carry only typed Entities; the encoder builds their tags from
+	// the typed fields (set Record.Tags only for structures the model lacks).
 	records := []*gedcom.Record{
 		// Individual record
 		{
 			XRef: "@I1@",
 			Type: gedcom.RecordTypeIndividual,
-			Tags: []*gedcom.Tag{
-				{Level: 1, Tag: "NAME", Value: "John /Doe/"},
-				{Level: 2, Tag: "GIVN", Value: "John"},
-				{Level: 2, Tag: "SURN", Value: "Doe"},
-				{Level: 1, Tag: "SEX", Value: "M"},
-				{Level: 1, Tag: "BIRT"},
-				{Level: 2, Tag: "DATE", Value: "1 JAN 1900"},
-				{Level: 2, Tag: "PLAC", Value: "New York, USA"},
-			},
 			Entity: &gedcom.Individual{
 				XRef: "@I1@",
 				Names: []*gedcom.PersonalName{
 					{Full: "John /Doe/", Given: "John", Surname: "Doe"},
 				},
 				Sex: "M",
+				Events: []*gedcom.Event{
+					{Type: gedcom.EventBirth, Date: "1 JAN 1900", PlaceDetail: &gedcom.PlaceDetail{Name: "New York, USA"}},
+				},
 			},
 		},
 		// Another individual
 		{
 			XRef: "@I2@",
 			Type: gedcom.RecordTypeIndividual,
-			Tags: []*gedcom.Tag{
-				{Level: 1, Tag: "NAME", Value: "Jane /Smith/"},
-				{Level: 2, Tag: "GIVN", Value: "Jane"},
-				{Level: 2, Tag: "SURN", Value: "Smith"},
-				{Level: 1, Tag: "SEX", Value: "F"},
-			},
 			Entity: &gedcom.Individual{
 				XRef: "@I2@",
 				Names: []*gedcom.PersonalName{
@@ -62,17 +52,13 @@ func main() {
 		{
 			XRef: "@F1@",
 			Type: gedcom.RecordTypeFamily,
-			Tags: []*gedcom.Tag{
-				{Level: 1, Tag: "HUSB", Value: "@I1@"},
-				{Level: 1, Tag: "WIFE", Value: "@I2@"},
-				{Level: 1, Tag: "MARR"},
-				{Level: 2, Tag: "DATE", Value: "15 JUN 1925"},
-				{Level: 2, Tag: "PLAC", Value: "Boston, Massachusetts, USA"},
-			},
 			Entity: &gedcom.Family{
 				XRef:    "@F1@",
 				Husband: "@I1@",
 				Wife:    "@I2@",
+				Events: []*gedcom.Event{
+					{Type: gedcom.EventMarriage, Date: "15 JUN 1925", PlaceDetail: &gedcom.PlaceDetail{Name: "Boston, Massachusetts, USA"}},
+				},
 			},
 		},
 	}
