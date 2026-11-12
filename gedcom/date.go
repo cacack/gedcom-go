@@ -234,6 +234,9 @@ var frenchMonthNames = map[string]int{
 func ParseDate(s string) (*Date, error) {
 	date, err := parseDate(s)
 	if err != nil {
+		// "Empty" is a property of the whole input, decided here rather than
+		// at the error site: an empty component inside a non-blank date
+		// ("ABT", "BC") is an invalid date, not an empty one.
 		if strings.TrimSpace(s) == "" {
 			return nil, errmark.Mark(ErrEmptyDate, err)
 		}

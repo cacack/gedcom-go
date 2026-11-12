@@ -49,6 +49,9 @@ const (
 // ErrInvalidUTF8Sequence is matched, with errors.Is, by every
 // *InvalidUTF8Error. Use errors.As with *InvalidUTF8Error to recover the
 // offending byte and its position.
+//
+// It is distinct from encoder.ErrInvalidUTF8, which the encoder returns for a
+// document value that is not valid UTF-8; neither matches the other.
 var ErrInvalidUTF8Sequence = errors.New("invalid UTF-8 sequence")
 
 // ErrInvalidUTF8 is the former name of InvalidUTF8Error.

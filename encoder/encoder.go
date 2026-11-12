@@ -61,7 +61,9 @@ var ErrMalformedLine = errors.New("level, tag name or record identifier the deco
 // (see [gedcom.EncodingUTF8]), so such bytes would make the output a file the
 // decoder rejects. Convert strings taken from a legacy source to UTF-8 before
 // encoding, or replace the bad bytes with [strings.ToValidUTF8]. The error
-// names the record (or HEAD) and the line it was found on.
+// names the record (or HEAD) and the line it was found on. It is distinct
+// from charset.ErrInvalidUTF8Sequence, which reports invalid input bytes while
+// decoding; neither matches the other.
 var ErrInvalidUTF8 = errors.New("value is not valid UTF-8")
 
 // maxLevel is the deepest level the parser accepts (parser.MaxNestingDepth-1).
