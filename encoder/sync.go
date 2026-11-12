@@ -41,10 +41,10 @@ var ErrSyncBaseline = errors.New("raw tags do not read back as the same records"
 //
 // Afterwards the Tags read back as the typed fields, which is why SyncTags
 // can add lines beyond the edit itself. The decoder fills some fields from
-// another line, such as PersonalName.Given and Surname from the NAME value
-// when there is no GIVN or SURN; editing Full alone leaves those holding the
-// old name, and SyncTags then writes them as GIVN and SURN so the record still
-// reads back with them. Edit such fields together.
+// another line, such as PersonalName.Given, Surname and Suffix from the NAME
+// value when there is no GIVN, SURN or NSFX; editing Full alone leaves those
+// holding the old name, and SyncTags then writes them as GIVN, SURN and NSFX
+// so the record still reads back with them. Edit such fields together.
 //
 // The header's typed fields are those a hand-built header is written from:
 // SourceSystem, Date, Submitter, Language, Version and whether Encoding is set.

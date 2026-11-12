@@ -895,7 +895,7 @@ structure as `[]string` fields named `Phone`, `Email`, `Fax` and `Website`:
 
 ## Name Structure
 
-- Full name with surname delimiters (`/surname/`)
+- Full name with surname delimiters (`/surname/`): `Given /Surname/ Suffix` fills `Given`, `Surname` and `Suffix` when `GIVN`, `SURN` or `NSFX` is absent; with more than two slashes the last pair delimits the surname
 - GIVN - Given name
 - SURN - Surname
 - NPFX - Name prefix (Dr., Rev.)
