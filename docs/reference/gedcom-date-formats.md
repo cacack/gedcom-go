@@ -251,13 +251,13 @@ Gregorian_Date = Base_Date + (year - 1) × 365 + leap_days + month_offset + (day
 
 Where:
   month_offset = (month - 1) × 30
-  leap_days = number of leap years since An I
+  leap_days = number of sextile (leap) years before this one
 ```
 
-**Leap Years in Republican Calendar**:
-- Original rule: Years divisible by 4 (like Gregorian)
-- Complex later modifications never fully standardized
-- Most tools use Romme's rule: years divisible by 4, except century years not divisible by 400
+**Sextile (Leap) Years in Republican Calendar**:
+- As used (An I–XIV): each year began on the day of the autumnal equinox in Paris, which made An III, VII and XI the sextile years (6 complementary days)
+- Romme's proposed arithmetic rule (years divisible by 4, except century years not divisible by 400) was never adopted; it is the usual proleptic extension beyond An XIV
+- gedcom-go follows the historical years for An I–XIV and Romme's rule beyond (`gedcom.IsFrenchLeapYear`)
 
 **Conversion Tools**:
 - GEDCOM Date Calculator supports all four calendar systems
@@ -267,8 +267,10 @@ Where:
 **Example Conversions**:
 ```
 @#DFRENCH R@ 15 VEND 3     →  Gregorian: 6 OCT 1794
-@#DFRENCH R@ 1 PLUV 8      →  Gregorian: 20 JAN 1800
-@#DFRENCH R@ 30 FRUC 13    →  Gregorian: 16 SEP 1805
+@#DFRENCH R@ 18 BRUM 8     →  Gregorian: 9 NOV 1799
+@#DFRENCH R@ 1 PLUV 8      →  Gregorian: 21 JAN 1800
+@#DFRENCH R@ 30 FRUC 13    →  Gregorian: 17 SEP 1805
+@#DFRENCH R@ 6 COMP 3      →  Gregorian: 22 SEP 1795  (An III is sextile)
 ```
 
 ---
@@ -660,7 +662,7 @@ Line 102: Date "30 FEB 2020" - February has only 28/29 days
 
 **Hebrew Calendar**: Variable leap years (19-year cycle, years 3,6,8,11,14,17,19 are leap)
 
-**French Republican**: Originally divisible by 4; later Romme's rule (like Gregorian)
+**French Republican**: As used, An III, VII and XI were sextile (fixed by the autumnal equinox); Romme's rule (like Gregorian) is the usual extension beyond An XIV
 
 ### 8.2 Calendar Transition Dates
 
@@ -973,13 +975,14 @@ days_since_epoch = (year - 1) * 365
 // Add to Gregorian base date (22 Sep 1792)
 gregorian_date = date(1792, 9, 22) + days_since_epoch
 
-// Leap days calculation (using Romme's rule)
+// Sextile years before this one
 leap_days(year):
-    if year <= 13:
-        return year / 4  // Historical actual leap years
+    if year <= 15:
+        return year / 4  // Historical sextile years III, VII, XI
     else:
-        // Hypothetical using Romme's rule
-        return (year / 4) - (year / 100) + (year / 400)
+        // Romme's rule beyond An XIV; years I-XIV also hold three
+        n = year - 1
+        return (n / 4) - (n / 100) + (n / 400)
 ```
 
 **Gregorian → French Republican**:

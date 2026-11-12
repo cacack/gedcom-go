@@ -198,15 +198,16 @@ func JDNToJulian(jdn int) (year, month, day int) {
 	return year, month, day
 }
 
-// IsFrenchLeapYear returns true if the French Republican year is a leap year.
-// Uses the "continuous" method: leap if following Gregorian year is divisible by 4,
-// except centuries unless also divisible by 400.
+// IsFrenchLeapYear returns true if the French Republican year is a leap
+// (sextile) year, with 6 complementary days instead of 5.
 //
-// The French Republican calendar was historically based on astronomical observations,
-// but for computational purposes we use the Gregorian-aligned rule based on the epoch.
-// A French Republican year N spans from September 22 of Gregorian year (1791+N) to
-// September 21 of Gregorian year (1792+N). The year is a leap year (366 days) when
-// the following Gregorian year (1792+N) is a leap year.
+// Years 1 to 14 follow the calendar as it was used (22 September 1792 to
+// 31 December 1805): each year began on the day of the autumnal equinox in
+// Paris, which made years 3, 7 and 11 the sextile years. Every other year
+// follows Romme's proposed arithmetic rule as a proleptic extension: a year
+// divisible by 4 is sextile, except a year divisible by 100 that is not
+// divisible by 400. Years 1 to 14 hold three sextile years under either
+// reading of the calendar, so the extension continues it without a gap.
 //
 // Parameters:
 //   - year: French Republican year (1 = Sep 22, 1792 - Sep 21, 1793)
@@ -216,25 +217,19 @@ func JDNToJulian(jdn int) (year, month, day int) {
 //
 // Example:
 //
-//	IsFrenchLeapYear(4) = true   // Year 4 (Sep 22, 1795 - Sep 21, 1796), Gregorian 1796 is leap
-//	IsFrenchLeapYear(12) = true  // Year 12 (Sep 22, 1803 - Sep 21, 1804), Gregorian 1804 is leap
-//	IsFrenchLeapYear(16) = true  // Year 16 (Sep 22, 1807 - Sep 21, 1808), Gregorian 1808 is leap
+//	IsFrenchLeapYear(3) = true   // Year III (Sep 22, 1794 - Sep 22, 1795)
+//	IsFrenchLeapYear(4) = false  // Year IV (Sep 23, 1795 - Sep 21, 1796)
+//	IsFrenchLeapYear(16) = true  // Romme's rule beyond year XIV
 func IsFrenchLeapYear(year int) bool {
-	// The French Republican epoch is September 22, 1792 (Gregorian).
-	// Year N of the calendar starts on Sep 22 of Gregorian year (1791 + N).
-	// It is a leap year if the following Gregorian year (1792 + N) is a leap year.
-	// This is because the leap day falls late in the year (in the complementary days).
-	gregorianYear := 1791 + year + 1 // The year that follows the start year
-
-	// Apply Gregorian leap year rules
-	if gregorianYear%400 == 0 {
-		return true
+	if year >= 1 && year <= lastHistoricalFrenchYear {
+		return year%4 == 3 // years 3, 7 and 11
 	}
-	if gregorianYear%100 == 0 {
-		return false
-	}
-	return gregorianYear%4 == 0
+	return year%4 == 0 && (year%100 != 0 || year%400 == 0)
 }
+
+// lastHistoricalFrenchYear is the last French Republican year in use: the
+// calendar was abolished from 1 January 1806, during year 14.
+const lastHistoricalFrenchYear = 14
 
 // FrenchToJDN converts a French Republican calendar date to Julian Day Number.
 // Month 13 (COMP) represents the complementary days (1-5 or 1-6 in leap years).
@@ -255,19 +250,24 @@ func IsFrenchLeapYear(year int) bool {
 // Example:
 //
 //	FrenchToJDN(1, 1, 1) = 2375840    // 1 Vendémiaire 1 (Sep 22, 1792)
-//	FrenchToJDN(8, 1, 1) = 2378396    // 1 Vendémiaire 8 (Sep 22, 1799)
-//	FrenchToJDN(14, 1, 1) = 2380587   // 1 Vendémiaire 14 (Sep 22, 1805)
+//	FrenchToJDN(8, 1, 1) = 2378397    // 1 Vendémiaire 8 (Sep 23, 1799)
+//	FrenchToJDN(14, 1, 1) = 2380588   // 1 Vendémiaire 14 (Sep 23, 1805)
 func FrenchToJDN(year, month, day int) int {
 	// French Republican epoch: 1 Vendémiaire 1 = September 22, 1792 (Gregorian) = JDN 2375840
 	const epoch = 2375840
 
-	// Calculate days before the start of this year
-	// Year y is a leap year when Gregorian year 1792+y is (see IsFrenchLeapYear),
-	// so years 1 to year-1 hold the Gregorian leap years 1793 to 1791+year.
-	// Counting them in closed form keeps the cost independent of year.
+	// Calculate days before the start of this year by counting the sextile
+	// years 1 to year-1 (see IsFrenchLeapYear) in closed form, which keeps the
+	// cost independent of year. Through year 14 they are 3, 7 and 11; beyond
+	// it Romme's rule adds the years divisible by 4 (with the century
+	// exceptions), and years 1 to 14 hold three of those too.
 	leapDays := 0
-	if year > 1 {
-		leapDays = gregorianLeapYearsThrough(1791+year) - gregorianLeapYearsThrough(1792)
+	switch {
+	case year <= 1:
+	case year <= lastHistoricalFrenchYear+1:
+		leapDays = year / 4
+	default:
+		leapDays = gregorianLeapYearsThrough(year - 1)
 	}
 	daysBeforeYear := (year-1)*365 + leapDays
 
@@ -286,8 +286,8 @@ func FrenchToJDN(year, month, day int) int {
 	return epoch + daysBeforeYear + daysInYear - 1
 }
 
-// gregorianLeapYearsThrough counts the Gregorian leap years from 1 to year,
-// for year >= 0.
+// gregorianLeapYearsThrough counts the years from 1 to year, for year >= 0,
+// that are leap years under the Gregorian rule (which Romme's rule shares).
 func gregorianLeapYearsThrough(year int) int {
 	return year/4 - year/100 + year/400
 }
@@ -311,8 +311,8 @@ func gregorianLeapYearsThrough(year int) int {
 // Example:
 //
 //	JDNToFrench(2375840) = (1, 1, 1)      // 1 Vendémiaire 1
-//	JDNToFrench(2378396) = (8, 1, 1)      // 1 Vendémiaire 8
-//	JDNToFrench(2380587) = (14, 1, 1)     // 1 Vendémiaire 14
+//	JDNToFrench(2378397) = (8, 1, 1)      // 1 Vendémiaire 8
+//	JDNToFrench(2380588) = (14, 1, 1)     // 1 Vendémiaire 14
 func JDNToFrench(jdn int) (year, month, day int) {
 	// French Republican epoch: 1 Vendémiaire 1 = September 22, 1792 (Gregorian) = JDN 2375840
 	const epoch = 2375840
@@ -320,8 +320,8 @@ func JDNToFrench(jdn int) (year, month, day int) {
 	// Days since epoch (0 = first day of year 1)
 	daysSinceEpoch := jdn - epoch
 
-	// Estimate the year from the mean Gregorian year (146097 days per 400
-	// years, the rule IsFrenchLeapYear follows), then correct it against
+	// Estimate the year from the mean year of Romme's rule (146097 days per
+	// 400 years, the rule IsFrenchLeapYear follows beyond year 14), then correct it against
 	// FrenchToJDN. The cost does not depend on jdn. A jdn before the epoch
 	// stays in year 1, with a negative day count.
 	year = 1
