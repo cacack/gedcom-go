@@ -499,7 +499,9 @@ Encoding detection in `charset.NewReader` reads only the header (at most 64 KiB)
    returns its error wrapped, so `errors.Is(err, context.DeadlineExceeded)`
    works. On the validator, call `ValidateAllWithError`: `ValidateAll` has no
    error to report the cancellation with
-2. **Limit File Sizes**: Prevent DoS attacks with `io.LimitReader`
+2. **Limit File Sizes**: Memory grows with input, up to about 35× for
+   `Decode`; cap uploads with `io.LimitReader` sized per API as in
+   [Decoding Untrusted Input](untrusted-input.md#sizing-iolimitreader)
 3. **Memory Profiling**: Monitor for memory leaks
 4. **Bound Duplicate Detection**: It is capped by default
    (`DuplicateConfig.MaxGroupSize` = 1000), so validation stays linear in
