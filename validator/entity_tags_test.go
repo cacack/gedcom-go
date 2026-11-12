@@ -168,3 +168,43 @@ func TestWithEntityTagsCheck(t *testing.T) {
 		t.Errorf("WithEntityTagsCheck changed the other conformance issues: %d, want %d", withOther, withoutOther)
 	}
 }
+
+// TestEntityTagsDivergedAgePhraseOnly pins issue #795 on age.ged's phrase-only
+// "2 AGE" / "3 PHRASE Zero": the unedited file reports no
+// ENTITY_TAGS_DIVERGED, and an edit to that phrase is reported and reaches
+// Tags through SyncTags (the entity writer used to drop the line, so the edit
+// went unseen).
+func TestEntityTagsDivergedAgePhraseOnly(t *testing.T) {
+	doc := decodeFixture(t, "../testdata/gedcom-7.0/familysearch-examples/age.ged")
+	if got := divergedIssues(doc); len(got) != 0 {
+		t.Fatalf("unmodified age.ged reported ENTITY_TAGS_DIVERGED: %v", got)
+	}
+	indi := doc.GetIndividual("@I1@")
+	var edited *gedcom.Event
+	for _, ev := range indi.Events {
+		if ev.Age == "" && ev.AgePhrase == "Zero" {
+			edited = ev
+		}
+	}
+	if edited == nil {
+		t.Fatal("age.ged has no phrase-only age")
+	}
+	edited.AgePhrase = "Newborn"
+	if got := divergedIssues(doc); len(got) != 1 || got[0].RecordXRef != "@I1@" {
+		t.Fatalf("edited phrase-only age reported %v, want one issue on @I1@", got)
+	}
+	if err := encoder.SyncTags(doc); err != nil {
+		t.Fatalf("SyncTags: %v", err)
+	}
+	tags := doc.GetRecord("@I1@").Tags
+	found := false
+	for i, tag := range tags {
+		if tag.Tag == "AGE" && tag.Value == "" && i+1 < len(tags) {
+			next := tags[i+1]
+			found = found || (next.Tag == "PHRASE" && next.Value == "Newborn" && next.Level == tag.Level+1)
+		}
+	}
+	if !found {
+		t.Error("SyncTags did not write the edited phrase beneath an empty AGE")
+	}
+}
