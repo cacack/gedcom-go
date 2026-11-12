@@ -292,29 +292,45 @@ func TestSpec55DefectsAreRecorded(t *testing.T) {
 // rather than literals, a table split across a page, values defined only in
 // prose, and a list the prose beneath it contradicts. A definition that only
 // looks like a list -- a syntax, as DATE and AGE_AT_EVENT are -- must read as
-// none.
+// none. Values are compared whole, in order, so an extra, duplicated or
+// misattributed value fails as surely as a missing one.
 func TestSpec55EnumerationsAreTranscribed(t *testing.T) {
+	split := func(s string) []string { return strings.Split(s, "|") }
 	tests := []struct {
 		version      string
 		primitive    string
-		contains     []string
+		values       []string
 		placeholders string
 	}{
-		{"5.5.1", "SEX_VALUE", []string{"M", "F", "U"}, ""},
-		{"5.5", "SEX_VALUE", []string{"M", "F"}, ""},
-		{"5.5.1", "SOURCE_MEDIA_TYPE", []string{"audio", "tombstone", "video"}, ""},
-		{"5.5.1", "LDS_BAPTISM_DATE_STATUS", []string{"PRE-1970", "UNCLEARED"}, ""},
-		{"5.5.1", "LDS_ENDOWMENT_DATE_STATUS", []string{"STILLBORN", "INFANT"}, ""},
-		{"5.5.1", "LDS_SPOUSE_SEALING_DATE_STATUS", []string{"DNS/CAN"}, ""},
-		{"5.5.1", "CHARACTER_SET", []string{"ANSEL", "UTF-8"}, ""},
-		{"5.5.1", "GEDCOM_FORM", []string{"LINEAGE-LINKED"}, ""},
-		{"5.5.1", "LANGUAGE_ID", []string{"Afrikaans", "Wendic", "Amharic", "Yiddish"}, ""},
-		{"5.5.1", "MONTH_HEBR", []string{"TSH", "ELL"}, ""},
-		{"5.5.1", "DATE_CALENDAR_ESCAPE", []string{"@#DFRENCH R@", "@#DUNKNOWN@"}, ""},
-		{"5.5.1", "NAME_TYPE", []string{"aka", "married"}, "<user defined>"},
-		{"5.5.1", "ROLE_IN_EVENT", []string{"CHIL", "SPOU"}, "(<ROLE_DESCRIPTOR>)"},
-		{"5.5", "ROLE_IN_EVENT", []string{"CHIL", "SPOU"}, "(<ROLE_DESCRIPTOR>)"},
+		{"5.5.1", "SEX_VALUE", split("M|F|U"), ""},
+		{"5.5", "SEX_VALUE", split("M|F"), ""},
+		{"5.5.1", "SOURCE_MEDIA_TYPE", split("audio|book|card|electronic|fiche|film|" +
+			"magazine|manuscript|map|newspaper|photo|tombstone|video"), ""},
+		{"5.5.1", "LDS_BAPTISM_DATE_STATUS", split("CHILD|COMPLETED|EXCLUDED|PRE-1970|" +
+			"STILLBORN|SUBMITTED|UNCLEARED"), ""},
+		{"5.5.1", "LDS_CHILD_SEALING_DATE_STATUS", split("BIC|COMPLETED|EXCLUDED|DNS|" +
+			"PRE-1970|STILLBORN|SUBMITTED|UNCLEARED"), ""},
+		// INFANT is defined beneath the list but omitted from it; it is
+		// appended, and recorded in defects.tsv.
+		{"5.5.1", "LDS_ENDOWMENT_DATE_STATUS", split("CHILD|COMPLETED|EXCLUDED|PRE-1970|" +
+			"STILLBORN|SUBMITTED|UNCLEARED|INFANT"), ""},
+		{"5.5.1", "LDS_SPOUSE_SEALING_DATE_STATUS", split("CANCELED|COMPLETED|DNS|" +
+			"EXCLUDED|DNS/CAN|PRE-1970|SUBMITTED|UNCLEARED"), ""},
+		{"5.5.1", "CHARACTER_SET", split("ANSEL|UTF-8|UNICODE|ASCII"), ""},
+		{"5.5.1", "GEDCOM_FORM", split("LINEAGE-LINKED"), ""},
+		{"5.5.1", "MONTH", split("JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC"), ""},
+		{"5.5.1", "MONTH_FREN", split("VEND|BRUM|FRIM|NIVO|PLUV|VENT|GERM|FLOR|PRAI|" +
+			"MESS|THER|FRUC|COMP"), ""}, //nolint:misspell // THER is the GEDCOM code for Thermidor
+		{"5.5.1", "MONTH_HEBR", split("TSH|CSH|KSL|TVT|SHV|ADR|ADS|NSN|IYR|SVN|TMZ|AAV|ELL"), ""},
+		{"5.5.1", "DATE_CALENDAR_ESCAPE", split("@#DHEBREW@|@#DROMAN@|@#DFRENCH R@|" +
+			"@#DGREGORIAN@|@#DJULIAN@|@#DUNKNOWN@"), ""},
+		{"5.5.1", "NAME_TYPE", split("aka|birth|immigrant|maiden|married"), "<user defined>"},
+		{"5.5.1", "PHONETIC_TYPE", split("hangul|kana"), "<user defined>"},
+		{"5.5.1", "ROMANIZED_TYPE", split("pinyin|romaji|wadegiles"), "<user defined>"},
+		{"5.5.1", "ROLE_IN_EVENT", split("CHIL|HUSB|WIFE|MOTH|FATH|SPOU"), "(<ROLE_DESCRIPTOR>)"},
+		{"5.5", "ROLE_IN_EVENT", split("CHIL|HUSB|WIFE|MOTH|FATH|SPOU"), "(<ROLE_DESCRIPTOR>)"},
 		{"5.5.1", "LANGUAGE_OF_TEXT", nil, "<LANGUAGE_ID>"},
+		{"5.5.1", "LANGUAGE_PREFERENCE", nil, "<LANGUAGE_ID>"},
 		{"5.5.1", "DATE", nil, ""},
 		{"5.5.1", "AGE_AT_EVENT", nil, ""},
 	}
@@ -327,6 +343,12 @@ func TestSpec55EnumerationsAreTranscribed(t *testing.T) {
 			rows[edition.version][row[0]] = row
 		}
 	}
+	valuesOf := func(row []string) []string {
+		if row[2] == "" {
+			return nil
+		}
+		return strings.Split(row[2], "|")
+	}
 
 	for _, tt := range tests {
 		row, ok := rows[tt.version][tt.primitive]
@@ -334,17 +356,42 @@ func TestSpec55EnumerationsAreTranscribed(t *testing.T) {
 			t.Errorf("%s: %s is not transcribed", tt.version, tt.primitive)
 			continue
 		}
-		values := strings.Split(row[2], "|")
-		if tt.contains == nil && row[2] != "" {
-			t.Errorf("%s: %s reads values %q from what is a syntax", tt.version, tt.primitive, row[2])
-		}
-		for _, want := range tt.contains {
-			if !slices.Contains(values, want) {
-				t.Errorf("%s: %s values %q lack %q", tt.version, tt.primitive, row[2], want)
-			}
+		if got := valuesOf(row); !slices.Equal(got, tt.values) {
+			t.Errorf("%s: %s values = %q, want %q", tt.version, tt.primitive, got, tt.values)
 		}
 		if row[3] != tt.placeholders {
 			t.Errorf("%s: %s placeholders = %q, want %q", tt.version, tt.primitive, row[3], tt.placeholders)
+		}
+	}
+
+	// LANGUAGE_ID's table is split across a page: both halves must be read,
+	// joined in order, with nothing lost at the break.
+	if row, ok := rows["5.5.1"]["LANGUAGE_ID"]; !ok {
+		t.Error("5.5.1: LANGUAGE_ID is not transcribed")
+	} else {
+		values := valuesOf(row)
+		if len(values) != 86 || values[0] != "Afrikaans" || values[len(values)-1] != "Yiddish" {
+			t.Errorf("5.5.1: LANGUAGE_ID values = %q, want 86 from Afrikaans to Yiddish", values)
+		}
+		if i := slices.Index(values, "Wendic"); i < 0 || i+1 >= len(values) || values[i+1] != "Amharic" {
+			t.Errorf("5.5.1: LANGUAGE_ID does not join the page break (Wendic, Amharic): %q", values)
+		}
+	}
+
+	// Every value of every primitive is distinct, and none is also read as a
+	// placeholder.
+	for version, byName := range rows {
+		for name, row := range byName {
+			seen := map[string]bool{}
+			for _, v := range valuesOf(row) {
+				if seen[v] {
+					t.Errorf("%s: %s repeats value %q", version, name, v)
+				}
+				seen[v] = true
+				if row[3] != "" && slices.Contains(strings.Split(row[3], "|"), v) {
+					t.Errorf("%s: %s reads %q as both value and placeholder", version, name, v)
+				}
+			}
 		}
 	}
 }

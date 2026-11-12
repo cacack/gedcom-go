@@ -89,6 +89,8 @@ type spec55Spec struct {
 	// them. Last rather than first for the reason 7.0's harness takes the last:
 	// CERTAINTY_ASSESSMENT begins with "0", which is what its typed field holds
 	// when the line is absent, so a probe carrying it would measure nothing.
+	// The transcriber appends values a list omits (INFANT), so those are the
+	// ones probed. Placeholders are not probed: any value would do for them.
 	enumValues map[string]string
 
 	// defects are the specification-text problems the transcription hit.
