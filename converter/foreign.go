@@ -74,6 +74,31 @@ var foreign551To70 = &foreignStructures{
 	mappedElsewhere: map[string]bool{"RELA": true, "TYPE": true},
 }
 
+// foreign70To55 is the 7.0 -> 5.5 direction (issue #794).
+var foreign70To55 = &foreignStructures{
+	source:    specStructures70,
+	foreign:   foreignStructures70To55,
+	foreignIn: foreignStructuresIn70To55,
+	aliases:   map[gedcom.RecordType]string{gedcom.RecordTypeNote: "SNOTE"},
+	// ASSO.ROLE becomes RELA (the enumeration translation, #704).
+	mappedElsewhere: map[string]bool{"ROLE": true},
+	// A 5.5 OBJE record has no FILE; demoteMediaRecords moves each record's
+	// files into inline links after this pass, so they are kept for it.
+	exempt: map[structurePair]bool{{"record-OBJE", "FILE"}: true},
+}
+
+// foreign55To70 is the 5.5 -> 7.0 direction (issue #794).
+var foreign55To70 = &foreignStructures{
+	source:    specStructures55,
+	foreign:   foreignStructures55To70,
+	foreignIn: foreignStructuresIn55To70,
+	aliases:   map[gedcom.RecordType]string{gedcom.RecordTypeSharedNote: "NOTE"},
+	// ASSO.RELA becomes ROLE (the enumeration translation, #704).
+	mappedElsewhere: map[string]bool{"RELA": true},
+	// As for 5.5.1 (#793).
+	exempt: map[structurePair]bool{{"SOURCE_CITATION.SOUR#2", "TEXT"}: true},
+}
+
 // foreignDrop is one structure dropForeignStructures removed.
 type foreignDrop struct {
 	recordType string

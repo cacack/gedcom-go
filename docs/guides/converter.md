@@ -97,10 +97,11 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | Vendor `_FREL`/`_MREL` | `PEDIGREE_FROM_VENDOR_TAG` | A child's `FAMC` gains a `PEDI` from the `_FREL`/`_MREL` under the family's `CHIL` when the mapping is unambiguous: each parent the family names has a relationship, all map to one value (`Adopted`, `Foster`, `Sealing`), and it is not `Natural`/`Birth`. `Step`, `Guardian` and other values have no `PEDI` and add none; a `FAMC` that already has a `PEDI` is kept. The vendor tags stay; each `PEDI` added is a `Normalized` note |
 | Vendor `_MARNM` | `MARRIED_NAME_FROM_VENDOR_TAG` | A `NAME` with `_MARNM` is followed by a new `NAME` with `TYPE MARRIED`: the original name with the `_MARNM` surname in place of its own, or the `_MARNM` value itself when it is a full name (has a slash). A matching `TYPE MARRIED` name already present is not added again. `_MARNM` stays; each name added is a `Normalized` note |
 | Inline source citations | `INLINE_SOUR_TO_RECORD`, `EMPTY_SOUR_TO_VOID` | A citation whose payload is a source description rather than a pointer (5.5/5.5.1 `SOUR <description>`) becomes a pointer to a new `SOUR` record at the first free `@S<n>@`, placed just before the citing record, whose `NOTE` holds the description; the citation's `TEXT` lines move, in order, under its `DATA` (added if absent), and everything else stays on the citation, as the gedcom7code suite (`sour-1.ged`) gives. An empty `SOUR` citation cites no record and points to `@VOID@` instead. Each is a `Normalized` note at the citation's path |
-| Inline media links | `INLINE_OBJE_TO_RECORD` | An `OBJE` link with no pointer, carrying its `FILE` in place (5.5.1 `FILE`/`FORM`/`TITL`, or 5.5 `FORM` beside `FILE`), becomes a new `OBJE` record at the first free `@O<n>@` and a pointer to it, as the 7.0 migration guide gives; a link-level `TITL` and `FORM` go under the first `FILE`, `NOTE` and extensions stay at record level. A link with no `FILE` is left as it is. Each is a `Normalized` note at the link's path |
+| Inline media links | `INLINE_OBJE_TO_RECORD` | An `OBJE` link with no pointer, carrying its `FILE` in place (5.5.1 `FILE`/`FORM`/`TITL`, or 5.5 `FORM` beside `FILE`), becomes a new `OBJE` record at the first free `@O<n>@` and a pointer to it, as the 7.0 migration guide gives; a link-level `TITL` and `FORM` go under the first `FILE`, `NOTE` and extensions stay at record level. A link with no `FILE` is left as it is, less what 7.0 does not define under it (from 5.5, its `FORM`). Each is a `Normalized` note at the link's path |
 | `AFN`, `RFN`, `RIN` | `IDENTIFIER_TO_EXID` | A record's level-1 `AFN`, `RFN` or `RIN` becomes an `EXID` with the registered `TYPE`: `https://gedcom.io/terms/v7/AFN`; `.../RIN#<HEAD.SOUR>` (no fragment when the header names no source system); `.../RFN#<resource>` with the value after the resource's colon (`RFN Resource:5431` -> `EXID 5431`), or the bare `RFN` URI and the whole value when there is no colon. Each is a `Normalized` note |
 | `LANG` | -- | `HEAD.LANG` and `SUBM.LANG` language names become BCP 47 tags (`English` -> `en`, case-insensitive), a `Normalized` note each. A value already tag-shaped is left alone; any other name is kept verbatim with an `Approximated` note |
-| Version-foreign structures | `FOREIGN_STRUCTURES_DROPPED` | From 5.5.1 only: see [Version-foreign structures](#version-foreign-structures) |
+| 5.5 `OBJE` records | -- | From 5.5: a record written with a `FILE` beside its level-1 `FORM` and `TITL` (5.5 itself has no `FILE` in the record; producers such as Family Historian add one) gets the `FORM` and `TITL` moved under its first `FILE`, a `Normalized` note per record. A record with no `FILE` is left to the next row, which drops its `BLOB`, `FORM` and `TITL` |
+| Version-foreign structures | `FOREIGN_STRUCTURES_DROPPED` | See [Version-foreign structures](#version-foreign-structures) |
 | `@` escaping | `AT_SIGN_REESCAPED` | 5.x doubles every literal `@` in text, 7.0 only a leading one, so every raw text value is rewritten for 7.0 (`a@@b` -> `a@b`; `@@lead` and a leading `@@` on a `CONT` line stay). Pointers, tag names, XRefs and 5.x escape sequences such as an unmapped `@#DROMAN@` are left as they are; each rewrite is a `Normalized` note |
 | Header update | `VERSION_UPGRADE` | Header version updated to 7.0 |
 
@@ -129,19 +130,24 @@ converted, report, err := converter.ConvertWithOptions(doc, gedcom.Version70, op
 | `LANG` | -- | `HEAD.LANG` and `SUBM.LANG` BCP 47 tags become 5.x language names by primary subtag: `de` -> `German` is `Normalized`, `en-US` -> `English` (region lost) is `Approximated`. A value already a 5.x name is left alone; a tag with no name is kept verbatim with an `Approximated` note |
 | `HEAD.SOUR` | `HEAD_SOUR_ADDED` | Added as `gedcom-go` when the header names no source system (required by 5.5 and 5.5.1) |
 | `HEAD.SUBM` | `HEAD_SUBM_ADDED`, `SUBM_RECORD_ADDED` | Added when missing (required by 5.5 and 5.5.1), pointing at the first `SUBM` record; when there is none, a `SUBM` record with `NAME Unknown` is added at the first free `@SUBM<n>@` |
-| Version-foreign structures | `FOREIGN_STRUCTURES_DROPPED` | To 5.5.1 only: see [Version-foreign structures](#version-foreign-structures) |
+| Version-foreign structures | `FOREIGN_STRUCTURES_DROPPED` | See [Version-foreign structures](#version-foreign-structures) |
+| `OBJE` records to inline links | `OBJE_RECORD_TO_INLINE` | To 5.5 only. A 5.5 `OBJE` record has no `FILE` (it embeds a `BLOB`), so each pointer to a record with a `FILE` becomes one inline link per `FILE`, in the 5.5 order `FORM`, `TITL` (the pointer's own, else the file's), `FILE`, then the record's `NOTE`s, and the record is removed. A `Normalized` note per pointer. What no inline link holds (the record's `REFN`, `RIN`, `CHAN`, extensions; a file's `FORM.MEDI`) is a `Dropped` note and `OBJE record structures` data loss; a record no structure points to is a `Dropped` note and `Unlinked OBJE records` data loss. A record with no `FILE` is left as it is |
 | Header update | `VERSION_DOWNGRADE` | Header version updated |
 | GEDC.FORM | `GEDC_FORM_ADDED` | `2 FORM LINEAGE-LINKED` added under `GEDC` when missing (required by 5.5 and 5.5.1) |
 
 ### Version-foreign structures
 
-Between 7.0 and 5.5.1, after every mapping above, the converter removes each
+Between 7.0 and either 5.x version, after every mapping above, the converter removes each
 structure the source version defines and the target does not, with its
 subordinate lines, from the header and every record's `Tags`: 7.0's `SDATE`,
 `INIL`, `CROP`, `FAM.FACT`, `ASSO` under an event or a family, `TIME` on an
 event date, `NOTE.LANG`/`MIME`/`SOUR`, `TEXT.LANG`/`MIME`, `PLAC.LANG`,
 `SUBM.REFN`, `OBJE.RESN`, `NCHI` substructures and the header note's
-`TRAN`, `MIME` and `LANG` on a downgrade; 5.5.1's `HEAD.FILE` on an upgrade.
+`TRAN`, `MIME` and `LANG` on a downgrade; to 5.5 also every event's and the
+family record's `RESN` (5.5 has `RESN` on the individual record only), event
+`EMAIL`/`FAX`/`WWW`/`RELI`, and `PLAC.MAP`. On an upgrade, 5.5.1's and 5.5's
+`HEAD.FILE`; from 5.5 also a family event's `AGE`, `PLAC.SOUR`, `ASSO.TYPE`
+and an `OBJE` record's `BLOB`, `FORM` and `TITL`.
 Each is a `Dropped` note at its full path (`Family @F1@ > MARR > SDATE`), and
 each parent.tag pair one data loss entry (`MARR.SDATE structures`) naming the
 records it was dropped from.
@@ -155,11 +161,13 @@ date, 5.5.1 only on a `CHAN` date), the triples with the superstructure's
 parent. A tag is read in its source context, so an extension tag, a
 nonconforming tag and everything under either are kept, as are `CONT` and
 `CONC`. Two pairs are left to the enumeration translation, which maps rather
-than drops them: `ASSO.RELA`/`ROLE` and the record `FILE.FORM.TYPE`/`MEDI`.
+than drops them: `ASSO.RELA`/`ROLE` and, between 7.0 and 5.5.1, the record
+`FILE.FORM.TYPE`/`MEDI` (5.5 has no `FORM.TYPE`, so `MEDI` is dropped).
 An inline source citation's `TEXT` is not dropped: it has moved under the
 citation's `DATA` by then (`INLINE_SOUR_TO_RECORD`). A
-record with no `Tags` is written from its entity and not walked. Conversions
-to and from 5.5 do not drop version-foreign structures yet ([#794](https://github.com/cacack/gedcom-go/issues/794)).
+record with no `Tags` is written from its entity and not walked. To 5.5, an
+`OBJE` record's `FILE` is kept for the inline-link conversion above rather
+than dropped ([#794](https://github.com/cacack/gedcom-go/issues/794)).
 
 Every conversion sets the header's `GEDC.VERS` to the target version, rewriting
 any existing `VERS` under any `GEDC`. If no `GEDC` has a `VERS`, one is added
@@ -323,7 +331,7 @@ not translated either.
 | Date phrases | A 5.x date phrase with no 7.0 form (`ABT 1850 (circa)`, or one where no `PHRASE` can go) is left in the value, so the output is not valid 7.0 for it; each is also a `Preserved` note. See [Date epochs and phrases](#date-epochs-and-phrases) |
 | Dual-year dates | 7.0 has no dual-year syntax (`11 FEB 1731/32`); the date is left unchanged, so the output is not valid 7.0 for it. Each such date is also a `Preserved` note at its path, and `AffectedRecords` lists each record holding one. Dual years inside a date phrase (`(born 1799/00)`) are not flagged |
 | `SUBN records` | 7.0 has no submission record. Every `0 @S1@ SUBN` record and the `HEAD.SUBN` pointer are removed before any other step; `AffectedRecords` lists the removed records, and each record (`Submission @S1@`) and the pointer (`Header > SUBN`) is also a `Dropped` note. The submitter (`SUBM`) records stay |
-| `HEAD.FILE structures` (and any other 5.5.1 structure 7.0 does not define) | Removed with its subordinates; see [Version-foreign structures](#version-foreign-structures) |
+| `HEAD.FILE structures` (and any other 5.5.1 or 5.5 structure 7.0 does not define) | Removed with its subordinates; see [Version-foreign structures](#version-foreign-structures) |
 | `FONE tags`, `ROMN tags` | 5.5.1 phonetic and romanized variations (under `NAME` or `PLAC`); 7.0 replaced them with `TRAN`, which names a language rather than the `TYPE` scheme, so they are not mapped. See [Name variations](#name-variations-fone-romn) |
 | Enumerated values | Not data loss: every valid 5.x value has a 7.0 equivalent. A value 5.x does not define either (an unknown `SEX` or `FAMC.STAT` value, an `AGE` that does not parse) is kept unchanged, is not valid 7.0, and is a `Preserved` note only. See [Enumeration Mappings](#enumeration-mappings) |
 
@@ -340,7 +348,7 @@ converted back down to 5.x (see below).
 | PHRASE tags | Phrase annotations not supported. A date `PHRASE` is folded into the value instead where 5.x has a form for it (see [Date epochs and phrases](#date-epochs-and-phrases)) |
 | CREA tags | Creation date not supported |
 | `@VOID@` null pointers | 5.x has no null pointer; a kept `@VOID@` would dangle |
-| `<parent>.<tag> structures` (`MARR.SDATE`, `INDI.INIL`, `NOTE.LANG`, ...) | To 5.5.1: a structure 5.5.1 does not define, removed with its subordinates; see [Version-foreign structures](#version-foreign-structures) |
+| `<parent>.<tag> structures` (`MARR.SDATE`, `INDI.INIL`, `NOTE.LANG`, ...) | To 5.5.1 or 5.5: a structure the target does not define, removed with its subordinates; see [Version-foreign structures](#version-foreign-structures) |
 | Enumerated values | A valid 7.0 value with no 5.x equivalent (`SEX X`, `PEDI OTHER`) is kept unchanged and is not valid 5.x; each is a `Preserved` note. One 7.0 does not define either (an age that does not parse) is a `Preserved` note only, not data loss. See [Enumeration Mappings](#enumeration-mappings) |
 
 Each `EXID`, `TRAN`, `PHRASE` and `CREA` is removed from the record's

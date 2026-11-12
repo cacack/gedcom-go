@@ -112,13 +112,17 @@ func TestUpgrade55PromotesInlineMediaLink(t *testing.T) {
 3 CONT abc
 0 TRLR
 `
-	converted, _, out := convertText(t, doc55, gedcom.Version70)
+	converted, report, out := convertText(t, doc55, gedcom.Version70)
 	if want := "0 @O1@ OBJE\n1 FILE portrait.bmp\n2 FORM bmp\n2 TITL Portrait\n1 NOTE A note\n"; !strings.Contains(out, want) {
 		t.Errorf("output lacks %q:\n%s", want, out)
 	}
-	// A link with no FILE has nothing a 7.0 OBJE record could hold.
-	if !strings.Contains(out, "1 OBJE @O1@\n1 OBJE\n2 FORM bmp\n") {
+	// A link with no FILE has nothing a 7.0 OBJE record could hold, so it is
+	// not promoted; its 5.5 FORM has no 7.0 place and is dropped (#794).
+	if !strings.Contains(out, "1 OBJE @O1@\n1 OBJE\n2 BLOB\n") {
 		t.Errorf("FILE-less link not left in place:\n%s", out)
+	}
+	if !hasDropped(report, "Individual @I1@ > OBJE > FORM") {
+		t.Errorf("FILE-less link's FORM drop not reported: %+v", report.Dropped)
 	}
 	if converted.XRefMap["@O1@"] == nil || converted.XRefMap["@O1@"].Type != gedcom.RecordTypeMedia {
 		t.Error("promoted record not in XRefMap")
@@ -293,5 +297,116 @@ func TestUpgradeInlineMediaLinkSkipsDanglingXRef(t *testing.T) {
 	_, _, out := convertText(t, doc, gedcom.Version70)
 	if want := "0 @I1@ INDI\n1 OBJE @O1@\n1 OBJE @O2@\n0 @O2@ OBJE\n1 FILE photo.jpg\n"; !strings.Contains(out, want) {
 		t.Errorf("output lacks %q:\n%s", want, out)
+	}
+}
+
+// TestDowngrade70To55DemotesMediaRecords is issue #794's OBJE criterion: a
+// 5.5 OBJE record cannot hold a file, so each pointer becomes one inline link
+// per FILE, carrying its FORM, TITL and the record's NOTE, and what no link
+// holds is reported.
+func TestDowngrade70To55DemotesMediaRecords(t *testing.T) {
+	const doc70 = `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 OBJE @O1@
+2 TITL Pointer title
+2 _EXT kept
+1 BIRT
+2 OBJE @O1@
+0 @O1@ OBJE
+1 FILE a.jpg
+2 FORM image/jpeg
+3 MEDI PHOTO
+2 TITL File title
+2 _FX kept under FILE
+1 FILE b.pdf
+2 FORM application/pdf
+1 REFN 7
+1 NOTE A note
+0 @O2@ OBJE
+1 FILE orphan.jpg
+2 FORM image/jpeg
+0 @O3@ OBJE
+1 _NOFILE x
+0 @I2@ INDI
+1 OBJE @O3@
+0 TRLR
+`
+	converted, report, out := convertText(t, doc70, gedcom.Version55)
+
+	for _, want := range []string{
+		"0 @I1@ INDI\n" +
+			"1 OBJE\n2 FORM image/jpeg\n2 TITL Pointer title\n2 FILE a.jpg\n3 _FX kept under FILE\n2 NOTE A note\n2 _EXT kept\n" +
+			"1 OBJE\n2 FORM application/pdf\n2 TITL Pointer title\n2 FILE b.pdf\n2 NOTE A note\n" +
+			"1 BIRT\n" +
+			"2 OBJE\n3 FORM image/jpeg\n3 TITL File title\n3 FILE a.jpg\n4 _FX kept under FILE\n3 NOTE A note\n" +
+			"2 OBJE\n3 FORM application/pdf\n3 FILE b.pdf\n3 NOTE A note\n",
+		// A record with no FILE is not demoted.
+		"1 OBJE @O3@\n", "0 @O3@ OBJE\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+	for _, gone := range []string{"0 @O1@ OBJE", "0 @O2@ OBJE", "orphan.jpg", "MEDI", "REFN"} {
+		if strings.Contains(out, gone) {
+			t.Errorf("output keeps %q:\n%s", gone, out)
+		}
+	}
+	if converted.XRefMap["@O1@"] != nil || converted.XRefMap["@O2@"] != nil {
+		t.Error("demoted records left in XRefMap")
+	}
+	if media := converted.GetIndividual("@I1@").Media; len(media) != 2 || media[0].MediaXRef != "" || media[0].Title != "Pointer title" {
+		t.Errorf("Individual.Media = %+v, want two inline links", media)
+	}
+
+	if !hasNormalized(report, "Individual @I1@ > BIRT > OBJE", "OBJE @O1@", "OBJE (inline multimedia link)") {
+		t.Errorf("no Normalized note for the event's pointer: %+v", report.Normalized)
+	}
+	for _, path := range []string{"MediaObject @O1@ > REFN", "MediaObject @O1@ > FILE > FORM > MEDI", "MediaObject @O2@"} {
+		if !hasDropped(report, path) {
+			t.Errorf("no Dropped note for %q: %+v", path, report.Dropped)
+		}
+	}
+	if !hasDataLoss(report, "OBJE record structures", "@O1@") || !hasDataLoss(report, "Unlinked OBJE records", "@O2@") {
+		t.Errorf("DataLoss = %+v", report.DataLoss)
+	}
+	if !hasTransformation(report, "OBJE_RECORD_TO_INLINE") {
+		t.Errorf("no OBJE_RECORD_TO_INLINE transformation: %+v", report.Transformations)
+	}
+}
+
+// TestUpgrade55NestsMediaRecordForms: a 5.5 OBJE record written with a FILE
+// beside its FORM and TITL (as Family Historian does) keeps both, under the
+// FILE, rather than losing them as 5.5-only record structures (#794).
+func TestUpgrade55NestsMediaRecordForms(t *testing.T) {
+	const doc55 = `0 HEAD
+1 GEDC
+2 VERS 5.5
+2 FORM LINEAGE-LINKED
+1 CHAR ASCII
+0 @I1@ INDI
+1 OBJE @O1@
+0 @O1@ OBJE
+1 FORM jpeg
+1 TITL Portrait
+1 FILE photo.jpg
+0 @O2@ OBJE
+1 FORM bmp
+1 BLOB
+2 CONT abc
+0 TRLR
+`
+	_, report, out := convertText(t, doc55, gedcom.Version70)
+	if want := "0 @O1@ OBJE\n1 FILE photo.jpg\n2 FORM jpeg\n2 TITL Portrait\n"; !strings.Contains(out, want) {
+		t.Errorf("output lacks %q:\n%s", want, out)
+	}
+	if !hasNormalized(report, "MediaObject @O1@ > FILE", "OBJE record FORM/TITL beside FILE", "FORM/TITL under FILE") {
+		t.Errorf("no Normalized note for the move: %+v", report.Normalized)
+	}
+	// A true 5.5 record embeds a BLOB, which 7.0 has no form for.
+	if strings.Contains(out, "BLOB") || !hasDropped(report, "MediaObject @O2@ > BLOB") {
+		t.Errorf("BLOB not dropped and reported: %+v\n%s", report.Dropped, out)
 	}
 }
