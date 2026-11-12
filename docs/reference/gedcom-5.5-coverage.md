@@ -179,10 +179,10 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 913 | 91.5% | 1223 | 92.9% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 915 | 91.7% | 1225 | 93.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 74 | 7.4% | 85 | 6.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
-| raw (flagged) | 2 | 0.2% | 2 | 0.2% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
+| raw (flagged) | 0 | 0.0% | 0 | 0.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 9 | 0.9% | 6 | 0.5% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
@@ -193,7 +193,7 @@ pairs under it reach the typed model.
 
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
-| `FAM` | 217 / 254 | 287 / 324 |
+| `FAM` | 219 / 254 | 289 / 324 |
 | `HEAD` | 18 / 28 | 21 / 33 |
 | `INDI` | 610 / 625 | 831 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
