@@ -123,7 +123,12 @@ type Event struct {
 	// path for just the name.
 	PlaceDetail *PlaceDetail
 
-	// Description provides additional details
+	// Description is the event line's own payload, with its CONT/CONC
+	// continuation lines folded in (CONT as a newline): the descriptor of a
+	// generic EVEN, or any text an exporter writes on a named event, such as
+	// the census detail FTM puts on RESI. The bare "Y" occurrence flag of a
+	// named event is not a description and leaves it empty, as does a 7.0
+	// NO assertion.
 	Description string
 
 	// EventTypeDetail provides a descriptive type of the event (TYPE subordinate)

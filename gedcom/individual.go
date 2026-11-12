@@ -322,7 +322,8 @@ type Attribute struct {
 	// See the AttributeType constants.
 	Type AttributeType
 
-	// Value is the attribute value
+	// Value is the attribute value, with its CONT/CONC continuation lines
+	// folded in (CONT as a newline).
 	Value string
 
 	// Date when the attribute was applicable (optional)

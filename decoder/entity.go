@@ -1000,12 +1000,18 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailO
 		Type: gedcom.EventType(eventTag),
 	}
 
-	// A generic event carries its descriptor as the EVEN line's own payload;
-	// named event tags carry the [Y|<NULL>] flag instead, which has no typed
-	// field. Guard on the raw tag so "NO EVEN" (7.0 negative assertion, where
-	// eventTag comes from the NO value) is not mistaken for a descriptor.
-	if tags[eventIdx].Tag == "EVEN" {
-		event.Description = collector.text(tags[eventIdx].Value)
+	// The event line's own payload, with its CONT/CONC lines folded in, is
+	// the Description: the descriptor on a generic EVEN, and on a named event
+	// whatever text an exporter puts there (FTM and Ancestry write census-row
+	// detail on RESI, #734). The bare "Y" occurrence flag of a named event is
+	// not a description and has no typed field. A 7.0 "NO <tag>" carries the
+	// event type as its payload, so it has no description.
+	isNegative := tags[eventIdx].Tag == "NO"
+	if !isNegative {
+		payload := foldedValue(tags, eventIdx)
+		if tags[eventIdx].Tag == "EVEN" || strings.TrimSpace(payload) != "Y" {
+			event.Description = collector.text(payload)
+		}
 	}
 
 	baseLevel := tags[eventIdx].Level
@@ -1026,6 +1032,12 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailO
 				event.AgePhrase = collector.text(findSubordinate(tags, i, "PHRASE"))
 			case "FAMC":
 				if !parseEventFamilyLink(event, tags, i, tags[eventIdx].Tag, owner, collector) {
+					parseEventDetailTag(&detail, tags, i, collector)
+				}
+			case "CONT", "CONC":
+				// Folded into Description above. A NO assertion's payload is
+				// an event type, which has no continuation.
+				if isNegative {
 					parseEventDetailTag(&detail, tags, i, collector)
 				}
 			default:
@@ -1201,7 +1213,7 @@ func validateCoordinate(tag *gedcom.Tag, parse func(string) (float64, error), co
 func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string, owner detailOwner, collector *diagnosticCollector) *gedcom.Attribute {
 	attr := &gedcom.Attribute{
 		Type:  gedcom.AttributeType(attrTag),
-		Value: collector.text(tags[attrIdx].Value),
+		Value: collector.text(foldedValue(tags, attrIdx)),
 	}
 
 	baseLevel := tags[attrIdx].Level
@@ -1217,6 +1229,8 @@ func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string, owner detai
 			switch tag.Tag {
 			case "TYPE":
 				attr.TypeDetail = collector.text(tag.Value)
+			case "CONT", "CONC":
+				// Folded into Value above.
 			case "AGE":
 				// Known tag not parsed into a typed field: gedcom.Attribute has
 				// no Age counterpart to Event.Age, and nothing asks for one. The

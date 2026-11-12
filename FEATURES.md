@@ -674,9 +674,13 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 | WILL | Will | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
 | EVEN | Generic Event | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
 
-`EVEN` is the only event tag whose own payload is data rather than a
-`[Y|<NULL>]` flag; that descriptor is decoded into `Event.Description` and
-written back out on the event line.
+`EVEN` is the only event tag whose own payload the specification makes data
+rather than a `[Y|<NULL>]` flag, but exporters write text on named events too
+(FTM and Ancestry put census-row detail on `RESI`). Any event's payload other
+than the bare `Y` flag is decoded into `Event.Description`, with its
+`CONT`/`CONC` lines folded in, and written back out on the event line with
+continuation lines for the output version. An attribute's `CONT`/`CONC` lines
+fold into `Attribute.Value` the same way.
 
 ### Family Events
 

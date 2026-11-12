@@ -179,10 +179,10 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 896 | 89.8% | 1200 | 91.2% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 896 | 89.8% | 1202 | 91.3% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 88 | 8.8% | 101 | 7.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
-| raw (flagged) | 3 | 0.3% | 4 | 0.3% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
+| raw (flagged) | 3 | 0.3% | 2 | 0.2% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 11 | 1.1% | 11 | 0.8% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
@@ -195,7 +195,7 @@ pairs under it reach the typed model.
 |---------|----------------:|----------------:|
 | `FAM` | 213 / 254 | 281 / 324 |
 | `HEAD` | 18 / 28 | 21 / 33 |
-| `INDI` | 597 / 625 | 815 / 855 |
+| `INDI` | 597 / 625 | 817 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 6 / 12 | 11 / 13 |
 | `REPO` | 13 / 17 | 17 / 21 |
@@ -903,8 +903,8 @@ Measured at `INDI.DSCR` in 5.5, 5.5.1.
 | `AGE` | `INDIVIDUAL_EVENT_DETAIL.AGE` | — | raw (accepted) | `{0:1}` |
 | `AGNC` | `EVENT_DETAIL.AGNC` | typed | typed | `{0:1}` |
 | `CAUS` | `EVENT_DETAIL.CAUS` | typed | typed | `{0:1}` |
-| `CONC` | `INDIVIDUAL_ATTRIBUTE_STRUCTURE.DSCR.CONC` | — | raw (flagged) | `{0:M}` |
-| `CONT` | `INDIVIDUAL_ATTRIBUTE_STRUCTURE.DSCR.CONT` | — | raw (flagged) | `{0:M}` |
+| `CONC` | `INDIVIDUAL_ATTRIBUTE_STRUCTURE.DSCR.CONC` | — | typed | `{0:M}` |
+| `CONT` | `INDIVIDUAL_ATTRIBUTE_STRUCTURE.DSCR.CONT` | — | typed | `{0:M}` |
 | `DATE` | `EVENT_DETAIL.DATE` | typed | typed | `{0:1}` |
 | `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
 | `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
