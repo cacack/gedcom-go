@@ -118,7 +118,7 @@ func individualRequiresGEDCOM7(i *Individual) bool {
 		return true
 	}
 	if namesRequireGEDCOM7(i.Names) || pedigreePhraseRequiresGEDCOM7(i.ChildInFamilies) ||
-		associationPhraseRequiresGEDCOM7(i.Associations) || ldsOrdinancesRequireGEDCOM7(i.LDSOrdinances) {
+		individualAssociationsRequireGEDCOM7(i.Associations) || ldsOrdinancesRequireGEDCOM7(i.LDSOrdinances) {
 		return true
 	}
 	for _, ev := range i.Events {
@@ -245,14 +245,15 @@ func attributeRequiresGEDCOM7(at *Attribute) bool {
 	return mediaLinksRequireGEDCOM7(at.Media) || citationsRequireGEDCOM7(at.SourceCitations)
 }
 
-// associationPhraseRequiresGEDCOM7 reports whether any association carries a
-// PHRASE, on the ASSO or its ROLE, which 5.5.1 has no equivalent for, or a
-// citation needing 7.0.
+// individualAssociationsRequireGEDCOM7 reports whether any association
+// carries a PHRASE, on the ASSO or its ROLE, which 5.5.1 has no equivalent
+// for, or a citation needing 7.0.
 //
 // This is the right test only for Individual.Associations, where 5.5.1
-// already has INDI.ASSO and PHRASE is the sole 7.0 addition. On an event or
-// attribute the structure itself is 7.0-only, so those callers test presence.
-func associationPhraseRequiresGEDCOM7(assocs []*Association) bool {
+// already has INDI.ASSO, so only its 7.0 substructures (PHRASE, and 7.0-only
+// citation parts) raise the version. On an event or attribute the structure
+// itself is 7.0-only, so those callers test presence.
+func individualAssociationsRequireGEDCOM7(assocs []*Association) bool {
 	for _, a := range assocs {
 		if a != nil && (a.Phrase != "" || a.RolePhrase != "" ||
 			citationsRequireGEDCOM7(a.SourceCitations)) {
