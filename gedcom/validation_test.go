@@ -1,6 +1,7 @@
 package gedcom
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -184,6 +185,54 @@ func TestValidateParentChildDates(t *testing.T) {
 			wantError:    true,
 			errMsg:       "14 years old",
 		},
+		{
+			// #817: the absolute year difference read this as a parent of 5.
+			name:         "invalid: child born before parent",
+			parentBirth:  mustParseDate("1910"),
+			childBirth:   mustParseDate("1905"),
+			minParentAge: 12,
+			wantError:    true,
+			errMsg:       "child's birth date (1905) is before parent's birth date (1910)",
+		},
+		{
+			name:         "invalid: year-only dates give an age range",
+			parentBirth:  mustParseDate("1850"),
+			childBirth:   mustParseDate("1861"),
+			minParentAge: 12,
+			wantError:    true,
+			errMsg:       "parent would have been at most 11 years old at child's birth (minimum: 12)",
+		},
+		{
+			name:         "invalid: complete dates give an exact age",
+			parentBirth:  mustParseDate("15 JAN 1850"),
+			childBirth:   mustParseDate("14 JAN 1862"),
+			minParentAge: 12,
+			wantError:    true,
+			errMsg:       "parent would have been 11 years old at child's birth (minimum: 12)",
+		},
+		{
+			// The first-day reading counted 12 years; the parent was at most 11.
+			name:         "invalid: month dates read over their whole month",
+			parentBirth:  mustParseDate("DEC 1850"),
+			childBirth:   mustParseDate("JAN 1862"),
+			minParentAge: 12,
+			wantError:    true,
+			errMsg:       "parent would have been 11 years old",
+		},
+		{
+			name:         "valid: open-ended parent birth may be old enough",
+			parentBirth:  mustParseDate("BEF 1850"),
+			childBirth:   mustParseDate("1855"),
+			minParentAge: 12,
+			wantError:    false,
+		},
+		{
+			name:         "valid: child birth may fall before parent birth",
+			parentBirth:  mustParseDate("1850"),
+			childBirth:   mustParseDate("MAR 1850"),
+			minParentAge: 0,
+			wantError:    false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -195,10 +244,15 @@ func TestValidateParentChildDates(t *testing.T) {
 				} else if !strings.Contains(err.Error(), tt.errMsg) {
 					t.Errorf("ValidateParentChildDates() error = %v, want error containing %q", err, tt.errMsg)
 				}
-			} else {
-				if err != nil {
-					t.Errorf("ValidateParentChildDates() unexpected error = %v", err)
+				wantKind := ErrBelowMinimumAge
+				if strings.Contains(tt.errMsg, "is before") {
+					wantKind = ErrEventBeforeBirth
 				}
+				if err != nil && !errors.Is(err, wantKind) {
+					t.Errorf("ValidateParentChildDates() error = %v, want errors.Is %v", err, wantKind)
+				}
+			} else if err != nil {
+				t.Errorf("ValidateParentChildDates() unexpected error = %v", err)
 			}
 		})
 	}
@@ -339,6 +393,42 @@ func TestValidateMarriageDates(t *testing.T) {
 			wantError:      true,
 			errMsg:         "first spouse",
 		},
+		{
+			// #817: the absolute year difference read this as a spouse of 5.
+			name:           "invalid: marriage before first spouse's birth",
+			marriage:       mustParseDate("1905"),
+			spouseBirth1:   mustParseDate("1910"),
+			spouseBirth2:   mustParseDate("1880"),
+			minMarriageAge: 12,
+			wantError:      true,
+			errMsg:         "marriage date (1905) is before first spouse's birth date (1910)",
+		},
+		{
+			name:           "invalid: marriage before second spouse's birth",
+			marriage:       mustParseDate("1905"),
+			spouseBirth1:   mustParseDate("1880"),
+			spouseBirth2:   mustParseDate("1910"),
+			minMarriageAge: 12,
+			wantError:      true,
+			errMsg:         "marriage date (1905) is before second spouse's birth date (1910)",
+		},
+		{
+			name:           "invalid: second spouse too young, with age range",
+			marriage:       mustParseDate("1861"),
+			spouseBirth1:   mustParseDate("1840"),
+			spouseBirth2:   mustParseDate("1850"),
+			minMarriageAge: 12,
+			wantError:      true,
+			errMsg:         "second spouse would have been at most 11 years old at marriage (minimum: 12)",
+		},
+		{
+			name:           "valid: unparseable spouse birth is skipped",
+			marriage:       mustParseDate("1861"),
+			spouseBirth1:   &Date{Original: "unknown"},
+			spouseBirth2:   mustParseDate("1840"),
+			minMarriageAge: 12,
+			wantError:      false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -350,10 +440,15 @@ func TestValidateMarriageDates(t *testing.T) {
 				} else if !strings.Contains(err.Error(), tt.errMsg) {
 					t.Errorf("ValidateMarriageDates() error = %v, want error containing %q", err, tt.errMsg)
 				}
-			} else {
-				if err != nil {
-					t.Errorf("ValidateMarriageDates() unexpected error = %v", err)
+				wantKind := ErrBelowMinimumAge
+				if strings.Contains(tt.errMsg, "is before") {
+					wantKind = ErrEventBeforeBirth
 				}
+				if err != nil && !errors.Is(err, wantKind) {
+					t.Errorf("ValidateMarriageDates() error = %v, want errors.Is %v", err, wantKind)
+				}
+			} else if err != nil {
+				t.Errorf("ValidateMarriageDates() unexpected error = %v", err)
 			}
 		})
 	}
