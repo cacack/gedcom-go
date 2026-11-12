@@ -73,8 +73,8 @@ func TestSpec55AnchorStatuses(t *testing.T) {
 			version:        "5.5",
 			superstructure: "MULTIMEDIA_RECORD.OBJE",
 			tag:            "BLOB",
-			want:           specRawFlagged,
-			because:        "BLOB was dropped in 5.5.1 and the multimedia parser has no case for it",
+			want:           specRawAccepted,
+			because:        "parseMediaObject accepts the 5.5 record layout in a 5.5 document (issue #730)",
 		},
 		{
 			version:        "5.5.1",

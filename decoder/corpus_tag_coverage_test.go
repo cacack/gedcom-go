@@ -69,9 +69,14 @@ import (
 // #449 added one entry back: TIME. buildHeader used to report nothing, and now
 // reports unknown header tags like every other context. Across the corpus that
 // flags exactly one header line, vendor-tmg12.ged's "1 TIME", so 24 + 1 = 25.
+//
+// #730 removed four: BLOB (5.5 OBJE record), RFN (SUBM), and REFN and UID
+// (7.0 SNOTE/SUBM), now recognized where the specification defines them.
+// Counts are of lines: a per-tag summary past MaxUnknownTagDiagnosticsPerTag
+// counts every line it stands for (see unknownTagLines).
 var unhandledTags = map[string]string{
 	// Standard tags. These are the actionable entries.
-	"RIN":   "standard 5.5.1 record ID; no typed access (#441) and unrecognized in every context",
+	"RIN":   "standard on every 5.5/5.5.1 record (#730); MyHeritage FTB also writes it under events",
 	"FORM":  "standard; unrecognized in some contexts",
 	"NUMB":  "standard; unrecognized in some contexts",
 	"CONC":  "continuation mechanic, unrecognized in some contexts",
@@ -80,18 +85,14 @@ var unhandledTags = map[string]string{
 	"SOUR":  "standard; unrecognized in some contexts",
 	"ALIA":  "standard; #375 fixed level 1 on INDI, still unrecognized at level 2",
 	"TITL":  "standard; unrecognized in some contexts",
-	"BLOB":  "standard 5.5 multimedia blob",
-	"RFN":   "standard 5.5.1 record file number",
 	"DATE":  "standard; unrecognized in some contexts",
 	"EMAIL": "standard 5.5.1/7.0 contact tag",
 	"WWW":   "standard 5.5.1/7.0 contact tag",
-	"UID":   "standard 7.0 tag",
 	"TIME":  "standard, but misplaced at HEAD level 1 instead of under HEAD.DATE (vendor-tmg12.ged)",
 
 	// GEDCOM 7.0 tags, all from maximal70.ged. Version Support is Principle 4
 	// and Differentiator 2, so these are the sharpest entries in the list.
 	"CREA": "GEDCOM 7.0 creation timestamp",
-	"REFN": "GEDCOM 7.0 user reference number",
 
 	// Vendor tags that omit the underscore convention. Nothing for the decoder
 	// to fix -- recorded so they are not mistaken for standard-tag gaps.
@@ -183,8 +184,8 @@ func TestCorpusTagCoverage(t *testing.T) {
 			if d.Code != CodeUnknownTag {
 				continue
 			}
-			tag := strings.TrimPrefix(d.Message, "unknown tag: ")
-			if tag == d.Message || tag == "" || strings.HasPrefix(tag, "_") {
+			tag, lines, ok := unknownTagLines(d)
+			if !ok || tag == "" || strings.HasPrefix(tag, "_") {
 				continue // custom tags are Tags-only by design (ADR 0003)
 			}
 			fixture := filepath.Base(path)
@@ -192,10 +193,10 @@ func TestCorpusTagCoverage(t *testing.T) {
 				if misplaced[fixture] == nil {
 					misplaced[fixture] = map[string]int{}
 				}
-				misplaced[fixture][tag]++
+				misplaced[fixture][tag] += lines
 				continue
 			}
-			found[tag]++
+			found[tag] += lines
 			if where[tag] == nil {
 				where[tag] = map[string]bool{}
 			}

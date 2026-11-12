@@ -3,6 +3,7 @@ package decoder
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -56,6 +57,28 @@ type diagnosticCollector struct {
 
 	// budget bounds the diagnostics kept; nil keeps them all.
 	budget *diagnosticBudget
+
+	// unknownTags counts, per tag name, the CodeUnknownTag diagnostics
+	// addUnknownTag has seen, so it can stop reporting a tag one line at a
+	// time once it passes MaxUnknownTagDiagnosticsPerTag (#730).
+	unknownTags map[string]*unknownTagCount
+}
+
+// MaxUnknownTagDiagnosticsPerTag is the number of CodeUnknownTag diagnostics a
+// lenient decode reports for one tag name before it stops reporting that tag
+// line by line. Every line is still kept in the raw tags; the lines past the cap
+// are counted in one closing CodeUnknownTag diagnostic per tag, at the line of
+// the first of them, so an export that writes the same nonstandard tag on every
+// event (MyHeritage's RIN, Brother's Keeper's QUAY) yields a handful of
+// diagnostics rather than thousands that bury the rest. Unknown level-0 record
+// types are not capped.
+const MaxUnknownTagDiagnosticsPerTag = 10
+
+// unknownTagCount is addUnknownTag's tally for one tag name.
+type unknownTagCount struct {
+	reported      int
+	suppressed    int
+	firstOverLine int
 }
 
 // quiet returns a collector that discards diagnostics but carries c's
@@ -117,9 +140,22 @@ func (c *diagnosticCollector) isPointer(s string) bool {
 	return gedcom.IsPointerXRefForVersion(s, v)
 }
 
-// addUnknownTag records an unknown tag diagnostic.
+// addUnknownTag records an unknown tag diagnostic, or counts it once tag has
+// been reported MaxUnknownTagDiagnosticsPerTag times (see unknownTagSummaries).
 func (c *diagnosticCollector) addUnknownTag(lineNumber int, tag, content string) {
-	if c.collecting() {
+	if !c.collecting() {
+		return
+	}
+	if c.unknownTags == nil {
+		c.unknownTags = map[string]*unknownTagCount{}
+	}
+	count := c.unknownTags[tag]
+	if count == nil {
+		count = &unknownTagCount{}
+		c.unknownTags[tag] = count
+	}
+	if count.reported < MaxUnknownTagDiagnosticsPerTag {
+		count.reported++
 		c.add(NewDiagnostic(
 			lineNumber,
 			SeverityWarning,
@@ -127,7 +163,52 @@ func (c *diagnosticCollector) addUnknownTag(lineNumber int, tag, content string)
 			fmt.Sprintf("unknown tag: %s", tag),
 			content,
 		))
+		return
 	}
+	if count.suppressed == 0 {
+		count.firstOverLine = lineNumber
+	}
+	count.suppressed++
+}
+
+// addUnknownTagOutside55 reports tag, a structure only GEDCOM 5.5 defines, as
+// unknown in a document that declares another version. A document declaring no
+// version this package recognizes is not reported.
+//
+// Only 5.5 structures that later versions moved or dropped are gated this way.
+// Record identifiers that one version defines and another replaced (RIN, RFN,
+// AFN; 7.0 CREA, REFN, UID, INIL) are accepted in every version, as on INDI
+// since #375: they carry the same meaning wherever they appear, and real
+// exports mix them across versions.
+func (c *diagnosticCollector) addUnknownTagOutside55(tag *gedcom.Tag) {
+	if c != nil && c.version != "" && c.version != gedcom.Version55 {
+		c.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
+	}
+}
+
+// unknownTagSummaries returns one CodeUnknownTag diagnostic for each tag whose
+// lines passed MaxUnknownTagDiagnosticsPerTag, at the line of the first line
+// not reported individually, counting those lines (that one included). They
+// are ordered by that line, so the result does not depend on map order.
+func (c *diagnosticCollector) unknownTagSummaries() Diagnostics {
+	if !c.collecting() {
+		return nil
+	}
+	var out Diagnostics
+	for tag, count := range c.unknownTags {
+		if count.suppressed == 0 {
+			continue
+		}
+		out = append(out, NewDiagnostic(
+			count.firstOverLine,
+			SeverityWarning,
+			CodeUnknownTag,
+			fmt.Sprintf("unknown tag: %s (%d more lines with this tag, from this line on, not reported individually)", tag, count.suppressed),
+			"",
+		))
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Line < out[j].Line })
+	return out
 }
 
 // addInvalidValue records an invalid value diagnostic.
@@ -532,9 +613,7 @@ func parseAssociation(tags []*gedcom.Tag, assoIdx int, collector *diagnosticColl
 				// document declaring another (5.5-style exports such as
 				// Geneanet's 5.5.1 write it).
 				assoc.RecordType = collector.text(tag.Value)
-				if collector != nil && collector.version != "" && collector.version != gedcom.Version55 {
-					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
-				}
+				collector.addUnknownTagOutside55(tag)
 			case "PHRASE":
 				assoc.Phrase = collector.text(tag.Value)
 			case "NOTE", "SNOTE":
@@ -1039,6 +1118,10 @@ func parsePlaceDetail(tags []*gedcom.Tag, placIdx, baseLevel int, collector *dia
 					tags, i, place.NoteXRefs, place.InlineNotes, collector)
 			case "FONE", "ROMN", "TRAN", "EXID", "LANG":
 				// Known tags not yet parsed into typed fields
+			case "SOUR":
+				// The 5.5 citation of the place name, kept raw and reported
+				// in a document declaring another version (#730).
+				collector.addUnknownTagOutside55(tag)
 			default:
 				if !strings.HasPrefix(tag.Tag, "_") {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -1279,10 +1362,12 @@ func parseFamily(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 		case "EXID":
 			fam.ExternalIDs = append(fam.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
-		case "RESN", "SUBM", "ASSO":
+		case "RESN", "SUBM", "ASSO", "RIN":
 			// Known tags not yet parsed into typed fields; the raw tags remain
 			// on Family.Tags (ADR 0003). Recognizing them keeps UNKNOWN_TAG
 			// meaning "nonstandard tag" for callers who filter on it (#375).
+			// RIN is the 5.5/5.5.1 automated record ID every record may carry
+			// (#730).
 			// FACT is deliberately absent: like the INDI side (issue #386) it
 			// now decodes into Family.Attributes, so its own substructures are
 			// walked and can be diagnosed (issue #448).
@@ -1336,8 +1421,8 @@ func parseSource(record *gedcom.Record, collector *diagnosticCollector) *gedcom.
 			src.UIDs = append(src.UIDs, collector.text(tag.Value))
 		case "EXID":
 			src.ExternalIDs = append(src.ExternalIDs, parseExternalID(record.Tags, i, collector))
-		case "DATA", "ABBR":
-			// Known tags not yet parsed into typed fields
+		case "DATA", "ABBR", "RIN":
+			// Known tags not yet parsed into typed fields (RIN: #730)
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
 				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
@@ -1515,8 +1600,9 @@ func parseSubmitter(record *gedcom.Record, collector *diagnosticCollector) *gedc
 		case "EXID":
 			subm.ExternalIDs = append(subm.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
-		case "CHAN", "FAX", "WWW", "OBJE", "RIN", "UID":
-			// Known tags not yet parsed into typed fields
+		case "CHAN", "FAX", "WWW", "OBJE", "RIN", "UID", "CREA", "REFN", "RFN":
+			// Known tags not yet parsed into typed fields. CREA and REFN are
+			// 7.0, RFN 5.5/5.5.1 (#730); typed access is #786.
 
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
@@ -1618,8 +1704,9 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "EXID":
 			repo.ExternalIDs = append(repo.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
-		case "CHAN", "REFN", "UID":
-			// Known tags not yet parsed into typed fields
+		case "CHAN", "REFN", "UID", "CREA", "RIN":
+			// Known tags not yet parsed into typed fields. CREA is 7.0, RIN
+			// 5.5/5.5.1 (#730); typed access is #786.
 
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
@@ -1729,8 +1816,8 @@ func parseNote(record *gedcom.Record, collector *diagnosticCollector) *gedcom.No
 		case "EXID":
 			note.ExternalIDs = append(note.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
-		case "MIME", "LANG", "TRAN", "SOUR", "REFN", "UID", "CHAN":
-			// Known tags not yet parsed into typed fields
+		case "MIME", "LANG", "TRAN", "SOUR", "REFN", "UID", "CHAN", "RIN":
+			// Known tags not yet parsed into typed fields (RIN: #730)
 
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
@@ -1784,6 +1871,12 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 
 		case "CHAN":
 			note.ChangeDate = parseChangeDate(record.Tags, i, collector)
+
+		case "CREA", "REFN", "UID":
+			// Standard SNOTE substructures not yet parsed into typed fields;
+			// the raw tags remain on SharedNote.Tags (ADR 0003). Recognizing
+			// them keeps UNKNOWN_TAG meaning "nonstandard tag" (#730); typed
+			// access is #786.
 
 		case "CONT", "CONC":
 			// Fold continuation lines back into the primary text so consumers
@@ -1892,6 +1985,14 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 			media.Restriction = collector.text(tag.Value)
 		case "EXID":
 			media.ExternalIDs = append(media.ExternalIDs, parseExternalID(record.Tags, i, collector))
+		case "RIN":
+			// Known tag not yet parsed into a typed field; the raw tag remains
+			// on MediaObject.Tags (ADR 0003) (#730).
+		case "FORM", "TITL", "BLOB", "OBJE":
+			// The 5.5 record layout, which 5.5.1 moved under FILE: kept raw
+			// on MediaObject.Tags, and reported in a document declaring
+			// another version (#730).
+			collector.addUnknownTagOutside55(tag)
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
 				collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
