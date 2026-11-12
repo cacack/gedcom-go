@@ -22,8 +22,10 @@ var restrictionPrecedence = []string{"privacy", "confidential", "locked"}
 // protective keyword (privacy, then confidential, then locked) rather than
 // risk publishing a restricted record, and reports the rest as data loss.
 //
-// It reads the RESN tags, so a record with no Tags is left as it is; the
-// typed Restriction fields follow the tags when the converter re-derives
+// It reads the RESN tags when the record has them, and otherwise the typed
+// Restriction fields of the entity (record, event, attribute and media), the
+// representation the encoder writes for a record with no Tags; the typed
+// fields of a record with Tags follow the tags when the converter re-derives
 // each entity. Each rewrite is a Normalized note under one
 // RESTRICTION_VALUES_MAPPED transformation.
 func transformRestrictions(doc *gedcom.Document, report *gedcom.ConversionReport, targetVersion gedcom.Version) {
@@ -34,8 +36,33 @@ func transformRestrictions(doc *gedcom.Document, report *gedcom.ConversionReport
 		if record == nil {
 			continue
 		}
-		var path []string // tags enclosing the current one, by level
 		lost := false
+		// rewrite converts one RESN payload in place and reports it under the
+		// structure path leading to it.
+		rewrite := func(payload *string, path ...string) {
+			value, dropped := restrictionFor(*payload, upgrade)
+			if value == *payload {
+				return
+			}
+			original := *payload
+			*payload = value
+			reason := "Restriction notice written in GEDCOM " + targetVersion.String() + " spelling"
+			if dropped != "" {
+				reason = "GEDCOM " + targetVersion.String() + " takes one restriction value; kept the most protective, dropped " + dropped
+				lost = true
+			}
+			report.AddNormalized(gedcom.ConversionNote{
+				Path:     BuildNestedPath(string(record.Type), record.XRef, path...),
+				Original: "RESN " + original,
+				Result:   "RESN " + value,
+				Reason:   reason,
+			})
+			total++
+		}
+		if len(record.Tags) == 0 {
+			rewriteEntityRestrictions(record, rewrite)
+		}
+		var path []string // tags enclosing the current one, by level
 		for _, tag := range record.Tags {
 			if tag == nil || tag.Level < 1 {
 				continue
@@ -44,28 +71,9 @@ func transformRestrictions(doc *gedcom.Document, report *gedcom.ConversionReport
 				path = path[:tag.Level-1]
 			}
 			path = append(path, tag.Tag)
-			if tag.Tag != "RESN" {
-				continue
+			if tag.Tag == "RESN" {
+				rewrite(&tag.Value, path...)
 			}
-			value, dropped := restrictionFor(tag.Value, upgrade)
-			if value == tag.Value {
-				continue
-			}
-			original := tag.Value
-			tag.Value = value
-			notePath := BuildNestedPath(string(record.Type), record.XRef, path...)
-			reason := "Restriction notice written in GEDCOM " + targetVersion.String() + " spelling"
-			if dropped != "" {
-				reason = "GEDCOM " + targetVersion.String() + " takes one restriction value; kept the most protective, dropped " + dropped
-				lost = true
-			}
-			report.AddNormalized(gedcom.ConversionNote{
-				Path:     notePath,
-				Original: "RESN " + original,
-				Result:   "RESN " + value,
-				Reason:   reason,
-			})
-			total++
 		}
 		if lost {
 			lossRecords = append(lossRecords, record.XRef)
@@ -84,6 +92,37 @@ func transformRestrictions(doc *gedcom.Document, report *gedcom.ConversionReport
 			Description: "Rewrote RESN values for GEDCOM " + targetVersion.String(),
 			Count:       total,
 		})
+	}
+}
+
+// rewriteEntityRestrictions passes each typed RESN payload of a record's
+// entity to rewrite, with the structure path leading to it.
+func rewriteEntityRestrictions(record *gedcom.Record, rewrite func(*string, ...string)) {
+	field := func(payload *string, path ...string) {
+		if *payload != "" {
+			rewrite(payload, append(path, "RESN")...)
+		}
+	}
+	facts := func(events []*gedcom.Event, attributes []*gedcom.Attribute) {
+		for _, e := range events {
+			if e != nil {
+				field(&e.Restriction, string(e.Type))
+			}
+		}
+		for _, a := range attributes {
+			if a != nil {
+				field(&a.Restriction, string(a.Type))
+			}
+		}
+	}
+	if ind, ok := record.GetIndividual(); ok && ind != nil {
+		field(&ind.Restriction)
+		facts(ind.Events, ind.Attributes)
+	} else if fam, ok := record.GetFamily(); ok && fam != nil {
+		field(&fam.Restriction)
+		facts(fam.Events, fam.Attributes)
+	} else if media, ok := record.GetMediaObject(); ok && media != nil {
+		field(&media.Restriction)
 	}
 }
 

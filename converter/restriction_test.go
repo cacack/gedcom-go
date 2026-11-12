@@ -112,8 +112,75 @@ func TestConvertRestrictionDowngrade(t *testing.T) {
 			if loss == nil || !slices.Equal(loss.AffectedRecords, []string{"@I1@"}) {
 				t.Errorf("DataLoss = %+v, want RESN restriction lists for @I1@", report.DataLoss)
 			}
+			if !hasNormalizedReason(report, "Individual @I1@ > RESN", "dropped confidential, locked") {
+				t.Errorf("list note does not name the dropped keywords; got %+v", report.Normalized)
+			}
 		})
 	}
+}
+
+// A record with no Tags is written from its entity, so the typed fields are
+// what the pass must rewrite.
+func restrictionEntityDoc(version gedcom.Version, record, event, attribute, family string) *gedcom.Document {
+	ind := &gedcom.Individual{
+		XRef:        "@I1@",
+		Restriction: record,
+		Events:      []*gedcom.Event{{Type: gedcom.EventBirth, Restriction: event}},
+		Attributes:  []*gedcom.Attribute{{Type: gedcom.AttributeOccupation, Value: "Smith", Restriction: attribute}},
+	}
+	records := []*gedcom.Record{
+		{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind},
+		{XRef: "@F1@", Type: gedcom.RecordTypeFamily, Entity: &gedcom.Family{XRef: "@F1@", Restriction: family}},
+	}
+	doc := &gedcom.Document{Header: &gedcom.Header{Version: version}, Records: records, XRefMap: map[string]*gedcom.Record{}}
+	for _, r := range records {
+		doc.XRefMap[r.XRef] = r
+	}
+	return doc
+}
+
+func TestConvertRestrictionEntityOnly(t *testing.T) {
+	t.Run("upgrade", func(t *testing.T) {
+		doc := restrictionEntityDoc(gedcom.Version551, "privacy", "confidential", "locked", "locked")
+		converted, report, err := Convert(doc, gedcom.Version70)
+		if err != nil {
+			t.Fatalf("Convert: %v", err)
+		}
+		ind := converted.GetIndividual("@I1@")
+		got := []string{ind.Restriction, ind.Events[0].Restriction, ind.Attributes[0].Restriction, converted.GetFamily("@F1@").Restriction}
+		if want := []string{"PRIVACY", "CONFIDENTIAL", "LOCKED", "LOCKED"}; !slices.Equal(got, want) {
+			t.Errorf("restrictions = %q, want %q", got, want)
+		}
+		assertRestrictionTransformation(t, report, 4)
+		if !hasNormalized(report, "Individual @I1@ > BIRT > RESN", "RESN confidential", "RESN CONFIDENTIAL") {
+			t.Errorf("no Normalized note for the BIRT RESN; got %+v", report.Normalized)
+		}
+	})
+	t.Run("downgrade", func(t *testing.T) {
+		doc := restrictionEntityDoc(gedcom.Version70, "CONFIDENTIAL, LOCKED", "", "SECRET", "LOCKED")
+		converted, report, err := Convert(doc, gedcom.Version551)
+		if err != nil {
+			t.Fatalf("Convert: %v", err)
+		}
+		ind := converted.GetIndividual("@I1@")
+		got := []string{ind.Restriction, ind.Events[0].Restriction, ind.Attributes[0].Restriction, converted.GetFamily("@F1@").Restriction}
+		if want := []string{"confidential", "", "SECRET", "locked"}; !slices.Equal(got, want) {
+			t.Errorf("restrictions = %q, want %q", got, want)
+		}
+		assertRestrictionTransformation(t, report, 2)
+		if !hasNormalizedReason(report, "Individual @I1@ > RESN", "dropped locked") {
+			t.Errorf("list note does not name the dropped keyword; got %+v", report.Normalized)
+		}
+		var affected []string
+		for _, loss := range report.DataLoss {
+			if loss.Feature == "RESN restriction lists" {
+				affected = loss.AffectedRecords
+			}
+		}
+		if !slices.Equal(affected, []string{"@I1@"}) {
+			t.Errorf("DataLoss = %+v, want RESN restriction lists for @I1@", report.DataLoss)
+		}
+	})
 }
 
 func TestConvertRestrictionListStrict(t *testing.T) {
@@ -163,6 +230,15 @@ func assertRestrictionTransformation(t *testing.T, report *gedcom.ConversionRepo
 func hasNormalized(report *gedcom.ConversionReport, path, original, result string) bool {
 	for _, n := range report.Normalized {
 		if strings.Contains(n.Path, path) && n.Original == original && n.Result == result {
+			return true
+		}
+	}
+	return false
+}
+
+func hasNormalizedReason(report *gedcom.ConversionReport, path, reason string) bool {
+	for _, n := range report.Normalized {
+		if strings.Contains(n.Path, path) && strings.Contains(n.Reason, reason) {
 			return true
 		}
 	}
