@@ -40,7 +40,6 @@ var oxidgedUnknownTagGaps = map[string]string{}
 // "file:line CONTEXT.TAG", with the issue responsible.
 var oxidgedTypedGaps = map[string]string{
 	"full70.ged:196 INDI.INIL.STAT.DATE": "#386: INIL left raw by decision",
-	"full70.ged:196 INDI.INIL.STAT.DATE": "#386: INIL left raw by decision",
 }
 
 // oxidgedFiles returns the vendored .ged files, failing if there are none.
