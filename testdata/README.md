@@ -14,6 +14,7 @@ testdata/
 │   ├── familysearch-examples/  # FamilySearch GEDCOM 7.0 edge cases
 │   └── ...              # Various 7.0 samples
 ├── gedcom7code/         # gedcom7code/test-files: matched 5.5.1 (5/) and 7.0 (7/) pairs
+├── oxidged/             # oxidged's hand-written "every structure" files for 5.5.1 and 7.0
 ├── encoding/            # Character encoding test files
 ├── edge-cases/          # Edge case and special scenario tests
 └── malformed/           # Invalid GEDCOM files for error testing
@@ -435,6 +436,25 @@ known failures. Four `5/` files (`atsign`, `xref-case`, `age-valid`,
 `date-dual-valid`) were vendored earlier into `edge-cases/`; see the Structural
 Torture Fixtures section.
 
+### oxidged Every-Structure Files (`oxidged/`)
+Source: https://github.com/trois-six/oxidged `tests/fixtures/conformance/` (commit pinned in `oxidged/SOURCE`)
+License: MIT (Copyright (c) 2020 Robert Pirtle; Copyright (c) 2026 Pierre Erraud and the oxidged contributors; upstream `license.md` vendored as `LICENSE`)
+
+Four fictitious files written by another project for its own 5.5.1 and 7.0
+conformance reviews, byte-identical. They are independent of our own fixtures,
+so a structure our fixtures' author overlooked is still exercised.
+
+- **full551.ged** (6.1K) - Every GEDCOM 5.5.1 structure, hand-written
+- **maximal551.ged** (10K) - `full551.ged` plus generated records completing every 5.5.1 context
+- **full70.ged** (7.5K) - Every GEDCOM 7.0 structure, hand-written
+- **extensions70.ged** (0.9K) - 7.0 extensions: SCHMA-documented tags, an extension record, extension enumeration values and calendars
+
+Exercised by `decoder/conformance_suites_test.go` (strict and lenient decode),
+`decoder/oxidged_fixtures_test.go` (no `UNKNOWN_TAG` on a standard tag, and every
+line the coverage reports call typed reaches the typed model) and
+`encoder/write_shapes_test.go` (decode, entity encode, decode). Each keeps a
+self-cleaning list of known gaps citing the issue for each.
+
 ### Fetched at test time: gedcom.io test files
 
 Not in this directory. The complete FamilySearch/GEDCOM.io `testfiles/gedcom70/`
@@ -573,6 +593,10 @@ When adding new test files:
   - License: Unlicense (public domain)
   - Files: the whole suite in `gedcom7code/`, plus `edge-cases/atsign-55.ged`, `edge-cases/xref-case.ged`, `edge-cases/age-keywords-551.ged`, `edge-cases/date-dual-years.ged`
   - 5.5.1 ↔ 7.0 conversion pairs; at-sign escaping, XRef case quirks, 5.5.1 AGE keywords, dual-year dates
+- **oxidged**: https://github.com/trois-six/oxidged
+  - License: MIT (Copyright (c) 2020 Robert Pirtle; Copyright (c) 2026 Pierre Erraud and the oxidged contributors)
+  - Files: the four files in `oxidged/`
+  - Hand-written "every structure" files for 5.5.1 and 7.0, plus 7.0 extensions
 - **Synthetic Test Files**: Created specifically for this project
   - `gedcom-5.5.1/comprehensive.ged` - GEDCOM 5.5.1 features
   - `encoding/utf8-unicode.ged` - International character testing
@@ -595,6 +619,7 @@ When adding new test files:
 - D-Jeffrey/gedcom-samples files: MIT OR CC0-1.0 (attribution given above per the corpus README)
 - gedcom7code/test-files files: Unlicense (public domain)
 - rodoslovje/ged-merge files: MIT (Copyright (c) 2026 Luka Renko)
+- oxidged files: MIT (see `oxidged/LICENSE`)
 
 ## Testing Best Practices
 

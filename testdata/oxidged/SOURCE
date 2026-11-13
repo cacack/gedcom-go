@@ -1,0 +1,7 @@
+repository: https://github.com/trois-six/oxidged
+commit: d8c2caf3edb1b67bb8849c0fb844ef9a70c5d7cf
+describes: main, committed 2026-10-18
+retrieved: 2026-11-11
+license: MIT (LICENSE is the upstream license.md, byte-identical)
+files: tests/fixtures/conformance/{full551,maximal551,full70,extensions70}.ged (byte-identical)
+authorship: listed as project-authored, fictitious and MIT in upstream tests/fixtures/conformance/LICENSES.md

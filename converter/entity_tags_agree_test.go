@@ -2,6 +2,7 @@ package converter_test
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -53,6 +54,13 @@ func entityDiffs(a, b reflect.Value, path string, diffs *[]string) {
 	}
 }
 
+// entityTagsKnownDisagreements lists converted records whose Entity still
+// disagrees with their Tags, keyed "file/from->to: TYPE XREF", with the issue
+// responsible. In both, the decoder drops text it does not fold from the
+// typed value while the converter carries it in Tags. Self-cleaning: an entry
+// that starts agreeing fails the test asking to be removed.
+var entityTagsKnownDisagreements = map[string]string{}
+
 // TestConvertedEntitiesAgreeWithTags asserts that, for every fixture and every
 // target version, each converted record's typed Entity is what decoding its
 // converted Tags gives (#772): the output is encoded from its Tags and decoded
@@ -63,6 +71,7 @@ func TestConvertedEntitiesAgreeWithTags(t *testing.T) {
 		t.Fatalf("no fixtures: %v", err)
 	}
 	targets := []gedcom.Version{gedcom.Version55, gedcom.Version551, gedcom.Version70}
+	seen := map[string]bool{}
 	for _, path := range files {
 		if filepath.Base(path) == "longsword.ged" {
 			continue // the scale fixture, as other corpus walks skip it
@@ -101,10 +110,20 @@ func TestConvertedEntitiesAgreeWithTags(t *testing.T) {
 			for i, r := range conv.Records {
 				var diffs []string
 				entityDiffs(reflect.ValueOf(r.Entity), reflect.ValueOf(again.Records[i].Entity), string(r.Type), &diffs)
-				if len(diffs) > 0 {
-					t.Errorf("%s: %s %s: Entity disagrees with Tags at %s", name, r.Type, r.XRef, strings.Join(diffs, ", "))
+				if len(diffs) == 0 {
+					continue
+				}
+				key := fmt.Sprintf("%s: %s %s", name, r.Type, r.XRef)
+				seen[key] = true
+				if _, known := entityTagsKnownDisagreements[key]; !known {
+					t.Errorf("%s: Entity disagrees with Tags at %s", key, strings.Join(diffs, ", "))
 				}
 			}
+		}
+	}
+	for key, reason := range entityTagsKnownDisagreements {
+		if !seen[key] {
+			t.Errorf("%s now agrees; remove it from entityTagsKnownDisagreements (was: %s)", key, reason)
 		}
 	}
 }

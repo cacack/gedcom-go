@@ -3,7 +3,9 @@ package encoder
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -163,37 +165,80 @@ func TestDegenerateMediaLinkSkipped(t *testing.T) {
 	}
 }
 
-// TestMaximal70ClearedTagsRoundTrip is the last #740 criterion: decode ->
-// clear Tags -> encode -> decode of maximal70.ged has zero typed differences,
-// and no record writes a level-1 structure more often than the file holds
-// it, so none is written twice (the SNOTE case #711 fixed). Lines below level
-// 1 are not counted: the encoder writes some the file leaves implicit, such
-// as GIVN and SURN from a NAME's value.
-func TestMaximal70ClearedTagsRoundTrip(t *testing.T) {
-	const path = "../testdata/gedcom-7.0/maximal70.ged"
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	orig := decodeGEDCOM(t, string(data))
-	doc := decodeGEDCOM(t, string(data))
-	clearRecordTags(doc)
-	redoc := decodeGEDCOM(t, encodeToString(t, doc))
+// clearedTagsRoundTripFiles are the files decoded, written from their typed
+// model with every record's Tags cleared, and decoded again. maximal70.ged is
+// the last #740 criterion; testdata/oxidged holds another project's
+// hand-written "every structure" files for 5.5.1 and 7.0 (#763), so a
+// structure our own fixtures' author overlooked is still exercised.
+var clearedTagsRoundTripFiles = []string{
+	"../testdata/gedcom-7.0/maximal70.ged",
+	"../testdata/oxidged/extensions70.ged",
+	"../testdata/oxidged/full551.ged",
+	"../testdata/oxidged/full70.ged",
+	"../testdata/oxidged/maximal551.ged",
+}
 
-	if len(redoc.Records) != len(orig.Records) {
-		t.Fatalf("record count %d, want %d", len(redoc.Records), len(orig.Records))
-	}
-	for i, rec := range orig.Records {
-		got := redoc.Records[i]
-		if diffs := typedDiffs(reflect.ValueOf(rec.Entity), reflect.ValueOf(got.Entity), rec.XRef); len(diffs) > 0 {
-			t.Errorf("%s: typed fields differ after the round trip: %v", rec.XRef, diffs)
+// clearedTagsRoundTripGaps lists the differences TestClearedTagsRoundTrip
+// still finds, keyed "file: XREF .Field.Path" (or "file: XREF level-1 TAG"),
+// with the issue responsible. Self-cleaning: an entry that no longer occurs
+// fails the test asking to be removed.
+var clearedTagsRoundTripGaps = map[string]string{}
+
+// TestClearedTagsRoundTrip: decode -> clear Tags -> encode -> decode has zero
+// typed differences, and no record writes a level-1 structure more often than
+// the file holds it, so none is written twice (the SNOTE case #711 fixed).
+// Lines below level 1 are not counted: the encoder writes some the file
+// leaves implicit, such as GIVN and SURN from a NAME's value.
+func TestClearedTagsRoundTrip(t *testing.T) {
+	got := map[string]string{}
+	for _, path := range clearedTagsRoundTripFiles {
+		name := filepath.Base(path)
+		data, err := os.ReadFile(path) // #nosec G304 -- a constant path in the repo's own testdata
+		if err != nil {
+			t.Fatal(err)
 		}
-		want := structureCounts(rec.Tags)
-		for tag, n := range structureCounts(got.Tags) {
-			if n > want[tag] {
-				t.Errorf("%s: level-1 %s written %d times, the file has it %d", rec.XRef, tag, n, want[tag])
+		orig := decodeGEDCOM(t, string(data))
+		doc := decodeGEDCOM(t, string(data))
+		clearRecordTags(doc)
+		redoc := decodeGEDCOM(t, encodeToString(t, doc))
+
+		if len(redoc.Records) != len(orig.Records) {
+			t.Errorf("%s: record count %d, want %d", name, len(redoc.Records), len(orig.Records))
+			continue
+		}
+		for i, rec := range orig.Records {
+			again := redoc.Records[i]
+			for _, d := range typedDiffs(reflect.ValueOf(rec.Entity), reflect.ValueOf(again.Entity), rec.XRef) {
+				got[name+": "+d] = "typed field differs after the round trip"
+			}
+			want := structureCounts(rec.Tags)
+			for tag, n := range structureCounts(again.Tags) {
+				if n > want[tag] {
+					got[fmt.Sprintf("%s: %s level-1 %s", name, rec.XRef, tag)] =
+						fmt.Sprintf("written %d times, the file has it %d", n, want[tag])
+				}
 			}
 		}
+	}
+
+	var unexpected, fixed []string
+	for key, detail := range got {
+		if _, known := clearedTagsRoundTripGaps[key]; !known {
+			unexpected = append(unexpected, key+": "+detail)
+		}
+	}
+	for key, reason := range clearedTagsRoundTripGaps {
+		if _, ok := got[key]; !ok {
+			fixed = append(fixed, fmt.Sprintf("%s (was: %s)", key, reason))
+		}
+	}
+	sort.Strings(unexpected)
+	sort.Strings(fixed)
+	if len(unexpected) > 0 {
+		t.Errorf("not listed in clearedTagsRoundTripGaps:\n  %s", strings.Join(unexpected, "\n  "))
+	}
+	if len(fixed) > 0 {
+		t.Errorf("no longer occur; remove them from clearedTagsRoundTripGaps:\n  %s", strings.Join(fixed, "\n  "))
 	}
 }
 
@@ -210,6 +255,12 @@ func structureCounts(tags []*gedcom.Tag) map[string]int {
 // typedDiffs returns the paths at which two entities differ, ignoring every
 // raw Tags field: those hold the file's lines, which the round trip rewrites.
 func typedDiffs(a, b reflect.Value, path string) []string {
+	if !a.IsValid() || !b.IsValid() { // a nil Entity: an extension record has none
+		if a.IsValid() != b.IsValid() {
+			return []string{path}
+		}
+		return nil
+	}
 	if a.Kind() != b.Kind() {
 		return []string{path}
 	}
