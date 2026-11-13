@@ -49,18 +49,24 @@ var ianaToLegacy = map[string]string{
 // what the encoder writes and what the record's entity is re-derived from
 // (#777); a record with no Tags has its MediaObject entity rewritten instead.
 // FILE.TRAN is 7.0-only and a downgrade drops it from Tags (dropV7OnlyTags),
-// so its FORM is mapped there only on a conversion to 7.0.
+// so its FORM is mapped there only on a conversion to 7.0. On a conversion to
+// 5.x, the FORM of every inline multimedia link (OBJE.FORM, OBJE.FILE.FORM)
+// is mapped too, so the links demoteMediaRecords makes from OBJE records are
+// mapped where they end up.
 // Each value actually changed is an Approximated note and counts toward one
 // MEDIA_TYPE_MAPPED transformation.
 func transformMediaTypes(doc *gedcom.Document, targetVersion gedcom.Version, report *gedcom.ConversionReport) {
 	m := &mediaTypeMapper{target: targetVersion, report: report}
 	for _, record := range doc.Records {
-		if record == nil || record.Type != gedcom.RecordTypeMedia {
-			continue
-		}
-		if len(record.Tags) > 0 {
+		switch {
+		case record == nil:
+		case record.Type != gedcom.RecordTypeMedia:
+			if targetVersion != gedcom.Version70 {
+				m.mapInlineLinks(record)
+			}
+		case len(record.Tags) > 0:
 			m.mapTags(record)
-		} else {
+		default:
 			m.mapEntity(record)
 		}
 	}
@@ -99,10 +105,10 @@ func (m *mediaTypeMapper) mapTags(record *gedcom.Record) {
 		case "FILE.TRAN":
 			transIdx++
 		case "FILE.FORM":
-			tag.Value = m.mapForm(record.XRef, tag.Value, formatFileIndex(fileIdx), "FORM")
+			tag.Value = m.mapForm(tag.Value, mediaPath(record.XRef, formatFileIndex(fileIdx), "FORM"))
 		case "FILE.TRAN.FORM":
 			if m.target == gedcom.Version70 {
-				tag.Value = m.mapForm(record.XRef, tag.Value, formatFileIndex(fileIdx), formatTransIndex(transIdx), "FORM")
+				tag.Value = m.mapForm(tag.Value, mediaPath(record.XRef, formatFileIndex(fileIdx), formatTransIndex(transIdx), "FORM"))
 			}
 		}
 	}
@@ -119,19 +125,48 @@ func (m *mediaTypeMapper) mapEntity(record *gedcom.Record) {
 		if file == nil {
 			continue
 		}
-		file.Form = m.mapForm(record.XRef, file.Form, formatFileIndex(fileIdx), "FORM")
+		file.Form = m.mapForm(file.Form, mediaPath(record.XRef, formatFileIndex(fileIdx), "FORM"))
 		for transIdx, trans := range file.Translations {
 			if trans == nil {
 				continue
 			}
-			trans.Form = m.mapForm(record.XRef, trans.Form, formatFileIndex(fileIdx), formatTransIndex(transIdx), "FORM")
+			trans.Form = m.mapForm(trans.Form, mediaPath(record.XRef, formatFileIndex(fileIdx), formatTransIndex(transIdx), "FORM"))
 		}
 	}
 }
 
+// mapInlineLinks rewrites the FORM of each inline multimedia link in
+// record.Tags: OBJE.FORM (5.5) and OBJE.FILE.FORM (5.5.1), where the OBJE
+// has no pointer value.
+func (m *mediaTypeMapper) mapInlineLinks(record *gedcom.Record) {
+	var open []*gedcom.Tag // the tag open at each level, starting at level 1
+	for i, tag := range record.Tags {
+		if tag == nil || tag.Level < 1 {
+			continue
+		}
+		open = append(open[:min(tag.Level-1, len(open))], tag)
+		n := len(open)
+		if tag.Tag != "FORM" || n < 2 {
+			continue
+		}
+		link := open[n-2]
+		if link.Tag == "FILE" && n >= 3 {
+			link = open[n-3]
+		}
+		if link.Tag == "OBJE" && strings.TrimSpace(link.Value) == "" {
+			tag.Value = m.mapForm(tag.Value, BuildNestedPath(string(record.Type), record.XRef, tagPath(record.Tags, i)...))
+		}
+	}
+}
+
+// mediaPath returns the report path of tags below the OBJE record xref.
+func mediaPath(xref string, tags ...string) string {
+	return BuildNestedPath("OBJE", xref, tags...)
+}
+
 // mapForm returns form in the target version's media type form, reporting
-// the change at path (below the OBJE record xref) when there is one.
-func (m *mediaTypeMapper) mapForm(xref, form string, path ...string) string {
+// the change at path when there is one.
+func (m *mediaTypeMapper) mapForm(form, path string) string {
 	if form == "" {
 		return form
 	}
@@ -149,7 +184,7 @@ func (m *mediaTypeMapper) mapForm(xref, form string, path ...string) string {
 	m.count++
 	m.details = append(m.details, form+" -> "+mapped)
 	m.report.AddApproximated(gedcom.ConversionNote{
-		Path:     BuildNestedPath("OBJE", xref, path...),
+		Path:     path,
 		Original: form,
 		Result:   mapped,
 		Reason:   reason,

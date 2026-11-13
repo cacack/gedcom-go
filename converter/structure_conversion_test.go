@@ -378,6 +378,16 @@ func TestDowngrade70To55DemotesMediaRecords(t *testing.T) {
 	if !hasTransformation(report, "OBJE_RECORD_TO_INLINE") {
 		t.Errorf("no OBJE_RECORD_TO_INLINE transformation: %+v", report.Transformations)
 	}
+	// FORMs are mapped (#777) in the inline links that hold them, and the
+	// dropped @O2@'s is not reported.
+	if !hasApproximated(report, "Individual @I1@ > BIRT > OBJE > FORM", "image/jpeg", "JPG") {
+		t.Errorf("no Approximated note for a link's FORM: %+v", report.Approximated)
+	}
+	for _, n := range report.Approximated {
+		if strings.Contains(n.Path, "@O") {
+			t.Errorf("FORM reported mapped in a removed record: %+v", n)
+		}
+	}
 	// The BIRT link holds the file's TITL, so it is not lost.
 	if hasDropped(report, "MediaObject @O1@ > FILE > TITL") {
 		t.Errorf("file TITL reported lost though a link holds it: %+v", report.Dropped)

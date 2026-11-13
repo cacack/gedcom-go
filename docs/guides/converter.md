@@ -191,8 +191,10 @@ declares `VERS`, is left as it is.
 
 When converting between versions, the `FORM` of each multimedia record's
 `FILE` (and, to 7.0, of each `FILE.TRAN`) is mapped in `Record.Tags`, so the
-output and the re-derived `MediaFile.Form` carry it. A value with no mapping is
-left as it is, and only a changed value is reported:
+output and the re-derived `MediaFile.Form` carry it. To 5.x, so is the `FORM` of
+each inline `OBJE` link, including the links a 7.0 -> 5.5 conversion makes from
+`OBJE` records. A value with no mapping is left as it is, and only a changed
+value is reported:
 
 | Legacy (5.5/5.5.1) | IANA (7.0) |
 |-------------------|------------|

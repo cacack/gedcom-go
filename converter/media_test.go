@@ -522,3 +522,44 @@ func TestTransformMediaTypesTaggedTranslation(t *testing.T) {
 		t.Errorf("no Approximated note for FILE.TRAN.FORM: %+v", report.Approximated)
 	}
 }
+
+// TestTransformMediaTypesInlineLinks: to 5.x, an inline link's FORM is mapped
+// in both the 5.5 (OBJE.FORM) and 5.5.1 (OBJE.FILE.FORM) layouts, and a FORM
+// under a pointer or another structure is not.
+func TestTransformMediaTypesInlineLinks(t *testing.T) {
+	form55 := &gedcom.Tag{Level: 2, Tag: "FORM", Value: "image/jpeg"}
+	form551 := &gedcom.Tag{Level: 4, Tag: "FORM", Value: "image/png"}
+	pointerForm := &gedcom.Tag{Level: 2, Tag: "FORM", Value: "image/gif"}
+	otherForm := &gedcom.Tag{Level: 2, Tag: "FORM", Value: "image/bmp"}
+	doc := &gedcom.Document{Records: []*gedcom.Record{{
+		XRef: "@I1@",
+		Type: gedcom.RecordTypeIndividual,
+		Tags: []*gedcom.Tag{
+			{Level: 1, Tag: "OBJE"},
+			form55,
+			{Level: 2, Tag: "FILE", Value: "a.jpg"},
+			{Level: 1, Tag: "BIRT"},
+			{Level: 2, Tag: "OBJE"},
+			{Level: 3, Tag: "FILE", Value: "b.png"},
+			form551,
+			{Level: 1, Tag: "OBJE", Value: "@O1@"},
+			pointerForm,
+			{Level: 1, Tag: "_X"},
+			otherForm,
+		},
+	}}}
+	report := &gedcom.ConversionReport{}
+	transformMediaTypes(doc, gedcom.Version551, report)
+	if form55.Value != "JPG" || form551.Value != "PNG" {
+		t.Errorf("inline FORMs = %q, %q, want JPG, PNG", form55.Value, form551.Value)
+	}
+	if pointerForm.Value != "image/gif" || otherForm.Value != "image/bmp" {
+		t.Errorf("non-link FORMs mapped: %q, %q", pointerForm.Value, otherForm.Value)
+	}
+	if !hasApproximated(report, "Individual @I1@ > BIRT > OBJE > FILE > FORM", "image/png", "PNG") {
+		t.Errorf("no Approximated note at the link's path: %+v", report.Approximated)
+	}
+	if len(report.Approximated) != 2 {
+		t.Errorf("Approximated = %+v, want 2 notes", report.Approximated)
+	}
+}
