@@ -261,12 +261,24 @@ var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
 // the bytes before it are read.
 func skipUTF8BOM(r io.Reader) (br *bufio.Reader, skipped int64) {
 	br = bufio.NewReader(r)
-	if head, err := br.Peek(len(utf8BOM)); err == nil && bytes.Equal(head, utf8BOM) {
+	head, err := br.Peek(len(utf8BOM))
+	switch {
+	case err == nil && bytes.Equal(head, utf8BOM):
 		n, _ := br.Discard(len(utf8BOM)) // cannot fail: the bytes are buffered
 		skipped = int64(n)
+	case err != nil && err != io.EOF:
+		// Peek clears bufio's stored error, so replay it after the peeked
+		// bytes; a reader that fails only once would otherwise lose it.
+		replay := io.MultiReader(bytes.NewReader(append([]byte(nil), head...)), errorReader{err})
+		br = bufio.NewReader(replay)
 	}
 	return br, skipped
 }
+
+// errorReader returns err from every Read.
+type errorReader struct{ err error }
+
+func (r errorReader) Read([]byte) (int, error) { return 0, r.err }
 
 // readLine reads a single line with its byte position and length.
 func (it *RecordIteratorWithOffset) readLine() (*lineWithPos, error) {

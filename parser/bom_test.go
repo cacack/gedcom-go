@@ -3,6 +3,7 @@ package parser
 import (
 	"bytes"
 	"errors"
+	"io"
 	"strings"
 	"testing"
 )
@@ -115,6 +116,45 @@ func TestSkipUTF8BOM_NoBOM(t *testing.T) {
 
 // A read error met while peeking for a BOM is reported after the bytes read
 // before it, not swallowed.
+// onceFailingReader returns content, then err once, then io.EOF.
+type onceFailingReader struct {
+	content string
+	err     error
+	calls   int
+}
+
+func (r *onceFailingReader) Read(p []byte) (int, error) {
+	r.calls++
+	switch r.calls {
+	case 1:
+		return copy(p, r.content), nil
+	case 2:
+		return 0, r.err
+	default:
+		return 0, io.EOF
+	}
+}
+
+func TestSkipUTF8BOM_OneShotReadErrorKept(t *testing.T) {
+	readErr := errors.New("transient failure")
+	r, n := skipUTF8BOM(&onceFailingReader{content: "0", err: readErr})
+	var b bytes.Buffer
+	_, err := b.ReadFrom(r)
+	if !errors.Is(err, readErr) {
+		t.Errorf("read error = %v, want %v", err, readErr)
+	}
+	if n != 0 || b.String() != "0" {
+		t.Errorf("skipped %d, replayed %q, want 0 and %q", n, b.String(), "0")
+	}
+
+	it := NewRecordIterator(&onceFailingReader{content: "0", err: readErr})
+	for it.Next() {
+	}
+	if !errors.Is(it.Err(), readErr) {
+		t.Errorf("Err() = %v, want %v", it.Err(), readErr)
+	}
+}
+
 func TestSkipUTF8BOM_ReadErrorReplayed(t *testing.T) {
 	readErr := errors.New("disk on fire")
 	r, n := skipUTF8BOM(&failingReader{content: "0", err: readErr})
