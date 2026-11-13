@@ -92,7 +92,7 @@ func (t *xrefTracker) declare(xref string, line int) (firstLine int, dup bool) {
 	case line > maxInfoLine:
 		t.bigLines[id] = line
 	case line > 0:
-		*info |= xrefInfo(line) << infoLineShift //nolint:gosec // 0 < line <= maxInfoLine
+		*info |= xrefInfo(line) << infoLineShift // #nosec G115 -- 0 < line <= maxInfoLine
 	}
 	t.seenCount++
 	return 0, false
@@ -172,7 +172,7 @@ func (t *xrefTracker) site(context, field string) uint32 {
 	if id, ok := t.siteIDs[key]; ok {
 		return id
 	}
-	id := uint32(len(t.sites)) //nolint:gosec // bounded by the number of references, far below 2^32
+	id := uint32(len(t.sites)) // #nosec G115 -- bounded by the number of references, far below 2^32
 	t.sites = append(t.sites, key)
 	t.siteIDs[key] = id
 	return id
@@ -216,14 +216,14 @@ func (x *xrefTable) bytes(id uint32) []byte {
 
 // intern returns the id of s, adding s if it is new.
 func (x *xrefTable) intern(s string) uint32 {
-	mask := uint64(len(x.slots) - 1) //nolint:gosec // len is a positive power of two
+	mask := uint64(len(x.slots) - 1) // #nosec G115 -- len is a positive power of two
 	i := maphash.String(x.seed, s) & mask
 	for ; x.slots[i] != 0; i = (i + 1) & mask {
 		if id := x.slots[i] - 1; string(x.bytes(id)) == s {
 			return id
 		}
 	}
-	id := uint32(x.ends.len()) //nolint:gosec // one id per distinct XRef, far below 2^32
+	id := uint32(x.ends.len()) // #nosec G115 -- one id per distinct XRef, far below 2^32
 	x.arena = append(x.arena, s...)
 	x.ends.append(len(x.arena))
 	x.slots[i] = id + 1
@@ -236,14 +236,14 @@ func (x *xrefTable) intern(s string) uint32 {
 // rehash rebuilds the index with n slots.
 func (x *xrefTable) rehash(n int) {
 	x.slots = make([]uint32, n)
-	mask := uint64(n - 1) //nolint:gosec // n is a positive power of two
+	mask := uint64(n - 1) // #nosec G115 -- n is a positive power of two
 	for id := range x.ends.len() {
 		// maphash.Bytes hashes as maphash.String does the same bytes.
-		i := maphash.Bytes(x.seed, x.bytes(uint32(id))) & mask //nolint:gosec // id < len(ends), which fits uint32
+		i := maphash.Bytes(x.seed, x.bytes(uint32(id))) & mask // #nosec G115 -- id < len(ends), which fits uint32
 		for x.slots[i] != 0 {
 			i = (i + 1) & mask
 		}
-		x.slots[i] = uint32(id) + 1 //nolint:gosec // as above
+		x.slots[i] = uint32(id) + 1 // #nosec G115 -- as above
 	}
 }
 
