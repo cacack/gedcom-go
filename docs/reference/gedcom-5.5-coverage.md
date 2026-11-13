@@ -183,7 +183,7 @@ specification PDFs, which is described in
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
 | raw (accepted) | 72 | 7.2% | 81 | 6.2% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 0 | 0.0% | 0 | 0.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 9 | 0.9% | 6 | 0.5% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 7 | 0.7% | 4 | 0.3% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -196,7 +196,7 @@ pairs under it reach the typed model.
 | `FAM` | 219 / 254 | 289 / 324 |
 | `HEAD` | 20 / 28 | 25 / 33 |
 | `INDI` | 610 / 625 | 831 / 855 |
-| `NOTE` | 3 / 9 | 3 / 9 |
+| `NOTE` | 8 / 9 | 8 / 9 |
 | `OBJE` | 6 / 12 | 12 / 13 |
 | `REPO` | 16 / 17 | 20 / 21 |
 | `SOUR` | 33 / 34 | 33 / 34 |

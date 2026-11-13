@@ -98,8 +98,9 @@ specification defines, in every context it defines it, is derived by decoding a
 document built for it: 1,303 of 7.0's structures reach the typed model, 917 of
 5.5's, and 1,229 of 5.5.1's.
 =======
-5.5's, and 1,209 of 5.5.1's.
->>>>>>> 2c77d72 (docs: update FEATURES.md 5.5.1 typed coverage count)
+document built for it: 1,312 of 7.0's structures reach the typed model, 924 of
+5.5's, and 1,234 of 5.5.1's.
+>>>>>>> 309c883 (test(decoder): drop oxidged typed-gap entries fixed by #786)
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
