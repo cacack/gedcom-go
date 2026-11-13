@@ -72,18 +72,24 @@ func TestPhraseWithoutValueNotWritten(t *testing.T) {
 
 // TestAgePhraseWithoutValue pins issue #795: GEDCOM 7.0 allows an AGE with an
 // empty payload qualified only by a PHRASE. Entity-encoded as 7.0 it keeps
-// both lines; as 5.5.1, where AGE requires a value, it writes neither.
+// both lines, under an event and an attribute alike; as 5.5.1, where AGE
+// requires a value, it writes neither. TestSpouseAgePhraseWithoutValue covers
+// HUSB.AGE and WIFE.AGE.
 func TestAgePhraseWithoutValue(t *testing.T) {
 	const input = "0 HEAD\n1 GEDC\n2 VERS 7.0\n" +
 		"0 @I1@ INDI\n1 CHR\n2 AGE\n3 PHRASE Zero\n1 BIRT\n2 DATE 1900\n" +
+		"1 OCCU Farmer\n2 AGE\n3 PHRASE In his youth\n" +
 		"0 TRLR\n"
 	for _, tc := range []struct {
 		target gedcom.Version
-		want   string
+		want   []string
 		absent []string
 	}{
-		{gedcom.Version70, "1 CHR\n2 AGE\n3 PHRASE Zero\n1 BIRT\n", nil},
-		{gedcom.Version551, "1 CHR\n1 BIRT\n", []string{"AGE", "PHRASE"}},
+		{gedcom.Version70, []string{
+			"1 CHR\n2 AGE\n3 PHRASE Zero\n1 BIRT\n",
+			"1 OCCU Farmer\n2 AGE\n3 PHRASE In his youth\n",
+		}, nil},
+		{gedcom.Version551, []string{"1 CHR\n1 BIRT\n", "1 OCCU Farmer\n"}, []string{"AGE", "PHRASE"}},
 	} {
 		t.Run(string(tc.target), func(t *testing.T) {
 			doc, err := decoder.Decode(strings.NewReader(input))
@@ -100,8 +106,10 @@ func TestAgePhraseWithoutValue(t *testing.T) {
 				t.Fatalf("Encode() error = %v", err)
 			}
 			out := buf.String()
-			if !strings.Contains(out, tc.want) {
-				t.Errorf("output missing %q:\n%s", tc.want, out)
+			for _, want := range tc.want {
+				if !strings.Contains(out, want) {
+					t.Errorf("output missing %q:\n%s", want, out)
+				}
 			}
 			for _, tag := range tc.absent {
 				if strings.Contains(out, " "+tag) {
