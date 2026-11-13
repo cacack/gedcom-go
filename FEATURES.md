@@ -2108,6 +2108,8 @@ Additional LazyParser methods:
 | `XRefs()` | `[]string` | List of all indexed cross-references |
 | `IterateFrom(offset)` | `*RecordIterator` | Resume iteration from byte offset |
 
+`LazyParser` reads raw bytes, so it skips a UTF-8 BOM at the start of the file itself; offsets stay absolute, so a BOM-prefixed file's HEAD record starts at byte 3. `Records`, `RecordIterator` and `RecordsWithOffset` skip one at the start of their reader the same way. Other encodings (ANSEL, UTF-16) need the decoder or `charset.NewReader`, which `LazyParser` cannot use because it needs to seek.
+
 **Use Cases**:
 - Quick validation of file structure without full parse
 - Finding specific individuals by ID in large files

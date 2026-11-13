@@ -27,6 +27,10 @@ type LazyParser struct {
 // [LazyParser.IterateFrom], [LazyParser.RecordsFrom] and their *All forms.
 // [LazyParser.Iterate] and [LazyParser.Records] also stream from readers that
 // cannot seek, such as a pipe.
+//
+// LazyParser reads the file's bytes directly, so it cannot sit behind
+// charset.NewReader; it skips a UTF-8 BOM at offset 0 itself, and record
+// offsets still count it.
 func NewLazyParser(rs io.ReadSeeker) *LazyParser {
 	return &LazyParser{
 		rs: rs,
