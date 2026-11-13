@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -260,5 +261,30 @@ func TestDecodeHeaderLanguageAndCopyrightLevel1Only(t *testing.T) {
 				t.Errorf("SourceData.Copyright = %q, want %q", gotDataCopr, tt.wantDataCopr)
 			}
 		})
+	}
+}
+
+// TestOxidgedFull70HeaderLanguageAndCopyright decodes the vendored full70.ged,
+// whose HEAD carries HEAD.SOUR.DATA.COPR, HEAD.COPR, HEAD.LANG and a later
+// HEAD.NOTE.LANG, and checks that the file's own language and copyright win
+// (issue #785).
+func TestOxidgedFull70HeaderLanguageAndCopyright(t *testing.T) {
+	f, err := os.Open("../testdata/oxidged/full70.ged")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	doc, err := Decode(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := doc.Header.Language; got != "en-US" {
+		t.Errorf("Header.Language = %q, want %q", got, "en-US")
+	}
+	if got := doc.Header.Copyright; got != "Copyright statement" {
+		t.Errorf("Header.Copyright = %q, want %q", got, "Copyright statement")
+	}
+	if doc.Header.SourceData == nil || doc.Header.SourceData.Copyright != "Data copyright statement" {
+		t.Errorf("Header.SourceData = %+v, want Copyright %q", doc.Header.SourceData, "Data copyright statement")
 	}
 }

@@ -39,21 +39,16 @@ var oxidgedUnknownTagGaps = map[string]string{}
 // typed but which do not reach the typed model in these files, keyed
 // "file:line CONTEXT.TAG", with the issue responsible.
 var oxidgedTypedGaps = map[string]string{
-	"full551.ged:17 HEAD.SOUR.DATA.COPR":             "#785: read into Header.Copyright, then replaced by HEAD.COPR",
 	"full551.ged:344 NOTE.SOUR.PAGE":                 "#786: NOTE record citations untyped",
 	"full551.ged:346 NOTE.CHAN.DATE":                 "#786: NOTE record CHAN untyped",
 	"full551.ged:358 REPO.CHAN.DATE":                 "#786: REPO CHAN untyped",
 	"full551.ged:64 SUBM.CHAN.DATE":                  "#786: SUBM CHAN untyped",
 	"full551.ged:65 SUBM.CHAN.NOTE":                  "#786: SUBM CHAN untyped",
-	"maximal551.ged:17 HEAD.SOUR.DATA.COPR":          "#785: read into Header.Copyright, then replaced by HEAD.COPR",
 	"maximal551.ged:345 NOTE.SOUR.PAGE":              "#786: NOTE record citations untyped",
 	"maximal551.ged:347 NOTE.CHAN.DATE":              "#786: NOTE record CHAN untyped",
 	"maximal551.ged:359 REPO.CHAN.DATE":              "#786: REPO CHAN untyped",
 	"maximal551.ged:65 SUBM.CHAN.DATE":               "#786: SUBM CHAN untyped",
 	"maximal551.ged:66 SUBM.CHAN.NOTE":               "#786: SUBM CHAN untyped",
-	"full70.ged:20 HEAD.SOUR.DATA.DATE.TIME":         "#785: HEAD.SOUR.DATA untyped",
-	"full70.ged:21 HEAD.SOUR.DATA.COPR":              "#785: read into Header.Copyright, then replaced by HEAD.COPR",
-	"full70.ged:27 HEAD.LANG":                        "#785: Header.Language overwritten by HEAD.NOTE.LANG",
 	"full70.ged:44 SUBM.REFN.TYPE":                   "#786: SUBM REFN untyped",
 	"full70.ged:50 SUBM.CHAN.DATE":                   "#786: SUBM CHAN untyped",
 	"full70.ged:51 SUBM.CHAN.DATE.TIME":              "#786: SUBM CHAN untyped",
