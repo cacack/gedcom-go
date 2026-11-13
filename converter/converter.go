@@ -381,7 +381,6 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		// Before dropV7OnlyTags, which drops and reports each date PHRASE this
 		// does not fold into its DATE value.
 		func() { transformDateSyntax(doc, gedcom.Version55, report) },
-		func() { transformMediaTypes(doc, gedcom.Version55, report) },
 		// Before dropV7OnlyTags, which reports each PHRASE this does not fold in.
 		func() { transformEnumerations(doc, gedcom.Version55, report) },
 		func() { transformLanguages(doc, gedcom.Version55, report) },
@@ -398,6 +397,9 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		// After the drop, which leaves each OBJE record's FILE for it and
 		// cleans the NOTEs it copies into the inline links.
 		func() { demoteMediaRecords(doc, report) },
+		// After the demotion, so the FORMs it moves into inline links are
+		// mapped where they end up, and none in a record it drops is reported.
+		func() { transformMediaTypes(doc, gedcom.Version55, report) },
 		// After the drop, so no RESN it removes (OBJE.RESN) is reported here.
 		func() { transformRestrictions(doc, report, gedcom.Version55) },
 		func() { opts.reportPreservedTags(doc, report) },

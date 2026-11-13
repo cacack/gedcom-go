@@ -236,7 +236,7 @@ func TestMaximal70To55HasNoForeignStructures(t *testing.T) {
 
 	// @O1@'s three files and @O2@'s one survive, in inline links.
 	for _, want := range []string{
-		"1 OBJE\n2 FORM image/jpeg\n2 TITL Title\n2 FILE media/CharlotteBront%C3%AB.jpg\n",
+		"1 OBJE\n2 FORM JPG\n2 TITL Title\n2 FILE media/CharlotteBront%C3%AB.jpg\n",
 		"2 FILE file:///path/to/file1\n",
 		"2 FILE media/original.mp3\n",
 		"2 FILE http://host.example.com/path/to/file2\n",

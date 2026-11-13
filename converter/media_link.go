@@ -200,8 +200,8 @@ func xrefsInUse(doc *gedcom.Document) map[string]bool {
 //	2 FORM image/jpeg          2 NOTE A note
 //	1 NOTE A note
 //
-// (The FORM keeps its Tags value; transformMediaTypes translates only the
-// typed field, #777.)
+// (transformMediaTypes, which runs after, then maps the links' FORM values
+// to their 5.5 form, e.g. image/jpeg -> JPG.)
 //
 // Every pointer to the record becomes one inline link per FILE, holding that
 // file's FORM, TITL (the pointer's own TITL in preference) and the record's

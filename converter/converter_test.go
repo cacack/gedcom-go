@@ -640,7 +640,7 @@ func TestConversionNotes_MediaTypeMapping(t *testing.T) {
 		{
 			name:           "IANA to legacy media type",
 			sourceVersion:  gedcom.Version70,
-			targetVersion:  gedcom.Version55,
+			targetVersion:  gedcom.Version551, // 5.5 demotes, and drops this unlinked record
 			inputForm:      "image/jpeg",
 			wantForm:       "JPG",
 			wantApproxNote: true,
