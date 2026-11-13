@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"io"
 	"iter"
@@ -64,7 +65,9 @@ type RecordIterator struct {
 }
 
 // NewRecordIterator creates a new RecordIterator that reads from the given reader.
-// The reader should already be wrapped with charset.NewReader() for encoding normalization.
+// The reader should already be wrapped with charset.NewReader() for encoding
+// normalization; a UTF-8 BOM at the start of an unwrapped r is skipped, and
+// ByteOffset values count its bytes.
 // Record ByteOffset values are relative to the start of r; use the
 // [LazyParser] iterators for offsets that are absolute in a seekable file.
 //
@@ -80,8 +83,12 @@ func NewRecordIterator(r io.Reader) *RecordIterator {
 }
 
 // newRecordIteratorAt is [NewRecordIterator] for a reader positioned base
-// bytes into the file, so ByteOffset values stay file-relative.
+// bytes into the file, so ByteOffset values stay file-relative. At base 0 a
+// UTF-8 BOM is skipped and counted.
 func newRecordIteratorAt(r io.Reader, base int64) *RecordIterator {
+	if base == 0 {
+		r, base = skipUTF8BOM(r)
+	}
 	scanner := newLineScanner(r)
 
 	return &RecordIterator{
@@ -232,12 +239,33 @@ type lineWithPos struct {
 }
 
 // NewRecordIteratorWithOffset creates a [RecordIteratorWithOffset]. Record
-// ByteOffset values are relative to the start of r.
+// ByteOffset values are relative to the start of r. A UTF-8 BOM at the start
+// of r is skipped and counted, as [NewRecordIterator] does.
 func NewRecordIteratorWithOffset(r io.Reader) *RecordIteratorWithOffset {
+	br, pos := skipUTF8BOM(r)
 	return &RecordIteratorWithOffset{
-		reader: bufio.NewReader(r),
-		parser: NewParser(),
+		reader:  br,
+		parser:  NewParser(),
+		bytePos: pos,
 	}
+}
+
+// utf8BOM is the UTF-8 encoding of U+FEFF, which many Windows exporters write
+// before the first GEDCOM line.
+var utf8BOM = []byte{0xEF, 0xBB, 0xBF}
+
+// skipUTF8BOM buffers r and consumes a UTF-8 BOM at its start. It returns
+// the buffered reader and the number of bytes skipped, so callers keep
+// ByteOffset values in step with the bytes read. Without a BOM nothing is
+// consumed, and a read error met while peeking is returned by the reader once
+// the bytes before it are read.
+func skipUTF8BOM(r io.Reader) (br *bufio.Reader, skipped int64) {
+	br = bufio.NewReader(r)
+	if head, err := br.Peek(len(utf8BOM)); err == nil && bytes.Equal(head, utf8BOM) {
+		n, _ := br.Discard(len(utf8BOM)) // cannot fail: the bytes are buffered
+		skipped = int64(n)
+	}
+	return br, skipped
 }
 
 // readLine reads a single line with its byte position and length.
