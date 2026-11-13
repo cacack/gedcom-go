@@ -465,7 +465,7 @@ jobs:
       - name: Check feat/fix commits touch library code
         run: |
           # Library packages that constitute the public module
-          LIB_PATTERN='^(charset|converter|decoder|encoder|gedcom|merge|parser|validator|version)/'
+          LIB_PATTERN='^(charset|converter|decoder|encoder|gedcom|gedzip|merge|parser|validator|version)/'
 
           FAILED=0
           for SHA in $(git log --format="%H" origin/main..HEAD); do
