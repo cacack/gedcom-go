@@ -1543,7 +1543,7 @@ declared. Left empty, `@VOID@` is taken as the null pointer.
 
 **Note**: Parent-child date logic checks (child born before parent) require a complete document and are not supported in streaming mode.
 
-**Memory**: O(unique XRefs) not O(records) - tracks only cross-reference declarations and usages.
+**Memory**: O(declared XRefs) not O(records) - keeps each declared XRef once, compactly, and only the references to XRefs not yet declared; a reference to a record already seen is checked and dropped. About 136 MB peak RSS for a 1.5 M-record file (see `docs/guides/performance.md`).
 
 **Custom Tag Registry:**
 

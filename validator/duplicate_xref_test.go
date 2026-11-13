@@ -50,8 +50,10 @@ func TestStreamingValidator_DuplicateXRef(t *testing.T) {
 		!strings.Contains(issues[0].Message, "line 3") {
 		t.Fatalf("redefinition issues = %v, want one DUPLICATE_XREF at line 9 naming line 3", issues)
 	}
-	if sv.xrefTypes["@S1@"] != gedcom.RecordTypeSource {
-		t.Errorf("xrefTypes[@S1@] = %q, want the first definition's type SOUR", sv.xrefTypes["@S1@"])
+	// The first definition stays registered: a third names line 3 too.
+	issues = sv.ValidateRecord(&gedcom.Record{XRef: "@S1@", Type: gedcom.RecordTypeNote, LineNumber: 12})
+	if len(issues) != 1 || !strings.Contains(issues[0].Message, "line 3") {
+		t.Errorf("second redefinition issues = %v, want one naming line 3", issues)
 	}
 }
 

@@ -6,7 +6,9 @@
 //   - Detecting errors early (fail-fast)
 //   - Tracking cross-references for eventual consistency checking
 //
-// Memory usage is proportional to the number of unique XRefs, not the total file size.
+// Memory usage is proportional to the number of declared XRefs plus the
+// references to XRefs not yet declared, not to the total file size: a
+// reference to a record already seen is checked at once and not kept.
 //
 // # Basic Usage
 //
@@ -59,11 +61,9 @@ type usageLocation struct {
 	// Context describes where the reference appears (e.g., "HUSB", "WIFE", "FAMC").
 	Context string
 
-	// Field provides additional detail about the reference location.
+	// Field is the path of the reference within the record
+	// (e.g., "ChildInFamilies[0]", "Events[1].NoteXRefs[0]").
 	Field string
-
-	// Index is the position in a list (for CHIL, ChildInFamilies, etc.).
-	Index int
 }
 
 // StreamingValidator validates GEDCOM records incrementally without requiring
@@ -72,15 +72,12 @@ type usageLocation struct {
 type StreamingValidator struct {
 	opts StreamingOptions
 
-	// seenXRefs tracks all declared XRefs (record identifiers), each with
-	// the line of the record that first declared it.
-	seenXRefs map[string]int
+	// refs tracks declared and referenced XRefs for Finalize.
+	refs xrefTracker
 
-	// usedXRefs maps each referenced XRef to where it's used.
-	usedXRefs map[string][]usageLocation
-
-	// xrefTypes maps XRefs to their record types for context-aware validation.
-	xrefTypes map[string]gedcom.RecordType
+	// nullScope decides which pointer is the null pointer under
+	// opts.Version; see addRef.
+	nullScope *gedcom.Document
 
 	// dateLogic provides date validation for individual records.
 	dateLogic *DateLogicValidator
@@ -92,13 +89,20 @@ type StreamingValidator struct {
 // the intended default: Strictness is StrictnessNormal, and a nil DateLogic
 // makes NewDateLogicValidator use its own defaults.
 func NewStreamingValidator(opts StreamingOptions) *StreamingValidator {
-	return &StreamingValidator{
+	sv := &StreamingValidator{
 		opts:      opts,
-		seenXRefs: make(map[string]int),
-		usedXRefs: make(map[string][]usageLocation),
-		xrefTypes: make(map[string]gedcom.RecordType),
 		dateLogic: NewDateLogicValidator(opts.DateLogic),
 	}
+	// A null pointer names no record by design. The rule is
+	// gedcom.Document.IsNullPointer's, applied to a document that carries
+	// only the version opts.Version names, so the batch and streaming
+	// validators cannot disagree about which value is null.
+	sv.nullScope = &gedcom.Document{}
+	if opts.Version != "" {
+		sv.nullScope.Header = &gedcom.Header{Version: opts.Version, DeclaredVersion: opts.Version}
+	}
+	sv.Reset()
+	return sv
 }
 
 // ValidateRecord validates a single record and returns immediate issues.
@@ -143,11 +147,8 @@ func (sv *StreamingValidator) ValidateRecord(record *gedcom.Record) []Issue {
 	// Register this record's XRef as declared. A redefinition is reported
 	// at once, and the first declaration stays registered.
 	if record.XRef != "" {
-		if firstLine, exists := sv.seenXRefs[record.XRef]; exists {
+		if firstLine, dup := sv.refs.declare(record.XRef, record.LineNumber); dup {
 			issues = append(issues, duplicateXRefIssue(record, firstLine))
-		} else {
-			sv.seenXRefs[record.XRef] = record.LineNumber
-			sv.xrefTypes[record.XRef] = record.Type
 		}
 	}
 
@@ -184,36 +185,21 @@ func (sv *StreamingValidator) validateIndividual(ind *gedcom.Individual) []Issue
 	// Collect FAMC references
 	for i, link := range ind.ChildInFamilies {
 		if link.FamilyXRef != "" {
-			sv.usedXRefs[link.FamilyXRef] = append(sv.usedXRefs[link.FamilyXRef], usageLocation{
-				RecordXRef: ind.XRef,
-				Context:    "FAMC",
-				Field:      fmt.Sprintf("ChildInFamilies[%d]", i),
-				Index:      i,
-			})
+			sv.addRef(link.FamilyXRef, ind.XRef, "FAMC", fmt.Sprintf("ChildInFamilies[%d]", i))
 		}
 	}
 
 	// Collect FAMS references
 	for i, link := range ind.SpouseInFamilies {
 		if link.FamilyXRef != "" {
-			sv.usedXRefs[link.FamilyXRef] = append(sv.usedXRefs[link.FamilyXRef], usageLocation{
-				RecordXRef: ind.XRef,
-				Context:    "FAMS",
-				Field:      fmt.Sprintf("SpouseInFamilies[%d]", i),
-				Index:      i,
-			})
+			sv.addRef(link.FamilyXRef, ind.XRef, "FAMS", fmt.Sprintf("SpouseInFamilies[%d]", i))
 		}
 	}
 
 	// Collect SOUR references from individual
 	for i, citation := range ind.SourceCitations {
 		if citation != nil && citation.SourceXRef != "" {
-			sv.usedXRefs[citation.SourceXRef] = append(sv.usedXRefs[citation.SourceXRef], usageLocation{
-				RecordXRef: ind.XRef,
-				Context:    "SOUR",
-				Field:      fmt.Sprintf("SourceCitations[%d]", i),
-				Index:      i,
-			})
+			sv.addRef(citation.SourceXRef, ind.XRef, "SOUR", fmt.Sprintf("SourceCitations[%d]", i))
 		}
 	}
 
@@ -223,12 +209,7 @@ func (sv *StreamingValidator) validateIndividual(ind *gedcom.Individual) []Issue
 	// Collect ASSO references
 	for i, assoc := range ind.Associations {
 		if assoc != nil && assoc.IndividualXRef != "" {
-			sv.usedXRefs[assoc.IndividualXRef] = append(sv.usedXRefs[assoc.IndividualXRef], usageLocation{
-				RecordXRef: ind.XRef,
-				Context:    "ASSO",
-				Field:      fmt.Sprintf("Associations[%d]", i),
-				Index:      i,
-			})
+			sv.addRef(assoc.IndividualXRef, ind.XRef, "ASSO", fmt.Sprintf("Associations[%d]", i))
 		}
 	}
 
@@ -271,45 +252,25 @@ func (sv *StreamingValidator) collectIndividualSubstructureNotes(ind *gedcom.Ind
 func (sv *StreamingValidator) validateFamily(fam *gedcom.Family) []Issue {
 	// Collect HUSB reference
 	if fam.Husband != "" {
-		sv.usedXRefs[fam.Husband] = append(sv.usedXRefs[fam.Husband], usageLocation{
-			RecordXRef: fam.XRef,
-			Context:    "HUSB",
-			Field:      "Husband",
-			Index:      0,
-		})
+		sv.addRef(fam.Husband, fam.XRef, "HUSB", "Husband")
 	}
 
 	// Collect WIFE reference
 	if fam.Wife != "" {
-		sv.usedXRefs[fam.Wife] = append(sv.usedXRefs[fam.Wife], usageLocation{
-			RecordXRef: fam.XRef,
-			Context:    "WIFE",
-			Field:      "Wife",
-			Index:      0,
-		})
+		sv.addRef(fam.Wife, fam.XRef, "WIFE", "Wife")
 	}
 
 	// Collect CHIL references
 	for i, childXRef := range fam.Children {
 		if childXRef != "" {
-			sv.usedXRefs[childXRef] = append(sv.usedXRefs[childXRef], usageLocation{
-				RecordXRef: fam.XRef,
-				Context:    "CHIL",
-				Field:      fmt.Sprintf("Children[%d]", i),
-				Index:      i,
-			})
+			sv.addRef(childXRef, fam.XRef, "CHIL", fmt.Sprintf("Children[%d]", i))
 		}
 	}
 
 	// Collect SOUR references from family
 	for i, citation := range fam.SourceCitations {
 		if citation != nil && citation.SourceXRef != "" {
-			sv.usedXRefs[citation.SourceXRef] = append(sv.usedXRefs[citation.SourceXRef], usageLocation{
-				RecordXRef: fam.XRef,
-				Context:    "SOUR",
-				Field:      fmt.Sprintf("SourceCitations[%d]", i),
-				Index:      i,
-			})
+			sv.addRef(citation.SourceXRef, fam.XRef, "SOUR", fmt.Sprintf("SourceCitations[%d]", i))
 		}
 	}
 
@@ -335,12 +296,7 @@ func (sv *StreamingValidator) collectSourceReferences(src *gedcom.Source) {
 		if link == nil || link.XRef == "" {
 			continue
 		}
-		sv.usedXRefs[link.XRef] = append(sv.usedXRefs[link.XRef], usageLocation{
-			RecordXRef: src.XRef,
-			Context:    "REPO",
-			Field:      fmt.Sprintf("RepositoryLinks[%d].XRef", i),
-			Index:      i,
-		})
+		sv.addRef(link.XRef, src.XRef, "REPO", fmt.Sprintf("RepositoryLinks[%d].XRef", i))
 	}
 
 	// Collect NOTE references
@@ -365,6 +321,13 @@ func (sv *StreamingValidator) collectSourceReferences(src *gedcom.Source) {
 	sv.collectChangeDateNotes(src.XRef, "CreationDate.", src.CreationDate)
 }
 
+// addRef records that recordXRef references target at field, in the
+// structure context names ("FAMC", "NOTE", ...). A null pointer is counted
+// but never reported as orphaned.
+func (sv *StreamingValidator) addRef(target, recordXRef, context, field string) {
+	sv.refs.reference(target, recordXRef, context, field, !sv.nullScope.IsNullPointer(target))
+}
+
 // collectNoteXRefs records each non-empty note pointer as a NOTE usage by
 // recordXRef. prefix locates the slice below the record (e.g. "Media[0].")
 // and is prepended to the reported field; "" means the record's own notes.
@@ -373,12 +336,7 @@ func (sv *StreamingValidator) collectSourceReferences(src *gedcom.Source) {
 func (sv *StreamingValidator) collectNoteXRefs(recordXRef, prefix string, noteXRefs []string) {
 	for i, noteXRef := range noteXRefs {
 		if noteXRef != "" {
-			sv.usedXRefs[noteXRef] = append(sv.usedXRefs[noteXRef], usageLocation{
-				RecordXRef: recordXRef,
-				Context:    "NOTE",
-				Field:      fmt.Sprintf("%sNoteXRefs[%d]", prefix, i),
-				Index:      i,
-			})
+			sv.addRef(noteXRef, recordXRef, "NOTE", fmt.Sprintf("%sNoteXRefs[%d]", prefix, i))
 		}
 	}
 }
@@ -480,26 +438,9 @@ func (sv *StreamingValidator) collectAttributeNotes(recordXRef string, attrs []*
 func (sv *StreamingValidator) Finalize() []Issue {
 	var issues []Issue
 
-	// Check for orphaned references. A null pointer names no record by
-	// design, so it is skipped before the declared set is consulted; the
-	// rule is gedcom.Document.IsNullPointer's, applied to a document that
-	// carries only the version opts.Version names, so the batch and
-	// streaming validators cannot disagree about which value is null.
-	scope := &gedcom.Document{}
-	if sv.opts.Version != "" {
-		scope.Header = &gedcom.Header{Version: sv.opts.Version, DeclaredVersion: sv.opts.Version}
-	}
-	for xref, usages := range sv.usedXRefs {
-		if scope.IsNullPointer(xref) {
-			continue
-		}
-		if _, exists := sv.seenXRefs[xref]; !exists {
-			// XRef is used but was never declared
-			for _, usage := range usages {
-				issues = append(issues, sv.createOrphanedReferenceIssue(xref, usage))
-			}
-		}
-	}
+	sv.refs.orphans(func(xref string, usage usageLocation) {
+		issues = append(issues, sv.createOrphanedReferenceIssue(xref, usage))
+	})
 
 	return sv.filterByStrictness(issues)
 }
@@ -542,9 +483,7 @@ func (sv *StreamingValidator) createOrphanedReferenceIssue(xref string, usage us
 
 // Reset clears all internal state, allowing the validator to be reused.
 func (sv *StreamingValidator) Reset() {
-	sv.seenXRefs = make(map[string]int)
-	sv.usedXRefs = make(map[string][]usageLocation)
-	sv.xrefTypes = make(map[string]gedcom.RecordType)
+	sv.refs = newXRefTracker()
 }
 
 // filterByStrictness filters issues based on the configured strictness level.
@@ -590,11 +529,11 @@ func (sv *StreamingValidator) filterByStrictness(issues []Issue) []Issue {
 // SeenXRefCount returns the number of declared XRefs tracked by the validator.
 // This is useful for memory usage monitoring.
 func (sv *StreamingValidator) SeenXRefCount() int {
-	return len(sv.seenXRefs)
+	return sv.refs.seenCount
 }
 
 // UsedXRefCount returns the number of unique XRefs referenced by records.
 // This is useful for memory usage monitoring.
 func (sv *StreamingValidator) UsedXRefCount() int {
-	return len(sv.usedXRefs)
+	return sv.refs.usedCount
 }
