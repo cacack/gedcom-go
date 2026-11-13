@@ -26,7 +26,9 @@ import (
 // FILE, and a link-level FORM (the 5.5 layout, FORM beside FILE) under it
 // too; everything else (NOTE, extensions) stays at record level. A link with
 // no FILE has nothing a 7.0 OBJE record could hold ({1:M} FILE) and is left
-// as it is. The new record's XRef is the first free @O<n>@. Each promotion is
+// as it is, and so is an OBJE in an extension record or beneath an extension
+// tag (#840): the specification does not define an extension's substructures,
+// so they are not links to promote. The new record's XRef is the first free @O<n>@. Each promotion is
 // a Normalized note, with one aggregate transformation.
 //
 // It runs after normalizeXRefsForV7, so the XRefs it checks for collisions
@@ -37,11 +39,15 @@ func promoteInlineMediaLinks(doc *gedcom.Document, report *gedcom.ConversionRepo
 	next := 1
 	var added []*gedcom.Record
 	for _, record := range doc.Records {
-		if record == nil {
+		if record == nil || isExtension(string(record.Type)) {
 			continue
 		}
 		for i := 0; i < len(record.Tags); i++ {
 			tag := record.Tags[i]
+			if tag != nil && isExtension(tag.Tag) {
+				i = blockEnd(record.Tags, i) - 1
+				continue
+			}
 			if tag == nil || tag.Tag != "OBJE" || tag.Level < 1 || strings.TrimSpace(tag.Value) != "" {
 				continue
 			}
@@ -145,6 +151,13 @@ func tagPath(tags []*gedcom.Tag, i int) []string {
 		}
 	}
 	return path
+}
+
+// isExtension reports whether a tag or record type is an extension (its name
+// starts with "_"). The converter does not reinterpret what is beneath one:
+// the specification does not define an extension's substructures.
+func isExtension(tag string) bool {
+	return strings.HasPrefix(tag, "_")
 }
 
 // blockEnd returns the index just past the block tags[i] opens: tags[i] and

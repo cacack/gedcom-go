@@ -28,6 +28,8 @@ import (
 // record that cites it, where the suite puts it. A citation with an empty payload
 // ("1 SOUR", as Ancestry writes to carry an _APID) cites no source at all, so
 // it points to @VOID@, the 7.0 null pointer, instead of a new empty record.
+// A SOUR in an extension record or beneath an extension tag is left as it is
+// (#840): the specification does not define an extension's substructures.
 // Each rewrite is a Normalized note, with one aggregate transformation for
 // each kind.
 //
@@ -40,12 +42,16 @@ func promoteInlineSourceCitations(doc *gedcom.Document, report *gedcom.Conversio
 	next, added, voided := 1, 0, 0
 	records := make([]*gedcom.Record, 0, len(doc.Records))
 	for _, record := range doc.Records {
-		if record == nil {
+		if record == nil || isExtension(string(record.Type)) {
 			records = append(records, record)
 			continue
 		}
 		for i := 0; i < len(record.Tags); i++ {
 			tag := record.Tags[i]
+			if tag != nil && isExtension(tag.Tag) {
+				i = blockEnd(record.Tags, i) - 1
+				continue
+			}
 			if tag == nil || tag.Tag != "SOUR" || tag.Level < 1 || isSourcePointer(doc, tag.Value) {
 				continue
 			}
