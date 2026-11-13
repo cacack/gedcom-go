@@ -36,7 +36,7 @@ func TestUpgradeLeavesExtensionSubtreesAlone(t *testing.T) {
 	// Outside the extensions, both are still promoted, with their notes.
 	for _, want := range []string{
 		"1 OBJE @O1@\n1 SOUR @S1@\n",
-		"0 @O1@ OBJE\n1 FILE photo.jpg\n2 FORM jpg\n",
+		"0 @O1@ OBJE\n1 FILE photo.jpg\n2 FORM image/jpeg\n", // FORM mapped to 7.0 by #777
 		"0 @S1@ SOUR\n1 NOTE Family bible\n",
 	} {
 		if !strings.Contains(out, want) {
