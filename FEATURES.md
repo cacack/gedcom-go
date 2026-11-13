@@ -77,7 +77,7 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 |---------|----------|----------------|-------|
 | GEDCOM 5.5 | Every readable line preserved | [926 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (92.8%) | Legacy format |
 | GEDCOM 5.5.1 | Every readable line preserved | [1,238 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (94.1%) | Most common format |
-| GEDCOM 7.0 | Every readable line preserved | [1,314 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (94.6%) | Latest standard |
+| GEDCOM 7.0 | Every readable line preserved | [1,315 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (94.7%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch and minor versions such as `VERS 7.0.14` or `7.1` detect as 7.0, with `Header.DeclaredVersion` keeping `7.1`; vendor spellings `5.51`, `551`, `5.5.5`, `55`, `7` and a version followed by text such as `5.5.1 (GEDCOM)` read as the version they mean, with an `INVALID_VALUE` diagnostic on `GEDC.VERS`; a `0 @X1@ HEAD` record is not the header and never sets the version)
 - Heuristic-based detection for malformed headers
@@ -95,7 +95,7 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,314 of 7.0's structures reach the typed model, 926 of
+document built for it: 1,315 of 7.0's structures reach the typed model, 926 of
 5.5's, and 1,238 of 5.5.1's.
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
@@ -135,8 +135,10 @@ encoder.EncodeWithOptions(w, doc, opts)
 uses any 7.0-only feature the library models: `SCHMA`, `SNOTE` records, `EXID`,
 `CREA`, negative events (`NO`), event sort dates (`SDATE`), name transliterations
 (`TRAN`), association `PHRASE` and the other typed `PHRASE` fields, media
-`CROP`, media-file `TRAN`, `SNOTE` references, and on source citations
-`TEXT.MIME`/`LANG`, `EVEN`/`ROLE` `PHRASE` and media `CROP`. INT (interpreted) dates and non-Gregorian calendars are **not** 7.0
+`CROP`, media-file `TRAN`, `SNOTE` references, on source citations
+`TEXT.MIME`/`LANG`, `EVEN`/`ROLE` `PHRASE`, `DATA.DATE` `TIME`/`PHRASE` and
+media `CROP`, `PLAC` `EXID`, repeated name pieces, and the `MIME`/`LANG`/`TRAN`
+of an individual's inline `NOTE`. INT (interpreted) dates and non-Gregorian calendars are **not** 7.0
 triggers — both are valid in 5.5.1.
 
 ## Vendor Detection
@@ -654,6 +656,9 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
   SourceRepositoryLink, MediaLink, FamilyLink, PlaceDetail): `NoteXRefs` holds
   XRef pointers to shared NOTE/SNOTE records, `InlineNotes` holds note text
   written directly on the structure, with `CONT`/`CONC` folded.
+- GEDCOM 7.0 `MIME`, `LANG` and `TRAN` beneath an individual's inline notes:
+  `Individual.InlineNoteDetails[i]` (`InlineNoteDetail`) describes
+  `InlineNotes[i]`
 - `AllNotes(doc)` helper returns inline note text plus the resolved text of
   any shared notes referenced by XRef; also available on `Event` and
   `Attribute`
@@ -732,7 +737,7 @@ family — decodes the shared `EVENT_DETAIL` structure into typed fields:
 | Tag | Field |
 |-----|-------|
 | DATE | `Event.Date`, `Event.ParsedDate` |
-| PLAC | `Event.PlaceDetail` (FORM, MAP/LATI/LONG), read via `Event.PlaceName()`, written via `Event.SetPlaceName()` |
+| PLAC | `Event.PlaceDetail` (FORM, MAP/LATI/LONG, EXID), read via `Event.PlaceName()`, written via `Event.SetPlaceName()` |
 | TYPE | `Event.EventTypeDetail` |
 | CAUS | `Event.Cause` |
 | AGE | `Event.Age`, `Event.AgePhrase` |
@@ -792,7 +797,8 @@ At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
 - Referenced citations (via @SOUR@ xref)
 - PAGE - Specific location in source
 - QUAY - Quality/certainty assessment (0-3)
-- DATA - Citation data with DATE and every repeated TEXT
+- DATA - Citation data with DATE (and its GEDCOM 7.0 `TIME` and `PHRASE` as
+  `SourceCitationData.Time` and `DatePhrase`) and every repeated TEXT
   (`SourceCitationData.Text []*SourceText`, in document order), each with
   CONT/CONC folded into `Value` and GEDCOM 7.0 `MIME`/`LANG` typed
 - EVEN - The event type the source records and the subject's ROLE in it
@@ -804,6 +810,7 @@ At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
 
 - Place name with hierarchy (comma-separated)
 - MAP coordinates (LATI, LONG)
+- EXID external identifiers (GEDCOM 7.0, `PlaceDetail.ExternalIDs`)
 - Place notes
 
 ### Place Name Accessors
@@ -926,6 +933,9 @@ structure as `[]string` fields named `Phone`, `Email`, `Fax` and `Website`:
 - NSFX - Name suffix (Jr., III)
 - SPFX - Surname prefix (de, van, von)
 - NICK - Nickname
+- Repeated name pieces (GEDCOM 7.0 allows each to repeat): the first value
+  in `Given`, `Surname`, `Prefix`, `Suffix`, `Nickname` or `SurnamePrefix`,
+  the rest in file order in `AdditionalGiven`, `AdditionalSurnames`, and so on
 - TYPE - Name type (birth, married, aka)
 - SOUR - Source citations on the name (`PersonalName.SourceCitations`)
 - NOTE, SNOTE - Notes on the name (`PersonalName.NoteXRefs`, `PersonalName.InlineNotes`)

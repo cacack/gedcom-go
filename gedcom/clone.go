@@ -136,17 +136,18 @@ func (i *Individual) Clone() *Individual {
 	}
 
 	copied := &Individual{
-		XRef:             i.XRef,
-		Restriction:      i.Restriction,
-		Sex:              i.Sex,
-		ChildInFamilies:  cloneFamilyLinks(i.ChildInFamilies),
-		SpouseInFamilies: cloneFamilyLinks(i.SpouseInFamilies),
-		NoteXRefs:        cloneStringSlice(i.NoteXRefs),
-		InlineNotes:      cloneStringSlice(i.InlineNotes),
-		RefNumbers:       cloneRefNumbers(i.RefNumbers),
-		UIDs:             cloneStringSlice(i.UIDs),
-		FamilySearchID:   i.FamilySearchID,
-		ExternalIDs:      cloneExternalIDs(i.ExternalIDs),
+		XRef:              i.XRef,
+		Restriction:       i.Restriction,
+		Sex:               i.Sex,
+		ChildInFamilies:   cloneFamilyLinks(i.ChildInFamilies),
+		SpouseInFamilies:  cloneFamilyLinks(i.SpouseInFamilies),
+		NoteXRefs:         cloneStringSlice(i.NoteXRefs),
+		InlineNotes:       cloneStringSlice(i.InlineNotes),
+		InlineNoteDetails: cloneInlineNoteDetails(i.InlineNoteDetails),
+		RefNumbers:        cloneRefNumbers(i.RefNumbers),
+		UIDs:              cloneStringSlice(i.UIDs),
+		FamilySearchID:    i.FamilySearchID,
+		ExternalIDs:       cloneExternalIDs(i.ExternalIDs),
 	}
 
 	if i.Names != nil {
@@ -522,19 +523,7 @@ func (s *SharedNote) Clone() *SharedNote {
 		Language: s.Language,
 	}
 
-	if s.Translations != nil {
-		copied.Translations = make([]*SharedNoteTranslation, len(s.Translations))
-		for k, t := range s.Translations {
-			if t == nil {
-				continue
-			}
-			copied.Translations[k] = &SharedNoteTranslation{
-				Value:    t.Value,
-				MIME:     t.MIME,
-				Language: t.Language,
-			}
-		}
-	}
+	copied.Translations = cloneSharedNoteTranslations(s.Translations)
 
 	if s.SourceCitations != nil {
 		copied.SourceCitations = make([]*SourceCitation, len(s.SourceCitations))
@@ -631,6 +620,13 @@ func clonePersonalName(n *PersonalName) *PersonalName {
 		NoteXRefs:     cloneStringSlice(n.NoteXRefs),
 		InlineNotes:   cloneStringSlice(n.InlineNotes),
 	}
+
+	copied.AdditionalGiven = cloneStringSlice(n.AdditionalGiven)
+	copied.AdditionalSurnames = cloneStringSlice(n.AdditionalSurnames)
+	copied.AdditionalPrefixes = cloneStringSlice(n.AdditionalPrefixes)
+	copied.AdditionalSuffixes = cloneStringSlice(n.AdditionalSuffixes)
+	copied.AdditionalNicknames = cloneStringSlice(n.AdditionalNicknames)
+	copied.AdditionalSurnamePrefixes = cloneStringSlice(n.AdditionalSurnamePrefixes)
 
 	if n.Transliterations != nil {
 		copied.Transliterations = make([]*Transliteration, len(n.Transliterations))
@@ -859,6 +855,7 @@ func clonePlaceDetail(p *PlaceDetail) *PlaceDetail {
 	copied := &PlaceDetail{
 		Name:        p.Name,
 		Form:        p.Form,
+		ExternalIDs: cloneExternalIDs(p.ExternalIDs),
 		NoteXRefs:   cloneStringSlice(p.NoteXRefs),
 		InlineNotes: cloneStringSlice(p.InlineNotes),
 	}
@@ -903,7 +900,9 @@ func cloneSourceCitation(sc *SourceCitation) *SourceCitation {
 
 	if sc.Data != nil {
 		copied.Data = &SourceCitationData{
-			Date: sc.Data.Date,
+			Date:       sc.Data.Date,
+			Time:       sc.Data.Time,
+			DatePhrase: sc.Data.DatePhrase,
 		}
 		if sc.Data.Text != nil {
 			copied.Data.Text = make([]*SourceText, len(sc.Data.Text))
@@ -1106,5 +1105,42 @@ func cloneStringSlice(s []string) []string {
 	}
 	copied := make([]string, len(s))
 	copy(copied, s)
+	return copied
+}
+
+// cloneSharedNoteTranslations returns a deep copy of a translation slice,
+// keeping nil elements nil. Returns nil if trans is nil.
+func cloneSharedNoteTranslations(trans []*SharedNoteTranslation) []*SharedNoteTranslation {
+	if trans == nil {
+		return nil
+	}
+	copied := make([]*SharedNoteTranslation, len(trans))
+	for k, t := range trans {
+		if t == nil {
+			continue
+		}
+		tran := *t
+		copied[k] = &tran
+	}
+	return copied
+}
+
+// cloneInlineNoteDetails returns a deep copy of an inline-note detail slice,
+// keeping nil elements nil. Returns nil if details is nil.
+func cloneInlineNoteDetails(details []*InlineNoteDetail) []*InlineNoteDetail {
+	if details == nil {
+		return nil
+	}
+	copied := make([]*InlineNoteDetail, len(details))
+	for k, d := range details {
+		if d == nil {
+			continue
+		}
+		copied[k] = &InlineNoteDetail{
+			MIME:         d.MIME,
+			Language:     d.Language,
+			Translations: cloneSharedNoteTranslations(d.Translations),
+		}
+	}
 	return copied
 }

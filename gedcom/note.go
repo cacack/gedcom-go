@@ -38,3 +38,22 @@ type Note struct {
 	// See Record.Tags for the rule that governs what a decoded record writes.
 	Tags []*Tag
 }
+
+// InlineNoteDetail holds the GEDCOM 7.0 substructures of one inline note
+// (NOTE <text>) beyond its text, which stays in the owner's InlineNotes:
+// the MIME type and language of the text and its translations. It mirrors
+// the same fields of SharedNote. Citations beneath an inline note are not
+// typed; they stay in Record.Tags (ADR 0003).
+//
+// Only Individual carries it (Individual.InlineNoteDetails) so far; the same
+// substructures beneath any other owner's inline note stay in Record.Tags.
+type InlineNoteDetail struct {
+	// MIME is the media type of the note text (NOTE.MIME), e.g. "text/html".
+	MIME string
+
+	// Language is the BCP 47 language tag of the note text (NOTE.LANG).
+	Language string
+
+	// Translations are the note's translations (NOTE.TRAN), in file order.
+	Translations []*SharedNoteTranslation
+}

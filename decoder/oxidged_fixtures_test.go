@@ -39,11 +39,7 @@ var oxidgedUnknownTagGaps = map[string]string{}
 // typed but which do not reach the typed model in these files, keyed
 // "file:line CONTEXT.TAG", with the issue responsible.
 var oxidgedTypedGaps = map[string]string{
-	"full70.ged:62 INDI.NAME.GIVN":                   "#787: a repeated GIVN keeps only the last",
-	"full70.ged:92 INDI.BIRT.PLAC.EXID.TYPE":         "#787: PLAC.EXID untyped",
-	"full70.ged:123 INDI.BIRT.SOUR.DATA.DATE.PHRASE": "#787: citation DATA.DATE PHRASE untyped",
-	"full70.ged:196 INDI.INIL.STAT.DATE":             "#386: INIL left raw by decision",
-	"full70.ged:240 INDI.NOTE.TRAN.LANG":             "#787: inline NOTE TRAN untyped",
+	"full70.ged:196 INDI.INIL.STAT.DATE": "#386: INIL left raw by decision",
 }
 
 // oxidgedFiles returns the vendored .ged files, failing if there are none.

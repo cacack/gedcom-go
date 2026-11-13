@@ -105,9 +105,9 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 1314 | 94.6% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1315 | 94.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 51 | 3.7% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 50 | 3.6% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 1 | 0.1% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 23 | 1.7% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
@@ -118,7 +118,7 @@ The structure each pair is nested under at level 0.
 | Level 0 | Structures | Typed | Partial | Raw (accepted) | Raw (flagged) | Raw (undiagnosed) |
 |---------|-----------:|------:|--------:|---------------:|--------------:|------------------:|
 | `INDI` | 873 | 854 | 0 | 10 | 0 | 9 |
-| `FAM` | 392 | 344 | 0 | 34 | 0 | 14 |
+| `FAM` | 392 | 345 | 0 | 33 | 0 | 14 |
 | `SOUR` | 29 | 29 | 0 | 0 | 0 | 0 |
 | `HEAD` | 27 | 24 | 0 | 3 | 0 | 0 |
 | `REPO` | 21 | 21 | 0 | 0 | 0 | 0 |
@@ -238,7 +238,7 @@ Substructures of `PLAC`.
 
 | Tag | Structure | Status |
 |-----|-----------|--------|
-| `EXID` | `EXID` | raw (accepted) |
+| `EXID` | `EXID` | typed |
 | `FORM` | `PLAC-FORM` | typed |
 | `LANG` | `LANG` | raw (accepted) |
 | `MAP` | `MAP` | typed |

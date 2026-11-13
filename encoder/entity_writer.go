@@ -119,12 +119,39 @@ func dateToTags(date string, parsed *gedcom.Date, level int, opts *EncodeOptions
 // pointer ("@I1@") is written "@@I1@" and does not re-decode as a link to
 // whatever record carries that identifier (#708).
 func notesToTags(noteXRefs, inlineNotes []string, level int, opts *EncodeOptions) []*gedcom.Tag {
+	return notesWithDetailsToTags(noteXRefs, inlineNotes, nil, level, opts)
+}
+
+// notesWithDetailsToTags is notesToTags for an owner that types the GEDCOM 7.0
+// substructures of its inline notes: details[i], when present, writes the
+// MIME, LANG and TRAN lines beneath InlineNotes[i]. An entry past the end of
+// inlineNotes has no note to qualify and is not written.
+func notesWithDetailsToTags(
+	noteXRefs, inlineNotes []string, details []*gedcom.InlineNoteDetail, level int, opts *EncodeOptions,
+) []*gedcom.Tag {
 	tags := make([]*gedcom.Tag, 0, len(noteXRefs)+len(inlineNotes))
 	for _, xref := range noteXRefs {
 		tags = append(tags, &gedcom.Tag{Level: level, Tag: "NOTE", Value: xref})
 	}
-	for _, note := range inlineNotes {
+	for i, note := range inlineNotes {
 		tags = append(tags, textToTags(note, level, "NOTE", opts)...)
+		if i < len(details) {
+			tags = append(tags, inlineNoteDetailToTags(details[i], level+1, opts)...)
+		}
+	}
+	return tags
+}
+
+// inlineNoteDetailToTags writes an inline note's MIME, LANG and TRAN lines at
+// level, in the order GEDCOM 7.0's NOTE_STRUCTURE gives them. A nil detail
+// writes nothing.
+func inlineNoteDetailToTags(detail *gedcom.InlineNoteDetail, level int, opts *EncodeOptions) []*gedcom.Tag {
+	if detail == nil {
+		return nil
+	}
+	tags := appendTextQualifiers(nil, detail.MIME, detail.Language, level, opts)
+	for _, tran := range detail.Translations {
+		tags = append(tags, sharedNoteTranslationToTags(tran, level, opts)...)
 	}
 	return tags
 }
@@ -271,7 +298,7 @@ func individualToTags(indi *gedcom.Individual, opts *EncodeOptions) []*gedcom.Ta
 	}
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
-	tags = append(tags, notesToTags(indi.NoteXRefs, indi.InlineNotes, 1, opts)...)
+	tags = append(tags, notesWithDetailsToTags(indi.NoteXRefs, indi.InlineNotes, indi.InlineNoteDetails, 1, opts)...)
 
 	// Media links (level 1) - OBJE
 	for _, media := range indi.Media {
@@ -818,25 +845,13 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 	// NAME tag with full name value
 	tags = append(tags, &gedcom.Tag{Level: level, Tag: "NAME", Value: opts.text(name.Full)})
 
-	// Subordinate tags at level+1
-	if name.Given != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "GIVN", Value: opts.text(name.Given)})
-	}
-	if name.Surname != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SURN", Value: opts.text(name.Surname)})
-	}
-	if name.Prefix != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NPFX", Value: opts.text(name.Prefix)})
-	}
-	if name.Suffix != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NSFX", Value: opts.text(name.Suffix)})
-	}
-	if name.Nickname != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "NICK", Value: opts.text(name.Nickname)})
-	}
-	if name.SurnamePrefix != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "SPFX", Value: opts.text(name.SurnamePrefix)})
-	}
+	// Subordinate tags at level+1: each name piece, then its repeats.
+	tags = appendNamePiece(tags, "GIVN", name.Given, name.AdditionalGiven, level+1, opts)
+	tags = appendNamePiece(tags, "SURN", name.Surname, name.AdditionalSurnames, level+1, opts)
+	tags = appendNamePiece(tags, "NPFX", name.Prefix, name.AdditionalPrefixes, level+1, opts)
+	tags = appendNamePiece(tags, "NSFX", name.Suffix, name.AdditionalSuffixes, level+1, opts)
+	tags = appendNamePiece(tags, "NICK", name.Nickname, name.AdditionalNicknames, level+1, opts)
+	tags = appendNamePiece(tags, "SPFX", name.SurnamePrefix, name.AdditionalSurnamePrefixes, level+1, opts)
 	if name.MarriedName != "" {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "_MARNM", Value: opts.text(name.MarriedName)})
 	}
@@ -855,6 +870,21 @@ func nameToTags(name *gedcom.PersonalName, level int, opts *EncodeOptions) []*ge
 	// Notes (with CONT/CONC for multiline/long)
 	tags = append(tags, notesToTags(name.NoteXRefs, name.InlineNotes, level+1, opts)...)
 
+	return tags
+}
+
+// appendNamePiece appends a name piece's line at level when first is
+// non-empty, then one line for each repeat in more (GEDCOM 7.0 allows a
+// name piece to repeat). An empty first value is still written when repeats
+// follow, so the decoder reads them back as repeats rather than promoting
+// the first repeat into the first value.
+func appendNamePiece(tags []*gedcom.Tag, tag, first string, more []string, level int, opts *EncodeOptions) []*gedcom.Tag {
+	if first != "" || len(more) > 0 {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: tag, Value: opts.text(first)})
+	}
+	for _, v := range more {
+		tags = append(tags, &gedcom.Tag{Level: level, Tag: tag, Value: opts.text(v)})
+	}
 	return tags
 }
 
@@ -1262,9 +1292,14 @@ func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int, opts *
 	// DATA tag
 	tags = append(tags, &gedcom.Tag{Level: level, Tag: "DATA"})
 
-	// Subordinate tags at level+1
-	if data.Date != "" {
+	// Subordinate tags at level+1. A DATE with no value but a TIME or PHRASE
+	// is written for 7.0 output only, as ageToTags writes a phrase-only AGE.
+	if data.Date != "" || (opts.is70() && (data.Time != "" || data.DatePhrase != "")) {
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "DATE", Value: opts.text(data.Date)})
+		if data.Time != "" {
+			tags = append(tags, &gedcom.Tag{Level: level + 2, Tag: "TIME", Value: opts.text(data.Time)})
+		}
+		tags = appendPhrase(tags, data.DatePhrase, level+2, opts)
 	}
 
 	// Text: every entry, in order. Each Value goes through textToTags so a
@@ -1369,6 +1404,9 @@ func placeToTags(detail *gedcom.PlaceDetail, level int, opts *EncodeOptions) []*
 	if detail.Coordinates != nil {
 		tags = append(tags, coordinatesToTags(detail.Coordinates, level+1, opts)...)
 	}
+
+	// External IDs - EXID (GEDCOM 7.0)
+	tags = append(tags, externalIDsToTags(detail.ExternalIDs, level+1, opts)...)
 
 	// Notes - NOTE (with CONT/CONC for multiline/long)
 	tags = append(tags, notesToTags(detail.NoteXRefs, detail.InlineNotes, level+1, opts)...)
