@@ -61,8 +61,8 @@ func TestSpec7AnchorStatuses(t *testing.T) {
 		{
 			superstructure: "record-SNOTE",
 			tag:            "CREA",
-			want:           specRawAccepted,
-			because:        "parseSharedNote lists CREA as recognized with no typed field (issue #730)",
+			want:           specTyped,
+			because:        "parseSharedNote reads CREA into SharedNote.CreationDate (issue #786)",
 		},
 		{
 			superstructure: "",

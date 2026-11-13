@@ -75,9 +75,9 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [917 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (91.9%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,229 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (93.4%) | Most common format |
-| GEDCOM 7.0 | Every readable line preserved | [1,303 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (93.8%) | Latest standard |
+| GEDCOM 5.5 | Every readable line preserved | [926 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (92.8%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,238 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (94.1%) | Most common format |
+| GEDCOM 7.0 | Every readable line preserved | [1,314 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (94.6%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch and minor versions such as `VERS 7.0.14` or `7.1` detect as 7.0, with `Header.DeclaredVersion` keeping `7.1`; vendor spellings `5.51`, `551`, `5.5.5`, `55`, `7` and a version followed by text such as `5.5.1 (GEDCOM)` read as the version they mean, with an `INVALID_VALUE` diagnostic on `GEDC.VERS`; a `0 @X1@ HEAD` record is not the header and never sets the version)
 - Heuristic-based detection for malformed headers
@@ -95,11 +95,12 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,303 of 7.0's structures reach the typed model, 917 of
-5.5's, and 1,229 of 5.5.1's.
+document built for it: 1,314 of 7.0's structures reach the typed model, 926 of
+5.5's, and 1,238 of 5.5.1's.
 =======
-5.5's, and 1,209 of 5.5.1's.
->>>>>>> 2c77d72 (docs: update FEATURES.md 5.5.1 typed coverage count)
+document built for it: 1,314 of 7.0's structures reach the typed model, 926 of
+5.5's, and 1,238 of 5.5.1's.
+>>>>>>> 309c883 (test(decoder): drop oxidged typed-gap entries fixed by #786)
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -211,8 +212,8 @@ if indi.FamilySearchID != "" {
 ### `_UID` (MyHeritage, PAF, RootsMagic, Legacy, Family Historian)
 
 `_UID` fills the same `UIDs` fields as GEDCOM 7.0's `UID`, on `Individual`,
-`Family`, `Source`, `MediaObject`, `Event` and `Attribute`; the raw tag stays
-in `Tags`. The encoder writes `UIDs` as `_UID` for 5.5/5.5.1 output and `UID`
+`Family`, `Source`, `MediaObject`, `Repository`, `Submitter`, `Note`,
+`SharedNote`, `Event` and `Attribute`; the raw tag stays in `Tags`. The encoder writes `UIDs` as `_UID` for 5.5/5.5.1 output and `UID`
 for 7.0. See [vendor extensions](docs/guides/vendor-extensions.md#_uid--record-and-event-identifiers).
 
 ### `_FREL`/`_MREL` (Family Tree Maker, Ancestry, Legacy) and `_MARNM` (MyHeritage)
@@ -302,8 +303,11 @@ snote := doc.GetSharedNote("@N1@")
 | Language | BCP 47 language tag |
 | Translations | Translated versions with their own MIME/Language |
 | SourceCitations | Source citations on the note |
+| RefNumbers | User reference numbers (REFN) with their TYPE |
+| UIDs | Unique identifiers (UID) |
 | ExternalIDs | External identifiers (EXID) |
-| ChangeDate | Last modification date |
+| ChangeDate | Last modification date (CHAN) |
+| CreationDate | Creation date (CREA) |
 
 Supported on: Document (as top-level records accessible via `SharedNotes()` and `GetSharedNote()`), MediaObject (as `SharedNoteXRefs`)
 
@@ -624,11 +628,15 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 - Contact details as ordered slices, every repeat kept (each is `{0:3}`):
   `Phone` (PHON), `Email` (EMAIL), `Fax` (FAX) and `Website` (WWW)
 - Notes
+- `ChangeDate` (CHAN), `CreationDate` (CREA, 7.0), `RefNumbers` (REFN) and
+  `UIDs` (UID)
 
 ### Submitters (SUBM)
 
 - Cross-reference ID (`@U1@`)
 - Name, address, language
+- `ChangeDate` (CHAN), `CreationDate` (CREA, 7.0), `RefNumbers` (REFN, 7.0)
+  and `UIDs` (UID)
 
 ### Submissions (SUBN, GEDCOM 5.5/5.5.1)
 
@@ -642,6 +650,8 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 
 - Cross-reference ID (`@N1@`)
 - Text content with continuation
+- `SourceCitations` (SOUR), `ChangeDate` (CHAN), `RefNumbers` (REFN) and
+  `UIDs` (the vendor `_UID`; 5.5.1 defines no UID)
 - Split note fields on note-bearing records (Individual, Family, Source,
   Repository, Submitter, Submission, MediaObject) and on the note-bearing substructures
   (PersonalName, Event, Attribute, SourceCitation, LDSOrdinance, ChangeDate, Association,
@@ -1199,13 +1209,14 @@ silently.
 ## Metadata
 
 - REFN - Reference numbers with their `TYPE` subordinate, as `[]gedcom.RefNumber` on
-  `Individual`, `Family`, `Source` and `MediaObject` (`RefNumbers`); every occurrence is
-  kept in file order. `REFN` on `Repository`, `Note`, `SharedNote` and `Submitter`
-  records is preserved in raw tags only
+  `Individual`, `Family`, `Source`, `MediaObject`, `Repository`, `Submitter`, `Note`
+  and `SharedNote` (`RefNumbers`); every occurrence is kept in file order
 - UID - Unique identifiers, as `UIDs []string` on `Individual`, `Family`, `Source`,
-  `MediaObject`, `Event` and `Attribute`; every occurrence is kept in file order
-- CHAN - Change date with DATE and TIME
-- CREA - Creation date (GEDCOM 7.0)
+  `MediaObject`, `Repository`, `Submitter`, `Note`, `SharedNote`, `Event` and `Attribute`;
+  every occurrence is kept in file order
+- CHAN - Change date with DATE and TIME, as `ChangeDate` on every record type
+  except `Header`
+- CREA - Creation date (GEDCOM 7.0), as `CreationDate` on every 7.0 record type
 
 ## Validation
 
@@ -1699,7 +1710,7 @@ Bidirectional conversion between GEDCOM versions with transformation tracking.
 | Date epochs and phrases | Both | Spells the B.C. epoch `BCE` for 7.0 (from `B.C.`, `BC`, `B.C.E.`) and `B.C.` for 5.x; moves `INT <date> (<phrase>)` to `DATE <date>` + `PHRASE` and `(<phrase>)` to an empty `DATE` + `PHRASE` for 7.0, and folds a `DATE` + `PHRASE` back into those forms for 5.x. A phrase with no target form is reported (DataLoss `Date phrases` and a Preserved note on the upgrade; the `PHRASE tags` DataLoss on the downgrade) |
 | Newlines to CONT | Downgrade from 7.0 | Expands embedded newlines to CONT tags |
 | Long lines to CONC | Downgrade from 7.0 | Splits a value line past 5.x's 255-character limit onto CONC tags, between two non-spaces, so the encoded output has no over-length line and decodes back to the same text |
-| `SNOTE` → Note records | Downgrade from 7.0 | `SNOTE` records become `NOTE` records, and `SNOTE` pointers become `NOTE` pointers; the record's `MIME` and `LANG` are removed and reported as data loss |
+| `SNOTE` → Note records | Downgrade from 7.0 | `SNOTE` records become `NOTE` records, and `SNOTE` pointers become `NOTE` pointers; the record's `MIME` and `LANG` are removed and reported as data loss; an entity-only `SUBM`'s `RefNumbers` (`REFN`, which 5.5.1 `SUBM` lacks) are cleared and reported as `SUBM.REFN structures` |
 | 7.0-only tags removed | Downgrade from 7.0 | `EXID`, `TRAN`, `PHRASE` and `CREA` are removed from `Record.Tags` with their subordinates, and from the typed entity's record-level fields, and reported as data loss |
 | `RESN` values | Both | Restriction keywords at any level are upper-cased for 7.0 and lower-cased for 5.x (`RESTRICTION_VALUES_MAPPED`); a 7.0 list downgrades to its most protective keyword (privacy, confidential, locked), the rest reported as data loss |
 | `UID` ↔ `_UID` | Both | `_UID`, the extension every 5.5.x desktop producer writes for the identifier 7.0 standardised as `UID`, is renamed to `UID` on an upgrade wherever 7.0 defines `UID` (level 1 of a record, level 2 under an event or attribute) and `UID` to `_UID` at any level on a downgrade (`UID_FROM_VENDOR_TAG`, `UID_TO_VENDOR_TAG`); neither is data loss |
@@ -1810,10 +1821,10 @@ Full support for encoding typed entities back to GEDCOM format:
 | Individual | Names, sex, events, attributes, family links, associations, LDS ordinances, citations, notes, media |
 | Family | Spouse/child refs, events, LDS ordinances, citations, notes, media |
 | Source | Data (events recorded, agency, notes), title, abbreviation, author, publication, text (with MIME/LANG), repository ref/inline, notes, media |
-| Repository | Name, address, contact info (phone, email, fax, website), notes |
-| Submitter | Name, address, contact info, languages |
+| Repository | Name, address, contact info (phone, email, fax, website), notes, change/creation dates, REFN, UID |
+| Submitter | Name, address, contact info, languages, change/creation dates, REFN, UID |
 | Submission | Submitter ref, FAMF, TEMP, ANCE, DESC, ORDI, RIN, notes, change date |
-| Note | Text with continuation lines |
+| Note | Text with continuation lines, citations, REFN, UID, change date |
 | MediaObject | Files, formats, translations, citations |
 
 A line break in a value is written as `CONT` lines. A line break in a tag name or identifier (`Tag.Tag`, `Tag.XRef`, `Record.Type`, `Record.XRef`, `Header.Submitter`, or an entity field that becomes a tag name such as `Event.Type`) has no GEDCOM spelling, so encoding returns `encoder.ErrLineBreak` rather than writing a line that could re-decode as a forged record.

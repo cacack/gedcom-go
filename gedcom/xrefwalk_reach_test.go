@@ -166,15 +166,22 @@ func fullyPopulatedRecords() []*Record {
 	}
 
 	repo := &Repository{XRef: "@R1@", NoteXRefs: []string{"@R_NX@"},
-		Tags: rawTags("R")}
+		ChangeDate: chg("R"), CreationDate: chg("RCREA"), Tags: rawTags("R")}
 	subm := &Submitter{XRef: "@U1@", NoteXRefs: []string{"@U_NX@"},
-		Tags: rawTags("U")}
+		ChangeDate: chg("U"), CreationDate: chg("UCREA"), Tags: rawTags("U")}
+	note := &Note{
+		XRef:            "@T1@",
+		SourceCitations: []*SourceCitation{cite("@T_SOUR@")},
+		ChangeDate:      chg("T"),
+		Tags:            rawTags("T"),
+	}
 	subn := &Submission{XRef: "@B1@", SubmitterXRef: "@B_SUBM@",
 		NoteXRefs: []string{"@B_NX@"}, ChangeDate: chg("B"), Tags: rawTags("B")}
 	snote := &SharedNote{
 		XRef:            "@N1@",
 		SourceCitations: []*SourceCitation{cite("@N_SOUR@")},
 		ChangeDate:      chg("N"),
+		CreationDate:    chg("NCREA"),
 		Tags:            rawTags("N"),
 	}
 
@@ -185,6 +192,7 @@ func fullyPopulatedRecords() []*Record {
 		{XRef: "@M1@", Type: RecordTypeMedia, Entity: obje},
 		{XRef: "@R1@", Type: RecordTypeRepository, Entity: repo},
 		{XRef: "@U1@", Type: RecordTypeSubmitter, Entity: subm},
+		{XRef: "@T1@", Type: RecordTypeNote, Entity: note},
 		{XRef: "@B1@", Type: RecordTypeSubmission, Entity: subn},
 		{XRef: "@N1@", Type: RecordTypeSharedNote, Entity: snote},
 	}

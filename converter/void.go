@@ -120,10 +120,14 @@ func pruneVoidEntity(entity any) bool {
 	case *gedcom.Repository:
 		if e != nil {
 			e.NoteXRefs = p.strings(e.NoteXRefs)
+			p.changeDate(e.ChangeDate)
+			p.changeDate(e.CreationDate)
 			e.Tags = p.tags(e.Tags)
 		}
 	case *gedcom.Note:
 		if e != nil {
+			e.SourceCitations = p.citations(e.SourceCitations)
+			p.changeDate(e.ChangeDate)
 			e.Tags = p.tags(e.Tags)
 		}
 	case *gedcom.MediaObject:
@@ -131,6 +135,8 @@ func pruneVoidEntity(entity any) bool {
 	case *gedcom.Submitter:
 		if e != nil {
 			e.NoteXRefs = p.strings(e.NoteXRefs)
+			p.changeDate(e.ChangeDate)
+			p.changeDate(e.CreationDate)
 			e.Tags = p.tags(e.Tags)
 		}
 	case *gedcom.Submission:
@@ -139,6 +145,7 @@ func pruneVoidEntity(entity any) bool {
 		if e != nil {
 			e.SourceCitations = p.citations(e.SourceCitations)
 			p.changeDate(e.ChangeDate)
+			p.changeDate(e.CreationDate)
 			e.Tags = p.tags(e.Tags)
 		}
 	}

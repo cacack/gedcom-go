@@ -29,6 +29,20 @@ type Submitter struct {
 	// (1 NOTE <text> form, including CONT/CONC continuations).
 	InlineNotes []string
 
+	// ChangeDate is when the record was last modified (CHAN tag)
+	ChangeDate *ChangeDate
+
+	// CreationDate is when the record was created (CREA tag, GEDCOM 7.0)
+	CreationDate *ChangeDate
+
+	// RefNumbers are user reference numbers (REFN tags, repeatable), each
+	// with its optional TYPE, in file order.
+	RefNumbers []RefNumber
+
+	// UIDs are unique identifiers (UID tags, repeatable in GEDCOM 7.0, or
+	// the _UID vendor extension in 5.5/5.5.1), in file order.
+	UIDs []string
+
 	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
 	// Links this record to external systems like FamilySearch, Ancestry, etc.
 	ExternalIDs []*ExternalID

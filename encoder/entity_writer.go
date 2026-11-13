@@ -192,9 +192,11 @@ func entityToTags(record *gedcom.Record, opts *EncodeOptions) []*gedcom.Tag {
 			return repositoryToTags(repo, opts)
 		}
 	case gedcom.RecordTypeNote:
-		// A Note carries its whole body in Text, which entityRecordText writes
-		// as the level-0 value plus CONT/CONC. Nothing is left for this path.
-		return nil
+		// A Note's body, Text, is written by entityRecordText as the level-0
+		// value plus CONT/CONC; this path writes its substructures.
+		if note, ok := record.Entity.(*gedcom.Note); ok {
+			return noteToTags(note, opts)
+		}
 	case gedcom.RecordTypeMedia:
 		if media, ok := record.Entity.(*gedcom.MediaObject); ok {
 			return mediaObjectToTags(media, opts)
@@ -603,13 +605,19 @@ func submitterToTags(subm *gedcom.Submitter, opts *EncodeOptions) []*gedcom.Tag 
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "LANG", Value: opts.text(lang)})
 	}
 
-	// External IDs (level 1) - EXID (GEDCOM 7.0)
+	// Identifiers (level 1) - REFN, UID, EXID (GEDCOM 7.0)
 	// Emitted before NOTE to match GEDCOM 7 structure order (IDENTIFIER_STRUCTURE
 	// precedes NOTE_STRUCTURE) and the placement used by the other record writers.
+	tags = append(tags, refNumbersToTags(subm.RefNumbers, opts)...)
+	tags = append(tags, uidsToTags(subm.UIDs, 1, opts)...)
 	tags = append(tags, externalIDsToTags(subm.ExternalIDs, 1, opts)...)
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
 	tags = append(tags, notesToTags(subm.NoteXRefs, subm.InlineNotes, 1, opts)...)
+
+	// Change and creation dates (level 1) - CHAN, CREA (GEDCOM 7.0)
+	tags = append(tags, changeDateToTags(subm.ChangeDate, 1, "CHAN", opts)...)
+	tags = append(tags, changeDateToTags(subm.CreationDate, 1, "CREA", opts)...)
 
 	return tags
 }
@@ -668,15 +676,44 @@ func repositoryToTags(repo *gedcom.Repository, opts *EncodeOptions) []*gedcom.Ta
 	// grammar order after ADDR.
 	tags = append(tags, contactTags(repo.Phone, repo.Email, repo.Fax, repo.Website, 1, opts)...)
 
-	// External IDs (level 1) - EXID (GEDCOM 7.0)
+	// Identifiers (level 1) - REFN, UID, EXID (GEDCOM 7.0)
 	// Emitted before NOTE to match GEDCOM 7 structure order (IDENTIFIER_STRUCTURE
 	// precedes NOTE_STRUCTURE) and the placement used by the other record writers.
+	tags = append(tags, refNumbersToTags(repo.RefNumbers, opts)...)
+	tags = append(tags, uidsToTags(repo.UIDs, 1, opts)...)
 	tags = append(tags, externalIDsToTags(repo.ExternalIDs, 1, opts)...)
 
 	// Notes (level 1) - NOTE (with CONT/CONC for multiline/long)
 	tags = append(tags, notesToTags(repo.NoteXRefs, repo.InlineNotes, 1, opts)...)
 
+	// Change and creation dates (level 1) - CHAN, CREA (GEDCOM 7.0)
+	tags = append(tags, changeDateToTags(repo.ChangeDate, 1, "CHAN", opts)...)
+	tags = append(tags, changeDateToTags(repo.CreationDate, 1, "CREA", opts)...)
+
 	return tags
+}
+
+// noteToTags converts a Note entity's substructures to GEDCOM tags, in the
+// NOTE_RECORD order of GEDCOM 5.5.1. Its Text is written by writeRecord via
+// entityRecordText, and its own extension Tags by entityOwnTags, not here.
+func noteToTags(note *gedcom.Note, opts *EncodeOptions) []*gedcom.Tag {
+	if note == nil {
+		return nil
+	}
+
+	// Reference numbers (level 1) - REFN, each with its optional TYPE
+	tags := refNumbersToTags(note.RefNumbers, opts)
+
+	// UIDs (level 1) - _UID for 5.5/5.5.1 output
+	tags = append(tags, uidsToTags(note.UIDs, 1, opts)...)
+
+	// Source citations (level 1) - SOUR
+	for _, cite := range note.SourceCitations {
+		tags = append(tags, sourceCitationToTags(cite, 1, opts)...)
+	}
+
+	// Change date (level 1) - CHAN
+	return append(tags, changeDateToTags(note.ChangeDate, 1, "CHAN", opts)...)
 }
 
 // mediaObjectToTags converts a MediaObject entity to GEDCOM tags.
@@ -1762,13 +1799,14 @@ func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Ta
 		tags = append(tags, sourceCitationToTags(cite, 1, opts)...)
 	}
 
-	// External IDs (level 1) - EXID
+	// Identifiers (level 1) - REFN, UID, EXID
+	tags = append(tags, refNumbersToTags(note.RefNumbers, opts)...)
+	tags = append(tags, uidsToTags(note.UIDs, 1, opts)...)
 	tags = append(tags, externalIDsToTags(note.ExternalIDs, 1, opts)...)
 
-	// Change date (level 1) - CHAN
-	if note.ChangeDate != nil {
-		tags = append(tags, changeDateToTags(note.ChangeDate, 1, "CHAN", opts)...)
-	}
+	// Change and creation dates (level 1) - CHAN, CREA
+	tags = append(tags, changeDateToTags(note.ChangeDate, 1, "CHAN", opts)...)
+	tags = append(tags, changeDateToTags(note.CreationDate, 1, "CREA", opts)...)
 
 	// The note's own extension Tags are appended by writeRecord through
 	// entityOwnTags, as for every other entity type. Appending the whole

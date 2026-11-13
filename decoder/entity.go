@@ -1753,6 +1753,8 @@ func parseChangeDate(tags []*gedcom.Tag, chanIdx int, collector *diagnosticColle
 }
 
 // parseSubmitter converts record tags to a Submitter entity.
+//
+//nolint:gocyclo // GEDCOM parsing inherently requires handling many tag types
 func parseSubmitter(record *gedcom.Record, collector *diagnosticCollector) *gedcom.Submitter {
 	subm := &gedcom.Submitter{
 		XRef: record.XRef,
@@ -1787,9 +1789,21 @@ func parseSubmitter(record *gedcom.Record, collector *diagnosticCollector) *gedc
 		case "EXID":
 			subm.ExternalIDs = append(subm.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
-		case "CHAN", "FAX", "WWW", "OBJE", "RIN", "UID", "CREA", "REFN", "RFN":
-			// Known tags not yet parsed into typed fields. CREA and REFN are
-			// 7.0, RFN 5.5/5.5.1 (#730); typed access is #786.
+		case "CHAN":
+			subm.ChangeDate = parseChangeDate(record.Tags, i, collector)
+
+		case "CREA":
+			subm.CreationDate = parseChangeDate(record.Tags, i, collector)
+
+		case "REFN":
+			subm.RefNumbers = append(subm.RefNumbers, parseRefNumber(record.Tags, i, collector))
+
+		case "UID", "_UID":
+			subm.UIDs = append(subm.UIDs, collector.text(tag.Value))
+
+		case "FAX", "WWW", "OBJE", "RIN", "RFN":
+			// Known tags not yet parsed into typed fields. RFN is 5.5/5.5.1
+			// (#730).
 
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
@@ -1854,6 +1868,8 @@ func parseSubmission(record *gedcom.Record, collector *diagnosticCollector) *ged
 }
 
 // parseRepository converts record tags to a Repository entity.
+//
+//nolint:gocyclo // GEDCOM parsing inherently requires handling many tag types
 func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *gedcom.Repository {
 	repo := &gedcom.Repository{
 		XRef: record.XRef,
@@ -1891,9 +1907,21 @@ func parseRepository(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "EXID":
 			repo.ExternalIDs = append(repo.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
-		case "CHAN", "REFN", "UID", "CREA", "RIN":
-			// Known tags not yet parsed into typed fields. CREA is 7.0, RIN
-			// 5.5/5.5.1 (#730); typed access is #786.
+		case "CHAN":
+			repo.ChangeDate = parseChangeDate(record.Tags, i, collector)
+
+		case "CREA":
+			repo.CreationDate = parseChangeDate(record.Tags, i, collector)
+
+		case "REFN":
+			repo.RefNumbers = append(repo.RefNumbers, parseRefNumber(record.Tags, i, collector))
+
+		case "UID", "_UID":
+			repo.UIDs = append(repo.UIDs, collector.text(tag.Value))
+
+		case "RIN":
+			// Known tag not yet parsed into a typed field. RIN is 5.5/5.5.1
+			// (#730).
 
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {
@@ -2015,7 +2043,19 @@ func parseNote(record *gedcom.Record, collector *diagnosticCollector) *gedcom.No
 		case "EXID":
 			note.ExternalIDs = append(note.ExternalIDs, parseExternalID(record.Tags, i, collector))
 
-		case "MIME", "LANG", "TRAN", "SOUR", "REFN", "UID", "CHAN", "RIN":
+		case "SOUR":
+			note.SourceCitations = append(note.SourceCitations, parseSourceCitation(record.Tags, i, tag.Level, collector))
+
+		case "CHAN":
+			note.ChangeDate = parseChangeDate(record.Tags, i, collector)
+
+		case "REFN":
+			note.RefNumbers = append(note.RefNumbers, parseRefNumber(record.Tags, i, collector))
+
+		case "UID", "_UID":
+			note.UIDs = append(note.UIDs, collector.text(tag.Value))
+
+		case "MIME", "LANG", "TRAN", "RIN":
 			// Known tags not yet parsed into typed fields (RIN: #730)
 
 		default:
@@ -2071,11 +2111,14 @@ func parseSharedNote(record *gedcom.Record, collector *diagnosticCollector) *ged
 		case "CHAN":
 			note.ChangeDate = parseChangeDate(record.Tags, i, collector)
 
-		case "CREA", "REFN", "UID":
-			// Standard SNOTE substructures not yet parsed into typed fields;
-			// the raw tags remain on SharedNote.Tags (ADR 0003). Recognizing
-			// them keeps UNKNOWN_TAG meaning "nonstandard tag" (#730); typed
-			// access is #786.
+		case "CREA":
+			note.CreationDate = parseChangeDate(record.Tags, i, collector)
+
+		case "REFN":
+			note.RefNumbers = append(note.RefNumbers, parseRefNumber(record.Tags, i, collector))
+
+		case "UID", "_UID":
+			note.UIDs = append(note.UIDs, collector.text(tag.Value))
 
 		case "CONT", "CONC":
 			// Fold continuation lines back into the primary text so consumers

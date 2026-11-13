@@ -58,6 +58,7 @@ func (d *Document) RequiresGEDCOM7() bool {
 	return false
 }
 
+//nolint:gocyclo // One case per record type with a 7.0-only typed signal
 func recordRequiresGEDCOM7(rec *Record) bool {
 	if rec == nil {
 		return false
@@ -77,13 +78,15 @@ func recordRequiresGEDCOM7(rec *Record) bool {
 			sourceDataRequiresGEDCOM7(e.Data)
 	case *MediaObject:
 		return mediaObjectRequiresGEDCOM7(e)
-	// Repository, Submitter, and Note have no CreationDate field (only
-	// Individual, Family, Source, and MediaObject do), so EXID is their only
-	// 7.0-only typed signal.
+	// UIDs are not checked, as for Individual: the encoder writes them as
+	// _UID for 5.5/5.5.1 output (#715).
 	case *Repository:
-		return len(e.ExternalIDs) > 0
+		return len(e.ExternalIDs) > 0 || e.CreationDate != nil
+	// REFN is 7.0-only on SUBM; 5.5.1 has only RFN there.
 	case *Submitter:
-		return len(e.ExternalIDs) > 0
+		return len(e.ExternalIDs) > 0 || e.CreationDate != nil || len(e.RefNumbers) > 0
+	// Note has no CreationDate field (CREA is 7.0-only and the NOTE record is
+	// 5.x-only), so EXID is its only 7.0-only typed signal.
 	case *Note:
 		return len(e.ExternalIDs) > 0
 	}

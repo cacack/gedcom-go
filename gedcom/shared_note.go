@@ -31,6 +31,16 @@ type SharedNote struct {
 	// ChangeDate is when the record was last modified (CHAN tag)
 	ChangeDate *ChangeDate
 
+	// CreationDate is when the record was created (CREA tag)
+	CreationDate *ChangeDate
+
+	// RefNumbers are user reference numbers (REFN tags, repeatable), each
+	// with its optional TYPE, in file order.
+	RefNumbers []RefNumber
+
+	// UIDs are unique identifiers (UID tags, repeatable), in file order.
+	UIDs []string
+
 	// Tags contains all raw tags for this shared note (for unknown/custom tags),
 	// a lossless read-side record per ADR 0003. While Record.Tags is non-empty
 	// it does not drive encoding; a record written from its entity appends

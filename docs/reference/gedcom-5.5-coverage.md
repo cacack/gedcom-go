@@ -179,11 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 917 | 91.9% | 1229 | 93.4% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 926 | 92.8% | 1238 | 94.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 72 | 7.2% | 81 | 6.2% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 65 | 6.5% | 74 | 5.6% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 0 | 0.0% | 0 | 0.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 9 | 0.9% | 6 | 0.5% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
+| raw (undiagnosed) | 7 | 0.7% | 4 | 0.3% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -196,11 +196,11 @@ pairs under it reach the typed model.
 | `FAM` | 219 / 254 | 289 / 324 |
 | `HEAD` | 20 / 28 | 25 / 33 |
 | `INDI` | 610 / 625 | 831 / 855 |
-| `NOTE` | 3 / 9 | 3 / 9 |
+| `NOTE` | 8 / 9 | 8 / 9 |
 | `OBJE` | 6 / 12 | 12 / 13 |
-| `REPO` | 13 / 17 | 17 / 21 |
+| `REPO` | 16 / 17 | 20 / 21 |
 | `SOUR` | 33 / 34 | 33 / 34 |
-| `SUBM` | 5 / 10 | 8 / 15 |
+| `SUBM` | 6 / 10 | 9 / 15 |
 | `SUBN` | 8 / 8 | 11 / 11 |
 | `TRLR` | 0 / 1 | 0 / 1 |
 
@@ -2147,13 +2147,13 @@ Measured at `NOTE` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `CHAN` | `CHANGE_DATE.CHAN` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `CHAN` | `CHANGE_DATE.CHAN` | typed | typed | `{0:1}` |
 | `CONC` | `NOTE_RECORD.NOTE.CONC` | typed | typed | `{0:M}` |
 | `CONT` | `NOTE_RECORD.NOTE.CONT` | typed | typed | `{0:M}` |
-| `REFN` | `NOTE_RECORD.NOTE.REFN` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `REFN` | `NOTE_RECORD.NOTE.REFN` | typed | typed | `{0:M}` |
 | `RIN` | `NOTE_RECORD.NOTE.RIN` | raw (accepted) | raw (accepted) | `{0:1}` |
-| `SOUR` | `SOURCE_CITATION.SOUR` | raw (accepted) | raw (accepted) | `{0:M}` |
-| `SOUR` | `SOURCE_CITATION.SOUR#2` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `SOUR` | `SOURCE_CITATION.SOUR` | typed | typed | `{0:M}` |
+| `SOUR` | `SOURCE_CITATION.SOUR#2` | typed | typed | `{0:M}` |
 
 ### `NOTE_RECORD.NOTE.REFN`
 
@@ -2161,7 +2161,7 @@ Measured at `NOTE.REFN` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `TYPE` | `NOTE_RECORD.NOTE.REFN.TYPE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `TYPE` | `NOTE_RECORD.NOTE.REFN.TYPE` | typed | typed | `{0:1}` |
 
 ### `NOTE_STRUCTURE.NOTE`
 
@@ -2292,14 +2292,14 @@ Measured at `REPO` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `CHAN` | `CHANGE_DATE.CHAN` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `CHAN` | `CHANGE_DATE.CHAN` | typed | typed | `{0:1}` |
 | `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
 | `FAX` | `ADDRESS_STRUCTURE.FAX` | — | typed | `{0:3}` |
 | `NAME` | `REPOSITORY_RECORD.REPO.NAME` | typed | typed | `{0:1}` in 5.5; `{1:1}` in 5.5.1 |
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `PHON` | `ADDRESS_STRUCTURE.PHON` | typed | typed | `{0:3}` |
-| `REFN` | `REPOSITORY_RECORD.REPO.REFN` | raw (accepted) | raw (accepted) | `{0:M}` |
+| `REFN` | `REPOSITORY_RECORD.REPO.REFN` | typed | typed | `{0:M}` |
 | `RIN` | `REPOSITORY_RECORD.REPO.RIN` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `WWW` | `ADDRESS_STRUCTURE.WWW` | — | typed | `{0:3}` |
 
@@ -2309,7 +2309,7 @@ Measured at `REPO.REFN` in 5.5, 5.5.1.
 
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
-| `TYPE` | `REPOSITORY_RECORD.REPO.REFN.TYPE` | raw (undiagnosed) | raw (undiagnosed) | `{0:1}` |
+| `TYPE` | `REPOSITORY_RECORD.REPO.REFN.TYPE` | typed | typed | `{0:1}` |
 
 ### `SOURCE_CITATION.SOUR`
 
@@ -2512,7 +2512,7 @@ Measured at `SUBM` in 5.5, 5.5.1.
 | Tag | Structure | 5.5 | 5.5.1 | Cardinality |
 |-----|-----------|--------|--------|-------------|
 | `ADDR` | `ADDRESS_STRUCTURE.ADDR` | typed | typed | `{0:1}` |
-| `CHAN` | `CHANGE_DATE.CHAN` | raw (accepted) | raw (accepted) | `{0:1}` |
+| `CHAN` | `CHANGE_DATE.CHAN` | typed | typed | `{0:1}` |
 | `EMAIL` | `ADDRESS_STRUCTURE.EMAIL` | — | typed | `{0:3}` |
 | `FAX` | `ADDRESS_STRUCTURE.FAX` | — | raw (accepted) | `{0:3}` |
 | `LANG` | `SUBMITTER_RECORD.SUBM.LANG` | typed | typed | `{0:3}` |

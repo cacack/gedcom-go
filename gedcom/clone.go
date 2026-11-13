@@ -320,17 +320,21 @@ func (r *Repository) Clone() *Repository {
 	}
 
 	return &Repository{
-		XRef:        r.XRef,
-		Name:        r.Name,
-		Address:     cloneAddress(r.Address),
-		Phone:       cloneStringSlice(r.Phone),
-		Email:       cloneStringSlice(r.Email),
-		Fax:         cloneStringSlice(r.Fax),
-		Website:     cloneStringSlice(r.Website),
-		NoteXRefs:   cloneStringSlice(r.NoteXRefs),
-		InlineNotes: cloneStringSlice(r.InlineNotes),
-		ExternalIDs: cloneExternalIDs(r.ExternalIDs),
-		Tags:        CloneTags(r.Tags),
+		XRef:         r.XRef,
+		Name:         r.Name,
+		Address:      cloneAddress(r.Address),
+		Phone:        cloneStringSlice(r.Phone),
+		Email:        cloneStringSlice(r.Email),
+		Fax:          cloneStringSlice(r.Fax),
+		Website:      cloneStringSlice(r.Website),
+		NoteXRefs:    cloneStringSlice(r.NoteXRefs),
+		InlineNotes:  cloneStringSlice(r.InlineNotes),
+		ChangeDate:   cloneChangeDate(r.ChangeDate),
+		CreationDate: cloneChangeDate(r.CreationDate),
+		RefNumbers:   cloneRefNumbers(r.RefNumbers),
+		UIDs:         cloneStringSlice(r.UIDs),
+		ExternalIDs:  cloneExternalIDs(r.ExternalIDs),
+		Tags:         CloneTags(r.Tags),
 	}
 }
 
@@ -401,12 +405,24 @@ func (n *Note) Clone() *Note {
 		return nil
 	}
 
-	return &Note{
+	copied := &Note{
 		XRef:        n.XRef,
 		Text:        n.Text,
+		ChangeDate:  cloneChangeDate(n.ChangeDate),
+		RefNumbers:  cloneRefNumbers(n.RefNumbers),
+		UIDs:        cloneStringSlice(n.UIDs),
 		ExternalIDs: cloneExternalIDs(n.ExternalIDs),
 		Tags:        CloneTags(n.Tags),
 	}
+
+	if n.SourceCitations != nil {
+		copied.SourceCitations = make([]*SourceCitation, len(n.SourceCitations))
+		for k, sc := range n.SourceCitations {
+			copied.SourceCitations[k] = cloneSourceCitation(sc)
+		}
+	}
+
+	return copied
 }
 
 // Clone returns a deep copy of the media object. Returns nil if m is nil.
@@ -454,16 +470,20 @@ func (s *Submitter) Clone() *Submitter {
 	}
 
 	return &Submitter{
-		XRef:        s.XRef,
-		Name:        s.Name,
-		Address:     cloneAddress(s.Address),
-		Phone:       cloneStringSlice(s.Phone),
-		Email:       cloneStringSlice(s.Email),
-		Language:    cloneStringSlice(s.Language),
-		NoteXRefs:   cloneStringSlice(s.NoteXRefs),
-		InlineNotes: cloneStringSlice(s.InlineNotes),
-		ExternalIDs: cloneExternalIDs(s.ExternalIDs),
-		Tags:        CloneTags(s.Tags),
+		XRef:         s.XRef,
+		Name:         s.Name,
+		Address:      cloneAddress(s.Address),
+		Phone:        cloneStringSlice(s.Phone),
+		Email:        cloneStringSlice(s.Email),
+		Language:     cloneStringSlice(s.Language),
+		NoteXRefs:    cloneStringSlice(s.NoteXRefs),
+		InlineNotes:  cloneStringSlice(s.InlineNotes),
+		ChangeDate:   cloneChangeDate(s.ChangeDate),
+		CreationDate: cloneChangeDate(s.CreationDate),
+		RefNumbers:   cloneRefNumbers(s.RefNumbers),
+		UIDs:         cloneStringSlice(s.UIDs),
+		ExternalIDs:  cloneExternalIDs(s.ExternalIDs),
+		Tags:         CloneTags(s.Tags),
 	}
 }
 
@@ -525,6 +545,9 @@ func (s *SharedNote) Clone() *SharedNote {
 
 	copied.ExternalIDs = cloneExternalIDs(s.ExternalIDs)
 	copied.ChangeDate = cloneChangeDate(s.ChangeDate)
+	copied.CreationDate = cloneChangeDate(s.CreationDate)
+	copied.RefNumbers = cloneRefNumbers(s.RefNumbers)
+	copied.UIDs = cloneStringSlice(s.UIDs)
 	copied.Tags = CloneTags(s.Tags)
 
 	return copied
