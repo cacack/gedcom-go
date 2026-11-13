@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
@@ -17,6 +18,7 @@ import (
 // within a field's value, not a source line, so it survives the removal. See
 // the note on checkControlChars.
 func TestNoIssueCarriesLineNumberDetailKey(t *testing.T) {
+	t.Parallel() // #846: overlaps the other corpus-wide walks
 	// Validating the whole corpus at Strict takes ~15s, which is a poor trade
 	// on every local iteration. CI runs the full suite.
 	if testing.Short() {
@@ -40,38 +42,45 @@ func TestNoIssueCarriesLineNumberDetailKey(t *testing.T) {
 		t.Fatal("no .ged fixtures found; the test would prove nothing")
 	}
 
-	// ENTITY_TAGS_DIVERGED is opt-in (CheckEntityTags) and left off: it runs
-	// encoder.SyncTags over every record, which on the 46 MiB scale fixture
-	// pushes this test past the Windows -race timeout, and its Details carry
-	// only "record" or "error".
-	v := NewWithOptions(&ValidateOptions{
-		TagRegistry:        NewTagRegistry(),
-		ValidateCustomTags: true,
-		Strictness:         StrictnessStrict,
+	// Each fixture is a parallel subtest (#846): run serially, the corpus
+	// nears the 10-minute -race timeout on slow CI runners. The group waits
+	// for every subtest, so checked is final once it returns.
+	var checked atomic.Int64
+	t.Run("fixtures", func(t *testing.T) {
+		for _, path := range files {
+			t.Run(strings.TrimPrefix(filepath.ToSlash(path), "../testdata/"), func(t *testing.T) {
+				t.Parallel()
+				f, err := os.Open(path) // #nosec G304 -- path comes from walking the repo's own testdata
+				if err != nil {
+					t.Fatalf("open %s: %v", path, err)
+				}
+				doc, err := decoder.Decode(f)
+				_ = f.Close()
+				if err != nil {
+					return // malformed fixtures are expected; they exercise the decoder, not this
+				}
+
+				// ENTITY_TAGS_DIVERGED is opt-in (CheckEntityTags) and left
+				// off: it runs encoder.SyncTags over every record, which on
+				// the 46 MiB scale fixture pushes this test past the Windows
+				// -race timeout, and its Details carry only "record" or "error".
+				v := NewWithOptions(&ValidateOptions{
+					TagRegistry:        NewTagRegistry(),
+					ValidateCustomTags: true,
+					Strictness:         StrictnessStrict,
+				})
+				for _, issue := range v.ValidateAll(doc) {
+					checked.Add(1)
+					if _, ok := issue.Details["line_number"]; ok {
+						t.Errorf("%s still carries Details[line_number]", issue.Code)
+					}
+				}
+			})
+		}
 	})
 
-	var checked int
-	for _, path := range files {
-		f, err := os.Open(path) // #nosec G304 -- path comes from walking the repo's own testdata
-		if err != nil {
-			t.Fatalf("open %s: %v", path, err)
-		}
-		doc, err := decoder.Decode(f)
-		_ = f.Close()
-		if err != nil {
-			continue // malformed fixtures are expected; they exercise the decoder, not this
-		}
-
-		for _, issue := range v.ValidateAll(doc) {
-			checked++
-			if _, ok := issue.Details["line_number"]; ok {
-				t.Errorf("%s: %s still carries Details[line_number]", path, issue.Code)
-			}
-		}
-	}
-
-	if checked == 0 {
+	if checked.Load() == 0 {
 		t.Fatal("the corpus produced no issues at all; the assertion would be vacuous")
 	}
-	t.Logf("checked %d issues across %d fixtures", checked, len(files))
+	t.Logf("checked %d issues across %d fixtures", checked.Load(), len(files))
 }
