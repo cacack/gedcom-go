@@ -112,8 +112,8 @@ func TestForeignMixed(t *testing.T) {
 	}
 }
 
-// TestVendoredSpecsDecideEveryPair pins that the vendored 7.0 and 5.5.1
-// graphs leave nothing undecided, so the generated table drops every
+// TestVendoredSpecsDecideEveryPair pins that the vendored 7.0 graph and each
+// 5.x graph leave nothing undecided, so the generated table drops every
 // version-foreign structure. A specification update that adds a mixed case
 // fails here, to be resolved before the table is regenerated.
 func TestVendoredSpecsDecideEveryPair(t *testing.T) {
@@ -125,7 +125,14 @@ func TestVendoredSpecsDecideEveryPair(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for name, graphs := range map[string][2]Graph{"7.0->5.5.1": {g70, g551}, "5.5.1->7.0": {g551, g70}} {
+	g55, err := Load("../../testdata/spec/gedcom-5.5/substructures.tsv", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, graphs := range map[string][2]Graph{
+		"7.0->5.5.1": {g70, g551}, "5.5.1->7.0": {g551, g70},
+		"7.0->5.5": {g70, g55}, "5.5->7.0": {g55, g70},
+	} {
 		pairs, _, mixed := Foreign(graphs[0], graphs[1])
 		if len(pairs) == 0 {
 			t.Errorf("%s: no foreign pairs", name)
@@ -145,6 +152,20 @@ func TestVendoredSpecsDecideEveryPair(t *testing.T) {
 	for _, p := range []Pair{{"INDIVIDUAL_RECORD.INDI", "AFN"}, {"HEADER.HEAD", "FILE"}, {"MULTIMEDIA_LINK.OBJE#2", "FILE"}} {
 		if !containsPair(pairs, p) {
 			t.Errorf("5.5.1->7.0 lacks %v", p)
+		}
+	}
+	// 5.5's multimedia record has no FILE; its FORM, TITL and BLOB have no
+	// 7.0 place. A family event's AGE is 5.5 only.
+	pairs, _, _ = Foreign(g70, g55)
+	for _, p := range []Pair{{"record-OBJE", "FILE"}, {"record-INDI", "INIL"}, {"OBJE", "CROP"}} {
+		if !containsPair(pairs, p) {
+			t.Errorf("7.0->5.5 lacks %v", p)
+		}
+	}
+	pairs, _, _ = Foreign(g55, g70)
+	for _, p := range []Pair{{"MULTIMEDIA_RECORD.OBJE", "BLOB"}, {"MULTIMEDIA_RECORD.OBJE", "FORM"}, {"FAMILY_EVENT_STRUCTURE.MARR", "AGE"}} {
+		if !containsPair(pairs, p) {
+			t.Errorf("5.5->7.0 lacks %v", p)
 		}
 	}
 }
@@ -175,6 +196,9 @@ func TestGenerate(t *testing.T) {
 		`{"record-INDI", "INIL"}:`,
 		`{"INDIVIDUAL_RECORD.INDI", "AFN"}:`,
 		`{"HEAD-SOUR-DATA", "DATE-exact", "TIME"}:`,
+		`var foreignStructures70To55 = `,
+		`{"record-OBJE", "FILE"}:`,
+		`{"MULTIMEDIA_RECORD.OBJE", "BLOB"}:`,
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("generated source lacks %q", want)

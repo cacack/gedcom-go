@@ -131,7 +131,7 @@ func citationTextToData(block []*gedcom.Tag, citeLevel int) []*gedcom.Tag {
 			if firstText < 0 {
 				firstText = len(rest)
 			}
-			texts = append(texts, relevel(block[i:end], -1)...)
+			texts = append(texts, shiftLevels(block[i:end], 1)...)
 		case tag.Tag == "DATA" && dataEnd < 0:
 			rest = append(rest, block[i:end]...)
 			dataEnd = len(rest)

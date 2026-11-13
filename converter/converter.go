@@ -256,6 +256,7 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		// against final ones, and before the media type translation, so its FORM
 		// is translated with every other record's.
 		func() { promoteInlineMediaLinks(doc, report) },
+		func() { nestMediaRecordForms(doc, report) },
 		// After text consolidation and XRef normalization, like the media
 		// promotion, and before dropForeignStructures, which would otherwise
 		// drop the citation's TEXT.
@@ -276,7 +277,8 @@ func convert55To70(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		// 5.x form and their results are escaped once (issue #773).
 		func() { reescapeRawText(doc, gedcom.Version55, gedcom.Version70, report) },
 		func() { variations.report(doc, report, gedcom.Version70) },
-		// No dropForeignStructures: structures_gen.go has no 5.5 graph yet (#794).
+		// Last, so only what no pass above mapped into a 7.0 form is dropped.
+		func() { dropForeignStructures(doc, foreign55To70, report, gedcom.Version70) },
 		func() { opts.reportPreservedTags(doc, report) },
 		func() {
 			report.AddTransformation(gedcom.Transformation{
@@ -390,9 +392,14 @@ func convert70To55(doc *gedcom.Document, report *gedcom.ConversionReport, opts *
 		func() { transformUIDTags(doc, report, gedcom.Version55) },
 		func() { dropV7OnlyTags(doc, report, gedcom.Version55) },
 		func() { downgradeSharedNotes(doc, report, gedcom.Version55) },
+		// Last of the structural passes, so only what no pass above mapped
+		// into a 5.5 form is dropped.
+		func() { dropForeignStructures(doc, foreign70To55, report, gedcom.Version55) },
+		// After the drop, which leaves each OBJE record's FILE for it and
+		// cleans the NOTEs it copies into the inline links.
+		func() { demoteMediaRecords(doc, report) },
+		// After the drop, so no RESN it removes (OBJE.RESN) is reported here.
 		func() { transformRestrictions(doc, report, gedcom.Version55) },
-		// No dropForeignStructures: structures_gen.go has no 5.5 graph yet, so only
-		// dropV7OnlyTags's list is removed (#794).
 		func() { opts.reportPreservedTags(doc, report) },
 		func() {
 			report.AddTransformation(gedcom.Transformation{

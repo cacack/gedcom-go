@@ -87,19 +87,35 @@ func TestConvertRestrictionDowngrade(t *testing.T) {
 				t.Fatalf("Convert: %v", err)
 			}
 			indi := converted.XRefMap["@I1@"]
-			for _, want := range []string{"1 RESN privacy", "2 RESN confidential"} {
-				if !slices.Contains(tagLines(indi), want) {
-					t.Errorf("@I1@ tags = %q, want %q", tagLines(indi), want)
-				}
+			if !slices.Contains(tagLines(indi), "1 RESN privacy") {
+				t.Errorf("@I1@ tags = %q, want 1 RESN privacy", tagLines(indi))
 			}
-			if got := converted.GetFamily("@F1@").Restriction; got != "locked" {
-				t.Errorf("Family.Restriction = %q, want locked", got)
+			mapped := 3
+			if target == gedcom.Version55 {
+				// 5.5 defines RESN on the individual record only; the event's
+				// and the family's are dropped as foreign (#794).
+				mapped = 1
+				if slices.Contains(tagLines(indi), "2 RESN confidential") || converted.GetFamily("@F1@").Restriction != "" {
+					t.Errorf("5.5 output keeps an event or family RESN: %q", tagLines(indi))
+				}
+				for _, path := range []string{"Individual @I1@ > BIRT > RESN", "Family @F1@ > RESN"} {
+					if !hasDropped(report, path) {
+						t.Errorf("no Dropped note for %q: %+v", path, report.Dropped)
+					}
+				}
+			} else {
+				if !slices.Contains(tagLines(indi), "2 RESN confidential") {
+					t.Errorf("@I1@ tags = %q, want 2 RESN confidential", tagLines(indi))
+				}
+				if got := converted.GetFamily("@F1@").Restriction; got != "locked" {
+					t.Errorf("Family.Restriction = %q, want locked", got)
+				}
 			}
 			// Not a restriction keyword: left as written.
 			if got := converted.GetIndividual("@I2@").Restriction; got != "SECRET" {
 				t.Errorf("@I2@ Restriction = %q, want SECRET unchanged", got)
 			}
-			assertRestrictionTransformation(t, report, 3)
+			assertRestrictionTransformation(t, report, mapped)
 			if !hasNormalized(report, "Individual @I1@ > RESN", "RESN CONFIDENTIAL, LOCKED, PRIVACY", "RESN privacy") {
 				t.Errorf("no Normalized note for the list; got %+v", report.Normalized)
 			}

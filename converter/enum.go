@@ -237,6 +237,11 @@ func (t *enumTranslator) translateTags(tags []*gedcom.Tag, recordType, xref stri
 		if kind == enumNone || tag.Value == "" {
 			continue
 		}
+		if kind == enumRecordMedia && t.target == gedcom.Version55 {
+			// 5.5 has no FORM.TYPE: demoteMediaRecords reports the MEDI as
+			// lost under its own name rather than as a renamed TYPE.
+			continue
+		}
 
 		added, consumed := t.translate(tags, i, kind, path, recordType, xref)
 		if added != nil {
