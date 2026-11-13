@@ -92,6 +92,7 @@ var grammarFixtureFindings = map[string][]string{
 }
 
 func TestGrammar_VendoredFixtures(t *testing.T) {
+	t.Parallel() // #846: overlaps the other corpus-wide walks
 	var files []string
 	for _, pattern := range []string{"gedcom-5.5.1/*.ged", "gedcom-7.0/*.ged", "gedcom7code/5/*.ged", "gedcom7code/7/*.ged"} {
 		matches, err := filepath.Glob(filepath.Join("..", "testdata", pattern))
@@ -111,6 +112,7 @@ func TestGrammar_VendoredFixtures(t *testing.T) {
 		}
 		seen[name] = true
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			issues, _ := grammarIssuesForFile(t, path)
 			if got, want := grammarFindings(issues), grammarFixtureFindings[name]; !slices.Equal(got, want) {
 				t.Errorf("findings changed; update grammarFixtureFindings\n got: %q\nwant: %q", got, want)
