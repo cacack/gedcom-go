@@ -105,15 +105,9 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-<<<<<<< HEAD
-| typed | 1301 | 93.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1303 | 93.8% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 64 | 4.6% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
-=======
-| typed | 1288 | 92.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
-| partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 75 | 5.4% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
->>>>>>> 30fc1e5 (fix(decoder): read Header.Language and Copyright at level 1 and type HEAD.SOUR.DATA)
+| raw (accepted) | 62 | 4.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 1 | 0.1% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 23 | 1.7% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 

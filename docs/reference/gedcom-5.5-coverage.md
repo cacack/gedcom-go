@@ -179,17 +179,11 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-<<<<<<< HEAD
-| typed | 915 | 91.7% | 1225 | 93.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 917 | 91.9% | 1229 | 93.4% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 74 | 7.4% | 85 | 6.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 72 | 7.2% | 81 | 6.2% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 0 | 0.0% | 0 | 0.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 9 | 0.9% | 6 | 0.5% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
-| partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 85 | 8.5% | 95 | 7.2% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
-| raw (flagged) | 3 | 0.3% | 2 | 0.2% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
-| raw (undiagnosed) | 11 | 1.1% | 10 | 0.8% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
->>>>>>> 30fc1e5 (fix(decoder): read Header.Language and Copyright at level 1 and type HEAD.SOUR.DATA)
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
 
 ### By top-level structure
@@ -200,7 +194,7 @@ pairs under it reach the typed model.
 | Level 0 | 5.5 typed / total | 5.5.1 typed / total |
 |---------|----------------:|----------------:|
 | `FAM` | 219 / 254 | 289 / 324 |
-| `HEAD` | 18 / 28 | 21 / 33 |
+| `HEAD` | 20 / 28 | 25 / 33 |
 | `INDI` | 610 / 625 | 831 / 855 |
 | `NOTE` | 3 / 9 | 3 / 9 |
 | `OBJE` | 6 / 12 | 12 / 13 |
