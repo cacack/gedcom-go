@@ -97,10 +97,6 @@ tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
 document built for it: 1,314 of 7.0's structures reach the typed model, 926 of
 5.5's, and 1,238 of 5.5.1's.
-=======
-document built for it: 1,314 of 7.0's structures reach the typed model, 926 of
-5.5's, and 1,238 of 5.5.1's.
->>>>>>> 309c883 (test(decoder): drop oxidged typed-gap entries fixed by #786)
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
