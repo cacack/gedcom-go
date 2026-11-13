@@ -75,9 +75,9 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 | Version | Decoding | Typed coverage | Notes |
 |---------|----------|----------------|-------|
-| GEDCOM 5.5 | Every readable line preserved | [915 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (91.7%) | Legacy format |
-| GEDCOM 5.5.1 | Every readable line preserved | [1,225 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (93.1%) | Most common format |
-| GEDCOM 7.0 | Every readable line preserved | [1,301 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (93.7%) | Latest standard |
+| GEDCOM 5.5 | Every readable line preserved | [917 of 998 structures](docs/reference/gedcom-5.5-coverage.md) (91.9%) | Legacy format |
+| GEDCOM 5.5.1 | Every readable line preserved | [1,229 of 1,316 structures](docs/reference/gedcom-5.5-coverage.md) (93.4%) | Most common format |
+| GEDCOM 7.0 | Every readable line preserved | [1,303 of 1,389 structures](docs/reference/gedcom-7-coverage.md) (93.8%) | Latest standard |
 
 - Automatic version detection from header (GEDCOM 7 patch and minor versions such as `VERS 7.0.14` or `7.1` detect as 7.0, with `Header.DeclaredVersion` keeping `7.1`; vendor spellings `5.51`, `551`, `5.5.5`, `55`, `7` and a version followed by text such as `5.5.1 (GEDCOM)` read as the version they mean, with an `INVALID_VALUE` diagnostic on `GEDC.VERS`; a `0 @X1@ HEAD` record is not the header and never sets the version)
 - Heuristic-based detection for malformed headers
@@ -95,8 +95,11 @@ parsing table above, which says which shapes those are.
 **Typed coverage.** How much of a version reaches typed fields rather than raw
 tags. All three versions are measured, not estimated. Every structure each
 specification defines, in every context it defines it, is derived by decoding a
-document built for it: 1,301 of 7.0's structures reach the typed model, 915 of
-5.5's, and 1,225 of 5.5.1's.
+document built for it: 1,303 of 7.0's structures reach the typed model, 917 of
+5.5's, and 1,229 of 5.5.1's.
+=======
+5.5's, and 1,209 of 5.5.1's.
+>>>>>>> 2c77d72 (docs: update FEATURES.md 5.5.1 typed coverage count)
 The reports say which, and why the rest do not —
 [gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) and
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
@@ -556,10 +559,13 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 ### Header (HEAD)
 
 - Version (`GEDC.VERS`), encoding (`CHAR`), transmission date and time
-  (`DATE`, `DATE.TIME`), language, copyright, submitter pointer and SCHMA
+  (`DATE`, `DATE.TIME`), language (`LANG`), copyright (`COPR`), submitter
+  pointer and SCHMA, each read at level 1 only, so a nested `NOTE.LANG` or
+  `SOUR.DATA.COPR` does not set them
 - Source software (`SOUR`): system ID, `VERS` (`SourceVersion`), product
-  `NAME` (`SourceName`) and `CORP` (`SourceCorporation`, with its address and
-  `PHON`/`EMAIL`/`FAX`/`WWW` contact slices)
+  `NAME` (`SourceName`), `CORP` (`SourceCorporation`, with its address and
+  `PHON`/`EMAIL`/`FAX`/`WWW` contact slices) and `DATA` (`SourceData`: the
+  source data's name, `DATE`, `DATE.TIME` and `COPR`)
 - Destination system (`DEST`) and default place hierarchy (`PLAC.FORM`,
   `PlaceForm`)
 - Every typed field is a read view filled by the decoder: `Header.Tags` is

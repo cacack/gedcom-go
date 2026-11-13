@@ -105,9 +105,9 @@ the decoder supports fails `TestSpec7Coverage` until it is regenerated.
 
 | Status | Structures | Share | Meaning |
 |--------|-----------:|------:|---------|
-| typed | 1301 | 93.7% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 1303 | 93.8% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 64 | 4.6% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 62 | 4.5% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 1 | 0.1% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 23 | 1.7% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 
@@ -120,7 +120,7 @@ The structure each pair is nested under at level 0.
 | `INDI` | 873 | 854 | 0 | 10 | 0 | 9 |
 | `FAM` | 392 | 344 | 0 | 34 | 0 | 14 |
 | `SOUR` | 29 | 29 | 0 | 0 | 0 | 0 |
-| `HEAD` | 27 | 22 | 0 | 5 | 0 | 0 |
+| `HEAD` | 27 | 24 | 0 | 3 | 0 | 0 |
 | `REPO` | 21 | 17 | 0 | 4 | 0 | 0 |
 | `OBJE` | 17 | 17 | 0 | 0 | 0 | 0 |
 | `SUBM` | 16 | 9 | 0 | 7 | 0 | 0 |
@@ -891,7 +891,7 @@ Substructures of `HEAD-SOUR`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `CORP` | `CORP` | typed |
-| `DATA` | `HEAD-SOUR-DATA` | raw (accepted) |
+| `DATA` | `HEAD-SOUR-DATA` | typed |
 | `NAME` | `NAME` | typed |
 | `VERS` | `VERS` | typed |
 
@@ -914,7 +914,7 @@ Substructures of `HEAD-SOUR-DATA`.
 | Tag | Structure | Status |
 |-----|-----------|--------|
 | `COPR` | `COPR` | typed |
-| `DATE` | `DATE-exact` | raw (accepted) |
+| `DATE` | `DATE-exact` | typed |
 
 ### `INDI`
 

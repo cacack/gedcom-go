@@ -51,6 +51,7 @@ func (h *Header) Clone() *Header {
 		SourceVersion:     h.SourceVersion,
 		SourceName:        h.SourceName,
 		SourceCorporation: h.SourceCorporation.Clone(),
+		SourceData:        h.SourceData.Clone(),
 		Destination:       h.Destination,
 		Date:              h.Date,
 		Time:              h.Time,
@@ -61,6 +62,15 @@ func (h *Header) Clone() *Header {
 		AncestryTreeID:    h.AncestryTreeID,
 		Tags:              CloneTags(h.Tags),
 	}
+}
+
+// Clone returns a deep copy of the source data. Returns nil if d is nil.
+func (d *HeaderSourceData) Clone() *HeaderSourceData {
+	if d == nil {
+		return nil
+	}
+	copied := *d
+	return &copied
 }
 
 // Clone returns a deep copy of the corporation. Returns nil if c is nil.

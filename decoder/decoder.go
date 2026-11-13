@@ -555,9 +555,17 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 				doc.Header.Date = collector.text(line.Value)
 			}
 		case "LANG":
-			doc.Header.Language = collector.text(line.Value)
+			// Level 1 only: a deeper LANG, such as a 7.0 HEAD.NOTE.LANG, is
+			// the language of that structure, not of the file. See #785.
+			if line.Level == 1 {
+				doc.Header.Language = collector.text(line.Value)
+			}
 		case "COPR":
-			doc.Header.Copyright = collector.text(line.Value)
+			// Level 1 only: HEAD.SOUR.DATA.COPR is the source data's
+			// copyright (Header.SourceData), not the file's. See #785.
+			if line.Level == 1 {
+				doc.Header.Copyright = collector.text(line.Value)
+			}
 		case "SUBM":
 			// Level 1 only: the header's own pointer to the submitter record.
 			if line.Level == 1 {
@@ -585,7 +593,7 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 }
 
 // parseHeaderStructures fills the Header's typed views of the HEAD.SOUR
-// subtree (VERS, NAME, CORP), HEAD.DEST, HEAD.DATE.TIME and HEAD.PLAC.FORM from
+// subtree (VERS, NAME, CORP, DATA), HEAD.DEST, HEAD.DATE.TIME and HEAD.PLAC.FORM from
 // h.Tags, whose levels start at 1. Each is read only at its own position, so a
 // VERS under GEDC or a DATE.TIME under SOUR.DATA is not mistaken for one.
 // Unknown subordinates are left to reportUnknownHeaderTags, so the CORP address
@@ -613,6 +621,8 @@ func parseHeaderStructures(h *gedcom.Header, collector *diagnosticCollector) {
 			h.SourceName = quiet.text(tag.Value)
 		case "SOUR.CORP":
 			h.SourceCorporation = parseHeaderCorporation(h.Tags, i, quiet)
+		case "SOUR.DATA":
+			h.SourceData = parseHeaderSourceData(h.Tags, i, quiet)
 		case "DATE.TIME":
 			h.Time = quiet.text(tag.Value)
 		case "PLAC.FORM":
@@ -635,6 +645,31 @@ func reportNormalizedVersion(vers *gedcom.Tag, collector *diagnosticCollector) {
 	}
 	collector.addInvalidValue(vers.LineNumber, "GEDC.VERS", vers.Value,
 		fmt.Sprintf("%q is not a GEDCOM version string; normalized to %s", vers.Value, r.Declared))
+}
+
+// parseHeaderSourceData builds the DATA structure at tags[dataIdx] from its
+// DATE (with the DATE's TIME) and COPR subordinates. COPR is multi-line text,
+// so its CONT/CONC lines are folded in.
+func parseHeaderSourceData(tags []*gedcom.Tag, dataIdx int, quiet *diagnosticCollector) *gedcom.HeaderSourceData {
+	data := &gedcom.HeaderSourceData{Name: quiet.text(tags[dataIdx].Value)}
+	level := tags[dataIdx].Level
+	parent := ""
+	for i := dataIdx + 1; i < len(tags) && tags[i].Level > level; i++ {
+		tag := tags[i]
+		switch {
+		case tag.Level == level+1:
+			parent = tag.Tag
+			switch tag.Tag {
+			case "DATE":
+				data.Date = quiet.text(tag.Value)
+			case "COPR":
+				data.Copyright = quiet.text(foldedValue(tags, i))
+			}
+		case tag.Level == level+2 && parent == "DATE" && tag.Tag == "TIME":
+			data.Time = quiet.text(tag.Value)
+		}
+	}
+	return data
 }
 
 // parseHeaderCorporation builds the CORP structure at tags[corpIdx] from its

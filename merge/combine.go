@@ -109,7 +109,7 @@ type HeaderConflict struct {
 //     value is kept. If doc2's value is non-empty AND differs,
 //     a HeaderConflict is recorded in the report.
 //   - The typed views of header substructures (SourceVersion, SourceName,
-//     SourceCorporation, Destination, Time, PlaceForm) follow the raw
+//     SourceCorporation, SourceData, Destination, Time, PlaceForm) follow the raw
 //     structure that holds them (SOUR, DEST, DATE, PLAC): doc1's views are
 //     kept, and doc2's replace them only when doc2's structure is the one
 //     carried into the combined Tags. They record no HeaderConflict of
@@ -677,8 +677,8 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 }
 
 // mergeHeaderStructureViews merges the typed read views of header
-// substructures (SourceVersion, SourceName, SourceCorporation, Destination,
-// Time, PlaceForm) into out, a clone of h1. Each view follows the level-1
+// substructures (SourceVersion, SourceName, SourceCorporation, SourceData,
+// Destination, Time, PlaceForm) into out, a clone of h1. Each view follows the level-1
 // structure that holds it, because appendNonCollidingHeaderTags moves a doc2
 // structure into out.Tags whole or not at all: when doc2's structure is the
 // one out will carry, its views replace h1's -- even views a hand-built h1
@@ -695,6 +695,7 @@ func mergeHeaderStructureViews(out, h1, h2 *gedcom.Header, occupied map[string]b
 		out.SourceVersion = h2.SourceVersion
 		out.SourceName = h2.SourceName
 		out.SourceCorporation = h2.SourceCorporation.Clone()
+		out.SourceData = h2.SourceData.Clone()
 	}
 	if adopts("DEST") {
 		out.Destination = h2.Destination

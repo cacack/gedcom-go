@@ -423,6 +423,7 @@ func TestSubset_HeaderScalarFieldsCarriedAcross(t *testing.T) {
 	doc.Header.Copyright = "(c) 2026"
 	doc.Header.AncestryTreeID = "tree123"
 	doc.Header.DetectedEncoding = EncodingANSEL
+	doc.Header.SourceData = &HeaderSourceData{Name: "Data", Copyright: "(c) data"}
 
 	sub, err := doc.Subset([]string{"@I1@"})
 	if err != nil {
@@ -435,6 +436,9 @@ func TestSubset_HeaderScalarFieldsCarriedAcross(t *testing.T) {
 		got.Language != want.Language || got.Copyright != want.Copyright ||
 		got.AncestryTreeID != want.AncestryTreeID {
 		t.Errorf("Subset header = %+v, want scalar fields of %+v", got, want)
+	}
+	if got.SourceData == want.SourceData || got.SourceData == nil || *got.SourceData != *want.SourceData {
+		t.Errorf("Subset SourceData = %+v, want a copy of %+v", got.SourceData, want.SourceData)
 	}
 	if sub.Schema == nil || sub.Schema.TagMappings["_TEST"] == "" {
 		t.Error("Subset should carry the source Schema")
