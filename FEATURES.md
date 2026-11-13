@@ -377,7 +377,7 @@ beside it, and written back beneath that value
 | `ASSO.ROLE` | `Association.RolePhrase` |
 | `ADOP.FAMC.ADOP` | `Event.AdoptedByPhrase` |
 | Event/attribute `AGE` | `Event.AgePhrase`, `Attribute.AgePhrase` (an empty `AGE` with a `PHRASE` is a phrase-only age, with `Age` empty; the encoder writes it as an empty `AGE` for 7.0 output only) |
-| Family event/attribute `HUSB.AGE`, `WIFE.AGE` | `HusbandAgePhrase`, `WifeAgePhrase` on `Event` and `Attribute` |
+| Family event/attribute `HUSB.AGE`, `WIFE.AGE` | `HusbandAgePhrase`, `WifeAgePhrase` on `Event` and `Attribute` (a phrase-only spouse age is written like a phrase-only `AGE`, with its `HUSB`/`WIFE` line, for 7.0 output only) |
 | Event/attribute `SDATE` | `Event.SortDatePhrase`, `Attribute.SortDatePhrase` |
 | `FAM.HUSB`, `FAM.WIFE` | `Family.HusbandPhrase`, `Family.WifePhrase` |
 | `FILE.FORM.MEDI` | `MediaFile.MediaPhrase` |
