@@ -157,8 +157,9 @@ type Event struct {
 	// writes it only beneath a family's.
 	HusbandAge string
 
-	// HusbandAgePhrase is the PHRASE under that AGE (GEDCOM 7.0). Written
-	// only beneath a HusbandAge.
+	// HusbandAgePhrase is the PHRASE under that AGE (GEDCOM 7.0), written
+	// beneath it. With HusbandAge empty it is a phrase-only age, under the
+	// same rules as AgePhrase.
 	HusbandAgePhrase string
 
 	// WifeAge is the wife's age at the time of the event (AGE beneath the
@@ -166,8 +167,8 @@ type Event struct {
 	// HusbandAge.
 	WifeAge string
 
-	// WifeAgePhrase is the PHRASE under that AGE (GEDCOM 7.0). Written only
-	// beneath a WifeAge.
+	// WifeAgePhrase is the PHRASE under that AGE (GEDCOM 7.0), under the
+	// same rules as HusbandAgePhrase.
 	WifeAgePhrase string
 
 	// Agency is the responsible agency (AGNC subordinate)

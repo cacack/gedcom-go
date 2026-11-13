@@ -388,7 +388,9 @@ type Attribute struct {
 	Age string
 
 	// AgePhrase is the PHRASE under AGE (GEDCOM 7.0), the age in prose.
-	// Written only beneath an Age.
+	// Written beneath its AGE line. With Age empty it is a phrase-only age,
+	// which 7.0 allows: 7.0 output writes an empty AGE line to carry it, and
+	// 5.x output, where AGE requires a value, writes neither.
 	AgePhrase string
 
 	// HusbandAge is the husband's age at the time of the attribute (AGE
@@ -397,8 +399,9 @@ type Attribute struct {
 	// the encoder writes it only beneath a family's.
 	HusbandAge string
 
-	// HusbandAgePhrase is the PHRASE under that AGE (GEDCOM 7.0). Written
-	// only beneath a HusbandAge.
+	// HusbandAgePhrase is the PHRASE under that AGE (GEDCOM 7.0), written
+	// beneath it. With HusbandAge empty it is a phrase-only age, under the
+	// same rules as AgePhrase.
 	HusbandAgePhrase string
 
 	// WifeAge is the wife's age at the time of the attribute (AGE beneath the
@@ -406,8 +409,8 @@ type Attribute struct {
 	// HusbandAge.
 	WifeAge string
 
-	// WifeAgePhrase is the PHRASE under that AGE (GEDCOM 7.0). Written only
-	// beneath a WifeAge.
+	// WifeAgePhrase is the PHRASE under that AGE (GEDCOM 7.0), under the
+	// same rules as HusbandAgePhrase.
 	WifeAgePhrase string
 
 	// Agency is the responsible agency (AGNC subordinate)
