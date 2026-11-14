@@ -32,6 +32,18 @@ jobs:
           - package: ./charset
             fuzz: ^FuzzNewReader$
             time: 2m
+          - package: ./charset
+            fuzz: ^FuzzNewReaderWithEncoding$
+            time: 2m
+          - package: ./decoder
+            fuzz: ^FuzzDecode$
+            time: 2m
+          - package: ./decoder
+            fuzz: ^FuzzDecodeRoundTrip$
+            time: 2m
+          - package: ./converter
+            fuzz: ^FuzzValidateConvert$
+            time: 2m
           - package: ./encoder
             fuzz: ^FuzzEncodeRoundTrip$
             time: 2m
