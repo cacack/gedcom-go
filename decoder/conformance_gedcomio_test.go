@@ -17,6 +17,9 @@ import (
 // gedcom.ged, is decoded in strict and lenient mode like the vendored suites
 // in conformance_suites_test.go, with the same self-cleaning known-failure
 // lists. Keys are paths under the lock's base (testfiles/ upstream).
+//
+// The .gdz archives are not read here: this package cannot import gedzip,
+// which imports it. gedzip/conformance_gedcomio_test.go covers them (#127).
 
 // gedcomioStrictKnownFailures lists files whose strict decode returns an
 // error. Empty: every file decodes cleanly.
@@ -34,57 +37,53 @@ var gedcomioVersionKnownFailures = map[string]string{}
 func TestGEDCOMIOTestFilesDecode(t *testing.T) {
 	dir, lock := corpora.GEDCOMIO(t)
 	for _, e := range lock.Entries {
-		switch {
-		case strings.HasSuffix(e.Path, ".gdz"):
-			t.Run(e.Path, func(t *testing.T) {
-				t.Skip("GEDZIP archives are not read yet (#127)")
-			})
-		case strings.HasSuffix(e.Path, ".ged"):
-			t.Run(e.Path, func(t *testing.T) {
-				data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(e.Path))) // #nosec G304 -- a pinned lock entry under the fetched corpus dir
-				if err != nil {
-					t.Fatalf("ReadFile: %v", err)
-				}
-				for _, mode := range []struct {
-					name, list string
-					strict     bool
-					known      map[string]string
-				}{
-					{"strict", "gedcomioStrictKnownFailures", true, gedcomioStrictKnownFailures},
-					{"lenient", "gedcomioLenientKnownFailures", false, gedcomioLenientKnownFailures},
-				} {
-					t.Run(mode.name, func(t *testing.T) {
-						failure := decodeOutcome(data, mode.strict)
-						reason, known := mode.known[e.Path]
-						switch {
-						case failure == "" && known:
-							t.Errorf("now decodes cleanly; remove %q from %s (was: %s)", e.Path, mode.list, reason)
-						case failure != "" && !known:
-							t.Errorf("decode failed and the file is not listed in %s: %s", mode.list, failure)
-						}
-					})
-				}
-				t.Run("version", func(t *testing.T) {
-					doc, err := Decode(bytes.NewReader(data))
-					if err != nil {
-						t.Fatalf("Decode: %v", err)
-					}
-					got := doc.Header.Version
-					reason, known := gedcomioVersionKnownFailures[e.Path]
+		if !strings.HasSuffix(e.Path, ".ged") {
+			continue
+		}
+		t.Run(e.Path, func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(e.Path))) // #nosec G304 -- a pinned lock entry under the fetched corpus dir
+			if err != nil {
+				t.Fatalf("ReadFile: %v", err)
+			}
+			for _, mode := range []struct {
+				name, list string
+				strict     bool
+				known      map[string]string
+			}{
+				{"strict", "gedcomioStrictKnownFailures", true, gedcomioStrictKnownFailures},
+				{"lenient", "gedcomioLenientKnownFailures", false, gedcomioLenientKnownFailures},
+			} {
+				t.Run(mode.name, func(t *testing.T) {
+					failure := decodeOutcome(data, mode.strict)
+					reason, known := mode.known[e.Path]
 					switch {
-					case got == gedcom.Version70 && known:
-						t.Errorf("now decodes as 7.0; remove %q from gedcomioVersionKnownFailures (was: %s)", e.Path, reason)
-					case got != gedcom.Version70 && !known:
-						t.Errorf("decoded as %q, want 7.0, and the file is not listed in gedcomioVersionKnownFailures", got)
-					}
-					// The declared minor is kept: 7.1 files declare "7.1" (#741).
-					suite, _, _ := strings.Cut(e.Path, "/")
-					want := map[string]gedcom.Version{"gedcom70": gedcom.Version70, "gedcom71": "7.1"}[suite]
-					if got := doc.Header.DeclaredVersion; got != want {
-						t.Errorf("DeclaredVersion = %q, want %q", got, want)
+					case failure == "" && known:
+						t.Errorf("now decodes cleanly; remove %q from %s (was: %s)", e.Path, mode.list, reason)
+					case failure != "" && !known:
+						t.Errorf("decode failed and the file is not listed in %s: %s", mode.list, failure)
 					}
 				})
+			}
+			t.Run("version", func(t *testing.T) {
+				doc, err := Decode(bytes.NewReader(data))
+				if err != nil {
+					t.Fatalf("Decode: %v", err)
+				}
+				got := doc.Header.Version
+				reason, known := gedcomioVersionKnownFailures[e.Path]
+				switch {
+				case got == gedcom.Version70 && known:
+					t.Errorf("now decodes as 7.0; remove %q from gedcomioVersionKnownFailures (was: %s)", e.Path, reason)
+				case got != gedcom.Version70 && !known:
+					t.Errorf("decoded as %q, want 7.0, and the file is not listed in gedcomioVersionKnownFailures", got)
+				}
+				// The declared minor is kept: 7.1 files declare "7.1" (#741).
+				suite, _, _ := strings.Cut(e.Path, "/")
+				want := map[string]gedcom.Version{"gedcom70": gedcom.Version70, "gedcom71": "7.1"}[suite]
+				if got := doc.Header.DeclaredVersion; got != want {
+					t.Errorf("DeclaredVersion = %q, want %q", got, want)
+				}
 			})
-		}
+		})
 	}
 }
