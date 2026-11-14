@@ -80,5 +80,5 @@ review's, are uploaded to the repository's Security tab.
 
 Every pull-request scanner but Dependency Review also runs on pushes to
 `main`, and all but CodeQL run on the `release-2.x` maintenance branch.
-Scorecard also runs on pushes to `main`. The parser, charset reader, date
-parser, encoder and GEDZIP reader are fuzzed nightly.
+Scorecard also runs on pushes to `main`. The parser, charset readers, date
+parser, decoder, encoder, converter and GEDZIP reader are fuzzed nightly.

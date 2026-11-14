@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/iotest"
 	"unicode/utf8"
 )
 
@@ -67,6 +68,49 @@ func FuzzNewReader(f *testing.F) {
 		}
 		if reported > len(data) {
 			t.Fatalf("reported %d invalid bytes from %d input bytes", reported, len(data))
+		}
+	})
+}
+
+// FuzzNewReaderWithEncoding fuzzes each converter behind NewReaderWithEncoding
+// directly, without the detection cascade choosing among them. What a reader
+// gives without error is valid UTF-8, and it gives the same bytes, and fails
+// or not alike, whether its source arrives whole or a byte at a time: a
+// character split across two reads must not be lost or decoded differently.
+func FuzzNewReaderWithEncoding(f *testing.F) {
+	// Smaller seeds than FuzzNewReader: each is also read a byte at a time.
+	const maxSeedSize = 32 << 10
+	files, _ := filepath.Glob("../testdata/encoding/*.ged")
+	for _, file := range files {
+		if info, err := os.Stat(file); err != nil || info.Size() > maxSeedSize {
+			continue
+		}
+		data, err := os.ReadFile(file) // #nosec G304 -- path comes from the repo's own testdata
+		if err != nil {
+			continue
+		}
+		f.Add(data, uint8(EncodingUnknown))
+	}
+	f.Add([]byte("1 NAME Ren\xe2e /Fran\xf0cois/\n"), uint8(EncodingANSEL))
+	f.Add([]byte("0\x00 \x00H\x00E\x00A\x00D\x00\n\x00\x3d\xd8"), uint8(EncodingUTF16LE))
+	f.Add([]byte("\x000\x00 \xd8\x3d\xde\x00\x00\n\x00"), uint8(EncodingUTF16BE))
+	f.Add([]byte("1 NAME \x8a\xe8 \x81\x9d"), uint8(EncodingWindows1250))
+	f.Add([]byte("1 NOTE Caf\xc3\xa9 \xf0\x9f"), uint8(EncodingUTF8))
+
+	f.Fuzz(func(t *testing.T, data []byte, enc uint8) {
+		e := Encoding(enc % (uint8(EncodingWindows1250) + 1))
+
+		whole, wholeErr := io.ReadAll(NewReaderWithEncoding(bytes.NewReader(data), e))
+		if wholeErr == nil && !utf8.Valid(whole) {
+			t.Fatalf("encoding %d: output is not valid UTF-8: %q", e, whole)
+		}
+
+		chunked, chunkedErr := io.ReadAll(NewReaderWithEncoding(iotest.OneByteReader(bytes.NewReader(data)), e))
+		if (wholeErr == nil) != (chunkedErr == nil) {
+			t.Fatalf("encoding %d: whole read error = %v, byte-at-a-time error = %v", e, wholeErr, chunkedErr)
+		}
+		if !bytes.Equal(whole, chunked) {
+			t.Fatalf("encoding %d: whole read gave %q, byte-at-a-time %q", e, whole, chunked)
 		}
 	})
 }
