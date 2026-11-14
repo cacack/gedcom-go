@@ -2363,7 +2363,7 @@ for _, record := range doc.Records {
 
 - Per-package test coverage floor of ≥85% enforced in CI (currently ~96% measured; run `make test-coverage`)
 - Multi-platform CI (Linux, macOS, Windows)
-- Multi-version Go testing (1.25, 1.26)
+- Multi-version Go testing (the `go.mod` floor and the two most recent Go releases)
 - Benchmark regression testing
 - Real-world GEDCOM file testing
 

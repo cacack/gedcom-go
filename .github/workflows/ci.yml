@@ -25,7 +25,12 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go: ['min', '1.26']
+        # No Go version number is written in this workflow, so none can go
+        # stale (#746). 'min' is the floor: setup-go reads it from go.mod (the
+        # toolchain line, i.e. the floor's patched release). 'oldstable' and
+        # 'stable' are setup-go's aliases for the two Go releases the Go team
+        # supports. Every other job, here and in nightly.yml, uses 'stable'.
+        go: ['min', 'oldstable', 'stable']
 
     steps:
     - name: Harden Runner
@@ -86,7 +91,7 @@ jobs:
       shell: bash
 
     - name: Upload coverage to Codecov
-      if: matrix.os == 'ubuntu-latest' && matrix.go == '1.26'
+      if: matrix.os == 'ubuntu-latest' && matrix.go == 'stable'
       uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -113,7 +118,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        go-version: '1.26'
+        go-version: stable
         cache: true
 
     # Same explicit budget as the Test job, for the same reason (#529): this job
@@ -168,7 +173,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        go-version: '1.26'
+        go-version: stable
 
     - name: Check golangci-lint version pins agree
       run: ./scripts/check-lint-version.sh
@@ -198,7 +203,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        go-version: '1.26'
+        go-version: stable
 
     - name: Check formatting
       run: |
@@ -260,7 +265,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        go-version: '1.26'
+        go-version: stable
 
     - name: Verify dependencies
       run: go mod verify
@@ -370,7 +375,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
       with:
-        go-version: '1.26'
+        go-version: stable
 
     # build-examples builds every directory under examples/; examples runs
     # each one against testdata (TestEveryExampleIsRunAndDocumented keeps that list whole).
@@ -398,7 +403,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26'
+          go-version: stable
 
       - name: Install apidiff
         run: go install golang.org/x/exp/cmd/apidiff@v0.0.0-20260410095643-746e56fc9e2f
