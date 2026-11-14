@@ -28,4 +28,17 @@ var (
 	// or Deflate, named with something other than a clean relative UTF-8 path,
 	// or shares its name with another entry.
 	ErrUnusableEntry = errors.New("gedzip: entry is unusable")
+
+	// ErrNotGEDCOM7 means [Write] was given a document that would not be
+	// written as GEDCOM 7.x. GEDZIP is a GEDCOM 7 format and Write converts
+	// nothing; convert the document with the converter package first.
+	ErrNotGEDCOM7 = errors.New("gedzip: document is not GEDCOM 7")
+
+	// ErrMissingMedia means a local reference of the document being written
+	// names no regular file in the media source.
+	ErrMissingMedia = errors.New("gedzip: media file is missing")
+
+	// ErrReservedName means a local reference of the document being written
+	// names "gedcom.ged", the entry that holds the dataset itself.
+	ErrReservedName = errors.New("gedzip: entry name is reserved")
 )

@@ -32,6 +32,18 @@
 // as an fs.FS, and [Reader.CheckRefs] reports the references the archive does
 // not satisfy.
 //
+// # Writing
+//
+// [Write] packages a GEDCOM 7 document and the local files it references,
+// taken from any fs.FS (a directory, files in memory, or the [Reader.FS] of
+// another archive), streaming each file. The archive holds gedcom.ged and
+// exactly one entry per local file the written dataset names, in a fixed
+// order and with fixed timestamps, so the same input gives the same bytes.
+// Write is strict: it refuses a document that is not GEDCOM 7.x, a file:
+// URL, an invalid payload, a reference to gedcom.ged and a local file the
+// media source lacks, and it does so before writing anything. It neither
+// converts the document nor rewrites its payloads.
+//
 // # Untrusted input
 //
 // Reads are bounded by [ReadOptions], whose defaults are safe for an upload:
