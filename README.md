@@ -57,7 +57,7 @@ go get github.com/cacack/gedcom-go/v3
 
 - Go 1.25 or later
 
-This library tracks Go's [release policy](https://go.dev/doc/devel/release#policy), supporting the two most recent major versions. When a Go version reaches end-of-life and no longer receives security patches, we bump our minimum accordingly.
+That floor is the `go` line in [`go.mod`](go.mod). It names a language version, not a patch release, so requiring this library never raises the Go version your module declares above 1.25. CI tests the floor and the two most recent Go releases, the ones Go's [release policy](https://go.dev/doc/devel/release#policy) supports. Once the floor's release is end-of-life, the floor may move up to a supported one; the changelog says when it does.
 
 ## Quick Start
 
