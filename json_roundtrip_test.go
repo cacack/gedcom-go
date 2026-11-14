@@ -21,6 +21,11 @@ import (
 // what encoding/json writes must read back into a model reflect.DeepEqual to
 // the original, Tags and the rebuilt XRefMap included.
 //
+// One difference in form is accepted and pinned by TestJSONEmptyReadsBackNil:
+// omitempty drops an empty slice or map as it drops a nil one, so an empty one
+// reads back as nil. No fixture decodes to one, which is why DeepEqual holds
+// for all of them.
+//
 // Record.Entity is an interface, so encoding/json cannot pick the concrete type
 // when reading; unmarshalJSONDocument does it from Record.Type, as a caller
 // reading the JSON back into this model has to.
@@ -234,6 +239,80 @@ func TestJSONMeaningfulZeroValues(t *testing.T) {
 			}
 			if !reflect.DeepEqual(want, got) {
 				t.Errorf("value does not survive a JSON round trip: %s", data)
+			}
+		})
+	}
+}
+
+// TestJSONEmptyReadsBackNil pins the one way a round trip is not DeepEqual: an
+// empty, non-nil slice or map is omitted and reads back as nil. The decoder
+// builds such a map for a GEDCOM 7.0 header whose SCHMA has no TAG, and
+// NewDocument such a slice for Records.
+func TestJSONEmptyReadsBackNil(t *testing.T) {
+	const input = "0 HEAD\n1 GEDC\n2 VERS 7.0\n1 SCHMA\n0 @I1@ INDI\n1 NAME A /B/\n0 TRLR\n"
+	doc, err := Decode(bytes.NewReader([]byte(input)))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if doc.Schema == nil || doc.Schema.TagMappings == nil || len(doc.Schema.TagMappings) != 0 {
+		t.Fatalf("Schema = %#v, want an empty non-nil TagMappings", doc.Schema)
+	}
+	data, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := unmarshalJSONDocument(data)
+	if err != nil {
+		t.Fatalf("unmarshalJSONDocument: %v", err)
+	}
+	if got.Schema == nil || got.Schema.TagMappings != nil {
+		t.Errorf("Schema read back as %#v, want a nil TagMappings", got.Schema)
+	}
+	got.Schema.TagMappings = map[string]string{}
+	if !reflect.DeepEqual(doc, got) {
+		t.Error("document differs by more than the empty TagMappings")
+	}
+
+	built := gedcom.NewDocument(gedcom.Version70)
+	if built.Records == nil {
+		t.Fatal("NewDocument: Records is nil, want empty")
+	}
+	if data, err = json.Marshal(built); err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if got, err = unmarshalJSONDocument(data); err != nil {
+		t.Fatalf("unmarshalJSONDocument: %v", err)
+	}
+	if got.Records != nil {
+		t.Errorf("Records read back as %#v, want nil", got.Records)
+	}
+}
+
+// TestJSONMigrationGuideShapes pins the v3 JSON printed in
+// docs/guides/migration-v3.md.
+func TestJSONMigrationGuideShapes(t *testing.T) {
+	tests := []struct {
+		name  string
+		value interface{}
+		want  string
+	}{
+		{"SpouseInFamilies", []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}, `[{"FamilyXRef":"@F1@"}]`},
+		{"SourceCitationData.Text", []*gedcom.SourceText{{Value: "Birth record shows..."}}, `[{"Value":"Birth record shows..."}]`},
+		{
+			"RefNumbers and UIDs",
+			&gedcom.Individual{RefNumbers: []gedcom.RefNumber{{Value: "1234"}}, UIDs: []string{"abc"}},
+			`{"RefNumbers":[{"Value":"1234"}],"UIDs":["abc"]}`,
+		},
+		{"Header.Date absent", &gedcom.Header{}, `{}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.value)
+			if err != nil {
+				t.Fatalf("Marshal: %v", err)
+			}
+			if string(data) != tt.want {
+				t.Errorf("got  %s\nwant %s", data, tt.want)
 			}
 		})
 	}
