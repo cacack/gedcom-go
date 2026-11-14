@@ -52,6 +52,7 @@ Security reports are welcomed for any code in this repository, including:
 
 - Parsing logic in `parser/`, `decoder/`, `charset/`, `version/`
 - Encoding logic in `encoder/`
+- Archive handling in `gedzip/`
 - Validation logic in `validator/`
 - Any helper scripts in `scripts/`
 
@@ -80,4 +81,4 @@ review's, are uploaded to the repository's Security tab.
 Every pull-request scanner but Dependency Review also runs on pushes to
 `main`, and all but CodeQL run on the `release-2.x` maintenance branch.
 Scorecard also runs on pushes to `main`. The parser, charset reader, date
-parser and encoder are fuzzed nightly.
+parser, encoder and GEDZIP reader are fuzzed nightly.

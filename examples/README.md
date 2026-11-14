@@ -395,6 +395,47 @@ Version: 5.5.1
 
 ---
 
+### 11. GEDZip - Packaging a Document With Its Media
+
+**Location**: [`gedzip/main.go`](gedzip/main.go)
+
+**What it does**: Writes a GEDCOM 7 document and the local file it references to a GEDZIP (`.gdz`) archive with `gedzip.Write`, taking the media from a directory (`os.DirFS`), then reads the archive back with `gedzip.OpenReader`: its entries, the decoded dataset, what each `FILE` payload refers to, and whether the archive holds every local file (`CheckRefs`). Given a path, it reads that archive instead of writing a sample.
+
+**How to run**:
+```bash
+cd examples/gedzip
+go run main.go
+
+# Read an existing archive
+go run main.go /path/to/archive.gdz
+```
+
+**Example output**:
+```text
+Wrote a sample archive: sample.gdz
+
+GEDZIP archive: sample.gdz
+Entries:
+  gedcom.ged (201 bytes)
+  media/family portrait.txt (26 bytes)
+
+Version: 7.0
+Records: 2 (1 individuals, 1 media objects)
+
+File references:
+  @O1@ media/family%20portrait.txt: local, entry "media/family portrait.txt", read 26 bytes
+  @O1@ https://example.com/portrait.jpg: web, no entry
+
+Every local reference has an entry.
+```
+
+**Use cases**:
+- Exchanging a tree together with its photos and documents
+- Checking an archive for missing media before importing it
+- Reading media on demand, under size limits, from an untrusted archive
+
+---
+
 ## Running All Examples
 
 Run every example against the test data from the project root:

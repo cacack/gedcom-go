@@ -7,8 +7,8 @@ Two guarantees hold for any input:
 
 - **No panic.** Malformed input is an error or a diagnostic, never a panic
   ([ADR 0007](../decisions/0007-error-transparency.md)). The parser, line
-  parser, charset reader, date parser and encoder round-trip are fuzzed
-  nightly.
+  parser, charset reader, date parser, encoder round-trip and GEDZIP reader
+  are fuzzed nightly.
 - **Bounded per-line work.** No single line, diagnostic or charset buffer can
   grow without limit; the bounds are listed below.
 
@@ -33,7 +33,36 @@ yours to set.
 | Parse errors kept by `parser.ParseWithOptions` | `ParseOptions.MaxErrors` | Yes; the default, 0, is unlimited | Parsing continues; further errors are not collected. |
 | Duplicate-detection group size | `DuplicateConfig.MaxGroupSize`, default 1000 | Yes; 0 means the default, negative is unlimited | The surname group is skipped whole, with one `DUPLICATE_DETECTION_LIMITED` warning. See [Bounding Untrusted Input](performance.md#bounding-untrusted-input). |
 | Given-name runes compared | `DuplicateConfig.MaxNameRunes`, default 64 | Yes; as above | Longer names are compared on their first 64 runes and counted on the same warning. |
+| GEDZIP entry count | `gedzip.ReadOptions.MaxEntries`, default `gedzip.DefaultMaxEntries` (100,000), directories included | Yes; in every `ReadOptions` field 0 means the default and a negative value is unlimited | `gedzip.NewReader`/`OpenReader` fail for the whole archive with an error wrapping `gedzip.ErrLimitExceeded`, before anything is inflated. See [GEDZIP Archives](#gedzip-archives). |
+| GEDZIP dataset size | `ReadOptions.MaxDocumentBytes`, default `gedzip.DefaultMaxDocumentBytes` (256 MiB), on the uncompressed size `gedcom.ged` declares | Yes; as above | As above. |
+| GEDZIP media entry size | `ReadOptions.MaxEntryBytes`, default `gedzip.DefaultMaxEntryBytes` (1 GiB), on the uncompressed size each other entry declares | Yes; as above | As above: one oversized entry refuses the archive, whether or not the dataset references it. |
+| GEDZIP total size | `ReadOptions.MaxTotalBytes`, default `gedzip.DefaultMaxTotalBytes` (4 GiB), on the sum of declared uncompressed sizes | Yes; as above | As above. |
+| GEDZIP compression ratio | `ReadOptions.MaxCompressionRatio`, default `gedzip.DefaultMaxCompressionRatio` (200), for each entry declaring more than `gedzip.CompressionRatioMinBytes` (1 MiB) | Yes; as above | As above. |
 | Time | `Context` on `DecodeOptions`, `ValidateOptions`, `ConvertOptions`, `EncodeOptions`, `merge.CombineOptions`; `LazyParser.BuildIndexContext` | Yes; none by default | The call stops shortly after the context is done and returns its error wrapped. |
+
+## GEDZIP Archives
+
+`gedzip.NewReader` checks the limits above against the sizes the archive's
+central directory declares and inflates nothing. An entry that inflates to a
+different size than it declares fails the read with `archive/zip`'s error, and
+`Reader.Open` and `Reader.Decode` also stop with `ErrLimitExceeded` rather
+than return more than the limit, so no entry is ever returned short or long.
+Entries that are encrypted, symbolic links, compressed with anything but Store
+or Deflate, duplicated or unsafely named cannot be opened; the
+[GEDZIP guide](gedzip.md#untrusted-uploads) lists the rules.
+
+Two things stay with the caller:
+
+- **The archive's own size.** `NewReader` takes an `io.ReaderAt` and a length,
+  so an upload has to be held in memory or spooled to a file first. Cap it
+  before that, with `http.MaxBytesReader` or the equivalent. That cap is also
+  what bounds the memory of the archive's directory: `archive/zip` reads every
+  directory record before `MaxEntries` can be applied.
+- **Decode memory.** `Reader.Decode` passes `gedcom.ged` to the ordinary
+  decoder, so the dataset costs what any decode costs. Set `MaxDocumentBytes`
+  by the rule in [Sizing `io.LimitReader`](#sizing-iolimitreader): for a memory
+  budget *M*, *M* / 40. The 256 MiB default is a ceiling against decompression
+  bombs, not a memory budget; by that rule it allows for about 10 GiB.
 
 ## Unbounded Dimensions
 

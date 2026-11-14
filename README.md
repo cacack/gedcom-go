@@ -17,6 +17,7 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 - **Multi-version Support**: Parse and write GEDCOM 5.5, 5.5.1, and 7.0 with automatic version detection
 - **Version Conversion**: Bidirectional conversion between versions with transformation tracking
 - **Historical Calendar Support**: Parse dates in Julian, Hebrew, and French Republican calendars with conversion
+- **GEDZIP Archives**: Read and write GEDCOM 7 `.gdz` packages, with media read lazily and size limits for untrusted uploads
 - **Streaming APIs**: Memory-efficient parsing and encoding for very large files (1M+ records)
 - **Comprehensive Validation**: Date logic, orphaned references, duplicates, and quality reports
 - **Vendor Extensions**: Parse Ancestry.com and FamilySearch custom tags
@@ -199,6 +200,61 @@ if report.HasDataLoss() {
 }
 ```
 
+### Read and Write a GEDZIP Archive
+
+A GEDZIP file (`.gdz`) is the GEDCOM 7 package: a zip holding the dataset as `gedcom.ged` plus the media its `FILE` lines name. The `gedzip` package decodes the dataset and opens media one file at a time; nothing is extracted to disk.
+
+```go
+zr, err := gedzip.OpenReader("family.gdz", nil) // nil: default limits
+if err != nil {
+    log.Fatal(err)
+}
+defer zr.Close()
+
+doc, err := zr.Decode(nil)
+if err != nil {
+    log.Fatal(err)
+}
+
+// References the archive does not satisfy (missing entry, file: URL, invalid path).
+for _, p := range zr.CheckRefs(doc) {
+    fmt.Printf("%s: %s: %v\n", p.XRef, p.FileRef, p.Err)
+}
+
+// Open a media file by its FILE payload, exactly as written in the document.
+for _, media := range doc.MediaObjects() {
+    for _, file := range media.Files {
+        if kind, _ := gedzip.ClassifyFileRef(file.FileRef); kind != gedzip.RefLocal {
+            continue // a web URL has no entry
+        }
+        rc, err := zr.Open(file.FileRef)
+        if err != nil {
+            log.Fatal(err)
+        }
+        n, _ := io.Copy(io.Discard, rc)
+        rc.Close()
+        fmt.Printf("%s: %d bytes\n", file.FileRef, n)
+    }
+}
+```
+
+Writing takes a GEDCOM 7 document and any `fs.FS` holding the files it references:
+
+```go
+out, err := os.Create("family.gdz")
+if err != nil {
+    log.Fatal(err)
+}
+defer out.Close()
+
+// Local FILE payloads are looked up relative to the directory.
+if err := gedzip.Write(out, doc, os.DirFS("family-media"), nil); err != nil {
+    log.Fatal(err)
+}
+```
+
+See the [GEDZIP guide](docs/guides/gedzip.md) for limits on untrusted uploads and what `Write` refuses.
+
 ### Working with Records
 
 ```go
@@ -266,9 +322,11 @@ To opt into strict parsing (fail on the first syntax error, no diagnostics colle
   - [`examples/merge`](examples/merge) - Combining two documents with XRef collision handling
   - [`examples/diagnostics`](examples/diagnostics) - Seeing what lenient decoding recovered from
   - [`examples/lazy`](examples/lazy) - Indexed random access to records in a large file
+  - [`examples/gedzip`](examples/gedzip) - Reading and writing a GEDZIP (`.gdz`) archive
 - **API Documentation**: [pkg.go.dev/github.com/cacack/gedcom-go/v3](https://pkg.go.dev/github.com/cacack/gedcom-go/v3)
 - **GEDCOM 7.0 Coverage**: [docs/reference/gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) - What this library does with every structure the 7.0 standard defines, derived by decoding rather than estimated
 - **GEDCOM 5.5/5.5.1 Coverage**: [docs/reference/gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md) - The same for both 5.5 versions, transcribed from the specifications' Lineage-Linked Grammar
+- **GEDZIP Archives**: [docs/guides/gedzip.md](docs/guides/gedzip.md) - Reading and writing `.gdz` packages, resolving `FILE` references, and the limits for untrusted uploads
 - **Untrusted Input**: [docs/guides/untrusted-input.md](docs/guides/untrusted-input.md) - Every bound on hostile input, the memory each API needs per input byte, and how to size an input limit
 - **Security Policy**: [SECURITY.md](SECURITY.md) - Supported versions, reporting a vulnerability, and the scanners that run
 - **Vendor Extensions**: [docs/guides/vendor-extensions.md](docs/guides/vendor-extensions.md) - Vendor-specific tag support (`_APID`, `_FSFTID`, etc.)
@@ -369,6 +427,7 @@ For fine-grained control, these packages are available:
 - **`decoder`** - High-level GEDCOM decoding with automatic version detection
 - **`encoder`** - GEDCOM document writing with configurable line endings
 - **`gedcom`** - Core data types (Document, Individual, Family, Source, etc.)
+- **`gedzip`** - GEDZIP (`.gdz`) archive reading and writing with bounded, lazy media access
 - **`merge`** - Combine documents (XRef remap, collision strategies, header merge)
 - **`parser`** - Low-level line parsing with detailed error reporting
 - **`validator`** - Document validation with error categorization

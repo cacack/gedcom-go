@@ -12,6 +12,7 @@ This guide provides comprehensive documentation for using the `gedcom-go` librar
 - [Querying Data](#querying-data)
 - [Validation](#validation)
 - [Creating GEDCOM Files](#creating-gedcom-files)
+- [GEDZIP Archives](#gedzip-archives)
 - [Character Encoding](#character-encoding)
 - [Error Handling](#error-handling)
 - [Advanced Usage](#advanced-usage)
@@ -704,6 +705,109 @@ if err != nil {
 }
 ```
 
+## GEDZIP Archives
+
+A GEDZIP file (`.gdz`) is the GEDCOM 7 packaging format: a zip archive holding the dataset in an entry named `gedcom.ged`, plus the local files its `FILE` and `FILE.TRAN` lines name. The `gedzip` package reads and writes them. The archive stays separate from the `Document`: decoding gives an ordinary document, and each media file is read from the archive only when asked for.
+
+### Reading an Archive
+
+```go
+import "github.com/cacack/gedcom-go/v3/gedzip"
+
+zr, err := gedzip.OpenReader("family.gdz", nil) // nil: default limits
+if err != nil {
+    log.Fatal(err)
+}
+defer zr.Close()
+
+doc, err := zr.Decode(nil) // nil: the decoder's defaults
+if err != nil {
+    log.Fatal(err)
+}
+
+for _, media := range doc.MediaObjects() {
+    for _, file := range media.Files {
+        // Open takes the FILE payload exactly as the document has it.
+        rc, err := zr.Open(file.FileRef)
+        if errors.Is(err, gedzip.ErrNotLocal) {
+            continue // a web URL (or a file: URL, or an invalid path) has no entry
+        }
+        if err != nil {
+            log.Fatal(err)
+        }
+        n, err := io.Copy(io.Discard, rc)
+        rc.Close()
+        if err != nil {
+            log.Fatal(err)
+        }
+        fmt.Printf("%s: %d bytes\n", file.FileRef, n)
+    }
+}
+```
+
+`gedzip.NewReader(r, size, opts)` does the same over any `io.ReaderAt`, and `Reader.DecodeWithDiagnostics` returns the decoder's diagnostics as well.
+
+A local `FILE` payload names its entry by percent-decoding, and the name is matched byte for byte: `media/CharlotteBront%C3%AB.jpg` opens the entry `media/CharlotteBrontë.jpg`. There is no case folding and no fallback.
+
+### Checking References
+
+`CheckRefs` lists the references an archive does not satisfy, without reading any entry:
+
+```go
+for _, p := range zr.CheckRefs(doc) {
+    switch {
+    case errors.Is(p.Err, gedzip.ErrEntryNotFound):
+        fmt.Printf("%s: %s is not in the archive\n", p.XRef, p.FileRef)
+    case errors.Is(p.Err, gedzip.ErrUnusableEntry):
+        fmt.Printf("%s: %s cannot be read safely: %v\n", p.XRef, p.FileRef, p.Err)
+    default: // gedzip.ErrNotLocal: a file: URL or an invalid path
+        fmt.Printf("%s: %s is %s\n", p.XRef, p.FileRef, p.Kind)
+    }
+}
+```
+
+### Writing an Archive
+
+`Write` takes a GEDCOM 7 document and an `fs.FS` holding the files its local references name:
+
+```go
+out, err := os.Create("family.gdz")
+if err != nil {
+    log.Fatal(err)
+}
+defer out.Close()
+
+// A FILE payload of media/photo.jpg is read from family-media/media/photo.jpg.
+if err := gedzip.Write(out, doc, os.DirFS("family-media"), nil); err != nil {
+    log.Fatal(err)
+}
+```
+
+`Reader.FS()` is such a source too, so an archive can be read, changed and written back:
+
+```go
+err = gedzip.Write(out, doc, zr.FS(), nil)
+```
+
+`Write` is strict. It refuses a document that would not be written as GEDCOM 7 (`gedzip.ErrNotGEDCOM7`; convert it with the `converter` package first), a `file:` URL or invalid path (`gedzip.ErrNotLocal`), a reference to `gedcom.ged` itself (`gedzip.ErrReservedName`) and a local reference with no file in the source (`gedzip.ErrMissingMedia`), all before writing anything.
+
+### Archives from Untrusted Sources
+
+Reads are bounded by `gedzip.ReadOptions`, and the defaults apply when it is nil. Lower them for uploads:
+
+```go
+zr, err := gedzip.NewReader(upload, size, &gedzip.ReadOptions{
+    MaxDocumentBytes: 16 << 20, // gedcom.ged, uncompressed
+    MaxEntryBytes:    64 << 20, // each media file
+    MaxTotalBytes:    512 << 20,
+})
+if errors.Is(err, gedzip.ErrLimitExceeded) {
+    // refused before anything was inflated
+}
+```
+
+See the [GEDZIP guide](docs/guides/gedzip.md) for every limit, which entries are unreachable, and what is out of scope.
+
 ## Character Encoding
 
 ### Supported Encodings
@@ -1063,6 +1167,7 @@ family := doc.GetFamily("@F1@")
 ## See Also
 
 - [Examples](examples/) - Working code examples
+- [GEDZIP guide](docs/guides/gedzip.md) - Reading and writing `.gdz` archives
 - [API Documentation](https://pkg.go.dev/github.com/cacack/gedcom-go/v3) - Complete package documentation
 - [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute to the project
 - [README.md](README.md) - Project overview

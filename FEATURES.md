@@ -387,6 +387,81 @@ beside it, and written back beneath that value
 `PHRASE` under a value with no typed field (`CHIL`, `ALIA`, `FAMC.STAT`, and
 others listed in the ADR) stays in `Record.Tags`.
 
+### GEDZIP Archives (.gdz)
+
+The `gedzip` package reads and writes GEDZIP, the GEDCOM 7 packaging format: a
+zip archive holding the dataset as `gedcom.ged` plus the local files its `FILE`
+and `FILE.TRAN` payloads name. See the [GEDZIP guide](docs/guides/gedzip.md)
+and [ADR 0012](docs/decisions/0012-gedzip-archive-model.md).
+
+**Read**
+
+- `gedzip.OpenReader(name, opts)` and `gedzip.NewReader(r, size, opts)` read
+  the archive's directory and inflate nothing
+- `Reader.Decode` and `Reader.DecodeWithDiagnostics` stream `gedcom.ged` through
+  the ordinary decoder, so `DecodeOptions`, line-length, character-set and BOM
+  handling are those of decoding the file on its own
+- `Reader.Open(fileRef)` opens one media file by the `FILE` or `FILE.TRAN`
+  payload that names it; media is read lazily and never loaded as a whole
+- `Reader.Entries()` lists every file entry, with the reason for any that
+  cannot be read; `Reader.FS()` exposes the readable media as an `fs.FS`
+- `Reader.CheckRefs(doc)` reports the references the archive does not satisfy:
+  a local file with no entry or an unreadable one, a reference to `gedcom.ged`,
+  a `file:` URL, an invalid path. Web references (`ftp`, `http`, `https`) have
+  no entry and are never a problem. `FILE` payloads of inline `OBJE`
+  structures are checked as well as those of `OBJE` records
+- `gedzip.ClassifyFileRef(ref)` applies the GEDCOM 7 File Path rules to a
+  payload: local (with its entry name), web, `file:` URL or invalid
+
+**Write**
+
+- `gedzip.Write(w, doc, media, opts)` streams a GEDCOM 7.x document and the
+  local files it references, from any `fs.FS` (`os.DirFS`, `fstest.MapFS`, or
+  another archive's `Reader.FS()`), to an `io.Writer`
+- The archive holds `gedcom.ged` first, then one entry per distinct local file
+  the written dataset names, sorted by name. Unreferenced files in the source
+  are not written
+- The same document and media give the same bytes: timestamps and modes are
+  fixed
+- Text (the dataset and media with a text extension) is deflated; other media
+  is stored
+- Non-ASCII entry names are written as UTF-8 and marked so that Info-ZIP
+  `unzip` keeps them
+- Strict: a document that is not written as GEDCOM 7.x
+  (`ErrNotGEDCOM7`), a `file:` URL or invalid payload (`ErrNotLocal`), a
+  reference to `gedcom.ged` (`ErrReservedName`) and a local reference with no
+  regular file in the source (`ErrMissingMedia`) are refused before anything
+  is written, every refused reference in one joined error
+
+**Bounded**
+
+- `ReadOptions` caps entry count (`MaxEntries`), the dataset's uncompressed
+  size (`MaxDocumentBytes`), each media entry's (`MaxEntryBytes`), the declared
+  total (`MaxTotalBytes`) and the compression ratio of larger entries
+  (`MaxCompressionRatio`). Zero means the default (the `gedzip.Default*`
+  constants) and a negative value means unlimited
+- The limits are checked against the sizes the archive declares when it is
+  opened; an archive over any of them is refused whole with
+  `ErrLimitExceeded`. The size limits are held again while inflating
+- An entry that is encrypted, a symbolic link or other special file, compressed
+  with anything but Store or Deflate, duplicated, or not named with a clean
+  relative UTF-8 path can never be opened (`ErrUnusableEntry`). It does not
+  stop the dataset or other media from being read, unless it is `gedcom.ged`
+- `FuzzGEDZipReader` runs nightly
+
+**Deliberately not done**
+
+- No extraction to disk: the package never writes to the filesystem, and never
+  touches it with a path taken from an archive or a payload
+- No encryption: encrypted entries are neither read (`ErrEncrypted`) nor
+  written
+- Strict name matching: the dataset must be named exactly `gedcom.ged`, and a
+  local reference matches its percent-decoded entry name byte for byte. No case
+  folding, Unicode normalisation, backslash repair or fallback to another
+  `.ged` entry; a missing-dataset error names any other root `.ged` entries
+- No automatic conversion: `Write` does not convert a 5.5 or 5.5.1 document to
+  7.0 and does not rewrite `FILE` payloads; use the `converter` package first
+
 ## Character Encoding
 
 | Encoding | Status | Notes |

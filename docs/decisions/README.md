@@ -16,3 +16,4 @@ A record is immutable once accepted; supersede it with a new record rather than 
 | [0009](0009-bounded-duplicate-detection.md) | Bounded duplicate detection (per-group cap, skip whole) |
 | [0010](0010-phrase-typed-access.md) | GEDCOM 7.0 PHRASE as a sibling `<Value>Phrase` field |
 | [0011](0011-grammar-conformance-check.md) | Grammar conformance check generated from the vendored spec tables |
+| [0012](0012-gedzip-archive-model.md) | GEDZIP archive model (archive apart from document, strict resolution, bounded reads) |

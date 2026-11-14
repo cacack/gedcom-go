@@ -32,7 +32,7 @@ import (
 
 // usageDocPackages are the module packages USAGE.md's examples may name.
 var usageDocPackages = []string{
-	"charset", "converter", "decoder", "encoder", "gedcom", "merge", "parser", "validator", "version",
+	"charset", "converter", "decoder", "encoder", "gedcom", "gedzip", "merge", "parser", "validator", "version",
 }
 
 // packageAPI is a package's exported top-level names, and the field names of

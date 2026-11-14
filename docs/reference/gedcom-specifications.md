@@ -48,7 +48,7 @@ This document provides links to official GEDCOM specifications and key reference
 - New: SNOTE (shared notes)
 - Restructured multimedia (OBJE as record)
 - JSON-LD compatibility considerations
-- GEDZip packaging format
+- GEDZIP packaging format (`.gdz`): read and written by the `gedzip` package; see the [GEDZIP guide](../guides/gedzip.md)
 
 ## Key Breaking Changes (5.5.1 → 7.0)
 

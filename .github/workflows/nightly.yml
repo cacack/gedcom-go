@@ -35,6 +35,9 @@ jobs:
           - package: ./encoder
             fuzz: ^FuzzEncodeRoundTrip$
             time: 2m
+          - package: ./gedzip
+            fuzz: ^FuzzGEDZipReader$
+            time: 2m
 
     steps:
     - name: Harden Runner
