@@ -276,6 +276,8 @@ func TestCanHoldElements(t *testing.T) {
 		{"pointer to flat struct", reflect.TypeOf(&leaf{}), false},
 		{"slice of flat structs", reflect.TypeOf([]leaf{}), false},
 		{"slice of pointers", reflect.TypeOf([]*leaf{}), true},
+		{"slice of structs holding a pointer slice", reflect.TypeOf([]loopWithSlice{}), true},
+		{"array of structs holding a pointer slice", reflect.TypeOf([1]loopWithSlice{}), true},
 		{"array of pointers", reflect.TypeOf([1]*leaf{}), true},
 		{"slice of interfaces", reflect.TypeOf([]any{}), true},
 		{"interface field", reflect.TypeOf(gedcom.Record{}), true},
@@ -289,6 +291,73 @@ func TestCanHoldElements(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := canHoldElements(tt.typ, make(map[reflect.Type]bool)); got != tt.want {
 				t.Errorf("canHoldElements(%v) = %v, want %v", tt.typ, got, tt.want)
+			}
+		})
+	}
+}
+
+// The fixtures hold only the shapes gedcom types have. These are shapes they
+// lack, each of which one guard in the walk decides: an unexported field is
+// not read, a slice of struct values is entered for the slices inside them,
+// and a pointer reached twice without a cycle is walked both times.
+func TestNilWalker_ShapesOutsideGedcomTypes(t *testing.T) {
+	type inner struct {
+		Ptrs []*int
+	}
+	type hiddenSlice struct {
+		Kept   []*int
+		hidden []*int
+	}
+	type structSlice struct {
+		Items []inner
+		Fixed [2]inner
+	}
+	type shared struct {
+		A, B *inner
+	}
+	n := 1
+	both := &inner{Ptrs: []*int{nil, &n}}
+
+	tests := []struct {
+		name  string
+		value any
+		want  []string
+	}{
+		{
+			"unexported field is not read",
+			hiddenSlice{Kept: []*int{&n, nil}, hidden: []*int{nil}},
+			[]string{"Kept[1]"},
+		},
+		{
+			"slice and array of struct values are entered",
+			structSlice{
+				Items: []inner{{}, {Ptrs: []*int{&n, nil}}},
+				Fixed: [2]inner{{Ptrs: []*int{nil}}, {}},
+			},
+			[]string{"Items[1].Ptrs[1]", "Fixed[0].Ptrs[0]"},
+		},
+		{
+			"pointer shared by two fields is walked twice",
+			shared{A: both, B: both},
+			[]string{"A.Ptrs[0]", "B.Ptrs[0]"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := &nilWalker{}
+			w.walk(reflect.ValueOf(tt.value))
+			var got []string
+			for _, issue := range w.issues {
+				got = append(got, issue.Details["field"])
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("walk reported %q, want %q", got, tt.want)
+			}
+
+			ref := &referenceNilWalker{onPath: make(map[uintptr]bool)}
+			ref.walk(reflect.ValueOf(tt.value), "")
+			if !reflect.DeepEqual(w.issues, ref.issues) {
+				t.Errorf("walk = %v, reference walk = %v", w.issues, ref.issues)
 			}
 		})
 	}
