@@ -118,8 +118,8 @@ func TestConstantReachability(t *testing.T) {
 	}
 
 	// The reverse holds for attributes only: every attribute tag the decoder
-	// routes has a constant, as AttributeType's doc promises. Events have no
-	// such promise (EVEN decodes with no constant), so they are not checked.
+	// routes has a constant, as AttributeType's doc promises. EventType makes
+	// no such promise, so events are not checked.
 	attrValues := map[string]bool{}
 	for _, value := range consts["AttributeType"] {
 		attrValues[value] = true
