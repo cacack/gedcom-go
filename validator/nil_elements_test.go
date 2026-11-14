@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"os"
 	"reflect"
 	"strings"
@@ -141,6 +142,24 @@ func TestValidateAll_NilElementCycle(t *testing.T) {
 	want := []string{"@I1@ Entity.Events[1]"}
 	if got := nilFields(nilIssues(doc)); !reflect.DeepEqual(got, want) {
 		t.Errorf("NIL_ELEMENT fields = %q, want %q", got, want)
+	}
+}
+
+// The walk visits every value of the document, so anything it allocates per
+// value is paid millions of times on a large file, and several times over
+// under the race detector (#846). A document with no nils must cost a handful
+// of allocations however many records it holds, not some for each.
+func TestValidateNilElements_AllocationsDoNotScaleWithRecords(t *testing.T) {
+	const records = 2000
+	doc := generateValidDocument(records)
+
+	allocs := testing.AllocsPerRun(5, func() {
+		if issues := validateNilElements(context.Background(), doc); len(issues) != 0 {
+			t.Fatalf("validateNilElements() = %v, want no issues", issues)
+		}
+	})
+	if allocs > records/10 {
+		t.Errorf("validateNilElements() made %.0f allocations walking %d records; it must not allocate per record", allocs, records)
 	}
 }
 
