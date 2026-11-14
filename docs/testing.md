@@ -94,6 +94,13 @@ These code paths handle core functionality where bugs would cause data loss or c
 | `DetectBOM()` / `DetectEncodingFromHeader()` | Encoding detection | UTF-8, UTF-16, ANSEL, BOM detection |
 | `NewReader()` / `NewReaderWithEncoding()` | Character conversion to UTF-8 | All supported encodings |
 
+### GEDZIP Archives (`gedzip/`)
+
+| Function | Why Critical | Required Tests |
+|----------|--------------|----------------|
+| `ClassifyFileRef()` | Turns a `FILE` payload into an archive entry name | Every File Path rule, literal and percent-escaped; no result is absolute or holds `..`, a backslash or a control character |
+| `NewReader()` limits and entry usability | Bound hostile archives before anything is inflated | Each `ReadOptions` limit; encrypted, symlink, unsupported-method, duplicate and unsafely named entries |
+
 ## Test Patterns
 
 ### Table-Driven Tests (Required)

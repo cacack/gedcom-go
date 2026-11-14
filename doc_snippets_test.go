@@ -54,6 +54,7 @@ const snippetImports = `import (
 	"github.com/cacack/gedcom-go/v3/encoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	gedcomtesting "github.com/cacack/gedcom-go/v3/gedcom/testing"
+	"github.com/cacack/gedcom-go/v3/gedzip"
 	"github.com/cacack/gedcom-go/v3/merge"
 	"github.com/cacack/gedcom-go/v3/parser"
 	"github.com/cacack/gedcom-go/v3/validator"

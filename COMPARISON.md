@@ -82,8 +82,9 @@ GedcomSharp and ArmidaleSoftware/gedcom7 respectively.
 **Analysis:**
 - oxidged and GedcomSharp are the closest peers outside Go: both read and write
   several versions, preserve unknown data, and decode legacy encodings.
-- Both go further than gedcom-go in two places: GEDZIP packages, and (oxidged)
-  the GEDCOM 7.1 draft.
+- Both read and write GEDZIP packages, as gedcom-go does
+  ([FEATURES.md](FEATURES.md#gedzip-archives-gdz)). oxidged goes further than
+  gedcom-go in one place: the GEDCOM 7.1 draft.
 
 ---
 
@@ -113,12 +114,11 @@ GedcomSharp and ArmidaleSoftware/gedcom7 respectively.
 ## gedcom-go Gaps
 
 Since the January 2026 edition, relationship traversal, semantic validation
-warnings, document merging and duplicate detection, and progress callbacks have
-all shipped and are no longer gaps.
+warnings, document merging and duplicate detection, progress callbacks and
+GEDZIP packages have all shipped and are no longer gaps.
 
 | Gap | Available In | Notes |
 |-----|--------------|-------|
-| **GEDZIP packages** | oxidged, GedcomSharp, ArmidaleSoftware/gedcom7 | Tracked as [#127](https://github.com/cacack/gedcom-go/issues/127) |
 | **GEDCOM 7.1 draft** | oxidged | gedcom-go reads `VERS 7.1` as 7.0 |
 | **Query language** | elliotchance (gedcomq) | jq-like querying |
 | **HTML generation** | elliotchance | Library-focused, but useful for tooling |

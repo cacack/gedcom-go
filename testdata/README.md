@@ -474,8 +474,10 @@ the repository root.
   strict and lenient mode and checks it decodes as 7.0;
   `validator/conformance_gedcomio_test.go` records which of the warnings
   `warnings70.ged`/`warnings71.ged` are built to raise we raise. Both keep
-  self-cleaning known-failure lists; `.gdz` files skip until GEDZIP lands
-  (#127). Without the files these tests skip naming `make fetch-corpora`;
+  self-cleaning known-failure lists. `gedzip/conformance_gedcomio_test.go`
+  reads the four `.gdz` archives with the default limits, holds each to its
+  unpacked twin directory byte for byte, then writes it back out and reads it
+  again. Without the files these tests skip naming `make fetch-corpora`;
   `GEDCOM_REQUIRE_FETCHED_CORPORA=1` makes that a failure.
 - **CI:** the test job restores them from a cache keyed on the lock and
   tolerates a failed fetch; the nightly workflow fetches with `-require` and

@@ -32,6 +32,20 @@
 // as an fs.FS, and [Reader.CheckRefs] reports the references the archive does
 // not satisfy.
 //
+//	zr, err := gedzip.OpenReader("family.gdz", nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	defer zr.Close()
+//
+//	doc, err := zr.Decode(nil)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	for _, problem := range zr.CheckRefs(doc) {
+//		log.Printf("%s: %s: %v", problem.XRef, problem.FileRef, problem.Err)
+//	}
+//
 // # Writing
 //
 // [Write] packages a GEDCOM 7 document and the local files it references,

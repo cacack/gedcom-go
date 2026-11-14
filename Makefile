@@ -272,6 +272,9 @@ examples: ## Run all examples against testdata
 	@echo ""
 	@echo "Running lazy example..."
 	@cd examples/lazy && $(GOCMD) run . ../../testdata/gedcom-5.5.1/comprehensive.ged @I1@ @F1@
+	@echo ""
+	@echo "Running gedzip example..."
+	@cd examples/gedzip && $(GOCMD) run .
 
 build-examples: ## Build every example under examples/ (without running)
 	@echo "Building examples..."
