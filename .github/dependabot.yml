@@ -18,9 +18,15 @@ updates:
     labels:
       - "dependencies"
       - "go"
+    # Time-boxed (#746): golang.org/x/text v0.42.0+ declares `go 1.26`, so
+    # taking it would raise this module's floor above go.mod's `go 1.25.0`.
+    # Remove this rule in the change that raises go.mod's `go` line to 1.26 or
+    # later; TestDependabotIgnoreIsLiftedWithTheGoFloor fails until it is gone.
+    # It also holds back security updates: if an x/text advisory is fixed only
+    # in v0.42.0+, raise the floor then rather than wait.
     ignore:
       - dependency-name: "golang.org/x/text"
-        versions: [">= 0.42.0"]  # v0.42.0+ requires Go 1.26 (go.mod floor is 1.25)
+        versions: [">= 0.42.0"]
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
