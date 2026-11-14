@@ -7,8 +7,8 @@ Two guarantees hold for any input:
 
 - **No panic.** Malformed input is an error or a diagnostic, never a panic
   ([ADR 0007](../decisions/0007-error-transparency.md)). The parser, line
-  parser, charset reader, date parser, encoder round-trip and GEDZIP reader
-  are fuzzed nightly.
+  parser, charset readers, date parser, decoder, encoder, decode-encode round
+  trip, validate-and-convert path and GEDZIP reader are fuzzed nightly.
 - **Bounded per-line work.** No single line, diagnostic or charset buffer can
   grow without limit; the bounds are listed below.
 
