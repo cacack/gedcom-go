@@ -72,6 +72,11 @@ const (
 	EventMarriageSettlement EventType = "MARS"
 	// EventDivorceFiling represents a divorce filing event.
 	EventDivorceFiling EventType = "DIVF"
+
+	// EventGeneric represents the generic event tag (EVEN), valid on both
+	// individual (INDI) and family (FAM) records. Event.EventTypeDetail (the
+	// TYPE subordinate) and Event.Description say what kind of event it is.
+	EventGeneric EventType = "EVEN"
 )
 
 // Coordinates represents geographic coordinates for a place.
