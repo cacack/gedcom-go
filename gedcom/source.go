@@ -3,41 +3,41 @@ package gedcom
 // Source represents a source of genealogical information.
 type Source struct {
 	// XRef is the cross-reference identifier for this source
-	XRef string
+	XRef string `json:",omitempty"`
 
 	// Title is the source title.
 	//
 	// Title, Author, Publication and Text are free text: CONT continuation
 	// lines are folded in on decode, joined with "\n", and CONC continuations
 	// are concatenated with no separator, so each can hold several lines.
-	Title string
+	Title string `json:",omitempty"`
 
 	// Author is the source author/originator.
-	Author string
+	Author string `json:",omitempty"`
 
 	// Publication is publication information.
-	Publication string
+	Publication string `json:",omitempty"`
 
 	// Abbreviation is a short title used for sorting, filing and retrieving
 	// the source (ABBR tag).
-	Abbreviation string
+	Abbreviation string `json:",omitempty"`
 
 	// Text is the actual text from the source.
-	Text string
+	Text string `json:",omitempty"`
 
 	// TextMIME is the media type of Text (TEXT.MIME, GEDCOM 7.0), e.g.
 	// "text/plain" or "text/html". Empty when absent. Written only beneath
 	// a non-empty Text.
-	TextMIME string
+	TextMIME string `json:",omitempty"`
 
 	// TextLanguage is the BCP 47 language tag of Text (TEXT.LANG, GEDCOM
 	// 7.0). Empty when absent. Written only beneath a non-empty Text.
-	TextLanguage string
+	TextLanguage string `json:",omitempty"`
 
 	// Data describes what the source records (DATA tag): the events it
 	// covers, the agency responsible for it, and notes about it. nil when the
 	// record has no DATA substructure.
-	Data *SourceData
+	Data *SourceData `json:",omitempty"`
 
 	// RepositoryLinks are the source's repository links, one per REPO
 	// substructure, in source order. Each carries the repository pointer
@@ -45,42 +45,42 @@ type Source struct {
 	// numbers (each with its media type) and per-link notes that the REPO
 	// substructure can hold. GEDCOM 5.5.1 and 7.0 allow any number of REPO
 	// links on a source record.
-	RepositoryLinks []*SourceRepositoryLink
+	RepositoryLinks []*SourceRepositoryLink `json:",omitempty"`
 
 	// Media are references to media objects with optional crop/title
-	Media []*MediaLink
+	Media []*MediaLink `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on this record
 	// (1 NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 
 	// ChangeDate is when the record was last modified (CHAN tag)
-	ChangeDate *ChangeDate
+	ChangeDate *ChangeDate `json:",omitempty"`
 
 	// CreationDate is when the record was created (CREA tag, GEDCOM 7.0)
-	CreationDate *ChangeDate
+	CreationDate *ChangeDate `json:",omitempty"`
 
 	// RefNumbers are user reference numbers (REFN tags, repeatable), each
 	// with its optional TYPE, in file order.
-	RefNumbers []RefNumber
+	RefNumbers []RefNumber `json:",omitempty"`
 
 	// UIDs are unique identifiers (UID tags, repeatable in GEDCOM 7.0), in
 	// file order.
-	UIDs []string
+	UIDs []string `json:",omitempty"`
 
 	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
 	// Links this record to external systems like FamilySearch, Ancestry, etc.
-	ExternalIDs []*ExternalID
+	ExternalIDs []*ExternalID `json:",omitempty"`
 
 	// Tags contains all raw tags for this source (for unknown/custom tags),
 	// a lossless read-side record per ADR 0003. While Record.Tags is non-empty
 	// it does not drive encoding; a record written from its entity appends
 	// the extension (_-prefixed) level-1 tags here after its typed fields.
 	// See Record.Tags for the rule that governs what a decoded record writes.
-	Tags []*Tag
+	Tags []*Tag `json:",omitempty"`
 }
 
 // AllNotes returns this source's inline notes followed by the text of any
@@ -97,17 +97,17 @@ func (s *Source) AllNotes(doc *Document) []string {
 type SourceData struct {
 	// Events are the kinds of events the source records, one per DATA.EVEN
 	// substructure, in source order.
-	Events []*SourceDataEvent
+	Events []*SourceDataEvent `json:",omitempty"`
 
 	// Agency is the person, agency or entity responsible for the original
 	// data (DATA.AGNC).
-	Agency string
+	Agency string `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly under DATA.
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 }
 
 // SourceDataEvent is one DATA.EVEN substructure of a source record: a set of
@@ -115,19 +115,19 @@ type SourceData struct {
 type SourceDataEvent struct {
 	// Types is the EVEN payload as written: a comma-separated list of event
 	// tags such as "BIRT, DEAT, MARR".
-	Types string
+	Types string `json:",omitempty"`
 
 	// Date is the period the recorded events cover (DATE, a date period such
 	// as "FROM 1820 TO 1825"). Empty when absent.
-	Date string
+	Date string `json:",omitempty"`
 
 	// DatePhrase is the PHRASE under DATE (GEDCOM 7.0). Written only beneath
 	// a Date.
-	DatePhrase string
+	DatePhrase string `json:",omitempty"`
 
 	// PlaceDetail is the jurisdiction the recorded events cover (PLAC). nil
 	// when absent.
-	PlaceDetail *PlaceDetail
+	PlaceDetail *PlaceDetail `json:",omitempty"`
 }
 
 // SourceCitationEvent is the EVEN substructure of a source citation: the type
@@ -135,39 +135,39 @@ type SourceDataEvent struct {
 // played in it.
 type SourceCitationEvent struct {
 	// Type is the EVEN payload: the event type cited from, e.g. "BIRT".
-	Type string
+	Type string `json:",omitempty"`
 
 	// Phrase is the PHRASE under EVEN (GEDCOM 7.0).
-	Phrase string
+	Phrase string `json:",omitempty"`
 
 	// Role is the subject's role in the event (ROLE), e.g. "CHIL" or
 	// "WITN". Empty when absent.
-	Role string
+	Role string `json:",omitempty"`
 
 	// RolePhrase is the PHRASE under ROLE (GEDCOM 7.0), typically describing
 	// a ROLE OTHER. Written only beneath a Role.
-	RolePhrase string
+	RolePhrase string `json:",omitempty"`
 }
 
 // SourceCitationData represents extracted text and date from a source citation.
 type SourceCitationData struct {
 	// Date is the date extracted from the source
-	Date string
+	Date string `json:",omitempty"`
 
 	// Time is the TIME under DATE (GEDCOM 7.0), e.g. "08:00". Written only
 	// beneath a Date, or beneath an empty DATE for 7.0 output.
-	Time string
+	Time string `json:",omitempty"`
 
 	// DatePhrase is the PHRASE under DATE (GEDCOM 7.0). Written only beneath
 	// a Date, or beneath an empty DATE for 7.0 output, which 7.0 permits for a
 	// phrase-only date.
-	DatePhrase string
+	DatePhrase string `json:",omitempty"`
 
 	// Text holds the passages quoted from the source, one entry per DATA.TEXT
 	// line in document order. TEXT is repeatable ({0:M}) under a citation's
 	// DATA in every GEDCOM version, so a citation quoting two passages carries
 	// two entries. nil means the DATA block had no TEXT.
-	Text []*SourceText
+	Text []*SourceText `json:",omitempty"`
 }
 
 // SourceText is one TEXT substructure of a source citation's DATA block: a
@@ -177,22 +177,22 @@ type SourceText struct {
 	// Value is the passage (the TEXT tag payload). Multi-line text carried by
 	// CONT continuation lines is folded in on decode, joined with "\n"; CONC
 	// continuations are concatenated with no separator.
-	Value string
+	Value string `json:",omitempty"`
 
 	// MIME is the media type of Value (TEXT.MIME, GEDCOM 7.0), e.g.
 	// "text/plain" or "text/html". Empty when absent.
-	MIME string
+	MIME string `json:",omitempty"`
 
 	// Language is the BCP 47 language tag of Value (TEXT.LANG, GEDCOM 7.0),
 	// e.g. "en" or "de". Empty when absent.
-	Language string
+	Language string `json:",omitempty"`
 }
 
 // SourceCitation represents a citation of a source with location and quality information.
 type SourceCitation struct {
 	// SourceXRef is the cross-reference to the source record (e.g., "@S1@").
 	// It is empty for an inline citation (see InlineText).
-	SourceXRef string
+	SourceXRef string `json:",omitempty"`
 
 	// InlineText is the source description of a GEDCOM 5.5/5.5.1 citation
 	// written without a source record ("1 SOUR Family bible ..."), with its
@@ -206,12 +206,12 @@ type SourceCitation struct {
 	// no inline citation; converter.Convert promotes one to a SOUR record on
 	// upgrade, from Record.Tags, so a record with no Tags keeps its inline
 	// citation.
-	InlineText string
+	InlineText string `json:",omitempty"`
 
 	// Page is the page or location within the source (e.g., "Page 42, Entry 103").
 	// CONT continuation lines are folded in on decode, joined with "\n"; CONC
 	// continuations are concatenated with no separator.
-	Page string
+	Page string `json:",omitempty"`
 
 	// Quality is the evidence quality assessment (0-3 scale per GEDCOM spec).
 	// nil means the citation carried no QUAY tag; every value in range is a
@@ -222,28 +222,28 @@ type SourceCitation struct {
 	// 1 = questionable reliability of evidence
 	// 2 = secondary evidence, data officially recorded sometime after event
 	// 3 = direct and primary evidence used, or by dominance of the evidence
-	Quality *int
+	Quality *int `json:",omitempty"`
 
 	// Data contains optional extracted text and date from the source
-	Data *SourceCitationData
+	Data *SourceCitationData `json:",omitempty"`
 
 	// Event is the event the cited source records and the subject's role in
 	// it (EVEN, with ROLE). nil when the citation has no EVEN.
-	Event *SourceCitationEvent
+	Event *SourceCitationEvent `json:",omitempty"`
 
 	// Media are references to media objects attached to the citation (OBJE).
-	Media []*MediaLink
+	Media []*MediaLink `json:",omitempty"`
 
 	// AncestryAPID is the Ancestry Permanent Identifier from the _APID tag.
 	// This is an Ancestry.com vendor extension that links the citation to a
 	// specific record in an Ancestry database. Use AncestryAPID.URL() to
 	// reconstruct the original Ancestry.com record URL.
-	AncestryAPID *AncestryAPID
+	AncestryAPID *AncestryAPID `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on this citation
 	// (NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 }

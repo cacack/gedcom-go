@@ -103,28 +103,28 @@ func (m DateModifier) String() string {
 // modifiers, and date ranges/periods.
 type Date struct {
 	// Original is the raw GEDCOM date string (preserved for round-trip)
-	Original string
+	Original string `json:",omitempty"`
 
 	// Day is the day of the month (0 if unknown, 1-31)
-	Day int
+	Day int `json:",omitempty"`
 
 	// Month is the month (0 if unknown, 1-12)
-	Month int
+	Month int `json:",omitempty"`
 
 	// Year is the year (0 if unknown)
-	Year int
+	Year int `json:",omitempty"`
 
 	// Modifier indicates the type of date (exact, approximate, range, etc.)
 	Modifier DateModifier
 
 	// EndDate is populated for ranges (BET...AND) and periods (FROM...TO)
-	EndDate *Date
+	EndDate *Date `json:",omitempty"`
 
 	// Calendar indicates the calendar system (Gregorian, Julian, Hebrew, French Republican)
 	Calendar Calendar
 
 	// IsBC is true for B.C./BCE dates
-	IsBC bool
+	IsBC bool `json:",omitempty"`
 
 	// DualYear is the second year for dual dating (e.g., 1751 from "1750/51"),
 	// or 0 if none. A one- or two-digit suffix gives the last digits of the year
@@ -135,10 +135,10 @@ type Date struct {
 	// value is preserved; Validate reports it. A B.C. dual year of 0 ("1/0 BC")
 	// cannot be represented and reads as no dual year. ToGregorian clears it
 	// on a non-Gregorian date, converting from the New Style year.
-	DualYear int
+	DualYear int `json:",omitempty"`
 
 	// Phrase contains the text for date phrases (e.g., "unknown" from "(unknown)")
-	Phrase string
+	Phrase string `json:",omitempty"`
 
 	// IsPhrase is true when the date is a phrase, not a parseable date. The
 	// decoder also sets it for a DATE whose value is empty or does not parse
@@ -146,16 +146,16 @@ type Date struct {
 	// does this whatever the file's version): Phrase holds the PHRASE,
 	// Original the raw value, and no other field claims a parsed date (Day,
 	// Month and Year are 0, Modifier is none, Calendar is Gregorian).
-	IsPhrase bool
+	IsPhrase bool `json:",omitempty"`
 
 	// IsInterpreted is true when the date uses the INT modifier, indicating
 	// the user has interpreted an ambiguous original phrase
-	IsInterpreted bool
+	IsInterpreted bool `json:",omitempty"`
 
 	// InterpretedFrom contains the original phrase that was interpreted,
 	// without the surrounding parentheses (e.g., "about eighteen fifty" from
 	// "INT 1850 (about eighteen fifty)")
-	InterpretedFrom string
+	InterpretedFrom string `json:",omitempty"`
 }
 
 // monthNames maps three-letter month abbreviations to month numbers.

@@ -16,7 +16,7 @@ type Tag struct {
 	// Tag is the GEDCOM tag name (e.g., "INDI", "NAME", "BIRT").
 	// It cannot contain a line break; the encoder rejects one
 	// (encoder.ErrLineBreak).
-	Tag string
+	Tag string `json:",omitempty"`
 
 	// Value is the optional value associated with the tag.
 	//
@@ -25,7 +25,7 @@ type Tag struct {
 	// express one. CRLF, bare LF and bare CR are all treated as a break,
 	// matching what the parser accepts, so Value cannot carry a literal
 	// carriage return as data.
-	Value string
+	Value string `json:",omitempty"`
 
 	// XRef is the optional cross-reference identifier (e.g., "@I1@")
 	// Normally present only on level-0 records, the tags other records can
@@ -33,11 +33,11 @@ type Tag struct {
 	// line carried a malformed identifier the decoder recovered (e.g.
 	// "1 @I 1@ NOTE"), so that identifier is preserved verbatim. It cannot
 	// contain a line break; the encoder rejects one.
-	XRef string
+	XRef string `json:",omitempty"`
 
 	// LineNumber is the line number in the source file where this tag appears
 	// Used for error reporting and debugging
-	LineNumber int
+	LineNumber int `json:",omitempty"`
 }
 
 // HasValue returns true if the tag has a non-empty value.

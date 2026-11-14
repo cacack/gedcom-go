@@ -14,8 +14,8 @@ package gedcom
 //	  2 TYPE http://www.familysearch.org/ark
 type ExternalID struct {
 	// Value is the external identifier string
-	Value string
+	Value string `json:",omitempty"`
 
 	// Type is the URI identifying the external system (from TYPE subordinate)
-	Type string
+	Type string `json:",omitempty"`
 }

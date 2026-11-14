@@ -3,20 +3,20 @@ package gedcom
 // Individual represents a person in the GEDCOM file.
 type Individual struct {
 	// XRef is the cross-reference identifier for this individual
-	XRef string
+	XRef string `json:",omitempty"`
 
 	// Restriction is the record's restriction notice (RESN): "confidential",
 	// "locked" or "privacy" in GEDCOM 5.5/5.5.1, upper case and possibly a
 	// comma-separated list ("CONFIDENTIAL, LOCKED") in 7.0. It is the flag an
 	// application checks before publishing a person. Same type and spelling
 	// rules as Event.Restriction.
-	Restriction string
+	Restriction string `json:",omitempty"`
 
 	// Names contains all name variants for this person
-	Names []*PersonalName
+	Names []*PersonalName `json:",omitempty"`
 
 	// Sex is the person's sex (M, F, X, U for unknown)
-	Sex string
+	Sex string `json:",omitempty"`
 
 	// Events contains life events (birth, death, marriage, etc.) in file order.
 	//
@@ -24,29 +24,29 @@ type Individual struct {
 	// events with IsNegative set: a record that an event did NOT happen, not a
 	// fact that it did. Use OccurredEvents for the events that happened and
 	// NegativeAssertions for the NO assertions.
-	Events []*Event
+	Events []*Event `json:",omitempty"`
 
 	// Attributes contains personal attributes (occupation, education, etc.)
-	Attributes []*Attribute
+	Attributes []*Attribute `json:",omitempty"`
 
 	// ChildInFamilies are references to families where this person is a child
-	ChildInFamilies []FamilyLink
+	ChildInFamilies []FamilyLink `json:",omitempty"`
 
 	// SpouseInFamilies are references to families where this person is a spouse
-	SpouseInFamilies []FamilyLink
+	SpouseInFamilies []FamilyLink `json:",omitempty"`
 
 	// Associations are links to associated individuals (godparents, witnesses, etc.)
-	Associations []*Association
+	Associations []*Association `json:",omitempty"`
 
 	// SourceCitations are source citations with page/quality details
-	SourceCitations []*SourceCitation
+	SourceCitations []*SourceCitation `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on this record
 	// (1 NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 
 	// InlineNoteDetails holds the GEDCOM 7.0 substructures of the inline
 	// notes (MIME, LANG and TRAN): InlineNoteDetails[i] describes
@@ -54,43 +54,43 @@ type Individual struct {
 	// entry is nil, or absent past the end, for a note without them. An entry
 	// past the end of InlineNotes is not written. Keep the two slices in step
 	// when adding or removing a note.
-	InlineNoteDetails []*InlineNoteDetail
+	InlineNoteDetails []*InlineNoteDetail `json:",omitempty"`
 
 	// Media are references to media objects with optional crop/title
-	Media []*MediaLink
+	Media []*MediaLink `json:",omitempty"`
 
 	// LDSOrdinances are LDS (Latter-Day Saints) ordinances (BAPL, CONL, ENDL, SLGC)
-	LDSOrdinances []*LDSOrdinance
+	LDSOrdinances []*LDSOrdinance `json:",omitempty"`
 
 	// ChangeDate is when the record was last modified (CHAN tag)
-	ChangeDate *ChangeDate
+	ChangeDate *ChangeDate `json:",omitempty"`
 
 	// CreationDate is when the record was created (CREA tag, GEDCOM 7.0)
-	CreationDate *ChangeDate
+	CreationDate *ChangeDate `json:",omitempty"`
 
 	// RefNumbers are user reference numbers (REFN tags, repeatable), each
 	// with its optional TYPE, in file order.
-	RefNumbers []RefNumber
+	RefNumbers []RefNumber `json:",omitempty"`
 
 	// UIDs are unique identifiers (UID tags, repeatable in GEDCOM 7.0), in
 	// file order.
-	UIDs []string
+	UIDs []string `json:",omitempty"`
 
 	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
 	// Links this record to external systems like FamilySearch, Ancestry, etc.
-	ExternalIDs []*ExternalID
+	ExternalIDs []*ExternalID `json:",omitempty"`
 
 	// FamilySearchID is the FamilySearch Family Tree ID (_FSFTID tag).
 	// This is a vendor extension from FamilySearch.org that uniquely identifies
 	// an individual in their Family Tree database. Format: alphanumeric like "KWCJ-QN7".
-	FamilySearchID string
+	FamilySearchID string `json:",omitempty"`
 
 	// Tags contains all raw tags for this individual (for unknown/custom tags),
 	// a lossless read-side record per ADR 0003. While Record.Tags is non-empty
 	// it does not drive encoding; a record written from its entity appends
 	// the extension (_-prefixed) level-1 tags here after its typed fields.
 	// See Record.Tags for the rule that governs what a decoded record writes.
-	Tags []*Tag
+	Tags []*Tag `json:",omitempty"`
 }
 
 // AllNotes returns this individual's inline notes followed by the text of any
@@ -103,29 +103,29 @@ func (i *Individual) AllNotes(doc *Document) []string {
 // PersonalName represents a person's name with optional components.
 type PersonalName struct {
 	// Full is the full name (e.g., "John /Doe/")
-	Full string
+	Full string `json:",omitempty"`
 
 	// Given is the given (first) name: the first GIVN value, else the text
 	// before the surname slashes in Full. A repeated GIVN is in
 	// AdditionalGiven.
-	Given string
+	Given string `json:",omitempty"`
 
 	// Surname is the family name
-	Surname string
+	Surname string `json:",omitempty"`
 
 	// Prefix is the name prefix (e.g., "Dr.", "Sir")
-	Prefix string
+	Prefix string `json:",omitempty"`
 
 	// Suffix is the name suffix (e.g., "Jr.", "III"): the NSFX value, else
 	// the text after the surname slashes in Full ("John /Smith/ Jr."), taken
 	// as written whatever it holds (a title or nickname such as "(Jack)" too)
-	Suffix string
+	Suffix string `json:",omitempty"`
 
 	// Nickname is the person's nickname (e.g., "Bill" for William)
-	Nickname string
+	Nickname string `json:",omitempty"`
 
 	// SurnamePrefix is the surname prefix (e.g., "von", "de", "van der")
-	SurnamePrefix string
+	SurnamePrefix string `json:",omitempty"`
 
 	// AdditionalGiven, AdditionalSurnames, AdditionalPrefixes,
 	// AdditionalSuffixes, AdditionalNicknames and AdditionalSurnamePrefixes
@@ -134,53 +134,53 @@ type PersonalName struct {
 	// repeat; the first value is in Given, Surname, Prefix, Suffix, Nickname
 	// or SurnamePrefix, and the encoder writes these after it. GEDCOM 5.5 and
 	// 5.5.1 allow one of each, so they are nil for a conforming 5.x name.
-	AdditionalGiven           []string
-	AdditionalSurnames        []string
-	AdditionalPrefixes        []string
-	AdditionalSuffixes        []string
-	AdditionalNicknames       []string
-	AdditionalSurnamePrefixes []string
+	AdditionalGiven           []string `json:",omitempty"`
+	AdditionalSurnames        []string `json:",omitempty"`
+	AdditionalPrefixes        []string `json:",omitempty"`
+	AdditionalSuffixes        []string `json:",omitempty"`
+	AdditionalNicknames       []string `json:",omitempty"`
+	AdditionalSurnamePrefixes []string `json:",omitempty"`
 
 	// MarriedName is the married name from the vendor extension _MARNM
 	// (MyHeritage), kept as written. MyHeritage writes the married surname
 	// alone ("Gascoigne"); GEDCOM 7.0 instead records a married name as a
 	// separate NAME with TYPE MARRIED, which converter.Convert adds from the
 	// record's _MARNM tag (so only for a record that has Tags).
-	MarriedName string
+	MarriedName string `json:",omitempty"`
 
 	// Type is the name type (e.g., "birth", "married", "aka")
-	Type string
+	Type string `json:",omitempty"`
 
 	// TypePhrase is the PHRASE under TYPE (GEDCOM 7.0), typically describing
 	// a TYPE OTHER. Written only beneath a Type.
-	TypePhrase string
+	TypePhrase string `json:",omitempty"`
 
 	// Transliterations are alternative representations of the name in different
 	// writing systems or scripts (GEDCOM 7.0 TRAN tag). Used to store the same
 	// name in different languages, scripts, or romanization systems.
-	Transliterations []*Transliteration
+	Transliterations []*Transliteration `json:",omitempty"`
 
 	// Phonetic are phonetic variations of the name (GEDCOM 5.5.1 FONE tag),
 	// in file order. FONE is defined only in 5.5.1 (7.0 uses TRAN); the
 	// encoder writes these only for 5.5.1 output, and converter.Convert to
 	// 7.0 or 5.5 clears them.
-	Phonetic []*NameVariation
+	Phonetic []*NameVariation `json:",omitempty"`
 
 	// Romanized are romanized variations of the name (GEDCOM 5.5.1 ROMN tag),
 	// in file order. ROMN is defined only in 5.5.1 (7.0 uses TRAN); the
 	// encoder writes these only for 5.5.1 output, and converter.Convert to
 	// 7.0 or 5.5 clears them.
-	Romanized []*NameVariation
+	Romanized []*NameVariation `json:",omitempty"`
 
 	// SourceCitations are source citations documenting this name (NAME.SOUR).
-	SourceCitations []*SourceCitation
+	SourceCitations []*SourceCitation `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on this name
 	// (NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 }
 
 // Transliteration represents an alternative representation of a name in a different
@@ -190,29 +190,29 @@ type PersonalName struct {
 type Transliteration struct {
 	// Value is the full transliterated name in GEDCOM format (e.g., "John /Doe/").
 	// This is the value from the TRAN tag itself.
-	Value string
+	Value string `json:",omitempty"`
 
 	// Language is the BCP 47 language tag indicating the language/script of this
 	// transliteration (GEDCOM 7.0 LANG tag). Examples: "en-GB", "ja-Latn", "zh-Hans".
-	Language string
+	Language string `json:",omitempty"`
 
 	// Given is the transliterated given (first) name (GIVN tag).
-	Given string
+	Given string `json:",omitempty"`
 
 	// Surname is the transliterated family name (SURN tag).
-	Surname string
+	Surname string `json:",omitempty"`
 
 	// Prefix is the transliterated name prefix, e.g., "Dr.", "Sir" (NPFX tag).
-	Prefix string
+	Prefix string `json:",omitempty"`
 
 	// Suffix is the transliterated name suffix, e.g., "Jr.", "III" (NSFX tag).
-	Suffix string
+	Suffix string `json:",omitempty"`
 
 	// Nickname is the transliterated nickname (NICK tag).
-	Nickname string
+	Nickname string `json:",omitempty"`
 
 	// SurnamePrefix is the transliterated surname prefix, e.g., "von", "de" (SPFX tag).
-	SurnamePrefix string
+	SurnamePrefix string `json:",omitempty"`
 }
 
 // NameVariation is a phonetic (FONE) or romanized (ROMN) variation of a name,
@@ -224,93 +224,93 @@ type Transliteration struct {
 type NameVariation struct {
 	// Value is the full name variation in GEDCOM format (e.g., "Yamada /Taro/").
 	// This is the value from the FONE or ROMN tag itself.
-	Value string
+	Value string `json:",omitempty"`
 
 	// Type is the method used to produce the variation (TYPE tag). GEDCOM
 	// 5.5.1 defines "hangul" and "kana" for FONE and "pinyin", "romaji" and
 	// "wadegiles" for ROMN, and allows any user-defined value.
 	// TYPE is required {1:1}; the encoder omits it when empty.
-	Type string
+	Type string `json:",omitempty"`
 
 	// Given is the given (first) name in this variation (GIVN tag).
-	Given string
+	Given string `json:",omitempty"`
 
 	// Surname is the family name in this variation (SURN tag).
-	Surname string
+	Surname string `json:",omitempty"`
 
 	// Prefix is the name prefix in this variation (NPFX tag).
-	Prefix string
+	Prefix string `json:",omitempty"`
 
 	// Suffix is the name suffix in this variation (NSFX tag).
-	Suffix string
+	Suffix string `json:",omitempty"`
 
 	// Nickname is the nickname in this variation (NICK tag).
-	Nickname string
+	Nickname string `json:",omitempty"`
 
 	// SurnamePrefix is the surname prefix in this variation (SPFX tag).
-	SurnamePrefix string
+	SurnamePrefix string `json:",omitempty"`
 }
 
 // FamilyLink represents a link to a family with optional pedigree type.
 type FamilyLink struct {
 	// FamilyXRef is the cross-reference to the family record
-	FamilyXRef string
+	FamilyXRef string `json:",omitempty"`
 
 	// Pedigree is the pedigree linkage type (e.g., "birth", "adopted", "foster", "sealing")
 	// Empty string if not specified. Preserves original casing from GEDCOM.
 	// Pedigree applies to child links (FAMC) only; neither spec defines it for a
 	// spouse link (FAMS), where it is preserved solely so malformed input round-trips.
-	Pedigree string
+	Pedigree string `json:",omitempty"`
 
 	// PedigreePhrase is the PHRASE under PEDI (GEDCOM 7.0), typically
 	// describing a PEDI OTHER. Written only beneath a Pedigree.
-	PedigreePhrase string
+	PedigreePhrase string `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on this family link
 	// (NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 }
 
 // Association represents a link to an associated individual with a role.
 // Used for relationships like godparents (GODP), witnesses (WITN), etc.
 type Association struct {
 	// IndividualXRef is the cross-reference to the associated individual
-	IndividualXRef string
+	IndividualXRef string `json:",omitempty"`
 
 	// Role is the relationship role (e.g., "GODP" for godparent, "WITN" for witness)
 	// In GEDCOM 5.5 and 5.5.1 this comes from RELA tag, in GEDCOM 7.0 from ROLE
 	// tag; the encoder writes RELA for 5.5.x output and ROLE otherwise.
-	Role string
+	Role string `json:",omitempty"`
 
 	// RolePhrase is the PHRASE under ROLE (GEDCOM 7.0), typically describing
 	// a ROLE OTHER. Distinct from Phrase, which qualifies the ASSO itself.
 	// Written only beneath a Role.
-	RolePhrase string
+	RolePhrase string `json:",omitempty"`
 
 	// RecordType is the type of the associated record (GEDCOM 5.5 TYPE
 	// subordinate, e.g. "INDI" or "FAM"). Only 5.5 defines it, where it is
 	// required: the encoder writes it only for 5.5 output, as "INDI" when
 	// empty, and drops it for 5.5.1 and 7.0 output.
-	RecordType string
+	RecordType string `json:",omitempty"`
 
 	// Phrase is a human-readable description of the association (GEDCOM 7.0 PHRASE tag).
 	// Used when the structured data cannot fully express the relationship.
 	// Example: "Mr Stockdale" as the associated person's name when @XREF@ is unavailable.
-	Phrase string
+	Phrase string `json:",omitempty"`
 
 	// SourceCitations are source citations documenting this association (GEDCOM 7.0).
 	// Allows citing sources for the association relationship itself.
-	SourceCitations []*SourceCitation
+	SourceCitations []*SourceCitation `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on this association
 	// (NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 }
 
 // AttributeType represents the type of a personal or family attribute.
@@ -353,23 +353,23 @@ const (
 type Attribute struct {
 	// Type is the attribute type (e.g., AttributeOccupation, AttributeEducation).
 	// See the AttributeType constants.
-	Type AttributeType
+	Type AttributeType `json:",omitempty"`
 
 	// Value is the attribute value, with its CONT/CONC continuation lines
 	// folded in (CONT as a newline).
-	Value string
+	Value string `json:",omitempty"`
 
 	// Date when the attribute was applicable (optional)
-	Date string
+	Date string `json:",omitempty"`
 
 	// ParsedDate is the parsed representation of Date.
 	// This is nil if the date string could not be parsed.
-	ParsedDate *Date
+	ParsedDate *Date `json:",omitempty"`
 
 	// PlaceDetail is where the attribute was applicable (optional), with
 	// optional coordinates. It is the sole place carrier;
 	// [Attribute.PlaceName] is the nil-safe read path for just the name.
-	PlaceDetail *PlaceDetail
+	PlaceDetail *PlaceDetail `json:",omitempty"`
 
 	// TypeDetail is the user-supplied classification of this attribute
 	// (TYPE subordinate). It is the Attribute counterpart of
@@ -379,94 +379,94 @@ type Attribute struct {
 	// Per ADR 0003 the raw TYPE tag also remains on Individual.Tags, so
 	// callers that hand-walk the raw subtree now have two sources for the
 	// same fact — the same dual storage Event.EventTypeDetail already has.
-	TypeDetail string
+	TypeDetail string `json:",omitempty"`
 
 	// Cause is the cause of the attribute (CAUS subordinate)
-	Cause string
+	Cause string `json:",omitempty"`
 
 	// Age is the age at the time the attribute applied (AGE subordinate)
-	Age string
+	Age string `json:",omitempty"`
 
 	// AgePhrase is the PHRASE under AGE (GEDCOM 7.0), the age in prose.
 	// Written beneath its AGE line. With Age empty it is a phrase-only age,
 	// which 7.0 allows: 7.0 output writes an empty AGE line to carry it, and
 	// 5.x output, where AGE requires a value, writes neither.
-	AgePhrase string
+	AgePhrase string `json:",omitempty"`
 
 	// HusbandAge is the husband's age at the time of the attribute (AGE
 	// beneath the HUSB subordinate, FAMILY_EVENT_DETAIL). Only a family's
 	// attributes and events carry one: the decoder fills it there alone, and
 	// the encoder writes it only beneath a family's.
-	HusbandAge string
+	HusbandAge string `json:",omitempty"`
 
 	// HusbandAgePhrase is the PHRASE under that AGE (GEDCOM 7.0), written
 	// beneath it. With HusbandAge empty it is a phrase-only age, under the
 	// same rules as AgePhrase.
-	HusbandAgePhrase string
+	HusbandAgePhrase string `json:",omitempty"`
 
 	// WifeAge is the wife's age at the time of the attribute (AGE beneath the
 	// WIFE subordinate, FAMILY_EVENT_DETAIL), under the same rules as
 	// HusbandAge.
-	WifeAge string
+	WifeAge string `json:",omitempty"`
 
 	// WifeAgePhrase is the PHRASE under that AGE (GEDCOM 7.0), under the
 	// same rules as HusbandAgePhrase.
-	WifeAgePhrase string
+	WifeAgePhrase string `json:",omitempty"`
 
 	// Agency is the responsible agency (AGNC subordinate)
-	Agency string
+	Agency string `json:",omitempty"`
 
 	// ReligiousAffiliation is the religious denomination associated with the
 	// attribute (RELI subordinate)
-	ReligiousAffiliation string
+	ReligiousAffiliation string `json:",omitempty"`
 
 	// Address is the attribute address structure (ADDR subordinate)
-	Address *Address
+	Address *Address `json:",omitempty"`
 
 	// Phone numbers associated with the attribute (PHON subordinate, can repeat)
-	Phone []string
+	Phone []string `json:",omitempty"`
 
 	// Email addresses associated with the attribute (EMAIL subordinate, can repeat)
-	Email []string
+	Email []string `json:",omitempty"`
 
 	// Fax numbers associated with the attribute (FAX subordinate, can repeat)
-	Fax []string
+	Fax []string `json:",omitempty"`
 
 	// Websites associated with the attribute (WWW subordinate, can repeat)
-	Website []string
+	Website []string `json:",omitempty"`
 
 	// Restriction notice for privacy controls (RESN subordinate)
 	// Common values: "confidential", "locked", "privacy" (or combinations)
-	Restriction string
+	Restriction string `json:",omitempty"`
 
 	// UIDs are unique identifiers for the attribute (UID subordinates,
 	// repeatable in GEDCOM 7.0), in file order.
-	UIDs []string
+	UIDs []string `json:",omitempty"`
 
 	// SortDate is the date used for sorting attributes (SDATE subordinate, GEDCOM 7.0)
 	// Typically in ISO 8601 format (e.g., "1900-01-01")
-	SortDate string
+	SortDate string `json:",omitempty"`
 
 	// SortDatePhrase is the PHRASE under SDATE (GEDCOM 7.0). Written only
 	// beneath a SortDate.
-	SortDatePhrase string
+	SortDatePhrase string `json:",omitempty"`
 
 	// SourceCitations are source citations with page/quality details
-	SourceCitations []*SourceCitation
+	SourceCitations []*SourceCitation `json:",omitempty"`
 
 	// Media are references to media objects with optional crop/title
-	Media []*MediaLink
+	Media []*MediaLink `json:",omitempty"`
 
 	// Associations are links to individuals associated with this attribute
 	// (ASSO subordinate), e.g. witnesses, officiants or godparents
-	Associations []*Association
+	Associations []*Association `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on this attribute
 	// (NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 }
 
 // PlaceName returns PlaceDetail.Name, or "" when no place is recorded.

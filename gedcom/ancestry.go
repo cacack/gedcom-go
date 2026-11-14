@@ -14,13 +14,13 @@ import "strings"
 // Example: "1,7602::2771226" where 7602 is the database and 2771226 is the record.
 type AncestryAPID struct {
 	// Raw is the original unparsed APID value
-	Raw string
+	Raw string `json:",omitempty"`
 
 	// Database is the Ancestry database ID
-	Database string
+	Database string `json:",omitempty"`
 
 	// Record is the record ID within the database
-	Record string
+	Record string `json:",omitempty"`
 }
 
 // ParseAPID parses an Ancestry APID string into an AncestryAPID struct.

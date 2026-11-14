@@ -82,33 +82,33 @@ const (
 // Coordinates represents geographic coordinates for a place.
 type Coordinates struct {
 	// Latitude in GEDCOM format (e.g., "N42.3601")
-	Latitude string
+	Latitude string `json:",omitempty"`
 
 	// Longitude in GEDCOM format (e.g., "W71.0589")
-	Longitude string
+	Longitude string `json:",omitempty"`
 }
 
 // PlaceDetail represents a structured place with optional coordinates and format.
 type PlaceDetail struct {
 	// Name is the place name string
-	Name string
+	Name string `json:",omitempty"`
 
 	// Form is the hierarchical format of the place (e.g., "City, County, State, Country")
-	Form string
+	Form string `json:",omitempty"`
 
 	// Coordinates are optional geographic coordinates (MAP/LATI/LONG)
-	Coordinates *Coordinates
+	Coordinates *Coordinates `json:",omitempty"`
 
 	// ExternalIDs are external identifiers of the place (EXID tags, GEDCOM
 	// 7.0), such as a gazetteer entry.
-	ExternalIDs []*ExternalID
+	ExternalIDs []*ExternalID `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on this place
 	// (NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 }
 
 // Event represents a life event with date, place, and source information.
@@ -118,19 +118,19 @@ type PlaceDetail struct {
 // decoded record writes (see Record.Tags).
 type Event struct {
 	// Type is the event type (birth, death, marriage, etc.)
-	Type EventType
+	Type EventType `json:",omitempty"`
 
 	// Date is when the event occurred (in GEDCOM date format)
-	Date string
+	Date string `json:",omitempty"`
 
 	// ParsedDate is the parsed representation of Date.
 	// This is nil if the date string could not be parsed.
-	ParsedDate *Date
+	ParsedDate *Date `json:",omitempty"`
 
 	// PlaceDetail is where the event occurred, with optional coordinates.
 	// It is the sole place carrier; [Event.PlaceName] is the nil-safe read
 	// path for just the name.
-	PlaceDetail *PlaceDetail
+	PlaceDetail *PlaceDetail `json:",omitempty"`
 
 	// Description is the event line's own payload, with its CONT/CONC
 	// continuation lines folded in (CONT as a newline): the descriptor of a
@@ -139,95 +139,95 @@ type Event struct {
 	// named event is not a description and leaves it empty, as does a 7.0
 	// NO assertion; that flag is kept only in the raw tags and the encoder
 	// does not write it back from the typed model.
-	Description string
+	Description string `json:",omitempty"`
 
 	// EventTypeDetail provides a descriptive type of the event (TYPE subordinate)
-	EventTypeDetail string
+	EventTypeDetail string `json:",omitempty"`
 
 	// Cause is the cause of the event (CAUS subordinate)
-	Cause string
+	Cause string `json:",omitempty"`
 
 	// Age is the age at the time of the event (AGE subordinate)
-	Age string
+	Age string `json:",omitempty"`
 
 	// AgePhrase is the PHRASE under AGE (GEDCOM 7.0), the age in prose.
 	// Written beneath its AGE line. With Age empty it is a phrase-only age,
 	// which 7.0 allows: 7.0 output writes an empty AGE line to carry it, and
 	// 5.x output, where AGE requires a value, writes neither.
-	AgePhrase string
+	AgePhrase string `json:",omitempty"`
 
 	// HusbandAge is the husband's age at the time of the event (AGE beneath
 	// the HUSB subordinate, FAMILY_EVENT_DETAIL). Only a family's events and
 	// attributes carry one: the decoder fills it there alone, and the encoder
 	// writes it only beneath a family's.
-	HusbandAge string
+	HusbandAge string `json:",omitempty"`
 
 	// HusbandAgePhrase is the PHRASE under that AGE (GEDCOM 7.0), written
 	// beneath it. With HusbandAge empty it is a phrase-only age, under the
 	// same rules as AgePhrase.
-	HusbandAgePhrase string
+	HusbandAgePhrase string `json:",omitempty"`
 
 	// WifeAge is the wife's age at the time of the event (AGE beneath the
 	// WIFE subordinate, FAMILY_EVENT_DETAIL), under the same rules as
 	// HusbandAge.
-	WifeAge string
+	WifeAge string `json:",omitempty"`
 
 	// WifeAgePhrase is the PHRASE under that AGE (GEDCOM 7.0), under the
 	// same rules as HusbandAgePhrase.
-	WifeAgePhrase string
+	WifeAgePhrase string `json:",omitempty"`
 
 	// Agency is the responsible agency (AGNC subordinate)
-	Agency string
+	Agency string `json:",omitempty"`
 
 	// ReligiousAffiliation is the religious denomination associated with the
 	// event (RELI subordinate)
-	ReligiousAffiliation string
+	ReligiousAffiliation string `json:",omitempty"`
 
 	// Address is the event address structure (ADDR subordinate)
-	Address *Address
+	Address *Address `json:",omitempty"`
 
 	// Phone numbers associated with the event (PHON subordinate, can repeat)
-	Phone []string
+	Phone []string `json:",omitempty"`
 
 	// Email addresses associated with the event (EMAIL subordinate, can repeat)
-	Email []string
+	Email []string `json:",omitempty"`
 
 	// Fax numbers associated with the event (FAX subordinate, can repeat)
-	Fax []string
+	Fax []string `json:",omitempty"`
 
 	// Websites associated with the event (WWW subordinate, can repeat)
-	Website []string
+	Website []string `json:",omitempty"`
 
 	// Restriction notice for privacy controls (RESN subordinate)
 	// Common values: "confidential", "locked", "privacy" (or combinations)
-	Restriction string
+	Restriction string `json:",omitempty"`
 
 	// UIDs are unique identifiers for the event (UID subordinates,
 	// repeatable in GEDCOM 7.0), in file order.
-	UIDs []string
+	UIDs []string `json:",omitempty"`
 
 	// SortDate is the date used for sorting events (SDATE subordinate, GEDCOM 7.0)
 	// Typically in ISO 8601 format (e.g., "1900-01-01")
-	SortDate string
+	SortDate string `json:",omitempty"`
 
 	// SortDatePhrase is the PHRASE under SDATE (GEDCOM 7.0). Written only
 	// beneath a SortDate.
-	SortDatePhrase string
+	SortDatePhrase string `json:",omitempty"`
 
 	// FamilyXRef is the family the event links the individual to as a
 	// child (FAMC subordinate of BIRT, CHR and ADOP), e.g. "@F1@". The
 	// encoder writes it only on an individual's BIRT, CHR or ADOP event that
 	// is not a NO assertion, the positions every version defines.
-	FamilyXRef string
+	FamilyXRef string `json:",omitempty"`
 
 	// AdoptedBy says which parent adopted the child (ADOP beneath an ADOP
 	// event's FAMC: HUSB, WIFE or BOTH). Written only beneath a FamilyXRef,
 	// and only on an ADOP event.
-	AdoptedBy string
+	AdoptedBy string `json:",omitempty"`
 
 	// AdoptedByPhrase is the PHRASE under that ADOP (GEDCOM 7.0). Written
 	// only beneath an AdoptedBy.
-	AdoptedByPhrase string
+	AdoptedByPhrase string `json:",omitempty"`
 
 	// IsNegative indicates this is a GEDCOM 7.0 negative assertion.
 	// When true, it means the event did NOT occur (e.g., NO MARR = never married).
@@ -236,24 +236,24 @@ type Event struct {
 	// Negated events share Individual.Events and Family.Events with the events
 	// that happened; OccurredEvents and NegativeAssertions on either type
 	// separate the two.
-	IsNegative bool
+	IsNegative bool `json:",omitempty"`
 
 	// SourceCitations are source citations with page/quality details
-	SourceCitations []*SourceCitation
+	SourceCitations []*SourceCitation `json:",omitempty"`
 
 	// Associations are links to individuals associated with this event
 	// (ASSO subordinate), e.g. witnesses, officiants or godparents
-	Associations []*Association
+	Associations []*Association `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on this event
 	// (NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 
 	// Media are references to media objects with optional crop/title
-	Media []*MediaLink
+	Media []*MediaLink `json:",omitempty"`
 }
 
 // PlaceName returns PlaceDetail.Name, or "" when no place is recorded.
