@@ -937,3 +937,22 @@ func TestZeroReader(t *testing.T) {
 		t.Errorf("CheckRefs(nil) = %v", got)
 	}
 }
+
+// The limit on the dataset is enforced while the decoder reads it, and the
+// error keeps ErrLimitExceeded through the decoder's own wrapping. The
+// central directory check normally refuses such an archive first, so the
+// limit is lowered after opening to reach the reader.
+func TestReaderDecodeReportsTheLimit(t *testing.T) {
+	archive := buildZip(t, file("gedcom.ged", minimalGED))
+	for _, strict := range []bool{true, false} {
+		r := mustReader(t, archive, nil)
+		r.limits.document = 10
+		opts := &decoder.DecodeOptions{StrictMode: strict}
+		if _, err := r.Decode(opts); !errors.Is(err, ErrLimitExceeded) {
+			t.Errorf("strict=%v: Decode error = %v, want ErrLimitExceeded", strict, err)
+		}
+		if _, err := r.DecodeWithDiagnostics(opts); !errors.Is(err, ErrLimitExceeded) {
+			t.Errorf("strict=%v: DecodeWithDiagnostics error = %v, want ErrLimitExceeded", strict, err)
+		}
+	}
+}

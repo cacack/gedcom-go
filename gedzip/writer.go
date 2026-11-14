@@ -68,17 +68,25 @@ var deflatedExtensions = map[string]bool{
 // time. It may be nil when the dataset has no local reference. doc is not
 // modified, and payloads are written as they are.
 //
-// The references are taken from the dataset as encoded, read back, rather
-// than from doc's typed media objects, because the two can differ: the
-// encoder writes a record from its Record.Tags when it has them, and for
-// GEDCOM 7 moves inline media links into new OBJE records. The archive
-// therefore always matches the gedcom.ged it holds.
+// The references, and the version, are taken from the dataset as encoded,
+// read back, rather than from doc's typed fields, because the two can differ:
+// the encoder writes a header or record from its Tags when it has them, and
+// builds one from the typed fields only when it has none, moving inline media
+// links into new OBJE records for GEDCOM 7. An inline OBJE structure the
+// encoder leaves in place, as it does in a decoded 5.5.1 record written with a
+// GEDCOM 7 TargetVersion, is a reference like any other: its FILE payloads
+// are checked and their files archived. The archive therefore always matches
+// the gedcom.ged it holds. The cost is one decode of the encoded dataset, so
+// Write holds doc, the encoded bytes and a second document in memory at once.
 //
 // Write refuses, before writing anything to w:
 //   - a nil doc ([encoder.ErrNilDocument]) or one the encoder rejects;
-//   - a dataset that would not be written as GEDCOM 7.x ([ErrNotGEDCOM7]):
-//     GEDZIP is a GEDCOM 7 format, and Write converts nothing, so convert the
-//     document with the converter package first;
+//   - a dataset that is not written as GEDCOM 7.x ([ErrNotGEDCOM7]): GEDZIP
+//     is a GEDCOM 7 format, and Write converts nothing, so convert the
+//     document with the converter package first. Both the version the
+//     encoder writes by (TargetVersion, else Header.Version) and the one the
+//     written header declares must be 7.x; setting Header.Version on a
+//     decoded document changes the first and not the second;
 //   - a file: URL, which must not be used in a GEDZIP, and a payload that is
 //     not a valid File Path (both [ErrNotLocal]);
 //   - a local reference to gedcom.ged, the dataset's own name, which the file
@@ -90,7 +98,17 @@ var deflatedExtensions = map[string]bool{
 // the specification but not forbidden, and are written like any other.
 //
 // An error after validation (w failing, or a media file that cannot be read
-// in full) leaves w holding an incomplete archive.
+// in full) leaves w holding an incomplete archive, so write to a temporary
+// file or a buffer and keep the result only when Write returns nil.
+//
+// Write copies whatever regular file a reference names, so when doc comes
+// from an untrusted source its author chooses which files of media are
+// published: give Write a media source that holds nothing else. os.DirFS
+// follows symbolic links, including ones that lead outside its directory.
+//
+// Write applies no size limit. An archive with more or larger media than the
+// [ReadOptions] defaults allow is written as asked, and [NewReader] then
+// refuses it until those limits are raised.
 func Write(w io.Writer, doc *gedcom.Document, media fs.FS, opts *WriteOptions) error {
 	var enc *encoder.EncodeOptions
 	if opts != nil {
@@ -100,7 +118,11 @@ func Write(w io.Writer, doc *gedcom.Document, media fs.FS, opts *WriteOptions) e
 	if err != nil {
 		return err
 	}
-	names, err := mediaEntries(dataset, media)
+	written, err := readBack(dataset)
+	if err != nil {
+		return err
+	}
+	names, err := mediaEntries(written, media)
 	if err != nil {
 		return err
 	}
@@ -121,14 +143,14 @@ func Write(w io.Writer, doc *gedcom.Document, media fs.FS, opts *WriteOptions) e
 }
 
 // encodeDataset returns doc encoded as the bytes of gedcom.ged, or
-// ErrNotGEDCOM7 when the encoder would not write it as GEDCOM 7.x.
+// ErrNotGEDCOM7 when the encoder would not write it by the GEDCOM 7 rules.
+// readBack then checks the version the bytes declare; both must be 7.x.
 func encodeDataset(doc *gedcom.Document, enc *encoder.EncodeOptions) ([]byte, error) {
 	if doc == nil {
 		return nil, fmt.Errorf("gedzip: %w", encoder.ErrNilDocument)
 	}
-	if v := writtenVersion(doc, enc); !isGEDCOM7(v) {
-		return nil, fmt.Errorf("%w: the dataset would be written as version %q; convert it with the converter package first",
-			ErrNotGEDCOM7, string(v))
+	if v := encoderVersion(doc, enc); strings.TrimSpace(string(v)) != string(v) || !isGEDCOM7(v) {
+		return nil, notGEDCOM7Error("would be written by the rules of", v)
 	}
 	var buf bytes.Buffer
 	var err error
@@ -143,9 +165,10 @@ func encodeDataset(doc *gedcom.Document, enc *encoder.EncodeOptions) ([]byte, er
 	return buf.Bytes(), nil
 }
 
-// writtenVersion is the version the encoder writes doc as: the options'
-// TargetVersion, or the header's version when no target is set.
-func writtenVersion(doc *gedcom.Document, enc *encoder.EncodeOptions) gedcom.Version {
+// encoderVersion is the version whose rules the encoder writes doc by: the
+// options' TargetVersion, or Header.Version when no target is set. A value
+// with surrounding whitespace is no version to the encoder.
+func encoderVersion(doc *gedcom.Document, enc *encoder.EncodeOptions) gedcom.Version {
 	if enc != nil && enc.TargetVersion != "" {
 		return enc.TargetVersion
 	}
@@ -155,25 +178,43 @@ func writtenVersion(doc *gedcom.Document, enc *encoder.EncodeOptions) gedcom.Ver
 	return ""
 }
 
-// isGEDCOM7 reports whether the encoder treats v as GEDCOM 7: any 7.x minor
-// or patch version, by the rule the decoder reads GEDC.VERS with. A value
-// with surrounding whitespace is no version to the encoder, so it is none
-// here.
-func isGEDCOM7(v gedcom.Version) bool {
-	s := string(v)
-	return strings.TrimSpace(s) == s && gedcvers.Parse(s) == gedcom.Version70
+// notGEDCOM7Error is the refusal of a dataset whose version v is not 7.x.
+func notGEDCOM7Error(how string, v gedcom.Version) error {
+	return fmt.Errorf("%w: the dataset %s version %q; convert it with the converter package first",
+		ErrNotGEDCOM7, how, string(v))
 }
 
-// mediaEntries returns the entry names, sorted and distinct, of the local
-// files that dataset (an encoded gedcom.ged) references, having checked that
-// each is a regular file in media. Every reference Write refuses is reported,
-// once per distinct payload, in one joined error.
-func mediaEntries(dataset []byte, media fs.FS) ([]string, error) {
+// readBack decodes dataset, an encoded gedcom.ged, or returns ErrNotGEDCOM7
+// when it does not declare GEDCOM 7.x. The version is read from the bytes as
+// well as predicted (see encodeDataset) because the two can differ: without a
+// TargetVersion the encoder writes a header's GEDC.VERS from its Tags when it
+// has them, whatever Header.Version says.
+func readBack(dataset []byte) (*gedcom.Document, error) {
 	written, err := decoder.Decode(bytes.NewReader(dataset))
 	if err != nil {
 		return nil, fmt.Errorf("gedzip: read back the encoded %s: %w", datasetName, err)
 	}
+	var v gedcom.Version
+	if written.Header != nil {
+		v = written.Header.Version
+	}
+	if !isGEDCOM7(v) {
+		return nil, notGEDCOM7Error("declares", v)
+	}
+	return written, nil
+}
 
+// isGEDCOM7 reports whether v is GEDCOM 7: any 7.x minor or patch version, by
+// the rule the decoder reads GEDC.VERS with.
+func isGEDCOM7(v gedcom.Version) bool {
+	return gedcvers.Parse(string(v)) == gedcom.Version70
+}
+
+// mediaEntries returns the entry names, sorted and distinct, of the local
+// files that written (the dataset, read back) references, having checked that
+// each is a regular file in media. Every reference Write refuses is reported,
+// once per distinct payload, in one joined error.
+func mediaEntries(written *gedcom.Document, media fs.FS) ([]string, error) {
 	var names []string
 	var problems []error
 	seen := make(map[string]bool)
@@ -212,7 +253,7 @@ func localEntry(ref string, media fs.FS) (string, error) {
 		return "", notLocalError(ref, kind)
 	}
 	if name == datasetName {
-		return "", fmt.Errorf("%w: %q is the dataset's own entry; rename the file", ErrReservedName, ref)
+		return "", reservedNameError(ref)
 	}
 	if media == nil {
 		return "", fmt.Errorf("%w: %q (no media source)", ErrMissingMedia, name)

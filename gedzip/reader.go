@@ -437,7 +437,9 @@ func (r *Reader) openDataset() (io.ReadCloser, error) {
 // checksum does not match what the archive declares.
 //
 // "gedcom.ged" opens the dataset's raw bytes, under
-// [ReadOptions.MaxDocumentBytes].
+// [ReadOptions.MaxDocumentBytes]. That is access to the dataset, not to a
+// media file: a FILE payload that names it is one [Reader.CheckRefs] reports,
+// so check a document's references before serving them through Open.
 func (r *Reader) Open(fileRef string) (io.ReadCloser, error) {
 	kind, name := ClassifyFileRef(fileRef)
 	if kind != RefLocal {
@@ -533,6 +535,10 @@ func (r *Reader) FS() fs.FS {
 			dir := path.Dir(name)
 			_, known := fsys.dirs[dir]
 			fsys.dirs[dir] = append(fsys.dirs[dir], child)
+			// Stop at a directory already linked to its parent, and at a
+			// name that is also a media file ("a" beside "a/b"): that name
+			// is listed as the file, not as a directory
+			// (TestReaderFSFileAndDirectoryOfOneName).
 			if known || r.isMediaName(dir) {
 				break
 			}

@@ -156,3 +156,55 @@ func TestReaderCheckRefsNothingToReport(t *testing.T) {
 		t.Errorf("CheckRefs(empty) = %+v, want nil", got)
 	}
 }
+
+// A reference to gedcom.ged names the dataset, which is no media file: Write
+// refuses it, so CheckRefs reports it although the entry exists.
+func TestReaderCheckRefsReportsTheDatasetName(t *testing.T) {
+	const ged = "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @O1@ OBJE\n1 FILE gedcom.ged\n2 FORM text/plain\n" +
+		"1 FILE gedcom%2Eged\n2 FORM text/plain\n0 TRLR\n"
+	r := mustReader(t, buildZip(t, file("gedcom.ged", ged)), nil)
+	doc, err := r.Decode(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := r.CheckRefs(doc)
+	if len(got) != 2 {
+		t.Fatalf("CheckRefs() reported %d problems, want 2: %+v", len(got), got)
+	}
+	for _, p := range got {
+		if p.Kind != RefLocal || !errors.Is(p.Err, ErrReservedName) {
+			t.Errorf("problem = %+v, want a RefLocal ErrReservedName", p)
+		}
+	}
+}
+
+// Inline OBJE structures in the Tags of other records carry FILE payloads
+// too: GEDCOM 7 has none, but a dataset written from 5.5.1 records can.
+func TestCollectFileRefsReadsInlineStructures(t *testing.T) {
+	const ged = "0 HEAD\n1 GEDC\n2 VERS 7.0\n" +
+		"0 @I1@ INDI\n" +
+		"1 OBJE @O1@\n" + // a pointer: no FILE beneath it
+		"1 FILE not-under-obje.jpg\n" +
+		"1 BIRT\n2 OBJE\n3 FILE @@a.jpg\n4 FORM jpeg\n4 TRAN a.png\n3 TITL t\n3 TRAN stray.png\n" +
+		"2 FILE not-under-obje-either.jpg\n" +
+		"1 OBJE\n2 TITL t\n3 FILE too-deep.jpg\n2 FILE c.jpg\n" +
+		"1 NOTE n\n2 FILE after-obje.jpg\n" +
+		"0 @O1@ OBJE\n1 FILE o.jpg\n2 FORM image/jpeg\n0 TRLR\n"
+	r := mustReader(t, buildZip(t, file("gedcom.ged", ged)), nil)
+	doc, err := r.Decode(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A nil tag is tolerated.
+	doc.Records[0].Tags = append(doc.Records[0].Tags, nil)
+
+	want := []fileRef{
+		{xref: "@I1@", ref: "@a.jpg"}, // unescaped as the decoder reads a payload
+		{xref: "@I1@", ref: "a.png", translation: true},
+		{xref: "@I1@", ref: "c.jpg"},
+		{xref: "@O1@", ref: "o.jpg"},
+	}
+	if got := collectFileRefs(doc); !reflect.DeepEqual(got, want) {
+		t.Errorf("collectFileRefs() =\n%+v\nwant\n%+v", got, want)
+	}
+}

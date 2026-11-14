@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -483,12 +484,91 @@ func TestWriteReportsEveryRefusedReference(t *testing.T) {
 	}
 }
 
-// TestMediaEntriesRejectsAnUnreadableDataset covers the guard behind the
+// TestReadBackRejectsAnUnreadableDataset covers the guard behind the
 // read-back: bytes the decoder cannot read name no references to trust.
-func TestMediaEntriesRejectsAnUnreadableDataset(t *testing.T) {
-	_, err := mediaEntries([]byte("not a dataset"), nil)
+func TestReadBackRejectsAnUnreadableDataset(t *testing.T) {
+	_, err := readBack([]byte("not a dataset"))
 	if err == nil || !strings.Contains(err.Error(), "read back") {
-		t.Errorf("mediaEntries error = %v, want a read-back failure", err)
+		t.Errorf("readBack error = %v, want a read-back failure", err)
+	}
+}
+
+// TestWriteVersionIsTheOneWritten pins the GEDCOM 7 check to the bytes as
+// well as to the prediction: the encoder writes a decoded header from its
+// Tags but chooses its rules by Header.Version, so a document on which the
+// two disagree is not a GEDCOM 7 dataset either way round.
+func TestWriteVersionIsTheOneWritten(t *testing.T) {
+	const body = "0 @I1@ INDI\n0 TRLR\n"
+
+	old := decodeGED(t, "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n"+body)
+	old.Header.Version = gedcom.Version70
+	current := decodeGED(t, "0 HEAD\n1 GEDC\n2 VERS 7.0\n"+body)
+	current.Header.Version = gedcom.Version551
+
+	for name, doc := range map[string]*gedcom.Document{
+		"5.5.1 tags, Header.Version 7.0": old,
+		"7.0 tags, Header.Version 5.5.1": current,
+	} {
+		t.Run(name, func(t *testing.T) {
+			var buf bytes.Buffer
+			if err := Write(&buf, doc, nil, nil); !errors.Is(err, ErrNotGEDCOM7) {
+				t.Errorf("Write error = %v, want ErrNotGEDCOM7", err)
+			}
+			if buf.Len() != 0 {
+				t.Errorf("%d bytes written on refusal", buf.Len())
+			}
+		})
+	}
+}
+
+// TestWriteCoversInlineMedia writes a decoded 5.5.1 document as 7.0. The
+// encoder writes its records from their Tags, so the inline OBJE structure
+// stays in the dataset, and its FILE payloads are references like any other.
+func TestWriteCoversInlineMedia(t *testing.T) {
+	inline := func(lines ...string) *gedcom.Document {
+		return decodeGED(t, "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n"+
+			"0 @I1@ INDI\n1 BIRT\n"+strings.Join(lines, "\n")+"\n1 OBJE @O1@\n"+
+			"0 @O1@ OBJE\n1 FILE notes.html\n2 FORM html\n0 TRLR\n")
+	}
+	opts := &WriteOptions{Encode: &encoder.EncodeOptions{TargetVersion: gedcom.Version70}}
+
+	doc := inline("2 OBJE", "3 FILE media/a%20b.jpg", "4 FORM jpeg", "1 OBJE", "2 FILE media/thumb.png", "3 FORM png")
+	r := mustReader(t, mustWrite(t, doc, writeMediaFS(), opts), nil)
+	want := []string{"media/a b.jpg", "media/thumb.png", "notes.html"}
+	if got := mediaNames(r); !slices.Equal(got, want) {
+		t.Errorf("entries = %q, want %q", got, want)
+	}
+	written, err := r.Decode(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if problems := r.CheckRefs(written); problems != nil {
+		t.Errorf("CheckRefs = %+v, want none", problems)
+	}
+
+	refusals := []struct {
+		name string
+		doc  *gedcom.Document
+		want error
+	}{
+		{"missing", inline("1 OBJE", "2 FILE media/absent.jpg"), ErrMissingMedia},
+		{"file URL", inline("1 OBJE", "2 FILE file:///tmp/a.jpg"), ErrNotLocal},
+		{"dataset name", inline("1 OBJE", "2 FILE gedcom.ged"), ErrReservedName},
+	}
+	for _, tt := range refusals {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			err := Write(&buf, tt.doc, writeMediaFS(), opts)
+			if !errors.Is(err, tt.want) {
+				t.Errorf("Write error = %v, want %v", err, tt.want)
+			}
+			if err != nil && !strings.Contains(err.Error(), "@I1@") {
+				t.Errorf("error %q does not name the record", err)
+			}
+			if buf.Len() != 0 {
+				t.Errorf("%d bytes written on refusal", buf.Len())
+			}
+		})
 	}
 }
 
