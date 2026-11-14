@@ -604,8 +604,11 @@ types and the value types they hold) carries `json` struct tags, so
   Gregorian and "no modifier" are values. `SourceCitation.Quality` is a
   pointer, so a quality of 0 is written and only a missing one is omitted.
 
-Nothing is lost: reading the JSON back gives a model equal to the one written,
-`Tags` included. Two steps are the caller's, because the library has no JSON
+No value is lost: reading the JSON back gives the model that was written,
+`Tags` included, with one difference in form. An empty slice or map is omitted
+like a nil one, so it reads back as nil: `len` is 0 either way, but
+`reflect.DeepEqual` tells them apart (a new document's `Records`, or the
+`TagMappings` of a 7.0 header whose `SCHMA` has no `TAG`). Two steps are the caller's, because the library has no JSON
 reader of its own. `Record.Entity` is an interface, so `encoding/json` reads it
 as a `map[string]interface{}` — unmarshal that member into the type
 `Record.Type` names — and `XRefMap` is rebuilt with `Document.ReindexXRefs()`.
