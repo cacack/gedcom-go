@@ -17,7 +17,9 @@
 // The walk visits every value of a document, so its per-value cost is what a
 // large file pays (#846). It allocates nothing until it finds a nil: the path
 // is a stack of steps rendered only by report, and each struct type's fields
-// are planned once per walk.
+// are planned once per walk. The plan leaves out what the types alone show
+// can never hold a nil element, so a value such as a Tag, which has no slice
+// and no interface below it, is nil-checked and not entered.
 
 package validator
 
@@ -104,6 +106,9 @@ type nilWalker struct {
 
 	// fields caches, per struct type, the fields that can hold a nil element.
 	fields map[reflect.Type][]nilField
+
+	// holders caches canHoldElements per type.
+	holders map[reflect.Type]bool
 
 	// onPath holds the pointers between the walk's root and its current
 	// position. A hand-built value can be cyclic (a Date whose EndDate is
@@ -202,7 +207,7 @@ func (w *nilWalker) fieldsOf(t reflect.Type) []nilField {
 	}
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
-		if f.IsExported() && mayHoldElements(f.Type.Kind()) {
+		if f.IsExported() && w.canHold(f.Type) {
 			fields = append(fields, nilField{index: i, name: f.Name})
 		}
 	}
@@ -215,11 +220,12 @@ func (w *nilWalker) fieldsOf(t reflect.Type) []nilField {
 
 // walkElements reports each nil element of a slice or array and walks the rest.
 func (w *nilWalker) walkElements(v reflect.Value) {
-	elemKind := v.Type().Elem().Kind()
-	if !mayHoldElements(elemKind) {
+	elem := v.Type().Elem()
+	nilable := elem.Kind() == reflect.Pointer || elem.Kind() == reflect.Interface
+	descend := w.canHold(elem)
+	if !nilable && !descend {
 		return
 	}
-	nilable := elemKind == reflect.Pointer || elemKind == reflect.Interface
 	last := len(w.steps)
 	w.steps = append(w.steps, nilStep{isIndex: true})
 	for i := 0; i < v.Len(); i++ {
@@ -229,18 +235,51 @@ func (w *nilWalker) walkElements(v reflect.Value) {
 			w.report()
 			continue
 		}
-		w.walk(e)
+		if descend {
+			w.walk(e)
+		}
 	}
 	w.steps = w.steps[:last]
 }
 
-// mayHoldElements reports whether a value of kind k can be, or contain, a
-// nil element. Strings, numbers and the like cannot, and are not walked.
-func mayHoldElements(k reflect.Kind) bool {
-	switch k {
-	case reflect.Pointer, reflect.Interface, reflect.Struct, reflect.Slice, reflect.Array:
-		return true
-	default:
-		return false
+// canHold is canHoldElements, cached per type.
+func (w *nilWalker) canHold(t reflect.Type) bool {
+	holds, ok := w.holders[t]
+	if ok {
+		return holds
 	}
+	holds = canHoldElements(t, make(map[reflect.Type]bool))
+	if w.holders == nil {
+		w.holders = make(map[reflect.Type]bool)
+	}
+	w.holders[t] = holds
+	return holds
+}
+
+// canHoldElements reports whether walking a non-nil value of type t could
+// report anything: whether a nilable slice or array element, or an interface,
+// is reachable from it through exported fields. A type from which none is
+// reachable is not walked. seen holds the struct types already being searched,
+// which is what ends the search of a type that contains itself.
+func canHoldElements(t reflect.Type, seen map[reflect.Type]bool) bool {
+	switch t.Kind() {
+	case reflect.Interface:
+		return true
+	case reflect.Pointer:
+		return canHoldElements(t.Elem(), seen)
+	case reflect.Slice, reflect.Array:
+		k := t.Elem().Kind()
+		return k == reflect.Pointer || k == reflect.Interface || canHoldElements(t.Elem(), seen)
+	case reflect.Struct:
+		if seen[t] {
+			return false
+		}
+		seen[t] = true
+		for i := 0; i < t.NumField(); i++ {
+			if f := t.Field(i); f.IsExported() && canHoldElements(f.Type, seen) {
+				return true
+			}
+		}
+	}
+	return false
 }
