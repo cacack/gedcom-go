@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0](https://github.com/cacack/gedcom-go/compare/v3.7.0...v3.8.0) (2026-11-14)
+
+
+### Features
+
+* **gedzip:** classify GEDCOM 7 file paths for GEDZip ([#127](https://github.com/cacack/gedcom-go/issues/127)) ([c94516e](https://github.com/cacack/gedcom-go/commit/c94516e9844523b0a66f4326a679a9e3a42639cd))
+* **gedzip:** cover inline media and check the written version ([#127](https://github.com/cacack/gedcom-go/issues/127)) ([48b3d06](https://github.com/cacack/gedcom-go/commit/48b3d0635b1b5f7caa6bf4bbf387b80fd456ee84))
+* **gedzip:** read GEDZip archives with bounded, lazy media access ([#127](https://github.com/cacack/gedcom-go/issues/127)) ([1eee19b](https://github.com/cacack/gedcom-go/commit/1eee19b1dc88d2c80db94b9a8b62f4e4c106592b))
+* **gedzip:** write GEDZip archives from a document and a media fs.FS ([#127](https://github.com/cacack/gedcom-go/issues/127)) ([5129a27](https://github.com/cacack/gedcom-go/commit/5129a27a7087b00c6b0537582ee120be3889f3cf))
+
 ## [3.7.0](https://github.com/cacack/gedcom-go/compare/v3.6.0...v3.7.0) (2026-11-13)
 
 
