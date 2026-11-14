@@ -45,7 +45,7 @@ Plus vintage-platform coverage (PAF, Family Origins, The Master Genealogist, My 
 
 Full compatibility matrix: [docs/governance/policies/compatibility.md](docs/governance/policies/compatibility.md)
 
-**GEDCOM Specification**: Full support for 5.5, 5.5.1, and 7.0
+**GEDCOM Specification**: GEDCOM 5.5, 5.5.1, and FamilySearch GEDCOM 7.0 (release 7.0.18; the 7.0 grammar is pinned to [FamilySearch/GEDCOM commit `b2900a1`](testdata/spec/gedcom-7.0/SOURCE)), plus GEDZIP archives. Measured per-structure coverage: [7.0](docs/reference/gedcom-7-coverage.md), [5.5/5.5.1](docs/reference/gedcom-5.5-coverage.md).
 
 ## Installation
 
