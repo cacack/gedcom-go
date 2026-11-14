@@ -4,15 +4,15 @@ package gedcom
 // Used by CHAN (change date) and CREA (creation date) tags.
 type ChangeDate struct {
 	// Date is the date of the change (in GEDCOM date format)
-	Date string
+	Date string `json:",omitempty"`
 
 	// Time is the time of the change (in HH:MM:SS format)
-	Time string
+	Time string `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on this change date
 	// (NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 }

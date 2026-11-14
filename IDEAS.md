@@ -16,4 +16,3 @@ Unvetted ideas and rough concepts. When ready to implement, create a GitHub issu
 ## API Ideas
 
 - **Fluent builder API**: Build documents with method chaining
-- **JSON struct tags**: Add json tags to types for easy serialization

@@ -3,31 +3,31 @@ package gedcom
 // Family represents a family unit (husband, wife, and children).
 type Family struct {
 	// XRef is the cross-reference identifier for this family
-	XRef string
+	XRef string `json:",omitempty"`
 
 	// Restriction is the record's restriction notice (RESN); see
 	// Individual.Restriction.
-	Restriction string
+	Restriction string `json:",omitempty"`
 
 	// Husband is the XRef to the husband individual
-	Husband string
+	Husband string `json:",omitempty"`
 
 	// HusbandPhrase is the PHRASE under HUSB (GEDCOM 7.0), e.g. describing
 	// a husband recorded as @VOID@. Written only beneath a Husband.
-	HusbandPhrase string
+	HusbandPhrase string `json:",omitempty"`
 
 	// Wife is the XRef to the wife individual
-	Wife string
+	Wife string `json:",omitempty"`
 
 	// WifePhrase is the PHRASE under WIFE (GEDCOM 7.0). Written only beneath
 	// a Wife.
-	WifePhrase string
+	WifePhrase string `json:",omitempty"`
 
 	// Children are XRefs to child individuals.
 	//
 	// A CHIL's PHRASE (GEDCOM 7.0) has no typed field: Children is a plain
 	// XRef slice, so it stays in Tags (ADR 0010).
-	Children []string
+	Children []string `json:",omitempty"`
 
 	// ChildLinks are the per-child relationships to the father and mother
 	// that vendor exports record under a CHIL line as _FREL and _MREL
@@ -37,7 +37,7 @@ type Family struct {
 	// first CHIL in Children with the same XRef that has no link yet; a link
 	// whose XRef is not in Children is not written. On a decoded family,
 	// edits reach the output only through encoder.SyncTags. See ChildLink.
-	ChildLinks []ChildLink
+	ChildLinks []ChildLink `json:",omitempty"`
 
 	// Events contains family events (marriage, divorce, etc.) in file order.
 	//
@@ -45,55 +45,55 @@ type Family struct {
 	// events with IsNegative set: a record that an event did NOT happen, not a
 	// fact that it did. Use OccurredEvents for the events that happened and
 	// NegativeAssertions for the NO assertions.
-	Events []*Event
+	Events []*Event `json:",omitempty"`
 
 	// Attributes contains family attributes (NCHI, FACT).
 	// This is the family counterpart of Individual.Attributes.
 	//
 	// CENS and RESI are not here: they decode into Events, matching how
 	// Individual models the same two tags.
-	Attributes []*Attribute
+	Attributes []*Attribute `json:",omitempty"`
 
 	// SourceCitations are source citations with page/quality details
-	SourceCitations []*SourceCitation
+	SourceCitations []*SourceCitation `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on this record
 	// (1 NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 
 	// Media are references to media objects with optional crop/title
-	Media []*MediaLink
+	Media []*MediaLink `json:",omitempty"`
 
 	// LDSOrdinances are LDS (Latter-Day Saints) ordinances (SLGS - spouse sealing)
-	LDSOrdinances []*LDSOrdinance
+	LDSOrdinances []*LDSOrdinance `json:",omitempty"`
 
 	// ChangeDate is when the record was last modified (CHAN tag)
-	ChangeDate *ChangeDate
+	ChangeDate *ChangeDate `json:",omitempty"`
 
 	// CreationDate is when the record was created (CREA tag, GEDCOM 7.0)
-	CreationDate *ChangeDate
+	CreationDate *ChangeDate `json:",omitempty"`
 
 	// RefNumbers are user reference numbers (REFN tags, repeatable), each
 	// with its optional TYPE, in file order.
-	RefNumbers []RefNumber
+	RefNumbers []RefNumber `json:",omitempty"`
 
 	// UIDs are unique identifiers (UID tags, repeatable in GEDCOM 7.0), in
 	// file order.
-	UIDs []string
+	UIDs []string `json:",omitempty"`
 
 	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
 	// Links this record to external systems like FamilySearch, Ancestry, etc.
-	ExternalIDs []*ExternalID
+	ExternalIDs []*ExternalID `json:",omitempty"`
 
 	// Tags contains all raw tags for this family (for unknown/custom tags),
 	// a lossless read-side record per ADR 0003. While Record.Tags is non-empty
 	// it does not drive encoding; a record written from its entity appends
 	// the extension (_-prefixed) level-1 tags here after its typed fields.
 	// See Record.Tags for the rule that governs what a decoded record writes.
-	Tags []*Tag
+	Tags []*Tag `json:",omitempty"`
 }
 
 // ChildLink is a child's relationship to each parent of a family, from the
@@ -111,15 +111,15 @@ type Family struct {
 type ChildLink struct {
 	// XRef is the child the relationships describe, matching an entry in
 	// Family.Children.
-	XRef string
+	XRef string `json:",omitempty"`
 
 	// FatherRelation is the _FREL value: the child's relationship to the
 	// family's husband.
-	FatherRelation string
+	FatherRelation string `json:",omitempty"`
 
 	// MotherRelation is the _MREL value: the child's relationship to the
 	// family's wife.
-	MotherRelation string
+	MotherRelation string `json:",omitempty"`
 }
 
 // LinkForChild returns the first ChildLink whose XRef is xref, or nil if the

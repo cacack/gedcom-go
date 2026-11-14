@@ -39,18 +39,18 @@ type Record struct {
 	// XRef is the cross-reference identifier (e.g., "@I1@", "@F1@").
 	// It cannot contain a line break; the encoder rejects one
 	// (encoder.ErrLineBreak).
-	XRef string
+	XRef string `json:",omitempty"`
 
 	// Type is the record type (INDI, FAM, SOUR, etc.).
 	// It cannot contain a line break; the encoder rejects one
 	// (encoder.ErrLineBreak).
-	Type RecordType
+	Type RecordType `json:",omitempty"`
 
 	// Value is the value from the level 0 line (used for NOTE records, etc.).
 	// It is written as read while Tags is non-empty; a NOTE or SNOTE record
 	// written from its Entity takes its value from the entity's Text instead
 	// when that is non-empty, and falls back to Value when it is empty.
-	Value string
+	Value string `json:",omitempty"`
 
 	// Tags contains all the tags that make up this record, in document order.
 	//
@@ -87,15 +87,19 @@ type Record struct {
 	// reverts an edit made to Tags alone, and converter.Convert edits Tags
 	// without keeping every Entity field in step: encode and decode converted
 	// output before making typed edits on it.
-	Tags []*Tag
+	Tags []*Tag `json:",omitempty"`
 
 	// LineNumber is the line number where the record starts
-	LineNumber int
+	LineNumber int `json:",omitempty"`
 
 	// Parsed entity (one of: Individual, Family, Source, Repository, Note,
 	// MediaObject, Submitter, Submission, SharedNote)
-	// Will be populated during decoding based on the Type
-	Entity interface{}
+	// Will be populated during decoding based on the Type.
+	//
+	// encoding/json writes the entity but, Entity being an interface, reads it
+	// back as a map[string]interface{}: unmarshal that member into the type
+	// Type names to get the typed entity again.
+	Entity interface{} `json:",omitempty"`
 }
 
 // The Is* and Get* accessors below never panic. A nil *Record receiver, and an

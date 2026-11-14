@@ -1,15 +1,21 @@
 package gedcom
 
 // Document represents a complete GEDCOM file with all its records.
+//
+// The document model carries json struct tags so that encoding/json writes
+// each record once and leaves out what is absent: XRefMap is not written, and
+// a field is omitted when its zero value means absent. Member names are the Go
+// field names. Tag.Level, Date.Calendar and Date.Modifier are always written,
+// because their zero is a value (level 0, Gregorian, an exact date).
 type Document struct {
 	// Header contains file metadata
-	Header *Header
+	Header *Header `json:",omitempty"`
 
 	// Records contains all top-level records (individuals, families, sources, etc.)
-	Records []*Record
+	Records []*Record `json:",omitempty"`
 
 	// Trailer marks the end of the file
-	Trailer *Trailer
+	Trailer *Trailer `json:",omitempty"`
 
 	// XRefMap provides fast lookup of records by cross-reference ID
 	// Map key is the XRef (e.g., "@I1@"), value is the Record.
@@ -18,15 +24,18 @@ type Document struct {
 	// holds the first: the decoder keeps both records, maps the first and
 	// reports the second as DUPLICATE_XREF, and Clone, Subset and merge.Combine
 	// follow the same first-definition rule.
-	XRefMap map[string]*Record
+	//
+	// It is an index over Records rather than data, so encoding/json does not
+	// write it; call ReindexXRefs on a document read back from JSON.
+	XRefMap map[string]*Record `json:"-"`
 
 	// Vendor identifies the software that created this GEDCOM file.
 	// Detected from the HEAD.SOUR tag during decoding.
-	Vendor Vendor
+	Vendor Vendor `json:",omitempty"`
 
 	// Schema contains GEDCOM 7.0 schema definitions that map custom tags to URIs.
 	// Extracted from the HEAD.SCHMA structure during decoding.
-	Schema *SchemaDefinition
+	Schema *SchemaDefinition `json:",omitempty"`
 }
 
 // GetRecord returns the record with the given cross-reference ID.

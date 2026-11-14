@@ -529,14 +529,19 @@ fmt.Printf("%v\n", ind.SpouseInFamilies)
 ```
 
 The same silence covers any `any`/`interface{}` hand-off and a `text/template`
-`{{range .SpouseInFamilies}}` whose body prints the element. `Individual`
-carries no struct tags, so anything serialising it with `encoding/json` or
-`encoding/gob` also changes wire shape with no build error:
+`{{range .SpouseInFamilies}}` whose body prints the element. Anything
+serialising `Individual` with `encoding/json` or `encoding/gob` also changes
+wire shape with no build error:
 
 ```text
 v2: ["@F1@"]
-v3: [{"FamilyXRef":"@F1@","Pedigree":"","NoteXRefs":null,"InlineNotes":null}]
+v3: [{"FamilyXRef":"@F1@"}]
 ```
+
+The JSON on the `v3` lines of this guide is what v3.9.0 and later write. The
+model carried no `json` struct tags before v3.9.0, so v3.0.0 to v3.8.0 also
+write each empty member (here `"Pedigree":"","NoteXRefs":null,"InlineNotes":null`);
+see [JSON Struct Tags](../../FEATURES.md#json-struct-tags).
 
 `len(ind.SpouseInFamilies)` is the reassuring case: still one entry per `FAMS`
 line, so a count does not change.
@@ -649,7 +654,8 @@ with `1 DATE` alone.
 **Every site that uses the value as a `time.Time` is a compile error.** Sites
 that only print or serialise it do not break: `%v` changes from
 `0001-01-01 00:00:00 +0000 UTC` to the date text, and `encoding/json` from
-`"0001-01-01T00:00:00Z"` to the date text or `""`. Since v2 only ever held the
+`"0001-01-01T00:00:00Z"` to the date text, or to no `Date` member when the
+header has none (`""` before v3.9.0). Since v2 only ever held the
 zero value there, no real data is lost by the change — but grep for
 `Header.Date` as well as building.
 
@@ -731,7 +737,7 @@ field keeps compiling and changes shape:
 
 ```text
 v2: "Birth record shows..."
-v3: [{"Value":"Birth record shows...","MIME":"","Language":""}]
+v3: [{"Value":"Birth record shows..."}]
 ```
 
 `SourceCitationData` is also no longer comparable, so `*a == *b` on two values,
@@ -939,7 +945,7 @@ unchanged — they already kept every line.
 
 ```text
 v2: "RefNumber":"1234","UID":"abc"
-v3: "RefNumbers":[{"Value":"1234","Type":""}],"UIDs":["abc"]
+v3: "RefNumbers":[{"Value":"1234"}],"UIDs":["abc"]
 ```
 
 Emptiness checks change form: `x.UID != ""` becomes `len(x.UIDs) > 0`, with

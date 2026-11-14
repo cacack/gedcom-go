@@ -108,6 +108,28 @@ a renumbered constant, a new default for a zero value, a removed map key, a
 reinterpreted field — still requires a major, with everything listed above.
 When unsure, treat it as a major.
 
+#### Struct tags on the document model in minor releases
+
+A second exception to the first requirement, by owner decision of 2026-11-13
+([#754](https://github.com/cacack/gedcom-go/issues/754)). Adding or changing
+struct tags on the document model (the types reachable from a
+`gedcom.Document`) MAY ship in a MINOR release — never a PATCH — although it
+changes what a reflection-driven serialiser such as `encoding/json` writes for
+an unchanged document. That output is derived from the Go field set, was never
+a documented contract, and already changes with every
+[added struct field](#non-breaking-minor-or-patch), which is non-breaking; a
+tag change stands on the same footing. It requires:
+
+1. A row in [Behaviour changes in minor releases](#behaviour-changes-in-minor-releases)
+   giving the old and new output and what a caller must do.
+2. A commit body stating that the change alters serialised output, and naming
+   that table.
+3. A `make api-check` that shows no incompatible signature changes.
+
+This admits tags only. Once a serialised form is documented as a contract, a
+change to it is a semantic break like any other, and a change to a typed
+value, a signature or encoded GEDCOM bytes is never covered by this exception.
+
 Known members of this category:
 
 | Change | Release | Caller impact |
@@ -127,9 +149,10 @@ Known members of this category:
 
 ### Behaviour changes in minor releases
 
-Conformance fixes shipped under
-[Conformance fixes in minor releases](#conformance-fixes-in-minor-releases).
-No signature changed and `apidiff` reports none of them; each row says what a
+Changes shipped under
+[Conformance fixes in minor releases](#conformance-fixes-in-minor-releases) or
+[Struct tags on the document model in minor releases](#struct-tags-on-the-document-model-in-minor-releases);
+a row that is not a conformance fix says which. No signature changed and `apidiff` reports none of them; each row says what a
 caller relying on the old behaviour now sees.
 
 | Change | Release | Caller impact |
@@ -239,6 +262,7 @@ caller relying on the old behaviour now sees.
 | A repeated GEDCOM 7.0 name piece keeps every value, and the decoder types citation `DATA.DATE.TIME`/`PHRASE`, `PLAC.EXID` and the `MIME`/`LANG`/`TRAN` of an individual's inline `NOTE` ([#787](https://github.com/cacack/gedcom-go/issues/787)) | v3.7.0 | A conformance fix: 7.0 allows `GIVN`, `SURN`, `NPFX`, `NSFX`, `NICK` and `SPFX` to repeat (`{0:M}`), and the decoder kept only the last of each. Old: `2 GIVN Alex` then `2 GIVN Alexander` gave `Given` `"Alexander"`; new: `Given` is the first value, `"Alex"`, and the later ones are in the new `AdditionalGiven` (likewise `AdditionalSurnames`, `AdditionalPrefixes`, `AdditionalSuffixes`, `AdditionalNicknames`, `AdditionalSurnamePrefixes`). A name with one of each piece, which is every conforming 5.5/5.5.1 name, is unchanged; a 5.x file that repeats one anyway (one `NICK` in `testdata/`) now reads the first. The new `SourceCitationData.Time`/`DatePhrase`, `PlaceDetail.ExternalIDs` and `Individual.InlineNoteDetails` are filled on decode; the raw lines stay in `Record.Tags` and no diagnostic changes. A record encoded from its entity (`Record.Tags` cleared, or hand-built) now writes all of these where the encoder dropped them, repeats after the first value of their piece. An empty first piece with repeats after it is written as an empty line, so the repeats read back as repeats. `RequiresGEDCOM7`/`MinimumVersion` now return true/`Version70` for a document with a repeated name piece, a citation `DATA.DATE` `TIME` or `PHRASE`, a `PLAC` `EXID`, or an inline-note `MIME`/`LANG`/`TRAN` on an individual, since 5.5.1 has none of them; a 5.x file that repeats a name piece now reports 7.0. The coverage report moves `PLAC`'s `EXID` row to `typed`. A caller that wants the old `Given` takes the last element of `AdditionalGiven` when it is non-empty. |
 | `converter.Convert` maps a multimedia record's `FILE.FORM` (and, to 7.0, `FILE.TRAN.FORM`) in `Record.Tags` ([#777](https://github.com/cacack/gedcom-go/issues/777)) | v3.7.0 | The media type mapping rewrote only the typed `MediaObject`, which the conversion then re-derived from the untouched `Tags`, so a decoded `FORM JPG` was still written as `JPG` in 7.0 output (and `image/jpeg` in 5.x output) while the report claimed a `MEDIA_TYPE_MAPPED` change. Output bytes, `Record.Tags` and the re-derived `MediaFile.Form` now carry the mapped value (`image/jpeg`, `JPG`). To 5.x the `FORM` of each inline `OBJE` link (`OBJE.FORM`, `OBJE.FILE.FORM`) is mapped too, after a 7.0 -> 5.5 conversion turns `OBJE` records into inline links (#794), so those links carry the 5.5 value and its `Approximated` note is at the link's path (once per link) rather than the record's; a record that conversion drops as unlinked is no longer reported as mapped. A 5.5 record's level-1 `FORM` that a 5.5 -> 7.0 conversion moves under its `FILE` (#794) is mapped there. On a downgrade a `FILE.TRAN.FORM` is no longer reported as mapped, since the 7.0-only `TRAN` is dropped (and reported dropped). |
 | `parser.RecordIterator`, `Records`, `RecordIteratorWithOffset`, `RecordsWithOffset` and `LazyParser` skip a leading UTF-8 BOM ([#792](https://github.com/cacack/gedcom-go/issues/792)) | v3.7.0 | A BOM at the start of the input (file offset 0 for `LazyParser`) was read as part of the first line, so `BuildIndex` and iteration failed with "invalid level number" on any BOM-prefixed file. It is now skipped: those inputs index and iterate, and `ByteOffset` counts the BOM, so the first record starts at 3. Input without a BOM, and readers already wrapped with `charset.NewReader`, see no change. |
+| The `gedcom` document model carries `json` struct tags: `Document.XRefMap` is not marshalled and absent fields are omitted ([#754](https://github.com/cacack/gedcom-go/issues/754)) | v3.9.0 | Not a conformance fix: a struct-tag change, shipped under [Struct tags on the document model in minor releases](#struct-tags-on-the-document-model-in-minor-releases) and listed because `encoding/json` output changes on an unchanged document, while no signature, typed value or encoded GEDCOM byte does. It ships in a minor because the JSON shape was never a contract — the model had no struct tags, no document specifies a JSON form (the [v3 migration guide](../../guides/migration-v3.md) prints a few members only to show that retypes change them, and now prints the new output), and every release that added a field already changed it. Old: `json.Marshal(doc)` wrote every record twice, once in `Records` and once under `XRefMap`, and wrote every member whatever its value (`"Sex":""`, `"Events":null`, `"LineNumber":0`); `pres2020.ged` (1.1 MB) gave 29.0 MB. New: there is no `XRefMap` member, and a member is omitted when its zero value means absent (an empty string, a nil or empty slice or map, a nil pointer, a `false`, a `0` count, day, month, year or line number); the same file gives 8.3 MB. Member names are unchanged, `Tag.Level`, `Date.Calendar` and `Date.Modifier` are always written, and a `SourceCitation.Quality` of 0 is written because the field is a pointer. A caller unmarshalling into the `gedcom` types gets the same values as before, with two exceptions. `Document.XRefMap` is nil until `Document.ReindexXRefs()` is called; the map it used to read back pointed at copies of the records rather than at those in `Records`. And an empty, non-nil slice or map, which was written as `[]` or `{}` and read back empty, is now omitted and reads back as nil. A reader in another language must take records from `Records` rather than `XRefMap` and treat a missing member as its zero value. |
 
 ## Accepted Future Breaks
 

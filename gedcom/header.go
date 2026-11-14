@@ -6,7 +6,7 @@ type Header struct {
 	// from the file's tags when the header declares none, so do not use it
 	// for identifier-grammar decisions: use Document.IsPointerXRef, which
 	// reads DeclaredVersion.
-	Version Version
+	Version Version `json:",omitempty"`
 
 	// DeclaredVersion is the version the header declares (HEAD.GEDC.VERS),
 	// set by the decoder, by converter.Convert to a different version or
@@ -26,12 +26,12 @@ type Header struct {
 	// update it to match. For a header with no Tags the encoder writes
 	// GEDC.VERS from Version (or EncodeOptions.TargetVersion), never from
 	// DeclaredVersion.
-	DeclaredVersion Version
+	DeclaredVersion Version `json:",omitempty"`
 
 	// Encoding is the character encoding the file declares (HEAD.CHAR),
 	// verbatim. It may differ from the encoding the decoder applied: see
 	// DetectedEncoding.
-	Encoding Encoding
+	Encoding Encoding `json:",omitempty"`
 
 	// DetectedEncoding is the encoding the decoder actually decoded the
 	// file's bytes as: EncodingUTF8, EncodingANSEL, EncodingASCII,
@@ -49,27 +49,27 @@ type Header struct {
 	// input only: the encoder never writes it, and the converter and merge
 	// do not maintain it (a converted header keeps the source's value, and a
 	// merged header keeps doc1's).
-	DetectedEncoding Encoding
+	DetectedEncoding Encoding `json:",omitempty"`
 
 	// SourceSystem identifies the software that created the file
-	SourceSystem string
+	SourceSystem string `json:",omitempty"`
 
 	// SourceVersion is the version of the source software (HEAD.SOUR.VERS),
 	// verbatim. Empty when the tag is absent. It is a read view filled by the
 	// decoder: Tags governs encoding, so setting it on a decoded document does
 	// not change the encoded header, and the encoder never writes it for a
 	// header built in memory.
-	SourceVersion string
+	SourceVersion string `json:",omitempty"`
 
 	// SourceName is the source software's product name (HEAD.SOUR.NAME),
 	// verbatim. Empty when the tag is absent. Like SourceVersion, it is a read
 	// view: Tags governs encoding and the encoder never writes it.
-	SourceName string
+	SourceName string `json:",omitempty"`
 
 	// SourceCorporation is the business that owns the source software
 	// (HEAD.SOUR.CORP), or nil when the tag is absent. Like SourceVersion, it
 	// is a read view: Tags governs encoding and the encoder never writes it.
-	SourceCorporation *Corporation
+	SourceCorporation *Corporation `json:",omitempty"`
 
 	// SourceData is the electronic data source the file was taken from
 	// (HEAD.SOUR.DATA), or nil when the tag is absent; a DATA with no
@@ -78,12 +78,12 @@ type Header struct {
 	// file's: that is Copyright. Like
 	// SourceVersion, it is a read view: Tags governs encoding and the encoder
 	// never writes it.
-	SourceData *HeaderSourceData
+	SourceData *HeaderSourceData `json:",omitempty"`
 
 	// Destination is the system the file is intended for (HEAD.DEST),
 	// verbatim. Empty when the tag is absent. Like SourceVersion, it is a read
 	// view: Tags governs encoding and the encoder never writes it.
-	Destination string
+	Destination string `json:",omitempty"`
 
 	// Date is the transmission date from HEAD.DATE, verbatim as the file
 	// wrote it (for example "7 AUG 2026"). It is a GEDCOM DATE_EXACT value,
@@ -91,24 +91,24 @@ type Header struct {
 	// this package (see ADR 0001); call ParseDate for a structured value.
 	//
 	// HEAD.DATE.TIME is typed separately, as Time.
-	Date string
+	Date string `json:",omitempty"`
 
 	// Time is the transmission time from HEAD.DATE.TIME, verbatim (for
 	// example "13:45:02"). Empty when the tag is absent. It is a read view
 	// filled by the decoder: Tags governs encoding, so setting it on a decoded
 	// document does not change the encoded header, and a header built in
 	// memory, with no Tags, gets "1 DATE" and no TIME line.
-	Time string
+	Time string `json:",omitempty"`
 
 	// Language is the primary language used in the file, from HEAD.LANG
 	// (optional). A LANG nested deeper, such as a 7.0 HEAD.NOTE.LANG, is the
 	// language of that structure and does not set it.
-	Language string
+	Language string `json:",omitempty"`
 
 	// Copyright is the file's copyright notice, from HEAD.COPR (optional).
 	// HEAD.SOUR.DATA.COPR is the source data's copyright and is
 	// SourceData.Copyright instead.
-	Copyright string
+	Copyright string `json:",omitempty"`
 
 	// Submitter is the cross-reference pointer to the SUBM record that
 	// names whoever produced the file, in "@U1@" form (optional).
@@ -120,19 +120,19 @@ type Header struct {
 	// resolve it -- Document.GetSubmitter, Document.Subset -- treat a
 	// value they cannot resolve to a SUBM record as absent rather than
 	// reporting it.
-	Submitter string
+	Submitter string `json:",omitempty"`
 
 	// PlaceForm is the default place hierarchy from HEAD.PLAC.FORM, verbatim
 	// (for example "City, County, State, Country"): the jurisdiction list that
 	// interprets every PLAC value in the file that has no FORM of its own.
 	// Empty when the tag is absent. Like SourceVersion, it is a read view:
 	// Tags governs encoding and the encoder never writes it.
-	PlaceForm string
+	PlaceForm string `json:",omitempty"`
 
 	// AncestryTreeID is the Ancestry.com tree identifier from HEAD.SOUR._TREE.
 	// This is an Ancestry.com vendor extension that identifies the family tree
 	// this GEDCOM was exported from.
-	AncestryTreeID string
+	AncestryTreeID string `json:",omitempty"`
 
 	// Tags contains all raw header sub-tags in document order, providing a
 	// lossless record of the header (including custom/unmapped tags such as
@@ -144,7 +144,7 @@ type Header struct {
 	// therefore does not change the encoded header — call encoder.SyncTags
 	// after the edit, edit the matching tag, or, to change version, use the
 	// converter. See the encoder package documentation for the full rule.
-	Tags []*Tag
+	Tags []*Tag `json:",omitempty"`
 }
 
 // HeaderSourceData is the DATA structure under HEAD.SOUR: the electronic data
@@ -153,16 +153,16 @@ type Header struct {
 // it, it is a read view: Header.Tags governs encoding.
 type HeaderSourceData struct {
 	// Name is the name of the source data (the DATA value).
-	Name string
+	Name string `json:",omitempty"`
 
 	// Date is the source data's publication date (DATA.DATE), verbatim.
-	Date string
+	Date string `json:",omitempty"`
 
 	// Time is the time of that date (DATA.DATE.TIME, GEDCOM 7.0), verbatim.
-	Time string
+	Time string `json:",omitempty"`
 
 	// Copyright is the source data's copyright notice (DATA.COPR).
-	Copyright string
+	Copyright string `json:",omitempty"`
 }
 
 // Corporation is the CORP structure under HEAD.SOUR: the business that owns
@@ -171,24 +171,24 @@ type HeaderSourceData struct {
 // encoding.
 type Corporation struct {
 	// Name is the corporation's name (the CORP value).
-	Name string
+	Name string `json:",omitempty"`
 
 	// Address is the corporation's postal address (ADDR), or nil.
-	Address *Address
+	Address *Address `json:",omitempty"`
 
 	// Phone holds the corporation's phone numbers (PHON, {0:3}), in document
 	// order. PHON is a sibling of ADDR in ADDRESS_STRUCTURE, not part of it.
-	Phone []string
+	Phone []string `json:",omitempty"`
 
 	// Email holds the corporation's email addresses (EMAIL, {0:3}, GEDCOM
 	// 5.5.1+), in document order.
-	Email []string
+	Email []string `json:",omitempty"`
 
 	// Fax holds the corporation's fax numbers (FAX, {0:3}, GEDCOM 5.5.1+), in
 	// document order.
-	Fax []string
+	Fax []string `json:",omitempty"`
 
 	// Website holds the corporation's web addresses (WWW, {0:3}, GEDCOM
 	// 5.5.1+), in document order.
-	Website []string
+	Website []string `json:",omitempty"`
 }

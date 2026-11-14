@@ -5,61 +5,61 @@ import "strings"
 // Repository represents a physical or digital location where sources are stored.
 type Repository struct {
 	// XRef is the cross-reference identifier for this repository
-	XRef string
+	XRef string `json:",omitempty"`
 
 	// Name is the repository name
-	Name string
+	Name string `json:",omitempty"`
 
 	// Address is the physical address (ADDR).
-	Address *Address
+	Address *Address `json:",omitempty"`
 
 	// Phone holds the repository's phone numbers (PHON, {0:3}), in document
 	// order. PHON is a sibling of ADDR in ADDRESS_STRUCTURE, not part of it.
-	Phone []string
+	Phone []string `json:",omitempty"`
 
 	// Email holds the repository's email addresses (EMAIL, {0:3}, GEDCOM
 	// 5.5.1+), in document order.
-	Email []string
+	Email []string `json:",omitempty"`
 
 	// Fax holds the repository's fax numbers (FAX, {0:3}, GEDCOM 5.5.1+), in
 	// document order.
-	Fax []string
+	Fax []string `json:",omitempty"`
 
 	// Website holds the repository's web addresses (WWW, {0:3}, GEDCOM
 	// 5.5.1+), in document order.
-	Website []string
+	Website []string `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@").
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on this record
 	// (1 NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 
 	// ChangeDate is when the record was last modified (CHAN tag)
-	ChangeDate *ChangeDate
+	ChangeDate *ChangeDate `json:",omitempty"`
 
 	// CreationDate is when the record was created (CREA tag, GEDCOM 7.0)
-	CreationDate *ChangeDate
+	CreationDate *ChangeDate `json:",omitempty"`
 
 	// RefNumbers are user reference numbers (REFN tags, repeatable), each
 	// with its optional TYPE, in file order.
-	RefNumbers []RefNumber
+	RefNumbers []RefNumber `json:",omitempty"`
 
 	// UIDs are unique identifiers (UID tags, repeatable in GEDCOM 7.0, or
 	// the _UID vendor extension in 5.5/5.5.1), in file order.
-	UIDs []string
+	UIDs []string `json:",omitempty"`
 
 	// ExternalIDs are external identifiers (EXID tags, GEDCOM 7.0).
 	// Links this record to external systems like FamilySearch, Ancestry, etc.
-	ExternalIDs []*ExternalID
+	ExternalIDs []*ExternalID `json:",omitempty"`
 
 	// Tags contains all raw tags for this repository (for unknown/custom tags),
 	// a lossless read-side record per ADR 0003. While Record.Tags is non-empty
 	// it does not drive encoding; a record written from its entity appends
 	// the extension (_-prefixed) level-1 tags here after its typed fields.
 	// See Record.Tags for the rule that governs what a decoded record writes.
-	Tags []*Tag
+	Tags []*Tag `json:",omitempty"`
 }
 
 // AllNotes returns this repository's inline notes followed by the text of any
@@ -73,7 +73,7 @@ func (r *Repository) AllNotes(doc *Document) []string {
 // Used when a Source references a repository by name rather than by XRef.
 type InlineRepository struct {
 	// Name is the repository name
-	Name string
+	Name string `json:",omitempty"`
 }
 
 // SourceRepositoryLink is one of a Source's references to a Repository, with
@@ -85,26 +85,26 @@ type SourceRepositoryLink struct {
 	// XRef is the repository pointer, e.g. "@R1@". XRef and Inline are
 	// mutually exclusive: when XRef is non-empty, Inline is nil (the decoder
 	// enforces this even for malformed input that carries both).
-	XRef string
+	XRef string `json:",omitempty"`
 
 	// Inline is set when the source references the repository by name rather
 	// than by XRef (i.e. the GEDCOM has `1 REPO` with a name value and no
 	// separate repository record).
-	Inline *InlineRepository
+	Inline *InlineRepository `json:",omitempty"`
 
 	// CallNumbers holds the link's CALN entries in source order, each with
 	// its own MEDI media type (multiple CALNs are allowed per GEDCOM spec,
 	// and each CALN carries at most one MEDI). Two CALNs with the same text
 	// but different MEDI values stay separate entries.
-	CallNumbers []*CallNumber
+	CallNumbers []*CallNumber `json:",omitempty"`
 
 	// NoteXRefs are XRef pointers to shared NOTE/SNOTE records (e.g. "@N1@")
 	// carried by NOTE subordinates of the REPO link (not the source).
-	NoteXRefs []string
+	NoteXRefs []string `json:",omitempty"`
 
 	// InlineNotes are note text values written directly on the REPO link
 	// (NOTE <text> form, including CONT/CONC continuations).
-	InlineNotes []string
+	InlineNotes []string `json:",omitempty"`
 }
 
 // CallNumber is one CALN entry of a source's repository link, together with
@@ -119,15 +119,15 @@ type SourceRepositoryLink struct {
 type CallNumber struct {
 	// Value is the call number text (the CALN line value). It may be empty:
 	// a CALN line with no value can still carry a MEDI.
-	Value string
+	Value string `json:",omitempty"`
 
 	// MediaType is the MEDI value (book, manuscript, VIDEO, etc.), stored as
 	// written. Empty when the CALN has no MEDI subordinate.
-	MediaType string
+	MediaType string `json:",omitempty"`
 
 	// MediaPhrase is the free-text PHRASE under MEDI (GEDCOM 7.0), typically
 	// used with MEDI OTHER to describe the medium. Empty when absent.
-	MediaPhrase string
+	MediaPhrase string `json:",omitempty"`
 }
 
 // Address represents the ADDR structure: the address text written on the ADDR
@@ -153,32 +153,32 @@ type Address struct {
 	// the ADDR value from Full alone, never from Line1-Line3, so a hand-built
 	// address sets Full for its ADDR text. To read the address text whichever
 	// of Full or Line1-Line3 holds it, call Text.
-	Full string
+	Full string `json:",omitempty"`
 
 	// Line1 is the ADR1 value only. It is empty when the address has no ADR1,
 	// even when the ADDR payload is set; the payload lives in Full. Like
 	// Line2 and Line3 it is a single line: the grammar gives ADR1-ADR3 no
 	// CONT, so the encoder writes a line break in one as a space. To read the
 	// address text whichever of Full or Line1-Line3 holds it, call Text.
-	Line1 string
+	Line1 string `json:",omitempty"`
 
 	// Line2 is the ADR2 value (optional)
-	Line2 string
+	Line2 string `json:",omitempty"`
 
 	// Line3 is the ADR3 value (optional)
-	Line3 string
+	Line3 string `json:",omitempty"`
 
 	// City is the city name
-	City string
+	City string `json:",omitempty"`
 
 	// State is the state/province
-	State string
+	State string `json:",omitempty"`
 
 	// PostalCode is the postal/zip code
-	PostalCode string
+	PostalCode string `json:",omitempty"`
 
 	// Country is the country name
-	Country string
+	Country string `json:",omitempty"`
 }
 
 // Address must stay comparable: every subordinate of ADDR is {0:1}, so no

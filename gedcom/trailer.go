@@ -4,5 +4,5 @@ package gedcom
 // The trailer is always a single line "0 TRLR" in valid GEDCOM files.
 type Trailer struct {
 	// LineNumber is the line number where the trailer appears
-	LineNumber int
+	LineNumber int `json:",omitempty"`
 }

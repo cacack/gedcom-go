@@ -18,5 +18,5 @@ package gedcom
 //	    2 TAG _FACEBOOK https://www.facebook.com/
 type SchemaDefinition struct {
 	// TagMappings maps tag names to URIs (e.g., "_SKYPEID" -> "http://xmlns.com/foaf/0.1/skypeID")
-	TagMappings map[string]string
+	TagMappings map[string]string `json:",omitempty"`
 }

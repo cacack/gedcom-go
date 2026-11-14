@@ -16,9 +16,9 @@ package gedcom
 //	  2 TYPE Ancestral File
 type RefNumber struct {
 	// Value is the user reference number string.
-	Value string
+	Value string `json:",omitempty"`
 
 	// Type is the user-defined reference type (from the TYPE subordinate).
 	// Empty when no TYPE was given.
-	Type string
+	Type string `json:",omitempty"`
 }
