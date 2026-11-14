@@ -589,6 +589,29 @@ copy := doc.Clone()  // pure function; original unchanged
 `gedcom.CloneTags([]*Tag) []*Tag` is the slice complement to
 `Tag.Clone()`.
 
+### JSON Struct Tags
+
+The document model (`Document`, `Header`, `Record`, `Tag`, the nine entity
+types and the value types they hold) carries `json` struct tags, so
+`encoding/json` writes a document at a small multiple of the file:
+`pres2020.ged` (1.1 MB) marshals to 8.3 MB, where it was 29.0 MB.
+
+- `Document.XRefMap` is `json:"-"`. It indexes the records already in
+  `Records`, and used to write every record a second time.
+- Every other field is `omitempty` where its zero value means absent. Member
+  names are the Go field names.
+- `Tag.Level`, `Date.Calendar` and `Date.Modifier` are always written: level 0,
+  Gregorian and "no modifier" are values. `SourceCitation.Quality` is a
+  pointer, so a quality of 0 is written and only a missing one is omitted.
+
+Nothing is lost: reading the JSON back gives a model equal to the one written,
+`Tags` included. Two steps are the caller's, because the library has no JSON
+reader of its own. `Record.Entity` is an interface, so `encoding/json` reads it
+as a `map[string]interface{}` — unmarshal that member into the type
+`Record.Type` names — and `XRefMap` is rebuilt with `Document.ReindexXRefs()`.
+This is struct metadata, not a JSON export format: the shape follows the Go
+types and gains a member whenever a type gains a field.
+
 ### Merge Primitives
 
 The `merge` package provides mechanical building blocks for combining
