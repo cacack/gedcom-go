@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.0](https://github.com/cacack/gedcom-go/compare/v3.8.0...v3.9.0) (2026-11-14)
+
+
+### Features
+
+* **gedcom:** add EventGeneric constant for the generic EVEN tag ([#775](https://github.com/cacack/gedcom-go/issues/775)) ([b8e56b1](https://github.com/cacack/gedcom-go/commit/b8e56b1d61ff76a2b69071a558af6c59d521dc53))
+* **gedcom:** add json struct tags to the document model ([#754](https://github.com/cacack/gedcom-go/issues/754)) ([bc1118c](https://github.com/cacack/gedcom-go/commit/bc1118cb73a534de8b698a565bb075f70f0658f3)), closes [#37](https://github.com/cacack/gedcom-go/issues/37)
+
+
+### Performance Improvements
+
+* **validator:** skip types that cannot hold a nil element ([#846](https://github.com/cacack/gedcom-go/issues/846)) ([c412c1e](https://github.com/cacack/gedcom-go/commit/c412c1e99a284a5a5be9badd4064bf43c2631c8a))
+* **validator:** stop the nil-element walk allocating per value ([#846](https://github.com/cacack/gedcom-go/issues/846)) ([6ad34f5](https://github.com/cacack/gedcom-go/commit/6ad34f58140925f1c617da31b0d557d2cbfe9d0d))
+
 ## [3.8.0](https://github.com/cacack/gedcom-go/compare/v3.7.0...v3.8.0) (2026-11-14)
 
 
