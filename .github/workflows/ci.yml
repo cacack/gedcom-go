@@ -324,7 +324,7 @@ jobs:
 
     # osv-scanner: Full-lockfile OSV vulnerability scan (complements govulncheck's reachability analysis)
     - name: Run osv-scanner
-      uses: google/osv-scanner-action/osv-scanner-action@b1d267aea5211fa648d9d442fa64b90dbdcbdd36 # v2.7.0
+      uses: google/osv-scanner-action/osv-scanner-action@32d3cd482bdadfb38b186c0ad1b031902d55d932 # v2.7.1
       continue-on-error: true  # Non-blocking initially; promote to blocking after evaluation period
       with:
         scan-args: |-
