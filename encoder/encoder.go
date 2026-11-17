@@ -703,8 +703,11 @@ func checkLine(level int, xref, tag, value string) error {
 		}
 		// Level 0 was checked by checkRecordLine, which also admits the
 		// unterminated "@I1" a lenient decode recovers; below it the parser
-		// recovers no such shape, so the identifier must be closed.
-		if level > 0 && !closedXRefReadsBack(xref) {
+		// recovers no such shape, so the identifier must be closed. A lone
+		// "@" also reads back: the parser takes a lone "@" field before a tag
+		// as a whole identifier, so a lenient decode of "1 @ NOTE x" holds it
+		// and must re-encode (#851).
+		if level > 0 && xref != "@" && !closedXRefReadsBack(xref) {
 			return fmt.Errorf("level %d tag %q xref %q: %w", level, tag, xref, ErrMalformedLine)
 		}
 	}
