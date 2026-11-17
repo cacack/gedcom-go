@@ -2,11 +2,8 @@ package decoder_test
 
 import (
 	"bytes"
-	"errors"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
@@ -102,9 +99,6 @@ func walkDocument(doc *gedcom.Document) {
 	}
 }
 
-// numericTagLine matches an encoded line whose tag is all digits (#851).
-var numericTagLine = regexp.MustCompile(`(?m)^\d+ \d+( |$)`)
-
 // FuzzDecodeRoundTrip holds the decoder and encoder to Lossless
 // Representation on arbitrary bytes: whatever a lenient decode recovers, the
 // encoder writes without error, and decoding that output gives the same
@@ -114,6 +108,8 @@ var numericTagLine = regexp.MustCompile(`(?m)^\d+ \d+( |$)`)
 func FuzzDecodeRoundTrip(f *testing.F) {
 	addTestdataSeeds(f)
 	f.Add([]byte("0 HEAD\n0 @NOTE@ NOTE some text\n1 CONC @NOTE@ more\n0 TRLR\n"))
+	f.Add([]byte("0 0 000000"))
+	f.Add([]byte("0 HEAD\n0 @I1@ INDI\n1 @ NOTE x\n0 TRLR\n"))
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		first, err := decoder.Decode(bytes.NewReader(data))
@@ -123,21 +119,7 @@ func FuzzDecodeRoundTrip(f *testing.F) {
 
 		var out1 bytes.Buffer
 		if err := encoder.Encode(&out1, first); err != nil {
-			// Known soft-invariant class (#851): below level 0 the parser
-			// reads a lone "@" before a tag ("1 @ NOTE x") as an identifier,
-			// which the encoder refuses to write.
-			if errors.Is(err, encoder.ErrMalformedLine) && strings.Contains(err.Error(), `xref "@"`) {
-				return
-			}
 			t.Fatalf("Encode() of a decoded document error = %v", err)
-		}
-
-		// Known soft-invariant class (#851, the residue of #427): the parser
-		// looks for the tag from the start of a line with no XRef, so an
-		// all-digit tag is found inside the level ("1 1 x" reads as value
-		// "1 x") and the line grows on every round trip.
-		if numericTagLine.Match(out1.Bytes()) {
-			return
 		}
 
 		second, err := decoder.Decode(bytes.NewReader(out1.Bytes()))
