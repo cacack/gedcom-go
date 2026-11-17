@@ -850,8 +850,9 @@ func newRecord(line *parser.Line) *gedcom.Record {
 // newTag returns the raw tag a subordinate line is kept as.
 //
 // XRef is carried through even at level >= 1. Well-formed GEDCOM never has an
-// XRef there, so this is empty for valid input; it is non-empty only when
-// splitSpacedXRef recovered a malformed identifier (e.g. "1 @I 1@ NOTE").
+// XRef there, so this is empty for valid input; it is non-empty when the
+// line carries one anyway: closed ("1 @X1@ NOTE"), a lone "@" ("1 @ NOTE"),
+// or a malformed identifier splitSpacedXRef recovered ("1 @I 1@ NOTE").
 // Lossless representation requires keeping it rather than dropping it on the
 // floor.
 func newTag(line *parser.Line) *gedcom.Tag {

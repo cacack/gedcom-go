@@ -205,6 +205,8 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 // re-encoded, so the line grows on every round trip.
 func sliceValue(line, xref, tag string) string {
 	// Skip the level field: leading whitespace, then its run of non-space.
+	// unicode.IsSpace is the whitespace strings.Fields splits on in ParseLine,
+	// so this ends exactly where parts[0] does.
 	rest := strings.TrimLeftFunc(line, unicode.IsSpace)
 	searchFrom := len(line) - len(rest)
 	if end := strings.IndexFunc(rest, unicode.IsSpace); end >= 0 {

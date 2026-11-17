@@ -190,14 +190,15 @@
 // Level is outside 1-99 (0 is the zero value, and would open a record
 // mid-record) or is 99 with a multi-line Value, for an empty tag name or one
 // containing whitespace, for a [gedcom.Record].XRef that does not open with
-// "@" or a [gedcom.Tag].XRef not closed by "@", for an identifier whose
+// "@" or a [gedcom.Tag].XRef not closed by "@" (other than a lone "@"), for an identifier whose
 // whitespace the parser would split differently (see [ErrMalformedLine]), and
 // for a record typed HEAD or TRLR with no XRef. It returns [ErrInvalidUTF8] for a value, tag name
 // or identifier that is not valid UTF-8, the charset the output declares.
 // Each error names the record (or HEAD) and the line. A decoded document never
 // trips any of them: a record identifier with no closing "@" ("@I1") or a
-// spaced one with no tag after it ("0 @I 1@"), which a lenient decode
-// recovers, is accepted and written back verbatim. Other
+// spaced one with no tag after it ("0 @I 1@"), or a lone "@" before the tag
+// of a subordinate line ("1 @ NOTE x"), which a lenient decode recovers, is
+// accepted and written back verbatim. Other
 // characters are written verbatim.
 //
 // Lines already written when the error is found stay written, as with a write
