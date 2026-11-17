@@ -83,6 +83,16 @@ func TestParseLine(t *testing.T) {
 			description: "Fuzz-minimized #851 input that grew by one field per round trip",
 		},
 		{
+			name:        "sign tag on a signed level",
+			input:       "+1 + x",
+			wantLevel:   1,
+			wantTag:     "+",
+			wantValue:   "x",
+			wantXRef:    "",
+			wantErr:     false,
+			description: "Any tag whose text appears in the level field, not only digits, must be found after it (#851)",
+		},
+		{
 			name:        "level 1 with value",
 			input:       "1 NAME John /Smith/",
 			wantLevel:   1,
