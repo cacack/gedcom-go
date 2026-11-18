@@ -42,11 +42,7 @@ func main() {
 	fmt.Printf("Found %d individuals:\n", len(individuals))
 	for i, ind := range individuals {
 		if i < 10 { // Show first 10
-			name := ""
-			if len(ind.Names) > 0 {
-				name = ind.Names[0].Full
-			}
-			fmt.Printf("%s: %s", ind.XRef, name)
+			fmt.Printf("%s: %s", ind.XRef, ind.FullName())
 			if ind.Sex != "" {
 				fmt.Printf(" (%s)", ind.Sex)
 			}
@@ -73,8 +69,8 @@ func main() {
 		person := doc.GetIndividual(targetXRef)
 		if person != nil {
 			fmt.Printf("Found individual %s:\n", targetXRef)
-			if len(person.Names) > 0 {
-				fmt.Printf("  Name: %s\n", person.Names[0].Full)
+			if name := person.FullName(); name != "" {
+				fmt.Printf("  Name: %s\n", name)
 			}
 			fmt.Printf("  Sex: %s\n", person.Sex)
 
@@ -121,21 +117,8 @@ func main() {
 	}
 
 	// Example 3: List all families
-	// Using the new relationship traversal API (HusbandIndividual/WifeIndividual)
-	// instead of manual cross-reference lookups.
-	//
-	// OLD approach (8 lines per spouse):
-	//   if fam.Husband != "" {
-	//       husband := doc.GetIndividual(fam.Husband)
-	//       if husband != nil && len(husband.Names) > 0 {
-	//           fmt.Printf(" %s", husband.Names[0].Full)
-	//       }
-	//   }
-	//
-	// NEW approach (2 lines per spouse):
-	//   if husband := fam.HusbandIndividual(doc); husband != nil && len(husband.Names) > 0 {
-	//       fmt.Printf(" %s", husband.Names[0].Full)
-	//   }
+	// HusbandIndividual/WifeIndividual resolve the spouse XRefs to typed
+	// *Individual values, so no manual doc.GetIndividual lookup is needed.
 	fmt.Println("\n=== All Families ===")
 	families := doc.Families()
 	fmt.Printf("Found %d families:\n", len(families))
@@ -143,16 +126,17 @@ func main() {
 		if i < 5 { // Show first 5
 			fmt.Printf("%s:", fam.XRef)
 
-			// Get husband and wife names using the new convenience methods
-			if husband := fam.HusbandIndividual(doc); husband != nil && len(husband.Names) > 0 {
-				fmt.Printf(" %s", husband.Names[0].Full)
+			// FullName is nil-safe, so an unresolved or nameless spouse yields "".
+			husband := fam.HusbandIndividual(doc).FullName()
+			if husband != "" {
+				fmt.Printf(" %s", husband)
 			}
 
-			if wife := fam.WifeIndividual(doc); wife != nil && len(wife.Names) > 0 {
-				if fam.Husband != "" {
-					fmt.Printf(" & %s", wife.Names[0].Full)
+			if wife := fam.WifeIndividual(doc).FullName(); wife != "" {
+				if husband != "" {
+					fmt.Printf(" & %s", wife)
 				} else {
-					fmt.Printf(" %s", wife.Names[0].Full)
+					fmt.Printf(" %s", wife)
 				}
 			}
 
@@ -193,9 +177,8 @@ func main() {
 	}
 
 	// Example 6: Relationship Traversal API
-	// The new relationship traversal methods eliminate verbose manual cross-reference
-	// lookups. Instead of getting XRef strings and calling doc.GetIndividual() yourself,
-	// these methods handle it automatically and return typed *Individual or *Family.
+	// Parents, Spouses, Children and AllMembers follow the XRef links for you
+	// and return typed *Individual values.
 	fmt.Println("\n=== Relationship Traversal ===")
 
 	// Find an individual with family relationships to demonstrate traversal
@@ -209,49 +192,27 @@ func main() {
 	}
 
 	if targetPerson != nil {
-		name := ""
-		if len(targetPerson.Names) > 0 {
-			name = targetPerson.Names[0].Full
-		}
-		fmt.Printf("Traversing relationships for: %s (%s)\n", name, targetPerson.XRef)
+		fmt.Printf("Traversing relationships for: %s (%s)\n", targetPerson.FullName(), targetPerson.XRef)
 
-		// Get parents using the new API
-		// OLD: loop through ChildInFamilies, get Family, check Husband/Wife, call GetIndividual
-		// NEW: single call to Parents(doc)
+		// Parents across every family the person is a child in
 		parents := targetPerson.Parents(doc)
 		fmt.Printf("\n  Parents (%d):\n", len(parents))
 		for _, parent := range parents {
-			parentName := ""
-			if len(parent.Names) > 0 {
-				parentName = parent.Names[0].Full
-			}
-			fmt.Printf("    - %s (%s)\n", parentName, parent.XRef)
+			fmt.Printf("    - %s (%s)\n", parent.FullName(), parent.XRef)
 		}
 
-		// Get spouses using the new API (handles remarriage automatically)
-		// OLD: loop through SpouseInFamilies, get Family, determine which spouse is "other"
-		// NEW: single call to Spouses(doc)
+		// Spouses across every family the person is a spouse in (handles remarriage)
 		spouses := targetPerson.Spouses(doc)
 		fmt.Printf("\n  Spouses (%d):\n", len(spouses))
 		for _, spouse := range spouses {
-			spouseName := ""
-			if len(spouse.Names) > 0 {
-				spouseName = spouse.Names[0].Full
-			}
-			fmt.Printf("    - %s (%s)\n", spouseName, spouse.XRef)
+			fmt.Printf("    - %s (%s)\n", spouse.FullName(), spouse.XRef)
 		}
 
-		// Get children using the new API
-		// OLD: loop through SpouseInFamilies, get Family, loop through Children XRefs
-		// NEW: single call to Children(doc)
+		// Children across every family the person is a spouse in
 		children := targetPerson.Children(doc)
 		fmt.Printf("\n  Children (%d):\n", len(children))
 		for _, child := range children {
-			childName := ""
-			if len(child.Names) > 0 {
-				childName = child.Names[0].Full
-			}
-			fmt.Printf("    - %s (%s)\n", childName, child.XRef)
+			fmt.Printf("    - %s (%s)\n", child.FullName(), child.XRef)
 		}
 
 		// Demonstrate Family traversal methods
@@ -268,11 +229,7 @@ func main() {
 			if demoFamily != nil {
 				fmt.Printf("\n  Family %s members using AllMembers():\n", demoFamily.XRef)
 				for _, member := range demoFamily.AllMembers(doc) {
-					memberName := ""
-					if len(member.Names) > 0 {
-						memberName = member.Names[0].Full
-					}
-					fmt.Printf("    - %s (%s)\n", memberName, member.XRef)
+					fmt.Printf("    - %s (%s)\n", member.FullName(), member.XRef)
 				}
 			}
 		}
