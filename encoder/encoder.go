@@ -40,7 +40,7 @@ var ErrLineBreak = errors.New("line break in tag or cross-reference identifier")
 //     tag would be read back shifted into the value;
 //   - a [gedcom.Record].XRef that does not open with "@" -- "0 I1 INDI" is
 //     read back as a record of type I1 -- or a [gedcom.Tag].XRef not closed
-//     by "@" at both ends;
+//     by "@" at both ends, other than a lone "@";
 //   - an identifier holding whitespace that the parser would split
 //     differently: one with a further "@" inside ("@A@ SUBM @B@" reads as
 //     "@A@" of type SUBM), with no ASCII space among its whitespace, or
@@ -702,9 +702,8 @@ func checkLine(level int, xref, tag, value string) error {
 			return fmt.Errorf("level %d tag %q xref: %w", level, tag, ErrInvalidUTF8)
 		}
 		// Level 0 was checked by checkRecordLine, which also admits the
-		// unterminated "@I1" a lenient decode recovers; below it the parser
-		// recovers no such shape, so the identifier must be closed.
-		if level > 0 && !closedXRefReadsBack(xref) {
+		// unterminated "@I1" a lenient decode recovers.
+		if level > 0 && !subordinateXRefReadsBack(xref) {
 			return fmt.Errorf("level %d tag %q xref %q: %w", level, tag, xref, ErrMalformedLine)
 		}
 	}
@@ -712,6 +711,16 @@ func checkLine(level int, xref, tag, value string) error {
 		return fmt.Errorf("level %d tag %q value: %w", level, tag, ErrInvalidUTF8)
 	}
 	return nil
+}
+
+// subordinateXRefReadsBack reports whether xref, on a subordinate line, reads
+// back as the identifier before the tag. The parser recovers no unterminated
+// shape there, so the identifier must be closed (closedXRefReadsBack), with
+// one exception: the parser takes a lone "@" field before a tag as a whole
+// identifier, so a lenient decode of "1 @ NOTE x" holds XRef "@", and it must
+// re-encode (#851).
+func subordinateXRefReadsBack(xref string) bool {
+	return xref == "@" || closedXRefReadsBack(xref)
 }
 
 // closedXRefReadsBack reports whether xref, delimited by "@" at both ends,

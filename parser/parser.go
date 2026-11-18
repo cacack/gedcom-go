@@ -7,6 +7,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/cacack/gedcom-go/v3/internal/clip"
 )
@@ -196,18 +197,27 @@ func (p *Parser) ParseLine(input string) (*Line, error) {
 // original interior spacing — which is why it works on the raw line rather
 // than on the split fields.
 //
-// The search starts after the XRef, if there is one. An identifier may contain
-// the tag name ("1 @NOTE1@ NOTE See page 5"), and searching from the start of
-// the line would find that occurrence and slice the value out of the middle of
-// the identifier, giving "1@ NOTE See page 5". That was self-limiting while
-// the identifier was discarded on the way into the document; once it is kept
-// and re-encoded, the mangled value feeds back in and the line grows on every
-// round trip.
+// The search starts after the level field, and after the XRef if there is
+// one. An all-digit tag would otherwise match inside the level ("1 1 x" gives
+// value "1 x", #851), and an identifier may contain the tag name
+// ("1 @NOTE1@ NOTE See page 5"), where matching inside the identifier gives
+// "1@ NOTE See page 5". Either mismatch feeds back in once the line is
+// re-encoded, so the line grows on every round trip.
 func sliceValue(line, xref, tag string) string {
-	searchFrom := 0
+	// Skip the level field: leading whitespace, then its run of non-space.
+	// unicode.IsSpace is the whitespace strings.Fields splits on in ParseLine,
+	// so this ends exactly where parts[0] does.
+	rest := strings.TrimLeftFunc(line, unicode.IsSpace)
+	searchFrom := len(line) - len(rest)
+	if end := strings.IndexFunc(rest, unicode.IsSpace); end >= 0 {
+		searchFrom += end
+	} else {
+		searchFrom = len(line)
+	}
+
 	if xref != "" {
-		if i := strings.Index(line, xref); i >= 0 {
-			searchFrom = i + len(xref)
+		if i := strings.Index(line[searchFrom:], xref); i >= 0 {
+			searchFrom += i + len(xref)
 		}
 	}
 

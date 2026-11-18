@@ -63,6 +63,8 @@ func TestEncodeRejectsMalformedLine(t *testing.T) {
 		"closed xref lone @":     {&gedcom.Record{XRef: "@ I1@", Type: gedcom.RecordTypeIndividual}, "@ I1@ INDI", "0 @ I1@"},
 		"subordinate xref no @":  {indi(&gedcom.Tag{Level: 1, Tag: "FAMC", XRef: "I 1"}), "@I1@ INDI", "1 I 1"},
 		"subordinate unclosed":   {indi(&gedcom.Tag{Level: 1, Tag: "_X", XRef: "@X1"}), "@I1@ INDI", "1 @X1"},
+		"subordinate @ space":    {indi(&gedcom.Tag{Level: 1, Tag: "NOTE", XRef: "@ "}), "@I1@ INDI", "1 @ "},
+		"subordinate spaced @ @": {indi(&gedcom.Tag{Level: 1, Tag: "NOTE", XRef: "@ @"}), "@I1@ INDI", "1 @ @"},
 		"lone xref with a value": {&gedcom.Record{Type: "@I 1@", Value: "x"}, "@I 1@", "0 @I 1@ x"},
 		"entity event type tab":  {&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{XRef: "@I1@", Events: []*gedcom.Event{{Type: "BI RT"}}}}, "@I1@ INDI", "BI RT"},
 	}
@@ -109,6 +111,7 @@ func TestEncodeRoundTripsRecoveredXRef(t *testing.T) {
 		"0 @I 1@ INDI\n1 NAME A /B/\n",
 		"0 @I 1@\n1 NOTE x\n",
 		"0 @I1@ INDI\n1 @X 1@ _X y\n",
+		"0 @I1@ INDI\n1 @ NOTE x\n",
 	} {
 		t.Run(body, func(t *testing.T) {
 			in := "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n" + body + "0 TRLR\n"
@@ -124,6 +127,51 @@ func TestEncodeRoundTripsRecoveredXRef(t *testing.T) {
 				t.Errorf("output does not contain %q:\n%s", body, buf.String())
 			}
 		})
+	}
+}
+
+// TestEncodeRoundTripsLoneAtSubordinateXRef pins issue #851: a lenient decode
+// of "1 @ NOTE x" holds the identifier "@", which must encode, read back as
+// the same record, and re-encode byte for byte.
+func TestEncodeRoundTripsLoneAtSubordinateXRef(t *testing.T) {
+	in := "0 HEAD\n0 @I1@ INDI\n1 @ NOTE x\n0 TRLR\n"
+	doc, err := decoder.Decode(strings.NewReader(in))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	var first bytes.Buffer
+	if err := Encode(&first, doc); err != nil {
+		t.Fatalf("Encode() error = %v", err)
+	}
+	if !strings.Contains(first.String(), "1 @ NOTE x\n") {
+		t.Errorf("output does not contain %q:\n%s", "1 @ NOTE x", first.String())
+	}
+	again, err := decoder.Decode(bytes.NewReader(first.Bytes()))
+	if err != nil {
+		t.Fatalf("re-Decode() error = %v", err)
+	}
+	if len(again.Records) != len(doc.Records) {
+		t.Fatalf("re-decoded %d records, want %d", len(again.Records), len(doc.Records))
+	}
+	for i, rec := range doc.Records {
+		got := again.Records[i]
+		if got.XRef != rec.XRef || got.Type != rec.Type || len(got.Tags) != len(rec.Tags) {
+			t.Fatalf("record %d = %q %q (%d tags), want %q %q (%d tags)",
+				i, got.XRef, got.Type, len(got.Tags), rec.XRef, rec.Type, len(rec.Tags))
+		}
+		for j, tag := range rec.Tags {
+			g := got.Tags[j]
+			if g.Level != tag.Level || g.XRef != tag.XRef || g.Tag != tag.Tag || g.Value != tag.Value {
+				t.Errorf("record %d tag %d = %+v, want %+v", i, j, *g, *tag)
+			}
+		}
+	}
+	var second bytes.Buffer
+	if err := Encode(&second, again); err != nil {
+		t.Fatalf("second Encode() error = %v", err)
+	}
+	if !bytes.Equal(first.Bytes(), second.Bytes()) {
+		t.Errorf("second encode differs:\nfirst:\n%s\nsecond:\n%s", first.String(), second.String())
 	}
 }
 
