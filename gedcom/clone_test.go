@@ -1562,7 +1562,7 @@ func TestClonePersonalNameVariations(t *testing.T) {
 // The AGE fields an event and an attribute carry (issue #736) survive a clone.
 func TestCloneKeepsAges(t *testing.T) {
 	ev := &Event{
-		Type: EventMarriage, Age: "30y", AgePhrase: "About thirty",
+		Type: EventMarriage, Occurred: true, Age: "30y", AgePhrase: "About thirty",
 		HusbandAge: "25y", HusbandAgePhrase: "Twenty-five", WifeAge: "22y", WifeAgePhrase: "Twenty-two",
 	}
 	if got := cloneEvent(ev); !reflect.DeepEqual(got, ev) {

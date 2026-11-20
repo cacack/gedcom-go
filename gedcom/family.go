@@ -149,6 +149,8 @@ func (f *Family) AllNotes(doc *Document) []string {
 // order, without nil entries and without GEDCOM 7.0 negative assertions
 // (IsNegative). It returns nil when there are none, and is safe on a nil
 // receiver. The returned slice is new; the events are shared with Events.
+// It does not read Event.Occurred, which records only a "Y" payload: a bare
+// "1 MARR" is returned with Occurred false.
 func (f *Family) OccurredEvents() []*Event {
 	if f == nil {
 		return nil

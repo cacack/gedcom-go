@@ -11,8 +11,9 @@ import (
 // TestEventPayloadDescription checks that a named event's own payload, with
 // its CONT/CONC lines folded in, reaches Event.Description and that the
 // continuation lines are not reported as unknown tags. The "Y" occurrence
-// flag is not a description, and a 7.0 NO assertion has none.
-// Ref: Issue #734
+// flag is not a description but sets Occurred, and a 7.0 NO assertion has
+// neither.
+// Ref: Issues #734, #865
 func TestEventPayloadDescription(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
@@ -28,6 +29,7 @@ func TestEventPayloadDescription(t *testing.T) {
 1 EVEN Race
 2 CONC horse
 2 TYPE Hobby
+1 EVEN Y
 0 @F1@ FAM
 1 MARR Y
 1 CENS Household of two
@@ -48,21 +50,23 @@ func TestEventPayloadDescription(t *testing.T) {
 		t.Fatal("individual @I1@ not decoded")
 	}
 	want := []struct {
-		typ  gedcom.EventType
-		desc string
+		typ      gedcom.EventType
+		desc     string
+		occurred bool
 	}{
-		{gedcom.EventResidence, "Age: 57; Occupation: Farmer; Birthplace: Virginia\nsecond line"},
-		{gedcom.EventDeath, ""},
-		{gedcom.EventBirth, ""},
-		{"EVEN", "Racehorse"},
+		{gedcom.EventResidence, "Age: 57; Occupation: Farmer; Birthplace: Virginia\nsecond line", false},
+		{gedcom.EventDeath, "", true},
+		{gedcom.EventBirth, "", false},
+		{"EVEN", "Racehorse", false},
+		{"EVEN", "Y", false}, // a generic event's Y is its descriptor, not the flag
 	}
 	if len(indi.Events) != len(want) {
 		t.Fatalf("len(Events) = %d, want %d", len(indi.Events), len(want))
 	}
 	for i, w := range want {
 		ev := indi.Events[i]
-		if ev.Type != w.typ || ev.Description != w.desc {
-			t.Errorf("Events[%d] = {%s %q}, want {%s %q}", i, ev.Type, ev.Description, w.typ, w.desc)
+		if ev.Type != w.typ || ev.Description != w.desc || ev.Occurred != w.occurred {
+			t.Errorf("Events[%d] = {%s %q %v}, want {%s %q %v}", i, ev.Type, ev.Description, ev.Occurred, w.typ, w.desc, w.occurred)
 		}
 	}
 	if ev := indi.Events[0]; ev.Date != "1860" {
@@ -74,19 +78,20 @@ func TestEventPayloadDescription(t *testing.T) {
 		t.Fatal("family @F1@ not decoded")
 	}
 	famWant := []struct {
-		typ  gedcom.EventType
-		desc string
+		typ      gedcom.EventType
+		desc     string
+		occurred bool
 	}{
-		{gedcom.EventMarriage, ""},
-		{gedcom.EventCensus, "Household of two"},
+		{gedcom.EventMarriage, "", true},
+		{gedcom.EventCensus, "Household of two", false},
 	}
 	if len(fam.Events) != len(famWant) {
 		t.Fatalf("len(FAM Events) = %d, want %d", len(fam.Events), len(famWant))
 	}
 	for i, w := range famWant {
 		ev := fam.Events[i]
-		if ev.Type != w.typ || ev.Description != w.desc {
-			t.Errorf("FAM Events[%d] = {%s %q}, want {%s %q}", i, ev.Type, ev.Description, w.typ, w.desc)
+		if ev.Type != w.typ || ev.Description != w.desc || ev.Occurred != w.occurred {
+			t.Errorf("FAM Events[%d] = {%s %q %v}, want {%s %q %v}", i, ev.Type, ev.Description, ev.Occurred, w.typ, w.desc, w.occurred)
 		}
 	}
 }
@@ -112,8 +117,9 @@ func TestNegativeEventContinuationStillReported(t *testing.T) {
 	if indi == nil || len(indi.Events) != 1 {
 		t.Fatalf("want one event, got %+v", indi)
 	}
-	if ev := indi.Events[0]; !ev.IsNegative || ev.Description != "" {
-		t.Errorf("NO MARR = {IsNegative:%v Description:%q}, want negative with no description", ev.IsNegative, ev.Description)
+	if ev := indi.Events[0]; !ev.IsNegative || ev.Description != "" || ev.Occurred {
+		t.Errorf("NO MARR = {IsNegative:%v Description:%q Occurred:%v}, want negative with no description or flag",
+			ev.IsNegative, ev.Description, ev.Occurred)
 	}
 	found := false
 	for _, d := range result.Diagnostics {
