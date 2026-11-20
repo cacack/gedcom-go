@@ -730,6 +730,7 @@ func cloneEvent(e *Event) *Event {
 		AdoptedBy:            e.AdoptedBy,
 		AdoptedByPhrase:      e.AdoptedByPhrase,
 		IsNegative:           e.IsNegative,
+		Occurred:             e.Occurred,
 		NoteXRefs:            cloneStringSlice(e.NoteXRefs),
 		InlineNotes:          cloneStringSlice(e.InlineNotes),
 		Phone:                cloneStringSlice(e.Phone),

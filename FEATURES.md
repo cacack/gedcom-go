@@ -811,7 +811,9 @@ rather than a `[Y|<NULL>]` flag, but exporters write text on named events too
 than the bare `Y` flag is decoded into `Event.Description`, with its
 `CONT`/`CONC` lines folded in, and written back out on the event line with
 continuation lines for the output version. An attribute's `CONT`/`CONC` lines
-fold into `Attribute.Value` the same way.
+fold into `Attribute.Value` the same way. The `Y` flag on a named event
+(`1 DEAT Y`: the event happened, details unknown) sets `Event.Occurred`, which
+the encoder writes back as `Y` in every version when `Description` is empty.
 
 ### Family Events
 

@@ -136,9 +136,8 @@ type Event struct {
 	// continuation lines folded in (CONT as a newline): the descriptor of a
 	// generic EVEN, or any text an exporter writes on a named event, such as
 	// the census detail FTM puts on RESI. The bare "Y" occurrence flag of a
-	// named event is not a description and leaves it empty, as does a 7.0
-	// NO assertion; that flag is kept only in the raw tags and the encoder
-	// does not write it back from the typed model.
+	// named event is not a description and leaves it empty (it sets
+	// Occurred instead), as does a 7.0 NO assertion.
 	Description string `json:",omitempty"`
 
 	// EventTypeDetail provides a descriptive type of the event (TYPE subordinate)
@@ -237,6 +236,15 @@ type Event struct {
 	// that happened; OccurredEvents and NegativeAssertions on either type
 	// separate the two.
 	IsNegative bool `json:",omitempty"`
+
+	// Occurred records a named event's "Y" payload ("1 DEAT Y"): the event
+	// is asserted to have happened even when nothing else about it is known.
+	// It is false for a bare "1 DEAT", which says nothing either way. It is
+	// not the opposite of IsNegative, and OccurredEvents does not read it.
+	// The encoder writes "Y" on the event line, in every version, when
+	// Description is empty. A generic EVEN, whose payload is its descriptor,
+	// and a NO assertion never carry it.
+	Occurred bool `json:",omitempty"`
 
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation `json:",omitempty"`

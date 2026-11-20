@@ -1101,8 +1101,13 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 	} else {
 		// Description is the event line's own payload (the descriptor on a
 		// generic EVEN, any exporter text on a named event), written with
-		// CONT/CONC lines as the output version allows (#734).
-		tags = append(tags, textToTags(event.Description, level, string(event.Type), opts)...)
+		// CONT/CONC lines as the output version allows (#734). With no
+		// description, a named event's Occurred flag is written as "Y" (#865).
+		payload := event.Description
+		if payload == "" && event.Occurred && event.Type != gedcom.EventGeneric {
+			payload = "Y"
+		}
+		tags = append(tags, textToTags(payload, level, string(event.Type), opts)...)
 	}
 
 	// Subordinate tags at level+1

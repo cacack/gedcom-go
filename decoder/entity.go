@@ -1093,12 +1093,14 @@ func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailO
 	// the Description: the descriptor on a generic EVEN, and on a named event
 	// whatever text an exporter puts there (FTM and Ancestry write census-row
 	// detail on RESI, #734). The bare "Y" occurrence flag of a named event is
-	// not a description and has no typed field. A 7.0 "NO <tag>" carries the
-	// event type as its payload, so it has no description.
+	// not a description: it sets Occurred (#865). A 7.0 "NO <tag>" carries
+	// the event type as its payload, so it has neither.
 	isNegative := tags[eventIdx].Tag == "NO"
 	if !isNegative {
 		payload := foldedValue(tags, eventIdx)
-		if tags[eventIdx].Tag == "EVEN" || strings.TrimSpace(payload) != "Y" {
+		if tags[eventIdx].Tag != string(gedcom.EventGeneric) && strings.TrimSpace(payload) == "Y" {
+			event.Occurred = true
+		} else {
 			event.Description = collector.text(payload)
 		}
 	}
