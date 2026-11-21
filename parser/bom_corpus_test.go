@@ -12,6 +12,12 @@ import (
 // LazyParser indexes it, and every record it reads back carries the same tags
 // decoder.Decode gives that record (issue #792).
 func TestLazyParser_LongswordBOM_MatchesDecoder(t *testing.T) {
+	// Holding the decoded scale fixture takes ~4GB under -race, and alongside
+	// the other packages' corpus walks that ran past the 10m timeout on
+	// Windows runners. CI's non-race coverage job still exercises it.
+	if raceDetectorEnabled {
+		t.Skip("skipping scale fixture under the race detector (memory amplification)")
+	}
 	const path = "../testdata/gedcom-5.5.1/longsword.ged"
 	f, err := os.Open(path)
 	if err != nil {

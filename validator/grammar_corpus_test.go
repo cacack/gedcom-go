@@ -113,6 +113,11 @@ func TestGrammar_VendoredFixtures(t *testing.T) {
 		seen[name] = true
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+			// ~4GB under -race; overlapping walks of it ran past the 10m
+			// timeout on Windows. The non-race coverage job still runs it.
+			if raceDetectorEnabled && filepath.Base(path) == "longsword.ged" {
+				t.Skip("skipping scale fixture under the race detector (memory amplification)")
+			}
 			issues, _ := grammarIssuesForFile(t, path)
 			if got, want := grammarFindings(issues), grammarFixtureFindings[name]; !slices.Equal(got, want) {
 				t.Errorf("findings changed; update grammarFixtureFindings\n got: %q\nwant: %q", got, want)

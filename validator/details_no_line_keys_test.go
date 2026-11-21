@@ -50,6 +50,11 @@ func TestNoIssueCarriesLineNumberDetailKey(t *testing.T) {
 		for _, path := range files {
 			t.Run(strings.TrimPrefix(filepath.ToSlash(path), "../testdata/"), func(t *testing.T) {
 				t.Parallel()
+				// ~4GB under -race; overlapping walks of it ran past the 10m
+				// timeout on Windows. The non-race coverage job still runs it.
+				if raceDetectorEnabled && filepath.Base(path) == "longsword.ged" {
+					t.Skip("skipping scale fixture under the race detector (memory amplification)")
+				}
 				f, err := os.Open(path) // #nosec G304 -- path comes from walking the repo's own testdata
 				if err != nil {
 					t.Fatalf("open %s: %v", path, err)
