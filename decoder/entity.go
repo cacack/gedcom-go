@@ -742,7 +742,11 @@ func parseSourceCitation(tags []*gedcom.Tag, sourIdx, baseLevel int, collector *
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
 				}
 			default:
-				if !strings.HasPrefix(tag.Tag, "_") {
+				if strings.HasPrefix(tag.Tag, "_") {
+					// An extension with no typed field, kept with its
+					// subordinates relative to the citation (#864).
+					cite.Tags = appendRelativeBlock(cite.Tags, tags, i, baseLevel)
+				} else {
 					collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
 				}
 			}
@@ -2048,6 +2052,23 @@ func appendInlineNoteDetail(
 		details = append(details, nil)
 	}
 	return append(details, detail)
+}
+
+// appendRelativeBlock appends to dst a copy of tags[idx] and its subordinate
+// lines, each re-levelled relative to an owner at ownerLevel, so the owner's
+// line is level 0 and tags[idx], its direct subtag, is level 1. The copies
+// leave Record.Tags untouched.
+func appendRelativeBlock(dst, tags []*gedcom.Tag, idx, ownerLevel int) []*gedcom.Tag {
+	head := tags[idx].Level
+	for i := idx; i < len(tags); i++ {
+		if i > idx && tags[i].Level <= head {
+			break
+		}
+		t := *tags[i]
+		t.Level -= ownerLevel
+		dst = append(dst, &t)
+	}
+	return dst
 }
 
 // foldedValue returns the value of tags[idx] with its direct CONT/CONC

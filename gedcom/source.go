@@ -246,4 +246,22 @@ type SourceCitation struct {
 	// InlineNotes are note text values written directly on this citation
 	// (NOTE <text> form, including CONT/CONC continuations).
 	InlineNotes []string `json:",omitempty"`
+
+	// Tags are the citation's extension subtags that have no typed field
+	// (a leading underscore, other than _APID), each with its subordinate
+	// lines, such as the "_RESN confidential" an application writes for a
+	// private citation. Levels are relative to the citation: its SOUR line is
+	// level 0, so a direct subtag is level 1 (unlike Record.Tags, whose levels
+	// are absolute). The decoder fills it with copies of the raw lines, values
+	// as written, and the encoder writes it after the typed lines, re-levelled
+	// under SOUR. As with a record entity's Tags, only level-1 extension tags
+	// and their subordinates are written from it: a standard tag, and any line
+	// before the first level-1 tag, is ignored.
+	//
+	// Like every typed field, it is written only when the record is written
+	// from its entity: while Record.Tags is non-empty the encoder writes those
+	// lines instead (see the encoder package, "Raw Tags Are Authoritative"), so
+	// an edit here reaches the output after encoder.SyncTags or with
+	// Record.Tags cleared.
+	Tags []*Tag `json:",omitempty"`
 }

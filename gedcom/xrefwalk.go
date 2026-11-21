@@ -699,6 +699,11 @@ func walkCitations(citations []*SourceCitation, cb refCallback) {
 		cb(&sc.SourceXRef)
 		walkNotes(sc.NoteXRefs, cb)
 		walkMediaLinks(sc.Media, cb)
+		// Copies of the raw lines, not aliases of Record.Tags, so walking
+		// them visits each pointer once.
+		for _, t := range sc.Tags {
+			walkTag(t, cb)
+		}
 	}
 }
 

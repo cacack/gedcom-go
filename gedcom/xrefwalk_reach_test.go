@@ -40,6 +40,7 @@ func fullyPopulatedRecords() []*Record {
 			SourceXRef: x,
 			NoteXRefs:  []string{"@CITE_NX@"},
 			Media:      []*MediaLink{{MediaXRef: "@CITE_OBJE@", NoteXRefs: []string{"@CITE_OBJE_NX@"}}},
+			Tags:       []*Tag{{Level: 1, Tag: "_LINK", XRef: "@CITE_TAG_X@", Value: "@CITE_TAG@"}},
 		}
 	}
 	assoc := func(x string) *Association {

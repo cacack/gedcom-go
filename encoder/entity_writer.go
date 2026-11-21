@@ -1283,8 +1283,21 @@ func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOp
 		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "_APID", Value: opts.text(cite.AncestryAPID.Raw)})
 	}
 
+	// Untyped extension subtags (#864), relative to the citation, re-levelled
+	// under its SOUR line.
+	for _, t := range ownExtensionBlocks(cite.Tags, typedCitationExtensionTags) {
+		relevelled := *t
+		relevelled.Level += level
+		tags = append(tags, &relevelled)
+	}
+
 	return tags
 }
+
+// typedCitationExtensionTags are the extension subtags SourceCitation holds
+// in a field, so ownExtensionBlocks skips them in SourceCitation.Tags. Keep in
+// step with the _APID writer in sourceCitationToTags.
+var typedCitationExtensionTags = map[string]bool{"_APID": true}
 
 // sourceCitationDataToTags converts SourceCitationData to GEDCOM tags at the specified level.
 func sourceCitationDataToTags(data *gedcom.SourceCitationData, level int, opts *EncodeOptions) []*gedcom.Tag {
@@ -1880,19 +1893,25 @@ func sharedNoteToTags(note *gedcom.SharedNote, opts *EncodeOptions) []*gedcom.Ta
 // Record.Tags, when non-empty, is still written verbatim and this is never
 // consulted (see the package documentation, "Raw Tags Are Authoritative").
 func entityOwnTags(entity any) []*gedcom.Tag {
-	own := entityTagsField(entity)
-	if len(own) == 0 {
-		return nil
-	}
+	return ownExtensionBlocks(entityTagsField(entity), typedExtensionTags)
+}
 
+// ownExtensionBlocks returns the level-1 extension blocks of tags whose levels
+// are relative to their owner (the owner's line is level 0): each level-1 tag
+// with a leading underscore that is not in typed, with its subordinate lines.
+// typed names the extensions the owner holds in a field; they are written from
+// that field, and writing them from Tags too would duplicate or resurrect
+// them. Anything before the first level-1 tag is skipped. Record entities
+// (entityOwnTags) and SourceCitation.Tags share this rule.
+func ownExtensionBlocks(tags []*gedcom.Tag, typed map[string]bool) []*gedcom.Tag {
 	var out []*gedcom.Tag
 	keep := false
-	for _, t := range own {
+	for _, t := range tags {
 		if t == nil {
 			continue
 		}
 		if t.Level <= 1 {
-			keep = t.Level == 1 && isOwnExtensionTag(t.Tag)
+			keep = t.Level == 1 && strings.HasPrefix(t.Tag, "_") && !typed[t.Tag]
 		}
 		if keep {
 			out = append(out, t)
@@ -1901,18 +1920,9 @@ func entityOwnTags(entity any) []*gedcom.Tag {
 	return out
 }
 
-// isOwnExtensionTag reports whether a level-1 tag in an entity's Tags is
-// written by entityOwnTags: an extension tag the typed model has no field
-// for. typedExtensionTags are the extensions it does have fields for; they
-// are written from those fields, by uidsToTags and individualToTags, and
-// writing them from Tags too would duplicate or resurrect them.
-func isOwnExtensionTag(tag string) bool {
-	return strings.HasPrefix(tag, "_") && !typedExtensionTags[tag]
-}
-
-// typedExtensionTags are the level-1 extension tags the typed model holds in
-// a field, so isOwnExtensionTag excludes them. Keep in step with uidTagName
-// (_UID) and the FamilySearchID writer in individualToTags (_FSFTID).
+// typedExtensionTags are the level-1 extension tags a record entity holds in
+// a field, so entityOwnTags skips them. Keep in step with uidTagName (_UID)
+// and the FamilySearchID writer in individualToTags (_FSFTID).
 var typedExtensionTags = map[string]bool{"_UID": true, "_FSFTID": true}
 
 // entityTagsField returns the Tags field of a record entity, or nil for an
