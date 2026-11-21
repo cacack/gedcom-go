@@ -50,6 +50,25 @@ for _, t := range indi.Tags {
 }
 ```
 
+A source citation keeps its own untyped extension subtags in
+`SourceCitation.Tags`, each with its subordinate lines, at levels relative to
+the citation (its `SOUR` line is level 0). `_APID` is not among them, since it
+has a typed field. The encoder writes them after the citation's typed lines,
+re-levelled under `SOUR`, so an application's `_RESN` on a citation survives
+export and re-import. On a decoded document, `Record.Tags` is still what the
+encoder writes, so an edit made through `SourceCitation.Tags` reaches the
+output after `encoder.SyncTags`:
+
+```go
+for _, cite := range event.SourceCitations {
+    for _, t := range cite.Tags {
+        if t.Level == 1 && t.Tag == "_RESN" {
+            fmt.Println("citation restriction:", t.Value)
+        }
+    }
+}
+```
+
 ## Vendor detection
 
 The originating software is detected from the header's `HEAD.SOUR` subtree and

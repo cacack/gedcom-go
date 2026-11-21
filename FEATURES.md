@@ -171,6 +171,11 @@ Structured parsing for vendor-specific GEDCOM extensions. For the complete
 reference — every supported tag, typed vs preserved-raw handling, validation,
 and the lossless guarantee — see [docs/guides/vendor-extensions.md](docs/guides/vendor-extensions.md).
 
+Extension tags without a typed field stay on the entity that holds them: a
+record's in its `Tags`, and a source citation's (such as an application's
+`_RESN`) in `SourceCitation.Tags`, at levels relative to the citation. The
+encoder writes both back when a record is written from its entity.
+
 ### Ancestry.com Extensions
 
 | Tag | Location | Description |

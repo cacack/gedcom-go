@@ -890,6 +890,7 @@ func cloneSourceCitation(sc *SourceCitation) *SourceCitation {
 		Page:        sc.Page,
 		NoteXRefs:   cloneStringSlice(sc.NoteXRefs),
 		InlineNotes: cloneStringSlice(sc.InlineNotes),
+		Tags:        CloneTags(sc.Tags),
 	}
 
 	// Deep-copy the pointer so a mutation through the copy cannot reach the

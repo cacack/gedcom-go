@@ -96,7 +96,7 @@ func xrefwalkFullDocument() *Document {
 			nil, // exercise nil-element handling
 		},
 		SourceCitations: []*SourceCitation{
-			{SourceXRef: "@S-IND@"},
+			{SourceXRef: "@S-IND@", Tags: []*Tag{{Level: 1, Tag: "_LINK", Value: "@T-CITE@"}}},
 			nil,
 		},
 		Media: []*MediaLink{
@@ -262,7 +262,7 @@ func xrefwalkExpectedRefs() []string {
 		// Individual record
 		"@F-CHILD@", "@F-SPOUSE@", "@N-IND@",
 		"@I-ASSOC@", "@N-ASSOC@", "@S-ASSOC@",
-		"@S-IND@", "@M-IND@",
+		"@S-IND@", "@T-CITE@", "@M-IND@",
 		"@N-EVENT@", "@S-EVENT@", "@M-EVENT@",
 		"@S-ATTR@", "@F-LDS@",
 		"@T-IND-XREF@", "@T-IND-VAL@",
