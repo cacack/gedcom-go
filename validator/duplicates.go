@@ -779,6 +779,10 @@ func knownSex(sex string) string {
 
 // normalizeName normalizes a name for comparison.
 // Converts to lowercase, removes diacritics, and trims whitespace.
+//
+// All-ASCII names skip the diacritic transform: ASCII is invariant under NFD
+// and NFC and holds no combining marks, so the chain would return it unchanged
+// while dominating the allocation of a corpus-scale sweep (#871).
 func normalizeName(name string) string {
 	if name == "" {
 		return ""
@@ -789,6 +793,17 @@ func normalizeName(name string) string {
 
 	// Convert to lowercase
 	name = strings.ToLower(name)
+
+	ascii := true
+	for i := 0; i < len(name); i++ {
+		if name[i] >= utf8.RuneSelf {
+			ascii = false
+			break
+		}
+	}
+	if ascii {
+		return name
+	}
 
 	// Remove diacritics using unicode normalization
 	// NFD decomposes characters, then we remove combining marks

@@ -8,8 +8,12 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 func TestDefaultDuplicateConfig(t *testing.T) {
@@ -126,6 +130,21 @@ func TestNormalizeName(t *testing.T) {
 			input: "Beno\u00eet", // Benoit with i-circumflex
 			want:  "benoit",
 		},
+		{
+			name:  "accented Jos\u00e9",
+			input: "Jos\u00e9",
+			want:  "jose",
+		},
+		{
+			name:  "ASCII punctuation and digits",
+			input: " O'Brien-Smith Jr. 3rd ",
+			want:  "o'brien-smith jr. 3rd",
+		},
+		{
+			name:  "ASCII whitespace only",
+			input: " \t ",
+			want:  "",
+		},
 	}
 
 	for _, tt := range tests {
@@ -135,6 +154,36 @@ func TestNormalizeName(t *testing.T) {
 				t.Errorf("normalizeName(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+// TestNormalizeNameASCIIMatchesChain pins the ASCII fast path (#871) to the
+// diacritic transform it skips: for ASCII input the full chain must give the
+// same result normalizeName returns.
+func TestNormalizeNameASCIIMatchesChain(t *testing.T) {
+	inputs := []string{
+		"John", "MCDONALD", "van der Berg", "O'Brien-Smith", "St. John",
+		"Smith (Jones)", "Henry VIII", "abc123", "Mary  Ann", "@#$%^&*~`|",
+		"  Mixed Case\tTabs  ",
+	}
+	// Every ASCII byte, control characters included, so nothing is missed.
+	var all strings.Builder
+	for c := byte(0x00); c < 0x80; c++ {
+		all.WriteByte(c)
+	}
+	inputs = append(inputs, all.String())
+
+	// Oracle: must match the chain in normalizeName; update both together.
+	chain := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	for _, in := range inputs {
+		lowered := strings.ToLower(strings.TrimSpace(in))
+		want, _, err := transform.String(chain, lowered)
+		if err != nil {
+			t.Fatalf("transform %q: %v", lowered, err)
+		}
+		if got := normalizeName(in); got != want {
+			t.Errorf("normalizeName(%q) = %q, chain gives %q", in, got, want)
+		}
 	}
 }
 
