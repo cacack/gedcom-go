@@ -138,6 +138,36 @@ func BenchmarkValidateAllGrammar(b *testing.B) {
 	}
 }
 
+// BenchmarkValidateAllStrictLongsword measures Strict ValidateAll, duplicate
+// detection included, on the 46 MiB longsword.ged corpus. Name normalization
+// for duplicate grouping dominates its allocation (#871).
+func BenchmarkValidateAllStrictLongsword(b *testing.B) {
+	if testing.Short() {
+		b.Skip("skipping full-corpus benchmark in -short mode")
+	}
+	// Same refusal as TestDuplicateCapPreservesCorpusResults: race
+	// instrumentation amplifies the decode's ~930MB peak several-fold.
+	if raceDetectorEnabled {
+		b.Skip("skipping full-corpus benchmark under the race detector (memory amplification)")
+	}
+	const path = "../testdata/gedcom-5.5.1/longsword.ged"
+	f, err := os.Open(path) // #nosec G304 -- path is a constant in the repo's own testdata
+	if err != nil {
+		b.Fatalf("open %s: %v", path, err)
+	}
+	doc, err := decoder.Decode(f)
+	_ = f.Close()
+	if err != nil {
+		b.Fatal(err)
+	}
+	v := NewWithOptions(&ValidateOptions{Strictness: StrictnessStrict})
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = v.ValidateAll(doc)
+	}
+}
+
 // BenchmarkValidateWithErrors benchmarks validating a document with broken references
 func BenchmarkValidateWithErrors(b *testing.B) {
 	doc := generateInvalidDocument(100)

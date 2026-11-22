@@ -195,14 +195,21 @@ Synthetic duplicate-heavy fixture, measured on the environment above with
 
 | Individuals | Time/Op | Memory | Allocations |
 |---|---|---|---|
-| 100 | 0.23 ms | 1.5 MB | 2.3K |
-| 1000 | 8.5 ms | 19 MB | 128K |
-| 5000 | 152 ms | 205 MB | 3.0M |
+| 100 | 0.11 ms | 0.27 MB | 1.5K |
+| 1000 | 6.4 ms | 7.1 MB | 120K |
+| 5000 | 143 ms | 145 MB | 3.0M |
+
+Names are normalized once per individual (lowercased, diacritics removed).
+All-ASCII names skip the Unicode transform, which is the common case: on
+`longsword.ged`, measured on the environment above, Strict `ValidateAll`
+allocates ~0.77 GB per run, down from ~3.7 GB when every name went through the
+transform.
 
 Reproduce with:
 
 ```bash
 go test ./validator -bench BenchmarkFindDuplicates -run '^$' -benchmem -count=3
+go test ./validator -bench BenchmarkValidateAllStrictLongsword -run '^$' -benchmem -count=3 -benchtime=3x
 ```
 
 #### Bounding Untrusted Input
