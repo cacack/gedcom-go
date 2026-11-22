@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.10.0](https://github.com/cacack/gedcom-go/compare/v3.9.0...v3.10.0) (2026-11-22)
+
+
+### Features
+
+* **gedcom:** keep extension subtags on SourceCitation ([71d79f0](https://github.com/cacack/gedcom-go/commit/71d79f0abb8e8b9f37fb66a40e580a3b526688fd)), closes [#864](https://github.com/cacack/gedcom-go/issues/864)
+* **gedcom:** type the Y occurrence flag on named events ([1284f01](https://github.com/cacack/gedcom-go/commit/1284f010cebef31079396e580d9a5d518b3b3f12)), closes [#865](https://github.com/cacack/gedcom-go/issues/865)
+
+
+### Bug Fixes
+
+* **encoder:** write a lone @ identifier below level 0 ([2e29aea](https://github.com/cacack/gedcom-go/commit/2e29aeaf8651b333be33927a5c4d73a3369a1c02)), closes [#851](https://github.com/cacack/gedcom-go/issues/851)
+* **parser:** find an all-digit tag after the level field ([6487ab1](https://github.com/cacack/gedcom-go/commit/6487ab1607d99970ecc37d5c8a22c61728dd3ca8)), closes [#851](https://github.com/cacack/gedcom-go/issues/851)
+
+
+### Performance Improvements
+
+* **validator:** skip Unicode transform for ASCII names ([6137011](https://github.com/cacack/gedcom-go/commit/61370111c9fbfe2c6a6dc6640343de2d4eb191c9)), closes [#871](https://github.com/cacack/gedcom-go/issues/871)
+
 ## [3.9.0](https://github.com/cacack/gedcom-go/compare/v3.8.0...v3.9.0) (2026-11-14)
 
 
