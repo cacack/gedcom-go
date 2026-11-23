@@ -295,7 +295,8 @@ The header fields it carries are those a hand-built header is written from:
 `SourceSystem`, `Date`, `Submitter`, `Language`, `Version`, and whether
 `Encoding` is set. The encoder always writes `CHAR UTF-8`, so the value of
 `Encoding` is not carried, and for GEDCOM 7.0, which has no `CHAR`, neither is
-its presence.
+its presence. `PlaceForm` is the exception: a hand-built header writes it as
+`PLAC.FORM`, but `SyncTags` does not carry it.
 
 `SyncTags` makes the typed fields win. It cannot tell a typed edit from an
 edit made to `Tags` alone, so it writes the typed fields back over the latter.
