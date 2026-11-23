@@ -20,6 +20,7 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 - **GEDZIP Archives**: Read and write GEDCOM 7 `.gdz` packages, with media read lazily and size limits for untrusted uploads
 - **Streaming APIs**: Memory-efficient parsing and encoding for very large files (1M+ records)
 - **Comprehensive Validation**: Date logic, orphaned references, duplicates, and quality reports
+- **Record-level Diff**: Records added, removed and modified between two documents, with the changed lines, ignoring reordering that does not change meaning
 - **Vendor Extensions**: Parse Ancestry.com and FamilySearch custom tags
 - **Minimal Dependencies**: only `golang.org/x/text` (Go's extended standard library) for encoding transforms; no third-party dependencies
 - **Well-tested**: per-package test coverage floor of ≥85% enforced in CI (currently ~96% measured), with multi-platform CI

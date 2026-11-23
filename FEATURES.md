@@ -796,6 +796,39 @@ missing record (also `gedcom.ErrUnknownXRef`), one of the wrong type, one
 defined twice, or where a record involved has no raw Tags returns an error
 wrapping `merge.ErrInvalidMerge`.
 
+### Record Diff
+
+`gedcom.Diff` compares two documents record by record, for questions such
+as "what changed between two exports of the same tree?" where a line-based
+diff is mostly noise. Neither document is modified.
+
+```go
+d := gedcom.Diff(oldDoc, newDoc, &gedcom.DiffOptions{
+    IgnoreTags: []string{"CHAN", "_UID"}, // skipped with their subtrees, at any level
+})
+for _, m := range d.Modified {
+    for _, c := range m.Changes {
+        _ = c.Removed // old lines, the old document's own tags (LineNumber included)
+        _ = c.Added   // new lines
+    }
+}
+```
+
+- Records are matched by XRef and type: `Added`, `Removed` and `Modified`
+  (each with the record's changed lines, grouped into hunks under a tag path
+  such as `["BIRT"]`). A renumbered record is removed and added; duplicate
+  XRefs are matched by occurrence
+- Not a change: substructures moved past siblings with a different tag, a
+  value split differently across `CONT`/`CONC` lines, line numbers
+- A change: everything else, including the order of siblings with the same
+  tag (the first `NAME` is preferred, `CHIL` is in birth order) and case or
+  whitespace in a value
+- `IgnoreTags` also skips whole records of an ignored type (e.g. `_USER`)
+- The header is compared only with `IncludeHeader`, since it changes on
+  every export
+- Records compare by `Record.Tags`, which govern encoding: run
+  `encoder.SyncTags` first after editing typed fields
+
 ## Record Types
 
 ### Header (HEAD)
