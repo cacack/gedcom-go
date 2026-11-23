@@ -113,6 +113,13 @@ func (d *Document) Subset(xrefs []string) (*Document, error) {
 		return nil, err
 	}
 
+	return d.subsetDocument(closure), nil
+}
+
+// subsetDocument copies the records of d named in closure, in document
+// order, into a new document with the header, trailer, vendor and schema
+// Subset carries.
+func (d *Document) subsetDocument(closure map[string]bool) *Document {
 	out := &Document{
 		Header:  subsetHeader(d, closure),
 		Trailer: d.Trailer.Clone(),
@@ -136,8 +143,7 @@ func (d *Document) Subset(xrefs []string) (*Document, error) {
 			out.XRefMap[copied.XRef] = copied
 		}
 	}
-
-	return out, nil
+	return out
 }
 
 // subsetClosure computes the transitive set of XRefs reachable from

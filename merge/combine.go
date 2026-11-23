@@ -36,6 +36,33 @@ const (
 	// sequential ID per record type, starting after the highest
 	// numeric ID in doc1 for that type. Non-colliding XRefs are kept.
 	RenumberDoc2
+	// ZipSharedXRefs treats a shared XRef as the same record, for two
+	// documents cut from one master, such as the bounded subsets
+	// gedcom.Document.BoundedSubset returns. Nothing is renamed. A doc2
+	// record whose XRef doc1 also holds is collapsed into doc1's when
+	// they write the same lines; when they differ only in pointer lines
+	// naming an individual or family (with those lines' subordinates,
+	// the lines a bounded subset drops at its boundary), the combined
+	// record holds the union of both. Any other difference is a
+	// RecordConflict: Combine fails with ErrRecordConflict, or keeps
+	// doc1's record when CombineOptions.KeepFirstOnConflict is set.
+	//
+	// The union keeps each record's other lines in place and merges each
+	// run of pointer lines between them in source line order
+	// (Tag.LineNumber), keeping each document's own order. Subsets cut in
+	// memory from one decoded document carry its line numbers and zip back
+	// into its order; subsets encoded and decoded again carry their own
+	// files' numbers, so a run both documents contribute to (the children
+	// of a family split between them) holds the same lines but its order
+	// need not be the master's. A record whose unioned lines are new has
+	// its Entity rebuilt from them (decoder.SyncEntities).
+	//
+	// Records keep doc1's order, followed by doc2's records doc1 lacks.
+	// Records without raw Tags are compared in full and never unioned.
+	// Headers are unioned as records are when their typed fields match
+	// and their lines differ only in such pointer lines; other headers
+	// are merged as the other strategies merge them.
+	ZipSharedXRefs
 )
 
 // CombineOptions configures Combine behavior.
@@ -55,6 +82,11 @@ type CombineOptions struct {
 	// mismatch is recorded as a HeaderConflict{Field: "Encoding"}. The
 	// zero value refuses the mismatch with ErrIncompatibleHeader.
 	IgnoreEncodingMismatch bool
+	// KeepFirstOnConflict makes ZipSharedXRefs keep doc1's record for an
+	// XRef whose two records conflict, and record the conflict in
+	// CombineReport.RecordConflicts, instead of failing. Other strategies
+	// ignore it.
+	KeepFirstOnConflict bool
 	// Context allows cancellation and timeout control. Combine checks it
 	// before it starts and before each record it compares, remaps or
 	// copies; once it is done
@@ -79,6 +111,10 @@ type CombineReport struct {
 	// HeaderConflicts records header fields where doc2 had a
 	// different non-empty value that was dropped in favor of doc1.
 	HeaderConflicts []HeaderConflict
+	// RecordConflicts lists the shared XRefs whose records ZipSharedXRefs
+	// could not union and resolved by keeping doc1's, which it does only
+	// with CombineOptions.KeepFirstOnConflict. Empty otherwise.
+	RecordConflicts []RecordConflict
 }
 
 // HeaderConflict records a single header field where doc1 and doc2
@@ -138,21 +174,14 @@ type HeaderConflict struct {
 // the chosen strategy, or if any header compatibility check fails.
 // The error wraps ErrNilDocument for a nil doc, ErrInvalidOptions for
 // invalid opts, ErrIncompatibleHeader for compat failures and
-// ErrXRefCollision for collision failures.
+// ErrXRefCollision for collision failures, and ErrRecordConflict for a
+// ZipSharedXRefs conflict.
 func Combine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Document, *CombineReport, error) {
-	if doc1 == nil {
-		return nil, nil, errmark.Mark(ErrNilDocument, errors.New("merge: doc1 is nil"))
-	}
-	if doc2 == nil {
-		return nil, nil, errmark.Mark(ErrNilDocument, errors.New("merge: doc2 is nil"))
-	}
-	if err := cancelled(opts.Context); err != nil {
+	if err := checkCombinable(doc1, doc2, opts); err != nil {
 		return nil, nil, err
 	}
-
-	// Check version/encoding compatibility BEFORE doing any work.
-	if err := checkHeaderCompat(doc1.Header, doc2.Header, opts.IgnoreEncodingMismatch); err != nil {
-		return nil, nil, err
+	if opts.CollisionStrategy == ZipSharedXRefs {
+		return zipCombine(doc1, doc2, opts)
 	}
 
 	// Detect collisions between doc1 and doc2 XRefs.
@@ -210,6 +239,21 @@ func Combine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Document
 	return out, report, nil
 }
 
+// checkCombinable returns the error Combine fails with before doing any
+// work: a nil document, a cancelled context, or incompatible headers.
+func checkCombinable(doc1, doc2 *gedcom.Document, opts CombineOptions) error {
+	if doc1 == nil {
+		return errmark.Mark(ErrNilDocument, errors.New("merge: doc1 is nil"))
+	}
+	if doc2 == nil {
+		return errmark.Mark(ErrNilDocument, errors.New("merge: doc2 is nil"))
+	}
+	if err := cancelled(opts.Context); err != nil {
+		return err
+	}
+	return checkHeaderCompat(doc1.Header, doc2.Header, opts.IgnoreEncodingMismatch)
+}
+
 // mergeDocMetadata merges Schema, Vendor, and Trailer from doc1 and
 // the remapped doc2 into out, appending any conflicts to conflicts
 // and returning the updated slice. Doc1's values win; doc2's values
@@ -263,15 +307,21 @@ var ErrXRefCollision = errors.New("xref collision")
 // from Combine.
 type CombineError struct {
 	// Kind names the failure: "version", "encoding", "collision",
-	// "prefix-collision", "renumber-collision", "missing-prefix".
+	// "prefix-collision", "renumber-collision", "missing-prefix",
+	// "record-conflict".
 	Kind string
 	// Doc1 is doc1's value (for version/encoding) or empty.
 	Doc1 string
 	// Doc2 is doc2's value (for version/encoding) or empty.
 	Doc2 string
 	// Colliding is the list of colliding XRefs (for collision kinds);
-	// truncated for display in Error().
+	// truncated for display in Error(). For "record-conflict" it lists
+	// the conflicting XRefs.
 	Colliding []string
+	// Conflicts says what differs in each conflicting record, for
+	// "record-conflict"; it is authoritative, and Error() shows only the
+	// first reason.
+	Conflicts []RecordConflict
 }
 
 func (e *CombineError) Error() string {
@@ -288,6 +338,12 @@ func (e *CombineError) Error() string {
 		return fmt.Sprintf("merge: renumber produced new collision: %s", summarizeXRefs(e.Colliding))
 	case "missing-prefix":
 		return "merge: PrefixDoc2 strategy requires non-empty Prefix"
+	case "record-conflict":
+		msg := fmt.Sprintf("merge: records conflict: %s", summarizeXRefs(e.Colliding))
+		if len(e.Conflicts) > 0 {
+			msg += fmt.Sprintf(" (%s: %s)", e.Conflicts[0].XRef, e.Conflicts[0].Reason)
+		}
+		return msg + " (set CombineOptions.KeepFirstOnConflict to keep doc1's)"
 	}
 	return "merge: " + e.Kind
 }
@@ -300,6 +356,8 @@ func (e *CombineError) Is(target error) bool {
 		return e.Kind == "collision" || e.Kind == "prefix-collision" || e.Kind == "renumber-collision"
 	case ErrInvalidOptions:
 		return e.Kind == "missing-prefix"
+	case ErrRecordConflict:
+		return e.Kind == "record-conflict"
 	}
 	return false
 }
