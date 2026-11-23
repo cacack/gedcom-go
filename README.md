@@ -443,7 +443,7 @@ This library follows [Semantic Versioning](https://semver.org/). We do not break
 |---------|----------|
 | `gedcom` | Document, Individual, Family, Event, Date |
 | `decoder` | Decode(), DecodeWithOptions() |
-| `encoder` | Encode(), EncodeWithOptions(), NewStreamEncoder(), NewStreamEncoderWithOptions(), EncodeStreaming(), EncodeStreamingWithOptions() |
+| `encoder` | Encode(), EncodeWithOptions(), EncodeRecord(), NewStreamEncoder(), NewStreamEncoderWithOptions(), EncodeStreaming(), EncodeStreamingWithOptions() |
 | `converter` | Convert(), ConvertWithOptions() |
 | `parser` | NewParser(), Parser.Parse(), Parser.ParseLine(), NewRecordIterator(), NewRecordIteratorWithOffset(), Records(), RecordsWithOffset(), NewLazyParser() |
 | `validator` | New(), Validator.Validate(), Validator.ValidateAll(), NewStreamingValidator() |

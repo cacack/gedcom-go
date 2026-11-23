@@ -60,7 +60,8 @@
 //     [EncodeStreamingWithOptions] write it as a pointer to an OBJE record
 //     they append before TRLR, identified "@INLINE_OBJEn@" (the first n no
 //     record uses). A bare [StreamEncoder] cannot see the whole document and
-//     writes it inline.
+//     writes it inline, and [EncodeRecord], which writes one record only,
+//     does too.
 //     With no known output version (no TargetVersion and no header version)
 //     none of these is dropped, and the role is ROLE.
 //     Every version-specific rule (these, CONC splitting, SNOTE pointers,

@@ -1799,7 +1799,7 @@ pipeline. Each checks it as it goes and returns its error wrapped, so
 |-----------|------------------------|---------|
 | `validator.Validator.ValidateAllWithError` | `ValidateOptions.Context` | Between checks, and per record in date logic, nil-element and duplicate detection. `ValidateAll` and `Validate` stop early too but cannot report it |
 | `converter.ConvertWithOptions` | `ConvertOptions.Context` | Per conversion step, and per record while copying the document and validating the result |
-| `encoder.EncodeWithOptions`, `EncodeStreamingWithOptions`, `StreamEncoder.WriteRecord` | `EncodeOptions.Context` | Per record |
+| `encoder.EncodeWithOptions`, `EncodeStreamingWithOptions`, `EncodeRecord`, `StreamEncoder.WriteRecord` | `EncodeOptions.Context` | Per record |
 | `merge.Combine` | `CombineOptions.Context` | Per record compared, remapped and copied |
 | `parser.LazyParser.BuildIndexContext` | its `ctx` argument | Per record indexed |
 
@@ -1940,6 +1940,14 @@ err := encoder.EncodeStreaming(writer, doc)
 
 // With options
 err := encoder.EncodeStreamingWithOptions(writer, doc, opts)
+```
+
+### Single Record
+
+`EncodeRecord(w, doc, r, opts)` writes one record's lines with no `HEAD` and no `TRLR`, for showing, diffing or logging a record. `doc` (may be nil) supplies the context `Encode` would use: the output version (`TargetVersion`, else `doc.Header.Version`), which decides CONC wrapping and the other version rules, and the `SNOTE` records a 7.0 note pointer is resolved against. Passed with its document, a decoded record encodes to the bytes `Encode` writes for it there. An inline media link is written inline, never promoted to an `@INLINE_OBJEn@` record. A nil record writes nothing.
+
+```go
+err := encoder.EncodeRecord(os.Stdout, doc, doc.GetRecord("@I1@"), nil)
 ```
 
 ### High-Level Type Encoding
