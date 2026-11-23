@@ -285,3 +285,19 @@ func TestPreserveLayoutNoTerminator(t *testing.T) {
 		t.Errorf("\n got: %q\nwant: %q", buf.String(), want)
 	}
 }
+
+// TestPreserveLayoutCopiedLine pins that a source line is written at most
+// once: a cloned tag keeps its LineNumber, and appending it must not repeat
+// the original's preceding blank line or borrow its indentation.
+func TestPreserveLayoutCopiedLine(t *testing.T) {
+	in := "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Ann /Example/\n\n  1 NOTE Kept\n0 TRLR\n"
+	doc := decodeLayout(t, in)
+	rec := doc.GetRecord("@I1@")
+	rec.Tags = append(rec.Tags, rec.Tags[1].Clone(), rec.Tags[1])
+
+	got := encodeLayout(t, doc)
+	want := "0 HEAD\n1 CHAR UTF-8\n0 @I1@ INDI\n1 NAME Ann /Example/\n\n  1 NOTE Kept\n1 NOTE Kept\n1 NOTE Kept\n0 TRLR\n"
+	if got != want {
+		t.Errorf("copied line repeated its source layout\n got: %q\nwant: %q", got, want)
+	}
+}

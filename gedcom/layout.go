@@ -11,8 +11,9 @@ package gedcom
 // document is edited. The encoder writes a line's source bytes only when the
 // line it is about to write still reads as that source line (same level,
 // identifier, tag and value), so an edited, moved or deleted structure can
-// never bring stale text back. Treat a Layout as read-only; a cloned Document
-// shares it.
+// never bring stale text back. It writes each source line at most once, so a
+// copied line, which keeps its LineNumber, is written from source only at its
+// first occurrence. Treat a Layout as read-only; a cloned Document shares it.
 //
 // Text is held as decoded, so for a source that was not UTF-8 (ANSEL, UTF-16,
 // a code page) it is the UTF-8 the encoder writes, not the original bytes.

@@ -11,6 +11,14 @@ import (
 // utf8BOM is the UTF-8 byte order mark, written first when the source had one.
 const utf8BOM = "\xEF\xBB\xBF"
 
+// sourceLayout is the layout an encode writes back, with the source lines
+// already written, by line number, so each is written at most once (see
+// writeSourced).
+type sourceLayout struct {
+	*gedcom.Layout
+	used []bool
+}
+
 // attachLayout sets opts, a copy forOutput returned, to write layout back (see
 // EncodeOptions.PreserveLayout). It does nothing unless the caller asked for
 // that and the document has a layout to write.
@@ -22,7 +30,7 @@ func (opts *EncodeOptions) attachLayout(layout *gedcom.Layout) {
 	if !opts.PreserveLayout || layout == nil {
 		return
 	}
-	opts.layout = layout
+	opts.layout = &sourceLayout{Layout: layout, used: make([]bool, len(layout.Lines)+1)}
 	if ending := layoutLineEnding(layout); ending != "" {
 		opts.LineEnding = ending
 	}
@@ -49,10 +57,15 @@ func layoutLineEnding(layout *gedcom.Layout) string {
 // source line's preceding lines, indentation and terminator, so an edit
 // changes the line and nothing around it.
 //
+// Each source line is written at most once. A second line carrying number n
+// (a cloned or copied tag or record, which keeps its LineNumber) is a new
+// line, so a copy does not repeat its original's blank lines or borrow its
+// indentation and terminator.
+//
 // checkLine runs either way, so a line the encoder would reject is rejected
 // whether or not it has source text.
 func writeSourced(w io.Writer, n, level int, xref, tag, value string, opts *EncodeOptions) error {
-	src := opts.sourceLine(n)
+	src := opts.claimSourceLine(n)
 	if src == nil {
 		return writeValue(w, level, xref, tag, value, opts)
 	}
@@ -88,11 +101,17 @@ func writeSourced(w io.Writer, n, level int, xref, tag, value string, opts *Enco
 	return writeValue(w, level, xref, tag, value, &lineOpts)
 }
 
-// sourceLine returns source line n of the layout opts writes back, or nil
-// when there is no layout or no such line.
-func (opts *EncodeOptions) sourceLine(n int) *gedcom.LayoutLine {
+// claimSourceLine returns source line n of the layout opts writes back and
+// marks it written, or returns nil when there is no layout, no such line, or
+// the line was already written in this encode.
+func (opts *EncodeOptions) claimSourceLine(n int) *gedcom.LayoutLine {
 	if opts == nil || opts.layout == nil {
 		return nil
 	}
-	return opts.layout.Line(n)
+	src := opts.layout.Line(n)
+	if src == nil || opts.layout.used[n] {
+		return nil
+	}
+	opts.layout.used[n] = true
+	return src
 }

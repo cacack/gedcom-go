@@ -62,7 +62,9 @@ blank lines), and a missing final terminator.
 **A changed line** is written as the encoder writes it without the option, but
 keeps its source line's indentation, terminator and preceding blank lines. A
 removed line takes its preceding blank lines with it. A line moved elsewhere
-keeps its own layout.
+keeps its own layout. A copied line (a cloned tag or record, which keeps its
+`LineNumber`) is written from its source once, at its first occurrence; every
+other copy is a new line.
 
 **A new line** (one the caller added, a CONT for a line break added to a value,
 or a line the encoder supplies) has no source line. It is written unindented,
@@ -85,6 +87,9 @@ change:
   so a recovered line never reads as unchanged.
 - `TargetVersion`, `DropUnknownTags` and the header the encoder supplies for a
   headerless file work as they do without the option.
+
+**A combined document** (`merge.Combine`) has no layout, because its lines
+come from two files, and is written in the normalized form.
 
 ## Non-UTF-8 Sources
 

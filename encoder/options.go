@@ -113,7 +113,9 @@ type EncodeOptions struct {
 
 	// layout is the source layout written back, set by attachLayout when
 	// PreserveLayout is on and the document has one; nil otherwise.
-	layout *gedcom.Layout
+	// It is a pointer, keeping EncodeOptions comparable, and copies of opts
+	// share it, so its record of lines written spans the whole encode.
+	layout *sourceLayout
 }
 
 // DefaultOptions returns the default encoding options.
