@@ -278,18 +278,18 @@ func TestZip_ConflictFailsWithoutOutput(t *testing.T) {
 	if !errors.As(err, &ce) || !slices.Equal(ce.Colliding, []string{"@I3@"}) {
 		t.Fatalf("err = %#v, want a conflict naming @I3@", err)
 	}
-	if want := []merge.RecordConflict{{XRef: "@I3@", Reason: "lines"}}; !reflect.DeepEqual(ce.Conflicts, want) {
+	if want := []merge.RecordConflict{{XRef: "@I3@", Reason: merge.ConflictLines}}; !reflect.DeepEqual(ce.Conflicts, want) {
 		t.Errorf("conflicts = %+v, want %+v", ce.Conflicts, want)
 	}
-	if !strings.Contains(err.Error(), "@I3@") {
-		t.Errorf("error %q does not name the xref", err)
+	if !strings.Contains(err.Error(), "@I3@") || !strings.Contains(err.Error(), "lines") {
+		t.Errorf("error %q does not name the xref and reason", err)
 	}
 
 	out, report, err = merge.Combine(a, b, merge.CombineOptions{CollisionStrategy: merge.ZipSharedXRefs, KeepFirstOnConflict: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []merge.RecordConflict{{XRef: "@I3@", Reason: "lines"}}; !reflect.DeepEqual(report.RecordConflicts, want) {
+	if want := []merge.RecordConflict{{XRef: "@I3@", Reason: merge.ConflictLines}}; !reflect.DeepEqual(report.RecordConflicts, want) {
 		t.Errorf("RecordConflicts = %+v, want %+v", report.RecordConflicts, want)
 	}
 	if got := out.GetIndividual("@I3@").Names[0].Full; got != "Carl /Example/" {
@@ -316,13 +316,13 @@ func TestZip_ConflictReasons(t *testing.T) {
 	tests := []struct {
 		name   string
 		a, b   *gedcom.Record
-		reason string
+		reason merge.ConflictReason
 	}{
-		{"type", rec(gedcom.RecordTypeNote, "x", line), rec(gedcom.RecordTypeSource, "x", line), "type"},
-		{"value", rec(gedcom.RecordTypeNote, "x", line), rec(gedcom.RecordTypeNote, "y", line), "value"},
-		{"lines", rec(gedcom.RecordTypeNote, "x", line), rec(gedcom.RecordTypeNote, "x", &gedcom.Tag{Level: 1, Tag: "CONT", Value: "other"}), "lines"},
-		{"untagged", rec(gedcom.RecordTypeNote, "x"), rec(gedcom.RecordTypeNote, "x", line), "untagged"},
-		{"anchor count", rec(gedcom.RecordTypeNote, "x", line), rec(gedcom.RecordTypeNote, "x", line, line), "lines"},
+		{"type", rec(gedcom.RecordTypeNote, "x", line), rec(gedcom.RecordTypeSource, "x", line), merge.ConflictType},
+		{"value", rec(gedcom.RecordTypeNote, "x", line), rec(gedcom.RecordTypeNote, "y", line), merge.ConflictValue},
+		{"lines", rec(gedcom.RecordTypeNote, "x", line), rec(gedcom.RecordTypeNote, "x", &gedcom.Tag{Level: 1, Tag: "CONT", Value: "other"}), merge.ConflictLines},
+		{"untagged", rec(gedcom.RecordTypeNote, "x"), rec(gedcom.RecordTypeNote, "x", line), merge.ConflictUntagged},
+		{"anchor count", rec(gedcom.RecordTypeNote, "x", line), rec(gedcom.RecordTypeNote, "x", line, line), merge.ConflictLines},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -371,5 +371,29 @@ func TestZip_DifferingHeadersMerge(t *testing.T) {
 	}
 	if len(report.HeaderConflicts) == 0 {
 		t.Error("want the differing headers merged, with conflicts reported")
+	}
+}
+
+// TestZip_HeaderPointers covers header lines that differ between two
+// bounded subsets of one master: a vendor line naming an individual only
+// one subset holds is unioned, and a note the header points at is in both.
+func TestZip_HeaderPointers(t *testing.T) {
+	text := strings.Replace(zipFixture, "1 SUBM @U1@\n", "1 SUBM @U1@\n1 _HOME @I1@\n1 NOTE @N3@\n", 1)
+	text = strings.Replace(text, "0 TRLR\n", "0 @N3@ NOTE A header note\n0 TRLR\n", 1)
+	doc := decodeZip(t, text)
+	a, b := bounded(t, doc, []string{"@I1@"}), bounded(t, doc, []string{"@I7@"})
+	if b.GetRecord("@N3@") == nil {
+		t.Fatal("subset lacks the note its header points at")
+	}
+	out := zip(t, a, b)
+	var lines []string
+	for _, tag := range out.Header.Tags {
+		if tag.Level == 1 {
+			lines = append(lines, tag.Tag+" "+tag.Value)
+		}
+	}
+	want := []string{"GEDC ", "CHAR UTF-8", "SUBM @U1@", "_HOME @I1@", "NOTE @N3@"}
+	if !slices.Equal(lines, want) {
+		t.Errorf("header lines = %q, want %q", lines, want)
 	}
 }

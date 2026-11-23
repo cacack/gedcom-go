@@ -21,10 +21,26 @@ var ErrRecordConflict = errors.New("record conflict")
 type RecordConflict struct {
 	// XRef is the record's cross-reference identifier.
 	XRef string
-	// Reason says what differs: "type", "value", "lines", or "untagged"
-	// for a record without raw Tags whose typed Entity differs.
-	Reason string
+	// Reason says what differs.
+	Reason ConflictReason
 }
+
+// ConflictReason says what differs in a RecordConflict.
+type ConflictReason string
+
+const (
+	// ConflictType: the records have different types.
+	ConflictType ConflictReason = "type"
+	// ConflictValue: the records' level-0 values differ.
+	ConflictValue ConflictReason = "value"
+	// ConflictLines: the records' raw lines differ beyond pointer lines
+	// naming an individual or family.
+	ConflictLines ConflictReason = "lines"
+	// ConflictUntagged: a record has no raw Tags, and the two records'
+	// typed Entities differ. Such records are compared in full, never
+	// unioned.
+	ConflictUntagged ConflictReason = "untagged"
+)
 
 // zipCombine implements Combine for ZipSharedXRefs. Header compatibility has
 // already been checked.
@@ -52,7 +68,7 @@ func zipCombine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Docum
 	}
 
 	out.ReindexXRefs()
-	mergedHeader, headerConflicts := zipHeaders(doc1.Header, in2.Header)
+	mergedHeader, headerConflicts := z.zipHeaders(out.Header, in2.Header)
 	out.Header = mergedHeader
 	headerConflicts = mergeDocMetadata(out, doc1, in2, headerConflicts)
 	// A unioned record's Tags are new, so its typed Entity is rebuilt from
@@ -66,26 +82,32 @@ func zipCombine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Docum
 	}, nil
 }
 
-// zipHeaders returns doc1's header when the two headers are the same, as
-// they are for documents cut from one master, and merges them as the other
-// strategies do otherwise. Merging the same header would report each of
-// its structures as a conflict and repeat its extension tags.
-func zipHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
-	if h1 != nil && h2 != nil && sameLines(h1.Tags, h2.Tags) {
-		a, b := h1.Clone(), h2.Clone()
-		a.Tags, b.Tags = nil, nil
-		if reflect.DeepEqual(a, b) {
-			return h1.Clone(), nil
-		}
-	}
-	return mergeHeaders(h1, h2)
-}
-
 // zipper unions two records with the same XRef. doc1 and doc2 are the
 // documents they come from, used to tell which pointers name individuals or
 // families.
 type zipper struct {
 	doc1, doc2 *gedcom.Document
+}
+
+// zipHeaders unions two headers cut from one master as it unions a record:
+// their typed fields must be equal and their raw lines may differ only in
+// pointer lines naming an individual or family, which a bounded subset
+// drops from its header as from a record. Other headers are merged as the
+// other strategies merge them. Merging two copies of one header that way
+// would report each of its structures as a conflict and repeat its
+// extension tags. h1 and h2 are clones the result may share lines with.
+func (z zipper) zipHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
+	if h1 != nil && h2 != nil {
+		a, b := h1.Clone(), h2.Clone()
+		a.Tags, b.Tags = nil, nil
+		if reflect.DeepEqual(a, b) {
+			if nodes, ok := z.zipNodes(buildTree(h1.Tags), buildTree(h2.Tags)); ok {
+				a.Tags = flatten(nodes, nil)
+				return a, nil
+			}
+		}
+	}
+	return mergeHeaders(h1, h2)
 }
 
 // zipInto adds records to out, in place: one whose XRef out lacks is
@@ -129,22 +151,23 @@ func (z zipper) zipInto(ctx context.Context, out *gedcom.Document, records []*ge
 }
 
 // zipRecord returns the union of r1 and r2. It returns a nil record when r1
-// already holds everything r2 does, and a reason when they conflict.
-func (z zipper) zipRecord(r1, r2 *gedcom.Record) (merged *gedcom.Record, conflict string) {
+// already holds everything r2 does, and a reason when they conflict. The
+// union has no Entity: the caller rebuilds it from the Tags.
+func (z zipper) zipRecord(r1, r2 *gedcom.Record) (merged *gedcom.Record, conflict ConflictReason) {
 	switch {
 	case r1.Type != r2.Type:
-		return nil, "type"
+		return nil, ConflictType
 	case r1.Value != r2.Value:
-		return nil, "value"
+		return nil, ConflictValue
 	case len(r1.Tags) == 0 || len(r2.Tags) == 0:
 		if len(r1.Tags) == 0 && len(r2.Tags) == 0 && reflect.DeepEqual(r1.Entity, r2.Entity) {
 			return nil, ""
 		}
-		return nil, "untagged"
+		return nil, ConflictUntagged
 	}
 	nodes, ok := z.zipNodes(buildTree(r1.Tags), buildTree(r2.Tags))
 	if !ok {
-		return nil, "lines"
+		return nil, ConflictLines
 	}
 	tags := flatten(nodes, nil)
 	if sameLines(tags, r1.Tags) {
@@ -299,7 +322,9 @@ func (z zipper) split(nodes []*node) (anchors []*node, runs [][]*node) {
 
 // isBoundaryPointer reports whether t is a line BoundedSubset may have
 // dropped: one whose Value or XRef names an individual or family in either
-// document.
+// document. It must cover every line gedcom's pruneRecord drops (see the
+// dropped predicate in gedcom.Document.BoundedSubset); change the two
+// together.
 func (z zipper) isBoundaryPointer(t *gedcom.Tag) bool {
 	return z.namesPersonOrFamily(t.Value) || z.namesPersonOrFamily(t.XRef)
 }

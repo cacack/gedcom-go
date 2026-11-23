@@ -286,11 +286,15 @@ func TestBoundedSubset_HandBuilt(t *testing.T) {
 		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
 		Associations:     []*gedcom.Association{{IndividualXRef: "@I2@"}},
 		Events:           []*gedcom.Event{{Type: "ADOP", FamilyXRef: "@F2@"}},
+		Attributes: []*gedcom.Attribute{{Type: "OCCU", Associations: []*gedcom.Association{
+			{IndividualXRef: "@I2@"}, {IndividualXRef: "@I1@"},
+		}}},
 	}})
 	add(&gedcom.Record{XRef: "@I2@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{XRef: "@I2@"}})
 	add(&gedcom.Record{XRef: "@F1@", Type: gedcom.RecordTypeFamily, Entity: &gedcom.Family{
 		XRef: "@F1@", Husband: "@I1@", Wife: "@I2@", Children: []string{"@I2@"},
 		ChildLinks: []gedcom.ChildLink{{XRef: "@I2@"}},
+		Events:     []*gedcom.Event{{Type: "MARR", Associations: []*gedcom.Association{{IndividualXRef: "@I2@"}}}},
 	}})
 	add(&gedcom.Record{XRef: "@F2@", Type: gedcom.RecordTypeFamily, Entity: &gedcom.Family{XRef: "@F2@", Wife: "@I2@"}})
 
@@ -300,19 +304,30 @@ func TestBoundedSubset_HandBuilt(t *testing.T) {
 	}
 	assertSelfContained(t, sub)
 	indi := sub.GetIndividual("@I1@")
-	if len(indi.Associations) != 0 || indi.Events[0].FamilyXRef != "" || len(indi.SpouseInFamilies) != 1 {
+	if len(indi.Associations) != 0 || indi.Events[0].FamilyXRef != "" ||
+		len(indi.SpouseInFamilies) != 1 || indi.SpouseInFamilies[0].FamilyXRef != "@F1@" {
 		t.Errorf("individual = %+v", indi)
+	}
+	if got := indi.Attributes[0].Associations; len(got) != 1 || got[0].IndividualXRef != "@I1@" {
+		t.Errorf("attribute associations = %+v, want only @I1@", got)
 	}
 	fam := sub.GetFamily("@F1@")
 	if fam.Husband != "@I1@" || fam.Wife != "" || len(fam.Children) != 0 || len(fam.ChildLinks) != 0 {
 		t.Errorf("family = %+v", fam)
 	}
-	if len(dropped) != 5 {
-		t.Errorf("dropped = %+v, want 5 typed pointers", dropped)
+	if got := fam.Events[0].Associations; got != nil {
+		t.Errorf("family event associations = %+v, want none", got)
 	}
-	for _, d := range dropped {
-		if d.Tag != "" {
-			t.Errorf("typed-only drop %+v has a tag", d)
-		}
+	want := []gedcom.DroppedPointer{
+		{XRef: "@I1@", Target: "@I2@"}, // ASSO
+		{XRef: "@I1@", Target: "@F2@"}, // ADOP FAMC
+		{XRef: "@I1@", Target: "@I2@"}, // OCCU ASSO
+		{XRef: "@F1@", Target: "@I2@"}, // WIFE
+		{XRef: "@F1@", Target: "@I2@"}, // CHIL
+		{XRef: "@F1@", Target: "@I2@"}, // child link
+		{XRef: "@F1@", Target: "@I2@"}, // MARR ASSO
+	}
+	if !reflect.DeepEqual(dropped, want) {
+		t.Errorf("dropped = %+v, want %+v", dropped, want)
 	}
 }

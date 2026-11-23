@@ -628,8 +628,8 @@ branch, dropped, err := doc.BoundedSubset([]string{"@I3@", "@I7@"})
 
 - Holds exactly the given individuals, every family with one of them as a
   member (HUSB, WIFE, CHIL, or named by their FAMC/FAMS), and everything
-  those records reference that is not an individual or family, plus the
-  header's submitter as `Subset` carries it
+  those records reference that is not an individual or family, plus every
+  such record the header points at
 - A pointer to an individual or family outside the result is removed with
   its subordinate lines, from the raw Tags and the typed Entity alike, so
   the result is self-contained; each one is reported as a `DroppedPointer`
@@ -637,9 +637,10 @@ branch, dropped, err := doc.BoundedSubset([]string{"@I3@", "@I7@"})
   (`gedcom.ErrUnknownXRef`); a dangling reference is an error, as in `Subset`
 - Zips back together with `merge.ZipSharedXRefs`: the bounded subsets of
   S1 and S2 combine into the bounded subset of S1 ∪ S2. A family's HUSB,
-  WIFE and CHIL lines are restored (`DroppedPointer.Restorable`); a pointer
-  only one record holds, such as an `ASSO` naming someone outside the set,
-  is lost from the cut
+  WIFE and CHIL lines are always restored (`DroppedPointer.Restorable`); a
+  pointer only one subset's records hold, such as an `ASSO` naming someone
+  outside the set, is lost from the cut. Round-tripping needs raw Tags, as a
+  decoded document has. A conflict's reason is a `merge.ConflictReason`
 
 ### Deep Copy
 

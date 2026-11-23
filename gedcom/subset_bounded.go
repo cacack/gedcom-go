@@ -21,12 +21,13 @@ type DroppedPointer struct {
 	Tag string
 	// Target is the individual or family the pointer named.
 	Target string
-	// Restorable is true when merge.ZipSharedXRefs puts the line back on
-	// combining this subset with one that holds Target: the line is a
-	// family's level-1 HUSB, WIFE or CHIL, which every bounded subset
-	// holding that individual also holds. Any other dropped line, such as
-	// an ASSO naming an individual outside the set, exists only in a record
-	// the other subset lacks, so it is lost from the cut.
+	// Restorable is true when merge.ZipSharedXRefs is guaranteed to put
+	// the line back on combining this subset with one that holds Target:
+	// the line is a family's level-1 HUSB, WIFE or CHIL, which every
+	// bounded subset holding that individual also holds. It is
+	// conservative: another dropped line, such as an ASSO naming an
+	// individual outside the set, is restored only when the other subset
+	// also holds the record it sat in, and is otherwise lost from the cut.
 	Restorable bool
 }
 
@@ -45,8 +46,9 @@ const droppedMarker = "\x00dropped"
 //     one as HUSB, WIFE or CHIL, or that one names with FAMC or FAMS;
 //   - everything those records reference, transitively, that is not an
 //     individual or a family (sources, repositories, notes, shared notes,
-//     media, submitters and submissions), and the header's submitter as
-//     [Document.Subset] carries it.
+//     media, submitters and submissions), and every such record the header
+//     points at, so that bounded subsets of one document share its header
+//     but for pointer lines naming an individual or family.
 //
 // A pointer in an included record that names an individual or family outside
 // the result is removed, so no included record points outside the result.
@@ -70,11 +72,13 @@ const droppedMarker = "\x00dropped"
 // on the boundary is in the subset of every member, each copy holding the
 // HUSB, WIFE and CHIL lines of the members its subset holds. So, when every
 // dropped pointer is Restorable, the bounded subsets of S1 and S2 cut from
-// one document combine, with merge.ZipSharedXRefs, into the bounded subset
+// one decoded document (or one whose records all carry raw Tags) combine, with merge.ZipSharedXRefs, into the bounded subset
 // of S1 ∪ S2; when S1 ∪ S2 holds every individual, and every other record is
 // referenced from one, that is d itself. A pointer that is not Restorable
 // (an ASSO, or an event's FAMC naming a family the individual is not a
-// member of) is lost from the cut: keep the two ends in one set to keep it.
+// member of) may be lost from the cut: keep the two ends in one set to keep
+// it. A record without raw Tags is compared in full by the zip, never
+// unioned, so a document built in code without Tags does not round-trip.
 //
 // The header, trailer, vendor and schema are carried over as Subset carries
 // them, and d is not mutated.
@@ -90,7 +94,8 @@ func (d *Document) BoundedSubset(individuals []string) (*Document, []DroppedPoin
 
 	// dropped reports whether a pointer value names an individual or family
 	// outside the result. The closure walk has already rejected every
-	// pointer that resolves to nothing.
+	// pointer that resolves to nothing. merge's zipper.isBoundaryPointer
+	// must accept every line this drops; change the two together.
 	dropped := func(ref string) bool {
 		if closure[ref] || !d.IsRecordPointer(ref) {
 			return false
@@ -124,12 +129,8 @@ func (d *Document) boundedClosure(seeds []string) (map[string]bool, error) {
 	for _, xref := range d.memberFamilies(people) {
 		add(xref)
 	}
-	// The header's submitter, as Subset carries it.
-	if d.Header != nil {
-		subm := d.Header.Submitter
-		if d.IsRecordPointer(subm) && d.GetSubmitter(subm) != nil {
-			add(subm)
-		}
+	for _, xref := range d.headerRecords() {
+		add(xref)
 	}
 
 	// Follow every reference except into individuals and families: those
@@ -155,6 +156,30 @@ func (d *Document) boundedClosure(seeds []string) (map[string]bool, error) {
 		}
 	}
 	return closure, nil
+}
+
+// headerRecords returns the header's submitter, as Subset carries it, and
+// every other record the header points at that is not an individual or
+// family. A dangling header pointer is left for subsetHeader to drop.
+func (d *Document) headerRecords() []string {
+	if d.Header == nil {
+		return nil
+	}
+	var refs []string
+	if subm := d.Header.Submitter; d.IsRecordPointer(subm) && d.GetSubmitter(subm) != nil {
+		refs = append(refs, subm)
+	}
+	for _, t := range d.Header.Tags {
+		if t == nil {
+			continue
+		}
+		for _, ref := range []string{t.XRef, t.Value} {
+			if r := d.GetRecord(ref); d.IsRecordPointer(ref) && r != nil && !isPersonOrFamily(r) {
+				refs = append(refs, ref)
+			}
+		}
+	}
+	return refs
 }
 
 // boundedSeeds checks seeds and returns them without duplicates.
@@ -353,31 +378,28 @@ func compactEntity(entity interface{}) {
 		e.ChildInFamilies = deleteFunc(e.ChildInFamilies, linkDropped)
 		e.SpouseInFamilies = deleteFunc(e.SpouseInFamilies, linkDropped)
 		e.Associations = deleteFunc(e.Associations, assoDropped)
-		for _, ev := range e.Events {
-			if ev != nil {
-				ev.Associations = deleteFunc(ev.Associations, assoDropped)
-			}
-		}
-		for _, at := range e.Attributes {
-			if at != nil {
-				at.Associations = deleteFunc(at.Associations, assoDropped)
-			}
-		}
+		compactEventAssociations(e.Events, e.Attributes, assoDropped)
 	case *Family:
 		if e == nil {
 			return
 		}
 		e.Children = deleteFunc(e.Children, isDropped)
 		e.ChildLinks = deleteFunc(e.ChildLinks, func(l ChildLink) bool { return isDropped(l.XRef) })
-		for _, ev := range e.Events {
-			if ev != nil {
-				ev.Associations = deleteFunc(ev.Associations, assoDropped)
-			}
+		compactEventAssociations(e.Events, e.Attributes, assoDropped)
+	}
+}
+
+// compactEventAssociations removes the dropped associations of events and
+// attributes.
+func compactEventAssociations(events []*Event, attrs []*Attribute, dropped func(*Association) bool) {
+	for _, ev := range events {
+		if ev != nil {
+			ev.Associations = deleteFunc(ev.Associations, dropped)
 		}
-		for _, at := range e.Attributes {
-			if at != nil {
-				at.Associations = deleteFunc(at.Associations, assoDropped)
-			}
+	}
+	for _, at := range attrs {
+		if at != nil {
+			at.Associations = deleteFunc(at.Associations, dropped)
 		}
 	}
 }

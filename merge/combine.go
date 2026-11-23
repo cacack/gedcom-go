@@ -59,8 +59,9 @@ const (
 	//
 	// Records keep doc1's order, followed by doc2's records doc1 lacks.
 	// Records without raw Tags are compared in full and never unioned.
-	// Identical headers are kept as doc1's; differing ones are merged as
-	// the other strategies merge them.
+	// Headers are unioned as records are when their typed fields match
+	// and their lines differ only in such pointer lines; other headers
+	// are merged as the other strategies merge them.
 	ZipSharedXRefs
 )
 
@@ -318,7 +319,8 @@ type CombineError struct {
 	// the conflicting XRefs.
 	Colliding []string
 	// Conflicts says what differs in each conflicting record, for
-	// "record-conflict".
+	// "record-conflict"; it is authoritative, and Error() shows only the
+	// first reason.
 	Conflicts []RecordConflict
 }
 
@@ -337,7 +339,11 @@ func (e *CombineError) Error() string {
 	case "missing-prefix":
 		return "merge: PrefixDoc2 strategy requires non-empty Prefix"
 	case "record-conflict":
-		return fmt.Sprintf("merge: records conflict: %s (set CombineOptions.KeepFirstOnConflict to keep doc1's)", summarizeXRefs(e.Colliding))
+		msg := fmt.Sprintf("merge: records conflict: %s", summarizeXRefs(e.Colliding))
+		if len(e.Conflicts) > 0 {
+			msg += fmt.Sprintf(" (%s: %s)", e.Conflicts[0].XRef, e.Conflicts[0].Reason)
+		}
+		return msg + " (set CombineOptions.KeepFirstOnConflict to keep doc1's)"
 	}
 	return "merge: " + e.Kind
 }
