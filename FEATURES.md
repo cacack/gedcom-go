@@ -556,8 +556,9 @@ rels := doc.DescendantsWithGenerations("@I1@", 0) // every generation
 
 ### Presumed Living
 
-One documented test for who is presumed living, so every consumer that
-shares tree data redacts by the same rule:
+One documented test for who is presumed living, which consumers that share
+tree data can adopt before redacting (it compares whole years and consults
+close relatives, so it can differ from a consumer's own birth-date rule):
 
 ```go
 living, reason := ind.PresumedLiving(doc, gedcom.LivingConfig{ReferenceYear: 2026})
@@ -572,7 +573,8 @@ living, reason := ind.PresumedLiving(doc, gedcom.LivingConfig{ReferenceYear: 202
 - `reason` (`LivingReason`) names the deciding rule; `ReferenceYear` (default
   the current year) makes results reproducible
 - Parents' and spouses' dates, negative assertions and LDS ordinances are not
-  consulted
+  consulted; only parsed dates (`ParsedDate`) count
+- With a nil `doc` only the individual's own record is read
 
 ### Subset Extraction
 

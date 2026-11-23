@@ -55,8 +55,10 @@ const (
 )
 
 // PresumedLiving reports whether the individual is presumed to be living, and
-// which rule decided, so that every consumer that publishes or shares tree
-// data can apply the same test before redacting. The rules, in order:
+// which rule decided: one documented test that consumers who publish or share
+// tree data can adopt before redacting. It compares whole years and consults
+// close relatives, so it can differ from a consumer's own rule (one based on
+// birth date alone, say). The rules, in order:
 //
 //  1. A death, burial or cremation event (DEAT, BURI, CREM), dated or not,
 //     including the death flag "1 DEAT Y": not living (LivingReasonDeath).
@@ -80,10 +82,14 @@ const (
 // date can denote ([Date.Bounds], in the proleptic Gregorian calendar) is
 // more than MaxAge years before ReferenceYear: with the default of 110 and a
 // reference year of 2026, a birth in 1915 or earlier decides, one in 1916
-// does not, and "AFT 1800" never does. A phrase date, or one Bounds cannot
-// place, is treated as no date. Rules 3 and 4 need doc; with a nil doc only
-// the individual's own record is read. A nil individual is presumed living
-// (LivingReasonNoDates).
+// does not, and "AFT 1800" never does. Only the parsed date (ParsedDate,
+// which the decoder fills) is read: a phrase date, one Bounds cannot place,
+// or an Event or Attribute built with Date but no ParsedDate is treated as no
+// date. A nil individual is presumed living (LivingReasonNoDates).
+//
+// Rules 3 and 4 need doc. With a nil doc only the individual's own record is
+// read, so LivingReasonWithinThreshold and LivingReasonNoDates then mean that
+// relatives were not consulted, not that they had no old dates.
 func (i *Individual) PresumedLiving(doc *Document, cfg LivingConfig) (bool, LivingReason) {
 	if i == nil {
 		return true, LivingReasonNoDates
