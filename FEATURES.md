@@ -714,6 +714,9 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
   `PlaceForm`)
 - Every typed field is a read view filled by the decoder: `Header.Tags` is
   what a decoded header is encoded from (see the `encoder` package docs)
+- A header built in memory, with no `Tags`, is encoded from its scalar fields
+  and `PlaceForm`, which is written as `PLAC.FORM` after `LANG`, so a
+  document can state its default place hierarchy once
 
 ### Individuals (INDI)
 
@@ -1940,7 +1943,7 @@ See [docs/guides/converter.md](docs/guides/converter.md) for detailed documentat
 - Write valid GEDCOM files
 - Configurable line endings (LF, CRLF)
 - GEDCOM 5.5, 5.5.1, 7.0 output; a GEDCOM 7 patch or minor version (`TargetVersion: "7.0.14"` or `"7.1"`, or such a `Header.Version`) is written as 7.0 by every version-specific rule, and a vendor spelling such as `"5.51"` as the version it means, by the same rule the decoder reads `GEDC.VERS` with, while `GEDC.VERS` keeps the value as given
-- Header written from the source's `Header.Tags` in source order, so a same-version re-encode is byte-identical; a `GEDC` the encoder has to add for `TargetVersion` is placed where the target grammar puts it, and a 5.5/5.5.1 `GEDC` it writes (added, or from a hand-built header) carries `FORM LINEAGE-LINKED`
+- Header written from the source's `Header.Tags` in source order, so a same-version re-encode is byte-identical; a `GEDC` the encoder has to add for `TargetVersion` is placed where the target grammar puts it, and a 5.5/5.5.1 `GEDC` it writes (added, or from a hand-built header) carries `FORM LINEAGE-LINKED`; a hand-built header (no `Tags`) is written from its typed fields in grammar order, with a non-empty `PlaceForm` as `1 PLAC` / `2 FORM`
 - UTF-8 output
 
 ### Streaming Encoder

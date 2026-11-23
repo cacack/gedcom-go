@@ -136,9 +136,9 @@
 // what gets written — so SCHMA, SUBM, DEST, DATE (with its TIME), COPR, the
 // SOUR subtree and header notes all survive a round-trip. The typed scalar
 // fields (Version, Encoding, SourceSystem, Date, Language, Submitter) are NOT
-// consulted on this path, and the header-substructure views (SourceVersion,
-// SourceName, SourceCorporation, SourceData, Destination, Time, PlaceForm) are never
-// consulted at all. Setting doc.Header.SourceSystem on a decoded
+// consulted on this path, and neither are the header-substructure views
+// (SourceVersion, SourceName, SourceCorporation, SourceData, Destination, Time,
+// PlaceForm). Setting doc.Header.SourceSystem on a decoded
 // document and encoding it does not change the output; call [SyncTags] first,
 // which carries the scalar fields into Tags, or edit the corresponding entry
 // in doc.Header.Tags. SyncTags does not carry the substructure views.
@@ -147,7 +147,9 @@
 // what is written.
 //
 // A document assembled in memory has no tags, so its header is built from those
-// typed fields instead.
+// typed scalar fields instead, plus one of the views: a non-empty PlaceForm is
+// written as PLAC with a FORM beneath it, after LANG. The other views are
+// never written from their fields.
 //
 // Two values are the encoder's rather than the document's, on both paths:
 //
@@ -170,13 +172,13 @@
 //
 // A line break (CR, LF or CRLF) in a value is written as CONT lines, because
 // that is how GEDCOM spells one. This includes the hand-built header fields
-// written as values ([gedcom.Header].Version, SourceSystem, Date and
-// Language). The grammar allows no CONT under HEAD.SOUR, HEAD.LANG or
-// GEDC.VERS, so folding there only keeps the line break from starting a new
-// record: decoding the output again fills the typed field from the first line
-// alone, with the CONT kept in [gedcom.Header].Tags. Those fields hold
-// single-line tokens, so a caller filling them from external strings should
-// strip line breaks first.
+// written as values ([gedcom.Header].Version, SourceSystem, Date, Language
+// and PlaceForm). The grammar allows no CONT under HEAD.SOUR, HEAD.LANG,
+// GEDC.VERS or PLAC.FORM, so folding there only keeps the line break from
+// starting a new record: decoding the output again fills the typed field from
+// the first line alone, with the CONT kept in [gedcom.Header].Tags. Those
+// fields hold single-line values, so a caller filling them from external
+// strings should strip line breaks first.
 //
 // A tag name or cross-reference identifier has no CONT form, so a line break
 // in [gedcom.Tag].Tag, [gedcom.Tag].XRef, [gedcom.Record].Type,
