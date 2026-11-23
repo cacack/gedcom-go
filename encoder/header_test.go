@@ -966,3 +966,209 @@ func TestHeaderRetargetFromDecoded70AddsGEDCForm(t *testing.T) {
 		t.Errorf("5.5.1 output lacks GEDC.FORM:\n%s", buf.String())
 	}
 }
+
+// TestHeaderFieldsPlaceForm covers the hand-built path for Header.PlaceForm
+// (issue #875): a header with no Tags writes it as "1 PLAC" / "2 FORM", after
+// LANG in the 5.5.1 and 7.0 grammars alike, and writes nothing when it is
+// empty.
+func TestHeaderFieldsPlaceForm(t *testing.T) {
+	const form = "City, County, State, Country"
+
+	encode := func(t *testing.T, h *gedcom.Header) string {
+		t.Helper()
+		var buf bytes.Buffer
+		if err := Encode(&buf, &gedcom.Document{Header: h}); err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+		return buf.String()
+	}
+
+	roundTrip := func(t *testing.T, out, want string) {
+		t.Helper()
+		doc, err := decoder.Decode(strings.NewReader(out))
+		if err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if doc.Header.PlaceForm != want {
+			t.Errorf("Header.PlaceForm = %q, want %q", doc.Header.PlaceForm, want)
+		}
+	}
+
+	t.Run("5.5.1 writes PLAC.FORM after LANG", func(t *testing.T) {
+		out := encode(t, &gedcom.Header{
+			Version:      gedcom.Version551,
+			SourceSystem: "TestSystem",
+			Language:     "English",
+			PlaceForm:    form,
+		})
+		want := "0 HEAD\n" +
+			"1 SOUR TestSystem\n" +
+			"1 GEDC\n" +
+			"2 VERS 5.5.1\n" +
+			"2 FORM LINEAGE-LINKED\n" +
+			"1 CHAR UTF-8\n" +
+			"1 LANG English\n" +
+			"1 PLAC\n" +
+			"2 FORM " + form + "\n" +
+			"0 TRLR\n"
+		if out != want {
+			t.Errorf("got:\n%s\nwant:\n%s", out, want)
+		}
+		roundTrip(t, out, form)
+	})
+
+	t.Run("7.0 writes PLAC.FORM after LANG", func(t *testing.T) {
+		out := encode(t, &gedcom.Header{
+			Version:      gedcom.Version70,
+			SourceSystem: "TestSystem",
+			Language:     "en",
+			PlaceForm:    form,
+		})
+		want := "0 HEAD\n" +
+			"1 GEDC\n" +
+			"2 VERS 7.0\n" +
+			"1 SOUR TestSystem\n" +
+			"1 LANG en\n" +
+			"1 PLAC\n" +
+			"2 FORM " + form + "\n" +
+			"0 TRLR\n"
+		if out != want {
+			t.Errorf("got:\n%s\nwant:\n%s", out, want)
+		}
+		roundTrip(t, out, form)
+	})
+
+	t.Run("no Language still writes PLAC.FORM last", func(t *testing.T) {
+		for _, version := range []gedcom.Version{gedcom.Version551, gedcom.Version70} {
+			out := encode(t, &gedcom.Header{Version: version, PlaceForm: form})
+			if !strings.HasSuffix(out, "\n1 PLAC\n2 FORM "+form+"\n0 TRLR\n") {
+				t.Errorf("%s: PLAC.FORM does not close the header:\n%s", version, out)
+			}
+			if strings.Contains(out, "LANG") {
+				t.Errorf("%s: synthesized a LANG the header never had:\n%s", version, out)
+			}
+			roundTrip(t, out, form)
+		}
+	})
+
+	t.Run("empty PlaceForm emits no PLAC", func(t *testing.T) {
+		out := encode(t, &gedcom.Header{
+			Version:      gedcom.Version551,
+			SourceSystem: "TestSystem",
+			Language:     "English",
+		})
+		// The full text the same header encoded to before PlaceForm had a
+		// writer.
+		want := "0 HEAD\n" +
+			"1 SOUR TestSystem\n" +
+			"1 GEDC\n" +
+			"2 VERS 5.5.1\n" +
+			"2 FORM LINEAGE-LINKED\n" +
+			"1 CHAR UTF-8\n" +
+			"1 LANG English\n" +
+			"0 TRLR\n"
+		if out != want {
+			t.Errorf("got:\n%s\nwant:\n%s", out, want)
+		}
+		if strings.Contains(out, "PLAC") {
+			t.Errorf("synthesized a PLAC the header never had:\n%s", out)
+		}
+	})
+
+	t.Run("whitespace-only PlaceForm emits no PLAC", func(t *testing.T) {
+		// A form that is empty after trimming is no form, as it is to
+		// PlaceDetail.Parts; a FORM with no payload would decode to "".
+		out := encode(t, &gedcom.Header{Version: gedcom.Version551, PlaceForm: " \t "})
+		if strings.Contains(out, "PLAC") {
+			t.Errorf("whitespace-only PlaceForm wrote a PLAC:\n%s", out)
+		}
+	})
+
+	t.Run("value is escaped for the output version", func(t *testing.T) {
+		// FORM is text, so 5.5.1 doubles a literal "@" (#708) and the
+		// decoder undoes it.
+		out := encode(t, &gedcom.Header{Version: gedcom.Version551, PlaceForm: "City @ County"})
+		if !strings.Contains(out, "\n2 FORM City @@ County\n") {
+			t.Errorf("FORM not escaped:\n%s", out)
+		}
+		roundTrip(t, out, "City @ County")
+	})
+
+	t.Run("line break in PlaceForm cannot inject a line", func(t *testing.T) {
+		out := encode(t, &gedcom.Header{Version: gedcom.Version551, PlaceForm: "City, State\n0 @X@ INDI"})
+		for _, line := range strings.Split(out, "\n") {
+			if strings.HasPrefix(line, "0 @X@") {
+				t.Fatalf("PlaceForm injected a level-0 record:\n%s", out)
+			}
+		}
+		if !strings.Contains(out, "\n1 PLAC\n2 FORM City, State\n3 CONT 0 @@X@@ INDI\n") {
+			t.Errorf("line break not written as CONT:\n%s", out)
+		}
+		doc, err := decoder.Decode(strings.NewReader(out))
+		if err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if _, ok := doc.XRefMap["@X@"]; ok {
+			t.Error("injected @X@ record decoded from the encoded header")
+		}
+	})
+}
+
+// TestHeaderTagsIgnorePlaceForm pins the decoded path for the same field
+// (issue #875). Header.Tags governs a decoded header, so an edit to PlaceForm
+// changes nothing -- and SyncTags does not carry the field into Tags, so it
+// changes nothing after SyncTags either.
+func TestHeaderTagsIgnorePlaceForm(t *testing.T) {
+	const input = "0 HEAD\n" +
+		"1 SOUR TestApp\n" +
+		"1 GEDC\n" +
+		"2 VERS 5.5.1\n" +
+		"2 FORM LINEAGE-LINKED\n" +
+		"1 CHAR UTF-8\n" +
+		"1 PLAC\n" +
+		"2 FORM City, County, State, Country\n" +
+		"0 @I1@ INDI\n" +
+		"1 NAME John /Doe/\n" +
+		"0 TRLR\n"
+
+	// noPlace is the same header with no PLAC at all, so an edit that sets
+	// PlaceForm where there was none cannot add one either.
+	noPlace := strings.Replace(input, "1 PLAC\n2 FORM City, County, State, Country\n", "", 1)
+
+	for _, tt := range []struct {
+		name  string
+		input string
+		edit  string
+	}{
+		{"changed", input, "Town, Country"},
+		{"cleared", input, ""},
+		{"set where the header had none", noPlace, "Town, Country"},
+	} {
+		for _, sync := range []bool{false, true} {
+			name := tt.name
+			if sync {
+				name += " then SyncTags"
+			}
+			t.Run(name, func(t *testing.T) {
+				doc, err := decoder.Decode(strings.NewReader(tt.input))
+				if err != nil {
+					t.Fatalf("decode: %v", err)
+				}
+				doc.Header.PlaceForm = tt.edit
+				if sync {
+					if err := SyncTags(doc); err != nil {
+						t.Fatalf("SyncTags: %v", err)
+					}
+				}
+
+				var buf bytes.Buffer
+				if err := Encode(&buf, doc); err != nil {
+					t.Fatalf("encode: %v", err)
+				}
+				if got := buf.String(); got != tt.input {
+					t.Errorf("decoded header changed:\ngot:\n%s\nwant:\n%s", got, tt.input)
+				}
+			})
+		}
+	}
+}

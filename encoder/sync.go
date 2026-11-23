@@ -50,6 +50,8 @@ var ErrSyncBaseline = errors.New("raw tags do not read back as the same records"
 // SourceSystem, Date, Submitter, Language, Version and whether Encoding is set.
 // The encoder always writes CHAR UTF-8, so Encoding's value is not carried,
 // only its presence, and for 7.0 output, which has no CHAR, not even that.
+// PlaceForm is the exception: a hand-built header writes it as PLAC.FORM, but
+// SyncTags does not carry it.
 //
 // SyncTags makes the typed fields win. It cannot tell a typed edit from an
 // edit made to Tags alone, so on a record whose Tags were changed without its

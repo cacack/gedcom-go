@@ -358,12 +358,34 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 	if err != nil {
 		return err
 	}
+	// LANG closes both orders headerFieldTags returns, and PLAC follows LANG in
+	// the 5.5, 5.5.1 and 7.0 grammars alike, so appending is grammar order.
+	tags = append(tags, placeFormTags(header, opts)...)
 	for _, tag := range tags {
 		if err := writeTag(w, tag, opts); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// placeFormTags returns the PLAC.FORM pair Header.PlaceForm is written as on
+// the hand-built path, or nil when the field is empty (issue #875). FORM is
+// text, escaped and CONT-folded like the values headerFieldTags writes.
+//
+// It lives outside headerFieldTags because SyncTags shares that function, and
+// SyncTags does not carry PlaceForm: on a decoded header it stays a read view
+// of Tags.
+func placeFormTags(header *gedcom.Header, opts *EncodeOptions) []*gedcom.Tag {
+	// A form that is empty after trimming is no form, as it is to
+	// gedcom.PlaceDetail.Parts; writing it would leave a FORM with no payload.
+	if strings.TrimSpace(header.PlaceForm) == "" {
+		return nil
+	}
+	return []*gedcom.Tag{
+		{Level: 1, Tag: "PLAC"},
+		{Level: 2, Tag: "FORM", Value: opts.text(header.PlaceForm)},
+	}
 }
 
 // headerFieldTags returns the level-1 header tags the typed fields are written
@@ -438,6 +460,9 @@ func headerFieldTags(header *gedcom.Header, opts *EncodeOptions) ([]*gedcom.Tag,
 	//
 	// The order reads the gated version (7.0.N and 7.1 are 7.0); VERS above keeps the
 	// value as given (issue #696).
+	//
+	// LANG must stay last in both orders: writeHeaderFields appends PLAC after
+	// whatever this returns, and PLAC follows LANG in every grammar.
 	groups := [][]*gedcom.Tag{sour, date, subm, gedc, char, lang}
 	if opts.is70() {
 		groups = [][]*gedcom.Tag{gedc, sour, date, subm, char, lang}

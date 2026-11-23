@@ -125,8 +125,11 @@ type Header struct {
 	// PlaceForm is the default place hierarchy from HEAD.PLAC.FORM, verbatim
 	// (for example "City, County, State, Country"): the jurisdiction list that
 	// interprets every PLAC value in the file that has no FORM of its own.
-	// Empty when the tag is absent. Like SourceVersion, it is a read view:
-	// Tags governs encoding and the encoder never writes it.
+	// Empty when the tag is absent. On a decoded header it is a read view,
+	// like SourceVersion: Tags governs encoding, and encoder.SyncTags does not
+	// carry a change to it into Tags. A header built in memory, with no Tags,
+	// is written with it as PLAC.FORM unless it is empty after trimming, and
+	// merge.Combine treats it as that document's PLAC.
 	PlaceForm string `json:",omitempty"`
 
 	// AncestryTreeID is the Ancestry.com tree identifier from HEAD.SOUR._TREE.

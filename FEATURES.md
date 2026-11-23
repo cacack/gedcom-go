@@ -688,6 +688,11 @@ mutated. The typed views of header substructures (`SourceVersion`,
 `SourceName`, `SourceCorporation`, `Destination`, `Time`, `PlaceForm`) follow
 the raw structure that holds them, so a doc2 `SOUR`, `DEST`, `DATE` or `PLAC`
 dropped in favour of doc1's is reported as a `Tags.<tag>` conflict.
+A `PlaceForm` set on a header with no raw `PLAC` (a document assembled in
+memory) counts as that document's `PLAC`: doc1's keeps doc2's out, doc2's is
+used when doc1 states none, and either way the combined header carries it as
+`PLAC.FORM`. The combined document has one default place form, so places from
+the other input with no `FORM` of their own are read under it.
 Differing non-empty header versions or encodings are refused
 with `ErrIncompatibleHeader`; set `CombineOptions.IgnoreEncodingMismatch`
 to merge documents whose declared encodings differ (text is UTF-8 in
@@ -714,6 +719,9 @@ them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
   `PlaceForm`)
 - Every typed field is a read view filled by the decoder: `Header.Tags` is
   what a decoded header is encoded from (see the `encoder` package docs)
+- A header built in memory, with no `Tags`, is encoded from its scalar fields
+  and `PlaceForm`, which is written as `PLAC.FORM` after `LANG`, so a
+  document can state its default place hierarchy once
 
 ### Individuals (INDI)
 
@@ -993,6 +1001,30 @@ that is already recorded, assign `PlaceDetail = nil`.
 unaffected by any of the above. That asymmetry is deliberate; see
 [Accepted Asymmetries](docs/governance/policies/api-stability.md#accepted-asymmetries)
 for what it costs and why closing it later would be additive.
+
+### Place Parts and FORM Labels
+
+`PlaceDetail.Parts(defaultForm)` splits a place name on commas and pairs each
+part, in file order, with the label the file states for that position.
+`Document.PlaceParts(place)` does the same with `Header.PlaceForm`
+(`HEAD.PLAC.FORM`) as the default form. Both are nil-safe.
+
+- The place's own `FORM` is used when it has one, otherwise the default form,
+  otherwise the parts come back unlabeled; `PlaceParts.Source` says which
+  (`PlaceFormOwn`, `PlaceFormHeader`, `PlaceFormNone`)
+- Parts and labels are trimmed; empty parts are kept so positions stay aligned
+  (`, , Utah, USA` is four parts)
+- Labels are never inferred from position: when the form's label count differs
+  from the part count, `Mismatch` is true, no part carries a label, and
+  `Labels` still holds what the file said
+- A comma inside a part cannot be told from a separator, since GEDCOM defines
+  no escape for it
+
+```go
+for _, part := range doc.PlaceParts(event.PlaceDetail).Parts {
+    fmt.Printf("%s: %s\n", part.Label, part.Name)
+}
+```
 
 ### Coordinate Conversion
 
@@ -1916,7 +1948,7 @@ See [docs/guides/converter.md](docs/guides/converter.md) for detailed documentat
 - Write valid GEDCOM files
 - Configurable line endings (LF, CRLF)
 - GEDCOM 5.5, 5.5.1, 7.0 output; a GEDCOM 7 patch or minor version (`TargetVersion: "7.0.14"` or `"7.1"`, or such a `Header.Version`) is written as 7.0 by every version-specific rule, and a vendor spelling such as `"5.51"` as the version it means, by the same rule the decoder reads `GEDC.VERS` with, while `GEDC.VERS` keeps the value as given
-- Header written from the source's `Header.Tags` in source order, so a same-version re-encode is byte-identical; a `GEDC` the encoder has to add for `TargetVersion` is placed where the target grammar puts it, and a 5.5/5.5.1 `GEDC` it writes (added, or from a hand-built header) carries `FORM LINEAGE-LINKED`
+- Header written from the source's `Header.Tags` in source order, so a same-version re-encode is byte-identical; a `GEDC` the encoder has to add for `TargetVersion` is placed where the target grammar puts it, and a 5.5/5.5.1 `GEDC` it writes (added, or from a hand-built header) carries `FORM LINEAGE-LINKED`; a hand-built header (no `Tags`) is written from its typed fields in grammar order, with a non-empty `PlaceForm` as `1 PLAC` / `2 FORM`
 - UTF-8 output
 
 ### Streaming Encoder
