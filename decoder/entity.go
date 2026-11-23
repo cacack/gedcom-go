@@ -161,6 +161,10 @@ func (c *diagnosticCollector) isPointer(s string) bool {
 // CodeUnknownTag. Once a code and tag have been reported
 // MaxUnknownTagDiagnosticsPerTag times, further lines are only counted (see
 // unknownTagSummaries).
+//
+// lineNumber must be a line of the record (or header) passed to the last
+// enterScope; a caller that reports lines outside one must call enterScope
+// first, or every line it reports stays CodeUnknownTag.
 func (c *diagnosticCollector) addUnknownTag(lineNumber int, tag, content string) {
 	if !c.collecting() {
 		return

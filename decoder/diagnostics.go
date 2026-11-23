@@ -99,7 +99,10 @@ const (
 	// A tag the document's version defines, but not under the line's parent,
 	// is reported as [CodeMisplacedTag] instead; a standard tag the decoder
 	// does not yet read where the grammar allows it (a decoder gap) is still
-	// reported with this code.
+	// reported with this code, as is a defined tag whose parent's tag allows
+	// it under some other structure (see CodeMisplacedTag). Code that treats
+	// UNKNOWN_TAG as "a line the decoder rejected" must also take
+	// CodeMisplacedTag, which before v3.11.0 was reported with this code.
 	// It is also reported for a level-0 record whose tag is neither a standard
 	// record type nor an extension ("_" prefix), including a standard type in
 	// the wrong case ("indi"); the record is kept with that Type and no entity.
