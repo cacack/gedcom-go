@@ -375,6 +375,47 @@ func TestFamilies_CollapseKeepsDistinctLines(t *testing.T) {
 	}
 }
 
+// TestCollapse_DropPointerFirst checks a line naming drop is collapsed when
+// it comes before the sibling naming keep, not only after it.
+func TestCollapse_DropPointerFirst(t *testing.T) {
+	const tree = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 FAMS @F2@
+1 FAMS @F1@
+0 @I2@ INDI
+1 FAMC @F1@
+0 @I3@ INDI
+1 FAMC @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 CHIL @I3@
+1 CHIL @I2@
+0 @F2@ FAM
+1 HUSB @I1@
+0 TRLR
+`
+	out, report := mustMerge(t, merge.Families, decodeZip(t, tree), "@F1@", "@F2@")
+	if want := []string{"1 FAMS @F1@"}; !reflect.DeepEqual(recordLines(t, out, "@I1@"), want) {
+		t.Errorf("@I1@ = %q, want %q", recordLines(t, out, "@I1@"), want)
+	}
+	if want := []gedcom.Reference{{XRef: "@I1@", Path: []string{"INDI", "FAMS"}}}; !reflect.DeepEqual(report.Collapsed, want) {
+		t.Errorf("Collapsed = %v, want %v", report.Collapsed, want)
+	}
+
+	out, report = mustMerge(t, merge.Individuals, decodeZip(t, tree), "@I2@", "@I3@")
+	if want := []string{"1 HUSB @I1@", "1 CHIL @I2@"}; !reflect.DeepEqual(recordLines(t, out, "@F1@"), want) {
+		t.Errorf("@F1@ = %q, want %q", recordLines(t, out, "@F1@"), want)
+	}
+	if want := []gedcom.Reference{{XRef: "@F1@", Path: []string{"FAM", "CHIL"}}}; !reflect.DeepEqual(report.Collapsed, want) {
+		t.Errorf("Collapsed = %v, want %v", report.Collapsed, want)
+	}
+	if got := out.GetRecord("@F1@").Entity.(*gedcom.Family).Children; !reflect.DeepEqual(got, []string{"@I2@"}) {
+		t.Errorf("Children = %q, want [@I2@]", got)
+	}
+}
+
 func TestIndividuals_ContextCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

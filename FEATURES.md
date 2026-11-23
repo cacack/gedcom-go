@@ -787,7 +787,8 @@ repointed to `keep`, except a level-1 line that would then repeat a sibling
 line for line, such as a second CHIL for the same child, which is removed;
 `drop` leaves `Records` and `XRefMap`. No other policy applies: a differing
 `SEX` or `HUSB` is added too, for the validator to report. The raw Tags are
-authoritative, so the edited records' typed Entities are rebuilt from them.
+authoritative, so the edited records' typed Entities are rebuilt from them;
+call `encoder.SyncTags` first to keep typed edits not yet in the Tags.
 The `RecordMergeReport` lists what was moved, what was deduplicated, every
 pointer repointed and every line collapsed. Merging a record into itself, a
 missing record (also `gedcom.ErrUnknownXRef`), one of the wrong type, one

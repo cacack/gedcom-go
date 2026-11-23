@@ -139,6 +139,8 @@ func mergeRecords(doc *gedcom.Document, typ gedcom.RecordType, keep, drop string
 	report.Repointed = refs
 	mapping := map[string]string{drop: keep}
 	gedcom.Apply(out, mapping)
+	// drop is detached from out now, so its own pointers to itself are
+	// repointed separately, before its substructures move under keep.
 	gedcom.Apply(&gedcom.Document{Header: out.Header, Records: []*gedcom.Record{dropRec}}, mapping)
 
 	roots := buildTree(keepRec.Tags)
@@ -205,8 +207,11 @@ func checkUntaggedPointers(doc *gedcom.Document, drop string) error {
 }
 
 // collapseRepeats removes from r each level-1 structure whose line names
-// drop and that, once drop is read as keep, has the same lines as an
-// earlier sibling. It returns where each removed line was.
+// drop and that, once drop is read as keep, has the same lines as a
+// sibling: an earlier one still kept, or any one whose line does not name
+// drop (and so is never removed), wherever it sits. Of two such structures
+// that both name drop, the first stays. It returns where each removed line
+// was.
 func collapseRepeats(r *gedcom.Record, keep, drop string) []gedcom.Reference {
 	if !slices.ContainsFunc(r.Tags, func(t *gedcom.Tag) bool { return t != nil && t.Value == drop }) {
 		return nil
@@ -217,10 +222,13 @@ func collapseRepeats(r *gedcom.Record, keep, drop string) []gedcom.Reference {
 		}
 		return v
 	}
+	roots := buildTree(r.Tags)
 	var kept []*node
 	var removed []gedcom.Reference
-	for _, n := range buildTree(r.Tags) {
-		if n.tag.Value == drop && slices.ContainsFunc(kept, func(k *node) bool { return sameTree(k, n, asKeep) }) {
+	for i, n := range roots {
+		repeats := func(k *node) bool { return sameTree(k, n, asKeep) }
+		laterKeeper := func(k *node) bool { return k.tag.Value != drop && repeats(k) }
+		if n.tag.Value == drop && (slices.ContainsFunc(kept, repeats) || slices.ContainsFunc(roots[i+1:], laterKeeper)) {
 			removed = append(removed, gedcom.Reference{XRef: r.XRef, Path: []string{string(r.Type), n.tag.Tag}})
 			continue
 		}
