@@ -327,6 +327,49 @@ func ExampleDocument_Ancestors() {
 	// Grandma /Smith/
 }
 
+// ExampleDocument_AncestorsWithGenerations walks back a bounded number
+// of generations and reports the generation of each ancestor.
+func ExampleDocument_AncestorsWithGenerations() {
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 5.5
+0 @I1@ INDI
+1 NAME Grandpa /Example/
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Parent /Example/
+1 FAMC @F1@
+1 FAMS @F2@
+0 @I3@ INDI
+1 NAME Child /Example/
+1 FAMC @F2@
+1 FAMS @F3@
+0 @I4@ INDI
+1 NAME Grandchild /Example/
+1 FAMC @F3@
+0 @F1@ FAM
+1 HUSB @I1@
+1 CHIL @I2@
+0 @F2@ FAM
+1 HUSB @I2@
+1 CHIL @I3@
+0 @F3@ FAM
+1 HUSB @I3@
+1 CHIL @I4@
+0 TRLR`
+
+	doc, _ := decoder.Decode(strings.NewReader(gedcomData))
+
+	// Parents and grandparents only: the great-grandparent is left out.
+	for _, rel := range doc.AncestorsWithGenerations("@I4@", 2) {
+		fmt.Println(rel.Generation, doc.GetIndividual(rel.XRef).Names[0].Full)
+	}
+
+	// Output:
+	// 1 Child /Example/
+	// 2 Parent /Example/
+}
+
 // ExampleDocument_Subset extracts a self-contained sub-document
 // containing a person and everyone transitively referenced by them.
 func ExampleDocument_Subset() {

@@ -533,12 +533,24 @@ for _, child := range ind.Descendants(doc) { /* ... */ }
 for _, parent := range ind.Ancestors(doc)   { /* ... */ }
 ```
 
+Generation-aware variants report each relative's generation (1 = parents
+or children) and take a depth limit (0 = unlimited):
+
+```go
+for _, rel := range doc.AncestorsWithGenerations("@I1@", 3) {
+    fmt.Println(rel.Generation, rel.XRef) // parents, grandparents, great-grandparents
+}
+rels := doc.DescendantsWithGenerations("@I1@", 0) // every generation
+```
+
 - BFS ordering: closer generations precede farther ones
 - Cycle-safe via visited-set termination
 - Results exclude the seed individual
 - Missing or non-individual XRefs return nil
-- No application-level policy baked in (no "include spouses" knob,
-  no generation cap) — callers compose those by unioning seed sets
+- A person reachable by more than one path (pedigree collapse) appears
+  once, at the generation of the shortest path
+- No application-level policy baked in (no "include spouses" knob) —
+  callers compose that by unioning seed sets
 
 ### Subset Extraction
 

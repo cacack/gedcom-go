@@ -330,3 +330,167 @@ func TestIndividualAncestors_NotInDocReturnsNil(t *testing.T) {
 		t.Errorf("Individual not in doc should return nil, got %v", got)
 	}
 }
+
+// buildPedigreeCollapseFixture constructs an uncle-niece marriage, so one
+// ancestor is reachable by two paths of different length:
+//
+//	@G@ -> @F1@ children: @A@, @B@ (brothers)
+//	@B@ -> @F2@ child: @M@
+//	@A@ + @M@ -> @F3@ child: @C@
+//
+// From @C@, @G@ is a grandparent via @A@ (generation 2) and a
+// great-grandparent via @M@ and @B@ (generation 3).
+func buildPedigreeCollapseFixture() *Document {
+	doc := &Document{
+		Header:  &Header{Version: Version551, Encoding: EncodingUTF8},
+		XRefMap: make(map[string]*Record),
+	}
+	add := func(rec *Record) {
+		doc.Records = append(doc.Records, rec)
+		doc.XRefMap[rec.XRef] = rec
+	}
+	indi := func(xref string, fams, famc []string) {
+		ind := &Individual{XRef: xref}
+		for _, f := range fams {
+			ind.SpouseInFamilies = append(ind.SpouseInFamilies, FamilyLink{FamilyXRef: f})
+		}
+		for _, f := range famc {
+			ind.ChildInFamilies = append(ind.ChildInFamilies, FamilyLink{FamilyXRef: f})
+		}
+		add(&Record{XRef: xref, Type: RecordTypeIndividual, Entity: ind})
+	}
+	fam := func(xref, husband, wife string, children ...string) {
+		add(&Record{XRef: xref, Type: RecordTypeFamily,
+			Entity: &Family{XRef: xref, Husband: husband, Wife: wife, Children: children}})
+	}
+
+	indi("@G@", []string{"@F1@"}, nil)
+	indi("@A@", []string{"@F3@"}, []string{"@F1@"})
+	indi("@B@", []string{"@F2@"}, []string{"@F1@"})
+	indi("@M@", []string{"@F3@"}, []string{"@F2@"})
+	indi("@C@", nil, []string{"@F3@"})
+	fam("@F1@", "@G@", "", "@A@", "@B@")
+	fam("@F2@", "@B@", "", "@M@")
+	fam("@F3@", "@A@", "@M@", "@C@")
+	return doc
+}
+
+func TestDescendantsWithGenerations(t *testing.T) {
+	doc := buildGenealogyFixture()
+	tests := []struct {
+		name string
+		max  int
+		want []Relative
+	}{
+		{"unlimited", 0, []Relative{
+			{"@I3@", 1}, {"@I7@", 1}, {"@I5@", 2}, {"@I6@", 2}, {"@I9@", 2},
+		}},
+		{"negative is unlimited", -1, []Relative{
+			{"@I3@", 1}, {"@I7@", 1}, {"@I5@", 2}, {"@I6@", 2}, {"@I9@", 2},
+		}},
+		{"children only", 1, []Relative{{"@I3@", 1}, {"@I7@", 1}}},
+		{"limit beyond tree", 5, []Relative{
+			{"@I3@", 1}, {"@I7@", 1}, {"@I5@", 2}, {"@I6@", 2}, {"@I9@", 2},
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := doc.DescendantsWithGenerations("@I1@", tt.max)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("DescendantsWithGenerations(@I1@, %d) = %v, want %v", tt.max, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAncestorsWithGenerations(t *testing.T) {
+	doc := buildGenealogyFixture()
+	tests := []struct {
+		name string
+		max  int
+		want []Relative
+	}{
+		{"unlimited", 0, []Relative{{"@I3@", 1}, {"@I4@", 1}, {"@I1@", 2}, {"@I2@", 2}}},
+		{"parents only", 1, []Relative{{"@I3@", 1}, {"@I4@", 1}}},
+		{"parents and grandparents", 2, []Relative{{"@I3@", 1}, {"@I4@", 1}, {"@I1@", 2}, {"@I2@", 2}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := doc.AncestorsWithGenerations("@I5@", tt.max)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("AncestorsWithGenerations(@I5@, %d) = %v, want %v", tt.max, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestWithGenerations_PedigreeCollapseReportsShortestPath(t *testing.T) {
+	doc := buildPedigreeCollapseFixture()
+
+	gotAnc := doc.AncestorsWithGenerations("@C@", 0)
+	wantAnc := []Relative{{"@A@", 1}, {"@M@", 1}, {"@G@", 2}, {"@B@", 2}}
+	if !reflect.DeepEqual(gotAnc, wantAnc) {
+		t.Errorf("AncestorsWithGenerations(@C@) = %v, want %v", gotAnc, wantAnc)
+	}
+
+	gotDesc := doc.DescendantsWithGenerations("@G@", 0)
+	wantDesc := []Relative{{"@A@", 1}, {"@B@", 1}, {"@C@", 2}, {"@M@", 2}}
+	if !reflect.DeepEqual(gotDesc, wantDesc) {
+		t.Errorf("DescendantsWithGenerations(@G@) = %v, want %v", gotDesc, wantDesc)
+	}
+
+	// With a limit of 2, the collapsed ancestor is kept at its shorter
+	// generation rather than dropped for its longer one.
+	gotLimited := doc.AncestorsWithGenerations("@C@", 2)
+	if !reflect.DeepEqual(gotLimited, wantAnc) {
+		t.Errorf("AncestorsWithGenerations(@C@, 2) = %v, want %v", gotLimited, wantAnc)
+	}
+}
+
+func TestWithGenerations_MatchesFlatWalk(t *testing.T) {
+	for _, doc := range []*Document{buildGenealogyFixture(), buildPedigreeCollapseFixture()} {
+		for _, rec := range doc.Records {
+			if rec.Type != RecordTypeIndividual {
+				continue
+			}
+			if got, want := relativeXRefs(doc.AncestorsWithGenerations(rec.XRef, 0)), doc.Ancestors(rec.XRef); !reflect.DeepEqual(got, want) {
+				t.Errorf("ancestors of %s: %v, want %v", rec.XRef, got, want)
+			}
+			if got, want := relativeXRefs(doc.DescendantsWithGenerations(rec.XRef, 0)), doc.Descendants(rec.XRef); !reflect.DeepEqual(got, want) {
+				t.Errorf("descendants of %s: %v, want %v", rec.XRef, got, want)
+			}
+		}
+	}
+}
+
+func TestWithGenerations_InvalidInput(t *testing.T) {
+	var nilDoc *Document
+	doc := buildGenealogyFixture()
+	for _, tc := range []struct {
+		name string
+		doc  *Document
+		xref string
+	}{
+		{"nil document", nilDoc, "@I1@"},
+		{"empty xref", doc, ""},
+		{"unknown xref", doc, "@NOPE@"},
+		{"non-individual xref", doc, "@F1@"},
+	} {
+		if got := tc.doc.AncestorsWithGenerations(tc.xref, 0); got != nil {
+			t.Errorf("%s: AncestorsWithGenerations = %v, want nil", tc.name, got)
+		}
+		if got := tc.doc.DescendantsWithGenerations(tc.xref, 0); got != nil {
+			t.Errorf("%s: DescendantsWithGenerations = %v, want nil", tc.name, got)
+		}
+	}
+}
+
+func TestWithGenerations_NoRelativesReturnsEmpty(t *testing.T) {
+	doc := buildGenealogyFixture()
+	if got := doc.AncestorsWithGenerations("@I1@", 0); got == nil || len(got) != 0 {
+		t.Errorf("AncestorsWithGenerations(@I1@) = %#v, want empty non-nil", got)
+	}
+	if got := doc.DescendantsWithGenerations("@I5@", 0); got == nil || len(got) != 0 {
+		t.Errorf("DescendantsWithGenerations(@I5@) = %#v, want empty non-nil", got)
+	}
+}
