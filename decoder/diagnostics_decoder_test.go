@@ -295,6 +295,8 @@ func TestClassifyParseError(t *testing.T) {
 		{"level cannot be negative", CodeInvalidLevel},
 		{"invalid xref format", CodeInvalidXRef},
 		{"line with xref must have a tag", CodeInvalidXRef},
+		// An XRef the parser echoes is not a blank line, whatever it holds.
+		{"xref contains a space: @EMPTY LINE@", CodeInvalidXRef},
 		// Parse errors mark dropped lines, so they never classify as
 		// CodeBadLevelJump - that code means the line was clamped and kept.
 		{"level 100 exceeds maximum nesting depth (valid levels are 0-99)", CodeInvalidLevel},

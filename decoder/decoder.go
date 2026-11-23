@@ -485,11 +485,15 @@ func ambiguousANSIDiagnostic(a *charset.AmbiguousANSI) Diagnostic {
 // level therefore classifies as CodeInvalidLevel, alongside the other level
 // rejections. The remaining codes say only what was wrong with the line, not
 // whether it survived.
+//
+// A blank line is matched on the parser's whole message, not a substring: its
+// code also makes it a warning and caps how many are reported, and another
+// message can echo input that contains the words (an XRef with a space).
 func classifyParseError(message string) string {
 	msg := strings.ToLower(message)
 
 	switch {
-	case strings.Contains(msg, "empty line"):
+	case msg == "empty line":
 		return CodeEmptyLine
 	case strings.Contains(msg, "invalid level") ||
 		strings.Contains(msg, "level cannot be negative") ||

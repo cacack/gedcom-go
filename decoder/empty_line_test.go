@@ -120,3 +120,26 @@ func TestEmptyLineStrict(t *testing.T) {
 		t.Errorf("strict decode error = %v, want an empty line error", err)
 	}
 }
+
+// TestEmptyLineSpacedXRef checks that an XRef echoing the words "empty line"
+// in its error is not taken for a blank line: in a 7.0 file it stays an
+// INVALID_XREF error even after the blank-line cap is reached.
+func TestEmptyLineSpacedXRef(t *testing.T) {
+	var sb strings.Builder
+	sb.WriteString("0 HEAD\n1 GEDC\n2 VERS 7.0\n")
+	sb.WriteString(strings.Repeat("\n", MaxEmptyLineDiagnostics+1))
+	sb.WriteString("0 @EMPTY LINE@ INDI\n1 NAME Person /Example/\n0 TRLR\n")
+	result, err := DecodeWithDiagnostics(strings.NewReader(sb.String()), DefaultOptions())
+	if err != nil {
+		t.Fatalf("DecodeWithDiagnostics() error = %v", err)
+	}
+	var found bool
+	for _, d := range result.Diagnostics {
+		if d.Code == CodeInvalidXRef && d.Severity == SeverityError {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("diagnostics = %v, want an INVALID_XREF error", result.Diagnostics)
+	}
+}
