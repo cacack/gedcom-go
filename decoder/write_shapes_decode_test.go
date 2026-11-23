@@ -16,7 +16,7 @@ func decodeWithUnknownLines(t *testing.T, in string) (res *DecodeResult, unknown
 		t.Fatal(err)
 	}
 	for _, d := range res.Diagnostics {
-		if d.Code == CodeUnknownTag {
+		if d.Code == CodeUnknownTag || d.Code == CodeMisplacedTag {
 			unknown = append(unknown, d.Line)
 		}
 	}

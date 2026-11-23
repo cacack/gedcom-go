@@ -123,12 +123,12 @@ func TestNegativeEventContinuationStillReported(t *testing.T) {
 	}
 	found := false
 	for _, d := range result.Diagnostics {
-		if d.Code == CodeUnknownTag && d.Line == 6 {
+		if d.Code == CodeMisplacedTag && d.Line == 6 {
 			found = true
 		}
 	}
 	if !found {
-		t.Errorf("CONT under NO not reported as %s; diagnostics: %v", CodeUnknownTag, result.Diagnostics)
+		t.Errorf("CONT under NO not reported as %s; diagnostics: %v", CodeMisplacedTag, result.Diagnostics)
 	}
 }
 

@@ -41,15 +41,21 @@ func diagHistogram(diags Diagnostics) map[string]int {
 	return hist
 }
 
-// unknownTagLines returns the tag a CodeUnknownTag diagnostic reports and the
-// number of lines it stands for: one, or for the summary written past
-// MaxUnknownTagDiagnosticsPerTag, the lines it counts. ok is false for any
-// other diagnostic.
+// unknownTagLines returns the tag a CodeUnknownTag or CodeMisplacedTag
+// diagnostic reports and the number of lines it stands for: one, or for the
+// summary written past MaxUnknownTagDiagnosticsPerTag, the lines it counts. ok
+// is false for any other diagnostic.
 func unknownTagLines(d Diagnostic) (tag string, lines int, ok bool) {
-	if d.Code != CodeUnknownTag {
-		return "", 0, false
+	var found bool
+	switch d.Code {
+	case CodeUnknownTag:
+		tag, found = strings.CutPrefix(d.Message, "unknown tag: ")
+	case CodeMisplacedTag:
+		if tag, found = strings.CutPrefix(d.Message, "misplaced tag: "); !found {
+			tag, _, found = strings.Cut(d.Message, " is not allowed under ")
+			return tag, 1, found
+		}
 	}
-	tag, found := strings.CutPrefix(d.Message, "unknown tag: ")
 	if !found {
 		return "", 0, false
 	}
@@ -133,7 +139,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			// standard. 138 -> 29 as the 110 NUMB and 21 level-2 ALIA lines
 			// are each reported 10 times plus one summary
 			// (MaxUnknownTagDiagnosticsPerTag): 138 - 110 - 21 + 11 + 11.
-			diags: map[string]int{CodeUnknownTag: 29},
+			diags: map[string]int{CodeUnknownTag: 12, CodeMisplacedTag: 17},
 		},
 		{
 			path:        "../testdata/edge-cases/vendor-ancestris11-export.ged",
@@ -184,7 +190,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			// and the 11,607 nonstandard event-level RIN are reported 10
 			// times plus one summary (MaxUnknownTagDiagnosticsPerTag); the
 			// other 10 are inline OBJE.FORM. 10 + 1 + 10 = 21.
-			diags: map[string]int{CodeUnknownTag: 21, CodeInvalidValue: 117},
+			diags: map[string]int{CodeMisplacedTag: 21, CodeInvalidValue: 117},
 		},
 		{
 			path:        "../testdata/edge-cases/vendor-myroots-palmos.ged",
@@ -250,7 +256,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			// The one CP437 byte decodes as 'é' (#735); QUAY is written
 			// directly under events (see misplacedTags): 10 reported plus
 			// one summary counting the other 1,196 (#730).
-			diags: map[string]int{CodeInvalidValue: 1, CodeUnknownTag: 11},
+			diags: map[string]int{CodeInvalidValue: 1, CodeMisplacedTag: 11},
 		},
 		{
 			path:        "../testdata/encoding/ibm-windows-easytree.ged",
@@ -265,7 +271,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			// "0 @Cn@ CSTA" records are reported as unknown record types.
 			// 41 -> 38 for issue #730: 14 HIST and 11 SOUR.NAME are each
 			// capped at 10 plus one summary (MaxUnknownTagDiagnosticsPerTag).
-			diags: map[string]int{CodeUnknownTag: 38},
+			diags: map[string]int{CodeUnknownTag: 27, CodeMisplacedTag: 11},
 		},
 		{
 			path:        "../testdata/edge-cases/synium-7.0-utf8.ged",
@@ -284,7 +290,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			// 470 -> 467 for issue #730 (the three REPO.CREA are
 			// standard), then -> 69 as each tag past
 			// MaxUnknownTagDiagnosticsPerTag is summarized in one diagnostic.
-			diags:  map[string]int{CodeUnknownTag: 69, CodeInvalidValue: 19},
+			diags:  map[string]int{CodeUnknownTag: 15, CodeMisplacedTag: 54, CodeInvalidValue: 19},
 			strict: true,
 		},
 		{
@@ -308,7 +314,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			vendor:      gedcom.VendorGeneanet,
 			individuals: 195,
 			families:    71,
-			diags:       map[string]int{CodeUnknownTag: 5},
+			diags:       map[string]int{CodeMisplacedTag: 5},
 			strict:      true,
 		},
 		{
@@ -320,7 +326,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			vendor:      gedcom.VendorGeneanet,
 			individuals: 270,
 			families:    176,
-			diags:       map[string]int{CodeUnknownTag: 1, CodeAmbiguousCodePage: 1},
+			diags:       map[string]int{CodeMisplacedTag: 1, CodeAmbiguousCodePage: 1},
 			strict:      true,
 		},
 		{
@@ -332,7 +338,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			vendor:      gedcom.VendorWebtrees,
 			individuals: 110,
 			families:    68,
-			diags:       map[string]int{CodeUnknownTag: 2, CodeInvalidValue: 4},
+			diags:       map[string]int{CodeMisplacedTag: 2, CodeInvalidValue: 4},
 			strict:      true,
 		},
 		{
@@ -344,7 +350,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			vendor:      gedcom.VendorFamilyHistorian,
 			individuals: 198,
 			families:    173,
-			diags:       map[string]int{CodeUnknownTag: 6},
+			diags:       map[string]int{CodeMisplacedTag: 6},
 			strict:      true,
 		},
 		{
@@ -382,7 +388,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			vendor:      gedcom.VendorAncestry,
 			individuals: 12,
 			families:    13,
-			diags:       map[string]int{CodeUnknownTag: 15, CodeInvalidValue: 19},
+			diags:       map[string]int{CodeMisplacedTag: 15, CodeInvalidValue: 19},
 			strict:      true,
 		},
 	}

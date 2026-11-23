@@ -9,6 +9,9 @@ and
 and `internal/cmd/gengrammar` generates the validator's grammar tables
 (`validator/grammar_tables.go`) from them; see
 [ADR 0011](../../docs/decisions/0011-grammar-conformance-check.md).
+`internal/cmd/genplacement` generates the decoder's tag placement tables
+(`decoder/placement_gen.go`), which tell a misplaced standard tag
+(`MISPLACED_TAG`) from an unknown one.
 
 | Directory | Where it came from |
 |-----------|--------------------|
@@ -150,4 +153,5 @@ re-run the transcription — see
 ```bash
 make spec-coverage
 go generate ./validator
+go generate ./decoder
 ```

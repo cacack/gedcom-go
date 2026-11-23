@@ -107,6 +107,19 @@ const (
 	// Context and follow all other diagnostics, ordered by line.
 	CodeUnknownTag = "UNKNOWN_TAG"
 
+	// CodeMisplacedTag indicates a tag the document's GEDCOM version defines,
+	// but under no structure with the tag of the line's parent: a MARR
+	// directly under INDI, an EMAIL under a 5.5.1 INDI, a DATE under an OBJE
+	// record. The fix is to move the line, where an UNKNOWN_TAG is renamed or
+	// dropped. The message names the parent ("MARR is not allowed under
+	// INDI"). Like CodeUnknownTag it is a SeverityWarning, the line is
+	// preserved in raw form, and each tag name is reported line by line
+	// [MaxUnknownTagDiagnosticsPerTag] times, then once more counting its
+	// remaining lines (an allowance separate from UNKNOWN_TAG's). Parents
+	// are matched by tag, so a tag any structure with that tag allows is not
+	// reported as misplaced. Level-0 lines are never reported with it.
+	CodeMisplacedTag = "MISPLACED_TAG"
+
 	// CodeInvalidValue indicates a value doesn't match the expected format.
 	// The raw value is preserved, but typed parsing may have failed.
 	CodeInvalidValue = "INVALID_VALUE"

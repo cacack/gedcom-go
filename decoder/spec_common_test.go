@@ -500,7 +500,7 @@ func specFlagged(t *testing.T, probe specProbe) bool {
 // specFlaggedIn reports whether diagnostics contain an UNKNOWN_TAG for line.
 func specFlaggedIn(diagnostics Diagnostics, line int) bool {
 	for _, d := range diagnostics {
-		if d.Code == CodeUnknownTag && d.Line == line {
+		if (d.Code == CodeUnknownTag || d.Code == CodeMisplacedTag) && d.Line == line {
 			return true
 		}
 	}

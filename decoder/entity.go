@@ -58,23 +58,38 @@ type diagnosticCollector struct {
 	// budget bounds the diagnostics kept; nil keeps them all.
 	budget *diagnosticBudget
 
-	// unknownTags counts, per tag name, the CodeUnknownTag diagnostics
-	// addUnknownTag has seen, so it can stop reporting a tag one line at a
-	// time once it passes MaxUnknownTagDiagnosticsPerTag (#730).
-	unknownTags map[string]*unknownTagCount
+	// unknownTags counts, per code and tag name, the CodeUnknownTag and
+	// CodeMisplacedTag diagnostics addUnknownTag has seen, so it can stop
+	// reporting a tag one line at a time once it passes
+	// MaxUnknownTagDiagnosticsPerTag (#730).
+	unknownTags map[unknownTagKey]*unknownTagCount
+
+	// scopeRoot and scopeTags are the record (or header) whose lines are
+	// being reported, set by enterScope; parents indexes their parents,
+	// built by parentOf when first needed.
+	scopeRoot string
+	scopeTags []*gedcom.Tag
+	parents   map[int]lineParent
 }
 
 // MaxUnknownTagDiagnosticsPerTag is the number of CodeUnknownTag diagnostics a
 // lenient decode reports for one tag name before it stops reporting that tag
-// line by line. Every line is still kept in the raw tags; the lines past the cap
-// are counted in one closing CodeUnknownTag diagnostic per tag, at the line of
+// line by line, and separately the number of CodeMisplacedTag diagnostics.
+// Every line is still kept in the raw tags; the lines past the cap
+// are counted in one closing diagnostic of the same code per tag, at the line of
 // the first of them, so an export that writes the same nonstandard tag on every
 // event (MyHeritage's RIN, Brother's Keeper's QUAY) yields a handful of
 // diagnostics rather than thousands that bury the rest. Unknown level-0 record
 // types are not capped.
 const MaxUnknownTagDiagnosticsPerTag = 10
 
-// unknownTagCount is addUnknownTag's tally for one tag name.
+// unknownTagKey names one of addUnknownTag's tallies.
+type unknownTagKey struct {
+	code string
+	tag  string
+}
+
+// unknownTagCount is addUnknownTag's tally for one code and tag name.
 type unknownTagCount struct {
 	reported      int
 	suppressed    int
@@ -140,29 +155,32 @@ func (c *diagnosticCollector) isPointer(s string) bool {
 	return gedcom.IsPointerXRefForVersion(s, v)
 }
 
-// addUnknownTag records an unknown tag diagnostic, or counts it once tag has
-// been reported MaxUnknownTagDiagnosticsPerTag times (see unknownTagSummaries).
+// addUnknownTag records a diagnostic for a tag the decoder does not accept
+// where it is: CodeMisplacedTag when the document's version defines the tag
+// but not under the line's parent in the scope enterScope set, otherwise
+// CodeUnknownTag. Once a code and tag have been reported
+// MaxUnknownTagDiagnosticsPerTag times, further lines are only counted (see
+// unknownTagSummaries).
 func (c *diagnosticCollector) addUnknownTag(lineNumber int, tag, content string) {
 	if !c.collecting() {
 		return
 	}
-	if c.unknownTags == nil {
-		c.unknownTags = map[string]*unknownTagCount{}
+	code, msg := CodeUnknownTag, fmt.Sprintf("unknown tag: %s", tag)
+	if parent, ok := c.parentOf(lineNumber); ok && placementFor(c.textVersion).misplaced(parent.tag, parent.top, tag) {
+		code, msg = CodeMisplacedTag, fmt.Sprintf("%s is not allowed under %s", tag, parent.tag)
 	}
-	count := c.unknownTags[tag]
+	if c.unknownTags == nil {
+		c.unknownTags = map[unknownTagKey]*unknownTagCount{}
+	}
+	key := unknownTagKey{code, tag}
+	count := c.unknownTags[key]
 	if count == nil {
 		count = &unknownTagCount{}
-		c.unknownTags[tag] = count
+		c.unknownTags[key] = count
 	}
 	if count.reported < MaxUnknownTagDiagnosticsPerTag {
 		count.reported++
-		c.add(NewDiagnostic(
-			lineNumber,
-			SeverityWarning,
-			CodeUnknownTag,
-			fmt.Sprintf("unknown tag: %s", tag),
-			content,
-		))
+		c.add(NewDiagnostic(lineNumber, SeverityWarning, code, msg, content))
 		return
 	}
 	if count.suppressed == 0 {
@@ -186,7 +204,7 @@ func (c *diagnosticCollector) addUnknownTagOutside55(tag *gedcom.Tag) {
 	}
 }
 
-// unknownTagSummaries returns one CodeUnknownTag diagnostic for each tag whose
+// unknownTagSummaries returns one diagnostic for each code and tag whose
 // lines passed MaxUnknownTagDiagnosticsPerTag, at the line of the first line
 // not reported individually, counting those lines (that one included). They
 // are ordered by that line, so the result does not depend on map order.
@@ -195,15 +213,19 @@ func (c *diagnosticCollector) unknownTagSummaries() Diagnostics {
 		return nil
 	}
 	var out Diagnostics
-	for tag, count := range c.unknownTags {
+	for key, count := range c.unknownTags {
 		if count.suppressed == 0 {
 			continue
+		}
+		kind := "unknown"
+		if key.code == CodeMisplacedTag {
+			kind = "misplaced"
 		}
 		out = append(out, NewDiagnostic(
 			count.firstOverLine,
 			SeverityWarning,
-			CodeUnknownTag,
-			fmt.Sprintf("unknown tag: %s (%d more lines with this tag, from this line on, not reported individually)", tag, count.suppressed),
+			key.code,
+			fmt.Sprintf("%s tag: %s (%d more lines with this tag, from this line on, not reported individually)", kind, key.tag, count.suppressed),
 			"",
 		))
 	}
@@ -240,6 +262,7 @@ func populateEntities(ctx context.Context, doc *gedcom.Document, collector *diag
 // populateRecordEntity sets record.Entity to the entity its type parses into
 // from its Tags. A record type with no entity is left as it is.
 func populateRecordEntity(record *gedcom.Record, collector *diagnosticCollector) {
+	collector.enterScope(string(record.Type), record.Tags)
 	switch record.Type {
 	case gedcom.RecordTypeIndividual:
 		record.Entity = parseIndividual(record, collector)
