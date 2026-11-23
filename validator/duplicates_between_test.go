@@ -276,6 +276,7 @@ func TestFindDuplicatesBetween_NilOrEmpty(t *testing.T) {
 
 	for name, docs := range map[string][2]*gedcom.Document{
 		"nil a": {nil, doc}, "nil b": {doc, nil}, "empty b": {doc, empty},
+		"same document": {doc, doc},
 	} {
 		report := d.FindDuplicatesBetweenReport(docs[0], docs[1])
 		if len(report.Pairs) != 0 || len(report.LimitIssues) != 0 {

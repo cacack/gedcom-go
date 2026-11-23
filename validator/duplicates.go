@@ -482,7 +482,9 @@ func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedco
 // FindDuplicatesBetween returns the likely-same-person pairs that take one
 // individual from a and one from b, for reconciling two overlapping files
 // before they are combined. Pairs within a single document are not reported;
-// run FindDuplicates on each document for those.
+// run FindDuplicates on each document for those. For the same reason, when a
+// and b are the same document (or either is nil) the result is empty rather
+// than every individual paired with itself.
 //
 // In every pair Individual1 comes from a and Individual2 from b, each the
 // document's own *gedcom.Individual with its own XRef. Records are never
@@ -512,6 +514,7 @@ func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedco
 // is far below them when one side is small. It never exceeds the
 // (aᵢ+bᵢ)(aᵢ+bᵢ−1)/2 a single run on the combined documents compares. With
 // the cap, each shared surname costs at most MaxGroupSize²/4 comparisons.
+// Like FindDuplicates, it takes no context: MaxGroupSize is the bound on work.
 func (d *DuplicateDetector) FindDuplicatesBetween(a, b *gedcom.Document) []DuplicatePair {
 	return d.FindDuplicatesBetweenReport(a, b).Pairs
 }
@@ -524,7 +527,7 @@ func (d *DuplicateDetector) FindDuplicatesBetween(a, b *gedcom.Document) []Dupli
 // whose surname occurs in both documents are counted, since no other group can
 // yield a cross-document pair.
 func (d *DuplicateDetector) FindDuplicatesBetweenReport(a, b *gedcom.Document) DuplicateReport {
-	if a == nil || b == nil {
+	if a == nil || b == nil || a == b {
 		return DuplicateReport{}
 	}
 
