@@ -554,6 +554,26 @@ rels := doc.DescendantsWithGenerations("@I1@", 0) // every generation
 - No application-level policy baked in (no "include spouses" knob) —
   callers compose that by unioning seed sets
 
+### Presumed Living
+
+One documented test for who is presumed living, so every consumer that
+shares tree data redacts by the same rule:
+
+```go
+living, reason := ind.PresumedLiving(doc, gedcom.LivingConfig{ReferenceYear: 2026})
+```
+
+- Not living: a death, burial or cremation event (dated or not, including
+  `1 DEAT Y`), or a dated event more than `MaxAge` years (default 110) before
+  the reference year — the individual's own events and attributes, events of
+  families they are a spouse in, and their children's events and attributes
+- Otherwise presumed living, including an individual with no dates at all
+  (the protective default)
+- `reason` (`LivingReason`) names the deciding rule; `ReferenceYear` (default
+  the current year) makes results reproducible
+- Parents' and spouses' dates, negative assertions and LDS ordinances are not
+  consulted
+
 ### Subset Extraction
 
 Build a self-contained sub-document from a seed set of XRefs. Performs

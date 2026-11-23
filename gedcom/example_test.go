@@ -752,3 +752,39 @@ func ExampleIndividual_Siblings() {
 	// Sue /Smith/: full sibling via @F1@
 	// Bob /Smith/: half sibling via @F2@
 }
+
+// ExampleIndividual_PresumedLiving tells the presumed living from the dead,
+// with a fixed reference year so the result does not change over time.
+func ExampleIndividual_PresumedLiving() {
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Ada /Example/
+1 BIRT
+2 DATE 1890
+0 @I2@ INDI
+1 NAME Ben /Example/
+1 DEAT Y
+0 @I3@ INDI
+1 NAME Cal /Example/
+1 BIRT
+2 DATE 1990
+0 @I4@ INDI
+1 NAME Dee /Example/
+0 TRLR`
+
+	doc, _ := decoder.Decode(strings.NewReader(gedcomData))
+	cfg := gedcom.LivingConfig{ReferenceYear: 2026} // MaxAge defaults to 110
+
+	for _, ind := range doc.Individuals() {
+		living, reason := ind.PresumedLiving(doc, cfg)
+		fmt.Printf("%s: living=%v (%s)\n", ind.FullName(), living, reason)
+	}
+
+	// Output:
+	// Ada /Example/: living=false (old-event)
+	// Ben /Example/: living=false (death)
+	// Cal /Example/: living=true (within-threshold)
+	// Dee /Example/: living=true (no-dates)
+}
