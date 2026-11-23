@@ -105,6 +105,10 @@ func (p *PlaceDetail) Parts(defaultForm string) PlaceParts {
 // Header.PlaceForm (HEAD.PLAC.FORM), as the fallback for a place that has no
 // FORM of its own. Safe on a nil receiver and a nil Header, which are treated
 // as having no default form, and on a nil p.
+//
+// The default form is document-wide. A document produced by merge.Combine
+// carries one input's form, so a place from the other input that has no FORM
+// of its own is labeled by a form its source file did not state for it.
 func (d *Document) PlaceParts(p *PlaceDetail) PlaceParts {
 	if d == nil || d.Header == nil {
 		return p.Parts("")

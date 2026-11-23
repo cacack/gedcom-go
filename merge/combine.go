@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/atsign"
 	"github.com/cacack/gedcom-go/v3/internal/ctxcheck"
 	"github.com/cacack/gedcom-go/v3/internal/errmark"
 )
@@ -115,6 +117,13 @@ type HeaderConflict struct {
 //     carried into the combined Tags. They record no HeaderConflict of
 //     their own: a doc2 structure dropped because doc1 has one is reported
 //     as "Tags.SOUR", "Tags.DEST", "Tags.DATE" or "Tags.PLAC".
+//   - PlaceForm set on a header with no raw PLAC (a document assembled in
+//     memory) counts as that document's PLAC: doc1's keeps doc2's out, and
+//     doc2's is used when doc1 states no form.
+//   - The combined document has one default place form, so places from
+//     the other input that have no FORM of their own are read under it
+//     (see gedcom.Document.PlaceParts). A dropped doc2 form is reported
+//     as "Tags.PLAC" when doc2 carries a raw PLAC.
 //   - Submitter: doc1's submitter wins if set. If doc1 has none,
 //     doc2's submitter is used and is looked up in the remapping
 //     (it may have been renamed by collision resolution).
@@ -661,6 +670,13 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 	if h1.Date != "" {
 		occupied["DATE"] = true
 	}
+	// PlaceForm is the third: the encoder writes a hand-built header's
+	// PlaceForm as PLAC.FORM (#875), so a typed doc1 form must keep doc2's
+	// "1 PLAC" out, or the file would state doc2's default place form for
+	// doc1's places.
+	if hasPlaceForm(h1) {
+		occupied["PLAC"] = true
+	}
 	mergeHeaderStructureViews(out, h1, h2, occupied)
 	tagConflicts := appendNonCollidingHeaderTags(out, h2, occupied)
 	conflicts = append(conflicts, tagConflicts...)
@@ -673,7 +689,52 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 		insertHeaderDateTag(out, h1.Date)
 	}
 
+	mergeTypedPlaceForm(out, h1, h2)
+
 	return out, conflicts
+}
+
+// mergeTypedPlaceForm settles a default place form that lives only in a typed
+// PlaceForm field, once the raw tags are merged.
+func mergeTypedPlaceForm(out, h1, h2 *gedcom.Header) {
+	// A hand-built doc2 states its default place form in the typed field
+	// alone, so there is no raw PLAC for mergeHeaderStructureViews to follow.
+	// Promote it when doc1 states no form of either kind.
+	if !hasPlaceForm(h1) && !hasLevel1HeaderTag(h1.Tags, "PLAC") &&
+		hasPlaceForm(h2) && !hasLevel1HeaderTag(h2.Tags, "PLAC") {
+		out.PlaceForm = h2.PlaceForm
+	}
+
+	// As with DATE, a form that lives only in the typed field needs a raw
+	// structure once out.Tags is non-empty, or the encoded header would drop it.
+	if hasPlaceForm(out) && !hasLevel1HeaderTag(out.Tags, "PLAC") && len(out.Tags) > 0 {
+		insertHeaderPlaceFormTags(out)
+	}
+}
+
+// hasPlaceForm reports whether h states a default place form. A form that is
+// empty after trimming is no form, as it is to the encoder and to
+// gedcom.PlaceDetail.Parts.
+func hasPlaceForm(h *gedcom.Header) bool {
+	return strings.TrimSpace(h.PlaceForm) != ""
+}
+
+// insertHeaderPlaceFormTags inserts a "1 PLAC" / "2 FORM" pair for
+// out.PlaceForm into out.Tags where the header grammar puts it: before NOTE,
+// the only structure that follows PLAC in 5.5, 5.5.1 and 7.0, or last when
+// there is no NOTE. Tags hold the wire form, so the value is escaped for the
+// header's version.
+func insertHeaderPlaceFormTags(out *gedcom.Header) {
+	at := len(out.Tags)
+	for i, t := range out.Tags {
+		if t != nil && t.Level == 1 && t.Tag == "NOTE" {
+			at = i
+			break
+		}
+	}
+	out.Tags = slices.Insert(out.Tags, at,
+		&gedcom.Tag{Level: 1, Tag: "PLAC"},
+		&gedcom.Tag{Level: 2, Tag: "FORM", Value: atsign.Escape(out.PlaceForm, out.Version)})
 }
 
 // mergeHeaderStructureViews merges the typed read views of header
@@ -683,7 +744,9 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 // structure into out.Tags whole or not at all: when doc2's structure is the
 // one out will carry, its views replace h1's -- even views a hand-built h1
 // set without a raw structure, since Tags governs encoding -- so a view never
-// describes a structure other than the one the encoded header holds. No
+// describes a structure other than the one the encoded header holds. A typed
+// h1 Date or PlaceForm is the exception: the encoder writes both from the
+// field on a hand-built header, so each occupies its structure. No
 // conflict is recorded here: when both documents carry the structure,
 // dropping doc2's is already reported as "Tags.<tag>". occupied is the set
 // passed to appendNonCollidingHeaderTags, computed before it runs.

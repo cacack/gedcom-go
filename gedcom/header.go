@@ -128,7 +128,8 @@ type Header struct {
 	// Empty when the tag is absent. On a decoded header it is a read view,
 	// like SourceVersion: Tags governs encoding, and encoder.SyncTags does not
 	// carry a change to it into Tags. A header built in memory, with no Tags,
-	// is written with it as PLAC.FORM.
+	// is written with it as PLAC.FORM unless it is empty after trimming, and
+	// merge.Combine treats it as that document's PLAC.
 	PlaceForm string `json:",omitempty"`
 
 	// AncestryTreeID is the Ancestry.com tree identifier from HEAD.SOUR._TREE.

@@ -688,6 +688,11 @@ mutated. The typed views of header substructures (`SourceVersion`,
 `SourceName`, `SourceCorporation`, `Destination`, `Time`, `PlaceForm`) follow
 the raw structure that holds them, so a doc2 `SOUR`, `DEST`, `DATE` or `PLAC`
 dropped in favour of doc1's is reported as a `Tags.<tag>` conflict.
+A `PlaceForm` set on a header with no raw `PLAC` (a document assembled in
+memory) counts as that document's `PLAC`: doc1's keeps doc2's out, doc2's is
+used when doc1 states none, and either way the combined header carries it as
+`PLAC.FORM`. The combined document has one default place form, so places from
+the other input with no `FORM` of their own are read under it.
 Differing non-empty header versions or encodings are refused
 with `ErrIncompatibleHeader`; set `CombineOptions.IgnoreEncodingMismatch`
 to merge documents whose declared encodings differ (text is UTF-8 in

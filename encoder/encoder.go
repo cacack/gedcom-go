@@ -377,7 +377,9 @@ func writeHeaderFields(w io.Writer, header *gedcom.Header, opts *EncodeOptions) 
 // SyncTags does not carry PlaceForm: on a decoded header it stays a read view
 // of Tags.
 func placeFormTags(header *gedcom.Header, opts *EncodeOptions) []*gedcom.Tag {
-	if header.PlaceForm == "" {
+	// A form that is empty after trimming is no form, as it is to
+	// gedcom.PlaceDetail.Parts; writing it would leave a FORM with no payload.
+	if strings.TrimSpace(header.PlaceForm) == "" {
 		return nil
 	}
 	return []*gedcom.Tag{
@@ -458,6 +460,9 @@ func headerFieldTags(header *gedcom.Header, opts *EncodeOptions) ([]*gedcom.Tag,
 	//
 	// The order reads the gated version (7.0.N and 7.1 are 7.0); VERS above keeps the
 	// value as given (issue #696).
+	//
+	// LANG must stay last in both orders: writeHeaderFields appends PLAC after
+	// whatever this returns, and PLAC follows LANG in every grammar.
 	groups := [][]*gedcom.Tag{sour, date, subm, gedc, char, lang}
 	if opts.is70() {
 		groups = [][]*gedcom.Tag{gedc, sour, date, subm, char, lang}

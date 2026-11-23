@@ -147,8 +147,9 @@
 // what is written.
 //
 // A document assembled in memory has no tags, so its header is built from those
-// typed scalar fields instead, plus one of the views: a non-empty PlaceForm is
-// written as PLAC with a FORM beneath it, after LANG. The other views are
+// typed scalar fields instead, plus one of the views: a PlaceForm that is
+// not empty after trimming is written as PLAC with a FORM beneath it, after
+// LANG. The other views are
 // never written from their fields.
 //
 // Two values are the encoder's rather than the document's, on both paths:

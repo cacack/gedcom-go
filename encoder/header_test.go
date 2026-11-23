@@ -1075,6 +1075,15 @@ func TestHeaderFieldsPlaceForm(t *testing.T) {
 		}
 	})
 
+	t.Run("whitespace-only PlaceForm emits no PLAC", func(t *testing.T) {
+		// A form that is empty after trimming is no form, as it is to
+		// PlaceDetail.Parts; a FORM with no payload would decode to "".
+		out := encode(t, &gedcom.Header{Version: gedcom.Version551, PlaceForm: " \t "})
+		if strings.Contains(out, "PLAC") {
+			t.Errorf("whitespace-only PlaceForm wrote a PLAC:\n%s", out)
+		}
+	})
+
 	t.Run("value is escaped for the output version", func(t *testing.T) {
 		// FORM is text, so 5.5.1 doubles a literal "@" (#708) and the
 		// decoder undoes it.
