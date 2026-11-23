@@ -827,7 +827,10 @@ for _, m := range d.Modified {
 - The header is compared only with `IncludeHeader`, since it changes on
   every export
 - Records compare by `Record.Tags`, which govern encoding: run
-  `encoder.SyncTags` first after editing typed fields
+  `encoder.SyncTags` first after editing typed fields. A record with no
+  `Tags` (built in code, or edited by clearing them) compares only its
+  level-0 line and `SyncTags` skips it; encode and re-decode the document
+  to compare what it would write
 
 ## Record Types
 

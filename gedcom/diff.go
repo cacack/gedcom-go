@@ -1,6 +1,7 @@
 package gedcom
 
 import (
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -77,7 +78,8 @@ type RecordDiff struct {
 type LineChange struct {
 	// Path is the tags from the record down to the parent of the changed
 	// lines, not including the record's own tag: empty for a change at level
-	// 0 or 1, ["BIRT"] for a changed DATE under a level-1 BIRT.
+	// 0 or 1, ["BIRT"] for a changed DATE under a level-1 BIRT. Each hunk
+	// has its own Path slice.
 	Path []string `json:",omitempty"`
 
 	// Removed holds the old document's lines, in document order. They are
@@ -93,7 +95,8 @@ type LineChange struct {
 // Diff compares two documents record by record and reports the records added,
 // removed and modified between them, with the changed lines of each modified
 // record. Neither document is modified; the records and tags in the result are
-// the documents' own, not copies.
+// the documents' own, not copies, except the level-0 lines described at
+// LineChange.Removed.
 //
 // Records are matched by XRef and type: renumbering a record, or changing its
 // type, reports it as removed and added. Two records sharing an XRef, which is
@@ -102,7 +105,10 @@ type LineChange struct {
 //
 // Records are compared by their Tags, which govern encoding. A record whose
 // typed fields were edited without encoder.SyncTags compares as its Tags say,
-// and a record with no Tags compares only its level-0 line.
+// and a record with no Tags (built in code, or edited by clearing Tags)
+// compares only its level-0 line, so differences in its typed fields are not
+// seen. SyncTags leaves such a record alone; encode and re-decode the document
+// first to compare what it would write.
 //
 // Only differences in meaning are reported. These are not changes:
 //
@@ -426,7 +432,7 @@ func diffGap(a, b []*diffNode, path []string, changes *[]LineChange) {
 		added = append(added, n.allLines()...)
 	}
 	if removed != nil || added != nil {
-		*changes = append(*changes, LineChange{Path: path, Removed: removed, Added: added})
+		*changes = append(*changes, LineChange{Path: slices.Clone(path), Removed: removed, Added: added})
 	}
 }
 
@@ -434,7 +440,7 @@ func diffGap(a, b []*diffNode, path []string, changes *[]LineChange) {
 // their substructures.
 func diffPair(oldNode, newNode *diffNode, path []string, changes *[]LineChange) {
 	if oldNode.xref != newNode.xref || oldNode.value != newNode.value {
-		*changes = append(*changes, LineChange{Path: path, Removed: oldNode.lines, Added: newNode.lines})
+		*changes = append(*changes, LineChange{Path: slices.Clone(path), Removed: oldNode.lines, Added: newNode.lines})
 	}
 	childPath := make([]string, len(path), len(path)+1)
 	copy(childPath, path)

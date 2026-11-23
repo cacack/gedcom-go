@@ -155,6 +155,16 @@ func TestDiff_LineChanges(t *testing.T) {
 			want: []string{": -1 CHIL @I1@", ": +1 CHIL @I1@"},
 		},
 		{
+			name: "same-tag siblings aligned around several matches",
+			old:  "0 @F1@ FAM\n1 CHIL @I1@\n1 CHIL @I9@\n1 CHIL @I2@\n1 CHIL @I3@\n1 CHIL @I8@\n",
+			new:  "0 @F1@ FAM\n1 CHIL @I2@\n1 CHIL @I7@\n1 CHIL @I3@\n1 CHIL @I6@\n",
+			want: []string{
+				": -1 CHIL @I1@ | -1 CHIL @I9@",
+				": +1 CHIL @I7@",
+				": -1 CHIL @I8@ | +1 CHIL @I6@",
+			},
+		},
+		{
 			name: "structure inserted among same-tag siblings",
 			old:  "0 @I1@ INDI\n1 NAME Ann /Example/\n1 NAME Anna /Example/\n",
 			new:  "0 @I1@ INDI\n1 NAME Ann /Example/\n1 NAME Annie /Example/\n2 TYPE aka\n1 NAME Anna /Example/\n",
@@ -312,8 +322,23 @@ func TestDiff_NilAndMalformedInput(t *testing.T) {
 	}
 }
 
+func TestDiff_HunksOwnTheirPath(t *testing.T) {
+	oldDoc := decodeDiffDoc(t, "0 @I1@ INDI\n1 BIRT\n2 DATE 1900\n2 PLAC Exampleton\n")
+	newDoc := decodeDiffDoc(t, "0 @I1@ INDI\n1 BIRT\n2 DATE 1901\n2 PLAC Exampleville\n")
+	d := gedcom.Diff(oldDoc, newDoc, nil)
+	if len(d.Modified) != 1 || len(d.Modified[0].Changes) != 2 {
+		t.Fatalf("diff = %+v", d)
+	}
+	changes := d.Modified[0].Changes
+	changes[0].Path[0] = "MUTATED"
+	if changes[1].Path[0] != "BIRT" {
+		t.Errorf("second hunk Path = %q, want [BIRT]", changes[1].Path)
+	}
+}
+
 func TestDiff_LargeSameTagRunSkipsAlignment(t *testing.T) {
 	// Past the alignment bound, the unequal middle is compared by position.
+	// n*n must exceed the unexported maxLCSCells (1<<20) in diff.go.
 	var oldSrc, newSrc strings.Builder
 	oldSrc.WriteString("0 @S1@ SOUR\n")
 	newSrc.WriteString("0 @S1@ SOUR\n")
@@ -325,6 +350,11 @@ func TestDiff_LargeSameTagRunSkipsAlignment(t *testing.T) {
 	d := gedcom.Diff(decodeDiffDoc(t, oldSrc.String()), decodeDiffDoc(t, newSrc.String()), nil)
 	if len(d.Modified) != 1 || len(d.Modified[0].Changes) != n {
 		t.Fatalf("got %d records, want 1 with %d changes", len(d.Modified), n)
+	}
+	got := renderChanges(d.Modified[0])
+	if first, last := got[0], got[n-1]; first != ": -1 NOTE line 0 | +1 NOTE line 1" ||
+		last != fmt.Sprintf(": -1 NOTE line %d | +1 NOTE line 0", n-1) {
+		t.Errorf("first, last = %q, %q", first, last)
 	}
 }
 
