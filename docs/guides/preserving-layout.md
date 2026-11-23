@@ -72,6 +72,12 @@ with the terminator of the source's first line, so an edit to a CRLF file does
 not introduce LF lines. `LineEnding` applies only when the source had no
 terminator at all.
 
+**A replaced or removed record** (`Document.ReplaceRecord`,
+`Document.RemoveRecord`) leaves every other record written as read. Records
+from `decoder.DecodeRecords` carry no line numbers, so all their lines are new
+lines; a replacement made by editing a `Clone` of the old record keeps the
+layout of the lines it did not change.
+
 **Typed edits** work through `encoder.SyncTags`, which keeps every unchanged
 line's `Tag`, so only the edited structure differs. Lines that `SyncTags`
 rewrites are new lines.

@@ -49,7 +49,7 @@ func Decode(r io.Reader) (*gedcom.Document, error) {
 // a non-nil document when an I/O failure interrupts a lenient parse after some
 // lines were read, or when no valid lines could be parsed at all.
 func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, error) {
-	res, err := decode(r, opts, false)
+	res, err := decode(r, opts, false, nil)
 	if res == nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, erro
 //   - Parsing fails on the first error that stands (see [DecodeOptions.StrictMode])
 //   - Diagnostics will be empty on success
 func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, error) {
-	return decode(r, opts, true)
+	return decode(r, opts, true, nil)
 }
 
 // decode is the single decode pipeline behind every entry point. collect
@@ -84,8 +84,13 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 // produced is identical either way, so callers that discard diagnostics skip
 // the cost of building them.
 //
+// target is nil for a whole file. For a records-only fragment (DecodeRecords)
+// it is the document the records are decoded into: the input is read under
+// its encoding, version and identifier grammar instead of detecting them, no
+// layout is recorded, and an input that is not records only is an error.
+//
 //nolint:gocyclo // Lenient mode handling requires additional branches
-func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, error) {
+func decode(r io.Reader, opts *DecodeOptions, collect bool, target *gedcom.Document) (*DecodeResult, error) {
 	if opts == nil {
 		opts = DefaultOptions()
 	}
@@ -114,7 +119,16 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 			}
 		}
 	}
-	validatedReader, detection := charset.NewDetectingReader(r, readerOpts)
+	var validatedReader io.Reader
+	var detection charset.Detection
+	if target != nil {
+		var err error
+		if validatedReader, err = fragmentReader(r, target, readerOpts); err != nil {
+			return nil, err
+		}
+	} else {
+		validatedReader, detection = charset.NewDetectingReader(r, readerOpts)
+	}
 
 	// Wrap with progress tracking if callback provided
 	finalReader := validatedReader
@@ -134,7 +148,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 
 	// Keep a copy of what the parser reads, to record its layout from.
 	var source *strings.Builder
-	if opts.PreserveLayout {
+	if opts.PreserveLayout && target == nil {
 		source = &strings.Builder{}
 		finalReader = io.TeeReader(finalReader, source)
 	}
@@ -190,6 +204,9 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// a guessed version (no header, or an unrecognized VERS such as 7.0.x)
 	// must not relax it to the 5.5 grammar.
 	xrefVersion := version.DeclaredVersion(parsedLines)
+	if target != nil {
+		detectedVersion, xrefVersion = fragmentVersions(target)
+	}
 	parseErrors = dropPermittedXRefErrors(parsedLines, parseErrors, xrefVersion)
 
 	if opts.StrictMode {
@@ -264,6 +281,16 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// they are not attached to the preceding record (#723).
 	if !opts.StrictMode {
 		lines = skipOrphanedRecords(lines, budget.levelZero, parseErrors, collector)
+	}
+	// A fragment is checked once a rejected record line's subordinate lines
+	// have gone with it, so a malformed first record line is reported as a
+	// skipped record, not as a fragment starting below level 0.
+	if target != nil {
+		if err := checkRecordsOnly(lines); err != nil {
+			return nil, err
+		}
+	}
+	if !opts.StrictMode {
 		normalizeLevelJumps(lines, collector)
 	}
 
