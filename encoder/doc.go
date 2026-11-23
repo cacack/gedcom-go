@@ -74,6 +74,8 @@
 //     tags. True drops each one with its whole subtree, and drops a record
 //     whose own type is a custom tag ("0 _EVDEF") entirely rather than
 //     leaving a stub.
+//   - PreserveLayout      — write every line the caller did not change exactly
+//     as it was read; see Preserving Layout below.
 //
 // Example with CRLF line endings:
 //
@@ -81,6 +83,44 @@
 //	if err := encoder.EncodeWithOptions(f, doc, opts); err != nil {
 //	    log.Fatal(err)
 //	}
+//
+// # Preserving Layout
+//
+// By default the encoder normalizes layout: one line terminator, no byte
+// order mark, no indentation, no blank lines, no delimiter space on a
+// valueless line. That suits cleaning a file up, but it means the first edit
+// to a file kept under version control rewrites lines nobody touched.
+//
+// [EncodeOptions].PreserveLayout instead writes each line the caller did not
+// change exactly as it was read, so an edited file differs from its source
+// only where it was edited. It needs the source's layout, which the decoder
+// records in [gedcom.Document].Layout when decoder.DecodeOptions.PreserveLayout
+// is set:
+//
+//	doc, err := decoder.DecodeWithOptions(r, &decoder.DecodeOptions{PreserveLayout: true})
+//	// ... edit doc ...
+//	err = encoder.EncodeWithOptions(w, doc, &encoder.EncodeOptions{PreserveLayout: true})
+//
+// The decision is made per line, not per file: a line is written from its
+// source when it still reads as that source line (same level, identifier,
+// tag and value), so a file that mixes LF and CRLF keeps both. Kept with an
+// unchanged line are its indentation, its terminator, the blank or skipped
+// lines before it, and spacing the decoded value does not hold, such as the
+// delimiter space on a valueless line or a value of nothing but spaces, which
+// the decoder reads as empty. The UTF-8 byte order mark and anything after the
+// last line, such as trailing blank lines, are kept too.
+//
+// A changed line is written as it would be without the option, keeping its
+// source line's indentation and terminator. A line with no source line, one
+// the caller added or one the encoder supplies, takes the terminator of the
+// source's first line. The encoder's own rules still apply and count as
+// changes: CHAR is written as UTF-8 whatever the source declared, a level
+// that lenient decoding clamped is written clamped, and TargetVersion and
+// DropUnknownTags work as they do without the option.
+//
+// Output is UTF-8 whatever the source was. A source in ANSEL, UTF-16 or a code
+// page keeps its layout but not its bytes: every line holding a non-ASCII
+// character differs, as does CHAR.
 //
 // # Raw Tags Are Authoritative
 //

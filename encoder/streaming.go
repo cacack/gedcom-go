@@ -90,6 +90,11 @@ type StreamEncoder struct {
 	// EncodeStreamingWithOptions; WriteTrailer writes its records. A bare
 	// StreamEncoder writes an inline media link inline.
 	inlineMedia *inlineMediaSet
+
+	// layout is the document's source layout, likewise set only by
+	// EncodeStreamingWithOptions and written back only with
+	// EncodeOptions.PreserveLayout.
+	layout *gedcom.Layout
 }
 
 // Errors returned by StreamEncoder for invalid state transitions.
@@ -143,6 +148,7 @@ func (e *StreamEncoder) WriteHeader(h *gedcom.Header) error {
 	// may be split with CONC (not in 7.0) for the header and every record.
 	e.options = e.options.forOutput(h)
 	e.options.inlineMedia = e.inlineMedia
+	e.options.attachLayout(e.layout)
 
 	if err := writeHeader(e.writer, h, e.options); err != nil {
 		e.err = err
@@ -309,6 +315,7 @@ func EncodeStreamingWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeO
 	enc := NewStreamEncoderWithOptions(w, opts)
 	enc.sharedNotes = sharedNotePointers(doc, enc.options)
 	enc.inlineMedia = inlineMediaPromotion(doc, enc.options)
+	enc.layout = doc.Layout
 
 	if err := enc.WriteHeader(doc.Header); err != nil {
 		return fmt.Errorf("write header: %w", err)

@@ -132,6 +132,13 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 		finalReader = &contextReader{ctx: opts.Context, reader: finalReader}
 	}
 
+	// Keep a copy of what the parser reads, to record its layout from.
+	var source *strings.Builder
+	if opts.PreserveLayout {
+		source = &strings.Builder{}
+		finalReader = io.TeeReader(finalReader, source)
+	}
+
 	// Parse with appropriate mode
 	p := parser.NewParser()
 	var lines []*parser.Line
@@ -164,6 +171,12 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 		parseOpts.Filter = blankLines
 	}
 	parsedLines, parseErrors, fe := p.ParseWithOptions(finalReader, parseOpts)
+
+	// Recorded before lenient recovery edits the lines; see buildLayout.
+	var layout *gedcom.Layout
+	if source != nil {
+		layout = buildLayout(source.String(), parsedLines, detection.BOM == charset.EncodingUTF8)
+	}
 
 	// A cancelled context stops the parse with a read error; report the
 	// context's error itself, not that read error or the partial document.
@@ -218,6 +231,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 			XRefMap: make(map[string]*gedcom.Record),
 			Header:  &gedcom.Header{Version: detectedVersion},
 			Trailer: &gedcom.Trailer{},
+			Layout:  layout,
 		}
 		result := &DecodeResult{
 			Document:    doc,
@@ -256,6 +270,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	// Build document from lines
 	doc := buildDocument(lines, detectedVersion, collector)
 	doc.Header.DeclaredVersion = xrefVersion
+	doc.Layout = layout
 	doc.Header.DetectedEncoding = headerEncoding(detection.Applied)
 	if detection.Mismatch() {
 		collector.addCharsetMismatch(lines, doc.Header)

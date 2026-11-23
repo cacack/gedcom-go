@@ -170,6 +170,9 @@ type HeaderConflict struct {
 //     and are kept from both documents.
 //   - Trailer: doc1's wins; if doc1 has none, doc2's is used.
 //
+// The combined document has no Layout: it was not read from one file, so
+// encoding it with EncodeOptions.PreserveLayout writes the normalized form.
+//
 // Returns an error if either doc is nil, if the opts are invalid for
 // the chosen strategy, or if any header compatibility check fails.
 // The error wraps ErrNilDocument for a nil doc, ErrInvalidOptions for
@@ -215,6 +218,11 @@ func Combine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Document
 	if out.XRefMap == nil {
 		out.XRefMap = make(map[string]*gedcom.Record)
 	}
+	// The output was read from no single file: doc2's lines carry doc2's
+	// line numbers, which would index doc1's layout. Drop it, so encoding
+	// with PreserveLayout normalizes the output instead of borrowing doc1's
+	// blank lines, indentation and terminators for doc2's lines.
+	out.Layout = nil
 
 	// Append doc2's (already remapped) records. An XRef already in the
 	// map keeps its first definition, the rule Document.XRefMap documents.

@@ -36,6 +36,13 @@ type Document struct {
 	// Schema contains GEDCOM 7.0 schema definitions that map custom tags to URIs.
 	// Extracted from the HEAD.SCHMA structure during decoding.
 	Schema *SchemaDefinition `json:",omitempty"`
+
+	// Layout is the physical form of the source file -- byte order mark,
+	// indentation, line terminators, blank lines -- recorded only when the
+	// decoder was asked to (decoder.DecodeOptions.PreserveLayout), and nil
+	// otherwise. The encoder writes it back only when asked to
+	// (encoder.EncodeOptions.PreserveLayout). See [Layout].
+	Layout *Layout `json:"-"`
 }
 
 // GetRecord returns the record with the given cross-reference ID.

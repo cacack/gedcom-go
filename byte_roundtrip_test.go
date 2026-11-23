@@ -127,8 +127,15 @@ var undecodable = map[string]string{}
 // valuelessLine matches a line carrying no value: "1 CONT", "0 @I1@ INDI".
 // GEDCOM makes the delimiter space optional when the value is empty, so
 // "1 CONT " and "1 CONT" denote the same thing and the encoder writes the
-// shorter form. This is the only whitespace difference we accept; a space that
-// is followed by anything is payload, and its loss is #426.
+// shorter form.
+//
+// It also matches a line whose value is nothing but spaces ("2 CONT" followed
+// by four spaces), and that is deliberate (#876): the parser reads a
+// whitespace-only value as no value at all (parser.trimDelimiter), so the
+// document holds an empty value and the encoder writes a bare "2 CONT". A
+// space followed by anything other than spaces is payload, and its loss is
+// #426. To keep such a line's bytes, encode with PreserveLayout, which writes
+// an unchanged line exactly as it was read (see layout_roundtrip_test.go).
 var valuelessLine = regexp.MustCompile(`^\d+ (@[^@]+@ )?[A-Za-z_][A-Za-z0-9_]* +$`)
 
 // charLine matches the level-1 CHAR declaration.

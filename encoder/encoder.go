@@ -90,6 +90,7 @@ func EncodeWithOptions(w io.Writer, doc *gedcom.Document, opts *EncodeOptions) e
 		opts = DefaultOptions()
 	}
 	opts = opts.forOutput(doc.Header)
+	opts.attachLayout(doc.Layout)
 
 	// Write header
 	if err := writeHeader(w, doc.Header, opts); err != nil {
@@ -139,7 +140,7 @@ func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error 
 		header = &gedcom.Header{}
 	}
 
-	if _, err := fmt.Fprintf(w, "0 HEAD%s", opts.effectiveLineEnding()); err != nil {
+	if err := writeHeadLine(w, opts); err != nil {
 		return err
 	}
 
@@ -152,6 +153,21 @@ func writeHeader(w io.Writer, header *gedcom.Header, opts *EncodeOptions) error 
 	}
 
 	return inRecord("HEAD", writeHeaderFields(w, header, opts))
+}
+
+// writeHeadLine writes "0 HEAD", after the byte order mark and from its
+// source line when opts writes a layout back that has them.
+func writeHeadLine(w io.Writer, opts *EncodeOptions) error {
+	if opts.layout == nil {
+		_, err := fmt.Fprintf(w, "0 HEAD%s", opts.effectiveLineEnding())
+		return err
+	}
+	if opts.layout.BOM {
+		if _, err := io.WriteString(w, utf8BOM); err != nil {
+			return err
+		}
+	}
+	return writeSourced(w, opts.layout.Head, 0, "", "HEAD", "", opts)
 }
 
 // inRecord prefixes an input error -- one of [ErrLineBreak],
@@ -535,7 +551,7 @@ func writeRecord(w io.Writer, record *gedcom.Record, opts *EncodeOptions, shared
 	if err := checkRecordLine(record); err != nil {
 		return inRecord(recordName(record), err)
 	}
-	if err := writeValue(w, 0, record.XRef, string(record.Type), value, opts); err != nil {
+	if err := writeSourced(w, record.LineNumber, 0, record.XRef, string(record.Type), value, opts); err != nil {
 		return inRecord(recordName(record), err)
 	}
 
@@ -617,7 +633,7 @@ func writeTag(w io.Writer, tag *gedcom.Tag, opts *EncodeOptions) error {
 	if tag.Level < 1 || tag.Level > maxLevel {
 		return fmt.Errorf("level %d tag %q: level must be 1-%d: %w", tag.Level, tag.Tag, maxLevel, ErrMalformedLine)
 	}
-	return writeValue(w, tag.Level, tag.XRef, tag.Tag, tag.Value, opts)
+	return writeSourced(w, tag.LineNumber, tag.Level, tag.XRef, tag.Tag, tag.Value, opts)
 }
 
 // writeValue writes a value at a given level: the line that opens it, plus a
@@ -865,8 +881,17 @@ func writeLine(w io.Writer, level int, xref, tag, value string, opts *EncodeOpti
 	return err
 }
 
+// writeTrailer writes "0 TRLR", from its source line and followed by the
+// rest of the source when opts writes a layout back.
 func writeTrailer(w io.Writer, opts *EncodeOptions) error {
-	_, err := fmt.Fprintf(w, "0 TRLR%s", opts.effectiveLineEnding())
+	if opts.layout == nil {
+		_, err := fmt.Fprintf(w, "0 TRLR%s", opts.effectiveLineEnding())
+		return err
+	}
+	if err := writeSourced(w, opts.layout.Trailer, 0, "", "TRLR", "", opts); err != nil {
+		return err
+	}
+	_, err := io.WriteString(w, opts.layout.Tail)
 	return err
 }
 

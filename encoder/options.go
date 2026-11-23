@@ -73,6 +73,34 @@ type EncodeOptions struct {
 	// Nil (the zero value) means no cancellation.
 	Context context.Context
 
+	// PreserveLayout writes every line the caller did not change exactly as
+	// it was read, so an edited file differs from its source only where it
+	// was edited. It needs a document decoded with
+	// decoder.DecodeOptions.PreserveLayout, which records the source's layout
+	// in [gedcom.Document].Layout; on a document with no Layout it changes
+	// nothing.
+	//
+	// A line is written from its source when it still reads as that source
+	// line: same level, identifier, tag and value. It keeps its indentation,
+	// its terminator (so a file mixing LF and CRLF keeps both), the blank or
+	// skipped lines before it, and spacing the decoded value does not hold,
+	// such as the delimiter space on a valueless line. A UTF-8 byte order mark
+	// and any trailing blank lines are kept too. A changed line is written as
+	// usual but keeps its source line's indentation and terminator; a line
+	// with no source line, one the caller added or one the encoder supplies,
+	// takes the source's first line terminator, and LineEnding applies only
+	// when the source has none.
+	//
+	// The encoder's own rules still apply, so a line they change is a changed
+	// line: the header's CHAR is still written as UTF-8, and TargetVersion,
+	// DropUnknownTags and line wrapping work as they do without it. Output is
+	// UTF-8 whatever the source was, so a source in ANSEL, UTF-16 or a code
+	// page keeps its layout but not its bytes.
+	//
+	// It applies to [EncodeWithOptions] and [EncodeStreamingWithOptions]. A
+	// bare [StreamEncoder] has no document to take a layout from.
+	PreserveLayout bool
+
 	// version is the resolved output version, set by forOutput. Writers must
 	// be reached only with options forOutput returned; on any other options it
 	// is empty, which reads as an unknown version (not 7.0, lacking nothing).
@@ -82,6 +110,12 @@ type EncodeOptions struct {
 	// (inlineMediaPromotion). Set only by the writers that hold the whole
 	// document and write its records; nil elsewhere, such as in SyncTags.
 	inlineMedia *inlineMediaSet
+
+	// layout is the source layout written back, set by attachLayout when
+	// PreserveLayout is on and the document has one; nil otherwise.
+	// It is a pointer, keeping EncodeOptions comparable, and copies of opts
+	// share it, so its record of lines written spans the whole encode.
+	layout *sourceLayout
 }
 
 // DefaultOptions returns the default encoding options.

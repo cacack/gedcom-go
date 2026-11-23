@@ -118,6 +118,20 @@ type DecodeOptions struct {
 	// other value is treated as the zero value. No
 	// other CHAR value is affected.
 	ANSIEncoding charset.Encoding
+
+	// PreserveLayout records the input's physical layout in
+	// [gedcom.Document].Layout: its UTF-8 byte order mark, and each line's
+	// indentation, terminator and the blank or skipped lines before it. With
+	// encoder.EncodeOptions.PreserveLayout, the encoder then writes every line
+	// the caller did not change exactly as it was read. The zero value records
+	// nothing and leaves Layout nil.
+	//
+	// It keeps a second copy of the decoded input and a record per line, so
+	// it costs memory: decoding a 2.4 MB export took 38 MB rather than 25 MB.
+	// Set it for a document that will be written back. Text is recorded as
+	// decoded: for a source that is not UTF-8 it is the UTF-8 the encoder
+	// writes, not the original bytes.
+	PreserveLayout bool
 }
 
 // DefaultMaxDiagnostics is the number of diagnostics a lenient decode reports
