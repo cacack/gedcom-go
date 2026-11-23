@@ -3,6 +3,7 @@ package validator_test
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/charset"
@@ -330,4 +331,56 @@ func ExampleStreamingValidator_Reset() {
 
 	// Output:
 	// After reset - seen XRefs: 0
+}
+
+// ExampleDuplicateDetector_FindDuplicatesBetween finds the people two files
+// share. Both files use @I1@, for different people; each pair names each
+// individual by its own file's XRef.
+func ExampleDuplicateDetector_FindDuplicatesBetween() {
+	fileA := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME John /Example/
+1 SEX M
+1 BIRT
+2 DATE 1850
+0 @I2@ INDI
+1 NAME Mary /Sample/
+1 SEX F
+0 TRLR`
+	fileB := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Mary /Sample/
+1 SEX F
+0 @I2@ INDI
+1 NAME John /Example/
+1 SEX M
+1 BIRT
+2 DATE ABT 1850
+0 TRLR`
+	a, err := decoder.Decode(strings.NewReader(fileA))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	b, err := decoder.Decode(strings.NewReader(fileB))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	pairs := validator.NewDuplicateDetector(nil).FindDuplicatesBetween(a, b)
+	// Pair order is not specified; sort for stable output.
+	sort.Slice(pairs, func(i, j int) bool { return pairs[i].Individual1.XRef < pairs[j].Individual1.XRef })
+	for _, p := range pairs {
+		fmt.Printf("a %s = b %s (%.0f%%)\n", p.Individual1.XRef, p.Individual2.XRef, p.Confidence*100)
+	}
+	// Output:
+	// a @I1@ = b @I2@ (90%)
+	// a @I2@ = b @I1@ (70%)
 }

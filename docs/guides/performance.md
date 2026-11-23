@@ -212,6 +212,14 @@ go test ./validator -bench BenchmarkFindDuplicates -run '^$' -benchmem -count=3
 go test ./validator -bench BenchmarkValidateAllStrictLongsword -run '^$' -benchmem -count=3 -benchtime=3x
 ```
 
+`FindDuplicatesBetween` compares two documents using the same surname blocking,
+but only across them: a surname with *a* individuals in one document and *b* in
+the other costs *a·b* comparisons, and a surname found in only one document costs
+nothing beyond grouping. Since *a·b ≤ (a² + b²)/2*, that is about what two
+single-document runs spend on the shared surnames, and never more than one run on
+the documents combined. `MaxGroupSize` applies to *a + b*, so each shared surname
+costs at most `MaxGroupSize²/4` comparisons.
+
 #### Bounding Untrusted Input
 
 Three knobs control the worst case, so callers validating untrusted uploads do not

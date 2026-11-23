@@ -476,11 +476,94 @@ func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedco
 		}
 	}
 
-	report := DuplicateReport{Pairs: duplicates}
-	if skipped.groups > 0 || skipped.truncatedNames > 0 {
-		report.LimitIssues = []Issue{skipped.toIssue(limit, nameLimit)}
+	return skipped.report(duplicates, limit, nameLimit)
+}
+
+// FindDuplicatesBetween returns the likely-same-person pairs that take one
+// individual from a and one from b, for reconciling two overlapping files
+// before they are combined. Pairs within a single document are not reported;
+// run FindDuplicates on each document for those.
+//
+// In every pair Individual1 comes from a and Individual2 from b, each the
+// document's own *gedcom.Individual with its own XRef. Records are never
+// looked up by XRef across documents, so two files that both use @I1@ for
+// different people are not confused; a caller resolving a pair's XRefs must
+// look Individual1.XRef up in a and Individual2.XRef up in b. For the same
+// reason DuplicatePair.ToIssue, which names both XRefs without their
+// documents, is ambiguous for these pairs. As with FindDuplicates, pairs come
+// in no particular order.
+//
+// Scoring, thresholds, vetoes and limits are those of FindDuplicates under the
+// same DuplicateConfig, and the pairs are the cross-document pairs that
+// FindDuplicates would report on the two documents combined (for example by
+// merge.Combine with PrefixDoc2), with their XRefs left unchanged. In
+// particular a surname group is the union of that surname's individuals in
+// both documents, and MaxGroupSize applies to that union: a combined group
+// larger than the cap is skipped whole. Use FindDuplicatesBetweenReport to
+// learn when that happened.
+//
+// Cost: grouping is linear in the individuals of both documents, as it is for
+// one run of FindDuplicates on each. Pair comparisons are Σ aᵢ·bᵢ over the
+// surnames the documents share, where aᵢ and bᵢ count that surname's
+// individuals in a and in b; surnames found in only one document cost nothing
+// beyond grouping. Two single-document runs compare aᵢ(aᵢ−1)/2 + bᵢ(bᵢ−1)/2
+// pairs for that surname; since aᵢ·bᵢ ≤ (aᵢ² + bᵢ²)/2, the cross-document
+// sweep exceeds them by at most (aᵢ+bᵢ)/2 comparisons per shared surname, and
+// is far below them when one side is small. It never exceeds the
+// (aᵢ+bᵢ)(aᵢ+bᵢ−1)/2 a single run on the combined documents compares. With
+// the cap, each shared surname costs at most MaxGroupSize²/4 comparisons.
+func (d *DuplicateDetector) FindDuplicatesBetween(a, b *gedcom.Document) []DuplicatePair {
+	return d.FindDuplicatesBetweenReport(a, b).Pairs
+}
+
+// FindDuplicatesBetweenReport is FindDuplicatesBetween returning the pairs
+// together with any issues describing skipped analysis, in the same form as
+// FindDuplicatesReport: one CodeDuplicateDetectionLimited issue in
+// DuplicateReport.LimitIssues when a combined surname group exceeded
+// MaxGroupSize or a compared given name was cut to MaxNameRunes. Only groups
+// whose surname occurs in both documents are counted, since no other group can
+// yield a cross-document pair.
+func (d *DuplicateDetector) FindDuplicatesBetweenReport(a, b *gedcom.Document) DuplicateReport {
+	if a == nil || b == nil {
+		return DuplicateReport{}
 	}
-	return report
+
+	groupsA := d.buildSurnameGroups(a.Individuals())
+	groupsB := d.buildSurnameGroups(b.Individuals())
+
+	var duplicates []DuplicatePair
+	limit := d.maxGroupSize()
+	nameLimit := d.maxNameRunes()
+	var skipped skippedGroups
+
+	for surname, groupA := range groupsA {
+		groupB := groupsB[surname]
+		if len(groupB) == 0 {
+			continue
+		}
+
+		// The cap applies to the combined group, as FindDuplicates on the
+		// combined documents would see it, and the group is skipped whole for
+		// the same reason given there.
+		if size := len(groupA) + len(groupB); size > limit {
+			skipped.record(surname, size)
+			continue
+		}
+
+		candidatesA, truncatedA := d.buildCandidates(surname, groupA, nameLimit)
+		candidatesB, truncatedB := d.buildCandidates(surname, groupB, nameLimit)
+		skipped.truncatedNames += truncatedA + truncatedB
+
+		for _, ca := range candidatesA {
+			for _, cb := range candidatesB {
+				if pair, ok := d.comparePair(ca, cb); ok {
+					duplicates = append(duplicates, pair)
+				}
+			}
+		}
+	}
+
+	return skipped.report(duplicates, limit, nameLimit)
 }
 
 // maxSkippedSurnamesReported caps how many surnames the limit Issue names. The
@@ -511,6 +594,16 @@ func (s *skippedGroups) record(surname string, size int) {
 	s.individuals += size
 	s.largest = max(s.largest, size)
 	s.surnames = append(s.surnames, surname)
+}
+
+// report wraps pairs in a DuplicateReport, adding the limit Issue when any
+// group was skipped or any given name compared on a prefix.
+func (s *skippedGroups) report(pairs []DuplicatePair, limit, nameLimit int) DuplicateReport {
+	report := DuplicateReport{Pairs: pairs}
+	if s.groups > 0 || s.truncatedNames > 0 {
+		report.LimitIssues = []Issue{s.toIssue(limit, nameLimit)}
+	}
+	return report
 }
 
 // toIssue renders the accumulated skips and truncations as one Issue.
