@@ -128,7 +128,7 @@ GEDZIP packages have all shipped and are no longer gaps.
 
 | Feature | Notes |
 |---------|-------|
-| CLI tools | Library-first design; a CLI would be a separate package |
+| CLI tools | Library-first design; the CLI is a separate project, [gedcom-cli](https://github.com/cacack/gedcom-cli) |
 | GUI | Out of scope for a library |
 | Database storage | Application-level concern |
 
