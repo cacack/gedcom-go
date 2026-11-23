@@ -259,18 +259,25 @@ func subsetHeader(src *Document, closure map[string]bool) *Header {
 		(!src.IsRecordPointer(src.Header.Submitter) || closure[src.Header.Submitter]) {
 		h.Submitter = src.Header.Submitter
 	}
+	// A dropped line takes its subordinate lines with it, as pruneTags
+	// does for records; left behind, they would attach to the previous
+	// line of their parent's level.
+	skipBelow := -1
 	for _, tag := range src.Header.Tags {
 		if tag == nil {
 			continue
 		}
-		if tag.XRef != "" && !closure[tag.XRef] {
+		if skipBelow >= 0 && tag.Level > skipBelow {
 			continue
 		}
+		skipBelow = -1
 		// Tag.Value can also carry a pointer (parsers differ on which
 		// field they populate for vendor tags). Drop the tag if its
 		// Value resolves to a record outside the closure so the subset
 		// stays self-contained.
-		if src.IsRecordPointer(tag.Value) && !closure[tag.Value] {
+		if (tag.XRef != "" && !closure[tag.XRef]) ||
+			(src.IsRecordPointer(tag.Value) && !closure[tag.Value]) {
+			skipBelow = tag.Level
 			continue
 		}
 		h.Tags = append(h.Tags, tag.Clone())
