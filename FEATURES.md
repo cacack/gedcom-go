@@ -533,8 +533,10 @@ for _, child := range ind.Descendants(doc) { /* ... */ }
 for _, parent := range ind.Ancestors(doc)   { /* ... */ }
 ```
 
-Generation-aware variants report each relative's generation (1 = parents
-or children) and take a depth limit (0 = unlimited):
+Generation-aware variants (Document methods) report each relative's
+generation (1 = parents or children) and take a depth limit. Zero **or any
+negative value** means unlimited, so clamp a computed limit before passing
+it if it can reach 0:
 
 ```go
 for _, rel := range doc.AncestorsWithGenerations("@I1@", 3) {
