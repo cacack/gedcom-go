@@ -64,7 +64,8 @@ type EncodeOptions struct {
 	DropUnknownTags bool
 
 	// Context allows cancellation and timeout control. [EncodeWithOptions],
-	// [EncodeStreamingWithOptions] and [StreamEncoder.WriteRecord] check it
+	// [EncodeStreamingWithOptions], [EncodeRecord] and
+	// [StreamEncoder.WriteRecord] check it
 	// before each record; once it is done they stop writing and return its
 	// error wrapped (errors.Is matches context.Canceled or
 	// context.DeadlineExceeded), leaving the output incomplete. A

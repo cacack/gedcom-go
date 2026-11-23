@@ -433,7 +433,7 @@ These packages/APIs are stable and follow semver strictly:
 |---------|--------|-------|
 | `gedcom` | Stable | Core types: Document, Individual, Family, etc. |
 | `decoder` | Stable | `Decode()`, `DecodeWithOptions()` |
-| `encoder` | Stable | `Encode()`, `EncodeWithOptions()`, `NewStreamEncoder()`, `NewStreamEncoderWithOptions()`, `EncodeStreaming()`, `EncodeStreamingWithOptions()` |
+| `encoder` | Stable | `Encode()`, `EncodeWithOptions()`, `EncodeRecord()`, `NewStreamEncoder()`, `NewStreamEncoderWithOptions()`, `EncodeStreaming()`, `EncodeStreamingWithOptions()` |
 | `converter` | Stable | `Convert()`, `ConvertWithOptions()` |
 | `parser` | Stable | `Parse()`, `ParseLine()`, `NewRecordIterator()`, `NewRecordIteratorWithOffset()`, `Records()`, `RecordsWithOffset()`, `NewLazyParser()` |
 | `validator` | Stable | `Validate()`, `ValidateAll()`, `NewStreamingValidator()` |

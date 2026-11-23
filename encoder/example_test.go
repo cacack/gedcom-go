@@ -3,8 +3,10 @@ package encoder_test
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/encoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
@@ -178,4 +180,19 @@ func ExampleStreamEncoder_largeFile() {
 
 	// Output:
 	// Encoded 3 individual records
+}
+
+// ExampleEncodeRecord writes one record of a decoded document, with no
+// header or trailer.
+func ExampleEncodeRecord() {
+	doc, err := decoder.Decode(strings.NewReader("0 HEAD\n1 GEDC\n2 VERS 5.5.1\n0 @I1@ INDI\n1 NAME Ann /Example/\n0 @I2@ INDI\n1 NAME Bob /Example/\n0 TRLR\n"))
+	if err != nil {
+		panic(err)
+	}
+	if err := encoder.EncodeRecord(os.Stdout, doc, doc.GetRecord("@I2@"), nil); err != nil {
+		panic(err)
+	}
+	// Output:
+	// 0 @I2@ INDI
+	// 1 NAME Bob /Example/
 }
