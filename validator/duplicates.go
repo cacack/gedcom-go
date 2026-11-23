@@ -504,10 +504,12 @@ func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedco
 // Scoring, thresholds, vetoes and limits are those of FindDuplicates under the
 // same DuplicateConfig, and the pairs are the cross-document pairs that
 // FindDuplicates would report on the two documents combined (for example by
-// merge.Combine with PrefixDoc2), with their XRefs left unchanged. In
-// particular a surname group is the union of that surname's individuals in
-// both documents, and MaxGroupSize applies to that union: a combined group
-// larger than the cap is skipped whole. Use FindDuplicatesBetweenReport to
+// merge.Combine with PrefixDoc2), with their XRefs left unchanged, except
+// that an individual shared by both documents is not paired with its own
+// copy. In particular a surname group is the union of that surname's
+// individuals in both documents, and MaxGroupSize applies to that union: a
+// combined group larger than the cap is skipped whole. A shared individual
+// still counts once per document toward the cap and the limit counts. Use FindDuplicatesBetweenReport to
 // learn when that happened.
 //
 // Cost: grouping is linear in the individuals of both documents, as it is for
