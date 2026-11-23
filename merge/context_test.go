@@ -22,6 +22,7 @@ func TestCombineContextCancelledAtEveryCheck(t *testing.T) {
 		"ErrorOnCollision": {},
 		"PrefixDoc2":       {CollisionStrategy: merge.PrefixDoc2, Prefix: "B_"},
 		"RenumberDoc2":     {CollisionStrategy: merge.RenumberDoc2},
+		"ZipSharedXRefs":   {CollisionStrategy: merge.ZipSharedXRefs},
 	}
 	for name, opts := range strategies {
 		t.Run(name, func(t *testing.T) {

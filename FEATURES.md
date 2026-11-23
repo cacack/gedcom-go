@@ -616,6 +616,31 @@ sub, err := doc.Subset(doc.Descendants("@I1@"))
 - XRefs are preserved exactly — callers needing fresh IDs apply an
   XRef remap as a separate step
 
+### Bounded Subset
+
+Cut a branch out of a document along the boundary of a set of individuals.
+`Subset` follows every reference, so a seed usually pulls in the whole
+connected tree; `BoundedSubset` stops at individuals and families.
+
+```go
+branch, dropped, err := doc.BoundedSubset([]string{"@I3@", "@I7@"})
+```
+
+- Holds exactly the given individuals, every family with one of them as a
+  member (HUSB, WIFE, CHIL, or named by their FAMC/FAMS), and everything
+  those records reference that is not an individual or family, plus the
+  header's submitter as `Subset` carries it
+- A pointer to an individual or family outside the result is removed with
+  its subordinate lines, from the raw Tags and the typed Entity alike, so
+  the result is self-contained; each one is reported as a `DroppedPointer`
+- Seeds must be individuals (`gedcom.ErrNotIndividual`) that resolve
+  (`gedcom.ErrUnknownXRef`); a dangling reference is an error, as in `Subset`
+- Zips back together with `merge.ZipSharedXRefs`: the bounded subsets of
+  S1 and S2 combine into the bounded subset of S1 ∪ S2. A family's HUSB,
+  WIFE and CHIL lines are restored (`DroppedPointer.Restorable`); a pointer
+  only one record holds, such as an `ASSO` naming someone outside the set,
+  is lost from the cut
+
 ### Deep Copy
 
 Public `Clone()` methods on `Document`, `Header`, `Trailer`, `Record`,
@@ -679,7 +704,16 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 | Function | Description |
 |----------|-------------|
 | `merge.RemapXRefs(doc, transform)` | Pure XRef rewrite preserving referential integrity; original document unchanged. Records whose XRef is not pointer-shaped (e.g. recovered from a malformed line) are left as-is |
-| `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `RenumberDoc2`) |
+| `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `RenumberDoc2`, `ZipSharedXRefs`) |
+
+`ZipSharedXRefs` is for documents cut from one master, such as bounded
+subsets: a shared XRef is one record. Identical records collapse to one;
+records that differ only in lines pointing at individuals or families are
+unioned, merging each run of such lines in source line order. Any other
+difference is a `RecordConflict`: `Combine` fails with `ErrRecordConflict`
+and no output, or keeps doc1's record and reports the conflict in
+`CombineReport.RecordConflicts` when `CombineOptions.KeepFirstOnConflict`
+is set.
 
 `Combine` returns a `CombineReport` describing the XRefs that were
 remapped on doc2 and any header fields where doc1's value was kept
