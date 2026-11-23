@@ -3,7 +3,9 @@ package merge_test
 import (
 	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
 	"github.com/cacack/gedcom-go/v3/merge"
 )
@@ -124,4 +126,49 @@ func ExampleCombine_errors() {
 	// nil document: true
 	// missing prefix: true
 	// collision: true
+}
+
+// ExampleIndividuals folds a duplicate individual into the one the caller
+// keeps: the second record's death moves over, its identical name is not
+// repeated, and the family that named it now names the survivor.
+func ExampleIndividuals() {
+	doc, err := decoder.Decode(strings.NewReader(`0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Example/
+0 @I2@ INDI
+1 NAME John /Example/
+1 DEAT
+2 DATE 1970
+1 FAMS @F1@
+0 @F1@ FAM
+1 HUSB @I2@
+0 TRLR
+`))
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+
+	out, report, err := merge.Individuals(doc, "@I1@", "@I2@", merge.RecordMergeOptions{})
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+	for _, s := range report.Moved {
+		fmt.Println("moved:", s.Tags[0].Tag)
+	}
+	for _, s := range report.Deduplicated {
+		fmt.Println("already held:", s.Tags[0].Tag, s.Tags[0].Value)
+	}
+	fmt.Println("husband:", out.GetFamily("@F1@").Husband)
+	fmt.Println("@I2@ left:", out.GetRecord("@I2@") != nil)
+
+	// Output:
+	// moved: DEAT
+	// moved: FAMS
+	// already held: NAME John /Example/
+	// husband: @I1@
+	// @I2@ left: false
 }

@@ -53,7 +53,7 @@ parser/     # Low-level line parsing with detailed error reporting
 validator/  # Document validation with error categorization
 charset/    # Character encoding (UTF-8, ANSEL) with BOM detection
 version/    # GEDCOM version detection (5.5, 5.5.1, 7.0)
-merge/      # Combine documents (XRef remap, collision strategies, header merge)
+merge/      # Combine documents (XRef remap, collision strategies, header merge), merge two records
 converter/  # Convert documents between GEDCOM versions (5.5 ↔ 5.5.1 ↔ 7.0)
 gedzip/     # Read and write GEDZIP (.gdz) archives: bounded reads, lazy media
 ```

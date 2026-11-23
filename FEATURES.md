@@ -744,6 +744,8 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 |----------|-------------|
 | `merge.RemapXRefs(doc, transform)` | Pure XRef rewrite preserving referential integrity; original document unchanged. Records whose XRef is not pointer-shaped (e.g. recovered from a malformed line) are left as-is |
 | `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `RenumberDoc2`, `ZipSharedXRefs`) |
+| `merge.Individuals(doc, keep, drop, opts)` | Fold the individual `drop` into `keep`, which the caller names; original document unchanged |
+| `merge.Families(doc, keep, drop, opts)` | The same for two family records; a child both list is listed once |
 
 `ZipSharedXRefs` is for documents cut from one master, such as bounded
 subsets: a shared XRef is one record. Identical records collapse to one;
@@ -775,6 +777,22 @@ reported as a `HeaderConflict`. Argument errors wrap `merge.ErrNilDocument`
 `PrefixDoc2` with no `Prefix`, a nil transform), so `errors.Is` separates
 them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 `ErrInvalidRemap`.
+
+`Individuals` and `Families` merge two records the caller has decided are
+one; deciding that stays with the caller. Every level-1 substructure of
+`drop` is added under `keep` (after `keep`'s last one with the same tag)
+unless `keep` already holds one with the same lines. Every pointer to `drop`,
+typed or raw (FAMS, FAMC, HUSB, WIFE, CHIL, ASSO, ALIA, vendor tags), is
+repointed to `keep`, except a level-1 line that would then repeat a sibling
+line for line, such as a second CHIL for the same child, which is removed;
+`drop` leaves `Records` and `XRefMap`. No other policy applies: a differing
+`SEX` or `HUSB` is added too, for the validator to report. The raw Tags are
+authoritative, so the edited records' typed Entities are rebuilt from them.
+The `RecordMergeReport` lists what was moved, what was deduplicated, every
+pointer repointed and every line collapsed. Merging a record into itself, a
+missing record (also `gedcom.ErrUnknownXRef`), one of the wrong type, one
+defined twice, or where a record involved has no raw Tags returns an error
+wrapping `merge.ErrInvalidMerge`.
 
 ## Record Types
 
@@ -1928,6 +1946,7 @@ pipeline. Each checks it as it goes and returns its error wrapped, so
 | `converter.ConvertWithOptions` | `ConvertOptions.Context` | Per conversion step, and per record while copying the document and validating the result |
 | `encoder.EncodeWithOptions`, `EncodeStreamingWithOptions`, `EncodeRecord`, `StreamEncoder.WriteRecord` | `EncodeOptions.Context` | Per record |
 | `merge.Combine` | `CombineOptions.Context` | Per record compared, remapped and copied |
+| `merge.Individuals`, `merge.Families` | `RecordMergeOptions.Context` | Per record copied |
 | `parser.LazyParser.BuildIndexContext` | its `ctx` argument | Per record indexed |
 
 ## Version Conversion

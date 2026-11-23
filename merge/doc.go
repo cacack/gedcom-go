@@ -17,6 +17,10 @@
 //     ZipSharedXRefs to zip documents cut from one master back together),
 //     returning a fresh document plus a report describing what was
 //     remapped and which header fields and records conflicted.
+//   - Individuals and Families: fold one record into another the caller
+//     names as the survivor, moving its substructures, repointing every
+//     pointer to it and removing it. Whether the two are the same person
+//     or family is the caller's decision.
 //
 // What this package does NOT do:
 //
@@ -24,7 +28,8 @@
 //     documents.
 //   - Field-level merge policy (last-write-wins, conflict resolution,
 //     evidence weighting).
-//   - Deduplication beyond what an XRef collision check provides.
+//   - Deciding which records to deduplicate: Individuals and Families
+//     merge only the pair the caller names.
 //
 // All operations return a new document; inputs are never mutated.
 package merge

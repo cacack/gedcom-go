@@ -433,7 +433,7 @@ For fine-grained control, these packages are available:
 - **`encoder`** - GEDCOM document writing with configurable line endings
 - **`gedcom`** - Core data types (Document, Individual, Family, Source, etc.)
 - **`gedzip`** - GEDZIP (`.gdz`) archive reading and writing with bounded, lazy media access
-- **`merge`** - Combine documents (XRef remap, collision strategies, header merge)
+- **`merge`** - Combine documents (XRef remap, collision strategies, header merge) and merge two records into one
 - **`parser`** - Low-level line parsing with detailed error reporting
 - **`validator`** - Document validation with error categorization
 - **`version`** - GEDCOM version detection (header and heuristic-based)
