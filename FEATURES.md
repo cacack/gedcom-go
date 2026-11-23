@@ -527,6 +527,34 @@ err := doc.AddRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndivid
 - `Document.ReindexXRefs` rebuilds `XRefMap` from `Records` after direct
   edits; the first record wins when two share an XRef, as in the decoder
 
+### Editing Records
+
+Replace or remove a record of a decoded document with `Records` and `XRefMap`
+kept in step, and decode edited GEDCOM text back into records:
+
+```go
+records, diags, err := decoder.DecodeRecords(strings.NewReader(edited), doc, nil)
+err = doc.ReplaceRecord(records[0])     // same position in Records
+refs, err := doc.RemoveRecord("@I2@")   // pointers to @I2@ left behind
+```
+
+- `Document.ReplaceRecord` puts a record in place of the one indexed under its
+  XRef, at the same position in `Records`; `XRefMap` and the typed lookups
+  return the new record. An XRef the document does not index is an error
+  wrapping `gedcom.ErrUnknownXRef`, leaving the document unchanged
+- `Document.RemoveRecord` removes the record from `Records` and `XRefMap` and
+  returns each pointer still naming it, as a `gedcom.Reference` (holding
+  record's XRef and tag path, such as `FAM.CHIL` or `HEAD.SUBM`); the pointers
+  are reported, not changed
+- `decoder.DecodeRecords` decodes a fragment of level-0 records (no `HEAD`,
+  no `TRLR`) under the target document's version, identifier grammar and
+  encoding, to the records the whole-file decoder gives the same lines, with
+  diagnostics counted from the fragment's first line. A `HEAD`, `TRLR` or
+  leading subordinate line is an error wrapping `decoder.ErrNotRecords`
+- With a layout-preserving encode, every record not replaced or removed is
+  written byte for byte as read: decoded records carry no line numbers, so
+  they never borrow the layout of the source's lines
+
 ### Graph Traversal
 
 Transitive walks across family links, returning XRef sets that compose into other operations (e.g., `Subset`):

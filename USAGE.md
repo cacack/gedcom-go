@@ -648,6 +648,41 @@ Header fields such as `SourceSystem` and `Language` can be set on
 through `AddRecord`, call `doc.ReindexXRefs()` afterwards to rebuild
 `XRefMap`.
 
+### Replacing and Removing Records
+
+`Document.ReplaceRecord` and `Document.RemoveRecord` keep `Records` and
+`XRefMap` in step. `decoder.DecodeRecords` turns GEDCOM text holding only
+records (no `HEAD`, no `TRLR`), such as a record printed and then edited, into
+records read as if they were in the document: its version, identifier grammar
+and encoding.
+
+```go
+records, diags, err := decoder.DecodeRecords(strings.NewReader(edited), doc, nil)
+if err != nil {
+    log.Fatal(err) // wraps decoder.ErrNotRecords for a HEAD, TRLR or leading subordinate line
+}
+for _, d := range diags {
+    fmt.Println(d) // lines counted from the fragment's first line
+}
+if err := doc.ReplaceRecord(records[0]); err != nil {
+    log.Fatal(err) // wraps gedcom.ErrUnknownXRef when doc has no such record
+}
+
+refs, err := doc.RemoveRecord("@I2@")
+if err != nil {
+    log.Fatal(err)
+}
+for _, ref := range refs {
+    fmt.Println(ref.XRef, strings.Join(ref.Path, ".")) // e.g. @F1@ FAM.CHIL, now dangling
+}
+```
+
+The replacement keeps the replaced record's position in `Records`.
+`RemoveRecord` reports the pointers that still name the removed record and
+leaves them in place; remove or repoint them before encoding. Encoded with
+`PreserveLayout` (see [Preserving Layout](docs/guides/preserving-layout.md)),
+every other record is written exactly as it was read.
+
 ### Adding Individuals
 
 ```go
