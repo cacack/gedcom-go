@@ -77,8 +77,8 @@ type diagnosticCollector struct {
 // line by line, and separately the number of CodeMisplacedTag diagnostics.
 // Every line is still kept in the raw tags; the lines past the cap
 // are counted in one closing diagnostic of the same code per tag, at the line of
-// the first of them, so an export that writes the same nonstandard tag on every
-// event (MyHeritage's RIN, Brother's Keeper's QUAY) yields a handful of
+// the first of them, so an export that writes the same nonstandard or misplaced
+// tag on every event (MyHeritage's RIN, Brother's Keeper's QUAY) yields a handful of
 // diagnostics rather than thousands that bury the rest. Unknown level-0 record
 // types are not capped.
 const MaxUnknownTagDiagnosticsPerTag = 10

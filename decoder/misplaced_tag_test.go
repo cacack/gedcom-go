@@ -119,6 +119,22 @@ func TestMisplacedTag(t *testing.T) {
 0 TRLR`,
 			want: []string{"8 UNKNOWN_TAG unknown tag: ZZZZ"},
 		},
+		{
+			// The decoder does not yet read CONT under NAME or PLAC, so it
+			// still reports these lines, but never as misplaced.
+			name: "7.0 CONT is never misplaced",
+			input: `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME First /Example/
+2 CONT more
+1 BIRT
+2 PLAC Example Town
+3 CONT more
+0 TRLR`,
+			want: []string{"6 UNKNOWN_TAG unknown tag: CONT", "9 UNKNOWN_TAG unknown tag: CONT"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -181,11 +197,14 @@ func TestTagPlacementMisplaced(t *testing.T) {
 		{"_EXT", false, "DATE", false}, // extension parent
 		{"INDI", true, "_EXT", false},  // extension tag
 		{"SEX", false, "DATE", true},   // a parent that takes no substructures
-		{"SOUR", false, "PAGE", false}, // a citation SOUR
+		// A citation SOUR allows PAGE. Parents are matched by tag, so PAGE
+		// under HEAD's SOUR is accepted too: a known false negative.
+		{"SOUR", false, "PAGE", false},
 		{"SOUR", true, "PAGE", true},   // the SOUR record
 		{"ZZZZ", false, "DATE", false}, // unknown parent
 		{"HEAD", true, "DATE", false},  // header
 		{"DATE", false, "PHRASE", false},
+		{"NAME", false, "CONT", false}, // 7.0 CONT continues any line
 	} {
 		if got := p.misplaced(tc.parent, tc.top, tc.tag); got != tc.want {
 			t.Errorf("misplaced(%q, %v, %q) = %v, want %v", tc.parent, tc.top, tc.tag, got, tc.want)

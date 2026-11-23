@@ -5290,9 +5290,6 @@ func TestPaddedInlineNoteKeepsPayload(t *testing.T) {
 	}
 }
 
-// unknownTagsIn returns the tag names of every UNKNOWN_TAG diagnostic in diags.
-// The tests below assert on which tags the decoder failed to recognize, and the
-// tag name is the part of the message that matters.
 // misplacedTagsIn returns the tag of every CodeMisplacedTag diagnostic.
 func misplacedTagsIn(diags Diagnostics) []string {
 	var tags []string
@@ -5305,6 +5302,9 @@ func misplacedTagsIn(diags Diagnostics) []string {
 	return tags
 }
 
+// unknownTagsIn returns the tag names of every UNKNOWN_TAG diagnostic in diags.
+// The tests below assert on which tags the decoder failed to recognize, and the
+// tag name is the part of the message that matters.
 func unknownTagsIn(diags Diagnostics) []string {
 	var tags []string
 	for _, d := range diags {

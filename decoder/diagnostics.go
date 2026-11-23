@@ -96,6 +96,10 @@ const (
 const (
 	// CodeUnknownTag indicates an unrecognized tag was encountered.
 	// These tags are preserved in raw form but not parsed into typed fields.
+	// A tag the document's version defines, but not under the line's parent,
+	// is reported as [CodeMisplacedTag] instead; a standard tag the decoder
+	// does not yet read where the grammar allows it (a decoder gap) is still
+	// reported with this code.
 	// It is also reported for a level-0 record whose tag is neither a standard
 	// record type nor an extension ("_" prefix), including a standard type in
 	// the wrong case ("indi"); the record is kept with that Type and no entity.
@@ -117,7 +121,10 @@ const (
 	// [MaxUnknownTagDiagnosticsPerTag] times, then once more counting its
 	// remaining lines (an allowance separate from UNKNOWN_TAG's). Parents
 	// are matched by tag, so a tag any structure with that tag allows is not
-	// reported as misplaced. Level-0 lines are never reported with it.
+	// reported as misplaced, and a tag under an extension or unknown parent
+	// is reported as CodeUnknownTag, if at all: this is a best-effort hint,
+	// not a conformance check. GEDCOM 7.0's CONT, which may continue any
+	// line, is never misplaced. Level-0 lines are never reported with it.
 	CodeMisplacedTag = "MISPLACED_TAG"
 
 	// CodeInvalidValue indicates a value doesn't match the expected format.

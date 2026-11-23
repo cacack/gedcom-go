@@ -42,8 +42,12 @@ func placementFor(v gedcom.Version) *tagPlacement {
 // parent it does not define (an extension, an unknown tag), is not misplaced.
 // Because parents are matched by tag, a tag one structure with parent's tag
 // allows is never misplaced under another with the same tag.
+//
+// GEDCOM 7.0's CONT is never misplaced: substructures.tsv lists it only as a
+// top-level pseudo-structure, because it continues the payload of any line,
+// as reportUnknownHeaderTags also allows.
 func (p *tagPlacement) misplaced(parent string, top bool, tag string) bool {
-	if p == nil || !p.defines(tag) {
+	if p == nil || !p.defines(tag) || (p == placement70 && tag == "CONT") {
 		return false
 	}
 	allowed := p.children

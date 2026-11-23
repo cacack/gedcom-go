@@ -138,8 +138,8 @@ type DecodeOptions struct {
 // when [DecodeOptions.MaxDiagnostics] is zero.
 //
 // Real exports can report many: testdata/edge-cases/mhftb8-export.ged, a
-// 2.4 MB MyHeritage file, reports 14,597, nearly all UNKNOWN_TAG warnings for
-// vendor tags, so the bound is set well above that. It still caps the memory
+// 2.4 MB MyHeritage file, reports 14,597, nearly all UNKNOWN_TAG and MISPLACED_TAG
+// warnings for vendor tags, so the bound is set well above that. It still caps the memory
 // diagnostics hold at a few tens of megabytes whatever the input: 18 MB of
 // garbage lines, which gave 1,000,000 diagnostics and about 400 MB of memory
 // unbounded, decodes in about 60 MB.
