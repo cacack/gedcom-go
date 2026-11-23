@@ -994,6 +994,30 @@ unaffected by any of the above. That asymmetry is deliberate; see
 [Accepted Asymmetries](docs/governance/policies/api-stability.md#accepted-asymmetries)
 for what it costs and why closing it later would be additive.
 
+### Place Parts and FORM Labels
+
+`PlaceDetail.Parts(defaultForm)` splits a place name on commas and pairs each
+part, in file order, with the label the file states for that position.
+`Document.PlaceParts(place)` does the same with `Header.PlaceForm`
+(`HEAD.PLAC.FORM`) as the default form. Both are nil-safe.
+
+- The place's own `FORM` is used when it has one, otherwise the default form,
+  otherwise the parts come back unlabeled; `PlaceParts.Source` says which
+  (`PlaceFormOwn`, `PlaceFormHeader`, `PlaceFormNone`)
+- Parts and labels are trimmed; empty parts are kept so positions stay aligned
+  (`, , Utah, USA` is four parts)
+- Labels are never inferred from position: when the form's label count differs
+  from the part count, `Mismatch` is true, no part carries a label, and
+  `Labels` still holds what the file said
+- A comma inside a part cannot be told from a separator, since GEDCOM defines
+  no escape for it
+
+```go
+for _, part := range doc.PlaceParts(event.PlaceDetail).Parts {
+    fmt.Printf("%s: %s\n", part.Label, part.Name)
+}
+```
+
 ### Coordinate Conversion
 
 Convert GEDCOM-format coordinates (direction-prefixed, e.g. `N42.3601`) to signed decimal degrees. A coordinate is a direction letter (`N`/`S` for latitude, `E`/`W` for longitude, case-insensitive) followed by an unsigned decimal number — digits with at most one decimal point, so `N.5` and `N5.` both parse. Surrounding whitespace is ignored.

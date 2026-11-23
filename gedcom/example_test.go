@@ -788,3 +788,23 @@ func ExampleIndividual_PresumedLiving() {
 	// Cal /Example/: living=true (within-threshold)
 	// Dee /Example/: living=true (no-dates)
 }
+
+// ExamplePlaceDetail_Parts pairs each part of a place name with the label its
+// FORM states for that position. The empty county keeps its position, so the
+// parts after it stay aligned with their labels.
+func ExamplePlaceDetail_Parts() {
+	place := &gedcom.PlaceDetail{
+		Name: "Darmstadt, , Hessen, Germany",
+		Form: "City, County, State, Country",
+	}
+
+	for _, part := range place.Parts("").Parts {
+		fmt.Printf("%s: %q\n", part.Label, part.Name)
+	}
+
+	// Output:
+	// City: "Darmstadt"
+	// County: ""
+	// State: "Hessen"
+	// Country: "Germany"
+}
