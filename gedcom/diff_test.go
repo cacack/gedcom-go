@@ -2,6 +2,7 @@ package gedcom_test
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -338,11 +339,10 @@ func TestDiff_HunksOwnTheirPath(t *testing.T) {
 
 func TestDiff_LargeSameTagRunSkipsAlignment(t *testing.T) {
 	// Past the alignment bound, the unequal middle is compared by position.
-	// n*n must exceed the unexported maxLCSCells (1<<20) in diff.go.
 	var oldSrc, newSrc strings.Builder
 	oldSrc.WriteString("0 @S1@ SOUR\n")
 	newSrc.WriteString("0 @S1@ SOUR\n")
-	const n = 1100
+	n := int(math.Sqrt(gedcom.MaxLCSCells)) + 10
 	for i := 0; i < n; i++ {
 		fmt.Fprintf(&oldSrc, "1 NOTE line %d\n", i)
 		fmt.Fprintf(&newSrc, "1 NOTE line %d\n", (i+1)%n)
@@ -355,6 +355,9 @@ func TestDiff_LargeSameTagRunSkipsAlignment(t *testing.T) {
 	if first, last := got[0], got[n-1]; first != ": -1 NOTE line 0 | +1 NOTE line 1" ||
 		last != fmt.Sprintf(": -1 NOTE line %d | +1 NOTE line 0", n-1) {
 		t.Errorf("first, last = %q, %q", first, last)
+	}
+	if mid, want := got[n/2], fmt.Sprintf(": -1 NOTE line %d | +1 NOTE line %d", n/2, n/2+1); mid != want {
+		t.Errorf("middle = %q, want %q", mid, want)
 	}
 }
 

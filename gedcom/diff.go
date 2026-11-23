@@ -79,7 +79,10 @@ type LineChange struct {
 	// Path is the tags from the record down to the parent of the changed
 	// lines, not including the record's own tag: empty for a change at level
 	// 0 or 1, ["BIRT"] for a changed DATE under a level-1 BIRT. Each hunk
-	// has its own Path slice.
+	// has its own Path slice. Path names tags, not structures, so it is not
+	// unique: hunks under the first and second of two BIRTs share ["BIRT"],
+	// and a level-0 hunk shares the empty Path with level-1 hunks. Use the
+	// lines' Tag.Level and Tag.LineNumber to tell them apart.
 	Path []string `json:",omitempty"`
 
 	// Removed holds the old document's lines, in document order. They are
