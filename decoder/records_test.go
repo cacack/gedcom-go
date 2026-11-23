@@ -208,6 +208,25 @@ func TestDecodeRecords_NotRecords(t *testing.T) {
 	}
 }
 
+// A malformed first record line is a skipped record in lenient mode, as in a
+// whole file, not a fragment starting at its level-1 subordinate line.
+func TestDecodeRecords_RejectedFirstLine(t *testing.T) {
+	fragment := "0\n1 NAME Ann /Example/\n0 @I2@ INDI\n"
+	records, diags, err := DecodeRecords(strings.NewReader(fragment), gedcom.NewDocument(gedcom.Version551), nil)
+	if err != nil {
+		t.Fatalf("lenient: error = %v, want none", err)
+	}
+	if len(records) != 1 || records[0].XRef != "@I2@" {
+		t.Errorf("lenient: records = %v, want @I2@ alone", records)
+	}
+	if len(diags) == 0 {
+		t.Error("lenient: no diagnostics, want the skipped record reported")
+	}
+	if _, _, err := DecodeRecords(strings.NewReader(fragment), gedcom.NewDocument(gedcom.Version551), &DecodeOptions{StrictMode: true}); err == nil {
+		t.Error("strict: no error, want the rejected line's")
+	}
+}
+
 func TestDecodeRecords_EmptyAndNil(t *testing.T) {
 	records, diags, err := DecodeRecords(strings.NewReader(""), gedcom.NewDocument(gedcom.Version70), nil)
 	if err != nil || len(records) != 0 || len(diags) != 0 {

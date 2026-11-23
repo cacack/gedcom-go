@@ -53,6 +53,9 @@ func (d *Document) ReplaceRecord(r *Record) error {
 // dangle unless another record shares xref, which is then indexed in its
 // place as ReindexXRefs would index it. A pointer is matched by the rule of
 // IsRecordPointer, so a GEDCOM 7.0 "@VOID@" null pointer is never reported.
+// A record's Tags, when it has any, are what the encoder writes and so what is
+// searched: an Entity edited since decoding is seen only once its edit is
+// carried into Tags (encoder.SyncTags).
 //
 // It returns an error wrapping ErrUnknownXRef, and leaves d unchanged, when d
 // indexes no record under xref, and ErrNilDocument for a nil d.

@@ -131,6 +131,9 @@ func TestDocument_ReplaceRecord_DuplicateXRef(t *testing.T) {
 	if doc.Records[0] != replacement || doc.Records[1] != second {
 		t.Error("the first record was not the one replaced")
 	}
+	if doc.GetRecord("@I1@") != replacement {
+		t.Error("GetRecord does not return the replacement")
+	}
 }
 
 func TestDocument_RemoveRecord(t *testing.T) {

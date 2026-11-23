@@ -241,12 +241,6 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool, target *gedcom.Docum
 		lines = parsedLines
 	}
 
-	if target != nil {
-		if err := checkRecordsOnly(lines); err != nil {
-			return nil, err
-		}
-	}
-
 	// Check if we have any data to work with
 	if len(lines) == 0 {
 		// No valid lines parsed - return empty document with diagnostics
@@ -287,6 +281,16 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool, target *gedcom.Docum
 	// they are not attached to the preceding record (#723).
 	if !opts.StrictMode {
 		lines = skipOrphanedRecords(lines, budget.levelZero, parseErrors, collector)
+	}
+	// A fragment is checked once a rejected record line's subordinate lines
+	// have gone with it, so a malformed first record line is reported as a
+	// skipped record, not as a fragment starting below level 0.
+	if target != nil {
+		if err := checkRecordsOnly(lines); err != nil {
+			return nil, err
+		}
+	}
+	if !opts.StrictMode {
 		normalizeLevelJumps(lines, collector)
 	}
 

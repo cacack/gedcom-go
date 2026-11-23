@@ -20,10 +20,12 @@ var ErrEmptyCoordinate = errors.New("empty coordinate")
 // missing one component of the pair.
 var ErrInvalidCoordinate = errors.New("invalid coordinate")
 
-// ErrNilDocument is returned by Document.AddRecord called on a nil *Document.
+// ErrNilDocument is returned by Document.AddRecord, ReplaceRecord and
+// RemoveRecord called on a nil *Document.
 var ErrNilDocument = errors.New("nil document")
 
-// ErrNilRecord is returned by Document.AddRecord for a nil *Record.
+// ErrNilRecord is returned by Document.AddRecord and ReplaceRecord for a nil
+// *Record.
 var ErrNilRecord = errors.New("nil record")
 
 // ErrDuplicateXRef is wrapped by the Document.AddRecord error for a record
