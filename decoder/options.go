@@ -71,6 +71,10 @@ type DecodeOptions struct {
 	//     (SeverityError) is emitted per byte, at its line, with its column in
 	//     the message, up to [MaxInvalidEncodingDiagnostics]; one further
 	//     diagnostic counts the bytes past that
+	//   - A blank or whitespace-only line is skipped; a CodeEmptyLine
+	//     diagnostic (SeverityWarning, since nothing is lost) is emitted per
+	//     line up to [MaxEmptyLineDiagnostics]; one further diagnostic counts
+	//     the blank lines past that
 	//   - Diagnostics are collected for all issues encountered, up to
 	//     MaxDiagnostics
 	//   - Use [DecodeWithDiagnostics] to access diagnostics

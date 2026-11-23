@@ -376,8 +376,15 @@ func TestConvertParseErrors(t *testing.T) {
 		if result[0].Code != CodeEmptyLine {
 			t.Errorf("Expected code %s, got %s", CodeEmptyLine, result[0].Code)
 		}
-		if result[0].Severity != SeverityError {
-			t.Errorf("Expected SeverityError, got %v", result[0].Severity)
+		if result[0].Severity != SeverityWarning {
+			t.Errorf("Expected SeverityWarning for a skipped blank line, got %v", result[0].Severity)
+		}
+	})
+
+	t.Run("other errors stay errors", func(t *testing.T) {
+		result := convertParseErrors([]*parser.ParseError{{Line: 3, Message: "invalid level number"}})
+		if len(result) != 1 || result[0].Severity != SeverityError {
+			t.Errorf("Expected one SeverityError diagnostic, got %v", result)
 		}
 	})
 }

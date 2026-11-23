@@ -28,6 +28,7 @@ yours to set.
 | ANSEL combining marks held | `charset.MaxPendingCombining` (16) | No | A longer run of marks is written out standalone in groups of 16, not rejected. |
 | Diagnostics returned | `DecodeOptions.MaxDiagnostics`, default `decoder.DefaultMaxDiagnostics` (100,000) | Yes; a negative value (`decoder.UnlimitedDiagnostics`) removes it | The first ones are kept and one `DIAGNOSTICS_TRUNCATED` diagnostic counts the rest. Errors for an XRef containing a space are held past the cap while decoding, but the returned list is still capped. See [Bounds on Diagnostics](decoding.md#bounds-on-diagnostics). |
 | Unknown-tag diagnostics per tag name | `decoder.MaxUnknownTagDiagnosticsPerTag` (10) | No | The rest of that tag's lines are counted in one closing diagnostic. Every line stays in `Record.Tags`. Unknown level-0 record types are not capped. |
+| Empty-line diagnostics | `decoder.MaxEmptyLineDiagnostics` (10) | No | Every blank line is still skipped; the rest are counted in one closing diagnostic. |
 | Invalid-UTF-8 diagnostics | `decoder.MaxInvalidEncodingDiagnostics` (100) | No | Every invalid byte is still replaced; the rest are counted in one closing diagnostic. |
 | Input echoed per diagnostic or `ParseError` | `parser.MaxContextBytes` (256) | No | `Message` and `Context` are clipped at a UTF-8 boundary and end in `…`. Values in the document are never clipped. |
 | Parse errors kept by `parser.ParseWithOptions` | `ParseOptions.MaxErrors` | Yes; the default, 0, is unlimited | Parsing continues; further errors are not collected. |

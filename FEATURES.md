@@ -53,7 +53,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 
 | Code | Meaning | Recovery |
 |------|---------|----------|
-| `EMPTY_LINE` | Blank line in the data | Skipped |
+| `EMPTY_LINE` | Blank or whitespace-only line in the data, which no GEDCOM version's grammar allows (the Perl Gedcom.pm module writes one after every record); a warning, since nothing is lost. Reported line by line up to `MaxEmptyLineDiagnostics` (10) times, then once more counting the remaining blank lines | Skipped; strict mode still fails on it |
 | `INVALID_ENCODING` | A byte that is not valid UTF-8 in input read as UTF-8 (declared `UTF-8` or `ASCII`, or no recognized `CHAR`), such as a stray Windows-1252 `é` | Byte replaced with U+FFFD and the rest of the line and file kept; one diagnostic per byte, with its line and column, up to 100 bytes, then one counting the rest |
 | `AMBIGUOUS_CODEPAGE` | `CHAR ANSI` over a byte that Windows-1252 and Windows-1250 read differently (`0xE8`: `è` or `č`); a warning | File still read as Windows-1252; one diagnostic, at the first such byte, naming both readings. Not emitted when `DecodeOptions.ANSIEncoding` names the code page |
 | `INVALID_LEVEL` | Unparseable, negative, or over-99 level number | Line skipped |

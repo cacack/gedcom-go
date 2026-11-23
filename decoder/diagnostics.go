@@ -65,7 +65,12 @@ const (
 	// The line is always kept: a dropped line reports CodeInvalidLevel instead.
 	CodeBadLevelJump = "BAD_LEVEL_JUMP"
 
-	// CodeEmptyLine indicates an unexpected empty line in the GEDCOM data.
+	// CodeEmptyLine indicates a blank or whitespace-only line in the GEDCOM
+	// data. No GEDCOM version's grammar has one, so strict mode fails on it;
+	// lenient mode skips the line, losing nothing, and reports it as a
+	// SeverityWarning. The first [MaxEmptyLineDiagnostics] blank lines are
+	// reported one per line; one further diagnostic, at the next blank line,
+	// counts the rest. It follows the other parse diagnostics.
 	CodeEmptyLine = "EMPTY_LINE"
 
 	// CodeInvalidEncoding indicates a byte that is not valid in the input's
