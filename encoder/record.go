@@ -27,7 +27,9 @@ import (
 //
 // So a record decoded from a file and passed with its document encodes to the
 // same bytes Encode writes for it there, under the same options. r need not be
-// one of doc's records; doc only supplies the context.
+// one of doc's records; doc only supplies the context. For 7.0 output with a
+// non-nil doc, each call scans doc.Records for SNOTE records, so encoding
+// every record of a document one call at a time costs O(n²) in its records.
 //
 // One rule differs from Encode, because it would write a second record: an
 // inline media link in a record written from its Entity is written inline, in
