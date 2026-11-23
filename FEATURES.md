@@ -41,8 +41,8 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 
 | Operation | Options type | Facade entry point | Common knobs |
 |-----------|--------------|--------------------|--------------|
-| Decode | `decoder.DecodeOptions` | `gedcomgo.DecodeWithOptions` | `Context`, `StrictMode`, `OnProgress`, `TotalSize`, `ANSIEncoding` |
-| Encode | `encoder.EncodeOptions` | `gedcomgo.EncodeWithOptions` | `LineEnding`, `MaxLineLength`, `DisableLineWrap`, `TargetVersion`, `DropUnknownTags`, `Context` |
+| Decode | `decoder.DecodeOptions` | `gedcomgo.DecodeWithOptions` | `Context`, `StrictMode`, `OnProgress`, `TotalSize`, `ANSIEncoding`, `PreserveLayout` |
+| Encode | `encoder.EncodeOptions` | `gedcomgo.EncodeWithOptions` | `LineEnding`, `MaxLineLength`, `DisableLineWrap`, `TargetVersion`, `DropUnknownTags`, `Context`, `PreserveLayout` |
 | Validate | `validator.ValidateOptions` | `gedcomgo.ValidateAllWithOptions` | `Strictness`, `MaxErrors`, `SkipRules`, `DateLogic`, `Duplicates`, `TagRegistry`, `ValidateCustomTags`, `SkipEncodingValidation`, `SkipDuplicateDetection`, `Context` |
 
 `gedcomgo.DefaultDecodeOptions()`, `DefaultEncodeOptions()`, and `DefaultValidateOptions()` return populated defaults you can tweak. `validator.ValidateOptions` is an alias for the original `validator.ValidatorConfig`; both names work interchangeably. The `[]error` validation path has its own configurable entry point, `gedcomgo.ValidateWithOptions(doc, opts)`, alongside `ValidateAllWithOptions`; both run the same checks and honour every `ValidateOptions` field, including `MaxErrors` and `SkipRules`.
@@ -119,6 +119,16 @@ source that was not UTF-8 has been transcoded, so its bytes cannot match
 whatever the encoder does, and eight fixtures with malformed lines are rewritten by lenient
 recovery rather than preserved — a difference kept on the list so that the
 decision to accept it stays explicit.
+
+**Layout-preserving re-encoding.** With `PreserveLayout` set on both the
+decoder and the encoder, an unmodified UTF-8 document comes back byte for
+byte — byte order mark, CRLF or mixed terminators, indentation, blank lines and
+whitespace-only values included — and an edit changes only the lines it
+touches. `layout_roundtrip_test.go` compares every fixture with no
+normalization and names the reason behind every exception: a non-UTF-8 source,
+a `CHAR` other than UTF-8 (always written as UTF-8), a header the encoder has
+to supply, or a level lenient recovery clamped. See
+[preserving-layout.md](docs/guides/preserving-layout.md).
 
 ### Version-Aware Export
 

@@ -1,8 +1,8 @@
 package gedcom
 
 // Clone returns a deep copy of the document. The returned document
-// shares no pointers with the original; mutating one will not affect
-// the other. Returns nil if d is nil.
+// shares no pointers with the original, other than its read-only Layout;
+// mutating one will not affect the other. Returns nil if d is nil.
 func (d *Document) Clone() *Document {
 	if d == nil {
 		return nil
@@ -14,6 +14,9 @@ func (d *Document) Clone() *Document {
 		XRefMap: make(map[string]*Record),
 		Vendor:  d.Vendor,
 		Schema:  cloneSchemaDefinition(d.Schema),
+		// A Layout describes the source and is never edited, so the copy
+		// shares it rather than duplicating every line of the file.
+		Layout: d.Layout,
 	}
 
 	copied.Records = make([]*Record, len(d.Records))

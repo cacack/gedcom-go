@@ -44,9 +44,10 @@ var unfillable = map[string]string{
 // cloneSharedByDesign maps "Type.field.path" to the reason a clone may
 // legitimately share that slice, map or pointer with its original. Every entry
 // is a live exception, self-cleaning like cloneKnownBad: delete it when the
-// sharing stops, and the test will say so. Empty: every reference field in
-// clone.go is copied.
-var cloneSharedByDesign = map[string]string{}
+// sharing stops, and the test will say so.
+var cloneSharedByDesign = map[string]string{
+	"Document.Layout": "describes the source, never edited; asserted by TestCloneSharesLayout",
+}
 
 var fixedTime = time.Date(2026, 8, 18, 12, 0, 0, 0, time.UTC)
 

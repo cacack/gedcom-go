@@ -342,13 +342,16 @@ func TestJSONTagsCoverDocumentModel(t *testing.T) {
 			name := typ.Name() + "." + f.Name
 			want := `,omitempty`
 			switch {
-			case name == "Document.XRefMap":
+			case name == "Document.XRefMap", name == "Document.Layout":
 				want = `-`
 			case jsonAlwaysWritten[name]:
 				want = ``
 			}
 			if got := f.Tag.Get("json"); got != want {
 				t.Errorf("%s: json tag %q, want %q", name, got, want)
+			}
+			if want == `-` {
+				continue // not written, so its fields are not either
 			}
 			walk(f.Type)
 		}

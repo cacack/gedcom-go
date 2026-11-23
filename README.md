@@ -327,6 +327,7 @@ To opt into strict parsing (fail on the first syntax error, no diagnostics colle
 - **GEDCOM 7.0 Coverage**: [docs/reference/gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) - What this library does with every structure the 7.0 standard defines, derived by decoding rather than estimated
 - **GEDCOM 5.5/5.5.1 Coverage**: [docs/reference/gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md) - The same for both 5.5 versions, transcribed from the specifications' Lineage-Linked Grammar
 - **GEDZIP Archives**: [docs/guides/gedzip.md](docs/guides/gedzip.md) - Reading and writing `.gdz` packages, resolving `FILE` references, and the limits for untrusted uploads
+- **Preserving Layout**: [docs/guides/preserving-layout.md](docs/guides/preserving-layout.md) - Writing an edited file back so it differs from its source only where it was edited
 - **Untrusted Input**: [docs/guides/untrusted-input.md](docs/guides/untrusted-input.md) - Every bound on hostile input, the memory each API needs per input byte, and how to size an input limit
 - **Security Policy**: [SECURITY.md](SECURITY.md) - Supported versions, reporting a vulnerability, and the scanners that run
 - **Vendor Extensions**: [docs/guides/vendor-extensions.md](docs/guides/vendor-extensions.md) - Vendor-specific tag support (`_APID`, `_FSFTID`, etc.)
@@ -407,6 +408,10 @@ opts := &gedcomgo.EncodeOptions{
 }
 err := gedcomgo.EncodeWithOptions(writer, doc, opts)
 ```
+
+To write an edited file back so it differs from its source only where it was
+edited, set `PreserveLayout` on both the decode and the encode options; see
+[docs/guides/preserving-layout.md](docs/guides/preserving-layout.md).
 
 ### Custom Conversion Options
 
