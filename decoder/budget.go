@@ -70,14 +70,14 @@ func (b *diagnosticBudget) drop(sev Severity) {
 // whether the identifier is valid for the version, and the parser keeps the
 // line it rejected, so these errors grow with the document, not beyond it.
 // apply still bounds the diagnostics they become. Every other parse error
-// counts against the budget.
+// counts against the budget, at the severity convertParseErrors gives it.
 func (b *diagnosticBudget) KeepError(pe *parser.ParseError, text string) bool {
 	if isDroppedLevelZero(text) {
 		b.levelZero = append(b.levelZero, pe.Line)
 	} else if errors.Is(pe, parser.ErrXRefContainsSpace) {
 		return true
 	}
-	if !b.keep(b.parseKept, SeverityError) {
+	if !b.keep(b.parseKept, parseErrorSeverity(classifyParseError(pe.Message))) {
 		return false
 	}
 	b.parseKept++

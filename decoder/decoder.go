@@ -154,11 +154,14 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 	parseOpts := &parser.ParseOptions{Lenient: true}
 	// budget bounds lenient diagnostics; strict mode reports none.
 	var budget *diagnosticBudget
+	// blankLines caps the empty-line errors a lenient parse keeps.
+	var blankLines *emptyLines
 	if opts.StrictMode {
 		parseOpts.TolerateOnly = parser.ErrXRefContainsSpace
 	} else {
 		budget = newDiagnosticBudget(opts.diagnosticsLimit())
-		parseOpts.Filter = budget
+		blankLines = &emptyLines{next: budget}
+		parseOpts.Filter = blankLines
 	}
 	parsedLines, parseErrors, fe := p.ParseWithOptions(finalReader, parseOpts)
 
@@ -190,6 +193,7 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool) (*DecodeResult, erro
 		diagnostics = append(diagnostics, codePageDiags...)
 		diagnostics = append(diagnostics, encodingDiags.result()...)
 		diagnostics = append(diagnostics, convertParseErrors(parseErrors)...)
+		diagnostics = append(diagnostics, blankLines.summary()...)
 		if len(parseErrors) > 0 {
 			firstParseErr = parseErrors[0]
 		}
@@ -361,9 +365,62 @@ func convertParseErrors(parseErrors []*parser.ParseError) Diagnostics {
 	diagnostics := make(Diagnostics, 0, len(parseErrors))
 	for _, pe := range parseErrors {
 		code := classifyParseError(pe.Message)
-		diagnostics = append(diagnostics, NewParseError(pe.Line, code, pe.Message, pe.Context))
+		diagnostics = append(diagnostics, NewDiagnostic(pe.Line, parseErrorSeverity(code), code, pe.Message, pe.Context))
 	}
 	return diagnostics
+}
+
+// parseErrorSeverity returns the severity of a lenient parse error with code.
+// Every rejected line is an error except a blank one: no GEDCOM version's
+// grammar has a blank line, but skipping it loses nothing, since it holds no
+// level, tag or value, so it is a warning (#885), like CodeBadLevelJump.
+func parseErrorSeverity(code string) Severity {
+	if code == CodeEmptyLine {
+		return SeverityWarning
+	}
+	return SeverityError
+}
+
+// MaxEmptyLineDiagnostics is the number of CodeEmptyLine diagnostics a lenient
+// decode reports before it stops reporting blank lines one by one. The lines
+// past the cap are counted in one closing CodeEmptyLine diagnostic, so a file
+// with a blank line after every record (as the Perl Gedcom.pm module writes)
+// yields a handful of diagnostics rather than one per record.
+const MaxEmptyLineDiagnostics = 10
+
+// emptyLines is a lenient decode's parser.ErrorFilter: it keeps the first
+// MaxEmptyLineDiagnostics empty-line errors and counts the rest, and passes
+// every error it keeps on to next.
+type emptyLines struct {
+	next          parser.ErrorFilter
+	reported      int
+	suppressed    int
+	firstOverLine int
+}
+
+// KeepError implements parser.ErrorFilter.
+func (e *emptyLines) KeepError(pe *parser.ParseError, text string) bool {
+	if classifyParseError(pe.Message) == CodeEmptyLine {
+		if e.reported == MaxEmptyLineDiagnostics {
+			if e.suppressed == 0 {
+				e.firstOverLine = pe.Line
+			}
+			e.suppressed++
+			return false
+		}
+		e.reported++
+	}
+	return e.next.KeepError(pe, text)
+}
+
+// summary returns, if the cap was reached, one diagnostic counting the blank
+// lines not reported individually, at the line of the first of them.
+func (e *emptyLines) summary() Diagnostics {
+	if e.suppressed == 0 {
+		return nil
+	}
+	return Diagnostics{NewDiagnostic(e.firstOverLine, SeverityWarning, CodeEmptyLine,
+		fmt.Sprintf("empty line (%d more empty lines, from this line on, skipped and not reported individually)", e.suppressed), "")}
 }
 
 // MaxInvalidEncodingDiagnostics is the number of per-byte CodeInvalidEncoding
@@ -428,11 +485,15 @@ func ambiguousANSIDiagnostic(a *charset.AmbiguousANSI) Diagnostic {
 // level therefore classifies as CodeInvalidLevel, alongside the other level
 // rejections. The remaining codes say only what was wrong with the line, not
 // whether it survived.
+//
+// A blank line is matched on the parser's whole message, not a substring: its
+// code also makes it a warning and caps how many are reported, and another
+// message can echo input that contains the words (an XRef with a space).
 func classifyParseError(message string) string {
 	msg := strings.ToLower(message)
 
 	switch {
-	case strings.Contains(msg, "empty line"):
+	case msg == "empty line":
 		return CodeEmptyLine
 	case strings.Contains(msg, "invalid level") ||
 		strings.Contains(msg, "level cannot be negative") ||

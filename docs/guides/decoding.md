@@ -80,14 +80,14 @@ Parse-level errors (severity: ERROR):
 | `SYNTAX_ERROR` | General syntax problem |
 | `INVALID_LEVEL` | Level number could not be parsed, is negative, or exceeds 99 (line dropped) |
 | `INVALID_XREF` | Cross-reference identifier that is malformed (contains a space in a document whose header does not declare GEDCOM 5.5 or 5.5.1, or has no closing `@`) or that the grammar forbids where it appears (`0 @X1@ HEAD`, `0 @X1@ TRLR`); the line is kept as a record wherever recovery is possible — see [FEATURES.md](../../FEATURES.md#lenient-parsing--diagnostics) |
-| `EMPTY_LINE` | Unexpected blank line |
 | `INVALID_ENCODING` | Byte that is not valid UTF-8 in input read as UTF-8 (declared `UTF-8` or `ASCII`, or no recognized `CHAR`); replaced with U+FFFD and decoding continues. One per byte, up to `MaxInvalidEncodingDiagnostics` (100), then one diagnostic counting the rest; the message names the byte and its column |
 | `DUPLICATE_XREF` | A level-0 record redefines an XRef an earlier record defined; both records are kept and `XRefMap` resolves to the first |
 
-Parse-level warning (severity: WARNING):
+Parse-level warnings (severity: WARNING):
 
 | Code | Meaning |
 |------|---------|
+| `EMPTY_LINE` | Blank or whitespace-only line, skipped. No GEDCOM version's grammar has one, so strict mode fails on it, but skipping it loses nothing. One per line for the first `MaxEmptyLineDiagnostics` (10) blank lines, then one diagnostic, at the next blank line, counting the rest |
 | `AMBIGUOUS_CODEPAGE` | `CHAR ANSI` over a byte that reads differently in Windows-1252 and Windows-1250 (`0xE8` is `è` or `č`). The file is read as Windows-1252; one diagnostic at the first such byte. Set `DecodeOptions.ANSIEncoding` to `charset.EncodingWindows1250` for Central European files (Geneanet, Family Historian, Brother's Keeper), or `charset.EncodingLATIN1` to confirm Windows-1252 |
 
 Entity-level warnings (severity: WARNING):

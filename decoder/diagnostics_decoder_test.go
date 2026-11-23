@@ -295,6 +295,8 @@ func TestClassifyParseError(t *testing.T) {
 		{"level cannot be negative", CodeInvalidLevel},
 		{"invalid xref format", CodeInvalidXRef},
 		{"line with xref must have a tag", CodeInvalidXRef},
+		// An XRef the parser echoes is not a blank line, whatever it holds.
+		{"xref contains a space: @EMPTY LINE@", CodeInvalidXRef},
 		// Parse errors mark dropped lines, so they never classify as
 		// CodeBadLevelJump - that code means the line was clamped and kept.
 		{"level 100 exceeds maximum nesting depth (valid levels are 0-99)", CodeInvalidLevel},
@@ -376,8 +378,15 @@ func TestConvertParseErrors(t *testing.T) {
 		if result[0].Code != CodeEmptyLine {
 			t.Errorf("Expected code %s, got %s", CodeEmptyLine, result[0].Code)
 		}
-		if result[0].Severity != SeverityError {
-			t.Errorf("Expected SeverityError, got %v", result[0].Severity)
+		if result[0].Severity != SeverityWarning {
+			t.Errorf("Expected SeverityWarning for a skipped blank line, got %v", result[0].Severity)
+		}
+	})
+
+	t.Run("other errors stay errors", func(t *testing.T) {
+		result := convertParseErrors([]*parser.ParseError{{Line: 3, Message: "invalid level number"}})
+		if len(result) != 1 || result[0].Severity != SeverityError {
+			t.Errorf("Expected one SeverityError diagnostic, got %v", result)
 		}
 	})
 }
