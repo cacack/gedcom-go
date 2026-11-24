@@ -37,6 +37,29 @@
 //	    fmt.Printf("[%s] %s: %s\n", issue.Severity, issue.Code, issue.Message)
 //	}
 //
+// # Overlap with decode diagnostics
+//
+// The findings of this package and the decoder's diagnostics
+// (decoder.DecodeResult.Diagnostics) are not disjoint: a finding can appear
+// in both. The only code for which it can is DUPLICATE_XREF
+// ([CodeDuplicateXRef] here, decoder.CodeDuplicateXRef there). A lenient
+// decode reports each record that redefines an XRef, and [Validator.ValidateAll],
+// [Validator.QualityReport] and [StreamingValidator] report the same record
+// on the same line, because they also cover documents that were built in
+// code or decoded in strict mode, where there is no diagnostic. Every other
+// code is reported by one package only.
+//
+// A caller that reports both lists can pass the issues through
+// gedcomgo.WithoutDiagnosed, which drops each DUPLICATE_XREF issue whose line
+// a diagnostic already reports and keeps the rest:
+//
+//	result, err := decoder.DecodeWithDiagnostics(reader, nil)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	issues := validator.New().ValidateAll(result.Document)
+//	issues = gedcomgo.WithoutDiagnosed(issues, result.Diagnostics)
+//
 // # Individual Validators
 //
 // You can run specific validators independently:

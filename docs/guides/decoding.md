@@ -81,7 +81,7 @@ Parse-level errors (severity: ERROR):
 | `INVALID_LEVEL` | Level number could not be parsed, is negative, or exceeds 99 (line dropped) |
 | `INVALID_XREF` | Cross-reference identifier that is malformed (contains a space in a document whose header does not declare GEDCOM 5.5 or 5.5.1, or has no closing `@`) or that the grammar forbids where it appears (`0 @X1@ HEAD`, `0 @X1@ TRLR`); the line is kept as a record wherever recovery is possible — see [FEATURES.md](../../FEATURES.md#lenient-parsing--diagnostics) |
 | `INVALID_ENCODING` | Byte that is not valid UTF-8 in input read as UTF-8 (declared `UTF-8` or `ASCII`, or no recognized `CHAR`); replaced with U+FFFD and decoding continues. One per byte, up to `MaxInvalidEncodingDiagnostics` (100), then one diagnostic counting the rest; the message names the byte and its column |
-| `DUPLICATE_XREF` | A level-0 record redefines an XRef an earlier record defined; both records are kept and `XRefMap` resolves to the first |
+| `DUPLICATE_XREF` | A level-0 record redefines an XRef an earlier record defined; both records are kept and `XRefMap` resolves to the first. The validator reports it too: see [Diagnostics and Validation Issues](#diagnostics-and-validation-issues) |
 
 Parse-level warnings (severity: WARNING):
 
@@ -157,6 +157,33 @@ of them. `String()` does not print either field. `Path` holds at most
 `parser.MaxContextBytes` (256) bytes, then `…`: a path of overlong extension
 tags keeps the tags nearest the record (see
 [Bounds on Diagnostics](#bounds-on-diagnostics)).
+
+### Diagnostics and Validation Issues
+
+A finding can appear both in `DecodeResult.Diagnostics` and in the validator's
+result (`ValidateAll`, `QualityReport`, `StreamingValidator`). The only code for
+which it can is `DUPLICATE_XREF`: the decoder reports a redefined XRef where it
+reads it, and the validator reports the same record on the same line, because it
+also covers documents built in code or decoded in strict mode. Every other code
+comes from one package only.
+
+If you report both lists, pass the issues through `gedcomgo.WithoutDiagnosed`,
+which drops each `DUPLICATE_XREF` issue whose record and line a diagnostic
+already reports:
+
+```go
+result, err := decoder.DecodeWithDiagnostics(r, nil)
+if err != nil {
+    log.Fatal(err)
+}
+issues := validator.New().ValidateAll(result.Document)
+issues = gedcomgo.WithoutDiagnosed(issues, result.Diagnostics)
+// result.Diagnostics and issues now hold one finding per duplicated XRef
+```
+
+An issue the decoder did not report is kept: a duplicate with no line (a record
+added in code), or one whose diagnostic `MaxDiagnostics` cut off. `QualityReport`
+counts are not adjusted; filter its issue lists the same way if you merge them.
 
 ### When to Use Lenient Mode
 

@@ -27,6 +27,8 @@ type DecodeResult struct {
 	// Diagnostics contains the issues encountered during parsing, up to
 	// [DecodeOptions.MaxDiagnostics].
 	// Empty if parsing was successful or StrictMode was enabled.
+	// A DUPLICATE_XREF diagnostic is also reported by the validator package;
+	// see "Overlap with the validator" in the package documentation.
 	Diagnostics Diagnostics
 }
 
