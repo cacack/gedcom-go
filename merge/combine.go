@@ -581,7 +581,10 @@ func applyStrategy(doc1, doc2 *gedcom.Document, collisions []string, opts Combin
 		return applyPrefixStrategy(opts.Context, doc1, doc2, collisions, opts.Prefix, true)
 
 	case RenumberDoc2:
-		dangling := danglingPointers(doc2)
+		dangling, err := danglingPointers(opts.Context, doc2)
+		if err != nil {
+			return nil, nil, err
+		}
 		collisions = append(collisions, definedIn(doc1, dangling)...)
 		transform := renumberTransform(doc1, doc2, collisions, dangling)
 		out, mapping, err := remapXRefs(opts.Context, doc2, transform, dangling)
@@ -618,7 +621,10 @@ func applyPrefixStrategy(ctx context.Context, doc1, doc2 *gedcom.Document, colli
 	if prefix == "" {
 		return nil, nil, &CombineError{Kind: "missing-prefix"}
 	}
-	dangling := danglingPointers(doc2)
+	dangling, err := danglingPointers(ctx, doc2)
+	if err != nil {
+		return nil, nil, err
+	}
 	collisionSet := make(map[string]bool, len(collisions))
 	for _, c := range collisions {
 		collisionSet[c] = true
@@ -668,8 +674,9 @@ func danglingCollisions(doc1 *gedcom.Document, dangling []string, mapping map[st
 
 // danglingPointers returns, sorted, the XRefs that doc's records and header
 // point at and no record of doc defines. Pointers are found as
-// gedcom.VisitForVersion finds them under the version doc declares.
-func danglingPointers(doc *gedcom.Document) []string {
+// gedcom.VisitForVersion finds them under the version doc declares. It checks
+// ctx before each record, failing as cancelled does once ctx is done.
+func danglingPointers(ctx context.Context, doc *gedcom.Document) ([]string, error) {
 	defined := recordXRefs(doc)
 	var version gedcom.Version
 	if doc.Header != nil {
@@ -684,6 +691,9 @@ func danglingPointers(doc *gedcom.Document) []string {
 		}
 	}
 	for _, r := range doc.Records {
+		if err := cancelled(ctx); err != nil {
+			return nil, err
+		}
 		gedcom.VisitForVersion(r, version, visit)
 	}
 	if h := doc.Header; h != nil {
@@ -695,7 +705,7 @@ func danglingPointers(doc *gedcom.Document) []string {
 		gedcom.VisitForVersion(&gedcom.Record{Tags: tags}, version, visit)
 	}
 	slices.Sort(dangling)
-	return dangling
+	return dangling, nil
 }
 
 // recordXRefs returns the set of non-empty XRefs doc's records carry.

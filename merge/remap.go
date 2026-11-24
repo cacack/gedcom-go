@@ -79,11 +79,15 @@ const voidXRef = "@VOID@"
 //	    return "@A_" + old[1:]
 //	})
 func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedcom.Document, map[string]string, error) {
+	ctx := context.Background()
 	var dangling []string
 	if doc != nil {
-		dangling = danglingPointers(doc)
+		var err error
+		if dangling, err = danglingPointers(ctx, doc); err != nil {
+			return nil, nil, err
+		}
 	}
-	return remapXRefs(context.Background(), doc, transform, dangling)
+	return remapXRefs(ctx, doc, transform, dangling)
 }
 
 // remapXRefs is RemapXRefs checking ctx before each record it maps and
