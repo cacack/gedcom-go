@@ -103,6 +103,30 @@ func TestFoldEvents(t *testing.T) {
 			want: []string{"1 BIRT", "2 DATE (unknown)", "1 BIRT", "2 DATE (unknown)", "2 NOTE g"},
 		},
 		{
+			name: "unparsable date not folded",
+			keep: "1 BIRT\n2 DATE 7 XYZ 1977\n",
+			drop: "1 BIRT\n2 DATE 7 XYZ 1977\n2 NOTE k\n",
+			want: []string{"1 BIRT", "2 DATE 7 XYZ 1977", "1 BIRT", "2 DATE 7 XYZ 1977", "2 NOTE k"},
+		},
+		{
+			name: "empty date not folded",
+			keep: "1 BIRT\n2 DATE\n",
+			drop: "1 BIRT\n2 DATE\n2 NOTE l\n",
+			want: []string{"1 BIRT", "2 DATE", "1 BIRT", "2 DATE", "2 NOTE l"},
+		},
+		{
+			name: "one side unparsable not folded",
+			keep: "1 BIRT\n2 DATE 7 DEC 1977\n",
+			drop: "1 BIRT\n2 DATE 7 XYZ 1977\n",
+			want: []string{"1 BIRT", "2 DATE 7 DEC 1977", "1 BIRT", "2 DATE 7 XYZ 1977"},
+		},
+		{
+			name: "different calendars not folded",
+			keep: "1 BIRT\n2 DATE 7 DEC 1977\n",
+			drop: "1 BIRT\n2 DATE @#DJULIAN@ 7 DEC 1977\n",
+			want: []string{"1 BIRT", "2 DATE 7 DEC 1977", "1 BIRT", "2 DATE @#DJULIAN@ 7 DEC 1977"},
+		},
+		{
 			name: "different tag not folded",
 			keep: "1 BIRT\n2 DATE 7 DEC 1977\n",
 			drop: "1 CHR\n2 DATE 7 DEC 1977\n",
