@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.15.0](https://github.com/cacack/gedcom-go/compare/v3.14.0...v3.15.0) (2026-11-24)
+
+
+### Features
+
+* **gedcom:** find or create the OBJE record for a file and link it ([70c24db](https://github.com/cacack/gedcom-go/commit/70c24db73f270a3360e97c1c1202dd557ed74247)), closes [#926](https://github.com/cacack/gedcom-go/issues/926)
+* **gedcom:** follow a family link only when both sides record it ([bc223e4](https://github.com/cacack/gedcom-go/commit/bc223e414519fe20a2424b9324af5122593262d9)), closes [#930](https://github.com/cacack/gedcom-go/issues/930)
+* **merge:** add RemapXRefsContext to cancel an XRef remap ([2a0d3c8](https://github.com/cacack/gedcom-go/commit/2a0d3c8722d6fd37a048aa8bbe2afb333974b0d3)), closes [#944](https://github.com/cacack/gedcom-go/issues/944)
+* **merge:** fold an event with value Y into one with an empty value ([7a01efe](https://github.com/cacack/gedcom-go/commit/7a01efe54e4940b6ac70fb3cd2ae3e9cf37ba5e8)), closes [#941](https://github.com/cacack/gedcom-go/issues/941)
+* **merge:** merge two source or two repository records ([9e0771c](https://github.com/cacack/gedcom-go/commit/9e0771cbfac3328ca75d9f9b91571b01e4b748eb)), closes [#946](https://github.com/cacack/gedcom-go/issues/946)
+* **validator:** add opt-in relatives signal to duplicate detection ([65804e3](https://github.com/cacack/gedcom-go/commit/65804e3c03a8a2d478a1f946fd660f09e6da6ac1)), closes [#932](https://github.com/cacack/gedcom-go/issues/932)
+* **validator:** report family links the other record does not reciprocate ([60b1542](https://github.com/cacack/gedcom-go/commit/60b1542bc3ed2928bfaa60638ff4f0b2adc44854)), closes [#929](https://github.com/cacack/gedcom-go/issues/929)
+
+
+### Bug Fixes
+
+* **gedcom:** refuse a 5.x OBJE record for a path with no extension ([4352874](https://github.com/cacack/gedcom-go/commit/4352874bc9cfd2d3fd45dceefc275f052be6806a)), closes [#942](https://github.com/cacack/gedcom-go/issues/942)
+* **merge:** fold only events and attributes under FoldEvents ([70558a1](https://github.com/cacack/gedcom-go/commit/70558a18d2700bd930f788b43b8ed3653dfa46b1)), closes [#940](https://github.com/cacack/gedcom-go/issues/940)
+* **merge:** honor context cancellation in the dangling-pointer pass ([ceb0221](https://github.com/cacack/gedcom-go/commit/ceb0221f1a83be203233024ded158d897f4f828d)), closes [#944](https://github.com/cacack/gedcom-go/issues/944)
+* **merge:** let an AncestryTreeID conflict stand for the dropped SOUR ([d1a0365](https://github.com/cacack/gedcom-go/commit/d1a03659650c1736ceb1516c1a3becbcc4340da8)), closes [#943](https://github.com/cacack/gedcom-go/issues/943)
+* **merge:** list each dropped doc2 header structure once in HeaderConflicts ([ace976d](https://github.com/cacack/gedcom-go/commit/ace976debf431e1e8ddd5638d3da0befe92d3e73)), closes [#943](https://github.com/cacack/gedcom-go/issues/943)
+* **validator:** stop an unrecorded sex costing a duplicate pair its weight ([fc51178](https://github.com/cacack/gedcom-go/commit/fc5117878a312a6d6e0668052b59687056727ae7)), closes [#932](https://github.com/cacack/gedcom-go/issues/932)
+
 ## [3.14.0](https://github.com/cacack/gedcom-go/compare/v3.13.0...v3.14.0) (2026-11-24)
 
 
