@@ -586,6 +586,16 @@ refs, err := doc.RemoveRecord("@I2@")   // pointers to @I2@ left behind
   or a record with no `Entity`, and `gedcom.ErrNilMediaLink` for a nil link.
   It does not look for a link already present, and on a record with raw `Tags`
   the new link is written only after `encoder.SyncTags`
+- `Document.AttachMedia(xref, path)` links a media file from an individual,
+  family or source record in one call: it reuses the `OBJE` record whose `FILE`
+  names the path (`\` read as `/`), or adds one under a free XRef with a `FORM`
+  for the declared version (`image/jpeg` for 7.0, `jpg` for 5.5.1, `jpeg` for
+  5.5; `application/octet-stream`, or the lowercase extension for 5.x, when the
+  extension is unknown), then links it unless the record already does. The
+  `gedcom.AttachMediaResult` names the `OBJE` record and says whether it was
+  created, linked or already linked. An unknown XRef wraps
+  `gedcom.ErrUnknownXRef`, a record type without media links
+  `gedcom.ErrNoMediaLinks`; the document is unchanged on error
 - `decoder.DecodeRecords` decodes a fragment of level-0 records (no `HEAD`,
   no `TRLR`) under the target document's version, identifier grammar and
   encoding, to the records the whole-file decoder gives the same lines, with

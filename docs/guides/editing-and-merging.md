@@ -9,7 +9,7 @@ Six tasks, each a section below:
 | Task | Use |
 |------|-----|
 | [Edit one record as text](#editing-one-record-as-text) | `encoder.EncodeRecord`, `decoder.DecodeRecords`, `Document.ReplaceRecord` |
-| [Add a record](#adding-a-record) | `Document.FreeXRef`, `Document.AddRecord`, `Record.AddMediaLink` |
+| [Add a record](#adding-a-record) | `Document.FreeXRef`, `Document.AddRecord`, `Record.AddMediaLink`, `Document.AttachMedia` |
 | [See what changed](#seeing-what-changed) | `gedcom.Diff` |
 | [Combine two files](#combining-two-files) | `merge.Combine` |
 | [Merge duplicate records](#merging-duplicate-records) | `merge.Individuals`, `merge.Families` |
@@ -155,6 +155,50 @@ included.
 
 `AddMediaLink` does not look for an equal link already present: adding one
 twice links it twice. Check `MediaLinks()` first when that matters.
+
+### Attaching a Media File
+
+`Document.AttachMedia` does the three steps above for one file: find the
+`OBJE` record that names it or add one, then link it once.
+
+```go
+res, err := doc.AttachMedia("@I1@", `photos\ada.jpg`)
+if err != nil {
+    return err
+}
+fmt.Println(res.MediaXRef, res.Status) // "@O1@ created", "@O1@ linked" or "@O1@ already linked"
+if err := encoder.SyncTags(doc); err != nil {
+    return err
+}
+```
+
+- **An existing record is reused.** An `OBJE` record whose `FILE` is the path
+  is linked rather than duplicated. Paths are compared as written, except that
+  `\` reads as `/`: `photos\ada.jpg` matches `photos/ada.jpg`, `Photos/ada.jpg`
+  does not.
+- **A new record gets a FORM for the document's version.** The extension
+  decides it, under the version the header declares:
+
+  | Version | `.jpg` | `.tif` | Unknown extension (`.heic`) |
+  |---------|--------|--------|-----------------------------|
+  | 7.0 (or none declared) | `image/jpeg` | `image/tiff` | `application/octet-stream` |
+  | 5.5.1 | `jpg` | `tif` | the extension in lowercase (`heic`) |
+  | 5.5 | `jpeg`, written beside `FILE` | `tiff` | the extension in lowercase |
+
+  The 7.0 media types are the ones the converter maps 5.x formats to. A path
+  with no extension gets no `FORM` in 5.x. Edit the record
+  (`doc.GetMediaObject(res.MediaXRef)`) for another value.
+- **The link is added once.** A second call with the same arguments reports
+  `gedcom.AttachAlreadyLinked` and changes nothing. Only pointer links are
+  looked at, not inline 5.x links.
+
+| Error | When |
+|-------|------|
+| wraps `gedcom.ErrUnknownXRef` | No record is indexed under the XRef |
+| wraps `gedcom.ErrNoMediaLinks` | The record's type cannot carry record-level media links |
+| `gedcom.ErrEmptyMediaPath` | The path is empty |
+
+The document is unchanged when an error is returned.
 
 ## Seeing What Changed
 

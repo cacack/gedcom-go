@@ -20,8 +20,8 @@ var ErrEmptyCoordinate = errors.New("empty coordinate")
 // missing one component of the pair.
 var ErrInvalidCoordinate = errors.New("invalid coordinate")
 
-// ErrNilDocument is returned by Document.AddRecord, ReplaceRecord and
-// RemoveRecord called on a nil *Document.
+// ErrNilDocument is returned by Document.AddRecord, ReplaceRecord,
+// RemoveRecord and AttachMedia called on a nil *Document.
 var ErrNilDocument = errors.New("nil document")
 
 // ErrNilRecord is returned by Document.AddRecord and ReplaceRecord for a nil
@@ -42,11 +42,14 @@ var ErrBelowMinimumAge = errors.New("below minimum age")
 // the parent's or spouse's birth. The error's message gives both dates.
 var ErrEventBeforeBirth = errors.New("event before birth")
 
-// ErrNoMediaLinks is wrapped by the Record.AddMediaLink error for a record
-// whose typed entity holds no record-level media links (every record type but
-// individual, family and source), or that has no Entity. The error's message
-// names the record.
+// ErrNoMediaLinks is wrapped by the Record.AddMediaLink and
+// Document.AttachMedia error for a record whose typed entity holds no
+// record-level media links (every record type but individual, family and
+// source), or that has no Entity. The error's message names the record.
 var ErrNoMediaLinks = errors.New("record cannot carry media links")
+
+// ErrEmptyMediaPath is returned by Document.AttachMedia for an empty path.
+var ErrEmptyMediaPath = errors.New("empty media path")
 
 // ErrNilMediaLink is returned by Record.AddMediaLink for a nil *MediaLink.
 var ErrNilMediaLink = errors.New("nil media link")

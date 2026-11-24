@@ -849,6 +849,21 @@ if err := encoder.SyncTags(doc); err != nil {
 links, ok := person.MediaLinks() // ok is false for a record type with no media links
 ```
 
+`Document.AttachMedia` does both steps for one file: it reuses the `OBJE`
+record that names the path or adds one with a `FORM` for the document's
+version, then links it unless the record already does:
+
+```go
+res, err := doc.AttachMedia("@I1@", "photos/ada.jpg")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(res.MediaXRef, res.Status) // e.g. "@O1@ created"
+```
+
+See [Attaching a Media File](docs/guides/editing-and-merging.md#attaching-a-media-file)
+for the path matching and the `FORM` rules.
+
 ### Adding Individuals
 
 ```go

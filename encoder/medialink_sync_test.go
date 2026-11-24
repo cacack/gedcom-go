@@ -115,3 +115,76 @@ func TestAddMediaLinkKeepsExistingLinks(t *testing.T) {
 		t.Errorf("record not written as expected.\nwant block:\n%s\ngot:\n%s", want, out)
 	}
 }
+
+// TestAttachMediaRoundTrip pins that a link Document.AttachMedia adds, and
+// the OBJE record it creates, are written after SyncTags and read back as the
+// same typed link and file.
+func TestAttachMediaRoundTrip(t *testing.T) {
+	tests := []struct {
+		name, vers, path, wantXRef, wantForm string
+		wantStatus                           gedcom.AttachStatus
+		wantRecord                           string // the created OBJE record's lines
+	}{
+		{"5.5 created", "5.5", "scans/letter.jpg", "@O2@", "jpeg", gedcom.AttachCreated,
+			"0 @O2@ OBJE\n1 FORM jpeg\n1 FILE scans/letter.jpg\n"},
+		{"5.5.1 created", "5.5.1", "scans/letter.jpg", "@O2@", "jpg", gedcom.AttachCreated,
+			"0 @O2@ OBJE\n1 FILE scans/letter.jpg\n2 FORM jpg\n"},
+		{"7.0 created", "7.0", "scans/letter.jpg", "@O2@", "image/jpeg", gedcom.AttachCreated,
+			"0 @O2@ OBJE\n1 FILE scans/letter.jpg\n2 FORM image/jpeg\n"},
+		{"7.0 linked", "7.0", `photos\ada.png`, "@O1@", "image/png", gedcom.AttachLinked, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := "0 HEAD\n1 GEDC\n2 VERS " + tt.vers + "\n1 CHAR UTF-8\n" +
+				"0 @I1@ INDI\n1 NAME Ada /Lovelace/\n" +
+				"0 @O1@ OBJE\n1 FILE photos/ada.png\n2 FORM " + map[string]string{"5.5": "png", "5.5.1": "png", "7.0": "image/png"}[tt.vers] + "\n" +
+				"0 TRLR\n"
+			doc, err := decoder.Decode(strings.NewReader(input))
+			if err != nil {
+				t.Fatalf("Decode() error = %v", err)
+			}
+			got, err := doc.AttachMedia("@I1@", tt.path)
+			if err != nil {
+				t.Fatalf("AttachMedia() error = %v", err)
+			}
+			if got.MediaXRef != tt.wantXRef || got.Status != tt.wantStatus {
+				t.Fatalf("AttachMedia() = %+v, want %s %v", got, tt.wantXRef, tt.wantStatus)
+			}
+			if err := encoder.SyncTags(doc); err != nil {
+				t.Fatalf("SyncTags() error = %v", err)
+			}
+			var buf bytes.Buffer
+			if err := encoder.Encode(&buf, doc); err != nil {
+				t.Fatalf("Encode() error = %v", err)
+			}
+			out := strings.ReplaceAll(buf.String(), "\r\n", "\n")
+			if want := "0 @I1@ INDI\n1 NAME Ada /Lovelace/\n1 OBJE " + tt.wantXRef + "\n"; !strings.Contains(out, want) {
+				t.Errorf("output lacks\n%s\ngot:\n%s", want, out)
+			}
+			if !strings.Contains(out, tt.wantRecord) {
+				t.Errorf("output lacks\n%s\ngot:\n%s", tt.wantRecord, out)
+			}
+
+			back, err := decoder.Decode(bytes.NewReader(buf.Bytes()))
+			if err != nil {
+				t.Fatalf("Decode(encoded) error = %v", err)
+			}
+			links, ok := back.GetRecord("@I1@").MediaLinks()
+			if !ok || len(links) != 1 || links[0].MediaXRef != tt.wantXRef {
+				t.Errorf("after round trip MediaLinks() = %v, %v, want one link to %s", links, ok, tt.wantXRef)
+			}
+			media := back.GetMediaObject(tt.wantXRef)
+			if media == nil || len(media.Files) != 1 {
+				t.Fatalf("after round trip OBJE %s = %+v, want one file", tt.wantXRef, media)
+			}
+			// 5.5 writes FORM beside FILE, read back as the record's Form.
+			if form := media.Files[0].Form + media.Form; form != tt.wantForm {
+				t.Errorf("after round trip FORM = %q, want %q", form, tt.wantForm)
+			}
+			// Attaching again after the round trip changes nothing.
+			if again, err := back.AttachMedia("@I1@", tt.path); err != nil || again.Status != gedcom.AttachAlreadyLinked {
+				t.Errorf("AttachMedia() after round trip = %+v, %v, want already linked", again, err)
+			}
+		})
+	}
+}
