@@ -820,7 +820,10 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 | `merge.Families(doc, keep, drop, opts)` | The same for two family records; a child both list is listed once |
 
 `PrefixDoc2` and `RenumberDoc2` rename only the doc2 records whose XRef doc1
-also holds. `PrefixAllDoc2` puts `CombineOptions.Prefix` in front of every
+also holds, and the XRefs doc2 points at but does not define that doc1 holds,
+so a broken pointer in doc2 stays broken instead of resolving to doc1's record.
+`RemapXRefs` passes such dangling XRefs to its transform after the records'
+and rewrites the pointers to them. `PrefixAllDoc2` puts `CombineOptions.Prefix` in front of every
 doc2 XRef, colliding or not, so a record's XRef shows which document it came
 from; `CombineReport.RemappedXRefs` then lists every doc2 record with a
 pointer-shaped XRef. An XRef doc2 points at but does not define is prefixed

@@ -406,17 +406,22 @@ func TestCombine_PrefixAllDoc2_DanglingPointer(t *testing.T) {
 		t.Errorf("input doc2 was mutated: FAMC = %q", got)
 	}
 
-	// PrefixDoc2 renames only colliding records, so it leaves the pointer.
+	// PrefixDoc2 renames only what collides: the dangling @F9@ doc1 defines
+	// (#925), not the dangling @N 3@ and @U7@ doc1 lacks.
 	out, report, err = merge.Combine(doc1, doc2, merge.CombineOptions{
 		CollisionStrategy: merge.PrefixDoc2, Prefix: "B_"})
 	if err != nil {
 		t.Fatalf("Combine(PrefixDoc2): %v", err)
 	}
-	if !reflect.DeepEqual(report.RemappedXRefs, map[string]string{"@I1@": "@B_I1@"}) {
-		t.Errorf("PrefixDoc2 RemappedXRefs = %v, want only @I1@", report.RemappedXRefs)
+	want = map[string]string{"@I1@": "@B_I1@", "@F9@": "@B_F9@"}
+	if !reflect.DeepEqual(report.RemappedXRefs, want) {
+		t.Errorf("PrefixDoc2 RemappedXRefs = %v, want %v", report.RemappedXRefs, want)
 	}
-	if got := rawValue(t, out, "@B_I1@", "FAMC"); got != "@F9@" {
-		t.Errorf("PrefixDoc2 FAMC = %q, want @F9@", got)
+	if got := rawValue(t, out, "@B_I1@", "FAMC"); got != "@B_F9@" {
+		t.Errorf("PrefixDoc2 FAMC = %q, want @B_F9@", got)
+	}
+	if got := rawValue(t, out, "@B_I1@", "NOTE"); got != "@N 3@" {
+		t.Errorf("PrefixDoc2 NOTE = %q, want @N 3@", got)
 	}
 }
 

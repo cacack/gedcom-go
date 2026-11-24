@@ -251,11 +251,15 @@ What to expect:
 - **Only colliding XRefs are renamed**, and every pointer to a renamed record
   is rewritten with it. The exception is `PrefixAllDoc2`, which renames every
   doc2 record with a pointer-shaped XRef so that an XRef shows which file its
-  record came from. It also prefixes an XRef doc2 points at but does not
-  define, so a broken pointer in doc2 cannot resolve to a doc1 record. doc1's
-  XRefs never change. `report.RemappedXRefs` maps
+  record came from. doc1's XRefs never change. `report.RemappedXRefs` maps
   each doc2 XRef that changed to its new one; keep it if anything outside the
   document refers to doc2's records.
+- **A broken pointer in doc2 stays broken.** An XRef doc2 points at but does
+  not define is renamed with doc2's records when doc1 defines it (always,
+  under `PrefixAllDoc2`), so it cannot resolve to a doc1 record and the
+  validator still reports it. `RemapXRefs` renames such XRefs too, so
+  prefixing doc2 with it before an `ErrorOnCollision` combine is just as safe.
+  `ErrorOnCollision` alone leaves them as they are.
 - **Records are doc1's, then doc2's.** Nothing is deduplicated: a person in
   both files is in the result twice. Find candidates with the validator's
   `DuplicateDetector.FindDuplicatesBetween` and

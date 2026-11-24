@@ -34,6 +34,16 @@ const voidXRef = "@VOID@"
 // mirrors gedcom.Visit, which skips non-pointer values. A record named
 // @VOID@ is not skipped (see below).
 //
+// An XRef that doc points at but no record of doc defines (a dangling
+// pointer) is passed to transform too, after the records' XRefs, and every
+// pointer to it is rewritten to the result, which the rules above bind like a
+// record's: it must be pointer-shaped and must not equal another result. The
+// returned mapping holds its entry. Renamed with the records, the pointer
+// stays dangling when the document is combined with another that defines the
+// old XRef, instead of resolving to that document's record. Pointers are
+// found as gedcom.VisitForVersion finds them under the version doc declares,
+// so the GEDCOM 7.0 null pointer @VOID@ is never one.
+//
 // A record named @VOID@ (allowed in GEDCOM 5.5 and 5.5.1) is remapped like
 // any other, and so are its @VOID@ pointers unless @VOID@ is the null
 // pointer in doc (Document.IsRecordPointer); see gedcom.Apply. The transform may
@@ -69,7 +79,11 @@ const voidXRef = "@VOID@"
 //	    return "@A_" + old[1:]
 //	})
 func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedcom.Document, map[string]string, error) {
-	return remapXRefs(context.Background(), doc, transform, nil)
+	var dangling []string
+	if doc != nil {
+		dangling = danglingPointers(doc)
+	}
+	return remapXRefs(context.Background(), doc, transform, dangling)
 }
 
 // remapXRefs is RemapXRefs checking ctx before each record it maps and
@@ -77,7 +91,7 @@ func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedco
 //
 // dangling lists pointer targets doc names but does not define. Each is
 // mapped through transform like a record's XRef, so pointers to it are
-// rewritten too; RemapXRefs passes none.
+// rewritten too.
 func remapXRefs(ctx context.Context, doc *gedcom.Document, transform func(old string) string, dangling []string) (*gedcom.Document, map[string]string, error) {
 	if doc == nil {
 		return nil, nil, errmark.Mark(ErrNilDocument, errors.New("merge: doc is nil"))
