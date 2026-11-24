@@ -48,6 +48,11 @@ func TestEntityTagsDivergedConverted70Header(t *testing.T) {
 // including the 7.0 -> 7.0 copy. Before #772 this reported 228 issues.
 func TestEntityTagsDivergedNotOnConverterOutput(t *testing.T) {
 	t.Parallel() // #846: overlaps the other corpus-wide walks
+	// A corpus walk: skipped in -short mode, which PR CI uses on macOS and
+	// Windows (#903). Ubuntu, main and Nightly run it in full.
+	if testing.Short() {
+		t.Skip("skipping corpus walk in -short mode")
+	}
 	files, err := filepath.Glob("../testdata/*/*.ged")
 	if err != nil || len(files) == 0 {
 		t.Fatalf("no fixtures: %v", err)

@@ -125,6 +125,41 @@ jobs:
         GEDCOM_REQUIRE_FETCHED_CORPORA: '1'
       run: go test -timeout 10m ./...
 
+  # The 3 OS x 3 Go matrix of ci.yml's Test job, in full. A pull request runs
+  # only 5 of its 9 jobs, and 2 of those with -short (#903); a push to main
+  # runs all 9, and this run catches what moves with no push at all: a new
+  # runner image, or a Go release behind the 'stable' and 'oldstable' aliases.
+  # The -timeout and timeout-minutes budgets are ci.yml's; see the note there.
+  test-matrix:
+    name: Full Test Matrix (${{ matrix.os }}, ${{ matrix.go }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go: ['min', 'oldstable', 'stable']
+    steps:
+    - name: Harden Runner
+      if: matrix.os == 'ubuntu-latest'
+      uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+      with:
+        egress-policy: audit
+
+    - name: Checkout code
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+    - name: Set up Go
+      uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+      with:
+        go-version: ${{ matrix.go != 'min' && matrix.go || '' }}
+        go-version-file: 'go.mod'
+        cache: true
+
+    - name: Run tests
+      run: go test -race -timeout 10m ./...
+      shell: bash
+
   security:
     name: Security Scan (Nightly)
     runs-on: ubuntu-latest
@@ -195,7 +230,7 @@ jobs:
   notify:
     name: Notify on Failure
     runs-on: ubuntu-latest
-    needs: [fuzz, corpora, security]
+    needs: [fuzz, corpora, test-matrix, security]
     if: failure() && github.event_name == 'schedule'
     permissions:
       contents: read
@@ -230,6 +265,7 @@ jobs:
 
         **Fuzz testing**: ${{ needs.fuzz.result }}
         **Fetched test corpora**: ${{ needs.corpora.result }}
+        **Full test matrix**: ${{ needs.test-matrix.result }}
         **Security scan**: ${{ needs.security.result }}
 
         [View full run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})

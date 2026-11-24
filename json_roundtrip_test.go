@@ -144,6 +144,11 @@ func TestJSONRoundTripPres2020(t *testing.T) {
 // fixture, so the fields pres2020.ged never fills (GEDCOM 7.0 structures, LDS
 // ordinances, media) are held to it too.
 func TestJSONRoundTripFixtures(t *testing.T) {
+	// A corpus walk: skipped in -short mode, which PR CI uses on macOS and
+	// Windows (#903). Ubuntu, main and Nightly run it in full.
+	if testing.Short() {
+		t.Skip("skipping corpus walk in -short mode")
+	}
 	for _, path := range gedcomFixtures(t) {
 		t.Run(path, func(t *testing.T) {
 			orig, err := os.ReadFile(path)
