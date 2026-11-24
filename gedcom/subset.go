@@ -8,7 +8,8 @@ import (
 // ErrUnknownXRef is returned by Subset when a seed XRef or a transitively
 // referenced XRef cannot be resolved in the source document. Callers can
 // use errors.Is to detect this case; use errors.As with *UnknownXRefError
-// to recover the specific missing XRef.
+// to recover the specific missing XRef. Document.ReplaceRecord, RemoveRecord
+// and AttachMedia wrap it for an XRef the document does not index.
 var ErrUnknownXRef = errors.New("unknown xref")
 
 // UnknownXRefError records a specific XRef that could not be resolved.
