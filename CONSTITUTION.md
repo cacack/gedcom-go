@@ -1,6 +1,6 @@
 # Constitution
 
-The guiding philosophy and strategic vision for gedcom-go. Planned work lives in [GitHub Issues and Milestones](https://github.com/cacack/gedcom-go/milestones) — the single source of truth. This document covers the *why* and the order of the work.
+The guiding philosophy and strategic vision for gedcom-go. This document covers the *why*: principles and foundational guidance only. What is planned, in what order and by when lives in [GitHub Issues and Milestones](https://github.com/cacack/gedcom-go/milestones), the single source of truth for execution.
 
 ---
 
@@ -61,9 +61,9 @@ GEDCOM is a real specification. Support it correctly, including the parts that a
 
 ---
 
-## Phasing
+## Evidence Over Speculation
 
-Work is sequenced into phases to focus effort. **Resist jumping ahead** — features are driven by evidence, not speculation. Each phase maps to one or more GitHub milestones; see [Milestones](https://github.com/cacack/gedcom-go/milestones) for the live issue list and per-milestone exit criteria.
+Features are driven by evidence, not speculation. **Resist jumping ahead.**
 
 ### What counts as evidence
 
@@ -77,20 +77,12 @@ Downstream need was previously the *only* signal, and that was a mistake: becaus
 
 This does **not** relax the bar against speculation. "Someone might want this" is still not a reason. The change is what may serve as proof — measured corpus behaviour and spec coverage now count, alongside asking.
 
-| Phase | Focus | Milestone(s) | Principle |
-|-------|-------|--------------|-----------|
-| **Phase 1 (Now)** | Real-world compatibility, API polish & correctness | `Write-path fidelity`, `Honest conversion reports`, `Read-path correctness`, `Validator accuracy`, `Date semantics`, `Spec coverage: typed access`, `Test rigor` | Nail the Basics First |
-| **Phase 2 (Partly shipped)** | Document manipulation | `Manipulation correctness` | Respect the Data |
-| **Phase 3 (Future)** | Advanced features & formats | `Phase 3: features` (unscheduled) | Start Small, Ship Often |
-
-Milestones are named by theme, not version: release-please derives the version from commit types. Phase 1 began with the closed `v2.1.0` and `v2.2.0` milestones. Phase 2's merge half shipped in v2.0.0 as the `merge` package, and `Manipulation correctness` hardens what shipped (merge, `Combine`, `RemapXRefs`, `Visit`, `Subset`, `Clone`) rather than adding to it; the record-level diff (`gedcom.Diff`, [#36](https://github.com/cacack/gedcom-go/issues/36)) shipped under `Phase 3: features` with GEDZip ([#127](https://github.com/cacack/gedcom-go/issues/127)); export remains there. The command-line tool is a separate project, [gedcom-cli](https://github.com/cacack/gedcom-cli), which consumes this library's releases. Pre-issue ideas live in [IDEAS.md](IDEAS.md) (fluent builder API, BOM output option).
-
 ---
 
 ## Anti-Patterns to Avoid
 
-- **Feature bloat** — Do fewer things well; a library is not an application
-- **Speculative features** — Build what the evidence supports (see [Phasing](#what-counts-as-evidence)), not what might be cool
+- **Feature bloat** — Do fewer things well; a library is not an application (the command-line tool is a separate project, [gedcom-cli](https://github.com/cacack/gedcom-cli))
+- **Speculative features** — Build what the evidence supports (see [What counts as evidence](#what-counts-as-evidence)), not what might be cool
 - **Mistaking a working fallback for a met need** — `Record.Tags` means no gap ever blocks a consumer, so silence is not a signal
 - **Vendor lock-in** — Data must always be exportable; never add proprietary requirements
 - **Breaking changes** — Follow API stability guarantees; prefer additive changes
@@ -110,7 +102,7 @@ Milestones are named by theme, not version: release-please derives the version f
 
 ## Related
 
-- [GitHub Milestones](https://github.com/cacack/gedcom-go/milestones) — Phased feature plan and exit criteria (see [Phasing](#phasing) for the philosophy)
+- [GitHub Milestones](https://github.com/cacack/gedcom-go/milestones) — Planned work and exit criteria
 - [Architecture Decision Records](docs/decisions/) — Key design decisions
 - [CONTRIBUTING.md](CONTRIBUTING.md) — How to contribute
 - [API Stability](docs/governance/policies/api-stability.md) — Compatibility guarantees
