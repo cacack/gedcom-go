@@ -321,7 +321,11 @@ What to expect:
 - **doc1's header wins.** A header field or structure that doc2 also has is
   dropped and listed in `report.HeaderConflicts`. Expect entries such as
   `Tags.GEDC` and `Tags.CHAR` for any two decoded files, even when the two
-  lines are equal, because a header may declare each structure once. doc2's
+  lines are equal, because a header may declare each structure once. Each
+  dropped structure is listed once: when its value has a typed field and
+  differs from doc1's, the entry is named for the field and gives both values
+  (`SourceSystem` for `SOUR`, `Language` for `LANG`, `Encoding` for `CHAR`)
+  and there is no `Tags.SOUR` entry beside it. doc2's
   submitter record stays in `Records`; the header points at doc1's.
   A doc2 structure doc1 lacks, such as a `NOTE` or a `DEST`, is carried in
   unreported. To keep doc1's header alone, set

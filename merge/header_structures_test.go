@@ -26,7 +26,8 @@ func handBuiltHeaderDoc(h *gedcom.Header) *gedcom.Document {
 }
 
 // The typed header-structure views follow their raw structure (#676): doc1's
-// win, and the dropped doc2 structures are reported as Tags conflicts.
+// win, and the dropped doc2 structures are reported as Tags conflicts, or
+// under the typed field of a differing value (SOUR as SourceSystem, #943).
 func TestCombineHeaderStructuresConflict(t *testing.T) {
 	doc1 := decodeHeaderDoc(t, "1 SOUR A\n2 VERS 1\n2 NAME App A\n2 CORP Corp A\n1 DEST X\n1 DATE 1 JAN 2000\n2 TIME 10:00\n1 PLAC\n2 FORM Town\n")
 	doc2 := decodeHeaderDoc(t, "1 SOUR B\n2 VERS 2\n2 NAME App B\n2 CORP Corp B\n1 DEST Y\n1 DATE 2 JAN 2000\n2 TIME 11:00\n1 PLAC\n2 FORM City\n")
@@ -42,7 +43,7 @@ func TestCombineHeaderStructuresConflict(t *testing.T) {
 	}
 
 	want := map[string]bool{
-		"Tags.SOUR": true, "Tags.DEST": true, "Tags.DATE": true, "Tags.PLAC": true,
+		"SourceSystem": true, "Tags.DEST": true, "Tags.DATE": true, "Tags.PLAC": true,
 	}
 	for _, c := range report.HeaderConflicts {
 		delete(want, c.Field)
