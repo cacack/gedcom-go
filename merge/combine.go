@@ -127,6 +127,30 @@ type CombineOptions struct {
 	// CombineReport.RecordConflicts, instead of failing. Other strategies
 	// ignore it.
 	KeepFirstOnConflict bool
+	// KeepFirstHeader makes the combined header doc1's header alone, under
+	// every CollisionStrategy: none of doc2's header structures or values is
+	// carried in, not even one whose tag doc1 lacks, and each is reported in
+	// CombineReport.HeaderConflicts instead. Every level-1 structure of
+	// doc2's raw header Tags, vendor extensions included, is dropped with its
+	// subtree and reported as "Tags.<TAG>"; doc2's Encoding, SourceSystem,
+	// Language, Copyright, AncestryTreeID, Date, Submitter and PlaceForm, and
+	// the document's Schema and Vendor, are reported under those names when
+	// non-empty and different from doc1's. The typed views of doc2's header
+	// substructures (SourceVersion, SourceName, SourceCorporation,
+	// SourceData, Destination, Time) are dropped with the structure that
+	// holds them and reported as its "Tags.<TAG>".
+	//
+	// The one exception is the version: when doc1's header has no Version
+	// (only possible for a header built in code), doc2's Version is used,
+	// and so is its DeclaredVersion when doc1's header also has no raw
+	// "1 GEDC". They decide how the combined records are read and written,
+	// so the combined document cannot go without them; the encoder writes
+	// them as a GEDC structure only for a header with no raw Tags. The
+	// Trailer still falls back to doc2's, since it is not part of the
+	// header.
+	//
+	// The zero value merges headers by the policy documented on Combine.
+	KeepFirstHeader bool
 	// Zip holds further options for ZipSharedXRefs. Other strategies
 	// ignore it, and nil means none.
 	Zip *ZipOptions
@@ -246,6 +270,10 @@ type HeaderConflict struct {
 //     and are kept from both documents.
 //   - Trailer: doc1's wins; if doc1 has none, doc2's is used.
 //
+// opts.KeepFirstHeader replaces this policy with doc1's header alone: every
+// doc2 header structure and value is dropped and reported, apart from the
+// version exception documented on that option.
+//
 // The combined document has no Layout: it was not read from one file, so
 // encoding it with EncodeOptions.PreserveLayout writes the normalized form.
 //
@@ -312,9 +340,15 @@ func Combine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Document
 	}
 
 	// Merge headers and document-level metadata.
-	mergedHeader, headerConflicts := mergeHeaders(doc1.Header, remappedDoc2.Header)
+	var mergedHeader *gedcom.Header
+	var headerConflicts []HeaderConflict
+	if opts.KeepFirstHeader {
+		mergedHeader, headerConflicts = keepFirstHeader(doc1.Header, remappedDoc2.Header)
+	} else {
+		mergedHeader, headerConflicts = mergeHeaders(doc1.Header, remappedDoc2.Header)
+	}
 	out.Header = mergedHeader
-	headerConflicts = mergeDocMetadata(out, doc1, remappedDoc2, headerConflicts)
+	headerConflicts = mergeDocMetadata(out, doc1, remappedDoc2, headerConflicts, opts.KeepFirstHeader)
 
 	report := &CombineReport{
 		RemappedXRefs:   changedMapping,
@@ -341,14 +375,15 @@ func checkCombinable(doc1, doc2 *gedcom.Document, opts CombineOptions) error {
 // mergeDocMetadata merges Schema, Vendor, and Trailer from doc1 and
 // the remapped doc2 into out, appending any conflicts to conflicts
 // and returning the updated slice. Doc1's values win; doc2's values
-// are only adopted when doc1's are empty.
-func mergeDocMetadata(out, doc1, remappedDoc2 *gedcom.Document, conflicts []HeaderConflict) []HeaderConflict {
+// are only adopted when doc1's are empty, and never for Schema and
+// Vendor when keepFirst is set (CombineOptions.KeepFirstHeader).
+func mergeDocMetadata(out, doc1, remappedDoc2 *gedcom.Document, conflicts []HeaderConflict, keepFirst bool) []HeaderConflict {
 	// Schema: prefer doc1's. Record a conflict if doc2 had a
 	// distinct non-empty schema we are discarding.
 	switch {
-	case doc1.Schema == nil && remappedDoc2.Schema != nil:
+	case doc1.Schema == nil && remappedDoc2.Schema != nil && !keepFirst:
 		out.Schema = cloneSchema(remappedDoc2.Schema)
-	case doc1.Schema != nil && remappedDoc2.Schema != nil && !schemasEqual(doc1.Schema, remappedDoc2.Schema):
+	case remappedDoc2.Schema != nil && !schemasEqual(doc1.Schema, remappedDoc2.Schema):
 		conflicts = append(conflicts, HeaderConflict{
 			Field: "Schema",
 			Doc1:  describeSchema(doc1.Schema),
@@ -359,9 +394,9 @@ func mergeDocMetadata(out, doc1, remappedDoc2 *gedcom.Document, conflicts []Head
 	// Vendor: prefer doc1's. Record a conflict if doc2's non-empty
 	// value differs.
 	switch {
-	case doc1.Vendor == "" && remappedDoc2.Vendor != "":
+	case doc1.Vendor == "" && remappedDoc2.Vendor != "" && !keepFirst:
 		out.Vendor = remappedDoc2.Vendor
-	case doc1.Vendor != "" && remappedDoc2.Vendor != "" && doc1.Vendor != remappedDoc2.Vendor:
+	case remappedDoc2.Vendor != "" && doc1.Vendor != remappedDoc2.Vendor:
 		conflicts = append(conflicts, HeaderConflict{
 			Field: "Vendor",
 			Doc1:  string(doc1.Vendor),
@@ -872,7 +907,7 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 	}
 
 	out := h1.Clone()
-	conflicts := mergeScalarHeaderFields(out, h1, h2)
+	conflicts := mergeScalarHeaderFields(out, h1, h2, false)
 
 	// Date: prefer h1's. If h1 has no Date and h2 has one, adopt h2's
 	// silently. No typed "Date" conflict is recorded, because transmission
@@ -931,6 +966,47 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 
 	mergeTypedPlaceForm(out, h1, h2)
 
+	return out, conflicts
+}
+
+// keepFirstHeader returns doc1's header alone, for
+// CombineOptions.KeepFirstHeader: a clone of h1 that takes nothing of h2's
+// but an empty Version or DeclaredVersion (see mergeScalarHeaderFields), and
+// a conflict for each level-1 structure of h2's Tags and each typed value of
+// h2's that differs from h1's. h1 nil counts as an empty header, and h2 nil
+// as nothing to drop.
+func keepFirstHeader(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
+	if h2 == nil {
+		return h1.Clone(), nil
+	}
+	if h1 == nil {
+		h1 = &gedcom.Header{}
+	}
+	out := h1.Clone()
+	conflicts := mergeScalarHeaderFields(out, h1, h2, true)
+	for _, f := range []struct{ name, v1, v2 string }{
+		{"Date", h1.Date, h2.Date},
+		{"Submitter", h1.Submitter, h2.Submitter},
+		{"PlaceForm", h1.PlaceForm, h2.PlaceForm},
+	} {
+		if f.v2 != "" && f.v1 != f.v2 {
+			conflicts = append(conflicts, HeaderConflict{Field: f.name, Doc1: f.v1, Doc2: f.v2})
+		}
+	}
+	for _, t := range h2.Tags {
+		if t == nil || t.Level != 1 {
+			continue
+		}
+		kept := ""
+		if hasLevel1HeaderTag(h1.Tags, t.Tag) {
+			kept = "kept"
+		}
+		conflicts = append(conflicts, HeaderConflict{
+			Field: "Tags." + t.Tag,
+			Doc1:  kept,
+			Doc2:  "dropped (KeepFirstHeader keeps doc1's header alone)",
+		})
+	}
 	return out, conflicts
 }
 
@@ -1112,7 +1188,11 @@ func appendNonCollidingHeaderTags(out, h2 *gedcom.Header, occupied map[string]bo
 // (which is expected to be a clone of h1) and returns the list of
 // recorded conflicts. Extracted from mergeHeaders to keep cyclomatic
 // complexity manageable.
-func mergeScalarHeaderFields(out, h1, h2 *gedcom.Header) []HeaderConflict {
+//
+// keepFirst (CombineOptions.KeepFirstHeader) promotes only Version and
+// DeclaredVersion; any other non-empty h2 value that differs from h1's,
+// empty or not, is recorded as a conflict.
+func mergeScalarHeaderFields(out, h1, h2 *gedcom.Header, keepFirst bool) []HeaderConflict {
 	var conflicts []HeaderConflict
 
 	// Each entry knows its name, the two string values to compare,
@@ -1124,8 +1204,10 @@ func mergeScalarHeaderFields(out, h1, h2 *gedcom.Header) []HeaderConflict {
 		v1   string
 		v2   string
 		set  func()
+		// version marks the fields keepFirst still promotes.
+		version bool
 	}{
-		{"Version", string(h1.Version), string(h2.Version), func() { out.Version = h2.Version }},
+		{"Version", string(h1.Version), string(h2.Version), func() { out.Version = h2.Version }, true},
 		// DeclaredVersion selects the pointer grammar (Document.IsPointerXRef).
 		// Promoting doc2's when doc1 declares none keeps doc2's spaced
 		// 5.5/5.5.1 pointers recognized in the combined document (#591);
@@ -1138,17 +1220,17 @@ func mergeScalarHeaderFields(out, h1, h2 *gedcom.Header) []HeaderConflict {
 			if !hasLevel1HeaderTag(h1.Tags, "GEDC") {
 				out.DeclaredVersion = h2.DeclaredVersion
 			}
-		}},
-		{"Encoding", string(h1.Encoding), string(h2.Encoding), func() { out.Encoding = h2.Encoding }},
-		{"SourceSystem", h1.SourceSystem, h2.SourceSystem, func() { out.SourceSystem = h2.SourceSystem }},
-		{"Language", h1.Language, h2.Language, func() { out.Language = h2.Language }},
-		{"Copyright", h1.Copyright, h2.Copyright, func() { out.Copyright = h2.Copyright }},
-		{"AncestryTreeID", h1.AncestryTreeID, h2.AncestryTreeID, func() { out.AncestryTreeID = h2.AncestryTreeID }},
+		}, true},
+		{"Encoding", string(h1.Encoding), string(h2.Encoding), func() { out.Encoding = h2.Encoding }, false},
+		{"SourceSystem", h1.SourceSystem, h2.SourceSystem, func() { out.SourceSystem = h2.SourceSystem }, false},
+		{"Language", h1.Language, h2.Language, func() { out.Language = h2.Language }, false},
+		{"Copyright", h1.Copyright, h2.Copyright, func() { out.Copyright = h2.Copyright }, false},
+		{"AncestryTreeID", h1.AncestryTreeID, h2.AncestryTreeID, func() { out.AncestryTreeID = h2.AncestryTreeID }, false},
 	}
 	for _, f := range fields {
 		// If h1 is empty and h2 is non-empty, promote h2's value
 		// silently — there's no real conflict.
-		if f.v1 == "" && f.v2 != "" {
+		if f.v1 == "" && f.v2 != "" && (!keepFirst || f.version) {
 			f.set()
 			continue
 		}

@@ -269,6 +269,12 @@ What to expect:
   `Tags.GEDC` and `Tags.CHAR` for any two decoded files, even when the two
   lines are equal, because a header may declare each structure once. doc2's
   submitter record stays in `Records`; the header points at doc1's.
+  A doc2 structure doc1 lacks, such as a `NOTE` or a `DEST`, is carried in
+  unreported. To keep doc1's header alone, set
+  `CombineOptions.KeepFirstHeader`: every doc2 header structure is then
+  dropped and listed (`Tags.NOTE`, `Tags.DEST`, ...), with doc2's differing
+  typed values by name. The one exception is a doc1 header with no
+  `Version`, possible only when built in code, which takes doc2's.
 - **Versions and encodings must agree.** Two different non-empty values fail
   with `ErrIncompatibleHeader`. Convert one document first with the
   [converter](converter.md). `IgnoreEncodingMismatch` waives the encoding

@@ -860,6 +860,12 @@ memory) counts as that document's `PLAC`: doc1's keeps doc2's out, doc2's is
 used when doc1 states none, and either way the combined header carries it as
 `PLAC.FORM`. The combined document has one default place form, so places from
 the other input with no `FORM` of their own are read under it.
+Set `CombineOptions.KeepFirstHeader` to keep doc1's header alone, under any
+strategy: every level-1 structure of doc2's header, including those doc1 lacks
+(a `NOTE`, a `DEST`) and vendor extensions, is dropped and reported as a
+`Tags.<tag>` conflict, and doc2's differing typed header values (and its
+`Schema` and `Vendor`) are reported by name. The only exception is the
+version: a doc1 header with no `Version` (built in code) takes doc2's.
 Differing non-empty header versions or encodings are refused
 with `ErrIncompatibleHeader`; set `CombineOptions.IgnoreEncodingMismatch`
 to merge documents whose declared encodings differ (text is UTF-8 in
