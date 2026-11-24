@@ -55,6 +55,11 @@ func assertRecordsMatchEncode(t *testing.T, doc *gedcom.Document, opts *EncodeOp
 }
 
 func TestEncodeRecord_MatchesEncodeForDecodedFiles(t *testing.T) {
+	// A corpus walk: skipped in -short mode, which PR CI uses on macOS and
+	// Windows (#903). Ubuntu, main and Nightly run it in full.
+	if testing.Short() {
+		t.Skip("skipping corpus walk in -short mode")
+	}
 	var paths []string
 	for _, pattern := range []string{"../testdata/gedcom-5.5/*.ged", "../testdata/gedcom-5.5.1/*.ged", "../testdata/gedcom-7.0/*.ged"} {
 		matches, err := filepath.Glob(pattern)

@@ -66,6 +66,11 @@ var entityTagsKnownDisagreements = map[string]string{}
 // converted Tags gives (#772): the output is encoded from its Tags and decoded
 // again, and the two typed views compared field by field.
 func TestConvertedEntitiesAgreeWithTags(t *testing.T) {
+	// A corpus walk: skipped in -short mode, which PR CI uses on macOS and
+	// Windows (#903). Ubuntu, main and Nightly run it in full.
+	if testing.Short() {
+		t.Skip("skipping corpus walk in -short mode")
+	}
 	files, err := filepath.Glob("../testdata/*/*.ged")
 	if err != nil || len(files) == 0 {
 		t.Fatalf("no fixtures: %v", err)

@@ -185,6 +185,11 @@ func requireSameNilIssues(t *testing.T, doc *gedcom.Document) []Issue {
 // a file here, and those files' types are no different from the others'.
 func TestValidateNilElements_MatchesReferenceWalk(t *testing.T) {
 	t.Parallel()
+	// A corpus walk: skipped in -short mode, which PR CI uses on macOS and
+	// Windows (#903). Ubuntu, main and Nightly run it in full.
+	if testing.Short() {
+		t.Skip("skipping corpus walk in -short mode")
+	}
 	const maxSize = 2 << 20
 
 	var files []string

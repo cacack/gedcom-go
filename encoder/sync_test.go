@@ -40,6 +40,11 @@ func syncTags(t *testing.T, doc *gedcom.Document) {
 // document nobody edited changes no line of the output, across every
 // fixture in testdata, pres2020.ged among them.
 func TestSyncTagsUnmodifiedIsNoOp(t *testing.T) {
+	// A corpus walk: skipped in -short mode, which PR CI uses on macOS and
+	// Windows (#903). Ubuntu, main and Nightly run it in full.
+	if testing.Short() {
+		t.Skip("skipping corpus walk in -short mode")
+	}
 	paths, err := filepath.Glob("../testdata/*/*.ged")
 	if err != nil {
 		t.Fatal(err)
@@ -427,6 +432,11 @@ func TestSyncTagsErrors(t *testing.T) {
 // checks that one SyncTags leaves nothing for a second to do, so the tags
 // read back as the typed fields.
 func TestSyncTagsReachesFixpoint(t *testing.T) {
+	// A corpus walk: skipped in -short mode, which PR CI uses on macOS and
+	// Windows (#903). Ubuntu, main and Nightly run it in full.
+	if testing.Short() {
+		t.Skip("skipping corpus walk in -short mode")
+	}
 	paths, _ := filepath.Glob("../testdata/*/*.ged")
 	more, _ := filepath.Glob("../testdata/*/*/*.ged")
 	for _, path := range append(paths, more...) {

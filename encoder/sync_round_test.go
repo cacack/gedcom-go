@@ -17,6 +17,11 @@ import (
 // that copied an unchanged line would make every record look changed and cost
 // maxSyncRounds read-backs per call, with no failing output to show it.
 func TestSyncRoundUnmodifiedConverges(t *testing.T) {
+	// A corpus walk: skipped in -short mode, which PR CI uses on macOS and
+	// Windows (#903). Ubuntu, main and Nightly run it in full.
+	if testing.Short() {
+		t.Skip("skipping corpus walk in -short mode")
+	}
 	paths, _ := filepath.Glob("../testdata/*/*.ged")
 	checked := 0
 	for _, path := range paths {
