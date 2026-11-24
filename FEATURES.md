@@ -595,7 +595,9 @@ refs, err := doc.RemoveRecord("@I2@")   // pointers to @I2@ left behind
   `gedcom.AttachMediaResult` names the `OBJE` record and says whether it was
   created, linked or already linked. An unknown XRef wraps
   `gedcom.ErrUnknownXRef`, a record type without media links
-  `gedcom.ErrNoMediaLinks`; the document is unchanged on error
+  `gedcom.ErrNoMediaLinks`, and a 5.5 or 5.5.1 path with no extension that
+  needs a new record `gedcom.ErrNoMediaFormat` (`FORM` is required there and
+  nothing names the format); the document is unchanged on error
 - `decoder.DecodeRecords` decodes a fragment of level-0 records (no `HEAD`,
   no `TRLR`) under the target document's version, identifier grammar and
   encoding, to the records the whole-file decoder gives the same lines, with

@@ -80,9 +80,20 @@ const unknownMediaType = "application/octet-stream"
 //
 // For an extension it does not know, the 5.x FORM is the extension in
 // lowercase ("png", "pdf"), as most 5.x writers do, and the 7.0 FORM is
-// "application/octet-stream". A path with no extension gets that media type
-// for 7.0 and no FORM for 5.x. Edit the record afterwards (GetMediaObject)
-// for another FORM.
+// "application/octet-stream". Edit the record afterwards (GetMediaObject) for
+// another FORM.
+//
+// A path with no extension ("scans/letter", "letter.") gives a new record no
+// format to name:
+//
+//   - GEDCOM 7.0 or no recognized version: the FORM is
+//     "application/octet-stream".
+//   - GEDCOM 5.5 and 5.5.1: FORM is required and has no value for an unknown
+//     format, so AttachMedia returns ErrNoMediaFormat rather than write a
+//     record without one. Add the OBJE record yourself with the FORM you know
+//     ([Document.AddRecord]); AttachMedia then links it.
+//
+// An OBJE record that already names such a path is linked under every version.
 //
 // Only the typed entities change. Record.Tags is authoritative when encoding,
 // so on a record that has raw Tags (any decoded record) call encoder.SyncTags
@@ -91,8 +102,10 @@ const unknownMediaType = "application/octet-stream"
 //
 // It returns an error wrapping ErrUnknownXRef when d indexes no record under
 // xref, one wrapping ErrNoMediaLinks when that record cannot carry media links
-// (see [Record.MediaLinks]), ErrEmptyMediaPath for an empty path and
-// ErrNilDocument for a nil d. d is unchanged in each case.
+// (see [Record.MediaLinks]), one wrapping ErrNoMediaFormat when a 5.5 or 5.5.1
+// document needs a new OBJE record for a path with no extension,
+// ErrEmptyMediaPath for an empty path and ErrNilDocument for a nil d. d is
+// unchanged in each case.
 func (d *Document) AttachMedia(xref, path string) (AttachMediaResult, error) {
 	if d == nil {
 		return AttachMediaResult{}, ErrNilDocument
@@ -128,7 +141,11 @@ func (d *Document) AttachMedia(xref, path string) (AttachMediaResult, error) {
 	}
 	if result.MediaXRef == "" {
 		result = AttachMediaResult{MediaXRef: d.FreeXRef("O"), Status: AttachCreated}
-		if err := d.AddRecord(newMediaRecord(result.MediaXRef, path, d.declaredVersion())); err != nil {
+		created, err := newMediaRecord(result.MediaXRef, path, d.declaredVersion())
+		if err != nil {
+			return AttachMediaResult{}, fmt.Errorf("attach media %q to %q: %w", path, xref, err)
+		}
+		if err := d.AddRecord(created); err != nil {
 			return AttachMediaResult{}, fmt.Errorf("attach media to %q: %w", xref, err)
 		}
 	}
@@ -164,15 +181,21 @@ func slashPath(p string) string {
 }
 
 // newMediaRecord returns an OBJE record under xref holding the one file path,
-// with the FORM AttachMedia documents for version v.
-func newMediaRecord(xref, path string, v Version) *Record {
+// with the FORM AttachMedia documents for version v. It returns
+// ErrNoMediaFormat for a 5.x version and a path with no extension.
+func newMediaRecord(xref, path string, v Version) (*Record, error) {
 	ext := fileExtension(path)
 	media := &MediaObject{XRef: xref, Files: []*MediaFile{{FileRef: path}}}
 	switch v {
-	case Version55:
-		media.Form = legacyMediaForm(ext, legacyForms55)
-	case Version551:
-		media.Files[0].Form = legacyMediaForm(ext, legacyForms551)
+	case Version55, Version551:
+		if ext == "" {
+			return nil, ErrNoMediaFormat
+		}
+		if v == Version55 {
+			media.Form = legacyMediaForm(ext, legacyForms55)
+		} else {
+			media.Files[0].Form = legacyMediaForm(ext, legacyForms551)
+		}
 	default:
 		form, ok := mediatype.IANA(ext)
 		if !ok {
@@ -180,7 +203,7 @@ func newMediaRecord(xref, path string, v Version) *Record {
 		}
 		media.Files[0].Form = form
 	}
-	return &Record{XRef: xref, Type: RecordTypeMedia, Entity: media}
+	return &Record{XRef: xref, Type: RecordTypeMedia, Entity: media}, nil
 }
 
 // legacyForms55 and legacyForms551 map an uppercase file extension to the

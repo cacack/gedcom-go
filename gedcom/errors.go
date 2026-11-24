@@ -51,5 +51,10 @@ var ErrNoMediaLinks = errors.New("record cannot carry media links")
 // ErrEmptyMediaPath is returned by Document.AttachMedia for an empty path.
 var ErrEmptyMediaPath = errors.New("empty media path")
 
+// ErrNoMediaFormat is wrapped by the Document.AttachMedia error for a path
+// with no extension that needs a new OBJE record in a GEDCOM 5.5 or 5.5.1
+// document, where FORM is required and nothing names the format.
+var ErrNoMediaFormat = errors.New("no extension to name the media format")
+
 // ErrNilMediaLink is returned by Record.AddMediaLink for a nil *MediaLink.
 var ErrNilMediaLink = errors.New("nil media link")

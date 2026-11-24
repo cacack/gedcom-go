@@ -185,9 +185,13 @@ if err := encoder.SyncTags(doc); err != nil {
   | 5.5.1 | `jpg` | `tif` | the extension in lowercase (`heic`) |
   | 5.5 | `jpeg`, written beside `FILE` | `tiff` | the extension in lowercase |
 
-  The 7.0 media types are the ones the converter maps 5.x formats to. A path
-  with no extension gets no `FORM` in 5.x. Edit the record
-  (`doc.GetMediaObject(res.MediaXRef)`) for another value.
+  The 7.0 media types are the ones the converter maps 5.x formats to. Edit the
+  record (`doc.GetMediaObject(res.MediaXRef)`) for another value.
+- **A 5.x path needs an extension.** A path with no extension gets
+  `application/octet-stream` in 7.0. In 5.5 and 5.5.1 `FORM` is required and
+  has no value for an unknown format, so `AttachMedia` returns an error rather
+  than add a record without one. Add the `OBJE` record yourself with the `FORM`
+  you know; `AttachMedia` then links it.
 - **The link is added once.** A second call with the same arguments reports
   `gedcom.AttachAlreadyLinked` and changes nothing. Only pointer links are
   looked at, not inline 5.x links.
@@ -196,6 +200,7 @@ if err := encoder.SyncTags(doc); err != nil {
 |-------|------|
 | wraps `gedcom.ErrUnknownXRef` | No record is indexed under the XRef |
 | wraps `gedcom.ErrNoMediaLinks` | The record's type cannot carry record-level media links |
+| wraps `gedcom.ErrNoMediaFormat` | A 5.5 or 5.5.1 document needs a new `OBJE` record for a path with no extension |
 | `gedcom.ErrEmptyMediaPath` | The path is empty |
 
 The document is unchanged when an error is returned.
