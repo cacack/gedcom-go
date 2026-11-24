@@ -455,6 +455,11 @@ func TestErrorCodeConstants(t *testing.T) {
 		CodeOrphanedWIFE,
 		CodeOrphanedCHIL,
 		CodeOrphanedSOUR,
+		CodeUnreciprocatedFAMS,
+		CodeUnreciprocatedFAMC,
+		CodeUnreciprocatedHUSB,
+		CodeUnreciprocatedWIFE,
+		CodeUnreciprocatedCHIL,
 	}
 
 	dupCodes := []string{

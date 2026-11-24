@@ -1304,6 +1304,7 @@ func TestValidateBackwardCompatibility(t *testing.T) {
 2 VERS 7.0
 0 @I1@ INDI
 1 NAME John /Smith/
+1 FAMS @F1@
 0 @F1@ FAM
 1 HUSB @I1@
 0 TRLR`

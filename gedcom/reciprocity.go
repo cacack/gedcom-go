@@ -16,7 +16,7 @@ import "slices"
 // FamiliesAsChild, Family.HusbandIndividual, WifeIndividual,
 // ChildrenIndividuals and AllMembers, and Ancestors and Descendants with
 // their WithGenerations forms. IsSpouseIn and IsChildIn are the rule's one
-// definition.
+// definition; the validator reports a link the rule does not count.
 func (i *Individual) IsSpouseIn(fam *Family) bool {
 	if !linkable(i, fam) || (fam.Husband != i.XRef && fam.Wife != i.XRef) {
 		return false

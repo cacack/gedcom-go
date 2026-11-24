@@ -25,6 +25,7 @@ func Example() {
 1 NAME John /Smith/
 1 ASSO @I404@
 2 ROLE GODP
+1 FAMS @F1@
 0 @F1@ FAM
 1 HUSB @I1@
 1 WIFE @I999@
@@ -47,7 +48,7 @@ func Example() {
 
 	// Output:
 	// Found 2 validation errors
-	// [ERROR] ORPHANED_WIFE: WIFE reference to non-existent individual @I999@ (@F1@ -> @I999@) [line 10]
+	// [ERROR] ORPHANED_WIFE: WIFE reference to non-existent individual @I999@ (@F1@ -> @I999@) [line 11]
 	// [ERROR] BROKEN_XREF: ASSO reference to non-existent record @I404@ (@I1@ -> @I404@) [line 6]
 	// BROKEN_XREF at line 6
 }
@@ -199,6 +200,7 @@ func ExampleValidator_FindOrphanedReferences() {
 2 VERS 5.5
 0 @I1@ INDI
 1 NAME John /Smith/
+1 FAMS @F1@
 0 @F1@ FAM
 1 HUSB @I1@
 1 WIFE @I999@
