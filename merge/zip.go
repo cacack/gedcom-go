@@ -73,9 +73,15 @@ func zipCombine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Docum
 	}
 
 	out.ReindexXRefs()
-	mergedHeader, headerConflicts := z.zipHeaders(out.Header, in2.Header)
+	var mergedHeader *gedcom.Header
+	var headerConflicts []HeaderConflict
+	if opts.KeepFirstHeader {
+		mergedHeader, headerConflicts = keepFirstHeader(out.Header, in2.Header)
+	} else {
+		mergedHeader, headerConflicts = z.zipHeaders(out.Header, in2.Header)
+	}
 	out.Header = mergedHeader
-	headerConflicts = mergeDocMetadata(out, doc1, in2, headerConflicts)
+	headerConflicts = mergeDocMetadata(out, doc1, in2, headerConflicts, opts.KeepFirstHeader)
 	// A unioned record's Tags are new, so its typed Entity is rebuilt from
 	// them as Decode would build it.
 	decoder.SyncEntities(&gedcom.Document{Header: out.Header, Records: unioned})

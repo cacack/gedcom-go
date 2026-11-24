@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -26,17 +27,36 @@ type CollisionStrategy int
 const (
 	// ErrorOnCollision (zero value) returns an error if any XRef in
 	// doc2 already exists in doc1. Safe default: callers must
-	// explicitly opt in to a remapping strategy.
+	// explicitly opt in to a remapping strategy. It compares records
+	// only: a doc2 pointer to an XRef doc2 does not define keeps its
+	// value, so it resolves to doc1's record of that XRef if doc1 has
+	// one. RemapXRefs renames such pointers with doc2's records.
 	ErrorOnCollision CollisionStrategy = iota
 	// PrefixDoc2 prefixes every colliding XRef in doc2 with
 	// CombineOptions.Prefix. It renames only the doc2 records whose XRef
 	// doc1 also holds; non-colliding XRefs in doc2 are kept as-is. To
 	// rename every doc2 record, use PrefixAllDoc2.
+	//
+	// An XRef doc2 points at but does not define (a dangling pointer)
+	// collides too when doc1 defines it: it is prefixed with the colliding
+	// records, so it stays dangling instead of resolving to doc1's record,
+	// and CombineReport.RemappedXRefs lists it. Combine fails with a
+	// "prefix-collision" CombineError when a prefixed XRef, record or
+	// dangling pointer, is one doc1 defines. It fails with ErrInvalidRemap
+	// (a *RemapError) when a prefixed record XRef is already the XRef of
+	// another doc2 record or of a dangling doc2 pointer, rather than letting
+	// that pointer resolve to the renamed record.
 	// Requires Prefix to be set (non-empty, body-character-safe).
 	PrefixDoc2
 	// RenumberDoc2 renumbers every colliding XRef in doc2 to a fresh
 	// sequential ID per record type, starting after the highest
 	// numeric ID in doc1 for that type. Non-colliding XRefs are kept.
+	//
+	// An XRef doc2 points at but does not define (a dangling pointer)
+	// collides too when doc1 defines it: it is renumbered from its own
+	// letter prefix, so it stays dangling instead of resolving to doc1's
+	// record, and CombineReport.RemappedXRefs lists it. No record is
+	// renumbered to the XRef of a dangling pointer.
 	RenumberDoc2
 	// ZipSharedXRefs treats a shared XRef as the same record, for two
 	// documents cut from one master, such as the bounded subsets
@@ -111,6 +131,33 @@ type CombineOptions struct {
 	// CombineReport.RecordConflicts, instead of failing. Other strategies
 	// ignore it.
 	KeepFirstOnConflict bool
+	// KeepFirstHeader makes the combined header doc1's header alone, under
+	// every CollisionStrategy: none of doc2's header structures or values is
+	// carried in, not even one whose tag doc1 lacks, and each is reported in
+	// CombineReport.HeaderConflicts instead. Every level-1 structure of
+	// doc2's raw header Tags, vendor extensions included, is dropped with its
+	// subtree and reported as "Tags.<TAG>"; doc2's Encoding, SourceSystem,
+	// Language, Copyright, AncestryTreeID, Date, Submitter and PlaceForm, and
+	// the document's Schema and Vendor, are reported under those names when
+	// non-empty and different from doc1's. The typed views of doc2's header
+	// substructures (SourceVersion, SourceName, SourceCorporation,
+	// SourceData, Destination, Time) are dropped with the structure that
+	// holds them and reported as its "Tags.<TAG>"; when doc2's Tags have no
+	// such structure (a header built in code), each one set and different
+	// from doc1's is reported under its own name, a corporation or source
+	// data by its Name.
+	//
+	// The one exception is the version: when doc1's header has no Version
+	// (only possible for a header built in code), doc2's Version is used,
+	// and so is its DeclaredVersion when doc1's header also has no raw
+	// "1 GEDC". They decide how the combined records are read and written,
+	// so the combined document cannot go without them; the encoder writes
+	// them as a GEDC structure only for a header with no raw Tags. The
+	// Trailer still falls back to doc2's, since it is not part of the
+	// header.
+	//
+	// The zero value merges headers by the policy documented on Combine.
+	KeepFirstHeader bool
 	// Zip holds further options for ZipSharedXRefs. Other strategies
 	// ignore it, and nil means none.
 	Zip *ZipOptions
@@ -156,8 +203,9 @@ type CombineReport struct {
 	// RemappedXRefs maps doc2's original XRefs to their new XRefs in
 	// the combined document. Only XRefs that actually changed are
 	// recorded; no-op entries are filtered. Empty if no remap was
-	// needed. Under PrefixAllDoc2 it also holds the XRefs doc2 points at
-	// but does not define, which are prefixed with its records'.
+	// needed. It also holds the XRefs doc2 points at but does not define
+	// that were renamed with its records: every one under PrefixAllDoc2,
+	// those doc1 defines under PrefixDoc2 and RenumberDoc2.
 	RemappedXRefs map[string]string
 	// HeaderConflicts records header fields where doc2 had a
 	// different non-empty value that was dropped in favor of doc1.
@@ -185,6 +233,14 @@ type HeaderConflict struct {
 // Combine never mutates its inputs. Both documents are deep-copied;
 // references inside doc2 are rewritten according to opts.CollisionStrategy
 // so the combined document keeps referential integrity.
+//
+// A doc2 pointer to an XRef doc2 does not define is a defect of doc2, and
+// Combine keeps it one: PrefixDoc2, RenumberDoc2 and PrefixAllDoc2 rename it
+// with doc2's records when doc1 defines that XRef (PrefixAllDoc2 always), so
+// it stays dangling rather than resolving to a doc1 record, and validating
+// the result still reports it. ErrorOnCollision leaves it as it is, and
+// ZipSharedXRefs, which treats a shared XRef as one record, binds it to
+// doc1's record by design.
 //
 // Header merge policy:
 //
@@ -220,6 +276,10 @@ type HeaderConflict struct {
 //     Vendor extensions (underscore-prefixed) sit outside that rule
 //     and are kept from both documents.
 //   - Trailer: doc1's wins; if doc1 has none, doc2's is used.
+//
+// opts.KeepFirstHeader replaces this policy with doc1's header alone: every
+// doc2 header structure and value is dropped and reported, apart from the
+// version exception documented on that option.
 //
 // The combined document has no Layout: it was not read from one file, so
 // encoding it with EncodeOptions.PreserveLayout writes the normalized form.
@@ -287,9 +347,15 @@ func Combine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Document
 	}
 
 	// Merge headers and document-level metadata.
-	mergedHeader, headerConflicts := mergeHeaders(doc1.Header, remappedDoc2.Header)
+	var mergedHeader *gedcom.Header
+	var headerConflicts []HeaderConflict
+	if opts.KeepFirstHeader {
+		mergedHeader, headerConflicts = keepFirstHeader(doc1.Header, remappedDoc2.Header)
+	} else {
+		mergedHeader, headerConflicts = mergeHeaders(doc1.Header, remappedDoc2.Header)
+	}
 	out.Header = mergedHeader
-	headerConflicts = mergeDocMetadata(out, doc1, remappedDoc2, headerConflicts)
+	headerConflicts = mergeDocMetadata(out, doc1, remappedDoc2, headerConflicts, opts.KeepFirstHeader)
 
 	report := &CombineReport{
 		RemappedXRefs:   changedMapping,
@@ -316,14 +382,15 @@ func checkCombinable(doc1, doc2 *gedcom.Document, opts CombineOptions) error {
 // mergeDocMetadata merges Schema, Vendor, and Trailer from doc1 and
 // the remapped doc2 into out, appending any conflicts to conflicts
 // and returning the updated slice. Doc1's values win; doc2's values
-// are only adopted when doc1's are empty.
-func mergeDocMetadata(out, doc1, remappedDoc2 *gedcom.Document, conflicts []HeaderConflict) []HeaderConflict {
+// are only adopted when doc1's are empty, and never for Schema and
+// Vendor when keepFirst is set (CombineOptions.KeepFirstHeader).
+func mergeDocMetadata(out, doc1, remappedDoc2 *gedcom.Document, conflicts []HeaderConflict, keepFirst bool) []HeaderConflict {
 	// Schema: prefer doc1's. Record a conflict if doc2 had a
 	// distinct non-empty schema we are discarding.
 	switch {
-	case doc1.Schema == nil && remappedDoc2.Schema != nil:
+	case doc1.Schema == nil && remappedDoc2.Schema != nil && !keepFirst:
 		out.Schema = cloneSchema(remappedDoc2.Schema)
-	case doc1.Schema != nil && remappedDoc2.Schema != nil && !schemasEqual(doc1.Schema, remappedDoc2.Schema):
+	case remappedDoc2.Schema != nil && !schemasEqual(doc1.Schema, remappedDoc2.Schema):
 		conflicts = append(conflicts, HeaderConflict{
 			Field: "Schema",
 			Doc1:  describeSchema(doc1.Schema),
@@ -334,9 +401,9 @@ func mergeDocMetadata(out, doc1, remappedDoc2 *gedcom.Document, conflicts []Head
 	// Vendor: prefer doc1's. Record a conflict if doc2's non-empty
 	// value differs.
 	switch {
-	case doc1.Vendor == "" && remappedDoc2.Vendor != "":
+	case doc1.Vendor == "" && remappedDoc2.Vendor != "" && !keepFirst:
 		out.Vendor = remappedDoc2.Vendor
-	case doc1.Vendor != "" && remappedDoc2.Vendor != "" && doc1.Vendor != remappedDoc2.Vendor:
+	case remappedDoc2.Vendor != "" && doc1.Vendor != remappedDoc2.Vendor:
 		conflicts = append(conflicts, HeaderConflict{
 			Field: "Vendor",
 			Doc1:  string(doc1.Vendor),
@@ -491,6 +558,11 @@ func findCollisions(ctx context.Context, doc1, doc2 *gedcom.Document) []string {
 // applyStrategy resolves collisions per opts.CollisionStrategy and
 // returns the remapped doc2 plus the full transform mapping (including
 // no-op entries — caller filters).
+//
+// For PrefixDoc2 and RenumberDoc2 a collision is also an XRef doc2 points at
+// but does not define (a dangling pointer) when doc1 defines it: renamed with
+// doc2's colliding records, the pointer stays dangling instead of resolving to
+// doc1's record. ErrorOnCollision compares records only.
 func applyStrategy(doc1, doc2 *gedcom.Document, collisions []string, opts CombineOptions) (*gedcom.Document, map[string]string, error) {
 	switch opts.CollisionStrategy {
 	case ErrorOnCollision:
@@ -509,8 +581,10 @@ func applyStrategy(doc1, doc2 *gedcom.Document, collisions []string, opts Combin
 		return applyPrefixStrategy(opts.Context, doc1, doc2, collisions, opts.Prefix, true)
 
 	case RenumberDoc2:
-		transform := renumberTransform(doc1, doc2, collisions)
-		out, mapping, err := remapXRefs(opts.Context, doc2, transform, nil)
+		dangling := danglingPointers(doc2)
+		collisions = append(collisions, definedIn(doc1, dangling)...)
+		transform := renumberTransform(doc1, doc2, collisions, dangling)
+		out, mapping, err := remapXRefs(opts.Context, doc2, transform, dangling)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -520,7 +594,9 @@ func applyStrategy(doc1, doc2 *gedcom.Document, collisions []string, opts Combin
 		// edit to renumberTransform introduces an off-by-one, this
 		// check surfaces it instead of letting silent referential
 		// corruption into the combined document.
-		if newCollisions := postRemapCollisions(doc1, out); len(newCollisions) > 0 {
+		newCollisions := postRemapCollisions(doc1, out)
+		newCollisions = append(newCollisions, danglingCollisions(doc1, dangling, mapping)...)
+		if len(newCollisions) > 0 {
 			return nil, nil, &CombineError{Kind: "renumber-collision", Colliding: newCollisions}
 		}
 		return out, mapping, nil
@@ -534,20 +610,21 @@ func applyStrategy(doc1, doc2 *gedcom.Document, collisions []string, opts Combin
 // (e.g. doc1 already had the prefixed name, or shares a non-pointer
 // XRef that cannot be renamed).
 //
-// When all is set, the XRefs doc2 points at but does not define are
-// prefixed as well. Left bare, such a dangling pointer would resolve to
-// the doc1 record of the same XRef once the documents are combined.
+// The XRefs doc2 points at but does not define are prefixed as well: every
+// one when all is set, the ones doc1 defines otherwise. Left bare, such a
+// dangling pointer would resolve to the doc1 record of the same XRef once the
+// documents are combined.
 func applyPrefixStrategy(ctx context.Context, doc1, doc2 *gedcom.Document, collisions []string, prefix string, all bool) (*gedcom.Document, map[string]string, error) {
 	if prefix == "" {
 		return nil, nil, &CombineError{Kind: "missing-prefix"}
 	}
+	dangling := danglingPointers(doc2)
 	collisionSet := make(map[string]bool, len(collisions))
 	for _, c := range collisions {
 		collisionSet[c] = true
 	}
-	var dangling []string
-	if all {
-		dangling = danglingPointers(doc2)
+	for _, c := range definedIn(doc1, dangling) {
+		collisionSet[c] = true
 	}
 	transform := prefixTransform(prefix, collisionSet, all)
 	out, mapping, err := remapXRefs(ctx, doc2, transform, dangling)
@@ -555,28 +632,45 @@ func applyPrefixStrategy(ctx context.Context, doc1, doc2 *gedcom.Document, colli
 		return nil, nil, err
 	}
 	newCollisions := postRemapCollisions(doc1, out)
-	// A prefixed dangling pointer must not land on a doc1 record either.
-	for _, old := range dangling {
-		if doc1.GetRecord(mapping[old]) != nil {
-			newCollisions = append(newCollisions, mapping[old])
-		}
-	}
+	newCollisions = append(newCollisions, danglingCollisions(doc1, dangling, mapping)...)
 	if len(newCollisions) > 0 {
 		return nil, nil, &CombineError{Kind: "prefix-collision", Colliding: newCollisions}
 	}
 	return out, mapping, nil
 }
 
+// definedIn returns, in order, the XRefs of xrefs that a record of doc
+// carries.
+func definedIn(doc *gedcom.Document, xrefs []string) []string {
+	defined := recordXRefs(doc)
+	var out []string
+	for _, x := range xrefs {
+		if defined[x] {
+			out = append(out, x)
+		}
+	}
+	return out
+}
+
+// danglingCollisions returns the XRefs the dangling pointers of doc2 were
+// mapped to that doc1 defines: a renamed dangling pointer must not land on a
+// doc1 record either.
+func danglingCollisions(doc1 *gedcom.Document, dangling []string, mapping map[string]string) []string {
+	defined := recordXRefs(doc1)
+	var out []string
+	for _, old := range dangling {
+		if defined[mapping[old]] {
+			out = append(out, mapping[old])
+		}
+	}
+	return out
+}
+
 // danglingPointers returns, sorted, the XRefs that doc's records and header
 // point at and no record of doc defines. Pointers are found as
 // gedcom.VisitForVersion finds them under the version doc declares.
 func danglingPointers(doc *gedcom.Document) []string {
-	defined := make(map[string]bool, len(doc.Records))
-	for _, r := range doc.Records {
-		if r != nil && r.XRef != "" {
-			defined[r.XRef] = true
-		}
-	}
+	defined := recordXRefs(doc)
 	var version gedcom.Version
 	if doc.Header != nil {
 		version = doc.Header.DeclaredVersion
@@ -602,6 +696,17 @@ func danglingPointers(doc *gedcom.Document) []string {
 	}
 	slices.Sort(dangling)
 	return dangling
+}
+
+// recordXRefs returns the set of non-empty XRefs doc's records carry.
+func recordXRefs(doc *gedcom.Document) map[string]bool {
+	set := make(map[string]bool, len(doc.Records))
+	for _, r := range doc.Records {
+		if r != nil && r.XRef != "" {
+			set[r.XRef] = true
+		}
+	}
+	return set
 }
 
 // postRemapCollisions returns any XRefs in remapped that now collide
@@ -659,8 +764,10 @@ func prefixTransform(prefix string, collisions map[string]bool, all bool) func(s
 //
 // For each colliding record we look up its RecordType in doc2 and
 // pick the next sequential number for that letter, starting at
-// max(doc1ID, doc2ID) + 1 to avoid producing another collision.
-func renumberTransform(doc1, doc2 *gedcom.Document, collisions []string) func(string) string {
+// max(doc1ID, doc2ID) + 1 to avoid producing another collision. The numeric
+// XRefs in dangling, which doc2 points at without defining, seed the counters
+// too, so a renumbered record never takes the name of a dangling pointer.
+func renumberTransform(doc1, doc2 *gedcom.Document, collisions, dangling []string) func(string) string {
 	// Map RecordType → letter prefix used in XRef bodies.
 	typePrefix := map[gedcom.RecordType]string{
 		gedcom.RecordTypeIndividual: "I",
@@ -677,22 +784,24 @@ func renumberTransform(doc1, doc2 *gedcom.Document, collisions []string) func(st
 	// prefix. Seed from doc1 AND doc2's existing numeric XRefs so we
 	// never collide with anything already present.
 	counters := make(map[string]int)
+	seed := func(xref string) {
+		p, n, ok := extractIDNumber(xref)
+		if ok && n >= counters[p] {
+			counters[p] = n + 1
+		}
+	}
 	seedCounters := func(d *gedcom.Document) {
 		for _, r := range d.Records {
-			if r == nil || r.XRef == "" {
-				continue
-			}
-			p, n, ok := extractIDNumber(r.XRef)
-			if !ok {
-				continue
-			}
-			if n >= counters[p] {
-				counters[p] = n + 1
+			if r != nil && r.XRef != "" {
+				seed(r.XRef)
 			}
 		}
 	}
 	seedCounters(doc1)
 	seedCounters(doc2)
+	for _, x := range dangling {
+		seed(x)
+	}
 
 	// Build a record-type lookup keyed by doc2 XRef so the transform
 	// closure can pick the right prefix per colliding XRef.
@@ -805,7 +914,7 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 	}
 
 	out := h1.Clone()
-	conflicts := mergeScalarHeaderFields(out, h1, h2)
+	conflicts := mergeScalarHeaderFields(out, h1, h2, false)
 
 	// Date: prefer h1's. If h1 has no Date and h2 has one, adopt h2's
 	// silently. No typed "Date" conflict is recorded, because transmission
@@ -865,6 +974,85 @@ func mergeHeaders(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 	mergeTypedPlaceForm(out, h1, h2)
 
 	return out, conflicts
+}
+
+// keepFirstHeader returns doc1's header alone, for
+// CombineOptions.KeepFirstHeader: a clone of h1 that takes nothing of h2's
+// but an empty Version or DeclaredVersion (see mergeScalarHeaderFields), and
+// a conflict for each level-1 structure of h2's Tags and each typed value of
+// h2's that differs from h1's. h1 nil counts as an empty header, and h2 nil
+// as nothing to drop.
+func keepFirstHeader(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
+	if h2 == nil {
+		return h1.Clone(), nil
+	}
+	if h1 == nil {
+		h1 = &gedcom.Header{}
+	}
+	out := h1.Clone()
+	conflicts := mergeScalarHeaderFields(out, h1, h2, true)
+	for _, f := range []struct{ name, v1, v2 string }{
+		{"Date", h1.Date, h2.Date},
+		{"Submitter", h1.Submitter, h2.Submitter},
+		{"PlaceForm", h1.PlaceForm, h2.PlaceForm},
+	} {
+		if f.v2 != "" && f.v1 != f.v2 {
+			conflicts = append(conflicts, HeaderConflict{Field: f.name, Doc1: f.v1, Doc2: f.v2})
+		}
+	}
+	conflicts = append(conflicts, droppedHeaderViews(h1, h2)...)
+	for _, t := range h2.Tags {
+		if t == nil || t.Level != 1 {
+			continue
+		}
+		kept := ""
+		if hasLevel1HeaderTag(h1.Tags, t.Tag) {
+			kept = "kept"
+		}
+		conflicts = append(conflicts, HeaderConflict{
+			Field: "Tags." + t.Tag,
+			Doc1:  kept,
+			Doc2:  "dropped (KeepFirstHeader keeps doc1's header alone)",
+		})
+	}
+	return out, conflicts
+}
+
+// droppedHeaderViews returns a conflict for each typed view of a doc2 header
+// substructure (SourceVersion, SourceName, SourceCorporation, SourceData,
+// Destination, Time) that differs from h1's while h2's Tags have no level-1
+// structure to hold it, as in a header built in code. A view whose structure
+// h2's Tags carry is reported with that structure, as "Tags.<TAG>".
+func droppedHeaderViews(h1, h2 *gedcom.Header) []HeaderConflict {
+	var conflicts []HeaderConflict
+	add := func(holder, field, v1, v2 string, differs bool) {
+		if differs && !hasLevel1HeaderTag(h2.Tags, holder) {
+			conflicts = append(conflicts, HeaderConflict{Field: field, Doc1: v1, Doc2: v2})
+		}
+	}
+	for _, f := range []struct{ holder, name, v1, v2 string }{
+		{"SOUR", "SourceVersion", h1.SourceVersion, h2.SourceVersion},
+		{"SOUR", "SourceName", h1.SourceName, h2.SourceName},
+		{"DEST", "Destination", h1.Destination, h2.Destination},
+		{"DATE", "Time", h1.Time, h2.Time},
+	} {
+		add(f.holder, f.name, f.v1, f.v2, f.v2 != "" && f.v1 != f.v2)
+	}
+	if c2 := h2.SourceCorporation; c2 != nil {
+		v1 := ""
+		if h1.SourceCorporation != nil {
+			v1 = h1.SourceCorporation.Name
+		}
+		add("SOUR", "SourceCorporation", v1, c2.Name, !reflect.DeepEqual(h1.SourceCorporation, c2))
+	}
+	if d2 := h2.SourceData; d2 != nil {
+		v1 := ""
+		if h1.SourceData != nil {
+			v1 = h1.SourceData.Name
+		}
+		add("SOUR", "SourceData", v1, d2.Name, !reflect.DeepEqual(h1.SourceData, d2))
+	}
+	return conflicts
 }
 
 // mergeTypedPlaceForm settles a default place form that lives only in a typed
@@ -1045,7 +1233,11 @@ func appendNonCollidingHeaderTags(out, h2 *gedcom.Header, occupied map[string]bo
 // (which is expected to be a clone of h1) and returns the list of
 // recorded conflicts. Extracted from mergeHeaders to keep cyclomatic
 // complexity manageable.
-func mergeScalarHeaderFields(out, h1, h2 *gedcom.Header) []HeaderConflict {
+//
+// keepFirst (CombineOptions.KeepFirstHeader) promotes only Version and
+// DeclaredVersion; any other non-empty h2 value that differs from h1's,
+// empty or not, is recorded as a conflict.
+func mergeScalarHeaderFields(out, h1, h2 *gedcom.Header, keepFirst bool) []HeaderConflict {
 	var conflicts []HeaderConflict
 
 	// Each entry knows its name, the two string values to compare,
@@ -1057,8 +1249,10 @@ func mergeScalarHeaderFields(out, h1, h2 *gedcom.Header) []HeaderConflict {
 		v1   string
 		v2   string
 		set  func()
+		// version marks the fields keepFirst still promotes.
+		version bool
 	}{
-		{"Version", string(h1.Version), string(h2.Version), func() { out.Version = h2.Version }},
+		{"Version", string(h1.Version), string(h2.Version), func() { out.Version = h2.Version }, true},
 		// DeclaredVersion selects the pointer grammar (Document.IsPointerXRef).
 		// Promoting doc2's when doc1 declares none keeps doc2's spaced
 		// 5.5/5.5.1 pointers recognized in the combined document (#591);
@@ -1071,17 +1265,17 @@ func mergeScalarHeaderFields(out, h1, h2 *gedcom.Header) []HeaderConflict {
 			if !hasLevel1HeaderTag(h1.Tags, "GEDC") {
 				out.DeclaredVersion = h2.DeclaredVersion
 			}
-		}},
-		{"Encoding", string(h1.Encoding), string(h2.Encoding), func() { out.Encoding = h2.Encoding }},
-		{"SourceSystem", h1.SourceSystem, h2.SourceSystem, func() { out.SourceSystem = h2.SourceSystem }},
-		{"Language", h1.Language, h2.Language, func() { out.Language = h2.Language }},
-		{"Copyright", h1.Copyright, h2.Copyright, func() { out.Copyright = h2.Copyright }},
-		{"AncestryTreeID", h1.AncestryTreeID, h2.AncestryTreeID, func() { out.AncestryTreeID = h2.AncestryTreeID }},
+		}, true},
+		{"Encoding", string(h1.Encoding), string(h2.Encoding), func() { out.Encoding = h2.Encoding }, false},
+		{"SourceSystem", h1.SourceSystem, h2.SourceSystem, func() { out.SourceSystem = h2.SourceSystem }, false},
+		{"Language", h1.Language, h2.Language, func() { out.Language = h2.Language }, false},
+		{"Copyright", h1.Copyright, h2.Copyright, func() { out.Copyright = h2.Copyright }, false},
+		{"AncestryTreeID", h1.AncestryTreeID, h2.AncestryTreeID, func() { out.AncestryTreeID = h2.AncestryTreeID }, false},
 	}
 	for _, f := range fields {
 		// If h1 is empty and h2 is non-empty, promote h2's value
 		// silently — there's no real conflict.
-		if f.v1 == "" && f.v2 != "" {
+		if f.v1 == "" && f.v2 != "" && (!keepFirst || f.version) {
 			f.set()
 			continue
 		}
