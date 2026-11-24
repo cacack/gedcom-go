@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
@@ -25,6 +26,31 @@ type RecordMergeOptions struct {
 	// merge returns a nil document and report and the context's error
 	// wrapped. The zero value (nil) means no cancellation.
 	Context context.Context
+
+	// FoldEvents folds a substructure of drop into the substructure of keep
+	// that records the same event, instead of adding it beside it. Two
+	// level-1 substructures record the same event when they have the same
+	// tag and value, each has exactly one DATE line and at most one PLAC
+	// line directly under it, the two DATE values parse with
+	// gedcom.ParseDate to the same date, and the two PLAC values are equal
+	// or at most one of them has a PLAC. The same date means every parsed field
+	// but Original is equal: "7 DEC 1977" and "07 Dec 1977" are the same,
+	// "ABT 1977" and "1977" are not, nor are one date in two calendars, and
+	// a DATE that does not parse or is a date phrase is the same as none.
+	//
+	// Folding keeps keep's lines and adds each line directly under drop's
+	// substructure that keep's does not hold identically (its citations,
+	// notes, a place keep lacks), after keep's last line with that tag.
+	// drop's DATE and PLAC are matched with keep's instead of added; the
+	// lines under them are added under keep's DATE and PLAC the same way.
+	// No other policy applies: a second TYPE that differs from keep's is
+	// added, and the validator reports it.
+	//
+	// drop's substructure folds into the first substructure keep held before
+	// the merge that records the same event. One identical to a substructure
+	// keep holds is deduplicated, as without FoldEvents. Each fold is listed
+	// in RecordMergeReport.Folded. The zero value (false) folds nothing.
+	FoldEvents bool
 }
 
 // RecordMergeReport describes what Individuals or Families did. It is nil
@@ -37,6 +63,10 @@ type RecordMergeReport struct {
 	// Deduplicated lists Drop's substructures that were not moved because
 	// Keep already held one with the same lines.
 	Deduplicated []Substructure
+	// Folded lists Drop's substructures folded into one of Keep's that
+	// records the same event (see RecordMergeOptions.FoldEvents), in Drop's
+	// order. It is empty unless FoldEvents is set.
+	Folded []Fold
 	// Repointed lists every pointer that named Drop and now names Keep, as
 	// gedcom.Document.RemoveRecord reports them (Reference.XRef is "" for
 	// the header).
@@ -55,6 +85,15 @@ type Substructure struct {
 	Tags []*gedcom.Tag
 }
 
+// Fold is one substructure of drop folded into one of keep. Drop is drop's
+// substructure as it was, repointed; its lines Into already held, and its
+// DATE and PLAC lines, are not in the merged document. Into is keep's
+// substructure after every fold into it, and its tags are those of the
+// merged document.
+type Fold struct {
+	Drop, Into Substructure
+}
+
 // Individuals returns a copy of doc with the individual drop merged into
 // the individual keep. Deciding that the two describe one person is the
 // caller's job; Individuals does the bookkeeping:
@@ -63,8 +102,10 @@ type Substructure struct {
 //     citations, notes, media links, vendor tags) is added under keep,
 //     after keep's last substructure with the same tag, or at the end. One
 //     identical, line for line, to a substructure keep already holds is not
-//     added. No other policy applies: a second SEX that differs from
-//     keep's is added, and the validator reports it.
+//     added, and with RecordMergeOptions.FoldEvents one that records the
+//     same event as one of keep's is folded into it. No other policy
+//     applies: a second SEX that differs from keep's is added, and the
+//     validator reports it.
 //   - Every pointer to drop anywhere in the document, in typed fields and
 //     raw Tags alike (FAMS, FAMC, HUSB, WIFE, CHIL, ASSO, ALIA, vendor
 //     tags), is rewritten to name keep, except a level-1 line that would
@@ -143,20 +184,40 @@ func mergeRecords(doc *gedcom.Document, typ gedcom.RecordType, keep, drop string
 	// repointed separately, before its substructures move under keep.
 	gedcom.Apply(&gedcom.Document{Header: out.Header, Records: []*gedcom.Record{dropRec}}, mapping)
 
-	roots := buildTree(keepRec.Tags)
-	for _, n := range buildTree(dropRec.Tags) {
+	keepRec.Tags = mergeSubstructures(keepRec.Tags, dropRec.Tags, opts.FoldEvents, report)
+
+	decoder.SyncEntities(&gedcom.Document{Header: out.Header, Records: synced})
+	return out, report, nil
+}
+
+// mergeSubstructures returns keep's lines with each level-1 substructure of
+// drop deduplicated, folded (when fold is set) or moved under them, and
+// records which in report.
+func mergeSubstructures(keep, drop []*gedcom.Tag, fold bool, report *RecordMergeReport) []*gedcom.Tag {
+	roots := buildTree(keep)
+	keepRoots := slices.Clone(roots)
+	var into []*node // into[i] is the keep substructure of report.Folded[i]
+	for _, n := range buildTree(drop) {
 		sub := Substructure{Tags: flatten([]*node{n}, nil)}
 		if slices.ContainsFunc(roots, func(k *node) bool { return sameTree(k, n, nil) }) {
 			report.Deduplicated = append(report.Deduplicated, sub)
 			continue
 		}
+		if fold {
+			if i := slices.IndexFunc(keepRoots, func(k *node) bool { return sameEvent(k, n) }); i >= 0 {
+				foldEvent(keepRoots[i], n)
+				report.Folded = append(report.Folded, Fold{Drop: sub})
+				into = append(into, keepRoots[i])
+				continue
+			}
+		}
 		roots = insertAfterLastSameTag(roots, n)
 		report.Moved = append(report.Moved, sub)
 	}
-	keepRec.Tags = flatten(roots, nil)
-
-	decoder.SyncEntities(&gedcom.Document{Header: out.Header, Records: synced})
-	return out, report, nil
+	for i, k := range into {
+		report.Folded[i].Into = Substructure{Tags: flatten([]*node{k}, nil)}
+	}
+	return flatten(roots, nil)
 }
 
 // checkMerge reports why keep and drop, both of type typ, cannot be merged
@@ -256,6 +317,79 @@ func sameTree(a, b *node, norm func(string) string) bool {
 		}
 	}
 	return true
+}
+
+// sameEvent reports whether keep's substructure k and drop's substructure d
+// record the same event, as RecordMergeOptions.FoldEvents defines it.
+func sameEvent(k, d *node) bool {
+	if k.tag.Tag != d.tag.Tag || k.tag.Value != d.tag.Value {
+		return false
+	}
+	kDate, kOK := onlyChild(k, "DATE")
+	dDate, dOK := onlyChild(d, "DATE")
+	if !kOK || !dOK || kDate == nil || dDate == nil || !sameDate(kDate.tag.Value, dDate.tag.Value) {
+		return false
+	}
+	kPlac, kOK := onlyChild(k, "PLAC")
+	dPlac, dOK := onlyChild(d, "PLAC")
+	return kOK && dOK && (kPlac == nil || dPlac == nil || kPlac.tag.Value == dPlac.tag.Value)
+}
+
+// onlyChild returns n's child with tag, or nil when it has none; ok is
+// false when it has more than one.
+func onlyChild(n *node, tag string) (child *node, ok bool) {
+	for _, c := range n.children {
+		if c.tag.Tag != tag {
+			continue
+		}
+		if child != nil {
+			return nil, false
+		}
+		child = c
+	}
+	return child, true
+}
+
+// sameDate reports whether two DATE values parse to the same date: every
+// parsed field but Original equal. A value that does not parse, or is a
+// date phrase, is the same as none.
+func sameDate(a, b string) bool {
+	da, errA := gedcom.ParseDate(a)
+	db, errB := gedcom.ParseDate(b)
+	if errA != nil || errB != nil || da.IsPhrase || db.IsPhrase {
+		return false
+	}
+	for _, d := range []*gedcom.Date{da, db} {
+		for ; d != nil; d = d.EndDate {
+			d.Original = ""
+		}
+	}
+	return reflect.DeepEqual(da, db)
+}
+
+// foldEvent adds to k each child of d that k does not hold identically.
+// d's DATE and PLAC are matched with k's instead, and their children added
+// under k's the same way; d's PLAC is added whole when k has none.
+func foldEvent(k, d *node) {
+	for _, c := range d.children {
+		if c.tag.Tag == "DATE" || c.tag.Tag == "PLAC" {
+			if kc, _ := onlyChild(k, c.tag.Tag); kc != nil {
+				for _, cc := range c.children {
+					addMissing(kc, cc)
+				}
+				continue
+			}
+		}
+		addMissing(k, c)
+	}
+}
+
+// addMissing adds c under parent, after parent's last child with c's tag,
+// unless parent already holds a child with the same lines.
+func addMissing(parent, c *node) {
+	if !slices.ContainsFunc(parent.children, func(x *node) bool { return sameTree(x, c, nil) }) {
+		parent.children = insertAfterLastSameTag(parent.children, c)
+	}
 }
 
 // insertAfterLastSameTag inserts n after the last of roots with n's tag, so
