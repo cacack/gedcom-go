@@ -90,6 +90,12 @@ type MediaObject struct {
 	// Files contains 1:M file references (required, at least one)
 	Files []*MediaFile `json:",omitempty"`
 
+	// Form is the format written beside FILE rather than under it (a level-1
+	// FORM, the GEDCOM 5.5 record layout). Empty in the 5.5.1 and 7.0 layout,
+	// where each file carries its own MediaFile.Form. A record written from
+	// its entity writes it at level 1 in every output version.
+	Form string `json:",omitempty"`
+
 	// NoteXRefs are XRef pointers to shared note records (e.g. "@N1@") carried
 	// by NOTE tags. SNOTE pointers are tracked separately in SharedNoteXRefs;
 	// the two slices partition this record's note pointers and never overlap.
@@ -112,6 +118,12 @@ type MediaObject struct {
 
 	// SourceCitations are source citations with page/quality details
 	SourceCitations []*SourceCitation `json:",omitempty"`
+
+	// Title is the title written beside FILE rather than under it (a level-1
+	// TITL, the GEDCOM 5.5 record layout). Empty in the 5.5.1 and 7.0 layout,
+	// where each file carries its own MediaFile.Title. A record written from
+	// its entity writes it at level 1 in every output version.
+	Title string `json:",omitempty"`
 
 	// Tags contains all raw tags for this media object (for unknown/custom tags),
 	// a lossless read-side record per ADR 0003. While Record.Tags is non-empty

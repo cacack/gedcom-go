@@ -225,3 +225,62 @@ func TestInlineMediaLinkCorpus(t *testing.T) {
 		})
 	}
 }
+
+// TestMediaRecord55LayoutTitleAndForm pins issue #879: an OBJE record's
+// level-1 TITL and FORM (the 5.5 layout, beside FILE) reach the record's own
+// Title and Form, and the FILE-level ones stay on the file.
+func TestMediaRecord55LayoutTitleAndForm(t *testing.T) {
+	const body = `0 @O1@ OBJE
+1 FORM jpeg
+1 TITL Old style
+1 FILE x.jpg
+0 @O2@ OBJE
+1 FILE y.jpg
+2 FORM jpeg
+2 TITL New style`
+
+	tests := []struct {
+		vers        string
+		wantUnknown []string
+	}{
+		{vers: "5.5"},
+		// Outside 5.5 the level-1 pair is still reported (#730).
+		{vers: "5.5.1", wantUnknown: []string{
+			"line 5: FORM is not allowed under OBJE",
+			"line 6: TITL is not allowed under OBJE",
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.vers, func(t *testing.T) {
+			result := decodeInlineMediaDoc(t, tt.vers, body)
+
+			old := result.Document.GetMediaObject("@O1@")
+			if old == nil {
+				t.Fatal("@O1@ not decoded")
+			}
+			if old.Title != "Old style" || old.Form != "jpeg" {
+				t.Errorf("@O1@ Title, Form = %q, %q, want %q, %q", old.Title, old.Form, "Old style", "jpeg")
+			}
+			wantFiles := []*gedcom.MediaFile{{FileRef: "x.jpg"}}
+			if !reflect.DeepEqual(old.Files, wantFiles) {
+				t.Errorf("@O1@ Files = %+v, want only the FileRef", old.Files[0])
+			}
+
+			current := result.Document.GetMediaObject("@O2@")
+			if current == nil {
+				t.Fatal("@O2@ not decoded")
+			}
+			if current.Title != "" || current.Form != "" {
+				t.Errorf("@O2@ Title, Form = %q, %q, want both empty", current.Title, current.Form)
+			}
+			wantFiles = []*gedcom.MediaFile{{FileRef: "y.jpg", Form: "jpeg", Title: "New style"}}
+			if !reflect.DeepEqual(current.Files, wantFiles) {
+				t.Errorf("@O2@ Files = %+v, want %+v", current.Files[0], wantFiles[0])
+			}
+
+			if got := unknownTagMessages(result.Diagnostics); !reflect.DeepEqual(got, tt.wantUnknown) {
+				t.Errorf("UNKNOWN_TAG/MISPLACED_TAG = %q, want %q", got, tt.wantUnknown)
+			}
+		})
+	}
+}

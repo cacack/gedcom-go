@@ -751,6 +751,15 @@ func mediaObjectToTags(media *gedcom.MediaObject, opts *EncodeOptions) []*gedcom
 
 	var tags []*gedcom.Tag
 
+	// Record-level format and title (level 1) - FORM, TITL: the 5.5 record
+	// layout, written beside FILE where it was read.
+	if media.Form != "" {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "FORM", Value: opts.text(media.Form)})
+	}
+	if media.Title != "" {
+		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "TITL", Value: opts.text(media.Title)})
+	}
+
 	// Files (level 1) - FILE. A 5.5/5.5.1 record writes the media type as
 	// FORM.TYPE where the link and 7.0 write FORM.MEDI.
 	mediaTypeTag := "MEDI"

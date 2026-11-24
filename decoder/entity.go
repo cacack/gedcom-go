@@ -2364,9 +2364,16 @@ func parseMediaObject(record *gedcom.Record, collector *diagnosticCollector) *ge
 			// Known tag not yet parsed into a typed field; the raw tag remains
 			// on MediaObject.Tags (ADR 0003) (#730).
 		case "FORM", "TITL", "BLOB", "OBJE":
-			// The 5.5 record layout, which 5.5.1 moved under FILE: kept raw
-			// on MediaObject.Tags, and reported in a document declaring
-			// another version (#730).
+			// The 5.5 record layout, which 5.5.1 moved under FILE: reported
+			// in a document declaring another version (#730). FORM and TITL
+			// fill the record's own Form and Title (#879); BLOB and OBJE
+			// stay raw on MediaObject.Tags.
+			switch tag.Tag {
+			case "FORM":
+				media.Form = collector.text(tag.Value)
+			case "TITL":
+				media.Title = collector.text(tag.Value)
+			}
 			collector.addUnknownTagOutside55(tag)
 		default:
 			if !strings.HasPrefix(tag.Tag, "_") {

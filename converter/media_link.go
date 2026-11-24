@@ -578,11 +578,24 @@ func shiftLevels(tags []*gedcom.Tag, delta int) []*gedcom.Tag {
 // (it embeds a BLOB), but producers commonly write one beside the 5.5 FORM
 // and TITL; 7.0 holds both under the FILE, and dropForeignStructures would
 // otherwise remove them as 5.5-only record structures. A record with no
-// level-1 FILE, or no level-1 FORM or TITL, is left alone. Each move is a
+// level-1 FILE, or no level-1 FORM or TITL, is left alone. A record with no
+// Tags has its MediaObject entity rewritten instead. Each move is a
 // Normalized note.
 func nestMediaRecordForms(doc *gedcom.Document, report *gedcom.ConversionReport) {
 	for _, record := range doc.Records {
 		if record == nil || record.Type != gedcom.RecordTypeMedia {
+			continue
+		}
+		if len(record.Tags) == 0 {
+			if !nestMediaEntityForms(record) {
+				continue
+			}
+			report.AddNormalized(gedcom.ConversionNote{
+				Path:     BuildNestedPath(string(record.Type), record.XRef, "FILE"),
+				Original: "OBJE record FORM/TITL beside FILE",
+				Result:   "FORM/TITL under FILE",
+				Reason:   "GEDCOM 7.0 gives a file's format and title under its FILE",
+			})
 			continue
 		}
 		var hasFile, hasForm bool
@@ -603,4 +616,26 @@ func nestMediaRecordForms(doc *gedcom.Document, report *gedcom.ConversionReport)
 			Reason:   "GEDCOM 7.0 gives a file's format and title under its FILE",
 		})
 	}
+}
+
+// nestMediaEntityForms moves the record-level Form and Title of the record's
+// MediaObject entity to its first file, each only where that file has none of
+// its own, and reports whether it moved either. An entity with no file is
+// left alone.
+func nestMediaEntityForms(record *gedcom.Record) bool {
+	media, ok := record.GetMediaObject()
+	if !ok || media == nil || len(media.Files) == 0 || media.Files[0] == nil {
+		return false
+	}
+	first := media.Files[0]
+	moved := false
+	if media.Form != "" && first.Form == "" {
+		first.Form, media.Form = media.Form, ""
+		moved = true
+	}
+	if media.Title != "" && first.Title == "" {
+		first.Title, media.Title = media.Title, ""
+		moved = true
+	}
+	return moved
 }

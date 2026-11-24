@@ -218,3 +218,30 @@ func TestMediaRecordTypeWrittenForOutputVersion(t *testing.T) {
 		})
 	}
 }
+
+// Issue #879: an OBJE record's level-1 FORM and TITL (the 5.5 layout) are
+// typed as MediaObject.Form and Title, and written back where they were read.
+const mediaRecordLayouts = "0 HEAD\n1 GEDC\n2 VERS 5.5\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" +
+	"0 @O1@ OBJE\n1 FORM jpeg\n1 TITL Old style\n1 FILE x.jpg\n" +
+	"0 @O2@ OBJE\n1 FILE y.jpg\n2 FORM jpeg\n2 TITL New style\n0 TRLR\n"
+
+// TestMediaRecordLayoutsRoundTrip: decode -> encode is byte-identical for
+// both record layouts.
+func TestMediaRecordLayoutsRoundTrip(t *testing.T) {
+	if got := encodeToString(t, decodeGEDCOM(t, mediaRecordLayouts)); got != mediaRecordLayouts {
+		t.Errorf("round trip changed the document:\n got %q\nwant %q", got, mediaRecordLayouts)
+	}
+}
+
+// TestMediaRecordLayoutsEntityRoundTrip: decode -> clear Tags -> encode keeps
+// each record's title and format at the level it was read from.
+func TestMediaRecordLayoutsEntityRoundTrip(t *testing.T) {
+	doc := decodeGEDCOM(t, mediaRecordLayouts)
+	clearRecordTags(doc)
+	out := encodeToString(t, doc)
+	want := "0 @O1@ OBJE\n1 FORM jpeg\n1 TITL Old style\n1 FILE x.jpg\n" +
+		"0 @O2@ OBJE\n1 FILE y.jpg\n2 FORM jpeg\n2 TITL New style\n0 TRLR\n"
+	if !strings.Contains(out, want) {
+		t.Errorf("want\n%s\ngot:\n%s", want, out)
+	}
+}

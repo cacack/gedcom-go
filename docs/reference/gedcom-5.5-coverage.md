@@ -179,9 +179,9 @@ specification PDFs, which is described in
 
 | Status | 5.5 | Share | 5.5.1 | Share | Meaning |
 |--------|------:|------:|------:|------:|---------|
-| typed | 926 | 92.8% | 1238 | 94.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
+| typed | 928 | 93.0% | 1238 | 94.1% | Decoded into the typed model; reachable without walking `Record.Tags`. |
 | partial | 0 | 0.0% | 0 | 0.0% | Reaches the typed model but is still reported as an unknown tag. |
-| raw (accepted) | 65 | 6.5% | 74 | 5.6% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
+| raw (accepted) | 63 | 6.3% | 74 | 5.6% | Raw tags only. The decoder reads this context and knows the tag, but has no typed field for it. |
 | raw (flagged) | 0 | 0.0% | 0 | 0.0% | Raw tags only. The decoder reads this context and reports the tag as unknown. |
 | raw (undiagnosed) | 7 | 0.7% | 4 | 0.3% | Raw tags only, and no unknown-tag diagnostic is emitted anywhere in this context, so the silence says nothing. |
 | **total** | **998** | 100.0% | **1316** | 100.0% | |
@@ -197,7 +197,7 @@ pairs under it reach the typed model.
 | `HEAD` | 20 / 28 | 25 / 33 |
 | `INDI` | 610 / 625 | 831 / 855 |
 | `NOTE` | 8 / 9 | 8 / 9 |
-| `OBJE` | 6 / 12 | 12 / 13 |
+| `OBJE` | 8 / 12 | 12 / 13 |
 | `REPO` | 16 / 17 | 20 / 21 |
 | `SOUR` | 33 / 34 | 33 / 34 |
 | `SUBM` | 6 / 10 | 9 / 15 |
@@ -2098,7 +2098,7 @@ Measured at `OBJE` in 5.5, 5.5.1.
 | `BLOB` | `MULTIMEDIA_RECORD.OBJE.BLOB` | raw (accepted) | — | `{1:1}` |
 | `CHAN` | `CHANGE_DATE.CHAN` | typed | typed | `{0:1}` |
 | `FILE` | `MULTIMEDIA_RECORD.OBJE.FILE` | — | typed | `{1:M}` |
-| `FORM` | `MULTIMEDIA_RECORD.OBJE.FORM` | raw (accepted) | — | `{1:1}` |
+| `FORM` | `MULTIMEDIA_RECORD.OBJE.FORM` | typed | — | `{1:1}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE` | typed | typed | `{0:M}` |
 | `NOTE` | `NOTE_STRUCTURE.NOTE#2` | typed | typed | `{0:M}` |
 | `OBJE` | `MULTIMEDIA_RECORD.OBJE.OBJE` | raw (accepted) | — | `{0:1}` |
@@ -2106,7 +2106,7 @@ Measured at `OBJE` in 5.5, 5.5.1.
 | `RIN` | `MULTIMEDIA_RECORD.OBJE.RIN` | raw (accepted) | raw (accepted) | `{0:1}` |
 | `SOUR` | `SOURCE_CITATION.SOUR` | — | typed | `{0:M}` |
 | `SOUR` | `SOURCE_CITATION.SOUR#2` | — | typed | `{0:M}` |
-| `TITL` | `MULTIMEDIA_RECORD.OBJE.TITL` | raw (accepted) | — | `{0:1}` |
+| `TITL` | `MULTIMEDIA_RECORD.OBJE.TITL` | typed | — | `{0:1}` |
 
 ### `MULTIMEDIA_RECORD.OBJE.BLOB`
 
