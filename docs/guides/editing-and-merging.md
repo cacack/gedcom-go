@@ -318,10 +318,11 @@ What happens:
 - **With `FoldEvents`, the same event is written once.** Set
   `RecordMergeOptions.FoldEvents` and a structure of `drop` with the tag, value
   and date of one of `keep`'s (dates compared as parsed, so `7 DEC 1977` is
-  `07 Dec 1977`), and the same place or a place at most one of them has, is folded
+  `07 Dec 1977`), the same `TYPE` if any, and the same place or a place only
+  one of them has, is folded
   into it: `keep`'s lines stay, and `drop`'s citations, notes and other lines
-  `keep`'s lacks are added. A structure without a `DATE`, or whose date or place
-  differs, is added as before. `report.Folded` lists each fold.
+  `keep`'s lacks are added. A structure without a valid `DATE`, or whose date,
+  time, place or `TYPE` differs, is added as before. `report.Folded` lists each fold.
 - **Every pointer to `drop` now names `keep`**, in families, associations and
   vendor tags alike. A level-1 line that would then repeat a sibling exactly,
   such as the second `CHIL` of a family that listed both individuals, is

@@ -31,20 +31,26 @@ type RecordMergeOptions struct {
 	// that records the same event, instead of adding it beside it. Two
 	// level-1 substructures record the same event when they have the same
 	// tag and value, each has exactly one DATE line and at most one PLAC
-	// line directly under it, the two DATE values parse with
-	// gedcom.ParseDate to the same date, and the two PLAC values are equal
-	// or at most one of them has a PLAC. The same date means every parsed field
-	// but Original is equal: "7 DEC 1977" and "07 Dec 1977" are the same,
-	// "ABT 1977" and "1977" are not, nor are one date in two calendars, and
-	// a DATE that does not parse or is a date phrase is the same as none.
+	// and one TYPE line directly under it, and:
+	//   - the two DATE values parse with gedcom.ParseDate to the same date
+	//     and pass Date.Validate. The same date means every parsed field but
+	//     Original is equal: "7 DEC 1977" and "07 Dec 1977" are the same,
+	//     "ABT 1977" and "1977" are not, nor are one date in two calendars.
+	//     A DATE that does not parse, fails Validate ("32 DEC 1977") or is a
+	//     date phrase is the same as none;
+	//   - each DATE has at most one TIME and one PHRASE line under it, and
+	//     where both have one the values are equal;
+	//   - the two PLAC values are equal, or only one of them has a PLAC;
+	//   - the two TYPE values are equal, or neither has a TYPE: the TYPE of
+	//     an EVEN, FACT or IDNO says which event or fact it is, so two
+	//     events of differing TYPE are different events.
 	//
 	// Folding keeps keep's lines and adds each line directly under drop's
 	// substructure that keep's does not hold identically (its citations,
 	// notes, a place keep lacks), after keep's last line with that tag.
 	// drop's DATE and PLAC are matched with keep's instead of added; the
-	// lines under them are added under keep's DATE and PLAC the same way.
-	// No other policy applies: a second TYPE that differs from keep's is
-	// added, and the validator reports it.
+	// lines under them are added under keep's DATE and PLAC the same way,
+	// so a TIME or PHRASE only drop's DATE has is added to keep's.
 	//
 	// drop's substructure folds into the first substructure keep held before
 	// the merge that records the same event. One identical to a substructure
@@ -330,9 +336,18 @@ func sameEvent(k, d *node) bool {
 	if !kOK || !dOK || kDate == nil || dDate == nil || !sameDate(kDate.tag.Value, dDate.tag.Value) {
 		return false
 	}
-	kPlac, kOK := onlyChild(k, "PLAC")
-	dPlac, dOK := onlyChild(d, "PLAC")
-	return kOK && dOK && (kPlac == nil || dPlac == nil || kPlac.tag.Value == dPlac.tag.Value)
+	kType, _ := onlyChild(k, "TYPE")
+	dType, _ := onlyChild(d, "TYPE")
+	return agree(kDate, dDate, "TIME") && agree(kDate, dDate, "PHRASE") &&
+		agree(k, d, "PLAC") && agree(k, d, "TYPE") && (kType == nil) == (dType == nil)
+}
+
+// agree reports whether k and d each have at most one child with tag and,
+// when both have one, the two values are equal.
+func agree(k, d *node, tag string) bool {
+	kc, kOK := onlyChild(k, tag)
+	dc, dOK := onlyChild(d, tag)
+	return kOK && dOK && (kc == nil || dc == nil || kc.tag.Value == dc.tag.Value)
 }
 
 // onlyChild returns n's child with tag, or nil when it has none; ok is
@@ -351,12 +366,12 @@ func onlyChild(n *node, tag string) (child *node, ok bool) {
 }
 
 // sameDate reports whether two DATE values parse to the same date: every
-// parsed field but Original equal. A value that does not parse, or is a
-// date phrase, is the same as none.
+// parsed field but Original equal. A value that does not parse, fails
+// Date.Validate, or is a date phrase is the same as none.
 func sameDate(a, b string) bool {
 	da, errA := gedcom.ParseDate(a)
 	db, errB := gedcom.ParseDate(b)
-	if errA != nil || errB != nil || da.IsPhrase || db.IsPhrase {
+	if errA != nil || errB != nil || da.IsPhrase || db.IsPhrase || da.Validate() != nil || db.Validate() != nil {
 		return false
 	}
 	for _, d := range []*gedcom.Date{da, db} {
@@ -368,11 +383,11 @@ func sameDate(a, b string) bool {
 }
 
 // foldEvent adds to k each child of d that k does not hold identically.
-// d's DATE and PLAC are matched with k's instead, and their children added
-// under k's the same way; d's PLAC is added whole when k has none.
+// d's DATE, PLAC and TYPE are matched with k's instead, and their children
+// added under k's the same way; d's PLAC is added whole when k has none.
 func foldEvent(k, d *node) {
 	for _, c := range d.children {
-		if c.tag.Tag == "DATE" || c.tag.Tag == "PLAC" {
+		if c.tag.Tag == "DATE" || c.tag.Tag == "PLAC" || c.tag.Tag == "TYPE" {
 			if kc, _ := onlyChild(k, c.tag.Tag); kc != nil {
 				for _, cc := range c.children {
 					addMissing(kc, cc)
