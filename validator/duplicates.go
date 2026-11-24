@@ -4,9 +4,10 @@
 // Duplicate detection is a common need in genealogy software where the same person
 // may be entered multiple times from different sources. This package provides
 // configurable matching thresholds for name comparison and date proximity.
-// Contradictions veto a pair outright: exact birth years further apart than
-// DuplicateConfig.MaxBirthYearDiff, or two known sexes (M, F or X, compared
-// case-insensitively) that differ. The sex veto has no switch.
+// Contradictions veto a pair outright: exact birth years, or exact death
+// years, further apart than DuplicateConfig.MaxBirthYearDiff, or two known
+// sexes (M, F or X, compared case-insensitively) that differ. The sex veto has
+// no switch.
 
 package validator
 
@@ -86,7 +87,8 @@ const UnlimitedNameRunes = -1
 //	MinNameSimilarity  no given-name gate; any pair of given names is accepted
 //	MinConfidence      every pair that passes the other gates is reported
 //	MaxBirthYearDiff   only an identical birth year earns birth-date credit;
-//	                   any difference between exact dates vetoes the pair
+//	                   any difference between exact birth years, or between
+//	                   exact death years, vetoes the pair
 const ZeroThreshold = -1
 
 // Default thresholds applied by duplicate detection when the corresponding
@@ -95,6 +97,17 @@ const (
 	defaultMinNameSimilarity = 0.8
 	defaultMaxBirthYearDiff  = 2
 	defaultMinConfidence     = 0.7
+)
+
+// Weights of the signals that tell a pair agreeing on the whole recorded life
+// from one agreeing on name, birth year and sex alone (#906). They share the
+// 0.1 those four signals leave unused, so together they cannot outweigh any
+// one of them; the full table is on [DuplicatePair.Confidence].
+const (
+	weightSameBirthDate  = 0.04
+	weightSameDeathYear  = 0.03
+	weightSameBirthPlace = 0.02
+	weightSameDeathPlace = 0.01
 )
 
 // DuplicateConfig contains configuration options for duplicate detection.
@@ -131,13 +144,20 @@ type DuplicateConfig struct {
 	// with no known year (missing, a phrase, year 0) neither earns credit nor
 	// vetoes (see RequireBirthDate). A large positive value effectively turns
 	// the veto off.
+	//
+	// Death dates follow the same veto: when both death dates are exact and
+	// their years differ by more than MaxBirthYearDiff, the pair is never
+	// reported. Only an identical death year earns credit, and only between
+	// two exact dates; an approximate, bounded, range or missing death date
+	// neither earns credit nor vetoes.
+	//
 	// Years are compared astronomically, so 1 BCE and 1 CE are one year apart.
 	// Dates in the same calendar compare Year as written; dates in different
 	// calendars are compared as the Gregorian years of their first days, reading
 	// a dual date in New Style.
 	//
 	//	0        use the default (2)
-	//	negative only an identical birth year earns credit; any other exact year vetoes ([ZeroThreshold])
+	//	negative only an identical birth year earns credit; any other exact birth or death year vetoes ([ZeroThreshold])
 	//	positive use that value
 	//
 	// Default: 2
@@ -245,7 +265,32 @@ type DuplicatePair struct {
 	// Individual2 is the second individual in the pair.
 	Individual2 *gedcom.Individual
 
-	// Confidence is the overall match confidence score (0.0 to 1.0).
+	// Confidence is the overall match confidence score (0.0 to 1.0): the sum
+	// of the weights of the signals the pair agrees on, each of which also
+	// adds its reason to MatchReasons.
+	//
+	//	0.30  surname          equal ("exact surname match")
+	//	0.30  given name       0.30 × similarity ("exact given name match",
+	//	                       "similar given name (N%)")
+	//	0.20  birth year       same year ("same birth year"); 0.10 when within
+	//	                       MaxBirthYearDiff ("birth year within N years")
+	//	0.10  sex              both known and equal ("same sex")
+	//	0.04  full birth date  both exact, in one calendar, with the same day,
+	//	                       month and year ("same birth date")
+	//	0.03  death year       both exact, same year ("same death year")
+	//	0.02  birth place      both recorded and equal ("same birth place")
+	//	0.01  death place      both recorded and equal ("same death place")
+	//
+	// The maximum is 1.0. A pair that agrees on name, birth year and sex alone
+	// scores 0.9, so anything above that agrees on a full birth date, a death
+	// year or a place as well. Nothing is subtracted: a signal that does not
+	// match, or is not recorded on both sides, only withholds its weight.
+	// Contradictions are vetoes instead (see [DuplicateConfig.MaxBirthYearDiff]).
+	//
+	// Places are compared whole, as recorded, after the normalization names
+	// get (trim, lowercase, remove accents) unless
+	// [DuplicateConfig.DisableNameNormalization] is set; "Springfield" and
+	// "Springfield, Example County" are different places.
 	Confidence float64
 
 	// MatchReasons contains human-readable descriptions of why these individuals matched.
@@ -334,15 +379,20 @@ func NewDuplicateDetector(config *DuplicateConfig) *DuplicateDetector {
 	return &DuplicateDetector{config: resolved}
 }
 
-// candidate carries an individual alongside the normalized names used to
-// compare it. The keys are derived once per individual during grouping rather
-// than re-derived for every pair: normalizeName runs a Unicode NFD transform
-// chain, and doing that inside the O(n^2) pair loop dominated the cost of
-// FindDuplicates on large documents (#529).
+// candidate carries an individual alongside the normalized names and places
+// used to compare it. The keys are derived once per individual during grouping
+// rather than re-derived for every pair: normalizeName runs a Unicode NFD
+// transform chain, and doing that inside the O(n^2) pair loop dominated the
+// cost of FindDuplicates on large documents (#529).
 type candidate struct {
 	ind     *gedcom.Individual
 	surname string
 	given   string
+
+	// birthPlace and deathPlace are the whole place strings, normalized as
+	// names are; "" when not recorded.
+	birthPlace string
+	deathPlace string
 }
 
 // maxGroupSize resolves DuplicateConfig.MaxGroupSize to the ceiling to compare
@@ -403,10 +453,11 @@ type DuplicateReport struct {
 // The algorithm groups individuals by normalized surname for efficiency, then compares
 // pairs within each surname group.
 //
-// Contradictions veto a pair whatever its score: exact birth years further
-// apart than DuplicateConfig.MaxBirthYearDiff, or two known sexes (M, F or X,
-// compared case-insensitively; empty and U are unknown) that differ. The sex
-// veto has no switch.
+// Contradictions veto a pair whatever its score: exact birth years, or exact
+// death years, further apart than DuplicateConfig.MaxBirthYearDiff, or two
+// known sexes (M, F or X, compared case-insensitively; empty and U are
+// unknown) that differ. The sex veto has no switch. The signals that make up
+// the score are listed on [DuplicatePair.Confidence].
 //
 // Complexity is O(Σ kᵢ²) over the surname groups, which
 // DuplicateConfig.MaxGroupSize bounds to O(n · MaxGroupSize / 2) pair
@@ -697,9 +748,9 @@ func (d *DuplicateDetector) buildSurnameGroups(individuals []*gedcom.Individual)
 }
 
 // buildCandidates derives the comparison keys for one surname group, pairing
-// each individual with its normalized given name. Every member of a group
-// shares the group's surname key, so that value is passed in rather than
-// re-derived per individual.
+// each individual with its normalized given name and birth and death places.
+// Every member of a group shares the group's surname key, so that value is
+// passed in rather than re-derived per individual.
 //
 // This runs once per individual in a group that will actually be compared,
 // never per pair: normalizeName runs a Unicode NFD transform chain, and doing
@@ -728,10 +779,27 @@ func (d *DuplicateDetector) buildCandidates(surname string, individuals []*gedco
 			given = string([]rune(given)[:maxRunes])
 			truncated++
 		}
-		candidates = append(candidates, candidate{ind: ind, surname: surname, given: given})
+		candidates = append(candidates, candidate{
+			ind:        ind,
+			surname:    surname,
+			given:      given,
+			birthPlace: d.placeKey(ind.BirthPlace()),
+			deathPlace: d.placeKey(ind.DeathPlace()),
+		})
 	}
 
 	return candidates, truncated
+}
+
+// placeKey returns the key two places are compared on: the whole place string,
+// normalized as names are unless DisableNameNormalization is set. Places are
+// compared for equality only, which is linear, so they need no length bound of
+// the kind MaxNameRunes puts on given names.
+func (d *DuplicateDetector) placeKey(place string) string {
+	if d.config.DisableNameNormalization {
+		return place
+	}
+	return normalizeName(place)
 }
 
 // extractSurname extracts the surname from an individual's primary name.
@@ -790,8 +858,8 @@ func extractGivenFromFull(fullName string) string {
 }
 
 // comparePair compares two candidates and returns a DuplicatePair if they match.
-// Both already carry their normalized surname and given name from
-// buildSurnameGroups; deriving them here instead would repeat the work once per
+// Both already carry their normalized surname, given name and places from
+// buildCandidates; deriving them here instead would repeat the work once per
 // pair rather than once per individual.
 //
 //nolint:gocyclo // Complexity is appropriate for comparison logic
@@ -836,7 +904,7 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 	// so they veto the pair rather than merely withholding credit (#728). An
 	// approximate, bounded or range date compares only its first year, which
 	// need not contradict the other date, so it withholds credit instead.
-	if yearDiff, ok := birthYearsApart(birthDate1, birthDate2); ok {
+	if yearDiff, ok := yearsApart(birthDate1, birthDate2); ok {
 		switch {
 		case yearDiff == 0:
 			confidence += 0.2
@@ -858,6 +926,33 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 		reasons = append(reasons, "same sex")
 	}
 
+	// The remaining signals are added after the four above so that a pair
+	// earning none of them keeps the score it always had, bit for bit (#906).
+	if sameFullDate(birthDate1, birthDate2) {
+		confidence += weightSameBirthDate
+		reasons = append(reasons, "same birth date")
+	}
+
+	// Exact death years further apart than MaxBirthYearDiff contradict a match
+	// as exact birth years do, and veto the pair.
+	sameDeathYear, contradicted := d.compareDeathDates(ind1.DeathDate(), ind2.DeathDate())
+	if contradicted {
+		return DuplicatePair{}, false
+	}
+	if sameDeathYear {
+		confidence += weightSameDeathYear
+		reasons = append(reasons, "same death year")
+	}
+
+	if c1.birthPlace != "" && c1.birthPlace == c2.birthPlace {
+		confidence += weightSameBirthPlace
+		reasons = append(reasons, "same birth place")
+	}
+	if c1.deathPlace != "" && c1.deathPlace == c2.deathPlace {
+		confidence += weightSameDeathPlace
+		reasons = append(reasons, "same death place")
+	}
+
 	// Check if confidence meets threshold
 	if confidence < d.config.MinConfidence {
 		return DuplicatePair{}, false
@@ -869,6 +964,31 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 		Confidence:   confidence,
 		MatchReasons: reasons,
 	}, true
+}
+
+// sameFullDate reports whether two dates name the same day: both exact, in the
+// same calendar, with a known day and month that agree, and zero years apart.
+// Dates in different calendars are never the same full date, since their days
+// and months do not correspond.
+func sameFullDate(d1, d2 *gedcom.Date) bool {
+	years, ok := yearsApart(d1, d2)
+	if !ok || years != 0 || !isExactDate(d1) || !isExactDate(d2) {
+		return false
+	}
+	return d1.Calendar == d2.Calendar &&
+		d1.Day > 0 && d1.Month > 0 && d1.Day == d2.Day && d1.Month == d2.Month
+}
+
+// compareDeathDates compares two death dates. Only two exact dates with real
+// years say anything: sameYear when they are zero years apart, contradicted
+// when they are further apart than MaxBirthYearDiff. An approximate, bounded,
+// range or missing death date reports neither.
+func (d *DuplicateDetector) compareDeathDates(d1, d2 *gedcom.Date) (sameYear, contradicted bool) {
+	years, ok := yearsApart(d1, d2)
+	if !ok || !isExactDate(d1) || !isExactDate(d2) {
+		return false, false
+	}
+	return years == 0, years > d.config.MaxBirthYearDiff
 }
 
 // isExactDate reports whether d names a single date: no modifier (ABT, BEF,
@@ -1049,8 +1169,8 @@ func levenshteinDistance(s1, s2 string) int {
 	return prev[len2]
 }
 
-// birthYearsApart returns how many years apart two birth dates fall. Years
-// are compared astronomically, so 44 BCE and 44 CE are 87 years apart. Two
+// yearsApart returns how many years apart two dates fall. Years are
+// compared astronomically, so 44 BCE and 44 CE are 87 years apart. Two
 // dates in the same calendar compare Year as written, so a dual date counts
 // from its Old Style year. Dates in different calendars are each placed on
 // their first day and compared as Gregorian years (see gregorianStartYear), so
@@ -1062,7 +1182,7 @@ func levenshteinDistance(s1, s2 string) int {
 // Gregorian 1732. ok is false, and the dates earn no credit, when either is
 // missing, has no real year (a phrase, "0", "0 BC", a negative year) or its
 // year cannot be placed.
-func birthYearsApart(d1, d2 *gedcom.Date) (years int, ok bool) {
+func yearsApart(d1, d2 *gedcom.Date) (years int, ok bool) {
 	if d1 == nil || d2 == nil || !hasRealYear(d1) || !hasRealYear(d2) {
 		return 0, false
 	}
