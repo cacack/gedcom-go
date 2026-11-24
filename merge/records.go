@@ -103,7 +103,8 @@ type RecordMergeReport struct {
 	Collapsed []gedcom.Reference
 	// Conflicts lists Drop's substructures that were not carried to Keep
 	// because the line may occur only once in the record and Keep holds a
-	// different one, in Drop's order. Only Sources and Repositories report
+	// different one (its own, or the first of Drop's it was given), in
+	// Drop's order. Only Sources and Repositories report
 	// any.
 	Conflicts []Conflict
 }
@@ -227,7 +228,8 @@ func mergeRecords(doc *gedcom.Document, typ gedcom.RecordType, keep, drop string
 
 // mergeSubstructures returns keep's lines with each level-1 substructure of
 // drop deduplicated, left out as a conflict (when its tag is in once and
-// keep holds one), folded (when fold is not nil) or moved under them, and
+// keep holds one, an earlier line of drop's included, so the merged record
+// never gains a repeat), folded (when fold is not nil) or moved under them, and
 // records which in report.
 func mergeSubstructures(keep, drop []*gedcom.Tag, fold *folder, once map[string]bool, report *RecordMergeReport) []*gedcom.Tag {
 	roots := buildTree(keep)

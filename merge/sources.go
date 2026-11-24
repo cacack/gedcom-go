@@ -8,7 +8,9 @@ import (
 // carry to keep, because its line may occur only once in the record and keep
 // holds a different one. Keep is keep's substructure, which the merged
 // document has; Drop is drop's, repointed, which it does not, so a caller
-// that wants its value (as a note, say) takes it from here.
+// that wants its value (as a note, say) takes it from here. When drop itself
+// repeats such a line and keep has none, drop's first is carried and Keep is
+// that line, for each later one.
 type Conflict struct {
 	Keep, Drop Substructure
 }
@@ -18,7 +20,8 @@ type Conflict struct {
 // simply added beside keep's.
 //
 //   - A line that may occur only once (TITL, AUTH, PUBL, ABBR, TEXT, DATA,
-//     CHAN; see below) is carried to keep when keep has none. When both have
+//     CHAN; see below) is carried to keep when keep has none (only the
+//     first, if drop repeats it; the rest are conflicts). When both have
 //     one and they are identical, line for line, drop's is deduplicated.
 //     When they differ, keep's stays and drop's is not carried: the pair is
 //     listed in RecordMergeReport.Conflicts, and choosing between them is
