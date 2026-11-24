@@ -12,7 +12,7 @@ Six tasks, each a section below:
 | [Add a record](#adding-a-record) | `Document.FreeXRef`, `Document.AddRecord`, `Record.AddMediaLink`, `Document.AttachMedia` |
 | [See what changed](#seeing-what-changed) | `gedcom.Diff` |
 | [Combine two files](#combining-two-files) | `merge.Combine` |
-| [Merge duplicate records](#merging-duplicate-records) | `merge.Individuals`, `merge.Families` |
+| [Merge duplicate records](#merging-duplicate-records) | `merge.Individuals`, `merge.Families`, `merge.Sources`, `merge.Repositories` |
 | [Cut a branch and zip it back](#cutting-a-branch-and-zipping-it-back) | `Document.BoundedSubset`, `merge.ZipSharedXRefs` |
 
 Two rules hold throughout:
@@ -404,6 +404,45 @@ What happens:
 Merging two individuals often leaves two families for one couple. Merge those
 with `merge.Families(doc, keepFam, dropFam, opts)`; a child both families list
 is listed once.
+
+### Sources and Repositories
+
+A tree combined from overlapping exports holds the same source, and the same
+repository, more than once. `merge.Sources` and `merge.Repositories` fold one
+into another and repoint every citation:
+
+```go
+merged, report, err := merge.Sources(doc, "@S1@", "@S2@", merge.RecordMergeOptions{})
+if err != nil {
+    return err
+}
+for _, c := range report.Conflicts {
+    fmt.Printf("kept %s %q, not %q\n", c.Keep.Tags[0].Tag, c.Keep.Tags[0].Value, c.Drop.Tags[0].Value)
+}
+```
+
+They differ from `Individuals` in one way. Most lines of a source or a
+repository may occur only once, so `drop`'s cannot simply be added beside
+`keep`'s:
+
+- **A line that may occur only once is carried when `keep` lacks it.** For a
+  source that is `TITL`, `AUTH`, `PUBL`, `ABBR`, `TEXT`, `DATA` and `CHAN`;
+  for a repository `NAME`, `ADDR` and `CHAN`. The list is the grammar of the
+  document's GEDCOM version: `RIN` is on it in 5.5 and 5.5.1, `CREA` in 7.0,
+  and a source's `REPO` in 5.5 alone.
+- **When both have one and they differ, `keep`'s stays.** `drop`'s is not in
+  the merged document; `report.Conflicts` lists the pair, each with all its
+  lines, so you can choose the other value or keep it as a note. Two records
+  rarely share a `CHAN`, so expect that one.
+- **Lines that may repeat are added and deduplicated** as for individuals:
+  `NOTE`, `OBJE`, `REFN`, a source's `REPO`, a repository's `PHON`, vendor
+  tags.
+- **Every citation of `drop` now names `keep`**, wherever it sits: under a
+  record, an event, a name, a note, or a vendor tag. `Sources` removes no
+  citation, even one that now repeats its neighbor, and leaves the lines under
+  each (`PAGE`, `DATA`, `QUAY`) alone. `Repositories` removes a source's `REPO`
+  line that would repeat a sibling exactly and lists it in
+  `report.Collapsed`.
 
 Caveats:
 

@@ -12,14 +12,15 @@ import (
 	"github.com/cacack/gedcom-go/v3/internal/errmark"
 )
 
-// ErrInvalidMerge is wrapped by the error Individuals and Families return
-// when the two records named cannot be merged: they are the same record,
+// ErrInvalidMerge is wrapped by the error Individuals, Families, Sources and
+// Repositories return when the two records named cannot be merged: they are the same record,
 // one is missing or of the wrong type, one is defined more than once, or a
 // record involved has no raw Tags. A missing record's error also wraps
 // gedcom.ErrUnknownXRef.
 var ErrInvalidMerge = errors.New("invalid record merge")
 
-// RecordMergeOptions configures Individuals and Families.
+// RecordMergeOptions configures Individuals, Families, Sources and
+// Repositories.
 type RecordMergeOptions struct {
 	// Context allows cancellation and timeout control. It is checked before
 	// the merge starts and before each record copied; once it is done the
@@ -77,8 +78,8 @@ type RecordMergeOptions struct {
 	FoldEvents bool
 }
 
-// RecordMergeReport describes what Individuals or Families did. It is nil
-// on every error path.
+// RecordMergeReport describes what Individuals, Families, Sources or
+// Repositories did. It is nil on every error path.
 type RecordMergeReport struct {
 	// Keep is the surviving record's XRef; Drop is the absorbed record's.
 	Keep, Drop string
@@ -100,6 +101,11 @@ type RecordMergeReport struct {
 	// same lines in the same record: the second CHIL of a family that listed
 	// both merged individuals, say.
 	Collapsed []gedcom.Reference
+	// Conflicts lists Drop's substructures that were not carried to Keep
+	// because the line may occur only once in the record and Keep holds a
+	// different one, in Drop's order. Only Sources and Repositories report
+	// any.
+	Conflicts []Conflict
 }
 
 // Substructure is one level-1 structure of a record: its first line and
@@ -187,7 +193,7 @@ func mergeRecords(doc *gedcom.Document, typ gedcom.RecordType, keep, drop string
 	// repointing, so only pointers that named drop are ever collapsed.
 	synced := []*gedcom.Record{keepRec}
 	for _, r := range out.Records {
-		if r == nil || r == dropRec {
+		if r == nil || r == dropRec || !collapsesRepeats(typ) {
 			continue
 		}
 		if collapsed := collapseRepeats(r, keep, drop); len(collapsed) > 0 {
@@ -213,16 +219,17 @@ func mergeRecords(doc *gedcom.Document, typ gedcom.RecordType, keep, drop string
 	if opts.FoldEvents {
 		fold = &folder{header: out.Header, typ: typ}
 	}
-	keepRec.Tags = mergeSubstructures(keepRec.Tags, dropRec.Tags, fold, report)
+	keepRec.Tags = mergeSubstructures(keepRec.Tags, dropRec.Tags, fold, onceOnly(out, typ), report)
 
 	decoder.SyncEntities(&gedcom.Document{Header: out.Header, Records: synced})
 	return out, report, nil
 }
 
 // mergeSubstructures returns keep's lines with each level-1 substructure of
-// drop deduplicated, folded (when fold is not nil) or moved under them, and
+// drop deduplicated, left out as a conflict (when its tag is in once and
+// keep holds one), folded (when fold is not nil) or moved under them, and
 // records which in report.
-func mergeSubstructures(keep, drop []*gedcom.Tag, fold *folder, report *RecordMergeReport) []*gedcom.Tag {
+func mergeSubstructures(keep, drop []*gedcom.Tag, fold *folder, once map[string]bool, report *RecordMergeReport) []*gedcom.Tag {
 	roots := buildTree(keep)
 	keepRoots := slices.Clone(roots)
 	var into []*node // into[i] is the keep substructure of report.Folded[i]
@@ -231,6 +238,12 @@ func mergeSubstructures(keep, drop []*gedcom.Tag, fold *folder, report *RecordMe
 		if slices.ContainsFunc(roots, func(k *node) bool { return sameTree(k, n, nil) }) {
 			report.Deduplicated = append(report.Deduplicated, sub)
 			continue
+		}
+		if once[n.tag.Tag] {
+			if i := slices.IndexFunc(roots, func(k *node) bool { return k.tag.Tag == n.tag.Tag }); i >= 0 {
+				report.Conflicts = append(report.Conflicts, Conflict{Keep: Substructure{Tags: flatten(roots[i:i+1], nil)}, Drop: sub})
+				continue
+			}
 		}
 		if fold != nil && fold.applies(n) {
 			if i := slices.IndexFunc(keepRoots, func(k *node) bool { return fold.sameEvent(k, n) }); i >= 0 {

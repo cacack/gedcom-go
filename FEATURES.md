@@ -833,6 +833,8 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 | `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `PrefixAllDoc2`, `RenumberDoc2`, `ZipSharedXRefs`) |
 | `merge.Individuals(doc, keep, drop, opts)` | Fold the individual `drop` into `keep`, which the caller names; original document unchanged. `RecordMergeOptions.FoldEvents` folds an event or attribute recording the same event (same tag, value, parsed date and `TYPE`; same place or one missing; an event's `Y` flag matches an empty value) into keep's, listed in `RecordMergeReport.Folded` |
 | `merge.Families(doc, keep, drop, opts)` | The same for two family records; a child both list is listed once |
+| `merge.Sources(doc, keep, drop, opts)` | Fold the source `drop` into `keep` and repoint every citation of it, at any depth. A line that may occur only once (`TITL`, `AUTH`, ...) is carried when keep lacks it; one that differs stays keep's and is listed in `RecordMergeReport.Conflicts` |
+| `merge.Repositories(doc, keep, drop, opts)` | The same for two repository records and the `REPO` pointers of sources |
 
 `PrefixDoc2` and `RenumberDoc2` rename only the doc2 records whose XRef doc1
 also holds, and the XRefs doc2 points at but does not define that doc1 holds,
@@ -910,6 +912,22 @@ pointer repointed and every line collapsed. Merging a record into itself, a
 missing record (also `gedcom.ErrUnknownXRef`), one of the wrong type, one
 defined twice, or where a record involved has no raw Tags returns an error
 wrapping `merge.ErrInvalidMerge`.
+
+`Sources` and `Repositories` do the same for two source or two repository
+records, with one rule more: a level-1 line the document's GEDCOM version
+allows only once in the record (`TITL`, `AUTH`, `PUBL`, `ABBR`, `TEXT`, `DATA`
+and `CHAN` of a source, `NAME`, `ADDR` and `CHAN` of a repository, `RIN` in
+5.5 and 5.5.1, `CREA` in 7.0, a source's `REPO` in 5.5 alone) is not added
+beside `keep`'s. It is carried when `keep` has none and deduplicated when the
+two are identical; when they differ `keep`'s stays and the pair is listed in
+`RecordMergeReport.Conflicts`, `drop`'s lines included, for the caller to
+choose. Lines that may repeat (`NOTE`, `OBJE`, `REFN`, `REPO`, `PHON`, vendor
+tags) are added and deduplicated as in `Individuals`. Every citation of
+`drop`, under any record or substructure and in vendor tags, is repointed to
+`keep`; `Sources` removes none, so the citation count and each citation's own
+lines (`PAGE`, `DATA`, `QUAY`) are unchanged. `Repositories` removes a `REPO`
+line of a source that would repeat a sibling line for line, as `Individuals`
+does a `CHIL`.
 
 ### Record Diff
 
@@ -2208,7 +2226,7 @@ pipeline. Each checks it as it goes and returns its error wrapped, so
 | `converter.ConvertWithOptions` | `ConvertOptions.Context` | Per conversion step, and per record while copying the document and validating the result |
 | `encoder.EncodeWithOptions`, `EncodeStreamingWithOptions`, `EncodeRecord`, `StreamEncoder.WriteRecord` | `EncodeOptions.Context` | Per record |
 | `merge.Combine` | `CombineOptions.Context` | Per record compared, remapped and copied |
-| `merge.Individuals`, `merge.Families` | `RecordMergeOptions.Context` | Per record copied |
+| `merge.Individuals`, `merge.Families`, `merge.Sources`, `merge.Repositories` | `RecordMergeOptions.Context` | Per record copied |
 | `parser.LazyParser.BuildIndexContext` | its `ctx` argument | Per record indexed |
 
 ## Version Conversion
