@@ -8,8 +8,9 @@ import (
 	"github.com/cacack/gedcom-go/v3/merge"
 )
 
-// TestArgumentErrorSentinels checks each argument failure of Combine and
-// RemapXRefs wraps its sentinel, wraps no other, and keeps its message.
+// TestArgumentErrorSentinels checks each argument failure of Combine,
+// RemapXRefs and Individuals wraps its sentinel, wraps no other, and keeps
+// its message.
 func TestArgumentErrorSentinels(t *testing.T) {
 	doc := func() *gedcom.Document {
 		d := &gedcom.Document{Header: &gedcom.Header{}, XRefMap: map[string]*gedcom.Record{}}
@@ -39,11 +40,21 @@ func TestArgumentErrorSentinels(t *testing.T) {
 		}, merge.ErrInvalidOptions, "merge: PrefixDoc2 strategy requires non-empty Prefix"},
 		{"remap nil doc", func() error { _, _, err := merge.RemapXRefs(nil, identity); return err },
 			merge.ErrNilDocument, "merge: doc is nil"},
+		{"individuals nil doc", func() error {
+			_, _, err := merge.Individuals(nil, "@I1@", "@I2@", merge.RecordMergeOptions{})
+			return err
+		},
+			merge.ErrNilDocument, "merge: doc is nil"},
+		{"individuals into itself", func() error {
+			_, _, err := merge.Individuals(doc(), "@I1@", "@I1@", merge.RecordMergeOptions{})
+			return err
+		},
+			merge.ErrInvalidMerge, `merge: "@I1@" into itself: invalid record merge`},
 		{"remap nil transform", func() error { _, _, err := merge.RemapXRefs(doc(), nil); return err },
 			merge.ErrInvalidOptions, "merge: transform is nil"},
 	}
 	sentinels := []error{merge.ErrNilDocument, merge.ErrInvalidOptions, merge.ErrInvalidRemap,
-		merge.ErrIncompatibleHeader, merge.ErrXRefCollision}
+		merge.ErrIncompatibleHeader, merge.ErrXRefCollision, merge.ErrInvalidMerge}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.call()

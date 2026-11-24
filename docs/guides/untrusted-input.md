@@ -39,7 +39,7 @@ yours to set.
 | GEDZIP media entry size | `ReadOptions.MaxEntryBytes`, default `gedzip.DefaultMaxEntryBytes` (1 GiB), on the uncompressed size each other entry declares | Yes; as above | As above: one oversized entry refuses the archive, whether or not the dataset references it. |
 | GEDZIP total size | `ReadOptions.MaxTotalBytes`, default `gedzip.DefaultMaxTotalBytes` (4 GiB), on the sum of declared uncompressed sizes | Yes; as above | As above. |
 | GEDZIP compression ratio | `ReadOptions.MaxCompressionRatio`, default `gedzip.DefaultMaxCompressionRatio` (200), for each entry declaring more than `gedzip.CompressionRatioMinBytes` (1 MiB) | Yes; as above | As above. |
-| Time | `Context` on `DecodeOptions`, `ValidateOptions`, `ConvertOptions`, `EncodeOptions`, `merge.CombineOptions`; `LazyParser.BuildIndexContext` | Yes; none by default | The call stops shortly after the context is done and returns its error wrapped. |
+| Time | `Context` on `DecodeOptions`, `ValidateOptions`, `ConvertOptions`, `EncodeOptions`, `merge.CombineOptions`, `merge.RecordMergeOptions`; `LazyParser.BuildIndexContext` | Yes; none by default | The call stops shortly after the context is done and returns its error wrapped. |
 
 ## GEDZIP Archives
 
