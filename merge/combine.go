@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -41,7 +42,10 @@ const (
 	// records, so it stays dangling instead of resolving to doc1's record,
 	// and CombineReport.RemappedXRefs lists it. Combine fails with a
 	// "prefix-collision" CombineError when a prefixed XRef, record or
-	// dangling pointer, is one doc1 defines.
+	// dangling pointer, is one doc1 defines. It fails with ErrInvalidRemap
+	// (a *RemapError) when a prefixed record XRef is already the XRef of
+	// another doc2 record or of a dangling doc2 pointer, rather than letting
+	// that pointer resolve to the renamed record.
 	// Requires Prefix to be set (non-empty, body-character-safe).
 	PrefixDoc2
 	// RenumberDoc2 renumbers every colliding XRef in doc2 to a fresh
@@ -138,7 +142,10 @@ type CombineOptions struct {
 	// non-empty and different from doc1's. The typed views of doc2's header
 	// substructures (SourceVersion, SourceName, SourceCorporation,
 	// SourceData, Destination, Time) are dropped with the structure that
-	// holds them and reported as its "Tags.<TAG>".
+	// holds them and reported as its "Tags.<TAG>"; when doc2's Tags have no
+	// such structure (a header built in code), each one set and different
+	// from doc1's is reported under its own name, a corporation or source
+	// data by its Name.
 	//
 	// The one exception is the version: when doc1's header has no Version
 	// (only possible for a header built in code), doc2's Version is used,
@@ -993,6 +1000,7 @@ func keepFirstHeader(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 			conflicts = append(conflicts, HeaderConflict{Field: f.name, Doc1: f.v1, Doc2: f.v2})
 		}
 	}
+	conflicts = append(conflicts, droppedHeaderViews(h1, h2)...)
 	for _, t := range h2.Tags {
 		if t == nil || t.Level != 1 {
 			continue
@@ -1008,6 +1016,43 @@ func keepFirstHeader(h1, h2 *gedcom.Header) (*gedcom.Header, []HeaderConflict) {
 		})
 	}
 	return out, conflicts
+}
+
+// droppedHeaderViews returns a conflict for each typed view of a doc2 header
+// substructure (SourceVersion, SourceName, SourceCorporation, SourceData,
+// Destination, Time) that differs from h1's while h2's Tags have no level-1
+// structure to hold it, as in a header built in code. A view whose structure
+// h2's Tags carry is reported with that structure, as "Tags.<TAG>".
+func droppedHeaderViews(h1, h2 *gedcom.Header) []HeaderConflict {
+	var conflicts []HeaderConflict
+	add := func(holder, field, v1, v2 string, differs bool) {
+		if differs && !hasLevel1HeaderTag(h2.Tags, holder) {
+			conflicts = append(conflicts, HeaderConflict{Field: field, Doc1: v1, Doc2: v2})
+		}
+	}
+	for _, f := range []struct{ holder, name, v1, v2 string }{
+		{"SOUR", "SourceVersion", h1.SourceVersion, h2.SourceVersion},
+		{"SOUR", "SourceName", h1.SourceName, h2.SourceName},
+		{"DEST", "Destination", h1.Destination, h2.Destination},
+		{"DATE", "Time", h1.Time, h2.Time},
+	} {
+		add(f.holder, f.name, f.v1, f.v2, f.v2 != "" && f.v1 != f.v2)
+	}
+	if c2 := h2.SourceCorporation; c2 != nil {
+		v1 := ""
+		if h1.SourceCorporation != nil {
+			v1 = h1.SourceCorporation.Name
+		}
+		add("SOUR", "SourceCorporation", v1, c2.Name, !reflect.DeepEqual(h1.SourceCorporation, c2))
+	}
+	if d2 := h2.SourceData; d2 != nil {
+		v1 := ""
+		if h1.SourceData != nil {
+			v1 = h1.SourceData.Name
+		}
+		add("SOUR", "SourceData", v1, d2.Name, !reflect.DeepEqual(h1.SourceData, d2))
+	}
+	return conflicts
 }
 
 // mergeTypedPlaceForm settles a default place form that lives only in a typed

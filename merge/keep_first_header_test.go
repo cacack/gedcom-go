@@ -141,3 +141,45 @@ func TestCombine_KeepFirstHeader_NilHeaders(t *testing.T) {
 		t.Errorf("conflicts = %v", report.HeaderConflicts)
 	}
 }
+
+// TestCombine_KeepFirstHeader_HandBuiltViews pins that the typed views of a
+// doc2 header with no raw Tags, which no "Tags.<TAG>" conflict covers, are
+// each reported when dropped.
+func TestCombine_KeepFirstHeader_HandBuiltViews(t *testing.T) {
+	doc1 := handBuiltHeaderDoc(&gedcom.Header{SourceSystem: "A", SourceVersion: "1"})
+	doc2 := handBuiltHeaderDoc(&gedcom.Header{
+		SourceSystem: "A", SourceVersion: "9", SourceName: "App", Destination: "X", Time: "10:00",
+		SourceCorporation: &gedcom.Corporation{Name: "Corp"},
+		SourceData:        &gedcom.HeaderSourceData{Name: "Data"},
+	})
+
+	out, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{KeepFirstHeader: true})
+	if err != nil {
+		t.Fatalf("Combine: %v", err)
+	}
+	h := out.Header
+	if h.SourceVersion != "1" || h.SourceName != "" || h.Destination != "" || h.Time != "" ||
+		h.SourceCorporation != nil || h.SourceData != nil {
+		t.Errorf("doc2 views carried: %+v", h)
+	}
+	got := map[string][2]string{}
+	for _, c := range report.HeaderConflicts {
+		got[c.Field] = [2]string{c.Doc1, c.Doc2}
+	}
+	want := map[string][2]string{
+		"SourceVersion": {"1", "9"}, "SourceName": {"", "App"}, "Destination": {"", "X"},
+		"Time": {"", "10:00"}, "SourceCorporation": {"", "Corp"}, "SourceData": {"", "Data"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("conflicts = %v, want %v", got, want)
+	}
+
+	// Equal views are not conflicts.
+	_, report, err = merge.Combine(doc2, doc2, merge.CombineOptions{KeepFirstHeader: true, CollisionStrategy: merge.ZipSharedXRefs})
+	if err != nil {
+		t.Fatalf("Combine(doc2, doc2): %v", err)
+	}
+	if len(report.HeaderConflicts) != 0 {
+		t.Errorf("identical headers: conflicts = %v", report.HeaderConflicts)
+	}
+}
