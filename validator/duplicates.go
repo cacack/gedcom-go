@@ -15,6 +15,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -109,6 +110,27 @@ const (
 	weightSameBirthPlace = 0.02
 	weightSameDeathPlace = 0.01
 )
+
+// Weights of the relatives signal, scored only under
+// DuplicateConfig.CompareRelatives (#932). A married-name/maiden-name pair
+// earns no surname weight, so these take its place: the same spouse and two
+// shared children are worth 0.4.
+const (
+	weightSameSpouse  = 0.2
+	weightSharedChild = 0.1
+
+	// maxSharedChildrenScored is how many shared children earn weight.
+	maxSharedChildrenScored = 2
+)
+
+// maxRelativesRead bounds how many spouse links, and how many child links,
+// are read for one individual under CompareRelatives. Links are pointers the
+// document's author controls, and many individuals can name one family of
+// many children, so without it reading relatives would cost the product of
+// the two. No real person has this many spouses or children; an individual
+// whose relatives were cut is counted on the DUPLICATE_DETECTION_LIMITED
+// notice ("truncated_relatives").
+const maxRelativesRead = 64
 
 // DuplicateConfig contains configuration options for duplicate detection.
 //
@@ -221,6 +243,26 @@ type DuplicateConfig struct {
 	//
 	// Default: DefaultMaxNameRunes
 	MaxNameRunes int
+
+	// CompareRelatives adds an individual's relatives to the evidence (#932):
+	// the names of their spouses and of their children, read through their
+	// FAMS families. A pair earns 0.2 when any spouse's name matches and 0.1
+	// for each shared child's name, up to two (see [DuplicatePair.Confidence]),
+	// and two individuals that share a spouse's name are compared even when
+	// their surnames differ, so a woman under her married name in one file
+	// and her maiden name in the other is found. A pair with different
+	// surnames earns no surname weight and is still subject to every other
+	// gate and veto, including MinNameSimilarity.
+	//
+	// Names are compared whole (given name and surname), after the same
+	// normalization as the individuals' own names; a relative with no given
+	// name is not compared. Individuals sharing a spouse's name form a group
+	// bounded by MaxGroupSize like a surname group, and at most 64 spouse and
+	// 64 child links are read per individual; both limits are reported on the
+	// DUPLICATE_DETECTION_LIMITED notice.
+	//
+	// Default: false (relatives are not read, and surnames must match)
+	CompareRelatives bool
 }
 
 // DefaultDuplicateConfig returns a new *DuplicateConfig with default values,
@@ -237,6 +279,7 @@ func DefaultDuplicateConfig() *DuplicateConfig {
 		MinConfidence:            defaultMinConfidence,
 		MaxGroupSize:             DefaultMaxGroupSize,
 		MaxNameRunes:             DefaultMaxNameRunes,
+		CompareRelatives:         false,
 	}
 }
 
@@ -281,6 +324,16 @@ type DuplicatePair struct {
 	//	0.03  death year       both exact, same year ("same death year")
 	//	0.02  birth place      both recorded and equal ("same birth place")
 	//	0.01  death place      both recorded and equal ("same death place")
+	//
+	// Under [DuplicateConfig.CompareRelatives] only, relatives add to the sum:
+	//
+	//	0.20  spouse           a spouse's name on each side matches
+	//	                       ("same spouse name")
+	//	0.10  each child       per child's name both share, at most two
+	//	                       ("1 shared child name", "N shared child names")
+	//
+	// and the sum is capped at 1.0. A pair whose surnames differ, found
+	// through a shared spouse's name, earns no surname weight.
 	//
 	// The maximum is 1.0. A pair that agrees on name, birth year and sex alone
 	// scores 0.9, so anything above that agrees on a full birth date, a death
@@ -397,6 +450,11 @@ type candidate struct {
 	// names are; "" when not recorded.
 	birthPlace string
 	deathPlace string
+
+	// spouses and children are the sorted, distinct name keys of the
+	// individual's relatives (see relativeKey); nil unless CompareRelatives.
+	spouses  []string
+	children []string
 }
 
 // maxGroupSize resolves DuplicateConfig.MaxGroupSize to the ceiling to compare
@@ -448,8 +506,11 @@ type DuplicateReport struct {
 	// longer than DuplicateConfig.MaxNameRunes compared on a prefix. Both
 	// are reported under one CodeDuplicateDetectionLimited issue; read its
 	// "skipped_groups" and "truncated_names" details to tell which applied,
-	// since either may be zero. Empty when the entire document was compared
-	// in full.
+	// since either may be zero. Under DuplicateConfig.CompareRelatives the
+	// same issue counts oversized spouse-name groups among the skipped
+	// groups (named "spouse:<name>" in its "surnames" sample) and carries a
+	// "truncated_relatives" detail when some individual's relatives were read
+	// only in part. Empty when the entire document was compared in full.
 	LimitIssues []Issue
 }
 
@@ -501,6 +562,7 @@ func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedco
 	limit := d.maxGroupSize()
 	nameLimit := d.maxNameRunes()
 	var skipped skippedGroups
+	builder := d.newCandidateBuilder(doc, nameLimit, &skipped)
 
 	// Compare pairs within each surname group
 	for surname, group := range surnameGroups {
@@ -521,21 +583,87 @@ func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedco
 		}
 
 		// Derived only now that the group is known to be compared: see
-		// buildCandidates on why this is not done during grouping.
-		candidates, truncated := d.buildCandidates(surname, group, nameLimit)
-		skipped.truncatedNames += truncated
+		// candidateBuilder on why this is not done during grouping.
+		candidates := builder.group(surname, group)
 
 		// Compare all pairs within the group
 		for i := 0; i < len(candidates); i++ {
 			for j := i + 1; j < len(candidates); j++ {
-				if pair, ok := d.comparePair(candidates[i], candidates[j]); ok {
+				if pair, ok := d.comparePair(&candidates[i], &candidates[j]); ok {
 					duplicates = append(duplicates, pair)
 				}
 			}
 		}
 	}
 
+	if d.config.CompareRelatives {
+		duplicates = d.compareSpouseGroups(ctx, individuals, builder, limit, &skipped, duplicates)
+	}
+
 	return skipped.report(duplicates, limit, nameLimit)
+}
+
+// compareSpouseGroups is the CompareRelatives pass of findDuplicatesReport:
+// it compares the pairs that share a spouse's name but not a surname, which
+// the surname pass never sees. Each spouse-name group is bounded by limit,
+// as a surname group is, and an oversized one is skipped whole. A pair that
+// shares more than one spouse's name is compared once, in the group of the
+// first name it shares (see ownsPair).
+func (d *DuplicateDetector) compareSpouseGroups(ctx context.Context, individuals []*gedcom.Individual, builder *candidateBuilder, limit int, skipped *skippedGroups, duplicates []DuplicatePair) []DuplicatePair {
+	for key, group := range builder.spouseGroups(ctx, individuals) {
+		if ctx.Err() != nil {
+			break
+		}
+		if len(group) < 2 {
+			continue
+		}
+		if len(group) > limit {
+			skipped.record(spouseGroupLabel(key), len(group))
+			continue
+		}
+		for i := 0; i < len(group); i++ {
+			for j := i + 1; j < len(group); j++ {
+				c1, c2 := builder.candidate(group[i]), builder.candidate(group[j])
+				if !ownsPair(key, &c1, &c2) {
+					continue
+				}
+				if pair, ok := d.comparePair(&c1, &c2); ok {
+					duplicates = append(duplicates, pair)
+				}
+			}
+		}
+	}
+	return duplicates
+}
+
+// ownsPair reports whether the spouse-name group key is where a pair is
+// compared, so that each pair is compared at most once without remembering
+// the pairs already seen. The surname pass owns a pair whose surname keys
+// are equal and non-empty; the spouse pass skips it, so it is never reported
+// twice, and a pair from a surname group skipped for its size is not
+// compared behind the notice that reports the skip. Any other pair is owned
+// by the first spouse name, in sorted order, the two share.
+func ownsPair(key string, c1, c2 *candidate) bool {
+	if c1.surname != "" && c1.surname == c2.surname {
+		return false
+	}
+	for i, j := 0, 0; i < len(c1.spouses) && j < len(c2.spouses); {
+		switch {
+		case c1.spouses[i] == c2.spouses[j]:
+			return c1.spouses[i] == key
+		case c1.spouses[i] < c2.spouses[j]:
+			i++
+		default:
+			j++
+		}
+	}
+	return false
+}
+
+// spouseGroupLabel names a skipped spouse-name group in the
+// DUPLICATE_DETECTION_LIMITED "surnames" sample, apart from surname groups.
+func spouseGroupLabel(key string) string {
+	return "spouse:" + key
 }
 
 // FindDuplicatesBetween returns the likely-same-person pairs that take one
@@ -601,6 +729,8 @@ func (d *DuplicateDetector) FindDuplicatesBetweenReport(a, b *gedcom.Document) D
 	limit := d.maxGroupSize()
 	nameLimit := d.maxNameRunes()
 	var skipped skippedGroups
+	builderA := d.newCandidateBuilder(a, nameLimit, &skipped)
+	builderB := d.newCandidateBuilder(b, nameLimit, &skipped)
 
 	for surname, groupA := range groupsA {
 		groupB := groupsB[surname]
@@ -616,12 +746,13 @@ func (d *DuplicateDetector) FindDuplicatesBetweenReport(a, b *gedcom.Document) D
 			continue
 		}
 
-		candidatesA, truncatedA := d.buildCandidates(surname, groupA, nameLimit)
-		candidatesB, truncatedB := d.buildCandidates(surname, groupB, nameLimit)
-		skipped.truncatedNames += truncatedA + truncatedB
+		candidatesA := builderA.group(surname, groupA)
+		candidatesB := builderB.group(surname, groupB)
 
-		for _, ca := range candidatesA {
-			for _, cb := range candidatesB {
+		for i := range candidatesA {
+			ca := &candidatesA[i]
+			for j := range candidatesB {
+				cb := &candidatesB[j]
 				// Two distinct documents may still share an *Individual;
 				// pairing it with itself would report one record as its own
 				// duplicate.
@@ -635,7 +766,45 @@ func (d *DuplicateDetector) FindDuplicatesBetweenReport(a, b *gedcom.Document) D
 		}
 	}
 
+	if d.config.CompareRelatives {
+		duplicates = d.compareSpouseGroupsBetween(context.Background(), builderA, builderB, limit, &skipped, duplicates)
+	}
+
 	return skipped.report(duplicates, limit, nameLimit)
+}
+
+// compareSpouseGroupsBetween is compareSpouseGroups across two documents: a
+// spouse-name group is the union of that name's individuals in both, bounded
+// by limit as a combined surname group is, and only pairs taking one
+// individual from each are compared, each once (see ownsPair).
+func (d *DuplicateDetector) compareSpouseGroupsBetween(ctx context.Context, builderA, builderB *candidateBuilder, limit int, skipped *skippedGroups, duplicates []DuplicatePair) []DuplicatePair {
+	groupsA := builderA.spouseGroups(ctx, builderA.doc.Individuals())
+	groupsB := builderB.spouseGroups(ctx, builderB.doc.Individuals())
+	for key, groupA := range groupsA {
+		groupB := groupsB[key]
+		if len(groupB) == 0 {
+			continue
+		}
+		if size := len(groupA) + len(groupB); size > limit {
+			skipped.record(spouseGroupLabel(key), size)
+			continue
+		}
+		for _, indA := range groupA {
+			for _, indB := range groupB {
+				if indA == indB {
+					continue
+				}
+				ca, cb := builderA.candidate(indA), builderB.candidate(indB)
+				if !ownsPair(key, &ca, &cb) {
+					continue
+				}
+				if pair, ok := d.comparePair(&ca, &cb); ok {
+					duplicates = append(duplicates, pair)
+				}
+			}
+		}
+	}
+	return duplicates
 }
 
 // maxSkippedSurnamesReported caps how many surnames the limit Issue names. The
@@ -653,6 +822,10 @@ type skippedGroups struct {
 	largest        int
 	surnames       []string
 	truncatedNames int
+
+	// truncatedRelatives counts individuals whose relatives were read only up
+	// to maxRelativesRead links (CompareRelatives).
+	truncatedRelatives int
 }
 
 // record notes one skipped group of the given surname key and size.
@@ -672,7 +845,7 @@ func (s *skippedGroups) record(surname string, size int) {
 // group was skipped or any given name compared on a prefix.
 func (s *skippedGroups) report(pairs []DuplicatePair, limit, nameLimit int) DuplicateReport {
 	report := DuplicateReport{Pairs: pairs}
-	if s.groups > 0 || s.truncatedNames > 0 {
+	if s.groups > 0 || s.truncatedNames > 0 || s.truncatedRelatives > 0 {
 		report.LimitIssues = []Issue{s.toIssue(limit, nameLimit)}
 	}
 	return report
@@ -708,6 +881,11 @@ func (s *skippedGroups) toIssue(limit, nameLimit int) Issue {
 			"compared %d individual(s) on the first %d characters of a given name "+
 				"longer than MaxNameRunes", s.truncatedNames, nameLimit))
 	}
+	if s.truncatedRelatives > 0 {
+		parts = append(parts, fmt.Sprintf(
+			"read only the first %d spouse and child links of %d individual(s)",
+			maxRelativesRead, s.truncatedRelatives))
+	}
 	message := "Duplicate detection " + strings.Join(parts, " and ") + "; some duplicates may be unreported"
 
 	issue := NewIssue(SeverityWarning, CodeDuplicateDetectionLimited, message, "").
@@ -717,6 +895,9 @@ func (s *skippedGroups) toIssue(limit, nameLimit int) Issue {
 		WithDetail("max_group_size", strconv.Itoa(limit)).
 		WithDetail("truncated_names", strconv.Itoa(s.truncatedNames)).
 		WithDetail("max_name_runes", strconv.Itoa(nameLimit))
+	if s.truncatedRelatives > 0 {
+		issue = issue.WithDetail("truncated_relatives", strconv.Itoa(s.truncatedRelatives))
+	}
 	if s.groups > 0 {
 		issue = issue.WithDetail("surnames", strings.Join(sample, ", "))
 	}
@@ -737,10 +918,7 @@ func (d *DuplicateDetector) buildSurnameGroups(individuals []*gedcom.Individual)
 	groups := make(map[string][]*gedcom.Individual)
 
 	for _, ind := range individuals {
-		surname := d.extractSurname(ind)
-		if !d.config.DisableNameNormalization {
-			surname = normalizeName(surname)
-		}
+		surname := d.surnameKey(ind)
 		if surname == "" {
 			continue
 		}
@@ -751,59 +929,259 @@ func (d *DuplicateDetector) buildSurnameGroups(individuals []*gedcom.Individual)
 	return groups
 }
 
-// buildCandidates derives the comparison keys for one surname group, pairing
-// each individual with its normalized given name and birth and death places.
-// Every member of a group shares the group's surname key, so that value is
-// passed in rather than re-derived per individual.
-//
-// This runs once per individual in a group that will actually be compared,
-// never per pair: normalizeName runs a Unicode NFD transform chain, and doing
-// that inside the O(k²) pair loop dominated the cost of detection on large
-// documents (#529).
-//
-// It is deliberately called after the MaxGroupSize check rather than during
-// grouping. On the adversarial shape the cap exists to defend against — every
-// individual sharing one surname — the whole group is skipped, so normalizing
-// its given names up front would run a transform chain per individual only to
-// discard every result. Deferring keeps that work proportional to the set
-// actually compared rather than to the size of the input (#530).
-//
-// A given name longer than maxRunes is cut to its first maxRunes runes here,
-// before any pair is scored, so the quadratic similarity never sees more
-// than maxRunes² cells (#717). truncated counts the individuals cut.
-func (d *DuplicateDetector) buildCandidates(surname string, individuals []*gedcom.Individual, maxRunes int) (candidates []candidate, truncated int) {
-	candidates = make([]candidate, 0, len(individuals))
-
-	for _, ind := range individuals {
-		given := extractGivenName(ind)
-		if !d.config.DisableNameNormalization {
-			given = normalizeName(given)
-		}
-		if utf8.RuneCountInString(given) > maxRunes {
-			given = string([]rune(given)[:maxRunes])
-			truncated++
-		}
-		candidates = append(candidates, candidate{
-			ind:        ind,
-			surname:    surname,
-			given:      given,
-			birthPlace: d.placeKey(ind.BirthPlace()),
-			deathPlace: d.placeKey(ind.DeathPlace()),
-		})
-	}
-
-	return candidates, truncated
+// surnameKey returns ind's surname as groups and comparisons key it:
+// normalized unless DisableNameNormalization is set, "" when it has none.
+func (d *DuplicateDetector) surnameKey(ind *gedcom.Individual) string {
+	return d.nameKey(d.extractSurname(ind))
 }
 
-// placeKey returns the key two places are compared on: the whole place string,
-// normalized as names are unless DisableNameNormalization is set. Places are
-// compared for equality only, which is linear, so they need no length bound of
-// the kind MaxNameRunes puts on given names.
-func (d *DuplicateDetector) placeKey(place string) string {
+// nameKey normalizes a name or place for comparison unless
+// DisableNameNormalization is set.
+func (d *DuplicateDetector) nameKey(name string) string {
 	if d.config.DisableNameNormalization {
-		return place
+		return name
 	}
-	return normalizeName(place)
+	return normalizeName(name)
+}
+
+// sortedDistinct sorts keys and drops repeats, in place.
+func sortedDistinct(keys []string) []string {
+	sort.Strings(keys)
+	return slices.Compact(keys)
+}
+
+// countShared returns how many keys two sorted, distinct lists share.
+func countShared(a, b []string) int {
+	shared := 0
+	for i, j := 0, 0; i < len(a) && j < len(b); {
+		switch {
+		case a[i] == b[j]:
+			shared++
+			i++
+			j++
+		case a[i] < b[j]:
+			i++
+		default:
+			j++
+		}
+	}
+	return shared
+}
+
+// candidateBuilder derives the comparison keys of one document's individuals,
+// pairing each with its normalized given name, birth and death places and,
+// under CompareRelatives, its relatives' names.
+//
+// Candidates are derived once per individual in a group that will actually
+// be compared, never per pair: normalizeName runs a Unicode NFD transform
+// chain, and doing that inside the O(k²) pair loop dominated the cost of
+// detection on large documents (#529).
+//
+// They are deliberately derived after the MaxGroupSize check rather than
+// during grouping. On the adversarial shape the cap exists to defend against
+// — every individual sharing one surname — the whole group is skipped, so
+// normalizing its given names up front would run a transform chain per
+// individual only to discard every result. Deferring keeps that work
+// proportional to the set actually compared rather than to the size of the
+// input (#530).
+//
+// A given name longer than maxRunes is cut to its first maxRunes runes before
+// any pair is scored, so the quadratic similarity never sees more than
+// maxRunes² cells (#717), and the individual is counted in skipped.
+//
+// Under CompareRelatives an individual can be compared from its surname group
+// and from spouse-name groups, so its candidate is remembered and derived,
+// and counted, once; so are its spouse keys and every relative's name key.
+// Without it no individual is in two groups and nothing is remembered.
+type candidateBuilder struct {
+	d         *DuplicateDetector
+	doc       *gedcom.Document
+	maxRunes  int
+	skipped   *skippedGroups
+	built     map[*gedcom.Individual]candidate
+	spouses   map[*gedcom.Individual]spouseKeys
+	relatives map[string]string
+}
+
+// spouseKeys is one individual's remembered spouse keys and whether its
+// spouse links were cut (see candidateBuilder.spouseKeys).
+type spouseKeys struct {
+	keys []string
+	cut  bool
+}
+
+func (d *DuplicateDetector) newCandidateBuilder(doc *gedcom.Document, maxRunes int, skipped *skippedGroups) *candidateBuilder {
+	b := &candidateBuilder{d: d, doc: doc, maxRunes: maxRunes, skipped: skipped}
+	if d.config.CompareRelatives {
+		b.built = make(map[*gedcom.Individual]candidate)
+		b.spouses = make(map[*gedcom.Individual]spouseKeys)
+		b.relatives = make(map[string]string)
+	}
+	return b
+}
+
+// group derives the candidates of one surname group. Every member shares the
+// group's surname key, so that value is passed in rather than re-derived.
+func (b *candidateBuilder) group(surname string, individuals []*gedcom.Individual) []candidate {
+	candidates := make([]candidate, 0, len(individuals))
+	for _, ind := range individuals {
+		candidates = append(candidates, b.derive(ind, surname))
+	}
+	return candidates
+}
+
+// candidate derives the candidate of one individual, keying its own surname.
+func (b *candidateBuilder) candidate(ind *gedcom.Individual) candidate {
+	if c, ok := b.built[ind]; ok {
+		return c
+	}
+	return b.derive(ind, b.d.surnameKey(ind))
+}
+
+// derive builds a candidate, remembering it under CompareRelatives. The
+// surname pass meets each individual once, so only candidate checks first.
+func (b *candidateBuilder) derive(ind *gedcom.Individual, surname string) candidate {
+	d := b.d
+	given := d.nameKey(extractGivenName(ind))
+	if cut := cutRunes(given, b.maxRunes); cut != given {
+		given = cut
+		b.skipped.truncatedNames++
+	}
+	c := candidate{
+		ind:        ind,
+		surname:    surname,
+		given:      given,
+		birthPlace: d.nameKey(ind.BirthPlace()),
+		deathPlace: d.nameKey(ind.DeathPlace()),
+	}
+	if b.built != nil {
+		// Spouse links cut here were counted when the spouse groups were
+		// built, so a cut counts only when those links were read whole.
+		c.spouses, _ = b.spouseKeys(ind)
+		var cut bool
+		c.children, cut = b.childKeys(ind)
+		if cut && len(ind.SpouseInFamilies) <= maxRelativesRead {
+			b.skipped.truncatedRelatives++
+		}
+		b.built[ind] = c
+	}
+	return c
+}
+
+// spouseGroups groups individuals by the name keys of their spouses, for
+// the CompareRelatives pass. An individual is listed once under each distinct
+// spouse name, in document order. It reads at most maxRelativesRead spouse
+// links per individual and counts the individuals cut in skipped; it is
+// called once per document, so each is counted once. It stops early, with
+// the groups built so far, once ctx is done.
+func (b *candidateBuilder) spouseGroups(ctx context.Context, individuals []*gedcom.Individual) map[string][]*gedcom.Individual {
+	groups := make(map[string][]*gedcom.Individual)
+	for _, ind := range individuals {
+		if ctx.Err() != nil {
+			break
+		}
+		spouses, cut := b.spouseKeys(ind)
+		if cut {
+			b.skipped.truncatedRelatives++
+		}
+		for _, key := range spouses {
+			groups[key] = append(groups[key], ind)
+		}
+	}
+	return groups
+}
+
+// spouseKeys returns the sorted, distinct name keys of ind's spouses, read
+// from at most maxRelativesRead FAMS links; cut reports that more were left
+// unread. The spouse in a family is the partner who is not ind, as
+// [gedcom.Individual.Spouses] reads it. The keys are remembered, so the spouse
+// groups and ind's candidate read its links once.
+func (b *candidateBuilder) spouseKeys(ind *gedcom.Individual) (keys []string, cut bool) {
+	if s, ok := b.spouses[ind]; ok {
+		return s.keys, s.cut
+	}
+	links := ind.SpouseInFamilies
+	if len(links) > maxRelativesRead {
+		links, cut = links[:maxRelativesRead], true
+	}
+	for _, link := range links {
+		fam := b.doc.GetFamily(link.FamilyXRef)
+		if fam == nil {
+			continue
+		}
+		partner := fam.Husband
+		if partner == ind.XRef {
+			partner = fam.Wife
+		}
+		if key := b.relativeKey(partner); key != "" {
+			keys = append(keys, key)
+		}
+	}
+	keys = sortedDistinct(keys)
+	b.spouses[ind] = spouseKeys{keys: keys, cut: cut}
+	return keys, cut
+}
+
+// childKeys returns the sorted, distinct name keys of ind's children, the
+// CHIL of its FAMS families, reading at most maxRelativesRead child links;
+// cut reports that more were left unread.
+func (b *candidateBuilder) childKeys(ind *gedcom.Individual) (keys []string, cut bool) {
+	links := ind.SpouseInFamilies
+	if len(links) > maxRelativesRead {
+		links, cut = links[:maxRelativesRead], true
+	}
+	read := 0
+	for _, link := range links {
+		fam := b.doc.GetFamily(link.FamilyXRef)
+		if fam == nil {
+			continue
+		}
+		for _, child := range fam.Children {
+			if read == maxRelativesRead {
+				return sortedDistinct(keys), true
+			}
+			read++
+			if key := b.relativeKey(child); key != "" {
+				keys = append(keys, key)
+			}
+		}
+	}
+	return sortedDistinct(keys), cut
+}
+
+// relativeKey returns the key a relative's name is compared on: given name
+// and surname, normalized as an individual's own names are, or "" when xref
+// resolves to no individual or the individual has no given name. A bare
+// surname is shared by too many relatives to say anything.
+//
+// Each relative's key is derived once per document and remembered, since
+// many individuals can link one family and so name one relative many times;
+// normalizing it per link would cost the document's size times the length of
+// a name. The given name and the surname are each cut to maxRunes runes, so
+// a crafted name cannot make the key, or its comparisons, long.
+func (b *candidateBuilder) relativeKey(xref string) string {
+	if xref == "" {
+		return ""
+	}
+	if key, ok := b.relatives[xref]; ok {
+		return key
+	}
+	key := ""
+	if relative := b.doc.GetIndividual(xref); relative != nil {
+		if given := b.d.nameKey(extractGivenName(relative)); given != "" {
+			key = cutRunes(given, b.maxRunes) + " /" + cutRunes(b.d.surnameKey(relative), b.maxRunes) + "/"
+		}
+	}
+	b.relatives[xref] = key
+	return key
+}
+
+// cutRunes returns s cut to its first n runes.
+func cutRunes(s string, n int) string {
+	if utf8.RuneCountInString(s) <= n {
+		return s
+	}
+	return string([]rune(s)[:n])
 }
 
 // extractSurname extracts the surname from an individual's primary name.
@@ -867,21 +1245,28 @@ func extractGivenFromFull(fullName string) string {
 // pair rather than once per individual.
 //
 //nolint:gocyclo // Complexity is appropriate for comparison logic
-func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) {
+func (d *DuplicateDetector) comparePair(c1, c2 *candidate) (DuplicatePair, bool) {
 	var confidence float64
 	var reasons []string
 
 	ind1, ind2 := c1.ind, c2.ind
 
-	// Check surname match
-	surnameMatch := compareSurnames(c1.surname, c2.surname)
-	if !surnameMatch {
-		return DuplicatePair{}, false
+	// Under CompareRelatives, a shared spouse's name stands in for a surname
+	// match: it lets a married-name/maiden-name pair through (#932). Only the
+	// spouse pass brings such a pair here.
+	sameSpouse, sharedChildren := false, 0
+	if d.config.CompareRelatives {
+		sameSpouse = countShared(c1.spouses, c2.spouses) > 0
+		sharedChildren = countShared(c1.children, c2.children)
 	}
 
-	// Surname match contributes to confidence
-	confidence += 0.3
-	reasons = append(reasons, "exact surname match")
+	// Check surname match
+	if compareSurnames(c1.surname, c2.surname) {
+		confidence += 0.3
+		reasons = append(reasons, "exact surname match")
+	} else if !sameSpouse {
+		return DuplicatePair{}, false
+	}
 
 	givenSimilarity := compareGivenNames(c1.given, c2.given, d.config.MinNameSimilarity)
 	if givenSimilarity < d.config.MinNameSimilarity {
@@ -962,6 +1347,21 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 		confidence += weightSameDeathPlace
 		reasons = append(reasons, "same death place")
 	}
+
+	if sameSpouse {
+		confidence += weightSameSpouse
+		reasons = append(reasons, "same spouse name")
+	}
+	if sharedChildren > 0 {
+		confidence += float64(min(sharedChildren, maxSharedChildrenScored)) * weightSharedChild
+		if sharedChildren == 1 {
+			reasons = append(reasons, "1 shared child name")
+		} else {
+			reasons = append(reasons, fmt.Sprintf("%d shared child names", sharedChildren))
+		}
+	}
+	// Relatives can push the sum past 1.0; nothing else can.
+	confidence = min(confidence, 1.0)
 
 	// Check if confidence meets threshold
 	if confidence < d.config.MinConfidence {
