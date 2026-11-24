@@ -277,3 +277,24 @@ func TestCombine_HeaderConflictsAncestryTreeID(t *testing.T) {
 		}
 	}
 }
+
+// TestCombine_HeaderConflictsVendor pins the entries for one dropped SOUR
+// when the files come from different recognized vendors (#943): SourceSystem
+// for the line and Vendor for the document's detected vendor, as the
+// HeaderConflict godoc states, and no "Tags.SOUR".
+func TestCombine_HeaderConflictsVendor(t *testing.T) {
+	for _, keepFirst := range []bool{false, true} {
+		_, report, err := merge.Combine(decodeHeaderDoc(t, "1 SOUR RootsMagic\n"), decodeHeaderDoc(t, "1 SOUR Gramps\n"),
+			merge.CombineOptions{KeepFirstHeader: keepFirst})
+		if err != nil {
+			t.Fatalf("Combine: %v", err)
+		}
+		var fields []string
+		for _, c := range report.HeaderConflicts {
+			fields = append(fields, c.Field)
+		}
+		if want := []string{"SourceSystem", "Tags.GEDC", "Tags.CHAR", "Vendor"}; !reflect.DeepEqual(fields, want) {
+			t.Errorf("KeepFirstHeader %v: fields = %v, want %v", keepFirst, fields, want)
+		}
+	}
+}

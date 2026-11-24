@@ -225,12 +225,19 @@ type CombineReport struct {
 // has a typed field and differs from doc1's, the entry is named for the field
 // and gives both values: "Encoding" (CHAR), "SourceSystem" (SOUR),
 // "AncestryTreeID" (the _TREE under SOUR), "Language" (LANG), "Copyright"
-// (COPR), "Date" (DATE), "Submitter" (SUBM), "PlaceForm" (PLAC),
-// "DeclaredVersion" (GEDC) and "Schema" (SCHMA). Otherwise the entry is
-// "Tags.<TAG>", with Doc1 "kept" when doc1 has the structure too and Doc2
-// saying why it was dropped. Either entry stands for the whole structure,
-// substructures included. A dropped SOUR whose value and _TREE both differ
-// is listed under both of its fields.
+// (COPR), "DeclaredVersion" (GEDC) and "Schema" (SCHMA), and under
+// CombineOptions.KeepFirstHeader also "Date" (DATE), "Submitter" (SUBM) and
+// "PlaceForm" (PLAC), which the default policy lists by tag. Otherwise the
+// entry is "Tags.<TAG>", with Doc1 "kept" when doc1 has the structure too and
+// Doc2 saying why it was dropped. Either entry stands for the whole
+// structure, substructures included.
+//
+// A dropped SOUR is the one structure that can have more than one entry,
+// each for a different value: "SourceSystem" and "AncestryTreeID" when both
+// differ, and "Vendor", which is not a header structure but the vendor
+// detected from SOUR (gedcom.Document.Vendor), so it accompanies
+// "SourceSystem" whenever the two files come from different recognized
+// vendors.
 type HeaderConflict struct {
 	// Field is the typed field name, e.g. "SourceSystem", "Language",
 	// "Copyright", "Schema", "Vendor", or "Tags.<TAG>" for a raw structure.
@@ -438,7 +445,8 @@ func mergeDocMetadata(out, doc1, remappedDoc2 *gedcom.Document, conflicts []Head
 
 // typedFieldHeaderTags maps each typed field a HeaderConflict can name to
 // the level-1 header structure that holds its value. SOUR holds two: its own
-// value and the _TREE under it (a level-1 _TREE is another structure).
+// value and the _TREE under it (a level-1 _TREE is another structure). Vendor
+// is a field of the document, not of a header structure, and is not listed.
 var typedFieldHeaderTags = map[string]string{
 	"Encoding":        "CHAR",
 	"SourceSystem":    "SOUR",

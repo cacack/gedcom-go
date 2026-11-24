@@ -884,7 +884,10 @@ strategy: every level-1 structure of doc2's header, including those doc1 lacks
 `Schema` and `Vendor`) are reported by name. Under either policy a dropped
 structure is listed once: one whose value has a typed field and differs from
 doc1's (`SOUR` as `SourceSystem`, `LANG` as `Language`) is listed under the
-field with both values, not as `Tags.<tag>` too. The only exception is the
+field with both values, not as `Tags.<tag>` too (`DATE`, `SUBM` and `PLAC`
+have typed entries under `KeepFirstHeader` only). A `Vendor` entry, the
+document's detected vendor, accompanies `SourceSystem` when the files come
+from different recognized vendors. The only exception is the
 version: a doc1 header with no `Version` (built in code) takes doc2's.
 Differing non-empty header versions or encodings are refused
 with `ErrIncompatibleHeader`; set `CombineOptions.IgnoreEncodingMismatch`

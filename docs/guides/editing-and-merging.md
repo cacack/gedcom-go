@@ -325,7 +325,10 @@ What to expect:
   dropped structure is listed once: when its value has a typed field and
   differs from doc1's, the entry is named for the field and gives both values
   (`SourceSystem` for `SOUR`, `Language` for `LANG`, `Encoding` for `CHAR`)
-  and there is no `Tags.SOUR` entry beside it. doc2's
+  and there is no `Tags.SOUR` entry beside it. Under the default policy a
+  differing `DATE`, `SUBM` or `PLAC` is listed by tag. Two files from
+  different recognized vendors also give a `Vendor` entry, for the document's
+  detected vendor, beside the `SourceSystem` one. doc2's
   submitter record stays in `Records`; the header points at doc1's.
   A doc2 structure doc1 lacks, such as a `NOTE` or a `DEST`, is carried in
   unreported. To keep doc1's header alone, set
