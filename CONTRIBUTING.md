@@ -315,6 +315,28 @@ go test -cover ./... # Quick coverage summary
 
 For details on critical paths and testing patterns, see [docs/testing.md](docs/testing.md).
 
+### What CI Runs Where
+
+The test matrix is 3 operating systems × 3 Go versions (the `go.mod` floor, `oldstable`, `stable`), all under `-race`.
+
+| Trigger | Test jobs | `-short` |
+|---------|-----------|----------|
+| Pull request | 5: Ubuntu on all three Go versions; macOS and Windows on `stable` only | macOS and Windows |
+| Push to `main` (and merge queue) | All 9 | No |
+| Nightly | All 9 | No |
+
+A pull request therefore does not run the floor and `oldstable` on macOS or Windows; the push to `main` that follows the merge does. Coverage Check always runs the full suite, without `-short`.
+
+Tests that skip under `-short` (`make test-short`) are the ones that walk the whole fixture corpus or a multi-megabyte file:
+
+- root package: `TestJSONRoundTripFixtures`
+- `converter`: `TestConvertedEntitiesAgreeWithTags`
+- `decoder`: `TestScaleFixture`, `TestLargeRealWorldFiles`, `TestDecodeDeadlineOnLargeInput`, `TestMaxDiagnosticsBoundsMemory`
+- `encoder`: `TestEncodeRecord_MatchesEncodeForDecodedFiles`, `TestSyncTagsUnmodifiedIsNoOp`, `TestSyncTagsReachesFixpoint`, `TestSyncRoundUnmodifiedConverges`
+- `validator`: `TestNoIssueCarriesLineNumberDetailKey`, `TestValidateNilElements_MatchesReferenceWalk`, `TestEntityTagsDivergedNotOnConverterOutput`, `TestDuplicateCapPreservesCorpusResults`
+
+`grep -rn 'testing.Short()' --include='*_test.go' .` gives the current list. A new corpus-walking test that takes more than about ten seconds under `-race` should skip under `-short` the same way.
+
 ### Test Guidelines
 
 1. **Table-Driven Tests**

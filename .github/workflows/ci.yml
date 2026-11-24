@@ -19,7 +19,9 @@ concurrency:
 
 jobs:
   test:
-    name: Test
+    # Written out because the matrix has a third key, 'event', which would
+    # otherwise be appended to every job name.
+    name: Test (${{ matrix.os }}, ${{ matrix.go }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -31,6 +33,18 @@ jobs:
         # 'stable' are setup-go's aliases for the two Go releases the Go team
         # supports. Every other job, here and in nightly.yml, uses 'stable'.
         go: ['min', 'oldstable', 'stable']
+        # The split (#903). A pull request runs 5 of the 9 jobs: every Go
+        # version on Ubuntu, and 'stable' alone on macOS and Windows, which
+        # also run with -short (see Run tests). A push to main or a release
+        # branch, a merge group, and nightly.yml's Full Test Matrix job run
+        # all 9 in full. 'event' has one value, so it adds no jobs; it is
+        # here only for the excludes to match on.
+        event: ['${{ github.event_name }}']
+        exclude:
+          - {event: pull_request, os: macos-latest, go: min}
+          - {event: pull_request, os: macos-latest, go: oldstable}
+          - {event: pull_request, os: windows-latest, go: min}
+          - {event: pull_request, os: windows-latest, go: oldstable}
 
     steps:
     - name: Harden Runner
@@ -86,8 +100,12 @@ jobs:
     # setup-go and `go mod verify` -- and the diagnosable failure would never be
     # reached. Note -timeout applies per package binary, so the job cap remains
     # the backstop for an aggregate overrun across ./...
+    #
+    # -short skips the corpus-walking tests (CONTRIBUTING.md lists them) on a
+    # pull request's macOS and Windows jobs, where they set the wall time and
+    # check nothing the Ubuntu jobs do not (#903).
     - name: Run tests
-      run: go test -v -race -timeout 10m -coverprofile=coverage.out -covermode=atomic ./...
+      run: go test -v -race ${{ github.event_name == 'pull_request' && matrix.os != 'ubuntu-latest' && '-short' || '' }} -timeout 10m -coverprofile=coverage.out -covermode=atomic ./...
       shell: bash
 
     - name: Upload coverage to Codecov
