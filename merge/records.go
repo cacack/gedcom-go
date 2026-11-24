@@ -41,8 +41,14 @@ type RecordMergeOptions struct {
 	// type of record (MARR on an individual).
 	//
 	// Two such substructures record the same event when they have the same
-	// tag and value, each has exactly one DATE line and at most one PLAC
-	// and one TYPE line directly under it, and:
+	// tag, each has exactly one DATE line and at most one PLAC and one TYPE
+	// line directly under it, and:
+	//   - the two level-1 values are equal, or one is empty and the other is
+	//     the "Y" that says a named event occurred (the decoder's
+	//     Event.Occurred), which the DATE says too: "1 BIRT Y" and "1 BIRT"
+	//     are the same. Values that differ in any other way are not, and nor
+	//     are "Y" and an empty value on an EVEN or an attribute, where "Y" is
+	//     a descriptor or a value;
 	//   - the two DATE values parse with gedcom.ParseDate to the same date
 	//     and pass Date.Validate. The same date means every parsed field but
 	//     Original is equal: "7 DEC 1977" and "07 Dec 1977" are the same,
@@ -56,8 +62,9 @@ type RecordMergeOptions struct {
 	//     an EVEN, FACT or IDNO says which event or fact it is, so two
 	//     events of differing TYPE are different events.
 	//
-	// Folding keeps keep's lines and adds each line directly under drop's
-	// substructure that keep's does not hold identically (its citations,
+	// Folding keeps keep's lines, its level-1 value included ("1 BIRT" stays
+	// "1 BIRT" when drop's is "1 BIRT Y"), and adds each line directly under
+	// drop's substructure that keep's does not hold identically (its citations,
 	// notes, a place keep lacks), after keep's last line with that tag.
 	// drop's DATE and PLAC are matched with keep's instead of added; the
 	// lines under them are added under keep's DATE and PLAC the same way,
@@ -103,8 +110,9 @@ type Substructure struct {
 }
 
 // Fold is one substructure of drop folded into one of keep. Drop is drop's
-// substructure as it was, repointed; its lines Into already held, and its
-// DATE and PLAC lines, are not in the merged document. Into is keep's
+// substructure as it was, repointed; its lines Into already held, its DATE
+// and PLAC lines, and a level-1 "Y" where Into's value is empty, are not in
+// the merged document. Into is keep's
 // substructure after every fold into it, and its tags are those of the
 // merged document.
 type Fold struct {
@@ -225,7 +233,7 @@ func mergeSubstructures(keep, drop []*gedcom.Tag, fold *folder, report *RecordMe
 			continue
 		}
 		if fold != nil && fold.applies(n) {
-			if i := slices.IndexFunc(keepRoots, func(k *node) bool { return sameEvent(k, n) }); i >= 0 {
+			if i := slices.IndexFunc(keepRoots, func(k *node) bool { return fold.sameEvent(k, n) }); i >= 0 {
 				foldEvent(keepRoots[i], n)
 				report.Folded = append(report.Folded, Fold{Drop: sub})
 				into = append(into, keepRoots[i])
@@ -350,21 +358,44 @@ type folder struct {
 // applies reports whether the decoder reads the level-1 substructure n into
 // the record's Events or Attributes.
 func (f *folder) applies(n *node) bool {
+	events, attributes := f.decode(n)
+	return len(events)+len(attributes) > 0
+}
+
+// decode returns the events and attributes the decoder reads from the
+// level-1 substructure n.
+func (f *folder) decode(n *node) ([]*gedcom.Event, []*gedcom.Attribute) {
 	rec := &gedcom.Record{Type: f.typ, Tags: flatten([]*node{n}, nil)}
 	decoder.SyncEntities(&gedcom.Document{Header: f.header, Records: []*gedcom.Record{rec}})
 	switch e := rec.Entity.(type) {
 	case *gedcom.Individual:
-		return len(e.Events)+len(e.Attributes) > 0
+		return e.Events, e.Attributes
 	case *gedcom.Family:
-		return len(e.Events)+len(e.Attributes) > 0
+		return e.Events, e.Attributes
 	}
-	return false
+	return nil, nil
+}
+
+// sameValue reports whether the level-1 values of k and d are equal, or one
+// is empty and the other the "Y" the decoder reads as Event.Occurred.
+func (f *folder) sameValue(k, d *node) bool {
+	if k.tag.Value == d.tag.Value {
+		return true
+	}
+	flag := k
+	if k.tag.Value == "" {
+		flag = d
+	} else if d.tag.Value != "" {
+		return false
+	}
+	events, _ := f.decode(flag)
+	return flag.tag.Value == "Y" && len(events) == 1 && events[0].Occurred
 }
 
 // sameEvent reports whether keep's substructure k and drop's substructure d
 // record the same event, as RecordMergeOptions.FoldEvents defines it.
-func sameEvent(k, d *node) bool {
-	if k.tag.Tag != d.tag.Tag || k.tag.Value != d.tag.Value {
+func (f *folder) sameEvent(k, d *node) bool {
+	if k.tag.Tag != d.tag.Tag || !f.sameValue(k, d) {
 		return false
 	}
 	kDate, kOK := onlyChild(k, "DATE")

@@ -388,7 +388,8 @@ What happens:
   structure the decoder reads into `Events` or `Attributes`, so not `CHAN`,
   `CREA`, an LDS ordinance or an extension tag) with the tag, value
   and date of one of `keep`'s (dates compared as parsed, so `7 DEC 1977` is
-  `07 Dec 1977`), the same `TYPE` if any, and the same place or a place only
+  `07 Dec 1977`; an event's `Y` flag matches an empty value, so `1 BIRT Y`
+  is `1 BIRT`, and `keep`'s line is the one kept), the same `TYPE` if any, and the same place or a place only
   one of them has, is folded
   into it: `keep`'s lines stay, and `drop`'s citations, notes and other lines
   `keep`'s lacks are added. A structure without a valid `DATE`, or whose date,
