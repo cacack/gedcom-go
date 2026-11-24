@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.14.0](https://github.com/cacack/gedcom-go/compare/v3.13.0...v3.14.0) (2026-11-24)
+
+
+### Features
+
+* **gedcom:** allocate a free xref for a new record ([c13af8f](https://github.com/cacack/gedcom-go/commit/c13af8f29d4c2e085c861eacea68f342c4cf0151)), closes [#920](https://github.com/cacack/gedcom-go/issues/920)
+* **gedcom:** read and append a record's media links ([e5291f2](https://github.com/cacack/gedcom-go/commit/e5291f2c3836a9775db84f97ae201962bef30ab2)), closes [#921](https://github.com/cacack/gedcom-go/issues/921)
+* **merge:** add CombineOptions.KeepFirstHeader to keep doc1's header alone ([2f99384](https://github.com/cacack/gedcom-go/commit/2f99384389b8c6428b4f1f8ab9a5e85afd93dad7)), closes [#931](https://github.com/cacack/gedcom-go/issues/931)
+* **merge:** add PrefixAllDoc2 to prefix every doc2 xref ([a27d356](https://github.com/cacack/gedcom-go/commit/a27d3565958eee5d2f5da25880cc8676f3713af3)), closes [#924](https://github.com/cacack/gedcom-go/issues/924)
+* **merge:** fold an event of drop into keep's event of the same date ([cc52c62](https://github.com/cacack/gedcom-go/commit/cc52c623b520644693e1218d76965874429c64ac))
+
+
+### Bug Fixes
+
+* **merge:** document the RemapError a taken prefixed name gives under PrefixDoc2 ([05e1939](https://github.com/cacack/gedcom-go/commit/05e193905a0f7cd9f1efb77cd30a8513b33ed2d2)), closes [#925](https://github.com/cacack/gedcom-go/issues/925)
+* **merge:** drop Layout from a zipped Combine result ([a4f8c18](https://github.com/cacack/gedcom-go/commit/a4f8c18cb08e84d44c01be17e93559e5e93ef566)), closes [#922](https://github.com/cacack/gedcom-go/issues/922)
+* **merge:** keep a dangling doc2 pointer dangling under Combine ([15f1170](https://github.com/cacack/gedcom-go/commit/15f1170de6248b36a2852e57c47b3da7940ca299)), closes [#925](https://github.com/cacack/gedcom-go/issues/925)
+* **merge:** report a hand-built doc2 header's dropped views under KeepFirstHeader ([159d443](https://github.com/cacack/gedcom-go/commit/159d44356d84a833bebce4ddd26a155c4ce96879)), closes [#931](https://github.com/cacack/gedcom-go/issues/931)
+* **merge:** tell events apart by TYPE, TIME and PHRASE when folding ([e70ecfa](https://github.com/cacack/gedcom-go/commit/e70ecfa118b9dd1d0a47657ad45b396270652394))
+
 ## [3.13.0](https://github.com/cacack/gedcom-go/compare/v3.12.0...v3.13.0) (2026-11-24)
 
 
