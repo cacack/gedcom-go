@@ -476,7 +476,7 @@ This library follows [Semantic Versioning](https://semver.org/). We do not break
 ### What May Change
 
 - **Results of heuristic features** (which duplicate pairs are reported and their scores, the quality report's wording) may change in minor versions; their signatures are stable
-- **Conformance fixes** that bring behaviour into line with the GEDCOM spec or documented contract may change results in minor versions; each is listed under [Behaviour changes in minor releases](docs/governance/policies/api-stability.md#behaviour-changes-in-minor-releases)
+- **Conformance fixes** that bring behavior into line with the GEDCOM spec or documented contract may change results in minor versions; each is listed under [Behavior changes in minor releases](docs/governance/policies/api-stability.md#behavior-changes-in-minor-releases)
 - **Struct tags** on the document model may be added or changed in minor versions, which changes `encoding/json` output; each is listed in the same table
 
 ### GEDCOM Spec Evolution

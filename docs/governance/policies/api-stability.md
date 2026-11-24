@@ -97,7 +97,7 @@ fix promptly is what
 [Honor the Standards](../../../CONSTITUTION.md#5-honor-the-standards) asks.
 It requires:
 
-1. A row in [Behaviour changes in minor releases](#behaviour-changes-in-minor-releases)
+1. A row in [Behavior changes in minor releases](#behavior-changes-in-minor-releases)
    giving the old and new behaviour and what a caller must do.
 2. A commit body stating that the change is a conformance fix that changes
    results, and naming that table.
@@ -120,7 +120,7 @@ a documented contract, and already changes with every
 [added struct field](#non-breaking-minor-or-patch), which is non-breaking; a
 tag change stands on the same footing. It requires:
 
-1. A row in [Behaviour changes in minor releases](#behaviour-changes-in-minor-releases)
+1. A row in [Behavior changes in minor releases](#behavior-changes-in-minor-releases)
    giving the old and new output and what a caller must do.
 2. A commit body stating that the change alters serialised output, and naming
    that table.
@@ -147,7 +147,7 @@ Known members of this category:
 | GEDCOM 7.0 negative assertions (`NO <EVENT>`, `Event.IsNegative`) skipped by the library's event readers | v3.0.0 | A bug fix, listed here because accessor, validator and converter results change for existing callers with no signature change, so `apidiff` reports nothing. `Individual.BirthEvent`/`DeathEvent`/`BirthDate`/`DeathDate` no longer return a negated event or its date period (they return the first non-negated one, or nil). The date-logic rules no longer raise `DEATH_BEFORE_BIRTH`, `MARRIAGE_BEFORE_BIRTH` and the other date checks from a negated event, and the quality report no longer counts one toward its birth, death or place coverage. A 7.0 → 5.5/5.5.1 conversion now actually drops each `NO` (raw `Record.Tags` and the typed `Events` entry) instead of reporting it as lost while still writing it; a document built in code, with no raw tags, now has its negated events reported as data loss too, so `StrictDataLoss` fails on it where v2 succeeded. `Events` itself is unchanged and still holds negated events; the additive `OccurredEvents` and `NegativeAssertions` helpers separate them. See the [migration guide](../../guides/migration-v3.md#negative-assertions-are-no-longer-read-as-events). |
 | Inline note text no longer reported as an orphaned `NOTE` reference ([#473](https://github.com/cacack/gedcom-go/issues/473)) | v3.0.0 | A bug fix, listed here because it changes issue counts a caller may have snapshotted. `StreamingValidator` collected note references from the deprecated `Notes` slice, which interleaved pointers with inline text and applied no pointer test — so a record carrying ordinary note prose was reported as an orphaned reference to a record whose XRef was the prose itself. Collection now reads `NoteXRefs`, which holds only pointer-shaped values. Callers who suppressed `ORPHANED_NOTE` wholesale, or who assert on issue counts, will see fewer issues. |
 
-### Behaviour changes in minor releases
+### Behavior changes in minor releases
 
 Changes shipped under
 [Conformance fixes in minor releases](#conformance-fixes-in-minor-releases) or
@@ -471,7 +471,7 @@ means changing their answers:
 - Quality report: its wording and layout
 
 Each such change gets a row in
-[Behaviour changes in minor releases](#behaviour-changes-in-minor-releases).
+[Behavior changes in minor releases](#behavior-changes-in-minor-releases).
 
 ## Downstream Consumer Considerations
 
