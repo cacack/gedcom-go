@@ -274,7 +274,8 @@ type DuplicatePair struct {
 	//	                       "similar given name (N%)")
 	//	0.20  birth year       same year ("same birth year"); 0.10 when within
 	//	                       MaxBirthYearDiff ("birth year within N years")
-	//	0.10  sex              both known and equal ("same sex")
+	//	0.10  sex              both known and equal ("same sex"), or unknown
+	//	                       on one side or both ("sex not recorded on both")
 	//	0.04  full birth date  both exact, in one calendar, with the same day,
 	//	                       month and year ("same birth date")
 	//	0.03  death year       both exact, same year ("same death year")
@@ -283,9 +284,12 @@ type DuplicatePair struct {
 	//
 	// The maximum is 1.0. A pair that agrees on name, birth year and sex alone
 	// scores 0.9, so anything above that agrees on a full birth date, a death
-	// year or a place as well. Nothing is subtracted: a signal that does not
-	// match, or is not recorded on both sides, only withholds its weight.
-	// Contradictions are vetoes instead (see [DuplicateConfig.MaxBirthYearDiff]).
+	// year or a place as well. Nothing is subtracted, and a value recorded on
+	// one side only never costs more than one neither side records: every
+	// signal but sex withholds its weight in both cases, and sex earns it in
+	// both, since an unrecorded sex is no evidence of two people (#932).
+	// Contradictions are vetoes instead (see [DuplicateConfig.MaxBirthYearDiff]):
+	// two known sexes that differ rule the pair out.
 	//
 	// Places are compared whole, as recorded, after the normalization names
 	// get (trim, lowercase, remove accents) unless
@@ -917,11 +921,17 @@ func (d *DuplicateDetector) comparePair(c1, c2 candidate) (DuplicatePair, bool) 
 		}
 	}
 
-	// Compare sex: two known sexes that differ veto the pair (#728).
-	if sex1, sex2 := knownSex(ind1.Sex), knownSex(ind2.Sex); sex1 != "" && sex2 != "" {
-		if sex1 != sex2 {
-			return DuplicatePair{}, false
-		}
+	// Compare sex: two known sexes that differ veto the pair (#728). Any
+	// other pair earns the weight: a sex unrecorded on one side or both is
+	// no evidence of two people, so it must cost no more than a sex both
+	// record alike (#932).
+	switch sex1, sex2 := knownSex(ind1.Sex), knownSex(ind2.Sex); {
+	case sex1 == "" || sex2 == "":
+		confidence += 0.1
+		reasons = append(reasons, "sex not recorded on both")
+	case sex1 != sex2:
+		return DuplicatePair{}, false
+	default:
 		confidence += 0.1
 		reasons = append(reasons, "same sex")
 	}
