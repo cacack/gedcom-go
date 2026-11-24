@@ -299,7 +299,32 @@ field the decoder does not populate is dead surface, the speculative API that
 against. When the justifying work cannot land in the current major, the break
 is recorded here instead.
 
-No break is currently recorded. The register's first entry, "`gedcom.Transliteration`
+### `Event` and `PersonalName` move rarely set fields behind a `Detail` pointer
+
+Recorded 2026-11-24 from the [#872](https://github.com/cacack/gedcom-go/issues/872)
+spike. Both structs are wide and mostly empty: slimming them cut the live heap
+of a decoded 46 MiB file by 29% (308.9 MB), and by 18–26% on two smaller files
+from other vendors.
+
+- **The break:** the fields the spike lists as `Detail` (for example
+  `Event.Cause`, `Event.Age`, `PersonalName.Nickname`, `PersonalName.Type`) move
+  to `EventDetail` and `PersonalNameDetail`, reached through a named
+  `Detail` pointer that is nil when none of them is set. Reads go through
+  nil-safe getters on the detail type and writes through an `EnsureDetail()`
+  method. An embedded pointer is ruled out: reads would keep compiling and
+  panic on a nil detail, against
+  [ADR 0007](../../decisions/0007-error-transparency.md).
+- **Not included:** `Individual`, `Family` and `SourceCitation` keep their
+  layout. Their cold fields are hot for some vendors, so one pointer saves
+  little or grows the struct on those files.
+- **When:** inside a v4 that is being cut for other reasons. The saving does
+  not justify a major release on its own. Re-run the spike's fill counts when
+  v4 is cut, since fields added since may change which side of the pointer a
+  field belongs on.
+- **Lossless impact:** none. `Record.Tags` is unchanged and every typed field
+  keeps exactly one home.
+
+The register's first entry, "`gedcom.Transliteration`
 stops being comparable with `==`" (recorded in the v3.0.0 cycle,
 [#501](https://github.com/cacack/gedcom-go/issues/501)), was withdrawn when
 [#453](https://github.com/cacack/gedcom-go/issues/453) landed: 5.5.1 `FONE` and
