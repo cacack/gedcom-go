@@ -122,9 +122,9 @@ type foreignDrop struct {
 //
 // It runs after every pass that maps a structure into its target form, so it
 // removes only what is left: what has no target form at all. A record with no
-// Tags is written from its entity and is not walked; the one typed field
-// such a record can hold that the target lacks, and no earlier pass clears,
-// is cleared instead (clearForeignEntityFields).
+// Tags is written from its entity and is not walked; the typed fields such
+// a record can hold that the target lacks, and no earlier pass clears, are
+// cleared instead (clearForeignEntityFields).
 func dropForeignStructures(doc *gedcom.Document, dir *foreignStructures, report *gedcom.ConversionReport, targetVersion gedcom.Version) {
 	var drops []foreignDrop
 	if doc.Header != nil {
@@ -147,6 +147,13 @@ func dropForeignStructures(doc *gedcom.Document, dir *foreignStructures, report 
 			dropped = dir.clearForeignEntityFields(record, root)
 		} else {
 			record.Tags, dropped = dir.walk(record.Tags, root)
+			if len(record.Tags) == 0 {
+				// Every tag was dropped, so the record is now written from
+				// its entity, which SyncEntities leaves alone: the fields
+				// read from the dropped tags are cleared here, already
+				// reported by walk.
+				dir.clearForeignEntityFields(record, root)
+			}
 		}
 		for _, path := range dropped {
 			drops = append(drops, foreignDrop{recordType: string(record.Type), xref: record.XRef, path: path})
@@ -221,23 +228,40 @@ func (dir *foreignStructures) recordCandidates(root string) []candidate {
 
 // clearForeignEntityFields clears, on the entity of a record with no Tags,
 // each typed field the encoder writes as a level-1 structure the target
-// lacks, and returns a path per value cleared, as walk does per block. Only
-// Submitter.RefNumbers needs it: REFN is 7.0-only on SUBM but valid on the
-// other records, so it is not in v7OnlyTags, whose fields
-// clearV7OnlyEntityFields clears earlier.
+// lacks, and returns a path per value cleared, as walk does per block. Two
+// kinds of field need it. Submitter.RefNumbers: REFN is 7.0-only on SUBM but
+// valid on the other records, so it is not in v7OnlyTags, whose fields
+// clearV7OnlyEntityFields clears earlier. And MediaObject.Form and .Title,
+// the 5.5 record layout (#879): whatever nestMediaRecordForms could not move
+// to a file is a level-1 FORM or TITL, which only 5.5 defines.
 func (dir *foreignStructures) clearForeignEntityFields(record *gedcom.Record, root string) [][]string {
-	subm, ok := record.Entity.(*gedcom.Submitter)
-	if !ok || subm == nil || len(subm.RefNumbers) == 0 {
-		return nil
+	isForeign := func(tag string) bool {
+		_, foreign := dir.classify(dir.recordCandidates(root), tag)
+		return foreign
 	}
-	if _, foreign := dir.classify(dir.recordCandidates(root), "REFN"); !foreign {
-		return nil
+	var dropped [][]string
+	switch entity := record.Entity.(type) {
+	case *gedcom.Submitter:
+		if entity == nil || len(entity.RefNumbers) == 0 || !isForeign("REFN") {
+			return nil
+		}
+		for range entity.RefNumbers {
+			dropped = append(dropped, []string{"REFN"})
+		}
+		entity.RefNumbers = nil
+	case *gedcom.MediaObject:
+		if entity == nil {
+			return nil
+		}
+		if entity.Form != "" && isForeign("FORM") {
+			dropped = append(dropped, []string{"FORM"})
+			entity.Form = ""
+		}
+		if entity.Title != "" && isForeign("TITL") {
+			dropped = append(dropped, []string{"TITL"})
+			entity.Title = ""
+		}
 	}
-	dropped := make([][]string, len(subm.RefNumbers))
-	for i := range dropped {
-		dropped[i] = []string{"REFN"}
-	}
-	subm.RefNumbers = nil
 	return dropped
 }
 

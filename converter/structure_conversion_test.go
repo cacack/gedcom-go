@@ -543,9 +543,53 @@ func TestUpgrade55NestsMediaRecordForms(t *testing.T) {
 	}
 }
 
+// TestUpgrade55DropsBareMediaRecordForms: a 5.5 OBJE record holding nothing
+// 7.0 defines (FORM, TITL and BLOB, the conforming 5.5 record) loses every
+// tag, so it is written from its entity, which must lose the Form and Title
+// read from those tags as well (#879). An unrelated line that keeps Tags
+// non-empty must not change the result.
+func TestUpgrade55DropsBareMediaRecordForms(t *testing.T) {
+	const doc55 = `0 HEAD
+1 GEDC
+2 VERS 5.5
+2 FORM LINEAGE-LINKED
+1 CHAR ASCII
+0 @O1@ OBJE
+1 FORM bmp
+1 TITL Portrait
+1 BLOB
+2 CONT abc
+0 @O2@ OBJE
+1 FORM bmp
+1 TITL Portrait
+0 @O3@ OBJE
+1 FORM bmp
+1 TITL Portrait
+1 REFN 7
+0 TRLR
+`
+	converted, report, out := convertText(t, doc55, gedcom.Version70)
+	if want := "0 @O1@ OBJE\n0 @O2@ OBJE\n0 @O3@ OBJE\n1 REFN 7\n0 TRLR\n"; !strings.HasSuffix(out, want) {
+		t.Errorf("output does not end with %q:\n%s", want, out)
+	}
+	for _, xref := range []string{"@O1@", "@O2@", "@O3@"} {
+		media := converted.GetMediaObject(xref)
+		if media == nil || media.Form != "" || media.Title != "" {
+			t.Errorf("%s = %+v, want no Form and no Title", xref, media)
+		}
+		if !hasDropped(report, "MediaObject "+xref+" > FORM") || !hasDropped(report, "MediaObject "+xref+" > TITL") {
+			t.Errorf("%s FORM/TITL not reported as Dropped: %+v", xref, report.Dropped)
+		}
+	}
+	if n := len(report.Dropped); n != 7 { // FORM and TITL of each record, and the BLOB
+		t.Errorf("Dropped has %d notes, want 7: %+v", n, report.Dropped)
+	}
+}
+
 // TestUpgrade55NestsMediaEntityForms: a record with no Tags is written from
 // its entity, so the record-level Form and Title (#879) move to the first
-// file there, each only where the file has none of its own.
+// file there, each only where the file has none of its own. What cannot move
+// is dropped and reported, as the Tags path drops a level-1 FORM and TITL.
 func TestUpgrade55NestsMediaEntityForms(t *testing.T) {
 	media := func(xref string, m *gedcom.MediaObject) *gedcom.Record {
 		m.XRef = xref
@@ -569,10 +613,11 @@ func TestUpgrade55NestsMediaEntityForms(t *testing.T) {
 	want := []*gedcom.MediaObject{
 		{XRef: "@O1@", Files: []*gedcom.MediaFile{
 			{FileRef: "photo.jpg", Form: "image/jpeg", Title: "Portrait"}, {FileRef: "other.jpg"}}},
-		// The file's own format and title win; the record's stay where they were.
-		{XRef: "@O2@", Form: "bmp", Title: "Record", Files: []*gedcom.MediaFile{
+		// The file's own format and title win; the record's are dropped.
+		{XRef: "@O2@", Files: []*gedcom.MediaFile{
 			{FileRef: "scan.gif", Form: "image/gif", Title: "File"}}},
-		{XRef: "@O3@", Form: "bmp"},
+		// No file to move to.
+		{XRef: "@O3@"},
 	}
 	for _, w := range want {
 		if got := converted.GetMediaObject(w.XRef); !reflect.DeepEqual(got, w) {
@@ -585,5 +630,63 @@ func TestUpgrade55NestsMediaEntityForms(t *testing.T) {
 	}
 	if hasNormalized(report, "@O2@", note, "FORM/TITL under FILE") || hasNormalized(report, "@O3@", note, "FORM/TITL under FILE") {
 		t.Errorf("Normalized note for a record nothing moved in: %+v", report.Normalized)
+	}
+	wantDropped := []string{"MediaObject @O2@ > FORM", "MediaObject @O2@ > TITL", "MediaObject @O3@ > FORM"}
+	var dropped []string
+	for _, n := range report.Dropped {
+		dropped = append(dropped, n.Path)
+	}
+	if !reflect.DeepEqual(dropped, wantDropped) {
+		t.Errorf("Dropped = %q, want %q", dropped, wantDropped)
+	}
+	if !hasDataLoss(report, "OBJE.FORM structures", "@O2@") || !hasDataLoss(report, "OBJE.FORM structures", "@O3@") ||
+		!hasDataLoss(report, "OBJE.TITL structures", "@O2@") || hasDataLoss(report, "OBJE.FORM structures", "@O1@") {
+		t.Errorf("DataLoss = %+v", report.DataLoss)
+	}
+
+	// The output holds no level-1 FORM or TITL.
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, converted); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	out := buf.String()
+	if strings.Contains(out, "\n1 FORM") || strings.Contains(out, "\n1 TITL") {
+		t.Errorf("7.0 output keeps a level-1 FORM or TITL:\n%s", out)
+	}
+}
+
+// TestMediaEntityFormsOutside55To70: a level-1 FORM and TITL are not
+// structures 5.5.1 defines, so a conversion from 5.5.1 keeps them as it keeps
+// any tag its source grammar does not explain, on the Tags path and the
+// entity path alike (#879).
+func TestMediaEntityFormsOutside55To70(t *testing.T) {
+	const want = "0 @O1@ OBJE\n1 FORM bmp\n1 TITL Portrait\n1 FILE a.bmp\n"
+	const doc551 = "0 HEAD\n1 GEDC\n2 VERS 5.5.1\n2 FORM LINEAGE-LINKED\n1 CHAR UTF-8\n" + want + "0 TRLR\n"
+	for _, tagless := range []bool{false, true} {
+		doc, err := decoder.Decode(strings.NewReader(doc551))
+		if err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if tagless {
+			doc.Records[0].Tags = nil
+			doc.GetMediaObject("@O1@").Tags = nil
+		}
+		converted, report, err := Convert(doc, gedcom.Version70)
+		if err != nil {
+			t.Fatalf("Convert: %v", err)
+		}
+		var buf bytes.Buffer
+		if err := encoder.Encode(&buf, converted); err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+		if out := buf.String(); !strings.Contains(out, want) {
+			t.Errorf("tagless=%v: output lacks %q:\n%s", tagless, want, out)
+		}
+		if media := converted.GetMediaObject("@O1@"); media.Form != "bmp" || media.Title != "Portrait" {
+			t.Errorf("tagless=%v: Form, Title = %q, %q", tagless, media.Form, media.Title)
+		}
+		if hasDropped(report, "MediaObject @O1@ > FORM") || hasDropped(report, "MediaObject @O1@ > TITL") {
+			t.Errorf("tagless=%v: Dropped = %+v", tagless, report.Dropped)
+		}
 	}
 }
