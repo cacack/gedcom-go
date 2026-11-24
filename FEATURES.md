@@ -674,7 +674,8 @@ branch, dropped, err := doc.BoundedSubset([]string{"@I3@", "@I7@"})
   such record the header points at
 - A pointer to an individual or family outside the result is removed with
   its subordinate lines, from the raw Tags and the typed Entity alike, so
-  the result is self-contained; each one is reported as a `DroppedPointer`
+  the result is self-contained; each one is reported as a `DroppedPointer`,
+  with the `Position` a level-1 line had among the record's level-1 lines
 - Seeds must be individuals (`gedcom.ErrNotIndividual`) that resolve
   (`gedcom.ErrUnknownXRef`); a dangling reference is an error, as in `Subset`
 - Zips back together with `merge.ZipSharedXRefs`: the bounded subsets of
@@ -683,6 +684,9 @@ branch, dropped, err := doc.BoundedSubset([]string{"@I3@", "@I7@"})
   pointer only one subset's records hold, such as an `ASSO` naming someone
   outside the set, is lost from the cut. Round-tripping needs raw Tags, as a
   decoded document has. A conflict's reason is a `merge.ConflictReason`
+- Subsets written to files and read back zip into the master's line order,
+  children of a split family included, when the second subset's
+  dropped-pointer report is passed in `ZipOptions.DroppedFromDoc2`
 
 ### Deep Copy
 
@@ -754,7 +758,16 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 `ZipSharedXRefs` is for documents cut from one master, such as bounded
 subsets: a shared XRef is one record. Identical records collapse to one;
 records that differ only in lines pointing at individuals or families are
-unioned, merging each run of such lines in source line order. Any other
+unioned, merging each run of such lines in source line order. Subsets read
+back from files carry their own line numbers, so pass what `BoundedSubset`
+reported dropping from doc2 in `CombineOptions.Zip` (a
+`ZipOptions.DroppedFromDoc2`) to merge a record's level-1 pointer lines by
+`DroppedPointer.Position` instead, which puts a split family's `CHIL` lines
+back in the master's order. doc1 needs no
+report, so each step of a chain of zips passes the report of the subset it
+adds. A report that does not fit a record (another master's, or a
+hand-edited file) is ignored for it. With no report, a record takes doc2's
+order when doc2 holds every level-1 pointer line of doc1's. Any other
 difference is a `RecordConflict`: `Combine` fails with `ErrRecordConflict`
 and no output, or keeps doc1's record and reports the conflict in
 `CombineReport.RecordConflicts` when `CombineOptions.KeepFirstOnConflict`

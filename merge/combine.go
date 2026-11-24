@@ -54,7 +54,12 @@ const (
 	// into its order; subsets encoded and decoded again carry their own
 	// files' numbers, so a run both documents contribute to (the children
 	// of a family split between them) holds the same lines but its order
-	// need not be the master's. A record whose unioned lines are new has
+	// need not be the master's. To get the master's order then, pass what
+	// BoundedSubset reported dropping from doc2 in
+	// ZipOptions.DroppedFromDoc2: a record's level-1 pointer lines are
+	// merged by the positions recorded there instead. With no report for
+	// a record, it takes doc2's order when doc2 holds every level-1
+	// pointer line of doc1's. A record whose unioned lines are new has
 	// its Entity rebuilt from them (decoder.SyncEntities).
 	//
 	// Records keep doc1's order, followed by doc2's records doc1 lacks.
@@ -87,6 +92,9 @@ type CombineOptions struct {
 	// CombineReport.RecordConflicts, instead of failing. Other strategies
 	// ignore it.
 	KeepFirstOnConflict bool
+	// Zip holds further options for ZipSharedXRefs. Other strategies
+	// ignore it, and nil means none.
+	Zip *ZipOptions
 	// Context allows cancellation and timeout control. Combine checks it
 	// before it starts and before each record it compares, remaps or
 	// copies; once it is done
@@ -95,6 +103,29 @@ type CombineOptions struct {
 	// context.DeadlineExceeded). The inputs are never modified either way.
 	// The zero value (nil) means no cancellation.
 	Context context.Context
+}
+
+// ZipOptions holds the options of ZipSharedXRefs that CombineOptions
+// points at rather than carries.
+type ZipOptions struct {
+	// DroppedFromDoc2 holds the pointers gedcom.Document.BoundedSubset
+	// reported dropping when it cut doc2 from the master doc1 was also
+	// cut from. The zip uses each gedcom.DroppedPointer.Position to put a
+	// record's level-1 pointer lines, such as the CHIL lines of a family
+	// split between the two, back in the master's order. doc1 needs no
+	// report, so a chain of zips passes, at each step, the report of the
+	// subset it adds as doc2. The report belongs to the subset as it was
+	// cut: do not pass one for a document that has been zipped or edited
+	// since.
+	//
+	// The positions are hints. For a record they do not fit (none
+	// recorded, a position repeated or out of range, a dropped line the
+	// record still holds, or a pointer line of doc1's that the report
+	// does not account for, as when the documents come from different
+	// masters or one was edited by hand) the lines are merged as without
+	// them. They never change which lines the result holds, only the
+	// order of pointer lines within a run.
+	DroppedFromDoc2 []gedcom.DroppedPointer
 }
 
 // CombineReport describes what Combine did on success. Combine returns

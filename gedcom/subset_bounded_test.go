@@ -135,12 +135,12 @@ func TestBoundedSubset_OneIndividual(t *testing.T) {
 	assertSelfContained(t, sub)
 
 	wantDropped := []gedcom.DroppedPointer{
-		{XRef: "@F1@", Tag: "HUSB", Target: "@I1@", Restorable: true},
-		{XRef: "@F1@", Tag: "WIFE", Target: "@I2@", Restorable: true},
-		{XRef: "@F1@", Tag: "CHIL", Target: "@I4@", Restorable: true},
-		{XRef: "@F1@", Tag: "CHIL", Target: "@I5@", Restorable: true},
-		{XRef: "@F2@", Tag: "WIFE", Target: "@I6@", Restorable: true},
-		{XRef: "@F2@", Tag: "CHIL", Target: "@I7@", Restorable: true},
+		{XRef: "@F1@", Tag: "HUSB", Target: "@I1@", Restorable: true, Position: 1},
+		{XRef: "@F1@", Tag: "WIFE", Target: "@I2@", Restorable: true, Position: 2},
+		{XRef: "@F1@", Tag: "CHIL", Target: "@I4@", Restorable: true, Position: 4},
+		{XRef: "@F1@", Tag: "CHIL", Target: "@I5@", Restorable: true, Position: 6},
+		{XRef: "@F2@", Tag: "WIFE", Target: "@I6@", Restorable: true, Position: 2},
+		{XRef: "@F2@", Tag: "CHIL", Target: "@I7@", Restorable: true, Position: 3},
 	}
 	if !reflect.DeepEqual(dropped, wantDropped) {
 		t.Errorf("dropped = %+v\nwant %+v", dropped, wantDropped)
@@ -194,7 +194,7 @@ func TestBoundedSubset_Association(t *testing.T) {
 	if got := sub.GetIndividual("@I4@").Associations; len(got) != 0 {
 		t.Errorf("associations = %+v, want none", got)
 	}
-	want := gedcom.DroppedPointer{XRef: "@I4@", Tag: "ASSO", Target: "@I8@", Restorable: false}
+	want := gedcom.DroppedPointer{XRef: "@I4@", Tag: "ASSO", Target: "@I8@", Restorable: false, Position: 4}
 	if !slices.Contains(dropped, want) {
 		t.Errorf("dropped = %+v, want it to hold %+v", dropped, want)
 	}
@@ -206,6 +206,41 @@ func TestBoundedSubset_Association(t *testing.T) {
 	}
 	if got := sub.GetIndividual("@I4@").Associations; len(got) != 1 {
 		t.Errorf("associations = %+v, want one", got)
+	}
+}
+
+// A dropped line's Position counts the record's level-1 lines from 1, the
+// dropped ones included, and skips a nil tag; a line below level 1 has none.
+func TestBoundedSubset_DroppedPosition(t *testing.T) {
+	doc := gedcom.NewDocument(gedcom.Version551)
+	for _, r := range []*gedcom.Record{
+		{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{XRef: "@I1@"}, Tags: []*gedcom.Tag{
+			nil,
+			{Level: 1, Tag: "NAME", Value: "Ann /Example/"},
+			{Level: 1, Tag: "ASSO", Value: "@I2@"},
+			{Level: 2, Tag: "RELA", Value: "Friend"},
+			{Level: 1, Tag: "EVEN"},
+			{Level: 2, Tag: "ASSO", Value: "@I2@"},
+			{Level: 1, Tag: "ASSO", Value: "@I3@"},
+		}},
+		{XRef: "@I2@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{XRef: "@I2@"}},
+		{XRef: "@I3@", Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{XRef: "@I3@"}},
+	} {
+		if err := doc.AddRecord(r); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_, dropped, err := doc.BoundedSubset([]string{"@I1@"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []gedcom.DroppedPointer{
+		{XRef: "@I1@", Tag: "ASSO", Target: "@I2@", Position: 2},
+		{XRef: "@I1@", Tag: "ASSO", Target: "@I2@"},
+		{XRef: "@I1@", Tag: "ASSO", Target: "@I3@", Position: 4},
+	}
+	if !reflect.DeepEqual(dropped, want) {
+		t.Errorf("dropped = %+v\nwant %+v", dropped, want)
 	}
 }
 

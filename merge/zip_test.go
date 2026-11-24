@@ -247,8 +247,8 @@ func TestZip_BoundedSubsetsProperty(t *testing.T) {
 
 // TestZip_AfterFileRoundtrip zips subsets that were encoded and decoded
 // again, so their line numbers are their own files'. The records hold the
-// same lines; a run of pointer lines split between the files need not keep
-// the master's order.
+// same lines; with no report of what each cut dropped, a run of pointer
+// lines split between the files need not keep the master's order.
 func TestZip_AfterFileRoundtrip(t *testing.T) {
 	doc := decodeZip(t, zipFixture)
 	roundtrip := func(sub *gedcom.Document) *gedcom.Document {
@@ -395,5 +395,236 @@ func TestZip_HeaderPointers(t *testing.T) {
 	want := []string{"GEDC ", "CHAR UTF-8", "SUBM @U1@", "_HOME @I1@", "NOTE @N3@"}
 	if !slices.Equal(lines, want) {
 		t.Errorf("header lines = %q, want %q", lines, want)
+	}
+}
+
+// cut returns the bounded subset of set as a file holds it, encoded and
+// decoded again so that its lines carry the file's line numbers and not the
+// master's, with the report of what the cut dropped.
+func cut(t *testing.T, doc *gedcom.Document, set []string) (*gedcom.Document, []gedcom.DroppedPointer) {
+	t.Helper()
+	sub, dropped, err := doc.BoundedSubset(set)
+	if err != nil {
+		t.Fatalf("BoundedSubset(%v): %v", set, err)
+	}
+	var buf bytes.Buffer
+	if err := encoder.Encode(&buf, sub); err != nil {
+		t.Fatal(err)
+	}
+	return decodeZip(t, buf.String()), dropped
+}
+
+// assertSameLines fails unless got and want hold the same records with the
+// same lines in the same order. Unlike assertSameRecords it leaves the typed
+// Entity out, which records the line numbers of the file it was read from.
+func assertSameLines(t *testing.T, label string, got, want *gedcom.Document) {
+	t.Helper()
+	gotX, wantX := recordXRefSet(got), recordXRefSet(want)
+	if !slices.Equal(gotX, wantX) {
+		t.Fatalf("%s: records = %v, want %v", label, gotX, wantX)
+	}
+	for _, xref := range wantX {
+		if gl, wl := lines(got.GetRecord(xref)), lines(want.GetRecord(xref)); !slices.Equal(gl, wl) {
+			t.Errorf("%s: %s lines = %q, want %q", label, xref, gl, wl)
+		}
+	}
+}
+
+// zipPlaced zips a and b with the report of what the cut dropped from b.
+func zipPlaced(t *testing.T, a, b *gedcom.Document, droppedB []gedcom.DroppedPointer) *gedcom.Document {
+	t.Helper()
+	out, report, err := merge.Combine(a, b, merge.CombineOptions{
+		CollisionStrategy: merge.ZipSharedXRefs,
+		Zip:               &merge.ZipOptions{DroppedFromDoc2: droppedB},
+	})
+	if err != nil {
+		t.Fatalf("Combine: %v", err)
+	}
+	if len(report.RecordConflicts) != 0 || len(report.HeaderConflicts) != 0 {
+		t.Fatalf("report = %+v, want no conflicts", report)
+	}
+	return out
+}
+
+// splitFamily is a family whose middle child goes to another subset than
+// its siblings.
+const splitFamily = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Adam /Example/
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Beth /Example/
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Carl /Example/
+1 FAMC @F1@
+0 @I4@ INDI
+1 NAME Dora /Example/
+1 FAMC @F1@
+0 @I5@ INDI
+1 NAME Eli /Example/
+1 FAMC @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 CHIL @I3@
+1 CHIL @I4@
+1 CHIL @I5@
+0 TRLR
+`
+
+// TestZip_RestoresChildOrder cuts a family with interleaved children into
+// two files and zips them with the report of what the second cut dropped:
+// the family matches the master's line for line, and the document has no
+// Diff from it.
+func TestZip_RestoresChildOrder(t *testing.T) {
+	doc := decodeZip(t, splitFamily)
+	a, droppedA := cut(t, doc, []string{"@I1@", "@I2@", "@I3@", "@I5@"})
+	b, droppedB := cut(t, doc, []string{"@I4@"})
+	wantFam := lines(doc.GetRecord("@F1@"))
+
+	for name, got := range map[string]*gedcom.Document{
+		"siblings first": zipPlaced(t, a, b, droppedB),
+		"siblings last":  zipPlaced(t, b, a, droppedA),
+	} {
+		if gl := lines(got.GetRecord("@F1@")); !slices.Equal(gl, wantFam) {
+			t.Errorf("%s: family lines = %q, want %q", name, gl, wantFam)
+		}
+		if kids := got.GetFamily("@F1@").Children; !slices.Equal(kids, []string{"@I3@", "@I4@", "@I5@"}) {
+			t.Errorf("%s: typed children = %v", name, kids)
+		}
+		if diff := gedcom.Diff(doc, got, nil); !diff.IsEmpty() {
+			t.Errorf("%s: Diff from the master: %d modified, %d added, %d removed",
+				name, len(diff.Modified), len(diff.Added), len(diff.Removed))
+		}
+	}
+}
+
+// Without a report the lines of a run are merged in source line order, as
+// before positions were recorded.
+func TestZip_NoReportKeepsLineOrder(t *testing.T) {
+	doc := decodeZip(t, splitFamily)
+	a, _ := cut(t, doc, []string{"@I1@", "@I2@", "@I3@", "@I5@"})
+	b, _ := cut(t, doc, []string{"@I4@"})
+	// Dora's file is the shorter, so her CHIL has the lowest line number.
+	want := []string{"1  CHIL @I4@", "1  HUSB @I1@", "1  WIFE @I2@", "1  CHIL @I3@", "1  CHIL @I5@"}
+	if gl := lines(zip(t, a, b).GetRecord("@F1@")); !slices.Equal(gl, want) {
+		t.Errorf("family lines = %q, want %q", gl, want)
+	}
+}
+
+// TestZip_ReportThatDoesNotFit pins the fallback: where the position cannot
+// be known the report is ignored for that record, and the result is the one
+// zipping gives without it.
+func TestZip_ReportThatDoesNotFit(t *testing.T) {
+	doc := decodeZip(t, splitFamily)
+	a, _ := cut(t, doc, []string{"@I4@"})
+	b, droppedB := cut(t, doc, []string{"@I1@", "@I2@", "@I3@", "@I5@"})
+
+	chil := func(target string, position int) gedcom.DroppedPointer {
+		return gedcom.DroppedPointer{XRef: "@F1@", Tag: "CHIL", Target: target, Restorable: true, Position: position}
+	}
+	// A hand-edited subset: it lists its child twice, and the master's
+	// family has one place for her.
+	edited := a.Clone()
+	fam := edited.GetRecord("@F1@")
+	fam.Tags = append(fam.Tags, &gedcom.Tag{Level: 1, Tag: "CHIL", Value: "@I4@", LineNumber: 99})
+
+	for _, tc := range []struct {
+		name    string
+		a       *gedcom.Document
+		dropped []gedcom.DroppedPointer
+	}{
+		{"no position", a, []gedcom.DroppedPointer{chil("@I4@", 0)}},
+		{"position past the end", a, []gedcom.DroppedPointer{chil("@I4@", 9)}},
+		{"negative position", a, []gedcom.DroppedPointer{chil("@I4@", -1)}},
+		{"repeated position", a, []gedcom.DroppedPointer{chil("@I4@", 4), chil("@I9@", 4)}},
+		{"line still held", a, []gedcom.DroppedPointer{chil("@I3@", 4)}},
+		{"another master's pointer", a, []gedcom.DroppedPointer{chil("@I9@", 4)}},
+		{"another record's", a, []gedcom.DroppedPointer{{XRef: "@F9@", Tag: "CHIL", Target: "@I4@", Position: 4}}},
+		{"edited subset", edited, droppedB},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			want := lines(zip(t, tc.a, b).GetRecord("@F1@"))
+			got := zipPlaced(t, tc.a, b, tc.dropped)
+			if gl := lines(got.GetRecord("@F1@")); !slices.Equal(gl, want) {
+				t.Errorf("family lines = %q, want %q", gl, want)
+			}
+		})
+	}
+}
+
+// TestZip_PlacedSubsetsProperty is TestZip_BoundedSubsetsProperty for
+// subsets read back from files: with the report of what the second cut
+// dropped, they zip into the bounded subset of the union with every
+// record's lines in the master's order.
+func TestZip_PlacedSubsetsProperty(t *testing.T) {
+	doc := decodeZip(t, zipFixture)
+	people := individualXRefs(doc)
+	rng := rand.New(rand.NewPCG(910, 1))
+
+	for trial := range 300 {
+		var s1, s2, union []string
+		for _, p := range people {
+			pick := rng.IntN(4)
+			if trial%3 == 0 {
+				pick = 1 + rng.IntN(3)
+			}
+			if pick&1 != 0 {
+				s1 = append(s1, p)
+			}
+			if pick&2 != 0 {
+				s2 = append(s2, p)
+			}
+			if pick != 0 {
+				union = append(union, p)
+			}
+		}
+		a, _ := cut(t, doc, s1)
+		b, droppedB := cut(t, doc, s2)
+		label := fmt.Sprintf("trial %d S1=%v S2=%v", trial, s1, s2)
+		got := zipPlaced(t, a, b, droppedB)
+		assertSameLines(t, label, got, bounded(t, doc, union))
+		if len(union) == len(people) && !gedcom.Diff(doc, got, nil).IsEmpty() {
+			t.Errorf("%s: Diff from the master is not empty", label)
+		}
+		if t.Failed() {
+			return
+		}
+	}
+}
+
+// TestZip_PlacedChain zips three files one after another, each step passing
+// the report of the subset it adds.
+func TestZip_PlacedChain(t *testing.T) {
+	doc := decodeZip(t, zipFixture)
+	a, _ := cut(t, doc, []string{"@I1@", "@I5@", "@I8@", "@I10@", "@I12@"})
+	b, droppedB := cut(t, doc, []string{"@I2@", "@I4@", "@I6@", "@I9@"})
+	c, droppedC := cut(t, doc, []string{"@I3@", "@I7@", "@I11@"})
+	got := zipPlaced(t, zipPlaced(t, a, b, droppedB), c, droppedC)
+	assertSameLines(t, "chain", got, doc)
+	if !gedcom.Diff(doc, got, nil).IsEmpty() {
+		t.Error("Diff from the master is not empty")
+	}
+}
+
+// A record one file holds whole keeps that file's order, with no report:
+// the other file's copy has no line to add, whichever is doc1.
+func TestZip_WholeRecordKeepsItsOrder(t *testing.T) {
+	doc := decodeZip(t, splitFamily)
+	part, _ := cut(t, doc, []string{"@I4@"})
+	whole, _ := cut(t, doc, individualXRefs(doc))
+	want := lines(doc.GetRecord("@F1@"))
+	for name, got := range map[string]*gedcom.Document{
+		"whole second": zip(t, part, whole),
+		"whole first":  zip(t, whole, part),
+	} {
+		if gl := lines(got.GetRecord("@F1@")); !slices.Equal(gl, want) {
+			t.Errorf("%s: family lines = %q, want %q", name, gl, want)
+		}
 	}
 }
