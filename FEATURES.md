@@ -595,7 +595,9 @@ refs, err := doc.RemoveRecord("@I2@")   // pointers to @I2@ left behind
   `gedcom.AttachMediaResult` names the `OBJE` record and says whether it was
   created, linked or already linked. An unknown XRef wraps
   `gedcom.ErrUnknownXRef`, a record type without media links
-  `gedcom.ErrNoMediaLinks`; the document is unchanged on error
+  `gedcom.ErrNoMediaLinks`, and a 5.5 or 5.5.1 path with no extension that
+  needs a new record `gedcom.ErrNoMediaFormat` (`FORM` is required there and
+  nothing names the format); the document is unchanged on error
 - `decoder.DecodeRecords` decodes a fragment of level-0 records (no `HEAD`,
   no `TRLR`) under the target document's version, identifier grammar and
   encoding, to the records the whole-file decoder gives the same lines, with
@@ -827,10 +829,12 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 
 | Function | Description |
 |----------|-------------|
-| `merge.RemapXRefs(doc, transform)` | Pure XRef rewrite preserving referential integrity; original document unchanged. Records whose XRef is not pointer-shaped (e.g. recovered from a malformed line) are left as-is |
+| `merge.RemapXRefs(doc, transform)`, `merge.RemapXRefsContext(ctx, doc, transform)` | Pure XRef rewrite preserving referential integrity; original document unchanged. The `Context` form stops with an error wrapping `ctx.Err()` once ctx is done. Records whose XRef is not pointer-shaped (e.g. recovered from a malformed line) are left as-is |
 | `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `PrefixAllDoc2`, `RenumberDoc2`, `ZipSharedXRefs`) |
-| `merge.Individuals(doc, keep, drop, opts)` | Fold the individual `drop` into `keep`, which the caller names; original document unchanged. `RecordMergeOptions.FoldEvents` folds a structure recording the same event (same tag, value, parsed date and `TYPE`; same place or one missing) into keep's, listed in `RecordMergeReport.Folded` |
+| `merge.Individuals(doc, keep, drop, opts)` | Fold the individual `drop` into `keep`, which the caller names; original document unchanged. `RecordMergeOptions.FoldEvents` folds an event or attribute recording the same event (same tag, value, parsed date and `TYPE`; same place or one missing; an event's `Y` flag matches an empty value) into keep's, listed in `RecordMergeReport.Folded` |
 | `merge.Families(doc, keep, drop, opts)` | The same for two family records; a child both list is listed once |
+| `merge.Sources(doc, keep, drop, opts)` | Fold the source `drop` into `keep` and repoint every citation of it, at any depth. A line that may occur only once (`TITL`, `AUTH`, ...) is carried when keep lacks it; one that differs stays keep's and is listed in `RecordMergeReport.Conflicts` |
+| `merge.Repositories(doc, keep, drop, opts)` | The same for two repository records and the `REPO` pointers of sources |
 
 `PrefixDoc2` and `RenumberDoc2` rename only the doc2 records whose XRef doc1
 also holds, and the XRefs doc2 points at but does not define that doc1 holds,
@@ -877,7 +881,13 @@ Set `CombineOptions.KeepFirstHeader` to keep doc1's header alone, under any
 strategy: every level-1 structure of doc2's header, including those doc1 lacks
 (a `NOTE`, a `DEST`) and vendor extensions, is dropped and reported as a
 `Tags.<tag>` conflict, and doc2's differing typed header values (and its
-`Schema` and `Vendor`) are reported by name. The only exception is the
+`Schema` and `Vendor`) are reported by name. Under either policy a dropped
+structure is listed once: one whose value has a typed field and differs from
+doc1's (`SOUR` as `SourceSystem`, `LANG` as `Language`) is listed under the
+field with both values, not as `Tags.<tag>` too (`DATE`, `SUBM` and `PLAC`
+have typed entries under `KeepFirstHeader` only). A `Vendor` entry, the
+document's detected vendor, accompanies `SourceSystem` when the files come
+from different recognized vendors. The only exception is the
 version: a doc1 header with no `Version` (built in code) takes doc2's.
 Differing non-empty header versions or encodings are refused
 with `ErrIncompatibleHeader`; set `CombineOptions.IgnoreEncodingMismatch`
@@ -905,6 +915,22 @@ pointer repointed and every line collapsed. Merging a record into itself, a
 missing record (also `gedcom.ErrUnknownXRef`), one of the wrong type, one
 defined twice, or where a record involved has no raw Tags returns an error
 wrapping `merge.ErrInvalidMerge`.
+
+`Sources` and `Repositories` do the same for two source or two repository
+records, with one rule more: a level-1 line the document's GEDCOM version
+allows only once in the record (`TITL`, `AUTH`, `PUBL`, `ABBR`, `TEXT`, `DATA`
+and `CHAN` of a source, `NAME`, `ADDR` and `CHAN` of a repository, `RIN` in
+5.5 and 5.5.1, `CREA` in 7.0, a source's `REPO` in 5.5 alone) is not added
+beside `keep`'s. It is carried when `keep` has none and deduplicated when the
+two are identical; when they differ `keep`'s stays and the pair is listed in
+`RecordMergeReport.Conflicts`, `drop`'s lines included, for the caller to
+choose. Lines that may repeat (`NOTE`, `OBJE`, `REFN`, `REPO`, `PHON`, vendor
+tags) are added and deduplicated as in `Individuals`. Every citation of
+`drop`, under any record or substructure and in vendor tags, is repointed to
+`keep`; `Sources` removes none, so the citation count and each citation's own
+lines (`PAGE`, `DATA`, `QUAY`) are unchanged. `Repositories` removes a `REPO`
+line of a source that would repeat a sibling line for line, as `Individuals`
+does a `CHIL`.
 
 ### Record Diff
 
@@ -2203,7 +2229,7 @@ pipeline. Each checks it as it goes and returns its error wrapped, so
 | `converter.ConvertWithOptions` | `ConvertOptions.Context` | Per conversion step, and per record while copying the document and validating the result |
 | `encoder.EncodeWithOptions`, `EncodeStreamingWithOptions`, `EncodeRecord`, `StreamEncoder.WriteRecord` | `EncodeOptions.Context` | Per record |
 | `merge.Combine` | `CombineOptions.Context` | Per record compared, remapped and copied |
-| `merge.Individuals`, `merge.Families` | `RecordMergeOptions.Context` | Per record copied |
+| `merge.Individuals`, `merge.Families`, `merge.Sources`, `merge.Repositories` | `RecordMergeOptions.Context` | Per record copied |
 | `parser.LazyParser.BuildIndexContext` | its `ctx` argument | Per record indexed |
 
 ## Version Conversion

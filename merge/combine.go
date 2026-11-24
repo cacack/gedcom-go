@@ -139,7 +139,9 @@ type CombineOptions struct {
 	// subtree and reported as "Tags.<TAG>"; doc2's Encoding, SourceSystem,
 	// Language, Copyright, AncestryTreeID, Date, Submitter and PlaceForm, and
 	// the document's Schema and Vendor, are reported under those names when
-	// non-empty and different from doc1's. The typed views of doc2's header
+	// non-empty and different from doc1's, and that entry then stands for
+	// the structure holding the value, which gets no "Tags.<TAG>" entry of
+	// its own (see HeaderConflict). The typed views of doc2's header
 	// substructures (SourceVersion, SourceName, SourceCorporation,
 	// SourceData, Destination, Time) are dropped with the structure that
 	// holds them and reported as its "Tags.<TAG>"; when doc2's Tags have no
@@ -216,11 +218,29 @@ type CombineReport struct {
 	RecordConflicts []RecordConflict
 }
 
-// HeaderConflict records a single header field where doc1 and doc2
-// disagreed and doc1's value was kept.
+// HeaderConflict records a single header field or structure of doc2's that
+// was dropped in favor of doc1's.
+//
+// Each dropped doc2 header structure is listed once. When a value it holds
+// has a typed field and differs from doc1's, the entry is named for the field
+// and gives both values: "Encoding" (CHAR), "SourceSystem" (SOUR),
+// "AncestryTreeID" (the _TREE under SOUR), "Language" (LANG), "Copyright"
+// (COPR), "DeclaredVersion" (GEDC) and "Schema" (SCHMA), and under
+// CombineOptions.KeepFirstHeader also "Date" (DATE), "Submitter" (SUBM) and
+// "PlaceForm" (PLAC), which the default policy lists by tag. Otherwise the
+// entry is "Tags.<TAG>", with Doc1 "kept" when doc1 has the structure too and
+// Doc2 saying why it was dropped. Either entry stands for the whole
+// structure, substructures included.
+//
+// A dropped SOUR is the one structure that can have more than one entry,
+// each for a different value: "SourceSystem" and "AncestryTreeID" when both
+// differ, and "Vendor", which is not a header structure but the vendor
+// detected from SOUR (gedcom.Document.Vendor), so it accompanies
+// "SourceSystem" whenever the two files come from different recognized
+// vendors.
 type HeaderConflict struct {
-	// Field is the conflicting field name, e.g. "SourceSystem",
-	// "Language", "Copyright", "Schema", "Vendor".
+	// Field is the typed field name, e.g. "SourceSystem", "Language",
+	// "Copyright", "Schema", "Vendor", or "Tags.<TAG>" for a raw structure.
 	Field string
 	// Doc1 is the value kept in the combined header.
 	Doc1 string
@@ -252,7 +272,8 @@ type HeaderConflict struct {
 //   - For the other header scalar fields (SourceSystem, Date,
 //     Language, Copyright, AncestryTreeID, Vendor, Schema) doc1's
 //     value is kept. If doc2's value is non-empty AND differs,
-//     a HeaderConflict is recorded in the report.
+//     a HeaderConflict is recorded in the report, and it stands for the
+//     doc2 structure holding the value (see HeaderConflict).
 //   - The typed views of header substructures (SourceVersion, SourceName,
 //     SourceCorporation, SourceData, Destination, Time, PlaceForm) follow the raw
 //     structure that holds them (SOUR, DEST, DATE, PLAC): doc1's views are
@@ -271,8 +292,9 @@ type HeaderConflict struct {
 //     doc2's submitter is used and is looked up in the remapping
 //     (it may have been renamed by collision resolution).
 //   - Header tags: doc1's are kept. A doc2 structure whose tag doc1
-//     already declares is dropped and recorded as a HeaderConflict,
-//     because a GEDCOM header may declare each structure only once.
+//     already declares is dropped and recorded as a HeaderConflict
+//     ("Tags.<TAG>", unless a typed field's conflict already stands for
+//     it), because a GEDCOM header may declare each structure only once.
 //     Vendor extensions (underscore-prefixed) sit outside that rule
 //     and are kept from both documents.
 //   - Trailer: doc1's wins; if doc1 has none, doc2's is used.
@@ -383,7 +405,9 @@ func checkCombinable(doc1, doc2 *gedcom.Document, opts CombineOptions) error {
 // the remapped doc2 into out, appending any conflicts to conflicts
 // and returning the updated slice. Doc1's values win; doc2's values
 // are only adopted when doc1's are empty, and never for Schema and
-// Vendor when keepFirst is set (CombineOptions.KeepFirstHeader).
+// Vendor when keepFirst is set (CombineOptions.KeepFirstHeader). The
+// returned conflicts list each dropped structure once (see
+// dedupeHeaderConflicts).
 func mergeDocMetadata(out, doc1, remappedDoc2 *gedcom.Document, conflicts []HeaderConflict, keepFirst bool) []HeaderConflict {
 	// Schema: prefer doc1's. Record a conflict if doc2 had a
 	// distinct non-empty schema we are discarding.
@@ -416,7 +440,49 @@ func mergeDocMetadata(out, doc1, remappedDoc2 *gedcom.Document, conflicts []Head
 		out.Trailer = remappedDoc2.Trailer.Clone()
 	}
 
-	return conflicts
+	return dedupeHeaderConflicts(conflicts)
+}
+
+// typedFieldHeaderTags maps each typed field a HeaderConflict can name to
+// the level-1 header structure that holds its value. SOUR holds two: its own
+// value and the _TREE under it (a level-1 _TREE is another structure). Vendor
+// is a field of the document, not of a header structure, and is not listed.
+var typedFieldHeaderTags = map[string]string{
+	"Encoding":        "CHAR",
+	"SourceSystem":    "SOUR",
+	"Language":        "LANG",
+	"Copyright":       "COPR",
+	"Date":            "DATE",
+	"Submitter":       "SUBM",
+	"PlaceForm":       "PLAC",
+	"AncestryTreeID":  "SOUR",
+	"DeclaredVersion": "GEDC",
+	"Schema":          "SCHMA",
+}
+
+// dedupeHeaderConflicts removes, for each conflict named for a typed field,
+// one "Tags.<TAG>" conflict for the structure holding that field's value, so
+// a dropped doc2 header line is listed once, with its values, rather than
+// under both names (#943). Order is otherwise kept.
+func dedupeHeaderConflicts(conflicts []HeaderConflict) []HeaderConflict {
+	covered := make(map[string]bool)
+	for _, c := range conflicts {
+		if tag, ok := typedFieldHeaderTags[c.Field]; ok {
+			covered["Tags."+tag] = true
+		}
+	}
+	if len(covered) == 0 {
+		return conflicts
+	}
+	out := conflicts[:0]
+	for _, c := range conflicts {
+		if covered[c.Field] {
+			delete(covered, c.Field)
+			continue
+		}
+		out = append(out, c)
+	}
+	return out
 }
 
 // ErrIncompatibleHeader is returned by Combine when doc1 and doc2 have
@@ -581,7 +647,10 @@ func applyStrategy(doc1, doc2 *gedcom.Document, collisions []string, opts Combin
 		return applyPrefixStrategy(opts.Context, doc1, doc2, collisions, opts.Prefix, true)
 
 	case RenumberDoc2:
-		dangling := danglingPointers(doc2)
+		dangling, err := danglingPointers(opts.Context, doc2)
+		if err != nil {
+			return nil, nil, err
+		}
 		collisions = append(collisions, definedIn(doc1, dangling)...)
 		transform := renumberTransform(doc1, doc2, collisions, dangling)
 		out, mapping, err := remapXRefs(opts.Context, doc2, transform, dangling)
@@ -618,7 +687,10 @@ func applyPrefixStrategy(ctx context.Context, doc1, doc2 *gedcom.Document, colli
 	if prefix == "" {
 		return nil, nil, &CombineError{Kind: "missing-prefix"}
 	}
-	dangling := danglingPointers(doc2)
+	dangling, err := danglingPointers(ctx, doc2)
+	if err != nil {
+		return nil, nil, err
+	}
 	collisionSet := make(map[string]bool, len(collisions))
 	for _, c := range collisions {
 		collisionSet[c] = true
@@ -668,8 +740,9 @@ func danglingCollisions(doc1 *gedcom.Document, dangling []string, mapping map[st
 
 // danglingPointers returns, sorted, the XRefs that doc's records and header
 // point at and no record of doc defines. Pointers are found as
-// gedcom.VisitForVersion finds them under the version doc declares.
-func danglingPointers(doc *gedcom.Document) []string {
+// gedcom.VisitForVersion finds them under the version doc declares. It checks
+// ctx before each record, failing as cancelled does once ctx is done.
+func danglingPointers(ctx context.Context, doc *gedcom.Document) ([]string, error) {
 	defined := recordXRefs(doc)
 	var version gedcom.Version
 	if doc.Header != nil {
@@ -684,6 +757,9 @@ func danglingPointers(doc *gedcom.Document) []string {
 		}
 	}
 	for _, r := range doc.Records {
+		if err := cancelled(ctx); err != nil {
+			return nil, err
+		}
 		gedcom.VisitForVersion(r, version, visit)
 	}
 	if h := doc.Header; h != nil {
@@ -695,7 +771,7 @@ func danglingPointers(doc *gedcom.Document) []string {
 		gedcom.VisitForVersion(&gedcom.Record{Tags: tags}, version, visit)
 	}
 	slices.Sort(dangling)
-	return dangling
+	return dangling, nil
 }
 
 // recordXRefs returns the set of non-empty XRefs doc's records carry.

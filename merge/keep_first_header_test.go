@@ -70,8 +70,8 @@ func TestCombine_KeepFirstHeader(t *testing.T) {
 			got[c.Field] = c.Doc1
 		}
 		want := map[string]string{
-			"Tags.SOUR": "kept", "Tags.DEST": "", "Tags.SUBM": "", "Tags.GEDC": "kept",
-			"Tags.CHAR": "kept", "Tags.LANG": "", "Tags.NOTE": "", "Tags._EXT": "",
+			"Tags.DEST": "", "Tags.GEDC": "kept",
+			"Tags.CHAR": "kept", "Tags.NOTE": "", "Tags._EXT": "",
 			"SourceSystem": "AppA", "Language": "", "Submitter": "",
 		}
 		if !reflect.DeepEqual(got, want) {
@@ -181,5 +181,120 @@ func TestCombine_KeepFirstHeader_HandBuiltViews(t *testing.T) {
 	}
 	if len(report.HeaderConflicts) != 0 {
 		t.Errorf("identical headers: conflicts = %v", report.HeaderConflicts)
+	}
+}
+
+// TestCombine_HeaderConflictsListedOnce pins #943: each doc2 header structure
+// Combine drops is listed once, under the default policy and under
+// KeepFirstHeader. A SOUR, LANG or SUBM whose value differs from doc1's is
+// listed under its typed field, with both values, and gets no "Tags.<TAG>"
+// entry besides; one whose value is equal is listed as "Tags.<TAG>".
+func TestCombine_HeaderConflictsListedOnce(t *testing.T) {
+	const (
+		onlyOnce  = "dropped (header structure may appear only once)"
+		keepFirst = "dropped (KeepFirstHeader keeps doc1's header alone)"
+		header1   = "1 SOUR A\n1 LANG English\n1 SUBM @U1@\n"
+		header2   = "1 SOUR B\n1 LANG French\n1 SUBM @U2@\n"
+	)
+	tags := func(doc2 string, fields ...string) []merge.HeaderConflict {
+		var out []merge.HeaderConflict
+		for _, f := range fields {
+			out = append(out, merge.HeaderConflict{Field: "Tags." + f, Doc1: "kept", Doc2: doc2})
+		}
+		return out
+	}
+	tests := []struct {
+		name      string
+		header2   string
+		keepFirst bool
+		want      []merge.HeaderConflict
+	}{
+		{
+			// The default policy records no typed Submitter conflict, so the
+			// dropped SUBM is listed by its tag.
+			name: "default, values differ", header2: header2,
+			want: append([]merge.HeaderConflict{
+				{Field: "SourceSystem", Doc1: "A", Doc2: "B"},
+				{Field: "Language", Doc1: "English", Doc2: "French"},
+			}, tags(onlyOnce, "SUBM", "GEDC", "CHAR")...),
+		},
+		{
+			name: "KeepFirstHeader, values differ", header2: header2, keepFirst: true,
+			want: append([]merge.HeaderConflict{
+				{Field: "SourceSystem", Doc1: "A", Doc2: "B"},
+				{Field: "Language", Doc1: "English", Doc2: "French"},
+				{Field: "Submitter", Doc1: "@U1@", Doc2: "@U2@"},
+			}, tags(keepFirst, "GEDC", "CHAR")...),
+		},
+		{
+			name: "default, values equal", header2: header1,
+			want: tags(onlyOnce, "SOUR", "LANG", "SUBM", "GEDC", "CHAR"),
+		},
+		{
+			name: "KeepFirstHeader, values equal", header2: header1, keepFirst: true,
+			want: tags(keepFirst, "SOUR", "LANG", "SUBM", "GEDC", "CHAR"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, report, err := merge.Combine(decodeHeaderDoc(t, header1), decodeHeaderDoc(t, tt.header2),
+				merge.CombineOptions{KeepFirstHeader: tt.keepFirst})
+			if err != nil {
+				t.Fatalf("Combine: %v", err)
+			}
+			if !reflect.DeepEqual(report.HeaderConflicts, tt.want) {
+				t.Errorf("HeaderConflicts =\n%+v\nwant\n%+v", report.HeaderConflicts, tt.want)
+			}
+		})
+	}
+}
+
+// TestCombine_HeaderConflictsAncestryTreeID pins that AncestryTreeID stands
+// for the SOUR structure holding its _TREE (#943): the dropped SOUR gets no
+// "Tags.SOUR" entry besides, and a level-1 _TREE, another structure, keeps
+// its own entry under KeepFirstHeader.
+func TestCombine_HeaderConflictsAncestryTreeID(t *testing.T) {
+	const (
+		header1 = "1 SOUR Ancestry.com Family Trees\n2 _TREE Tree A\n"
+		header2 = "1 SOUR Ancestry.com Family Trees\n2 _TREE Tree B\n1 _TREE toplevel\n2 _X y\n"
+	)
+	for _, keepFirst := range []bool{false, true} {
+		_, report, err := merge.Combine(decodeHeaderDoc(t, header1), decodeHeaderDoc(t, header2),
+			merge.CombineOptions{KeepFirstHeader: keepFirst})
+		if err != nil {
+			t.Fatalf("Combine: %v", err)
+		}
+		count := map[string]int{}
+		for _, c := range report.HeaderConflicts {
+			count[c.Field]++
+		}
+		want := map[string]int{"AncestryTreeID": 1, "Tags.GEDC": 1, "Tags.CHAR": 1}
+		if keepFirst {
+			want["Tags._TREE"] = 1
+		}
+		if !reflect.DeepEqual(count, want) {
+			t.Errorf("KeepFirstHeader %v: conflicts = %+v, want fields %v", keepFirst, report.HeaderConflicts, want)
+		}
+	}
+}
+
+// TestCombine_HeaderConflictsVendor pins the entries for one dropped SOUR
+// when the files come from different recognized vendors (#943): SourceSystem
+// for the line and Vendor for the document's detected vendor, as the
+// HeaderConflict godoc states, and no "Tags.SOUR".
+func TestCombine_HeaderConflictsVendor(t *testing.T) {
+	for _, keepFirst := range []bool{false, true} {
+		_, report, err := merge.Combine(decodeHeaderDoc(t, "1 SOUR RootsMagic\n"), decodeHeaderDoc(t, "1 SOUR Gramps\n"),
+			merge.CombineOptions{KeepFirstHeader: keepFirst})
+		if err != nil {
+			t.Fatalf("Combine: %v", err)
+		}
+		var fields []string
+		for _, c := range report.HeaderConflicts {
+			fields = append(fields, c.Field)
+		}
+		if want := []string{"SourceSystem", "Tags.GEDC", "Tags.CHAR", "Vendor"}; !reflect.DeepEqual(fields, want) {
+			t.Errorf("KeepFirstHeader %v: fields = %v, want %v", keepFirst, fields, want)
+		}
 	}
 }

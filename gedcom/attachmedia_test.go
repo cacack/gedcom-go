@@ -122,7 +122,6 @@ func TestAttachMediaFormFollowsVersion(t *testing.T) {
 		{Version551, "a.JPEG", "", "jpg"},
 		{Version551, "a.tiff", "", "tif"},
 		{Version551, "a.PNG", "", "png"},
-		{Version551, "noext", "", ""},
 		{Version55, "a.jpg", "jpeg", ""},
 		{Version55, "a.tif", "tiff", ""},
 		{Version55, "a.wav", "wav", ""},
@@ -221,6 +220,39 @@ func TestAttachMediaErrorsLeaveDocumentUnchanged(t *testing.T) {
 	var nilDoc *Document
 	if _, err := nilDoc.AttachMedia("@I1@", "a.jpg"); !errors.Is(err, ErrNilDocument) {
 		t.Errorf("nil document error = %v, want ErrNilDocument", err)
+	}
+}
+
+// TestAttachMediaExtensionlessPath pins that a 5.5 or 5.5.1 document, where
+// FORM is required, gets no OBJE record without one: creating a record for a
+// path with no extension fails and leaves the document unchanged, while a
+// record that already names the path is linked.
+func TestAttachMediaExtensionlessPath(t *testing.T) {
+	for _, v := range []Version{Version55, Version551} {
+		for _, path := range []string{"noext", `dir.d\noext`, "trailing."} {
+			t.Run(string(v)+" "+path, func(t *testing.T) {
+				d := attachDoc(t, v)
+				before := d.Clone()
+				_, err := d.AttachMedia("@I1@", path)
+				if !errors.Is(err, ErrNoMediaFormat) {
+					t.Fatalf("AttachMedia() error = %v, want ErrNoMediaFormat", err)
+				}
+				if !reflect.DeepEqual(d, before) {
+					t.Error("document changed by a failed AttachMedia")
+				}
+			})
+		}
+		t.Run(string(v)+" existing record", func(t *testing.T) {
+			d := attachDoc(t, v)
+			d.GetMediaObject("@O1@").Files[0].FileRef = "scans/letter"
+			got, err := d.AttachMedia("@I1@", `scans\letter`)
+			if err != nil {
+				t.Fatalf("AttachMedia() error = %v", err)
+			}
+			if want := (AttachMediaResult{MediaXRef: "@O1@", Status: AttachLinked}); got != want {
+				t.Errorf("AttachMedia() = %+v, want %+v", got, want)
+			}
+		})
 	}
 }
 

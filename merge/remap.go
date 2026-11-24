@@ -79,11 +79,22 @@ const voidXRef = "@VOID@"
 //	    return "@A_" + old[1:]
 //	})
 func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedcom.Document, map[string]string, error) {
+	return RemapXRefsContext(context.Background(), doc, transform)
+}
+
+// RemapXRefsContext is RemapXRefs honoring ctx: it checks ctx before each
+// record it scans, maps and copies, and once ctx is done returns a nil
+// document, a nil mapping, and an error wrapping ctx.Err(). A nil ctx is
+// never done.
+func RemapXRefsContext(ctx context.Context, doc *gedcom.Document, transform func(old string) string) (*gedcom.Document, map[string]string, error) {
 	var dangling []string
 	if doc != nil {
-		dangling = danglingPointers(doc)
+		var err error
+		if dangling, err = danglingPointers(ctx, doc); err != nil {
+			return nil, nil, err
+		}
 	}
-	return remapXRefs(context.Background(), doc, transform, dangling)
+	return remapXRefs(ctx, doc, transform, dangling)
 }
 
 // remapXRefs is RemapXRefs checking ctx before each record it maps and
