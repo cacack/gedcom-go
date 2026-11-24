@@ -984,6 +984,7 @@ The collision strategy decides what happens to an XRef both documents use:
 
 - `merge.ErrorOnCollision` (the zero value): refuse with `merge.ErrXRefCollision`
 - `merge.PrefixDoc2`: prepend `CombineOptions.Prefix` to doc2's colliding XRefs
+- `merge.PrefixAllDoc2`: prepend `CombineOptions.Prefix` to every doc2 XRef, colliding or not
 - `merge.RenumberDoc2`: give doc2's colliding records fresh XRefs
 - `merge.ZipSharedXRefs`: treat a shared XRef as one record (see [below](#cutting-and-rejoining-a-branch))
 

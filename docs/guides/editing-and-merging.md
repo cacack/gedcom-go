@@ -226,6 +226,7 @@ what to do about that:
 |---------------------|----------------------------------|
 | `ErrorOnCollision` (zero value) | `Combine` fails with `ErrXRefCollision` |
 | `PrefixDoc2` | Gets `CombineOptions.Prefix` in front: `@I1@` becomes `@b_I1@` |
+| `PrefixAllDoc2` | Gets the prefix too, and so does every other doc2 XRef |
 | `RenumberDoc2` | Gets the next free number for its record type: `@I1@` becomes `@I6@` |
 | `ZipSharedXRefs` | Is the same record; see [below](#cutting-a-branch-and-zipping-it-back) |
 
@@ -248,7 +249,11 @@ for _, c := range report.HeaderConflicts {
 What to expect:
 
 - **Only colliding XRefs are renamed**, and every pointer to a renamed record
-  is rewritten with it. doc1's XRefs never change. `report.RemappedXRefs` maps
+  is rewritten with it. The exception is `PrefixAllDoc2`, which renames every
+  doc2 record with a pointer-shaped XRef so that an XRef shows which file its
+  record came from. It also prefixes an XRef doc2 points at but does not
+  define, so a broken pointer in doc2 cannot resolve to a doc1 record. doc1's
+  XRefs never change. `report.RemappedXRefs` maps
   each doc2 XRef that changed to its new one; keep it if anything outside the
   document refers to doc2's records.
 - **Records are doc1's, then doc2's.** Nothing is deduplicated: a person in
@@ -272,7 +277,7 @@ Errors, all for `errors.Is`:
 | Error wraps | When |
 |-------------|------|
 | `merge.ErrNilDocument` | A document is nil |
-| `merge.ErrInvalidOptions` | An unknown strategy, or `PrefixDoc2` with no `Prefix` |
+| `merge.ErrInvalidOptions` | An unknown strategy, or `PrefixDoc2` or `PrefixAllDoc2` with no `Prefix` |
 | `merge.ErrIncompatibleHeader` | Versions or encodings differ |
 | `merge.ErrXRefCollision` | `ErrorOnCollision` and a shared XRef, or a rename that lands on an XRef already in use |
 | `merge.ErrRecordConflict` | `ZipSharedXRefs` and a shared record that differs |

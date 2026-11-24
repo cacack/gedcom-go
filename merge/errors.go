@@ -10,8 +10,9 @@ import (
 var ErrNilDocument = errors.New("document is nil")
 
 // ErrInvalidOptions is wrapped by the error Combine returns for options
-// it cannot apply (an unknown CollisionStrategy, or PrefixDoc2 with an
-// empty Prefix) and by the error RemapXRefs returns for a nil transform.
+// it cannot apply (an unknown CollisionStrategy, or PrefixDoc2 or
+// PrefixAllDoc2 with an empty Prefix) and by the error RemapXRefs returns
+// for a nil transform.
 var ErrInvalidOptions = errors.New("invalid merge options")
 
 // ErrInvalidRemap is returned by RemapXRefs when the caller-supplied

@@ -37,7 +37,7 @@ func TestArgumentErrorSentinels(t *testing.T) {
 		{"combine missing prefix", func() error {
 			_, _, err := merge.Combine(doc(), doc(), merge.CombineOptions{CollisionStrategy: merge.PrefixDoc2})
 			return err
-		}, merge.ErrInvalidOptions, "merge: PrefixDoc2 strategy requires non-empty Prefix"},
+		}, merge.ErrInvalidOptions, "merge: PrefixDoc2 and PrefixAllDoc2 strategies require non-empty Prefix"},
 		{"remap nil doc", func() error { _, _, err := merge.RemapXRefs(nil, identity); return err },
 			merge.ErrNilDocument, "merge: doc is nil"},
 		{"individuals nil doc", func() error {

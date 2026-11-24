@@ -13,7 +13,8 @@
 //   - RemapXRefs: rewrite every XRef in a document according to a
 //     caller-supplied transform, preserving referential integrity.
 //   - Combine: merge two documents with a configurable collision
-//     strategy (ErrorOnCollision, PrefixDoc2, RenumberDoc2, or
+//     strategy (ErrorOnCollision, PrefixDoc2 to prefix the colliding
+//     doc2 XRefs, PrefixAllDoc2 to prefix every doc2 XRef, RenumberDoc2, or
 //     ZipSharedXRefs to zip documents cut from one master back together),
 //     returning a fresh document plus a report describing what was
 //     remapped and which header fields and records conflicted.

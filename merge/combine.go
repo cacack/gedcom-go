@@ -17,8 +17,8 @@ import (
 // CollisionStrategy chooses how to handle XRef collisions between
 // doc1 and doc2 during Combine.
 //
-// PrefixDoc2 and RenumberDoc2 never rename a doc2 record whose XRef is not
-// pointer-shaped (Document.IsPointerXRef is false, such as a recovered
+// PrefixDoc2, PrefixAllDoc2 and RenumberDoc2 never rename a doc2 record
+// whose XRef is not pointer-shaped (Document.IsPointerXRef is false, such as a recovered
 // "@I1"); see RemapXRefs. If doc1 holds the same XRef, Combine returns a
 // collision error under every strategy.
 type CollisionStrategy int
@@ -29,7 +29,9 @@ const (
 	// explicitly opt in to a remapping strategy.
 	ErrorOnCollision CollisionStrategy = iota
 	// PrefixDoc2 prefixes every colliding XRef in doc2 with
-	// CombineOptions.Prefix. Non-colliding XRefs in doc2 are kept as-is.
+	// CombineOptions.Prefix. It renames only the doc2 records whose XRef
+	// doc1 also holds; non-colliding XRefs in doc2 are kept as-is. To
+	// rename every doc2 record, use PrefixAllDoc2.
 	// Requires Prefix to be set (non-empty, body-character-safe).
 	PrefixDoc2
 	// RenumberDoc2 renumbers every colliding XRef in doc2 to a fresh
@@ -68,6 +70,22 @@ const (
 	// and their lines differ only in such pointer lines; other headers
 	// are merged as the other strategies merge them.
 	ZipSharedXRefs
+	// PrefixAllDoc2 prefixes every XRef in doc2 with CombineOptions.Prefix,
+	// whether or not doc1 holds it, so a record's origin can be read from
+	// its XRef. It renames every doc2 record with a pointer-shaped XRef
+	// (and a record named @VOID@); PrefixDoc2 renames only the colliding
+	// ones. An XRef doc2 points at but does not define (a dangling pointer)
+	// is prefixed too, so it stays dangling instead of resolving to the
+	// doc1 record of that XRef. CombineReport.RemappedXRefs then lists
+	// every renamed doc2 XRef, dangling ones included.
+	//
+	// Requires Prefix to be set (non-empty, body-character-safe). Fails
+	// with a "prefix-collision" CombineError when doc1 already holds one
+	// of the prefixed XRefs, or when both documents hold a record with
+	// the same XRef that is not pointer-shaped and so cannot be renamed.
+	// It does not look at doc1's own dangling pointers: one that already
+	// names a prefixed XRef resolves to the doc2 record that takes it.
+	PrefixAllDoc2
 )
 
 // CombineOptions configures Combine behavior.
@@ -76,9 +94,10 @@ type CombineOptions struct {
 	// doc2 are resolved. The zero value (ErrorOnCollision) refuses any
 	// collision, requiring the caller to opt in to mutation.
 	CollisionStrategy CollisionStrategy
-	// Prefix is the string prepended to colliding XRef bodies when
-	// CollisionStrategy == PrefixDoc2. Required for that strategy;
-	// must contain no whitespace and must not be empty.
+	// Prefix is the string prepended to doc2's XRef bodies: the colliding
+	// ones when CollisionStrategy == PrefixDoc2, all of them when it is
+	// PrefixAllDoc2. Required for those strategies; must contain no
+	// whitespace and must not be empty.
 	Prefix string
 	// IgnoreEncodingMismatch lets Combine merge documents whose headers
 	// declare different, non-empty encodings. Decoded text is UTF-8 in
@@ -137,7 +156,8 @@ type CombineReport struct {
 	// RemappedXRefs maps doc2's original XRefs to their new XRefs in
 	// the combined document. Only XRefs that actually changed are
 	// recorded; no-op entries are filtered. Empty if no remap was
-	// needed.
+	// needed. Under PrefixAllDoc2 it also holds the XRefs doc2 points at
+	// but does not define, which are prefixed with its records'.
 	RemappedXRefs map[string]string
 	// HeaderConflicts records header fields where doc2 had a
 	// different non-empty value that was dropped in favor of doc1.
@@ -376,7 +396,7 @@ func (e *CombineError) Error() string {
 	case "renumber-collision":
 		return fmt.Sprintf("merge: renumber produced new collision: %s", summarizeXRefs(e.Colliding))
 	case "missing-prefix":
-		return "merge: PrefixDoc2 strategy requires non-empty Prefix"
+		return "merge: PrefixDoc2 and PrefixAllDoc2 strategies require non-empty Prefix"
 	case "record-conflict":
 		msg := fmt.Sprintf("merge: records conflict: %s", summarizeXRefs(e.Colliding))
 		if len(e.Conflicts) > 0 {
@@ -483,11 +503,14 @@ func applyStrategy(doc1, doc2 *gedcom.Document, collisions []string, opts Combin
 		return out, nil, err
 
 	case PrefixDoc2:
-		return applyPrefixStrategy(opts.Context, doc1, doc2, collisions, opts.Prefix)
+		return applyPrefixStrategy(opts.Context, doc1, doc2, collisions, opts.Prefix, false)
+
+	case PrefixAllDoc2:
+		return applyPrefixStrategy(opts.Context, doc1, doc2, collisions, opts.Prefix, true)
 
 	case RenumberDoc2:
 		transform := renumberTransform(doc1, doc2, collisions)
-		out, mapping, err := remapXRefs(opts.Context, doc2, transform)
+		out, mapping, err := remapXRefs(opts.Context, doc2, transform, nil)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -505,11 +528,16 @@ func applyStrategy(doc1, doc2 *gedcom.Document, collisions []string, opts Combin
 	return nil, nil, errmark.Mark(ErrInvalidOptions, fmt.Errorf("merge: unknown CollisionStrategy %d", opts.CollisionStrategy))
 }
 
-// applyPrefixStrategy implements the PrefixDoc2 path: validate the
-// prefix, remap only colliding XRefs, then verify the remap didn't
-// create a fresh collision with doc1 (e.g. doc1 already had the
-// prefixed name).
-func applyPrefixStrategy(ctx context.Context, doc1, doc2 *gedcom.Document, collisions []string, prefix string) (*gedcom.Document, map[string]string, error) {
+// applyPrefixStrategy implements the PrefixDoc2 and PrefixAllDoc2
+// paths: validate the prefix, remap only colliding XRefs (every XRef
+// when all is set), then verify the result doesn't collide with doc1
+// (e.g. doc1 already had the prefixed name, or shares a non-pointer
+// XRef that cannot be renamed).
+//
+// When all is set, the XRefs doc2 points at but does not define are
+// prefixed as well. Left bare, such a dangling pointer would resolve to
+// the doc1 record of the same XRef once the documents are combined.
+func applyPrefixStrategy(ctx context.Context, doc1, doc2 *gedcom.Document, collisions []string, prefix string, all bool) (*gedcom.Document, map[string]string, error) {
 	if prefix == "" {
 		return nil, nil, &CombineError{Kind: "missing-prefix"}
 	}
@@ -517,19 +545,67 @@ func applyPrefixStrategy(ctx context.Context, doc1, doc2 *gedcom.Document, colli
 	for _, c := range collisions {
 		collisionSet[c] = true
 	}
-	transform := prefixTransform(prefix, collisionSet)
-	out, mapping, err := remapXRefs(ctx, doc2, transform)
+	var dangling []string
+	if all {
+		dangling = danglingPointers(doc2)
+	}
+	transform := prefixTransform(prefix, collisionSet, all)
+	out, mapping, err := remapXRefs(ctx, doc2, transform, dangling)
 	if err != nil {
 		return nil, nil, err
 	}
-	if newCollisions := postRemapCollisions(doc1, out); len(newCollisions) > 0 {
+	newCollisions := postRemapCollisions(doc1, out)
+	// A prefixed dangling pointer must not land on a doc1 record either.
+	for _, old := range dangling {
+		if doc1.GetRecord(mapping[old]) != nil {
+			newCollisions = append(newCollisions, mapping[old])
+		}
+	}
+	if len(newCollisions) > 0 {
 		return nil, nil, &CombineError{Kind: "prefix-collision", Colliding: newCollisions}
 	}
 	return out, mapping, nil
 }
 
+// danglingPointers returns, sorted, the XRefs that doc's records and header
+// point at and no record of doc defines. Pointers are found as
+// gedcom.VisitForVersion finds them under the version doc declares.
+func danglingPointers(doc *gedcom.Document) []string {
+	defined := make(map[string]bool, len(doc.Records))
+	for _, r := range doc.Records {
+		if r != nil && r.XRef != "" {
+			defined[r.XRef] = true
+		}
+	}
+	var version gedcom.Version
+	if doc.Header != nil {
+		version = doc.Header.DeclaredVersion
+	}
+	seen := make(map[string]bool)
+	var dangling []string
+	visit := func(xref string) {
+		if !defined[xref] && !seen[xref] {
+			seen[xref] = true
+			dangling = append(dangling, xref)
+		}
+	}
+	for _, r := range doc.Records {
+		gedcom.VisitForVersion(r, version, visit)
+	}
+	if h := doc.Header; h != nil {
+		// The header is not a record; wrapping its pointer-bearing values
+		// in one classifies them by the same rule as every record's.
+		tags := make([]*gedcom.Tag, 0, len(h.Tags)+1)
+		tags = append(tags, &gedcom.Tag{Value: h.Submitter})
+		tags = append(tags, h.Tags...)
+		gedcom.VisitForVersion(&gedcom.Record{Tags: tags}, version, visit)
+	}
+	slices.Sort(dangling)
+	return dangling
+}
+
 // postRemapCollisions returns any XRefs in remapped that now collide
-// with doc1's XRefs. Used by PrefixDoc2 to detect e.g. doc1 having
+// with doc1's XRefs. Used by PrefixDoc2 and PrefixAllDoc2 to detect e.g. doc1 having
 // @z_I1@ already when doc2's @I1@ gets prefixed with "z_".
 func postRemapCollisions(doc1, remapped *gedcom.Document) []string {
 	set1 := make(map[string]bool)
@@ -552,13 +628,13 @@ func postRemapCollisions(doc1, remapped *gedcom.Document) []string {
 
 // prefixTransform returns a transform that applies prefix only to
 // XRefs present in the collisions set. Non-colliding XRefs are
-// returned unchanged.
+// returned unchanged, unless all is set: then every XRef is prefixed.
 //
 // Input is shaped like "@I1@"; output is "@<prefix>I1@" so the
 // pointer shape is preserved.
-func prefixTransform(prefix string, collisions map[string]bool) func(string) string {
+func prefixTransform(prefix string, collisions map[string]bool, all bool) func(string) string {
 	return func(old string) string {
-		if !collisions[old] {
+		if !all && !collisions[old] {
 			return old
 		}
 		return "@" + prefix + old[1:]

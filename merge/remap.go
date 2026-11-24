@@ -38,7 +38,8 @@ const voidXRef = "@VOID@"
 // any other, and so are its @VOID@ pointers unless @VOID@ is the null
 // pointer in doc (Document.IsRecordPointer); see gedcom.Apply. The transform may
 // return @VOID@ unchanged for it (an identity result is always accepted),
-// so Combine's strategies, which keep non-colliding XRefs as-is, succeed.
+// so the Combine strategies that keep non-colliding XRefs as-is succeed
+// (PrefixAllDoc2 renames it like every other doc2 XRef).
 //
 // On success, RemapXRefs returns:
 //
@@ -68,12 +69,16 @@ const voidXRef = "@VOID@"
 //	    return "@A_" + old[1:]
 //	})
 func RemapXRefs(doc *gedcom.Document, transform func(old string) string) (*gedcom.Document, map[string]string, error) {
-	return remapXRefs(context.Background(), doc, transform)
+	return remapXRefs(context.Background(), doc, transform, nil)
 }
 
 // remapXRefs is RemapXRefs checking ctx before each record it maps and
 // copies (see cloneDoc), failing as cancelled does once ctx is done.
-func remapXRefs(ctx context.Context, doc *gedcom.Document, transform func(old string) string) (*gedcom.Document, map[string]string, error) {
+//
+// dangling lists pointer targets doc names but does not define. Each is
+// mapped through transform like a record's XRef, so pointers to it are
+// rewritten too; RemapXRefs passes none.
+func remapXRefs(ctx context.Context, doc *gedcom.Document, transform func(old string) string, dangling []string) (*gedcom.Document, map[string]string, error) {
 	if doc == nil {
 		return nil, nil, errmark.Mark(ErrNilDocument, errors.New("merge: doc is nil"))
 	}
@@ -86,6 +91,10 @@ func remapXRefs(ctx context.Context, doc *gedcom.Document, transform func(old st
 	// produced it, so we can name the conflicting pair in the error.
 	seenNew := make(map[string]string)
 
+	mapOne := func(old string) error {
+		return mapXRef(doc, transform, mapping, seenNew, old)
+	}
+
 	for _, r := range doc.Records {
 		if err := cancelled(ctx); err != nil {
 			return nil, nil, err
@@ -93,25 +102,17 @@ func remapXRefs(ctx context.Context, doc *gedcom.Document, transform func(old st
 		if r == nil || (r.XRef != voidXRef && !doc.IsPointerXRef(r.XRef)) {
 			continue
 		}
-		newXRef := transform(r.XRef)
-		// An identity result is accepted unchecked: it renames nothing, and
-		// only @VOID@ can reach here without passing IsPointerXRef.
-		if newXRef != r.XRef && !doc.IsPointerXRef(newXRef) {
-			return nil, nil, &RemapError{
-				Old:    r.XRef,
-				New:    newXRef,
-				Reason: "transform produced a malformed XRef (must satisfy Document.IsPointerXRef; spaces are allowed only when Header.DeclaredVersion is 5.5 or 5.5.1)",
-			}
+		if err := mapOne(r.XRef); err != nil {
+			return nil, nil, err
 		}
-		if prevOld, dup := seenNew[newXRef]; dup {
-			return nil, nil, &RemapError{
-				Old:    r.XRef,
-				New:    newXRef,
-				Reason: fmt.Sprintf("collides with mapping for %q", prevOld),
-			}
+	}
+	for _, xref := range dangling {
+		if _, mapped := mapping[xref]; mapped {
+			continue
 		}
-		seenNew[newXRef] = r.XRef
-		mapping[r.XRef] = newXRef
+		if err := mapOne(xref); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	out, err := cloneDoc(ctx, doc)
@@ -127,4 +128,30 @@ func remapXRefs(ctx context.Context, doc *gedcom.Document, transform func(old st
 		result[k] = v
 	}
 	return out, result, nil
+}
+
+// mapXRef records transform's result for old in mapping. seenNew maps each
+// XRef already produced back to the XRef it was produced from; a second XRef
+// producing the same one, or a malformed result, is a RemapError.
+func mapXRef(doc *gedcom.Document, transform func(old string) string, mapping, seenNew map[string]string, old string) error {
+	newXRef := transform(old)
+	// An identity result is accepted unchecked: it renames nothing, and
+	// only @VOID@ can reach here without passing IsPointerXRef.
+	if newXRef != old && !doc.IsPointerXRef(newXRef) {
+		return &RemapError{
+			Old:    old,
+			New:    newXRef,
+			Reason: "transform produced a malformed XRef (must satisfy Document.IsPointerXRef; spaces are allowed only when Header.DeclaredVersion is 5.5 or 5.5.1)",
+		}
+	}
+	if prevOld, dup := seenNew[newXRef]; dup {
+		return &RemapError{
+			Old:    old,
+			New:    newXRef,
+			Reason: fmt.Sprintf("collides with mapping for %q", prevOld),
+		}
+	}
+	seenNew[newXRef] = old
+	mapping[old] = newXRef
+	return nil
 }

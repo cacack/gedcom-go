@@ -815,9 +815,17 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 | Function | Description |
 |----------|-------------|
 | `merge.RemapXRefs(doc, transform)` | Pure XRef rewrite preserving referential integrity; original document unchanged. Records whose XRef is not pointer-shaped (e.g. recovered from a malformed line) are left as-is |
-| `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `RenumberDoc2`, `ZipSharedXRefs`) |
+| `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `PrefixAllDoc2`, `RenumberDoc2`, `ZipSharedXRefs`) |
 | `merge.Individuals(doc, keep, drop, opts)` | Fold the individual `drop` into `keep`, which the caller names; original document unchanged |
 | `merge.Families(doc, keep, drop, opts)` | The same for two family records; a child both list is listed once |
+
+`PrefixDoc2` and `RenumberDoc2` rename only the doc2 records whose XRef doc1
+also holds. `PrefixAllDoc2` puts `CombineOptions.Prefix` in front of every
+doc2 XRef, colliding or not, so a record's XRef shows which document it came
+from; `CombineReport.RemappedXRefs` then lists every doc2 record with a
+pointer-shaped XRef. An XRef doc2 points at but does not define is prefixed
+too, so a broken pointer in doc2 stays broken instead of resolving to the doc1
+record of that XRef.
 
 `ZipSharedXRefs` is for documents cut from one master, such as bounded
 subsets: a shared XRef is one record. Identical records collapse to one;
@@ -855,7 +863,7 @@ to merge documents whose declared encodings differ (text is UTF-8 in
 memory either way) — doc1's encoding is kept and the difference is
 reported as a `HeaderConflict`. Argument errors wrap `merge.ErrNilDocument`
 (a nil document) or `merge.ErrInvalidOptions` (an unknown strategy, a
-`PrefixDoc2` with no `Prefix`, a nil transform), so `errors.Is` separates
+`PrefixDoc2` or `PrefixAllDoc2` with no `Prefix`, a nil transform), so `errors.Is` separates
 them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 `ErrInvalidRemap`.
 
