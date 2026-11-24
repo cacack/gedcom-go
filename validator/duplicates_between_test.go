@@ -284,3 +284,18 @@ func TestFindDuplicatesBetween_NilOrEmpty(t *testing.T) {
 		}
 	}
 }
+
+// TestFindDuplicatesBetween_SharedIndividual: two distinct documents that share
+// an *Individual (as a shallow copy does) never pair it with itself, while a
+// genuine match between them is still reported.
+func TestFindDuplicatesBetween_SharedIndividual(t *testing.T) {
+	shared := betweenPerson("@I1@", "John", "Example", "M", 1850)
+	a := makeDocument([]*gedcom.Individual{shared}, nil)
+	b := makeDocument([]*gedcom.Individual{shared, betweenPerson("@I2@", "John", "Example", "M", 1850)}, nil)
+
+	pairs := NewDuplicateDetector(nil).FindDuplicatesBetween(a, b)
+
+	if got, want := sortedPairKeys(pairs), []string{"@I1@|@I2@"}; !slices.Equal(got, want) {
+		t.Errorf("pairs = %v, want %v", got, want)
+	}
+}

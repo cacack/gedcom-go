@@ -253,6 +253,10 @@ type DuplicatePair struct {
 }
 
 // ToIssue converts the DuplicatePair to a validation Issue.
+//
+// The Issue names both XRefs but not the document each came from, so for a
+// pair from FindDuplicatesBetween it reads like a same-document duplicate and
+// is ambiguous when the two files reuse XRefs.
 func (p DuplicatePair) ToIssue() Issue {
 	message := fmt.Sprintf("Potential duplicate: %s may be the same as %s (%.0f%% confidence)",
 		getDisplayName(p.Individual1),
@@ -484,7 +488,9 @@ func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedco
 // before they are combined. Pairs within a single document are not reported;
 // run FindDuplicates on each document for those. For the same reason, when a
 // and b are the same document (or either is nil) the result is empty rather
-// than every individual paired with itself.
+// than every individual paired with itself, and an individual that appears in
+// both documents as the same *gedcom.Individual (as when one document is a
+// shallow copy of the other) is never paired with itself.
 //
 // In every pair Individual1 comes from a and Individual2 from b, each the
 // document's own *gedcom.Individual with its own XRef. Records are never
@@ -498,10 +504,12 @@ func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedco
 // Scoring, thresholds, vetoes and limits are those of FindDuplicates under the
 // same DuplicateConfig, and the pairs are the cross-document pairs that
 // FindDuplicates would report on the two documents combined (for example by
-// merge.Combine with PrefixDoc2), with their XRefs left unchanged. In
-// particular a surname group is the union of that surname's individuals in
-// both documents, and MaxGroupSize applies to that union: a combined group
-// larger than the cap is skipped whole. Use FindDuplicatesBetweenReport to
+// merge.Combine with PrefixDoc2), with their XRefs left unchanged, except
+// that an individual shared by both documents is not paired with its own
+// copy. In particular a surname group is the union of that surname's
+// individuals in both documents, and MaxGroupSize applies to that union: a
+// combined group larger than the cap is skipped whole. A shared individual
+// still counts once per document toward the cap and the limit counts. Use FindDuplicatesBetweenReport to
 // learn when that happened.
 //
 // Cost: grouping is linear in the individuals of both documents, as it is for
@@ -559,6 +567,12 @@ func (d *DuplicateDetector) FindDuplicatesBetweenReport(a, b *gedcom.Document) D
 
 		for _, ca := range candidatesA {
 			for _, cb := range candidatesB {
+				// Two distinct documents may still share an *Individual;
+				// pairing it with itself would report one record as its own
+				// duplicate.
+				if ca.ind == cb.ind {
+					continue
+				}
 				if pair, ok := d.comparePair(ca, cb); ok {
 					duplicates = append(duplicates, pair)
 				}
