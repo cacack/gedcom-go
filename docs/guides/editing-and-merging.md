@@ -312,9 +312,17 @@ What happens:
 
 - **Every level-1 structure of `drop` moves under `keep`**, after `keep`'s
   last structure with the same tag, unless `keep` already holds one that is
-  identical line for line. That is the whole policy. A second `NAME` is added,
+  identical line for line. By default that is the whole policy. A second `NAME` is added,
   and so is a differing `SEX` or a second `BIRT`: both claims are kept for you
   or the validator to resolve.
+- **With `FoldEvents`, the same event is written once.** Set
+  `RecordMergeOptions.FoldEvents` and a structure of `drop` with the tag, value
+  and date of one of `keep`'s (dates compared as parsed, so `7 DEC 1977` is
+  `07 Dec 1977`), the same `TYPE` if any, and the same place or a place only
+  one of them has, is folded
+  into it: `keep`'s lines stay, and `drop`'s citations, notes and other lines
+  `keep`'s lacks are added. A structure without a valid `DATE`, or whose date,
+  time, place or `TYPE` differs, is added as before. `report.Folded` lists each fold.
 - **Every pointer to `drop` now names `keep`**, in families, associations and
   vendor tags alike. A level-1 line that would then repeat a sibling exactly,
   such as the second `CHIL` of a family that listed both individuals, is
