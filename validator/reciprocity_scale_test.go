@@ -3,9 +3,9 @@ package validator
 import (
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/scalecheck"
 )
 
 // largeFamilyDoc builds a document with one family @F1@ of n reciprocated
@@ -30,29 +30,18 @@ func largeFamilyDoc(n int) *gedcom.Document {
 }
 
 // TestReferenceValidator_LinearInFamilySize guards that the FAMC and CHIL
-// reciprocity checks stay linear in a family's size: 8x the children must
-// cost well under the 64x a quadratic check would.
+// reciprocity checks stay linear in a family's size. The measurement is
+// scalecheck.Linear's: one validation of a large family against as many
+// validations of a small one as make up the same number of children.
 func TestReferenceValidator_LinearInFamilySize(t *testing.T) {
-	const small, large = 2000, 16000
-	run := func(n int) time.Duration {
+	scalecheck.Linear(t, "Validate", 2000, 32000, func(n int) func() {
 		doc := largeFamilyDoc(n)
-		best := time.Duration(1<<63 - 1)
-		for range 5 {
-			start := time.Now()
+		return func() {
 			if issues := NewReferenceValidator().Validate(doc); len(issues) != 0 {
 				t.Fatalf("Validate reported %d issues on a reciprocated family, want 0", len(issues))
 			}
-			if d := time.Since(start); d < best {
-				best = d
-			}
 		}
-		return best
-	}
-	tSmall, tLarge := run(small), run(large)
-	if ratio := float64(tLarge) / float64(tSmall); ratio > 24 {
-		t.Errorf("Validate: %d children took %v, %d took %v (%.0fx for 8x the children); want linear",
-			small, tSmall, large, tLarge, ratio)
-	}
+	})
 }
 
 func BenchmarkReferenceValidator_LargeFamily(b *testing.B) {
