@@ -1795,7 +1795,7 @@ pointers.
 From v3.7.0 a nameless individual is reported as `validator.CodeMissingName`
 (`"MISSING_NAME"`) instead: `INDI.NAME` is optional in every GEDCOM version, so
 `CodeMissingRequiredField` is deprecated and no longer emitted. See
-[Behaviour changes in minor releases](../governance/policies/api-stability.md#behaviour-changes-in-minor-releases).
+[Behavior changes in minor releases](../governance/policies/api-stability.md#behavior-changes-in-minor-releases).
 
 What changes without a compile error is **what `Validate` returns**:
 
