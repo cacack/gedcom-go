@@ -19,12 +19,12 @@ Verify that the codebase honors the architectural decisions documented in docs/d
 - Check that `ParseDate()` preserves the original string
 
 ### ADR-002: XRef Resolution via Strings
-- Verify family linkage fields (Husband, Wife, Children, FamilyChild, FamilySpouse) are string types, not pointer types
+- Verify family linkage fields (`Family.Husband`, `Wife`, `Children`, and `FamilyLink.FamilyXRef` in `Individual.ChildInFamilies`/`SpouseInFamilies`) hold XRef strings, not pointers
 - Verify `Document.XRefMap` exists for O(1) lookup
 - Verify `GetIndividual()`, `GetFamily()` etc. use the map
 
 ### ADR-003: Lossless Dual Storage
-- Verify `Record` has both a typed `Data` field and raw `Children`/`Tags` field
+- Verify `Record` has both a typed `Entity` field and a raw `Tags` field
 - Verify entities (Individual, Family, etc.) preserve raw tags
 - Spot-check that unknown/vendor tags survive a decode
 

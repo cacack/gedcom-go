@@ -29,23 +29,24 @@
 // as the source of truth. The following describes what is preserved and what may change:
 //
 // Preserved (must be identical after round-trip):
-//   - All tag names and values
+//   - All tag names and values, in records and in the header (Header.Tags)
 //   - Hierarchical structure (nesting levels relative to parent)
 //   - Tag order within each record
+//   - CONC/CONT lines, which are raw tags and are written back as read
 //   - Unknown and vendor-specific tags (e.g., _CUSTOM, _TREE)
 //   - Cross-reference identifiers (XRef)
 //   - Record order in the document
 //
 // May change (not compared):
-//   - Line numbers (expected to differ due to header reconstruction)
+//   - Line numbers
 //   - Byte-level formatting (line endings, whitespace normalization)
-//   - CONC/CONT reorganization (may be split differently)
-//   - Header structure (reconstructed from Header fields)
+//   - The header's CHAR value, which is expected to come back as UTF-8
 //
 // # How Comparison Works
 //
 // The comparison algorithm:
-//  1. Compares Header fields (Version, Encoding, SourceSystem, Language)
+//  1. Compares Header fields (Version, Encoding, SourceSystem, Language) and
+//     Header.Tags, with CHAR normalized to the charset the encoder writes
 //  2. Compares record count and XRef presence
 //  3. For each record, compares Record.Tags recursively:
 //     - Matches tags by position (same index)

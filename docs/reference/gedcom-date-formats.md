@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Canonical Source** | GEDCOM specifications 5.5 / 5.5.1 / 7.0 — see [gedcom-specifications.md](gedcom-specifications.md) |
-| **Last Reviewed** | 2025-10-16 |
+| **Last Reviewed** | 2026-11-24 |
 
 Lookup reference for GEDCOM date grammars, calendar systems, modifiers, conversion formulas, and edge cases across GEDCOM 5.5, 5.5.1, and 7.0.
 Consult it when parsing, validating, or formatting dates.
@@ -335,7 +335,7 @@ Where offset_days = 13 + (Julian_Year / 100) - (Julian_Year / 400) - 2
 **Example Conversions**:
 ```
 @#DJULIAN@ 25 DEC 1700  →  @#DGREGORIAN@ 5 JAN 1701  (11 days)
-@#DJULIAN@ 1 JAN 1900   →  @#DGREGORIAN@ 14 JAN 1900 (13 days)
+@#DJULIAN@ 1 MAR 1900   →  @#DGREGORIAN@ 14 MAR 1900 (13 days)
 ```
 
 ### 4.4 Dual Dating and New Year Issues
@@ -677,14 +677,19 @@ Any dates in the gap should be flagged as impossible.
 
 ### 8.3 B.C./B.C.E. Dates
 
-**GEDCOM Format**: Pre-7.0 files conventionally use a "B.C." suffix; GEDCOM 7.0 standardizes the epoch marker as "BCE" (see Appendix A). A negative year is an alternative representation.
+**GEDCOM Format**: Pre-7.0 files conventionally use a "B.C." suffix; GEDCOM 7.0 standardizes the epoch marker as "BCE" (see Appendix A). A signed year such as `-500` is not a GEDCOM date in any version.
 
 **Examples**:
 ```
 500 B.C.         (GEDCOM 5.5 / 5.5.1 convention)
 500 BCE          (GEDCOM 7.0 grammar)
--500             (negative-year representation)
 ```
+
+**gedcom-go**: `ParseDate` reads either suffix (and `BC` and `B.C.E.`, in any
+case) as `Date.Year` 500 with `Date.IsBC` set; the year is stored unsigned and
+`Date.Compare` orders 100 B.C. after 200 B.C. `ParseDate` rejects `-500`: a day
+or year is unsigned digits, and the error says to write a B.C. year with a BC
+suffix. A year written as `0` is rejected too.
 
 **Sorting Issues**:
 - 100 B.C. comes AFTER 200 B.C.
@@ -1149,6 +1154,12 @@ D = %x20  ; single space character
 ---
 
 ## Appendix B: Test Case Examples
+
+Illustrative cases from the source research report, not gedcom-go's API or
+behavior. `gedcom.Date` has no `IsRange` or `IsPeriod` field: a range or period
+is a `Modifier` (`ModifierBetween`, `ModifierFromTo`, ...) with `EndDate`.
+`ParseDate` rejects an unknown month code but accepts an out-of-range day such
+as `32 JAN 2020`, `30 FEB 2020` or `29 FEB 1900`; `Date.Validate` reports it.
 
 ```go
 var dateParseTests = []struct {

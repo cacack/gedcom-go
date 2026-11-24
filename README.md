@@ -23,7 +23,7 @@ A pure Go library for parsing and validating GEDCOM (GEnealogical Data COMmunica
 - **Record-level Diff**: Records added, removed and modified between two documents, with the changed lines, ignoring reordering that does not change meaning
 - **Vendor Extensions**: Parse Ancestry.com and FamilySearch custom tags
 - **Minimal Dependencies**: only `golang.org/x/text` (Go's extended standard library) for encoding transforms; no third-party dependencies
-- **Well-tested**: per-package test coverage floor of ≥85% enforced in CI (currently ~96% measured), with multi-platform CI
+- **Well-tested**: per-package test coverage floor of ≥85% enforced in CI (currently ~98% measured), with multi-platform CI
 
 See [FEATURES.md](FEATURES.md) for the complete feature list including all supported record types, events, attributes, and encoding details.
 
@@ -187,7 +187,7 @@ func writeStreamed(path string, records []*gedcom.Record) (err error) {
 
 `charset.NewReader` reads only the header (at most 64 KiB) to detect the encoding, then streams the rest. If you already know the encoding, `charset.NewReaderWithEncoding(f, charset.EncodingUTF8)` skips detection.
 
-On a 1.1MB / 2,322-individual file, streaming parse holds **~17%** of the heap that batch decode retains after the call returns (and ~54% of the cumulative allocations). See [`examples/stream`](examples/stream/main.go) for the full pattern and [docs/guides/performance.md](docs/guides/performance.md#streaming-apis-performance) for benchmark details.
+On a 1.1MB / 2,322-individual file, streaming parse holds **~17%** of the heap that batch decode retains after the call returns (and ~55% of the cumulative bytes allocated). See [`examples/stream`](examples/stream/main.go) for the full pattern and [docs/guides/performance.md](docs/guides/performance.md#streaming-apis-performance) for benchmark details.
 
 ### Convert Between Versions
 
@@ -217,7 +217,8 @@ if err != nil {
     log.Fatal(err)
 }
 
-// References the archive does not satisfy (missing entry, file: URL, invalid path).
+// References the archive does not satisfy (missing or unusable entry, file: URL,
+// invalid path, or a reference to gedcom.ged itself).
 for _, p := range zr.CheckRefs(doc) {
     fmt.Printf("%s: %s: %v\n", p.XRef, p.FileRef, p.Err)
 }
@@ -328,10 +329,21 @@ To opt into strict parsing (fail on the first syntax error, no diagnostics colle
 - **GEDCOM 7.0 Coverage**: [docs/reference/gedcom-7-coverage.md](docs/reference/gedcom-7-coverage.md) - What this library does with every structure the 7.0 standard defines, derived by decoding rather than estimated
 - **GEDCOM 5.5/5.5.1 Coverage**: [docs/reference/gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md) - The same for both 5.5 versions, transcribed from the specifications' Lineage-Linked Grammar
 - **GEDZIP Archives**: [docs/guides/gedzip.md](docs/guides/gedzip.md) - Reading and writing `.gdz` packages, resolving `FILE` references, and the limits for untrusted uploads
+- **Decoding**: [docs/guides/decoding.md](docs/guides/decoding.md) - The decoding contract: what lenient mode recovers from and what strict mode rejects
+- **Converting Versions**: [docs/guides/converter.md](docs/guides/converter.md) - Converting documents between GEDCOM 5.5, 5.5.1, and 7.0, and reading the conversion report
+- **Editing and Merging**: [docs/guides/editing-and-merging.md](docs/guides/editing-and-merging.md) - Editing a record as text, diffing two documents, combining files, merging duplicate records, and cutting a branch and zipping it back
 - **Preserving Layout**: [docs/guides/preserving-layout.md](docs/guides/preserving-layout.md) - Writing an edited file back so it differs from its source only where it was edited
 - **Untrusted Input**: [docs/guides/untrusted-input.md](docs/guides/untrusted-input.md) - Every bound on hostile input, the memory each API needs per input byte, and how to size an input limit
 - **Security Policy**: [SECURITY.md](SECURITY.md) - Supported versions, reporting a vulnerability, and the scanners that run
 - **Vendor Extensions**: [docs/guides/vendor-extensions.md](docs/guides/vendor-extensions.md) - Vendor-specific tag support (`_APID`, `_FSFTID`, etc.)
+- **Performance**: [docs/guides/performance.md](docs/guides/performance.md) - Benchmarks and streaming-vs-batch tuning
+- **Migrating to v3**: [docs/guides/migration-v3.md](docs/guides/migration-v3.md) - Every breaking change from v2 and its replacement
+- **GEDCOM Reference**: [docs/reference/](docs/reference/README.md) - Version differences, specification links, and date formats
+- **API Stability**: [docs/governance/policies/api-stability.md](docs/governance/policies/api-stability.md) - Versioning, breaking-change, and deprecation policy
+- **Design Decisions**: [docs/decisions/](docs/decisions/README.md) - Architecture Decision Records
+- **Comparison**: [COMPARISON.md](COMPARISON.md) - How this library compares with other GEDCOM libraries, in Go and other languages
+- **Changelog**: [CHANGELOG.md](CHANGELOG.md)
+- **Command-Line Tool**: [gedcom-cli](https://github.com/cacack/gedcom-cli) - A separate project built on this library
 - **Contributing**: [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Advanced Usage
@@ -380,7 +392,7 @@ doc, err := gedcomgo.DecodeWithOptions(reader, opts)
 opts := &gedcomgo.ValidateOptions{
     Strictness: validator.StrictnessStrict,
     MaxErrors:  100,
-    SkipRules:  []string{"W001"},
+    SkipRules:  []string{validator.CodeMissingSUBM},
     Duplicates: &validator.DuplicateConfig{
         MinNameSimilarity: 0.9,  // unset fields keep their defaults
         MaxGroupSize:      1000, // skip surname groups larger than this
@@ -404,8 +416,8 @@ worst-case bound.
 ```go
 // Encode with custom line endings and line length
 opts := &gedcomgo.EncodeOptions{
-    LineEnding:    "\r\n", // CRLF
-    MaxLineLength: 248,
+    LineEnding:    "\r\n", // CRLF (default is LF)
+    MaxLineLength: 120,    // default 248; applies to 5.5/5.5.1 output only (7.0 lines are never split)
 }
 err := gedcomgo.EncodeWithOptions(writer, doc, opts)
 ```
@@ -448,17 +460,22 @@ This library follows [Semantic Versioning](https://semver.org/). We do not break
 | Package | Key APIs |
 |---------|----------|
 | `gedcom` | Document, Individual, Family, Event, Date |
-| `decoder` | Decode(), DecodeWithOptions() |
+| `decoder` | Decode(), DecodeWithOptions(), DecodeWithDiagnostics(), DecodeRecord(), DecodeRecords() |
 | `encoder` | Encode(), EncodeWithOptions(), EncodeRecord(), NewStreamEncoder(), NewStreamEncoderWithOptions(), EncodeStreaming(), EncodeStreamingWithOptions() |
 | `converter` | Convert(), ConvertWithOptions() |
 | `parser` | NewParser(), Parser.Parse(), Parser.ParseLine(), NewRecordIterator(), NewRecordIteratorWithOffset(), Records(), RecordsWithOffset(), NewLazyParser() |
 | `validator` | New(), Validator.Validate(), Validator.ValidateAll(), NewStreamingValidator() |
+| `merge` | Combine(), Individuals(), Families(), RemapXRefs() |
+| `gedzip` | OpenReader(), NewReader(), Write() |
 | `charset` | NewReader() |
 | `version` | DetectVersion() |
+| `gedcomgo` | Decode(), Encode(), Validate(), Convert() |
+
+`gedcomgo` is the root package. Every exported identifier in these packages and in `gedcom/testing` is covered, not only the entry points named here.
 
 ### What May Change
 
-- **Experimental features** (duplicate detection algorithms, quality report format) may evolve in minor versions
+- **Results of heuristic features** (which duplicate pairs are reported and their scores, the quality report's wording) may change in minor versions; their signatures are stable
 - **Conformance fixes** that bring behaviour into line with the GEDCOM spec or documented contract may change results in minor versions; each is listed under [Behaviour changes in minor releases](docs/governance/policies/api-stability.md#behaviour-changes-in-minor-releases)
 - **Struct tags** on the document model may be added or changed in minor versions, which changes `encoding/json` output; each is listed in the same table
 
@@ -540,8 +557,7 @@ go vet ./...
 
 ## Performance
 
-The library is designed for high performance with efficient memory usage, including
-**zero allocations** in the validator for valid documents. See
+The library is designed for high performance with efficient memory usage. See
 [docs/guides/performance.md](docs/guides/performance.md) for measured benchmarks and the
 environment they were run on — run `make bench` to reproduce figures on your own hardware.
 

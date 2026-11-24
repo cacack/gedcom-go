@@ -11,7 +11,7 @@ This document summarizes the key differences between GEDCOM versions 5.5, 5.5.1,
 | UTF-16 Support | Yes (with BOM) | Yes (with BOM) | No |
 | CONC Continuation | Yes | Yes | Removed |
 | CONT Continuation | Yes | Yes | Retained (the encoding for a line break) |
-| XRef Format | `@[A-Za-z0-9_]+@` | `@[A-Za-z0-9_]+@` | `@[A-Z0-9_]+@` (uppercase) |
+| XRef Format | `@` + alphanumeric + any non-`@` characters + `@` (spaces allowed) | Same as 5.5 | `@[A-Z0-9_]+@` (uppercase) |
 
 ## GEDCOM 5.5 Specification
 
@@ -19,7 +19,7 @@ This document summarizes the key differences between GEDCOM versions 5.5, 5.5.1,
 
 - Format: `LEVEL [XREF] TAG [VALUE]`
 - Level: 0-99 (must increment by 1 from parent)
-- XREF: Optional, format `@[A-Za-z0-9_]+@` (alphanumeric + underscore)
+- XREF: Optional; starts with an alphanumeric character, then any characters except `@` (spaces are allowed)
 - TAG: 3-4 uppercase characters (standard tags) or `_TAG` for custom extensions
 - VALUE: Optional, max 255 characters per line
 - Line terminators: CRLF (recommended), LF, or CR
@@ -37,7 +37,8 @@ This document summarizes the key differences between GEDCOM versions 5.5, 5.5.1,
 - ANSEL (default if not declared)
 - ASCII (7-bit)
 - UNICODE (UTF-16 with BOM)
-- ANSI (Windows-1252)
+
+`ANSI` (Windows-1252) is not in the 5.5 grammar but is common in real files, and the library reads it.
 
 ### Header Structure
 
@@ -56,7 +57,7 @@ This document summarizes the key differences between GEDCOM versions 5.5, 5.5.1,
 
 ### Cross-Reference Format
 
-- Pattern: `@[A-Za-z0-9_]+@`
+- Pattern: `@`, an alphanumeric character, then any characters except `@`, then `@`
 - Examples: `@I1@`, `@F123@`, `@S_001@`
 - Must be unique within document
 - Forward references allowed (referenced before defined)
@@ -66,22 +67,20 @@ This document summarizes the key differences between GEDCOM versions 5.5, 5.5.1,
 ### Changes from 5.5
 
 1. **UTF-8 Support**: Added `CHAR UTF-8` option (previously only UTF-16)
-2. **New Tags** (9 additions):
+2. **New Tags**:
    - `EMAIL`: Email address
    - `FAX`: Fax number
    - `WWW`: Website URL
-   - `_ASSO`: Association (custom tag standardized)
    - `FACT`: Generic fact/attribute
    - `MAP`: Geographic coordinates
    - `LATI`: Latitude
    - `LONG`: Longitude
-   - `_MARNM`: Married name (custom tag standardized)
+   - `FONE`: Phonetic variation of a name or place
+   - `ROMN`: Romanized variation of a name or place
 3. **Multimedia Changes**:
    - Removed inline BLOBs (binary data)
    - All multimedia must reference external files via `FILE` tag
-   - Added `_PRIM` tag to indicate primary photo
-4. **Date Format**: Added support for date phrases (text in parentheses)
-5. **Backward Compatibility**: 5.5.1 parsers must accept 5.5 files
+4. **Backward Compatibility**: 5.5.1 parsers must accept 5.5 files
 
 ### Character Encoding (GEDCOM 5.5.1)
 
@@ -104,7 +103,7 @@ This document summarizes the key differences between GEDCOM versions 5.5, 5.5.1,
 
 1. **UTF-8 Mandatory**: All files must be UTF-8 (no ANSEL, ASCII, or UTF-16)
 2. **CONC Tag Removed**: No more line continuation via CONC (lines can be longer)
-3. **New Required Tags**:
+3. **New Tags**:
    - `SCHMA`: Schema extension declaration
    - `NO`: Negative assertion (e.g., "NO BIRT" = birth not occurred)
    - `EXID`: External identifier (links to external databases)

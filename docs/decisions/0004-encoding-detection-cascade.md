@@ -217,7 +217,6 @@ without it. In outline:
 
 ## References
 
-- `charset/charset.go` - Detection implementation
-- `charset/bom.go` - BOM detection
+- `charset/charset.go` - Detection implementation, including BOM detection (`DetectBOM`)
 - `charset/ansel.go` - ANSEL decoding tables
 - `docs/archive/encoding-implementation-plan.md` - Detailed encoding notes

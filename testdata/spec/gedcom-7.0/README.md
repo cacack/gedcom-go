@@ -37,7 +37,9 @@ it.
 `decoder/spec7_coverage_test.go` derives
 [`docs/reference/gedcom-7-coverage.md`](../../../docs/reference/gedcom-7-coverage.md)
 from these files, and `internal/cmd/gengrammar` generates the validator's grammar
-tables (`validator/grammar_tables.go`) from them at `go generate` time. They are
+tables (`validator/grammar_tables.go`) from them at `go generate` time, as do
+`internal/cmd/genplacement` (the decoder's placement tables) and
+`internal/cmd/genforeign` (the converter's). They are
 test data only: no library code reads them at run time, and they add no runtime
 dependency.
 
@@ -45,9 +47,9 @@ dependency.
 
 Re-download the five TSVs plus `LICENSE` and `NOTICE` from a single upstream
 commit, update `SOURCE`, then regenerate the coverage document and the
-validator's grammar tables:
+generated tables:
 
 ```bash
 make spec-coverage
-go generate ./validator
+go generate ./validator ./decoder ./converter
 ```

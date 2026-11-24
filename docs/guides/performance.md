@@ -115,6 +115,11 @@ Line ending format has negligible impact (<1% overhead for CRLF vs LF).
 
 ## Validator Performance
 
+> **These figures do not reproduce on v3.13.0** and the benchmark behind them
+> needs repair; several other tables in this guide are also due a re-measure.
+> See [#919](https://github.com/cacack/gedcom-go/issues/919). Run `make bench`
+> for current numbers.
+
 | Document Size | Time/Op | Memory | Allocations |
 |---------------|---------|--------|-------------|
 | 1 individual | 15 ns | 0 B | 0 |
@@ -520,8 +525,8 @@ Encoding detection in `charset.NewReader` reads only the header (at most 64 KiB)
 ### For Web Services
 
 1. **Set Timeouts**: Give every stage the same deadline, not just the decode.
-   `DecodeOptions`, `ValidateOptions`, `ConvertOptions`, `EncodeOptions` and
-   `merge.CombineOptions` each take a `Context`, and `LazyParser` has
+   `DecodeOptions`, `ValidateOptions`, `ConvertOptions`, `EncodeOptions`,
+   `merge.CombineOptions` and `merge.RecordMergeOptions` each take a `Context`, and `LazyParser` has
    `BuildIndexContext`; each stops shortly after the context is done and
    returns its error wrapped, so `errors.Is(err, context.DeadlineExceeded)`
    works. On the validator, call `ValidateAllWithError`: `ValidateAll` has no

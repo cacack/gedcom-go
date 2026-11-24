@@ -69,7 +69,7 @@ func TestDecodeWithDiagnostics_MalformedFiles(t *testing.T) {
 			name:              "duplicate-xref.ged",
 			path:              "../testdata/malformed/duplicate-xref.ged",
 			description:       "File with duplicate XRef identifiers",
-			expectDiagnostics: false, // Duplicate XRefs are handled (last wins)
+			expectDiagnostics: false, // Duplicate XRefs are handled (first definition wins)
 			expectError:       false,
 			minRecords:        1, // At least one record
 		},

@@ -16,7 +16,7 @@ Launch all six checks as parallel subagents using the Task tool with `subagent_t
 2. **check-debt** — Technical debt inventory
 3. **check-invariants** — ADR invariant spot-checks
 4. **check-patterns** — Code pattern consistency
-5. **check-phase** — Phase alignment assessment
+5. **check-phase** — Roadmap alignment assessment
 6. **check-tests** — Test quality analysis
 
 For each subagent, use the Skill tool to invoke the corresponding skill (e.g., `/audit-docs`, `/check-debt`, etc.).
@@ -35,7 +35,7 @@ Wait for all six to complete, then aggregate their findings.
 | Technical Debt | ... | ... |
 | ADR Invariants | ... | ... |
 | Code Patterns | ... | ... |
-| Phase Alignment | ... | ... |
+| Roadmap Alignment | ... | ... |
 | Test Quality | ... | ... |
 
 ## Detailed Findings
@@ -52,7 +52,7 @@ Wait for all six to complete, then aggregate their findings.
 ### Code Patterns
 [Summary from check-patterns]
 
-### Phase Alignment
+### Roadmap Alignment
 [Summary from check-phase]
 
 ### Test Quality

@@ -35,7 +35,7 @@ authoritative for them.
 | **ANSEL decoding** | Yes | No | No | No | No (ANSEL bytes are accepted, not converted) |
 | **UTF-16** | Yes | No | No | No | No |
 | **Direct dependencies** | 1 (`golang.org/x/text`) | 6 | 1 (`go-cmp`) | 4 | 1 |
-| **Latest release** | v3.6.0 (Nov 2026) | v39.6.0 (Nov 2023) | v0.2.20 (May 2026) | v0.1.2 (Aug 2023) | v1.0.1 (tag) |
+| **Latest release** | v3.13.0 (Nov 2026) | v39.6.0 (Nov 2023) | v0.2.20 (May 2026) | v0.1.2 (Aug 2023) | v1.0.1 (tag) |
 | **Stars** | 7 | 124 | 41 | 8 | 2 |
 
 **Analysis:**
@@ -95,8 +95,8 @@ GedcomSharp and ArmidaleSoftware/gedcom7 respectively.
 2. **Lossless representation.** Every readable line is kept, typed or not
    ([ADR 0003](docs/decisions/0003-lossless-dual-storage.md)); dates keep their
    original text beside the parsed form.
-3. **Encodings.** UTF-8, UTF-16 LE/BE, ANSEL, ASCII, Windows-1252/1250 and DOS
-   and Mac code pages, detected automatically
+3. **Encodings.** UTF-8, UTF-16 LE/BE, ANSEL, ASCII, Windows-1252 and DOS
+   and Mac code pages, detected automatically, plus Windows-1250 on request
    ([FEATURES.md](FEATURES.md#character-encoding)). No other Go library here
    decodes ANSEL or UTF-16.
 4. **Measured coverage.** Typed coverage of each version is measured, not

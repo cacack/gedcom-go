@@ -1,6 +1,6 @@
-# Contributing to go-gedcom
+# Contributing to gedcom-go
 
-Thank you for your interest in contributing to go-gedcom! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to gedcom-go! This document provides guidelines and instructions for contributing to the project.
 
 ## Table of Contents
 
@@ -44,7 +44,7 @@ This project adheres to a simple code of conduct:
 
    This single command will:
    - Download Go dependencies
-   - Install development tools (golangci-lint, gosec, govulncheck, apidiff)
+   - Install development tools (golangci-lint, gosec, govulncheck, go-test-coverage, apidiff)
    - Install git hooks for faster feedback (catch CI failures locally)
    - Verify everything works by running tests
 
@@ -53,6 +53,7 @@ This project adheres to a simple code of conduct:
    | Hook | Checks | Purpose |
    |------|--------|---------|
    | pre-commit | gofmt, go mod tidy, go vet, golangci-lint, tests | Fast feedback on every commit |
+   | commit-msg | `feat`/`fix` commits must touch library code | Keep the changelog to library changes |
    | pre-push | Coverage thresholds (85% per-package) | Catch coverage issues before CI |
 
    You'll see output like:
@@ -64,6 +65,7 @@ This project adheres to a simple code of conduct:
 
      Git hooks installed:
        pre-commit: gofmt, go vet, golangci-lint, tests
+       commit-msg: feat/fix type must touch library code
        pre-push:   coverage threshold checks (85%)
    ```
 
@@ -104,7 +106,7 @@ git checkout -b docs/improve-examples
 # Run all tests (includes race detector)
 make test
 
-# Check test coverage (requires 85%+)
+# Report test coverage; `make check-coverage` enforces the 85% thresholds
 make test-coverage
 
 # Run CI's code checks locally before pushing
@@ -298,8 +300,8 @@ Follow the official [Go Code Review Comments](https://github.com/golang/go/wiki/
 
 | Level | Threshold | Enforcement |
 |-------|-----------|-------------|
-| Per-package | ≥85% | Pre-commit hook, CI |
-| Total | ≥85% | CI |
+| Per-package | ≥85% | Pre-push hook, CI |
+| Total | ≥85% | Pre-push hook, CI |
 | Critical paths | 100% | Code review |
 
 - **Target**: 90%+ coverage for core packages (parser, decoder, validator)
@@ -309,7 +311,8 @@ The pre-push hook will block pushes if any package falls below 85% coverage.
 
 Check coverage:
 ```bash
-make test-coverage   # Shows per-package coverage with threshold check
+make test-coverage   # Coverage report with the total
+make check-coverage  # Enforces the per-package and total thresholds (same as CI)
 go test -cover ./... # Quick coverage summary
 ```
 
@@ -388,7 +391,7 @@ Tests that skip under `-short` (`make test-short`) are the ones that walk the wh
    ```
 
 4. **Integration Tests**
-   - Place in `*_test.go` files with `// +build integration` tag
+   - Place in `*_test.go` files; gate slow ones on `testing.Short()`
    - Test with real GEDCOM files from `testdata/`
 
 ## Submitting Changes
@@ -455,7 +458,7 @@ Include the following information:
    **Environment**
    - Go version: 1.25.0
    - OS: macOS 14.0
-   - go-gedcom version: v0.1.0
+   - gedcom-go version: v3.13.0
 
    **Sample GEDCOM**
    Attach a minimal GEDCOM file that reproduces the issue
@@ -477,8 +480,7 @@ Include the following information:
    ```
 
 3. **Questions**
-   - Use GitHub Discussions for general questions
-   - Use Issues for bug reports and feature requests
+   - Use Issues for questions, bug reports, and feature requests
 
 ## Additional Resources
 
@@ -492,8 +494,8 @@ Include the following information:
 
 If you have questions about contributing:
 
-- Open a GitHub Discussion
+- Open a GitHub issue
 - Check existing documentation
 - Review closed issues and PRs for similar questions
 
-Thank you for contributing to go-gedcom! 🎉
+Thank you for contributing to gedcom-go! 🎉

@@ -28,7 +28,7 @@ This document provides links to official GEDCOM specifications and key reference
 
 ### GEDCOM 5.5 (1996)
 - First widely-adopted version
-- ANSEL, ASCII, or ANSI encoding
+- ANSEL, ASCII, or UNICODE (UTF-16) encoding
 - Maximum line length: 255 characters
 - LDS ordinance support
 
@@ -71,4 +71,4 @@ curl -o docs/specs/ged551.pdf https://gedcom.io/specifications/ged551.pdf
 curl -o docs/specs/gedcom7.pdf https://gedcom.io/specifications/FamilySearchGEDCOMv7.pdf
 ```
 
-Note: PDF files should be added to `.gitignore` if not intended for version control.
+Note: the PDFs are listed in `.gitignore` and are not vendored.

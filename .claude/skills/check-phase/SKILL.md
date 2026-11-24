@@ -1,65 +1,52 @@
 ---
 name: check-phase
-description: Assess alignment with the current roadmap phase
+description: Assess whether recent work aligns with the open milestones and the evidence bar
 user_invocable: true
 context: fork
 agent: Explore
 ---
 
-# Phase Alignment Assessment
+# Roadmap Alignment Assessment
 
-Check whether recent work aligns with the current roadmap phase. Phases and their milestone mapping are defined in the Phasing table in `CONSTITUTION.md`; the live issue list and exit criteria live in GitHub milestones. Phase 1 (Real-World Compatibility & API Polish, milestones `v2.1.0`/`v2.2.0`) is the current priority.
+Check whether recent work aligns with what is planned. Planned work and its order live only in GitHub milestones and issues; `CONSTITUTION.md` holds the principles, including what counts as evidence for a feature. Do not assume any milestone names: read them live.
 
 ## Checks to Perform
 
-### 1. Recent Commit Categorization
+### 1. Milestone Status
+- Read milestones with their descriptions (which carry exit criteria): `gh api 'repos/cacack/gedcom-go/milestones?state=open'`
+- Read their issues: `gh issue list --state all --limit 1000 --json number,title,milestone,state,labels`
+- For each open milestone, report open vs. closed counts and whether its exit criteria are met
+- List open issues with no milestone
+
+### 2. Recent Commit Categorization
 Review the last 20 commits on main:
 - Run `git log --oneline --max-count=20 main`
-- Categorize each as Phase 1, Phase 2, Phase 3, or Maintenance using the Phasing table in CONSTITUTION.md (map by milestone: v2.1.0/v2.2.0 → Phase 1, v2.3.0 → Phase 2, unscheduled advanced work → Phase 3)
-- Calculate percentage of work in each phase
+- Map each to the issue and milestone it served (from the merge commit or PR), or to Maintenance (ci, docs, chore, deps)
+- Flag feature work tied to no issue
 
-### 2. Phase 1 Issue Progress
-Check status of the current-phase milestones against their exit criteria:
-- Read all issues grouped by milestone (include closed, so open/closed counts are accurate): `gh issue list --state all --limit 1000 --json number,title,milestone,state,labels`
-- Read milestone descriptions (which carry exit criteria): `gh api repos/cacack/gedcom-go/milestones`
-- For each Phase 1 milestone (`v2.1.0`, `v2.2.0`), report open vs. closed counts and whether exit criteria are met
-
-### 3. Phase Leakage Detection
-Look for signs of Phase 2/3 work happening before Phase 1 is complete:
-- Check recent commits for merge/diff/export features (Phase 2)
-- Check for GEDZip, builder API, or plugin work (Phase 3)
-- Flag any premature work with context
-
-### 4. Downstream Consumer Alignment
-Check if work is being driven by real downstream usage:
-- Look at recent commits for references to my-family or consumer needs
-- Check if features added map to downstream requirements
-- Flag any speculative features not tied to real needs
+### 3. Evidence Check
+Per `CONSTITUTION.md` ("What counts as evidence"), a feature needs corpus behavior, spec coverage, or a downstream request:
+- For each recent `feat` commit, find the evidence its issue or commit body cites
+- Flag speculative features with none
 
 ## Output Format
 
 ```
-## Phase Alignment Assessment
+## Roadmap Alignment Assessment
 
-### Current Phase: Phase 1 — API Polish & Stability
-
-### Recent Work Distribution
-| Phase | Commits | Percentage |
-|-------|---------|------------|
-| Phase 1 | ... | ... |
-| Phase 2 | ... | ... |
-| Phase 3 | ... | ... |
-| Maintenance | ... | ... |
-
-### Phase 1 Milestone Status
+### Milestone Status
 | Milestone | Open | Closed | Exit criteria met? |
 |-----------|------|--------|--------------------|
-| v2.1.0 | ... | ... | ... |
-| v2.2.0 | ... | ... | ... |
+| ... | ... | ... | ... |
 
-### Phase Leakage
-[Any premature Phase 2/3 work detected]
+### Recent Work Distribution
+| Milestone / Maintenance | Commits | Percentage |
+|-------------------------|---------|------------|
+| ... | ... | ... |
+
+### Unplanned or Speculative Work
+[Feature work with no issue or no cited evidence]
 
 ### Recommendations
-[Suggestions for staying focused on the current phase]
+[Suggestions for staying aligned with the open milestones]
 ```

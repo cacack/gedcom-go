@@ -4,15 +4,8 @@ Unvetted ideas and rough concepts. When ready to implement, create a GitHub issu
 
 ## Encoder Improvements
 
-- **CONC/CONT line splitting**: Automatically split long lines per GEDCOM spec (255 char limit)
-- **BOM output option**: Optionally write UTF-8 BOM for Windows compatibility
-- **Entity-aware encoding**: Encode structured types (Individual, Family) directly, not just raw records
-
-## Parser/Decoder Improvements
-
-- **Association source citations**: Parse SOUR subordinates under ASSO tags
-- **Loose parsing mode**: Accept common non-standard variations found in the wild
+- **BOM output option**: Optionally write a UTF-8 BOM for Windows compatibility (today a BOM is written only when `PreserveLayout` carries one over from the source)
 
 ## API Ideas
 
-- **Fluent builder API**: Build documents with method chaining
+- **Fluent builder API**: Build documents with method chaining (`gedcom.NewDocument` and `Document.AddRecord` exist; a chaining builder does not)

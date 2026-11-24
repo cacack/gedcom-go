@@ -7,11 +7,15 @@ This guide provides comprehensive documentation for using the `gedcom-go` librar
 - [Basic Concepts](#basic-concepts)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
+- [The Facade Package](#the-facade-package)
 - [Parsing GEDCOM Files](#parsing-gedcom-files)
 - [Working with Documents](#working-with-documents)
 - [Querying Data](#querying-data)
 - [Validation](#validation)
 - [Creating GEDCOM Files](#creating-gedcom-files)
+- [Converting Between Versions](#converting-between-versions)
+- [Combining and Merging](#combining-and-merging)
+- [Comparing Documents](#comparing-documents)
 - [GEDZIP Archives](#gedzip-archives)
 - [Character Encoding](#character-encoding)
 - [Error Handling](#error-handling)
@@ -124,6 +128,50 @@ func main() {
 }
 ```
 
+## The Facade Package
+
+The module root, imported as `gedcomgo`, wraps the common operations of the
+sub-packages behind one import. [README.md](README.md) leads with it; the rest
+of this guide uses the sub-packages directly. The two are interchangeable:
+each facade function forwards to its sub-package, and the facade's types
+(`Document`, `Individual`, `Family`, `Issue`, `DecodeOptions` and so on) are
+aliases of the sub-package types, not copies.
+
+```go
+import gedcomgo "github.com/cacack/gedcom-go/v3"
+
+doc, err := gedcomgo.Decode(f)
+if err != nil {
+    log.Fatal(err)
+}
+
+for _, issue := range gedcomgo.ValidateAll(doc) {
+    fmt.Println(issue)
+}
+
+converted, report, err := gedcomgo.Convert(doc, gedcomgo.Version70)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(report)
+
+err = gedcomgo.Encode(out, converted)
+```
+
+The facade also has `DecodeWithOptions`, `DecodeWithDiagnostics`,
+`EncodeWithOptions`, `Validate`, `ValidateWithOptions`,
+`ValidateAllWithOptions` and `WithoutDiagnosed`; see
+[FEATURES.md](FEATURES.md#convenience-api) for the full list.
+
+Import a sub-package when you need what the facade does not carry:
+
+- `decoder`: diagnostics with custom options, `DecodeRecord`, `DecodeRecords`
+- `encoder`: the stream encoder, `EncodeRecord`, `SyncTags`
+- `validator`: a reusable `Validator`, duplicate and quality reports, the streaming validator
+- `converter`: conversion options such as `StrictDataLoss`
+- `gedcom`: the record types and constants beyond the three the facade re-exports
+- `merge`, `gedzip`, `parser`, `charset`, `version`: not in the facade at all
+
 ## Parsing GEDCOM Files
 
 ### Basic Parsing
@@ -189,6 +237,52 @@ defer resp.Body.Close()
 doc, _ := decoder.Decode(resp.Body)
 ```
 
+### Lenient Decoding and Diagnostics
+
+Decoding is lenient by default: a malformed line is recovered from or skipped
+rather than failing the decode. `Decode` and `DecodeWithOptions` discard the
+record of what was recovered; `DecodeWithDiagnostics` returns it.
+
+```go
+result, err := decoder.DecodeWithDiagnostics(f, nil) // nil: the defaults, lenient
+if result == nil {
+    log.Fatal(err) // nothing could be decoded
+}
+if err != nil {
+    log.Printf("decode stopped early: %v", err) // result.Document is partial
+}
+doc := result.Document
+
+for _, d := range result.Diagnostics {
+    // d.Severity is decoder.SeverityError, SeverityWarning or SeverityInfo
+    fmt.Printf("line %d [%s] %s: %s\n", d.Line, d.Severity, d.Code, d.Message)
+    fmt.Printf("  in %s at %s: %q\n", d.XRef, d.Path, d.Context) // e.g. @I1@, INDI.BURI.DATE
+}
+
+if result.Diagnostics.HasErrors() {
+    fmt.Printf("%d errors, %d warnings\n",
+        len(result.Diagnostics.Errors()), len(result.Diagnostics.Warnings()))
+}
+```
+
+`Code` is one of the `decoder.Code*` constants. `XRef` is the record the line
+is in and `Path` the tags from that record down to the line; both are empty
+for a line outside any record. With `StrictMode` set the decode returns the
+first error instead and reports no diagnostics.
+
+The decoder and the validator both report a redefined XRef as
+`DUPLICATE_XREF`. To report the two lists together without counting it twice,
+pass the issues through `gedcomgo.WithoutDiagnosed` (from the
+[facade package](#the-facade-package)):
+
+```go
+issues := validator.New().ValidateAll(result.Document)
+issues = gedcomgo.WithoutDiagnosed(issues, result.Diagnostics)
+```
+
+The [decoding contract](docs/guides/decoding.md) lists every diagnostic code,
+what each recovery keeps, and the bound on how many diagnostics are reported.
+
 ## Working with Documents
 
 ### Document Structure
@@ -201,6 +295,7 @@ type Document struct {
     Records []*Record    // All records in the file
     Trailer *Trailer     // File trailer
     XRefMap map[string]*Record  // Cross-reference lookup map
+    // ... plus Vendor (detected source software) and Schema (GEDCOM 7.0 SCHMA)
 }
 ```
 
@@ -621,6 +716,41 @@ for code, issues := range issuesByCode {
 }
 ```
 
+### ValidateAll and ValidateOptions
+
+`ValidateAll` returns the findings as `[]validator.Issue`, so no `errors.As`
+is needed. `ValidateOptions` selects which findings are reported:
+
+```go
+v := validator.NewWithOptions(&validator.ValidateOptions{
+    // StrictnessRelaxed: errors only. StrictnessNormal (the default): errors
+    // and warnings. StrictnessStrict: info findings as well.
+    Strictness: validator.StrictnessStrict,
+
+    // Drop findings by code.
+    SkipRules: []string{validator.CodeMissingSUBM},
+
+    // Duplicate detection thresholds; a zero field keeps its default.
+    Duplicates: &validator.DuplicateConfig{MinConfidence: 0.9},
+    // SkipDuplicateDetection: true, // or leave the costliest check out
+})
+
+issues := v.ValidateAll(doc)
+for _, issue := range validator.FilterBySeverity(issues, validator.SeverityError) {
+    fmt.Printf("%s %s (line %d): %s\n", issue.Code, issue.RecordXRef, issue.LineNumber, issue.Message)
+}
+for _, issue := range validator.FilterByCode(issues, validator.CodePotentialDuplicate) {
+    fmt.Printf("%s and %s may be one person\n", issue.RecordXRef, issue.RelatedXRef)
+}
+```
+
+Potential duplicates are info findings, so they appear only at
+`StrictnessStrict`; `Validator.FindPotentialDuplicates` returns the scored
+pairs directly. `LineNumber` is 0 for a finding with no single source line.
+The other options (`CheckGrammar`, `CheckEntityTags`, `MaxErrors`, custom tag
+registries, `Context`) and the duplicate scoring are described under
+[Enhanced Data Validation](FEATURES.md#enhanced-data-validation) in FEATURES.md.
+
 ## Creating GEDCOM Files
 
 ### Creating a Simple Document
@@ -730,8 +860,8 @@ none (see `Record.Tags`).
 ```go
 opts := &encoder.EncodeOptions{
     // Line ending style
-    LineEnding: "\r\n",  // CRLF (Windows/GEDCOM standard)
-    // LineEnding: "\n",  // LF (Unix)
+    LineEnding: "\r\n",  // CRLF (Windows)
+    // LineEnding: "\n",  // LF (the default)
 }
 
 err := encoder.EncodeWithOptions(f, doc, opts)
@@ -739,6 +869,183 @@ if err != nil {
     log.Fatal(err)
 }
 ```
+
+## Converting Between Versions
+
+The `converter` package converts a document between GEDCOM 5.5, 5.5.1 and
+7.0. It returns a converted copy and a report; the input is not modified.
+
+```go
+import "github.com/cacack/gedcom-go/v3/converter"
+
+converted, report, err := converter.Convert(doc, gedcom.Version70)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Printf("%s -> %s\n", report.SourceVersion, report.TargetVersion)
+for _, t := range report.Transformations {
+    fmt.Printf("%s x%d: %s\n", t.Type, t.Count, t.Description)
+}
+if report.HasDataLoss() {
+    for _, d := range report.DataLoss {
+        fmt.Printf("lost %s: %s (%d records)\n", d.Feature, d.Reason, len(d.AffectedRecords))
+    }
+}
+for _, n := range report.AllNotes() { // Dropped, Normalized, Approximated, Preserved
+    fmt.Printf("%s: %q -> %q (%s)\n", n.Path, n.Original, n.Result, n.Reason)
+}
+
+err = encoder.Encode(out, converted)
+```
+
+Data loss is reported, not fatal, unless `StrictDataLoss` is set. Start from
+`DefaultOptions` to change one setting, since a literal leaves every other
+option at its zero value:
+
+```go
+opts := converter.DefaultOptions()
+opts.StrictDataLoss = true
+converted, report, err = converter.ConvertWithOptions(doc, gedcom.Version551, opts)
+if errors.Is(err, converter.ErrDataLoss) {
+    // refused; nothing was converted
+}
+```
+
+The [converter guide](docs/guides/converter.md) lists what each conversion
+changes and what a downgrade loses.
+
+## Combining and Merging
+
+The `merge` package does the bookkeeping of combining documents and folding
+records together. Deciding which records describe the same person stays with
+the caller. Every function returns a new document and leaves its inputs alone.
+
+### Combining Two Documents
+
+```go
+import "github.com/cacack/gedcom-go/v3/merge"
+
+combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
+    CollisionStrategy: merge.RenumberDoc2,
+})
+if errors.Is(err, merge.ErrIncompatibleHeader) {
+    // the headers declare different versions or encodings
+}
+if err != nil {
+    log.Fatal(err)
+}
+
+for old, renamed := range report.RemappedXRefs {
+    fmt.Printf("%s -> %s\n", old, renamed)
+}
+for _, c := range report.HeaderConflicts {
+    fmt.Printf("%s: kept %q, dropped %q\n", c.Field, c.Doc1, c.Doc2)
+}
+```
+
+The collision strategy decides what happens to an XRef both documents use:
+
+- `merge.ErrorOnCollision` (the zero value): refuse with `merge.ErrXRefCollision`
+- `merge.PrefixDoc2`: prepend `CombineOptions.Prefix` to doc2's colliding XRefs
+- `merge.RenumberDoc2`: give doc2's colliding records fresh XRefs
+- `merge.ZipSharedXRefs`: treat a shared XRef as one record (see [below](#cutting-and-rejoining-a-branch))
+
+### Merging Two Records
+
+`merge.Individuals` and `merge.Families` fold one record into another that
+the caller names as the survivor:
+
+```go
+// Fold @I7@ into @I3@: its substructures move, every pointer to it is repointed.
+merged, report, err := merge.Individuals(doc, "@I3@", "@I7@", merge.RecordMergeOptions{})
+if err != nil {
+    log.Fatal(err) // wraps merge.ErrInvalidMerge for a missing or non-individual record
+}
+fmt.Printf("moved %d, already present %d, repointed %d\n",
+    len(report.Moved), len(report.Deduplicated), len(report.Repointed))
+
+// Merging two spouses' duplicates often leaves two families for one couple.
+merged, _, err = merge.Families(merged, "@F1@", "@F4@", merge.RecordMergeOptions{})
+```
+
+No field-level policy is applied: a conflicting `SEX` is kept alongside the
+survivor's for the validator to report. The merge reads the raw `Tags`, so
+call `encoder.SyncTags` first if typed fields were edited.
+
+### Cutting and Rejoining a Branch
+
+`Document.BoundedSubset` cuts out a set of individuals with their families and
+everything those reference, removing pointers that lead outside the set.
+Records keep their XRefs, so `merge.ZipSharedXRefs` joins two such subsets
+back together:
+
+```go
+branchA, _, err := doc.BoundedSubset([]string{"@I1@", "@I2@"})
+if err != nil {
+    log.Fatal(err) // wraps gedcom.ErrUnknownXRef or gedcom.ErrNotIndividual
+}
+branchB, droppedB, err := doc.BoundedSubset([]string{"@I3@"})
+if err != nil {
+    log.Fatal(err)
+}
+for _, p := range droppedB {
+    fmt.Printf("%s: %s %s removed (restorable: %t)\n", p.XRef, p.Tag, p.Target, p.Restorable)
+}
+
+// A shared XRef is one record: identical copies collapse, split families are unioned.
+rejoined, _, err := merge.Combine(branchA, branchB, merge.CombineOptions{
+    CollisionStrategy: merge.ZipSharedXRefs,
+    Zip:               &merge.ZipOptions{DroppedFromDoc2: droppedB},
+})
+if errors.Is(err, merge.ErrRecordConflict) {
+    // a shared record differs in more than its individual and family pointers
+}
+```
+
+Passing doc2's dropped-pointer report restores the original order of a split
+family's pointer lines; it is optional. See
+[Bounded Subset](FEATURES.md#bounded-subset) and
+[Merge Primitives](FEATURES.md#merge-primitives) in FEATURES.md for the exact
+rules, and [examples/merge](examples/merge/) for a runnable program.
+
+## Comparing Documents
+
+`gedcom.Diff` compares two documents record by record, matching records by
+XRef and type. It reports differences in meaning only: reordering among
+siblings with different tags, a value split differently across `CONT`/`CONC`
+lines, and line numbers are not changes.
+
+```go
+d := gedcom.Diff(oldDoc, newDoc, &gedcom.DiffOptions{
+    IgnoreTags: []string{"CHAN"}, // skipped with everything under them
+})
+if d.IsEmpty() {
+    fmt.Println("No changes")
+}
+for _, r := range d.Added {
+    fmt.Printf("+ %s %s\n", r.XRef, r.Type)
+}
+for _, r := range d.Removed {
+    fmt.Printf("- %s %s\n", r.XRef, r.Type)
+}
+for _, m := range d.Modified {
+    fmt.Printf("~ %s %s\n", m.XRef, m.Type)
+    for _, c := range m.Changes {
+        for _, t := range c.Removed {
+            fmt.Printf("  - %d %s %s\n", t.Level, t.Tag, t.Value)
+        }
+        for _, t := range c.Added {
+            fmt.Printf("  + %d %s %s\n", t.Level, t.Tag, t.Value)
+        }
+    }
+}
+```
+
+A nil `*DiffOptions` compares every tag. The header is compared only with
+`IncludeHeader`, since it changes on every export. Records are compared by
+their raw `Tags`, so call `encoder.SyncTags` first if typed fields were
+edited; see [Record Diff](FEATURES.md#record-diff) for the details.
 
 ## GEDZIP Archives
 
@@ -795,6 +1102,8 @@ for _, p := range zr.CheckRefs(doc) {
         fmt.Printf("%s: %s is not in the archive\n", p.XRef, p.FileRef)
     case errors.Is(p.Err, gedzip.ErrUnusableEntry):
         fmt.Printf("%s: %s cannot be read safely: %v\n", p.XRef, p.FileRef, p.Err)
+    case errors.Is(p.Err, gedzip.ErrReservedName):
+        fmt.Printf("%s: %s names the archive's own gedcom.ged\n", p.XRef, p.FileRef)
     default: // gedzip.ErrNotLocal: a file: URL or an invalid path
         fmt.Printf("%s: %s is %s\n", p.XRef, p.FileRef, p.Kind)
     }
@@ -849,14 +1158,28 @@ See the [GEDZIP guide](docs/guides/gedzip.md) for every limit, which entries are
 
 The library supports multiple character encodings:
 
-- UTF-8 (recommended for new files)
+- UTF-8 (recommended for new files; `UTF8` is accepted as a spelling)
 - ANSEL (legacy GEDCOM standard)
 - ASCII
 - LATIN1, ANSI, ISO-8859-1, WINDOWS-1252, CP1252 or WIN-1252 (decoded as Windows-1252)
+- Windows-1250 (Central European), for `CHAR ANSI` files written over it; no `CHAR` value declares it, so name it with `DecodeOptions.ANSIEncoding`
 - IBMPC, IBM PC, CP437 or IBM-437 (IBM code page 437)
 - CP850 or IBM-850 (IBM code page 850)
 - MACINTOSH, MAC or MACROMAN (Mac OS Roman)
-- UTF-16 LE/BE, with or without a BOM (often declared `UNICODE`)
+- UTF-16 LE/BE, with or without a BOM (often declared `UNICODE`; `UTF-16`, `UTF-16LE` and `UTF-16BE` are accepted too)
+
+`CHAR` values are matched without regard to case. To read a `CHAR ANSI` file
+as Windows-1250:
+
+```go
+opts := &decoder.DecodeOptions{ANSIEncoding: charset.EncodingWindows1250}
+doc, err := decoder.DecodeWithOptions(f, opts)
+```
+
+Left unset, `ANSI` is read as Windows-1252, and a lenient decode reports one
+`AMBIGUOUS_CODEPAGE` warning if the file holds a byte the two code pages read
+differently. See [Character Encoding](FEATURES.md#character-encoding) in
+FEATURES.md.
 
 ### Automatic Encoding Detection
 
@@ -913,9 +1236,10 @@ if !charset.ValidateString(text) {
 doc, err := decoder.Decode(f)
 if err != nil {
     // Check for specific error types
+    var parseErr *parser.ParseError
     switch {
-    case errors.Is(err, io.EOF):
-        fmt.Println("Unexpected end of file")
+    case errors.As(err, &parseErr): // strict mode, or no parseable line at all
+        fmt.Printf("Syntax error on line %d: %v\n", parseErr.Line, parseErr)
     case errors.Is(err, context.DeadlineExceeded):
         fmt.Println("Parsing timeout")
     default:
@@ -1017,6 +1341,116 @@ for record, err := range parser.Records(charset.NewReader(f)) {
 fmt.Printf("Found %d individuals\n", individualCount)
 ```
 
+### Indexed Access with LazyParser
+
+`parser.LazyParser` indexes each record's byte offset in one pass, then parses
+only the records asked for. `decoder.DecodeRecord` turns a raw record into the
+typed record `Decode` would build.
+
+```go
+lp := parser.NewLazyParser(f) // f must be an io.ReadSeeker
+if err := lp.BuildIndex(); err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("%d records indexed\n", lp.RecordCount())
+
+// The header declares the version DecodeRecord reads records by.
+head, err := lp.FindRecordByType("HEAD")
+if err != nil {
+    log.Fatal(err)
+}
+ver := version.DeclaredVersion(head.Lines)
+
+raw, err := lp.FindRecord("@I1@") // parses this record's lines only
+if errors.Is(err, parser.ErrRecordNotFound) {
+    return
+}
+if err != nil {
+    log.Fatal(err)
+}
+rec, err := decoder.DecodeRecord(raw, ver, nil)
+if err != nil {
+    log.Fatal(err)
+}
+if person, ok := rec.GetIndividual(); ok {
+    fmt.Println(person.FullName())
+}
+```
+
+`SaveIndex` and `LoadIndex` keep the index between runs. `LazyParser` reads
+the file's bytes as they are, with no charset conversion, so it suits UTF-8
+files; decode an ANSEL or UTF-16 file with the `decoder` package instead.
+
+### Streaming Encoding
+
+`encoder.StreamEncoder` writes a file one record at a time, without a
+`Document`. The calls must come in order: `WriteHeader`, `WriteRecord` any
+number of times, `WriteTrailer`, `Close`.
+
+```go
+func writeStreamed(w io.Writer, header *gedcom.Header, records []*gedcom.Record) (err error) {
+    enc := encoder.NewStreamEncoder(w)
+    defer func() {
+        // Close flushes, and fails if the trailer was never written.
+        if cerr := enc.Close(); cerr != nil && err == nil {
+            err = cerr
+        }
+    }()
+
+    if err := enc.WriteHeader(header); err != nil {
+        return err
+    }
+    for _, rec := range records {
+        if err := enc.WriteRecord(rec); err != nil {
+            return err
+        }
+    }
+    return enc.WriteTrailer()
+}
+```
+
+A bare `defer enc.Close()` would discard that error.
+`encoder.NewStreamEncoderWithOptions` takes the same `EncodeOptions` as
+`EncodeWithOptions`.
+
+### Streaming Validation
+
+`validator.StreamingValidator` validates records as they are read and defers
+cross-reference checks to `Finalize`. It needs typed records, so decode each
+raw record first:
+
+```go
+var sv *validator.StreamingValidator
+var ver gedcom.Version
+var issues []validator.Issue
+
+for raw, err := range parser.Records(charset.NewReader(f)) {
+    if err != nil {
+        log.Fatal(err)
+    }
+    if raw.Type == "HEAD" { // comes first and declares the version
+        ver = version.DeclaredVersion(raw.Lines)
+    }
+    if sv == nil {
+        sv = validator.NewStreamingValidator(validator.StreamingOptions{Version: ver})
+    }
+    record, err := decoder.DecodeRecord(raw, ver, nil)
+    if err != nil {
+        log.Fatal(err)
+    }
+    issues = append(issues, sv.ValidateRecord(record)...)
+}
+if sv != nil {
+    issues = append(issues, sv.Finalize()...) // pointers to records never declared
+}
+```
+
+Only individuals and families are checked in full, and checks that need the
+whole document (duplicate detection, parent-child date logic) do not run; use
+`ValidateAll` when the document fits in memory. See
+[Streaming Validator](FEATURES.md#streaming-validator) in FEATURES.md and
+[When to Use Streaming APIs](docs/guides/performance.md#when-to-use-streaming-apis).
+
 ### Custom Record Processing
 
 ```go
@@ -1110,7 +1544,7 @@ if err != nil {
 defer f.Close()  // Always use defer to ensure cleanup
 ```
 
-### 2. Check for nil Before Accessing
+### 2. Prefer the nil-safe Accessors
 
 ```go
 person := doc.GetIndividual("@I1@")
@@ -1125,9 +1559,11 @@ When creating GEDCOM files programmatically, always validate:
 doc := createDocument()
 
 v := validator.New()
-errs := v.Validate(doc)
-if len(errs) > 0 {
-    log.Fatalf("Created invalid GEDCOM: %v", errs)
+for _, issue := range v.Validate(doc) {
+    // Validate also returns warnings (e.g. MISSING_SUBM); fail on errors only.
+    if issue.Severity == validator.SeverityError {
+        log.Fatalf("Created invalid GEDCOM: %v", issue)
+    }
 }
 
 encoder.Encode(f, doc)
@@ -1136,7 +1572,7 @@ encoder.Encode(f, doc)
 ### 4. Use Appropriate Line Endings
 
 ```go
-// For GEDCOM files, use CRLF (Windows-style) line endings
+// LF is the default; set CRLF only when a consumer requires it
 opts := &encoder.EncodeOptions{
     LineEnding: "\r\n",
 }
@@ -1202,6 +1638,9 @@ family := doc.GetFamily("@F1@")
 ## See Also
 
 - [Examples](examples/) - Working code examples
+- [FEATURES.md](FEATURES.md) - Every implemented feature
+- [Decoding contract](docs/guides/decoding.md) - Strict and lenient modes, diagnostic codes, round-trip expectations
+- [Converter guide](docs/guides/converter.md) - What each version conversion changes
 - [GEDZIP guide](docs/guides/gedzip.md) - Reading and writing `.gdz` archives
 - [API Documentation](https://pkg.go.dev/github.com/cacack/gedcom-go/v3) - Complete package documentation
 - [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute to the project

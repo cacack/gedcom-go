@@ -4,8 +4,7 @@ v3.0.0 removes API that v2 had already marked superseded, and fixes option
 fields whose zero value did the opposite of what their documentation
 promised. Most migrations are a deletion.
 
-This guide is written as v3 is assembled, so it grows with each breaking change
-that lands. Every entry gives the old form, the new form, and — where the
+Every entry gives the old form, the new form, and — where the
 compiler cannot tell you — the value mapping.
 
 **Upgrade to `v2.5.0` before you start.** It is the last v2 minor, and it exists
@@ -1862,12 +1861,8 @@ re-grep for `ValidationError` and `.Validate(` before relying on it. Its
 ## Checking your upgrade
 
 `make api-check` in this repository reports the apidiff between `main` and the
-most recent release tag reachable from it, including constant value changes.
-That tag is the nearest one in `main`'s history, and `v2.5.0` was cut from a
-release branch, so the comparison is currently against `v2.4.0`: symbols
-deprecated in `v2.5.0` and removed in v3 show up as removals, and symbols
-that `v2.5.0` added and v3 keeps show up as additions rather than as
-unchanged. For your own code, the compiler catches every removal and rename on this page, and every site that
+highest release tag on the current major line, including constant value
+changes, so it guards v3 against itself and says nothing about v2. For your own code, the compiler catches every removal and rename on this page, and every site that
 *names a field* of a retyped value. It does **not** catch the value changes —
 the inverted boolean, the renumbered constant, the `*int` retype (whose compile
 error has a mechanical fix that can be wrong), the `RepositoryLinks` retype

@@ -106,7 +106,7 @@ type ValidatorConfig struct {
 
 	// SkipRules specifies issue codes to exclude from validation results.
 	// Issues with codes matching any entry in this slice are filtered out.
-	// Example: []string{"W001", "I002"} to skip warning W001 and info I002.
+	// Example: []string{CodeMissingSUBM, CodeNoSources} to skip those two codes.
 	// Default: nil (no rules skipped).
 	SkipRules []string
 }

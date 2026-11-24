@@ -76,7 +76,7 @@ When we say a vendor's files are supported for import, we mean:
 
 1. **Parsing**: The file parses without errors
 2. **Structure preservation**: Record hierarchy is maintained correctly
-3. **Custom tag handling**: Vendor-specific tags (e.g., `_APID`, `_MHID`) are preserved in `CustomTags` on each record
+3. **Custom tag handling**: Vendor-specific tags (e.g., `_APID`, `_MHID`) are preserved in `Record.Tags` and on the entity's own `Tags`
 4. **Character encoding**: ANSEL, UTF-8, and UTF-16 files are decoded correctly
 5. **Cross-references**: Links between records (XRefs) resolve correctly
 
@@ -144,7 +144,7 @@ Key sources include:
 | [D-Jeffrey/gedcom-samples](https://github.com/D-Jeffrey/gedcom-samples) | 12 vendor exports (modern: Legacy 10, Ancestris 11, MyHeritage FTB 8; the rest vintage) in `edge-cases/`+`encoding/`, `gedcom-5.5.1/longsword.ged` | MIT OR CC0-1.0 |
 | [rodoslovje/ged-merge](https://github.com/rodoslovje/ged-merge) | 9 scrubbed real exports (MacFamilyTree 7.0, Reunion, Geneanet, webtrees, Family Historian 7, Brother's Keeper 7, Ancestry) in `edge-cases/`+`encoding/` | MIT |
 | [gedcom7code/test-files](https://github.com/gedcom7code/test-files) | `edge-cases/atsign-55.ged`, `xref-case.ged`, `age-keywords-551.ged`, `date-dual-years.ged` | Unlicense (public domain) |
-| Synthetic (this project) | Various test files | Apache-2.0 |
+| Synthetic (this project) | Various test files | MIT |
 
 ## Contributing Test Files
 
@@ -242,7 +242,7 @@ Tested with real export from FamilySearch.org (2025).
 - **`CHAR ANSI` names no code page.** It means the producing system's Windows code page, and Central European producers (Geneanet, Family Historian 7, Brother's Keeper 7) write it over Windows-1250 bytes. The decoder cannot tell the two apart and does not guess: it reads `ANSI` as Windows-1252 unless `DecodeOptions.ANSIEncoding` (`charset.ReaderOptions.ANSI`) names the code page, and `charset.EncodingWindows1250` then decodes `č`, `Č`, `ć`, `đ` correctly. Read as Windows-1252, those letters arrive as `è`, `È`, `æ`, `ð`, so a lenient decode reports one `AMBIGUOUS_CODEPAGE` warning at the first byte the two code pages read differently. That warning also fires on genuine Windows-1252 files holding such a byte (the FTM 17 export's `ñ`, which is `ń` in Windows-1250); naming `charset.EncodingLATIN1` silences it ([#759](https://github.com/cacack/gedcom-go/issues/759)). Pinned by the three `encoding/*-w1250.ged` fixtures and `TestCorpusVendorANSIOver1250`.
 - **UTF-16 without a BOM is recognised only by its first line.** A file whose first four bytes are `0` and a space in UTF-16 (`30 00 20 00` or `00 30 00 20`) is read as UTF-16; one that opens with blank lines or leading whitespace before `0 HEAD` is not, and falls through to UTF-8 as before. Pinned by `gedcom7code/5/char_utf16{le,be}-1.ged` ([#735](https://github.com/cacack/gedcom-go/issues/735)).
 - **A legacy `CHAR` over UTF-8 bytes is decoded as UTF-8.** When `CHAR` declares `ANSEL`, `ASCII`, or a Windows-1252 value (`ANSI`, `LATIN1`, `ISO-8859-1`, `WINDOWS-1252`, ...) and the first 64 KiB of input hold at least one valid multi-byte UTF-8 sequence and no invalid one, the file is decoded as UTF-8, as it is whenever a UTF-8 BOM is present, whatever `CHAR` says. Each override emits a `CHARSET_MISMATCH` warning on the `CHAR` line; `Header.Encoding` keeps the declared value and `Header.DetectedEncoding` names the encoding applied ([#709](https://github.com/cacack/gedcom-go/issues/709); the output side of the same hazard is [#425](https://github.com/cacack/gedcom-go/issues/425)). Only those 64 KiB are judged: a file that is UTF-8 there and turns to legacy bytes later fails UTF-8 validation at the first such byte.
-- **Some standard tags are recognized but not decoded into typed fields.** At the `INDI` level, `ALIA`, `AFN`, `RFN`, `RIN`, `ANCI`, `DESI`, `SUBM`, `RESN`, and `INIL` are preserved in `Individual.Tags` only — no typed accessor yet. `INIL` stays that way by decision ([#386](https://github.com/cacack/gedcom-go/issues/386)): a typed initiatory ordinance needs a sixth `gedcom.LDSOrdinanceType` constant that no consumer reads. At the `FAM` level, `RESN`, `SUBM`, and `ASSO` are the same case. `FACT` no longer is: `gedcom.Family` gained an `Attributes` field, so `FAM`-level `FACT` and `NCHI` decode into `Family.Attributes` and `CENS`/`RESI` into `Family.Events`, each with its `EVENT_DETAIL` ([#448](https://github.com/cacack/gedcom-go/issues/448)). None of these produce `UNKNOWN_TAG`, which is reserved for genuinely nonstandard tags ([#375](https://github.com/cacack/gedcom-go/issues/375)). The recognition tables for subordinate structures classify a small, enumerated set of standard tags as `UNKNOWN_TAG`: `FAMC` under `ADOP`/`BIRT`/`CHR`, and `CREA`/`REFN`/`UID` on the `REPO`/`SUBM`/`SNOTE` records. `NOTE` under an inline `OBJE` left this set when `MediaLink` began decoding it ([#470](https://github.com/cacack/gedcom-go/issues/470), [#472](https://github.com/cacack/gedcom-go/issues/472)). `docs/reference/gedcom-7-coverage.md` is the generated inventory — the `raw (flagged)` rows are exactly this set.
+- **Some standard tags are recognized but not decoded into typed fields.** At the `INDI` level, `ALIA`, `AFN`, `RFN`, `RIN`, `ANCI`, `DESI`, `SUBM`, and `INIL` are preserved in `Individual.Tags` only — no typed accessor yet. `INIL` stays that way by decision ([#386](https://github.com/cacack/gedcom-go/issues/386)): a typed initiatory ordinance needs a sixth `gedcom.LDSOrdinanceType` constant that no consumer reads. At the `FAM` level, `SUBM` and `ASSO` are the same case. `FACT` no longer is: `gedcom.Family` gained an `Attributes` field, so `FAM`-level `FACT` and `NCHI` decode into `Family.Attributes` and `CENS`/`RESI` into `Family.Events`, each with its `EVENT_DETAIL` ([#448](https://github.com/cacack/gedcom-go/issues/448)). None of these produce `UNKNOWN_TAG`, which is reserved for genuinely nonstandard tags ([#375](https://github.com/cacack/gedcom-go/issues/375)). The recognition tables for subordinate structures classify a small, enumerated set of standard tags as `UNKNOWN_TAG`: `FAMC` under `ADOP`/`BIRT`/`CHR`, and `CREA`/`REFN`/`UID` on the `REPO`/`SUBM`/`SNOTE` records. `NOTE` under an inline `OBJE` left this set when `MediaLink` began decoding it ([#470](https://github.com/cacack/gedcom-go/issues/470), [#472](https://github.com/cacack/gedcom-go/issues/472)). `docs/reference/gedcom-7-coverage.md` is the generated inventory — the `raw (flagged)` rows are exactly this set.
 - **Levels above 99 are rejected, not clamped.** The GEDCOM level field is at most two digits, so the parser accepts levels 0-99 (`parser.MaxNestingDepth-1`) and drops anything deeper with a `CodeInvalidLevel` error — the line's content is lost. `CodeBadLevelJump` always means the opposite: the line was clamped and *kept*.
 - **The nesting ceiling is not configurable.** It is fixed at `parser.MaxNestingDepth-1` (99) by the grammar's two-digit level field. `decoder.DecodeOptions.MaxNestingDepth` was an inert option that never lowered or raised it; v3 removed it ([#383](https://github.com/cacack/gedcom-go/issues/383)).
 - **Spaces in identifiers are valid in GEDCOM 5.5 and 5.5.1, not in 7.0.** The 5.5 and 5.5.1 grammars list the space among pointer characters; the 7.0 `Xref` grammar does not. In a 5.5 or 5.5.1 document, `0 @N 1@ NOTE x` is accepted in strict and lenient mode without a diagnostic, and a value that is entirely such a pointer (`1 NOTE @N 1@`) decodes as a pointer — `@N 1@ see above` stays text. `gedcom.IsPointerXRefForVersion` is the rule. The decoder records the header's declared version in `Header.DeclaredVersion` (empty when the header declares none, so a guessed version never relaxes the grammar), and `Document.IsPointerXRef` applies it: `merge`, `Document.Subset` and the validator's broken-pointer check follow spaced pointers in a 5.5 or 5.5.1 document, as does `gedcom.VisitForVersion` given that version; `merge.Combine` gives the combined header doc2's declared version when doc1 declares none and carries no `GEDC` structure of its own, and the combined grammar then applies to doc1's records too, so a doc1 value such as `@home office@` becomes a pointer ([#591](https://github.com/cacack/gedcom-go/issues/591)). `gedcom.IsPointerXRef` and `gedcom.Visit` stay version-blind and reject spaces, as does `Document.IsPointerXRef` on a document built in code without `DeclaredVersion`. `converter.Convert` to 7.0 rewrites every identifier the 7.0 grammar rejects to a valid, collision-free one (`@N 1@` becomes `@N_1@`, or `@N_1_2@` if `@N_1@` is taken), `gedcom.Apply` updates every reference that exactly equals it, and the result declares 7.0 in `Header.DeclaredVersion` ([#590](https://github.com/cacack/gedcom-go/issues/590)). The parser alone does not know the version, so it reports every spaced identifier with an error wrapping `parser.ErrXRefContainsSpace`, and the decoder discards it once the version is known ([#579](https://github.com/cacack/gedcom-go/issues/579)).
@@ -269,6 +269,9 @@ testdata/
 ├── gedcom-5.5.1/        # GEDCOM 5.5.1 samples (EMAIL/FAX/WWW tags; 46 MiB scale fixture longsword.ged)
 ├── gedcom-7.0/          # GEDCOM 7.0 samples
 │   └── familysearch-examples/  # Official FamilySearch edge cases
+├── gedcom7code/         # Vendored gedcom7code/test-files suite: matched 5.5.1 (5/) and 7.0 (7/) conversion pairs
+├── oxidged/             # Vendored oxidged "every structure" files for 5.5.1 and 7.0
+├── spec/                # Vendored specification tables that coverage reports and grammar checks are generated from
 ├── encoding/            # Character encoding tests (UTF-8, UTF-16, ANSEL, CP1252/CP437 vintage exports)
 ├── edge-cases/          # Structural edge cases, vendor-specific exports, structural torture fixtures
 │   └── vendor-*.ged     # Vendor-specific custom tag tests
@@ -284,7 +287,7 @@ Files marked with 🧪 (synthetic) in the compatibility matrix are:
 - **Created by this project** specifically to test parsing patterns
 - **Not exports from actual software** - they simulate expected patterns based on documentation
 - **Privacy-safe** - contain only fictional test data
-- **License-clear** - created under this project's Apache-2.0 license
+- **License-clear** - created under this project's MIT license
 
 Why synthetic files? Real exports may contain sensitive personal information, and obtaining properly-licensed samples from every vendor version is impractical. Synthetic files let us test known patterns without these constraints.
 
@@ -405,9 +408,16 @@ To contribute a test file from your genealogy software:
 5. **Add tests** that exercise the new file:
    ```go
    func TestParseVendorNewSoftware(t *testing.T) {
-       f, _ := os.Open("testdata/edge-cases/vendor-newsoftware.ged")
+       f, err := os.Open("testdata/edge-cases/vendor-newsoftware.ged")
+       if err != nil {
+           t.Fatal(err)
+       }
+       defer f.Close()
+
        doc, err := decoder.Decode(f)
-       require.NoError(t, err)
+       if err != nil {
+           t.Fatalf("Decode() error = %v", err)
+       }
        // Verify expected custom tags, structure, etc.
    }
    ```
@@ -419,4 +429,4 @@ See the "Contributing Test Files" section above for what vendor exports are most
 - [Vendor Extensions](../../guides/vendor-extensions.md) - Per-tag reference for vendor-specific extensions, typed accessors, and validation
 - [GEDCOM Version Differences](../../reference/gedcom-versions.md) - Detailed spec differences
 - [Test Data README](../../../testdata/README.md) - Complete test file documentation
-- [API Stability](api-stability.md) - What APIs are stable vs experimental
+- [API Stability](api-stability.md) - Stability guarantees and what may change in a minor release

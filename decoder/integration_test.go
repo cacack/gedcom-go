@@ -1411,7 +1411,7 @@ func TestAdditionalMalformedFiles(t *testing.T) {
 		{
 			path:        "../testdata/malformed/duplicate-xref.ged",
 			description: "Duplicate cross-reference identifiers",
-			shouldError: false, // Decoder accepts (last wins), may warn
+			shouldError: false, // Decoder accepts (first definition wins) and reports DUPLICATE_XREF
 		},
 	}
 

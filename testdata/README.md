@@ -15,20 +15,27 @@ testdata/
 │   └── ...              # Various 7.0 samples
 ├── gedcom7code/         # gedcom7code/test-files: matched 5.5.1 (5/) and 7.0 (7/) pairs
 ├── oxidged/             # oxidged's hand-written "every structure" files for 5.5.1 and 7.0
+├── spec/                # Vendored specification tables (see spec/README.md)
 ├── encoding/            # Character encoding test files
 ├── edge-cases/          # Edge case and special scenario tests
-└── malformed/           # Invalid GEDCOM files for error testing
+├── malformed/           # Invalid GEDCOM files for error testing
+└── seed-for-import.ged  # Fictional tree imported into vendor products to produce the real exports
 ```
 
 ## Test File Summary
 
-**Total Test Files**: 94 GEDCOM files (as of 2026-08-10)
+**Total Test Files**: 167 GEDCOM files (as of 2026-11-24), including the vendored `gedcom7code/` and `oxidged/` suites. The sections below describe the notable ones, not every file.
 
 ### GEDCOM 5.5 Files
 
 #### Standard Samples
 - **minimal.ged** (170B) - Smallest valid GEDCOM 5.5 file
-- **shakespeare.ged** (18K) - Shakespeare family genealogy
+- **555SAMPLE.GED** (1.8K) - gedcom.org GEDCOM 5.5.5 sample (3 individuals, 2 families, 1 source, 1 repository), UTF-8 with BOM, LF line endings
+  - Source: https://www.gedcom.org/samples/555SAMPLE.GED; same content as `encoding/utf8-bom.ged`, which keeps the CRLF line endings
+  - Declares `GEDC.VERS 5.5.5`, a version the library does not model: decoded as 5.5.1 with an `INVALID_VALUE` diagnostic
+  - Used by the root round-trip tests (`gedcom_api_test.go`), `encoder/header_test.go` and `encoder/source_repository_links_test.go`
+- **MINIMAL555.GED** (132B) - gedcom.org minimal GEDCOM 5.5.5 file: header, one `SUBM` record and trailer, UTF-8 with BOM
+  - No test names it; the walkers that match `.ged` case-insensitively (`byte_roundtrip_test.go`, `decoder/corpus_tag_coverage_test.go`) pick it up
 - **pres2020.ged** (1.1M) - US Presidents and families (2,322 individuals)
   - Source: https://github.com/arbre-app/public-gedcoms
   - Author: Paul E. Stobbe (2020)
@@ -60,12 +67,17 @@ Comprehensive validation suite that exercises every tag in GEDCOM 5.5:
 - Custom tags testing
 - Edge cases: unknown sex, multiple names, complex relationships
 
-**Note**: The torture-test directory also includes multimedia reference files (images, audio, video) used by the GEDCOM files.
+**Other files**: The directory also holds the suite's `README.txt` (the upstream notes, CR line endings) and the 18 files the suite's multimedia and file links were written for. No test reads them.
+
+- Images: `ImgFile.BMP`, `ImgFile.GIF`, `ImgFile.JPG`, `ImgFile.MAC`, `ImgFile.PCX`, `ImgFile.PIC`, `ImgFile.PNG`, `ImgFile.PSD`, `ImgFile.TGA`, `ImgFile.TIF`
+- Audio: `enthist.aif`, `force.wav`
+- Video: `suntun.mov`, `top.mpg`
+- Documents: `Document.DOC`, `Document.pdf`, `Document.RTF`, `Document.tex`
 
 ### GEDCOM 5.5.1 Files
 
 - **minimal.ged** (204B) - Smallest valid GEDCOM 5.5.1 file
-- **comprehensive.ged** (~7K) - Comprehensive GEDCOM 5.5.1 test with all new tags
+- **comprehensive.ged** (4.6K) - Comprehensive GEDCOM 5.5.1 test with all new tags
   - Tests EMAIL, FAX, and WWW tags (new in 5.5.1)
   - EMAIL tags in: HEAD.SOUR.CORP, SUBM, INDI.RESI, REPO
   - FAX tags in: HEAD.SOUR.CORP, SUBM, REPO
@@ -73,6 +85,10 @@ Comprehensive validation suite that exercises every tag in GEDCOM 5.5:
   - Multi-generational family structure
   - Complete source and repository citations
   - UTF-8 encoding
+- **attribute-event-detail.ged** (343B) - `OCCU` and `FACT` attributes carrying `TYPE`, `DATE`, `AGNC`, `CAUS` and an `OBJE` pointer
+  - `decoder/event_detail_test.go` asserts no `UNKNOWN_TAG` and that the values reach the typed model (issue #402)
+  - Second input of the merge example run by `make examples`
+  - Original work
 
 **GEDCOM 5.5.1 Key Features Tested:**
 - Independent PHON, EMAIL, FAX, WWW subrecords (without requiring ADDR)
@@ -98,7 +114,7 @@ Testing various character encodings and special characters:
 - **utf16be.ged** (3.9K) - GEDCOM 5.5.5 with UTF-16 Big Endian
   - Source: https://www.gedcom.org/samples/555SAMPLE16BE.GED
   - Tests UTF-16 BE with BOM
-- **utf8-unicode.ged** (~4K) - UTF-8 with extensive Unicode characters
+- **utf8-unicode.ged** (3.2K) - UTF-8 with extensive Unicode characters
   - Latin-1 Supplement: àáâãäåæçèéêëìíîï
   - Cyrillic: АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя
   - Greek: ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρστυφχψω
@@ -126,7 +142,7 @@ License: GPL-2.0 (data files used as test inputs)
   - 35 individuals testing different character combinations
   - Unix-style LF line endings (fills gap in line ending coverage)
 
-- **utf8-nobom-lf.ged** (8.5K) - UTF-8 without BOM, LF line endings
+- **utf8-nobom-lf.ged** (8.3K) - UTF-8 without BOM, LF line endings
   - Same character tests as ANSEL version but in UTF-8
   - No Byte Order Mark (tests BOM-less detection)
   - Unix-style LF line endings
@@ -176,7 +192,7 @@ Testing parser robustness with edge cases:
   - Multiple consecutive spaces in values
   - Tab characters in values
   - Root-level NOTE records
-  - Tests: 9 individuals, 3 families, 1 source, 1 note record
+  - Tests: 10 individuals, 3 families, 1 source, 1 note record
   - Note: Empty lines are invalid per GEDCOM spec (tested in malformed/)
 
 #### Vendor-Specific Test Files
@@ -185,14 +201,14 @@ License: MIT
 
 These files test vendor-specific custom tags and extensions from various genealogy software:
 
-- **vendor-legacy.ged** (7.6K) - Legacy Family Tree 8.0 export
+- **vendor-legacy.ged** (4.5K) - Legacy Family Tree 8.0 export
   - Custom tags: `_TODO`, `_UID`, `_PRIV`, `_EVENT_DEFN`, `_PLAC_DEFN`, `_TAG`
   - Source with inline citation data
   - Privacy markers on events and addresses
   - Custom event definitions with sentence templates
-  - Tests: 5 individuals, 3 families, notes, sources, repositories
+  - Tests: 8 individuals, 2 families, 3 notes, 1 source
 
-- **vendor-ftm.ged** (3.4K) - Family Tree Maker 22.2.5 for Mac
+- **vendor-ftm.ged** (2.4K) - Family Tree Maker 22.2.5 for Mac
   - Custom tags: `_MISN`, `_DNA`, `_FUN`, `_ORDI`, `_MILTID`, `_EMPLOY`, `_WEIG`, `_INIT`, `_DEST`, `_NAMS`, `_MDCL`, `_ELEC`, `_HEIG`, `_CIRC`, `_ORIG`, `_MILT`, `_EXCM`, `_DCAUSE`, `_PHOTO`, `_FREL`, `_MREL`, `_SEPR`
   - Non-standard relationship types (Step, Guardian)
   - Source citation with justification and link
@@ -204,11 +220,11 @@ License: GPL-2.0 (data files used as test inputs)
 
 - **ftm-general.ged** (1.8K) - Family Tree Maker 22.2.5 general export
 - **ftm-link-test.ged** (1.4K) - FTM link handling patterns
-- **ftm-occu-bug.ged** (781B) - FTM occupation field bug test
-- **ftm-photo-test.ged** (1.3K) - FTM photo/media handling
+- **ftm-occu-bug.ged** (744B) - FTM occupation field bug test
+- **ftm-photo-test.ged** (1.2K) - FTM photo/media handling
 - **ftm-conc-test.ged** (1.1K) - FTM CONC line continuation
 
-- **vendor-familyhistorian.ged** (5.8K) - Family Historian 6.2.2
+- **vendor-familyhistorian.ged** (3.7K) - Family Historian 6.2.2
   - Custom tags: `_ATTR`, `_USED`, `_SHAN`, `_SHAR`, `_FLGS`, `_PLAC`, `_EMAIL`, `_WEB`, `_ROOT`, `_UID`, `_PEDI`
   - Shared event participants (witnesses)
   - Custom place records at root level
@@ -225,16 +241,16 @@ License: GPL-2.0 (data files used as test inputs)
   - MIT License embedded in COPR tag
   - Tests: 3 individuals, 2 families, 1 source, 1 repository, 1 media object, 1 submission
 
-- **relationships-complex.ged** (9.5K) - Complex family relationships
+- **relationships-complex.ged** (5.9K) - Complex family relationships
   - Step-parent and guardian relationships
   - Single-parent families (father only, mother only)
   - Remarriage scenarios (same person multiple FAMS)
   - Children with multiple FAMC (step-family membership)
   - Unknown sex individuals (`SEX U`)
   - ALIA tags for relationship annotations
-  - Tests: 45 individuals, 18 families spanning multiple generations
+  - Tests: 43 individuals, 18 families spanning multiple generations
 
-- **vendor-myheritage.ged** (1.8K) - MyHeritage Family Tree Builder export (synthetic)
+- **vendor-myheritage.ged** (1.6K) - MyHeritage Family Tree Builder export (synthetic)
   - Custom tags: `_MHID`, `_MHTAG`, `_MHPID`, `_MHSID`, `_UID`, `_MARNM`, `_PHOTO`, `_PHOTO_RIN`, `_MYHERITAGE_ID`
   - Hebrew names with transliteration (`_MARNM` for married/Hebrew name)
   - Israeli locations (Tel Aviv, Jerusalem, Haifa)
@@ -242,7 +258,7 @@ License: GPL-2.0 (data files used as test inputs)
   - Media objects with MyHeritage-specific tags
   - Tests: 3 individuals, 1 family, 1 source, 1 media object
 
-- **vendor-gramps.ged** (2.5K) - Gramps 5.1.6 export (synthetic)
+- **vendor-gramps.ged** (2.8K) - Gramps 5.1.6 export (synthetic)
   - Custom tags: `_GRAMPS_ID`, `_GRAMPS_PLACE_ID`, `_GRAMPS_ATTR`
   - Swedish genealogical data with proper character encoding (å, ä, ö)
   - Place references linked to Gramps place database
@@ -251,6 +267,16 @@ License: GPL-2.0 (data files used as test inputs)
   - Date modifiers: ABT, BEF, AFT, CAL (approximate dates)
   - Repository with WWW tag
   - Tests: 5 individuals, 2 families, 1 source, 1 repository, 1 note
+
+- **ancestry-extensions.ged** (571B) - Ancestry.com extensions (synthetic)
+  - Header `_TREE` (tree ID) and `_APID` under two source citations
+  - `decoder/integration_test.go` (`TestAncestryExtensions`) checks vendor detection, `Header.AncestryTreeID` and the parsed `AncestryAPID`; also round-tripped in `gedcom/testing/roundtrip_test.go`
+  - Tests: 1 individual, 2 sources
+
+- **familysearch-extensions.ged** (563B) - FamilySearch extensions (synthetic)
+  - `_FSFTID` (FamilySearch Family Tree ID) on both individuals
+  - `decoder/entity_test.go` (`TestFamilySearchIDWithFile`) checks `Individual.FamilySearchID`; also round-tripped in `gedcom/testing/roundtrip_test.go`
+  - Tests: 2 individuals, 1 family
 
 #### Additional Vendor Files from Gramps Test Suite
 Source: https://github.com/gramps-project/gramps/tree/master/data/tests
@@ -273,6 +299,8 @@ License: GPL-2.0 (data files used as test inputs)
 #### Real Vendor Exports (2025+)
 
 Real exports from current software versions. See [docs/governance/policies/compatibility.md](../docs/governance/policies/compatibility.md) for detailed quirks.
+
+Each is what the product exported after importing **seed-for-import.ged** (5.4K, at the top of `testdata/`): a fictional GEDCOM 5.5.1 tree written for this project (14 individuals, 5 families, 1 source, 1 repository, 1 note). No test reads the seed itself; the Ancestry export's `_TREE` value, asserted in `decoder/integration_test.go`, still names it.
 
 | File | Source | Version | Records |
 |------|--------|---------|---------|
@@ -374,6 +402,12 @@ public domain, for the vendored ones). Exercised by `decoder/structural_torture_
 - **minimal70.ged** (32B) - Smallest legal FamilySearch GEDCOM 7.0 file
 - **maximal70.ged** (15K) - Exercises all standard tags and enumerations
 - **remarriage1.ged** (388B) - Divorce/remarriage scenario
+
+#### Event Detail Fixtures
+Original work, exercised by `decoder/event_detail_test.go`, which asserts no `UNKNOWN_TAG` and that the values reach the typed model. The 5.5.1 counterpart is `gedcom-5.5.1/attribute-event-detail.ged`.
+
+- **event-detail-asso-reli-snote.ged** (311B) - `BAPM` event carrying `RELI`, `ASSO` with `ROLE`, `NOTE` and `SNOTE`, plus an `SNOTE` under `CHAN` (issue #447)
+- **family-event-detail.ged** (660B) - `FAM` record with `CENS` and `RESI` events and `NCHI` and `FACT` attributes, each with event detail (`AGNC`, `CAUS`, `RELI`, `RESN`, `ADDR`, `PHON`, `ASSO`, `OBJE`, `SOUR`, `SNOTE`) (issue #448)
 
 #### FamilySearch Examples (`familysearch-examples/`)
 Source: https://gedcom.io/testfiles/gedcom70/
@@ -487,22 +521,29 @@ the repository root.
 
 Files with intentional errors for testing error handling and validation:
 
-- **invalid-level.ged** (110B) - Invalid level number (level 99)
-- **invalid-xref.ged** (76B) - Malformed cross-reference format
+- **invalid-level.ged** (110B) - Level jump from 1 to 99 (`99 INVALID ...`)
+  - Level 99 is itself valid, so the file decodes in both modes; the lenient decoder
+    clamps the line to level 2 and reports `BAD_LEVEL_JUMP` (and `UNKNOWN_TAG` for `INVALID`)
+- **level-jump-skip.ged** (104B) - `4 DATE` directly under `1 BIRT`
+  - Decodes in both modes; the lenient decoder clamps the line to level 2 and reports `BAD_LEVEL_JUMP`
+- **level-jump-subordinate.ged** (132B) - `3 PLAC` directly under `1 DEAT`, after a well-formed `BIRT`
+  - Decodes in both modes; the lenient decoder clamps the line to level 2 and reports `BAD_LEVEL_JUMP`
+- **invalid-xref.ged** (76B) - `FAMC` pointer to a family that does not exist (`@F999@`)
+  - Decoder accepts it; the validator reports `ORPHANED_FAMC`
 - **unterminated-xref.ged** (61B) - XRef with no closing `@` (`0 @I1 INDI`)
   - Strict mode rejects it; lenient mode recovers the record under the verbatim
     identifier `@I1` with an `INVALID_XREF` diagnostic
   - Original work (issue #385)
-- **missing-header.ged** (37B) - Missing required HEAD record
-- **missing-xref.ged** (76B) - Missing cross-reference target (broken XRef)
-- **circular-reference.ged** (~500B) - Circular family relationships
-  - Person is both parent and child in different families
-  - Tests validator's ability to detect impossible genealogical loops
-  - Should be accepted by parser/decoder, rejected by validator
-- **duplicate-xref.ged** (~300B) - Duplicate cross-reference identifiers
+- **missing-header.ged** (37B) - Missing required HEAD record; the decoder accepts it in both modes
+- **missing-xref.ged** (76B) - `FAMS` pointer to a family that does not exist (`@F999@`)
+  - Decoder accepts it; the validator reports `ORPHANED_FAMS`
+- **circular-reference.ged** (374B) - Circular family relationships
+  - Each of three people is a child in one family and a parent in another, forming a loop
+  - Accepted by the parser and decoder; the validator's default checks (`ValidateAll`) do not report the loop
+- **duplicate-xref.ged** (242B) - Duplicate cross-reference identifiers
   - Multiple records with same XRef (@I1@, @F1@)
   - Tests XRefMap handling of conflicts
-  - Decoder behavior: last record wins, earlier records overwritten
+  - Decoder behavior: both records kept; `XRefMap` resolves to the first definition and each repeat is reported as `DUPLICATE_XREF`
 - **blank-lines.ged** - Blank and whitespace-only lines mid-file
   - Strict mode errors, lenient mode skips with EMPTY_LINE diagnostics
   - Original work (issue #301)
@@ -567,6 +608,7 @@ When adding new test files:
   - The whole of `gedcom70/` and `gedcom71/` is fetched at test time, not held here (see above)
 - **GEDCOM.org Official Samples**: https://www.gedcom.org/samples.html
   - UTF-8 with BOM, UTF-16 LE/BE samples in `encoding/`
+  - `gedcom-5.5/555SAMPLE.GED` and `gedcom-5.5/MINIMAL555.GED`
 - **TestGED Torture Test Suite**: https://www.geditcom.com/gedcom.html
   - Created by H. Eichmann
   - Modified by J. A. Nairn using GEDitCOM (1999-2001)
@@ -581,7 +623,7 @@ When adding new test files:
   - Tests vendor-specific extensions from Legacy, Family Tree Maker, Family Historian
 - **Gramps Project**: https://github.com/gramps-project/gramps
   - License: GPL-2.0 (test data files used as inputs, not derivative works)
-  - Files: `encoding/ansel-lf.ged`, `encoding/utf8-nobom-lf.ged`, `edge-cases/vendor-rootsmagic.ged`, `edge-cases/vendor-heredis.ged`
+  - Files: `encoding/ansel-lf.ged`, `encoding/utf8-nobom-lf.ged`, `edge-cases/vendor-rootsmagic.ged`, `edge-cases/vendor-heredis.ged`, `edge-cases/ftm-*.ged`
   - Comprehensive ANSEL character tests, LF line endings, RootsMagic/HEREDIS exports
 - **D-Jeffrey/gedcom-samples Corpus**: https://github.com/D-Jeffrey/gedcom-samples
   - License: MIT OR CC0-1.0 (Copyright (c) 2025 D Jeffrey)
@@ -601,6 +643,9 @@ When adding new test files:
   - Hand-written "every structure" files for 5.5.1 and 7.0, plus 7.0 extensions
 - **Synthetic Test Files**: Created specifically for this project
   - `gedcom-5.5.1/comprehensive.ged` - GEDCOM 5.5.1 features
+  - `gedcom-5.5.1/attribute-event-detail.ged`, `gedcom-7.0/event-detail-asso-reli-snote.ged`, `gedcom-7.0/family-event-detail.ged` - Event detail on events and attributes
+  - `seed-for-import.ged` - Fictional tree imported into vendor products to produce the real exports
+  - `edge-cases/ancestry-extensions.ged`, `edge-cases/familysearch-extensions.ged` - Ancestry and FamilySearch extension tags
   - `encoding/utf8-unicode.ged` - International character testing
   - `edge-cases/cont-conc.ged` - Line continuation testing
   - `edge-cases/calendar-dates.ged` - Non-Gregorian calendar dates (Hebrew, Julian, French Republican)
@@ -609,6 +654,7 @@ When adding new test files:
   - `malformed/circular-reference.ged` - Circular relationship loops
   - `malformed/duplicate-xref.ged` - Duplicate identifier testing
   - `malformed/blank-lines.ged`, `malformed/level-over-99.ged` - Lenient-mode error cases (issue #301)
+  - `malformed/level-jump-skip.ged`, `malformed/level-jump-subordinate.ged` - Level-jump recovery
 
 ## License Notes
 
@@ -638,6 +684,6 @@ When adding new test files:
 For compliance with project constitution (85% coverage requirement):
 
 - Parse all files in gedcom-5.5/, gedcom-5.5.1/, gedcom-7.0/
-- Properly reject all files in malformed/
+- Decode every file in malformed/ without panicking: strict mode rejects `blank-lines.ged`, `level-over-99.ged` and `unterminated-xref.ged`; the rest decode, with diagnostics in lenient mode where the decoder can see the defect
 - Successfully decode at least one torture test file
 - Successfully handle large files (>1MB) in streaming fashion
