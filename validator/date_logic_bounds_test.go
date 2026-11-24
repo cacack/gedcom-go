@@ -102,8 +102,9 @@ func TestDateLogicValidator_ChildBeforeParent_Bounds(t *testing.T) {
 				ChildInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
 			}
 			parent := &gedcom.Individual{
-				XRef:   "@I2@",
-				Events: []*gedcom.Event{{Type: gedcom.EventBirth, ParsedDate: mustParseDate(t, tt.second)}},
+				XRef:             "@I2@",
+				Events:           []*gedcom.Event{{Type: gedcom.EventBirth, ParsedDate: mustParseDate(t, tt.second)}},
+				SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
 			}
 			family := &gedcom.Family{XRef: "@F1@", Husband: "@I2@", Children: []string{"@I1@"}}
 			doc := makeDocument([]*gedcom.Individual{child, parent}, []*gedcom.Family{family})
@@ -127,6 +128,34 @@ func TestDateLogicValidator_MarriageBeforeBirth_Bounds(t *testing.T) {
 			doc := makeDocument([]*gedcom.Individual{ind}, []*gedcom.Family{family})
 			checkDateOrderIssues(t, v.checkMarriageBeforeBirth(doc, ind), CodeMarriageBeforeBirth, tt.wantSeverity)
 		})
+	}
+}
+
+// TestDateLogicValidator_OneWayLinks pins that the date checks follow a
+// family link only when both sides record it (#930): a FAMS or FAMC the
+// family does not reciprocate does not pull in its marriage or its people.
+func TestDateLogicValidator_OneWayLinks(t *testing.T) {
+	v := NewDateLogicValidator(nil)
+	ind := &gedcom.Individual{
+		XRef:             "@I1@",
+		Events:           []*gedcom.Event{{Type: gedcom.EventBirth, ParsedDate: mustParseDate(t, "1900")}},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
+		ChildInFamilies:  []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
+	}
+	other := &gedcom.Individual{
+		XRef:             "@I2@",
+		Events:           []*gedcom.Event{{Type: gedcom.EventBirth, ParsedDate: mustParseDate(t, "1950")}},
+		SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
+	}
+	family := &gedcom.Family{XRef: "@F1@", Husband: "@I2@", Events: []*gedcom.Event{
+		{Type: gedcom.EventMarriage, ParsedDate: mustParseDate(t, "1850")},
+	}}
+	doc := makeDocument([]*gedcom.Individual{ind, other}, []*gedcom.Family{family})
+	if issues := v.checkMarriageBeforeBirth(doc, ind); len(issues) != 0 {
+		t.Errorf("checkMarriageBeforeBirth = %v, want none", issues)
+	}
+	if issues := v.checkChildBeforeParent(doc, ind); len(issues) != 0 {
+		t.Errorf("checkChildBeforeParent = %v, want none", issues)
 	}
 }
 

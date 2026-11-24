@@ -211,12 +211,10 @@ func (v *DateLogicValidator) checkMarriageBeforeBirth(doc *gedcom.Document, ind 
 
 	var issues []Issue
 
-	// Check all families where this individual is a spouse
-	for _, link := range ind.SpouseInFamilies {
-		fam := doc.GetFamily(link.FamilyXRef)
-		if fam == nil {
-			continue
-		}
+	// Check all families where this individual is a spouse, by the
+	// reciprocal-link rule (gedcom.Individual.IsSpouseIn) the parent and
+	// child checks follow too.
+	for _, fam := range ind.FamiliesAsSpouse(doc) {
 
 		// Look for marriage events. A negative assertion (NO MARR) records a
 		// marriage that did not happen, so its date says nothing about birth.

@@ -333,14 +333,14 @@ func createRelationshipTestDocument(individuals []*Individual, families []*Famil
 // TestIndividual_Parents tests the Parents relationship traversal method.
 func TestIndividual_Parents(t *testing.T) {
 	// Create test individuals
-	father := &Individual{XRef: "@I1@", Names: []*PersonalName{{Full: "John /Doe/"}}}
-	mother := &Individual{XRef: "@I2@", Names: []*PersonalName{{Full: "Jane /Doe/"}}}
+	father := &Individual{XRef: "@I1@", Names: []*PersonalName{{Full: "John /Doe/"}}, SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}}}
+	mother := &Individual{XRef: "@I2@", Names: []*PersonalName{{Full: "Jane /Doe/"}}, SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}}}
 	child := &Individual{
 		XRef:            "@I3@",
 		Names:           []*PersonalName{{Full: "Billy /Doe/"}},
 		ChildInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}},
 	}
-	family := &Family{XRef: "@F1@", Husband: "@I1@", Wife: "@I2@", Children: []string{"@I3@"}}
+	family := &Family{XRef: "@F1@", Husband: "@I1@", Wife: "@I2@", Children: []string{"@I3@", "@I10@"}}
 
 	// Individual with multiple parental families (adoption scenario)
 	adoptedChild := &Individual{
@@ -351,8 +351,8 @@ func TestIndividual_Parents(t *testing.T) {
 			{FamilyXRef: "@F2@", Pedigree: "adopted"},
 		},
 	}
-	adoptiveFather := &Individual{XRef: "@I11@", Names: []*PersonalName{{Full: "Adoptive /Father/"}}}
-	adoptiveMother := &Individual{XRef: "@I12@", Names: []*PersonalName{{Full: "Adoptive /Mother/"}}}
+	adoptiveFather := &Individual{XRef: "@I11@", Names: []*PersonalName{{Full: "Adoptive /Father/"}}, SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F2@"}}}
+	adoptiveMother := &Individual{XRef: "@I12@", Names: []*PersonalName{{Full: "Adoptive /Mother/"}}, SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F2@"}}}
 	adoptiveFamily := &Family{XRef: "@F2@", Husband: "@I11@", Wife: "@I12@", Children: []string{"@I10@"}}
 
 	// Individual with no parents
@@ -366,7 +366,7 @@ func TestIndividual_Parents(t *testing.T) {
 	}
 
 	// Family with only father (no mother)
-	singleFather := &Individual{XRef: "@I6@", Names: []*PersonalName{{Full: "Single /Father/"}}}
+	singleFather := &Individual{XRef: "@I6@", Names: []*PersonalName{{Full: "Single /Father/"}}, SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F3@"}}}
 	childOfSingleFather := &Individual{
 		XRef:            "@I7@",
 		Names:           []*PersonalName{{Full: "Child /OfSingleFather/"}},
@@ -375,7 +375,7 @@ func TestIndividual_Parents(t *testing.T) {
 	singleFatherFamily := &Family{XRef: "@F3@", Husband: "@I6@", Children: []string{"@I7@"}}
 
 	// Family with only mother (no father)
-	singleMother := &Individual{XRef: "@I8@", Names: []*PersonalName{{Full: "Single /Mother/"}}}
+	singleMother := &Individual{XRef: "@I8@", Names: []*PersonalName{{Full: "Single /Mother/"}}, SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F4@"}}}
 	childOfSingleMother := &Individual{
 		XRef:            "@I9@",
 		Names:           []*PersonalName{{Full: "Child /OfSingleMother/"}},
@@ -676,9 +676,9 @@ func TestIndividual_Children(t *testing.T) {
 		Names:            []*PersonalName{{Full: "John /Doe/"}},
 		SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}},
 	}
-	child1 := &Individual{XRef: "@I2@", Names: []*PersonalName{{Full: "Child /One/"}}}
-	child2 := &Individual{XRef: "@I3@", Names: []*PersonalName{{Full: "Child /Two/"}}}
-	child3 := &Individual{XRef: "@I4@", Names: []*PersonalName{{Full: "Child /Three/"}}}
+	child1 := &Individual{XRef: "@I2@", Names: []*PersonalName{{Full: "Child /One/"}}, ChildInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}}}
+	child2 := &Individual{XRef: "@I3@", Names: []*PersonalName{{Full: "Child /Two/"}}, ChildInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}}}
+	child3 := &Individual{XRef: "@I4@", Names: []*PersonalName{{Full: "Child /Three/"}}, ChildInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}}}
 	family := &Family{XRef: "@F1@", Husband: "@I1@", Children: []string{"@I2@", "@I3@", "@I4@"}}
 
 	// Parent with children from multiple families
@@ -687,8 +687,8 @@ func TestIndividual_Children(t *testing.T) {
 		Names:            []*PersonalName{{Full: "Remarried /Parent/"}},
 		SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F10@"}, {FamilyXRef: "@F11@"}},
 	}
-	childFirstMarriage := &Individual{XRef: "@I11@", Names: []*PersonalName{{Full: "First /Marriage/"}}}
-	childSecondMarriage := &Individual{XRef: "@I12@", Names: []*PersonalName{{Full: "Second /Marriage/"}}}
+	childFirstMarriage := &Individual{XRef: "@I11@", Names: []*PersonalName{{Full: "First /Marriage/"}}, ChildInFamilies: []FamilyLink{{FamilyXRef: "@F10@"}}}
+	childSecondMarriage := &Individual{XRef: "@I12@", Names: []*PersonalName{{Full: "Second /Marriage/"}}, ChildInFamilies: []FamilyLink{{FamilyXRef: "@F11@"}}}
 	firstFamily := &Family{XRef: "@F10@", Husband: "@I10@", Children: []string{"@I11@"}}
 	secondFamily := &Family{XRef: "@F11@", Husband: "@I10@", Children: []string{"@I12@"}}
 
@@ -808,7 +808,7 @@ func TestIndividual_FamiliesAsChild(t *testing.T) {
 		XRef:            "@I1@",
 		ChildInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}},
 	}
-	family1 := &Family{XRef: "@F1@", Husband: "@I2@", Wife: "@I3@"}
+	family1 := &Family{XRef: "@F1@", Husband: "@I2@", Wife: "@I3@", Children: []string{"@I1@", "@I10@"}}
 
 	// Individual with multiple parental families (adoption scenario)
 	multipleFamily := &Individual{
@@ -818,7 +818,7 @@ func TestIndividual_FamiliesAsChild(t *testing.T) {
 			{FamilyXRef: "@F2@", Pedigree: "adopted"},
 		},
 	}
-	family2 := &Family{XRef: "@F2@", Husband: "@I4@", Wife: "@I5@"}
+	family2 := &Family{XRef: "@F2@", Husband: "@I4@", Wife: "@I5@", Children: []string{"@I10@"}}
 
 	// Individual with no parental families
 	noFamily := &Individual{XRef: "@I20@"}
@@ -911,9 +911,10 @@ func TestIndividual_FamiliesAsSpouse(t *testing.T) {
 	// Individual with multiple spouse families (remarriage)
 	multipleSpouse := &Individual{
 		XRef:             "@I10@",
-		SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F1@"}, {FamilyXRef: "@F2@"}},
+		SpouseInFamilies: []FamilyLink{{FamilyXRef: "@F3@"}, {FamilyXRef: "@F2@"}},
 	}
 	family2 := &Family{XRef: "@F2@", Husband: "@I10@", Wife: "@I3@"}
+	family3 := &Family{XRef: "@F3@", Wife: "@I10@"}
 
 	// Individual with no spouse families
 	noSpouse := &Individual{XRef: "@I20@"}
@@ -943,8 +944,8 @@ func TestIndividual_FamiliesAsSpouse(t *testing.T) {
 		{
 			name:        "multiple spouse families",
 			individual:  multipleSpouse,
-			doc:         createRelationshipTestDocument(nil, []*Family{family1, family2}),
-			wantXRefs:   []string{"@F1@", "@F2@"},
+			doc:         createRelationshipTestDocument(nil, []*Family{family1, family2, family3}),
+			wantXRefs:   []string{"@F3@", "@F2@"},
 			wantCount:   2,
 			description: "Returns all spouse families in order",
 		},

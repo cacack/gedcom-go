@@ -624,6 +624,9 @@ rels := doc.DescendantsWithGenerations("@I1@", 0) // every generation
 ```
 
 - BFS ordering: closer generations precede farther ones
+- Follows a family link only when both sides record it (see
+  [Relationship Traversal](#relationship-traversal)), so a stray `FAMS` does not
+  pull an unrelated family's children in as descendants
 - Cycle-safe via visited-set termination
 - Results exclude the seed individual
 - Missing or non-individual XRefs return nil
@@ -2724,6 +2727,8 @@ Navigate family relationships with convenience methods that eliminate manual cro
 | `FamiliesAsSpouse(doc)` | `[]*Family` | Families where individual is a spouse |
 | `ParentLinks(doc)` | `[]ParentLink` | Parents with the linking family and the child's `Pedigree` (birth, adopted, ...) |
 | `Siblings(doc)` | `[]Sibling` | Full siblings (same FAMC family), then half siblings (a parent's other families), each with `Family` and `Half` |
+| `IsSpouseIn(fam)` | `bool` | Individual has a `FAMS` to the family and the family names them as `HUSB` or `WIFE` |
+| `IsChildIn(fam)` | `bool` | Individual has a `FAMC` to the family and the family names them as `CHIL` |
 
 **Family Methods:**
 
@@ -2738,6 +2743,11 @@ All methods:
 - Take `*Document` for O(1) cross-reference lookup
 - Return `nil` or empty slice for missing/invalid references (never error)
 - Preserve order from GEDCOM file
+- Follow one rule for family links: a link counts only when both sides record
+  it, the individual's `FAMS` or `FAMC` and the family's `HUSB`, `WIFE` or
+  `CHIL`. A link only one side records is ignored, here, in the graph
+  traversals and in the validator's date checks.
+  `Individual.IsSpouseIn(fam)` and `IsChildIn(fam)` are the rule
 
 ```go
 // Navigate from individual to relatives

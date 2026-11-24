@@ -4,6 +4,11 @@ package gedcom
 // individual identified by xref. Walks family links via SpouseInFamilies
 // → Children → Spouse families, breadth-first, with cycle detection.
 //
+// A family link counts only when both sides record it (the reciprocal-link
+// rule, see Individual.IsSpouseIn): each step follows Individual.Children,
+// so a FAMS the family does not reciprocate with HUSB or WIFE, or a CHIL
+// without a matching FAMC, is not followed.
+//
 // The result does not include the seed xref itself. Spouses of
 // descendants are not included; callers who want them should union the
 // result with the descendants' Spouses lookups.
@@ -25,6 +30,11 @@ func (d *Document) Descendants(xref string) []string {
 // individual identified by xref. Walks family links via ChildInFamilies
 // → husband/wife → that individual's ChildInFamilies, breadth-first,
 // with cycle detection.
+//
+// A family link counts only when both sides record it (the reciprocal-link
+// rule, see Individual.IsSpouseIn): each step follows Individual.Parents,
+// so a FAMC the family does not reciprocate with CHIL, or a HUSB or WIFE
+// without a matching FAMS, is not followed.
 //
 // Both the husband and wife of each parent family are included, so
 // step-parents and adoptive parents recorded via parent family links
@@ -56,8 +66,8 @@ type Relative struct {
 
 // DescendantsWithGenerations is Descendants with each descendant's
 // generation number and an optional depth limit. It walks the same
-// links, in the same order, and returns the same people as
-// Descendants when maxGenerations is 0.
+// links, in the same order and under the same reciprocal-link rule, and
+// returns the same people as Descendants when maxGenerations is 0.
 //
 // maxGenerations limits the walk: the result holds no one beyond that
 // generation. Zero or a negative value means unlimited.
@@ -69,20 +79,16 @@ type Relative struct {
 // The return contract and ordering match Descendants.
 func (d *Document) DescendantsWithGenerations(xref string, maxGenerations int) []Relative {
 	return d.walkGenerations(xref, maxGenerations, func(ind *Individual, visit func(string)) {
-		for _, link := range ind.SpouseInFamilies {
-			if fam := d.GetFamily(link.FamilyXRef); fam != nil {
-				for _, child := range fam.Children {
-					visit(child)
-				}
-			}
+		for _, child := range ind.Children(d) {
+			visit(child.XRef)
 		}
 	})
 }
 
 // AncestorsWithGenerations is Ancestors with each ancestor's generation
 // number and an optional depth limit. It walks the same links, in the
-// same order, and returns the same people as Ancestors when
-// maxGenerations is 0.
+// same order and under the same reciprocal-link rule, and returns the
+// same people as Ancestors when maxGenerations is 0.
 //
 // maxGenerations limits the walk: the result holds no one beyond that
 // generation. Zero or a negative value means unlimited.
@@ -94,11 +100,8 @@ func (d *Document) DescendantsWithGenerations(xref string, maxGenerations int) [
 // The return contract and ordering match Ancestors.
 func (d *Document) AncestorsWithGenerations(xref string, maxGenerations int) []Relative {
 	return d.walkGenerations(xref, maxGenerations, func(ind *Individual, visit func(string)) {
-		for _, link := range ind.ChildInFamilies {
-			if fam := d.GetFamily(link.FamilyXRef); fam != nil {
-				visit(fam.Husband)
-				visit(fam.Wife)
-			}
+		for _, parent := range ind.Parents(d) {
+			visit(parent.XRef)
 		}
 	})
 }
@@ -164,6 +167,9 @@ func relativeXRefs(rels []Relative) []string {
 // of this individual. Convenience wrapper over Document.Descendants
 // that resolves XRefs to Individual records.
 //
+// A family link counts only when both sides record it (the reciprocal-link
+// rule, see IsSpouseIn), as in Document.Descendants.
+//
 // Return contract matches Document.Descendants:
 //   - nil — receiver is nil, doc is nil, or this individual is not in
 //     the document
@@ -186,6 +192,9 @@ func (i *Individual) Descendants(doc *Document) []*Individual {
 // Ancestors returns the Individuals that are transitive ancestors of
 // this individual. Convenience wrapper over Document.Ancestors that
 // resolves XRefs to Individual records.
+//
+// A family link counts only when both sides record it (the reciprocal-link
+// rule, see IsSpouseIn), as in Document.Ancestors.
 //
 // Return contract matches Document.Ancestors:
 //   - nil — receiver is nil, doc is nil, or this individual is not in

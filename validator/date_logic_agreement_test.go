@@ -42,8 +42,9 @@ func TestMinimumAgeAgreesWithValidator(t *testing.T) {
 				SpouseInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
 			}
 			child := &gedcom.Individual{
-				XRef:   "@I2@",
-				Events: []*gedcom.Event{{Type: gedcom.EventBirth, ParsedDate: event}},
+				XRef:            "@I2@",
+				Events:          []*gedcom.Event{{Type: gedcom.EventBirth, ParsedDate: event}},
+				ChildInFamilies: []gedcom.FamilyLink{{FamilyXRef: "@F1@"}},
 			}
 			family := &gedcom.Family{XRef: "@F1@", Husband: "@I1@", Children: []string{"@I2@"}}
 			doc := makeDocument([]*gedcom.Individual{parent, child}, []*gedcom.Family{family})

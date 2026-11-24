@@ -292,6 +292,7 @@ func TestDateLogicValidator_CheckChildBeforeParent(t *testing.T) {
 			for i, birthYear := range tt.parentBirths {
 				parentXRef := "@I" + string(rune('2'+i)) + "@"
 				parent := makeIndividual(parentXRef, birthYear, 0)
+				parent.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 				if i == 0 {
 					family.Husband = parentXRef
 					parent.Sex = "M"
@@ -593,6 +594,7 @@ func TestDateLogicValidator_CheckReasonableParentAge(t *testing.T) {
 
 			// Create child
 			child := makeIndividual("@I2@", tt.childBirth, 0)
+			child.ChildInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 
 			// Create family
 			family := &gedcom.Family{
@@ -877,6 +879,9 @@ func TestDateLogicValidator_MultipleChildren(t *testing.T) {
 	child1 := makeIndividual("@I2@", 1960, 0) // Parent age 10 - too young
 	child2 := makeIndividual("@I3@", 1980, 0) // Parent age 30 - ok
 	child3 := makeIndividual("@I4@", 2010, 0) // Parent age 60 - too old for mother
+	for _, child := range []*gedcom.Individual{child1, child2, child3} {
+		child.ChildInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
+	}
 
 	family := &gedcom.Family{
 		XRef:     "@F1@",
@@ -982,6 +987,7 @@ func TestDateLogicValidator_AgesFromAgeAt(t *testing.T) {
 		parent.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 		child := withDates("1960", "2000")
 		child.XRef = "@I2@"
+		child.ChildInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 		fam := &gedcom.Family{XRef: "@F1@", Husband: "@I1@", Children: []string{"@I2@"}}
 		doc := makeDocument([]*gedcom.Individual{parent, child}, []*gedcom.Family{fam})
 		issues := v.checkReasonableParentAge(doc, parent)
@@ -998,6 +1004,7 @@ func TestDateLogicValidator_AgesFromAgeAt(t *testing.T) {
 		parent.SpouseInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 		child := withDates("1960", "2000")
 		child.XRef = "@I2@"
+		child.ChildInFamilies = []gedcom.FamilyLink{{FamilyXRef: "@F1@"}}
 		fam := &gedcom.Family{XRef: "@F1@", Husband: "@I1@", Children: []string{"@I2@"}}
 		doc := makeDocument([]*gedcom.Individual{parent, child}, []*gedcom.Family{fam})
 		issues := v.checkReasonableParentAge(doc, parent)
