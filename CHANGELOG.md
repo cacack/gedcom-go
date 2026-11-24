@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.13.0](https://github.com/cacack/gedcom-go/compare/v3.12.0...v3.13.0) (2026-11-24)
+
+
+### Features
+
+* add WithoutDiagnosed to drop issues the decoder already reported ([1db3198](https://github.com/cacack/gedcom-go/commit/1db3198f5b2573ddeca85d671df0c81e87cc8995)), closes [#880](https://github.com/cacack/gedcom-go/issues/880)
+* **decoder:** name the record and tag path a diagnostic is in ([772ee55](https://github.com/cacack/gedcom-go/commit/772ee556c11f321c59c410155fab1dce1ff515d6)), closes [#909](https://github.com/cacack/gedcom-go/issues/909)
+* **gedcom:** type an OBJE record's level-1 title and format ([2f33a32](https://github.com/cacack/gedcom-go/commit/2f33a32d5e7552f19c310b133aee0065c05cefd0)), closes [#879](https://github.com/cacack/gedcom-go/issues/879)
+* **merge:** restore a split family's child order when zipping ([2a34106](https://github.com/cacack/gedcom-go/commit/2a341065474e466f733218cd434a9cef9ac16b60)), closes [#910](https://github.com/cacack/gedcom-go/issues/910)
+
+
+### Bug Fixes
+
+* **converter:** drop an OBJE record's level-1 title and format on a 5.5 -&gt; 7.0 upgrade ([d31c839](https://github.com/cacack/gedcom-go/commit/d31c839851d22d3e3f27c9372ae09f908655bcff)), closes [#879](https://github.com/cacack/gedcom-go/issues/879)
+
 ## [3.12.0](https://github.com/cacack/gedcom-go/compare/v3.11.0...v3.12.0) (2026-11-24)
 
 
