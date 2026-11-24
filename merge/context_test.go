@@ -115,3 +115,40 @@ func TestCombineDanglingPassChecksContext(t *testing.T) {
 		})
 	}
 }
+
+// TestRemapXRefsContext pins the cancellation of RemapXRefsContext (#944):
+// an already-cancelled context returns a nil document and mapping and an
+// error wrapping context.Canceled, leaving the input unmodified; a nil or
+// live context gives what RemapXRefs gives.
+func TestRemapXRefsContext(t *testing.T) {
+	transform := func(old string) string { return "@B_" + old[1:] }
+	doc := buildDoc("A")
+	before := doc.Clone()
+	want, wantMapping, err := merge.RemapXRefs(doc, transform)
+	if err != nil {
+		t.Fatalf("RemapXRefs: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	got, mapping, err := merge.RemapXRefsContext(ctx, doc, transform)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled: err = %v, want one wrapping context.Canceled", err)
+	}
+	if got != nil || mapping != nil {
+		t.Errorf("cancelled: got document %v and mapping %v, want nil", got, mapping)
+	}
+	if !reflect.DeepEqual(doc, before) {
+		t.Error("cancelled: input document was modified")
+	}
+
+	for name, live := range map[string]context.Context{"nil": nil, "background": context.Background()} {
+		got, mapping, err := merge.RemapXRefsContext(live, doc, transform)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !reflect.DeepEqual(got, want) || !reflect.DeepEqual(mapping, wantMapping) {
+			t.Errorf("%s: result differs from RemapXRefs", name)
+		}
+	}
+}
