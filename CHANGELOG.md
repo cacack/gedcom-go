@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.11.0](https://github.com/cacack/gedcom-go/compare/v3.10.0...v3.11.0) (2026-11-24)
+
+
+### Features
+
+* **decoder:** decode a records-only fragment into an existing document ([d57dba6](https://github.com/cacack/gedcom-go/commit/d57dba6b0a3699b8740583b6e89d6de34d67f166))
+* **decoder:** report blank lines as warnings and summarize repeats ([3bc8736](https://github.com/cacack/gedcom-go/commit/3bc8736656295ffd1818e65c3628a5838af94f77))
+* **decoder:** report standard tags in the wrong place as MISPLACED_TAG ([40b7b7b](https://github.com/cacack/gedcom-go/commit/40b7b7b6457d58a30d0b40b91dd382e6cd66ba57))
+* **encoder:** add EncodeRecord to write one record without a header ([5561256](https://github.com/cacack/gedcom-go/commit/5561256dc200810c0c364f6774071c072ca72c85))
+* **encoder:** add opt-in layout-preserving encode ([fbdba57](https://github.com/cacack/gedcom-go/commit/fbdba578dc3e295440d4cfdca2a4e0411216d1d3))
+* **encoder:** write HEAD.PLAC.FORM for a hand-built header ([f151a1c](https://github.com/cacack/gedcom-go/commit/f151a1ca8bb7211b9a86945dec25aae8f143e252)), closes [#875](https://github.com/cacack/gedcom-go/issues/875)
+* **gedcom:** add generation-aware Ancestors and Descendants walks ([e3f3357](https://github.com/cacack/gedcom-go/commit/e3f3357748eea8c03e32df557f7204e64d00e557))
+* **gedcom:** add record-level Diff of two documents ([9000cf7](https://github.com/cacack/gedcom-go/commit/9000cf70c10686a773d70ccac3b88c913d8dd5c1))
+* **gedcom:** pair place-name parts with their FORM labels ([070906b](https://github.com/cacack/gedcom-go/commit/070906be2a2b6d2ef4a193f6ad077f36aaa28f05)), closes [#874](https://github.com/cacack/gedcom-go/issues/874)
+* **gedcom:** presume whether an individual is living ([f9cba53](https://github.com/cacack/gedcom-go/commit/f9cba53eef991804dfff75b9d084f5849d6b56f1))
+* **gedcom:** replace and remove records with the index kept in step ([f566de7](https://github.com/cacack/gedcom-go/commit/f566de7339b3bdc86cdee2a9f1a6bf24dd25f67c))
+* **merge:** cut bounded subsets and zip them back together ([2bb5271](https://github.com/cacack/gedcom-go/commit/2bb5271688ae567e76cdbcb3610cfd7cc467eaa9))
+* **merge:** merge two individuals or families into one ([10d33ad](https://github.com/cacack/gedcom-go/commit/10d33ad2d649513d1e6ee0015589ac598e66e25f))
+* **validator:** find duplicate candidates between two documents ([c91aad3](https://github.com/cacack/gedcom-go/commit/c91aad3d0e0bd5e466464d91086a3c00fb78de31))
+
+
+### Bug Fixes
+
+* **decoder:** check a fragment is records only after dropping rejected records ([6b2b1cf](https://github.com/cacack/gedcom-go/commit/6b2b1cfc7769ae550ea27a4e037c4e168497e470))
+* **decoder:** match blank-line parse errors on the whole message ([5abed70](https://github.com/cacack/gedcom-go/commit/5abed70f94c24b429c5ec95184e2f5ebc3dc3067))
+* **decoder:** never report GEDCOM 7.0 CONT as misplaced ([e8b40d5](https://github.com/cacack/gedcom-go/commit/e8b40d595fade2470bc907710c0c9aecca29eb0b))
+* **encoder:** write each source line at most once and drop layout on combine ([5a10eb6](https://github.com/cacack/gedcom-go/commit/5a10eb645378593ed6391d2fd15c091e8dee20aa))
+* **gedcom:** drop a removed header line's sub-lines in subsets ([db2e193](https://github.com/cacack/gedcom-go/commit/db2e19399796c534fd99ec6ef68dc0a53bf1e4d4))
+* **gedcom:** give each diff hunk its own Path and document nil-Tags records ([911d87d](https://github.com/cacack/gedcom-go/commit/911d87d58417f783479ef779ca94e60e237ed6f3))
+* **merge:** carry a hand-built header's PlaceForm through Combine ([3fe8620](https://github.com/cacack/gedcom-go/commit/3fe8620035a5c18d65d577ccfb5eee52de89dd16)), closes [#875](https://github.com/cacack/gedcom-go/issues/875)
+* **merge:** collapse a repeated pointer whatever its line order ([eb2afd2](https://github.com/cacack/gedcom-go/commit/eb2afd2c02e15039798c58c3165696f9db251399))
+* **merge:** zip bounded-subset headers and type conflict reasons ([6aa4794](https://github.com/cacack/gedcom-go/commit/6aa4794ca1ae0eba9417c4d92421146a4543628b))
+* **validator:** never pair an individual with itself across documents ([5eaeb35](https://github.com/cacack/gedcom-go/commit/5eaeb3514e70f2c9d14fc07f35f9382727bc4295))
+* **validator:** return no pairs when both documents are the same ([d4ec6e2](https://github.com/cacack/gedcom-go/commit/d4ec6e2e24735e10d3ac3e2ecbb33014f967f4cb))
+
 ## [3.10.0](https://github.com/cacack/gedcom-go/compare/v3.9.0...v3.10.0) (2026-11-22)
 
 
