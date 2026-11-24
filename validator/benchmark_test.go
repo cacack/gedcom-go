@@ -10,23 +10,9 @@ import (
 	"github.com/cacack/gedcom-go/v3/gedcom"
 )
 
-// BenchmarkValidateMinimal benchmarks validating a minimal document
+// BenchmarkValidateMinimal benchmarks validating a minimal document (1 individual)
 func BenchmarkValidateMinimal(b *testing.B) {
-	doc := &gedcom.Document{
-		Header: &gedcom.Header{Version: "5.5"},
-		Records: []*gedcom.Record{
-			{
-				XRef: "@I1@",
-				Type: gedcom.RecordTypeIndividual,
-				Tags: []*gedcom.Tag{
-					{Level: 1, Tag: "NAME", Value: "John /Doe/"},
-				},
-			},
-		},
-		XRefMap: map[string]*gedcom.Record{
-			"@I1@": {XRef: "@I1@", Type: gedcom.RecordTypeIndividual},
-		},
-	}
+	doc := generateValidDocument(1)
 
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -73,6 +59,28 @@ func BenchmarkValidateLarge(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		v := New()
 		_ = v.Validate(doc)
+	}
+}
+
+// BenchmarkStreamingValidate measures a whole StreamingValidator pass --
+// ValidateRecord for every record, then Finalize -- over the documents
+// BenchmarkValidateMedium and BenchmarkValidateLarge validate in batch. The
+// two validators do not run the same checks (the streaming one has no
+// duplicate detection, among others), so the pair shows what each costs, not
+// which is faster at one job.
+func BenchmarkStreamingValidate(b *testing.B) {
+	for _, size := range []int{100, 1000} {
+		doc := generateValidDocument(size)
+		b.Run(strconv.Itoa(size), func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				sv := NewStreamingValidator(StreamingOptions{Version: doc.Header.Version})
+				for _, record := range doc.Records {
+					_ = sv.ValidateRecord(record)
+				}
+				_ = sv.Finalize()
+			}
+		})
 	}
 }
 
@@ -181,26 +189,69 @@ func BenchmarkValidateWithErrors(b *testing.B) {
 	}
 }
 
-// Helper to generate a valid document with N individuals
+// validFixtureGivenNames are the given names generateValidDocument cycles
+// through. Its length is the size of every surname group in the fixture, and
+// the names are mutually dissimilar so that no pair inside a group is a
+// possible duplicate.
+var validFixtureGivenNames = []string{"Alice", "Bartholomew", "Caoimhe", "Dmitri"}
+
+// validateBenchmarkSizes mirrors the document sizes BenchmarkValidate{Minimal,
+// Small,Medium,Large} pass as literals; keep the two in step.
+// TestValidFixtureShape checks exactly this list.
+var validateBenchmarkSizes = []int{1, 10, 100, 1000}
+
+// generateValidDocument builds a document of n individuals that ValidateAll
+// has nothing to say about: every XRef is unique, the header names a
+// submitter record that exists, and names vary so that surname groups stay at
+// len(validFixtureGivenNames) however large n is. The Validate benchmarks
+// therefore measure the validator's linear walk over a clean document, not
+// duplicate detection (BenchmarkFindDuplicates and
+// BenchmarkFindDuplicatesAdversarial measure that) and not issue construction.
+// The individuals carry only a name and a sex: with no families, events or
+// dates, the reference, reciprocity and date checks have nothing to examine,
+// and a real file costs more per individual.
+//
+// See TestValidFixtureShape, which pins this. The fixture this replaces took
+// XRefs and names from i%10, so it held ten distinct XRefs and one surname
+// group of n (#919).
 func generateValidDocument(numIndividuals int) *gedcom.Document {
-	records := make([]*gedcom.Record, 0, numIndividuals)
-	xrefMap := make(map[string]*gedcom.Record)
+	const submitterXRef = "@U1@"
+
+	records := make([]*gedcom.Record, 0, numIndividuals+1)
+	xrefMap := make(map[string]*gedcom.Record, numIndividuals+1)
+
+	submitter := &gedcom.Record{
+		XRef: submitterXRef,
+		Type: gedcom.RecordTypeSubmitter,
+		Tags: []*gedcom.Tag{
+			{Level: 1, Tag: "NAME", Value: "Benchmark Submitter"},
+		},
+		Entity: &gedcom.Submitter{XRef: submitterXRef, Name: "Benchmark Submitter"},
+	}
+	records = append(records, submitter)
+	xrefMap[submitterXRef] = submitter
 
 	for i := 0; i < numIndividuals; i++ {
-		xref := "@I" + string(rune('0'+i%10)) + "@"
+		xref := "@I" + strconv.Itoa(i+1) + "@"
+		// A new surname every len(validFixtureGivenNames) individuals, spelled
+		// with letters because name normalization need not keep digits apart.
+		name := validFixtureGivenNames[i%len(validFixtureGivenNames)] +
+			" /" + fixtureSurname(i/len(validFixtureGivenNames)) + "/"
+		sex := "M"
+		if i%2 == 1 {
+			sex = "F"
+		}
 		rec := &gedcom.Record{
 			XRef: xref,
 			Type: gedcom.RecordTypeIndividual,
 			Tags: []*gedcom.Tag{
-				{Level: 1, Tag: "NAME", Value: "Person " + string(rune('0'+i%10)) + " /Surname/"},
-				{Level: 1, Tag: "SEX", Value: "M"},
+				{Level: 1, Tag: "NAME", Value: name},
+				{Level: 1, Tag: "SEX", Value: sex},
 			},
 			Entity: &gedcom.Individual{
-				XRef: xref,
-				Names: []*gedcom.PersonalName{
-					{Full: "Person " + string(rune('0'+i%10)) + " /Surname/"},
-				},
-				Sex: "M",
+				XRef:  xref,
+				Names: []*gedcom.PersonalName{{Full: name}},
+				Sex:   sex,
 			},
 		}
 		records = append(records, rec)
@@ -208,42 +259,73 @@ func generateValidDocument(numIndividuals int) *gedcom.Document {
 	}
 
 	return &gedcom.Document{
-		Header:  &gedcom.Header{Version: "5.5"},
+		Header:  &gedcom.Header{Version: gedcom.Version55, Submitter: submitterXRef},
 		Records: records,
 		XRefMap: xrefMap,
 	}
 }
 
-// Helper to generate an invalid document with broken references
-func generateInvalidDocument(numIndividuals int) *gedcom.Document {
-	records := make([]*gedcom.Record, 0, numIndividuals+numIndividuals/10)
-	xrefMap := make(map[string]*gedcom.Record)
-
-	// Add valid individuals
-	for i := 0; i < numIndividuals; i++ {
-		xref := "@I" + string(rune('0'+i%10)) + "@"
-		rec := &gedcom.Record{
-			XRef: xref,
-			Type: gedcom.RecordTypeIndividual,
-			Tags: []*gedcom.Tag{
-				{Level: 1, Tag: "NAME", Value: "Person " + string(rune('0'+i%10)) + " /Surname/"},
-				{Level: 1, Tag: "SEX", Value: "M"},
-			},
-			Entity: &gedcom.Individual{
-				XRef: xref,
-				Names: []*gedcom.PersonalName{
-					{Full: "Person " + string(rune('0'+i%10)) + " /Surname/"},
-				},
-				Sex: "M",
-			},
+// fixtureSurname spells i in base 26 with the letters a-z, so every index
+// yields a distinct, digit-free surname.
+func fixtureSurname(i int) string {
+	name := []byte("Fixture")
+	for {
+		name = append(name, byte('a'+i%26))
+		i /= 26
+		if i == 0 {
+			return string(name)
 		}
-		records = append(records, rec)
-		xrefMap[xref] = rec
 	}
+}
 
-	// Add families with broken references (10%)
+// TestValidFixtureShape pins what BenchmarkValidate{Minimal,Small,Medium,
+// Large} depend on, in the spirit of TestBenchmarkFixtureShape below: the
+// fixture must be a document ValidateAll reports nothing about, at every
+// benchmarked size and at the strictest setting. A benchmark is a silent
+// test; the fixture this guards once drifted into ten XRefs and one
+// n-person surname group, and the benchmarks went on printing numbers that
+// were worst-case duplicate detection plus a thousand DUPLICATE_XREF issues
+// (#919).
+func TestValidFixtureShape(t *testing.T) {
+	for _, size := range validateBenchmarkSizes {
+		t.Run(strconv.Itoa(size), func(t *testing.T) {
+			doc := generateValidDocument(size)
+
+			if got := len(doc.Individuals()); got != size {
+				t.Fatalf("fixture holds %d individuals, want %d", got, size)
+			}
+			if got, want := len(doc.XRefMap), len(doc.Records); got != want {
+				t.Errorf("XRefMap holds %d entries for %d records: XRefs are not unique", got, want)
+			}
+
+			issues := NewWithOptions(&ValidateOptions{Strictness: StrictnessStrict}).ValidateAll(doc)
+			for _, issue := range issues {
+				t.Errorf("valid fixture reported %s: %s", issue.Code, issue.Message)
+			}
+
+			// No issue is the property; the group size is why it stays cheap.
+			// Duplicate detection is quadratic in the largest surname group,
+			// so one that grew with n would put the benchmark back to
+			// measuring the pair loop without reporting a single issue.
+			var largest int
+			for _, group := range NewDuplicateDetector(nil).buildSurnameGroups(doc.Individuals()) {
+				largest = max(largest, len(group))
+			}
+			if largest > len(validFixtureGivenNames) {
+				t.Errorf("largest surname group is %d, want at most %d: validation cost "+
+					"is no longer linear in the document size", largest, len(validFixtureGivenNames))
+			}
+		})
+	}
+}
+
+// generateInvalidDocument is generateValidDocument plus one family with two
+// broken references for every ten individuals.
+func generateInvalidDocument(numIndividuals int) *gedcom.Document {
+	doc := generateValidDocument(numIndividuals)
+
 	for i := 0; i < numIndividuals/10; i++ {
-		xref := "@F" + string(rune('0'+i%10)) + "@"
+		xref := "@F" + strconv.Itoa(i+1) + "@"
 		rec := &gedcom.Record{
 			XRef: xref,
 			Type: gedcom.RecordTypeFamily,
@@ -257,15 +339,11 @@ func generateInvalidDocument(numIndividuals int) *gedcom.Document {
 				Wife:    "@ALSO_MISSING@",
 			},
 		}
-		records = append(records, rec)
-		xrefMap[xref] = rec
+		doc.Records = append(doc.Records, rec)
+		doc.XRefMap[xref] = rec
 	}
 
-	return &gedcom.Document{
-		Header:  &gedcom.Header{Version: "5.5"},
-		Records: records,
-		XRefMap: xrefMap,
-	}
+	return doc
 }
 
 // duplicateBenchmarkSizes are the document sizes BenchmarkFindDuplicates runs.

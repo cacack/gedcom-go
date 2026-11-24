@@ -370,9 +370,10 @@ With `ValidateOptions.CheckEntityTags` set, `ValidateAll` reports a record or
 header whose typed fields and tags disagree as `ENTITY_TAGS_DIVERGED` (a
 warning), so the edit can be caught before writing; if `SyncTags` fails on the
 document, one Info issue under the same code says the comparison was not made.
-The check reads the raw tags back through the decoder, multiplying
-`ValidateAll`'s time (see [performance](performance.md#entity-tags-check)), and
-cannot fire on a document no one has edited, so it is off by default. Set it
+The check reads the raw tags back through the decoder, which made
+`ValidateAll` about eight times slower on the 2,322-individual file measured
+in [performance](performance.md#entity-tags-check) (duplicate detection off),
+and cannot fire on a document no one has edited, so it is off by default. Set it
 when validating an edited document before encoding it; `QualityReport` honors
 it too, and `validator.WithEntityTagsCheck()` turns it on for a
 `QualityAnalyzer`.

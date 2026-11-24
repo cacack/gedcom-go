@@ -1,7 +1,7 @@
 # Makefile for gedcom-go
 # Go genealogy library for parsing and validating GEDCOM files
 
-.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-compare perf-regression fmt vet lint security clean coverage-html install-tools build build-examples examples tidy check check-coverage spec-coverage all setup-hooks setup preflight api-check fetch-corpora
+.PHONY: help test test-verbose test-coverage test-short bench bench-save bench-baseline bench-compare fmt vet lint security clean coverage-html install-tools build build-examples examples tidy check check-coverage spec-coverage all setup-hooks setup preflight api-check fetch-corpora
 
 # Default target
 .DEFAULT_GOAL := help
@@ -104,9 +104,14 @@ bench-compare: ## Compare current benchmarks with baseline
 	@echo "Comparing with baseline..."
 	benchstat perf-baseline.txt perf-current.txt || echo "⚠  Install benchstat: go install golang.org/x/perf/cmd/benchstat@latest"
 
-perf-regression: ## Run performance regression tests
-	@echo "Running performance regression tests..."
-	@./scripts/perf-regression-test.sh
+bench-baseline: ## Save a baseline from the latest release tag (benchmarks an export of it)
+	@tag=$$(git describe --tags --abbrev=0) && dir=$$(mktemp -d) && \
+	echo "Benchmarking $$tag in $$dir..." && \
+	git archive "$$tag" | tar -x -C "$$dir" && \
+	$(MAKE) -C "$$dir" bench-save && \
+	mv "$$dir/perf-baseline.txt" perf-baseline.txt && \
+	rm -rf "$$dir" && \
+	echo "✓ Baseline from $$tag saved to perf-baseline.txt"
 
 fmt: ## Format Go code
 	@echo "Formatting code..."

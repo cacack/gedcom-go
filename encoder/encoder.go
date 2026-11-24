@@ -670,7 +670,7 @@ func writeValue(w io.Writer, level int, xref, tag, value string, opts *EncodeOpt
 	// Almost every value is a single line, so that case must not pay for the
 	// split: writeValue runs for every line of every record, and allocating a
 	// one-element slice here cost ~8000 allocations and 21% on
-	// BenchmarkEncodeLarge, well past the 10% gate in make perf-regression.
+	// BenchmarkEncodeLarge.
 	// IndexByte rather than ContainsAny: the two-byte set makes ContainsAny
 	// build an asciiSet and scan in Go, while IndexByte is assembly.
 	if strings.IndexByte(value, '\n') < 0 && strings.IndexByte(value, '\r') < 0 {

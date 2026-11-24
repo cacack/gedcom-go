@@ -187,7 +187,7 @@ func writeStreamed(path string, records []*gedcom.Record) (err error) {
 
 `charset.NewReader` reads only the header (at most 64 KiB) to detect the encoding, then streams the rest. If you already know the encoding, `charset.NewReaderWithEncoding(f, charset.EncodingUTF8)` skips detection.
 
-On a 1.1MB / 2,322-individual file, streaming parse holds **~17%** of the heap that batch decode retains after the call returns (and ~55% of the cumulative bytes allocated). See [`examples/stream`](examples/stream/main.go) for the full pattern and [docs/guides/performance.md](docs/guides/performance.md#streaming-apis-performance) for benchmark details.
+Streaming parse retains a small fraction of the heap that batch decode holds after the call returns, and allocates less along the way. See [`examples/stream`](examples/stream/main.go) for the full pattern and [docs/guides/performance.md](docs/guides/performance.md#streaming-apis-performance) for the measurements.
 
 ### Convert Between Versions
 
@@ -572,23 +572,18 @@ make bench-parse
 make bench-decode
 make bench-encode
 
-# Save baseline for comparison
+# Save a baseline: the working tree, or the latest release tag
 make bench-save
+make bench-baseline
 
-# Compare current performance with baseline
+# Compare current performance with the baseline (needs benchstat)
 make bench-compare
 ```
 
-### Performance Regression Testing
-
-Automated regression detection with 10% threshold:
-
-```bash
-# Run regression tests
-make perf-regression
-```
-
-For detailed performance metrics, profiling guides, and optimization opportunities, see [docs/guides/performance.md](docs/guides/performance.md).
+No CI job runs the benchmarks or gates on them; the comparison is a manual,
+same-machine check. See
+[docs/guides/performance.md](docs/guides/performance.md#comparing-against-a-baseline)
+for how to read it.
 
 ## License
 

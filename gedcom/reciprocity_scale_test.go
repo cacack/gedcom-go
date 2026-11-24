@@ -3,7 +3,8 @@ package gedcom
 import (
 	"fmt"
 	"testing"
-	"time"
+
+	"github.com/cacack/gedcom-go/v3/internal/scalecheck"
 )
 
 // largeFamily builds a document with one family @F1@ of n reciprocated
@@ -19,37 +20,19 @@ func largeFamily(n int) *Document {
 	return t.doc
 }
 
-// fastest returns the shortest of a few runs of f, to damp scheduler noise.
-func fastest(f func()) time.Duration {
-	best := time.Duration(1<<63 - 1)
-	for range 5 {
-		start := time.Now()
-		f()
-		if d := time.Since(start); d < best {
-			best = d
-		}
-	}
-	return best
-}
-
 // TestReciprocity_LinearInFamilySize guards that walking a family's CHIL
-// list under the reciprocal-link rule stays linear in its size: 8x the
-// children must cost well under the 64x a quadratic walk would.
+// list under the reciprocal-link rule stays linear in its size. The
+// measurement is scalecheck.Linear's: one walk of a large family against as
+// many walks of a small one as make up the same number of children.
 func TestReciprocity_LinearInFamilySize(t *testing.T) {
-	const small, large = 2000, 16000
-	run := func(n int) time.Duration {
+	scalecheck.Linear(t, "Descendants", 2000, 32000, func(n int) func() {
 		doc := largeFamily(n)
-		return fastest(func() {
+		return func() {
 			if got := len(doc.Descendants("@P@")); got != n {
 				t.Fatalf("Descendants returned %d, want %d", got, n)
 			}
-		})
-	}
-	tSmall, tLarge := run(small), run(large)
-	if ratio := float64(tLarge) / float64(tSmall); ratio > 24 {
-		t.Errorf("Descendants: %d children took %v, %d took %v (%.0fx for 8x the children); want linear",
-			small, tSmall, large, tLarge, ratio)
-	}
+		}
+	})
 }
 
 func BenchmarkDescendants_LargeFamily(b *testing.B) {

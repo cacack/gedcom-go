@@ -1,171 +1,195 @@
 # Performance Characteristics
 
-This document provides detailed performance benchmarks and optimization guidance for the gedcom-go library.
+Measured benchmark figures for gedcom-go, and guidance on choosing between the
+batch and streaming APIs.
 
 ## Benchmark Environment
 
-All benchmarks were run on:
-- **Platform**: Apple M2 (ARM64)
-- **OS**: macOS
-- **Go Version**: 1.25
-- **Test Files**: Real-world GEDCOM files from `testdata/`
+Every benchmark table in this guide comes from **one run** of the suite:
 
-This document is the single source of truth for gedcom-go benchmark figures. The numbers
-below are specific to the environment above — absolute values are hardware- and
-warmup-dependent, so treat them as indicative rather than guaranteed. Run `make bench` to
-measure on your own hardware.
+- **Machine**: Apple M2, 8 cores, 16 GB (darwin/arm64)
+- **Go**: 1.27.4
+- **Date**: 2026-11-24
+- **Command**: `go test -run '^$' -bench . -benchmem -count=6 ./parser ./decoder ./encoder ./validator`
 
-## Performance Summary
+Each figure is the median of the six samples, and each row names the benchmark
+it came from, so `go test -bench '<name>' -benchmem ./<package>` reproduces it.
+Samples stayed within ±4% of the median, except `BenchmarkFindDuplicates/1000`
+(±7%). Sizes are decimal (1 MB = 10⁶ bytes). B/op is the cumulative bytes
+allocated per operation, not the memory held at any one moment.
 
-| Operation | Target | Current | Status |
-|-----------|--------|---------|--------|
-| Parse 1000 individuals | < 1ms | 697 µs | Pass |
-| Decode 1000 individuals | < 15ms | 13.0 ms | Pass |
-| Encode 1000 individuals | < 2ms | 1.15 ms | Pass |
-| Validate 1000 individuals | < 10µs | 5.91 µs | Pass |
+This guide is the single source of truth for gedcom-go benchmark figures. They
+are specific to the environment above; run `make bench` to measure your own
+hardware. The figures under [Large-File Measurements](#large-file-measurements)
+are the exception: they are one-off measurements on files too large for the
+suite, and say so.
 
 ## Decoder Performance
 
-### Throughput Benchmarks
+`decoder.Decode` of a whole file, and the streaming paths over the largest
+ordinary fixture. Throughput is file size over time.
 
-| File Size | Time/Operation | Memory | Allocations | Throughput |
-|-----------|----------------|--------|-------------|------------|
-| 170B (minimal) | 7 µs | 7 KB | 69 | ~24 MB/s |
-| 15KB (small) | 381 µs | 214 KB | 3,530 | ~39 MB/s |
-| 458KB (medium) | 17 ms | 8.5 MB | 139K | ~27 MB/s |
-| 1.1MB (large) | 32 ms | 14 MB | 214K | ~34 MB/s |
-| 46.1MB (scale) | 854 ms | 1.5 GB | 18.1M | ~57 MB/s |
+| Benchmark | Input | Time/op | B/op | Allocs/op | Throughput |
+|-----------|-------|---------|------|-----------|------------|
+| `BenchmarkDecodeMinimal` | `minimal.ged`, 170 B, 1 individual | 11.0 µs | 89.8 KB | 118 | 15 MB/s |
+| `BenchmarkDecodeSmall` | `maximal70.ged`, 14.9 KB, 4 individuals | 193 µs | 328 KB | 4,204 | 77 MB/s |
+| `BenchmarkDecodeMedium` | `royal92.ged`, 469 KB, 3,010 individuals | 14.6 ms | 23.8 MB | 189,859 | 32 MB/s |
+| `BenchmarkDecodeLarge` | `pres2020.ged`, 1.1 MB, 2,322 individuals | 14.8 ms | 23.8 MB | 277,934 | 75 MB/s |
+| `BenchmarkScaleDecode` | `longsword.ged`, 48.3 MB, 203,154 individuals | 999 ms | 1.69 GB | 18.5M | 48 MB/s |
+| `BenchmarkDecodeCitationHeavy` | synthetic, citation-heavy, 2.5 MB | 35.5 ms | 61.0 MB | 735,780 | 70 MB/s |
+| `BenchmarkStreamingParseLarge` | `pres2020.ged` through `parser.Records` | 7.91 ms | 9.77 MB | 157,513 | 140 MB/s |
+| `BenchmarkStreamingDecodeRecordLarge` | `pres2020.ged` through `parser.Records` and `decoder.DecodeRecord` | 13.6 ms | 25.5 MB | 280,977 | 81 MB/s |
 
-**Average Throughput**: ~32 MB/s for large files (the 46 MB scale fixture sustains ~57 MB/s)
+Throughput depends on the file's shape more than its size: `royal92.ged` is
+less than half the size of `pres2020.ged` and takes as long to decode. Budget
+13–31 ms per MB of input.
 
-**Memory Usage** (Memory column above): cumulative bytes allocated per decode (`B/op`),
-roughly 12-33x file size due to per-line and per-record churn (the 46 MB scale
-fixture measures ~33x). Retained heap after decode
-is much lower — the batch-vs-streaming section below measures it directly.
+Cumulative allocation is 21–51× the file size on the four larger real files. That is
+churn, not residency: [Batch vs Streaming](#decoder-batch-vs-streaming-parse)
+measures what stays on the heap, and
+[Decoding Untrusted Input](untrusted-input.md#unbounded-dimensions) measures
+peak memory.
 
 ### Scale Fixture (`testdata/gedcom-5.5.1/longsword.ged`)
 
-A deliberately large real-world export (Legacy 10.0, GEDCOM 5.5.1, UTF-8 with BOM):
-46.1 MiB, 203,154 individuals, 90,085 families, 293,241 XRefs. Measured on the
-environment above:
-
-| Metric | Value |
-|---|---|
-| Decode time | 854 ms/op |
-| Throughput | 56.6 MB/s |
-| Cumulative bytes/op | 1.50 GB |
-| Allocs/op | 18.1M |
-| Peak process RSS (single decode) | ~930 MB (~20x file size, includes GC headroom) |
-
-Throughput *improves* at this scale versus the 1 MB class — per-file fixed costs
-amortize and XRefMap lookups remain average O(1), while map storage grows with
-the number of cross-references — but a fully-decoded 46 MB document costs
-roughly 0.9 GB of peak process memory. For files this size and beyond, weigh the
-streaming APIs (next section). Reproduce with:
+A deliberately large real-world export (Legacy 10.0, GEDCOM 5.5.1, UTF-8 with
+BOM): 48.3 MB (46.1 MiB), 203,154 individuals, 90,085 families, 293,241 XRefs.
+`BenchmarkScaleDecode` in the table above is its decode;
+`BenchmarkValidateAllStrictLongsword` under
+[Duplicate Detection](#duplicate-detection) is its validation. Reproduce with:
 
 ```bash
 go test -bench BenchmarkScaleDecode -run '^$' -benchmem ./decoder/
 go test ./decoder -run TestScaleFixture -v
 ```
 
-### Hot Paths (CPU Profile)
-
-From profiling the decoder with large files:
-
-1. **Parser Operations (48%)**: Line parsing (31%), string splitting (13%)
-2. **Garbage Collection (30%)**: Expected with 214K allocations per MB
-3. **Record Building (22%)**: Creating gedcom.Record structures
-
 ## Parser Performance
 
-### Line Parsing Benchmarks
+### Line Parsing
 
-| Operation | Time/Op | Memory | Allocations |
-|-----------|---------|--------|-------------|
-| Simple tag (`0 HEAD`) | 143 ns | 96 B | 2 |
-| Tag with value | 179 ns | 128 B | 2 |
-| Tag with XRef | 139 ns | 112 B | 2 |
-| Nested tag | 168 ns | 144 B | 2 |
-| Long value (>100 chars) | 459 ns | 448 B | 2 |
+| Benchmark | Line | Time/op | B/op | Allocs/op |
+|-----------|------|---------|------|-----------|
+| `BenchmarkParseLine/simple_tag` | `0 HEAD` | 44 ns | 96 B | 2 |
+| `BenchmarkParseLine/tag_with_value` | `1 NAME John /Doe/` | 72 ns | 128 B | 2 |
+| `BenchmarkParseLine/tag_with_xref` | `0 @I1@ INDI` | 49 ns | 112 B | 2 |
+| `BenchmarkParseLine/nested_tag` | `2 DATE 1 JAN 1980` | 76 ns | 144 B | 2 |
+| `BenchmarkParseLine/long_value` | a 116-character `NOTE` line | 241 ns | 448 B | 2 |
 
-**Key Insight**: Consistent 2 allocations per line regardless of complexity
+Every line costs two allocations, whatever its shape.
+`BenchmarkParseLineTypes` covers further line shapes.
 
-### File Parsing Benchmarks
+### File Parsing
 
-| Input Size | Time | Memory | Throughput |
-|------------|------|--------|------------|
-| Minimal (8 lines) | 2.2 µs | 5 KB | - |
-| 100 individuals (~1800 lines) | 114 µs | 98 KB | ~15M lines/sec |
-| 1000 individuals (~18K lines) | 1.3 ms | 1 MB | ~13M lines/sec |
+The synthetic input is a header, six lines per individual and a trailer.
+"Records" below are individuals.
 
-**Scaling**: Linear with file size
+| Benchmark | Input | Time/op | B/op | Allocs/op |
+|-----------|-------|---------|------|-----------|
+| `BenchmarkParse/minimal_file` | 8 lines | 1.09 µs | 5.30 KB | 29 |
+| `BenchmarkParse/file_with_100_individuals` | 605 lines | 55.0 µs | 98.1 KB | 1,826 |
+| `BenchmarkParse/file_with_1000_individuals` | 6,005 lines | 564 µs | 1.00 MB | 18,032 |
+| `BenchmarkRecordIterator/10_records` | 65 lines | 7.16 µs | 20.2 KB | 229 |
+| `BenchmarkRecordIterator/100_records` | 605 lines | 59.6 µs | 115 KB | 2,029 |
+| `BenchmarkRecordIterator/1000_records` | 6,005 lines | 581 µs | 1.06 MB | 20,029 |
+| `BenchmarkRecordIteratorWithOffset/10_records` | 65 lines | 12.3 µs | 34.6 KB | 357 |
+| `BenchmarkRecordIteratorWithOffset/100_records` | 605 lines | 111 µs | 280 KB | 3,237 |
+| `BenchmarkRecordIteratorWithOffset/1000_records` | 6,005 lines | 1.10 ms | 2.74 MB | 32,037 |
+
+Parsing is linear in the number of lines, about 10.7 million lines per second
+at 1,000 individuals. Iterating record by record costs about what `Parse`
+does; tracking byte offsets, which indexing needs, roughly doubles it.
+`BenchmarkRecordsRangeFunc` and `BenchmarkRecordsWithOffsetRangeFunc` measure
+the range-over-func forms (`parser.Records`, `parser.RecordsWithOffset`) on the
+same inputs and match the iterator rows within noise.
 
 ## Encoder Performance
 
-| Document Size | Time/Op | Memory | Allocations |
-|---------------|---------|--------|-------------|
-| 1 individual | 1.0 µs | 208 B | 13 |
-| 10 individuals | 18 µs | 4.1 KB | 259 |
-| 100 individuals | 176 µs | 40 KB | 2.5K |
-| 1000 individuals | 1.7 ms | 400 KB | 25K |
+| Benchmark | Input | Time/op | B/op | Allocs/op |
+|-----------|-------|---------|------|-----------|
+| `BenchmarkEncodeMinimal` | 1 individual | 934 ns | 744 B | 26 |
+| `BenchmarkEncodeSmall` | 10 individuals | 10.8 µs | 4.79 KB | 275 |
+| `BenchmarkEncodeMedium` | 100 individuals | 101 µs | 40.8 KB | 2,525 |
+| `BenchmarkEncodeLarge` | 1,000 individuals | 1.02 ms | 401 KB | 25,026 |
+| `BenchmarkEncodeLineEndings/LF_(Unix)` | 100 individuals | 100 µs | 40.8 KB | 2,525 |
+| `BenchmarkEncodeLineEndings/CRLF_(Windows)` | 100 individuals | 101 µs | 40.8 KB | 2,525 |
+| `BenchmarkStreamEncodeLarge` | 1,000 individuals, each built inside the loop | 1.41 ms | 2.06 MB | 41,519 |
+| `BenchmarkStreamEncoder_LargeFile` | one prebuilt 7-line record written 1,000 times | 944 µs | 631 KB | 23,031 |
 
-**Scaling**: Linear with document size (~25 allocs per individual)
+Encoding is linear in document size, about 25 allocations per individual. The
+line ending makes no measurable difference.
 
-Line ending format has negligible impact (<1% overhead for CRLF vs LF).
+`BenchmarkStreamEncodeLarge` is not a like-for-like comparison with
+`BenchmarkEncodeLarge`: it builds each record inside the timed loop, as a
+streaming producer would, while the batch benchmark is handed a finished
+`Document`. The streaming encoder's advantage is the memory it does not hold;
+see [Streaming Encoder](#streaming-encoder).
 
 ## Validator Performance
 
-> **These figures do not reproduce on v3.13.0** and the benchmark behind them
-> needs repair; several other tables in this guide are also due a re-measure.
-> See [#919](https://github.com/cacack/gedcom-go/issues/919). Run `make bench`
-> for current numbers.
+`Validator.Validate` (and `ValidateAll`, which it wraps) at the default
+options, duplicate detection included, on a synthetic document that reports no
+issues: unique XRefs, a submitter, and surname groups of four.
+`TestValidFixtureShape` pins that shape.
 
-| Document Size | Time/Op | Memory | Allocations |
-|---------------|---------|--------|-------------|
-| 1 individual | 15 ns | 0 B | 0 |
-| 10 individuals | 52 ns | 0 B | 0 |
-| 100 individuals | 526 ns | 0 B | 0 |
-| 1000 individuals | 6.6 µs | 0 B | 0 |
+| Benchmark | Input | Time/op | B/op | Allocs/op |
+|-----------|-------|---------|------|-----------|
+| `BenchmarkValidateMinimal` | 1 individual | 11.4 µs | 6.34 KB | 49 |
+| `BenchmarkValidateSmall` | 10 individuals | 20.2 µs | 10.3 KB | 111 |
+| `BenchmarkValidateMedium` | 100 individuals | 102 µs | 47.3 KB | 626 |
+| `BenchmarkValidateLarge` | 1,000 individuals | 927 µs | 495 KB | 5,603 |
+| `BenchmarkValidateWithErrors` | 100 individuals and 10 families with broken references | 127 µs | 84.5 KB | 883 |
+| `BenchmarkStreamingValidate/100` | 100 individuals, record by record | 19.6 µs | 54.4 KB | 121 |
+| `BenchmarkStreamingValidate/1000` | 1,000 individuals, record by record | 134 µs | 107 KB | 1,031 |
 
-**Key Insight**: Zero allocations when no errors found!
+Validation of a clean document is linear in its size: 1,000 individuals cost
+9.1× what 100 do, about 0.9 µs and 5.6 allocations per individual. The
+validator allocates on every document, issues or not.
 
-### Entity Tags Check
+The `BenchmarkStreamingValidate` rows are a whole `StreamingValidator` pass
+(`ValidateRecord` for each record, then `Finalize`) over the same documents.
+It is cheaper because it runs fewer checks, with no duplicate detection among
+them, so the two are not interchangeable; see
+[Streaming Validator](#streaming-validator).
+
+A real file costs more per individual than the synthetic one, because its
+records carry events, dates and references to check: the 2,322 individuals of
+`pres2020.ged` take 6.1 ms with duplicate detection off (next table).
+
+### Opt-in Checks
+
+`ValidateAll` on `pres2020.ged` (2,322 individuals, decoded, so every record
+has `Tags`), with duplicate detection off so that each pair of rows differs by
+the check alone. The two `without-check` rows are the same configuration
+measured by two benchmarks.
+
+| Benchmark | `ValidateAll` | Time/op | B/op | Allocs/op |
+|-----------|---------------|---------|------|-----------|
+| `BenchmarkValidateAllEntityTags/without-check` | default | 6.14 ms | 2.03 MB | 27,329 |
+| `BenchmarkValidateAllEntityTags/with-check` | `CheckEntityTags` | 47.9 ms | 59.8 MB | 1,138,079 |
+| `BenchmarkValidateAllGrammar/without-check` | default | 6.10 ms | 2.03 MB | 27,329 |
+| `BenchmarkValidateAllGrammar/with-check` | `CheckGrammar` | 17.7 ms | 4.24 MB | 104,523 |
+
+```bash
+go test ./validator -bench 'BenchmarkValidateAll(EntityTags|Grammar)' -run '^$' -benchmem -count=6
+```
+
+#### Entity Tags Check
 
 `ENTITY_TAGS_DIVERGED` (opt-in via `ValidateOptions.CheckEntityTags`) compares
 each record's typed fields with its raw `Tags` by running `encoder.SyncTags`
-on a copy, which encodes and decodes the document. On `pres2020.ged`
-(2,322 individuals, every record decoded with `Tags`), with duplicate
-detection off:
+on a copy, then reading the tags back through the decoder. On this file it
+makes `ValidateAll` 7.8× slower, adding 42 ms and 58 MB: between two and
+three times what decoding the file costs (`BenchmarkDecodeLarge`). The cost grows with
+file size. A hand-built record with no `Tags` costs nothing. A group of more
+than 512 changed structures of one tag in one record is rewritten rather than
+aligned line by line, bounding the alignment's memory.
 
-| `ValidateAll` | Time/Op | Memory | Allocations |
-|---------------|---------|--------|-------------|
-| Without the check (default) | 34 ms | 9.4 MB | 403k |
-| With the check | 73 ms | 63 MB | 1.44M |
-
-The extra cost is about one encode-decode round trip of the document, so it
-grows with file size. A hand-built record with no `Tags` costs nothing. A
-group of more than 512 changed structures of one tag in one record is
-rewritten rather than aligned line by line, bounding the alignment's memory.
-
-```bash
-go test ./validator -bench BenchmarkValidateAllEntityTags -run '^$' -benchmem -count=3
-```
-
-### Grammar Check
+#### Grammar Check
 
 The grammar conformance check (opt-in via `ValidateOptions.CheckGrammar`)
 walks every line of the header and records once against the version's
-structure tables, so its cost is linear in the number of lines. On
-`pres2020.ged`, with duplicate detection off:
-
-| `ValidateAll` | Time/Op | Memory | Allocations |
-|---------------|---------|--------|-------------|
-| Without the check (default) | 34 ms | 9.9 MB | 406k |
-| With the check | 45 ms | 12.1 MB | 484k |
-
-```bash
-go test ./validator -bench BenchmarkValidateAllGrammar -run '^$' -benchmem -count=3
-```
+structure tables, so its cost is linear in the number of lines. On this file
+it makes `ValidateAll` 2.9× slower, adding 12 ms and 2.2 MB.
 
 ### Duplicate Detection
 
@@ -175,46 +199,44 @@ is set. Its cost is driven by the size of each *surname group*, not by the
 document size directly: individuals are blocked by normalized surname, and only
 pairs within a group are compared.
 
-On the scale fixture (203,154 individuals, 55,801 non-empty surname groups):
-
-| Metric | Value |
-|---|---|
-| Candidate pairs compared | ~3.1M |
-| Time | ~1.1 s |
-| Pairs returned | 86,235 |
-
-Blocking is what makes this tractable — the fixture's surnames spread across
-tens of thousands of buckets, so no single bucket is large. Two consequences
-follow:
+Blocking is what makes this tractable. The scale fixture's 203,154 individuals
+fall into 55,801 surname groups, the largest of 519, so detection compares
+about 3.06 million candidate pairs rather than 20 billion, and returns 55,259
+(`TestDuplicateCapPreservesCorpusResults` logs the groups and the pairs
+returned). Two consequences follow:
 
 - **Individuals with no surname are excluded entirely.** They share no surname
   with each other, so no pair among them could match; comparing them would be
-  pure waste. On this fixture that skips ~4,950 individuals and ~12.3M pairs.
-- **Cost is quadratic within a bucket, so the bucket is capped.** A document
+  pure waste.
+- **Cost is quadratic within a group, so the group is capped.** A document
   where many individuals share one surname would degrade to O(k²) over that
   group. Natural data rarely does this; adversarial input can, because the input
   controls the surnames. `DuplicateConfig.MaxGroupSize` bounds it — see below.
 
-Synthetic duplicate-heavy fixture, measured on the environment above with
-`-count=3`:
+| Benchmark | Input | Time/op | B/op | Allocs/op |
+|-----------|-------|---------|------|-----------|
+| `BenchmarkFindDuplicates/100` | 100 individuals, 5 surname groups of 16 | 118 µs | 273 KB | 1,452 |
+| `BenchmarkFindDuplicates/1000` | 1,000 individuals, 5 groups of 160 | 6.44 ms | 7.20 MB | 120,025 |
+| `BenchmarkFindDuplicates/5000` | 5,000 individuals, 5 groups of 800 | 143 ms | 145 MB | 2,956,142 |
+| `BenchmarkFindDuplicatesAdversarial/capped` | 1,001 individuals in one group, default cap: skipped whole | 68.9 µs | 62.3 KB | 1,046 |
+| `BenchmarkFindDuplicatesAdversarial/uncapped` | the same group, `UnlimitedGroupSize`: 500,500 pairs | 899 ms | 297 MB | 3,506,037 |
+| `BenchmarkValidateAllStrictLongsword` | Strict `ValidateAll` of the scale fixture, detection included | 1.54 s | 1.02 GB | 10.8M |
 
-| Individuals | Time/Op | Memory | Allocations |
-|---|---|---|---|
-| 100 | 0.11 ms | 0.27 MB | 1.5K |
-| 1000 | 6.4 ms | 7.1 MB | 120K |
-| 5000 | 143 ms | 145 MB | 3.0M |
+The `FindDuplicates` rows grow with the square of the group size, not with the
+document. The adversarial fixture is the worst case per pair: 26-rune given
+names that are all near misses, so every pair runs the full Levenshtein
+comparison and then loses. It costs 1.8 µs and about 590 B per pair, and one
+group just under the default cap costs nearly what the `uncapped` row shows.
+The allocation is transient; none of it outlives the pair.
 
 Names are normalized once per individual (lowercased, diacritics removed).
-All-ASCII names skip the Unicode transform, which is the common case: on
-`longsword.ged`, measured on the environment above, Strict `ValidateAll`
-allocates ~0.77 GB per run, down from ~3.7 GB when every name went through the
-transform.
+All-ASCII names skip the Unicode transform, which is the common case.
 
 Reproduce with:
 
 ```bash
-go test ./validator -bench BenchmarkFindDuplicates -run '^$' -benchmem -count=3
-go test ./validator -bench BenchmarkValidateAllStrictLongsword -run '^$' -benchmem -count=3 -benchtime=3x
+go test ./validator -bench BenchmarkFindDuplicates -run '^$' -benchmem -count=6
+go test ./validator -bench BenchmarkValidateAllStrictLongsword -run '^$' -benchmem -count=6
 ```
 
 `FindDuplicatesBetween` compares two documents using the same surname blocking,
@@ -257,13 +279,15 @@ worst case = n × MaxGroupSize / 2 pair comparisons × MaxNameRunes² cells each
 ```
 
 At the defaults that is 500 × *n* pairs, whatever the surnames are: a
-100,000-individual upload cannot exceed ~50M comparisons. For scale, the fixture
-row above compares ~3.1M pairs in ~1.1 s. The name bound matters when the names
-are long: two individuals with 100,000-character given names took 51 s before
-it (the pair cost is the product of the lengths) and under a millisecond with
-it. The fully adversarial shape — 1000 same-surname individuals with distinct
-64-rune names — still costs about ten seconds, so a service exposed to hostile
-uploads at scale should set both caps lower than the defaults.
+100,000-individual upload cannot exceed ~50M comparisons. For scale,
+`BenchmarkFindDuplicatesAdversarial/uncapped` above spends 0.9 s on 500,500
+pairs of 26-rune names. The name bound matters when the names are long, because
+a pair's cost is the product of the two lengths:
+[ADR 0009](../decisions/0009-bounded-duplicate-detection.md) records the
+measurements behind it, and the worst case that remains at the defaults —
+seconds for each 1,000 same-surname individuals with distinct 64-rune names. A
+service exposed to hostile uploads at scale should set both caps lower than
+the defaults.
 
 Skipping and prefix comparison are reported rather than silent. When any group
 exceeds the cap, or any given name is compared on a prefix, the detector emits
@@ -292,24 +316,27 @@ alternatives considered and why the cap is per-group rather than global.
 
 The streaming APIs provide memory-efficient alternatives for very large files. Two memory metrics matter:
 
-- **Cumulative allocated bytes** (`TotalAlloc` delta): total bytes ever allocated during the operation. Both streaming and batch do similar parsing/encoding work, so cumulative allocations are roughly similar.
-- **Retained heap after return** (`HeapAlloc` delta with `KeepAlive`): bytes still resident when the call completes. **This is the streaming win.** Batch holds the full `Document` afterwards; streaming holds essentially nothing.
+- **Cumulative allocated bytes** (B/op, or a `TotalAlloc` delta): total bytes ever allocated during the operation.
+- **Retained heap after return** (`HeapAlloc` delta with `KeepAlive`): bytes still on the heap when the call completes. **This is the streaming win.** Batch holds the full `Document` afterwards; streaming holds essentially nothing.
 
-The retained-heap metric is what matters when the operation runs inside a longer-lived process and you care about steady-state memory.
+The retained-heap metric is what matters when the operation runs inside a longer-lived process and you care about steady-state memory. No benchmark reports it, so the figures come from two tests that log it, `TestMemoryBatchVsStreaming` and `TestMemoryBatchVsStreamingEncode`, each run six times in the session described under [Benchmark Environment](#benchmark-environment). The heap is read without a collection in between, so the streaming figures include garbage not yet collected and vary from run to run.
 
-### Decoder (Batch) vs Streaming Parse — `pres2020.ged` (1.1MB, 2,322 individuals)
+### Decoder (Batch) vs Streaming Parse
 
-| Metric | `decoder.Decode` (batch) | `parser.Records` (streaming) | Ratio |
-|---|---|---|---|
-| Time/op | 14.2 ms | 7.9 ms | 0.56x |
-| Cumulative bytes/op | 22 MB | 12 MB | 0.55x |
-| Allocs/op | 261,258 | 170,263 | 0.65x |
-| **Retained heap after** | **9,545 KB** | **1,611 KB** | **0.17x** |
+On `pres2020.ged` (1.1 MB, 2,322 individuals), streaming parse takes 0.53× the
+time of batch decode and allocates 0.41× the bytes: the
+`BenchmarkStreamingParseLarge` and `BenchmarkDecodeLarge` rows under
+[Decoder Performance](#decoder-performance). What it retains is smaller still:
 
-Streaming parse retains ~17% of batch decode's heap after the call returns. Reproduce with:
+| `TestMemoryBatchVsStreaming` | `decoder.Decode` (batch) | `parser.Records` (streaming) |
+|---|---|---|
+| Retained heap after return, median of 6 | 17.2 MB | 1.1 MB |
+| Range over the 6 runs | 16.8–17.5 MB | 0.9–1.2 MB |
+
+Streaming parse retains about 6% of what batch decode does. Reproduce with:
 
 ```bash
-go test -bench='DecodeLarge|StreamingParseLarge' -benchmem ./decoder/
+go test -bench='DecodeLarge|StreamingParseLarge' -run '^$' -benchmem ./decoder/
 go test -v -run TestMemory ./decoder/
 ```
 
@@ -338,102 +365,105 @@ for raw, err := range parser.Records(charset.NewReader(f)) {
 }
 ```
 
-Measured on a synthetic GEDCOM 5.5.1 file of 1,000,000 individuals and 500,000
-families (1.5 M records, 481 MB) on an 8-core arm64 machine with 16 GB. CPU
-time is reported because wall time varied with machine load:
-
-| Pipeline | CPU time | Peak RSS |
-|---|---|---|
-| `parser.Records` only | 8.0 s | 34 MB |
-| `parser.Records` → `DecodeRecord` | 16.4 s | 64 MB |
-| `parser.Records` → `DecodeRecord` → `StreamingValidator` | — | 136 MB (see [Streaming Validator](#streaming-validator)) |
-| `decoder.Decode` (batch), 100,000-individual 47 MB subset | — | 823 MB |
-
-`DecodeRecord` costs about 5.6 µs of CPU per record on that file, and peak
-memory stays flat. On `pres2020.ged` it allocates about 3.7 KB in 30
-allocations per record (`BenchmarkStreamingDecodeRecordLarge` against
-`BenchmarkStreamingParseLarge`). Parse and decode together allocate about what
-`Decode` does for the file (23.8 MB against 22.1 MB), but none of it outlives
-the record. A `LazyParser.FindRecord` lookup
-followed by `DecodeRecord` took about 2 ms for one record of the 1.5 M.
-
-Batch `Decode` peak RSS is about 13–17× the file size: 823 MB for the 47 MB
-subset above, and 8.6 GB (73 s) for a 676 MB file of the same shape in an
-earlier measurement. Above a few hundred megabytes, typed access is practical
-only through `DecodeRecord`.
+On `pres2020.ged` (3,844 records), `DecodeRecord` adds about 1.5 µs, 4.1 KB
+and 32 allocations per record to the raw parse
+(`BenchmarkStreamingDecodeRecordLarge` against `BenchmarkStreamingParseLarge`).
+Parse and decode together cost about what `Decode` does for the file (13.6 ms
+and 25.5 MB against 14.8 ms and 23.8 MB), but none of it outlives the record.
+[Large-File Measurements](#large-file-measurements) shows the memory staying
+flat on a 1.5 M-record file.
 
 ```bash
-go test -bench='DecodeLarge|StreamingParseLarge|StreamingDecodeRecordLarge' -benchmem ./decoder/
+go test -bench='DecodeLarge|StreamingParseLarge|StreamingDecodeRecordLarge' -run '^$' -benchmem ./decoder/
 ```
 
 ### Streaming Encoder
 
-The throughput benchmarks below construct records inside the loop for the streaming path (matching how real streaming consumers produce records on the fly) and use a pre-built `Document` for the batch path (because batch *requires* the full Document to exist before it can run):
+`BenchmarkStreamEncodeLarge` and `BenchmarkEncodeLarge` under
+[Encoder Performance](#encoder-performance) give the throughput, and why the
+two are not like for like. For a memory comparison where both paths do the
+same total work, encoding 10,000 generated individuals:
 
-| Metric (1,000 individuals) | `encoder.Encode` (batch, pre-built doc) | `encoder.StreamEncoder` (records produced in loop) |
+| `TestMemoryBatchVsStreamingEncode` | `encoder.Encode` (batch) | `encoder.StreamEncoder` |
 |---|---|---|
-| Time/op | 1.27 ms | 1.77 ms |
-| Bytes/op | 400 KB | 1.67 MB |
-| Allocs/op | 25,009 | 41,505 |
+| Cumulative bytes allocated | 20.6 MB | 20.6 MB |
+| Retained heap after return, median of 6 | 20.5 MB | 0.4 MB |
+| Range over the 6 runs | 20.5–20.6 MB | 0.4–3.4 MB |
 
-Streaming throughput appears worse because the streaming benchmark includes record-construction cost while the batch benchmark excludes it (the cost is paid up front, before `b.ResetTimer`). For a memory comparison where both paths do the same total work, see the retained-heap test:
-
-| Metric (10,000 individuals) | Batch | Streaming | Ratio |
-|---|---|---|---|
-| Cumulative bytes | 16 MB | 16 MB | 0.99x |
-| **Retained heap after** | **14,813 KB** | **2,492 KB** | **0.17x** |
-
-Streaming encode retains ~17% of batch encode's heap because batch keeps the entire `Document` (all 10K records) live throughout, while streaming generates and discards each record as it writes.
+Batch keeps the entire `Document` (all 10,000 records) live throughout, while
+streaming generates and discards each record as it writes, retaining about 2%
+as much (16% in the one run where a collection had not yet happened).
 
 ```bash
-go test -bench='EncodeLarge|StreamEncodeLarge' -benchmem ./encoder/
+go test -bench='EncodeLarge|StreamEncodeLarge' -run '^$' -benchmem ./encoder/
 go test -v -run TestMemory ./encoder/
 ```
 
 ### Streaming Validator
 
-| Document Size | Batch Validator | Stream Validator | Memory (Stream) |
-|---------------|-----------------|------------------|-----------------|
-| 1K individuals | 6.6 µs / 0 B | 7.2 µs | O(declared XRefs) |
-| 10K individuals | 66 µs / 0 B | 72 µs | O(declared XRefs) |
-| 100K individuals | 660 µs / 0 B | 720 µs | O(declared XRefs) |
+`BenchmarkStreamingValidate` under
+[Validator Performance](#validator-performance) gives the time and allocation
+of a streaming pass.
 
 `ValidateRecord` needs each record's typed `Entity`: feed it records from
 `decoder.DecodeRecord` (see [Typed Streaming](#typed-streaming-decoderdecoderecord)).
 A record built from raw lines alone is registered as declared but nothing in
 it is checked, so a pipeline that skips `DecodeRecord` reports no issues.
 
-Stream validator memory scales with the number of declared XRefs, plus the references to XRefs not yet declared (needed for orphan-reference detection at `Finalize()`), not with total record count. Each distinct XRef is stored once, in a few dozen bytes; a reference to a record already seen is checked at once and not kept; and a forward reference is kept as three integers until its record arrives. A file that writes all individuals before all families therefore holds every individual-to-family reference until the families come.
+Stream validator memory scales with the number of declared XRefs, plus the references to XRefs not yet declared (needed for orphan-reference detection at `Finalize()`), not with total record count. Each distinct XRef is stored once, in a few dozen bytes; a reference to a record already seen is checked at once and not kept; and a forward reference is kept as three integers until its record arrives. A file that writes all individuals before all families therefore holds every individual-to-family reference until the families come. [Large-File Measurements](#large-file-measurements) has the figures for a 1.5 M-record file.
 
-Measured on two synthetic GEDCOM 5.5.1 files of 1,000,000 individuals and 500,000 families (1.5 M records; every record declared and referenced; all individuals first) on an 8-core arm64 machine. The first gives each individual one FAMS and each family a HUSB and a WIFE; the second adds a FAMC to nearly every individual and two CHIL to half the families, doubling the forward references:
-
-| File | Pipeline | Peak RSS | Heap before `Finalize` |
-|---|---|---|---|
-| FAMS, HUSB, WIFE (459 MB) | `parser.Records` → `DecodeRecord` | 23 MB | — |
-| | … → `StreamingValidator`, before #778 | 829 MB | 413 MB |
-| | … → `StreamingValidator` | 136 MB | 53 MB |
-| adds FAMC, CHIL (345 MB) | … → `StreamingValidator`, before #778 | 1,251 MB | 546 MB |
-| | … → `StreamingValidator` | 159 MB | 64 MB |
-
-The whole pipeline's CPU time also fell, from 25.4 s to 11.3 s of user time on the first file. Peak RSS varies by about ±10 MB between runs. Note that streaming validation currently covers Individual and Family records fully and collects cross-references from Source records; Repository, Note, Multimedia Object, and Submitter records are not validated in streaming mode — use batch `validator.Validate()` if you need coverage for those types.
+Streaming validation currently covers Individual and Family records fully and collects cross-references from Source records; Repository, Note, Multimedia Object, and Submitter records are not validated in streaming mode — use batch `validator.Validate()` if you need coverage for those types.
 
 ### Incremental Parser
 
-| Operation | Time | Memory | Notes |
-|-----------|------|--------|-------|
-| Build index (1K records) | ~1.5 ms | O(records) | One-time cost |
-| Build index (10K records) | ~15 ms | O(records) | One-time cost |
-| Lookup by XRef | O(1) | O(1) | After index built |
-| Iterate (per record) | ~1.5 µs | O(1) | Constant memory |
-| Save/Load index | ~0.5 ms | O(records) | Persist for reuse |
+`parser.LazyParser` builds an index of record offsets in one pass and then
+finds a record by XRef in O(1); iteration holds one record at a time. The
+`BenchmarkRecordIteratorWithOffset` rows under
+[File Parsing](#file-parsing) measure offset-tracking iteration, the pass an
+index is built from. The index is held in memory whole and can be saved and
+loaded to skip the scan; [Large-File Measurements](#large-file-measurements)
+has its size on a 1.5 M-record file. Records the index finds are raw: decode
+them with `decoder.DecodeRecord` for typed access.
 
-**Key Insight**: Index enables O(1) random access; iteration uses O(1) memory per record.
+### Large-File Measurements
 
-The index is held in memory whole. On the 1.5 M-record file above it retained
-167 MB of heap after building (about 117 B per entry), with peak RSS of 625 MB
-while building; an earlier measurement saw 337 MB of heap (about 230 B per
-entry) before collection. Saved, it took 52 MB on disk. Records the index finds
-are raw: decode them with `decoder.DecodeRecord` for typed access.
+These figures are **not** from the benchmark run above. They are one-off
+measurements, taken while the features were built, on synthetic GEDCOM 5.5.1
+files too large to keep in the repository, on an 8-core arm64 machine with
+16 GB. They have not been re-measured since; treat them as the order of
+magnitude.
+
+A file of 1,000,000 individuals and 500,000 families (1.5 M records, 481 MB).
+CPU time is reported because wall time varied with machine load:
+
+- `parser.Records` alone: 8.0 s CPU, 34 MB peak RSS.
+- `parser.Records` → `DecodeRecord`: 16.4 s CPU, 64 MB peak RSS, about 5.6 µs
+  of CPU per record for `DecodeRecord`. That is CPU time summed over all
+  cores, garbage collection included, on a different file, so it is not
+  comparable with the 1.5 µs of wall-clock time per record under
+  [Typed Streaming](#typed-streaming-decoderdecoderecord).
+- `LazyParser.FindRecord` followed by `DecodeRecord`: about 2 ms for one
+  record of the 1.5 M.
+- The `LazyParser` index: 167 MB of heap retained after building (about 117 B
+  per entry), 625 MB peak RSS while building, 52 MB saved to disk.
+- `decoder.Decode` (batch) of a 100,000-individual, 47 MB subset: 823 MB peak
+  RSS. Batch peak RSS was about 13–17× the file size, up to 8.6 GB (73 s) for
+  a 676 MB file of the same shape; above a few hundred megabytes, typed access
+  is practical only through `DecodeRecord`.
+- `decoder.Decode` of the scale fixture (48.3 MB, a real export): about
+  930 MB peak RSS for a single decode.
+
+`StreamingValidator` on two files of the same record counts, every record
+declared and referenced, all individuals first. The first (459 MB) gives each
+individual one FAMS and each family a HUSB and a WIFE; the second (345 MB)
+adds a FAMC to nearly every individual and two CHIL to half the families,
+doubling the forward references. Peak RSS varied by about ±10 MB between runs:
+
+- `parser.Records` → `DecodeRecord`, no validator, first file: 23 MB peak RSS.
+- With `StreamingValidator`, first file: 136 MB peak RSS, 53 MB of heap before
+  `Finalize` (829 MB and 413 MB before #778).
+- With `StreamingValidator`, second file: 159 MB peak RSS, 64 MB of heap
+  before `Finalize` (1,251 MB and 546 MB before #778).
 
 ### When to Use Streaming APIs
 
@@ -505,10 +535,12 @@ Encoding detection in `charset.NewReader` reads only the header (at most 64 KiB)
    ```
 
 3. **Memory Budget**:
-   - Batch APIs: budget ~13-20x file size peak RSS (measured: 46MB file -> ~930MB peak; 676MB -> 8.6GB)
+   - Batch APIs: memory grows with the input; size the limit from
+     [Decoding Untrusted Input](untrusted-input.md#sizing-iolimitreader)
    - Streaming APIs: O(1) to O(declared XRefs) regardless of file size
 
-4. **Processing Time**: Budget ~30ms per MB (100MB file -> ~3 seconds)
+4. **Processing Time**: Budget 13–31 ms per MB for `Decode`
+   ([Decoder Performance](#decoder-performance))
 
 ### For Batch Processing
 
@@ -551,52 +583,34 @@ Encoding detection in `charset.NewReader` reads only the header (at most 64 KiB)
 make bench
 
 # Or manually
-go test -bench=. -benchmem ./...
+go test -run '^$' -bench=. -benchmem ./...
 
 # With profiling
-go test -bench=BenchmarkDecodeLarge -cpuprofile=cpu.prof -memprofile=mem.prof ./decoder
+go test -run '^$' -bench=BenchmarkDecodeLarge -cpuprofile=cpu.prof -memprofile=mem.prof ./decoder
 go tool pprof -http=:8080 cpu.prof
 ```
 
-## Regression Testing
+## Comparing Against a Baseline
+
+Nothing gates performance automatically: no CI job runs the benchmarks, and
+the tables above go stale unless someone re-runs them. To check a change,
+compare it with a baseline on the same machine, using
+[benchstat](https://pkg.go.dev/golang.org/x/perf/cmd/benchstat):
 
 ```bash
-# Save baseline
-make bench-save
+# Baseline from the latest release tag (benchmarks an export of the tag in a
+# temporary directory), or `make bench-save` on a checkout of your choosing
+make bench-baseline
 
-# Compare after changes
+# Benchmark the working tree and print benchstat's comparison
 make bench-compare
-
-# Run regression tests
-make perf-regression
 ```
 
-## Troubleshooting
-
-### Slow Parsing
-- **Symptoms**: ParseLine > 200ns/op, allocations > 500B/op
-- **Diagnosis**: `go test -bench=BenchmarkParseLine -cpuprofile=cpu.prof ./parser`
-- **Common causes**: String allocation in hot path, regex compilation per line
-
-### High Memory Usage
-- **Symptoms**: Decode using > 20MB for 1000 individuals
-- **Diagnosis**: `go test -bench=BenchmarkDecodeLarge -memprofile=mem.prof ./decoder`
-- **Common causes**: Duplicate string storage, unnecessary slice growth
-
-## Future Optimization Opportunities
-
-If performance becomes critical:
-
-1. **Parser Optimization**: Replace `strings.Fields` with custom parser (-20% allocations)
-2. **Object Pooling**: Pool Record and Tag objects for batch processing
-3. **Profile-Guided Optimization (PGO)**: Collect profiles, let Go compiler optimize hot paths (10-20% improvement)
-
-## Library Design Priorities
-
-1. **Correctness**: Full GEDCOM 5.5, 5.5.1, and 7.0 support
-2. **Safety**: Comprehensive validation and error reporting
-3. **Simplicity**: minimal dependencies (only `golang.org/x/text`), clean API
-4. **Reasonable Performance**: 32 MB/s is fast enough for most use cases
+Both write to gitignored files (`perf-baseline.txt`, `perf-current.txt`), and
+each takes about ten minutes. benchstat marks a difference only when it is
+statistically significant; read its `vs base` column rather than a fixed
+threshold. A benchmark whose fixture changed since the baseline, or that the
+baseline does not have, is not a comparison.
 
 ## Questions?
 
