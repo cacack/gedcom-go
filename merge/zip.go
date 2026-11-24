@@ -55,6 +55,9 @@ func zipCombine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Docum
 		return nil, nil, err
 	}
 	z := zipper{doc1: doc1, doc2: doc2}
+	if opts.Zip != nil {
+		z.dropped = placedByRecord(opts.Zip.DroppedFromDoc2)
+	}
 	unioned, conflicts, err := z.zipInto(ctx, out, in2.Records)
 	if err != nil {
 		return nil, nil, err
@@ -87,6 +90,139 @@ func zipCombine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Docum
 // families.
 type zipper struct {
 	doc1, doc2 *gedcom.Document
+	// dropped holds, by record XRef, the pointers with a recorded Position
+	// that were dropped from doc2.
+	dropped map[string][]gedcom.DroppedPointer
+	// place is the master position of each level-1 boundary pointer line
+	// of the two records being zipped; nil when it is not known (see
+	// positions).
+	place map[*gedcom.Tag]int
+}
+
+// placedByRecord groups the dropped pointers that carry a Position by the
+// record they were dropped from.
+func placedByRecord(dropped []gedcom.DroppedPointer) map[string][]gedcom.DroppedPointer {
+	var out map[string][]gedcom.DroppedPointer
+	for _, d := range dropped {
+		if d.Position == 0 {
+			continue
+		}
+		if out == nil {
+			out = make(map[string][]gedcom.DroppedPointer)
+		}
+		out[d.XRef] = append(out[d.XRef], d)
+	}
+	return out
+}
+
+// layout is a record's level-1 lines as its master held them, rebuilt from
+// one subset's copy of the record and the pointers dropped from it.
+// Positions count from 1; index 0 is unused.
+type layout struct {
+	// dropped[p] is the pointer dropped from position p, or nil.
+	dropped []*gedcom.DroppedPointer
+	// kept[p] is the subset's line at position p, or nil.
+	kept []*gedcom.Tag
+}
+
+// newLayout rebuilds a record's master layout: the dropped lines sit at
+// their recorded positions and the record's own level-1 lines fill the
+// rest in order. With nothing dropped the record's lines are the layout. It
+// returns nil when the report does not fit the record: a position is out of
+// range or repeated, or the record still holds a line reported dropped.
+func newLayout(tags []*gedcom.Tag, dropped []gedcom.DroppedPointer) *layout {
+	var own []*gedcom.Tag
+	for _, t := range tags {
+		if t != nil && t.Level == 1 {
+			own = append(own, t)
+		}
+	}
+	n := len(own) + len(dropped)
+	l := &layout{dropped: make([]*gedcom.DroppedPointer, n+1), kept: make([]*gedcom.Tag, n+1)}
+	for i := range dropped {
+		p := dropped[i].Position
+		if p < 1 || p > n || l.dropped[p] != nil {
+			return nil
+		}
+		l.dropped[p] = &dropped[i]
+	}
+	p := 1
+	for _, t := range own {
+		for i := range dropped {
+			if isDroppedLine(&dropped[i], t) {
+				return nil
+			}
+		}
+		for l.dropped[p] != nil {
+			p++
+		}
+		l.kept[p] = t
+		p++
+	}
+	return l
+}
+
+// isDroppedLine reports whether t is the line d reports as dropped.
+func isDroppedLine(d *gedcom.DroppedPointer, t *gedcom.Tag) bool {
+	return d.Tag == t.Tag && (d.Target == t.Value || d.Target == t.XRef)
+}
+
+// find returns the first position past after that holds t: a line of the
+// layout's own record that writes the same line, or a dropped pointer t
+// restores. It returns 0 when there is none.
+func (l *layout) find(t *gedcom.Tag, after int) int {
+	for p := after + 1; p < len(l.kept); p++ {
+		if d := l.dropped[p]; d != nil {
+			if isDroppedLine(d, t) {
+				return p
+			}
+		} else if sameLine(l.kept[p], t) {
+			return p
+		}
+	}
+	return 0
+}
+
+// positions returns where each level-1 boundary pointer line of r1 and r2
+// sat among the level-1 lines of the record they were cut from. r2's lines
+// are placed by the pointers reported dropped from it and, with no usable
+// report, as the whole record; each line of r1 is then looked up, in order,
+// among them. So with no report, r2's order stands when r2 holds every such
+// line of r1 in r1's order. (The other way round needs no positions: r2 then
+// adds no line.) It returns nil, leaving the lines to be merged in source
+// line order, when a line of r1 has no place.
+func (z zipper) positions(r1, r2 *gedcom.Record) map[*gedcom.Tag]int {
+	master := newLayout(r2.Tags, z.dropped[r2.XRef])
+	if master == nil {
+		master = newLayout(r2.Tags, nil)
+	}
+	place := make(map[*gedcom.Tag]int)
+	for p, t := range master.kept {
+		if t != nil && z.isBoundaryPointer(t) {
+			place[t] = p
+		}
+	}
+	last := 0
+	for _, t := range r1.Tags {
+		if t == nil || t.Level != 1 || !z.isBoundaryPointer(t) {
+			continue
+		}
+		last = master.find(t, last)
+		if last == 0 {
+			return nil
+		}
+		place[t] = last
+	}
+	return place
+}
+
+// before reports whether a's line goes no later than b's when two runs are
+// merged: by master position when both have one, else by source line number.
+func (z zipper) before(a, b *gedcom.Tag) bool {
+	if pa, pb := z.place[a], z.place[b]; pa > 0 && pb > 0 {
+		return pa <= pb
+	}
+	return a.LineNumber <= b.LineNumber
 }
 
 // zipHeaders unions two headers cut from one master as it unions a record:
@@ -165,6 +301,7 @@ func (z zipper) zipRecord(r1, r2 *gedcom.Record) (merged *gedcom.Record, conflic
 		}
 		return nil, ConflictUntagged
 	}
+	z.place = z.positions(r1, r2)
 	nodes, ok := z.zipNodes(buildTree(r1.Tags), buildTree(r2.Tags))
 	if !ok {
 		return nil, ConflictLines
@@ -278,21 +415,22 @@ func (z zipper) zipRun(a, b []*node) ([]*node, bool) {
 			extra = append(extra, nb)
 		}
 	}
-	return mergeByLine(run, extra), true
+	return z.mergeByLine(run, extra), true
 }
 
 // mergeByLine merges two runs into one, keeping the order within each and
 // interleaving them by source line number; on a tie a's line comes first.
 // Subsets cut in memory from one decoded document keep that document's line
-// numbers, so their runs interleave back into its order.
-func mergeByLine(a, b []*node) []*node {
+// numbers, so their runs interleave back into its order. Lines with a known
+// master position (see positions) interleave by that instead.
+func (z zipper) mergeByLine(a, b []*node) []*node {
 	if len(b) == 0 {
 		return a
 	}
 	out := make([]*node, 0, len(a)+len(b))
 	i, j := 0, 0
 	for i < len(a) && j < len(b) {
-		if a[i].tag.LineNumber <= b[j].tag.LineNumber {
+		if z.before(a[i].tag, b[j].tag) {
 			out = append(out, a[i])
 			i++
 		} else {

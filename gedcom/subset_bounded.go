@@ -29,6 +29,13 @@ type DroppedPointer struct {
 	// individual outside the set, is restored only when the other subset
 	// also holds the record it sat in, and is otherwise lost from the cut.
 	Restorable bool
+	// Position is where the removed line sat among the record's level-1
+	// lines before the cut, counting from 1. It is 0 when that is not
+	// recorded: the line was below level 1, or the pointer was removed
+	// from the typed Entity only. Every Restorable pointer has one.
+	// merge.ZipOptions.DroppedFromDoc2 takes the report, so that zipping
+	// puts each line back in its place.
+	Position int
 }
 
 // droppedMarker temporarily replaces a dropped pointer in a typed field, so
@@ -59,7 +66,8 @@ const droppedMarker = "\x00dropped"
 // (Family.Husband, Event.FamilyXRef) is cleared. Each removed raw line is
 // reported as a DroppedPointer, in record and line order; a record that has
 // no raw Tags reports each pointer removed from its Entity instead.
-// DroppedPointer.Restorable tells which of them zipping can put back.
+// DroppedPointer.Restorable tells which of them zipping can put back, and
+// DroppedPointer.Position where a level-1 line sat.
 //
 // Seeds are checked strictly, as Subset checks them: each must resolve to a
 // record (an error wrapping ErrUnknownXRef otherwise) that is an individual
@@ -255,8 +263,10 @@ func pruneRecord(r *Record, dropped func(string) bool) []DroppedPointer {
 	var report []DroppedPointer
 	var removed []*Tag
 	hasTags := len(r.Tags) > 0
+	original := r.Tags
 	r.Tags, removed = pruneTags(r.Tags, dropped)
-	for _, t := range removed {
+	positions := levelOnePositions(original, removed)
+	for i, t := range removed {
 		target := t.Value
 		if !dropped(target) {
 			target = t.XRef
@@ -264,6 +274,7 @@ func pruneRecord(r *Record, dropped func(string) bool) []DroppedPointer {
 		report = append(report, DroppedPointer{
 			XRef: r.XRef, Tag: t.Tag, Target: target,
 			Restorable: r.IsFamily() && t.Level == 1 && (t.Tag == "HUSB" || t.Tag == "WIFE" || t.Tag == "CHIL"),
+			Position:   positions[i],
 		})
 	}
 
@@ -287,6 +298,33 @@ func pruneRecord(r *Record, dropped func(string) bool) []DroppedPointer {
 		}
 	})
 	return report
+}
+
+// levelOnePositions returns, for each line of removed, its place among the
+// level-1 lines of tags, counting from 1, or 0 for a line at another level.
+// removed holds lines of tags, in order. A nil tag, which writes nothing, is
+// not counted.
+func levelOnePositions(tags, removed []*Tag) []int {
+	positions := make([]int, len(removed))
+	next, place := 0, 0
+	for _, t := range tags {
+		if next == len(removed) {
+			break
+		}
+		if t == nil {
+			continue
+		}
+		if t.Level == 1 {
+			place++
+		}
+		if t == removed[next] {
+			if t.Level == 1 {
+				positions[next] = place
+			}
+			next++
+		}
+	}
+	return positions
 }
 
 // pruneTags returns tags without each line whose Value or XRef is dropped,
