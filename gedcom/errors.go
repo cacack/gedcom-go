@@ -41,3 +41,12 @@ var ErrBelowMinimumAge = errors.New("below minimum age")
 // ValidateMarriageDates error for a child's birth or marriage provably before
 // the parent's or spouse's birth. The error's message gives both dates.
 var ErrEventBeforeBirth = errors.New("event before birth")
+
+// ErrNoMediaLinks is wrapped by the Record.AddMediaLink error for a record
+// whose typed entity holds no record-level media links (every record type but
+// individual, family and source), or that has no Entity. The error's message
+// names the record.
+var ErrNoMediaLinks = errors.New("record cannot carry media links")
+
+// ErrNilMediaLink is returned by Record.AddMediaLink for a nil *MediaLink.
+var ErrNilMediaLink = errors.New("nil media link")

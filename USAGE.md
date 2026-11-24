@@ -833,6 +833,22 @@ if err != nil {
 several records, take one `doc.NewXRefAllocator()` and call its
 `Next(prefix)` for each.
 
+`Record.AddMediaLink` then links the new record from an individual, family or
+source record. The link is added to the typed entity, and a decoded record is
+written from its raw `Tags`, so call `encoder.SyncTags` before encoding:
+
+```go
+person := doc.GetRecord("@I1@")
+if err := person.AddMediaLink(&gedcom.MediaLink{MediaXRef: xref}); err != nil {
+    log.Fatal(err) // wraps gedcom.ErrNoMediaLinks for a record type with no media links
+}
+if err := encoder.SyncTags(doc); err != nil {
+    log.Fatal(err)
+}
+
+links, ok := person.MediaLinks() // ok is false for a record type with no media links
+```
+
 ### Adding Individuals
 
 ```go

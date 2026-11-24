@@ -575,6 +575,17 @@ refs, err := doc.RemoveRecord("@I2@")   // pointers to @I2@ left behind
   returns each pointer still naming it, as a `gedcom.Reference` (holding
   record's XRef and tag path, such as `FAM.CHIL` or `HEAD.SUBM`); the pointers
   are reported, not changed
+- `Record.MediaLinks()` returns the record-level media links (the `OBJE`
+  structures directly under the record) of an individual, family or source
+  record, with no switch over the entity type. Its second result is false for
+  a record type whose typed entity holds none, which tells that apart from a
+  record that has none. A submitter record's `OBJE` links are not typed, so it
+  is false there and they are read from `Record.Tags`.
+  `Record.AddMediaLink(link)` appends one. It returns an error
+  wrapping `gedcom.ErrNoMediaLinks` for a record type that cannot carry links
+  or a record with no `Entity`, and `gedcom.ErrNilMediaLink` for a nil link.
+  It does not look for a link already present, and on a record with raw `Tags`
+  the new link is written only after `encoder.SyncTags`
 - `decoder.DecodeRecords` decodes a fragment of level-0 records (no `HEAD`,
   no `TRLR`) under the target document's version, identifier grammar and
   encoding, to the records the whole-file decoder gives the same lines, with

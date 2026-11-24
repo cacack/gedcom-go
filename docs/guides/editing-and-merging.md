@@ -9,7 +9,7 @@ Six tasks, each a section below:
 | Task | Use |
 |------|-----|
 | [Edit one record as text](#editing-one-record-as-text) | `encoder.EncodeRecord`, `decoder.DecodeRecords`, `Document.ReplaceRecord` |
-| [Add a record](#adding-a-record) | `Document.FreeXRef`, `Document.AddRecord` |
+| [Add a record](#adding-a-record) | `Document.FreeXRef`, `Document.AddRecord`, `Record.AddMediaLink` |
 | [See what changed](#seeing-what-changed) | `gedcom.Diff` |
 | [Combine two files](#combining-two-files) | `merge.Combine` |
 | [Merge duplicate records](#merging-duplicate-records) | `merge.Individuals`, `merge.Families` |
@@ -124,6 +124,32 @@ if err != nil {
   the document some other way.
 - **The prefix is not checked.** Use one the document's version allows; for
   GEDCOM 7.0 that is uppercase letters, digits and `_`.
+
+To link the new media record from an individual, family or source record,
+append to its record-level media links and bring the raw tags in step:
+
+```go
+person := doc.GetRecord("@I1@")
+if err := person.AddMediaLink(&gedcom.MediaLink{MediaXRef: xref}); err != nil {
+    return err
+}
+if err := encoder.SyncTags(doc); err != nil {
+    return err
+}
+```
+
+`Record.MediaLinks()` reads the same links, for any of the three record types,
+and reports with its second result whether the record type can carry them at
+all. Links deeper in a record, on an event or a source citation, are not
+included.
+
+| Error | When |
+|-------|------|
+| wraps `gedcom.ErrNoMediaLinks` | The record's type cannot carry record-level media links (a `NOTE` record, say), or the record has no `Entity` |
+| `gedcom.ErrNilMediaLink` | The link is nil |
+
+`AddMediaLink` does not look for an equal link already present: adding one
+twice links it twice. Check `MediaLinks()` first when that matters.
 
 ## Seeing What Changed
 
