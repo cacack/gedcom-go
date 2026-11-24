@@ -28,8 +28,19 @@ type RecordMergeOptions struct {
 	Context context.Context
 
 	// FoldEvents folds a substructure of drop into the substructure of keep
-	// that records the same event, instead of adding it beside it. Two
-	// level-1 substructures record the same event when they have the same
+	// that records the same event, instead of adding it beside it.
+	//
+	// It applies to the level-1 substructures the decoder reads into
+	// Individual.Events, Individual.Attributes, Family.Events or
+	// Family.Attributes for the type of record merged: the events and
+	// attributes of the GEDCOM grammar (BIRT, DEAT, RESI, OCCU, MARR, EVEN,
+	// FACT and the rest) and the 7.0 NO assertion. Any other substructure is
+	// handled as with FoldEvents unset, whatever DATE it has: CHAN and CREA,
+	// which date the record and not an event of the person or family, an LDS
+	// ordinance, an extension tag such as _MILT, or an event tag on the wrong
+	// type of record (MARR on an individual).
+	//
+	// Two such substructures record the same event when they have the same
 	// tag and value, each has exactly one DATE line and at most one PLAC
 	// and one TYPE line directly under it, and:
 	//   - the two DATE values parse with gedcom.ParseDate to the same date
@@ -190,16 +201,20 @@ func mergeRecords(doc *gedcom.Document, typ gedcom.RecordType, keep, drop string
 	// repointed separately, before its substructures move under keep.
 	gedcom.Apply(&gedcom.Document{Header: out.Header, Records: []*gedcom.Record{dropRec}}, mapping)
 
-	keepRec.Tags = mergeSubstructures(keepRec.Tags, dropRec.Tags, opts.FoldEvents, report)
+	var fold *folder
+	if opts.FoldEvents {
+		fold = &folder{header: out.Header, typ: typ}
+	}
+	keepRec.Tags = mergeSubstructures(keepRec.Tags, dropRec.Tags, fold, report)
 
 	decoder.SyncEntities(&gedcom.Document{Header: out.Header, Records: synced})
 	return out, report, nil
 }
 
 // mergeSubstructures returns keep's lines with each level-1 substructure of
-// drop deduplicated, folded (when fold is set) or moved under them, and
+// drop deduplicated, folded (when fold is not nil) or moved under them, and
 // records which in report.
-func mergeSubstructures(keep, drop []*gedcom.Tag, fold bool, report *RecordMergeReport) []*gedcom.Tag {
+func mergeSubstructures(keep, drop []*gedcom.Tag, fold *folder, report *RecordMergeReport) []*gedcom.Tag {
 	roots := buildTree(keep)
 	keepRoots := slices.Clone(roots)
 	var into []*node // into[i] is the keep substructure of report.Folded[i]
@@ -209,7 +224,7 @@ func mergeSubstructures(keep, drop []*gedcom.Tag, fold bool, report *RecordMerge
 			report.Deduplicated = append(report.Deduplicated, sub)
 			continue
 		}
-		if fold {
+		if fold != nil && fold.applies(n) {
 			if i := slices.IndexFunc(keepRoots, func(k *node) bool { return sameEvent(k, n) }); i >= 0 {
 				foldEvent(keepRoots[i], n)
 				report.Folded = append(report.Folded, Fold{Drop: sub})
@@ -323,6 +338,27 @@ func sameTree(a, b *node, norm func(string) string) bool {
 		}
 	}
 	return true
+}
+
+// folder decides which substructures RecordMergeOptions.FoldEvents applies
+// to, by how the decoder reads them in a record of type typ under header.
+type folder struct {
+	header *gedcom.Header
+	typ    gedcom.RecordType
+}
+
+// applies reports whether the decoder reads the level-1 substructure n into
+// the record's Events or Attributes.
+func (f *folder) applies(n *node) bool {
+	rec := &gedcom.Record{Type: f.typ, Tags: flatten([]*node{n}, nil)}
+	decoder.SyncEntities(&gedcom.Document{Header: f.header, Records: []*gedcom.Record{rec}})
+	switch e := rec.Entity.(type) {
+	case *gedcom.Individual:
+		return len(e.Events)+len(e.Attributes) > 0
+	case *gedcom.Family:
+		return len(e.Events)+len(e.Attributes) > 0
+	}
+	return false
 }
 
 // sameEvent reports whether keep's substructure k and drop's substructure d

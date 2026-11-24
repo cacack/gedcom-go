@@ -831,7 +831,7 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 |----------|-------------|
 | `merge.RemapXRefs(doc, transform)` | Pure XRef rewrite preserving referential integrity; original document unchanged. Records whose XRef is not pointer-shaped (e.g. recovered from a malformed line) are left as-is |
 | `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `PrefixAllDoc2`, `RenumberDoc2`, `ZipSharedXRefs`) |
-| `merge.Individuals(doc, keep, drop, opts)` | Fold the individual `drop` into `keep`, which the caller names; original document unchanged. `RecordMergeOptions.FoldEvents` folds a structure recording the same event (same tag, value, parsed date and `TYPE`; same place or one missing) into keep's, listed in `RecordMergeReport.Folded` |
+| `merge.Individuals(doc, keep, drop, opts)` | Fold the individual `drop` into `keep`, which the caller names; original document unchanged. `RecordMergeOptions.FoldEvents` folds an event or attribute recording the same event (same tag, value, parsed date and `TYPE`; same place or one missing) into keep's, listed in `RecordMergeReport.Folded` |
 | `merge.Families(doc, keep, drop, opts)` | The same for two family records; a child both list is listed once |
 
 `PrefixDoc2` and `RenumberDoc2` rename only the doc2 records whose XRef doc1

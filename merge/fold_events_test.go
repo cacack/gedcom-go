@@ -208,6 +208,31 @@ func TestFoldEvents(t *testing.T) {
 			want: []string{"1 BIRT", "2 DATE 7 DEC 1977", "1 BIRT", "2 DATE 7 DEC 1977", "2 DATE 8 DEC 1977"},
 		},
 		{
+			name: "LDS ordinance not folded",
+			keep: "1 BAPL\n2 DATE 7 DEC 1977\n",
+			drop: "1 BAPL\n2 DATE 07 DEC 1977\n2 TEMP SLAKE\n",
+			want: []string{"1 BAPL", "2 DATE 7 DEC 1977", "1 BAPL", "2 DATE 07 DEC 1977", "2 TEMP SLAKE"},
+		},
+		{
+			name: "extension tag not folded",
+			keep: "1 _MILT\n2 DATE 1917\n",
+			drop: "1 _MILT\n2 DATE 1917\n2 NOTE n\n",
+			want: []string{"1 _MILT", "2 DATE 1917", "1 _MILT", "2 DATE 1917", "2 NOTE n"},
+		},
+		{
+			name: "family event on an individual not folded",
+			keep: "1 MARR\n2 DATE 1 JUN 1925\n",
+			drop: "1 MARR\n2 DATE 01 JUN 1925\n",
+			want: []string{"1 MARR", "2 DATE 1 JUN 1925", "1 MARR", "2 DATE 01 JUN 1925"},
+		},
+		{
+			name:   "NO assertion folded",
+			keep:   "1 NO NATU\n2 DATE FROM 1900 TO 1910\n",
+			drop:   "1 NO NATU\n2 DATE from 1900 to 1910\n2 NOTE o\n",
+			want:   []string{"1 NO NATU", "2 DATE FROM 1900 TO 1910", "2 NOTE o"},
+			folded: 1,
+		},
+		{
 			name:   "first matching keep event",
 			keep:   "1 BIRT\n2 DATE 1977\n1 BIRT\n2 DATE 7 DEC 1977\n1 BIRT\n2 DATE 7 DEC 1977\n2 NOTE h\n",
 			drop:   "1 BIRT\n2 DATE 07 DEC 1977\n2 NOTE i\n1 BIRT\n2 DATE 7 Dec 1977\n2 NOTE j\n",
@@ -258,6 +283,26 @@ func TestFoldEvents_Off(t *testing.T) {
 	}
 	if len(report.Folded) != 0 || len(report.Moved) != 1 {
 		t.Errorf("report = %+v", report)
+	}
+}
+
+// TestFoldEvents_RecordDates checks FoldEvents leaves CHAN and CREA, which
+// date the record and not an event, as the default merge does (#940).
+func TestFoldEvents_RecordDates(t *testing.T) {
+	for _, tag := range []string{"CHAN", "CREA"} {
+		t.Run(tag, func(t *testing.T) {
+			keep := "1 " + tag + "\n2 DATE 7 DEC 1977\n3 TIME 10:00\n"
+			drop := "1 " + tag + "\n2 DATE 07 DEC 1977\n2 NOTE b\n"
+			off, offReport := mustMerge(t, merge.Individuals, decodeZip(t, foldTree(keep, drop)), "@I1@", "@I2@")
+			got, report := foldMerge(t, keep, drop)
+			want := []string{"1 " + tag, "2 DATE 7 DEC 1977", "3 TIME 10:00", "1 " + tag, "2 DATE 07 DEC 1977", "2 NOTE b"}
+			if !reflect.DeepEqual(got, want) || !reflect.DeepEqual(recordLines(t, off, "@I1@"), want) {
+				t.Errorf("@I1@ = %q with FoldEvents, %q without; want both %q", got, recordLines(t, off, "@I1@"), want)
+			}
+			if len(report.Folded) != 0 || len(report.Moved) != 1 || len(offReport.Moved) != 1 {
+				t.Errorf("Folded = %d, Moved = %d (%d without FoldEvents); want 0, 1 and 1", len(report.Folded), len(report.Moved), len(offReport.Moved))
+			}
+		})
 	}
 }
 

@@ -384,7 +384,9 @@ What happens:
   and so is a differing `SEX` or a second `BIRT`: both claims are kept for you
   or the validator to resolve.
 - **With `FoldEvents`, the same event is written once.** Set
-  `RecordMergeOptions.FoldEvents` and a structure of `drop` with the tag, value
+  `RecordMergeOptions.FoldEvents` and an event or attribute of `drop` (a
+  structure the decoder reads into `Events` or `Attributes`, so not `CHAN`,
+  `CREA`, an LDS ordinance or an extension tag) with the tag, value
   and date of one of `keep`'s (dates compared as parsed, so `7 DEC 1977` is
   `07 Dec 1977`), the same `TYPE` if any, and the same place or a place only
   one of them has, is folded
