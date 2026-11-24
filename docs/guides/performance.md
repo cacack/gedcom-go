@@ -438,7 +438,10 @@ CPU time is reported because wall time varied with machine load:
 
 - `parser.Records` alone: 8.0 s CPU, 34 MB peak RSS.
 - `parser.Records` → `DecodeRecord`: 16.4 s CPU, 64 MB peak RSS, about 5.6 µs
-  of CPU per record for `DecodeRecord`.
+  of CPU per record for `DecodeRecord`. That is CPU time summed over all
+  cores, garbage collection included, on a different file, so it is not
+  comparable with the 1.5 µs of wall-clock time per record under
+  [Typed Streaming](#typed-streaming-decoderdecoderecord).
 - `LazyParser.FindRecord` followed by `DecodeRecord`: about 2 ms for one
   record of the 1.5 M.
 - The `LazyParser` index: 167 MB of heap retained after building (about 117 B
