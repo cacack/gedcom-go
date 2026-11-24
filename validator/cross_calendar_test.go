@@ -106,8 +106,8 @@ func TestFindDuplicates_CrossCalendarBirthYears(t *testing.T) {
 
 func TestBirthYearsApart_Unconvertible(t *testing.T) {
 	unknown := &gedcom.Date{Year: 1900, Calendar: gedcom.Calendar(99)}
-	if _, ok := birthYearsApart(unknown, &gedcom.Date{Year: 1900}); ok {
-		t.Error("birthYearsApart(unknown calendar, Gregorian) ok = true, want false")
+	if _, ok := yearsApart(unknown, &gedcom.Date{Year: 1900}); ok {
+		t.Error("yearsApart(unknown calendar, Gregorian) ok = true, want false")
 	}
 }
 
@@ -140,9 +140,9 @@ func TestBirthYearsApart_Years(t *testing.T) {
 				t.Fatalf("ParseDate(%q): %v", tt.date2, err)
 			}
 			for _, pair := range [][2]*gedcom.Date{{d1, d2}, {d2, d1}} {
-				got, ok := birthYearsApart(pair[0], pair[1])
+				got, ok := yearsApart(pair[0], pair[1])
 				if !ok || got != tt.want {
-					t.Errorf("birthYearsApart(%q, %q) = %d, %v; want %d, true", pair[0].Original, pair[1].Original, got, ok, tt.want)
+					t.Errorf("yearsApart(%q, %q) = %d, %v; want %d, true", pair[0].Original, pair[1].Original, got, ok, tt.want)
 				}
 			}
 		})
@@ -157,7 +157,7 @@ func TestBirthYearsApart_UnplaceableRangeEnd(t *testing.T) {
 	}
 	start.Modifier = gedcom.ModifierBetween
 	start.EndDate = &gedcom.Date{Year: 5670, Calendar: gedcom.Calendar(99)}
-	if got, ok := birthYearsApart(start, &gedcom.Date{Year: 1899}); !ok || got != 0 {
-		t.Errorf("birthYearsApart(range with unplaceable end, 1899) = %d, %v; want 0, true", got, ok)
+	if got, ok := yearsApart(start, &gedcom.Date{Year: 1899}); !ok || got != 0 {
+		t.Errorf("yearsApart(range with unplaceable end, 1899) = %d, %v; want 0, true", got, ok)
 	}
 }

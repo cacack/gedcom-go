@@ -782,6 +782,37 @@ ABT 1850 (probably)       Valid in 5.5, invalid in 7.0
 - Extract phrase text if present
 - Store phrase separately from structured date
 
+### 8.9 Dates Spelled Out in English
+
+**Found in Wild**: exporters that pass a date through as the user typed it
+(Ancestry, MacFamilyTree, webtreeprint):
+```
+June 1880
+12 December 1846
+about 1873
+Abt. 1790
+between 1880 and 1885
+```
+
+None of these is a GEDCOM date, and `gedcom.ParseDate` rejects them all.
+`gedcom.ParseDateLenient`, which the decoder uses, reads a fixed list of
+spellings, case-insensitively, and returns the GEDCOM form each was read as:
+
+| Spelling | Read as |
+|----------|---------|
+| Full English month name (`June`, `December`) | The month code (`JUN`, `DEC`) |
+| Month code with a trailing period (`Jan.`) | The month code (`JAN`) |
+| Leading `about`, `before`, `after` | `ABT`, `BEF`, `AFT` |
+| Leading `between` … `and` … | `BET` … `AND` … |
+| `abt.`, `bef.`, `aft.`, `est.`, `cal.`, `bet.` | The keyword without the period |
+
+The decoder sets `ParsedDate`, keeps the raw value (written back byte for
+byte), and reports a `NONSTANDARD_DATE` warning naming the form the value was
+read as. Anything outside the list stays unparsed and is reported as
+`INVALID_VALUE`: `1935-1993` (probably a lifespan typed in a date field),
+`December 12, 1846`, `circa 1850`, `summer`. English month names are not read
+in Hebrew or French Republican dates.
+
 ---
 
 ## 9. Real-World GEDCOM Date Examples

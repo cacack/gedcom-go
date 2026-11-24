@@ -63,6 +63,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | `MISPLACED_TAG` | A tag the document's GEDCOM version defines, under a parent no structure with that tag allows it under (`1 MARR` on `INDI`, `1 EMAIL` on a 5.5.1 `INDI`, `1 DATE` on an `OBJE` record); the message names the parent (`MARR is not allowed under INDI`). Parents are matched by tag, from the vendored specification tables. Capped per tag name like `UNKNOWN_TAG`, with its own allowance | Preserved in raw form (`Record.Tags`, `Header.Tags`); the fix is to move the line, not rename it |
 | `DUPLICATE_XREF` | A level-0 record redefines an XRef an earlier record defined (error) | Both records kept in `Records`; `XRefMap`, so every pointer, resolves to the first definition |
 | `INVALID_VALUE` | Value doesn't match the expected format | Raw value preserved |
+| `NONSTANDARD_DATE` | A `DATE` spelled out in English (`June 1880`, `about 1873`) instead of GEDCOM keywords; a warning naming the GEDCOM form it was read as (`read as "JUN 1880"`). See [Date Formats](#date-formats) | Parsed into `ParsedDate`; raw value preserved and written back unchanged |
 | `MISSING_REQUIRED` | Required subordinate tag is missing | Reported; decoding continues |
 | `SKIPPED_RECORD` | A record's level-0 line was dropped, so its subordinate lines are skipped instead of attaching to the preceding record | Record dropped; decoding continues |
 | `DIAGNOSTICS_TRUNCATED` | More diagnostics than `DecodeOptions.MaxDiagnostics` (default 100,000; `decoder.UnlimitedDiagnostics` removes the bound) | The first ones are kept and this one, last, counts the rest; the document is unaffected |
@@ -1380,6 +1381,18 @@ err := date.Validate()
 
 `ParseDate` itself rejects a day or year written as `0` (`0 JAN 1850`, `1 JAN 0`, `0 BC`) — no calendar has one, and `0` is the "absent" value — and a signed day or year (`-1850`, `+1850`, `-5 JAN 1850`); write a B.C. year with a `BC` suffix. The decoder reports such a value as `INVALID_VALUE` and keeps it in the raw tags; the validator's `INVALID_DATE` check does not see it.
 
+`ParseDateLenient` is `ParseDate` plus a fixed list of English spellings, for exporters that pass a date through as typed (Ancestry, MacFamilyTree). It returns the date and the GEDCOM form the value was read as (`""` for a date `ParseDate` accepts); `Date.Original` stays the value as given. Matched case-insensitively:
+
+| Spelling | Example | Read as |
+|----------|---------|---------|
+| Full English month name | `June 1880`, `12 December 1846` | `JUN 1880`, `12 DEC 1846` |
+| Month code with a trailing period | `3 Jan. 1900` | `3 JAN 1900` |
+| Leading `about`, `before`, `after` | `about 1873` | `ABT 1873` |
+| Leading `between` … `and` … | `between 1880 and 1885` | `BET 1880 AND 1885` |
+| `ABT`, `BEF`, `AFT`, `EST`, `CAL`, `BET` with a trailing period | `Abt. 1790` | `ABT 1790` |
+
+Nothing else is read: `1935-1993`, `December 12, 1846`, `circa 1850` and `summer` still fail with `ParseDate`'s error, as does a value with a parenthesis or one naming the Hebrew or French Republican calendar. The decoder parses event, attribute and LDS ordinance dates this way and reports each recovered value as a `NONSTANDARD_DATE` warning; the raw value is written back byte for byte. `ParseDate`, which the validator and converter use to decide whether a value is a GEDCOM date, does not accept these spellings.
+
 Every `ParseDate` error wraps `gedcom.ErrEmptyDate` (empty or blank input) or `gedcom.ErrInvalidDate` (anything else), so `errors.Is` tells an absent date from a malformed one; the message still says what is wrong.
 
 ### Calendar Systems
@@ -1715,7 +1728,7 @@ malformed `AGE`. Design: [ADR 0011](docs/decisions/0011-grammar-conformance-chec
 
 **Duplicate Detection:**
 
-Configurable matching based on name similarity and date proximity:
+Configurable matching based on name similarity, birth and death dates and places:
 
 ```go
 config := &validator.DuplicateConfig{
@@ -1733,7 +1746,22 @@ for _, pair := range pairs {
 }
 ```
 
-Every field's zero value is its default, so a partial literal such as `&validator.DuplicateConfig{MinConfidence: 0.9}` keeps the other thresholds and name normalization in force. `MinNameSimilarity`, `MinConfidence` and `MaxBirthYearDiff` treat `0` as "use the default" (0.8, 0.7 and 2) and any negative value — spelled `validator.ZeroThreshold` — as an explicit zero. Name normalization (trim, lowercase, accent folding) is on unless `DisableNameNormalization` is set. Given-name similarity is the Levenshtein distance divided by the longer name's length, both counted in characters (runes) rather than bytes, so names in non-Latin scripts score on the same scale as ASCII ones. `DefaultDuplicateConfig()` returns a `*DuplicateConfig` with every default spelled out. Birth years are compared as astronomical years, so 44 BCE and 44 CE are 87 years apart and 1 BCE and 1 CE are one year apart; a birth date with no real year (a phrase, year 0, `0 BC`) earns no birth-year credit. Birth dates in different calendars are each placed on their first day (a dual date read in New Style, a modifier or range end ignored, a day or month the calendar does not have dropped) and compared as Gregorian years, so Hebrew 5660 and Gregorian 1899 are the same year while Hebrew 1900 and Gregorian 1900 are not; two dates in the same calendar compare `Year` as written, so a dual date counts from its Old Style year. Contradictions veto a pair outright rather than merely withholding credit: when both birth dates are exact (no `ABT`, `BEF`, `AFT`, `BET`, `FROM` or other modifier) and their years differ by more than `MaxBirthYearDiff`, or both sexes are known (`M`, `F` or `X`, compared case-insensitively) and differ, the pair is never reported, so a namesake father and son born decades apart are not flagged. An approximate or range birth date outside the window only withholds credit, since its first year need not contradict the other date. A missing birth year, or a missing or `U` sex, neither vetoes nor earns credit.
+Every field's zero value is its default, so a partial literal such as `&validator.DuplicateConfig{MinConfidence: 0.9}` keeps the other thresholds and name normalization in force. `MinNameSimilarity`, `MinConfidence` and `MaxBirthYearDiff` treat `0` as "use the default" (0.8, 0.7 and 2) and any negative value — spelled `validator.ZeroThreshold` — as an explicit zero. Name normalization (trim, lowercase, accent folding) is on unless `DisableNameNormalization` is set. Given-name similarity is the Levenshtein distance divided by the longer name's length, both counted in characters (runes) rather than bytes, so names in non-Latin scripts score on the same scale as ASCII ones. `DefaultDuplicateConfig()` returns a `*DuplicateConfig` with every default spelled out. Birth years are compared as astronomical years, so 44 BCE and 44 CE are 87 years apart and 1 BCE and 1 CE are one year apart; a birth date with no real year (a phrase, year 0, `0 BC`) earns no birth-year credit. Birth dates in different calendars are each placed on their first day (a dual date read in New Style, a modifier or range end ignored, a day or month the calendar does not have dropped) and compared as Gregorian years, so Hebrew 5660 and Gregorian 1899 are the same year while Hebrew 1900 and Gregorian 1900 are not; two dates in the same calendar compare `Year` as written, so a dual date counts from its Old Style year. Contradictions veto a pair outright rather than merely withholding credit: when both birth dates are exact (no `ABT`, `BEF`, `AFT`, `BET`, `FROM` or other modifier) and their years differ by more than `MaxBirthYearDiff`, or both sexes are known (`M`, `F` or `X`, compared case-insensitively) and differ, the pair is never reported, so a namesake father and son born decades apart are not flagged. An approximate or range birth date outside the window only withholds credit, since its first year need not contradict the other date. A missing birth year, or a missing or `U` sex, neither vetoes nor earns credit. Death dates follow the birth-year veto: two exact death dates whose years differ by more than `MaxBirthYearDiff` rule the pair out, and an approximate, bounded, range or missing death date does not.
+
+`Confidence` is the sum of the weights of the signals a pair agrees on, and each adds a line to `MatchReasons`:
+
+| Signal | Weight | Earned when |
+|--------|--------|-------------|
+| Surname | 0.30 | equal |
+| Given name | 0.30 × similarity | similarity at or above `MinNameSimilarity` |
+| Birth year | 0.20 / 0.10 | same year / within `MaxBirthYearDiff` |
+| Sex | 0.10 | both known and equal |
+| Full birth date | 0.04 | both exact, in one calendar, same day, month and year |
+| Death year | 0.03 | both death dates exact, same year |
+| Birth place | 0.02 | both recorded and equal |
+| Death place | 0.01 | both recorded and equal |
+
+The maximum is 1.0. A pair that agrees on name, birth year and sex alone scores 0.9, so a pair agreeing on the whole recorded life ranks above a same-name relative born the same year. Nothing is subtracted for a signal that differs or is not recorded. Places are compared whole (`Springfield` is not `Springfield, Example County`) after the same normalization as names.
 
 Comparison is quadratic within a surname group, and the input controls the surnames, so `MaxGroupSize` bounds it: any normalized-surname group larger than the cap is skipped whole and reported as one `DUPLICATE_DETECTION_LIMITED` warning (available as `DuplicateReport.LimitIssues` from `FindDuplicatesReport`, and included in `ValidateAll` and `QualityReport` output). Each pair's cost is quadratic in the given-name length too, so `MaxNameRunes` bounds that: a longer given name is compared on its first 64 runes and the individuals so compared are counted on the same warning. Both fields are tri-state and **zero is not unlimited** — `0` selects the default (`validator.DefaultMaxGroupSize` 1000, `validator.DefaultMaxNameRunes` 64), a negative value (`UnlimitedGroupSize`, `UnlimitedNameRunes`) disables the cap, and a positive value is used as given, so a partial config literal stays bounded. `ValidateOptions.SkipDuplicateDetection` drops duplicate detection from the `ValidateAll` sweep; `QualityReport`, `FindPotentialDuplicates` and `FindPotentialDuplicatesReport` still run it, bounded by `MaxGroupSize`. See [performance](docs/guides/performance.md#bounding-untrusted-input) for the worst-case bound and [ADR 0009](docs/decisions/0009-bounded-duplicate-detection.md) for the rationale.
 

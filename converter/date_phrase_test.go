@@ -444,6 +444,37 @@ func TestConvertDatePhraseUnfoldableTo5x(t *testing.T) {
 	}
 }
 
+// TestConvertEnglishDatePhraseTo5x covers issue #907 on a 7.0 downgrade: a
+// DATE spelled out in English is not a date the 5.x grammar can fold a PHRASE
+// into, so the PHRASE is dropped, and the event keeps the parsed form the
+// decoder gives the value, as decoding the converted file does.
+func TestConvertEnglishDatePhraseTo5x(t *testing.T) {
+	const input = "0 HEAD\n1 GEDC\n2 VERS 7.0\n" +
+		"0 @I1@ INDI\n1 BIRT\n2 DATE June 1880\n3 PHRASE early summer\n0 TRLR\n"
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	got, report, err := converter.Convert(doc, gedcom.Version551)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+	if _, ok := birthPhrase(got); ok {
+		t.Error("PHRASE left in 5.x output")
+	}
+	if !slices.Contains(dataLossFeatures(report), "PHRASE tags") {
+		t.Errorf("DataLoss = %+v, want a PHRASE tags item", report.DataLoss)
+	}
+	birth := got.GetIndividual("@I1@").BirthEvent()
+	if birth.Date != "June 1880" {
+		t.Errorf("Date = %q, want the raw value kept", birth.Date)
+	}
+	p := birth.ParsedDate
+	if p == nil || p.Month != 6 || p.Year != 1880 || p.Phrase != "" || p.Original != "June 1880" {
+		t.Errorf("ParsedDate = %+v, want June 1880 with no phrase", p)
+	}
+}
+
 // TestConvertDatePhraseEntityOnly covers documents built in code, whose
 // typed event is the encoder's only write path, in both directions.
 func TestConvertDatePhraseEntityOnly(t *testing.T) {

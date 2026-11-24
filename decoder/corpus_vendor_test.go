@@ -212,7 +212,7 @@ func TestCorpusVendorFiles(t *testing.T) {
 			vendor:      gedcom.VendorWebTreePrint,
 			individuals: 14,
 			families:    4,
-			diags:       map[string]int{CodeInvalidValue: 1},
+			diags:       map[string]int{CodeNonStandardDate: 1},
 		},
 		{
 			path:        "../testdata/edge-cases/bare-header-geo-coords.ged",
@@ -284,13 +284,13 @@ func TestCorpusVendorFiles(t *testing.T) {
 			families:    108,
 			// UNKNOWN_TAG: CREA/CHAN under events and names, FILN, AGNC,
 			// DATE and PLAC directly on SOUR records, SECG under NAME, RACE.
-			// INVALID_VALUE: "Abt."/"Bef."/"about" qualifiers and a full
-			// month name ("August 1978"); abbreviated months in mixed case
-			// ("10 Dec 1868") parse cleanly.
+			// NONSTANDARD_DATE: "Abt."/"Bef."/"about" qualifiers and a full
+			// month name ("August 1978"), read as their GEDCOM forms (#907);
+			// abbreviated months in mixed case ("10 Dec 1868") parse cleanly.
 			// 470 -> 467 for issue #730 (the three REPO.CREA are
 			// standard), then -> 69 as each tag past
 			// MaxUnknownTagDiagnosticsPerTag is summarized in one diagnostic.
-			diags:  map[string]int{CodeUnknownTag: 15, CodeMisplacedTag: 54, CodeInvalidValue: 19},
+			diags:  map[string]int{CodeUnknownTag: 15, CodeMisplacedTag: 54, CodeNonStandardDate: 19},
 			strict: true,
 		},
 		{
@@ -388,8 +388,10 @@ func TestCorpusVendorFiles(t *testing.T) {
 			vendor:      gedcom.VendorAncestry,
 			individuals: 12,
 			families:    13,
-			diags:       map[string]int{CodeMisplacedTag: 15, CodeInvalidValue: 19},
-			strict:      true,
+			// NONSTANDARD_DATE: full month names and "Before" (#907). The
+			// three INVALID_VALUE dates are outside its list.
+			diags:  map[string]int{CodeMisplacedTag: 15, CodeNonStandardDate: 16, CodeInvalidValue: 3},
+			strict: true,
 		},
 	}
 
@@ -628,16 +630,16 @@ func TestCorpusVendorWebtreeprintQuirks(t *testing.T) {
 		t.Errorf("UNKNOWN_TAG diagnostics for ALIA = %d, want 0 (ALIA is a standard GEDCOM 5.5 tag)", aliaUnknown)
 	}
 
-	// Free-text month rejected by the date parser but reported with context.
+	// Free-text month read as its GEDCOM form and reported with context.
 	foundDate := false
 	for _, d := range result.Diagnostics {
-		if d.Code == CodeInvalidValue && d.Context == "29 December 1812" {
+		if d.Code == CodeNonStandardDate && d.Context == "29 December 1812" && strings.Contains(d.Message, `"29 DEC 1812"`) {
 			foundDate = true
 			break
 		}
 	}
 	if !foundDate {
-		t.Error("no INVALID_VALUE diagnostic with context \"29 December 1812\" found")
+		t.Error("no NONSTANDARD_DATE diagnostic with context \"29 December 1812\" naming 29 DEC 1812 found")
 	}
 }
 
@@ -875,13 +877,13 @@ func TestCorpusVendorMacFamilyTree70Quirks(t *testing.T) {
 
 	foundAbt := false
 	for _, d := range result.Diagnostics {
-		if d.Code == CodeInvalidValue && d.Context == "Abt. 1790" {
+		if d.Code == CodeNonStandardDate && d.Context == "Abt. 1790" && strings.Contains(d.Message, `"ABT 1790"`) {
 			foundAbt = true
 			break
 		}
 	}
 	if !foundAbt {
-		t.Error("no INVALID_VALUE diagnostic with context \"Abt. 1790\" found")
+		t.Error("no NONSTANDARD_DATE diagnostic with context \"Abt. 1790\" naming ABT 1790 found")
 	}
 
 	foundFID := false

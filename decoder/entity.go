@@ -250,6 +250,20 @@ func (c *diagnosticCollector) addInvalidValue(lineNumber int, tag, value, reason
 	}
 }
 
+// addNonStandardDate records a DATE value that is not a GEDCOM date but was
+// read as readAs, its GEDCOM form.
+func (c *diagnosticCollector) addNonStandardDate(lineNumber int, value, readAs string) {
+	if c.collecting() {
+		c.add(NewDiagnostic(
+			lineNumber,
+			SeverityWarning,
+			CodeNonStandardDate,
+			fmt.Sprintf("non-standard value for DATE: read as %q", readAs),
+			value,
+		))
+	}
+}
+
 // populateEntities converts raw tags in each record into proper entities.
 // If collector is nil, no diagnostics are collected (backward compatible behavior).
 // It checks ctx before each record and returns ctx's error once it is done.
@@ -1083,9 +1097,10 @@ func parseEventDetailTag(detail *eventDetail, tags []*gedcom.Tag, i int, collect
 }
 
 // parseDateValue parses the DATE at tags[i], with its PHRASE (7.0) — the
-// date in prose — into a typed Date. When the payload does not parse, it
-// reports the raw value (which stays in Tags) and returns nil, unless a
-// PHRASE carries the date.
+// date in prose — into a typed Date. A value spelled out in English
+// (gedcom.ParseDateLenient) is parsed and reported as CodeNonStandardDate.
+// When the payload does not parse, it reports the raw value (which stays in
+// Tags) and returns nil, unless a PHRASE carries the date.
 //
 // A PHRASE is kept whatever the value: beside a value that does not parse
 // (including the empty DateValue 7.0 permits when a PHRASE carries the date),
@@ -1098,8 +1113,11 @@ func parseDateValue(tags []*gedcom.Tag, i int, collector *diagnosticCollector) *
 	tag := tags[i]
 	value := collector.text(tag.Value)
 	phrase := collector.text(findSubordinate(tags, i, "PHRASE"))
-	parsed, err := gedcom.ParseDate(value)
+	parsed, readAs, err := gedcom.ParseDateLenient(value)
 	if err == nil {
+		if readAs != "" {
+			collector.addNonStandardDate(tag.LineNumber, tag.Value, readAs)
+		}
 		if phrase != "" {
 			parsed.Phrase = phrase
 		}
