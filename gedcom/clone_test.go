@@ -830,6 +830,8 @@ func TestMediaObjectClone(t *testing.T) {
 	t.Run("copies all fields", func(t *testing.T) {
 		original := &MediaObject{
 			XRef:        "@M1@",
+			Form:        "jpeg",
+			Title:       "Record title",
 			NoteXRefs:   []string{"@N1@"},
 			RefNumbers:  []RefNumber{{Value: "REF1", Type: "user"}},
 			Restriction: "none",
@@ -852,6 +854,9 @@ func TestMediaObjectClone(t *testing.T) {
 		copied := original.Clone()
 		if copied == original {
 			t.Error("Copy should have different pointer")
+		}
+		if copied.Form != "jpeg" || copied.Title != "Record title" {
+			t.Errorf("Form, Title = %q, %q, want %q, %q", copied.Form, copied.Title, "jpeg", "Record title")
 		}
 		if len(copied.Files) != len(original.Files) {
 			t.Errorf("Files length = %d, want %d", len(copied.Files), len(original.Files))

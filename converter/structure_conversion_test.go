@@ -2,6 +2,7 @@ package converter
 
 import (
 	"bytes"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -539,5 +540,50 @@ func TestUpgrade55NestsMediaRecordForms(t *testing.T) {
 	// A true 5.5 record embeds a BLOB, which 7.0 has no form for.
 	if strings.Contains(out, "BLOB") || !hasDropped(report, "MediaObject @O2@ > BLOB") {
 		t.Errorf("BLOB not dropped and reported: %+v\n%s", report.Dropped, out)
+	}
+}
+
+// TestUpgrade55NestsMediaEntityForms: a record with no Tags is written from
+// its entity, so the record-level Form and Title (#879) move to the first
+// file there, each only where the file has none of its own.
+func TestUpgrade55NestsMediaEntityForms(t *testing.T) {
+	media := func(xref string, m *gedcom.MediaObject) *gedcom.Record {
+		m.XRef = xref
+		return &gedcom.Record{Type: gedcom.RecordTypeMedia, XRef: xref, Entity: m}
+	}
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version55},
+		Records: []*gedcom.Record{
+			media("@O1@", &gedcom.MediaObject{Form: "jpeg", Title: "Portrait",
+				Files: []*gedcom.MediaFile{{FileRef: "photo.jpg"}, {FileRef: "other.jpg"}}}),
+			media("@O2@", &gedcom.MediaObject{Form: "bmp", Title: "Record",
+				Files: []*gedcom.MediaFile{{FileRef: "scan.gif", Form: "gif", Title: "File"}}}),
+			media("@O3@", &gedcom.MediaObject{Form: "bmp"}),
+		},
+	}
+	converted, report, err := Convert(doc, gedcom.Version70)
+	if err != nil {
+		t.Fatalf("Convert: %v", err)
+	}
+
+	want := []*gedcom.MediaObject{
+		{XRef: "@O1@", Files: []*gedcom.MediaFile{
+			{FileRef: "photo.jpg", Form: "image/jpeg", Title: "Portrait"}, {FileRef: "other.jpg"}}},
+		// The file's own format and title win; the record's stay where they were.
+		{XRef: "@O2@", Form: "bmp", Title: "Record", Files: []*gedcom.MediaFile{
+			{FileRef: "scan.gif", Form: "image/gif", Title: "File"}}},
+		{XRef: "@O3@", Form: "bmp"},
+	}
+	for _, w := range want {
+		if got := converted.GetMediaObject(w.XRef); !reflect.DeepEqual(got, w) {
+			t.Errorf("%s = %+v, want %+v", w.XRef, got, w)
+		}
+	}
+	const note = "OBJE record FORM/TITL beside FILE"
+	if !hasNormalized(report, "MediaObject @O1@ > FILE", note, "FORM/TITL under FILE") {
+		t.Errorf("no Normalized note for @O1@: %+v", report.Normalized)
+	}
+	if hasNormalized(report, "@O2@", note, "FORM/TITL under FILE") || hasNormalized(report, "@O3@", note, "FORM/TITL under FILE") {
+		t.Errorf("Normalized note for a record nothing moved in: %+v", report.Normalized)
 	}
 }

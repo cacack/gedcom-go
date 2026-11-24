@@ -437,6 +437,8 @@ func (m *MediaObject) Clone() *MediaObject {
 
 	copied := &MediaObject{
 		XRef:            m.XRef,
+		Form:            m.Form,
+		Title:           m.Title,
 		NoteXRefs:       cloneStringSlice(m.NoteXRefs),
 		InlineNotes:     cloneStringSlice(m.InlineNotes),
 		SharedNoteXRefs: cloneStringSlice(m.SharedNoteXRefs),
