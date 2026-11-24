@@ -4,27 +4,8 @@ import (
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/mediatype"
 )
-
-// legacyToIANA maps legacy GEDCOM 5.5/5.5.1 media types to IANA media types.
-var legacyToIANA = map[string]string{
-	"JPG":  "image/jpeg",
-	"JPEG": "image/jpeg",
-	"PNG":  "image/png",
-	"GIF":  "image/gif",
-	"TIFF": "image/tiff",
-	"TIF":  "image/tiff",
-	"BMP":  "image/bmp",
-	"MP3":  "audio/mpeg",
-	"WAV":  "audio/wav",
-	"MP4":  "video/mp4",
-	"MPEG": "video/mpeg",
-	"MPG":  "video/mpeg",
-	"AVI":  "video/x-msvideo",
-	"PDF":  "application/pdf",
-	"TXT":  "text/plain",
-	"TEXT": "text/plain",
-}
 
 // ianaToLegacy maps IANA media types to legacy GEDCOM 5.5/5.5.1 media types.
 var ianaToLegacy = map[string]string{
@@ -219,8 +200,7 @@ func itoa(i int) string {
 // Returns the IANA media type if a mapping exists, or empty string if not found.
 // If the input already contains a slash (indicating IANA format), it is returned as-is.
 func toIANAMediaType(legacy string) string {
-	upper := strings.ToUpper(strings.TrimSpace(legacy))
-	if iana, ok := legacyToIANA[upper]; ok {
+	if iana, ok := mediatype.IANA(legacy); ok {
 		return iana
 	}
 	// Already in IANA format

@@ -354,23 +354,6 @@ func TestTransformMediaTypesReportDetails(t *testing.T) {
 	})
 }
 
-func TestLegacyToIANAMapping(t *testing.T) {
-	// Verify the mapping contains expected entries
-	expectedMappings := map[string]string{
-		"JPG":  "image/jpeg",
-		"JPEG": "image/jpeg",
-		"PNG":  "image/png",
-		"GIF":  "image/gif",
-		"PDF":  "application/pdf",
-	}
-
-	for legacy, expectedIANA := range expectedMappings {
-		if got := legacyToIANA[legacy]; got != expectedIANA {
-			t.Errorf("legacyToIANA[%q] = %q, want %q", legacy, got, expectedIANA)
-		}
-	}
-}
-
 func TestIANAToLegacyMapping(t *testing.T) {
 	// Verify the mapping contains expected entries
 	expectedMappings := map[string]string{
