@@ -213,6 +213,30 @@ validating hostile uploads at scale should lower `MaxNameRunes` or `MaxGroupSize
 both are the caller's to set. The two-individual probe above completes in under a
 millisecond.
 
+### Relatives (`CompareRelatives`)
+
+The opt-in relatives signal ([#932](https://github.com/cacack/gedcom-go/issues/932)) adds a
+second blocking key: individuals sharing a spouse's name are compared even when their
+surnames differ. Each spouse-name group obeys the same rule as a surname group — larger than
+`MaxGroupSize`, it is skipped whole and counted on the same notice, its sample entry written
+`spouse:<name>` — and a pair met in several groups is compared only in the group of the first spouse name it
+shares, and not at all when its surname group owns it, so no set of seen pairs is kept. Group memberships are bounded by the spouse links in the input, so the pair
+bound keeps its form, linear in input size times `MaxGroupSize`.
+
+Reading relatives has a cost of its own: many individuals can name one family with many
+children, so a document could make that the product of the two. At most 64 spouse links and
+64 child links are read per individual (a fixed constant, `maxRelativesRead`: no real person
+has more), and the individuals cut are counted on the notice as `truncated_relatives`.
+
+The link cap alone does not bound the work, because many individuals can name the same
+relative: thousands of individuals each linking one family whose husband has a very long name
+would normalize that name once per link, the document's size times the name's length. So each
+relative's name key is derived once per document and remembered, each individual's spouse keys
+are read once and shared by the spouse groups and its candidate, and a key's given name and
+surname are each cut to `MaxNameRunes` runes. Name normalization is then linear in the input,
+and the rest of the relatives work is bounded by the links read. Building the spouse groups
+checks the context, as the surname pass does.
+
 ### What Was Left Out
 
 A document-level `MaxIndividuals` gate was considered and deliberately omitted. That gate is

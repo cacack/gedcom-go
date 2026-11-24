@@ -1846,19 +1846,19 @@ func TestFindDuplicates_ContradictionsVeto(t *testing.T) {
 			wantReasons: []string{"exact surname match", "exact given name match", "same birth year", "same sex"},
 		},
 		{
-			name:  "unknown sex neither vetoes nor earns credit",
+			name:  "unknown sex neither vetoes nor costs credit",
 			year1: "1850", year2: "1850", sex1: "U", sex2: "F",
-			wantReasons: []string{"exact surname match", "exact given name match", "same birth year"},
+			wantReasons: []string{"exact surname match", "exact given name match", "same birth year", "sex not recorded on both"},
 		},
 		{
-			name:  "two unknown sexes earn no credit",
+			name:  "two unknown sexes cost no credit",
 			year1: "1850", year2: "1850", sex1: "U", sex2: "U",
-			wantReasons: []string{"exact surname match", "exact given name match", "same birth year"},
+			wantReasons: []string{"exact surname match", "exact given name match", "same birth year", "sex not recorded on both"},
 		},
 		{
-			name:  "missing sex neither vetoes nor earns credit",
+			name:  "missing sex neither vetoes nor costs credit",
 			year1: "1850", year2: "1850", sex1: "", sex2: "M",
-			wantReasons: []string{"exact surname match", "exact given name match", "same birth year"},
+			wantReasons: []string{"exact surname match", "exact given name match", "same birth year", "sex not recorded on both"},
 		},
 		{
 			name:  "within the window still reported",
