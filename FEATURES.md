@@ -546,6 +546,13 @@ err := doc.AddRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndivid
   `gedcom.ErrDuplicateXRef`, leaving the document unchanged; a nil record or
   document returns `gedcom.ErrNilRecord` / `gedcom.ErrNilDocument`
 - A record with an empty XRef is appended but not indexed
+- `Document.FreeXRef(prefix)` returns the first `@<prefix><n>@` that no record
+  defines and no pointer names, in the records or the header, so a new record
+  never takes the XRef of a dangling pointer and becomes its target. Pointers
+  are matched under the version the header declares. It reserves nothing; to
+  add several records, take one `Document.NewXRefAllocator()` and call
+  `XRefAllocator.Next(prefix)` for each. An allocator is a snapshot: it does
+  not see records added to the document after it was made
 - `Document.ReindexXRefs` rebuilds `XRefMap` from `Records` after direct
   edits; the first record wins when two share an XRef, as in the decoder
 

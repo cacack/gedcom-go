@@ -813,6 +813,26 @@ leaves them in place; remove or repoint them before encoding. Encoded with
 `PreserveLayout` (see [Preserving Layout](docs/guides/preserving-layout.md)),
 every other record is written exactly as it was read.
 
+### Adding a Record to a Decoded Document
+
+A new record needs an XRef the document does not use. `Document.FreeXRef`
+returns the first free `@<prefix><n>@`, skipping XRefs that a record defines
+and XRefs that only a pointer names:
+
+```go
+xref := doc.FreeXRef("O") // "@O1@" in a document with no @O1@
+err := doc.AddRecord(&gedcom.Record{XRef: xref, Type: gedcom.RecordTypeMedia,
+    Entity: &gedcom.MediaObject{XRef: xref,
+        Files: []*gedcom.MediaFile{{FileRef: "photos/ada.jpg", Form: "image/jpeg"}}}})
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+`FreeXRef` reserves nothing, so call it again only after `AddRecord`. To add
+several records, take one `doc.NewXRefAllocator()` and call its
+`Next(prefix)` for each.
+
 ### Adding Individuals
 
 ```go

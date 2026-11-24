@@ -4,11 +4,12 @@ How to change a decoded document record by record, see what changed between
 two documents, combine files, merge duplicate records, and cut a branch out
 and put it back.
 
-Five tasks, each a section below:
+Six tasks, each a section below:
 
 | Task | Use |
 |------|-----|
 | [Edit one record as text](#editing-one-record-as-text) | `encoder.EncodeRecord`, `decoder.DecodeRecords`, `Document.ReplaceRecord` |
+| [Add a record](#adding-a-record) | `Document.FreeXRef`, `Document.AddRecord` |
 | [See what changed](#seeing-what-changed) | `gedcom.Diff` |
 | [Combine two files](#combining-two-files) | `merge.Combine` |
 | [Merge duplicate records](#merging-duplicate-records) | `merge.Individuals`, `merge.Families` |
@@ -95,6 +96,34 @@ removed is written byte for byte as read. A record from `DecodeRecords` is
 written as new lines. To keep the layout of the lines an edit did not touch,
 edit a `Clone` of the old record instead of decoding text; see
 [What Changes](preserving-layout.md#what-changes).
+
+## Adding a Record
+
+A new record needs an XRef nothing in the document uses.
+`Document.FreeXRef(prefix)` returns the first free `@<prefix><n>@`:
+
+```go
+xref := doc.FreeXRef("O")
+err := doc.AddRecord(&gedcom.Record{XRef: xref, Type: gedcom.RecordTypeMedia,
+    Entity: &gedcom.MediaObject{XRef: xref,
+        Files: []*gedcom.MediaFile{{FileRef: "photos/ada.jpg", Form: "image/jpeg"}}}})
+if err != nil {
+    return err
+}
+```
+
+- **An XRef that only a pointer names is in use.** A file can hold
+  `1 OBJE @O3@` with no `@O3@` record; a new record given that XRef would
+  become the pointer's target. `FreeXRef` counts every XRef a record defines
+  and every pointer in the records and the header, read under the version the
+  header declares.
+- **`FreeXRef` reserves nothing.** Two calls return the same XRef until a
+  record takes it. To add several records, take one
+  `doc.NewXRefAllocator()` and call `Next(prefix)` for each; it never returns
+  an XRef twice. An allocator is a snapshot, so make a new one after changing
+  the document some other way.
+- **The prefix is not checked.** Use one the document's version allows; for
+  GEDCOM 7.0 that is uppercase letters, digits and `_`.
 
 ## Seeing What Changed
 

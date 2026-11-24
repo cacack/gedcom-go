@@ -1,10 +1,6 @@
 package converter
 
-import (
-	"strconv"
-
-	"github.com/cacack/gedcom-go/v3/gedcom"
-)
+import "github.com/cacack/gedcom-go/v3/gedcom"
 
 // convertedSourceSystem is the HEAD.SOUR system ID written for a document
 // whose header names no source system.
@@ -102,14 +98,7 @@ func setHeaderValue(header *gedcom.Header, name, value string) {
 // addUnknownSubmitter appends a SUBM record named unknownSubmitterName at the
 // first free @SUBM<n>@ and returns its XRef.
 func addUnknownSubmitter(doc *gedcom.Document) string {
-	used := xrefsInUse(doc)
-	xref := ""
-	for n := 1; ; n++ {
-		xref = "@SUBM" + strconv.Itoa(n) + "@"
-		if !used[xref] {
-			break
-		}
-	}
+	xref := doc.FreeXRef("SUBM")
 	record := &gedcom.Record{
 		XRef: xref,
 		Type: gedcom.RecordTypeSubmitter,
