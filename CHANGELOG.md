@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.0](https://github.com/cacack/gedcom-go/compare/v3.11.0...v3.12.0) (2026-11-24)
+
+
+### Features
+
+* **gedcom:** read dates spelled out in English ([768a5d3](https://github.com/cacack/gedcom-go/commit/768a5d30cce6aa8268d3c7d77813a71ad1c519f4)), closes [#907](https://github.com/cacack/gedcom-go/issues/907)
+* **validator:** score full dates and places in duplicate detection ([4630ffa](https://github.com/cacack/gedcom-go/commit/4630ffa7f41bfb68b99cf90dea14f68741b4a72b)), closes [#906](https://github.com/cacack/gedcom-go/issues/906)
+
 ## [3.11.0](https://github.com/cacack/gedcom-go/compare/v3.10.0...v3.11.0) (2026-11-24)
 
 
