@@ -78,6 +78,39 @@ func ExampleValidate() {
 	// ERROR ORPHANED_FAMC: FAMC reference to non-existent family @F9@
 }
 
+// ExampleWithoutDiagnosed shows reporting a decode's diagnostics and the
+// document's validation issues as one list. Both report the redefined @I1@ as
+// DUPLICATE_XREF; WithoutDiagnosed leaves it to the decoder's diagnostic.
+func ExampleWithoutDiagnosed() {
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME First /Example/
+0 @I1@ INDI
+1 NAME Second /Example/
+1 FAMC @F9@
+0 TRLR`
+
+	result, err := gedcomgo.DecodeWithDiagnostics(strings.NewReader(gedcomData))
+	if err != nil {
+		fmt.Printf("Decode: %v\n", err)
+		return
+	}
+	issues := gedcomgo.ValidateAll(result.Document)
+
+	for _, d := range result.Diagnostics {
+		fmt.Printf("decode   %s line %d\n", d.Code, d.Line)
+	}
+	for _, issue := range gedcomgo.WithoutDiagnosed(issues, result.Diagnostics) {
+		fmt.Printf("validate %s %s\n", issue.Code, issue.RecordXRef)
+	}
+
+	// Output:
+	// decode   DUPLICATE_XREF line 6
+	// validate ORPHANED_FAMC @I1@
+}
+
 // ExampleConvert shows converting a document to GEDCOM 7.0 and reading the
 // conversion report.
 func ExampleConvert() {

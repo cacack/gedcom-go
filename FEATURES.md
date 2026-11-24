@@ -25,6 +25,7 @@ converted, report, err := gedcomgo.Convert(doc, gedcomgo.Version70)  // Version 
 | `Encode(w, doc)` | Write GEDCOM file with default options |
 | `Validate(doc)` | `ValidateAll` as `[]error`; each element is a `*validator.Issue` |
 | `ValidateAll(doc)` | Comprehensive validation with severity levels (returns `[]Issue`) |
+| `WithoutDiagnosed(issues, diagnostics)` | Validation issues minus those the decode diagnostics already report (`DUPLICATE_XREF`), for callers that report both lists |
 | `Convert(doc, version)` | Convert between GEDCOM versions |
 
 Re-exported types for single-import convenience:
@@ -61,7 +62,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | `BAD_LEVEL_JUMP` | Indentation skips one or more levels (e.g., `1 BIRT` → `4 DATE`) | Level clamped to `prev + 1` so the subordinate attaches to its natural parent |
 | `UNKNOWN_TAG` | Tag the document's version does not define (or one the decoder does not read where the grammar allows it, or a defined tag whose parent's tag allows it under another structure) in a record or the header, or a level-0 record type outside the standard set (`0 @X1@ FOO`, lower-case `0 @I1@ indi`); underscore-prefixed extension tags and records are not reported. Each tag name is reported line by line up to `MaxUnknownTagDiagnosticsPerTag` (10) times, then once more counting its remaining lines | Preserved in raw form (`Record.Tags`, `Header.Tags`); an unknown record keeps its `Type` as written, with no entity |
 | `MISPLACED_TAG` | A tag the document's GEDCOM version defines, under a parent no structure with that tag allows it under (`1 MARR` on `INDI`, `1 EMAIL` on a 5.5.1 `INDI`, `1 DATE` on an `OBJE` record); the message names the parent (`MARR is not allowed under INDI`). Parents are matched by tag, from the vendored specification tables. Capped per tag name like `UNKNOWN_TAG`, with its own allowance | Preserved in raw form (`Record.Tags`, `Header.Tags`); the fix is to move the line, not rename it |
-| `DUPLICATE_XREF` | A level-0 record redefines an XRef an earlier record defined (error) | Both records kept in `Records`; `XRefMap`, so every pointer, resolves to the first definition |
+| `DUPLICATE_XREF` | A level-0 record redefines an XRef an earlier record defined (error). The one code the validator reports too, on the same line; `gedcomgo.WithoutDiagnosed` drops the repeat (see [decoding](docs/guides/decoding.md#diagnostics-and-validation-issues)) | Both records kept in `Records`; `XRefMap`, so every pointer, resolves to the first definition |
 | `INVALID_VALUE` | Value doesn't match the expected format | Raw value preserved |
 | `NONSTANDARD_DATE` | A `DATE` spelled out in English (`June 1880`, `about 1873`) instead of GEDCOM keywords; a warning naming the GEDCOM form it was read as (`read as "JUN 1880"`). See [Date Formats](#date-formats) | Parsed into `ParsedDate`; raw value preserved and written back unchanged |
 | `MISSING_REQUIRED` | Required subordinate tag is missing | Reported; decoding continues |
@@ -1567,7 +1568,7 @@ silently.
 - Proper hierarchy (levels increment by 1)
 - Required tags present (HEAD, TRLR)
 - Valid cross-references: every pointer in a record's raw tags must name an existing record (`BROKEN_XREF`, with the pointing line; the typed `ORPHANED_*` codes cover FAMC/FAMS/SOUR/HUSB/WIFE/CHIL). `@VOID@` is exempt as the null pointer when `Header.Version` is 7.0, or when no version is declared and no record is named `@VOID@`; in a document declaring 5.5/5.5.1 a dangling `@VOID@` is reported
-- XRefs defined by more than one record (`DUPLICATE_XREF`, error, on each record after the first, with its line); also reported by `StreamingValidator`
+- XRefs defined by more than one record (`DUPLICATE_XREF`, error, on each record after the first, with its line); also reported by `StreamingValidator`. For a decoded file the decoder's `DUPLICATE_XREF` diagnostic reports the same line, the only finding the two packages share; `gedcomgo.WithoutDiagnosed(issues, result.Diagnostics)` drops the issue the diagnostic already covers and keeps it for a document built in code
 - Data-quality heuristics, not spec rules (every GEDCOM version allows both records): individuals with no NAME (`MISSING_NAME`, warning) and families with no HUSB/WIFE/CHIL (`EMPTY_FAMILY`, warning), each with the record's line. `MISSING_REQUIRED_FIELD` is deprecated and no longer reported
 
 ### Version-Specific Validation

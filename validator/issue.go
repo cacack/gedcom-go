@@ -134,6 +134,10 @@ const (
 	// identifier. It carries SeverityError and is reported once per record
 	// after the first, with that record's line; the message names the line
 	// of the first definition, which Document.XRefMap resolves pointers to.
+	//
+	// It is the one code the decoder reports too (decoder.CodeDuplicateXRef),
+	// for the same record and line: see "Overlap with decode diagnostics" in
+	// the package documentation.
 	CodeDuplicateXRef = "DUPLICATE_XREF"
 )
 

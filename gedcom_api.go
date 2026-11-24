@@ -30,6 +30,16 @@
 //	    fmt.Println(err)
 //	}
 //
+// Report decode diagnostics and validation issues together. The two lists
+// overlap on one code, DUPLICATE_XREF; [WithoutDiagnosed] drops the repeats:
+//
+//	result, err := gedcomgo.DecodeWithDiagnostics(file)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	issues := gedcomgo.ValidateAll(result.Document)
+//	issues = gedcomgo.WithoutDiagnosed(issues, result.Diagnostics)
+//
 // Convert between versions:
 //
 //	converted, report, err := gedcomgo.Convert(doc, gedcomgo.Version70)
@@ -46,6 +56,7 @@ package gedcomgo
 
 import (
 	"io"
+	"slices"
 
 	"github.com/cacack/gedcom-go/v3/converter"
 	"github.com/cacack/gedcom-go/v3/decoder"
@@ -234,6 +245,53 @@ func ValidateAll(doc *Document) []Issue {
 // validator.NewWithOptions(opts).ValidateAllWithError, which reports it.
 func ValidateAllWithOptions(doc *Document, opts *ValidateOptions) []Issue {
 	return validator.NewWithOptions(opts).ValidateAll(doc)
+}
+
+// sharedFindingCodes are the codes the decoder and the validator both report,
+// under the same string, for the same defect. [WithoutDiagnosed] removes that
+// overlap; TestSharedFindingCodes fails when the packages gain another.
+var sharedFindingCodes = []string{validator.CodeDuplicateXRef}
+
+// WithoutDiagnosed returns issues without the findings diagnostics already
+// holds, for a caller that reports a decode's diagnostics and the decoded
+// document's validation issues together.
+//
+// The decoder and the validator each report a redefined XRef as
+// DUPLICATE_XREF ([decoder.CodeDuplicateXRef], [validator.CodeDuplicateXRef]),
+// the one code they share, so the two lists hold one finding each for the same
+// line. An issue is dropped when its code is DUPLICATE_XREF and a diagnostic
+// has that code on the issue's LineNumber for the issue's RecordXRef (a
+// diagnostic with no XRef, as [decoder.NewDiagnostic] builds, matches on the
+// line alone). Every other issue is kept, in order: one with no line (a
+// record built in code), one for a record given another XRef after decoding,
+// and one the decoder did not report, as when the document was never
+// decoded, was decoded in strict mode, or [DecodeOptions.MaxDiagnostics] cut
+// the diagnostic off.
+//
+// issues is not modified. Pass the diagnostics of the decode that produced
+// the validated document; lines from another file would match by accident.
+func WithoutDiagnosed(issues []Issue, diagnostics decoder.Diagnostics) []Issue {
+	type finding struct {
+		code string
+		line int
+		xref string
+	}
+	diagnosed := make(map[finding]bool)
+	for _, d := range diagnostics {
+		if slices.Contains(sharedFindingCodes, d.Code) {
+			diagnosed[finding{d.Code, d.Line, d.XRef}] = true
+		}
+	}
+	kept := make([]Issue, 0, len(issues))
+	for _, issue := range issues {
+		if issue.LineNumber > 0 &&
+			(diagnosed[finding{issue.Code, issue.LineNumber, issue.RecordXRef}] ||
+				diagnosed[finding{issue.Code, issue.LineNumber, ""}]) {
+			continue
+		}
+		kept = append(kept, issue)
+	}
+	return kept
 }
 
 // Convert converts a GEDCOM document to the target version.

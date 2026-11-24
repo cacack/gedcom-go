@@ -159,6 +159,10 @@ const (
 	// and the line of the redefinition; the message names the first
 	// definition's line. Both records are kept in Document.Records, and
 	// Document.XRefMap (so every pointer) resolves to the first.
+	//
+	// It is the one code the validator package reports too, for the same
+	// record and line: see "Overlap with the validator" in the package
+	// documentation.
 	CodeDuplicateXRef = "DUPLICATE_XREF"
 
 	// CodeCharsetMismatch indicates the input was decoded in an encoding other
