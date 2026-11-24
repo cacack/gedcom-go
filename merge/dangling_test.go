@@ -168,6 +168,25 @@ func TestCombine_DanglingPointer_PrefixCollision(t *testing.T) {
 	}
 }
 
+// TestCombine_DanglingPointer_PrefixTakenInDoc2 pins that under PrefixDoc2 a
+// colliding record is not prefixed to a name doc2 already uses: neither a
+// record's nor a dangling pointer's, which would then resolve to the renamed
+// record. Combine fails with ErrInvalidRemap.
+func TestCombine_DanglingPointer_PrefixTakenInDoc2(t *testing.T) {
+	p1 := decodePrefixAll(t, danglingHead+"0 @I1@ INDI\n0 TRLR\n")
+	for name, src := range map[string]string{
+		"dangling pointer": danglingHead + "0 @I1@ INDI\n0 @I2@ INDI\n1 ASSO @B_I1@\n2 RELA Friend\n0 TRLR\n",
+		"record":           danglingHead + "0 @I1@ INDI\n0 @B_I1@ INDI\n0 TRLR\n",
+	} {
+		p2 := decodePrefixAll(t, src)
+		_, _, err := merge.Combine(p1, p2, merge.CombineOptions{CollisionStrategy: merge.PrefixDoc2, Prefix: "B_"})
+		var rerr *merge.RemapError
+		if !errors.Is(err, merge.ErrInvalidRemap) || !errors.As(err, &rerr) || rerr.New != "@B_I1@" {
+			t.Errorf("%s: err = %v, want a *RemapError for @B_I1@", name, err)
+		}
+	}
+}
+
 // TestCombine_DanglingPointer_RenumberSkipsDanglingNames pins that
 // RenumberDoc2 never gives a renumbered record the name of a pointer doc2
 // leaves dangling.
