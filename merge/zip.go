@@ -50,6 +50,8 @@ func zipCombine(doc1, doc2 *gedcom.Document, opts CombineOptions) (*gedcom.Docum
 	if err != nil {
 		return nil, nil, err
 	}
+	// doc2's lines would index doc1's layout; see Combine.
+	out.Layout = nil
 	in2, err := cloneDoc(ctx, doc2)
 	if err != nil {
 		return nil, nil, err

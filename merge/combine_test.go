@@ -918,7 +918,7 @@ func TestCombineError_ErrorMessages(t *testing.T) {
 		{
 			name: "missing-prefix",
 			err:  &merge.CombineError{Kind: "missing-prefix"},
-			want: "merge: PrefixDoc2 strategy requires non-empty Prefix",
+			want: "merge: PrefixDoc2 and PrefixAllDoc2 strategies require non-empty Prefix",
 		},
 		{
 			name: "unknown",

@@ -4,11 +4,12 @@ How to change a decoded document record by record, see what changed between
 two documents, combine files, merge duplicate records, and cut a branch out
 and put it back.
 
-Five tasks, each a section below:
+Six tasks, each a section below:
 
 | Task | Use |
 |------|-----|
 | [Edit one record as text](#editing-one-record-as-text) | `encoder.EncodeRecord`, `decoder.DecodeRecords`, `Document.ReplaceRecord` |
+| [Add a record](#adding-a-record) | `Document.FreeXRef`, `Document.AddRecord`, `Record.AddMediaLink` |
 | [See what changed](#seeing-what-changed) | `gedcom.Diff` |
 | [Combine two files](#combining-two-files) | `merge.Combine` |
 | [Merge duplicate records](#merging-duplicate-records) | `merge.Individuals`, `merge.Families` |
@@ -96,6 +97,60 @@ written as new lines. To keep the layout of the lines an edit did not touch,
 edit a `Clone` of the old record instead of decoding text; see
 [What Changes](preserving-layout.md#what-changes).
 
+## Adding a Record
+
+A new record needs an XRef nothing in the document uses.
+`Document.FreeXRef(prefix)` returns the first free `@<prefix><n>@`:
+
+```go
+xref := doc.FreeXRef("O")
+err := doc.AddRecord(&gedcom.Record{XRef: xref, Type: gedcom.RecordTypeMedia,
+    Entity: &gedcom.MediaObject{XRef: xref,
+        Files: []*gedcom.MediaFile{{FileRef: "photos/ada.jpg", Form: "image/jpeg"}}}})
+if err != nil {
+    return err
+}
+```
+
+- **An XRef that only a pointer names is in use.** A file can hold
+  `1 OBJE @O3@` with no `@O3@` record; a new record given that XRef would
+  become the pointer's target. `FreeXRef` counts every XRef a record defines
+  and every pointer in the records and the header, read under the version the
+  header declares.
+- **`FreeXRef` reserves nothing.** Two calls return the same XRef until a
+  record takes it. To add several records, take one
+  `doc.NewXRefAllocator()` and call `Next(prefix)` for each; it never returns
+  an XRef twice. An allocator is a snapshot, so make a new one after changing
+  the document some other way.
+- **The prefix is not checked.** Use one the document's version allows; for
+  GEDCOM 7.0 that is uppercase letters, digits and `_`.
+
+To link the new media record from an individual, family or source record,
+append to its record-level media links and bring the raw tags in step:
+
+```go
+person := doc.GetRecord("@I1@")
+if err := person.AddMediaLink(&gedcom.MediaLink{MediaXRef: xref}); err != nil {
+    return err
+}
+if err := encoder.SyncTags(doc); err != nil {
+    return err
+}
+```
+
+`Record.MediaLinks()` reads the same links, for any of the three record types,
+and reports with its second result whether the record type can carry them at
+all. Links deeper in a record, on an event or a source citation, are not
+included.
+
+| Error | When |
+|-------|------|
+| wraps `gedcom.ErrNoMediaLinks` | The record's type cannot carry record-level media links (a `NOTE` record, say), or the record has no `Entity` |
+| `gedcom.ErrNilMediaLink` | The link is nil |
+
+`AddMediaLink` does not look for an equal link already present: adding one
+twice links it twice. Check `MediaLinks()` first when that matters.
+
 ## Seeing What Changed
 
 `gedcom.Diff` compares two documents record by record. Use it to review an
@@ -171,6 +226,7 @@ what to do about that:
 |---------------------|----------------------------------|
 | `ErrorOnCollision` (zero value) | `Combine` fails with `ErrXRefCollision` |
 | `PrefixDoc2` | Gets `CombineOptions.Prefix` in front: `@I1@` becomes `@b_I1@` |
+| `PrefixAllDoc2` | Gets the prefix too, and so does every other doc2 XRef |
 | `RenumberDoc2` | Gets the next free number for its record type: `@I1@` becomes `@I6@` |
 | `ZipSharedXRefs` | Is the same record; see [below](#cutting-a-branch-and-zipping-it-back) |
 
@@ -193,7 +249,11 @@ for _, c := range report.HeaderConflicts {
 What to expect:
 
 - **Only colliding XRefs are renamed**, and every pointer to a renamed record
-  is rewritten with it. doc1's XRefs never change. `report.RemappedXRefs` maps
+  is rewritten with it. The exception is `PrefixAllDoc2`, which renames every
+  doc2 record with a pointer-shaped XRef so that an XRef shows which file its
+  record came from. It also prefixes an XRef doc2 points at but does not
+  define, so a broken pointer in doc2 cannot resolve to a doc1 record. doc1's
+  XRefs never change. `report.RemappedXRefs` maps
   each doc2 XRef that changed to its new one; keep it if anything outside the
   document refers to doc2's records.
 - **Records are doc1's, then doc2's.** Nothing is deduplicated: a person in
@@ -217,7 +277,7 @@ Errors, all for `errors.Is`:
 | Error wraps | When |
 |-------------|------|
 | `merge.ErrNilDocument` | A document is nil |
-| `merge.ErrInvalidOptions` | An unknown strategy, or `PrefixDoc2` with no `Prefix` |
+| `merge.ErrInvalidOptions` | An unknown strategy, or `PrefixDoc2` or `PrefixAllDoc2` with no `Prefix` |
 | `merge.ErrIncompatibleHeader` | Versions or encodings differ |
 | `merge.ErrXRefCollision` | `ErrorOnCollision` and a shared XRef, or a rename that lands on an XRef already in use |
 | `merge.ErrRecordConflict` | `ZipSharedXRefs` and a shared record that differs |

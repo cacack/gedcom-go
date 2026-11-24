@@ -2,7 +2,6 @@ package converter
 
 import (
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -35,8 +34,7 @@ import (
 // are final, and before transformMediaTypes and the enumeration translation,
 // so the new records' FORM and MEDI are translated with every other record's.
 func promoteInlineMediaLinks(doc *gedcom.Document, report *gedcom.ConversionReport) {
-	used := xrefsInUse(doc)
-	next := 1
+	xrefs := doc.NewXRefAllocator()
 	var added []*gedcom.Record
 	for _, record := range doc.Records {
 		if record == nil || isExtension(string(record.Type)) {
@@ -56,9 +54,7 @@ func promoteInlineMediaLinks(doc *gedcom.Document, report *gedcom.ConversionRepo
 			if tags == nil {
 				continue
 			}
-			var xref string
-			xref, next = freeXRef(used, "O", next)
-			used[xref] = true
+			xref := xrefs.Next("O")
 			promoted := &gedcom.Record{XRef: xref, Type: gedcom.RecordTypeMedia, Tags: tags}
 			added = append(added, promoted)
 			if doc.XRefMap == nil {
@@ -128,18 +124,6 @@ func mediaRecordTags(block []*gedcom.Tag, linkLevel int) []*gedcom.Tag {
 	return append(out, rest...)
 }
 
-// freeXRef returns the first @<prefix><n>@, from n, not in used, and the n to
-// continue from.
-func freeXRef(used map[string]bool, prefix string, n int) (xref string, next int) {
-	for {
-		xref = "@" + prefix + strconv.Itoa(n) + "@"
-		n++
-		if !used[xref] {
-			return xref, n
-		}
-	}
-}
-
 // tagPath returns the tags from the record's level 1 down to tags[i].
 func tagPath(tags []*gedcom.Tag, i int) []string {
 	path := []string{tags[i].Tag}
@@ -168,36 +152,6 @@ func blockEnd(tags []*gedcom.Tag, i int) int {
 		end++
 	}
 	return end
-}
-
-// xrefsInUse returns every XRef doc's records and XRefMap hold, and every
-// XRef a pointer in the header or a record names, so a new record never
-// takes the XRef of a dangling pointer and silently becomes its target.
-func xrefsInUse(doc *gedcom.Document) map[string]bool {
-	used := map[string]bool{}
-	addPointers := func(tags []*gedcom.Tag) {
-		for _, t := range tags {
-			if t == nil {
-				continue
-			}
-			if v := strings.TrimSpace(t.Value); doc.IsPointerXRef(v) {
-				used[v] = true
-			}
-		}
-	}
-	for xref := range doc.XRefMap {
-		used[xref] = true
-	}
-	if doc.Header != nil {
-		addPointers(doc.Header.Tags)
-	}
-	for _, r := range doc.Records {
-		if r != nil {
-			used[r.XRef] = true
-			addPointers(r.Tags)
-		}
-	}
-	return used
 }
 
 // demoteMediaRecords replaces each OBJE record that holds a file with inline

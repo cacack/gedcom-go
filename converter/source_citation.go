@@ -38,8 +38,8 @@ import (
 // XRefs it checks for collisions are final and every pointer passes
 // Document.IsPointerXRef.
 func promoteInlineSourceCitations(doc *gedcom.Document, report *gedcom.ConversionReport) {
-	used := xrefsInUse(doc)
-	next, added, voided := 1, 0, 0
+	xrefs := doc.NewXRefAllocator()
+	added, voided := 0, 0
 	records := make([]*gedcom.Record, 0, len(doc.Records))
 	for _, record := range doc.Records {
 		if record == nil || isExtension(string(record.Type)) {
@@ -65,8 +65,7 @@ func promoteInlineSourceCitations(doc *gedcom.Document, report *gedcom.Conversio
 					"GEDCOM 7.0 requires a pointer; a citation of no source record points to @VOID@"
 				voided++
 			} else {
-				xref, next = freeXRef(used, "S", next)
-				used[xref] = true
+				xref = xrefs.Next("S")
 				promoted := &gedcom.Record{
 					XRef: xref,
 					Type: gedcom.RecordTypeSource,

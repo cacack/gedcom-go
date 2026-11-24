@@ -546,6 +546,13 @@ err := doc.AddRecord(&gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndivid
   `gedcom.ErrDuplicateXRef`, leaving the document unchanged; a nil record or
   document returns `gedcom.ErrNilRecord` / `gedcom.ErrNilDocument`
 - A record with an empty XRef is appended but not indexed
+- `Document.FreeXRef(prefix)` returns the first `@<prefix><n>@` that no record
+  defines and no pointer names, in the records or the header, so a new record
+  never takes the XRef of a dangling pointer and becomes its target. Pointers
+  are matched under the version the header declares. It reserves nothing; to
+  add several records, take one `Document.NewXRefAllocator()` and call
+  `XRefAllocator.Next(prefix)` for each. An allocator is a snapshot: it does
+  not see records added to the document after it was made
 - `Document.ReindexXRefs` rebuilds `XRefMap` from `Records` after direct
   edits; the first record wins when two share an XRef, as in the decoder
 
@@ -568,6 +575,17 @@ refs, err := doc.RemoveRecord("@I2@")   // pointers to @I2@ left behind
   returns each pointer still naming it, as a `gedcom.Reference` (holding
   record's XRef and tag path, such as `FAM.CHIL` or `HEAD.SUBM`); the pointers
   are reported, not changed
+- `Record.MediaLinks()` returns the record-level media links (the `OBJE`
+  structures directly under the record) of an individual, family or source
+  record, with no switch over the entity type. Its second result is false for
+  a record type whose typed entity holds none, which tells that apart from a
+  record that has none. A submitter record's `OBJE` links are not typed, so it
+  is false there and they are read from `Record.Tags`.
+  `Record.AddMediaLink(link)` appends one. It returns an error
+  wrapping `gedcom.ErrNoMediaLinks` for a record type that cannot carry links
+  or a record with no `Entity`, and `gedcom.ErrNilMediaLink` for a nil link.
+  It does not look for a link already present, and on a record with raw `Tags`
+  the new link is written only after `encoder.SyncTags`
 - `decoder.DecodeRecords` decodes a fragment of level-0 records (no `HEAD`,
   no `TRLR`) under the target document's version, identifier grammar and
   encoding, to the records the whole-file decoder gives the same lines, with
@@ -797,9 +815,17 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 | Function | Description |
 |----------|-------------|
 | `merge.RemapXRefs(doc, transform)` | Pure XRef rewrite preserving referential integrity; original document unchanged. Records whose XRef is not pointer-shaped (e.g. recovered from a malformed line) are left as-is |
-| `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `RenumberDoc2`, `ZipSharedXRefs`) |
+| `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `PrefixAllDoc2`, `RenumberDoc2`, `ZipSharedXRefs`) |
 | `merge.Individuals(doc, keep, drop, opts)` | Fold the individual `drop` into `keep`, which the caller names; original document unchanged |
 | `merge.Families(doc, keep, drop, opts)` | The same for two family records; a child both list is listed once |
+
+`PrefixDoc2` and `RenumberDoc2` rename only the doc2 records whose XRef doc1
+also holds. `PrefixAllDoc2` puts `CombineOptions.Prefix` in front of every
+doc2 XRef, colliding or not, so a record's XRef shows which document it came
+from; `CombineReport.RemappedXRefs` then lists every doc2 record with a
+pointer-shaped XRef. An XRef doc2 points at but does not define is prefixed
+too, so a broken pointer in doc2 stays broken instead of resolving to the doc1
+record of that XRef.
 
 `ZipSharedXRefs` is for documents cut from one master, such as bounded
 subsets: a shared XRef is one record. Identical records collapse to one;
@@ -837,7 +863,7 @@ to merge documents whose declared encodings differ (text is UTF-8 in
 memory either way) — doc1's encoding is kept and the difference is
 reported as a `HeaderConflict`. Argument errors wrap `merge.ErrNilDocument`
 (a nil document) or `merge.ErrInvalidOptions` (an unknown strategy, a
-`PrefixDoc2` with no `Prefix`, a nil transform), so `errors.Is` separates
+`PrefixDoc2` or `PrefixAllDoc2` with no `Prefix`, a nil transform), so `errors.Is` separates
 them from the data errors `ErrIncompatibleHeader`, `ErrXRefCollision` and
 `ErrInvalidRemap`.
 

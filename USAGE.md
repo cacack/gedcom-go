@@ -813,6 +813,42 @@ leaves them in place; remove or repoint them before encoding. Encoded with
 `PreserveLayout` (see [Preserving Layout](docs/guides/preserving-layout.md)),
 every other record is written exactly as it was read.
 
+### Adding a Record to a Decoded Document
+
+A new record needs an XRef the document does not use. `Document.FreeXRef`
+returns the first free `@<prefix><n>@`, skipping XRefs that a record defines
+and XRefs that only a pointer names:
+
+```go
+xref := doc.FreeXRef("O") // "@O1@" in a document with no @O1@
+err := doc.AddRecord(&gedcom.Record{XRef: xref, Type: gedcom.RecordTypeMedia,
+    Entity: &gedcom.MediaObject{XRef: xref,
+        Files: []*gedcom.MediaFile{{FileRef: "photos/ada.jpg", Form: "image/jpeg"}}}})
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+`FreeXRef` reserves nothing, so call it again only after `AddRecord`. To add
+several records, take one `doc.NewXRefAllocator()` and call its
+`Next(prefix)` for each.
+
+`Record.AddMediaLink` then links the new record from an individual, family or
+source record. The link is added to the typed entity, and a decoded record is
+written from its raw `Tags`, so call `encoder.SyncTags` before encoding:
+
+```go
+person := doc.GetRecord("@I1@")
+if err := person.AddMediaLink(&gedcom.MediaLink{MediaXRef: xref}); err != nil {
+    log.Fatal(err) // wraps gedcom.ErrNoMediaLinks for a record type with no media links
+}
+if err := encoder.SyncTags(doc); err != nil {
+    log.Fatal(err)
+}
+
+links, ok := person.MediaLinks() // ok is false for a record type with no media links
+```
+
 ### Adding Individuals
 
 ```go
@@ -948,6 +984,7 @@ The collision strategy decides what happens to an XRef both documents use:
 
 - `merge.ErrorOnCollision` (the zero value): refuse with `merge.ErrXRefCollision`
 - `merge.PrefixDoc2`: prepend `CombineOptions.Prefix` to doc2's colliding XRefs
+- `merge.PrefixAllDoc2`: prepend `CombineOptions.Prefix` to every doc2 XRef, colliding or not
 - `merge.RenumberDoc2`: give doc2's colliding records fresh XRefs
 - `merge.ZipSharedXRefs`: treat a shared XRef as one record (see [below](#cutting-and-rejoining-a-branch))
 

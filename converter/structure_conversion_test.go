@@ -136,13 +136,6 @@ func TestUpgrade55PromotesInlineMediaLink(t *testing.T) {
 	}
 }
 
-func TestFreeXRefSkipsUsed(t *testing.T) {
-	used := map[string]bool{"@O1@": true, "@O2@": true}
-	if xref, next := freeXRef(used, "O", 1); xref != "@O3@" || next != 4 {
-		t.Errorf("freeXRef = %q, %d", xref, next)
-	}
-}
-
 func TestDowngradeAddsRequiredHeader(t *testing.T) {
 	t.Run("no submitter record", func(t *testing.T) {
 		converted, report, out := convertText(t, "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @SUBM1@ INDI\n0 TRLR\n", gedcom.Version551)
