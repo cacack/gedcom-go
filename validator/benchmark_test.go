@@ -195,8 +195,9 @@ func BenchmarkValidateWithErrors(b *testing.B) {
 // possible duplicate.
 var validFixtureGivenNames = []string{"Alice", "Bartholomew", "Caoimhe", "Dmitri"}
 
-// validateBenchmarkSizes are the document sizes BenchmarkValidate{Minimal,
-// Small,Medium,Large} run. TestValidFixtureShape checks exactly this list.
+// validateBenchmarkSizes mirrors the document sizes BenchmarkValidate{Minimal,
+// Small,Medium,Large} pass as literals; keep the two in step.
+// TestValidFixtureShape checks exactly this list.
 var validateBenchmarkSizes = []int{1, 10, 100, 1000}
 
 // generateValidDocument builds a document of n individuals that ValidateAll
@@ -206,6 +207,9 @@ var validateBenchmarkSizes = []int{1, 10, 100, 1000}
 // therefore measure the validator's linear walk over a clean document, not
 // duplicate detection (BenchmarkFindDuplicates and
 // BenchmarkFindDuplicatesAdversarial measure that) and not issue construction.
+// The individuals carry only a name and a sex: with no families, events or
+// dates, the reference, reciprocity and date checks have nothing to examine,
+// and a real file costs more per individual.
 //
 // See TestValidFixtureShape, which pins this. The fixture this replaces took
 // XRefs and names from i%10, so it held ten distinct XRefs and one surname
