@@ -69,6 +69,8 @@ func TestEmptyLineSummarized(t *testing.T) {
 	firstOver := 6 + 3*MaxEmptyLineDiagnostics
 	want := NewDiagnostic(firstOver, SeverityWarning, CodeEmptyLine,
 		fmt.Sprintf("empty line (%d more empty lines, from this line on, skipped and not reported individually)", records+1-MaxEmptyLineDiagnostics), "")
+	// The blank line follows the tenth record's lines.
+	want.XRef, want.Path = fmt.Sprintf("@I%d@", MaxEmptyLineDiagnostics), "INDI"
 	if got := diags[MaxEmptyLineDiagnostics]; got != want {
 		t.Errorf("summary = %+v, want %+v", got, want)
 	}

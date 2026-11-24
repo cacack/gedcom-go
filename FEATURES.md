@@ -69,7 +69,9 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | `DIAGNOSTICS_TRUNCATED` | More diagnostics than `DecodeOptions.MaxDiagnostics` (default 100,000; `decoder.UnlimitedDiagnostics` removes the bound) | The first ones are kept and this one, last, counts the rest; the document is unaffected |
 | `CHARSET_MISMATCH` | The input was decoded in an encoding other than its `HEAD.CHAR` declares: a UTF-8 BOM overrode the declaration, or bytes declared `ANSEL`, `ANSI`/`LATIN1` or `ASCII` were valid UTF-8 | Decoded as UTF-8; `Header.Encoding` keeps the declared value and `Header.DetectedEncoding` names the applied one. Reported as a warning on the `CHAR` line |
 
-A diagnostic's `Message` and `Context`, and a `parser.ParseError`'s, echo at most `parser.MaxContextBytes` (256) bytes of the input, followed by `…` when clipped, so a malformed 1 MiB line does not yield a 1 MiB error string.
+Each diagnostic names where its `Line` is: `XRef` is the identifier of the enclosing level-0 record (`@I1@`; empty in the header, on the trailer and outside any record) and `Path` the tags from that record down to the line (`INDI.BURI.DATE`, `HEAD.CHAR`). See [Working with Diagnostics](docs/guides/decoding.md#working-with-diagnostics).
+
+A diagnostic's `Message`, `Context` and `Path`, and a `parser.ParseError`'s `Message` and `Context`, echo at most `parser.MaxContextBytes` (256) bytes of the input, followed by `…` when clipped, so a malformed 1 MiB line does not yield a 1 MiB error string.
 
 Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns the first syntax error, or the first invalid UTF-8 byte as a `*charset.InvalidUTF8Error` (matchable with `errors.Is(err, charset.ErrInvalidUTF8Sequence)`).
 

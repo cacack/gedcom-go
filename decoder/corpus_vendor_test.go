@@ -45,6 +45,8 @@ func diagHistogram(diags Diagnostics) map[string]int {
 // diagnostic reports and the number of lines it stands for: one, or for the
 // summary written past MaxUnknownTagDiagnosticsPerTag, the lines it counts. ok
 // is false for any other diagnostic.
+//
+//nolint:gocritic // By value, as Diagnostics holds them
 func unknownTagLines(d Diagnostic) (tag string, lines int, ok bool) {
 	var found bool
 	switch d.Code {

@@ -116,6 +116,8 @@ func (c *diagnosticCollector) collecting() bool {
 
 // add appends a diagnostic to the collector if it is collecting, unless the
 // budget is spent, in which case it is only counted.
+//
+//nolint:gocritic // By value, as NewDiagnostic returns it
 func (c *diagnosticCollector) add(d Diagnostic) {
 	if !c.collecting() {
 		return
