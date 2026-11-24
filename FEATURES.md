@@ -57,6 +57,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | `EMPTY_LINE` | Blank or whitespace-only line in the data, which no GEDCOM version's grammar allows (the Perl Gedcom.pm module writes one after every record); a warning, since nothing is lost. Reported line by line up to `MaxEmptyLineDiagnostics` (10) times, then once more counting the remaining blank lines | Skipped; strict mode still fails on it |
 | `INVALID_ENCODING` | A byte that is not valid UTF-8 in input read as UTF-8 (declared `UTF-8` or `ASCII`, or no recognized `CHAR`), such as a stray Windows-1252 `é` | Byte replaced with U+FFFD and the rest of the line and file kept; one diagnostic per byte, with its line and column, up to 100 bytes, then one counting the rest |
 | `AMBIGUOUS_CODEPAGE` | `CHAR ANSI` over a byte that Windows-1252 and Windows-1250 read differently (`0xE8`: `è` or `č`); a warning | File still read as Windows-1252; one diagnostic, at the first such byte, naming both readings. Not emitted when `DecodeOptions.ANSIEncoding` names the code page |
+| `SYNTAX_ERROR` | A line the parser rejects for any reason other than its level, its cross-reference identifier or being blank | Line skipped (`SKIPPED_RECORD` follows when it was a level-0 line) |
 | `INVALID_LEVEL` | Unparseable, negative, or over-99 level number | Line skipped |
 | `INVALID_XREF` | Cross-reference identifier that is malformed (contains a space in a document whose header does not declare GEDCOM 5.5 or 5.5.1, or has no closing `@`) or that the grammar forbids where it appears (`0 @X1@ HEAD`, `0 @X1@ TRLR`) | Identifier recovered verbatim so the record and its subordinate lines survive; because nothing is invented, an unterminated `@I1` is stored as `@I1` and ordinary `@I1@` pointers elsewhere do not resolve to it. An XRef on `HEAD`/`TRLR`, well-formed or recovered (`0 @I1 HEAD`), makes the line an ordinary record (`Type` `"HEAD"`/`"TRLR"`, `Entity == nil`) instead of the document's header or trailer, so the real header is never overwritten. Reported but *not* recovered when a level-0 identifier has no usable record tag after it (`0 @I1@`, `0 @I 1@`, `0 @I1`): the line keeps its pre-existing parse, so the record survives, owning its subordinate lines, but with `Type` set to the identifier and an empty `XRef`, absent from `XRefMap` — see [compatibility.md](docs/governance/policies/compatibility.md#encoding-and-grammar-limitations). An identifier recovered on a level >= 1 line (`1 @I 1@ NOTE x`) is kept on the raw `gedcom.Tag.XRef` and re-encoded verbatim |
 | `BAD_LEVEL_JUMP` | Indentation skips one or more levels (e.g., `1 BIRT` → `4 DATE`) | Level clamped to `prev + 1` so the subordinate attaches to its natural parent |
@@ -65,7 +66,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | `DUPLICATE_XREF` | A level-0 record redefines an XRef an earlier record defined (error). The one code the validator reports too, on the same line; `gedcomgo.WithoutDiagnosed` drops the repeat (see [decoding](docs/guides/decoding.md#diagnostics-and-validation-issues)) | Both records kept in `Records`; `XRefMap`, so every pointer, resolves to the first definition |
 | `INVALID_VALUE` | Value doesn't match the expected format | Raw value preserved |
 | `NONSTANDARD_DATE` | A `DATE` spelled out in English (`June 1880`, `about 1873`) instead of GEDCOM keywords; a warning naming the GEDCOM form it was read as (`read as "JUN 1880"`). See [Date Formats](#date-formats) | Parsed into `ParsedDate`; raw value preserved and written back unchanged |
-| `MISSING_REQUIRED` | Required subordinate tag is missing | Reported; decoding continues |
+| `MISSING_REQUIRED` | Required subordinate tag is missing | Reserved: the code is defined but the decoder does not currently emit it (the validator reports missing structures) |
 | `SKIPPED_RECORD` | A record's level-0 line was dropped, so its subordinate lines are skipped instead of attaching to the preceding record | Record dropped; decoding continues |
 | `DIAGNOSTICS_TRUNCATED` | More diagnostics than `DecodeOptions.MaxDiagnostics` (default 100,000; `decoder.UnlimitedDiagnostics` removes the bound) | The first ones are kept and this one, last, counts the rest; the document is unaffected |
 | `CHARSET_MISMATCH` | The input was decoded in an encoding other than its `HEAD.CHAR` declares: a UTF-8 BOM overrode the declaration, or bytes declared `ANSEL`, `ANSI`/`LATIN1` or `ASCII` were valid UTF-8 | Decoded as UTF-8; `Header.Encoding` keeps the declared value and `Header.DetectedEncoding` names the applied one. Reported as a warning on the `CHAR` line |
@@ -86,6 +87,7 @@ Strict mode (`DecodeOptions{StrictMode: true}`) disables recovery and returns th
 
 - Automatic version detection from header (GEDCOM 7 patch and minor versions such as `VERS 7.0.14` or `7.1` detect as 7.0, with `Header.DeclaredVersion` keeping `7.1`; vendor spellings `5.51`, `551`, `5.5.5`, `55`, `7` and a version followed by text such as `5.5.1 (GEDCOM)` read as the version they mean, with an `INVALID_VALUE` diagnostic on `GEDC.VERS`; a `0 @X1@ HEAD` record is not the header and never sets the version)
 - Heuristic-based detection for malformed headers
+- `version.DetectVersion(lines)` runs that detection on parsed lines (header, then tag heuristics, then 5.5 as the default); `version.DeclaredVersion(lines)` returns only what the header declares, `""` when it declares nothing recognized
 - Version-aware validation rules
 
 The table separates three claims that are easy to run together, because this
@@ -134,6 +136,13 @@ normalization and names the reason behind every exception: a non-UTF-8 source,
 a `CHAR` other than UTF-8 (always written as UTF-8), a header the encoder has
 to supply, or a level lenient recovery clamped. See
 [preserving-layout.md](docs/guides/preserving-layout.md).
+
+The recorded layout is `Document.Layout` (a `*gedcom.Layout`, nil unless the
+decoder was asked for it): `BOM`, `Lines` (one `LayoutLine` per source line,
+with what it parsed to, its exact `Text`, its `Terminator` and the skipped
+lines `Before` it), the `Head` and `Trailer` line numbers and the `Tail` after
+the last parsed line. `Layout.Line(n)` returns line n. It describes the source
+and is never updated as the document is edited; treat it as read-only.
 
 ### Version-Aware Export
 
@@ -212,6 +221,8 @@ for _, cite := range individual.SourceCitations {
 fmt.Println(doc.Header.AncestryTreeID)  // "@T123@"
 ```
 
+`gedcom.ParseAPID(value)` parses an `_APID` value on its own (`1,7602::2771226`, or `7602::2771226` without the prefix) into an `*AncestryAPID`, and returns nil for a value in neither form.
+
 ### FamilySearch Extensions
 
 | Tag | Location | Description |
@@ -267,7 +278,7 @@ for _, exid := range individual.ExternalIDs {
 | Value | The external identifier string |
 | Type | URI identifying the external system |
 
-Supported on: Individual, Family, Source, Repository, Submitter, Note, MediaObject
+Supported on: Individual, Family, Source, Repository, Submitter, Note, SharedNote, MediaObject, and `PlaceDetail`
 
 ### Schema Definition (SCHMA)
 
@@ -452,6 +463,10 @@ and [ADR 0012](docs/decisions/0012-gedzip-archive-model.md).
   reference to `gedcom.ged` (`ErrReservedName`) and a local reference with no
   regular file in the source (`ErrMissingMedia`) are refused before anything
   is written, every refused reference in one joined error
+- `WriteOptions.Encode` (an `*encoder.EncodeOptions`; nil means the encoder's
+  defaults) sets how the dataset is encoded. Its `TargetVersion`, when set,
+  decides the version the dataset is written as, and so whether `Write` accepts
+  the document
 
 **Bounded**
 
@@ -507,6 +522,8 @@ An invalid byte is reported as a `*charset.InvalidUTF8Error` or `*charset.Invali
 The charset declaration is `HEAD.CHAR` at level 1 only. Charset detection, `Header.Encoding` and the encoder's rewrite of `CHAR` to `UTF-8` all read that one line; a `CHAR` nested deeper in the header (`2 CHAR` under `SOUR`, say) is not a declaration, is kept in `Header.Tags` and written back verbatim.
 
 Bytes win over labels where they are unambiguous. A UTF-8 BOM overrides any `CHAR` value, and a `CHAR` of `ANSEL`, `ANSI`/`LATIN1`/`ISO-8859-1` or `ASCII` is overridden when the first 64 KiB of input hold at least one valid multi-byte UTF-8 sequence and no invalid one — the common "declares ANSEL, writes UTF-8" defect. Either override emits `CHARSET_MISMATCH`; `Header.Encoding` keeps what the file declares and `Header.DetectedEncoding` records what it was decoded as. `charset.NewDetectingReader` exposes the same decision (`charset.Detection`) below the decoder.
+
+The individual probes are exported too. `charset.DetectBOM(r)` reports a UTF-8 or UTF-16 LE/BE byte order mark (`EncodingUnknown` when there is none), and `charset.DetectEncodingFromHeader(r)` reads `HEAD.CHAR`, probing no further than the header or 64 KiB (`EncodingUnknown` when it is absent or unrecognised). Each returns a reader that replays the input, minus a BOM `DetectBOM` consumed. `charset.ValidateBytes` and `charset.ValidateString` report whether a value is valid UTF-8.
 
 ## Document Operations
 
@@ -689,9 +706,37 @@ branch, dropped, err := doc.BoundedSubset([]string{"@I3@", "@I7@"})
   children of a split family included, when the second subset's
   dropped-pointer report is passed in `ZipOptions.DroppedFromDoc2`
 
+### Pointer Classification and Walking
+
+The rules `Subset`, `merge` and the validator use to tell a pointer from
+other text, and to find the pointers a record holds, are exported:
+
+| Function | Description |
+|----------|-------------|
+| `gedcom.IsPointerXRef(s)` | `s` is shaped like `@xref@` under the GEDCOM 7.0 grammar (no whitespace, no interior `@`) and is not `@VOID@` |
+| `gedcom.IsPointerXRefForVersion(s, v)` | The same, also accepting the spaced identifiers 5.5 and 5.5.1 allow (`@N 1@`) when `v` is one of them |
+| `Document.IsPointerXRef(s)` | `IsPointerXRefForVersion` with the version the header declares |
+| `Document.IsRecordPointer(s)` | `s` names a record identifier in this document: a pointer, or `@VOID@` where it is not the null pointer |
+| `Document.IsNullPointer(s)` | `s` is `@VOID@` and is the 7.0 null pointer in this document |
+| `gedcom.Visit(record, fn)` | Calls `fn` for every pointer reachable from the record's `Entity` and raw `Tags`, 7.0 grammar; `@VOID@` is not visited |
+| `gedcom.VisitForVersion(record, v, fn)` | `Visit` under the grammar of version `v`; for 5.5/5.5.1, `@VOID@` is visited as an ordinary identifier |
+
+```go
+for _, record := range doc.Records {
+    gedcom.VisitForVersion(record, doc.Header.DeclaredVersion, func(xref string) {
+        fmt.Println(record.XRef, "->", xref)
+    })
+}
+```
+
+`Visit` skips definition sites (`Record.XRef` and entity `XRef` fields) and
+calls `fn` once per occurrence, so a pointer held by both the entity and the
+raw tags is visited more than once. Pass the declared version
+(`Header.DeclaredVersion`), not the possibly guessed `Header.Version`.
+
 ### Deep Copy
 
-Public `Clone()` methods on `Document`, `Header`, `Trailer`, `Record`,
+Public `Clone()` methods on `Document`, `Header`, `HeaderSourceData`, `Corporation`, `Trailer`, `Record`,
 `Tag`, `Individual`, `Family`, `Source`, `Repository`, `Note`,
 `MediaObject`, `Submitter`, `Submission`, and `SharedNote`. All return nil for a nil
 receiver and share no pointers with the original.
@@ -1001,7 +1046,7 @@ for _, m := range d.Modified {
 | CENS | Census | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
 | PROB | Probate | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
 | WILL | Will | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
-| EVEN | Generic Event | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
+| EVEN | Generic Event (`gedcom.EventGeneric`) | DATE, PLAC, TYPE, CAUS, AGE, AGNC |
 
 `EVEN` is the only event tag whose own payload the specification makes data
 rather than a `[Y|<NULL>]` flag, but exporters write text on named events too
@@ -1414,6 +1459,16 @@ Nothing else is read: `1935-1993`, `December 12, 1846`, `circa 1850` and `summer
 
 Every `ParseDate` error wraps `gedcom.ErrEmptyDate` (empty or blank input) or `gedcom.ErrInvalidDate` (anything else), so `errors.Is` tells an absent date from a malformed one; the message still says what is wrong.
 
+Three functions check a pair of dates against each other, returning nil when a date is nil or there is too little to decide:
+
+| Function | Returns an error when |
+|----------|-----------------------|
+| `gedcom.ValidateBirthBeforeDeath(birth, death)` | The death date is before the birth date, by `IsBefore`'s order (a partial date read as its first day, modifiers ignored) |
+| `gedcom.ValidateParentChildDates(parentBirth, childBirth, minParentAge)` | The parent was younger than `minParentAge` at the child's birth, or the child's birth is provably before the parent's |
+| `gedcom.ValidateMarriageDates(marriage, spouseBirth1, spouseBirth2, minMarriageAge)` | Either spouse was younger than `minMarriageAge` at the marriage, or the marriage is provably before that spouse's birth; only the first failure is returned |
+
+The last two compute ages with `AgeAt`, so a parent or spouse is too young only when even the oldest age the dates allow is below the minimum. Their errors wrap `gedcom.ErrBelowMinimumAge` or `gedcom.ErrEventBeforeBirth` for `errors.Is`.
+
 ### Calendar Systems
 
 Full parsing support for historical calendars used in genealogical records:
@@ -1549,6 +1604,26 @@ so validate the source to catch an invalid one. An endpoint too
 incomplete to convert (year 0) fails the whole conversion rather than dropping
 silently.
 
+The arithmetic underneath is exported as conversions to and from Julian Day
+Numbers, one pair per calendar:
+
+```go
+jdn := gedcom.HebrewToJDN(5785, 8, 15)          // 15 Nisan 5785 = 2460779
+year, month, day := gedcom.JDNToGregorian(jdn)  // 2025, 4, 13
+```
+
+| Calendar | To JDN | From JDN | Helpers |
+|----------|--------|----------|---------|
+| Gregorian | `GregorianToJDN` | `JDNToGregorian` | |
+| Julian | `JulianToJDN` | `JDNToJulian` | |
+| Hebrew | `HebrewToJDN` | `JDNToHebrew` | `IsHebrewLeapYear`, `HebrewDaysInMonth` |
+| French Republican | `FrenchToJDN` | `JDNToFrench` | `IsFrenchLeapYear` |
+
+Gregorian and Julian years are astronomical (0 is 1 BC);
+`gedcom.AstronomicalYear(year, isBC)` converts a GEDCOM year (44 BC is -43).
+Hebrew months use GEDCOM numbering (Tishrei is 1, Elul 13) and French month 13
+is the complementary days.
+
 ## Metadata
 
 - REFN - Reference numbers with their `TYPE` subordinate, as `[]gedcom.RefNumber` on
@@ -1573,7 +1648,7 @@ silently.
 
 ### Version-Specific Validation
 - Tag validity per GEDCOM version, required subordinate tags, cardinality, enumerations, payload datatypes and 7.0 deprecations: the opt-in grammar conformance check (see Grammar Conformance below)
-- XRef length validation (20-char limit for GEDCOM 5.5/5.5.1, unlimited for 7.0)
+- XRef length validation (20-char limit for GEDCOM 5.5/5.5.1, unlimited for 7.0; `XREF_TOO_LONG`, warning)
 - Header SUBM cardinality (required for 5.5/5.5.1, optional for 7.0)
 
 ### Error Reporting
@@ -1589,11 +1664,11 @@ Comprehensive data quality validation beyond structural correctness:
 
 | Check | Severity | Description |
 |-------|----------|-------------|
-| Death before birth | Error / Warning | Death date precedes birth date |
-| Child before parent | Error / Warning | Child born before parent |
-| Marriage before birth | Error / Warning | Marriage date before spouse's birth |
-| Impossible age | Warning | Age exceeds configurable maximum (default: 120) |
-| Unreasonable parent age | Warning | Parent age at child's birth outside normal range |
+| Death before birth (`DEATH_BEFORE_BIRTH`) | Error / Warning | Death date precedes birth date |
+| Child before parent (`CHILD_BEFORE_PARENT`) | Error / Warning | Child born before parent |
+| Marriage before birth (`MARRIAGE_BEFORE_BIRTH`) | Error / Warning | Marriage date before spouse's birth |
+| Impossible age (`IMPOSSIBLE_AGE`) | Warning | Age exceeds configurable maximum (default: 120) |
+| Unreasonable parent age (`UNREASONABLE_PARENT_AGE`) | Warning | Parent age at child's birth outside normal range |
 
 ```go
 v := validator.New()
@@ -1757,7 +1832,7 @@ config := &validator.DuplicateConfig{
     MaxGroupSize:      1000, // per-surname-group ceiling
     MaxNameRunes:      64,   // given names compared on at most this many runes
 }
-v := validator.NewWithConfig(&validator.ValidatorConfig{Duplicates: config})
+v := validator.NewWithOptions(&validator.ValidateOptions{Duplicates: config})
 pairs := v.FindPotentialDuplicates(doc)
 for _, pair := range pairs {
     fmt.Printf("Potential duplicate: %s and %s (%.0f%% confidence)\n",
@@ -1818,6 +1893,8 @@ Additional QualityReport methods:
 | `IssuesForRecord(xref)` | `[]Issue` | Get all issues affecting a specific record |
 | `IssuesByCode(code)` | `[]Issue` | Get all issues with a specific error code |
 
+Two completeness findings are reported only here, at Info, in `CompletenessIssues`: an individual with no birth date (`MISSING_BIRTH_DATE`) and one with no source citations (`NO_SOURCES`). `MISSING_DEATH_DATE` is defined as a code, but no check reports it; death dates are counted in `IndividualsWithDeathDate` and `DeathDateCoverage` only.
+
 **Issue Filtering:**
 
 Utility functions for filtering validation issues:
@@ -1838,7 +1915,8 @@ Create validation issues with a fluent API:
 ```go
 issue := validator.NewIssue(validator.SeverityError, "CUSTOM_ERROR", "Custom error message", "@I1@").
     WithRelatedXRef("@I2@").
-    WithDetail("field", "NAME")
+    WithDetail("field", "NAME").
+    WithLineNumber(42)
 ```
 
 **Configurable Strictness:**
@@ -1852,11 +1930,27 @@ Control which severity levels are reported:
 | StrictnessStrict | All issues including Info |
 
 ```go
-v := validator.NewWithConfig(&validator.ValidatorConfig{
+v := validator.NewWithOptions(&validator.ValidateOptions{
     Strictness: validator.StrictnessStrict,
 })
 issues := v.ValidateAll(doc)  // Returns all severity levels
 ```
+
+**Standalone Validators:**
+
+Each check `Validator` composes is also a type of its own, for running one check without the rest:
+
+| Constructor | Runs with | Reports |
+|-------------|-----------|---------|
+| `NewDateLogicValidator(config)` | `Validate(doc)`, `ValidateIndividual(doc, ind)` | The date logic codes above; a nil config means the defaults |
+| `NewReferenceValidator()` | `Validate(doc)`, `Report(doc)` | The `ORPHANED_*` codes; `Report` returns a `*ReferenceReport` counting total, valid and orphaned references, overall and by type |
+| `NewDuplicateDetector(config)` | `FindDuplicates(doc)`, `FindDuplicatesReport(doc)` and the `Between` forms | Duplicate pairs; a nil config means the defaults |
+| `NewEncodingValidator()` | `Validate(doc)`, `ValidateEncoding(doc)`, `ValidateControlCharacters(doc)` | The 7.0 encoding codes |
+| `NewHeaderValidator()` | `ValidateHeader(doc)` | `MISSING_SUBM` |
+| `NewXRefValidator()` | `ValidateXRefs(doc)` | `XREF_TOO_LONG` |
+| `NewTagValidator(registry, validateUnknown)` | `Validate(doc)` | The custom tag codes; unknown tags only when `validateUnknown` is set |
+| `NewNoteValidator()` | `ValidateNotePointers(doc)` | `OVERLAPPING_NOTE_POINTERS` |
+| `NewQualityAnalyzer(opts...)` | `Analyze(doc)` | A `*QualityReport`; options `WithDateLogicConfig`, `WithDuplicateConfig`, `WithTagRegistry` (enables custom tag validation), `WithEntityTagsCheck` and `WithGrammarCheck` |
 
 ### Streaming Validator
 
@@ -1938,6 +2032,12 @@ registry.Register("_MILT", validator.TagDefinition{
     Description:    "Military service",
 })
 
+// Or several at once: if any tag is already registered, none is added
+err := registry.RegisterBatch(map[string]validator.TagDefinition{
+    "_DNA":  {AllowedParents: []string{"INDI"}},
+    "_HASH": {AllowedParents: []string{"OBJE"}},
+})
+
 // Or use pre-built vendor registry
 registry := validator.AncestryRegistry()
 
@@ -1945,7 +2045,7 @@ registry := validator.AncestryRegistry()
 registry := validator.DefaultVendorRegistry()
 
 // Configure validator
-v := validator.NewWithConfig(&validator.ValidatorConfig{
+v := validator.NewWithOptions(&validator.ValidateOptions{
     TagRegistry:        registry,
     ValidateCustomTags: true,
 })
@@ -1975,10 +2075,12 @@ Full control over decoding behavior with `DecodeOptions`:
 | Option | Type | Description |
 |--------|------|-------------|
 | `Context` | `context.Context` | Cancellation and timeout control |
-| `StrictMode` | `bool` | Reject non-standard extensions |
+| `StrictMode` | `bool` | Fail on the first syntax error or invalid UTF-8 byte instead of recovering |
 | `OnProgress` | `ProgressCallback` | Progress reporting callback |
 | `TotalSize` | `int64` | Expected file size for progress percentage |
 | `ANSIEncoding` | `charset.Encoding` | Code page for `CHAR ANSI` (zero: Windows-1252, with an `AMBIGUOUS_CODEPAGE` warning when bytes differ from Windows-1250) |
+| `MaxDiagnostics` | `int` | Cap on diagnostics a lenient decode reports (zero: 100,000; `decoder.UnlimitedDiagnostics` removes it) |
+| `PreserveLayout` | `bool` | Record the input's physical layout in `Document.Layout` for a layout-preserving encode |
 
 The nesting ceiling is not an option: the GEDCOM grammar's two-digit level
 field fixes it at `parser.MaxNestingDepth-1` (99).
@@ -2188,13 +2290,14 @@ Full support for encoding typed entities back to GEDCOM format:
 | Entity Type | Supported Fields |
 |-------------|------------------|
 | Individual | Names, sex, events, attributes, family links, associations, LDS ordinances, citations, notes, media |
-| Family | Spouse/child refs, events, LDS ordinances, citations, notes, media |
+| Family | Spouse/child refs, events, attributes, LDS ordinances, citations, notes, media |
 | Source | Data (events recorded, agency, notes), title, abbreviation, author, publication, text (with MIME/LANG), repository ref/inline, notes, media |
 | Repository | Name, address, contact info (phone, email, fax, website), notes, change/creation dates, REFN, UID |
 | Submitter | Name, address, contact info, languages, change/creation dates, REFN, UID |
 | Submission | Submitter ref, FAMF, TEMP, ANCE, DESC, ORDI, RIN, notes, change date |
 | Note | Text with continuation lines, citations, REFN, UID, change date |
 | MediaObject | Files, formats, translations, citations |
+| SharedNote | Text, MIME type, language, translations, citations, REFN, UID, EXID, change/creation dates |
 
 A line break in a value is written as `CONT` lines. A line break in a tag name or identifier (`Tag.Tag`, `Tag.XRef`, `Record.Type`, `Record.XRef`, `Header.Submitter`, or an entity field that becomes a tag name such as `Event.Type`) has no GEDCOM spelling, so encoding returns `encoder.ErrLineBreak` rather than writing a line that could re-decode as a forged record.
 
@@ -2202,7 +2305,7 @@ The encoder does not write what its decoder cannot read back (issue #726). A sub
 
 Nil values in a hand-built document are written as nothing instead of panicking: a nil element in any slice (a record, a tag, a name, an event, a citation) is skipped, a nil `Header` encodes as an empty one, and a nil `Document` returns `encoder.ErrNilDocument`. The same skip-rather-than-panic rule applies library-wide — see [ADR 0007](docs/decisions/0007-error-transparency.md#nil-values) for the full policy, and the `encoder` package documentation for what the encoder writes for each shape.
 
-Structures whose shape differs by version are written for the output version (issue #740), when a record is encoded from its entity. An association's role is `RELA` for 5.5/5.5.1 output and `ROLE` otherwise, and 5.5 output carries the `TYPE` it requires (`Association.RecordType`, `INDI` when unset); 5.5.1 and 7.0 output drop `RecordType`. An LDS `STAT` is written with its `DATE` (and, for 7.0, `TIME`) from `StatusDate`/`StatusTime`; a `Status` with no `StatusDate` is written alone rather than dropped (5.5.1 and 7.0 require the `DATE`, so set `StatusDate` for valid output), and 5.5 output, which has no `STAT.DATE`, writes `STAT` alone. A `BIRT`, `CHR` or `ADOP` event writes its `FAMC` from `Event.FamilyXRef`, and an `ADOP` event the `ADOP` beneath it from `AdoptedBy`; neither is written on any other event or on a `NO` assertion. A `MediaLink` with no pointer and nothing else is skipped rather than written as a bare `OBJE`; one with no pointer but a title, crop or note is still written, without the `FILE` the typed model does not yet hold (#733).
+Structures whose shape differs by version are written for the output version (issue #740), when a record is encoded from its entity. An association's role is `RELA` for 5.5/5.5.1 output and `ROLE` otherwise, and 5.5 output carries the `TYPE` it requires (`Association.RecordType`, `INDI` when unset); 5.5.1 and 7.0 output drop `RecordType`. An LDS `STAT` is written with its `DATE` (and, for 7.0, `TIME`) from `StatusDate`/`StatusTime`; a `Status` with no `StatusDate` is written alone rather than dropped (5.5.1 and 7.0 require the `DATE`, so set `StatusDate` for valid output), and 5.5 output, which has no `STAT.DATE`, writes `STAT` alone. A `BIRT`, `CHR` or `ADOP` event writes its `FAMC` from `Event.FamilyXRef`, and an `ADOP` event the `ADOP` beneath it from `AdoptedBy`; neither is written on any other event or on a `NO` assertion. A `MediaLink` with no pointer and nothing else is skipped rather than written as a bare `OBJE`; one with no pointer and no `Files` but a title, crop or note is still written, without the `FILE` every 5.x version requires.
 
 Note pointers (`NoteXRefs`, and `MediaObject.SharedNoteXRefs`) are written by what they point at. When the output is GEDCOM 7.0 (`TargetVersion`, or `Header.Version` when no target is set), a pointer to a document `SNOTE` record is written as `SNOTE @X@`; any other pointer -- to a `NOTE` record or to nothing -- stays `NOTE @X@`. A 5.5/5.5.1 output has no `SNOTE`, so every pointer is `NOTE`. This applies only to records encoded from their entities; a decoded record re-encodes from `Record.Tags` and keeps the tag it was read with.
 
@@ -2226,6 +2329,11 @@ value must already be in its wire form. A one-line `NOTE`/`SNOTE` record whose
 `converter.Convert` between 5.5/5.5.1 and 7.0 rewrites every raw text value from
 the source rule to the target's (`a@@b` ↔ `a@b`; `@@lead` stays), leaving
 pointers and 5.x escape sequences as they are.
+
+For a raw `Tag` value written by hand, `gedcom.EscapeLeadingAt` doubles a
+leading `@` (any leading `@`, not only a well-formed pointer) and
+`gedcom.UnescapeLeadingAt` reverses it. Do not pass a typed field through
+them: the encoder escapes those itself, and the `@` would be doubled twice.
 
 ### Round-Trip Encoding
 
@@ -2304,7 +2412,7 @@ Useful for sources imported from GEDCOM files where repository names are stored 
 
 Memory-efficient parsing for very large files with on-demand record access.
 
-### Go 1.23+ Range-Over-Func Iterators
+### Range-Over-Func Iterators
 
 Modern Go 1.23 range-over-func support for idiomatic streaming:
 
@@ -2351,7 +2459,7 @@ for record, err := range lp.AllRecords() {
 - Zero overhead compared to classic iterator
 
 The classic iterator API (`RecordIterator.Next()/Record()/Err()`) remains available
-for backward compatibility and pre-Go 1.23 codebases.
+for backward compatibility.
 
 ### Record Iterator (Classic API)
 
@@ -2377,6 +2485,8 @@ if err := it.Err(); err != nil {
 | `RawRecord.Lines` | All parsed lines for this record |
 | `RawRecord.ByteOffset` | Starting byte position: absolute in the file for `LazyParser` iterators, relative to the start of the reader for `Records`/`NewRecordIterator` |
 | `RawRecord.ByteLength` | Total bytes for this record |
+
+`parser.NewRecordIteratorWithOffset(r)` is the classic-API counterpart of `RecordsWithOffset`: the same `Next()`/`Record()`/`Err()` loop, reporting the same `ByteOffset` and `ByteLength` relative to the start of the reader. `LazyParser.BuildIndex` uses it.
 
 ### Typed Records
 
@@ -2421,6 +2531,9 @@ entry, found := index.Lookup("@I1@")
 if found {
     fmt.Printf("Record at byte %d\n", entry.ByteOffset)
 }
+
+// Records without an XRef (HEAD, TRLR) are looked up by type
+head, found := index.LookupByType("HEAD")
 
 // Persist index for faster subsequent access
 index.Save(indexFile)
@@ -2481,9 +2594,42 @@ Additional LazyParser methods:
 
 **Memory**: O(index entries) for indexed access, O(1) per record during iteration.
 
+### Line Parser (Low-Level API)
+
+`parser.Parser` turns input into `[]*parser.Line` with no records, entities or
+version handling; the decoder is built on it.
+
+```go
+p := parser.NewParser()
+
+// Strict: stops at the first malformed line with a *parser.ParseError
+lines, err := p.Parse(reader)
+
+// One line at a time
+line, err := p.ParseLine("1 NAME John /Smith/")
+
+// Lenient: collect syntax errors and keep going
+p.Reset()
+lines, parseErrors, fatalErr := p.ParseWithOptions(reader, &parser.ParseOptions{
+    Lenient:   true,
+    MaxErrors: 100, // 0 collects every error
+})
+```
+
+| `ParseOptions` field | Description |
+|----------------------|-------------|
+| `Lenient` | Collect line errors in `parseErrors` and continue; false fails on the first error |
+| `MaxErrors` | Stop collecting (but keep parsing) after this many errors; 0 is unlimited |
+| `TolerateOnly` | Tolerate only errors matching this one with `errors.Is` (such as `parser.ErrXRefContainsSpace`); the first other error is collected and parsing stops, with a nil fatal error |
+| `Filter` | A `parser.ErrorFilter` whose `KeepError(pe, text)` decides, per line error and before `MaxErrors`, whether it is collected; `text` is the whole rejected line |
+
+`fatalErr` is for unrecoverable failures such as I/O errors. A line recovered
+from a reported error (a spaced or unterminated XRef) is returned in `lines`
+alongside its error, so an error does not mean its line is missing. `Reset()`
+clears the parser's state for reuse.
+
 ## Performance
 
-- Zero-allocation validator for valid documents
 - Benchmark coverage across parser, decoder, encoder, and validator hot paths.
   Run `make bench` to reproduce figures on your own hardware — absolute numbers
   are hardware- and warmup-dependent, so they are not quoted here.
@@ -2510,6 +2656,7 @@ O(1) lookup by cross-reference ID for all record types:
 | `GetSubmission(xref)` | `*Submission` | Submission lookup |
 | `GetNote(xref)` | `*Note` | Note lookup |
 | `GetMediaObject(xref)` | `*MediaObject` | Media object lookup |
+| `GetSharedNote(xref)` | `*SharedNote` | Shared note lookup (GEDCOM 7.0) |
 
 All methods return `nil` if the record is not found (consistent with Go map behavior).
 
@@ -2525,6 +2672,7 @@ All methods return `nil` if the record is not found (consistent with Go map beha
 | `Submissions()` | `[]*Submission` | All submissions |
 | `Notes()` | `[]*Note` | All notes |
 | `MediaObjects()` | `[]*MediaObject` | All media objects |
+| `SharedNotes()` | `[]*SharedNote` | All shared notes (GEDCOM 7.0) |
 
 ### Relationship Traversal
 
@@ -2637,7 +2785,7 @@ Convenience methods on `Record` for type checking and casting:
 | `GetMediaObject()` | `(*MediaObject, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
 | `GetSharedNote()` | `(*SharedNote, bool)` | Type assertion (`(nil, false)` if wrong type or a typed-nil entity) |
 
-All twelve are nil-receiver safe: on a nil `*Record` every `Is*` returns `false` and every `Get*` returns `(nil, false)`. See [ADR 0007](docs/decisions/0007-error-transparency.md#nil-values).
+All thirteen are nil-receiver safe: on a nil `*Record` every `Is*` returns `false` and every `Get*` returns `(nil, false)`. See [ADR 0007](docs/decisions/0007-error-transparency.md#nil-values).
 
 ```go
 for _, record := range doc.Records {
@@ -2682,8 +2830,12 @@ if !report.Equal {
 - Unknown/vendor tags
 - XRef identifiers
 - Record and tag order
+- The header: `Header.Tags` is compared like a record's tags, since the encoder writes a decoded header from them
+- `CONC`/`CONT` lines, which are raw tags like any other: a line split differently is reported as a difference
 
 **What may change** (not compared):
 - Line numbers
-- Formatting (line endings, whitespace)
-- CONC/CONT reorganization
+- Byte-level formatting (line endings, indentation)
+- The declared charset: the encoder always writes UTF-8, so `HEAD.CHAR` is expected to come back as `UTF-8`, and any other value is a difference
+
+Both decodes are strict, so a malformed line is returned as an error instead of being recovered and compared with itself.

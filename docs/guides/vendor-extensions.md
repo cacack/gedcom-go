@@ -28,15 +28,16 @@ Both paths round-trip: a decode followed by an encode reproduces the vendor tags
 ### The raw `Tags` escape hatch
 
 Any tag without a typed accessor is available on the owning entity's `Tags`
-field. The structure preserves level, value, and children:
+field. `Tags` is a flat slice in file order; a tag's subordinates are the tags
+that follow it at a deeper `Level`:
 
 ```go
 type Tag struct {
-    Level    int
-    Tag      string   // e.g. "_MILT", "_HASH"
-    Value    string
-    Xref     string   // e.g. "@I1@", if any
-    Children []*Tag   // subordinate tags
+    Level      int
+    Tag        string // e.g. "_MILT", "_HASH"
+    Value      string
+    XRef       string // e.g. "@I1@", if any
+    LineNumber int
 }
 ```
 
@@ -186,7 +187,7 @@ fmt.Println(doc.Header.AncestryTreeID) // "12345678"
 | Tag | Location | Access |
 |-----|----------|--------|
 | `_FSFTID` | individual | **typed:** `Individual.FamilySearchID` |
-| `EXID` | individual / source | **typed:** `ExternalIDs` (GEDCOM 7.0) |
+| `EXID` | most records, place | **typed:** `ExternalIDs` (GEDCOM 7.0) |
 | `_FSORD` | individual | raw `Tags` (validated by registry) |
 | `_FSTAG` | any | raw `Tags` (validated by registry) |
 | `_HASH`, `_LHASH` | individual | raw `Tags` (change-detection checksums) |
@@ -355,7 +356,7 @@ record with no `Tags` is not changed.
 | `_APID` | Ancestry | `SourceCitation.AncestryAPID` (`.URL()`) | ✓ |
 | `_TREE` | Ancestry | `Header.AncestryTreeID` | ✓ |
 | `_FSFTID` | FamilySearch | `Individual.FamilySearchID` (`.FamilySearchURL()`) | ✓ |
-| `EXID` | FamilySearch (7.0) | `Individual.ExternalIDs`, `Source.ExternalIDs` | ✓ |
+| `EXID` | FamilySearch (7.0) | `ExternalIDs` on `Individual`, `Family`, `Source`, `Repository`, `Submitter`, `Note`, `SharedNote`, `MediaObject` and `PlaceDetail` | ✓ |
 | `_MILT`, `_DEST`, `_PRIM`, `_PHOTO` | Ancestry | — | ✓ |
 | `_FSORD`, `_FSTAG`, `_HASH`, `_LHASH` | FamilySearch | — | ✓ |
 | `_FREL`, `_MREL` | Family Tree Maker, Ancestry, Legacy | `Family.ChildLinks` (`.LinkForChild()`) | ✓ |
@@ -381,7 +382,7 @@ GEDCOM 7.0 standardizes two mechanisms relevant to extensions:
   }
   ```
 
-  Available on `Individual.ExternalIDs` and `Source.ExternalIDs`. This is the
+  Available as `ExternalIDs` on `Individual`, `Family`, `Source`, `Repository`, `Submitter`, `Note`, `SharedNote`, `MediaObject` and `PlaceDetail`. This is the
   spec-compliant successor to vendor-specific ID tags like `_FSFTID`.
 
 - **`SCHMA`** — the header schema block that maps extension tags to their URI

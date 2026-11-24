@@ -152,6 +152,5 @@ re-run the transcription — see
 
 ```bash
 make spec-coverage
-go generate ./validator
-go generate ./decoder
+go generate ./validator ./decoder ./converter
 ```

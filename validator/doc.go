@@ -108,7 +108,7 @@
 //
 //   - Strictness             — StrictnessRelaxed | StrictnessNormal (default) | StrictnessStrict
 //   - MaxErrors              — cap collected issues (0 = unlimited)
-//   - SkipRules              — issue codes to exclude (e.g. []string{"W001"})
+//   - SkipRules              — issue codes to exclude (e.g. []string{validator.CodeMissingSUBM})
 //   - DateLogic              — date-logic thresholds (e.g. MaxReasonableAge)
 //   - Duplicates             — duplicate-detection thresholds
 //   - TagRegistry            — definitions for custom (underscore) tags
@@ -121,7 +121,7 @@
 //	opts := &validator.ValidateOptions{
 //	    Strictness: validator.StrictnessStrict,
 //	    MaxErrors:  100,
-//	    SkipRules:  []string{"W001"},
+//	    SkipRules:  []string{validator.CodeMissingSUBM},
 //	    DateLogic:  &validator.DateLogicConfig{MaxReasonableAge: 110},
 //	}
 //	issues := validator.NewWithOptions(opts).ValidateAll(doc)

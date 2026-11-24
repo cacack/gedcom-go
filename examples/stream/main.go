@@ -22,9 +22,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 
 	"github.com/cacack/gedcom-go/v3/charset"
 	"github.com/cacack/gedcom-go/v3/encoder"
@@ -52,8 +54,8 @@ func main() {
 	fmt.Printf("Input: %s\n", inputPath)
 	fmt.Printf("Total lines processed: %d\n", totalLines)
 	fmt.Println("Record counts by type:")
-	for typ, n := range counts {
-		fmt.Printf("  %s: %d\n", typ, n)
+	for _, typ := range slices.Sorted(maps.Keys(counts)) {
+		fmt.Printf("  %s: %d\n", typ, counts[typ])
 	}
 	reportHeap("after streaming parse")
 

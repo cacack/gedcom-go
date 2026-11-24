@@ -89,6 +89,7 @@ Parse-level warnings (severity: WARNING):
 |------|---------|
 | `EMPTY_LINE` | Blank or whitespace-only line, skipped. No GEDCOM version's grammar has one, so strict mode fails on it, but skipping it loses nothing. One per line for the first `MaxEmptyLineDiagnostics` (10) blank lines, then one diagnostic, at the next blank line, counting the rest |
 | `AMBIGUOUS_CODEPAGE` | `CHAR ANSI` over a byte that reads differently in Windows-1252 and Windows-1250 (`0xE8` is `è` or `č`). The file is read as Windows-1252; one diagnostic at the first such byte. Set `DecodeOptions.ANSIEncoding` to `charset.EncodingWindows1250` for Central European files (Geneanet, Family Historian, Brother's Keeper), or `charset.EncodingLATIN1` to confirm Windows-1252 |
+| `CHARSET_MISMATCH` | The input was decoded in an encoding other than its `HEAD.CHAR` declares (a UTF-8 BOM, or valid UTF-8 under a legacy declaration). Decoded as UTF-8; `Header.Encoding` keeps the declared value and `Header.DetectedEncoding` names the applied one |
 
 Entity-level warnings (severity: WARNING):
 
@@ -369,7 +370,7 @@ With `ValidateOptions.CheckEntityTags` set, `ValidateAll` reports a record or
 header whose typed fields and tags disagree as `ENTITY_TAGS_DIVERGED` (a
 warning), so the edit can be caught before writing; if `SyncTags` fails on the
 document, one Info issue under the same code says the comparison was not made.
-The check reads the raw tags back through the decoder, about doubling
+The check reads the raw tags back through the decoder, multiplying
 `ValidateAll`'s time (see [performance](performance.md#entity-tags-check)), and
 cannot fire on a document no one has edited, so it is off by default. Set it
 when validating an edited document before encoding it; `QualityReport` honors
@@ -409,7 +410,7 @@ is what is written. It applies to every record type, not just the header.
 | XRef identifiers | `@I1@`, `@F1@`, etc. |
 | Tag names | Including vendor custom tags (`_APID`, `_MHID`) |
 | Tag values | Original content preserved |
-| Custom tags | Stored in `CustomTags` on each entity |
+| Custom tags | Kept in `Record.Tags` and on the entity's own `Tags` |
 
 ### Normalized (May Change)
 
@@ -417,17 +418,16 @@ is what is written. It applies to every record type, not just the header.
 |---------|------------------|
 | Line endings | Converted to `\n` (configurable via `EncodeOptions.LineEnding`) |
 | Character encoding | Output as UTF-8 (input ANSEL/UTF-16 converted) |
-| Long lines | May be split with CONC tags at 248 chars (configurable) |
+| Long lines | A decoded record keeps its lines as read. A record written from its typed entity (hand-built, or `Tags` cleared) may be split with CONC tags at 248 chars (configurable) |
 
 ### Known Transformations
 
 **CONT/CONC Handling**
 
-The decoder processes CONT (continuation with newline) and CONC (concatenation without newline) tags and joins the text. On re-encoding:
+The decoder processes CONT (continuation with newline) and CONC (concatenation without newline) tags and joins the text in the typed model. A decoded record is written back from `Record.Tags`, so its original CONT/CONC split is kept. A record written from its typed entity (hand-built, or with `Tags` cleared) is split afresh:
 
 - Multi-line text is split with CONT tags at newlines
-- Lines exceeding `MaxLineLength` (default 248) are split with CONC tags
-- Original CONT/CONC boundaries are not preserved
+- Lines exceeding `MaxLineLength` (default 248) are split with CONC tags (never in GEDCOM 7.0 output)
 
 Example decode:
 ```
@@ -462,7 +462,7 @@ inline `OBJE` was reported as an unknown tag, and notes on `ASSO`, `PLAC`,
 `FAMC` and `REPO` links had nowhere typed to go. They are now kept. Reading
 them from `Record.Tags` is no longer necessary.
 
-Re-encoded (may differ from original):
+Re-encoded from the typed entity (a decoded record is written back as it was read):
 ```
 0 @N1@ NOTE First line
 1 CONT Second line with more text
@@ -501,7 +501,7 @@ fmt.Println(event.Address.Text()) // "" when the event has no ADDR
 
 **Header Reconstruction**
 
-The header is rebuilt from `Document.Header` fields. Non-standard header tags not mapped to typed fields may not round-trip.
+A decoded header is written from `Header.Tags`, so every sub-tag round-trips, non-standard ones included. Only a hand-built header (no `Tags`) is built from the typed fields.
 
 **Empty Values**
 
@@ -514,8 +514,11 @@ Tags with empty values are preserved: `1 BIRT` becomes `1 BIRT` (not `1 BIRT ` w
 | `Decode(r)` | N/A — use `DecodeWithOptions` | Always; no diagnostics |
 | `DecodeWithOptions(r, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns document, no diagnostics |
 | `DecodeWithDiagnostics(r, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns `DecodeResult` with diagnostics |
+| `DecodeRecords(r, doc, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns the fragment's records and their diagnostics |
 | `DecodeRecord(raw, ver, opts)` | `opts.StrictMode=true`: level jumps kept as written | `opts.StrictMode=false`: level jumps clamped; one typed record, no diagnostics |
 
+`DecodeRecords` decodes a records-only fragment (no `HEAD` or `TRLR`) against an
+existing document, returning `ErrNotRecords` for anything else.
 `DecodeRecord` decodes one `*parser.RawRecord` from a streaming parser into the
 typed `*gedcom.Record` `Decode` would produce for it; see
 [Typed Streaming](performance.md#typed-streaming-decoderdecoderecord).

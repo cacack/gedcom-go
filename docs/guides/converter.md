@@ -52,12 +52,13 @@ func ConvertWithOptions(doc *gedcom.Document, targetVersion gedcom.Version, opts
 
 Converts a document with custom options for fine-grained control over the conversion process.
 
-A document already at the target version is handled as described under [Convert](#convert); the options do not apply on that path.
+A document already at the target version is handled as described under [Convert](#convert); apart from `Context`, the options do not apply on that path.
 
 ### ConvertOptions
 
 | Option | `DefaultOptions` | Description |
 |--------|------------------|-------------|
+| `Context` | `nil` | Cancellation and timeout control (checked on the same-version path too) |
 | `Validate` | `true` | Run validation on converted document |
 | `StrictDataLoss` | `false` | Fail if any data would be lost |
 | `ReportPreservedTags` | `true` | Itemise each preserved vendor/unknown tag in the report. Report-only — tags are preserved either way |
@@ -433,6 +434,11 @@ type ConversionReport struct {
     DataLoss         []DataLossItem   // Features lost (typically downgrades)
     ValidationIssues []string         // Problems found after conversion
     Success          bool             // Whether conversion completed successfully
+
+    Dropped      []ConversionNote // Data the target version cannot represent
+    Normalized   []ConversionNote // Representation changed, meaning kept
+    Approximated []ConversionNote // Near, not exact, equivalents
+    Preserved    []ConversionNote // Unknown tags carried through unchanged
 }
 ```
 
@@ -462,6 +468,7 @@ type DataLossItem struct {
 | Method | Description |
 |--------|-------------|
 | `HasDataLoss()` | Returns true if any data was lost |
+| `AllNotes()` | Every note from the four categories in one slice |
 | `String()` | Human-readable summary of the conversion |
 
 Example output from `report.String()`:

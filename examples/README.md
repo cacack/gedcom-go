@@ -22,18 +22,17 @@ go run main.go ../../testdata/gedcom-5.5/minimal.ged
 ```
 GEDCOM File: ../../testdata/gedcom-5.5/minimal.ged
 Version: 5.5
-Encoding: UTF-8
-Source System: MyFamilyTree
+Encoding: ASCII
+Source System: TestSystem
 
-Total Records: 15
-Cross-references: 8
+Total Records: 1
+Cross-references: 1
 
 Record Types:
-  INDI: 5
-  FAM: 2
-  SOUR: 1
+  INDI: 1
 
-✓ No validation errors
+Validation Errors (1):
+  - [WARNING] MISSING_SUBM: GEDCOM 5.5 requires SUBM reference in header
 ```
 
 **Use cases**:
@@ -67,25 +66,28 @@ Querying GEDCOM File: ../../testdata/gedcom-5.5/royal92.ged
 Version: 5.5
 
 === All Individuals ===
-Found 62 individuals:
-@I1@: Elizabeth Alexandra Mary /Windsor/ (F) - Born: 21 APR 1926
-@I2@: Philip /Mountbatten/ (M) - Born: 10 JUN 1921
-@I3@: Charles Philip Arthur George /Windsor/ (M) - Born: 14 NOV 1948
+Found 3010 individuals:
+@I1@: Victoria  /Hanover/ (F) - Born: 24 MAY 1819
+@I2@: Albert Augustus Charles// (M) - Born: 26 AUG 1819
+@I3@: Victoria Adelaide Mary// (F) - Born: 21 NOV 1840
 ...
+... and 3000 more
 
 === Lookup by Cross-Reference ===
 Found individual @I1@:
-  Name: Elizabeth Alexandra Mary /Windsor/
+  Name: Victoria  /Hanover/
   Sex: F
   Events:
-    BIRT: 21 APR 1926 at London, England
-    OCCU: Queen of England
+    BIRT: 24 MAY 1819 at Kensington,Palace,London,England
+    DEAT: 22 JAN 1901 at Osborne House,Isle of Wight,England
+    BURI at Royal Mausoleum,Frogmore,Berkshire,England
+  Child in families: [@F42@]
   Spouse in families: [@F1@]
 
 === All Families ===
-Found 25 families:
-@F1@: Elizabeth Alexandra Mary /Windsor/ & Philip /Mountbatten/ (4 children)
-@F2@: Charles Philip Arthur George /Windsor/ & Diana Frances /Spencer/ (2 children)
+Found 1422 families:
+@F1@: Albert Augustus Charles// & Victoria  /Hanover/ (9 children)
+@F2@: Edward_VII  /Wettin/ & Alexandra of_Denmark "Alix"// (6 children)
 ...
 ```
 
@@ -177,13 +179,13 @@ go run main.go ../../testdata/gedcom-5.5/pres2020.ged /tmp/out.ged
 Input: ../../testdata/gedcom-5.5/pres2020.ged
 Total lines processed: 49431
 Record counts by type:
+  FAM: 1115
   HEAD: 1
   INDI: 2322
-  FAM: 1115
-  SOUR: 91
   NOTE: 141
   OBJE: 171
   REPO: 1
+  SOUR: 91
   SUBM: 1
   TRLR: 1
 [heap after streaming parse] HeapAlloc=3053KB Sys=12978KB
@@ -227,10 +229,11 @@ go run main.go output.ged
 GEDCOM output:
 ===============
 0 HEAD
+1 SOUR go-gedcom example
 1 GEDC
 2 VERS 5.5
+2 FORM LINEAGE-LINKED
 1 CHAR UTF-8
-1 SOUR go-gedcom example
 1 LANG English
 0 @I1@ INDI
 1 NAME John /Doe/
@@ -368,7 +371,7 @@ Diagnostics: 2 (0 error(s), 2 warning(s))
 
 **Location**: [`lazy/main.go`](lazy/main.go)
 
-**What it does**: Builds a record index with `parser.LazyParser`, then parses only the records asked for by XRef and turns each into a typed record with `decoder.DecodeRecord`, without decoding the rest of the file. `LazyParser` reads the file's bytes without charset conversion, so use it on UTF-8 files; a file that starts with a byte-order mark is not yet supported ([#792](https://github.com/cacack/gedcom-go/issues/792)).
+**What it does**: Builds a record index with `parser.LazyParser`, then parses only the records asked for by XRef and turns each into a typed record with `decoder.DecodeRecord`, without decoding the rest of the file. `LazyParser` reads the file's bytes without charset conversion, so use it on UTF-8 files; a leading UTF-8 byte-order mark is skipped, and record offsets still count it.
 
 **How to run**:
 ```bash
@@ -423,8 +426,8 @@ Version: 7.0
 Records: 2 (1 individuals, 1 media objects)
 
 File references:
-  @O1@ media/family%20portrait.txt: local, entry "media/family portrait.txt", read 26 bytes
-  @O1@ https://example.com/portrait.jpg: web, no entry
+  "@O1@" "media/family%20portrait.txt": local, entry "media/family portrait.txt", read 26 bytes
+  "@O1@" "https://example.com/portrait.jpg": web, no entry
 
 Every local reference has an entry.
 ```

@@ -104,7 +104,11 @@ func main() {
 
 			// Show family relationships
 			if len(person.ChildInFamilies) > 0 {
-				fmt.Printf("  Child in families: %v\n", person.ChildInFamilies)
+				childFams := make([]string, len(person.ChildInFamilies))
+				for i, link := range person.ChildInFamilies {
+					childFams[i] = link.FamilyXRef
+				}
+				fmt.Printf("  Child in families: %v\n", childFams)
 			}
 			if len(person.SpouseInFamilies) > 0 {
 				spouseFams := make([]string, len(person.SpouseInFamilies))

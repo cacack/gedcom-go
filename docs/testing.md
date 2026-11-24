@@ -121,10 +121,10 @@ func TestParseDate(t *testing.T) {
 
         // Edge cases
         {"leap year valid", "29 FEB 2000", &Date{Day: 29, Month: 2, Year: 2000}, false},
-        {"leap year invalid", "29 FEB 1900", nil, true},
 
         // Error cases
         {"empty", "", nil, true},
+        {"signed year", "-500", nil, true},
         {"invalid month", "25 XXX 2020", nil, true},
     }
 
@@ -139,19 +139,27 @@ func TestParseDate(t *testing.T) {
 
 ### Round-Trip Tests (Required for Encoder)
 
-Any data that can be encoded must survive a decode→encode→decode cycle:
+Any data that can be encoded must survive a decode→encode→decode cycle. The `gedcom/testing` package provides the assertion: `AssertRoundTrip(t *testing.T, input []byte, opts ...Option)` decodes the input, encodes it, decodes the result and fails the test on any semantic difference.
 
 ```go
+import (
+    "os"
+    "testing"
+
+    gedcomtesting "github.com/cacack/gedcom-go/v3/gedcom/testing"
+)
+
 func TestRoundTrip(t *testing.T) {
-    original := loadTestFile("testdata/sample.ged")
+    data, err := os.ReadFile("testdata/gedcom-5.5.1/comprehensive.ged")
+    if err != nil {
+        t.Fatal(err)
+    }
 
-    decoded, _ := decoder.Decode(original)
-    encoded := encoder.Encode(decoded)
-    redecoded, _ := decoder.Decode(encoded)
-
-    assertEqual(t, decoded, redecoded)
+    gedcomtesting.AssertRoundTrip(t, data)
 }
 ```
+
+`CheckRoundTrip` in the same package returns the differences as a report instead of failing a test.
 
 ### Error Message Tests (Required)
 
@@ -159,11 +167,20 @@ Error messages must be tested to ensure they contain actionable information:
 
 ```go
 func TestValidateErrorMessages(t *testing.T) {
-    _, err := ParseDate("30 FEB 2020")
+    date, err := gedcom.ParseDate("30 FEB 2020")
+    if err != nil {
+        t.Fatalf("ParseDate() error = %v", err)
+    }
 
-    require.Error(t, err)
-    assert.Contains(t, err.Error(), "February")
-    assert.Contains(t, err.Error(), "28") // or "29" context
+    err = date.Validate()
+    if err == nil {
+        t.Fatal("Validate() = nil, want an error for 30 FEB")
+    }
+    for _, want := range []string{"February", "29"} {
+        if !strings.Contains(err.Error(), want) {
+            t.Errorf("Validate() error = %q, want it to contain %q", err, want)
+        }
+    }
 }
 ```
 

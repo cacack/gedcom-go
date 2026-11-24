@@ -268,6 +268,6 @@ func compareTag(before, after *gedcom.Tag, path string, report *RoundTripReport)
 		)
 	}
 
-	// Note: LineNumber is intentionally NOT compared as it is expected
-	// to change during round-trip due to header reconstruction.
+	// Note: LineNumber is intentionally NOT compared; it is a property of
+	// the source text, not of the document.
 }

@@ -24,7 +24,7 @@ Pick 3 features claimed in FEATURES.md and verify they exist:
 - Check that code examples reference real API signatures
 - Flag any features that appear to be missing or renamed
 
-### 3. TESTING.md Critical Paths
+### 3. docs/testing.md Critical Paths
 Verify critical path entry points listed in docs/testing.md exist:
 - Search for each listed symbol (function or method) in the corresponding package
 - Flag entries that have been renamed or removed
@@ -57,7 +57,7 @@ Scan all markdown files for internal links and verify targets exist:
 |-------|--------|----------|
 | Package tree | ... | ... |
 | FEATURES.md | ... | ... |
-| TESTING.md | ... | ... |
+| docs/testing.md | ... | ... |
 | ADR list | ... | ... |
 | Version claims | ... | ... |
 | Dead links | ... | ... |
