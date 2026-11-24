@@ -248,3 +248,32 @@ func TestCombine_HeaderConflictsListedOnce(t *testing.T) {
 		})
 	}
 }
+
+// TestCombine_HeaderConflictsAncestryTreeID pins that AncestryTreeID stands
+// for the SOUR structure holding its _TREE (#943): the dropped SOUR gets no
+// "Tags.SOUR" entry besides, and a level-1 _TREE, another structure, keeps
+// its own entry under KeepFirstHeader.
+func TestCombine_HeaderConflictsAncestryTreeID(t *testing.T) {
+	const (
+		header1 = "1 SOUR Ancestry.com Family Trees\n2 _TREE Tree A\n"
+		header2 = "1 SOUR Ancestry.com Family Trees\n2 _TREE Tree B\n1 _TREE toplevel\n2 _X y\n"
+	)
+	for _, keepFirst := range []bool{false, true} {
+		_, report, err := merge.Combine(decodeHeaderDoc(t, header1), decodeHeaderDoc(t, header2),
+			merge.CombineOptions{KeepFirstHeader: keepFirst})
+		if err != nil {
+			t.Fatalf("Combine: %v", err)
+		}
+		count := map[string]int{}
+		for _, c := range report.HeaderConflicts {
+			count[c.Field]++
+		}
+		want := map[string]int{"AncestryTreeID": 1, "Tags.GEDC": 1, "Tags.CHAR": 1}
+		if keepFirst {
+			want["Tags._TREE"] = 1
+		}
+		if !reflect.DeepEqual(count, want) {
+			t.Errorf("KeepFirstHeader %v: conflicts = %+v, want fields %v", keepFirst, report.HeaderConflicts, want)
+		}
+	}
+}

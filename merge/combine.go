@@ -221,15 +221,16 @@ type CombineReport struct {
 // HeaderConflict records a single header field or structure of doc2's that
 // was dropped in favor of doc1's.
 //
-// Each dropped doc2 header structure is listed once. When the value on its
-// level-1 line has a typed field and differs from doc1's, the entry is named
-// for the field and gives both values: "Encoding" (CHAR), "SourceSystem"
-// (SOUR), "Language" (LANG), "Copyright" (COPR), "Date" (DATE), "Submitter"
-// (SUBM), "PlaceForm" (PLAC), "AncestryTreeID" (_TREE), "DeclaredVersion"
-// (GEDC) and "Schema" (SCHMA). Otherwise the entry is "Tags.<TAG>", with
-// Doc1 "kept" when doc1 has the structure too and Doc2 saying why it was
-// dropped. Either entry stands for the whole structure, substructures
-// included.
+// Each dropped doc2 header structure is listed once. When a value it holds
+// has a typed field and differs from doc1's, the entry is named for the field
+// and gives both values: "Encoding" (CHAR), "SourceSystem" (SOUR),
+// "AncestryTreeID" (the _TREE under SOUR), "Language" (LANG), "Copyright"
+// (COPR), "Date" (DATE), "Submitter" (SUBM), "PlaceForm" (PLAC),
+// "DeclaredVersion" (GEDC) and "Schema" (SCHMA). Otherwise the entry is
+// "Tags.<TAG>", with Doc1 "kept" when doc1 has the structure too and Doc2
+// saying why it was dropped. Either entry stands for the whole structure,
+// substructures included. A dropped SOUR whose value and _TREE both differ
+// is listed under both of its fields.
 type HeaderConflict struct {
 	// Field is the typed field name, e.g. "SourceSystem", "Language",
 	// "Copyright", "Schema", "Vendor", or "Tags.<TAG>" for a raw structure.
@@ -436,7 +437,8 @@ func mergeDocMetadata(out, doc1, remappedDoc2 *gedcom.Document, conflicts []Head
 }
 
 // typedFieldHeaderTags maps each typed field a HeaderConflict can name to
-// the level-1 header structure that holds its value.
+// the level-1 header structure that holds its value. SOUR holds two: its own
+// value and the _TREE under it (a level-1 _TREE is another structure).
 var typedFieldHeaderTags = map[string]string{
 	"Encoding":        "CHAR",
 	"SourceSystem":    "SOUR",
@@ -445,7 +447,7 @@ var typedFieldHeaderTags = map[string]string{
 	"Date":            "DATE",
 	"Submitter":       "SUBM",
 	"PlaceForm":       "PLAC",
-	"AncestryTreeID":  "_TREE",
+	"AncestryTreeID":  "SOUR",
 	"DeclaredVersion": "GEDC",
 	"Schema":          "SCHMA",
 }
@@ -455,10 +457,10 @@ var typedFieldHeaderTags = map[string]string{
 // a dropped doc2 header line is listed once, with its values, rather than
 // under both names (#943). Order is otherwise kept.
 func dedupeHeaderConflicts(conflicts []HeaderConflict) []HeaderConflict {
-	covered := make(map[string]int)
+	covered := make(map[string]bool)
 	for _, c := range conflicts {
 		if tag, ok := typedFieldHeaderTags[c.Field]; ok {
-			covered["Tags."+tag]++
+			covered["Tags."+tag] = true
 		}
 	}
 	if len(covered) == 0 {
@@ -466,8 +468,8 @@ func dedupeHeaderConflicts(conflicts []HeaderConflict) []HeaderConflict {
 	}
 	out := conflicts[:0]
 	for _, c := range conflicts {
-		if covered[c.Field] > 0 {
-			covered[c.Field]--
+		if covered[c.Field] {
+			delete(covered, c.Field)
 			continue
 		}
 		out = append(out, c)
