@@ -458,7 +458,9 @@ func (v *Validator) ValidateDateLogic(doc *gedcom.Document) []Issue {
 }
 
 // FindOrphanedReferences checks for cross-references that point to non-existent records.
-// This includes FAMC, FAMS, HUSB, WIFE, CHIL, and SOUR references.
+// This includes FAMC, FAMS, HUSB, WIFE, CHIL, and SOUR references. It also
+// reports, as warnings under the Unreciprocated* codes, a FAMC, FAMS, HUSB,
+// WIFE or CHIL whose target exists but does not point back.
 func (v *Validator) FindOrphanedReferences(doc *gedcom.Document) []Issue {
 	if doc == nil {
 		return nil

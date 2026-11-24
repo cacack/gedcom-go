@@ -103,6 +103,34 @@ const (
 	// CodeOrphanedSOUR indicates a SOUR reference points to a non-existent source.
 	CodeOrphanedSOUR = "ORPHANED_SOUR"
 
+	// The Unreciprocated* codes report a family link only one side records:
+	// the pointer names a record that exists, but that record does not
+	// point back (the reciprocal-link rule of gedcom.Individual.IsSpouseIn
+	// and IsChildIn, which the relationship helpers follow). Each carries
+	// SeverityWarning, the individual as RecordXRef, the family as
+	// RelatedXRef, and the line of the pointer that is there, so a one-way
+	// link is reported once, under the code of the side that records it.
+
+	// CodeUnreciprocatedFAMS indicates an individual's FAMS names a family
+	// that does not name the individual as HUSB or WIFE.
+	CodeUnreciprocatedFAMS = "UNRECIPROCATED_FAMS"
+
+	// CodeUnreciprocatedFAMC indicates an individual's FAMC names a family
+	// that does not name the individual as CHIL.
+	CodeUnreciprocatedFAMC = "UNRECIPROCATED_FAMC"
+
+	// CodeUnreciprocatedHUSB indicates a family's HUSB names an individual
+	// with no FAMS to the family.
+	CodeUnreciprocatedHUSB = "UNRECIPROCATED_HUSB"
+
+	// CodeUnreciprocatedWIFE indicates a family's WIFE names an individual
+	// with no FAMS to the family.
+	CodeUnreciprocatedWIFE = "UNRECIPROCATED_WIFE"
+
+	// CodeUnreciprocatedCHIL indicates a family's CHIL names an individual
+	// with no FAMC to the family.
+	CodeUnreciprocatedCHIL = "UNRECIPROCATED_CHIL"
+
 	// CodeBrokenXRef indicates a pointer in a record's raw tags names no record
 	// in the document. It carries SeverityError, the line of the pointing tag,
 	// the missing pointer as RelatedXRef and the tag name under Details["tag"].

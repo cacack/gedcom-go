@@ -5,16 +5,19 @@ import "testing"
 // Helper function to create a test document with individuals and families for family tests
 func createFamilyTestDocument() *Document {
 	// Create individuals
-	i1 := &Individual{XRef: "@I1@"}
-	i2 := &Individual{XRef: "@I2@"}
-	i3 := &Individual{XRef: "@I3@"}
-	i4 := &Individual{XRef: "@I4@"}
-	i5 := &Individual{XRef: "@I5@"}
-	i6 := &Individual{XRef: "@I6@"}
-	i7 := &Individual{XRef: "@I7@"}
-	i8 := &Individual{XRef: "@I8@"}
-	i9 := &Individual{XRef: "@I9@"}
-	i10 := &Individual{XRef: "@I10@"}
+	// Each one links back to its family (FAMS or FAMC), so the family
+	// helpers, which follow only links both sides record, resolve them.
+	link := func(f string) []FamilyLink { return []FamilyLink{{FamilyXRef: f}} }
+	i1 := &Individual{XRef: "@I1@", SpouseInFamilies: link("@F1@")}
+	i2 := &Individual{XRef: "@I2@", SpouseInFamilies: link("@F1@")}
+	i3 := &Individual{XRef: "@I3@", ChildInFamilies: link("@F1@")}
+	i4 := &Individual{XRef: "@I4@", ChildInFamilies: link("@F1@")}
+	i5 := &Individual{XRef: "@I5@", SpouseInFamilies: link("@F2@")}
+	i6 := &Individual{XRef: "@I6@", ChildInFamilies: link("@F2@")}
+	i7 := &Individual{XRef: "@I7@", SpouseInFamilies: link("@F3@")}
+	i8 := &Individual{XRef: "@I8@", ChildInFamilies: link("@F3@")}
+	i9 := &Individual{XRef: "@I9@", SpouseInFamilies: link("@F4@")}
+	i10 := &Individual{XRef: "@I10@", SpouseInFamilies: link("@F4@")}
 
 	// Create families
 	f1 := &Family{XRef: "@F1@", Husband: "@I1@", Wife: "@I2@", Children: []string{"@I3@", "@I4@"}}
@@ -71,19 +74,19 @@ func TestFamily_HusbandIndividual(t *testing.T) {
 	}{
 		{
 			name:     "normal family with husband",
-			family:   &Family{Husband: "@I1@"},
+			family:   &Family{XRef: "@F1@", Husband: "@I1@"},
 			doc:      doc,
 			wantXRef: "@I1@",
 		},
 		{
 			name:    "family without husband (wife only)",
-			family:  &Family{Wife: "@I7@"},
+			family:  &Family{XRef: "@F3@", Wife: "@I7@"},
 			doc:     doc,
 			wantNil: true,
 		},
 		{
 			name:    "nil document",
-			family:  &Family{Husband: "@I1@"},
+			family:  &Family{XRef: "@F1@", Husband: "@I1@"},
 			doc:     nil,
 			wantNil: true,
 		},
@@ -142,19 +145,19 @@ func TestFamily_WifeIndividual(t *testing.T) {
 	}{
 		{
 			name:     "normal family with wife",
-			family:   &Family{Wife: "@I2@"},
+			family:   &Family{XRef: "@F1@", Wife: "@I2@"},
 			doc:      doc,
 			wantXRef: "@I2@",
 		},
 		{
 			name:    "family without wife (husband only)",
-			family:  &Family{Husband: "@I5@"},
+			family:  &Family{XRef: "@F2@", Husband: "@I5@"},
 			doc:     doc,
 			wantNil: true,
 		},
 		{
 			name:    "nil document",
-			family:  &Family{Wife: "@I2@"},
+			family:  &Family{XRef: "@F1@", Wife: "@I2@"},
 			doc:     nil,
 			wantNil: true,
 		},
@@ -212,31 +215,31 @@ func TestFamily_ChildrenIndividuals(t *testing.T) {
 	}{
 		{
 			name:      "normal family with children",
-			family:    &Family{Children: []string{"@I3@", "@I4@"}},
+			family:    &Family{XRef: "@F1@", Children: []string{"@I3@", "@I4@"}},
 			doc:       doc,
 			wantXRefs: []string{"@I3@", "@I4@"},
 		},
 		{
 			name:      "family with one child",
-			family:    &Family{Children: []string{"@I6@"}},
+			family:    &Family{XRef: "@F2@", Children: []string{"@I6@"}},
 			doc:       doc,
 			wantXRefs: []string{"@I6@"},
 		},
 		{
 			name:      "family with no children",
-			family:    &Family{Husband: "@I9@", Wife: "@I10@"},
+			family:    &Family{XRef: "@F4@", Husband: "@I9@", Wife: "@I10@"},
 			doc:       doc,
 			wantXRefs: []string{},
 		},
 		{
 			name:      "nil document",
-			family:    &Family{Children: []string{"@I3@", "@I4@"}},
+			family:    &Family{XRef: "@F1@", Children: []string{"@I3@", "@I4@"}},
 			doc:       nil,
 			wantXRefs: []string{},
 		},
 		{
 			name:      "family with invalid xref (filters out)",
-			family:    &Family{Children: []string{"@I3@", "@INVALID@", "@I4@"}},
+			family:    &Family{XRef: "@F1@", Children: []string{"@I3@", "@INVALID@", "@I4@"}},
 			doc:       doc,
 			wantXRefs: []string{"@I3@", "@I4@"},
 		},
@@ -289,25 +292,25 @@ func TestFamily_AllMembers(t *testing.T) {
 	}{
 		{
 			name:      "full family (husband, wife, children)",
-			family:    &Family{Husband: "@I1@", Wife: "@I2@", Children: []string{"@I3@", "@I4@"}},
+			family:    &Family{XRef: "@F1@", Husband: "@I1@", Wife: "@I2@", Children: []string{"@I3@", "@I4@"}},
 			doc:       doc,
 			wantXRefs: []string{"@I1@", "@I2@", "@I3@", "@I4@"},
 		},
 		{
 			name:      "husband only with child",
-			family:    &Family{Husband: "@I5@", Children: []string{"@I6@"}},
+			family:    &Family{XRef: "@F2@", Husband: "@I5@", Children: []string{"@I6@"}},
 			doc:       doc,
 			wantXRefs: []string{"@I5@", "@I6@"},
 		},
 		{
 			name:      "wife only with child",
-			family:    &Family{Wife: "@I7@", Children: []string{"@I8@"}},
+			family:    &Family{XRef: "@F3@", Wife: "@I7@", Children: []string{"@I8@"}},
 			doc:       doc,
 			wantXRefs: []string{"@I7@", "@I8@"},
 		},
 		{
 			name:      "married couple no children",
-			family:    &Family{Husband: "@I9@", Wife: "@I10@"},
+			family:    &Family{XRef: "@F4@", Husband: "@I9@", Wife: "@I10@"},
 			doc:       doc,
 			wantXRefs: []string{"@I9@", "@I10@"},
 		},
@@ -319,25 +322,25 @@ func TestFamily_AllMembers(t *testing.T) {
 		},
 		{
 			name:      "nil document",
-			family:    &Family{Husband: "@I1@", Wife: "@I2@", Children: []string{"@I3@"}},
+			family:    &Family{XRef: "@F1@", Husband: "@I1@", Wife: "@I2@", Children: []string{"@I3@"}},
 			doc:       nil,
 			wantXRefs: []string{},
 		},
 		{
 			name:      "family with invalid husband xref (filters out)",
-			family:    &Family{Husband: "@INVALID@", Wife: "@I2@", Children: []string{"@I3@"}},
+			family:    &Family{XRef: "@F1@", Husband: "@INVALID@", Wife: "@I2@", Children: []string{"@I3@"}},
 			doc:       doc,
 			wantXRefs: []string{"@I2@", "@I3@"},
 		},
 		{
 			name:      "family with invalid wife xref (filters out)",
-			family:    &Family{Husband: "@I1@", Wife: "@INVALID@", Children: []string{"@I3@"}},
+			family:    &Family{XRef: "@F1@", Husband: "@I1@", Wife: "@INVALID@", Children: []string{"@I3@"}},
 			doc:       doc,
 			wantXRefs: []string{"@I1@", "@I3@"},
 		},
 		{
 			name:      "family with some invalid child xrefs (filters out)",
-			family:    &Family{Husband: "@I1@", Wife: "@I2@", Children: []string{"@I3@", "@INVALID@"}},
+			family:    &Family{XRef: "@F1@", Husband: "@I1@", Wife: "@I2@", Children: []string{"@I3@", "@INVALID@"}},
 			doc:       doc,
 			wantXRefs: []string{"@I1@", "@I2@", "@I3@"},
 		},
@@ -373,6 +376,7 @@ func TestFamily_OrderPreservation(t *testing.T) {
 
 	t.Run("AllMembers returns husband, wife, children in order", func(t *testing.T) {
 		family := &Family{
+			XRef:     "@F1@",
 			Husband:  "@I1@",
 			Wife:     "@I2@",
 			Children: []string{"@I3@", "@I4@"},
@@ -395,6 +399,7 @@ func TestFamily_OrderPreservation(t *testing.T) {
 	t.Run("ChildrenIndividuals preserves GEDCOM file order", func(t *testing.T) {
 		// Children should appear in the order they were defined in the GEDCOM
 		family := &Family{
+			XRef:     "@F1@",
 			Children: []string{"@I4@", "@I3@"}, // Reverse order
 		}
 

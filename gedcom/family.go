@@ -226,32 +226,51 @@ func (f *Family) SetNumberOfChildren(value string) {
 
 // HusbandIndividual returns the Individual record for the husband.
 // Returns nil if the document is nil, Husband xref is empty, or the individual is not found.
+//
+// The husband counts only when both sides record the link (the
+// reciprocal-link rule, see Individual.IsSpouseIn): an individual named by
+// HUSB who carries no FAMS to this family is not returned.
 func (f *Family) HusbandIndividual(doc *Document) *Individual {
-	if doc == nil || f.Husband == "" {
-		return nil
-	}
-	return doc.GetIndividual(f.Husband)
+	return f.spouse(doc, f.Husband)
 }
 
 // WifeIndividual returns the Individual record for the wife.
 // Returns nil if the document is nil, Wife xref is empty, or the individual is not found.
+//
+// The wife counts only when both sides record the link (the reciprocal-link
+// rule, see Individual.IsSpouseIn): an individual named by WIFE who carries
+// no FAMS to this family is not returned.
 func (f *Family) WifeIndividual(doc *Document) *Individual {
-	if doc == nil || f.Wife == "" {
+	return f.spouse(doc, f.Wife)
+}
+
+// spouse resolves xref, the family's HUSB or WIFE, under the reciprocal-link
+// rule.
+func (f *Family) spouse(doc *Document, xref string) *Individual {
+	if doc == nil || xref == "" {
 		return nil
 	}
-	return doc.GetIndividual(f.Wife)
+	if ind := doc.GetIndividual(xref); ind.IsSpouseIn(f) {
+		return ind
+	}
+	return nil
 }
 
 // ChildrenIndividuals returns Individual records for all children in this family.
 // Invalid xrefs are filtered out. Order is preserved from the GEDCOM file.
 // Returns an empty slice if the document is nil or there are no children.
+//
+// A child counts only when both sides record the link (the reciprocal-link
+// rule, see Individual.IsChildIn): an individual named by CHIL who carries
+// no FAMC to this family is not returned.
 func (f *Family) ChildrenIndividuals(doc *Document) []*Individual {
 	if doc == nil {
 		return []*Individual{}
 	}
 	result := make([]*Individual, 0, len(f.Children))
 	for _, childXRef := range f.Children {
-		if child := doc.GetIndividual(childXRef); child != nil {
+		// The CHIL is the family's side; hasChildSide checks the FAMC.
+		if child := doc.GetIndividual(childXRef); hasChildSide(child, f) {
 			result = append(result, child)
 		}
 	}
@@ -260,7 +279,8 @@ func (f *Family) ChildrenIndividuals(doc *Document) []*Individual {
 
 // AllMembers returns all Individual records for this family (husband, wife, children).
 // Order: husband first (if present), wife second (if present), then children.
-// Invalid xrefs are filtered out.
+// Invalid xrefs are filtered out, and so is anyone whose link the reciprocal-link
+// rule does not count (see HusbandIndividual, WifeIndividual and ChildrenIndividuals).
 // Returns an empty slice if the document is nil or no members are found.
 func (f *Family) AllMembers(doc *Document) []*Individual {
 	if doc == nil {

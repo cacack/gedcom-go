@@ -646,9 +646,13 @@ func (i *Individual) FamilySearchURL() string {
 	return "https://www.familysearch.org/tree/person/details/" + i.FamilySearchID
 }
 
-// Parents returns all parents (biological) of this individual by looking up
-// the families where this individual is a child and collecting the husband
-// and wife from each family.
+// Parents returns all parents of this individual: the husband and wife of
+// each family the individual is a child of.
+//
+// A family link counts only when both sides record it (the reciprocal-link
+// rule, see IsSpouseIn): the family must name this individual as CHIL and
+// the individual must carry a FAMC to it, and a parent must carry a FAMS to
+// the family that names them as HUSB or WIFE.
 //
 // The doc parameter is required for O(1) cross-reference lookups.
 // Returns an empty slice if doc is nil, no parents are found, or if
@@ -667,9 +671,12 @@ func (i *Individual) Parents(doc *Document) []*Individual {
 	return parents
 }
 
-// Spouses returns all spouses of this individual by looking up the families
-// where this individual is a spouse and returning the other spouse from each
-// family.
+// Spouses returns all spouses of this individual: the other spouse in each
+// family the individual is a spouse in.
+//
+// A family link counts only when both sides record it (the reciprocal-link
+// rule, see IsSpouseIn): this individual and the other spouse must each
+// carry a FAMS to the family, and the family must name each as HUSB or WIFE.
 //
 // The doc parameter is required for O(1) cross-reference lookups.
 // Returns an empty slice if doc is nil, no spouses are found, or if
@@ -677,65 +684,45 @@ func (i *Individual) Parents(doc *Document) []*Individual {
 // Handles multiple marriages (multiple FAMS entries).
 // Order is preserved from the GEDCOM file.
 func (i *Individual) Spouses(doc *Document) []*Individual {
-	if doc == nil {
-		return nil
-	}
-
 	var spouses []*Individual
-	for _, link := range i.SpouseInFamilies {
-		fam := doc.GetFamily(link.FamilyXRef)
-		if fam == nil {
-			continue
-		}
-		// Determine which spouse is "the other one"
+	for _, fam := range i.FamiliesAsSpouse(doc) {
+		other := fam.HusbandIndividual(doc)
 		if fam.Husband == i.XRef {
-			// This individual is the husband, spouse is wife
-			if fam.Wife != "" {
-				if wife := doc.GetIndividual(fam.Wife); wife != nil {
-					spouses = append(spouses, wife)
-				}
-			}
-		} else {
-			// This individual is the wife, spouse is husband
-			if fam.Husband != "" {
-				if husband := doc.GetIndividual(fam.Husband); husband != nil {
-					spouses = append(spouses, husband)
-				}
-			}
+			other = fam.WifeIndividual(doc)
+		}
+		if other != nil {
+			spouses = append(spouses, other)
 		}
 	}
 	return spouses
 }
 
-// Children returns all children of this individual by looking up the families
-// where this individual is a spouse and collecting all children from each family.
+// Children returns all children of this individual: the children of each
+// family the individual is a spouse in.
+//
+// A family link counts only when both sides record it (the reciprocal-link
+// rule, see IsSpouseIn): this individual must carry a FAMS to the family
+// that names them as HUSB or WIFE, and each child must carry a FAMC to the
+// family that names them as CHIL.
 //
 // The doc parameter is required for O(1) cross-reference lookups.
 // Returns an empty slice if doc is nil, no children are found, or if
 // family/individual xrefs are invalid. Invalid xrefs are silently skipped.
 // Order is preserved from the GEDCOM file.
 func (i *Individual) Children(doc *Document) []*Individual {
-	if doc == nil {
-		return nil
-	}
-
 	var children []*Individual
-	for _, link := range i.SpouseInFamilies {
-		fam := doc.GetFamily(link.FamilyXRef)
-		if fam == nil {
-			continue
-		}
-		for _, childXRef := range fam.Children {
-			if child := doc.GetIndividual(childXRef); child != nil {
-				children = append(children, child)
-			}
-		}
+	for _, fam := range i.FamiliesAsSpouse(doc) {
+		children = append(children, fam.ChildrenIndividuals(doc)...)
 	}
 	return children
 }
 
 // FamiliesAsChild returns the families in which this individual is a child --
 // the family records containing this individual's parents.
+//
+// A family counts only when both sides record the link (the reciprocal-link
+// rule, see IsChildIn): the individual's FAMC names it and it names the
+// individual as CHIL.
 //
 // The doc parameter is required for O(1) cross-reference lookups.
 // Returns an empty slice if doc is nil, no parental families are found, or if
@@ -748,7 +735,7 @@ func (i *Individual) FamiliesAsChild(doc *Document) []*Family {
 
 	var families []*Family
 	for _, link := range i.ChildInFamilies {
-		if fam := doc.GetFamily(link.FamilyXRef); fam != nil {
+		if fam := doc.GetFamily(link.FamilyXRef); i.IsChildIn(fam) {
 			families = append(families, fam)
 		}
 	}
@@ -757,6 +744,10 @@ func (i *Individual) FamiliesAsChild(doc *Document) []*Family {
 
 // FamiliesAsSpouse returns the families in which this individual is a spouse --
 // the family records where this individual is either the husband or the wife.
+//
+// A family counts only when both sides record the link (the reciprocal-link
+// rule, see IsSpouseIn): the individual's FAMS names it and it names the
+// individual as HUSB or WIFE.
 //
 // The doc parameter is required for O(1) cross-reference lookups.
 // Returns an empty slice if doc is nil, no spouse families are found, or if
@@ -769,7 +760,7 @@ func (i *Individual) FamiliesAsSpouse(doc *Document) []*Family {
 
 	var families []*Family
 	for _, link := range i.SpouseInFamilies {
-		if fam := doc.GetFamily(link.FamilyXRef); fam != nil {
+		if fam := doc.GetFamily(link.FamilyXRef); i.IsSpouseIn(fam) {
 			families = append(families, fam)
 		}
 	}
@@ -793,7 +784,8 @@ type ParentLink struct {
 
 // ParentLinks returns the same parents as Parents, in the same order, each
 // with the family that links them and the pedigree of that link, so birth and
-// adoptive parents can be told apart.
+// adoptive parents can be told apart. It follows the reciprocal-link rule as
+// Parents does.
 //
 // The doc parameter is required for O(1) cross-reference lookups.
 // Returns an empty slice if doc is nil or no parents are found. Invalid
@@ -806,14 +798,11 @@ func (i *Individual) ParentLinks(doc *Document) []ParentLink {
 	var links []ParentLink
 	for _, link := range i.ChildInFamilies {
 		fam := doc.GetFamily(link.FamilyXRef)
-		if fam == nil {
+		if !i.IsChildIn(fam) {
 			continue
 		}
-		for _, xref := range []string{fam.Husband, fam.Wife} {
-			if xref == "" {
-				continue
-			}
-			if parent := doc.GetIndividual(xref); parent != nil {
+		for _, parent := range []*Individual{fam.HusbandIndividual(doc), fam.WifeIndividual(doc)} {
+			if parent != nil {
 				links = append(links, ParentLink{Individual: parent, Family: fam, Pedigree: link.Pedigree})
 			}
 		}
@@ -843,6 +832,11 @@ type Sibling struct {
 // Each sibling appears once, as full if it qualifies as both; the individual
 // itself is never included.
 //
+// A family link counts only when both sides record it (the reciprocal-link
+// rule, see IsSpouseIn): the families, parents and siblings are those
+// FamiliesAsChild, Parents, FamiliesAsSpouse and Family.ChildrenIndividuals
+// return.
+//
 // Full and half are read from the family records, not from pedigree: children
 // of the same family are full siblings even when one is adopted. Use
 // ParentLinks on each to compare pedigrees.
@@ -860,14 +854,12 @@ func (i *Individual) Siblings(doc *Document) []Sibling {
 	seen := map[string]bool{i.XRef: true}
 	var siblings []Sibling
 	addChildren := func(fam *Family, half bool) {
-		for _, xref := range fam.Children {
-			if seen[xref] {
+		for _, child := range fam.ChildrenIndividuals(doc) {
+			if seen[child.XRef] {
 				continue
 			}
-			if child := doc.GetIndividual(xref); child != nil {
-				seen[xref] = true
-				siblings = append(siblings, Sibling{Individual: child, Family: fam, Half: half})
-			}
+			seen[child.XRef] = true
+			siblings = append(siblings, Sibling{Individual: child, Family: fam, Half: half})
 		}
 	}
 

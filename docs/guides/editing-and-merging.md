@@ -85,6 +85,11 @@ is only read. Things to know:
   it wraps `gedcom.ErrDuplicateXRef` when the XRef is taken.
 - Pointers are not checked. An edit that adds `1 FAMS @F9@` is accepted
   whether or not `@F9@` exists; run the validator afterwards.
+- A family link must be written on both records: `FAMS` or `FAMC` on the
+  individual and `HUSB`, `WIFE` or `CHIL` on the family. An edit that adds
+  only one side is accepted, but the relationship helpers (`Parents`,
+  `Children`, `Descendants` and the rest) ignore the link and the validator
+  reports it as `UNRECIPROCATED_FAMS`, `_FAMC`, `_HUSB`, `_WIFE` or `_CHIL`.
 
 `Document.RemoveRecord(xref)` removes a record and returns every pointer still
 naming it, as `gedcom.Reference` values (the holding record's XRef and the tag

@@ -624,6 +624,9 @@ rels := doc.DescendantsWithGenerations("@I1@", 0) // every generation
 ```
 
 - BFS ordering: closer generations precede farther ones
+- Follows a family link only when both sides record it (see
+  [Relationship Traversal](#relationship-traversal)), so a stray `FAMS` does not
+  pull an unrelated family's children in as descendants
 - Cycle-safe via visited-set termination
 - Results exclude the seed individual
 - Missing or non-individual XRefs return nil
@@ -1759,6 +1762,26 @@ Typed detection for all GEDCOM reference types, each issue carrying the line of 
 | ORPHANED_CHIL | CHIL | Family references non-existent child |
 | ORPHANED_SOUR | SOUR | Citation references non-existent source |
 
+**Non-Reciprocated Family Links:**
+
+GEDCOM records each family membership on both sides: a `FAMS` or `FAMC` on the
+individual and a `HUSB`, `WIFE` or `CHIL` on the family. A pointer whose target
+exists but does not point back is reported as a warning under the code of the
+side that records it, so each one-way link is reported once. The issue carries the
+individual as `RecordXRef`, the family as `RelatedXRef` and the line of the pointer
+that is there. The rule is `Individual.IsSpouseIn` / `IsChildIn`, the one the
+[relationship helpers](#relationship-traversal) follow. `ValidateAll`,
+`FindOrphanedReferences` and `QualityReport` (under `ReferenceIssues`) report these;
+the streaming validator does not, since it needs both records.
+
+| Error Code | Severity | Description |
+|------------|----------|-------------|
+| UNRECIPROCATED_FAMS | Warning | Individual's `FAMS` names a family that does not name them as `HUSB` or `WIFE` |
+| UNRECIPROCATED_FAMC | Warning | Individual's `FAMC` names a family that does not name them as `CHIL` |
+| UNRECIPROCATED_HUSB | Warning | Family's `HUSB` names an individual with no `FAMS` to it |
+| UNRECIPROCATED_WIFE | Warning | Family's `WIFE` names an individual with no `FAMS` to it |
+| UNRECIPROCATED_CHIL | Warning | Family's `CHIL` names an individual with no `FAMC` to it |
+
 ```go
 issues := v.FindOrphanedReferences(doc)
 ```
@@ -2724,6 +2747,8 @@ Navigate family relationships with convenience methods that eliminate manual cro
 | `FamiliesAsSpouse(doc)` | `[]*Family` | Families where individual is a spouse |
 | `ParentLinks(doc)` | `[]ParentLink` | Parents with the linking family and the child's `Pedigree` (birth, adopted, ...) |
 | `Siblings(doc)` | `[]Sibling` | Full siblings (same FAMC family), then half siblings (a parent's other families), each with `Family` and `Half` |
+| `IsSpouseIn(fam)` | `bool` | Individual has a `FAMS` to the family and the family names them as `HUSB` or `WIFE` |
+| `IsChildIn(fam)` | `bool` | Individual has a `FAMC` to the family and the family names them as `CHIL` |
 
 **Family Methods:**
 
@@ -2738,6 +2763,12 @@ All methods:
 - Take `*Document` for O(1) cross-reference lookup
 - Return `nil` or empty slice for missing/invalid references (never error)
 - Preserve order from GEDCOM file
+- Follow one rule for family links: a link counts only when both sides record
+  it, the individual's `FAMS` or `FAMC` and the family's `HUSB`, `WIFE` or
+  `CHIL`. A link only one side records is ignored, here, in the graph
+  traversals and in the validator's date checks, and the validator reports it
+  ([`UNRECIPROCATED_*`](#enhanced-data-validation)).
+  `Individual.IsSpouseIn(fam)` and `IsChildIn(fam)` are the rule
 
 ```go
 // Navigate from individual to relatives

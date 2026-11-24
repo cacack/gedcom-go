@@ -4,6 +4,8 @@
 // This module validates that all cross-references in a GEDCOM document point to
 // existing records. It provides granular detection for different reference types:
 // FAMC (child-in-family), FAMS (spouse-in-family), HUSB, WIFE, CHIL, and SOUR.
+// It also reports a family link only one side records (a FAMS, FAMC, HUSB,
+// WIFE or CHIL whose target exists but does not point back).
 
 package validator
 
@@ -38,8 +40,10 @@ const (
 )
 
 // ReferenceValidator provides typed validation of cross-references in GEDCOM documents.
-// It detects orphaned references (references to non-existent records) and provides
-// detailed diagnostics including the reference type and field location.
+// It detects orphaned references (references to non-existent records) and
+// family links the other record does not reciprocate (the Unreciprocated*
+// codes), and provides detailed diagnostics including the reference type and
+// field location.
 type ReferenceValidator struct{}
 
 // NewReferenceValidator creates a new ReferenceValidator.
@@ -48,14 +52,16 @@ func NewReferenceValidator() *ReferenceValidator {
 }
 
 // Validate checks all cross-references in the document and returns issues for
-// any orphaned references found. Each issue includes the specific reference type
-// and detailed context about where the broken reference was found.
+// any orphaned references and non-reciprocated family links found. Each issue
+// includes the specific reference type and detailed context about where the
+// pointer was found.
 func (v *ReferenceValidator) Validate(doc *gedcom.Document) []Issue {
 	if doc == nil {
 		return nil
 	}
 
 	var issues []Issue
+	children := childSets{}
 
 	// Walk the records, not doc.Individuals()/Families(), so each entity's
 	// pointer lines come from the record it was decoded from. Duplicate XRefs
@@ -67,7 +73,7 @@ func (v *ReferenceValidator) Validate(doc *gedcom.Document) []Issue {
 			continue
 		}
 		if ind, ok := record.GetIndividual(); ok {
-			issues = append(issues, v.checkIndividualReferences(doc, record, ind)...)
+			issues = append(issues, v.checkIndividualReferences(doc, record, ind, children)...)
 		}
 		if fam, ok := record.GetFamily(); ok {
 			issues = append(issues, v.checkFamilyReferences(doc, record, fam)...)
@@ -79,7 +85,11 @@ func (v *ReferenceValidator) Validate(doc *gedcom.Document) []Issue {
 
 // checkIndividualReferences validates all cross-references within an individual record.
 // This includes FAMC (child-in-family), FAMS (spouse-in-family), and SOUR references.
-func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, record *gedcom.Record, ind *gedcom.Individual) []Issue {
+//
+// children answers whether a family names ind as CHIL; it is shared across
+// the Validate call so a family of k children is indexed once, not rescanned
+// by each of its k children.
+func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, record *gedcom.Record, ind *gedcom.Individual, children childSets) []Issue {
 	var issues []Issue
 
 	lines := newPointerLines(record)
@@ -100,6 +110,10 @@ func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, rec
 				WithDetail("reference_type", string(RefTypeFAMC)).
 				WithDetail("field", fmt.Sprintf("ChildInFamilies[%d]", i))
 			issues = append(issues, issue)
+		} else if fam := doc.GetFamily(link.FamilyXRef); !children.childIn(ind, fam) {
+			issues = append(issues, unreciprocated(CodeUnreciprocatedFAMC, RefTypeFAMC,
+				fmt.Sprintf("FAMC to family %s, which does not name %s as CHIL", link.FamilyXRef, ind.XRef),
+				ind.XRef, link.FamilyXRef, lines.next("FAMC", link.FamilyXRef), fmt.Sprintf("ChildInFamilies[%d]", i)))
 		}
 	}
 
@@ -119,6 +133,10 @@ func (v *ReferenceValidator) checkIndividualReferences(doc *gedcom.Document, rec
 				WithDetail("reference_type", string(RefTypeFAMS)).
 				WithDetail("field", fmt.Sprintf("SpouseInFamilies[%d]", i))
 			issues = append(issues, issue)
+		} else if fam := doc.GetFamily(link.FamilyXRef); !ind.IsSpouseIn(fam) {
+			issues = append(issues, unreciprocated(CodeUnreciprocatedFAMS, RefTypeFAMS,
+				fmt.Sprintf("FAMS to family %s, which does not name %s as HUSB or WIFE", link.FamilyXRef, ind.XRef),
+				ind.XRef, link.FamilyXRef, lines.next("FAMS", link.FamilyXRef), fmt.Sprintf("SpouseInFamilies[%d]", i)))
 		}
 	}
 
@@ -163,6 +181,10 @@ func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, record 
 				WithDetail("reference_type", string(RefTypeHUSB)).
 				WithDetail("field", "Husband")
 			issues = append(issues, issue)
+		} else if ind := doc.GetIndividual(fam.Husband); !ind.IsSpouseIn(fam) {
+			issues = append(issues, unreciprocated(CodeUnreciprocatedHUSB, RefTypeHUSB,
+				fmt.Sprintf("HUSB %s in family %s has no FAMS to the family", fam.Husband, fam.XRef),
+				fam.Husband, fam.XRef, lines.next("HUSB", fam.Husband), "Husband"))
 		}
 	}
 
@@ -179,6 +201,10 @@ func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, record 
 				WithDetail("reference_type", string(RefTypeWIFE)).
 				WithDetail("field", "Wife")
 			issues = append(issues, issue)
+		} else if ind := doc.GetIndividual(fam.Wife); !ind.IsSpouseIn(fam) {
+			issues = append(issues, unreciprocated(CodeUnreciprocatedWIFE, RefTypeWIFE,
+				fmt.Sprintf("WIFE %s in family %s has no FAMS to the family", fam.Wife, fam.XRef),
+				fam.Wife, fam.XRef, lines.next("WIFE", fam.Wife), "Wife"))
 		}
 	}
 
@@ -198,10 +224,65 @@ func (v *ReferenceValidator) checkFamilyReferences(doc *gedcom.Document, record 
 				WithDetail("reference_type", string(RefTypeCHIL)).
 				WithDetail("field", fmt.Sprintf("Children[%d]", i))
 			issues = append(issues, issue)
+		} else if ind := doc.GetIndividual(childXRef); !hasFAMC(ind, fam) {
+			issues = append(issues, unreciprocated(CodeUnreciprocatedCHIL, RefTypeCHIL,
+				fmt.Sprintf("CHIL %s in family %s has no FAMC to the family", childXRef, fam.XRef),
+				childXRef, fam.XRef, lines.next("CHIL", childXRef), fmt.Sprintf("Children[%d]", i)))
 		}
 	}
 
 	return issues
+}
+
+// childSets maps each family to the set of XRefs its CHIL pointers name,
+// built on first use. Calling gedcom.Individual.IsChildIn from a FAMC check
+// rescans fam.Children for each child, which is quadratic in a large family.
+type childSets map[*gedcom.Family]map[string]struct{}
+
+// childIn reports what ind.IsChildIn(fam) does, in O(1) after fam's set is
+// built: ind has a FAMC to fam and fam names ind as CHIL.
+func (c childSets) childIn(ind *gedcom.Individual, fam *gedcom.Family) bool {
+	if !hasFAMC(ind, fam) {
+		return false
+	}
+	set, ok := c[fam]
+	if !ok {
+		set = make(map[string]struct{}, len(fam.Children))
+		for _, x := range fam.Children {
+			set[x] = struct{}{}
+		}
+		c[fam] = set
+	}
+	_, ok = set[ind.XRef]
+	return ok
+}
+
+// hasFAMC reports whether ind records its side of being a child in fam: a
+// FAMC to it, both having an XRef. The CHIL loop, which already holds fam's
+// side, checks only this, as gedcom.Family.ChildrenIndividuals does, so the
+// loop stays linear in the number of children.
+func hasFAMC(ind *gedcom.Individual, fam *gedcom.Family) bool {
+	if ind == nil || fam == nil || ind.XRef == "" || fam.XRef == "" {
+		return false
+	}
+	for _, link := range ind.ChildInFamilies {
+		if link.FamilyXRef == fam.XRef {
+			return true
+		}
+	}
+	return false
+}
+
+// unreciprocated builds the warning for a family link only one side records.
+// Whichever side holds the pointer, the issue names the individual as its
+// record and the family as the related record, so one one-way link reads the
+// same from either direction; line is that of the pointer that is there.
+func unreciprocated(code string, refType ReferenceType, message, indXRef, famXRef string, line int, field string) Issue {
+	return NewIssue(SeverityWarning, code, message, indXRef).
+		WithRelatedXRef(famXRef).
+		WithLineNumber(line).
+		WithDetail("reference_type", string(refType)).
+		WithDetail("field", field)
 }
 
 // skipReference reports whether a typed pointer field holds nothing to

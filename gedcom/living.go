@@ -73,6 +73,10 @@ const (
 //     could be placed, LivingReasonNoDates when none could. An individual
 //     with no dates at all is presumed living, the protective default.
 //
+// The families and children are those FamiliesAsSpouse and Children
+// return, so a family link counts only when both sides record it (the
+// reciprocal-link rule, see IsSpouseIn).
+//
 // Only those close relatives are consulted. Parents' and spouses' dates are
 // not: they bound the individual's birth only by assuming an age gap, and
 // the test assumes nothing. Negative assertions (NO DEAT, IsNegative) are

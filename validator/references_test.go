@@ -430,7 +430,7 @@ func TestReferenceValidatorValidate_IndexTracking(t *testing.T) {
 	doc := newTestDocument()
 
 	// Create valid family to mix with orphaned references
-	fam := &gedcom.Family{XRef: "@F1@"}
+	fam := &gedcom.Family{XRef: "@F1@", Children: []string{"@I1@"}}
 	addFamily(doc, fam)
 
 	ind := &gedcom.Individual{
