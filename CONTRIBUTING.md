@@ -322,7 +322,7 @@ The test matrix is 3 operating systems × 3 Go versions (the `go.mod` floor, `ol
 | Trigger | Test jobs | `-short` |
 |---------|-----------|----------|
 | Pull request | 5: Ubuntu on all three Go versions; macOS and Windows on `stable` only | macOS and Windows |
-| Push to `main` (and merge queue) | All 9 | No |
+| Push to `main` or a release branch (and merge queue) | All 9 | No |
 | Nightly | All 9 | No |
 
 A pull request therefore does not run the floor and `oldstable` on macOS or Windows; the push to `main` that follows the merge does. Coverage Check always runs the full suite, without `-short`.

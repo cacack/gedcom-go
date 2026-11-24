@@ -126,7 +126,7 @@ jobs:
       run: go test -timeout 10m ./...
 
   # The 3 OS x 3 Go matrix of ci.yml's Test job, in full. A pull request runs
-  # only 5 of its 9 jobs, and 4 of those with -short (#903); a push to main
+  # only 5 of its 9 jobs, and 2 of those with -short (#903); a push to main
   # runs all 9, and this run catches what moves with no push at all: a new
   # runner image, or a Go release behind the 'stable' and 'oldstable' aliases.
   # The -timeout and timeout-minutes budgets are ci.yml's; see the note there.
