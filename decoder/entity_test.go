@@ -5290,6 +5290,18 @@ func TestPaddedInlineNoteKeepsPayload(t *testing.T) {
 	}
 }
 
+// misplacedTagsIn returns the tag of every CodeMisplacedTag diagnostic.
+func misplacedTagsIn(diags Diagnostics) []string {
+	var tags []string
+	for _, d := range diags {
+		if d.Code == CodeMisplacedTag {
+			tag, _, _ := strings.Cut(d.Message, " ")
+			tags = append(tags, tag)
+		}
+	}
+	return tags
+}
+
 // unknownTagsIn returns the tag names of every UNKNOWN_TAG diagnostic in diags.
 // The tests below assert on which tags the decoder failed to recognize, and the
 // tag name is the part of the message that matters.
@@ -5534,7 +5546,7 @@ func TestAttributeUnknownSubtagFlagged(t *testing.T) {
 
 // TestSpouseAgeSubtagsOnlyUnderFamily pins issue #475: HUSB/WIFE
 // (FAMILY_EVENT_DETAIL) have no position under an individual's events or
-// attributes, so there they are UNKNOWN_TAG. The check keys on the owning
+// attributes, so there they are MISPLACED_TAG (#884). The check keys on the owning
 // record, not on event versus attribute, so both INDI shapes are covered.
 func TestSpouseAgeSubtagsOnlyUnderFamily(t *testing.T) {
 	for _, context := range []string{"1 OCCU Blacksmith", "1 BIRT"} {
@@ -5550,9 +5562,9 @@ func TestSpouseAgeSubtagsOnlyUnderFamily(t *testing.T) {
 			if err != nil {
 				t.Fatalf("DecodeWithDiagnostics() error = %v", err)
 			}
-			got := unknownTagsIn(result.Diagnostics)
+			got := misplacedTagsIn(result.Diagnostics)
 			if want := []string{"HUSB", "WIFE"}; !reflect.DeepEqual(got, want) {
-				t.Errorf("UNKNOWN_TAG diagnostics = %v, want %v", got, want)
+				t.Errorf("MISPLACED_TAG diagnostics = %v, want %v", got, want)
 			}
 		})
 	}

@@ -7,7 +7,7 @@ import (
 )
 
 // headerUnknownTagLines decodes input and returns the line numbers of its
-// UNKNOWN_TAG diagnostics.
+// UNKNOWN_TAG and MISPLACED_TAG diagnostics.
 func headerUnknownTagLines(t *testing.T, input string) []int {
 	t.Helper()
 	res, err := DecodeWithDiagnostics(strings.NewReader(input), nil)
@@ -16,7 +16,7 @@ func headerUnknownTagLines(t *testing.T, input string) []int {
 	}
 	var lines []int
 	for _, d := range res.Diagnostics {
-		if d.Code == CodeUnknownTag {
+		if d.Code == CodeUnknownTag || d.Code == CodeMisplacedTag {
 			lines = append(lines, d.Line)
 		}
 	}

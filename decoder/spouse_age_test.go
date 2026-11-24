@@ -66,6 +66,6 @@ func TestSpouseAgesNotOnIndividualEvents(t *testing.T) {
 	}
 	const husbLine = 6
 	if !specFlaggedIn(result.Diagnostics, husbLine) {
-		t.Errorf("HUSB under BIRT (line %d) not reported UNKNOWN_TAG: %v", husbLine, result.Diagnostics)
+		t.Errorf("HUSB under BIRT (line %d) not reported: %v", husbLine, result.Diagnostics)
 	}
 }

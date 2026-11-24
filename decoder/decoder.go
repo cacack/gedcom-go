@@ -841,6 +841,7 @@ func reportUnknownHeaderTags(tags []*gedcom.Tag, collector *diagnosticCollector)
 	if !collector.collecting() {
 		return
 	}
+	collector.enterScope("HEAD", tags)
 
 	// path[i] is the tag at level i on the way to the current line.
 	path := []string{"HEAD"}

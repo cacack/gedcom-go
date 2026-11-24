@@ -74,25 +74,15 @@ import (
 // (7.0 SNOTE/SUBM), now recognized where the specification defines them.
 // Counts are of lines: a per-tag summary past MaxUnknownTagDiagnosticsPerTag
 // counts every line it stands for (see unknownTagLines).
+//
+// #884 removed twelve: ALIA, CONC, CONT, CREA, DATE, EMAIL, FORM, RIN, SOUR,
+// TIME, TITL and WWW. Every remaining corpus occurrence of them is a standard
+// tag under a parent the grammar does not allow it under, now reported as
+// MISPLACED_TAG and counted in misplacedTags instead.
 var unhandledTags = map[string]string{
 	// Standard tags. These are the actionable entries.
-	"RIN":   "standard on every 5.5/5.5.1 record (#730); MyHeritage FTB also writes it under events",
-	"FORM":  "standard; unrecognized in some contexts",
-	"NUMB":  "standard; unrecognized in some contexts",
-	"CONC":  "continuation mechanic, unrecognized in some contexts",
-	"CONT":  "continuation mechanic, unrecognized in some contexts",
-	"NAME":  "standard; unrecognized in some contexts",
-	"SOUR":  "standard; unrecognized in some contexts",
-	"ALIA":  "standard; #375 fixed level 1 on INDI, still unrecognized at level 2",
-	"TITL":  "standard; unrecognized in some contexts",
-	"DATE":  "standard; unrecognized in some contexts",
-	"EMAIL": "standard 5.5.1/7.0 contact tag",
-	"WWW":   "standard 5.5.1/7.0 contact tag",
-	"TIME":  "standard, but misplaced at HEAD level 1 instead of under HEAD.DATE (vendor-tmg12.ged)",
-
-	// GEDCOM 7.0 tags, all from maximal70.ged. Version Support is Principle 4
-	// and Differentiator 2, so these are the sharpest entries in the list.
-	"CREA": "GEDCOM 7.0 creation timestamp",
+	"NUMB": "standard; unrecognized in some contexts",
+	"NAME": "standard; unrecognized in some contexts",
 
 	// Vendor tags that omit the underscore convention. Nothing for the decoder
 	// to fix -- recorded so they are not mistaken for standard-tag gaps.
@@ -111,33 +101,72 @@ var unhandledTags = map[string]string{
 }
 
 // misplacedTags maps a fixture to the standard tags its producer writes in a
-// context the standard does not allow, with the exact number of occurrences.
-// Flagging them is correct; they are recorded so they are not mistaken for
-// decoder gaps (rodoslovje/ged-merge exports, #719).
+// context the standard does not allow, with the exact number of lines the
+// decoder reports as MISPLACED_TAG (#884). Flagging them is correct; they are
+// recorded so a change in how they are classified is caught
+// (rodoslovje/ged-merge exports, #719).
 //
-// These are common standard tags, so they are excused per fixture rather than
-// in unhandledTags: the same tag flagged in any other fixture, or a different
-// count here, still fails, so a decoder regression that stops recognizing PLAC
-// under BIRT or CHAN on a record is caught.
+// Every MISPLACED_TAG in the corpus must be listed here, and every count must
+// match: a tag misplaced in any other fixture, or a different count here,
+// fails, so a decoder regression that stops recognizing PLAC under BIRT or
+// CHAN on a record is caught.
 var misplacedTags = map[string]map[string]int{
 	"ancestry-5.5.1-utf8.ged": {
-		"PLAC": 3, // written directly on OBJE/SOUR records
+		"DATE": 8, // written directly on OBJE records
+		"PLAC": 3, // written directly on OBJE records
 		"MARR": 1, // family event written on an INDI record
+		"WWW":  3, // written under a citation's DATA
+	},
+	"comprehensive.ged": {
+		"EMAIL": 1, // 5.5.1 INDI has no contact tags; they belong under RESI
+		"WWW":   1,
+	},
+	"cont-conc.ged": {
+		"CONC": 5, // continuation lines directly under INDI, which has no payload
+		"CONT": 10,
 	},
 	"familyhistorian-5.5.1-utf8.ged": {
 		"ADR1": 2, // ADDR part written directly under RESI without ADDR
 		"CITY": 2, // ADDR part written directly under RESI without ADDR
+		"NAME": 2, // written under RESI
 	},
 	"geneanet-5.5.1-utf8.ged": {
 		"TYPE": 5, // 5.5 ASSO.TYPE in a 5.5.1 file, which dropped it
 	},
+	"geneanet-5.5.1-w1250.ged": {
+		"SOUR": 1, // under HEAD.CHAR
+	},
+	"ibm-windows-easytree.ged": {
+		"NAME": 11, // written on SOUR records
+	},
 	"ibmpc-cp437-broskeep.ged": {
 		"QUAY": 1206, // written directly under events instead of under a SOUR citation
 	},
+	"mhftb8-export.ged": {
+		"FORM": 10,    // 5.5 OBJE.FORM in a 5.5.1 file
+		"RIN":  11607, // written under events, which have no RIN
+	},
+	"minimal.ged": {
+		"EMAIL": 1, // 5.5.1 INDI has no contact tags
+	},
 	"synium-7.0-utf8.ged": {
-		"PLAC": 15,  // written directly on OBJE/SOUR records
+		"PLAC": 15,  // written directly on SOUR records
+		"DATE": 15,  // written directly on SOUR records
 		"AGNC": 10,  // belongs under SOUR.DATA, written directly on SOUR records
 		"CHAN": 170, // record-level tag written at level 2+ under events and names
+		"CREA": 242, // record-level tag written at level 2+ under events and names
+	},
+	"vendor-ftm.ged": {
+		"DATE": 1, // under an OBJE record's FILE
+	},
+	"vendor-legacy.ged": {
+		"DATE": 2, // written directly on SOUR records
+		"FORM": 1, // 5.5 OBJE.FORM in a 5.5.1 file
+	},
+	"vendor-tmg12.ged": {
+		"ALIA": 21, // written under NAME
+		"TITL": 5,  // written under NAME
+		"TIME": 1,  // at HEAD level 1 instead of under HEAD.DATE
 	},
 	"webtrees-5.5.1-utf8.ged": {
 		"RESN": 2, // written on a SOUR record, which has no RESN
@@ -181,15 +210,12 @@ func TestCorpusTagCoverage(t *testing.T) {
 			continue // undecodable fixtures are TestByteRoundTrip's business
 		}
 		for _, d := range res.Diagnostics {
-			if d.Code != CodeUnknownTag {
-				continue
-			}
 			tag, lines, ok := unknownTagLines(d)
 			if !ok || tag == "" || strings.HasPrefix(tag, "_") {
 				continue // custom tags are Tags-only by design (ADR 0003)
 			}
 			fixture := filepath.Base(path)
-			if _, ok := misplacedTags[fixture][tag]; ok {
+			if d.Code == CodeMisplacedTag {
 				if misplaced[fixture] == nil {
 					misplaced[fixture] = map[string]int{}
 				}
@@ -233,6 +259,13 @@ func TestCorpusTagCoverage(t *testing.T) {
 			if got := misplaced[fixture][tag]; got != want {
 				t.Errorf("%s: misplaced tag %q flagged %d times, misplacedTags expects %d",
 					fixture, tag, got, want)
+			}
+		}
+	}
+	for fixture, tags := range misplaced {
+		for tag, got := range tags {
+			if _, listed := misplacedTags[fixture][tag]; !listed {
+				t.Errorf("%s: misplaced tag %q flagged %d times and not in misplacedTags", fixture, tag, got)
 			}
 		}
 	}

@@ -96,6 +96,13 @@ const (
 const (
 	// CodeUnknownTag indicates an unrecognized tag was encountered.
 	// These tags are preserved in raw form but not parsed into typed fields.
+	// A tag the document's version defines, but not under the line's parent,
+	// is reported as [CodeMisplacedTag] instead; a standard tag the decoder
+	// does not yet read where the grammar allows it (a decoder gap) is still
+	// reported with this code, as is a defined tag whose parent's tag allows
+	// it under some other structure (see CodeMisplacedTag). Code that treats
+	// UNKNOWN_TAG as "a line the decoder rejected" must also take
+	// CodeMisplacedTag, which before v3.11.0 was reported with this code.
 	// It is also reported for a level-0 record whose tag is neither a standard
 	// record type nor an extension ("_" prefix), including a standard type in
 	// the wrong case ("indi"); the record is kept with that Type and no entity.
@@ -106,6 +113,22 @@ const (
 	// record or parent structure; the counting diagnostics have an empty
 	// Context and follow all other diagnostics, ordered by line.
 	CodeUnknownTag = "UNKNOWN_TAG"
+
+	// CodeMisplacedTag indicates a tag the document's GEDCOM version defines,
+	// but under no structure with the tag of the line's parent: a MARR
+	// directly under INDI, an EMAIL under a 5.5.1 INDI, a DATE under an OBJE
+	// record. The fix is to move the line, where an UNKNOWN_TAG is renamed or
+	// dropped. The message names the parent ("MARR is not allowed under
+	// INDI"). Like CodeUnknownTag it is a SeverityWarning, the line is
+	// preserved in raw form, and each tag name is reported line by line
+	// [MaxUnknownTagDiagnosticsPerTag] times, then once more counting its
+	// remaining lines (an allowance separate from UNKNOWN_TAG's). Parents
+	// are matched by tag, so a tag any structure with that tag allows is not
+	// reported as misplaced, and a tag under an extension or unknown parent
+	// is reported as CodeUnknownTag, if at all: this is a best-effort hint,
+	// not a conformance check. GEDCOM 7.0's CONT, which may continue any
+	// line, is never misplaced. Level-0 lines are never reported with it.
+	CodeMisplacedTag = "MISPLACED_TAG"
 
 	// CodeInvalidValue indicates a value doesn't match the expected format.
 	// The raw value is preserved, but typed parsing may have failed.

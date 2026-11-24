@@ -1157,7 +1157,7 @@ func eventToTags(event *gedcom.Event, level int, opts *EncodeOptions) []*gedcom.
 // attribute line that heads tags, where the grammar lists them. Only a
 // family's events and attributes take them, so only familyToTags calls it: a
 // spouse age set on an individual's event is not written as a structure no
-// version allows (the decoder reports one there as UNKNOWN_TAG).
+// version allows (the decoder reports one there as MISPLACED_TAG).
 func withSpouseAges(tags []*gedcom.Tag, husbandAge, husbandPhrase, wifeAge, wifePhrase string, opts *EncodeOptions) []*gedcom.Tag {
 	if len(tags) == 0 {
 		return tags

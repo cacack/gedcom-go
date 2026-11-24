@@ -6,11 +6,12 @@ import (
 	"testing"
 )
 
-// unknownTagMessages returns the message of every CodeUnknownTag diagnostic.
+// unknownTagMessages returns the message of every CodeUnknownTag and
+// CodeMisplacedTag diagnostic.
 func unknownTagMessages(ds Diagnostics) []string {
 	var out []string
 	for _, d := range ds {
-		if d.Code == CodeUnknownTag {
+		if d.Code == CodeUnknownTag || d.Code == CodeMisplacedTag {
 			out = append(out, fmt.Sprintf("line %d: %s", d.Line, d.Message))
 		}
 	}
@@ -158,7 +159,8 @@ func TestStandardRecordStructuresNotUnknown(t *testing.T) {
 
 // TestFiveFiveOnlyStructuresReportedInOtherVersions checks that the 5.5 OBJE
 // record layout and PLAC.SOUR, which 5.5.1 and 7.0 do not define, are still
-// reported in a document declaring 5.5.1, as ASSO.TYPE is (#730).
+// reported in a document declaring 5.5.1, as ASSO.TYPE is (#730), as
+// misplaced: 5.5.1 defines each tag elsewhere (#884).
 func TestFiveFiveOnlyStructuresReportedInOtherVersions(t *testing.T) {
 	input := `0 HEAD
 1 GEDC
@@ -181,20 +183,21 @@ func TestFiveFiveOnlyStructuresReportedInOtherVersions(t *testing.T) {
 	}
 	got := strings.Join(unknownTagMessages(result.Diagnostics), "\n")
 	want := strings.Join([]string{
-		"line 7: unknown tag: FORM",
-		"line 8: unknown tag: TITL",
-		"line 12: unknown tag: SOUR",
+		"line 7: FORM is not allowed under OBJE",
+		"line 8: TITL is not allowed under OBJE",
+		"line 12: SOUR is not allowed under PLAC",
 	}, "\n")
 	if got != want {
 		t.Errorf("UNKNOWN_TAG diagnostics =\n%s\nwant\n%s", got, want)
 	}
 }
 
-// TestUnknownTagDiagnosticsCappedPerTag checks that a nonstandard tag repeated
-// on many lines is reported line by line MaxUnknownTagDiagnosticsPerTag times,
-// then once more counting the rest from the first line not reported (#730),
-// that another tag has its own allowance, and that every line stays in the raw
-// tags.
+// TestUnknownTagDiagnosticsCappedPerTag checks that a tag repeated on many
+// lines where it is not allowed is reported line by line
+// MaxUnknownTagDiagnosticsPerTag times, then once more counting the rest from
+// the first line not reported (#730), that another tag has its own allowance,
+// and that every line stays in the raw tags. RIN, which 5.5.1 defines on
+// records but not under events, is reported as MISPLACED_TAG (#884).
 func TestUnknownTagDiagnosticsCappedPerTag(t *testing.T) {
 	const events = MaxUnknownTagDiagnosticsPerTag + 5
 
@@ -217,12 +220,12 @@ func TestUnknownTagDiagnosticsCappedPerTag(t *testing.T) {
 
 	var want []string
 	for _, l := range rinLines[:MaxUnknownTagDiagnosticsPerTag] {
-		want = append(want, fmt.Sprintf("line %d: unknown tag: RIN", l))
+		want = append(want, fmt.Sprintf("line %d: RIN is not allowed under BIRT", l))
 	}
 	want = append(want,
 		fmt.Sprintf("line %d: unknown tag: ZZZZ", zzzzLine),
 		fmt.Sprintf(
-			"line %d: unknown tag: RIN (5 more lines with this tag, from this line on, not reported individually)",
+			"line %d: misplaced tag: RIN (5 more lines with this tag, from this line on, not reported individually)",
 			rinLines[MaxUnknownTagDiagnosticsPerTag]))
 	got := unknownTagMessages(result.Diagnostics)
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
@@ -244,7 +247,7 @@ func TestUnknownTagDiagnosticsCappedPerTag(t *testing.T) {
 	perTag := map[string]int{}
 	for _, d := range result.Diagnostics {
 		tag, lines, ok := unknownTagLines(d)
-		if d.Code == CodeUnknownTag && !ok {
+		if (d.Code == CodeUnknownTag || d.Code == CodeMisplacedTag) && !ok {
 			t.Errorf("unknownTagLines cannot parse %q", d.Message)
 		}
 		perTag[tag] += lines

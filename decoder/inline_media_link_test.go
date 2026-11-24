@@ -72,7 +72,7 @@ func TestInlineMediaLinkFiles(t *testing.T) {
 2 FILE a.jpg`,
 			wantFiles:   []gedcom.MediaFile{{FileRef: "a.jpg", Form: "jpg"}},
 			wantTitle:   "Pic",
-			wantUnknown: []string{"line 6: unknown tag: FORM"},
+			wantUnknown: []string{"line 6: FORM is not allowed under OBJE"},
 		},
 		{
 			name: "5.5 FORM with no FILE",
@@ -110,7 +110,7 @@ func TestInlineMediaLinkFiles(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := decodeInlineMediaDoc(t, tt.vers, tt.body)
 			if got := unknownTagMessages(result.Diagnostics); !reflect.DeepEqual(got, tt.wantUnknown) {
-				t.Errorf("UNKNOWN_TAG = %q, want %q", got, tt.wantUnknown)
+				t.Errorf("UNKNOWN_TAG/MISPLACED_TAG = %q, want %q", got, tt.wantUnknown)
 			}
 			indi := result.Document.GetIndividual("@I1@")
 			if indi == nil || len(indi.Media) != 1 {

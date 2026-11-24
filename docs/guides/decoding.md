@@ -95,7 +95,8 @@ Entity-level warnings (severity: WARNING):
 | Code | Meaning |
 |------|---------|
 | `BAD_LEVEL_JUMP` | Invalid level increment (e.g., 0 to 2); line clamped to `prev + 1` and kept |
-| `UNKNOWN_TAG` | Unrecognized tag (preserved in raw form), including a level-0 record type outside the standard set that is not `_`-prefixed. One per line for the first `MaxUnknownTagDiagnosticsPerTag` (10) lines of each tag name, then one diagnostic, at the next such line, counting that tag's remaining lines; level-0 record types are not capped |
+| `UNKNOWN_TAG` | Tag the document's version does not define (preserved in raw form), a standard tag the decoder does not read where the grammar allows it, or a defined tag whose parent's tag allows it under another structure (`2 HUSB` under an individual's `RESI`, allowed under a family's), including a level-0 record type outside the standard set that is not `_`-prefixed. One per line for the first `MaxUnknownTagDiagnosticsPerTag` (10) lines of each tag name, then one diagnostic, at the next such line, counting that tag's remaining lines; level-0 record types are not capped |
+| `MISPLACED_TAG` | A tag the document's version defines, but not under the line's parent (`1 MARR` on `INDI`); the message names the parent: `MARR is not allowed under INDI`. Move the line rather than rename it. Before v3.11.0 these lines were `UNKNOWN_TAG`, so a filter on `UNKNOWN_TAG` must also take this code. Capped per tag name as `UNKNOWN_TAG` is, with its own allowance |
 | `INVALID_VALUE` | Value doesn't match expected format |
 | `MISSING_REQUIRED` | Required subordinate tag is missing |
 | `SKIPPED_RECORD` | A record's level-0 line was dropped, so its subordinate lines (up to the next level-0 line, range in the message) were skipped rather than attached to the preceding record. Emitted alongside the dropped line's own parse diagnostic |
