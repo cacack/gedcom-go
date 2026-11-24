@@ -52,7 +52,8 @@ func main() {
 		len(result.Diagnostics), len(result.Diagnostics.Errors()), len(result.Diagnostics.Warnings()))
 	for _, d := range result.Diagnostics {
 		// Each Diagnostic carries a line number, severity, machine-readable
-		// code, message and the offending content.
+		// code, message and the offending content, plus the XRef of the
+		// record the line is in and the tag Path down to it.
 		fmt.Printf("  %s\n", d)
 	}
 

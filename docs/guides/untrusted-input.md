@@ -31,6 +31,7 @@ yours to set.
 | Empty-line diagnostics | `decoder.MaxEmptyLineDiagnostics` (10) | No | Every blank line is still skipped; the rest are counted in one closing diagnostic. |
 | Invalid-UTF-8 diagnostics | `decoder.MaxInvalidEncodingDiagnostics` (100) | No | Every invalid byte is still replaced; the rest are counted in one closing diagnostic. |
 | Input echoed per diagnostic or `ParseError` | `parser.MaxContextBytes` (256) | No | `Message` and `Context` are clipped at a UTF-8 boundary and end in `…`. Values in the document are never clipped. |
+| Tag path per diagnostic | `parser.MaxContextBytes` (256) | No | `Diagnostic.Path` is clipped the same way, keeping the tags nearest the record. Only overlong extension tags or deep nesting reach it. `Diagnostic.XRef` is not clipped: it is the record's own identifier, shared, not copied per diagnostic. |
 | Parse errors kept by `parser.ParseWithOptions` | `ParseOptions.MaxErrors` | Yes; the default, 0, is unlimited | Parsing continues; further errors are not collected. |
 | Duplicate-detection group size | `DuplicateConfig.MaxGroupSize`, default 1000 | Yes; 0 means the default, negative is unlimited | The surname group is skipped whole, with one `DUPLICATE_DETECTION_LIMITED` warning. See [Bounding Untrusted Input](performance.md#bounding-untrusted-input). |
 | Given-name runes compared | `DuplicateConfig.MaxNameRunes`, default 64 | Yes; as above | Longer names are compared on their first 64 runes and counted on the same warning. |

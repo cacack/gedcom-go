@@ -68,6 +68,15 @@ func TestDecodeLenientReplacesInvalidUTF8(t *testing.T) {
 				Severity: SeverityError,
 				Code:     CodeInvalidEncoding,
 				Message:  "invalid UTF-8 byte 0xE9 at column 11 replaced with U+FFFD",
+				Path:     "INDI.NOTE",
+			}
+			for _, indi := range result.Document.Individuals() {
+				if len(indi.InlineNotes) > 0 {
+					want.XRef = indi.XRef
+				}
+			}
+			if want.XRef == "" {
+				t.Fatal("no individual holds the note")
 			}
 			if len(result.Diagnostics) != 1 || result.Diagnostics[0] != want {
 				t.Errorf("Diagnostics = %v, want exactly [%v]", result.Diagnostics, want)

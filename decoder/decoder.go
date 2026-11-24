@@ -312,9 +312,14 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool, target *gedcom.Docum
 	diagnostics = append(diagnostics, collector.diagnostics...)
 	diagnostics = append(diagnostics, collector.unknownTagSummaries()...)
 
+	diagnostics = budget.apply(diagnostics)
+	if collect && budget != nil {
+		locateDiagnostics(diagnostics, lines, budget.levelZero)
+	}
+
 	return &DecodeResult{
 		Document:    doc,
-		Diagnostics: budget.apply(diagnostics),
+		Diagnostics: diagnostics,
 	}, fatalErr
 }
 

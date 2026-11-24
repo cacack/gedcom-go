@@ -126,6 +126,38 @@ warnings := result.Diagnostics.Warnings() // WARNING only
 fmt.Println(result.Diagnostics.String())
 ```
 
+Each diagnostic also says where its line is, so a caller need not re-scan the
+file to find the record: `XRef` is the identifier of the enclosing level-0
+record and `Path` the tags from that record down to the line.
+
+```go
+// 0 @I1@ INDI
+// 1 BURI
+// 2 DATE Example Memorial Gardens
+for _, d := range result.Diagnostics {
+    fmt.Printf("%s %s line %d: %s\n", d.XRef, d.Path, d.Line, d.Code)
+    // @I1@ INDI.BURI.DATE line 3: INVALID_VALUE
+}
+```
+
+| Line is | `XRef` | `Path` |
+|---------|--------|--------|
+| In a record | The record's identifier (`@I1@`); empty if it has none | `INDI.BURI.DATE` |
+| A record's level-0 line | That line's identifier | `INDI` |
+| In the header or on the trailer | Empty | `HEAD.CHAR`, `TRLR` |
+| A line the parser dropped, or a blank line: its own tag is not known | The record it falls in | The record's tag alone (`INDI`) |
+| Before the first level-0 line, or in a record skipped with `SKIPPED_RECORD` | Empty | Empty |
+| 0 (`DIAGNOSTICS_TRUNCATED`) | Empty | Empty |
+
+`Path` follows the levels the decoder read the lines at, so a line clamped by
+`BAD_LEVEL_JUMP` is shown under the parent it was attached to. A diagnostic
+that counts further lines (the closing `UNKNOWN_TAG`, `MISPLACED_TAG`,
+`EMPTY_LINE` and `INVALID_ENCODING` ones) is located at its `Line`, the first
+of them. `String()` does not print either field. `Path` holds at most
+`parser.MaxContextBytes` (256) bytes, then `…`: a path of overlong extension
+tags keeps the tags nearest the record (see
+[Bounds on Diagnostics](#bounds-on-diagnostics)).
+
 ### When to Use Lenient Mode
 
 - Importing files from unknown sources
@@ -180,9 +212,9 @@ reported: the document is the same whatever they are.
   those errors grow with the document, as its lines do. Real files come nowhere near the
   default: the most in the test corpus is 14,597, from a 2.4 MB MyHeritage
   export full of vendor tags.
-- **How much of the input each echoes.** A diagnostic's `Message` and
-  `Context`, and a `parser.ParseError`'s, hold at most `parser.MaxContextBytes`
-  (256) bytes of input, cut back to a UTF-8 character boundary and followed by
+- **How much of the input each echoes.** A diagnostic's `Message`,
+  `Context` and `Path`, and a `parser.ParseError`'s `Message` and `Context`,
+  hold at most `parser.MaxContextBytes` (256) bytes of input, cut back to a UTF-8 character boundary and followed by
   `…`. The full line is not retained, so a malformed line at the 1 MiB limit
   yields an error string of a few hundred bytes, safe to log or return to a
   user. The typed and raw values in the document are never clipped.

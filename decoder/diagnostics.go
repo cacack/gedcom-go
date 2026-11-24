@@ -200,6 +200,26 @@ type Diagnostic struct {
 	// bytes, cut back to the start of a UTF-8 character and followed by "…".
 	// The full content is not retained.
 	Context string
+
+	// XRef is the cross-reference identifier of the level-0 record Line is
+	// in ("@I1@"), or of Line itself when it is the record's level-0 line. It
+	// is empty in the header and trailer, in a record that has no identifier,
+	// on a line outside any record (one before the first level-0 line, or in
+	// a record skipped with CodeSkippedRecord), and when Line is 0. Only a
+	// diagnostic a decode returns has it set; [NewDiagnostic] leaves it empty.
+	XRef string
+
+	// Path is the tags from the enclosing level-0 record down to Line, joined
+	// with "." ("INDI.BURI.DATE"; "HEAD.CHAR" in the header; "INDI" on the
+	// record's own line), at the levels the decoder read the lines at, so
+	// after CodeBadLevelJump recovery. A line the parser dropped has no tag
+	// of its own and gets the record's tag alone. Path is empty on a line
+	// outside any record and when Line is 0. XRef and Path describe Line
+	// only: a diagnostic that counts further lines names the first of them.
+	// Path is clipped like Message, to parser.MaxContextBytes bytes followed
+	// by "…", which only overlong extension tags or deep nesting reach. Set
+	// with XRef.
+	Path string
 }
 
 // String returns a human-friendly representation of the diagnostic.
