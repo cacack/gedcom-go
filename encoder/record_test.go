@@ -79,6 +79,13 @@ func TestEncodeRecord_MatchesEncodeForDecodedFiles(t *testing.T) {
 	}
 
 	for _, path := range paths {
+		// The 46 MiB scale fixture took 190 of this package's 204 seconds
+		// under -race, and the package ran into its 10-minute timeout on macOS
+		// (#902); see decoder.TestScaleFixture for why it is kept out of
+		// ordinary runs.
+		if filepath.Base(path) == "longsword.ged" {
+			continue
+		}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
