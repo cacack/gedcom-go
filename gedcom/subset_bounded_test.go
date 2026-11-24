@@ -331,3 +331,27 @@ func TestBoundedSubset_HandBuilt(t *testing.T) {
 		t.Errorf("dropped = %+v, want %+v", dropped, want)
 	}
 }
+
+// A header line pointing at a person outside the result is dropped with its
+// subordinate lines; left behind, they would attach to the line before it.
+func TestBoundedSubset_HeaderPointerDropsSubLines(t *testing.T) {
+	src := strings.Replace(boundedFixture, "1 SUBM @U1@\n",
+		"1 SUBM @U1@\n1 _HOME @I2@\n2 _NOTE Example home person\n1 _X keep\n", 1)
+	doc, err := decoder.Decode(strings.NewReader(src))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	sub, _, err := doc.BoundedSubset([]string{"@I3@"})
+	if err != nil {
+		t.Fatalf("BoundedSubset: %v", err)
+	}
+	var lines []string
+	for _, tag := range sub.Header.Tags {
+		if strings.HasPrefix(tag.Tag, "_") {
+			lines = append(lines, tag.Tag+" "+tag.Value)
+		}
+	}
+	if want := []string{"_X keep"}; !slices.Equal(lines, want) {
+		t.Errorf("header vendor lines = %q, want %q", lines, want)
+	}
+}
