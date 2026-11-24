@@ -134,6 +134,15 @@ const (
 	// The raw value is preserved, but typed parsing may have failed.
 	CodeInvalidValue = "INVALID_VALUE"
 
+	// CodeNonStandardDate indicates a DATE value that is not a GEDCOM date but
+	// was read as one: a date spelled out in English ("June 1880",
+	// "about 1873"; the list is on [gedcom.ParseDateLenient]). The typed Date
+	// is set, the message names the GEDCOM form the value was read as
+	// ("JUN 1880"), and the raw value is preserved and written back unchanged.
+	// Emitted as SeverityWarning. Before v3.12.0 these values were reported as
+	// CodeInvalidValue and left unparsed.
+	CodeNonStandardDate = "NONSTANDARD_DATE"
+
 	// CodeMissingRequired indicates a required subordinate tag is missing.
 	CodeMissingRequired = "MISSING_REQUIRED"
 

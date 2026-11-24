@@ -63,6 +63,7 @@ Each core operation exposes a dedicated options struct with safe defaults and an
 | `MISPLACED_TAG` | A tag the document's GEDCOM version defines, under a parent no structure with that tag allows it under (`1 MARR` on `INDI`, `1 EMAIL` on a 5.5.1 `INDI`, `1 DATE` on an `OBJE` record); the message names the parent (`MARR is not allowed under INDI`). Parents are matched by tag, from the vendored specification tables. Capped per tag name like `UNKNOWN_TAG`, with its own allowance | Preserved in raw form (`Record.Tags`, `Header.Tags`); the fix is to move the line, not rename it |
 | `DUPLICATE_XREF` | A level-0 record redefines an XRef an earlier record defined (error) | Both records kept in `Records`; `XRefMap`, so every pointer, resolves to the first definition |
 | `INVALID_VALUE` | Value doesn't match the expected format | Raw value preserved |
+| `NONSTANDARD_DATE` | A `DATE` spelled out in English (`June 1880`, `about 1873`) instead of GEDCOM keywords; a warning naming the GEDCOM form it was read as (`read as "JUN 1880"`). See [Date Formats](#date-formats) | Parsed into `ParsedDate`; raw value preserved and written back unchanged |
 | `MISSING_REQUIRED` | Required subordinate tag is missing | Reported; decoding continues |
 | `SKIPPED_RECORD` | A record's level-0 line was dropped, so its subordinate lines are skipped instead of attaching to the preceding record | Record dropped; decoding continues |
 | `DIAGNOSTICS_TRUNCATED` | More diagnostics than `DecodeOptions.MaxDiagnostics` (default 100,000; `decoder.UnlimitedDiagnostics` removes the bound) | The first ones are kept and this one, last, counts the rest; the document is unaffected |
@@ -1379,6 +1380,18 @@ err := date.Validate()
 - BCE dates use the proleptic Gregorian calendar with astronomical years (1 BCE = year 0, so Feb 29 1 BCE is valid and Feb 29 4 BCE is not)
 
 `ParseDate` itself rejects a day or year written as `0` (`0 JAN 1850`, `1 JAN 0`, `0 BC`) — no calendar has one, and `0` is the "absent" value — and a signed day or year (`-1850`, `+1850`, `-5 JAN 1850`); write a B.C. year with a `BC` suffix. The decoder reports such a value as `INVALID_VALUE` and keeps it in the raw tags; the validator's `INVALID_DATE` check does not see it.
+
+`ParseDateLenient` is `ParseDate` plus a fixed list of English spellings, for exporters that pass a date through as typed (Ancestry, MacFamilyTree). It returns the date and the GEDCOM form the value was read as (`""` for a date `ParseDate` accepts); `Date.Original` stays the value as given. Matched case-insensitively:
+
+| Spelling | Example | Read as |
+|----------|---------|---------|
+| Full English month name | `June 1880`, `12 December 1846` | `JUN 1880`, `12 DEC 1846` |
+| Month code with a trailing period | `3 Jan. 1900` | `3 JAN 1900` |
+| Leading `about`, `before`, `after` | `about 1873` | `ABT 1873` |
+| Leading `between` … `and` … | `between 1880 and 1885` | `BET 1880 AND 1885` |
+| `ABT`, `BEF`, `AFT`, `EST`, `CAL`, `BET` with a trailing period | `Abt. 1790` | `ABT 1790` |
+
+Nothing else is read: `1935-1993`, `December 12, 1846`, `circa 1850` and `summer` still fail with `ParseDate`'s error, as does a value with a parenthesis or one naming the Hebrew or French Republican calendar. The decoder parses event, attribute and LDS ordinance dates this way and reports each recovered value as a `NONSTANDARD_DATE` warning; the raw value is written back byte for byte. `ParseDate`, which the validator and converter use to decide whether a value is a GEDCOM date, does not accept these spellings.
 
 Every `ParseDate` error wraps `gedcom.ErrEmptyDate` (empty or blank input) or `gedcom.ErrInvalidDate` (anything else), so `errors.Is` tells an absent date from a malformed one; the message still says what is wrong.
 

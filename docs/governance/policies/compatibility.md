@@ -21,14 +21,14 @@ The following table shows which genealogy software exports have been tested with
 | Gramps | 6.0.6 (2025) | ✅ | Real export tested; `CHAN` records, `TYPE birth`, note refs |
 | MyHeritage | 5.5.1 (2025) | ✅ | Real export tested; `_UID`, `RIN`, HTML notes, `QUAY` tags |
 | MyHeritage Family Tree Builder | 8 (desktop) | ✅ | Real export tested (vendored corpus); empty `HEAD.SOUR` handled, `MH:` RINs, level-0 `_PUBLISH` record preserved |
-| Ancestry.com | 2025.08 | ✅ | Real exports tested (two, one from the ged-merge corpus); `_TREE` parsed, long XRefs, nickname handling; full month names (`June 1950`) flagged with diagnostics |
+| Ancestry.com | 2025.08 | ✅ | Real exports tested (two, one from the ged-merge corpus); `_TREE` parsed, long XRefs, nickname handling; full month names (`June 1950`) parsed and reported as `NONSTANDARD_DATE` |
 | FamilySearch | 2025 | ✅ | Real export tested (GEDCOM 5.5.1); `_HASH`/`_LHASH` tags, standardizer note |
 | Ancestris | 11 (2025) | ✅ | Real export tested (vendored corpus); 5.5.1 UTF-8, French data, OBJE FILE refs |
 | PAF (Personal Ancestral File) | 5.2.18.0 | ✅ | Real export tested (vendored corpus); decodes clean, zero diagnostics |
 | Family Origins | 5.0 | ✅ | Real export tested (vendored corpus); AFN tags preserved, DATE trailing qualifiers flagged with diagnostics |
 | The Master Genealogist | 1.2a | ✅ | Real export tested (vendored corpus); `CHAR IBMPC` (ASCII payload), custom NUMB tags |
 | My Roots (Palm OS) | 4.00 | ✅ | Real export tested (vendored corpus); ANSEL encoding |
-| webtreeprint.com | 1.0 | ✅ | Real export tested (vendored corpus); ALIA usage preserved, free-text month DATE flagged |
+| webtreeprint.com | 1.0 | ✅ | Real export tested (vendored corpus); ALIA usage preserved, full month name DATE parsed and reported as `NONSTANDARD_DATE` |
 | EasyTree | V1.0 | ✅ | Real export tested (vendored corpus); nonstandard `CHAR IBM WINDOWS` preserved verbatim |
 | MacFamilyTree (Synium) | 11.2.3 | ✅ | Real **GEDCOM 7.0.3** export tested (ged-merge corpus), the only real desktop 7.0 export located; strict and lenient decode; 5.5.1-style `GEDC.FORM` tolerated silently and kept in `Header.Tags`; mixed-case months (`10 Dec 1868`) parse; `Abt.`/`Bef.`/`about` qualifiers flagged with diagnostics; undeclared `_FID`/`_SMC`/`_SIF` (no `SCHMA`) preserved raw, `_FID` not mapped to `Individual.FamilySearchID` |
 | Reunion | 14 (2026) | ✅ | Real export tested (ged-merge corpus); classic-Mac CR-only line endings, diagnostics report the physical line |

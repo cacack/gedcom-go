@@ -245,6 +245,120 @@ func ParseDate(s string) (*Date, error) {
 	return date, nil
 }
 
+// ParseDateLenient parses a date as ParseDate does and, when ParseDate rejects
+// it, retries with a fixed list of English spellings rewritten to the GEDCOM
+// keywords they stand for. Exporters that pass a date through as typed
+// (Ancestry) write "June 1880" and "about 1873" where GEDCOM has "JUN 1880"
+// and "ABT 1873".
+//
+// readAs is "" when s is a date ParseDate accepts. Otherwise it is the GEDCOM
+// form s was read as ("JUN 1880", "ABT 1873", "BET 1880 AND 1885"), and
+// date.Original is still s as given, so the value is written back unchanged.
+//
+// The spellings, matched case-insensitively on whitespace-separated words:
+//   - a full English month name ("June", "december"), or a three-letter
+//     month code with a trailing period ("Jan.")
+//   - as the first word, "about", "before", "after" or "between" (with "and"
+//     between the two dates), or one of ABT, BEF, AFT, EST, CAL and BET with a
+//     trailing period ("abt.")
+//
+// It never accepts more than ParseDate plus that list: no "1935-1993", no
+// "December 12, 1846", no "circa". A value with a parenthesis, or one naming
+// the Hebrew or French Republican calendar, is left to ParseDate alone.
+//
+// When s is not recovered, the error is the one ParseDate(s) returns.
+func ParseDateLenient(s string) (date *Date, readAs string, err error) {
+	date, err = ParseDate(s)
+	if err == nil {
+		return date, "", nil
+	}
+	normalized, changed := normalizeEnglishDate(s)
+	if !changed {
+		return nil, "", err
+	}
+	date, lenientErr := ParseDate(normalized)
+	if lenientErr != nil {
+		return nil, "", err
+	}
+	date.Original = s
+	return date, normalized, nil
+}
+
+// englishMonthNames maps full English month names, in upper case, to the
+// GEDCOM month codes. MAY is its own code.
+var englishMonthNames = map[string]string{
+	"JANUARY": "JAN", "FEBRUARY": "FEB", "MARCH": "MAR", "APRIL": "APR",
+	"JUNE": "JUN", "JULY": "JUL", "AUGUST": "AUG", "SEPTEMBER": "SEP",
+	"OCTOBER": "OCT", "NOVEMBER": "NOV", "DECEMBER": "DEC",
+}
+
+// englishModifiers maps English modifier words, in upper case, to the GEDCOM
+// keywords.
+var englishModifiers = map[string]string{
+	"ABOUT": "ABT", "BEFORE": "BEF", "AFTER": "AFT", "BETWEEN": "BET",
+}
+
+// dottedModifiers holds the GEDCOM modifier keywords read with a trailing
+// period.
+var dottedModifiers = map[string]bool{
+	"ABT": true, "BEF": true, "AFT": true, "EST": true, "CAL": true, "BET": true,
+}
+
+// normalizeEnglishDate returns s with the spellings ParseDateLenient lists
+// rewritten to GEDCOM keywords, its words joined by single spaces, and reports
+// whether any word was rewritten.
+func normalizeEnglishDate(s string) (string, bool) {
+	// A parenthesis opens a date phrase, whose words are not date keywords.
+	if strings.Contains(s, "(") {
+		return s, false
+	}
+	upper := strings.ToUpper(s)
+	if strings.Contains(upper, "HEBREW") || strings.Contains(upper, "FRENCH") {
+		return s, false
+	}
+
+	fields := strings.Fields(s)
+	changed := false
+	isRange := false
+	for i, field := range fields {
+		keyword := englishDateKeyword(field, i == 0, isRange)
+		if i == 0 {
+			isRange = keyword == "BET"
+		}
+		if keyword != "" {
+			fields[i] = keyword
+			changed = true
+		}
+	}
+	return strings.Join(fields, " "), changed
+}
+
+// englishDateKeyword returns the GEDCOM keyword field is rewritten to, or ""
+// when it is kept as written. A modifier is read only as the first word of a
+// date, and "and" only inside a range opened by "between" or "bet.".
+func englishDateKeyword(field string, first, inRange bool) string {
+	word := strings.ToUpper(field)
+	bare, dotted := strings.CutSuffix(word, ".")
+	if first {
+		if keyword := englishModifiers[word]; keyword != "" {
+			return keyword
+		}
+		if dotted && dottedModifiers[bare] {
+			return bare
+		}
+	}
+	if keyword := englishMonthNames[word]; keyword != "" {
+		return keyword
+	}
+	if dotted && monthNames[bare] != 0 {
+		return bare
+	}
+	if inRange && word == "AND" && field != word {
+		return word
+	}
+	return ""
+}
+
 // parseDate is ParseDate without the sentinel classification of its errors.
 func parseDate(s string) (*Date, error) {
 	if s == "" {
