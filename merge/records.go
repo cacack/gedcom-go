@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -428,12 +429,12 @@ func (f *folder) sameValue(k, d *node) bool {
 // sameEvent reports whether keep's substructure k and drop's substructure d
 // record the same event, as RecordMergeOptions.FoldEvents defines it.
 func (f *folder) sameEvent(k, d *node) bool {
-	if k.tag.Tag != d.tag.Tag || !f.sameValue(k, d) {
+	if k.tag.Tag != d.tag.Tag {
 		return false
 	}
 	kDate, kOK := onlyChild(k, "DATE")
 	dDate, dOK := onlyChild(d, "DATE")
-	if !kOK || !dOK || kDate == nil || dDate == nil || !sameDate(kDate.tag.Value, dDate.tag.Value) {
+	if !kOK || !dOK || kDate == nil || dDate == nil || !sameDate(kDate.tag.Value, dDate.tag.Value) || !f.sameValue(k, d) {
 		return false
 	}
 	kType, _ := onlyChild(k, "TYPE")
@@ -452,9 +453,27 @@ func agree(k, d *node, tag string) bool {
 }
 
 // fullValue returns n's value joined with its CONT and CONC lines, as
-// Record.FullValue reads it.
+// Record.FullValue reads it. With none it returns n's value as it is.
 func fullValue(n *node) string {
-	return (&gedcom.Record{Tags: flatten([]*node{n}, nil)}).FullValue(n.tag)
+	var b strings.Builder
+	folded := false
+	for _, c := range n.children {
+		if !isContinuation(n, c) {
+			continue
+		}
+		if !folded {
+			b.WriteString(n.tag.Value)
+			folded = true
+		}
+		if c.tag.Tag == "CONT" {
+			b.WriteByte('\n')
+		}
+		b.WriteString(c.tag.Value)
+	}
+	if !folded {
+		return n.tag.Value
+	}
+	return b.String()
 }
 
 // isContinuation reports whether c, a child of parent, continues parent's
