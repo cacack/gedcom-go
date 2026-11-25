@@ -221,3 +221,41 @@ func ExampleFoldRepeatedEvents() {
 	// 2 SOUR @S1@
 	// 2 NOTE Family bible.
 }
+
+// ExampleFoldSubstructure folds a person's repeated name into the first:
+// the nickname and the second citation move, and the citation both names
+// hold is kept once.
+func ExampleFoldSubstructure() {
+	doc, err := decoder.Decode(strings.NewReader(`0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Ann /Example/
+2 SOUR @S1@
+1 SEX F
+1 NAME Ann /Example/
+2 NICK Nan
+2 SOUR @S1@
+2 SOUR @S2@
+0 TRLR
+`))
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+
+	rec := doc.GetRecord("@I1@")
+	names := rec.FindAll("NAME")
+	fmt.Println("folded:", merge.FoldSubstructure(rec, names[0], names[1]))
+	for _, t := range rec.Tags {
+		fmt.Println(strings.TrimSpace(fmt.Sprint(t.Level, " ", t.Tag, " ", t.Value)))
+	}
+
+	// Output:
+	// folded: true
+	// 1 NAME Ann /Example/
+	// 2 SOUR @S1@
+	// 2 SOUR @S2@
+	// 2 NICK Nan
+	// 1 SEX F
+}

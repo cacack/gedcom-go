@@ -82,6 +82,11 @@ layout of the lines it did not change.
 and its CONT/CONC lines only: the tag keeps its source line's layout, its new
 continuation lines are new lines, and its other children keep theirs.
 
+**Lines moved, set or removed within a record** with `Record.MoveSubstructure`,
+`Record.SetChild`, `Record.RemoveChildren` or `merge.FoldSubstructure` change
+only those lines: a moved line keeps its layout, a set child is rewritten with
+its continuation lines, and a removed one takes its blank lines with it.
+
 **Typed edits** work through `encoder.SyncTags`, which keeps every unchanged
 line's `Tag`, so only the edited structure differs. Lines that `SyncTags`
 rewrites are new lines.

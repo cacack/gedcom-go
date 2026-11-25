@@ -4,11 +4,12 @@ How to change a decoded document record by record, see what changed between
 two documents, combine files, merge duplicate records, and cut a branch out
 and put it back.
 
-Six tasks, each a section below:
+Seven tasks, each a section below:
 
 | Task | Use |
 |------|-----|
 | [Edit one record as text](#editing-one-record-as-text) | `encoder.EncodeRecord`, `decoder.DecodeRecords`, `Document.ReplaceRecord` |
+| [Edit lines within a record](#editing-lines-within-a-record) | `Record.MoveSubstructure`, `Record.SetChild`, `Record.RemoveChildren`, `merge.FoldSubstructure` |
 | [Add a record](#adding-a-record) | `Document.FreeXRef`, `Document.AddRecord`, `Record.AddMediaLink`, `Document.AttachMedia` |
 | [See what changed](#seeing-what-changed) | `gedcom.Diff` |
 | [Combine two files](#combining-two-files) | `merge.Combine` |
@@ -101,6 +102,48 @@ removed is written byte for byte as read. A record from `DecodeRecords` is
 written as new lines. To keep the layout of the lines an edit did not touch,
 edit a `Clone` of the old record instead of decoding text; see
 [What Changes](preserving-layout.md#what-changes).
+
+## Editing Lines Within a Record
+
+Use this to change some lines of a record and keep the rest as read: reorder
+a person's names, set a name's `TYPE` or `NICK`, drop a vendor tag. Editing
+`Individual.Names` and calling `encoder.SyncTags` rewrites each name it
+touches from the typed fields, which do not hold every line (a `_CUSTOM`
+under a `NAME`, say). These helpers edit `Record.Tags` directly:
+
+```go
+rec := doc.GetRecord("@I1@")
+names := rec.FindAll("NAME")
+rec.MoveSubstructure(names[1], names[0])                    // second name first, with its lines
+rec.SetChild(names[1], "TYPE", "birth", doc.Header.Version) // set or add a child line
+rec.RemoveChildren(names[1], "_CUSTOM")                     // remove a child and its subtree
+merge.FoldSubstructure(rec, names[1], names[0])             // fold the other name into it
+```
+
+- **`MoveSubstructure(t, before)`** moves `t` and every line beneath it to
+  directly before `before`, which must be a sibling: the same level and the
+  same parent. A nil `before` moves `t` after its last sibling.
+- **`SetChild(parent, tag, value, version)`** sets the first child of
+  `parent` with `tag`, or adds one after `parent`'s last line. The value is
+  set as `SetFullValue` sets it: the old `CONT` and `CONC` lines are dropped
+  and the new value is split for the version. A second child with the same
+  tag is left alone.
+- **`RemoveChildren(parent, tag)`** removes every child of `parent` with
+  `tag`, with the lines beneath it, and returns how many.
+- **`merge.FoldSubstructure(rec, keep, drop)`** moves each line directly under
+  `drop` that `keep` does not already hold line for line, after `keep`'s last
+  line with that tag, then removes `drop`. An identical citation is kept once.
+  No line is matched by value, so a `TYPE` that differs from `keep`'s is
+  moved beside it; unlike `FoldEvents`, it does not decide what is the same.
+
+A nil `parent` names the record itself, so `rec.SetChild(nil, "SEX", "F", v)`
+sets a level-1 line. Each helper reports whether its tags were in the record
+and changes nothing when they were not. They change the order and membership
+of `Record.Tags` but no tag they do not set, so every other line keeps its
+`LineNumber` and a [layout-preserving encode](preserving-layout.md) writes it
+as read. `Record.Entity` is not updated: rebuild it with
+`decoder.SyncEntities` before reading typed fields, and do not follow these
+edits with `encoder.SyncTags`, which would revert them from the stale entity.
 
 ## Adding a Record
 
