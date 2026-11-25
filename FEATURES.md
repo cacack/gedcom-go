@@ -1919,6 +1919,30 @@ gedcom.io's 7.0 test files report nothing but `warnings70.ged`'s designed
 deprecations, and gedcom7code's `5/age-invalid.ged` one `INVALID_PAYLOAD` per
 malformed `AGE`. Design: [ADR 0011](docs/decisions/0011-grammar-conformance-check.md).
 
+**Personal-Name Style Checks:**
+
+`ValidateOptions.StyleChecks` turns on, by code, checks for habits in an
+individual's NAME that are valid GEDCOM but usually worth tidying.
+`validator.AllStyleChecks()` lists every code with its severity and
+description; a listed code that names no style check is ignored. Each check
+reads the raw level-1 NAME lines of INDI records, splitting the value with
+`gedcom.SplitPersonalName`, so `GIVN`/`SURN`/`NSFX` never mask what the value
+says, and reports at most once per NAME line, with the record as
+`RecordXRef`, the NAME line as `LineNumber` and the value under
+`Details["value"]`. The checks only report; choosing the spelling is the
+user's job. A record built in code without raw `Tags` is not checked, and
+`QualityReport` does not run them.
+
+| Error Code | Severity | Description |
+|------------|----------|-------------|
+| NAME_ALL_CAPS | Info | A given name or surname with a word of two or more letters all in capitals (`John /SMITH/`); single initials are fine |
+| NAME_TEXT_AFTER_SURNAME | Warning | Text after the closing slash (`John /Smith/ Jr`) |
+| NAME_SPACING | Info | A leading, trailing or doubled space, or a space just inside the surname slashes |
+| NAME_QUOTES_OR_PARENS | Warning | A double quote (straight or curly) or a parenthesis in the value |
+| NAME_UNCERTAIN_MARK | Warning | `?`, `*`, a digit, or `or` between two words (`/Smith or Smyth/`) |
+| NAME_PART_PUNCTUATION | Info | An `NSFX` or `NICK` directly under the NAME whose value starts or ends with punctuation or a space (`Details["tags"]`) |
+| NAME_VENDOR_TAG | Info | An extension (`_X`) tag directly under the NAME (`Details["tags"]`) |
+
 **Duplicate Detection:**
 
 Configurable matching based on name similarity, birth and death dates and places:
@@ -1966,7 +1990,7 @@ Two notes for callers upgrading. `DUPLICATE_DETECTION_LIMITED` is a `Warning`, s
 
 **Quality Report:**
 
-Comprehensive quality assessment with metrics and issue aggregation. The report runs every check `ValidateAll` runs, so its counts are never clean for a document `ValidateAll` flags. The spec-conformance checks — header, broken pointers, nil elements, date validity, XRef length, note pointers and encoding — land in `ConformanceIssues` (JSON `conformance_issues`) beside the record-quality categories; the nameless-individual (`MISSING_NAME`) and memberless-family (`EMPTY_FAMILY`) heuristics land in `CompletenessIssues`. Unlike `ValidateAll`, the report reports every severity and applies none of `Strictness`, `SkipRules`, `MaxErrors`, `SkipDuplicateDetection` or `SkipEncodingValidation`; filter its issues yourself if you need those.
+Comprehensive quality assessment with metrics and issue aggregation. The report runs every check `ValidateAll` runs except the opt-in name style checks, so its counts are never clean for a document `ValidateAll` flags. The spec-conformance checks — header, broken pointers, nil elements, date validity, XRef length, note pointers and encoding — land in `ConformanceIssues` (JSON `conformance_issues`) beside the record-quality categories; the nameless-individual (`MISSING_NAME`) and memberless-family (`EMPTY_FAMILY`) heuristics land in `CompletenessIssues`. Unlike `ValidateAll`, the report reports every severity and applies none of `Strictness`, `SkipRules`, `MaxErrors`, `SkipDuplicateDetection` or `SkipEncodingValidation`; filter its issues yourself if you need those.
 
 ```go
 report := v.QualityReport(doc)

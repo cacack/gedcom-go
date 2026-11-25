@@ -165,6 +165,33 @@ func ExampleNewWithOptions() {
 	// First: [ERROR] DEATH_BEFORE_BIRTH
 }
 
+// ExampleNewWithOptions_styleChecks turns on two of the opt-in personal-name
+// style checks; AllStyleChecks lists every one.
+func ExampleNewWithOptions_styleChecks() {
+	v := validator.NewWithOptions(&validator.ValidateOptions{
+		StyleChecks: []string{validator.CodeNameTextAfterSurname, validator.CodeNameQuotesOrParens},
+	})
+
+	gedcomData := `0 HEAD
+1 GEDC
+2 VERS 7.0
+0 @I1@ INDI
+1 NAME John "Jack" /Smith/ Jr
+0 @I2@ INDI
+1 NAME Mary /Jones/
+0 TRLR`
+
+	doc, _ := decoder.Decode(strings.NewReader(gedcomData))
+
+	for _, issue := range v.ValidateAll(doc) {
+		fmt.Printf("%s %s line %d\n", issue.Code, issue.RecordXRef, issue.LineNumber)
+	}
+
+	// Output:
+	// NAME_TEXT_AFTER_SURNAME @I1@ line 5
+	// NAME_QUOTES_OR_PARENS @I1@ line 5
+}
+
 // ExampleValidator_QualityReport shows generating a data quality report.
 func ExampleValidator_QualityReport() {
 	gedcomData := `0 HEAD
