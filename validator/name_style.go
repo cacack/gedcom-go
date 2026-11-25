@@ -19,44 +19,40 @@ import (
 // Each check reads the raw level-1 NAME lines of INDI records, splitting the
 // value with gedcom.SplitPersonalName, and is reported at most once per NAME
 // line, with the individual as RecordXRef, the NAME line as LineNumber and
-// the NAME value under Details["value"]. A check is SeverityWarning when the
-// value holds something other than the name, and SeverityInfo when only its
-// form is off; none is SeverityError. Strictness filters them like any other
-// issue, so a SeverityInfo check reports only at StrictnessStrict. A record
-// with no raw Tags (one built in code) is not checked.
+// the NAME value under Details["value"]. Every check is SeverityWarning, so
+// a check turned on reports at the default StrictnessNormal. A record with no
+// raw Tags (one built in code) is not checked.
 const (
 	// CodeNameAllCaps indicates a given name or surname with a word of two
 	// or more letters all in capitals, such as "John /SMITH/". A single
-	// initial, "J. R. Smith", is not reported (an Info).
+	// initial, "J. R. Smith", is not reported.
 	CodeNameAllCaps = "NAME_ALL_CAPS"
 
 	// CodeNameTextAfterSurname indicates text after the closing slash of
-	// the surname, such as "John /Smith/ Jr.", which belongs in NSFX
-	// (a Warning).
+	// the surname, such as "John /Smith/ Jr.", which belongs in NSFX.
 	CodeNameTextAfterSurname = "NAME_TEXT_AFTER_SURNAME"
 
 	// CodeNameSpacing indicates a NAME value with a leading, trailing or
-	// doubled space, or a surname with a space just inside its slashes
-	// (an Info).
+	// doubled space, or a surname with a space just inside its slashes.
 	CodeNameSpacing = "NAME_SPACING"
 
 	// CodeNameQuotesOrParens indicates a NAME value holding a double quote
 	// or a parenthesis, usually a nickname or an alternative written into
-	// the name, such as `John "Jack" /Smith/` (a Warning).
+	// the name, such as `John "Jack" /Smith/`.
 	CodeNameQuotesOrParens = "NAME_QUOTES_OR_PARENS"
 
 	// CodeNameUncertainMark indicates a NAME value holding a mark of doubt
 	// or an alternative: "?", "*", a digit, or the word "or" between two
-	// words, such as "John /Smith or Smyth/" (a Warning).
+	// words, such as "John /Smith or Smyth/".
 	CodeNameUncertainMark = "NAME_UNCERTAIN_MARK"
 
 	// CodeNamePartPunctuation indicates a raw NSFX or NICK line directly
 	// under the NAME whose value starts or ends with punctuation or a space,
-	// such as ", Jr" or "Jr." (an Info). Details["tags"] lists the tags.
+	// such as ", Jr" or "Jr.". Details["tags"] lists the tags.
 	CodeNamePartPunctuation = "NAME_PART_PUNCTUATION"
 
 	// CodeNameVendorTag indicates an extension tag ("_X") directly under the
-	// NAME (an Info). Details["tags"] lists the tags.
+	// NAME. Details["tags"] lists the tags.
 	CodeNameVendorTag = "NAME_VENDOR_TAG"
 )
 
@@ -76,13 +72,13 @@ type StyleCheck struct {
 // styleChecks is the authoritative list of the style checks, in the order
 // they are reported for a NAME line.
 var styleChecks = []StyleCheck{
-	{CodeNameAllCaps, SeverityInfo, "a given name or surname with a word of two or more letters all in capitals"},
+	{CodeNameAllCaps, SeverityWarning, "a given name or surname with a word of two or more letters all in capitals"},
 	{CodeNameTextAfterSurname, SeverityWarning, "text after the closing slash of the surname"},
-	{CodeNameSpacing, SeverityInfo, "a leading, trailing or doubled space, or a space just inside the surname slashes"},
+	{CodeNameSpacing, SeverityWarning, "a leading, trailing or doubled space, or a space just inside the surname slashes"},
 	{CodeNameQuotesOrParens, SeverityWarning, "a double quote or parenthesis in the NAME value"},
 	{CodeNameUncertainMark, SeverityWarning, `"?", "*", a digit, or "or" between two alternatives in the NAME value`},
-	{CodeNamePartPunctuation, SeverityInfo, "an NSFX or NICK value starting or ending with punctuation or a space"},
-	{CodeNameVendorTag, SeverityInfo, `an extension ("_") tag directly under NAME`},
+	{CodeNamePartPunctuation, SeverityWarning, "an NSFX or NICK value starting or ending with punctuation or a space"},
+	{CodeNameVendorTag, SeverityWarning, `an extension ("_") tag directly under NAME`},
 }
 
 // AllStyleChecks returns every style check ValidatorConfig.StyleChecks

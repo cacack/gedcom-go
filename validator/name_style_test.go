@@ -106,8 +106,8 @@ func TestNameStyleEachCode(t *testing.T) {
 			if got.Details["tags"] != tt.wantTags {
 				t.Errorf("Details[tags] = %q, want %q", got.Details["tags"], tt.wantTags)
 			}
-			if got.Severity == SeverityError {
-				t.Errorf("severity = ERROR, want WARNING or INFO")
+			if got.Severity != SeverityWarning {
+				t.Errorf("severity = %s, want WARNING", got.Severity)
 			}
 		})
 	}
@@ -224,7 +224,7 @@ func TestNameStyleScope(t *testing.T) {
 }
 
 // TestAllStyleChecks pins that the exported list covers every style code,
-// once each, with a description and a non-error severity, and is a copy.
+// once each, with a description and SeverityWarning, and is a copy.
 func TestAllStyleChecks(t *testing.T) {
 	want := []string{
 		CodeNameAllCaps, CodeNameTextAfterSurname, CodeNameSpacing, CodeNameQuotesOrParens,
@@ -238,8 +238,8 @@ func TestAllStyleChecks(t *testing.T) {
 		if check.Description == "" {
 			t.Errorf("%s has no description", check.Code)
 		}
-		if check.Severity == SeverityError {
-			t.Errorf("%s has error severity", check.Code)
+		if check.Severity != SeverityWarning {
+			t.Errorf("%s has severity %s, want WARNING", check.Code, check.Severity)
 		}
 	}
 	checks[0].Code = "CHANGED"
@@ -260,9 +260,9 @@ func TestNameStyleUnknownCodeFinding(t *testing.T) {
 	}
 }
 
-// TestNameStyleStrictness pins that Strictness filters style issues like any
-// other: at the default StrictnessNormal a listed Warning check reports and a
-// listed Info check does not; at StrictnessStrict both do.
+// TestNameStyleStrictness pins that every listed style check, NAME_ALL_CAPS
+// included, reports at the default StrictnessNormal, and that
+// StrictnessRelaxed, which keeps errors only, filters them.
 func TestNameStyleStrictness(t *testing.T) {
 	doc := styleDoc(t, `1 NAME John "Jack" /SMITH/`)
 	codes := []string{CodeNameAllCaps, CodeNameQuotesOrParens}
@@ -270,7 +270,8 @@ func TestNameStyleStrictness(t *testing.T) {
 		strictness Strictness
 		want       []string
 	}{
-		{StrictnessNormal, []string{CodeNameQuotesOrParens}},
+		{StrictnessRelaxed, nil},
+		{StrictnessNormal, []string{CodeNameAllCaps, CodeNameQuotesOrParens}},
 		{StrictnessStrict, []string{CodeNameAllCaps, CodeNameQuotesOrParens}},
 	} {
 		var got []string

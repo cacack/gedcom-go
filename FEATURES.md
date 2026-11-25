@@ -1951,20 +1951,19 @@ reads the raw level-1 NAME lines of INDI records, splitting the value with
 `gedcom.SplitPersonalName`, so `GIVN`/`SURN`/`NSFX` never mask what the value
 says, and reports at most once per NAME line, with the record as
 `RecordXRef`, the NAME line as `LineNumber` and the value under
-`Details["value"]`. `Strictness` filters their issues like any other, so
-the Info checks report only at `StrictnessStrict`. The checks only report;
-choosing the spelling is the user's job. A record built in code without raw `Tags` is not checked, and
+`Details["value"]`. The checks only report; choosing the spelling is the
+user's job. A record built in code without raw `Tags` is not checked, and
 `QualityReport` does not run them.
 
 | Error Code | Severity | Description |
 |------------|----------|-------------|
-| NAME_ALL_CAPS | Info | A given name or surname with a word of two or more letters all in capitals (`John /SMITH/`); single initials are fine |
+| NAME_ALL_CAPS | Warning | A given name or surname with a word of two or more letters all in capitals (`John /SMITH/`); single initials are fine |
 | NAME_TEXT_AFTER_SURNAME | Warning | Text after the closing slash (`John /Smith/ Jr`) |
-| NAME_SPACING | Info | A leading, trailing or doubled space, or a space just inside the surname slashes |
+| NAME_SPACING | Warning | A leading, trailing or doubled space, or a space just inside the surname slashes |
 | NAME_QUOTES_OR_PARENS | Warning | A double quote (straight or curly) or a parenthesis in the value |
 | NAME_UNCERTAIN_MARK | Warning | `?`, `*`, a digit, or `or` between two words (`/Smith or Smyth/`) |
-| NAME_PART_PUNCTUATION | Info | An `NSFX` or `NICK` directly under the NAME whose value starts or ends with punctuation or a space (`Details["tags"]`) |
-| NAME_VENDOR_TAG | Info | An extension (`_X`) tag directly under the NAME (`Details["tags"]`) |
+| NAME_PART_PUNCTUATION | Warning | An `NSFX` or `NICK` directly under the NAME whose value starts or ends with punctuation or a space (`Details["tags"]`) |
+| NAME_VENDOR_TAG | Warning | An extension (`_X`) tag directly under the NAME (`Details["tags"]`) |
 
 **Duplicate Detection:**
 
