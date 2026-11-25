@@ -13,7 +13,8 @@ import (
 // keep's last line. So folding a record's second NAME into its first moves
 // the NICK and the citations the first lacks, and an identical SOUR
 // citation is kept once. Deciding that the two describe one thing is the
-// caller's job; drop's own line, its value included, is removed.
+// caller's job; drop's own line, its value included, is removed, and so
+// are the CONT and CONC lines that continue that value.
 //
 // It is the within-record counterpart of what Individuals does with a
 // substructure, applied at any level and to any tag: unlike
@@ -41,7 +42,9 @@ func FoldSubstructure(r *gedcom.Record, keep, drop *gedcom.Tag) bool {
 		return false
 	}
 	for _, c := range d.children {
-		addMissing(k, c)
+		if !isContinuation(c) {
+			addMissing(k, c)
+		}
 	}
 	if dropParent == nil {
 		roots = slices.DeleteFunc(roots, func(n *node) bool { return n == d })

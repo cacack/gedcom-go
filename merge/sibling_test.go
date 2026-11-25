@@ -2,6 +2,7 @@ package merge_test
 
 import (
 	"bytes"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -149,5 +150,31 @@ func TestFoldSubstructureRejects(t *testing.T) {
 				t.Errorf("Tags = %q, want %q", got, orig)
 			}
 		})
+	}
+}
+
+// TestFoldSubstructureContinuation folds a note whose value continues on a
+// CONC: drop's continuation is removed with its value, so the kept value is
+// unchanged, and drop's other lines are moved.
+func TestFoldSubstructureContinuation(t *testing.T) {
+	rec := &gedcom.Record{Tags: []*gedcom.Tag{
+		{Level: 1, Tag: "NOTE", Value: "First note"},
+		{Level: 2, Tag: "CONC", Value: " continued"},
+		{Level: 1, Tag: "NOTE", Value: "Other"},
+		{Level: 2, Tag: "CONC", Value: " text"},
+		{Level: 2, Tag: "CONT", Value: "more"},
+		{Level: 2, Tag: "SOUR", Value: "@S1@"},
+	}}
+	keep, drop := rec.Tags[0], rec.Tags[2]
+
+	if !merge.FoldSubstructure(rec, keep, drop) {
+		t.Fatal("FoldSubstructure = false for two notes")
+	}
+	if got := rec.FullValue(keep); got != "First note continued" {
+		t.Errorf("FullValue(keep) = %q, want %q", got, "First note continued")
+	}
+	want := []string{"1 NOTE First note", "2 CONC  continued", "2 SOUR @S1@"}
+	if got := tagLines(rec.Tags); !reflect.DeepEqual(got, want) {
+		t.Errorf("Tags = %q, want %q", got, want)
 	}
 }
