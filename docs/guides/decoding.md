@@ -531,10 +531,14 @@ Tags with empty values are preserved: `1 BIRT` becomes `1 BIRT` (not `1 BIRT ` w
 | `DecodeWithOptions(r, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns document, no diagnostics |
 | `DecodeWithDiagnostics(r, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns `DecodeResult` with diagnostics |
 | `DecodeRecords(r, doc, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns the fragment's records and their diagnostics |
+| `DecodeHeader(r, doc, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns the fragment's header and its diagnostics |
 | `DecodeRecord(raw, ver, opts)` | `opts.StrictMode=true`: level jumps kept as written | `opts.StrictMode=false`: level jumps clamped; one typed record, no diagnostics |
 
 `DecodeRecords` decodes a records-only fragment (no `HEAD` or `TRLR`) against an
-existing document, returning `ErrNotRecords` for anything else.
+existing document, returning `ErrNotRecords` for anything else; `DecodeHeader`
+does the same for a header-only fragment (`0 HEAD` and its lines), returning
+`ErrNotHeader` for anything else. See
+[Editing One Record as Text](editing-and-merging.md#editing-one-record-as-text).
 `DecodeRecord` decodes one `*parser.RawRecord` from a streaming parser into the
 typed `*gedcom.Record` `Decode` would produce for it; see
 [Typed Streaming](performance.md#typed-streaming-decoderdecoderecord).

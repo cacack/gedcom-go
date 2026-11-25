@@ -616,9 +616,16 @@ refs, err := doc.RemoveRecord("@I2@")   // pointers to @I2@ left behind
   encoding, to the records the whole-file decoder gives the same lines, with
   diagnostics counted from the fragment's first line. A `HEAD`, `TRLR` or
   leading subordinate line is an error wrapping `decoder.ErrNotRecords`
+- `decoder.DecodeHeader` decodes a header-only fragment (`0 HEAD` and its
+  lines) the same way, under the target document's version, identifier grammar
+  and encoding, to the header the whole-file decoder gives the same lines. A
+  record, `TRLR`, second `HEAD` or missing `0 HEAD` is an error wrapping
+  `decoder.ErrNotHeader` that names the line. `Document.ReplaceHeader` puts
+  the header in place and sets `Vendor` and `Schema` from it
 - With a layout-preserving encode, every record not replaced or removed is
-  written byte for byte as read: decoded records carry no line numbers, so
-  they never borrow the layout of the source's lines
+  written byte for byte as read, and so is every line outside a replaced
+  header: decoded records and headers carry no line numbers, so they never
+  borrow the layout of the source's lines
 
 ### Graph Traversal
 

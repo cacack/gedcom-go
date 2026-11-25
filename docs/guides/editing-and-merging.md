@@ -8,7 +8,7 @@ Seven tasks, each a section below:
 
 | Task | Use |
 |------|-----|
-| [Edit one record as text](#editing-one-record-as-text) | `encoder.EncodeRecord`, `decoder.DecodeRecords`, `Document.ReplaceRecord` |
+| [Edit one record as text](#editing-one-record-as-text) | `encoder.EncodeRecord`, `decoder.DecodeRecords`, `Document.ReplaceRecord`; for the header, `decoder.DecodeHeader`, `Document.ReplaceHeader` |
 | [Edit lines within a record](#editing-lines-within-a-record) | `Record.MoveSubstructure`, `Record.SetChild`, `Record.RemoveChildren`, `merge.FoldSubstructure` |
 | [Add a record](#adding-a-record) | `Document.FreeXRef`, `Document.AddRecord`, `Record.AddMediaLink`, `Document.AttachMedia` |
 | [See what changed](#seeing-what-changed) | `gedcom.Diff` |
@@ -102,6 +102,42 @@ removed is written byte for byte as read. A record from `DecodeRecords` is
 written as new lines. To keep the layout of the lines an edit did not touch,
 edit a `Clone` of the old record instead of decoding text; see
 [What Changes](preserving-layout.md#what-changes).
+
+### The Header
+
+The header is edited the same way, with `DecodeHeader` and `ReplaceHeader`:
+
+```go
+header, diags, err := decoder.DecodeHeader(strings.NewReader(edited), doc, nil)
+if err != nil {
+    return err // wraps decoder.ErrNotHeader for anything but a header
+}
+if diags.HasErrors() {
+    return fmt.Errorf("edit rejected:\n%s", diags)
+}
+if err := doc.ReplaceHeader(header); err != nil {
+    return err
+}
+```
+
+- **The fragment is a `0 HEAD` line and the lines beneath it.** Any other
+  level-0 line (a record, a `TRLR`, a second `HEAD`), a first line that is not
+  `0 HEAD`, or an empty fragment is an error wrapping `decoder.ErrNotHeader`
+  that names the line.
+- **It is read as the document's header**: under its version, identifier
+  grammar and encoding, not the `GEDC.VERS` or `CHAR` the fragment declares.
+  The header's `Version`, `DeclaredVersion` and `DetectedEncoding` are the
+  document's. Changing the version is a conversion; see the
+  [converter guide](converter.md).
+- **Options and line numbers** are as for `DecodeRecords`: diagnostics count
+  from the fragment's first line, and the header's tags carry none.
+
+`ReplaceHeader` sets `Header`, and the two views the document derives from
+it: `Vendor` and, for GEDCOM 7.0, `Schema`. Records are not touched. With
+`PreserveLayout` on both sides, the `0 HEAD` line, every record and the
+trailer are written byte for byte as read, and the new header's lines as new
+lines; for a UTF-8 file whose lines are unindented, replacing the header with
+an unedited copy of its own text writes the file unchanged.
 
 ## Editing Lines Within a Record
 

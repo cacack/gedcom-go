@@ -473,7 +473,7 @@ These packages/APIs are stable and follow semver strictly:
 | Package | Status | Notes |
 |---------|--------|-------|
 | `gedcom` | Stable | Core types: Document, Individual, Family, etc.; `Diff()`, `Subset()`, `Clone()` |
-| `decoder` | Stable | `Decode()`, `DecodeWithOptions()`, `DecodeWithDiagnostics()`, `DecodeRecord()`, `DecodeRecords()` |
+| `decoder` | Stable | `Decode()`, `DecodeWithOptions()`, `DecodeWithDiagnostics()`, `DecodeRecord()`, `DecodeRecords()`, `DecodeHeader()` |
 | `encoder` | Stable | `Encode()`, `EncodeWithOptions()`, `EncodeRecord()`, `NewStreamEncoder()`, `NewStreamEncoderWithOptions()`, `EncodeStreaming()`, `EncodeStreamingWithOptions()` |
 | `converter` | Stable | `Convert()`, `ConvertWithOptions()` |
 | `parser` | Stable | `Parse()`, `ParseLine()`, `NewRecordIterator()`, `NewRecordIteratorWithOffset()`, `Records()`, `RecordsWithOffset()`, `NewLazyParser()` |

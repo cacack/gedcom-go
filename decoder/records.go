@@ -52,7 +52,7 @@ func DecodeRecords(r io.Reader, doc *gedcom.Document, opts *DecodeOptions) ([]*g
 	if doc == nil {
 		return nil, nil, errors.New("decode records: target document is nil")
 	}
-	res, err := decode(r, opts, true, doc)
+	res, err := decode(r, opts, true, doc, checkRecordsOnly)
 	if res == nil {
 		return nil, nil, err
 	}
@@ -66,13 +66,13 @@ func DecodeRecords(r io.Reader, doc *gedcom.Document, opts *DecodeOptions) ([]*g
 	return records, res.Diagnostics, err
 }
 
-// fragmentReader returns the reader DecodeRecords reads a fragment through,
-// decoding it as UTF-8 when it is valid UTF-8 and in target's detected
-// single-byte encoding otherwise (see DecodeRecords).
+// fragmentReader returns the reader DecodeRecords and DecodeHeader read a
+// fragment through, decoding it as UTF-8 when it is valid UTF-8 and in
+// target's detected single-byte encoding otherwise (see DecodeRecords).
 func fragmentReader(r io.Reader, target *gedcom.Document, opts charset.ReaderOptions) (io.Reader, error) {
 	data, err := io.ReadAll(r)
 	if err != nil {
-		return nil, fmt.Errorf("decode records: %w", err)
+		return nil, fmt.Errorf("decode fragment: %w", err)
 	}
 	var detected gedcom.Encoding
 	if target.Header != nil {
