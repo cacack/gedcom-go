@@ -248,15 +248,13 @@ func TestAllStyleChecks(t *testing.T) {
 	}
 }
 
-// TestNameStyleUnknownCodeFinding covers the guard in nameLine.finding for a
-// code it does not know.
-func TestNameStyleUnknownCodeFinding(t *testing.T) {
-	line := nameLine{value: "JOHN /SMITH/"}
-	if _, found := line.finding("NOT_A_STYLE_CHECK"); found {
-		t.Error("finding(unknown) = true, want false")
-	}
-	if hasEdgePunctuation("") {
-		t.Error(`hasEdgePunctuation("") = true, want false`)
+// TestHasEdgePunctuation pins the test the NAME_PART_PUNCTUATION check
+// applies to an NSFX or NICK value, an empty one included.
+func TestHasEdgePunctuation(t *testing.T) {
+	for value, want := range map[string]bool{"": false, "Jr": false, "Jr.": true, ", Jr": true, "Jr ": true, "(Jack)": true} {
+		if got := hasEdgePunctuation(value); got != want {
+			t.Errorf("hasEdgePunctuation(%q) = %v, want %v", value, got, want)
+		}
 	}
 }
 

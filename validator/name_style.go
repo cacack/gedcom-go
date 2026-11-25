@@ -69,22 +69,54 @@ type StyleCheck struct {
 	Description string
 }
 
-// styleChecks is the authoritative list of the style checks, in the order
-// they are reported for a NAME line.
-var styleChecks = []StyleCheck{
-	{CodeNameAllCaps, SeverityWarning, "a given name or surname with a word of two or more letters all in capitals"},
-	{CodeNameTextAfterSurname, SeverityWarning, "text after the closing slash of the surname"},
-	{CodeNameSpacing, SeverityWarning, "a leading, trailing or doubled space, or a space just inside the surname slashes"},
-	{CodeNameQuotesOrParens, SeverityWarning, "a double quote or parenthesis in the NAME value"},
-	{CodeNameUncertainMark, SeverityWarning, `"?", "*", a digit, or "or" between two alternatives in the NAME value`},
-	{CodeNamePartPunctuation, SeverityWarning, "an NSFX or NICK value starting or ending with punctuation or a space"},
-	{CodeNameVendorTag, SeverityWarning, `an extension ("_") tag directly under NAME`},
+// styleCheck is one entry of styleChecks: the check as AllStyleChecks
+// describes it, and find, which reports whether it applies to a NAME line
+// and, for the checks on the line's parts, the offending tags,
+// comma-separated.
+type styleCheck struct {
+	StyleCheck
+	find func(l *nameLine) (tags string, found bool)
+}
+
+// styleChecks is the single list of the style checks, in the order they are
+// reported for a NAME line. A check is added here and nowhere else, besides
+// its code constant.
+var styleChecks = []styleCheck{
+	{StyleCheck{CodeNameAllCaps, SeverityWarning, "a given name or surname with a word of two or more letters all in capitals"},
+		func(l *nameLine) (string, bool) { return "", hasCapitalWord(l.given) || hasCapitalWord(l.surname) }},
+	{StyleCheck{CodeNameTextAfterSurname, SeverityWarning, "text after the closing slash of the surname"},
+		func(l *nameLine) (string, bool) { return "", l.suffix != "" }},
+	{StyleCheck{CodeNameSpacing, SeverityWarning, "a leading, trailing or doubled space, or a space just inside the surname slashes"},
+		func(l *nameLine) (string, bool) {
+			return "", strings.TrimSpace(l.value) != l.value || strings.Contains(l.value, "  ") ||
+				(strings.Count(l.value, "/") >= 2 && strings.TrimSpace(l.surname) != l.surname)
+		}},
+	{StyleCheck{CodeNameQuotesOrParens, SeverityWarning, "a double quote or parenthesis in the NAME value"},
+		func(l *nameLine) (string, bool) { return "", strings.ContainsAny(l.value, "\"“”()") }},
+	{StyleCheck{CodeNameUncertainMark, SeverityWarning, `"?", "*", a digit, or "or" between two alternatives in the NAME value`},
+		func(l *nameLine) (string, bool) {
+			return "", strings.ContainsAny(l.value, "?*0123456789") || hasAlternative(l.value)
+		}},
+	{StyleCheck{CodeNamePartPunctuation, SeverityWarning, "an NSFX or NICK value starting or ending with punctuation or a space"},
+		func(l *nameLine) (string, bool) {
+			return l.partTags(func(t *gedcom.Tag) bool {
+				return (t.Tag == "NSFX" || t.Tag == "NICK") && hasEdgePunctuation(t.Value)
+			})
+		}},
+	{StyleCheck{CodeNameVendorTag, SeverityWarning, `an extension ("_") tag directly under NAME`},
+		func(l *nameLine) (string, bool) {
+			return l.partTags(func(t *gedcom.Tag) bool { return strings.HasPrefix(t.Tag, "_") })
+		}},
 }
 
 // AllStyleChecks returns every style check ValidatorConfig.StyleChecks
 // accepts, in the order they are reported. The slice is a copy.
 func AllStyleChecks() []StyleCheck {
-	return append([]StyleCheck(nil), styleChecks...)
+	checks := make([]StyleCheck, len(styleChecks))
+	for i, check := range styleChecks {
+		checks[i] = check.StyleCheck
+	}
+	return checks
 }
 
 // nameStyleIssues runs the style checks the configuration's StyleChecks
@@ -117,7 +149,7 @@ func validateNameStyle(doc *gedcom.Document, enabled []string) []Issue {
 				if !on[check.Code] {
 					continue
 				}
-				if tags, found := line.finding(check.Code); found {
+				if tags, found := check.find(&line); found {
 					issue := NewIssue(check.Severity, check.Code, "Name style: "+check.Description, record.XRef).
 						WithLineNumber(tag.LineNumber).
 						WithDetail("value", tag.Value)
@@ -156,31 +188,6 @@ func newNameLine(name *gedcom.Tag, rest []*gedcom.Tag) nameLine {
 		}
 	}
 	return line
-}
-
-// finding reports whether the check for code applies to the line. For the
-// checks on its parts it also returns the offending tags, comma-separated.
-func (l *nameLine) finding(code string) (tags string, found bool) {
-	switch code {
-	case CodeNameAllCaps:
-		return "", hasCapitalWord(l.given) || hasCapitalWord(l.surname)
-	case CodeNameTextAfterSurname:
-		return "", l.suffix != ""
-	case CodeNameSpacing:
-		return "", strings.TrimSpace(l.value) != l.value || strings.Contains(l.value, "  ") ||
-			(strings.Count(l.value, "/") >= 2 && strings.TrimSpace(l.surname) != l.surname)
-	case CodeNameQuotesOrParens:
-		return "", strings.ContainsAny(l.value, "\"“”()")
-	case CodeNameUncertainMark:
-		return "", strings.ContainsAny(l.value, "?*0123456789") || hasAlternative(l.value)
-	case CodeNamePartPunctuation:
-		return l.partTags(func(t *gedcom.Tag) bool {
-			return (t.Tag == "NSFX" || t.Tag == "NICK") && hasEdgePunctuation(t.Value)
-		})
-	case CodeNameVendorTag:
-		return l.partTags(func(t *gedcom.Tag) bool { return strings.HasPrefix(t.Tag, "_") })
-	}
-	return "", false
 }
 
 // partTags returns the tags of the line's parts that match accepts,
