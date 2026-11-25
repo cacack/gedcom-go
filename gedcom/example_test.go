@@ -695,6 +695,45 @@ func ExampleRecord_FullValue() {
 	// 4 LONG W89.6
 }
 
+// ExampleRecord_MoveSubstructure makes a person's second name the first,
+// sets its TYPE, and removes its vendor tag, editing Record.Tags in place:
+// every line the edits do not touch is kept, with its LineNumber.
+func ExampleRecord_MoveSubstructure() {
+	data := `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME Ann /Example/
+2 SOUR @S1@
+1 NAME Annie /Example/
+2 TYPE aka
+2 _CUSTOM kept until removed
+1 SEX F
+0 TRLR`
+	doc, err := decoder.Decode(strings.NewReader(data))
+	if err != nil {
+		log.Fatal(err)
+	}
+	rec := doc.XRefMap["@I1@"]
+	names := rec.FindAll("NAME")
+
+	rec.MoveSubstructure(names[1], names[0])
+	rec.SetChild(names[1], "TYPE", "birth", doc.Header.Version)
+	rec.SetChild(names[1], "NICK", "Nan", doc.Header.Version)
+	rec.RemoveChildren(names[1], "_CUSTOM")
+	for _, tag := range rec.Tags {
+		fmt.Println(strings.TrimSpace(fmt.Sprint(tag.Level, " ", tag.Tag, " ", tag.Value)))
+	}
+
+	// Output:
+	// 1 NAME Annie /Example/
+	// 2 TYPE birth
+	// 2 NICK Nan
+	// 1 NAME Ann /Example/
+	// 2 SOUR @S1@
+	// 1 SEX F
+}
+
 // ExampleHeader_Find reads a header structure by path.
 func ExampleHeader_Find() {
 	doc, err := decoder.Decode(strings.NewReader(pathExampleData))
