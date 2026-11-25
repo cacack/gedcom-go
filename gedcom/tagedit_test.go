@@ -147,6 +147,7 @@ func TestMoveSubstructureRejects(t *testing.T) {
 	names := rec.FindAll("NAME")
 	givn := rec.Find("NAME", "GIVN")
 	typ := rec.Find("NAME", "TYPE")
+	conc := rec.Find("NAME", "NOTE", "CONC")
 	stray := &gedcom.Tag{Level: 1, Tag: "NAME"}
 	orig := append([]*gedcom.Tag(nil), rec.Tags...)
 	var none *gedcom.Record
@@ -162,6 +163,7 @@ func TestMoveSubstructureRejects(t *testing.T) {
 		{"before not in record", rec, names[1], stray},
 		{"before at another level", rec, givn, names[0]},
 		{"before under another parent", rec, typ, givn},
+		{"continuation line", rec, conc, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -277,6 +279,21 @@ func TestRemoveChildren(t *testing.T) {
 	var none *gedcom.Record
 	if none.RemoveChildren(nil, "SEX") != 0 || rec.RemoveChildren(&gedcom.Tag{Level: 1}, "SEX") != 0 {
 		t.Error("RemoveChildren removed from a nil record or under a parent not in the record")
+	}
+}
+
+// TestRemoveChildrenContinuation checks that CONT and CONC lines, which
+// continue the parent's value, are not removed.
+func TestRemoveChildrenContinuation(t *testing.T) {
+	_, rec := decodeTwoNames(t)
+	note := rec.Find("NAME", "NOTE")
+	for _, tag := range []string{"CONC", "CONT"} {
+		if got := rec.RemoveChildren(note, tag); got != 0 {
+			t.Errorf("RemoveChildren(NOTE, %s) = %d, want 0", tag, got)
+		}
+	}
+	if got := rec.FullValue(note); got != "Used at school" {
+		t.Errorf("FullValue(NOTE) = %q, want %q", got, "Used at school")
 	}
 }
 

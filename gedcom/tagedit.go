@@ -13,9 +13,11 @@ import "slices"
 // Value and LineNumber, so under a layout-preserving encode the moved lines
 // keep their own layout and no other line changes.
 //
-// MoveSubstructure reports whether t was in r.Tags (compared by pointer)
-// and before was nil or a sibling of t; when not, nothing changes. Moving t
-// before itself changes nothing and reports true. It replaces r.Tags with a
+// MoveSubstructure reports whether t was in r.Tags (compared by pointer),
+// before was nil or a sibling of t, and t is not a CONT or CONC continuing
+// its parent's value, which moving would reorder (SetFullValue sets that);
+// when not, nothing changes. Moving t before itself changes nothing and
+// reports true. It replaces r.Tags with a
 // new slice, so a view from Subtree taken before the call no longer
 // reflects the record.
 func (r *Record) MoveSubstructure(t, before *Tag) bool {
@@ -27,6 +29,9 @@ func (r *Record) MoveSubstructure(t, before *Tag) bool {
 		return false
 	}
 	parent := parentIndex(r.Tags, start)
+	if continuesParent(r.Tags, start, parent) {
+		return false
+	}
 	if before == t {
 		return true
 	}
@@ -96,13 +101,14 @@ func (r *Record) SetChild(parent *Tag, tag, value string, v Version) *Tag {
 // with every line beneath it, and returns how many it removed. A nil parent
 // names the record itself, so r.RemoveChildren(nil, "NOTE") removes the
 // record's level-1 notes. It removes nothing when parent is not in r.Tags
-// (compared by pointer). Every other line is kept as it is, with its
-// LineNumber.
+// (compared by pointer), or when tag is CONT or CONC, which continue
+// parent's own value (SetFullValue sets that). Every other line is kept as
+// it is, with its LineNumber.
 //
 // It replaces r.Tags with a new slice when it removes a line, as
 // SetFullValue does.
 func (r *Record) RemoveChildren(parent *Tag, tag string) int {
-	if r == nil {
+	if r == nil || tag == "CONT" || tag == "CONC" {
 		return 0
 	}
 	start, end, ok := childSpan(r.Tags, parent)
@@ -151,6 +157,18 @@ func childSpan(tags []*Tag, parent *Tag) (start, end int, ok bool) {
 		return 0, 0, false
 	}
 	return i + 1, i + len(subtree(tags[i:], parent)), true
+}
+
+// continuesParent reports whether tags[i], whose parent is tags[parent] (the
+// record's level-0 line when parent is -1), is a CONT or CONC continuing
+// that parent's value: one level below it.
+func continuesParent(tags []*Tag, i, parent int) bool {
+	parentLevel := 0
+	if parent >= 0 {
+		parentLevel = tags[parent].Level
+	}
+	c := tags[i]
+	return c.Level == parentLevel+1 && (c.Tag == "CONT" || c.Tag == "CONC")
 }
 
 // parentIndex returns the index of the parent of tags[i], the nearest
