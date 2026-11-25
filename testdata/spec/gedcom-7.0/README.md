@@ -26,6 +26,7 @@ project's MIT license.
 | `payloads.tsv` | (structure type, payload type) pairs |
 | `enumerations.tsv` | (structure type, enumeration set) pairs |
 | `enumerationsets.tsv` | (enumeration set, enumeration value) pairs |
+| `grammar.abnf` | The ABNF of the line and value grammar: `Line`, `Xref`, `DateValue`, `Time`, `Age`, `PersonalName`, `Latitude` and the rest. `SOURCE` records its git blob hash and retrieval date, as it was added after the TSVs |
 
 The superstructure column in `substructures.tsv` is what makes a coverage
 inventory possible. GEDCOM tag meaning is context-dependent, so support has to
@@ -45,8 +46,9 @@ dependency.
 
 ## Updating
 
-Re-download the five TSVs plus `LICENSE` and `NOTICE` from a single upstream
-commit, update `SOURCE`, then regenerate the coverage document and the
+Re-download the five TSVs, `grammar.abnf`, `LICENSE` and `NOTICE` from a
+single upstream commit, update `SOURCE` (including the `grammar.abnf` blob
+hash, `git hash-object grammar.abnf`), then regenerate the coverage document and the
 generated tables:
 
 ```bash
