@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.16.0](https://github.com/cacack/gedcom-go/compare/v3.15.0...v3.16.0) (2026-11-25)
+
+
+### Features
+
+* **decoder:** decode a header-only fragment with DecodeHeader ([57f7817](https://github.com/cacack/gedcom-go/commit/57f78175ad46375ac32ff109638231f9667cb208)), closes [#955](https://github.com/cacack/gedcom-go/issues/955)
+* **gedcom:** export SplitPersonalName for the NAME value split ([026dad0](https://github.com/cacack/gedcom-go/commit/026dad0cc854af8b9a3c443fddeaaaf7ecf5f6da)), closes [#953](https://github.com/cacack/gedcom-go/issues/953)
+* **gedcom:** move, set and remove lines within a record's Tags ([1d946c5](https://github.com/cacack/gedcom-go/commit/1d946c5afca91eebea641450398b6d0afd70ad6f)), closes [#954](https://github.com/cacack/gedcom-go/issues/954)
+* **gedcom:** read and set a raw tag's value with its CONC/CONT lines ([3184078](https://github.com/cacack/gedcom-go/commit/3184078e2c4d9ce5a30afdb9756cd9b58cc6e192)), closes [#956](https://github.com/cacack/gedcom-go/issues/956)
+* **gedcom:** replace a document's header with Document.ReplaceHeader ([724b482](https://github.com/cacack/gedcom-go/commit/724b482260f05339cf5a4202ce605a35ce03fbaa)), closes [#955](https://github.com/cacack/gedcom-go/issues/955)
+* **merge:** find and fold repeated events within one record ([32d2692](https://github.com/cacack/gedcom-go/commit/32d2692b9eb237885f03b233c047f1811f17e155)), closes [#951](https://github.com/cacack/gedcom-go/issues/951)
+* **merge:** fold a substructure into a sibling within one record ([ae8bce2](https://github.com/cacack/gedcom-go/commit/ae8bce2b85511f1613bc1bcd221b4f902ca006a7)), closes [#954](https://github.com/cacack/gedcom-go/issues/954)
+* **validator:** add opt-in style checks for personal names ([4ba0ae3](https://github.com/cacack/gedcom-go/commit/4ba0ae37052ebdb0fc332511ab849cf1bbd16d5e)), closes [#952](https://github.com/cacack/gedcom-go/issues/952)
+
+
+### Bug Fixes
+
+* **decoder:** report a rejected line's ParseError from DecodeHeader ([ec4f1b1](https://github.com/cacack/gedcom-go/commit/ec4f1b1653d6bad48e56a4cebdceeb343a798910))
+* **gedcom:** refuse continuation lines in RemoveChildren and MoveSubstructure ([3b11a42](https://github.com/cacack/gedcom-go/commit/3b11a42af5f92d905e9f43d1e60480ab0eefb07a))
+* **merge:** compare continued values when folding repeated events ([d8b1ba2](https://github.com/cacack/gedcom-go/commit/d8b1ba2176cb0cc8f741aad4c21c5d584e55f282))
+* **merge:** drop a folded substructure's CONT/CONC with its value ([fd4ed56](https://github.com/cacack/gedcom-go/commit/fd4ed56525f3822e34f5ef8e07d621d90d3d5a38))
+* **merge:** treat only level+1 CONT/CONC as a value's continuation ([90c6613](https://github.com/cacack/gedcom-go/commit/90c6613875b569fdc30f3b5810b6c85951aac254))
+* **validator:** report every name style check as a Warning ([6748b95](https://github.com/cacack/gedcom-go/commit/6748b95a057919403079baee0acd86d405640067))
+
+
+### Performance Improvements
+
+* **merge:** look fold targets up in a set built once from xrefs ([87cf129](https://github.com/cacack/gedcom-go/commit/87cf129571a24d67b1a37c75b5b082a9f2f9bcac))
+* **merge:** read an event value without building a throwaway record ([e1c588b](https://github.com/cacack/gedcom-go/commit/e1c588b22e34d199aabeaac61f4eb42b9849a27d))
+* **validator:** stop allocating per compared pair in duplicate detection ([91c9dd3](https://github.com/cacack/gedcom-go/commit/91c9dd31166eea0775dbf5be0a687f541d639b02)), closes [#949](https://github.com/cacack/gedcom-go/issues/949)
+
 ## [3.15.0](https://github.com/cacack/gedcom-go/compare/v3.14.0...v3.15.0) (2026-11-24)
 
 
