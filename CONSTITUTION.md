@@ -57,7 +57,7 @@ Good documentation is a feature. Godoc, examples, ADRs — lack of docs kills ad
 Genealogy data is irreplaceable. Never lose it, never corrupt it, never silently drop information.
 
 ### 5. Honor the Standards
-GEDCOM is a real specification. Support it correctly, including the parts that are awkward or annoying.
+GEDCOM is a real specification. The rule is the specification where it prescribes, a stated policy where it does not. Where it is prescriptive, the library does what it says, including the parts that are awkward or annoying. Where it offers a choice, is lenient, or is silent, the library picks one policy, states it in the godoc, and applies it the same way in every package.
 
 ---
 
