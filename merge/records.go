@@ -16,7 +16,8 @@ import (
 // Repositories return when the two records named cannot be merged: they are the same record,
 // one is missing or of the wrong type, one is defined more than once, or a
 // record involved has no raw Tags. A missing record's error also wraps
-// gedcom.ErrUnknownXRef.
+// gedcom.ErrUnknownXRef. FoldRepeatedEvents wraps it the same way for a
+// record named that is missing, of the wrong type or has no raw Tags.
 var ErrInvalidMerge = errors.New("invalid record merge")
 
 // RecordMergeOptions configures Individuals, Families, Sources and
@@ -247,8 +248,8 @@ func mergeSubstructures(keep, drop []*gedcom.Tag, fold *folder, once map[string]
 				continue
 			}
 		}
-		if fold != nil && fold.applies(n) {
-			if i := slices.IndexFunc(keepRoots, func(k *node) bool { return fold.sameEvent(k, n) }); i >= 0 {
+		if fold != nil {
+			if i := fold.match(keepRoots, n); i >= 0 {
 				foldEvent(keepRoots[i], n)
 				report.Folded = append(report.Folded, Fold{Drop: sub})
 				into = append(into, keepRoots[i])
@@ -363,8 +364,10 @@ func sameTree(a, b *node, norm func(string) string) bool {
 	return true
 }
 
-// folder decides which substructures RecordMergeOptions.FoldEvents applies
-// to, by how the decoder reads them in a record of type typ under header.
+// folder holds the rule RecordMergeOptions.FoldEvents defines, for
+// Individuals, Families and FoldRepeatedEvents alike: which substructures it
+// applies to, by how the decoder reads them in a record of type typ under
+// header, and which of them record the same event.
 type folder struct {
 	header *gedcom.Header
 	typ    gedcom.RecordType
@@ -389,6 +392,16 @@ func (f *folder) decode(n *node) ([]*gedcom.Event, []*gedcom.Attribute) {
 		return e.Events, e.Attributes
 	}
 	return nil, nil
+}
+
+// match returns the index of the first of subs that records the same event
+// as the level-1 substructure d, by the rule RecordMergeOptions.FoldEvents
+// defines, or -1 when none does or the rule does not apply to d.
+func (f *folder) match(subs []*node, d *node) int {
+	if !f.applies(d) {
+		return -1
+	}
+	return slices.IndexFunc(subs, func(k *node) bool { return f.sameEvent(k, d) })
 }
 
 // sameValue reports whether the level-1 values of k and d are equal, or one

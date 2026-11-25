@@ -172,3 +172,52 @@ func ExampleIndividuals() {
 	// husband: @I1@
 	// @I2@ left: false
 }
+
+// ExampleFoldRepeatedEvents reports a birth recorded twice in one record,
+// its date written two ways, then folds the second into the first: the
+// citation and the note both survive.
+func ExampleFoldRepeatedEvents() {
+	doc, err := decoder.Decode(strings.NewReader(`0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL Census
+0 @I1@ INDI
+1 NAME Ann /Example/
+1 BIRT
+2 DATE 7 DEC 1977
+2 SOUR @S1@
+1 BIRT
+2 DATE 07 Dec 1977
+2 NOTE Family bible.
+0 TRLR
+`))
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+
+	for _, g := range merge.RepeatedEvents(doc) {
+		fmt.Println("repeated:", g.XRef, g.Members[0].Tags[0].Tag, len(g.Members), "times")
+	}
+	out, report, err := merge.FoldRepeatedEvents(doc)
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+	for _, f := range report.Folded {
+		fmt.Println("folded:", f.XRef, f.Drop.Tags[1].Value, "into", f.Into.Tags[1].Value)
+	}
+	for _, t := range out.GetRecord("@I1@").Tags {
+		fmt.Println(strings.TrimSpace(fmt.Sprint(t.Level, " ", t.Tag, " ", t.Value)))
+	}
+
+	// Output:
+	// repeated: @I1@ BIRT 2 times
+	// folded: @I1@ 07 Dec 1977 into 7 DEC 1977
+	// 1 NAME Ann /Example/
+	// 1 BIRT
+	// 2 DATE 7 DEC 1977
+	// 2 SOUR @S1@
+	// 2 NOTE Family bible.
+}

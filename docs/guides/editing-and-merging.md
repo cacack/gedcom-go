@@ -12,7 +12,7 @@ Six tasks, each a section below:
 | [Add a record](#adding-a-record) | `Document.FreeXRef`, `Document.AddRecord`, `Record.AddMediaLink`, `Document.AttachMedia` |
 | [See what changed](#seeing-what-changed) | `gedcom.Diff` |
 | [Combine two files](#combining-two-files) | `merge.Combine` |
-| [Merge duplicate records](#merging-duplicate-records) | `merge.Individuals`, `merge.Families`, `merge.Sources`, `merge.Repositories` |
+| [Merge duplicate records](#merging-duplicate-records) | `merge.Individuals`, `merge.Families`, `merge.RepeatedEvents`, `merge.FoldRepeatedEvents`, `merge.Sources`, `merge.Repositories` |
 | [Cut a branch and zip it back](#cutting-a-branch-and-zipping-it-back) | `Document.BoundedSubset`, `merge.ZipSharedXRefs` |
 
 Two rules hold throughout:
@@ -407,6 +407,31 @@ What happens:
 Merging two individuals often leaves two families for one couple. Merge those
 with `merge.Families(doc, keepFam, dropFam, opts)`; a child both families list
 is listed once.
+
+### Events Recorded Twice in One Record
+
+A record can already hold one event twice: merges made without `FoldEvents`,
+or an import, leave two `BIRT` lines with one date written two ways.
+`merge.RepeatedEvents` reports them and `merge.FoldRepeatedEvents` folds
+them, by the same rule `FoldEvents` uses, within each individual and family
+record or only those you name:
+
+```go
+for _, g := range merge.RepeatedEvents(doc) {
+    fmt.Printf("%s: %s recorded %d times\n", g.XRef, g.Members[0].Tags[0].Tag, len(g.Members))
+}
+folded, report, err := merge.FoldRepeatedEvents(doc)
+if err != nil {
+    return err
+}
+fmt.Printf("%d structures folded\n", len(report.Folded))
+```
+
+Each group folds into its first member, which keeps its lines and gains the
+citations, notes and other lines of the rest; `report.Folded` lists each
+structure removed with its record's XRef. Records with no group keep their
+lines, so a layout-preserving encode writes them unchanged. Folding the
+result again folds nothing. The input is not modified.
 
 ### Sources and Repositories
 
