@@ -175,6 +175,20 @@ func TestGrammar_Payloads(t *testing.T) {
 		"INVALID_PAYLOAD L19 TIME")
 }
 
+// TestGrammar_NamedEventPayload pins the strict half of spec-interpretation
+// policy SI-004: the decoder keeps a named event's payload other than Y as its
+// Description, and the grammar check reports it. pres2020.ged writes
+// "1 DEAT Age: 52"; its "1 RESI Age: 52" is valid, RESI being an attribute
+// whose payload is text.
+func TestGrammar_NamedEventPayload(t *testing.T) {
+	issues := assertGrammar(t, head551+
+		"0 @I1@ INDI\n1 DEAT Age: 52\n1 RESI Age: 52\n1 BIRT Y\n1 BURI\n0 TRLR\n",
+		"INVALID_PAYLOAD L11 DEAT")
+	if got := issues[0].Details["datatype"]; got != "Y or empty" {
+		t.Errorf("datatype = %q, want %q", got, "Y or empty")
+	}
+}
+
 func TestGrammar_RecordXRefs(t *testing.T) {
 	assertGrammar(t, head70+
 		"0 @i1@ INDI\n0 @I-1@ INDI\n0 @VOID@ INDI\n0 INDI\n0 @I_1@ INDI\n0 TRLR\n",
