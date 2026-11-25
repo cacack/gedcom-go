@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/parser"
 )
 
 // headerFragment returns a header declaring vers, with the structures the
@@ -135,6 +136,26 @@ func TestDecodeHeader_NotHeader(t *testing.T) {
 				t.Errorf("%s (strict %v): header = %v, want nil", tt.name, strict, h)
 			}
 		}
+	}
+}
+
+// TestDecodeHeader_RejectedLines checks that a lenient decode rejecting
+// every line of the fragment reports the first line's *parser.ParseError
+// (ADR 0007), not ErrNotHeader, and that DecodeRecords still returns no
+// records with the same error.
+func TestDecodeHeader_RejectedLines(t *testing.T) {
+	const fragment = "not a gedcom line\n"
+	h, _, err := DecodeHeader(strings.NewReader(fragment), gedcom.NewDocument(gedcom.Version551), nil)
+	var pe *parser.ParseError
+	if !errors.As(err, &pe) || pe.Line != 1 || errors.Is(err, ErrNotHeader) {
+		t.Errorf("DecodeHeader error = %v, want a *parser.ParseError for line 1", err)
+	}
+	if h != nil {
+		t.Errorf("DecodeHeader header = %v, want nil", h)
+	}
+	records, _, err := DecodeRecords(strings.NewReader(fragment), gedcom.NewDocument(gedcom.Version551), nil)
+	if !errors.As(err, &pe) || len(records) != 0 {
+		t.Errorf("DecodeRecords = %v, %v; want no records and a *parser.ParseError", records, err)
 	}
 }
 

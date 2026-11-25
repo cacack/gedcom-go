@@ -249,6 +249,12 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool, target *gedcom.Docum
 	if len(lines) == 0 {
 		if check != nil {
 			if err := check(lines); err != nil {
+				// Every line was rejected: report the first, the structured
+				// *parser.ParseError (ADR 0007), rather than the fragment
+				// being empty.
+				if firstParseErr != nil {
+					return nil, fmt.Errorf("no valid GEDCOM lines could be parsed: %w", firstParseErr)
+				}
 				return nil, err
 			}
 		}

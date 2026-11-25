@@ -37,7 +37,9 @@ var ErrNotHeader = errors.New("not a header-only fragment")
 //
 // An error wrapping ErrNotHeader is returned when the fragment is empty, its
 // first line is not "0 HEAD", or it holds another level-0 line, and an error
-// when doc is nil. Other errors are those of [DecodeWithDiagnostics]: a
+// when doc is nil. A lenient decode that rejects every line of the fragment
+// returns an error wrapping the first line's *parser.ParseError instead of
+// ErrNotHeader. Other errors are those of [DecodeWithDiagnostics]: a
 // lenient decode interrupted by an I/O failure returns the header read so far
 // with the error.
 func DecodeHeader(r io.Reader, doc *gedcom.Document, opts *DecodeOptions) (*gedcom.Header, Diagnostics, error) {
