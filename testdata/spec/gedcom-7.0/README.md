@@ -40,7 +40,9 @@ it.
 from these files, and `internal/cmd/gengrammar` generates the validator's grammar
 tables (`validator/grammar_tables.go`) from them at `go generate` time, as do
 `internal/cmd/genplacement` (the decoder's placement tables) and
-`internal/cmd/genforeign` (the converter's). They are
+`internal/cmd/genforeign` (the converter's). `internal/payloadgrammar` reads
+`grammar.abnf` as a test oracle for the library's payload parsers; see
+[ADR 0013](../../../docs/decisions/0013-payload-grammar-oracle.md). They are
 test data only: no library code reads them at run time, and they add no runtime
 dependency.
 

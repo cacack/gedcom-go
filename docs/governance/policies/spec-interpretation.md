@@ -35,7 +35,8 @@ Three rules run through the rows:
 Symbols are written `<package directory>.<Name>` or
 `<package directory>.<Type>.<Field or Method>`. `internal/specinterp` parses
 this table; its test fails when a symbol or test does not exist or a symbol's
-doc does not cite its row, and the payload grammar tests use it to look up
+doc does not cite its row, and the payload grammar tests
+([ADR 0013](../../decisions/0013-payload-grammar-oracle.md)) use it to look up
 the deliberate departures they allow. A `|` inside a cell is written `\|`.
 
 ## Register

@@ -17,3 +17,4 @@ A record is immutable once accepted; supersede it with a new record rather than 
 | [0010](0010-phrase-typed-access.md) | GEDCOM 7.0 PHRASE as a sibling `<Value>Phrase` field |
 | [0011](0011-grammar-conformance-check.md) | Grammar conformance check generated from the vendored spec tables |
 | [0012](0012-gedzip-archive-model.md) | GEDZIP archive model (archive apart from document, strict resolution, bounded reads) |
+| [0013](0013-payload-grammar-oracle.md) | The GEDCOM 7.0 ABNF as a test oracle for payload parsers |
