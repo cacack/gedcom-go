@@ -57,7 +57,8 @@ func Escape(s string, v gedcom.Version) string {
 // Unescape reverses [Escape]: it returns the text a line value of GEDCOM
 // version v holds. In 5.5 and 5.5.1 every "@@" collapses to "@"; in 7.0 only
 // a leading one does, at the start of s and after each line break. Anything
-// else, a lone "@" a producer did not double included, is returned as is.
+// else, a lone "@" a producer did not double included, is returned as is
+// (spec-interpretation policy SI-005).
 func Unescape(s string, v gedcom.Version) string {
 	if !strings.Contains(s, "@@") {
 		return s

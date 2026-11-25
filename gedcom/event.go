@@ -137,7 +137,9 @@ type Event struct {
 	// generic EVEN, or any text an exporter writes on a named event, such as
 	// the census detail FTM puts on RESI. The bare "Y" occurrence flag of a
 	// named event is not a description and leaves it empty (it sets
-	// Occurred instead), as does a 7.0 NO assertion.
+	// Occurred instead), as does a 7.0 NO assertion. The 5.5.x and 7.0
+	// grammars allow only Y or nothing on a named event; the payload is kept
+	// anyway (spec-interpretation policy SI-004).
 	Description string `json:",omitempty"`
 
 	// EventTypeDetail provides a descriptive type of the event (TYPE subordinate)

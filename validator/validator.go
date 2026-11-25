@@ -91,7 +91,11 @@ type ValidatorConfig struct {
 	// values, payload datatypes (exact dates, times, ages, language tags,
 	// integers, pointers) and, in 7.0, record identifier form and deprecated
 	// structures. Its codes are listed with [CodeUnexpectedSubstructure].
-	// Extension tags ("_X") and their substructures are not checked.
+	// Extension tags ("_X") and their substructures are not checked. It
+	// reports what the decoder reads leniently: a value in the wrong case for
+	// 7.0 (spec-interpretation policy SI-003), a named event's payload other
+	// than Y (SI-004) and a 7.0 record identifier outside the tagchar
+	// alphabet (SI-010).
 	// [Validator.QualityReport] honors it too, filing the issues under
 	// GrammarIssues.
 	// Default: false.

@@ -22,7 +22,8 @@ import (
 // partial dates such as "FEB 1900" or "ABT 1900" -- are not reported, nor a
 // leap day on a dual-dated (Old Style) endpoint such as "29 FEB 1723/24",
 // nor a value ParseDate cannot parse at all (the decoder already reports
-// that as a diagnostic).
+// that as a diagnostic), which includes a date the decoder read from English
+// (spec-interpretation policy SI-001).
 //
 // Raw tags are walked where a record has them, so every DATE is checked --
 // events, attributes, LDS ordinances, citations, CHAN -- and the issue

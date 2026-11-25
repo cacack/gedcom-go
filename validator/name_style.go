@@ -172,7 +172,7 @@ type nameLine struct {
 }
 
 // newNameLine splits the level-1 NAME line name, whose following lines in the
-// record are rest.
+// record are rest (spec-interpretation policy SI-009).
 func newNameLine(name *gedcom.Tag, rest []*gedcom.Tag) nameLine {
 	line := nameLine{value: name.Value}
 	line.given, line.surname, line.suffix = gedcom.SplitPersonalName(name.Value)

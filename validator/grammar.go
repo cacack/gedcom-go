@@ -89,7 +89,8 @@ type grammarTable struct {
 	version string
 	// foldCase compares enumeration values, months and age units without
 	// regard to case, as 5.5.x readers conventionally do. 7.0 enumeration
-	// values are tags, which are case-sensitive.
+	// values are tags, which are case-sensitive. Spec-interpretation policy
+	// SI-003.
 	foldCase   bool
 	records    map[string]string // level-0 tag -> structure id
 	structures map[string]*structureDef

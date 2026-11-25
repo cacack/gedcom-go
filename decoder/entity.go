@@ -136,7 +136,8 @@ func (c *diagnosticCollector) add(d Diagnostic) {
 // from. Pointer fields are not -- a pointer is not text -- and neither is the
 // pointer test that sorts a NOTE into NoteXRefs or InlineNotes, which runs on
 // the line as written: "1 NOTE @@I1@" is the text "@I1@", not a link. The raw
-// Tags keep the wire form.
+// Tags keep the wire form. A lone "@" is a literal "@" (spec-interpretation
+// policy SI-005).
 func (c *diagnosticCollector) text(s string) string {
 	var v gedcom.Version
 	if c != nil {
@@ -437,6 +438,9 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 	return indi
 }
 
+// parsePersonalName reads the NAME at tags[nameIdx], splitting its value with
+// gedcom.SplitPersonalName (spec-interpretation policy SI-009).
+//
 //nolint:gocyclo // Name parsing requires handling many tag types and edge cases
 func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCollector) *gedcom.PersonalName {
 	name := &gedcom.PersonalName{
@@ -1109,7 +1113,9 @@ func parseDateValue(tags []*gedcom.Tag, i int, collector *diagnosticCollector) *
 	return &gedcom.Date{Original: value, Calendar: gedcom.CalendarGregorian, Phrase: phrase, IsPhrase: true}
 }
 
-// parseEvent extracts an event from tags starting at eventIdx.
+// parseEvent extracts an event from tags starting at eventIdx. A named
+// event's payload other than "Y" becomes its Description (spec-interpretation
+// policy SI-004).
 func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailOwner, collector *diagnosticCollector) *gedcom.Event {
 	event := &gedcom.Event{
 		Type: gedcom.EventType(eventTag),

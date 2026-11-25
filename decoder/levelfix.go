@@ -24,7 +24,7 @@ import (
 // progressively so each subordinate attaches one level below the previous, which
 // preserves nested structure correctly.
 //
-// Lines are mutated in place.
+// Lines are mutated in place. Spec-interpretation policy SI-006.
 func normalizeLevelJumps(lines []*parser.Line, collector *diagnosticCollector) {
 	// GEDCOM level 0 is the document root; the first valid line in any record
 	// starts at level 0. Initializing prev to 0 means any leading line above

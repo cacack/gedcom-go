@@ -221,7 +221,9 @@ var frenchMonthNames = map[string]int{
 //   - "(unknown)" -> date phrase
 //
 // Both calendar forms are accepted regardless of the document's GEDCOM version;
-// ParseDate does not check version conformance.
+// ParseDate does not check version conformance (spec-interpretation policy
+// SI-002). Month codes, modifiers and calendar names are read in any case, in
+// every version (SI-003).
 //
 // A day or year is unsigned decimal digits: a sign ("-1850", "+5 JAN 1850")
 // is an error naming the component, as is a day or year written as 0, which
@@ -267,6 +269,9 @@ func ParseDate(s string) (*Date, error) {
 // the Hebrew or French Republican calendar, is left to ParseDate alone.
 //
 // When s is not recovered, the error is the one ParseDate(s) returns.
+//
+// Only the decoder reads dates this way; every other package uses ParseDate
+// (spec-interpretation policy SI-001).
 func ParseDateLenient(s string) (date *Date, readAs string, err error) {
 	date, err = ParseDate(s)
 	if err == nil {

@@ -110,7 +110,12 @@ func (p *Parser) Reset() {
 // identifier with no tag after it ("0 @I1@") is likewise reported with a Line
 // that keeps the identifier as its tag, so its subordinate lines are not
 // reparented onto the preceding record. A returned Line is therefore not proof
-// that the line was well formed — check the error too.
+// that the line was well formed — check the error too. Which identifiers are
+// pointers is spec-interpretation policy SI-010.
+//
+// Whitespace before the level, and any run of whitespace between the level,
+// identifier and tag, is accepted in every version, with no error; the value
+// keeps its spacing (SI-012).
 func (p *Parser) ParseLine(input string) (*Line, error) {
 	p.lineNumber++
 

@@ -30,6 +30,7 @@ type EncodeOptions struct {
 	// It applies only to GEDCOM 5.5 and 5.5.1 output. GEDCOM 7.0 removed CONC
 	// and has no line-length limit, so 7.0 output (TargetVersion, or the
 	// header's version when no target is set) is never split.
+	// Spec-interpretation policy SI-008.
 	MaxLineLength int
 
 	// DisableLineWrap disables automatic CONC splitting for long lines.

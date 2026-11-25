@@ -20,7 +20,8 @@ var ErrLineTooLong = errors.New("gedcom-go/parser: line exceeds MaxLineBytes")
 // GEDCOM 7 sets none; real-world files routinely exceed 255 bytes (long
 // SNOTE text, embedded BLOB data), so we use a generous 1 MiB ceiling. A line
 // longer than this fails with an error rather than allocating unboundedly —
-// preventing hostile or corrupt input from exhausting memory.
+// preventing hostile or corrupt input from exhausting memory. No package
+// reports a 5.x line over 255 bytes (spec-interpretation policy SI-007).
 const MaxLineBytes = 1 << 20 // 1 MiB
 
 // recordLinesInitialCap is a hint for the initial capacity of RawRecord.Lines.

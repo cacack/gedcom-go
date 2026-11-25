@@ -501,7 +501,8 @@ func onlyChild(n *node, tag string) (child *node, ok bool) {
 
 // sameDate reports whether two DATE values parse to the same date: every
 // parsed field but Original equal. A value that does not parse, fails
-// Date.Validate, or is a date phrase is the same as none.
+// Date.Validate, or is a date phrase is the same as none, as is a date the
+// decoder read from English (spec-interpretation policy SI-001).
 func sameDate(a, b string) bool {
 	da, errA := gedcom.ParseDate(a)
 	db, errB := gedcom.ParseDate(b)

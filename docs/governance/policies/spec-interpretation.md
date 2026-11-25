@@ -1,0 +1,66 @@
+# Specification Interpretation
+
+Where a GEDCOM specification offers a choice, is lenient, or is silent, the
+library picks one policy, states it in the godoc, and applies it the same way
+in every package ([Honor the Standards](../../../CONSTITUTION.md#5-honor-the-standards)).
+This register lists those policies. A behavior not listed here that departs
+from the specification is a bug, not a policy.
+
+`testdata/spec/gedcom-5.5*/defects.tsv` records the readings taken where the
+5.5.x printed grammar itself is ambiguous; this register records the
+library's own leniency and choices.
+
+Three rules run through the rows:
+
+- **Readers are lenient.** The parser and decoder accept what real exports
+  write and keep it, reporting a diagnostic where something was recovered.
+- **The grammar check is strict.** `validator.ValidatorConfig.CheckGrammar`
+  holds a document to the specification tables, so it reports what the
+  readers accept.
+- **Writers write the standard form.** The encoder and converter never
+  produce a departure listed here from input that did not hold one.
+
+## Reading the register
+
+| Column | Content |
+|--------|---------|
+| ID | `SI-` and three digits. Stable: a row's ID is never reused or renumbered, and godoc and tests cite it |
+| Specification | 7.0 section on [gedcom.io](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html), and 5.5.x chapter and page of the PDF pinned in `testdata/spec/gedcom-5.5*/SOURCE` |
+| Kind | `choice` (the specification allows more than one reading), `lenient` (the library accepts what it forbids) or `silent` (it says nothing) |
+| Policy | The single behavior the library picked |
+| Stated in | The exported godoc that states the policy, then the symbol in each other package that applies it. Each one's doc comment cites the row ID |
+| Enforced by | Tests that hold every package to it, as `<package directory>.<Test or Fuzz name>` |
+
+Symbols are written `<package directory>.<Name>` or
+`<package directory>.<Type>.<Field or Method>`. `internal/specinterp` parses
+this table; its test fails when a symbol or test does not exist or a symbol's
+doc does not cite its row, and the payload grammar tests use it to look up
+the deliberate departures they allow. A `|` inside a cell is written `\|`.
+
+## Register
+
+| ID | Specification | Kind | Policy | Stated in | Enforced by |
+|----|---------------|------|--------|-----------|-------------|
+| SI-001 | 7.0 [Date](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#date); 5.5.1 ch.2 p.47 `DATE_VALUE` | lenient | A DATE spelled in English ("June 1880", "about 1873") is read by the decoder alone, through `ParseDateLenient`'s fixed list, and reported as `NONSTANDARD_DATE`; `Original` keeps the value as written. Every other package reads dates with `ParseDate`, so the validator does not check such a date against its calendar, the converter folds no `PHRASE` into it, and merge compares it with no other date | `gedcom.ParseDateLenient`, `decoder.CodeNonStandardDate`, `validator.validateDates`, `converter.foldV7Phrase`, `merge.sameDate` | `gedcom.TestParseDateLenient_Recovered`, `gedcom.TestParseDateLenient_Rejected`, `decoder.TestDecodeEnglishDates`, `converter.TestConvertEnglishDatePhraseTo5x`, `encoder.TestDecodedEnglishDatesRoundTripByteIdentically` |
+| SI-002 | 7.0 [Date](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#date) calendar keywords; 5.5.1 ch.2 p.45 `DATE_CALENDAR_ESCAPE` | lenient | `ParseDate` reads both calendar forms, the 5.5.x escape (`@#DJULIAN@`) and the 7.0 keyword (`JULIAN`), whatever the document's version; the converter rewrites one form to the other | `gedcom.ParseDate` | `gedcom.TestParseDate_CalendarEscapes`, `gedcom.TestParseDate_GEDCOM7CalendarKeywords`, `decoder.TestGEDCOM7CalendarKeywordsDecode` |
+| SI-003 | 7.0 [Date](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#date) (a month is a tag, so upper case); 5.5.1 ch.2 p.47 `DATE_VALUE` (silent on case) | lenient | `ParseDate` reads month codes, modifiers and calendar names in any case, in every version. The grammar check folds case for 5.5.x enumerations, months and age units, and reports a 7.0 value in the wrong case | `gedcom.ParseDate`, `validator.ValidatorConfig.CheckGrammar`, `validator.grammarTable.foldCase` | `gedcom.TestParseDate_CaseInsensitiveModifiers`, `validator.TestGrammar_Enumerations` |
+| SI-004 | 7.0 [INDIVIDUAL_EVENT_STRUCTURE](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#INDIVIDUAL_EVENT_STRUCTURE); 5.5.1 ch.2 p.34 `n DEAT [Y\|<NULL>]` | lenient | A named event's payload other than `Y` (`DEAT Age: 52`) is kept as `Event.Description` and written back by the encoder; `Y` sets `Occurred`. The grammar check reports it as `INVALID_PAYLOAD` | `gedcom.Event.Description`, `decoder.parseEvent`, `validator.ValidatorConfig.CheckGrammar` | `decoder.TestPres2020EventPayloads`, `decoder.TestEventPayloadDescription`, `encoder.TestEventAndAttributePayloadRoundTrip`, `validator.TestGrammar_NamedEventPayload` |
+| SI-005 | 7.0 [Lines](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#lines) (`lineStr`); 5.5.1 ch.1 p.12 `any_char` (`@@`) | lenient | An `@` in text that its producer did not double is read as a literal `@` in every version: unescaping collapses only `@@`. Writers escape every `@` the output version requires, and the converter re-escapes a lone `@` as text | `internal/atsign.Unescape`, `decoder.diagnosticCollector.text`, `converter.reescapeRawText` | `internal/atsign.TestUnescape`, `internal/atsign.TestReescape`, `decoder.TestAtSign70`, `decoder.TestStructuralTortureAtSign55` |
+| SI-006 | 7.0 [Lines](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#lines); 5.5.1 ch.1 p.15 `level` ("may increase by 1 at most") | lenient | A lenient decode clamps a line whose level jumps more than one past the previous line's to the previous level plus one and reports `BAD_LEVEL_JUMP`; a strict decode keeps the level as written and does not fail | `decoder.DecodeOptions.StrictMode`, `decoder.normalizeLevelJumps`, `decoder.DecodeRecord` | `decoder.TestNormalizeLevelJumps_CascadingJumps`, `decoder.TestDecodeRecord_LevelJumpClampedOnACopy`, `decoder.TestDecodeWithDiagnostics_LevelJumpRecovery_SingleSubordinateSkip` |
+| SI-007 | 7.0 [Lines](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#lines) (no length limit); 5.5.1 ch.1 p.11 (255 characters) | lenient | Every reading path accepts a line of up to `MaxLineBytes` (1 MiB) in every version, and no package reports a 5.x line over 255 characters; a longer line fails the read | `parser.MaxLineBytes` | `parser.TestLineLimit_AboveScannerDefault`, `parser.TestLineLimit_AboveMaxLineBytes`, `decoder.TestDecode_LineAboveMaxLineBytes` |
+| SI-008 | 7.0 [Lines](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#lines) (no length limit, no `CONC`); 5.5.1 ch.1 p.11 (255 characters) | choice | 5.x output splits a long value onto `CONC` lines, cut between two non-space characters; 7.0 output is never split. The encoder bounds the value at `MaxLineLength` (248 bytes by default); the converter's downgrade fits the whole line within 255 | `encoder.EncodeOptions.MaxLineLength`, `converter.expandNewlinesToCONT` | `encoder.TestEncode70WritesNoCONC`, `encoder.TestEncode5xCONCSplitsBetweenNonSpaces`, `converter.TestDowngradeSplitsLongValuesWithCONC` |
+| SI-009 | 7.0 [Personal Name](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#personal-name); 5.5.1 ch.2 p.54 `NAME_PERSONAL` | silent | A NAME value is split by `SplitPersonalName`: the surname is the text between the last two slashes, the given name the text before the first and the suffix the text after the last; one slash makes the rest the surname, none makes it all given name. Every package that reads a surname out of a NAME value uses it | `gedcom.SplitPersonalName`, `decoder.parsePersonalName`, `validator.newNameLine`, `converter.marriedNameValue` | `gedcom.TestSplitPersonalName`, `converter.TestConvertMarriedNameReplacesLastSlashPair`, `validator.TestNameStyleEachCode` |
+| SI-010 | 7.0 [Lines](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#lines) (`Xref = atsign 1*tagchar atsign`); 5.5.1 ch.1 p.13 `pointer_char` (includes space) | lenient | A pointer is `@`, at least one character other than whitespace or `@`, and `@`, and not `@VOID@`, in every version; for a document whose header declares 5.5 or 5.5.1 it may also hold spaces. The parser reports a spaced identifier and the decoder accepts it under those versions. The grammar check holds a 7.0 record identifier to `tagchar` | `gedcom.IsPointerXRef`, `gedcom.IsPointerXRefForVersion`, `parser.Parser.ParseLine`, `validator.ValidatorConfig.CheckGrammar` | `gedcom.TestIsPointerXRef`, `gedcom.TestIsPointerXRefForVersion`, `validator.TestGrammar_RecordXRefs` |
+| SI-011 | 7.0 [Latitude](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#latitude) and [Longitude](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#longitude); 5.5.1 ch.2 p.58 `PLACE_LATITUDE`, `PLACE_LONGITUDE` | lenient | A coordinate may have surrounding whitespace, which is ignored; the rest must be a direction letter (either case) and an unsigned decimal number | `gedcom.ParseCoordinate` | `gedcom.TestParseCoordinate`, `gedcom.FuzzParseCoordinate` |
+| SI-012 | 7.0 [Lines](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#lines) (`D = %x20`, no leading whitespace); 5.5.1 ch.1 p.11 (leading whitespace "should be ignored") and p.15 | lenient | Whitespace before the level, and any run of whitespace between the level, identifier and tag, is accepted in every version and both modes, with no diagnostic; the value keeps its spacing | `parser.Parser.ParseLine` | `decoder.TestStructuralTortureIndentedLines` |
+| SI-013 | 7.0 [Lines](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#lines) (blank lines removed); 5.5.1 ch.1 p.15 (blank lines "not to be used") | lenient | A lenient decode skips a blank or whitespace-only line and reports `EMPTY_LINE` as a warning; a strict decode fails on it | `decoder.DecodeOptions.StrictMode` | `parser.TestParseEmptyLines`, `decoder.TestEmptyLineIsWarning`, `decoder.TestEmptyLineStrict` |
+| SI-014 | 7.0 [Characters](https://gedcom.io/specifications/FamilySearchGEDCOMv7.html#characters) (UTF-8); 5.5.1 ch.2 p.44 `CHARACTER_SET` | lenient | Input read as UTF-8 that holds an invalid byte: a lenient decode replaces each such byte with U+FFFD and reports `INVALID_ENCODING`; a strict decode fails. The encoder rejects invalid UTF-8 | `decoder.DecodeOptions.StrictMode`, `charset.ReaderOptions.OnInvalidUTF8` | `decoder.TestDecodeLenientReplacesInvalidUTF8`, `decoder.TestDecodeStrictRejectsInvalidUTF8`, `encoder.TestEncodeRejectsInvalidUTF8` |
+
+## Adding a row
+
+A change that adds a leniency or makes a choice the specification leaves open
+adds a row here, with the next unused ID, in the same change (see
+[CONTRIBUTING.md](../../../CONTRIBUTING.md#project-specific-guidelines)). A
+change to an existing policy that alters results on unchanged input is also a
+semantic break: classify it under
+[Semantic Breaks](api-stability.md#semantic-breaks).
