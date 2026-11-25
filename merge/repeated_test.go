@@ -347,3 +347,31 @@ func TestFoldRepeatedEvents_DeepContinuation(t *testing.T) {
 		t.Errorf("folded @I1@ =\n%q\nwant\n%q", got, want)
 	}
 }
+
+// TestRepeatedEvents_DocUnchanged checks that finding and folding repeated
+// events leave the document given as it was, tags and typed view alike.
+func TestRepeatedEvents_DocUnchanged(t *testing.T) {
+	doc := decodeZip(t, repeatTree("1 NAME Ann /Example/\n1 BIRT Y\n2 DATE 7 DEC 1977\n2 PLAC Spring\n3 CONC field\n2 SOUR @S1@\n"+
+		"1 BIRT\n2 DATE 07 Dec 1977\n2 PLAC Spring\n3 CONC field\n2 NOTE Family bible.\n3 CONT second line\n"))
+	before := doc.Clone()
+	if groups := merge.RepeatedEvents(doc); len(groups) != 1 {
+		t.Fatalf("len(groups) = %d, want 1", len(groups))
+	}
+	mustFoldRepeated(t, doc)
+	if !reflect.DeepEqual(doc, before) {
+		t.Error("doc changed")
+	}
+}
+
+// TestRepeatedEvents_NilHeader checks that a document with no header is
+// read as one with no version, and does not panic.
+func TestRepeatedEvents_NilHeader(t *testing.T) {
+	doc := decodeZip(t, repeatTree("1 BIRT\n2 DATE 1977\n1 BIRT\n2 DATE 1977\n2 NOTE a\n"))
+	doc.Header = nil
+	if groups := merge.RepeatedEvents(doc); len(groups) != 1 {
+		t.Errorf("len(groups) = %d, want 1", len(groups))
+	}
+	if _, report := mustFoldRepeated(t, doc); len(report.Folded) != 1 {
+		t.Errorf("len(Folded) = %d, want 1", len(report.Folded))
+	}
+}
