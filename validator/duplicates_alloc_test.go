@@ -122,14 +122,24 @@ func TestPairSignalsReasons(t *testing.T) {
 		want    []string
 	}{
 		{
+			name:    "zero value credits nothing",
+			signals: pairSignals{},
+			want:    nil,
+		},
+		{
 			name:    "minimal",
-			signals: pairSignals{givenSimilarity: 1, birthYearDiff: -1},
+			signals: pairSignals{givenMatched: true, givenSimilarity: 1, sexUnrecorded: true},
 			want:    []string{"exact given name match", "sex not recorded on both"},
+		},
+		{
+			name:    "given names 0% similar under ZeroThreshold",
+			signals: pairSignals{givenMatched: true, sexUnrecorded: true},
+			want:    []string{"similar given name (0%)", "sex not recorded on both"},
 		},
 		{
 			name: "every signal",
 			signals: pairSignals{
-				sameSurname: true, givenSimilarity: 0.875, birthYearDiff: 0, sameSex: true,
+				sameSurname: true, givenMatched: true, givenSimilarity: 0.875, sameBirthYear: true, sameSex: true,
 				sameBirthDate: true, sameDeathYear: true, sameBirthPlace: true,
 				sameDeathPlace: true, sameSpouse: true, sharedChildren: 1,
 			},
@@ -141,7 +151,7 @@ func TestPairSignalsReasons(t *testing.T) {
 		},
 		{
 			name:    "years apart and several children",
-			signals: pairSignals{sameSurname: true, givenSimilarity: 1, birthYearDiff: 3, sharedChildren: 4},
+			signals: pairSignals{sameSurname: true, givenMatched: true, givenSimilarity: 1, birthYearsApart: 3, sexUnrecorded: true, sharedChildren: 4},
 			want: []string{
 				"exact surname match", "exact given name match", "birth year within 3 years",
 				"sex not recorded on both", "4 shared child names",

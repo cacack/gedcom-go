@@ -1285,6 +1285,7 @@ func (d *DuplicateDetector) comparePair(c1, c2 *candidate, scratch *levenshteinS
 
 	// Given name similarity contributes to confidence
 	confidence += 0.3 * givenSimilarity
+	signals.givenMatched = true
 	signals.givenSimilarity = givenSimilarity
 
 	// Compare birth dates
@@ -1299,15 +1300,14 @@ func (d *DuplicateDetector) comparePair(c1, c2 *candidate, scratch *levenshteinS
 	// so they veto the pair rather than merely withholding credit (#728). An
 	// approximate, bounded or range date compares only its first year, which
 	// need not contradict the other date, so it withholds credit instead.
-	signals.birthYearDiff = -1
 	if yearDiff, ok := yearsApart(birthDate1, birthDate2); ok {
 		switch {
 		case yearDiff == 0:
 			confidence += 0.2
-			signals.birthYearDiff = 0
+			signals.sameBirthYear = true
 		case yearDiff <= d.config.MaxBirthYearDiff:
 			confidence += 0.1
-			signals.birthYearDiff = yearDiff
+			signals.birthYearsApart = yearDiff
 		case isExactDate(birthDate1) && isExactDate(birthDate2):
 			return DuplicatePair{}, false
 		}
@@ -1320,6 +1320,7 @@ func (d *DuplicateDetector) comparePair(c1, c2 *candidate, scratch *levenshteinS
 	switch sex1, sex2 := knownSex(ind1.Sex), knownSex(ind2.Sex); {
 	case sex1 == "" || sex2 == "":
 		confidence += 0.1
+		signals.sexUnrecorded = true
 	case sex1 != sex2:
 		return DuplicatePair{}, false
 	default:
@@ -1379,12 +1380,17 @@ func (d *DuplicateDetector) comparePair(c1, c2 *candidate, scratch *levenshteinS
 }
 
 // pairSignals records the signals comparePair credited to a pair, from which
-// reasons spells out its MatchReasons.
+// reasons spells out its MatchReasons. Its zero value credits nothing.
 type pairSignals struct {
-	sameSurname     bool
+	sameSurname bool
+	// givenMatched is set when the given names passed MinNameSimilarity, and
+	// givenSimilarity is then their similarity, 0 included under ZeroThreshold.
+	givenMatched    bool
 	givenSimilarity float64
-	birthYearDiff   int // -1 when the birth years earned no credit
+	sameBirthYear   bool
+	birthYearsApart int // > 0 when birth years that far apart earned credit
 	sameSex         bool
+	sexUnrecorded   bool // a sex unrecorded on one side or both earned credit
 	sameBirthDate   bool
 	sameDeathYear   bool
 	sameBirthPlace  bool
@@ -1401,20 +1407,23 @@ func (s pairSignals) reasons() []string {
 	if s.sameSurname {
 		reasons = append(reasons, "exact surname match")
 	}
-	if s.givenSimilarity == 1.0 {
+	switch {
+	case !s.givenMatched:
+	case s.givenSimilarity == 1.0:
 		reasons = append(reasons, "exact given name match")
-	} else {
+	default:
 		reasons = append(reasons, fmt.Sprintf("similar given name (%.0f%%)", s.givenSimilarity*100))
 	}
 	switch {
-	case s.birthYearDiff == 0:
+	case s.sameBirthYear:
 		reasons = append(reasons, "same birth year")
-	case s.birthYearDiff > 0:
-		reasons = append(reasons, fmt.Sprintf("birth year within %d years", s.birthYearDiff))
+	case s.birthYearsApart > 0:
+		reasons = append(reasons, fmt.Sprintf("birth year within %d years", s.birthYearsApart))
 	}
-	if s.sameSex {
+	switch {
+	case s.sameSex:
 		reasons = append(reasons, "same sex")
-	} else {
+	case s.sexUnrecorded:
 		reasons = append(reasons, "sex not recorded on both")
 	}
 	if s.sameBirthDate {
