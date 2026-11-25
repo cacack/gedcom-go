@@ -15,7 +15,10 @@ Every benchmark table in this guide comes from **one run** of the suite:
 Each figure is the median of the six samples, and each row names the benchmark
 it came from, so `go test -bench '<name>' -benchmem ./<package>` reproduces it.
 Samples stayed within ±4% of the median, except `BenchmarkFindDuplicates/1000`
-(±7%). Sizes are decimal (1 MB = 10⁶ bytes). B/op is the cumulative bytes
+(±7%). The rows of the validator that duplicate detection drives (the first
+table under [Validator Performance](#validator-performance) and the table under
+[Duplicate Detection](#duplicate-detection)) were remeasured the same way on
+2026-11-25, after #949 cut the allocation of each compared pair. Sizes are decimal (1 MB = 10⁶ bytes). B/op is the cumulative bytes
 allocated per operation, not the memory held at any one moment.
 
 This guide is the single source of truth for gedcom-go benchmark figures. They
@@ -134,15 +137,15 @@ issues: unique XRefs, a submitter, and surname groups of four.
 | Benchmark | Input | Time/op | B/op | Allocs/op |
 |-----------|-------|---------|------|-----------|
 | `BenchmarkValidateMinimal` | 1 individual | 11.4 µs | 6.34 KB | 49 |
-| `BenchmarkValidateSmall` | 10 individuals | 20.2 µs | 10.3 KB | 111 |
-| `BenchmarkValidateMedium` | 100 individuals | 102 µs | 47.3 KB | 626 |
-| `BenchmarkValidateLarge` | 1,000 individuals | 927 µs | 495 KB | 5,603 |
-| `BenchmarkValidateWithErrors` | 100 individuals and 10 families with broken references | 127 µs | 84.5 KB | 883 |
+| `BenchmarkValidateSmall` | 10 individuals | 19.9 µs | 9.78 KB | 98 |
+| `BenchmarkValidateMedium` | 100 individuals | 98.6 µs | 38.8 KB | 384 |
+| `BenchmarkValidateLarge` | 1,000 individuals | 884 µs | 407 KB | 3,111 |
+| `BenchmarkValidateWithErrors` | 100 individuals and 10 families with broken references | 123 µs | 75.9 KB | 641 |
 | `BenchmarkStreamingValidate/100` | 100 individuals, record by record | 19.6 µs | 54.4 KB | 121 |
 | `BenchmarkStreamingValidate/1000` | 1,000 individuals, record by record | 134 µs | 107 KB | 1,031 |
 
 Validation of a clean document is linear in its size: 1,000 individuals cost
-9.1× what 100 do, about 0.9 µs and 5.6 allocations per individual. The
+9.0× what 100 do, about 0.9 µs and 3.1 allocations per individual. The
 validator allocates on every document, issues or not.
 
 The `BenchmarkStreamingValidate` rows are a whole `StreamingValidator` pass
@@ -215,22 +218,25 @@ returned). Two consequences follow:
 
 | Benchmark | Input | Time/op | B/op | Allocs/op |
 |-----------|-------|---------|------|-----------|
-| `BenchmarkFindDuplicates/100` | 100 individuals, 5 surname groups of 16 | 118 µs | 273 KB | 1,452 |
-| `BenchmarkFindDuplicates/1000` | 1,000 individuals, 5 groups of 160 | 6.44 ms | 7.20 MB | 120,025 |
-| `BenchmarkFindDuplicates/5000` | 5,000 individuals, 5 groups of 800 | 143 ms | 145 MB | 2,956,142 |
+| `BenchmarkFindDuplicates/100` | 100 individuals, 5 surname groups of 16 | 61.2 µs | 36.0 KB | 281 |
+| `BenchmarkFindDuplicates/1000` | 1,000 individuals, 5 groups of 160 | 4.09 ms | 818 KB | 4,651 |
+| `BenchmarkFindDuplicates/5000` | 5,000 individuals, 5 groups of 800 | 97.0 ms | 23.4 MB | 76,209 |
 | `BenchmarkFindDuplicatesAdversarial/capped` | 1,001 individuals in one group, default cap: skipped whole | 68.9 µs | 62.3 KB | 1,046 |
-| `BenchmarkFindDuplicatesAdversarial/uncapped` | the same group, `UnlimitedGroupSize`: 500,500 pairs | 899 ms | 297 MB | 3,506,037 |
-| `BenchmarkValidateAllStrictLongsword` | Strict `ValidateAll` of the scale fixture, detection included | 1.54 s | 1.02 GB | 10.8M |
+| `BenchmarkFindDuplicatesAdversarial/uncapped` | the same group, `UnlimitedGroupSize`: 500,500 pairs | 786 ms | 215 KB | 2,036 |
+| `BenchmarkValidateAllStrictLongsword` | Strict `ValidateAll` of the scale fixture, detection included | 1.38 s | 405 MB | 5.17M |
 
-The `FindDuplicates` rows grow with the square of the group size, not with the
+The `FindDuplicates` times grow with the square of the group size, not with the
 document. The adversarial fixture is the worst case per pair: 26-rune given
 names that are all near misses, so every pair runs the full Levenshtein
-comparison and then loses. It costs 1.8 µs and about 590 B per pair, and one
-group just under the default cap costs nearly what the `uncapped` row shows.
-The allocation is transient; none of it outlives the pair.
+comparison and then loses. It costs 1.6 µs per pair, and one group just under
+the default cap costs nearly what the `uncapped` row shows. A rejected pair
+allocates nothing: each sweep reuses one set of Levenshtein buffers, and a
+pair's `MatchReasons` are written only once it is accepted. What the
+`uncapped` row allocates is the per-individual setup.
 
 Names are normalized once per individual (lowercased, diacritics removed).
-All-ASCII names skip the Unicode transform, which is the common case.
+All-ASCII names skip the Unicode transform, which is the common case, and the
+transform itself is pooled rather than built for each name.
 
 Reproduce with:
 
@@ -280,7 +286,7 @@ worst case = n × MaxGroupSize / 2 pair comparisons × MaxNameRunes² cells each
 
 At the defaults that is 500 × *n* pairs, whatever the surnames are: a
 100,000-individual upload cannot exceed ~50M comparisons. For scale,
-`BenchmarkFindDuplicatesAdversarial/uncapped` above spends 0.9 s on 500,500
+`BenchmarkFindDuplicatesAdversarial/uncapped` above spends 0.8 s on 500,500
 pairs of 26-rune names. The name bound matters when the names are long, because
 a pair's cost is the product of the two lengths:
 [ADR 0009](../decisions/0009-bounded-duplicate-detection.md) records the
