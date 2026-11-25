@@ -21,12 +21,15 @@ var ErrEmptyCoordinate = errors.New("empty coordinate")
 var ErrInvalidCoordinate = errors.New("invalid coordinate")
 
 // ErrNilDocument is returned by Document.AddRecord, ReplaceRecord,
-// RemoveRecord and AttachMedia called on a nil *Document.
+// ReplaceHeader, RemoveRecord and AttachMedia called on a nil *Document.
 var ErrNilDocument = errors.New("nil document")
 
 // ErrNilRecord is returned by Document.AddRecord and ReplaceRecord for a nil
 // *Record.
 var ErrNilRecord = errors.New("nil record")
+
+// ErrNilHeader is returned by Document.ReplaceHeader for a nil *Header.
+var ErrNilHeader = errors.New("nil header")
 
 // ErrDuplicateXRef is wrapped by the Document.AddRecord error for a record
 // whose XRef the document already indexes. The error's message names the XRef.

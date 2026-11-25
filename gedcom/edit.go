@@ -46,6 +46,32 @@ func (d *Document) ReplaceRecord(r *Record) error {
 	return nil
 }
 
+// ReplaceHeader puts h in place of d's header, and sets the two views of the
+// header d holds beside it: Vendor, detected from h as DetectVendorFromHeader
+// detects it, and Schema, from h's SCHMA structure when h.Version is GEDCOM
+// 7.0 (nil otherwise). Records are not changed.
+//
+// It returns ErrNilHeader for a nil h and ErrNilDocument for a nil d, and
+// leaves d unchanged.
+//
+// With a layout-preserving encode (encoder.EncodeOptions.PreserveLayout),
+// every record and the trailer are still written as read, and so is the
+// "0 HEAD" line. h's lines are written as new lines unless they keep the
+// LineNumber of a source line they still read as: a header from
+// decoder.DecodeHeader has none.
+func (d *Document) ReplaceHeader(h *Header) error {
+	if d == nil {
+		return ErrNilDocument
+	}
+	if h == nil {
+		return ErrNilHeader
+	}
+	d.Header = h
+	d.Vendor = DetectVendorFromHeader(h)
+	d.Schema = headerSchema(h)
+	return nil
+}
+
 // RemoveRecord removes the record d indexes under xref from d.Records and
 // d.XRefMap, and returns every pointer to xref left in the rest of d: in its
 // records' raw Tags (or, for a record without Tags, its Entity) and in the
