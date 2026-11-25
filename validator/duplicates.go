@@ -1205,18 +1205,12 @@ func (d *DuplicateDetector) extractSurname(ind *gedcom.Individual) string {
 	return extractSurnameFromFull(name.Full)
 }
 
-// extractSurnameFromFull extracts the surname from a GEDCOM full name format.
-// GEDCOM names use the format "Given /Surname/" where surname is enclosed in slashes.
+// extractSurnameFromFull extracts the surname from a GEDCOM full name format,
+// "Given /Surname/", as gedcom.SplitPersonalName reads it (spec-interpretation
+// policy SI-009).
 func extractSurnameFromFull(fullName string) string {
-	start := strings.Index(fullName, "/")
-	if start == -1 {
-		return ""
-	}
-	end := strings.LastIndex(fullName, "/")
-	if end <= start {
-		return ""
-	}
-	return fullName[start+1 : end]
+	_, surname, _ := gedcom.SplitPersonalName(fullName)
+	return surname
 }
 
 // extractGivenName extracts the given name from an individual's primary name.
@@ -1235,13 +1229,11 @@ func extractGivenName(ind *gedcom.Individual) string {
 	return extractGivenFromFull(name.Full)
 }
 
-// extractGivenFromFull extracts the given name from a GEDCOM full name format.
+// extractGivenFromFull extracts the given name from a GEDCOM full name format,
+// as gedcom.SplitPersonalName reads it (spec-interpretation policy SI-009).
 func extractGivenFromFull(fullName string) string {
-	idx := strings.Index(fullName, "/")
-	if idx == -1 {
-		return strings.TrimSpace(fullName)
-	}
-	return strings.TrimSpace(fullName[:idx])
+	given, _, _ := gedcom.SplitPersonalName(fullName)
+	return given
 }
 
 // comparePair compares two candidates and returns a DuplicatePair if they match.

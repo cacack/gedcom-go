@@ -523,7 +523,12 @@ func TestExtractSurnameFromFull(t *testing.T) {
 		{
 			name:     "single slash",
 			fullName: "John /Doe",
-			want:     "",
+			want:     "Doe",
+		},
+		{
+			name:     "extra slash",
+			fullName: "John /de la /Smith/",
+			want:     "Smith",
 		},
 		{
 			name:     "adjacent slashes",
