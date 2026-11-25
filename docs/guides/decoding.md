@@ -351,7 +351,8 @@ decode and encode to, and applies the difference:
   `PersonalName.Given`, `Surname` and `Suffix` from the `NAME` value when
   there is no `GIVN`, `SURN` or `NSFX`, so editing `Full` alone writes the old
   given name, surname and suffix as `GIVN`, `SURN` and `NSFX`. Edit them
-  together.
+  together; `gedcom.SplitPersonalName(name.Full)` gives the parts a new value
+  states.
 
 The header fields it carries are those a hand-built header is written from:
 `SourceSystem`, `Date`, `Submitter`, `Language`, `Version`, and whether

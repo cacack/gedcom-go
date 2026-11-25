@@ -1383,6 +1383,11 @@ structure as `[]string` fields named `Phone`, `Email`, `Fax` and `Website`:
 - TYPE - Name type (birth, married, aka)
 - SOUR - Source citations on the name (`PersonalName.SourceCitations`)
 - NOTE, SNOTE - Notes on the name (`PersonalName.NoteXRefs`, `PersonalName.InlineNotes`)
+- `gedcom.SplitPersonalName(full)` splits a NAME value into the given name,
+  surname and suffix it states. The decoder fills `Given`, `Surname` and
+  `Suffix` from it and then lets GIVN, SURN and NSFX override them, so
+  calling it on `PersonalName.Full` tells what the value says apart from what
+  the part lines say (a GIVN that disagrees with the value, say)
 
 ### Transliterations (TRAN)
 

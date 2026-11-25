@@ -808,3 +808,30 @@ func ExamplePlaceDetail_Parts() {
 	// State: "Hessen"
 	// Country: "Germany"
 }
+
+// ExampleSplitPersonalName tells what a NAME value says apart from what its
+// part lines say: Given holds the GIVN line, and SplitPersonalName on Full
+// gives the value's own given name, surname and suffix.
+func ExampleSplitPersonalName() {
+	const input = `0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @I1@ INDI
+1 NAME John /Smith/ Jr.
+2 GIVN Jon
+0 TRLR
+`
+	doc, err := decoder.Decode(strings.NewReader(input))
+	if err != nil {
+		log.Fatal(err)
+	}
+	name := doc.GetIndividual("@I1@").Name()
+
+	given, surname, suffix := gedcom.SplitPersonalName(name.Full)
+	fmt.Printf("value: %q %q %q\n", given, surname, suffix)
+	fmt.Printf("GIVN:  %q\n", name.Given)
+
+	// Output:
+	// value: "John" "Smith" "Jr."
+	// GIVN:  "Jon"
+}
