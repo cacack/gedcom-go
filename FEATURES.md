@@ -1964,6 +1964,7 @@ user's job. A record built in code without raw `Tags` is not checked, and
 | NAME_UNCERTAIN_MARK | Warning | `?`, `*`, a digit, or `or` between two words (`/Smith or Smyth/`) |
 | NAME_PART_PUNCTUATION | Warning | An `NSFX` or `NICK` directly under the NAME whose value starts or ends with punctuation or a space (`Details["tags"]`) |
 | NAME_VENDOR_TAG | Warning | An extension (`_X`) tag directly under the NAME (`Details["tags"]`) |
+| NAME_PART_MISMATCH | Warning | A `GIVN` or `SURN` directly under the NAME that is not the value's given name or surname, allowing for `NPFX`/`SPFX`/`NSFX`, repeated lines, spacing, commas, case, quoted or parenthesized text and a value with no slashes (`Details["tags"]`, each piece's text under its tag, the value's under `given`/`surname`) |
 
 **Duplicate Detection:**
 

@@ -84,6 +84,8 @@ func TestNameStyleEachCode(t *testing.T) {
 		{"NSFX with leading comma", []string{"1 NAME John /Smith/", "2 NSFX , Jr"}, CodeNamePartPunctuation, "NSFX"},
 		{"NICK and NSFX", []string{"1 NAME John /Smith/", "2 NICK (Jack)", "2 NSFX Jr "}, CodeNamePartPunctuation, "NICK,NSFX"},
 		{"vendor tag", []string{"1 NAME John /Smith/", "2 _MARNM Jones", "2 _AKA Jack"}, CodeNameVendorTag, "_MARNM,_AKA"},
+		{"GIVN mismatch", []string{"1 NAME John /Smith/", "2 GIVN Jon"}, CodeNamePartMismatch, "GIVN"},
+		{"SURN mismatch", []string{"1 NAME John /Smith/", "2 SURN Smyth"}, CodeNamePartMismatch, "SURN"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -143,6 +145,7 @@ func TestNameStyleOneAtATime(t *testing.T) {
 		`1 NAME  JOHN "Jack" /Smith or Smyth/ Jr`,
 		"2 NSFX Jr.",
 		"2 _AKA Jack",
+		"2 GIVN Jon",
 	)
 	for _, code := range allStyleCodes() {
 		issues := styleIssues(doc, code, "NOT_A_STYLE_CHECK")
@@ -228,7 +231,7 @@ func TestNameStyleScope(t *testing.T) {
 func TestAllStyleChecks(t *testing.T) {
 	want := []string{
 		CodeNameAllCaps, CodeNameTextAfterSurname, CodeNameSpacing, CodeNameQuotesOrParens,
-		CodeNameUncertainMark, CodeNamePartPunctuation, CodeNameVendorTag,
+		CodeNameUncertainMark, CodeNamePartPunctuation, CodeNameVendorTag, CodeNamePartMismatch,
 	}
 	checks := AllStyleChecks()
 	if got := allStyleCodes(); !reflect.DeepEqual(got, want) {
@@ -245,6 +248,78 @@ func TestAllStyleChecks(t *testing.T) {
 	checks[0].Code = "CHANGED"
 	if AllStyleChecks()[0].Code != CodeNameAllCaps {
 		t.Error("AllStyleChecks returned the package's own slice")
+	}
+}
+
+// TestNamePartMismatch pins which GIVN and SURN lines NAME_PART_MISMATCH
+// reports (spec-interpretation policy SI-022): the disagreeing tags under
+// Details["tags"], each one's text and the value's, and nothing for a piece
+// that agrees once NPFX, SPFX, NSFX, repeated lines, spacing, commas, case,
+// quoted or parenthesized text and a value with no slashes are allowed for,
+// or for a NAME with no GIVN or SURN.
+func TestNamePartMismatch(t *testing.T) {
+	tests := []struct {
+		name string
+		body []string
+		want map[string]string // nil: not reported
+	}{
+		{"GIVN disagrees", []string{"1 NAME John /Smith/", "2 GIVN Jon", "2 SURN Smith"},
+			map[string]string{"tags": "GIVN", "GIVN": "Jon", "given": "John"}},
+		{"SURN disagrees", []string{"1 NAME John /Smith/", "2 GIVN John", "2 SURN Smyth"},
+			map[string]string{"tags": "SURN", "SURN": "Smyth", "surname": "Smith"}},
+		{"both disagree", []string{"1 NAME John /Smith/", "2 SURN Smyth", "2 GIVN Jon"},
+			map[string]string{"tags": "GIVN,SURN", "GIVN": "Jon", "given": "John", "SURN": "Smyth", "surname": "Smith"}},
+		{"GIVN missing a word", []string{"1 NAME John Paul /Smith/", "2 GIVN John"},
+			map[string]string{"tags": "GIVN", "GIVN": "John", "given": "John Paul"}},
+		{"no slashes", []string{"1 NAME John Smith", "2 GIVN John", "2 SURN Smith"}, nil},
+		{"no slashes, GIVN disagrees", []string{"1 NAME John Smith", "2 GIVN Jon", "2 SURN Smith"},
+			map[string]string{"tags": "GIVN", "GIVN": "Jon", "given": "John Smith"}},
+		{"no slashes, SURN words out of order", []string{"1 NAME Ana Garcia Lopez", "2 SURN Lopez Garcia"},
+			map[string]string{"tags": "SURN", "SURN": "Lopez Garcia", "surname": ""}},
+		{"quoted nickname", []string{`1 NAME John "Jack" /Smith/`, "2 GIVN John", "2 NICK Jack"}, nil},
+		{"parenthesized nickname", []string{"1 NAME John (Big Jim) /Smith/", "2 GIVN John"}, nil},
+		{"curly-quoted nickname in GIVN", []string{"1 NAME John /Smith/", "2 GIVN John “Jack”"}, nil},
+		{"unclosed quote", []string{`1 NAME John "Jack /Smith/`, "2 GIVN John"},
+			map[string]string{"tags": "GIVN", "GIVN": "John", "given": `John "Jack`}},
+		{"NPFX not in the value", []string{"1 NAME John /Smith/", "2 NPFX Dr.", "2 GIVN Dr. John"},
+			map[string]string{"tags": "GIVN", "GIVN": "Dr. John", "given": "John"}},
+		{"NPFX in the value", []string{"1 NAME Dr. John /Smith/", "2 NPFX Dr.", "2 GIVN John"}, nil},
+		{"NPFX in the value and GIVN", []string{"1 NAME Dr. John /Smith/", "2 NPFX Dr.", "2 GIVN Dr. John"}, nil},
+		{"SPFX in the value", []string{"1 NAME John /van der Berg/", "2 SPFX van der", "2 SURN Berg"}, nil},
+		{"SPFX in the value and SURN", []string{"1 NAME John /van der Berg/", "2 SPFX van der", "2 SURN van der Berg"}, nil},
+		{"NSFX in the given name", []string{"1 NAME John Jr", "2 GIVN John", "2 NSFX Jr"}, nil},
+		{"NSFX after the surname", []string{"1 NAME John /Smith/ Jr", "2 GIVN John", "2 NSFX Jr"}, nil},
+		{"several GIVN", []string{"1 NAME John Paul /Smith/", "2 GIVN John", "2 GIVN Paul"}, nil},
+		{"several GIVN out of order", []string{"1 NAME John Paul /Smith/", "2 GIVN Paul", "2 GIVN John"},
+			map[string]string{"tags": "GIVN", "GIVN": "Paul, John", "given": "John Paul"}},
+		{"comma-separated GIVN", []string{"1 NAME John Paul /Smith/", "2 GIVN John, Paul"}, nil},
+		{"several SURN", []string{"1 NAME Ana /Garcia Lopez/", "2 SURN Garcia", "2 SURN Lopez"}, nil},
+		{"case and spacing", []string{"1 NAME John  Paul /SMITH/", "2 GIVN john paul", "2 SURN Smith"}, nil},
+		{"no GIVN or SURN", []string{"1 NAME John /Smith/", "2 NPFX Dr.", "2 NICK Jack"}, nil},
+		{"pieces of another NAME", []string{"1 NAME John /Smith/", "1 NAME Jon /Smyth/", "2 GIVN Jon", "2 SURN Smyth"}, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			issues := styleIssues(styleDoc(t, tt.body...), CodeNamePartMismatch)
+			if tt.want == nil {
+				if len(issues) != 0 {
+					t.Errorf("got %v, want none", issues)
+				}
+				return
+			}
+			if len(issues) != 1 {
+				t.Fatalf("got %d issues, want 1: %v", len(issues), issues)
+			}
+			got := issues[0].Details
+			for key, value := range tt.want {
+				if got[key] != value {
+					t.Errorf("Details[%s] = %q, want %q", key, got[key], value)
+				}
+			}
+			if len(got) != len(tt.want)+1 || got["value"] == "" {
+				t.Errorf("Details = %v, want %v and value", got, tt.want)
+			}
+		})
 	}
 }
 
