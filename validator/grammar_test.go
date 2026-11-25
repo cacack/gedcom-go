@@ -175,6 +175,20 @@ func TestGrammar_Payloads(t *testing.T) {
 		"INVALID_PAYLOAD L19 TIME")
 }
 
+// TestGrammar_ExactDateDay pins that an exact date's day is held to its
+// month, FEB to 29 in any year, and that it has no year 0, in 7.0 and 5.5.1.
+func TestGrammar_ExactDateDay(t *testing.T) {
+	assertGrammar(t, head70+
+		"0 @I1@ INDI\n1 CHAN\n2 DATE 31 APR 2000\n0 @I2@ INDI\n1 CHAN\n2 DATE 29 FEB 1900\n"+
+		"0 @I3@ INDI\n1 CHAN\n2 DATE 30 FEB 2000\n0 @I4@ INDI\n1 CHAN\n2 DATE 1 JAN 0\n0 TRLR\n",
+		"INVALID_PAYLOAD L6 DATE",
+		"INVALID_PAYLOAD L12 DATE",
+		"INVALID_PAYLOAD L15 DATE")
+	assertGrammar(t, head551+
+		"0 @I1@ INDI\n1 CHAN\n2 DATE 31 jun 1900\n0 @I2@ INDI\n1 CHAN\n2 DATE 31 DEC 1699/00\n0 TRLR\n",
+		"INVALID_PAYLOAD L12 DATE")
+}
+
 // TestGrammar_NamedEventPayload pins the strict half of spec-interpretation
 // policy SI-004: the decoder keeps a named event's payload other than Y as its
 // Description, and the grammar check reports it. pres2020.ged writes

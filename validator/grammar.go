@@ -170,9 +170,9 @@ var (
 	language70 = regexp.MustCompile(`^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$`)
 	integer    = regexp.MustCompile(`^\d+$`)
 	// dateExact70 is DateExact: day, Gregorian month and year.
-	dateExact70 = regexp.MustCompile(`^(\d+) (JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC) \d+$`)
+	dateExact70 = regexp.MustCompile(`^(\d+) (JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC) (\d+)$`)
 	// dateExact55 is DATE_EXACT, whose year may be a dual year (1699/00).
-	dateExact55 = regexp.MustCompile(`(?i)^(\d{1,2}) (JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC) \d{3,4}(/\d{2})?$`)
+	dateExact55 = regexp.MustCompile(`(?i)^(\d{1,2}) (JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC) (\d{3,4})(/\d{2})?$`)
 	time70      = regexp.MustCompile(`^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d+)?)?Z?$`)
 	time55      = regexp.MustCompile(`^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d+)?)?$`)
 	// age70 is Age: an optional bound and space, then years, months, weeks
@@ -571,13 +571,23 @@ func (c *grammarChecker) byVersion(v7, v55 *regexp.Regexp) *regexp.Regexp {
 	return v55
 }
 
+// monthDays is the most days each Gregorian month has, in a leap year for
+// FEB.
+var monthDays = map[string]int{
+	"JAN": 31, "FEB": 29, "MAR": 31, "APR": 30, "MAY": 31, "JUN": 30,
+	"JUL": 31, "AUG": 31, "SEP": 30, "OCT": 31, "NOV": 30, "DEC": 31,
+}
+
+// dateExact reports whether v is an exact date: a day of its month, which
+// may be 29 FEB in any year, and a year other than 0, which the Gregorian
+// calendar does not have.
 func (c *grammarChecker) dateExact(v string) bool {
 	m := c.byVersion(dateExact70, dateExact55).FindStringSubmatch(v)
 	if m == nil {
 		return false
 	}
 	day, err := strconv.Atoi(m[1])
-	return err == nil && day >= 1 && day <= 31
+	return err == nil && day >= 1 && day <= monthDays[strings.ToUpper(m[2])] && strings.Trim(m[3], "0") != ""
 }
 
 // enumMember reports whether v is a value def's enumeration accepts. In 7.0
