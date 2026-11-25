@@ -208,7 +208,7 @@ func TestDecodeLenientInvalidUTF8DiagnosticsCapped(t *testing.T) {
 // yet must still recover from those bytes.
 func TestDecodeLenientInvalidUTF8NotCollectedWhenDiscarded(t *testing.T) {
 	input, _ := invalidUTF8Probe("1 CHAR UTF-8")
-	result, err := decode(strings.NewReader(input), DefaultOptions(), false, nil)
+	result, err := decode(strings.NewReader(input), DefaultOptions(), false, nil, nil)
 	if err != nil {
 		t.Fatalf("decode() error = %v, want the bad byte recovered", err)
 	}

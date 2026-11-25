@@ -4,15 +4,16 @@ How to change a decoded document record by record, see what changed between
 two documents, combine files, merge duplicate records, and cut a branch out
 and put it back.
 
-Six tasks, each a section below:
+Seven tasks, each a section below:
 
 | Task | Use |
 |------|-----|
-| [Edit one record as text](#editing-one-record-as-text) | `encoder.EncodeRecord`, `decoder.DecodeRecords`, `Document.ReplaceRecord` |
+| [Edit one record as text](#editing-one-record-as-text) | `encoder.EncodeRecord`, `decoder.DecodeRecords`, `Document.ReplaceRecord`; for the header, `decoder.DecodeHeader`, `Document.ReplaceHeader` |
+| [Edit lines within a record](#editing-lines-within-a-record) | `Record.MoveSubstructure`, `Record.SetChild`, `Record.RemoveChildren`, `merge.FoldSubstructure` |
 | [Add a record](#adding-a-record) | `Document.FreeXRef`, `Document.AddRecord`, `Record.AddMediaLink`, `Document.AttachMedia` |
 | [See what changed](#seeing-what-changed) | `gedcom.Diff` |
 | [Combine two files](#combining-two-files) | `merge.Combine` |
-| [Merge duplicate records](#merging-duplicate-records) | `merge.Individuals`, `merge.Families`, `merge.Sources`, `merge.Repositories` |
+| [Merge duplicate records](#merging-duplicate-records) | `merge.Individuals`, `merge.Families`, `merge.RepeatedEvents`, `merge.FoldRepeatedEvents`, `merge.Sources`, `merge.Repositories` |
 | [Cut a branch and zip it back](#cutting-a-branch-and-zipping-it-back) | `Document.BoundedSubset`, `merge.ZipSharedXRefs` |
 
 Two rules hold throughout:
@@ -101,6 +102,84 @@ removed is written byte for byte as read. A record from `DecodeRecords` is
 written as new lines. To keep the layout of the lines an edit did not touch,
 edit a `Clone` of the old record instead of decoding text; see
 [What Changes](preserving-layout.md#what-changes).
+
+### The Header
+
+The header is edited the same way, with `DecodeHeader` and `ReplaceHeader`:
+
+```go
+header, diags, err := decoder.DecodeHeader(strings.NewReader(edited), doc, nil)
+if err != nil {
+    return err // wraps decoder.ErrNotHeader for anything but a header
+}
+if diags.HasErrors() {
+    return fmt.Errorf("edit rejected:\n%s", diags)
+}
+if err := doc.ReplaceHeader(header); err != nil {
+    return err
+}
+```
+
+- **The fragment is a `0 HEAD` line and the lines beneath it.** Any other
+  level-0 line (a record, a `TRLR`, a second `HEAD`), a first line that is not
+  `0 HEAD`, or an empty fragment is an error wrapping `decoder.ErrNotHeader`
+  that names the line.
+- **It is read as the document's header**: under its version, identifier
+  grammar and encoding, not the `GEDC.VERS` or `CHAR` the fragment declares.
+  The header's `Version`, `DeclaredVersion` and `DetectedEncoding` are the
+  document's. Changing the version is a conversion; see the
+  [converter guide](converter.md).
+- **Options and line numbers** are as for `DecodeRecords`: diagnostics count
+  from the fragment's first line, and the header's tags carry none.
+
+`ReplaceHeader` sets `Header`, and the two views the document derives from
+it: `Vendor` and, for GEDCOM 7.0, `Schema`. Records are not touched. With
+`PreserveLayout` on both sides, the `0 HEAD` line, every record and the
+trailer are written byte for byte as read, and the new header's lines as new
+lines; for a UTF-8 file whose lines are unindented, replacing the header with
+an unedited copy of its own text writes the file unchanged.
+
+## Editing Lines Within a Record
+
+Use this to change some lines of a record and keep the rest as read: reorder
+a person's names, set a name's `TYPE` or `NICK`, drop a vendor tag. Editing
+`Individual.Names` and calling `encoder.SyncTags` rewrites each name it
+touches from the typed fields, which do not hold every line (a `_CUSTOM`
+under a `NAME`, say). These helpers edit `Record.Tags` directly:
+
+```go
+rec := doc.GetRecord("@I1@")
+names := rec.FindAll("NAME")
+rec.MoveSubstructure(names[1], names[0])                    // second name first, with its lines
+rec.SetChild(names[1], "TYPE", "birth", doc.Header.Version) // set or add a child line
+rec.RemoveChildren(names[1], "_CUSTOM")                     // remove a child and its subtree
+merge.FoldSubstructure(rec, names[1], names[0])             // fold the other name into it
+```
+
+- **`MoveSubstructure(t, before)`** moves `t` and every line beneath it to
+  directly before `before`, which must be a sibling: the same level and the
+  same parent. A nil `before` moves `t` after its last sibling.
+- **`SetChild(parent, tag, value, version)`** sets the first child of
+  `parent` with `tag`, or adds one after `parent`'s last line. The value is
+  set as `SetFullValue` sets it: the old `CONT` and `CONC` lines are dropped
+  and the new value is split for the version. A second child with the same
+  tag is left alone.
+- **`RemoveChildren(parent, tag)`** removes every child of `parent` with
+  `tag`, with the lines beneath it, and returns how many.
+- **`merge.FoldSubstructure(rec, keep, drop)`** moves each line directly under
+  `drop` that `keep` does not already hold line for line, after `keep`'s last
+  line with that tag, then removes `drop`. An identical citation is kept once.
+  No line is matched by value, so a `TYPE` that differs from `keep`'s is
+  moved beside it; unlike `FoldEvents`, it does not decide what is the same.
+
+A nil `parent` names the record itself, so `rec.SetChild(nil, "SEX", "F", v)`
+sets a level-1 line. Each helper reports whether its tags were in the record
+and changes nothing when they were not. They change the order and membership
+of `Record.Tags` but no tag they do not set, so every other line keeps its
+`LineNumber` and a [layout-preserving encode](preserving-layout.md) writes it
+as read. `Record.Entity` is not updated: rebuild it with
+`decoder.SyncEntities` before reading typed fields, and do not follow these
+edits with `encoder.SyncTags`, which would revert them from the stale entity.
 
 ## Adding a Record
 
@@ -407,6 +486,31 @@ What happens:
 Merging two individuals often leaves two families for one couple. Merge those
 with `merge.Families(doc, keepFam, dropFam, opts)`; a child both families list
 is listed once.
+
+### Events Recorded Twice in One Record
+
+A record can already hold one event twice: merges made without `FoldEvents`,
+or an import, leave two `BIRT` lines with one date written two ways.
+`merge.RepeatedEvents` reports them and `merge.FoldRepeatedEvents` folds
+them, by the same rule `FoldEvents` uses, within each individual and family
+record or only those you name:
+
+```go
+for _, g := range merge.RepeatedEvents(doc) {
+    fmt.Printf("%s: %s recorded %d times\n", g.XRef, g.Members[0].Tags[0].Tag, len(g.Members))
+}
+folded, report, err := merge.FoldRepeatedEvents(doc)
+if err != nil {
+    return err
+}
+fmt.Printf("%d structures folded\n", len(report.Folded))
+```
+
+Each group folds into its first member, which keeps its lines and gains the
+citations, notes and other lines of the rest; `report.Folded` lists each
+structure removed with its record's XRef. Records with no group keep their
+lines, so a layout-preserving encode writes them unchanged. Folding the
+result again folds nothing. The input is not modified.
 
 ### Sources and Repositories
 

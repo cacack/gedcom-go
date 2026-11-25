@@ -88,11 +88,23 @@
 //	v := validator.NewWithOptions(&validator.ValidateOptions{CheckGrammar: true})
 //	issues := v.ValidateAll(doc)
 //
+// # Name Style Checks
+//
+// List codes in [ValidatorConfig.StyleChecks] to report habits in personal
+// names that are valid GEDCOM, such as a surname in capitals or a nickname in
+// quotes ([CodeNameAllCaps] and the codes listed with it). Each is off until
+// listed; [AllStyleChecks] lists them all.
+//
+//	v := validator.NewWithOptions(&validator.ValidateOptions{
+//		StyleChecks: []string{validator.CodeNameAllCaps},
+//	})
+//	issues := v.ValidateAll(doc)
+//
 // # Quality Reports
 //
 // Combine validation issues with completeness statistics. The report runs the
-// same checks as ValidateAll but applies no Strictness, SkipRules or MaxErrors
-// filtering -- see [Validator.QualityReport]:
+// same checks as ValidateAll, less the name style checks, but applies no
+// Strictness, SkipRules or MaxErrors filtering -- see [Validator.QualityReport]:
 //
 //	v := validator.New()
 //	report := v.QualityReport(doc)

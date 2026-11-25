@@ -460,7 +460,7 @@ This library follows [Semantic Versioning](https://semver.org/). We do not break
 | Package | Key APIs |
 |---------|----------|
 | `gedcom` | Document, Individual, Family, Event, Date |
-| `decoder` | Decode(), DecodeWithOptions(), DecodeWithDiagnostics(), DecodeRecord(), DecodeRecords() |
+| `decoder` | Decode(), DecodeWithOptions(), DecodeWithDiagnostics(), DecodeRecord(), DecodeRecords(), DecodeHeader() |
 | `encoder` | Encode(), EncodeWithOptions(), EncodeRecord(), NewStreamEncoder(), NewStreamEncoderWithOptions(), EncodeStreaming(), EncodeStreamingWithOptions() |
 | `converter` | Convert(), ConvertWithOptions() |
 | `parser` | NewParser(), Parser.Parse(), Parser.ParseLine(), NewRecordIterator(), NewRecordIteratorWithOffset(), Records(), RecordsWithOffset(), NewLazyParser() |

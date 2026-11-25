@@ -51,7 +51,7 @@ func Decode(r io.Reader) (*gedcom.Document, error) {
 // a non-nil document when an I/O failure interrupts a lenient parse after some
 // lines were read, or when no valid lines could be parsed at all.
 func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, error) {
-	res, err := decode(r, opts, false, nil)
+	res, err := decode(r, opts, false, nil, nil)
 	if res == nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func DecodeWithOptions(r io.Reader, opts *DecodeOptions) (*gedcom.Document, erro
 //   - Parsing fails on the first error that stands (see [DecodeOptions.StrictMode])
 //   - Diagnostics will be empty on success
 func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, error) {
-	return decode(r, opts, true, nil)
+	return decode(r, opts, true, nil, nil)
 }
 
 // decode is the single decode pipeline behind every entry point. collect
@@ -86,13 +86,15 @@ func DecodeWithDiagnostics(r io.Reader, opts *DecodeOptions) (*DecodeResult, err
 // produced is identical either way, so callers that discard diagnostics skip
 // the cost of building them.
 //
-// target is nil for a whole file. For a records-only fragment (DecodeRecords)
-// it is the document the records are decoded into: the input is read under
-// its encoding, version and identifier grammar instead of detecting them, no
-// layout is recorded, and an input that is not records only is an error.
+// target is nil for a whole file. For a fragment (DecodeRecords,
+// DecodeHeader) it is the document the fragment is decoded into: the input is
+// read under its encoding, version and identifier grammar instead of
+// detecting them, and no layout is recorded. check then says whether the
+// fragment's lines are of the kind expected, and its error is returned when
+// they are not.
 //
 //nolint:gocyclo // Lenient mode handling requires additional branches
-func decode(r io.Reader, opts *DecodeOptions, collect bool, target *gedcom.Document) (*DecodeResult, error) {
+func decode(r io.Reader, opts *DecodeOptions, collect bool, target *gedcom.Document, check func([]*parser.Line) error) (*DecodeResult, error) {
 	if opts == nil {
 		opts = DefaultOptions()
 	}
@@ -245,6 +247,17 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool, target *gedcom.Docum
 
 	// Check if we have any data to work with
 	if len(lines) == 0 {
+		if check != nil {
+			if err := check(lines); err != nil {
+				// Every line was rejected: report the first, the structured
+				// *parser.ParseError (ADR 0007), rather than the fragment
+				// being empty.
+				if firstParseErr != nil {
+					return nil, fmt.Errorf("no valid GEDCOM lines could be parsed: %w", firstParseErr)
+				}
+				return nil, err
+			}
+		}
 		// No valid lines parsed - return empty document with diagnostics
 		doc := &gedcom.Document{
 			XRefMap: make(map[string]*gedcom.Record),
@@ -287,8 +300,8 @@ func decode(r io.Reader, opts *DecodeOptions, collect bool, target *gedcom.Docum
 	// A fragment is checked once a rejected record line's subordinate lines
 	// have gone with it, so a malformed first record line is reported as a
 	// skipped record, not as a fragment starting below level 0.
-	if target != nil {
-		if err := checkRecordsOnly(lines); err != nil {
+	if check != nil {
+		if err := check(lines); err != nil {
 			return nil, err
 		}
 	}
@@ -585,7 +598,7 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 	inHead := false
 	inSour := false
 
-	for i, line := range lines {
+	for _, line := range lines {
 		// The GEDCOM grammar gives HEAD no cross-reference identifier, so
 		// `0 @X1@ HEAD` is not a header: treating it as one would let a second,
 		// bogus header overwrite the real header's typed fields. buildRecords
@@ -620,19 +633,6 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 		if line.Level == 1 && line.Tag == "SOUR" {
 			inSour = true
 			doc.Header.SourceSystem = collector.text(line.Value)
-			continue
-		}
-
-		// Parse SCHMA structure (GEDCOM 7.0 only)
-		if line.Level == 1 && line.Tag == "SCHMA" {
-			inSour = false
-			// Only parse SCHMA for GEDCOM 7.0; leave Schema nil for 5.5/5.5.1
-			if ver == gedcom.Version70 {
-				doc.Schema = &gedcom.SchemaDefinition{
-					TagMappings: make(map[string]string),
-				}
-				parseSchemaTag(doc, lines, i)
-			}
 			continue
 		}
 
@@ -696,8 +696,10 @@ func buildHeader(doc *gedcom.Document, lines []*parser.Line, ver gedcom.Version,
 		doc.Header.Version = ver
 	}
 
-	// Detect vendor from HEAD.SOUR, SOUR.NAME and SOUR.CORP
-	doc.Vendor = gedcom.DetectVendorFromHeader(doc.Header)
+	// Set Vendor (from HEAD.SOUR, SOUR.NAME and SOUR.CORP) and Schema (from
+	// a 7.0 HEAD.SCHMA) as ReplaceHeader sets them for a header replaced
+	// later. It cannot fail: doc and its header are not nil.
+	_ = doc.ReplaceHeader(doc.Header)
 
 	reportUnknownHeaderTags(doc.Header.Tags, collector)
 }
@@ -864,33 +866,6 @@ func reportUnknownHeaderTags(tags []*gedcom.Tag, collector *diagnosticCollector)
 			continue
 		}
 		collector.addUnknownTag(tag.LineNumber, tag.Tag, tag.Value)
-	}
-}
-
-// parseSchemaTag parses TAG subordinates within a SCHMA structure.
-// TAG value format: "[tagname] [uri]" (space-separated)
-func parseSchemaTag(doc *gedcom.Document, lines []*parser.Line, schmaIndex int) {
-	schmaLevel := lines[schmaIndex].Level
-
-	for j := schmaIndex + 1; j < len(lines); j++ {
-		subLine := lines[j]
-
-		// Stop when we reach the same or lower level (exiting SCHMA)
-		if subLine.Level <= schmaLevel {
-			break
-		}
-
-		// Parse TAG at level schmaLevel+1
-		if subLine.Level == schmaLevel+1 && subLine.Tag == "TAG" {
-			// Split on first space, then trim to handle multiple spaces/tabs
-			parts := strings.SplitN(subLine.Value, " ", 2)
-			if len(parts) == 2 {
-				tagName := strings.TrimSpace(parts[0])
-				uri := strings.TrimSpace(parts[1])
-				doc.Schema.TagMappings[tagName] = uri
-			}
-			// Malformed TAG values (missing URI) are silently skipped
-		}
 	}
 }
 

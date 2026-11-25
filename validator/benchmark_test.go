@@ -147,8 +147,8 @@ func BenchmarkValidateAllGrammar(b *testing.B) {
 }
 
 // BenchmarkValidateAllStrictLongsword measures Strict ValidateAll, duplicate
-// detection included, on the 46 MiB longsword.ged corpus. Name normalization
-// for duplicate grouping dominates its allocation (#871).
+// detection included, on the 46 MiB longsword.ged corpus. It guards the
+// allocation of name normalization (#871) and of each compared pair (#949).
 func BenchmarkValidateAllStrictLongsword(b *testing.B) {
 	if testing.Short() {
 		b.Skip("skipping full-corpus benchmark in -short mode")

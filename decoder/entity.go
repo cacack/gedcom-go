@@ -437,31 +437,6 @@ func parseIndividual(record *gedcom.Record, collector *diagnosticCollector) *ged
 	return indi
 }
 
-// splitPersonalName splits a NAME value, "Given /Surname/ Suffix" in the
-// 5.5.1 NAME_PERSONAL grammar, into its given name, surname and suffix.
-//
-// The surname is the text between the last two slashes, kept as written; the
-// given name is the text before the first slash and the suffix the text after
-// the last, both trimmed. A value with one slash has no closing slash, so the
-// rest of it is the surname; one with none is all given name. Text between
-// earlier slashes ("John /de la /Smith/") is malformed and is kept only in
-// PersonalName.Full. A slash inside the suffix cannot be told from a closing
-// one, so "John /Smith/ Jr./Sr" reads as surname " Jr." and suffix "Sr". An
-// unclosed surname is trimmed, as it has no closing slash to keep it.
-func splitPersonalName(full string) (given, surname, suffix string) {
-	first := strings.Index(full, "/")
-	if first < 0 {
-		return strings.TrimSpace(full), "", ""
-	}
-	given = strings.TrimSpace(full[:first])
-	last := strings.LastIndex(full, "/")
-	if last == first {
-		return given, strings.TrimSpace(full[first+1:]), ""
-	}
-	open := strings.LastIndex(full[:last], "/")
-	return given, full[open+1 : last], strings.TrimSpace(full[last+1:])
-}
-
 //nolint:gocyclo // Name parsing requires handling many tag types and edge cases
 func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCollector) *gedcom.PersonalName {
 	name := &gedcom.PersonalName{
@@ -470,7 +445,7 @@ func parsePersonalName(tags []*gedcom.Tag, nameIdx int, collector *diagnosticCol
 
 	// Seed the name parts from the NAME value; GIVN, SURN and NSFX below
 	// override them.
-	name.Given, name.Surname, name.Suffix = splitPersonalName(name.Full)
+	name.Given, name.Surname, name.Suffix = gedcom.SplitPersonalName(name.Full)
 	var seen namePiecesSeen
 
 	// Look for subordinate tags (level 2)

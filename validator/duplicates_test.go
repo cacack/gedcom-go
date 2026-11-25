@@ -274,7 +274,7 @@ func TestStringSimilarity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := stringSimilarity(tt.s1, tt.s2)
+			got := stringSimilarity(tt.s1, tt.s2, new(levenshteinScratch))
 
 			if tt.want != 0 {
 				// Exact comparison
@@ -313,7 +313,7 @@ func TestStringSimilarity_RuneDenominator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := stringSimilarity(tt.s1, tt.s2)
+			got := stringSimilarity(tt.s1, tt.s2, new(levenshteinScratch))
 			if math.Abs(got-tt.want) > 1e-9 {
 				t.Errorf("stringSimilarity(%q, %q) = %v, want %v", tt.s1, tt.s2, got, tt.want)
 			}
@@ -402,7 +402,7 @@ func TestLevenshteinDistance(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := levenshteinDistance(tt.s1, tt.s2)
+			got := levenshteinDistance(tt.s1, tt.s2, new(levenshteinScratch))
 			if got != tt.want {
 				t.Errorf("levenshteinDistance(%q, %q) = %d, want %d", tt.s1, tt.s2, got, tt.want)
 			}
@@ -480,7 +480,7 @@ func TestCompareGivenNames(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := compareGivenNames(tt.g1, tt.g2, tt.minSimilarity)
+			got := compareGivenNames(tt.g1, tt.g2, tt.minSimilarity, new(levenshteinScratch))
 			if got < tt.wantMin || got > tt.wantMax {
 				t.Errorf("compareGivenNames(%q, %q, %v) = %v, want in [%v, %v]",
 					tt.g1, tt.g2, tt.minSimilarity, got, tt.wantMin, tt.wantMax)
@@ -1786,8 +1786,8 @@ func TestCompareGivenNames_EarlyExitEquivalence(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := compareGivenNames(tt.g1, tt.g2, tt.minSimilarity)
-			exact := compareGivenNames(tt.g1, tt.g2, 0)
+			got := compareGivenNames(tt.g1, tt.g2, tt.minSimilarity, new(levenshteinScratch))
+			exact := compareGivenNames(tt.g1, tt.g2, 0, new(levenshteinScratch))
 
 			if got != exact && !(got < tt.minSimilarity && exact < tt.minSimilarity) {
 				t.Errorf("compareGivenNames(%q, %q, %v) = %v but the exact similarity is %v: "+

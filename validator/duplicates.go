@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 
@@ -413,6 +414,8 @@ func getDisplayName(ind *gedcom.Individual) string {
 }
 
 // DuplicateDetector detects potential duplicate individuals in a GEDCOM document.
+// It holds only its configuration, and each call keeps its working buffers to
+// itself, so one detector may be used from several goroutines at once.
 type DuplicateDetector struct {
 	config DuplicateConfig
 }
@@ -563,6 +566,7 @@ func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedco
 	nameLimit := d.maxNameRunes()
 	var skipped skippedGroups
 	builder := d.newCandidateBuilder(doc, nameLimit, &skipped)
+	scratch := new(levenshteinScratch)
 
 	// Compare pairs within each surname group
 	for surname, group := range surnameGroups {
@@ -589,7 +593,7 @@ func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedco
 		// Compare all pairs within the group
 		for i := 0; i < len(candidates); i++ {
 			for j := i + 1; j < len(candidates); j++ {
-				if pair, ok := d.comparePair(&candidates[i], &candidates[j]); ok {
+				if pair, ok := d.comparePair(&candidates[i], &candidates[j], scratch); ok {
 					duplicates = append(duplicates, pair)
 				}
 			}
@@ -597,7 +601,7 @@ func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedco
 	}
 
 	if d.config.CompareRelatives {
-		duplicates = d.compareSpouseGroups(ctx, individuals, builder, limit, &skipped, duplicates)
+		duplicates = d.compareSpouseGroups(ctx, individuals, builder, limit, &skipped, scratch, duplicates)
 	}
 
 	return skipped.report(duplicates, limit, nameLimit)
@@ -609,7 +613,7 @@ func (d *DuplicateDetector) findDuplicatesReport(ctx context.Context, doc *gedco
 // as a surname group is, and an oversized one is skipped whole. A pair that
 // shares more than one spouse's name is compared once, in the group of the
 // first name it shares (see ownsPair).
-func (d *DuplicateDetector) compareSpouseGroups(ctx context.Context, individuals []*gedcom.Individual, builder *candidateBuilder, limit int, skipped *skippedGroups, duplicates []DuplicatePair) []DuplicatePair {
+func (d *DuplicateDetector) compareSpouseGroups(ctx context.Context, individuals []*gedcom.Individual, builder *candidateBuilder, limit int, skipped *skippedGroups, scratch *levenshteinScratch, duplicates []DuplicatePair) []DuplicatePair {
 	for key, group := range builder.spouseGroups(ctx, individuals) {
 		if ctx.Err() != nil {
 			break
@@ -627,7 +631,7 @@ func (d *DuplicateDetector) compareSpouseGroups(ctx context.Context, individuals
 				if !ownsPair(key, &c1, &c2) {
 					continue
 				}
-				if pair, ok := d.comparePair(&c1, &c2); ok {
+				if pair, ok := d.comparePair(&c1, &c2, scratch); ok {
 					duplicates = append(duplicates, pair)
 				}
 			}
@@ -731,6 +735,7 @@ func (d *DuplicateDetector) FindDuplicatesBetweenReport(a, b *gedcom.Document) D
 	var skipped skippedGroups
 	builderA := d.newCandidateBuilder(a, nameLimit, &skipped)
 	builderB := d.newCandidateBuilder(b, nameLimit, &skipped)
+	scratch := new(levenshteinScratch)
 
 	for surname, groupA := range groupsA {
 		groupB := groupsB[surname]
@@ -759,7 +764,7 @@ func (d *DuplicateDetector) FindDuplicatesBetweenReport(a, b *gedcom.Document) D
 				if ca.ind == cb.ind {
 					continue
 				}
-				if pair, ok := d.comparePair(ca, cb); ok {
+				if pair, ok := d.comparePair(ca, cb, scratch); ok {
 					duplicates = append(duplicates, pair)
 				}
 			}
@@ -767,7 +772,7 @@ func (d *DuplicateDetector) FindDuplicatesBetweenReport(a, b *gedcom.Document) D
 	}
 
 	if d.config.CompareRelatives {
-		duplicates = d.compareSpouseGroupsBetween(context.Background(), builderA, builderB, limit, &skipped, duplicates)
+		duplicates = d.compareSpouseGroupsBetween(context.Background(), builderA, builderB, limit, &skipped, scratch, duplicates)
 	}
 
 	return skipped.report(duplicates, limit, nameLimit)
@@ -777,7 +782,7 @@ func (d *DuplicateDetector) FindDuplicatesBetweenReport(a, b *gedcom.Document) D
 // spouse-name group is the union of that name's individuals in both, bounded
 // by limit as a combined surname group is, and only pairs taking one
 // individual from each are compared, each once (see ownsPair).
-func (d *DuplicateDetector) compareSpouseGroupsBetween(ctx context.Context, builderA, builderB *candidateBuilder, limit int, skipped *skippedGroups, duplicates []DuplicatePair) []DuplicatePair {
+func (d *DuplicateDetector) compareSpouseGroupsBetween(ctx context.Context, builderA, builderB *candidateBuilder, limit int, skipped *skippedGroups, scratch *levenshteinScratch, duplicates []DuplicatePair) []DuplicatePair {
 	groupsA := builderA.spouseGroups(ctx, builderA.doc.Individuals())
 	groupsB := builderB.spouseGroups(ctx, builderB.doc.Individuals())
 	for key, groupA := range groupsA {
@@ -798,7 +803,7 @@ func (d *DuplicateDetector) compareSpouseGroupsBetween(ctx context.Context, buil
 				if !ownsPair(key, &ca, &cb) {
 					continue
 				}
-				if pair, ok := d.comparePair(&ca, &cb); ok {
+				if pair, ok := d.comparePair(&ca, &cb, scratch); ok {
 					duplicates = append(duplicates, pair)
 				}
 			}
@@ -1242,12 +1247,17 @@ func extractGivenFromFull(fullName string) string {
 // comparePair compares two candidates and returns a DuplicatePair if they match.
 // Both already carry their normalized surname, given name and places from
 // buildCandidates; deriving them here instead would repeat the work once per
-// pair rather than once per individual.
+// pair rather than once per individual. The given-name similarity works in
+// scratch, which belongs to the calling sweep.
+//
+// Most compared pairs are rejected, so the signals a pair earns are noted in
+// a pairSignals and spelled out as MatchReasons only once the pair is
+// accepted; a rejected pair allocates nothing (#949).
 //
 //nolint:gocyclo // Complexity is appropriate for comparison logic
-func (d *DuplicateDetector) comparePair(c1, c2 *candidate) (DuplicatePair, bool) {
+func (d *DuplicateDetector) comparePair(c1, c2 *candidate, scratch *levenshteinScratch) (DuplicatePair, bool) {
 	var confidence float64
-	var reasons []string
+	var signals pairSignals
 
 	ind1, ind2 := c1.ind, c2.ind
 
@@ -1263,23 +1273,20 @@ func (d *DuplicateDetector) comparePair(c1, c2 *candidate) (DuplicatePair, bool)
 	// Check surname match
 	if compareSurnames(c1.surname, c2.surname) {
 		confidence += 0.3
-		reasons = append(reasons, "exact surname match")
+		signals.sameSurname = true
 	} else if !sameSpouse {
 		return DuplicatePair{}, false
 	}
 
-	givenSimilarity := compareGivenNames(c1.given, c2.given, d.config.MinNameSimilarity)
+	givenSimilarity := compareGivenNames(c1.given, c2.given, d.config.MinNameSimilarity, scratch)
 	if givenSimilarity < d.config.MinNameSimilarity {
 		return DuplicatePair{}, false
 	}
 
 	// Given name similarity contributes to confidence
 	confidence += 0.3 * givenSimilarity
-	if givenSimilarity == 1.0 {
-		reasons = append(reasons, "exact given name match")
-	} else {
-		reasons = append(reasons, fmt.Sprintf("similar given name (%.0f%%)", givenSimilarity*100))
-	}
+	signals.givenMatched = true
+	signals.givenSimilarity = givenSimilarity
 
 	// Compare birth dates
 	birthDate1 := ind1.BirthDate()
@@ -1297,10 +1304,10 @@ func (d *DuplicateDetector) comparePair(c1, c2 *candidate) (DuplicatePair, bool)
 		switch {
 		case yearDiff == 0:
 			confidence += 0.2
-			reasons = append(reasons, "same birth year")
+			signals.sameBirthYear = true
 		case yearDiff <= d.config.MaxBirthYearDiff:
 			confidence += 0.1
-			reasons = append(reasons, fmt.Sprintf("birth year within %d years", yearDiff))
+			signals.birthYearsApart = yearDiff
 		case isExactDate(birthDate1) && isExactDate(birthDate2):
 			return DuplicatePair{}, false
 		}
@@ -1313,19 +1320,19 @@ func (d *DuplicateDetector) comparePair(c1, c2 *candidate) (DuplicatePair, bool)
 	switch sex1, sex2 := knownSex(ind1.Sex), knownSex(ind2.Sex); {
 	case sex1 == "" || sex2 == "":
 		confidence += 0.1
-		reasons = append(reasons, "sex not recorded on both")
+		signals.sexUnrecorded = true
 	case sex1 != sex2:
 		return DuplicatePair{}, false
 	default:
 		confidence += 0.1
-		reasons = append(reasons, "same sex")
+		signals.sameSex = true
 	}
 
 	// The remaining signals are added after the four above so that a pair
 	// earning none of them keeps the score it always had, bit for bit (#906).
 	if sameFullDate(birthDate1, birthDate2) {
 		confidence += weightSameBirthDate
-		reasons = append(reasons, "same birth date")
+		signals.sameBirthDate = true
 	}
 
 	// Exact death years further apart than MaxBirthYearDiff contradict a match
@@ -1336,29 +1343,25 @@ func (d *DuplicateDetector) comparePair(c1, c2 *candidate) (DuplicatePair, bool)
 	}
 	if sameDeathYear {
 		confidence += weightSameDeathYear
-		reasons = append(reasons, "same death year")
+		signals.sameDeathYear = true
 	}
 
 	if c1.birthPlace != "" && c1.birthPlace == c2.birthPlace {
 		confidence += weightSameBirthPlace
-		reasons = append(reasons, "same birth place")
+		signals.sameBirthPlace = true
 	}
 	if c1.deathPlace != "" && c1.deathPlace == c2.deathPlace {
 		confidence += weightSameDeathPlace
-		reasons = append(reasons, "same death place")
+		signals.sameDeathPlace = true
 	}
 
 	if sameSpouse {
 		confidence += weightSameSpouse
-		reasons = append(reasons, "same spouse name")
+		signals.sameSpouse = true
 	}
 	if sharedChildren > 0 {
 		confidence += float64(min(sharedChildren, maxSharedChildrenScored)) * weightSharedChild
-		if sharedChildren == 1 {
-			reasons = append(reasons, "1 shared child name")
-		} else {
-			reasons = append(reasons, fmt.Sprintf("%d shared child names", sharedChildren))
-		}
+		signals.sharedChildren = sharedChildren
 	}
 	// Relatives can push the sum past 1.0; nothing else can.
 	confidence = min(confidence, 1.0)
@@ -1372,8 +1375,79 @@ func (d *DuplicateDetector) comparePair(c1, c2 *candidate) (DuplicatePair, bool)
 		Individual1:  ind1,
 		Individual2:  ind2,
 		Confidence:   confidence,
-		MatchReasons: reasons,
+		MatchReasons: signals.reasons(),
 	}, true
+}
+
+// pairSignals records the signals comparePair credited to a pair, from which
+// reasons spells out its MatchReasons. Its zero value credits nothing.
+type pairSignals struct {
+	sameSurname bool
+	// givenMatched is set when the given names passed MinNameSimilarity, and
+	// givenSimilarity is then their similarity, 0 included under ZeroThreshold.
+	givenMatched    bool
+	givenSimilarity float64
+	sameBirthYear   bool
+	birthYearsApart int // > 0 when birth years that far apart earned credit
+	sameSex         bool
+	sexUnrecorded   bool // a sex unrecorded on one side or both earned credit
+	sameBirthDate   bool
+	sameDeathYear   bool
+	sameBirthPlace  bool
+	sameDeathPlace  bool
+	sameSpouse      bool
+	sharedChildren  int
+}
+
+// reasons returns the MatchReasons of an accepted pair, in the order
+// comparePair weighs the signals. Every accepted pair has passed the given
+// name and sex checks, so those two always contribute a reason.
+func (s pairSignals) reasons() []string {
+	var reasons []string
+	if s.sameSurname {
+		reasons = append(reasons, "exact surname match")
+	}
+	switch {
+	case !s.givenMatched:
+	case s.givenSimilarity == 1.0:
+		reasons = append(reasons, "exact given name match")
+	default:
+		reasons = append(reasons, fmt.Sprintf("similar given name (%.0f%%)", s.givenSimilarity*100))
+	}
+	switch {
+	case s.sameBirthYear:
+		reasons = append(reasons, "same birth year")
+	case s.birthYearsApart > 0:
+		reasons = append(reasons, fmt.Sprintf("birth year within %d years", s.birthYearsApart))
+	}
+	switch {
+	case s.sameSex:
+		reasons = append(reasons, "same sex")
+	case s.sexUnrecorded:
+		reasons = append(reasons, "sex not recorded on both")
+	}
+	if s.sameBirthDate {
+		reasons = append(reasons, "same birth date")
+	}
+	if s.sameDeathYear {
+		reasons = append(reasons, "same death year")
+	}
+	if s.sameBirthPlace {
+		reasons = append(reasons, "same birth place")
+	}
+	if s.sameDeathPlace {
+		reasons = append(reasons, "same death place")
+	}
+	if s.sameSpouse {
+		reasons = append(reasons, "same spouse name")
+	}
+	switch {
+	case s.sharedChildren == 1:
+		reasons = append(reasons, "1 shared child name")
+	case s.sharedChildren > 1:
+		reasons = append(reasons, fmt.Sprintf("%d shared child names", s.sharedChildren))
+	}
+	return reasons
 }
 
 // sameFullDate reports whether two dates name the same day: both exact, in the
@@ -1417,6 +1491,17 @@ func knownSex(sex string) string {
 	return sex
 }
 
+// diacriticChains pools the transform chain normalizeName folds diacritics
+// with. Building a chain allocates its intermediate buffers, several KiB, and
+// at one chain per non-ASCII name that was the bulk of a corpus-scale sweep's
+// allocation (#949). A chain is stateful, so each call takes its own from the
+// pool; transform.String resets it before use.
+var diacriticChains = sync.Pool{
+	New: func() any {
+		return transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	},
+}
+
 // normalizeName normalizes a name for comparison.
 // Converts to lowercase, removes diacritics, and trims whitespace.
 //
@@ -1447,8 +1532,9 @@ func normalizeName(name string) string {
 
 	// Remove diacritics using unicode normalization
 	// NFD decomposes characters, then we remove combining marks
-	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	t := diacriticChains.Get().(transform.Transformer)
 	result, _, err := transform.String(t, name)
+	diacriticChains.Put(t)
 	if err != nil {
 		// If transform fails, return lowercase version
 		return name
@@ -1479,7 +1565,7 @@ func compareSurnames(s1, s2 string) bool {
 // returned value is that upper bound rather than the exact similarity — it is
 // guaranteed to be below minSimilarity, which is all the caller's comparison
 // needs. Pass minSimilarity <= 0 to always compute the exact value.
-func compareGivenNames(g1, g2 string, minSimilarity float64) float64 {
+func compareGivenNames(g1, g2 string, minSimilarity float64, scratch *levenshteinScratch) float64 {
 	if g1 == "" || g2 == "" {
 		return 0.0
 	}
@@ -1501,13 +1587,13 @@ func compareGivenNames(g1, g2 string, minSimilarity float64) float64 {
 		}
 	}
 
-	return stringSimilarity(g1, g2)
+	return stringSimilarity(g1, g2, scratch)
 }
 
 // stringSimilarity calculates the similarity between two strings.
 // Uses Levenshtein distance normalized to a 0.0-1.0 scale.
 // Returns 1.0 for identical strings, 0.0 for completely different strings.
-func stringSimilarity(s1, s2 string) float64 {
+func stringSimilarity(s1, s2 string, scratch *levenshteinScratch) float64 {
 	if s1 == s2 {
 		return 1.0
 	}
@@ -1516,7 +1602,7 @@ func stringSimilarity(s1, s2 string) float64 {
 		return 0.0
 	}
 
-	distance := levenshteinDistance(s1, s2)
+	distance := levenshteinDistance(s1, s2, scratch)
 	// Measured in runes, the same unit as levenshteinDistance. A byte length
 	// would inflate the score for multibyte names (#545).
 	maxLen := max(utf8.RuneCountInString(s1), utf8.RuneCountInString(s2))
@@ -1525,13 +1611,25 @@ func stringSimilarity(s1, s2 string) float64 {
 	return 1.0 - float64(distance)/float64(maxLen)
 }
 
+// levenshteinScratch holds the rune and row buffers levenshteinDistance
+// reuses. Each FindDuplicates or FindDuplicatesBetween sweep owns one, so the
+// buffers grow to the longest compared name once instead of being allocated
+// for every pair (#949). It is never kept on the DuplicateDetector, which
+// stays safe for concurrent use.
+type levenshteinScratch struct {
+	r1, r2     []rune
+	prev, curr []int
+}
+
 // levenshteinDistance calculates the Levenshtein distance between two strings.
 // This is the minimum number of single-character edits (insertions, deletions,
-// or substitutions) needed to transform s1 into s2.
-func levenshteinDistance(s1, s2 string) int {
-	// Convert to rune slices for proper Unicode handling
-	r1 := []rune(s1)
-	r2 := []rune(s2)
+// or substitutions) needed to transform s1 into s2. It works in scratch's
+// buffers, which must not be in use by another call.
+func levenshteinDistance(s1, s2 string, scratch *levenshteinScratch) int {
+	// Decode to runes for proper Unicode handling
+	r1 := appendRunes(scratch.r1[:0], s1)
+	r2 := appendRunes(scratch.r2[:0], s2)
+	scratch.r1, scratch.r2 = r1, r2
 
 	len1 := len(r1)
 	len2 := len(r2)
@@ -1544,10 +1642,12 @@ func levenshteinDistance(s1, s2 string) int {
 		return len1
 	}
 
-	// Create distance matrix
-	// We only need two rows since we process row by row
-	prev := make([]int, len2+1)
-	curr := make([]int, len2+1)
+	// We only need two rows since we process row by row. Every cell is
+	// written before it is read, so what a previous pair left in them is
+	// never seen.
+	prev := resizeInts(scratch.prev, len2+1)
+	curr := resizeInts(scratch.curr, len2+1)
+	scratch.prev, scratch.curr = prev, curr
 
 	// Initialize first row
 	for j := 0; j <= len2; j++ {
@@ -1577,6 +1677,22 @@ func levenshteinDistance(s1, s2 string) int {
 	}
 
 	return prev[len2]
+}
+
+// appendRunes appends the runes of s to dst, decoding as []rune(s) does.
+func appendRunes(dst []rune, s string) []rune {
+	for _, r := range s {
+		dst = append(dst, r)
+	}
+	return dst
+}
+
+// resizeInts returns buf resliced to n, or a new slice when buf is too small.
+func resizeInts(buf []int, n int) []int {
+	if cap(buf) < n {
+		return make([]int, n)
+	}
+	return buf[:n]
 }
 
 // yearsApart returns how many years apart two dates fall. Years are

@@ -97,6 +97,17 @@ type ValidatorConfig struct {
 	// Default: false.
 	CheckGrammar bool
 
+	// StyleChecks turns on the personal-name style checks whose codes it
+	// lists, such as []string{CodeNameAllCaps, CodeNameSpacing}; see
+	// [CodeNameAllCaps] for what they read and report, and [AllStyleChecks]
+	// for every code. They report habits that are valid GEDCOM, so each is
+	// off until listed. A code that names no style check is ignored, as
+	// SkipRules ignores codes it never sees. They run in
+	// [Validator.ValidateAll] and [Validator.Validate] only;
+	// [Validator.QualityReport] does not run them.
+	// Default: nil (no style checks).
+	StyleChecks []string
+
 	// Context allows cancellation and timeout control of
 	// [Validator.ValidateAllWithError], which checks it between checks and,
 	// in the costliest checks, before each record, and returns its error
@@ -404,6 +415,8 @@ func (v *Validator) checks(ctx context.Context, doc *gedcom.Document, limitIssue
 			}
 			return nil
 		},
+		// The personal-name style checks listed in StyleChecks, if any.
+		func() []Issue { return v.nameStyleIssues(doc) },
 		// The grammar conformance check, when asked to. It walks every line
 		// of the document against the version's structure tables, so it is
 		// opt-in (CheckGrammar), stops early once ctx is done, and is not run
@@ -546,7 +559,8 @@ func (v *Validator) ValidateNotePointers(doc *gedcom.Document) []Issue {
 // QualityReport generates a data quality report for the document, combining
 // validation issues with data completeness statistics.
 //
-// The report runs the same checks as [Validator.ValidateAll] -- the
+// The report runs the same checks as [Validator.ValidateAll], except the
+// opt-in name style checks (ValidateOptions.StyleChecks) -- the
 // spec-conformance ones land in [QualityReport].ConformanceIssues -- so its
 // counts are not clean for a document ValidateAll flags. It differs from
 // ValidateAll in filtering, not coverage: it reports every severity and applies

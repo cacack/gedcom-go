@@ -227,3 +227,34 @@ func ExampleDecodeWithDiagnostics_inspectDetails() {
 	// Line: 5
 	// Message: level cannot be negative
 }
+
+// ExampleDecodeHeader replaces a document's header with an edited copy, as a
+// command correcting an inherited header would.
+func ExampleDecodeHeader() {
+	doc, err := decoder.Decode(strings.NewReader("0 HEAD\n1 SOUR Ancestry.com\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n" +
+		"0 @I1@ INDI\n1 NAME Ann /Example/\n0 TRLR\n"))
+	if err != nil {
+		fmt.Println("decode:", err)
+		return
+	}
+
+	edited := "0 HEAD\n1 SOUR RootsMagic\n1 GEDC\n2 VERS 5.5.1\n1 CHAR UTF-8\n"
+	header, diags, err := decoder.DecodeHeader(strings.NewReader(edited), doc, nil)
+	if err != nil || diags.HasErrors() {
+		fmt.Println("edit rejected:", err, diags)
+		return
+	}
+	if err := doc.ReplaceHeader(header); err != nil {
+		fmt.Println("replace:", err)
+		return
+	}
+	fmt.Println(doc.Header.SourceSystem, doc.Vendor, doc.Header.Version)
+
+	// A fragment holding more than a header is rejected with an error
+	// wrapping decoder.ErrNotHeader.
+	_, _, err = decoder.DecodeHeader(strings.NewReader(edited+"0 TRLR\n"), doc, nil)
+	fmt.Println(err)
+	// Output:
+	// RootsMagic rootsmagic 5.5.1
+	// decode header: line 6 is TRLR: not a header-only fragment
+}

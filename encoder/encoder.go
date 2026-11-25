@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/concsplit"
 	"github.com/cacack/gedcom-go/v3/internal/headergrammar"
 )
 
@@ -682,7 +683,7 @@ func writeValue(w io.Writer, level int, xref, tag, value string, opts *EncodeOpt
 			level, tag, level+1, maxLevel, ErrMalformedLine)
 	}
 
-	lines := splitValueLines(value)
+	lines := concsplit.Lines(value)
 
 	if err := writeLine(w, level, xref, tag, lines[0], opts); err != nil {
 		return err
@@ -829,23 +830,6 @@ func containsSpace(s string) bool {
 		i += size
 	}
 	return false
-}
-
-// splitValueLines splits a tag value on line breaks, returning at least one
-// element. All three terminators the parser recognises are normalised first --
-// CRLF, bare LF and bare CR -- so that re-encoding is the exact inverse of
-// reading: whichever form the source used, the parser saw a line break there,
-// and a CONT is how that line break is written back.
-// Callers on the hot path should skip it entirely for a value with no line
-// break rather than rely on it returning a single element, so that the common
-// case allocates nothing.
-func splitValueLines(value string) []string {
-	if !strings.ContainsAny(value, "\n\r") {
-		return []string{value}
-	}
-	normalized := strings.ReplaceAll(value, "\r\n", "\n")
-	normalized = strings.ReplaceAll(normalized, "\r", "\n")
-	return strings.Split(normalized, "\n")
 }
 
 // writeLine writes exactly one physical GEDCOM line: the level, then the

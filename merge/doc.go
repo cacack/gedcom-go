@@ -22,6 +22,11 @@
 //     names as the survivor, moving its substructures, repointing every
 //     pointer to it and removing it. Whether the two are the same person
 //     or family is the caller's decision.
+//   - RepeatedEvents and FoldRepeatedEvents: find and fold the events
+//     one record holds twice, by the rule RecordMergeOptions.FoldEvents
+//     defines.
+//   - FoldSubstructure: fold one substructure of a record into a sibling,
+//     in place, keeping each line's layout.
 //   - Sources and Repositories: the same for source and repository
 //     records, reporting a line that may occur only once and differs
 //     between the two as a conflict instead of adding it.

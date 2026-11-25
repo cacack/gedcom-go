@@ -2,8 +2,10 @@ package merge_test
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/merge"
 )
 
@@ -35,6 +37,19 @@ func TestFoldEvents(t *testing.T) {
 			keep:   "1 BIRT\n2 DATE 07 Dec 1977\n2 NOTE Family bible.\n",
 			drop:   "1 BIRT\n2 DATE 7 DEC 1977\n2 SOUR @S1@\n",
 			want:   []string{"1 BIRT", "2 DATE 07 Dec 1977", "2 NOTE Family bible.", "2 SOUR @S1@"},
+			folded: 1,
+		},
+		{
+			name: "values differing only in CONC kept",
+			keep: "1 EVEN Moved to\n2 CONC Ohio\n2 TYPE Migration\n2 DATE 1850\n",
+			drop: "1 EVEN Moved to\n2 CONC Texas\n2 TYPE Migration\n2 DATE 1850\n",
+			want: []string{"1 EVEN Moved to", "2 CONC Ohio", "2 TYPE Migration", "2 DATE 1850", "1 EVEN Moved to", "2 CONC Texas", "2 TYPE Migration", "2 DATE 1850"},
+		},
+		{
+			name:   "equal continued values folded once",
+			keep:   "1 EVEN Moved to\n2 CONC Ohio\n2 TYPE Migration\n2 DATE 1850\n",
+			drop:   "1 EVEN Moved to\n2 CONC Ohio\n2 TYPE Migration\n2 DATE 1850\n2 SOUR @S1@\n",
+			want:   []string{"1 EVEN Moved to", "2 CONC Ohio", "2 TYPE Migration", "2 DATE 1850", "2 SOUR @S1@"},
 			folded: 1,
 		},
 		{
@@ -362,5 +377,27 @@ func TestFoldEvents_Families(t *testing.T) {
 	}
 	if ev := out.GetFamily("@F1@").Events; len(ev) != 1 || ev[0].PlaceName() != "Springfield" {
 		t.Errorf("typed events = %+v, want one MARR at Springfield", ev)
+	}
+}
+
+// TestFoldEventsDeepContinuation folds drop's birth into keep's where drop's
+// place has a CONC two levels below it, as a strict decode keeps it. That
+// CONC does not continue the place, so it is kept.
+func TestFoldEventsDeepContinuation(t *testing.T) {
+	src := foldTree("1 BIRT\n2 DATE 1 JAN 1900\n2 PLAC Ohio\n", "1 BIRT\n2 DATE 1 JAN 1900\n2 PLAC Ohio\n4 CONC  extra\n")
+	doc, err := decoder.DecodeWithOptions(strings.NewReader(src), &decoder.DecodeOptions{StrictMode: true})
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	out, report, err := merge.Individuals(doc, "@I1@", "@I2@", merge.RecordMergeOptions{FoldEvents: true})
+	if err != nil {
+		t.Fatalf("Individuals: %v", err)
+	}
+	if len(report.Folded) != 1 {
+		t.Fatalf("len(Folded) = %d, want 1", len(report.Folded))
+	}
+	want := []string{"1 BIRT", "2 DATE 1 JAN 1900", "2 PLAC Ohio", "4 CONC  extra"}
+	if got := recordLines(t, out, "@I1@"); !reflect.DeepEqual(got, want) {
+		t.Errorf("@I1@ =\n%q\nwant\n%q", got, want)
 	}
 }

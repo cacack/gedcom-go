@@ -109,7 +109,9 @@ The reports say which, and why the rest do not —
 [gedcom-5.5-coverage.md](docs/reference/gedcom-5.5-coverage.md).
 A structure without typed access is read from `Record.Tags`, which is a
 supported access path, not a workaround, read by path with
-`Record.Find`, `FindAll` and `Subtree` (and the same on `Header`) — see
+`Record.Find`, `FindAll` and `Subtree` (and the same on `Header`), with a
+continued value read whole by `Record.FullValue` and replaced, re-split for the
+document's version, by `Record.SetFullValue` — see
 [Reading Data the Typed Model Does Not Cover](docs/guides/decoding.md#reading-data-the-typed-model-does-not-cover).
 
 Read each percentage against its own version, not against the others. The three
@@ -575,6 +577,17 @@ refs, err := doc.RemoveRecord("@I2@")   // pointers to @I2@ left behind
   returns each pointer still naming it, as a `gedcom.Reference` (holding
   record's XRef and tag path, such as `FAM.CHIL` or `HEAD.SUBM`); the pointers
   are reported, not changed
+- `Record.MoveSubstructure(t, before)` moves a structure, with every line
+  beneath it, before a sibling (or after its last sibling when `before` is
+  nil); `Record.SetChild(parent, tag, value, version)` sets a structure's first
+  child with that tag, replacing its value and its old `CONT`/`CONC` lines as
+  `SetFullValue` does, or adds one; `Record.RemoveChildren(parent, tag)`
+  removes each such child with its subtree. A nil parent is the record itself.
+  `merge.FoldSubstructure(rec, keep, drop)` folds a structure into a sibling,
+  moving the lines keep lacks and keeping an identical citation once. All four
+  edit `Record.Tags` in place and keep every untouched line's `LineNumber`, so
+  a layout-preserving encode changes only the lines edited — see
+  [Editing Lines Within a Record](docs/guides/editing-and-merging.md#editing-lines-within-a-record)
 - `Record.MediaLinks()` returns the record-level media links (the `OBJE`
   structures directly under the record) of an individual, family or source
   record, with no switch over the entity type. Its second result is false for
@@ -603,9 +616,16 @@ refs, err := doc.RemoveRecord("@I2@")   // pointers to @I2@ left behind
   encoding, to the records the whole-file decoder gives the same lines, with
   diagnostics counted from the fragment's first line. A `HEAD`, `TRLR` or
   leading subordinate line is an error wrapping `decoder.ErrNotRecords`
+- `decoder.DecodeHeader` decodes a header-only fragment (`0 HEAD` and its
+  lines) the same way, under the target document's version, identifier grammar
+  and encoding, to the header the whole-file decoder gives the same lines. A
+  record, `TRLR`, second `HEAD` or missing `0 HEAD` is an error wrapping
+  `decoder.ErrNotHeader` that names the line. `Document.ReplaceHeader` puts
+  the header in place and sets `Vendor` and `Schema` from it
 - With a layout-preserving encode, every record not replaced or removed is
-  written byte for byte as read: decoded records carry no line numbers, so
-  they never borrow the layout of the source's lines
+  written byte for byte as read, and so is every line outside a replaced
+  header: decoded records and headers carry no line numbers, so they never
+  borrow the layout of the source's lines
 
 ### Graph Traversal
 
@@ -833,6 +853,8 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 | `merge.Combine(doc1, doc2, opts)` | Merge two documents with a configurable collision strategy (`ErrorOnCollision`, `PrefixDoc2`, `PrefixAllDoc2`, `RenumberDoc2`, `ZipSharedXRefs`) |
 | `merge.Individuals(doc, keep, drop, opts)` | Fold the individual `drop` into `keep`, which the caller names; original document unchanged. `RecordMergeOptions.FoldEvents` folds an event or attribute recording the same event (same tag, value, parsed date and `TYPE`; same place or one missing; an event's `Y` flag matches an empty value) into keep's, listed in `RecordMergeReport.Folded` |
 | `merge.Families(doc, keep, drop, opts)` | The same for two family records; a child both list is listed once |
+| `merge.RepeatedEvents(doc, xrefs...)`, `merge.FoldRepeatedEvents(doc, xrefs...)` | Find, within each individual or family record (or those named), the events and attributes recorded more than once by the `FoldEvents` rule, as `EventGroup`s; fold each group into its first member, keeping every citation and note, with one `RecordFold` per structure removed in `FoldReport.Folded`. Records with no group keep their lines; original document unchanged |
+| `merge.FoldSubstructure(rec, keep, drop)` | Fold one substructure of a record into a sibling, in place: each line under drop that keep does not hold identically moves under keep, and drop is removed. No line is matched by value, so it works for any tag at any level (a repeated `NAME`, two citations of one source) |
 | `merge.Sources(doc, keep, drop, opts)` | Fold the source `drop` into `keep` and repoint every citation of it, at any depth. A line that may occur only once (`TITL`, `AUTH`, ...) is carried when keep lacks it; one that differs stays keep's and is listed in `RecordMergeReport.Conflicts` |
 | `merge.Repositories(doc, keep, drop, opts)` | The same for two repository records and the `REPO` pointers of sources |
 
@@ -1383,6 +1405,11 @@ structure as `[]string` fields named `Phone`, `Email`, `Fax` and `Website`:
 - TYPE - Name type (birth, married, aka)
 - SOUR - Source citations on the name (`PersonalName.SourceCitations`)
 - NOTE, SNOTE - Notes on the name (`PersonalName.NoteXRefs`, `PersonalName.InlineNotes`)
+- `gedcom.SplitPersonalName(full)` splits a NAME value into the given name,
+  surname and suffix it states. The decoder fills `Given`, `Surname` and
+  `Suffix` from it and then lets GIVN, SURN and NSFX override them, so
+  calling it on `PersonalName.Full` tells what the value says apart from what
+  the part lines say (a GIVN that disagrees with the value, say)
 
 ### Transliterations (TRAN)
 
@@ -1914,6 +1941,30 @@ gedcom.io's 7.0 test files report nothing but `warnings70.ged`'s designed
 deprecations, and gedcom7code's `5/age-invalid.ged` one `INVALID_PAYLOAD` per
 malformed `AGE`. Design: [ADR 0011](docs/decisions/0011-grammar-conformance-check.md).
 
+**Personal-Name Style Checks:**
+
+`ValidateOptions.StyleChecks` turns on, by code, checks for habits in an
+individual's NAME that are valid GEDCOM but usually worth tidying.
+`validator.AllStyleChecks()` lists every code with its severity and
+description; a listed code that names no style check is ignored. Each check
+reads the raw level-1 NAME lines of INDI records, splitting the value with
+`gedcom.SplitPersonalName`, so `GIVN`/`SURN`/`NSFX` never mask what the value
+says, and reports at most once per NAME line, with the record as
+`RecordXRef`, the NAME line as `LineNumber` and the value under
+`Details["value"]`. The checks only report; choosing the spelling is the
+user's job. A record built in code without raw `Tags` is not checked, and
+`QualityReport` does not run them.
+
+| Error Code | Severity | Description |
+|------------|----------|-------------|
+| NAME_ALL_CAPS | Warning | A given name or surname with a word of two or more letters all in capitals (`John /SMITH/`); single initials are fine |
+| NAME_TEXT_AFTER_SURNAME | Warning | Text after the closing slash (`John /Smith/ Jr`) |
+| NAME_SPACING | Warning | A leading, trailing or doubled space, or a space just inside the surname slashes |
+| NAME_QUOTES_OR_PARENS | Warning | A double quote (straight or curly) or a parenthesis in the value |
+| NAME_UNCERTAIN_MARK | Warning | `?`, `*`, a digit, or `or` between two words (`/Smith or Smyth/`) |
+| NAME_PART_PUNCTUATION | Warning | An `NSFX` or `NICK` directly under the NAME whose value starts or ends with punctuation or a space (`Details["tags"]`) |
+| NAME_VENDOR_TAG | Warning | An extension (`_X`) tag directly under the NAME (`Details["tags"]`) |
+
 **Duplicate Detection:**
 
 Configurable matching based on name similarity, birth and death dates and places:
@@ -1953,7 +2004,7 @@ The maximum is 1.0. A pair that agrees on name, birth year and sex alone scores 
 
 Relatives are an opt-in signal: with `CompareRelatives` set, a pair earns 0.20 when a spouse's name matches (`same spouse name`) and 0.10 for each child's name both share, up to two (`1 shared child name`, `N shared child names`), with the sum capped at 1.0. Relatives are read through each individual's `FAMS` families and compared on given name and surname after the usual normalization; a relative with no given name is ignored. Individuals that share a spouse's name are also compared when their surnames differ (earning no surname weight), so a woman under her married name in one file and her maiden name in the other is reported: given name, sex, spouse and two children score 0.80. Every other gate and veto still applies, so a dropped middle name still has to clear `MinNameSimilarity`. Spouse-name groups are bounded by `MaxGroupSize` like surname groups, and at most 64 spouse and 64 child links are read per individual, both reported on the warning below. Off by default, which leaves scoring as in the table.
 
-Comparison is quadratic within a surname group, and the input controls the surnames, so `MaxGroupSize` bounds it: any normalized-surname group larger than the cap is skipped whole and reported as one `DUPLICATE_DETECTION_LIMITED` warning (available as `DuplicateReport.LimitIssues` from `FindDuplicatesReport`, and included in `ValidateAll` and `QualityReport` output). Each pair's cost is quadratic in the given-name length too, so `MaxNameRunes` bounds that: a longer given name is compared on its first 64 runes and the individuals so compared are counted on the same warning. Both fields are tri-state and **zero is not unlimited** — `0` selects the default (`validator.DefaultMaxGroupSize` 1000, `validator.DefaultMaxNameRunes` 64), a negative value (`UnlimitedGroupSize`, `UnlimitedNameRunes`) disables the cap, and a positive value is used as given, so a partial config literal stays bounded. `ValidateOptions.SkipDuplicateDetection` drops duplicate detection from the `ValidateAll` sweep; `QualityReport`, `FindPotentialDuplicates` and `FindPotentialDuplicatesReport` still run it, bounded by `MaxGroupSize`. See [performance](docs/guides/performance.md#bounding-untrusted-input) for the worst-case bound and [ADR 0009](docs/decisions/0009-bounded-duplicate-detection.md) for the rationale.
+Comparison is quadratic within a surname group, and the input controls the surnames, so `MaxGroupSize` bounds it: any normalized-surname group larger than the cap is skipped whole and reported as one `DUPLICATE_DETECTION_LIMITED` warning (available as `DuplicateReport.LimitIssues` from `FindDuplicatesReport`, and included in `ValidateAll` and `QualityReport` output). Each pair's cost is quadratic in the given-name length too, so `MaxNameRunes` bounds that: a longer given name is compared on its first 64 runes and the individuals so compared are counted on the same warning. Both fields are tri-state and **zero is not unlimited** — `0` selects the default (`validator.DefaultMaxGroupSize` 1000, `validator.DefaultMaxNameRunes` 64), a negative value (`UnlimitedGroupSize`, `UnlimitedNameRunes`) disables the cap, and a positive value is used as given, so a partial config literal stays bounded. `ValidateOptions.SkipDuplicateDetection` drops duplicate detection from the `ValidateAll` sweep; `QualityReport`, `FindPotentialDuplicates` and `FindPotentialDuplicatesReport` still run it, bounded by `MaxGroupSize`. See [performance](docs/guides/performance.md#bounding-untrusted-input) for the worst-case bound and [ADR 0009](docs/decisions/0009-bounded-duplicate-detection.md) for the rationale. Within those bounds a rejected pair allocates nothing: each call reuses its own similarity buffers and writes `MatchReasons` only for reported pairs, so one `DuplicateDetector` is safe to share between goroutines.
 
 Duplicates between two documents: `DuplicateDetector.FindDuplicatesBetween(a, b)` (and `FindDuplicatesBetweenReport` for the limit issue) reports only pairs taking one individual from each document (passing the same document twice yields none, and an individual both documents share as the same `*gedcom.Individual` is never paired with itself), for reconciling overlapping files before combining them. `Individual1` always comes from `a` and `Individual2` from `b`, each with its own document's XRef, so files that reuse the same XRefs for different people are not confused. Scoring, vetoes, thresholds and limits are those of `FindDuplicates` on the two documents combined, with `MaxGroupSize` applied to a surname's individuals in both documents together. Only surnames present in both documents are compared, at aᵢ·bᵢ pairs each — roughly what two single-document runs spend on those surnames, and never more than one run on the combined documents.
 
@@ -1961,7 +2012,7 @@ Two notes for callers upgrading. `DUPLICATE_DETECTION_LIMITED` is a `Warning`, s
 
 **Quality Report:**
 
-Comprehensive quality assessment with metrics and issue aggregation. The report runs every check `ValidateAll` runs, so its counts are never clean for a document `ValidateAll` flags. The spec-conformance checks — header, broken pointers, nil elements, date validity, XRef length, note pointers and encoding — land in `ConformanceIssues` (JSON `conformance_issues`) beside the record-quality categories; the nameless-individual (`MISSING_NAME`) and memberless-family (`EMPTY_FAMILY`) heuristics land in `CompletenessIssues`. Unlike `ValidateAll`, the report reports every severity and applies none of `Strictness`, `SkipRules`, `MaxErrors`, `SkipDuplicateDetection` or `SkipEncodingValidation`; filter its issues yourself if you need those.
+Comprehensive quality assessment with metrics and issue aggregation. The report runs every check `ValidateAll` runs except the opt-in name style checks, so its counts are never clean for a document `ValidateAll` flags. The spec-conformance checks — header, broken pointers, nil elements, date validity, XRef length, note pointers and encoding — land in `ConformanceIssues` (JSON `conformance_issues`) beside the record-quality categories; the nameless-individual (`MISSING_NAME`) and memberless-family (`EMPTY_FAMILY`) heuristics land in `CompletenessIssues`. Unlike `ValidateAll`, the report reports every severity and applies none of `Strictness`, `SkipRules`, `MaxErrors`, `SkipDuplicateDetection` or `SkipEncodingValidation`; filter its issues yourself if you need those.
 
 ```go
 report := v.QualityReport(doc)

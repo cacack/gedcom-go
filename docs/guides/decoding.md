@@ -287,7 +287,21 @@ for _, resi := range rec.FindAll("RESI") {     // every level-1 RESI, in order
 
 A tag's `Value` is a single physical line: the decoder keeps `CONT` and `CONC`
 lines as child tags, so a continued value's remaining text is in its `Subtree`,
-not in `Value`.
+not in `Value`. `rec.FullValue(tag)` returns the whole value with those lines
+folded in (a `CONT` as a line break, a `CONC` joined directly), and
+`rec.SetFullValue(tag, value, doc.Header.Version)` replaces the value and its
+continuation lines, split as the encoder splits a typed value for that version.
+The tag's other children, such as a `PLAC`'s `MAP`, are kept, so with a
+[layout-preserving encode](preserving-layout.md) only that tag and its
+continuation lines change:
+
+```go
+plac := rec.Find("BIRT", "PLAC")
+full := rec.FullValue(plac) // "Springfield, Sangamon County, Illinois"
+rec.SetFullValue(plac, strings.Replace(full, "County", "Co.", 1), doc.Header.Version)
+```
+
+Both work on the wire form, as `Value` does: an escaped `@@` is not unescaped.
 
 A path starts at level 1 and each element is one level deeper, so
 `Find("NAME")` is a name of the record, never a `NAME` nested under another
@@ -351,7 +365,8 @@ decode and encode to, and applies the difference:
   `PersonalName.Given`, `Surname` and `Suffix` from the `NAME` value when
   there is no `GIVN`, `SURN` or `NSFX`, so editing `Full` alone writes the old
   given name, surname and suffix as `GIVN`, `SURN` and `NSFX`. Edit them
-  together.
+  together; `gedcom.SplitPersonalName(name.Full)` gives the parts a new value
+  states.
 
 The header fields it carries are those a hand-built header is written from:
 `SourceSystem`, `Date`, `Submitter`, `Language`, `Version`, and whether
@@ -516,10 +531,14 @@ Tags with empty values are preserved: `1 BIRT` becomes `1 BIRT` (not `1 BIRT ` w
 | `DecodeWithOptions(r, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns document, no diagnostics |
 | `DecodeWithDiagnostics(r, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns `DecodeResult` with diagnostics |
 | `DecodeRecords(r, doc, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns the fragment's records and their diagnostics |
+| `DecodeHeader(r, doc, opts)` | `opts.StrictMode=true`: returns error on first issue | `opts.StrictMode=false`: returns the fragment's header and its diagnostics |
 | `DecodeRecord(raw, ver, opts)` | `opts.StrictMode=true`: level jumps kept as written | `opts.StrictMode=false`: level jumps clamped; one typed record, no diagnostics |
 
 `DecodeRecords` decodes a records-only fragment (no `HEAD` or `TRLR`) against an
-existing document, returning `ErrNotRecords` for anything else.
+existing document, returning `ErrNotRecords` for anything else; `DecodeHeader`
+does the same for a header-only fragment (`0 HEAD` and its lines), returning
+`ErrNotHeader` for anything else. See
+[Editing One Record as Text](editing-and-merging.md#editing-one-record-as-text).
 `DecodeRecord` decodes one `*parser.RawRecord` from a streaming parser into the
 typed `*gedcom.Record` `Decode` would produce for it; see
 [Typed Streaming](performance.md#typed-streaming-decoderdecoderecord).

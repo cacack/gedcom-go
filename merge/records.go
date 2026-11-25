@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -16,7 +17,8 @@ import (
 // Repositories return when the two records named cannot be merged: they are the same record,
 // one is missing or of the wrong type, one is defined more than once, or a
 // record involved has no raw Tags. A missing record's error also wraps
-// gedcom.ErrUnknownXRef.
+// gedcom.ErrUnknownXRef. FoldRepeatedEvents wraps it the same way for a
+// record named that is missing, of the wrong type or has no raw Tags.
 var ErrInvalidMerge = errors.New("invalid record merge")
 
 // RecordMergeOptions configures Individuals, Families, Sources and
@@ -44,7 +46,8 @@ type RecordMergeOptions struct {
 	// Two such substructures record the same event when they have the same
 	// tag, each has exactly one DATE line and at most one PLAC and one TYPE
 	// line directly under it, and:
-	//   - the two level-1 values are equal, or one is empty and the other is
+	//   - the two level-1 values, read with their CONT and CONC lines as
+	//     Record.FullValue reads them, are equal, or one is empty and the other is
 	//     the "Y" that says a named event occurred (the decoder's
 	//     Event.Occurred), which the DATE says too: "1 BIRT Y" and "1 BIRT"
 	//     are the same. Values that differ in any other way are not, and nor
@@ -58,7 +61,8 @@ type RecordMergeOptions struct {
 	//     date phrase is the same as none;
 	//   - each DATE has at most one TIME and one PHRASE line under it, and
 	//     where both have one the values are equal;
-	//   - the two PLAC values are equal, or only one of them has a PLAC;
+	//   - the two PLAC values, read the same way, are equal, or only one of
+	//     them has a PLAC;
 	//   - the two TYPE values are equal, or neither has a TYPE: the TYPE of
 	//     an EVEN, FACT or IDNO says which event or fact it is, so two
 	//     events of differing TYPE are different events.
@@ -69,7 +73,8 @@ type RecordMergeOptions struct {
 	// notes, a place keep lacks), after keep's last line with that tag.
 	// drop's DATE and PLAC are matched with keep's instead of added; the
 	// lines under them are added under keep's DATE and PLAC the same way,
-	// so a TIME or PHRASE only drop's DATE has is added to keep's.
+	// so a TIME or PHRASE only drop's DATE has is added to keep's. A CONT or
+	// CONC continuing a matched value is not added, since keep's holds it.
 	//
 	// drop's substructure folds into the first substructure keep held before
 	// the merge that records the same event. One identical to a substructure
@@ -247,8 +252,8 @@ func mergeSubstructures(keep, drop []*gedcom.Tag, fold *folder, once map[string]
 				continue
 			}
 		}
-		if fold != nil && fold.applies(n) {
-			if i := slices.IndexFunc(keepRoots, func(k *node) bool { return fold.sameEvent(k, n) }); i >= 0 {
+		if fold != nil {
+			if i := fold.match(keepRoots, n); i >= 0 {
 				foldEvent(keepRoots[i], n)
 				report.Folded = append(report.Folded, Fold{Drop: sub})
 				into = append(into, keepRoots[i])
@@ -363,8 +368,10 @@ func sameTree(a, b *node, norm func(string) string) bool {
 	return true
 }
 
-// folder decides which substructures RecordMergeOptions.FoldEvents applies
-// to, by how the decoder reads them in a record of type typ under header.
+// folder holds the rule RecordMergeOptions.FoldEvents defines, for
+// Individuals, Families and FoldRepeatedEvents alike: which substructures it
+// applies to, by how the decoder reads them in a record of type typ under
+// header, and which of them record the same event.
 type folder struct {
 	header *gedcom.Header
 	typ    gedcom.RecordType
@@ -391,16 +398,28 @@ func (f *folder) decode(n *node) ([]*gedcom.Event, []*gedcom.Attribute) {
 	return nil, nil
 }
 
-// sameValue reports whether the level-1 values of k and d are equal, or one
-// is empty and the other the "Y" the decoder reads as Event.Occurred.
+// match returns the index of the first of subs that records the same event
+// as the level-1 substructure d, by the rule RecordMergeOptions.FoldEvents
+// defines, or -1 when none does or the rule does not apply to d.
+func (f *folder) match(subs []*node, d *node) int {
+	if !f.applies(d) {
+		return -1
+	}
+	return slices.IndexFunc(subs, func(k *node) bool { return f.sameEvent(k, d) })
+}
+
+// sameValue reports whether the level-1 values of k and d, CONT and CONC
+// lines included, are equal, or one is empty and the other the "Y" the
+// decoder reads as Event.Occurred.
 func (f *folder) sameValue(k, d *node) bool {
-	if k.tag.Value == d.tag.Value {
+	kv, dv := fullValue(k), fullValue(d)
+	if kv == dv {
 		return true
 	}
 	flag := k
-	if k.tag.Value == "" {
+	if kv == "" {
 		flag = d
-	} else if d.tag.Value != "" {
+	} else if dv != "" {
 		return false
 	}
 	events, _ := f.decode(flag)
@@ -410,12 +429,12 @@ func (f *folder) sameValue(k, d *node) bool {
 // sameEvent reports whether keep's substructure k and drop's substructure d
 // record the same event, as RecordMergeOptions.FoldEvents defines it.
 func (f *folder) sameEvent(k, d *node) bool {
-	if k.tag.Tag != d.tag.Tag || !f.sameValue(k, d) {
+	if k.tag.Tag != d.tag.Tag {
 		return false
 	}
 	kDate, kOK := onlyChild(k, "DATE")
 	dDate, dOK := onlyChild(d, "DATE")
-	if !kOK || !dOK || kDate == nil || dDate == nil || !sameDate(kDate.tag.Value, dDate.tag.Value) {
+	if !kOK || !dOK || kDate == nil || dDate == nil || !sameDate(kDate.tag.Value, dDate.tag.Value) || !f.sameValue(k, d) {
 		return false
 	}
 	kType, _ := onlyChild(k, "TYPE")
@@ -425,11 +444,44 @@ func (f *folder) sameEvent(k, d *node) bool {
 }
 
 // agree reports whether k and d each have at most one child with tag and,
-// when both have one, the two values are equal.
+// when both have one, the two values, CONT and CONC lines included, are
+// equal.
 func agree(k, d *node, tag string) bool {
 	kc, kOK := onlyChild(k, tag)
 	dc, dOK := onlyChild(d, tag)
-	return kOK && dOK && (kc == nil || dc == nil || kc.tag.Value == dc.tag.Value)
+	return kOK && dOK && (kc == nil || dc == nil || fullValue(kc) == fullValue(dc))
+}
+
+// fullValue returns n's value joined with its CONT and CONC lines, as
+// Record.FullValue reads it. With none it returns n's value as it is.
+func fullValue(n *node) string {
+	var b strings.Builder
+	folded := false
+	for _, c := range n.children {
+		if !isContinuation(n, c) {
+			continue
+		}
+		if !folded {
+			b.WriteString(n.tag.Value)
+			folded = true
+		}
+		if c.tag.Tag == "CONT" {
+			b.WriteByte('\n')
+		}
+		b.WriteString(c.tag.Value)
+	}
+	if !folded {
+		return n.tag.Value
+	}
+	return b.String()
+}
+
+// isContinuation reports whether c, a child of parent, continues parent's
+// value: a CONT or CONC one level below it, as Record.FullValue reads them.
+// A CONT or CONC deeper than that, which a strict decode keeps as written,
+// is an ordinary line.
+func isContinuation(parent, c *node) bool {
+	return c.tag.Level == parent.tag.Level+1 && (c.tag.Tag == "CONT" || c.tag.Tag == "CONC")
 }
 
 // onlyChild returns n's child with tag, or nil when it has none; ok is
@@ -467,12 +519,19 @@ func sameDate(a, b string) bool {
 // foldEvent adds to k each child of d that k does not hold identically.
 // d's DATE, PLAC and TYPE are matched with k's instead, and their children
 // added under k's the same way; d's PLAC is added whole when k has none.
+// A CONT or CONC under a matched line continues a value k already holds,
+// so it is not added.
 func foldEvent(k, d *node) {
 	for _, c := range d.children {
+		if isContinuation(d, c) {
+			continue
+		}
 		if c.tag.Tag == "DATE" || c.tag.Tag == "PLAC" || c.tag.Tag == "TYPE" {
 			if kc, _ := onlyChild(k, c.tag.Tag); kc != nil {
 				for _, cc := range c.children {
-					addMissing(kc, cc)
+					if !isContinuation(c, cc) {
+						addMissing(kc, cc)
+					}
 				}
 				continue
 			}
