@@ -81,6 +81,34 @@ func TestRepeatedEvents(t *testing.T) {
 			folded: []string{"1 DEAT Y", "2 DATE 2000", "2 SOUR @S1@"},
 		},
 		{
+			name:   "values differing only in CONC",
+			lines:  "1 EVEN Moved to\n2 CONC Ohio\n2 TYPE Migration\n2 DATE 1850\n1 EVEN Moved to\n2 CONC Texas\n2 TYPE Migration\n2 DATE 1850\n",
+			folded: []string{"1 EVEN Moved to", "2 CONC Ohio", "2 TYPE Migration", "2 DATE 1850", "1 EVEN Moved to", "2 CONC Texas", "2 TYPE Migration", "2 DATE 1850"},
+		},
+		{
+			name:  "equal continued values",
+			lines: "1 EVEN Moved to\n2 CONC Ohio\n2 TYPE Migration\n2 DATE 1850\n1 EVEN Moved to\n2 CONC Ohio\n2 TYPE Migration\n2 DATE 1850\n2 NOTE By wagon.\n",
+			groups: [][][]string{{
+				{"1 EVEN Moved to", "2 CONC Ohio", "2 TYPE Migration", "2 DATE 1850"},
+				{"1 EVEN Moved to", "2 CONC Ohio", "2 TYPE Migration", "2 DATE 1850", "2 NOTE By wagon."},
+			}},
+			folded: []string{"1 EVEN Moved to", "2 CONC Ohio", "2 TYPE Migration", "2 DATE 1850", "2 NOTE By wagon."},
+		},
+		{
+			name:   "places differing only in CONC",
+			lines:  "1 BIRT\n2 DATE 1977\n2 PLAC Spring\n3 CONC field\n1 BIRT\n2 DATE 1977\n2 PLAC Spring\n3 CONC dale\n",
+			folded: []string{"1 BIRT", "2 DATE 1977", "2 PLAC Spring", "3 CONC field", "1 BIRT", "2 DATE 1977", "2 PLAC Spring", "3 CONC dale"},
+		},
+		{
+			name:  "equal continued places",
+			lines: "1 BIRT\n2 DATE 1977\n2 PLAC Spring\n3 CONC field\n1 BIRT\n2 DATE 1977\n2 PLAC Spring\n3 CONC field\n3 MAP\n",
+			groups: [][][]string{{
+				{"1 BIRT", "2 DATE 1977", "2 PLAC Spring", "3 CONC field"},
+				{"1 BIRT", "2 DATE 1977", "2 PLAC Spring", "3 CONC field", "3 MAP"},
+			}},
+			folded: []string{"1 BIRT", "2 DATE 1977", "2 PLAC Spring", "3 CONC field", "3 MAP"},
+		},
+		{
 			name:   "CHAN not an event",
 			lines:  "1 CHAN\n2 DATE 7 DEC 1977\n1 CHAN\n2 DATE 7 DEC 1977\n",
 			folded: []string{"1 CHAN", "2 DATE 7 DEC 1977", "1 CHAN", "2 DATE 7 DEC 1977"},

@@ -45,7 +45,8 @@ type RecordMergeOptions struct {
 	// Two such substructures record the same event when they have the same
 	// tag, each has exactly one DATE line and at most one PLAC and one TYPE
 	// line directly under it, and:
-	//   - the two level-1 values are equal, or one is empty and the other is
+	//   - the two level-1 values, read with their CONT and CONC lines as
+	//     Record.FullValue reads them, are equal, or one is empty and the other is
 	//     the "Y" that says a named event occurred (the decoder's
 	//     Event.Occurred), which the DATE says too: "1 BIRT Y" and "1 BIRT"
 	//     are the same. Values that differ in any other way are not, and nor
@@ -59,7 +60,8 @@ type RecordMergeOptions struct {
 	//     date phrase is the same as none;
 	//   - each DATE has at most one TIME and one PHRASE line under it, and
 	//     where both have one the values are equal;
-	//   - the two PLAC values are equal, or only one of them has a PLAC;
+	//   - the two PLAC values, read the same way, are equal, or only one of
+	//     them has a PLAC;
 	//   - the two TYPE values are equal, or neither has a TYPE: the TYPE of
 	//     an EVEN, FACT or IDNO says which event or fact it is, so two
 	//     events of differing TYPE are different events.
@@ -70,7 +72,8 @@ type RecordMergeOptions struct {
 	// notes, a place keep lacks), after keep's last line with that tag.
 	// drop's DATE and PLAC are matched with keep's instead of added; the
 	// lines under them are added under keep's DATE and PLAC the same way,
-	// so a TIME or PHRASE only drop's DATE has is added to keep's.
+	// so a TIME or PHRASE only drop's DATE has is added to keep's. A CONT or
+	// CONC continuing a matched value is not added, since keep's holds it.
 	//
 	// drop's substructure folds into the first substructure keep held before
 	// the merge that records the same event. One identical to a substructure
@@ -404,16 +407,18 @@ func (f *folder) match(subs []*node, d *node) int {
 	return slices.IndexFunc(subs, func(k *node) bool { return f.sameEvent(k, d) })
 }
 
-// sameValue reports whether the level-1 values of k and d are equal, or one
-// is empty and the other the "Y" the decoder reads as Event.Occurred.
+// sameValue reports whether the level-1 values of k and d, CONT and CONC
+// lines included, are equal, or one is empty and the other the "Y" the
+// decoder reads as Event.Occurred.
 func (f *folder) sameValue(k, d *node) bool {
-	if k.tag.Value == d.tag.Value {
+	kv, dv := fullValue(k), fullValue(d)
+	if kv == dv {
 		return true
 	}
 	flag := k
-	if k.tag.Value == "" {
+	if kv == "" {
 		flag = d
-	} else if d.tag.Value != "" {
+	} else if dv != "" {
 		return false
 	}
 	events, _ := f.decode(flag)
@@ -438,11 +443,24 @@ func (f *folder) sameEvent(k, d *node) bool {
 }
 
 // agree reports whether k and d each have at most one child with tag and,
-// when both have one, the two values are equal.
+// when both have one, the two values, CONT and CONC lines included, are
+// equal.
 func agree(k, d *node, tag string) bool {
 	kc, kOK := onlyChild(k, tag)
 	dc, dOK := onlyChild(d, tag)
-	return kOK && dOK && (kc == nil || dc == nil || kc.tag.Value == dc.tag.Value)
+	return kOK && dOK && (kc == nil || dc == nil || fullValue(kc) == fullValue(dc))
+}
+
+// fullValue returns n's value joined with its CONT and CONC lines, as
+// Record.FullValue reads it.
+func fullValue(n *node) string {
+	return (&gedcom.Record{Tags: flatten([]*node{n}, nil)}).FullValue(n.tag)
+}
+
+// isContinuation reports whether c, a child line, continues its parent's
+// value: a CONT or CONC.
+func isContinuation(c *node) bool {
+	return c.tag.Tag == "CONT" || c.tag.Tag == "CONC"
 }
 
 // onlyChild returns n's child with tag, or nil when it has none; ok is
@@ -480,12 +498,19 @@ func sameDate(a, b string) bool {
 // foldEvent adds to k each child of d that k does not hold identically.
 // d's DATE, PLAC and TYPE are matched with k's instead, and their children
 // added under k's the same way; d's PLAC is added whole when k has none.
+// A CONT or CONC under a matched line continues a value k already holds,
+// so it is not added.
 func foldEvent(k, d *node) {
 	for _, c := range d.children {
+		if isContinuation(c) {
+			continue
+		}
 		if c.tag.Tag == "DATE" || c.tag.Tag == "PLAC" || c.tag.Tag == "TYPE" {
 			if kc, _ := onlyChild(k, c.tag.Tag); kc != nil {
 				for _, cc := range c.children {
-					addMissing(kc, cc)
+					if !isContinuation(cc) {
+						addMissing(kc, cc)
+					}
 				}
 				continue
 			}

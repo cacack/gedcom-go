@@ -38,6 +38,19 @@ func TestFoldEvents(t *testing.T) {
 			folded: 1,
 		},
 		{
+			name: "values differing only in CONC kept",
+			keep: "1 EVEN Moved to\n2 CONC Ohio\n2 TYPE Migration\n2 DATE 1850\n",
+			drop: "1 EVEN Moved to\n2 CONC Texas\n2 TYPE Migration\n2 DATE 1850\n",
+			want: []string{"1 EVEN Moved to", "2 CONC Ohio", "2 TYPE Migration", "2 DATE 1850", "1 EVEN Moved to", "2 CONC Texas", "2 TYPE Migration", "2 DATE 1850"},
+		},
+		{
+			name:   "equal continued values folded once",
+			keep:   "1 EVEN Moved to\n2 CONC Ohio\n2 TYPE Migration\n2 DATE 1850\n",
+			drop:   "1 EVEN Moved to\n2 CONC Ohio\n2 TYPE Migration\n2 DATE 1850\n2 SOUR @S1@\n",
+			want:   []string{"1 EVEN Moved to", "2 CONC Ohio", "2 TYPE Migration", "2 DATE 1850", "2 SOUR @S1@"},
+			folded: 1,
+		},
+		{
 			name: "different dates kept",
 			keep: "1 BIRT\n2 DATE 7 DEC 1977\n",
 			drop: "1 BIRT\n2 DATE 8 DEC 1977\n",
