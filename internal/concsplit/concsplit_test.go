@@ -1,6 +1,7 @@
 package concsplit
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -113,5 +114,35 @@ func TestSplit(t *testing.T) {
 		if i < len(pieces)-1 && (strings.HasSuffix(p, " ") || strings.HasPrefix(pieces[i+1], " ")) {
 			t.Errorf("cut after piece %d is beside a space: %q | %q", i, p, pieces[i+1])
 		}
+	}
+}
+
+// TestFold checks the CONT and CONC lines a value is written as, with and
+// without a length limit and an escape.
+func TestFold(t *testing.T) {
+	tests := []struct {
+		name   string
+		value  string
+		maxLen int
+		escape func(string) string
+		want   []Segment
+	}{
+		{"empty", "", 10, nil, []Segment{{"", ""}}},
+		{"one short line", "abc", 10, nil, []Segment{{"", "abc"}}},
+		{"line breaks of every form", "a\nb\r\nc\rd", 10, nil,
+			[]Segment{{"", "a"}, {"CONT", "b"}, {"CONT", "c"}, {"CONT", "d"}}},
+		{"long lines cut with CONC", "abcdef\nghij", 4, nil,
+			[]Segment{{"", "abcd"}, {"CONC", "ef"}, {"CONT", "ghij"}}},
+		{"no limit cuts no CONC", "abcdef", 0, nil, []Segment{{"", "abcdef"}}},
+		{"escape before the cut", "ab\ncd", 3, func(s string) string { return s + s },
+			[]Segment{{"", "aba"}, {"CONC", "b"}, {"CONT", "cdc"}, {"CONC", "d"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Fold(tt.value, tt.maxLen, tt.escape)
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("Fold(%q, %d) = %q, want %q", tt.value, tt.maxLen, got, tt.want)
+			}
+		})
 	}
 }

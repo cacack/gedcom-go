@@ -10,6 +10,7 @@ import (
 
 	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/concsplit"
 )
 
 func TestEntityToTags_NilEntity(t *testing.T) {
@@ -2353,8 +2354,18 @@ func TestSingleLineNoteNoConts(t *testing.T) {
 	}
 }
 
-// TestSplitLineForLength tests the line splitting helper function
-func TestSplitLineForLength(t *testing.T) {
+// wrapLine returns the pieces textToTags writes one line as under opts: the
+// line's first piece, then each CONC.
+func wrapLine(line string, opts *EncodeOptions) []string {
+	var pieces []string
+	for _, seg := range concsplit.Fold(line, lineWrapLength(opts), nil) {
+		pieces = append(pieces, seg.Value)
+	}
+	return pieces
+}
+
+// TestWrapLine tests how lineWrapLength cuts one line
+func TestWrapLine(t *testing.T) {
 	tests := []struct {
 		name          string
 		line          string
@@ -2403,10 +2414,10 @@ func TestSplitLineForLength(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			segments := splitLineForLength(tt.line, tt.opts)
+			segments := wrapLine(tt.line, tt.opts)
 
 			if len(segments) != tt.expectedCount {
-				t.Errorf("splitLineForLength() returned %d segments, want %d", len(segments), tt.expectedCount)
+				t.Errorf("wrapLine() returned %d segments, want %d", len(segments), tt.expectedCount)
 			}
 
 			if tt.expectedFirst != "" && len(segments) > 0 && segments[0] != tt.expectedFirst {
@@ -2420,11 +2431,11 @@ func TestSplitLineForLength(t *testing.T) {
 	}
 }
 
-// TestSplitLineForLengthSegmentEdges asserts every split of a long line lands
+// TestWrapLineSegmentEdges asserts every split of a long line lands
 // between two non-space characters and on a rune boundary, and that the
 // segments rebuild the line. A space at a segment edge is lost by readers
 // that trim lines (issue #565).
-func TestSplitLineForLengthSegmentEdges(t *testing.T) {
+func TestWrapLineSegmentEdges(t *testing.T) {
 	lines := []string{
 		strings.Repeat("word ", 60),
 		strings.Repeat("日本語 テキスト ", 30),
@@ -2432,7 +2443,7 @@ func TestSplitLineForLengthSegmentEdges(t *testing.T) {
 	}
 	for _, line := range lines {
 		for _, maxLen := range []int{7, 20, 100} {
-			segments := splitLineForLength(line, &EncodeOptions{MaxLineLength: maxLen})
+			segments := wrapLine(line, &EncodeOptions{MaxLineLength: maxLen})
 			if got := strings.Join(segments, ""); got != line {
 				t.Fatalf("maxLen %d: segments rebuild %q, want %q", maxLen, got, line)
 			}

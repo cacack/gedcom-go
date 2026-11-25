@@ -14,10 +14,11 @@ import (
 // lines become CONT (continuation) tags at level+1.
 //
 // When opts is provided and DisableLineWrap is false, lines exceeding
-// MaxLineLength are automatically split using CONC tags (see splitLineForLength).
+// MaxLineLength are automatically split using CONC tags (see lineWrapLength).
 // Each line is escaped for the output version before the split (opts.text), so
 // the escaped line is what has to fit, and [concsplit.Split] never cuts inside
-// an escaped "@@".
+// an escaped "@@". Where the lines are cut is [concsplit.Fold]'s rule, which
+// gedcom.Record.SetFullValue shares.
 //
 // Examples:
 //   - "Single line" -> [TAG value="Single line"]
@@ -25,45 +26,12 @@ import (
 //   - "" -> [TAG value=""]
 //   - "Very long line..." -> [TAG value="Very long...", CONC value="line..."]
 func textToTags(value string, level int, tagName string, opts *EncodeOptions) []*gedcom.Tag {
-	// Handle empty value - return single tag with empty value
-	if value == "" {
-		return []*gedcom.Tag{{Level: level, Tag: tagName, Value: ""}}
+	segments := concsplit.Fold(value, lineWrapLength(opts), opts.text)
+	tags := make([]*gedcom.Tag, len(segments))
+	tags[0] = &gedcom.Tag{Level: level, Tag: tagName, Value: segments[0].Value}
+	for i, seg := range segments[1:] {
+		tags[i+1] = &gedcom.Tag{Level: level + 1, Tag: seg.Tag, Value: seg.Value}
 	}
-
-	// splitValueLines rather than strings.Split(value, "\n"): a CRLF source
-	// leaves a trailing "\r" on every segment of a plain "\n" split, and that
-	// stray CR is a line break to every reader of the output. It used to be
-	// invisible because it landed immediately before the line ending the
-	// encoder wrote anyway; now that writeValue treats a CR in a value as a
-	// break to fold, it would emit an extra empty CONT and put a blank line
-	// into the text on re-decode. One splitter for the whole package keeps the
-	// encoder's idea of "a line break" from differing by call site.
-	lines := splitValueLines(value)
-
-	tags := make([]*gedcom.Tag, 0, len(lines))
-
-	// Process first line - it becomes the primary tag
-	firstLineSegments := splitLineForLength(opts.text(lines[0]), opts)
-	tags = append(tags, &gedcom.Tag{Level: level, Tag: tagName, Value: firstLineSegments[0]})
-
-	// Add CONC tags for remaining segments of first line
-	for i := 1; i < len(firstLineSegments); i++ {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONC", Value: firstLineSegments[i]})
-	}
-
-	// Process remaining lines (from newlines) - they become CONT tags
-	for i := 1; i < len(lines); i++ {
-		lineSegments := splitLineForLength(opts.text(lines[i]), opts)
-
-		// First segment becomes CONT
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONT", Value: lineSegments[0]})
-
-		// Remaining segments become CONC at level+1 (same as CONT)
-		for j := 1; j < len(lineSegments); j++ {
-			tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "CONC", Value: lineSegments[j]})
-		}
-	}
-
 	return tags
 }
 
@@ -156,22 +124,16 @@ func inlineNoteDetailToTags(detail *gedcom.InlineNoteDetail, level int, opts *En
 	return tags
 }
 
-// splitLineForLength splits a single line into segments that fit within MaxLineLength.
-// Returns a slice with at least one element (the original line if no splitting needed).
-// Each later segment is written as CONC, so this must not run for GEDCOM 7.0
-// output, which has no CONC: the encoder entry points arrange that through
-// [EncodeOptions.forOutput], which sets DisableLineWrap for 7.0. Where the cut
-// falls is [concsplit.Split]'s rule, which the converter shares.
-func splitLineForLength(line string, opts *EncodeOptions) []string {
+// lineWrapLength returns the length past which textToTags cuts a line with
+// CONC, or 0 for no cut. Each later piece is written as CONC, so there must be
+// no cut for GEDCOM 7.0 output, which has no CONC: the encoder entry points
+// arrange that through [EncodeOptions.forOutput], which sets DisableLineWrap
+// for 7.0.
+func lineWrapLength(opts *EncodeOptions) int {
 	if opts != nil && opts.DisableLineWrap {
-		return []string{line}
+		return 0
 	}
-
-	maxLen := DefaultMaxLineLength
-	if opts != nil {
-		maxLen = opts.effectiveMaxLineLength()
-	}
-	return concsplit.Split(line, maxLen)
+	return opts.effectiveMaxLineLength()
 }
 
 // entityToTags converts an entity to tags based on record type.
@@ -1406,7 +1368,7 @@ func addressToTags(addr *gedcom.Address, level int, opts *EncodeOptions) []*gedc
 // alone, so such a value is written as one over-length line, which still
 // parses.
 func singleLine(value string) string {
-	return strings.Join(splitValueLines(value), " ")
+	return strings.Join(concsplit.Lines(value), " ")
 }
 
 // placeToTags converts a place structure to GEDCOM tags at the specified level.
