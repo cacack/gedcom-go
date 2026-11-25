@@ -77,7 +77,7 @@ func Load(tb testing.TB) *Oracle {
 			errLoad = err
 			return
 		}
-		src, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(Path)))
+		src, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(Path))) // #nosec G304 -- the vendored grammar under the repository root
 		if err != nil {
 			errLoad = err
 			return
