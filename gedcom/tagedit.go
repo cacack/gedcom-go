@@ -17,9 +17,9 @@ import "slices"
 // before was nil or a sibling of t, and t is not a CONT or CONC continuing
 // its parent's value, which moving would reorder (SetFullValue sets that);
 // when not, nothing changes. Moving t before itself changes nothing and
-// reports true. It replaces r.Tags with a
-// new slice, so a view from Subtree taken before the call no longer
-// reflects the record.
+// reports true. It replaces r.Tags with a new slice, so a view from Subtree
+// taken before the call no longer reflects the record. r.Entity is not
+// updated; rebuild it with decoder.SyncEntities when it is read.
 func (r *Record) MoveSubstructure(t, before *Tag) bool {
 	if r == nil || t == nil {
 		return false
@@ -65,15 +65,18 @@ func (r *Record) MoveSubstructure(t, before *Tag) bool {
 // r.Tags (compared by pointer), tag is empty, or tag is CONT or CONC, which
 // continue parent's own value (SetFullValue sets that).
 //
-// value is set as SetFullValue sets it, split for GEDCOM version v: the
-// child's old CONT and CONC lines are dropped and the new ones follow it,
-// and its other subordinates are kept. A child whose FullValue is already
-// value is left as it is. Any other line, a second child with tag included,
-// is not changed and keeps its LineNumber, so under a layout-preserving
-// encode only the child set and its continuation lines are rewritten.
+// value is set as SetFullValue sets it, split for GEDCOM version v, which is
+// doc.Header.Version, at the encoder's default width, and in wire form, with
+// "@" escaped by the caller (see SetFullValue): the child's old CONT and CONC
+// lines are dropped and the new ones follow it, and its other subordinates
+// are kept. A child whose FullValue is already value is left as it is. Any
+// other line, a second child with tag included, is not changed and keeps its
+// LineNumber, so under a layout-preserving encode only the child set and its
+// continuation lines are rewritten.
 //
 // It replaces r.Tags with a new slice when it adds a line, as SetFullValue
-// does.
+// does. r.Entity is not updated; rebuild it with decoder.SyncEntities when
+// it is read.
 func (r *Record) SetChild(parent *Tag, tag, value string, v Version) *Tag {
 	if r == nil || tag == "" || tag == "CONT" || tag == "CONC" {
 		return nil
@@ -106,7 +109,8 @@ func (r *Record) SetChild(parent *Tag, tag, value string, v Version) *Tag {
 // it is, with its LineNumber.
 //
 // It replaces r.Tags with a new slice when it removes a line, as
-// SetFullValue does.
+// SetFullValue does. r.Entity is not updated; rebuild it with
+// decoder.SyncEntities when it is read.
 func (r *Record) RemoveChildren(parent *Tag, tag string) int {
 	if r == nil || tag == "CONT" || tag == "CONC" {
 		return 0

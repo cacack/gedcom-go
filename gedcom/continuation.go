@@ -47,17 +47,25 @@ func (r *Record) FullValue(t *Tag) string {
 // split as the encoder splits a typed value for GEDCOM version v: a CONT for
 // each line break (CRLF, LF or CR), and a CONC for each piece of a line longer
 // than encoder.DefaultMaxLineLength bytes, except for GEDCOM 7.0, which has no
-// CONC. An unknown version is split as 5.x is, as the encoder does.
+// CONC. Pass the document's doc.Header.Version; an empty or unknown version is
+// split as 5.x is, as the encoder does. The width is always the encoder's
+// default: an encoder.EncodeOptions.MaxLineLength set for the later encode is
+// not applied here, and the encoder writes raw Tags as they are.
 //
 // t keeps its LineNumber and takes the first piece as its Value. The new
 // continuation lines go directly after t, with no LineNumber, and t's other
 // subordinates, such as a PLAC's MAP, are kept as they are. So under a
 // layout-preserving encode only t and its continuation lines are rewritten.
 //
-// value is the wire form, as Tag.Value is: it is not escaped. SetFullValue
-// reports whether t was in r.Tags (compared by pointer); when it was not,
-// nothing changes. It replaces r.Tags with a new slice, so a view from
-// Subtree taken before the call no longer reflects the record.
+// value is the wire form, as Tag.Value is: it is not escaped, so the caller
+// writes an "@" of the text as "@@" where version v requires it, as the
+// encoder escapes typed text (every one in 5.5 and 5.5.1, a leading one in
+// 7.0). SetFullValue reports whether t was in r.Tags (compared by pointer);
+// when it was not, nothing changes. It replaces r.Tags with a new slice, so
+// a view from Subtree taken before the call no longer reflects the record.
+//
+// r.Entity is not updated; rebuild it with decoder.SyncEntities when it is
+// read.
 func (r *Record) SetFullValue(t *Tag, value string, v Version) bool {
 	if r == nil || t == nil {
 		return false

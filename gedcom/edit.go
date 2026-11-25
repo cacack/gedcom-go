@@ -51,6 +51,11 @@ func (d *Document) ReplaceRecord(r *Record) error {
 // detects it, and Schema, from h's SCHMA structure when h.Version is GEDCOM
 // 7.0 (nil otherwise). Records are not changed.
 //
+// h is taken as it is: nothing in it is set or checked. Its Version,
+// DeclaredVersion and DetectedEncoding must already say what d holds, since
+// decoder.DecodeRecords and decoder.SyncEntities read them and Schema is
+// read only when Version is 7.0; decoder.DecodeHeader sets all three from d.
+//
 // It returns ErrNilHeader for a nil h and ErrNilDocument for a nil d, and
 // leaves d unchanged.
 //
