@@ -2,8 +2,10 @@ package merge_test
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/merge"
 )
 
@@ -375,5 +377,27 @@ func TestFoldEvents_Families(t *testing.T) {
 	}
 	if ev := out.GetFamily("@F1@").Events; len(ev) != 1 || ev[0].PlaceName() != "Springfield" {
 		t.Errorf("typed events = %+v, want one MARR at Springfield", ev)
+	}
+}
+
+// TestFoldEventsDeepContinuation folds drop's birth into keep's where drop's
+// place has a CONC two levels below it, as a strict decode keeps it. That
+// CONC does not continue the place, so it is kept.
+func TestFoldEventsDeepContinuation(t *testing.T) {
+	src := foldTree("1 BIRT\n2 DATE 1 JAN 1900\n2 PLAC Ohio\n", "1 BIRT\n2 DATE 1 JAN 1900\n2 PLAC Ohio\n4 CONC  extra\n")
+	doc, err := decoder.DecodeWithOptions(strings.NewReader(src), &decoder.DecodeOptions{StrictMode: true})
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	out, report, err := merge.Individuals(doc, "@I1@", "@I2@", merge.RecordMergeOptions{FoldEvents: true})
+	if err != nil {
+		t.Fatalf("Individuals: %v", err)
+	}
+	if len(report.Folded) != 1 {
+		t.Fatalf("len(Folded) = %d, want 1", len(report.Folded))
+	}
+	want := []string{"1 BIRT", "2 DATE 1 JAN 1900", "2 PLAC Ohio", "4 CONC  extra"}
+	if got := recordLines(t, out, "@I1@"); !reflect.DeepEqual(got, want) {
+		t.Errorf("@I1@ =\n%q\nwant\n%q", got, want)
 	}
 }

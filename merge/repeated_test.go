@@ -328,3 +328,22 @@ func TestFoldRepeatedEvents_Errors(t *testing.T) {
 		t.Errorf("Folded = %+v, want none", report.Folded)
 	}
 }
+
+// TestFoldRepeatedEvents_DeepContinuation folds two births whose places are
+// equal, where the second place has a CONC two levels below it, as a strict
+// decode keeps it. That CONC does not continue the place, so it is kept.
+func TestFoldRepeatedEvents_DeepContinuation(t *testing.T) {
+	src := repeatTree("1 BIRT\n2 DATE 1 JAN 1900\n2 PLAC Ohio\n1 BIRT\n2 DATE 1 JAN 1900\n2 PLAC Ohio\n4 CONC  extra\n")
+	doc, err := decoder.DecodeWithOptions(strings.NewReader(src), &decoder.DecodeOptions{StrictMode: true})
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	out, report := mustFoldRepeated(t, doc)
+	if len(report.Folded) != 1 {
+		t.Fatalf("len(Folded) = %d, want 1", len(report.Folded))
+	}
+	want := []string{"1 BIRT", "2 DATE 1 JAN 1900", "2 PLAC Ohio", "4 CONC  extra"}
+	if got := recordLines(t, out, "@I1@"); !reflect.DeepEqual(got, want) {
+		t.Errorf("folded @I1@ =\n%q\nwant\n%q", got, want)
+	}
+}

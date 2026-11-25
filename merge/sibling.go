@@ -42,7 +42,7 @@ func FoldSubstructure(r *gedcom.Record, keep, drop *gedcom.Tag) bool {
 		return false
 	}
 	for _, c := range d.children {
-		if !isContinuation(c) {
+		if !isContinuation(d, c) {
 			addMissing(k, c)
 		}
 	}

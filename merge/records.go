@@ -457,10 +457,12 @@ func fullValue(n *node) string {
 	return (&gedcom.Record{Tags: flatten([]*node{n}, nil)}).FullValue(n.tag)
 }
 
-// isContinuation reports whether c, a child line, continues its parent's
-// value: a CONT or CONC.
-func isContinuation(c *node) bool {
-	return c.tag.Tag == "CONT" || c.tag.Tag == "CONC"
+// isContinuation reports whether c, a child of parent, continues parent's
+// value: a CONT or CONC one level below it, as Record.FullValue reads them.
+// A CONT or CONC deeper than that, which a strict decode keeps as written,
+// is an ordinary line.
+func isContinuation(parent, c *node) bool {
+	return c.tag.Level == parent.tag.Level+1 && (c.tag.Tag == "CONT" || c.tag.Tag == "CONC")
 }
 
 // onlyChild returns n's child with tag, or nil when it has none; ok is
@@ -502,13 +504,13 @@ func sameDate(a, b string) bool {
 // so it is not added.
 func foldEvent(k, d *node) {
 	for _, c := range d.children {
-		if isContinuation(c) {
+		if isContinuation(d, c) {
 			continue
 		}
 		if c.tag.Tag == "DATE" || c.tag.Tag == "PLAC" || c.tag.Tag == "TYPE" {
 			if kc, _ := onlyChild(k, c.tag.Tag); kc != nil {
 				for _, cc := range c.children {
-					if !isContinuation(cc) {
+					if !isContinuation(c, cc) {
 						addMissing(kc, cc)
 					}
 				}

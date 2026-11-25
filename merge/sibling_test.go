@@ -178,3 +178,21 @@ func TestFoldSubstructureContinuation(t *testing.T) {
 		t.Errorf("Tags = %q, want %q", got, want)
 	}
 }
+
+// TestFoldSubstructureDeepContinuation folds a note with a CONC two levels
+// below it, as a strict decode keeps it. That CONC does not continue drop's
+// value, so it is moved like any other line.
+func TestFoldSubstructureDeepContinuation(t *testing.T) {
+	rec := &gedcom.Record{Tags: []*gedcom.Tag{
+		{Level: 1, Tag: "NOTE", Value: "First"},
+		{Level: 1, Tag: "NOTE", Value: "Other"},
+		{Level: 3, Tag: "CONC", Value: " deep"},
+	}}
+	if !merge.FoldSubstructure(rec, rec.Tags[0], rec.Tags[1]) {
+		t.Fatal("FoldSubstructure = false for two notes")
+	}
+	want := []string{"1 NOTE First", "3 CONC  deep"}
+	if got := tagLines(rec.Tags); !reflect.DeepEqual(got, want) {
+		t.Errorf("Tags = %q, want %q", got, want)
+	}
+}
