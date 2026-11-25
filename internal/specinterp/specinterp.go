@@ -191,7 +191,7 @@ func Load() (*Register, error) {
 	if err != nil {
 		return nil, err
 	}
-	f, err := os.Open(filepath.Join(root, filepath.FromSlash(Path)))
+	f, err := os.Open(filepath.Join(root, filepath.FromSlash(Path))) // #nosec G304 -- the register under the repository root
 	if err != nil {
 		return nil, err
 	}
