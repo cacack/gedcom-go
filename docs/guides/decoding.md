@@ -287,7 +287,21 @@ for _, resi := range rec.FindAll("RESI") {     // every level-1 RESI, in order
 
 A tag's `Value` is a single physical line: the decoder keeps `CONT` and `CONC`
 lines as child tags, so a continued value's remaining text is in its `Subtree`,
-not in `Value`.
+not in `Value`. `rec.FullValue(tag)` returns the whole value with those lines
+folded in (a `CONT` as a line break, a `CONC` joined directly), and
+`rec.SetFullValue(tag, value, doc.Header.Version)` replaces the value and its
+continuation lines, split as the encoder splits a typed value for that version.
+The tag's other children, such as a `PLAC`'s `MAP`, are kept, so with a
+[layout-preserving encode](preserving-layout.md) only that tag and its
+continuation lines change:
+
+```go
+plac := rec.Find("BIRT", "PLAC")
+full := rec.FullValue(plac) // "Springfield, Sangamon County, Illinois"
+rec.SetFullValue(plac, strings.Replace(full, "County", "Co.", 1), doc.Header.Version)
+```
+
+Both work on the wire form, as `Value` does: an escaped `@@` is not unescaped.
 
 A path starts at level 1 and each element is one level deeper, so
 `Find("NAME")` is a name of the record, never a `NAME` nested under another

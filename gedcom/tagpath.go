@@ -29,6 +29,7 @@ func (r *Record) Find(path ...string) *Tag {
 // separate child tags, so a continued value's later segments are in Subtree
 // (or FindAll with a trailing "CONT" or "CONC"), not in Value; setting Value
 // replaces only the first segment and leaves those children in place.
+// FullValue reads the whole value and SetFullValue replaces it.
 func (r *Record) FindAll(path ...string) []*Tag {
 	if r == nil {
 		return nil

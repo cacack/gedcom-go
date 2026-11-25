@@ -78,6 +78,10 @@ from `decoder.DecodeRecords` carry no line numbers, so all their lines are new
 lines; a replacement made by editing a `Clone` of the old record keeps the
 layout of the lines it did not change.
 
+**A raw tag's whole value** set with `Record.SetFullValue` rewrites that tag
+and its CONT/CONC lines only: the tag keeps its source line's layout, its new
+continuation lines are new lines, and its other children keep theirs.
+
 **Typed edits** work through `encoder.SyncTags`, which keeps every unchanged
 line's `Tag`, so only the edited structure differs. Lines that `SyncTags`
 rewrites are new lines.
