@@ -137,16 +137,19 @@ func TestRegisterMatchesSource(t *testing.T) {
 // citation is a register ID as source code cites it.
 var citation = regexp.MustCompile(`\bSI-\d{3}\b`)
 
+// testOnlyPackages are the internal packages only tests may import: this one,
+// and the payload grammar oracle that looks departures up in it.
+var testOnlyPackages = []string{"internal/specinterp", "internal/payloadgrammar", "internal/abnf"}
+
 // TestSourceCitesOnlyRegisteredRows fails when a Go file outside this package
 // cites an ID the register has no row for, and when a library package imports
-// this one.
+// a [testOnlyPackages] package.
 func TestSourceCitesOnlyRegisteredRows(t *testing.T) {
 	reg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
 	root := repoRoot(t)
-	importPath := strconv.Quote("github.com/cacack/gedcom-go/v3/internal/specinterp")
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -170,9 +173,12 @@ func TestSourceCitesOnlyRegisteredRows(t *testing.T) {
 				t.Errorf("%s cites %s, which %s has no row for", rel, id, Path)
 			}
 		}
-		if !strings.HasSuffix(path, "_test.go") && !strings.HasPrefix(filepath.ToSlash(rel), "internal/") &&
-			strings.Contains(string(src), importPath) {
-			t.Errorf("%s imports internal/specinterp, which only tests may", rel)
+		if !strings.HasSuffix(path, "_test.go") && !strings.HasPrefix(filepath.ToSlash(rel), "internal/") {
+			for _, pkg := range testOnlyPackages {
+				if strings.Contains(string(src), strconv.Quote("github.com/cacack/gedcom-go/v3/"+pkg)) {
+					t.Errorf("%s imports %s, which only tests may", rel, pkg)
+				}
+			}
 		}
 		return nil
 	})
