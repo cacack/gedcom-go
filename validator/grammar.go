@@ -580,7 +580,9 @@ var monthDays = map[string]int{
 
 // dateExact reports whether v is an exact date: a day of its month, which
 // may be 29 FEB in any year, and a year other than 0, which the Gregorian
-// calendar does not have.
+// calendar does not have. Its month is a standard Gregorian one: the check
+// reads no SCHMA, so it takes no extension month as standing for one
+// (spec-interpretation policy SI-018).
 func (c *grammarChecker) dateExact(v string) bool {
 	m := c.byVersion(dateExact70, dateExact55).FindStringSubmatch(v)
 	if m == nil {

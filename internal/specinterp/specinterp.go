@@ -1,7 +1,8 @@
 // Package specinterp reads the specification interpretation register,
 // docs/governance/policies/spec-interpretation.md: the policies the library
 // picked where a GEDCOM specification offers a choice, is lenient or is
-// silent, each under a stable ID such as SI-001.
+// silent, and the forms it allows that the library does not support, each
+// under a stable ID such as SI-001.
 //
 // It is for tests only. Its own test holds every row's godoc symbols and
 // tests to the source tree, and a test that finds the library departing from
@@ -29,9 +30,10 @@ const Path = "docs/governance/policies/spec-interpretation.md"
 
 // Kinds of departure a row records.
 const (
-	KindChoice  = "choice"  // the specification allows more than one reading
-	KindLenient = "lenient" // the library accepts what the specification forbids
-	KindSilent  = "silent"  // the specification says nothing
+	KindChoice      = "choice"      // the specification allows more than one reading
+	KindLenient     = "lenient"     // the library accepts what the specification forbids
+	KindSilent      = "silent"      // the specification says nothing
+	KindUnsupported = "unsupported" // the library rejects or misreads what the specification allows
 )
 
 // Row is one policy in the register.
@@ -142,8 +144,8 @@ func parseRow(cells []string) (Row, error) {
 		return Row{}, fmt.Errorf("ID %q is not SI-NNN", row.ID)
 	case !specLocation.MatchString(row.Specification):
 		return Row{}, fmt.Errorf("%s: Specification cites no 7.0 section or 5.5.x page", row.ID)
-	case row.Kind != KindChoice && row.Kind != KindLenient && row.Kind != KindSilent:
-		return Row{}, fmt.Errorf("%s: Kind %q is not choice, lenient or silent", row.ID, row.Kind)
+	case !slices.Contains([]string{KindChoice, KindLenient, KindSilent, KindUnsupported}, row.Kind):
+		return Row{}, fmt.Errorf("%s: Kind %q is not choice, lenient, silent or unsupported", row.ID, row.Kind)
 	case row.Policy == "":
 		return Row{}, fmt.Errorf("%s: no Policy", row.ID)
 	case len(row.StatedIn) == 0:

@@ -18,7 +18,9 @@ import "strings"
 // unclosed surname is trimmed, as it has no closing slash to keep it.
 //
 // Every package that reads a surname out of a NAME value uses it
-// (spec-interpretation policy SI-009).
+// (spec-interpretation policy SI-009). It splits a value the PersonalName
+// grammar rejects, one with a single slash or three, the same way, and no
+// package reports such a value (SI-020).
 func SplitPersonalName(full string) (given, surname, suffix string) {
 	first := strings.Index(full, "/")
 	if first < 0 {

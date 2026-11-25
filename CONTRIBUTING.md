@@ -266,8 +266,9 @@ Follow the official [Go Code Review Comments](https://github.com/golang/go/wiki/
    - Include usage examples in godoc format where helpful
 
 4. **Specification Interpretation**
-   - A new leniency (accepting what a GEDCOM specification forbids) or a new
-     choice where a specification is ambiguous or silent needs a row in
+   - A new leniency (accepting what a GEDCOM specification forbids), a new
+     choice where a specification is ambiguous or silent, or a form it allows
+     that the library does not support needs a row in
      [docs/governance/policies/spec-interpretation.md](docs/governance/policies/spec-interpretation.md),
      added in the same change
    - Cite the row's ID (e.g. `SI-001`) in the godoc of each package that
