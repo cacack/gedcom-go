@@ -228,8 +228,8 @@ var frenchMonthNames = map[string]int{
 // A day or year is unsigned decimal digits: a sign ("-1850", "+5 JAN 1850")
 // is an error naming the component, as is a day or year written as 0, which
 // no calendar has (0 is the "absent" value of Day and Year). A B.C. year takes
-// a BC suffix. A reversed range such as "BET 1860 AND 1850" parses; Validate
-// reports it.
+// a BC suffix, which only the Gregorian and Julian calendars have. A reversed
+// range such as "BET 1860 AND 1850" parses; Validate reports it.
 //
 // Every error wraps ErrEmptyDate when s is empty or only whitespace, and
 // ErrInvalidDate otherwise; match them with errors.Is.
@@ -669,6 +669,12 @@ func parseDateComponents(s string, date *Date) error {
 		fields = fields[:len(fields)-1] // Remove BC suffix
 		if len(fields) == 0 {
 			return fmt.Errorf("empty date after BC suffix")
+		}
+		// Only the Gregorian and Julian calendars have an epoch: 7.0
+		// Appendix A, and 5.5.1's DATE_HEBR and DATE_FREN, which have no
+		// B.C.
+		if date.Calendar == CalendarHebrew || date.Calendar == CalendarFrenchRepublican {
+			return fmt.Errorf("the %s calendar has no B.C. epoch", date.Calendar)
 		}
 	}
 

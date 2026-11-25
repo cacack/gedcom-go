@@ -1,6 +1,7 @@
 package gedcom
 
 import (
+	"errors"
 	"math"
 	"strings"
 	"testing"
@@ -264,6 +265,21 @@ func TestParseDate_WhitespaceTolerance(t *testing.T) {
 				t.Errorf("Year = %d, want %d", date.Year, tt.wantYear)
 			}
 		})
+	}
+}
+
+// TestParseDate_EpochOnlyGregorianJulian pins that only the Gregorian and
+// Julian calendars take a B.C. epoch, in either calendar form.
+func TestParseDate_EpochOnlyGregorianJulian(t *testing.T) {
+	for _, s := range []string{"44 BCE", "JULIAN 44 BCE", "@#DJULIAN@ 44 B.C.", "BET 50 BC AND JULIAN 44 BCE"} {
+		if d, err := ParseDate(s); err != nil || !d.IsBC {
+			t.Errorf("ParseDate(%q) = %+v, %v; want a B.C. date", s, d, err)
+		}
+	}
+	for _, s := range []string{"HEBREW 5000 BCE", "@#DHEBREW@ 1 TSH 5000 B.C.", "FRENCH_R 2 BCE", "ABT @#DFRENCH R@ 2 BC", "BET 1 AND HEBREW 2 BCE"} {
+		if _, err := ParseDate(s); !errors.Is(err, ErrInvalidDate) {
+			t.Errorf("ParseDate(%q) error = %v, want ErrInvalidDate", s, err)
+		}
 	}
 }
 
