@@ -93,9 +93,12 @@
 // List codes in [ValidatorConfig.StyleChecks] to report habits in personal
 // names that are valid GEDCOM, such as a surname in capitals or a nickname in
 // quotes ([CodeNameAllCaps] and the codes listed with it). Each is off until
-// listed; [AllStyleChecks] lists them all.
+// listed; [AllStyleChecks] lists them all. Strictness filters their issues as
+// it does every other, so a check of SeverityInfo, such as [CodeNameAllCaps],
+// reports only at [StrictnessStrict]:
 //
 //	v := validator.NewWithOptions(&validator.ValidateOptions{
+//		Strictness:  validator.StrictnessStrict,
 //		StyleChecks: []string{validator.CodeNameAllCaps},
 //	})
 //	issues := v.ValidateAll(doc)

@@ -102,9 +102,11 @@ type ValidatorConfig struct {
 	// [CodeNameAllCaps] for what they read and report, and [AllStyleChecks]
 	// for every code. They report habits that are valid GEDCOM, so each is
 	// off until listed. A code that names no style check is ignored, as
-	// SkipRules ignores codes it never sees. They run in
-	// [Validator.ValidateAll] and [Validator.Validate] only;
-	// [Validator.QualityReport] does not run them.
+	// SkipRules ignores codes it never sees. Strictness filters their
+	// issues like any other, so a check of SeverityInfo (see
+	// [AllStyleChecks]) reports nothing unless Strictness is
+	// StrictnessStrict. They run in [Validator.ValidateAll] and
+	// [Validator.Validate] only; [Validator.QualityReport] does not run them.
 	// Default: nil (no style checks).
 	StyleChecks []string
 

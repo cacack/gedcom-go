@@ -1951,8 +1951,9 @@ reads the raw level-1 NAME lines of INDI records, splitting the value with
 `gedcom.SplitPersonalName`, so `GIVN`/`SURN`/`NSFX` never mask what the value
 says, and reports at most once per NAME line, with the record as
 `RecordXRef`, the NAME line as `LineNumber` and the value under
-`Details["value"]`. The checks only report; choosing the spelling is the
-user's job. A record built in code without raw `Tags` is not checked, and
+`Details["value"]`. `Strictness` filters their issues like any other, so
+the Info checks report only at `StrictnessStrict`. The checks only report;
+choosing the spelling is the user's job. A record built in code without raw `Tags` is not checked, and
 `QualityReport` does not run them.
 
 | Error Code | Severity | Description |

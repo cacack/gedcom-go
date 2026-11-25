@@ -21,8 +21,9 @@ import (
 // line, with the individual as RecordXRef, the NAME line as LineNumber and
 // the NAME value under Details["value"]. A check is SeverityWarning when the
 // value holds something other than the name, and SeverityInfo when only its
-// form is off; none is SeverityError. A record with no raw Tags (one built in
-// code) is not checked.
+// form is off; none is SeverityError. Strictness filters them like any other
+// issue, so a SeverityInfo check reports only at StrictnessStrict. A record
+// with no raw Tags (one built in code) is not checked.
 const (
 	// CodeNameAllCaps indicates a given name or surname with a word of two
 	// or more letters all in capitals, such as "John /SMITH/". A single

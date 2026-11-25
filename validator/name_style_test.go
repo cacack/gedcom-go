@@ -2,6 +2,7 @@ package validator
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -256,5 +257,30 @@ func TestNameStyleUnknownCodeFinding(t *testing.T) {
 	}
 	if hasEdgePunctuation("") {
 		t.Error(`hasEdgePunctuation("") = true, want false`)
+	}
+}
+
+// TestNameStyleStrictness pins that Strictness filters style issues like any
+// other: at the default StrictnessNormal a listed Warning check reports and a
+// listed Info check does not; at StrictnessStrict both do.
+func TestNameStyleStrictness(t *testing.T) {
+	doc := styleDoc(t, `1 NAME John "Jack" /SMITH/`)
+	codes := []string{CodeNameAllCaps, CodeNameQuotesOrParens}
+	for _, tt := range []struct {
+		strictness Strictness
+		want       []string
+	}{
+		{StrictnessNormal, []string{CodeNameQuotesOrParens}},
+		{StrictnessStrict, []string{CodeNameAllCaps, CodeNameQuotesOrParens}},
+	} {
+		var got []string
+		for _, issue := range NewWithOptions(&ValidateOptions{Strictness: tt.strictness, StyleChecks: codes}).ValidateAll(doc) {
+			if slices.Contains(codes, issue.Code) {
+				got = append(got, issue.Code)
+			}
+		}
+		if !slices.Equal(got, tt.want) {
+			t.Errorf("Strictness %v: got %v, want %v", tt.strictness, got, tt.want)
+		}
 	}
 }
