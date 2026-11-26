@@ -13,7 +13,7 @@ Seven tasks, each a section below:
 | [Add a record](#adding-a-record) | `Document.FreeXRef`, `Document.AddRecord`, `Record.AddMediaLink`, `Document.AttachMedia` |
 | [See what changed](#seeing-what-changed) | `gedcom.Diff` |
 | [Combine two files](#combining-two-files) | `merge.Combine` |
-| [Merge duplicate records](#merging-duplicate-records) | `merge.Individuals`, `merge.Families`, `merge.RepeatedEvents`, `merge.FoldRepeatedEvents`, `merge.Sources`, `merge.Repositories` |
+| [Merge duplicate records](#merging-duplicate-records) | `merge.Individuals`, `merge.Families`, `merge.RepeatedEvents`, `merge.FoldRepeatedEvents`, `merge.RepeatedNames`, `merge.FoldRepeatedNames`, `merge.Sources`, `merge.Repositories` |
 | [Cut a branch and zip it back](#cutting-a-branch-and-zipping-it-back) | `Document.BoundedSubset`, `merge.ZipSharedXRefs` |
 
 Two rules hold throughout:
@@ -511,6 +511,29 @@ citations, notes and other lines of the rest; `report.Folded` lists each
 structure removed with its record's XRef. Records with no group keep their
 lines, so a layout-preserving encode writes them unchanged. Folding the
 result again folds nothing. The input is not modified.
+
+### Names Recorded Twice in One Individual
+
+An import or a merge also leaves one person with two `NAME` lines that say
+the same thing, often with different citations under each.
+`merge.RepeatedNames` reports them and `merge.FoldRepeatedNames` folds them:
+
+```go
+for _, g := range merge.RepeatedNames(doc) {
+    fmt.Printf("%s: %q recorded %d times\n", g.XRef, g.Members[0].Tags[0].Value, len(g.Members))
+}
+folded, report, err := merge.FoldRepeatedNames(doc)
+```
+
+Two names are the same when their values are, by `gedcom.SamePersonalName`
+(the same words in the same order, ignoring case, spacing, punctuation and
+the surname slashes, so "John /Smith/ Jr." and "john  smith, jr" match),
+both or neither have a `TYPE`, and each `TYPE` and name piece (`GIVN`,
+`SURN`, `NSFX` and the rest) that both have is written identically. A piece
+only one has moves over. Each group folds into its first name as
+`merge.FoldSubstructure` folds, so a citation both hold line for line is
+kept once. As for events, records with no group keep their lines, folding
+again folds nothing, and the input is not modified.
 
 ### Sources and Repositories
 

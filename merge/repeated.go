@@ -3,6 +3,7 @@ package merge
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -23,10 +24,11 @@ type EventGroup struct {
 	Members []Substructure
 }
 
-// FoldReport describes what FoldRepeatedEvents did.
+// FoldReport describes what FoldRepeatedEvents or FoldRepeatedNames did.
 type FoldReport struct {
 	// Folded lists one fold per substructure removed, in the order of
-	// RepeatedEvents' groups and of their members. Fold.Drop is the member
+	// RepeatedEvents' groups (RepeatedNames' for FoldRepeatedNames) and of
+	// their members. Fold.Drop is the member
 	// removed and Fold.Into the group's first member after every fold into
 	// it, both with the tags of the folded document.
 	Folded []RecordFold
@@ -60,8 +62,8 @@ func RepeatedEvents(doc *gedcom.Document, xrefs ...string) []EventGroup {
 		return nil
 	}
 	var groups []EventGroup
-	for _, r := range foldTargets(doc, xrefs) {
-		_, repeats := foldRecord(doc.Header, r)
+	for _, r := range foldTargets(doc, eventScope, xrefs) {
+		_, repeats := foldEvents(doc.Header, r)
 		for _, rep := range repeats {
 			groups = append(groups, EventGroup{XRef: r.XRef, Members: rep.members})
 		}
@@ -92,17 +94,24 @@ func RepeatedEvents(doc *gedcom.Document, xrefs ...string) []EventGroup {
 // that is not an individual or a family, or has no raw Tags, returns one
 // wrapping ErrInvalidMerge.
 func FoldRepeatedEvents(doc *gedcom.Document, xrefs ...string) (*gedcom.Document, *FoldReport, error) {
+	return foldRepeated(doc, eventScope, xrefs, foldEvents)
+}
+
+// foldRepeated returns a copy of doc with each record in scope, only those
+// xrefs names when it names any, folded by fold, and the report of what it
+// folded, as FoldRepeatedEvents and FoldRepeatedNames do.
+func foldRepeated(doc *gedcom.Document, scope foldScope, xrefs []string, fold func(*gedcom.Header, *gedcom.Record) ([]*node, []*repeat)) (*gedcom.Document, *FoldReport, error) {
 	if doc == nil {
 		return nil, nil, errmark.Mark(ErrNilDocument, errors.New("merge: doc is nil"))
 	}
-	if err := checkFoldTargets(doc, xrefs); err != nil {
+	if err := checkFoldTargets(doc, scope, xrefs); err != nil {
 		return nil, nil, err
 	}
 	out := doc.Clone()
 	report := &FoldReport{}
 	var changed []*gedcom.Record
-	for _, r := range foldTargets(out, xrefs) {
-		kept, repeats := foldRecord(out.Header, r)
+	for _, r := range foldTargets(out, scope, xrefs) {
+		kept, repeats := fold(out.Header, r)
 		if len(repeats) == 0 {
 			continue
 		}
@@ -119,9 +128,21 @@ func FoldRepeatedEvents(doc *gedcom.Document, xrefs ...string) (*gedcom.Document
 	return out, report, nil
 }
 
-// checkFoldTargets reports why xrefs cannot be folded in doc, or nil when
-// they can. Of several XRefs that cannot, it reports the first in xrefs.
-func checkFoldTargets(doc *gedcom.Document, xrefs []string) error {
+// foldScope is the record types a fold applies to.
+type foldScope struct {
+	types []gedcom.RecordType
+	noun  string // the types, for an error: "an individual or family"
+}
+
+var (
+	eventScope = foldScope{types: []gedcom.RecordType{gedcom.RecordTypeIndividual, gedcom.RecordTypeFamily}, noun: "an individual or family"}
+	nameScope  = foldScope{types: []gedcom.RecordType{gedcom.RecordTypeIndividual}, noun: "an individual"}
+)
+
+// checkFoldTargets reports why xrefs cannot be folded in doc under scope,
+// or nil when they can. Of several XRefs that cannot, it reports the first
+// in xrefs.
+func checkFoldTargets(doc *gedcom.Document, scope foldScope, xrefs []string) error {
 	if len(xrefs) == 0 {
 		return nil
 	}
@@ -144,8 +165,8 @@ func checkFoldTargets(doc *gedcom.Document, xrefs []string) error {
 		if errs[r.XRef] != nil {
 			continue
 		}
-		if r.Type != gedcom.RecordTypeIndividual && r.Type != gedcom.RecordTypeFamily {
-			errs[r.XRef] = fmt.Errorf("merge: %q is not an individual or family record: %w", r.XRef, ErrInvalidMerge)
+		if !slices.Contains(scope.types, r.Type) {
+			errs[r.XRef] = fmt.Errorf("merge: %q is not %s record: %w", r.XRef, scope.noun, ErrInvalidMerge)
 		} else if len(r.Tags) == 0 {
 			errs[r.XRef] = fmt.Errorf("merge: %q has no raw Tags: %w", r.XRef, ErrInvalidMerge)
 		}
@@ -158,9 +179,9 @@ func checkFoldTargets(doc *gedcom.Document, xrefs []string) error {
 	return nil
 }
 
-// foldTargets returns doc's individual and family records with raw Tags,
-// only those xrefs names when it names any, in document order.
-func foldTargets(doc *gedcom.Document, xrefs []string) []*gedcom.Record {
+// foldTargets returns doc's records in scope with raw Tags, only those
+// xrefs names when it names any, in document order.
+func foldTargets(doc *gedcom.Document, scope foldScope, xrefs []string) []*gedcom.Record {
 	var named map[string]bool
 	if len(xrefs) > 0 {
 		named = make(map[string]bool, len(xrefs))
@@ -170,7 +191,7 @@ func foldTargets(doc *gedcom.Document, xrefs []string) []*gedcom.Record {
 	}
 	var out []*gedcom.Record
 	for _, r := range doc.Records {
-		if r == nil || len(r.Tags) == 0 || (r.Type != gedcom.RecordTypeIndividual && r.Type != gedcom.RecordTypeFamily) {
+		if r == nil || len(r.Tags) == 0 || !slices.Contains(scope.types, r.Type) {
 			continue
 		}
 		if named != nil && !named[r.XRef] {
@@ -181,22 +202,30 @@ func foldTargets(doc *gedcom.Document, xrefs []string) []*gedcom.Record {
 	return out
 }
 
-// repeat is one group of substructures recording the same event.
+// repeat is one group of substructures a fold found the same.
 type repeat struct {
 	into    *node          // the first member, every later one folded in
 	members []Substructure // each member's lines as they were
 }
 
-// foldRecord folds each level-1 substructure of r into the first earlier
-// one left that records the same event (folder.match, foldEvent) and
-// returns the substructures left and the groups folded, in order of first
-// member. Only the tree is changed: r's Tags and the tags in them are not.
-func foldRecord(header *gedcom.Header, r *gedcom.Record) ([]*node, []*repeat) {
+// foldEvents folds each level-1 substructure of r into the first earlier
+// one left that records the same event (folder.match, foldEvent), as
+// foldRecord does.
+func foldEvents(header *gedcom.Header, r *gedcom.Record) ([]*node, []*repeat) {
 	f := &folder{header: header, typ: r.Type}
+	return foldRecord(r, f.match, foldEvent)
+}
+
+// foldRecord folds each level-1 substructure of r into the first earlier
+// one left that match finds (its index in kept, or -1 for none), by fold,
+// and returns the substructures left and the groups folded, in order of
+// first member. Only the tree is changed: r's Tags and the tags in them are
+// not.
+func foldRecord(r *gedcom.Record, match func(kept []*node, n *node) int, fold func(k, d *node)) ([]*node, []*repeat) {
 	var kept []*node
 	byInto := map[*node]*repeat{}
 	for _, n := range buildTree(r.Tags) {
-		i := f.match(kept, n)
+		i := match(kept, n)
 		if i < 0 {
 			kept = append(kept, n)
 			continue
@@ -207,7 +236,7 @@ func foldRecord(header *gedcom.Header, r *gedcom.Record) ([]*node, []*repeat) {
 			byInto[kept[i]] = rep
 		}
 		rep.members = append(rep.members, Substructure{Tags: flatten([]*node{n}, nil)})
-		foldEvent(kept[i], n)
+		fold(kept[i], n)
 	}
 	ordered := make([]*repeat, 0, len(byInto))
 	for _, k := range kept {

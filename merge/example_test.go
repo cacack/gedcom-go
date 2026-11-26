@@ -222,6 +222,48 @@ func ExampleFoldRepeatedEvents() {
 	// 2 NOTE Family bible.
 }
 
+// ExampleFoldRepeatedNames reports a name recorded twice in one record,
+// written two ways, then folds the second into the first: each citation
+// survives.
+func ExampleFoldRepeatedNames() {
+	doc, err := decoder.Decode(strings.NewReader(`0 HEAD
+1 GEDC
+2 VERS 5.5.1
+0 @S1@ SOUR
+1 TITL Census
+0 @S2@ SOUR
+1 TITL Bible
+0 @I1@ INDI
+1 NAME John /Smith/ Jr.
+2 SOUR @S1@
+1 NAME john  smith, jr
+2 SOUR @S2@
+0 TRLR
+`))
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+
+	for _, g := range merge.RepeatedNames(doc) {
+		fmt.Println("repeated:", g.XRef, g.Members[0].Tags[0].Value, len(g.Members), "times")
+	}
+	out, _, err := merge.FoldRepeatedNames(doc)
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+	for _, t := range out.GetRecord("@I1@").Tags {
+		fmt.Println(t.Level, t.Tag, t.Value)
+	}
+
+	// Output:
+	// repeated: @I1@ John /Smith/ Jr. 2 times
+	// 1 NAME John /Smith/ Jr.
+	// 2 SOUR @S1@
+	// 2 SOUR @S2@
+}
+
 // ExampleFoldSubstructure folds a person's repeated name into the first:
 // the nickname and the second citation move, and the citation both names
 // hold is kept once.
