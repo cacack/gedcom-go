@@ -309,7 +309,7 @@ func (v *Validator) Validate(doc *gedcom.Document) []error {
 // [Validator.ValidateAll] and [QualityAnalyzer.Analyze], so a check added here
 // reaches both: raw pointers, duplicate XRefs, nil elements (which only a
 // hand-built document holds), date validity (dates that do not exist, e.g.
-// 31 FEB), XRef length and note pointers. The record-structure heuristics are
+// 31 FEB, or do not parse), XRef length and note pointers. The record-structure heuristics are
 // not conformance checks; both callers run validateRecordStructure themselves.
 //
 // The nil-element walk, the costliest of them, stops early once ctx is done.
@@ -464,8 +464,10 @@ func (v *Validator) checks(ctx context.Context, doc *gedcom.Document, limitIssue
 // ValidateDateLogic runs date logic validation and returns any issues found.
 // This checks for chronological impossibilities like death before birth,
 // children born before parents, and unreasonable ages. Dates that do not
-// exist on the calendar, such as 31 FEB 1900 (CodeInvalidDate), are reported
-// only by [Validator.ValidateAll] and [Validator.QualityReport].
+// exist on the calendar, such as 31 FEB 1900, or are not dates at all
+// (CodeInvalidDate), are reported only by [Validator.ValidateAll],
+// [Validator.Validate], [Validator.QualityReport] and
+// [StreamingValidator.ValidateRecord].
 func (v *Validator) ValidateDateLogic(doc *gedcom.Document) []Issue {
 	if doc == nil {
 		return nil

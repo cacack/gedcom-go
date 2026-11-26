@@ -37,8 +37,8 @@ var ErrNotRecords = errors.New("not a records-only fragment")
 // XRef earlier in the fragment is reported and kept; one redefining an XRef
 // of doc is not this function's to judge, and AddRecord rejects it.
 //
-// The records are new to doc: their LineNumber, and that of every tag, is 0,
-// as for a record built in code. Fragment line numbers would otherwise name
+// The records are new to doc: their LineNumber, and that of every tag, event
+// and attribute, is 0, as for a record built in code. Fragment line numbers would otherwise name
 // lines of doc's source, and an encode preserving doc's layout
 // (encoder.EncodeOptions.PreserveLayout) would borrow those lines' layout
 // for the new records and take it from the records that own them.
@@ -62,8 +62,29 @@ func DecodeRecords(r io.Reader, doc *gedcom.Document, opts *DecodeOptions) ([]*g
 		for _, tag := range record.Tags {
 			tag.LineNumber = 0
 		}
+		clearEntityLineNumbers(record.Entity)
 	}
 	return records, res.Diagnostics, err
+}
+
+// clearEntityLineNumbers sets to 0 the LineNumber of each event and
+// attribute of an individual or family entity, as DecodeRecords does for
+// its records' tags.
+func clearEntityLineNumbers(entity any) {
+	var events []*gedcom.Event
+	var attributes []*gedcom.Attribute
+	switch e := entity.(type) {
+	case *gedcom.Individual:
+		events, attributes = e.Events, e.Attributes
+	case *gedcom.Family:
+		events, attributes = e.Events, e.Attributes
+	}
+	for _, event := range events {
+		event.LineNumber = 0
+	}
+	for _, attr := range attributes {
+		attr.LineNumber = 0
+	}
 }
 
 // fragmentReader returns the reader DecodeRecords and DecodeHeader read a

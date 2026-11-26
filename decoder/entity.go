@@ -1118,7 +1118,8 @@ func parseDateValue(tags []*gedcom.Tag, i int, collector *diagnosticCollector) *
 // policy SI-004).
 func parseEvent(tags []*gedcom.Tag, eventIdx int, eventTag string, owner detailOwner, collector *diagnosticCollector) *gedcom.Event {
 	event := &gedcom.Event{
-		Type: gedcom.EventType(eventTag),
+		Type:       gedcom.EventType(eventTag),
+		LineNumber: tags[eventIdx].LineNumber,
 	}
 
 	// The event line's own payload, with its CONT/CONC lines folded in, is
@@ -1334,8 +1335,9 @@ func validateCoordinate(tag *gedcom.Tag, parse func(string) (float64, error), co
 // parseAttribute extracts an attribute from tags starting at attrIdx.
 func parseAttribute(tags []*gedcom.Tag, attrIdx int, attrTag string, owner detailOwner, collector *diagnosticCollector) *gedcom.Attribute {
 	attr := &gedcom.Attribute{
-		Type:  gedcom.AttributeType(attrTag),
-		Value: collector.text(foldedValue(tags, attrIdx)),
+		Type:       gedcom.AttributeType(attrTag),
+		Value:      collector.text(foldedValue(tags, attrIdx)),
+		LineNumber: tags[attrIdx].LineNumber,
 	}
 
 	baseLevel := tags[attrIdx].Level

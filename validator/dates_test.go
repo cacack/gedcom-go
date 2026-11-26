@@ -1,6 +1,9 @@
 package validator
 
 import (
+	"errors"
+	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -106,13 +109,158 @@ func TestInvalidDateNotReported(t *testing.T) {
 		"BET 15 JAN 1850 AND JAN 1850",
 		"1 JAN 1699/00",
 		"(sometime in spring)",
-		"not a date at all",
 	} {
 		t.Run(date, func(t *testing.T) {
 			if got := invalidDateIssues(t, "1 BIRT", "2 DATE "+date); len(got) != 0 {
 				t.Errorf("INVALID_DATE issues = %v, want none", got)
 			}
 		})
+	}
+}
+
+// TestUnparseableDateReported pins issue #966: with default options, a
+// non-empty DATE that gedcom.ParseDate rejects is reported as INVALID_DATE,
+// with the value as written, wherever the DATE sits; an empty DATE, which 7.0
+// permits beside a PHRASE, is not.
+func TestUnparseableDateReported(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     []string
+		wantTag  string
+		wantPath string
+		wantLine int
+		value    string
+	}{
+		{"garbage", []string{"1 BIRT", "2 DATE FOO BAR"}, "BIRT", "BIRT.DATE", 8, "FOO BAR"},
+		{"BCE on Hebrew", []string{"1 BIRT", "2 DATE HEBREW 5000 BCE"}, "BIRT", "BIRT.DATE", 8, "HEBREW 5000 BCE"},
+		{"day zero", []string{"1 DEAT", "2 DATE 0 JAN 1850"}, "DEAT", "DEAT.DATE", 8, "0 JAN 1850"},
+		{"English", []string{"1 BIRT", "2 DATE June 1880"}, "BIRT", "BIRT.DATE", 8, "June 1880"},
+		{"with PHRASE", []string{"1 BIRT", "2 DATE FOO", "3 PHRASE spring"}, "BIRT", "BIRT.DATE", 8, "FOO"},
+		{"attribute", []string{"1 OCCU Smith", "2 DATE summer"}, "OCCU", "OCCU.DATE", 8, "summer"},
+		{"nested citation", []string{"1 BIRT", "2 SOUR @S1@", "3 DATA", "4 DATE nope"}, "DATA", "BIRT.SOUR.DATA.DATE", 10, "nope"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := invalidDateIssues(t, tt.body...)
+			if len(got) != 1 {
+				t.Fatalf("INVALID_DATE issues = %v, want exactly one", got)
+			}
+			issue := got[0]
+			if issue.Severity != SeverityWarning || issue.RecordXRef != "@I1@" || issue.LineNumber != tt.wantLine {
+				t.Errorf("issue = %v, want a WARNING on @I1@ line %d", issue, tt.wantLine)
+			}
+			if issue.Details["tag"] != tt.wantTag || issue.Details["path"] != tt.wantPath || issue.Details["value"] != tt.value {
+				t.Errorf("Details = %v, want tag %q, path %q, value %q", issue.Details, tt.wantTag, tt.wantPath, tt.value)
+			}
+			if !strings.Contains(issue.Message, "is not a GEDCOM date") {
+				t.Errorf("Message = %q, want it to say the value is not a GEDCOM date", issue.Message)
+			}
+		})
+	}
+	for _, body := range [][]string{
+		{"1 BIRT", "2 DATE"},
+		{"1 BIRT", "2 DATE", "3 PHRASE spring"},
+		// Extension calendars, months and epochs are dates (ADR 0014)
+		{"1 BIRT", "2 DATE BET FRENCH_R 2 _JOUR 8 AND _CALENDRIER 4 COMP 8"},
+		{"1 DEAT", "2 DATE _CALENDAR 8 _MONTH 190 _EPOCH"},
+		{"1 BIRT", "2 DATE 31 FEB 2000 _AD"},
+	} {
+		if got := invalidDateIssues(t, body...); len(got) != 0 {
+			t.Errorf("%v: INVALID_DATE issues = %v, want none", body, got)
+		}
+	}
+}
+
+// TestUnparseableDateTypedEntity pins that a record built in code with a Date
+// string but no ParsedDate has the string checked, as the encoder writes it.
+func TestUnparseableDateTypedEntity(t *testing.T) {
+	ind := &gedcom.Individual{
+		XRef: "@I1@",
+		Events: []*gedcom.Event{
+			{Type: gedcom.EventBirth, Date: "FOO BAR"},
+			{Type: gedcom.EventDeath, Date: "31 FEB 1900"},
+			{Type: gedcom.EventBurial, Date: "1 MAR 1900"},
+			{Type: gedcom.EventChristening},
+		},
+	}
+	doc := &gedcom.Document{
+		Header:  &gedcom.Header{Date: "not a date"},
+		Records: []*gedcom.Record{{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: ind}},
+	}
+	got := validateDates(doc)
+	want := []struct{ xref, tag, value string }{
+		{"", "HEAD", "not a date"}, {"@I1@", "BIRT", "FOO BAR"}, {"@I1@", "DEAT", "31 FEB 1900"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("issues = %v, want %d", got, len(want))
+	}
+	for i, w := range want {
+		if got[i].RecordXRef != w.xref || got[i].Details["tag"] != w.tag || got[i].Details["value"] != w.value {
+			t.Errorf("issue %d = %v, want %s %s %q", i, got[i], w.xref, w.tag, w.value)
+		}
+	}
+}
+
+// TestDateIssuesAgreeAcrossValidators pins issue #966: Validate, ValidateAll
+// and the StreamingValidator report the same INVALID_DATE issues, for a date
+// that does not parse and for one that does not exist, on any record type.
+func TestDateIssuesAgreeAcrossValidators(t *testing.T) {
+	doc, err := decoder.Decode(strings.NewReader(strings.Join([]string{
+		"0 HEAD",
+		"1 GEDC",
+		"2 VERS 5.5.1",
+		"1 CHAR UTF-8",
+		"0 @I1@ INDI",
+		"1 BIRT",
+		"2 DATE FOO BAR",
+		"1 DEAT",
+		"2 DATE 32 JAN 1900",
+		"0 @F1@ FAM",
+		"1 MARR",
+		"2 DATE HEBREW 5000 BCE",
+		"0 @S1@ SOUR",
+		"1 DATA",
+		"2 EVEN BIRT",
+		"3 DATE whenever",
+		"0 TRLR",
+	}, "\n") + "\n"))
+	if err != nil {
+		t.Fatalf("Decode() error = %v", err)
+	}
+	key := func(i Issue) string {
+		return fmt.Sprintf("%s line %d %s %q: %s", i.RecordXRef, i.LineNumber, i.Details["path"], i.Details["value"], i.Message)
+	}
+	keys := func(issues []Issue) []string {
+		var out []string
+		for _, i := range FilterByCode(issues, CodeInvalidDate) {
+			out = append(out, key(i))
+		}
+		return out
+	}
+
+	all := keys(New().ValidateAll(doc))
+	var viaValidate []Issue
+	for _, err := range New().Validate(doc) {
+		var issue *Issue
+		if errors.As(err, &issue) {
+			viaValidate = append(viaValidate, *issue)
+		}
+	}
+	sv := NewStreamingValidator(StreamingOptions{})
+	var streamed []Issue
+	for _, record := range doc.Records {
+		streamed = append(streamed, sv.ValidateRecord(record)...)
+	}
+	streamed = append(streamed, sv.Finalize()...)
+
+	if len(all) != 4 {
+		t.Fatalf("ValidateAll INVALID_DATE = %v, want 4", all)
+	}
+	if got := keys(viaValidate); !slices.Equal(got, all) {
+		t.Errorf("Validate INVALID_DATE = %v, want %v", got, all)
+	}
+	if got := keys(streamed); !slices.Equal(got, all) {
+		t.Errorf("StreamingValidator INVALID_DATE = %v, want %v", got, all)
 	}
 }
 

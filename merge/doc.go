@@ -25,6 +25,8 @@
 //   - RepeatedEvents and FoldRepeatedEvents: find and fold the events
 //     one record holds twice, by the rule RecordMergeOptions.FoldEvents
 //     defines.
+//   - RepeatedNames and FoldRepeatedNames: the same for the personal names
+//     one individual holds twice, by gedcom.SamePersonalName.
 //   - FoldSubstructure: fold one substructure of a record into a sibling,
 //     in place, keeping each line's layout.
 //   - Sources and Repositories: the same for source and repository

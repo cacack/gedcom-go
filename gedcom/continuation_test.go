@@ -2,6 +2,7 @@ package gedcom_test
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -228,5 +229,25 @@ func TestSetFullValuePreservesLayout(t *testing.T) {
 	want := strings.Replace(continuedPlaceSource, oldLines, newLines, 1)
 	if got := out.String(); got != want {
 		t.Errorf("encoded:\n%q\nwant:\n%q", got, want)
+	}
+}
+
+// TestSetFullValueBoundsWholeLine checks that SetFullValue cuts a value so a
+// line with a long tag still fits 255 bytes, as the encoder does (#967).
+func TestSetFullValueBoundsWholeLine(t *testing.T) {
+	tag := &gedcom.Tag{Level: 1, Tag: "_" + strings.Repeat("T", 60)}
+	rec := &gedcom.Record{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Tags: []*gedcom.Tag{tag}}
+	value := strings.Repeat("Springfield ", 60)
+	rec.SetFullValue(tag, value, gedcom.Version551)
+	if len(rec.Tags) < 3 {
+		t.Fatalf("got %d tags, want the value split onto CONC lines", len(rec.Tags))
+	}
+	for _, c := range rec.Tags {
+		if n := len(strconv.Itoa(c.Level)) + 1 + len(c.Tag) + 1 + len(c.Value); n > 255 {
+			t.Errorf("%s line is %d bytes, want at most 255", c.Tag, n)
+		}
+	}
+	if rec.FullValue(tag) != value {
+		t.Error("FullValue does not read back the value set")
 	}
 }

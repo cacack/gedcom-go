@@ -648,11 +648,32 @@ func TestParseDate_GEDCOM7CalendarKeywords(t *testing.T) {
 			wantEndCal: CalendarHebrew, wantEndYear: 5785,
 		},
 		{
-			// The second date inherits the first date's calendar. This deviates
-			// from the 7.0 grammar, where an unmarked date is Gregorian.
+			// A calendar applies only to the date it precedes (#965), so the
+			// unmarked second date is Gregorian.
 			input: "BET JULIAN 1 JAN 1700 AND 1 JAN 1800", wantCal: CalendarJulian,
 			wantDay: 1, wantMonth: 1, wantYear: 1700, wantMod: ModifierBetween,
+			wantEndCal: CalendarGregorian, wantEndYear: 1800,
+		},
+		{
+			input: "FROM JULIAN 1 JAN 1700 TO 1 JAN 1800", wantCal: CalendarJulian,
+			wantDay: 1, wantMonth: 1, wantYear: 1700, wantMod: ModifierFromTo,
+			wantEndCal: CalendarGregorian, wantEndYear: 1800,
+		},
+		{
+			// JAN is not a Hebrew month, so the Gregorian end now parses.
+			input: "BET HEBREW 1 TSH 5000 AND 1 JAN 2000", wantCal: CalendarHebrew,
+			wantDay: 1, wantMonth: 1, wantYear: 5000, wantMod: ModifierBetween,
+			wantEndCal: CalendarGregorian, wantEndYear: 2000,
+		},
+		{
+			input: "BET JULIAN 1 JAN 1700 AND JULIAN 1 JAN 1800", wantCal: CalendarJulian,
+			wantDay: 1, wantMonth: 1, wantYear: 1700, wantMod: ModifierBetween,
 			wantEndCal: CalendarJulian, wantEndYear: 1800,
+		},
+		{
+			input: "FROM GREGORIAN 1 JAN 1700 TO FRENCH_R 1 VEND 1", wantCal: CalendarGregorian,
+			wantDay: 1, wantMonth: 1, wantYear: 1700, wantMod: ModifierFromTo,
+			wantEndCal: CalendarFrenchRepublican, wantEndYear: 1,
 		},
 	}
 
@@ -2125,12 +2146,12 @@ func TestParseDate_CalendarWithRanges(t *testing.T) {
 			wantModifier: ModifierBetween,
 		},
 		{
-			// Escape on the first date only: the second inherits it.
+			// Escape on the first date only: the second is Gregorian (#965).
 			name:         "escape on first date",
 			input:        "BET @#DJULIAN@ 1700 AND 1750",
 			wantCalendar: CalendarJulian,
 			wantYear:     1700,
-			wantEndCal:   CalendarJulian,
+			wantEndCal:   CalendarGregorian,
 			wantEndYear:  1750,
 			wantModifier: ModifierBetween,
 		},

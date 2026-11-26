@@ -41,11 +41,7 @@ func FoldSubstructure(r *gedcom.Record, keep, drop *gedcom.Tag) bool {
 	if k == nil || d == nil || keepParent != dropParent {
 		return false
 	}
-	for _, c := range d.children {
-		if !isContinuation(d, c) {
-			addMissing(k, c)
-		}
-	}
+	foldChildren(k, d)
 	if dropParent == nil {
 		roots = slices.DeleteFunc(roots, func(n *node) bool { return n == d })
 	} else {
@@ -53,6 +49,17 @@ func FoldSubstructure(r *gedcom.Record, keep, drop *gedcom.Tag) bool {
 	}
 	r.Tags = flatten(roots, nil)
 	return true
+}
+
+// foldChildren adds to k each line directly under d, with the lines
+// beneath it, that k does not hold identically, as FoldSubstructure folds
+// drop into keep. A CONT or CONC continuing d's value is not added.
+func foldChildren(k, d *node) {
+	for _, c := range d.children {
+		if !isContinuation(d, c) {
+			addMissing(k, c)
+		}
+	}
 }
 
 // locate returns found, the node that holds t among nodes and their

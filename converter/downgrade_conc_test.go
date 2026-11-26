@@ -208,3 +208,82 @@ func TestMaxValueLengthFloorsAtOne(t *testing.T) {
 		t.Errorf("empty value gave %d tags, want 1", len(tags))
 	}
 }
+
+// TestEncoderAndConverterShareLineBound feeds the encoder and the converter
+// the same records, a note and an individual with long XRefs and a long
+// attribute tag, and checks that neither writes a 5.x line over 255 bytes
+// (#967): both bound a value by the whole line, not the value alone (SI-008).
+func TestEncoderAndConverterShareLineBound(t *testing.T) {
+	noteXRef := "@N" + strings.Repeat("X", 60) + "@"
+	indiXRef := "@I" + strings.Repeat("Y", 60) + "@"
+	tag := gedcom.AttributeType("_" + strings.Repeat("T", 60))
+	text := longNoteText("Note")
+	value := longNoteText("Value")
+
+	build := func(v gedcom.Version) *gedcom.Document {
+		note := &gedcom.Record{XRef: noteXRef, Type: gedcom.RecordTypeNote,
+			Entity: &gedcom.Note{XRef: noteXRef, Text: text}}
+		if v == gedcom.Version70 {
+			note = &gedcom.Record{XRef: noteXRef, Type: gedcom.RecordTypeSharedNote,
+				Entity: &gedcom.SharedNote{XRef: noteXRef, Text: text}}
+		}
+		return &gedcom.Document{
+			Header: &gedcom.Header{Version: v},
+			Records: []*gedcom.Record{
+				note,
+				{XRef: indiXRef, Type: gedcom.RecordTypeIndividual, Entity: &gedcom.Individual{
+					XRef:       indiXRef,
+					Attributes: []*gedcom.Attribute{{Type: tag, Value: value}},
+				}},
+			},
+		}
+	}
+	encode := func(t *testing.T, doc *gedcom.Document) []byte {
+		t.Helper()
+		var out bytes.Buffer
+		if err := encoder.Encode(&out, doc); err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+		return out.Bytes()
+	}
+	check := func(t *testing.T, out []byte) {
+		t.Helper()
+		for i, line := range strings.Split(string(out), "\n") {
+			if len(line) > 255 {
+				t.Errorf("line %d is %d bytes, want at most 255: %.70q...", i+1, len(line), line)
+			}
+		}
+		if conc, _ := countContinuations(string(out)); conc == 0 {
+			t.Error("output has no CONC lines, want the long values split")
+		}
+		doc, err := decoder.Decode(bytes.NewReader(out))
+		if err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if got := doc.GetNote(noteXRef); got == nil || got.Text != text {
+			t.Errorf("note text did not survive the split")
+		}
+		record := doc.XRefMap[indiXRef]
+		if record == nil || len(record.Tags) == 0 {
+			t.Fatalf("individual %s not decoded with its tags", indiXRef)
+		}
+		if got := record.FullValue(record.Tags[0]); record.Tags[0].Tag != string(tag) || got != value {
+			t.Errorf("attribute value did not survive the split: %s %.40q", record.Tags[0].Tag, got)
+		}
+	}
+
+	t.Run("encoder", func(t *testing.T) {
+		check(t, encode(t, build(gedcom.Version551)))
+	})
+	t.Run("converter", func(t *testing.T) {
+		doc, err := decoder.Decode(bytes.NewReader(encode(t, build(gedcom.Version70))))
+		if err != nil {
+			t.Fatalf("decode 7.0: %v", err)
+		}
+		converted, _, err := Convert(doc, gedcom.Version551)
+		if err != nil {
+			t.Fatalf("convert: %v", err)
+		}
+		check(t, encode(t, converted))
+	})
+}

@@ -87,7 +87,9 @@ between the typical and worst cases;
 Validation, conversion, encoding and merging work on a decoded `Document`, so
 their memory follows the document's; give them a `Context` deadline.
 `merge.FoldRepeatedEvents` and `merge.RepeatedEvents` compare same-tag events
-pairwise, so their cost is quadratic in one record's same-tag events.
+pairwise, so their cost is quadratic in one record's same-tag events;
+`merge.FoldRepeatedNames` and `merge.RepeatedNames` likewise in one
+individual's names.
 
 ## Sizing `io.LimitReader`
 

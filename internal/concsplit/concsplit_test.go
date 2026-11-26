@@ -146,3 +146,32 @@ func TestFold(t *testing.T) {
 		})
 	}
 }
+
+// TestValueLength checks the whole-line bound: a value fills what 255 bytes
+// leave after the longer of its own line's prefix and its CONC line's, capped
+// at limit and never below 1 (#967).
+func TestValueLength(t *testing.T) {
+	long := "_" + strings.Repeat("T", 300)
+	tests := []struct {
+		name      string
+		limit     int
+		level     int
+		xref, tag string
+		want      int
+	}{
+		{"short line keeps the limit", MaxValueLength, 1, "", "NOTE", 248},
+		{"record xref lowers it", MaxValueLength, 0, "@N1@", "NOTE", 243},
+		{"long tag lowers it", MaxValueLength, 1, "", "_" + strings.Repeat("T", 60), 255 - 64},
+		{"limit above the room is cut to the room", 1000, 0, "@N1@", "NOTE", 243},
+		{"limit below the room stays", 100, 0, "@N1@", "NOTE", 100},
+		{"deep CONC line bounds it", MaxValueLength, 99, "", "N", 255 - len("100 CONC ")},
+		{"prefix filling the line leaves 1", MaxValueLength, 1, "", long, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ValueLength(tt.limit, tt.level, tt.xref, tt.tag, tt.level+1); got != tt.want {
+				t.Errorf("ValueLength = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}

@@ -138,3 +138,100 @@ func TestEncode5xCONCSplitsBetweenNonSpaces(t *testing.T) {
 		})
 	}
 }
+
+// TestEncode5xBoundsWholeLine checks that a 5.x value is cut so the whole line,
+// level, XRef and tag included, fits 255 bytes, whatever MaxLineLength allows
+// the value alone (#967, SI-008).
+func TestEncode5xBoundsWholeLine(t *testing.T) {
+	xref := "@N" + strings.Repeat("X", 80) + "@"
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version551},
+		Records: []*gedcom.Record{{
+			XRef: xref, Type: gedcom.RecordTypeNote,
+			Entity: &gedcom.Note{XRef: xref, Text: longNoteText},
+		}},
+	}
+	for _, maxLen := range []int{0, 248, 1000} {
+		var buf bytes.Buffer
+		if err := EncodeWithOptions(&buf, doc, &EncodeOptions{MaxLineLength: maxLen}); err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+		lines := strings.Split(buf.String(), "\n")
+		first := ""
+		for _, line := range lines {
+			if len(line) > 255 {
+				t.Errorf("MaxLineLength %d: line is %d bytes, want at most 255: %.60q", maxLen, len(line), line)
+			}
+			if strings.HasPrefix(line, "0 "+xref) {
+				first = line
+			}
+		}
+		if len(first) < 250 {
+			t.Errorf("MaxLineLength %d: record line is %d bytes, want it filled close to 255", maxLen, len(first))
+		}
+		decoded, err := decoder.Decode(strings.NewReader(buf.String()))
+		if err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if got := decoded.GetNote(xref); got == nil || got.Text != longNoteText {
+			t.Errorf("MaxLineLength %d: note does not round-trip", maxLen)
+		}
+	}
+}
+
+// TestEncode5xBoundsTypedFields checks that the 255-byte whole-line bound
+// reaches the typed fields GEDCOM 5.x continues with CONC and the decoder
+// reads back folded: a source's TITL, AUTH and PUBL and a citation's PAGE
+// (#967, SI-008). A field 5.x gives no CONC (NAME, PLAC, TYPE, CAUS) is left
+// on one line, since a CONC there would not read back into the field.
+func TestEncode5xBoundsTypedFields(t *testing.T) {
+	long := func(word string) string { return strings.Repeat(word+" text. ", 35) }
+	src := &gedcom.Source{XRef: "@S1@", Title: long("Title"), Author: long("Author"), Publication: long("Publication")}
+	event := &gedcom.Event{
+		Type:            gedcom.EventBirth,
+		Cause:           long("Cause"),
+		PlaceDetail:     &gedcom.PlaceDetail{Name: long("Place")},
+		SourceCitations: []*gedcom.SourceCitation{{SourceXRef: "@S1@", Page: long("Page")}},
+	}
+	indi := &gedcom.Individual{XRef: "@I1@", Events: []*gedcom.Event{event}}
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version551},
+		Records: []*gedcom.Record{
+			{XRef: "@S1@", Type: gedcom.RecordTypeSource, Entity: src},
+			{XRef: "@I1@", Type: gedcom.RecordTypeIndividual, Entity: indi},
+		},
+	}
+	var buf bytes.Buffer
+	if err := Encode(&buf, doc); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	for _, line := range strings.Split(buf.String(), "\n") {
+		tag := strings.Fields(line + " x x")[1]
+		if long := len(line) > 255; long != (tag == "PLAC" || tag == "CAUS") {
+			t.Errorf("%s line is %d bytes; want over 255 only for PLAC and CAUS", tag, len(line))
+		}
+	}
+
+	decoded, err := decoder.Decode(strings.NewReader(buf.String()))
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	gotSrc, gotIndi := decoded.GetSource("@S1@"), decoded.GetIndividual("@I1@")
+	if gotSrc == nil || gotIndi == nil || len(gotIndi.Events) == 0 ||
+		gotIndi.Events[0].PlaceDetail == nil || len(gotIndi.Events[0].SourceCitations) == 0 {
+		t.Fatalf("re-decoded document lost its records\n%s", buf.String())
+	}
+	gotEvent := gotIndi.Events[0]
+	for _, c := range []struct{ field, got, want string }{
+		{"TITL", gotSrc.Title, src.Title},
+		{"AUTH", gotSrc.Author, src.Author},
+		{"PUBL", gotSrc.Publication, src.Publication},
+		{"PAGE", gotEvent.SourceCitations[0].Page, event.SourceCitations[0].Page},
+		{"CAUS", gotEvent.Cause, event.Cause},
+		{"PLAC", gotEvent.PlaceDetail.Name, event.PlaceDetail.Name},
+	} {
+		if c.got != c.want {
+			t.Errorf("%s did not round-trip: got %.40q (%d bytes), want %d bytes", c.field, c.got, len(c.got), len(c.want))
+		}
+	}
+}

@@ -176,12 +176,7 @@ func continuesParent(tags []*Tag, i, parent int) bool {
 }
 
 // parentIndex returns the index of the parent of tags[i], the nearest
-// earlier tag at a shallower level, or -1 when it has none.
+// earlier tag at a shallower level (SI-023), or -1 when it has none.
 func parentIndex(tags []*Tag, i int) int {
-	for j := i - 1; j >= 0; j-- {
-		if tags[j] != nil && tags[j].Level < tags[i].Level {
-			return j
-		}
-	}
-	return -1
+	return tagParents(tags)[i]
 }

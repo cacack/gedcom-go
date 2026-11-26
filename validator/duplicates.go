@@ -1699,9 +1699,10 @@ func resizeInts(buf []int, n int) []int {
 // Julian 11 FEB 1731/32 is one year from Julian 1732 but the same year as
 // Gregorian 1732. ok is false, and the dates earn no credit, when either is
 // missing, has no real year (a phrase, "0", "0 BC", a negative year) or its
-// year cannot be placed.
+// year cannot be placed, as a year on an extension calendar, month or epoch
+// cannot (gedcom.Date.HasExtension).
 func yearsApart(d1, d2 *gedcom.Date) (years int, ok bool) {
-	if d1 == nil || d2 == nil || !hasRealYear(d1) || !hasRealYear(d2) {
+	if d1 == nil || d2 == nil || !hasRealYear(d1) || !hasRealYear(d2) || d1.HasExtension() || d2.HasExtension() {
 		return 0, false
 	}
 	if d1.Calendar == d2.Calendar {

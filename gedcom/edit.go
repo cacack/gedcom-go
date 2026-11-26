@@ -168,20 +168,23 @@ func (d *Document) referencesTo(xref string) []Reference {
 
 // appendTagReferences appends to refs each tag in tags whose value is xref,
 // with the tag path to it from the level-0 tag root. A tag's parent is the
-// nearest earlier tag one level shallower, as for Record.FindAll; a tag whose
-// level skips past its parent's child level is placed under the deepest
-// tag open.
+// nearest earlier tag at a shallower level, as for Record.FindAll (SI-023),
+// so a tag whose level skips past its parent's child level is placed under
+// that parent. A tag below level 1 is not reported.
 func appendTagReferences(refs []Reference, owner, root string, tags []*Tag, xref string) []Reference {
-	path := []string{root}
-	for _, t := range tags {
-		if t == nil || t.Level < 1 {
+	parents := tagParents(tags)
+	depth := make([]int, len(tags)) // each tag's index in path
+	path := []string{root}          // root, then the previous tag's ancestors and itself
+	for i, t := range tags {
+		if t == nil {
 			continue
 		}
-		if depth := t.Level; depth < len(path) {
-			path = path[:depth]
+		depth[i] = 1
+		if p := parents[i]; p >= 0 {
+			depth[i] = depth[p] + 1
 		}
-		path = append(path, t.Tag)
-		if t.Value == xref {
+		path = append(path[:depth[i]], t.Tag)
+		if t.Level >= 1 && t.Value == xref {
 			refs = append(refs, Reference{XRef: owner, Path: append([]string(nil), path...)})
 		}
 	}

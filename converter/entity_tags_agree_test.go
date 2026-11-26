@@ -16,8 +16,8 @@ import (
 )
 
 // entityDiffs appends to diffs the path of every exported field where a and b
-// differ, skipping Tags fields: those hold raw lines whose line numbers change
-// on a re-decode, and the comparison is of the typed view.
+// differ, skipping Tags and LineNumber fields: those hold raw lines and line
+// numbers that change on a re-decode, and the comparison is of the typed view.
 func entityDiffs(a, b reflect.Value, path string, diffs *[]string) {
 	if !a.IsValid() || !b.IsValid() { // a nil Entity: a record type with none
 		if a.IsValid() != b.IsValid() {
@@ -37,7 +37,7 @@ func entityDiffs(a, b reflect.Value, path string, diffs *[]string) {
 	if a.Kind() == reflect.Struct {
 		for i := 0; i < a.NumField(); i++ {
 			f := a.Type().Field(i)
-			if f.IsExported() && f.Name != "Tags" {
+			if f.IsExported() && f.Name != "Tags" && f.Name != "LineNumber" {
 				entityDiffs(a.Field(i), b.Field(i), path+"."+f.Name, diffs)
 			}
 		}

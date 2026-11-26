@@ -742,6 +742,7 @@ func cloneEvent(e *Event) *Event {
 		Email:                cloneStringSlice(e.Email),
 		Fax:                  cloneStringSlice(e.Fax),
 		Website:              cloneStringSlice(e.Website),
+		LineNumber:           e.LineNumber,
 	}
 
 	copied.ParsedDate = cloneDate(e.ParsedDate)
@@ -801,6 +802,7 @@ func cloneAttribute(a *Attribute) *Attribute {
 		Email:                cloneStringSlice(a.Email),
 		Fax:                  cloneStringSlice(a.Fax),
 		Website:              cloneStringSlice(a.Website),
+		LineNumber:           a.LineNumber,
 		ParsedDate:           cloneDate(a.ParsedDate),
 		PlaceDetail:          clonePlaceDetail(a.PlaceDetail),
 		Address:              cloneAddress(a.Address),
@@ -842,6 +844,9 @@ func cloneDate(d *Date) *Date {
 		Year:            d.Year,
 		Modifier:        d.Modifier,
 		Calendar:        d.Calendar,
+		CalendarTag:     d.CalendarTag,
+		MonthTag:        d.MonthTag,
+		EpochTag:        d.EpochTag,
 		IsBC:            d.IsBC,
 		DualYear:        d.DualYear,
 		Phrase:          d.Phrase,

@@ -253,7 +253,8 @@ func structureCounts(tags []*gedcom.Tag) map[string]int {
 }
 
 // typedDiffs returns the paths at which two entities differ, ignoring every
-// raw Tags field: those hold the file's lines, which the round trip rewrites.
+// raw Tags field and every LineNumber: those hold the file's lines and their
+// positions, which the round trip rewrites.
 func typedDiffs(a, b reflect.Value, path string) []string {
 	if !a.IsValid() || !b.IsValid() { // a nil Entity: an extension record has none
 		if a.IsValid() != b.IsValid() {
@@ -276,7 +277,7 @@ func typedDiffs(a, b reflect.Value, path string) []string {
 	case reflect.Struct:
 		var out []string
 		for i := 0; i < a.NumField(); i++ {
-			if name := a.Type().Field(i).Name; name != "Tags" {
+			if name := a.Type().Field(i).Name; name != "Tags" && name != "LineNumber" {
 				out = append(out, typedDiffs(a.Field(i), b.Field(i), path+"."+name)...)
 			}
 		}

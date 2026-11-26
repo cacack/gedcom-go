@@ -48,13 +48,13 @@ func FuzzParseDateMatchesGrammar(f *testing.F) {
 }
 
 var (
-	dualYear     = regexp.MustCompile(`\b(\d+)/\d+\b`)
-	bcEpoch      = regexp.MustCompile(`(?i) (B\.C\.E\.|B\.C\.|BC)$| (B\.C\.E\.|B\.C\.|BC)( (AND|TO) )`)
-	datePhrase   = regexp.MustCompile(`^\(.*\)$`)
-	interpreted  = regexp.MustCompile(`^INT (.*?)(?: ?\(.*)?$`)
-	dayOfMonth   = regexp.MustCompile(`\b\d+( [A-Z]+\b)`)
-	calendarEsc  = strings.NewReplacer("@#DGREGORIAN@", "GREGORIAN ", "@#DJULIAN@", "JULIAN ", "@#DHEBREW@", "HEBREW ", "@#DFRENCH R@", "FRENCH_R ")
-	secondDateAt = regexp.MustCompile(` (AND|TO) `)
+	dualYear    = regexp.MustCompile(`\b(\d+)/\d+\b`)
+	bcEpoch     = regexp.MustCompile(`(?i) (B\.C\.E\.|B\.C\.|BC)$| (B\.C\.E\.|B\.C\.|BC)( (AND|TO) )`)
+	datePhrase  = regexp.MustCompile(`^\(.*\)$`)
+	interpreted = regexp.MustCompile(`^INT (.*?)(?: ?\(.*)?$`)
+	dayOfMonth  = regexp.MustCompile(`\b\d+( [A-Z]+\b)`)
+	zeroNumber  = regexp.MustCompile(`(^| )0+( |$)`)
+	calendarEsc = strings.NewReplacer("@#DGREGORIAN@", "GREGORIAN ", "@#DJULIAN@", "JULIAN ", "@#DHEBREW@", "HEBREW ", "@#DFRENCH R@", "FRENCH_R ")
 )
 
 // dateDepartures names the rows that allow ParseDate to differ from the
@@ -80,18 +80,15 @@ func dateDepartures(o *payloadgrammar.Oracle) payloadgrammar.Departures {
 	}
 	return func(s string, libAccepts bool) []string {
 		if !libAccepts {
+			// A day or year of 0, which an extension calendar or month may
+			// have, is Date's absent value.
+			if zeroNumber.MatchString(s) && parseDateAccepts(zeroNumber.ReplaceAllString(s, "${1}1$2")) {
+				return []string{"SI-018"}
+			}
 			for _, tok := range strings.Fields(s) {
-				if o.Match("extTag", tok) {
-					return []string{"SI-018"}
-				}
 				if _, err := strconv.Atoi(tok); o.Match("Integer", tok) && err != nil {
 					return []string{"SI-021"}
 				}
-			}
-			// With each second date's calendar written out, ParseDate no
-			// longer carries the first date's calendar into it.
-			if parseDateAccepts(secondDateAt.ReplaceAllString(s, " $1 GREGORIAN ")) {
-				return []string{"SI-019"}
 			}
 			return nil
 		}

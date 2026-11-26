@@ -110,13 +110,15 @@ func NewStreamingValidator(opts StreamingOptions) *StreamingValidator {
 //
 // The record must carry its typed Entity, as records from the decoder do. A
 // record holding only raw Tags (one built from a parser.RawRecord by hand)
-// is registered as declared but nothing in it is validated or collected, so
-// it reports no issues; decode each streamed record with decoder.DecodeRecord
-// first, as the ValidateRecord example shows.
+// is registered as declared and has its DATE lines checked, but nothing else
+// in it is validated or collected; decode each streamed record with
+// decoder.DecodeRecord first, as the ValidateRecord example shows.
 //
 // This method:
 //   - Registers the record's XRef as declared, reporting CodeDuplicateXRef
 //     if an earlier record already declared it
+//   - Reports every DATE in the record as [Validator.ValidateAll] does
+//     (CodeInvalidDate), on every record type
 //   - Validates record structure and entity-specific rules
 //   - Collects XRef references for deferred validation
 //   - Returns immediate issues (malformed dates, invalid structure, etc.)
@@ -125,11 +127,11 @@ func NewStreamingValidator(opts StreamingOptions) *StreamingValidator {
 //
 //   - RecordTypeIndividual: full validation (date logic, structure)
 //   - RecordTypeFamily: full validation (date logic, structure)
-//   - RecordTypeSource: reference collection only (for orphan detection in
-//     Finalize); no source-content validation
+//   - RecordTypeSource: dates, and reference collection (for orphan
+//     detection in Finalize); no other source-content validation
 //   - RecordTypeRepository, RecordTypeNote, RecordTypeSubmitter,
-//     RecordTypeMedia, others: not validated (the record is still
-//     registered for XRef tracking, but no rules are evaluated)
+//     RecordTypeMedia, others: dates only (the record is still registered
+//     for XRef tracking, but no other rules are evaluated)
 //
 // Callers who need full validation coverage for all record types should use
 // the batch [Validator.Validate] / [Validator.ValidateAll] instead — they
@@ -151,6 +153,8 @@ func (sv *StreamingValidator) ValidateRecord(record *gedcom.Record) []Issue {
 			issues = append(issues, duplicateXRefIssue(record, firstLine))
 		}
 	}
+
+	issues = appendRecordDateIssues(issues, record)
 
 	// Validate based on record type
 	switch record.Type {

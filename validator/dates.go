@@ -1,10 +1,12 @@
 // dates.go reports dates that do not exist on their calendar, such as
-// 31 FEB 1900, or ranges that end before they start, as CodeInvalidDate.
+// 31 FEB 1900, ranges that end before they start, and values that are not
+// GEDCOM dates at all, such as FOO BAR, as CodeInvalidDate.
 //
-// The decoder parses such a date without complaint -- its grammar is valid --
-// so gedcom.Date.Validate, which checks the day against the month and year,
-// is the only thing that catches it. This check runs Validate on every DATE in
-// the document, including the end date of a range or period.
+// The decoder parses an impossible date without complaint -- its grammar is
+// valid -- so gedcom.Date.Validate, which checks the day against the month and
+// year, is the only thing that catches it. This check runs Validate on every
+// DATE in the document, including the end date of a range or period, and
+// reports every DATE that gedcom.ParseDate rejects.
 
 package validator
 
@@ -20,10 +22,12 @@ import (
 // as a CodeInvalidDate warning, on every calendar Validate checks: Gregorian,
 // Julian, Hebrew and French Republican. Dates Validate skips by design --
 // partial dates such as "FEB 1900" or "ABT 1900" -- are not reported, nor a
-// leap day on a dual-dated (Old Style) endpoint such as "29 FEB 1723/24",
-// nor a value ParseDate cannot parse at all (the decoder already reports
-// that as a diagnostic), which includes a date the decoder read from English
-// (spec-interpretation policy SI-001).
+// leap day on a dual-dated (Old Style) endpoint such as "29 FEB 1723/24".
+// A non-empty value gedcom.ParseDate rejects, such as "FOO BAR", is reported
+// as a CodeInvalidDate warning too, including a date the decoder read from
+// English (spec-interpretation policy SI-001); the decoder also reports it,
+// as a diagnostic. An empty or all-space value, which 7.0 permits beside a
+// PHRASE, is not reported.
 //
 // Raw tags are walked where a record has them, so every DATE is checked --
 // events, attributes, LDS ordinances, citations, CHAN -- and the issue
@@ -32,31 +36,35 @@ import (
 // "BIRT.SOUR.DATA.DATE"). A record with no Tags, built in code, is checked
 // through its typed entity's event, attribute and LDS ordinance ParsedDates
 // instead, mirroring how the encoder writes such a record from the entity;
-// those issues carry LineNumber 0 and a path of just "<TYPE>.DATE". Raw tags
-// are authoritative where present, as the encoder writes them verbatim. The
-// header is checked the same way, with an empty RecordXRef.
+// those issues carry LineNumber 0 and a path of just "<TYPE>.DATE". A nil
+// ParsedDate is read from the Date string, which is what the encoder writes.
+// Raw tags are authoritative where present, as the encoder writes them
+// verbatim. The header is checked the same way, with an empty RecordXRef.
 func validateDates(doc *gedcom.Document) []Issue {
 	var issues []Issue
 	if doc.Header != nil {
 		if len(doc.Header.Tags) > 0 {
 			issues = appendRawDateIssues(issues, "", "HEAD", doc.Header.Tags)
-		} else if doc.Header.Date != "" {
-			if parsed, err := gedcom.ParseDate(doc.Header.Date); err == nil {
-				issues = appendDateIssue(issues, "", "HEAD", "DATE", parsed, 0)
-			}
+		} else {
+			issues = appendDateValueIssue(issues, "", "HEAD", "DATE", nil, doc.Header.Date, 0)
 		}
 	}
 	for _, record := range doc.Records {
-		if record == nil {
-			continue
-		}
-		if len(record.Tags) > 0 {
-			issues = appendRawDateIssues(issues, record.XRef, string(record.Type), record.Tags)
-			continue
-		}
-		issues = appendTypedDateIssues(issues, record)
+		issues = appendRecordDateIssues(issues, record)
 	}
 	return issues
+}
+
+// appendRecordDateIssues checks every DATE in one record, as validateDates
+// does; a nil record is skipped. The StreamingValidator calls it per record.
+func appendRecordDateIssues(issues []Issue, record *gedcom.Record) []Issue {
+	if record == nil {
+		return issues
+	}
+	if len(record.Tags) > 0 {
+		return appendRawDateIssues(issues, record.XRef, string(record.Type), record.Tags)
+	}
+	return appendTypedDateIssues(issues, record)
 }
 
 // appendRawDateIssues checks every DATE tag in tags, tracking the path of
@@ -75,15 +83,11 @@ func appendRawDateIssues(issues []Issue, recordXRef, holder string, tags []*gedc
 		if tag.Tag != "DATE" {
 			continue
 		}
-		parsed, err := gedcom.ParseDate(tag.Value)
-		if err != nil {
-			continue
-		}
 		tagHolder := holder
 		if len(path) >= 2 {
 			tagHolder = path[len(path)-2]
 		}
-		issues = appendDateIssue(issues, recordXRef, tagHolder, strings.Join(path, "."), parsed, tag.LineNumber)
+		issues = appendDateValueIssue(issues, recordXRef, tagHolder, strings.Join(path, "."), nil, tag.Value, tag.LineNumber)
 	}
 	return issues
 }
@@ -101,42 +105,50 @@ func appendTypedDateIssues(issues []Issue, record *gedcom.Record) []Issue {
 	}
 	for _, e := range events {
 		if e != nil {
-			issues = appendDateIssue(issues, record.XRef, string(e.Type), string(e.Type)+".DATE", e.ParsedDate, 0)
+			issues = appendDateValueIssue(issues, record.XRef, string(e.Type), string(e.Type)+".DATE", e.ParsedDate, e.Date, 0)
 		}
 	}
 	for _, a := range attributes {
 		if a != nil {
-			issues = appendDateIssue(issues, record.XRef, string(a.Type), string(a.Type)+".DATE", a.ParsedDate, 0)
+			issues = appendDateValueIssue(issues, record.XRef, string(a.Type), string(a.Type)+".DATE", a.ParsedDate, a.Date, 0)
 		}
 	}
 	for _, o := range ordinances {
 		if o != nil {
-			issues = appendDateIssue(issues, record.XRef, string(o.Type), string(o.Type)+".DATE", o.ParsedDate, 0)
+			issues = appendDateValueIssue(issues, record.XRef, string(o.Type), string(o.Type)+".DATE", o.ParsedDate, o.Date, 0)
 		}
 	}
 	return issues
 }
 
-// appendDateIssue appends a CodeInvalidDate issue when date fails
-// dateError. A nil date is skipped.
-func appendDateIssue(issues []Issue, recordXRef, holder, path string, date *gedcom.Date, line int) []Issue {
+// appendDateValueIssue appends a CodeInvalidDate issue when date fails
+// dateError. A nil date is parsed from value: an empty or all-space value is
+// skipped, and one gedcom.ParseDate rejects is reported as not a date.
+func appendDateValueIssue(issues []Issue, recordXRef, holder, path string, date *gedcom.Date, value string, line int) []Issue {
+	var message string
 	if date == nil {
-		return issues
+		if strings.TrimSpace(value) == "" {
+			return issues
+		}
+		parsed, err := gedcom.ParseDate(value)
+		if err != nil {
+			message = fmt.Sprintf("%s date %q is not a GEDCOM date: %v", holder, value, err)
+		}
+		date = parsed
 	}
-	err := dateError(date)
-	if err == nil {
-		return issues
+	if date != nil {
+		err := dateError(date)
+		if err == nil {
+			return issues
+		}
+		value = date.Original
+		message = fmt.Sprintf("%s date %q does not exist: %v", holder, value, err)
 	}
-	return append(issues, NewIssue(
-		SeverityWarning,
-		CodeInvalidDate,
-		fmt.Sprintf("%s date %q does not exist: %v", holder, date.Original, err),
-		recordXRef,
-	).
+	return append(issues, NewIssue(SeverityWarning, CodeInvalidDate, message, recordXRef).
 		WithLineNumber(line).
 		WithDetail("tag", holder).
 		WithDetail("path", path).
-		WithDetail("value", date.Original))
+		WithDetail("value", value))
 }
 
 // dateError is gedcom.Date.Validate, except that a dual-dated endpoint such

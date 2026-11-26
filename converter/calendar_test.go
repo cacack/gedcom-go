@@ -110,6 +110,8 @@ func TestConvertDateUnknownCalendarReported(t *testing.T) {
 		{"roman escape to 7.0", gedcom.Version551, gedcom.Version70, "@#DROMAN@ 1 JAN 100"},
 		{"unknown escape to 7.0", gedcom.Version551, gedcom.Version70, "@#DUNKNOWN@ 1700"},
 		{"extension calendar to 5.5.1", gedcom.Version70, gedcom.Version551, "_MAYAN 1 JAN 100"},
+		{"extension calendar BCE to 5.5.1", gedcom.Version70, gedcom.Version551, "_MAYAN 2000 BCE"},
+		{"extension calendar range BCE to 5.5", gedcom.Version70, gedcom.Version55, "BET _MAYAN 2000 BCE AND _MAYAN 1 BCE"},
 	}
 
 	for _, tt := range tests {
@@ -124,6 +126,12 @@ func TestConvertDateUnknownCalendarReported(t *testing.T) {
 			}
 			if hasTransformation(report, "DATE_CALENDAR_CONVERTED") {
 				t.Error("unknown calendar counted as converted")
+			}
+			if len(report.Normalized) != 0 {
+				t.Errorf("unknown calendar date reported as Normalized: %+v", report.Normalized)
+			}
+			if _, err := gedcom.ParseDate(tt.value); err == nil && event.ParsedDate == nil {
+				t.Errorf("ParsedDate lost for %q", tt.value)
 			}
 		})
 	}

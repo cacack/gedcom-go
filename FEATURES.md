@@ -854,6 +854,7 @@ combined, report, err := merge.Combine(doc1, doc2, merge.CombineOptions{
 | `merge.Individuals(doc, keep, drop, opts)` | Fold the individual `drop` into `keep`, which the caller names; original document unchanged. `RecordMergeOptions.FoldEvents` folds an event or attribute recording the same event (same tag, value, parsed date and `TYPE`; same place or one missing; an event's `Y` flag matches an empty value) into keep's, listed in `RecordMergeReport.Folded` |
 | `merge.Families(doc, keep, drop, opts)` | The same for two family records; a child both list is listed once |
 | `merge.RepeatedEvents(doc, xrefs...)`, `merge.FoldRepeatedEvents(doc, xrefs...)` | Find, within each individual or family record (or those named), the events and attributes recorded more than once by the `FoldEvents` rule, as `EventGroup`s; fold each group into its first member, keeping every citation and note, with one `RecordFold` per structure removed in `FoldReport.Folded`. Records with no group keep their lines; original document unchanged |
+| `merge.RepeatedNames(doc, xrefs...)`, `merge.FoldRepeatedNames(doc, xrefs...)` | Find, within each individual record (or those named), the `NAME` structures that are the same name (values equal by `gedcom.SamePersonalName`, `TYPE` and name pieces agreeing), as `NameGroup`s; fold each group into its first member as `FoldSubstructure` does, so each distinct citation is kept once, with one `RecordFold` per name removed in `FoldReport.Folded`. Records with no group keep their lines; original document unchanged |
 | `merge.FoldSubstructure(rec, keep, drop)` | Fold one substructure of a record into a sibling, in place: each line under drop that keep does not hold identically moves under keep, and drop is removed. No line is matched by value, so it works for any tag at any level (a repeated `NAME`, two citations of one source) |
 | `merge.Sources(doc, keep, drop, opts)` | Fold the source `drop` into `keep` and repoint every citation of it, at any depth. A line that may occur only once (`TITL`, `AUTH`, ...) is carried when keep lacks it; one that differs stays keep's and is listed in `RecordMergeReport.Conflicts` |
 | `merge.Repositories(doc, keep, drop, opts)` | The same for two repository records and the `REPO` pointers of sources |
@@ -1233,6 +1234,16 @@ At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
 `Family.Attributes` is the single store for `NCHI`; read it through
 `Family.NumberOfChildren()` and write it through `SetNumberOfChildren`.
 
+### File Order of Events and Attributes
+
+`Events` and `Attributes` are each in file order, but two slices cannot say
+which of an event and an attribute came first. A decoded `Event` and
+`Attribute` carry `LineNumber`, the source line of their own tag, so sorting a
+record's events and attributes together by it gives their file order (an
+`OCCU` with its `PLAC` before the `BIRT` that follows it). It is 0 on an event
+or attribute built in code or decoded by `decoder.DecodeRecords`, is not
+updated by edits, and is never read by the encoder, so output is unchanged.
+
 ## Source Citations
 
 - Embedded citations (within records)
@@ -1410,6 +1421,10 @@ structure as `[]string` fields named `Phone`, `Email`, `Fax` and `Website`:
   `Suffix` from it and then lets GIVN, SURN and NSFX override them, so
   calling it on `PersonalName.Full` tells what the value says apart from what
   the part lines say (a GIVN that disagrees with the value, say)
+- `gedcom.SamePersonalName(a, b)` reports whether two NAME values are the
+  same name: the same words in the same order, ignoring case, spacing,
+  punctuation and the surname slashes ("John /Smith/ Jr." and
+  "john  smith, jr")
 
 ### Transliterations (TRAN)
 
@@ -1544,7 +1559,7 @@ err := date.Validate()
 - Rejects a year more than 1,000,000 either side of the epoch, so arithmetic on a hand-built `Date` cannot overflow
 - BCE dates use the proleptic Gregorian calendar with astronomical years (1 BCE = year 0, so Feb 29 1 BCE is valid and Feb 29 4 BCE is not)
 
-`ParseDate` itself rejects a day or year written as `0` (`0 JAN 1850`, `1 JAN 0`, `0 BC`) — no calendar has one, and `0` is the "absent" value — and a signed day or year (`-1850`, `+1850`, `-5 JAN 1850`); write a B.C. year with a `BC` suffix. The decoder reports such a value as `INVALID_VALUE` and keeps it in the raw tags; the validator's `INVALID_DATE` check does not see it.
+`ParseDate` itself rejects a day or year written as `0` (`0 JAN 1850`, `1 JAN 0`, `0 BC`) — no calendar has one, and `0` is the "absent" value — and a signed day or year (`-1850`, `+1850`, `-5 JAN 1850`); write a B.C. year with a `BC` suffix. The decoder reports such a value as `INVALID_VALUE` and keeps it in the raw tags; the validator reports it as `INVALID_DATE`, as not a GEDCOM date.
 
 `ParseDateLenient` is `ParseDate` plus a fixed list of English spellings, for exporters that pass a date through as typed (Ancestry, MacFamilyTree). It returns the date and the GEDCOM form the value was read as (`""` for a date `ParseDate` accepts); `Date.Original` stays the value as given. Matched case-insensitively:
 
@@ -1619,7 +1634,14 @@ date.EndDate.Calendar  // CalendarJulian
 - B.C. date comparison (100 BC > 200 BC chronologically)
 - Calendar escapes compose with every modifier (`ABT`, `CAL`, `EST`, `BEF`,
   `AFT`, `BET`/`AND`, `FROM`/`TO`, `INT`), per date; a date with no escape
-  inherits the preceding date's calendar, defaulting to Gregorian
+  is Gregorian, so the end of `BET JULIAN 1700 AND 1750` is Gregorian, unless
+  the escape is written ahead of the modifier, when it applies to both dates
+- GEDCOM 7.0 extension calendars, months and epochs (`_MAYAN 5 _KIN 2000`,
+  `FRENCH_R 2 _JOUR 8`) kept as written in `CalendarTag`, `MonthTag` and
+  `EpochTag`, with `Calendar` `CalendarExtension` for an extension calendar; no
+  `SCHMA` is consulted, and `Date.HasExtension` reports a date the library
+  cannot place in time (`Bounds` not ok, `ToGregorian` an error, `Compare`
+  sorting it last)
 
 ### API
 
@@ -1803,14 +1825,18 @@ so its leap day passes but `30 FEB 1723/24` is reported. A dual year that is not
 year following the first, such as `1750/53` or `1850/1860`, is reported too, even on a
 partial date. A range or period that ends before it starts, such as
 `BET 1860 AND 1850`, is reported too. A one- or two-digit dual year resolves forward, so
-`1699/00` is 1699 and 1700. A record built in code, with no raw tags, is checked
-through its typed events, attributes and LDS ordinances; those issues carry line 0 and
-a `path` of just `<TYPE>.DATE`. `ValidateAll` and `QualityReport` run this check;
-`ValidateDateLogic` and the streaming validator do not.
+`1699/00` is 1699 and 1700. A non-empty value `gedcom.ParseDate` cannot read at all —
+`FOO BAR`, `0 JAN 1850`, or an English `June 1880` the decoder read leniently — is reported
+as `INVALID_DATE` too, with a message saying it is not a GEDCOM date; an empty `DATE`,
+which 7.0 permits beside a `PHRASE`, is not. A record built in code, with no raw tags, is
+checked through its typed events, attributes and LDS ordinances, reading a nil
+`ParsedDate` from the `Date` string; those issues carry line 0 and a `path` of just
+`<TYPE>.DATE`. `ValidateAll`, `Validate`, `QualityReport` and the streaming validator's
+`ValidateRecord` (on every record type) run this check; `ValidateDateLogic` does not.
 
 | Error Code | Severity | Description |
 |------------|----------|-------------|
-| INVALID_DATE | Warning | Date (or range/period end date) names a day its month does not have, or a dual year that is not the following year, or a range or period ends before it starts |
+| INVALID_DATE | Warning | Date (or range/period end date) names a day its month does not have, or a dual year that is not the following year, or a range or period ends before it starts, or the value is not a GEDCOM date |
 
 **Orphaned Reference Detection:**
 
@@ -2143,7 +2169,7 @@ finalIssues := v.Finalize()  // Orphaned reference detection
 `ValidateRecord` reads the record's typed `Entity`. The streaming parsers yield
 raw lines only, so decode each record with `decoder.DecodeRecord` first (see
 [Typed Records](#typed-records)): a record holding only raw `Tags` is
-registered as declared but nothing in it is checked.
+registered as declared and has its `DATE` lines checked, but nothing else in it is checked.
 
 Set `StreamingOptions.Version` to the document's GEDCOM version: the streaming
 validator never sees the header, and `Finalize` needs it to treat `@VOID@` as
@@ -2151,7 +2177,7 @@ the 7.0 null pointer (never orphaned) or as a 5.5/5.5.1 identifier that must be
 declared. Left empty, `@VOID@` is taken as the null pointer.
 
 **Two-Phase Validation**:
-- **Immediate**: Date logic errors (death before birth), structural issues detected per-record
+- **Immediate**: Date logic errors (death before birth), `INVALID_DATE` on every record type (as `ValidateAll` reports it), structural issues detected per-record
 - **Deferred**: Cross-reference validation (orphaned FAMC, FAMS, HUSB, WIFE, CHIL, SOUR, ASSO, REPO, NOTE) in `Finalize()`. Note pointers are checked on individual, family and source records and on every typed structure below them that carries notes -- names, events, attributes, source citations, LDS ordinances, change and creation dates, FAMC/FAMS links, ASSO, OBJE links, PLAC and REPO links; `Details["field"]` locates each (e.g. `Events[0].PlaceDetail.NoteXRefs[0]`)
 
 **Note**: Parent-child date logic checks (child born before parent) require a complete document and are not supported in streaming mode.
@@ -2517,7 +2543,7 @@ Configurable via `EncodeOptions`:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `MaxLineLength` | 248 | Maximum line length (bytes) before CONC split; ignored for 7.0 |
+| `MaxLineLength` | 248 | Maximum value length (bytes) before CONC split; a value is also cut so its whole line, level, XRef and tag included, fits 255 bytes, as the converter cuts it. Applies to the typed fields 5.x continues with CONC (notes, `TEXT`, event and attribute payloads, a source's `TITL`, `AUTH` and `PUBL`, a citation's `PAGE`); `NAME`, `PLAC`, `TYPE` and the like stay on one line; ignored for 7.0 |
 | `DisableLineWrap` | false | Disable automatic CONC splitting; implied for 7.0 |
 
 ### Inline Repository Support

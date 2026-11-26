@@ -227,49 +227,40 @@ func headerTree(doc *Document, ignore map[string]bool) *diffNode {
 	return buildDiffTree(&Tag{Level: 0, Tag: "HEAD"}, tags, ignore)
 }
 
-// buildDiffTree nests tags under root by level. A tag deeper than one below
-// its parent (a malformed level jump) still nests under the nearest shallower
-// tag.
+// buildDiffTree nests tags under root by the rule every package shares
+// (SI-023): a tag's parent is the nearest earlier tag at a shallower level,
+// so a tag deeper than one below its parent (a malformed level jump) still
+// nests under it, and a tag with none nests under root.
 func buildDiffTree(root *Tag, tags []*Tag, ignore map[string]bool) *diffNode {
-	type frame struct {
-		node  *diffNode
-		level int
-	}
 	rootNode := &diffNode{tag: root.Tag, xref: root.XRef, value: root.Value, lines: []*Tag{root}}
-	stack := []frame{{rootNode, root.Level}}
-	skipBelow := -1 // level of an ignored tag whose subtree is being skipped
+	parents := tagParents(tags)
+	nodes := make([]*diffNode, len(tags)) // the node each line belongs to; nil when ignored
 
-	for _, t := range tags {
-		if t == nil {
+	for i, t := range tags {
+		if t == nil || ignore[t.Tag] {
 			continue
 		}
-		if skipBelow >= 0 {
-			if t.Level > skipBelow {
-				continue
+		parent := rootNode
+		if p := parents[i]; p >= 0 {
+			if parent = nodes[p]; parent == nil {
+				continue // under an ignored tag
 			}
-			skipBelow = -1
 		}
-		for len(stack) > 1 && stack[len(stack)-1].level >= t.Level {
-			stack = stack[:len(stack)-1]
-		}
-		if ignore[t.Tag] {
-			skipBelow = t.Level
-			continue
-		}
-		parent := stack[len(stack)-1].node
 		switch t.Tag {
 		case "CONT":
 			parent.value += "\n" + t.Value
 			parent.lines = append(parent.lines, t)
+			nodes[i] = parent
 			continue
 		case "CONC":
 			parent.value += t.Value
 			parent.lines = append(parent.lines, t)
+			nodes[i] = parent
 			continue
 		}
 		node := &diffNode{tag: t.Tag, xref: t.XRef, value: t.Value, lines: []*Tag{t}}
 		parent.children = append(parent.children, node)
-		stack = append(stack, frame{node, t.Level})
+		nodes[i] = node
 	}
 	return rootNode
 }

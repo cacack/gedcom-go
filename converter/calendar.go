@@ -646,7 +646,9 @@ func hasV5PhraseSyntax(value string) bool {
 }
 
 // translateEpochs returns value with every B.C. epoch outside a date phrase
-// spelled as target spells it: BCE for 7.0, B.C. for 5.5/5.5.1.
+// spelled as target spells it: BCE for 7.0, B.C. for 5.5/5.5.1. An epoch
+// under an extension calendar (_MAYAN 2000 BCE) is the extension's tag, not
+// the standard epoch, so it is left as written (ADR 0014).
 func translateEpochs(value string, target gedcom.Version) string {
 	want := "B.C."
 	if target == gedcom.Version70 {
@@ -657,14 +659,34 @@ func translateEpochs(value string, target gedcom.Version) string {
 	}
 	result, _ := rewriteOutsidePhrases(value, func(s string) (string, bool) {
 		words := strings.Split(s, " ")
+		partStart, extension := true, false
 		for i, word := range words {
-			if word != want && isEpoch(word) {
-				words[i] = want
+			switch {
+			case word == "":
+			case isDateKeyword(word):
+				partStart, extension = true, false
+			case partStart:
+				partStart, extension = false, strings.HasPrefix(word, "_")
+				fallthrough
+			default:
+				if !extension && word != want && isEpoch(word) {
+					words[i] = want
+				}
 			}
 		}
 		return strings.Join(words, " "), false
 	})
 	return result
+}
+
+// isDateKeyword reports whether word is a date modifier or range keyword,
+// which starts a date's calendar-led part.
+func isDateKeyword(word string) bool {
+	switch strings.ToUpper(word) {
+	case "ABT", "CAL", "EST", "BEF", "AFT", "BET", "AND", "FROM", "TO", "INT":
+		return true
+	}
+	return false
 }
 
 // isEpoch reports whether word is a B.C. epoch in any spelling

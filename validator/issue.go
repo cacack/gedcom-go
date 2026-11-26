@@ -74,8 +74,10 @@ const (
 	// The dual year is checked on every date; the day is checked on
 	// Gregorian, Julian, Hebrew and French Republican dates but not on
 	// partial dates, as in gedcom.Date.Validate.
-	// A value gedcom.ParseDate rejects, such as 0 JAN 1850, is not reported
-	// here; the decoder reports it as an INVALID_VALUE diagnostic.
+	// A non-empty value gedcom.ParseDate rejects, such as FOO BAR or
+	// 0 JAN 1850, is reported too, as not a GEDCOM date; the decoder also
+	// reports it, as an INVALID_VALUE or NONSTANDARD_DATE diagnostic.
+	// Details["value"] is the value as written.
 	CodeInvalidDate = "INVALID_DATE"
 
 	// CodeUnreasonableParentAge indicates a parent's age at child's birth is implausible.
