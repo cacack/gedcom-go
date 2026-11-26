@@ -2,7 +2,6 @@ package converter
 
 import (
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/cacack/gedcom-go/v3/gedcom"
@@ -523,26 +522,12 @@ func continuationTags(value string, maxLen, level int) (first string, tags []*ge
 	return first, tags, contCount, concCount
 }
 
-// maxLineLength is GEDCOM 5.x's limit on the characters in a line.
-const maxLineLength = 255
-
 // maxValueLength returns the longest value that keeps both the line opened by
-// level, xref and tag and its CONT/CONC lines at contLevel within
-// maxLineLength, capped at [concsplit.MaxValueLength]. Only a long XRef, tag
-// or level lowers it: "0 @N1@ NOTE " leaves 243 bytes, not 248. It is at
-// least 1: a prefix that alone fills the line cannot be fixed by splitting,
-// and a length below 1 would leave nothing to put on each line.
+// level, xref and tag and its CONT/CONC lines at contLevel within 255 bytes,
+// capped at [concsplit.MaxValueLength]: the rule the encoder shares
+// ([concsplit.ValueLength]).
 func maxValueLength(level int, xref, tag string, contLevel int) int {
-	prefix := func(level int, xref, tag string) int {
-		n := len(strconv.Itoa(level)) + 1 + len(tag) + 1
-		if xref != "" {
-			n += len(xref) + 1
-		}
-		return n
-	}
-	return max(1, min(concsplit.MaxValueLength,
-		maxLineLength-prefix(level, xref, tag),
-		maxLineLength-prefix(contLevel, "", "CONC")))
+	return concsplit.ValueLength(concsplit.MaxValueLength, level, xref, tag, contLevel)
 }
 
 // splitLines splits value on its embedded newlines, returning at least one

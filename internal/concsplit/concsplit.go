@@ -8,14 +8,42 @@
 package concsplit
 
 import (
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
 
+// MaxLineLength is GEDCOM 5.x's limit on a whole line, in bytes, not counting
+// its terminator (5.5.1 ch.1 p.11 gives 255 characters).
+const MaxLineLength = 255
+
 // MaxValueLength is the longest value, in bytes, written on one line. GEDCOM
 // 5.x limits a line to 255 characters; 248 leaves room for the level, tag and
-// delimiters.
+// delimiters of a short line. [ValueLength] lowers it for a longer prefix.
 const MaxValueLength = 248
+
+// ValueLength returns the longest value, at most limit bytes, that keeps both
+// the line opened by level, xref and tag and the CONT/CONC lines at contLevel
+// that continue it within [MaxLineLength]. Only a long XRef, tag or level
+// lowers it below limit: "0 @N1@ NOTE " leaves 243 bytes, not 248. It is at
+// least 1: a prefix that alone fills the line cannot be fixed by splitting,
+// and a length below 1 would leave nothing to put on each line.
+//
+// The encoder, gedcom's Record.SetFullValue and the converter all bound a 5.x
+// value with it, so a line is held to 255 bytes the same way everywhere
+// (spec-interpretation policy SI-008).
+func ValueLength(limit, level int, xref, tag string, contLevel int) int {
+	prefix := func(level int, xref, tag string) int {
+		n := len(strconv.Itoa(level)) + 1 + len(tag) + 1
+		if xref != "" {
+			n += len(xref) + 1
+		}
+		return n
+	}
+	return max(1, min(limit,
+		MaxLineLength-prefix(level, xref, tag),
+		MaxLineLength-prefix(contLevel, "", "CONC")))
+}
 
 // Segment is one physical line of a value written across continuation lines.
 // Tag is "" for the value's first line, which belongs to the tag that owns the

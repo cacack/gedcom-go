@@ -138,3 +138,43 @@ func TestEncode5xCONCSplitsBetweenNonSpaces(t *testing.T) {
 		})
 	}
 }
+
+// TestEncode5xBoundsWholeLine checks that a 5.x value is cut so the whole line,
+// level, XRef and tag included, fits 255 bytes, whatever MaxLineLength allows
+// the value alone (#967, SI-008).
+func TestEncode5xBoundsWholeLine(t *testing.T) {
+	xref := "@N" + strings.Repeat("X", 80) + "@"
+	doc := &gedcom.Document{
+		Header: &gedcom.Header{Version: gedcom.Version551},
+		Records: []*gedcom.Record{{
+			XRef: xref, Type: gedcom.RecordTypeNote,
+			Entity: &gedcom.Note{XRef: xref, Text: longNoteText},
+		}},
+	}
+	for _, maxLen := range []int{0, 248, 1000} {
+		var buf bytes.Buffer
+		if err := EncodeWithOptions(&buf, doc, &EncodeOptions{MaxLineLength: maxLen}); err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+		lines := strings.Split(buf.String(), "\n")
+		first := ""
+		for _, line := range lines {
+			if len(line) > 255 {
+				t.Errorf("MaxLineLength %d: line is %d bytes, want at most 255: %.60q", maxLen, len(line), line)
+			}
+			if strings.HasPrefix(line, "0 "+xref) {
+				first = line
+			}
+		}
+		if len(first) < 250 {
+			t.Errorf("MaxLineLength %d: record line is %d bytes, want it filled close to 255", maxLen, len(first))
+		}
+		decoded, err := decoder.Decode(strings.NewReader(buf.String()))
+		if err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		if got := decoded.GetNote(xref); got == nil || got.Text != longNoteText {
+			t.Errorf("MaxLineLength %d: note does not round-trip", maxLen)
+		}
+	}
+}

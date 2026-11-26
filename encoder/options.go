@@ -12,9 +12,10 @@ import (
 	"github.com/cacack/gedcom-go/v3/internal/gedcvers"
 )
 
-// DefaultMaxLineLength is the recommended maximum line length for GEDCOM files.
-// GEDCOM spec recommends lines not exceed 255 characters total.
-// We use 248 to account for level number, space, tag, and delimiter overhead.
+// DefaultMaxLineLength is the default longest value, in bytes, on one line.
+// GEDCOM 5.x limits a whole line to 255 characters; 248 leaves room for the
+// level, tag and delimiters of a short line, and a longer level, XRef or tag
+// lowers it further (see [EncodeOptions.MaxLineLength]).
 const DefaultMaxLineLength = concsplit.MaxValueLength
 
 // EncodeOptions provides configuration for encoding GEDCOM files.
@@ -26,6 +27,12 @@ type EncodeOptions struct {
 	// MaxLineLength specifies the maximum length, in bytes, for line content
 	// before splitting with CONC tags. Default is 248.
 	// Set to 0 to use the default value.
+	//
+	// A value is also cut so its whole line, level, XRef and tag included, and
+	// each CONT/CONC line after it fits 255 bytes, the 5.x limit, as the
+	// converter's downgrade cuts it: "0 @N1@ NOTE " leaves 243 bytes, not 248.
+	// So MaxLineLength can lower the cut but not raise a line past 255 bytes;
+	// DisableLineWrap is the way to write longer lines.
 	//
 	// It applies only to GEDCOM 5.5 and 5.5.1 output. GEDCOM 7.0 removed CONC
 	// and has no line-length limit, so 7.0 output (TargetVersion, or the

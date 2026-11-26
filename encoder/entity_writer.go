@@ -14,7 +14,8 @@ import (
 // lines become CONT (continuation) tags at level+1.
 //
 // When opts is provided and DisableLineWrap is false, lines exceeding
-// MaxLineLength are automatically split using CONC tags (see lineWrapLength).
+// MaxLineLength, or the room a 255-byte line leaves after its level and tag,
+// are automatically split using CONC tags (see lineWrapLength).
 // Each line is escaped for the output version before the split (opts.text), so
 // the escaped line is what has to fit, and [concsplit.Split] never cuts inside
 // an escaped "@@". Where the lines are cut is [concsplit.Fold]'s rule, which
@@ -26,7 +27,13 @@ import (
 //   - "" -> [TAG value=""]
 //   - "Very long line..." -> [TAG value="Very long...", CONC value="line..."]
 func textToTags(value string, level int, tagName string, opts *EncodeOptions) []*gedcom.Tag {
-	segments := concsplit.Fold(value, lineWrapLength(opts), opts.text)
+	return xrefTextToTags(value, level, "", tagName, opts)
+}
+
+// xrefTextToTags is textToTags for a line that also carries xref, the
+// identifier of a record whose level-0 line holds text (a NOTE or SNOTE).
+func xrefTextToTags(value string, level int, xref, tagName string, opts *EncodeOptions) []*gedcom.Tag {
+	segments := concsplit.Fold(value, lineWrapLength(opts, level, xref, tagName), opts.text)
 	tags := make([]*gedcom.Tag, len(segments))
 	tags[0] = &gedcom.Tag{Level: level, Tag: tagName, Value: segments[0].Value}
 	for i, seg := range segments[1:] {
@@ -124,16 +131,19 @@ func inlineNoteDetailToTags(detail *gedcom.InlineNoteDetail, level int, opts *En
 	return tags
 }
 
-// lineWrapLength returns the length past which textToTags cuts a line with
-// CONC, or 0 for no cut. Each later piece is written as CONC, so there must be
-// no cut for GEDCOM 7.0 output, which has no CONC: the encoder entry points
-// arrange that through [EncodeOptions.forOutput], which sets DisableLineWrap
-// for 7.0.
-func lineWrapLength(opts *EncodeOptions) int {
+// lineWrapLength returns the length past which textToTags cuts the value of
+// the line opened by level, xref and tagName with CONC, or 0 for no cut: the
+// smaller of MaxLineLength and what keeps that line and its CONT/CONC lines
+// within 255 bytes ([concsplit.ValueLength], the converter's rule too;
+// spec-interpretation policy SI-008). Each later piece is written as CONC, so
+// there must be no cut for GEDCOM 7.0 output, which has no CONC: the encoder
+// entry points arrange that through [EncodeOptions.forOutput], which sets
+// DisableLineWrap for 7.0.
+func lineWrapLength(opts *EncodeOptions, level int, xref, tagName string) int {
 	if opts != nil && opts.DisableLineWrap {
 		return 0
 	}
-	return opts.effectiveMaxLineLength()
+	return concsplit.ValueLength(opts.effectiveMaxLineLength(), level, xref, tagName, level+1)
 }
 
 // entityToTags converts an entity to tags based on record type.
@@ -1790,7 +1800,7 @@ func entityRecordText(record *gedcom.Record, opts *EncodeOptions) (string, []*ge
 	if opts.wireSpells(record.Value, text) {
 		return record.Value, nil
 	}
-	tags := textToTags(text, 0, tagName, opts)
+	tags := xrefTextToTags(text, 0, record.XRef, tagName, opts)
 	return tags[0].Value, tags[1:]
 }
 

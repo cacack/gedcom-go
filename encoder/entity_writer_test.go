@@ -2358,7 +2358,7 @@ func TestSingleLineNoteNoConts(t *testing.T) {
 // line's first piece, then each CONC.
 func wrapLine(line string, opts *EncodeOptions) []string {
 	var pieces []string
-	for _, seg := range concsplit.Fold(line, lineWrapLength(opts), nil) {
+	for _, seg := range concsplit.Fold(line, lineWrapLength(opts, 1, "", "NOTE"), nil) {
 		pieces = append(pieces, seg.Value)
 	}
 	return pieces
