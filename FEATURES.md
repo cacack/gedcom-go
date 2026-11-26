@@ -1233,6 +1233,16 @@ At the `FAM` level, `NCHI` and `FACT` decode into `Family.Attributes` and
 `Family.Attributes` is the single store for `NCHI`; read it through
 `Family.NumberOfChildren()` and write it through `SetNumberOfChildren`.
 
+### File Order of Events and Attributes
+
+`Events` and `Attributes` are each in file order, but two slices cannot say
+which of an event and an attribute came first. A decoded `Event` and
+`Attribute` carry `LineNumber`, the source line of their own tag, so sorting a
+record's events and attributes together by it gives their file order (an
+`OCCU` with its `PLAC` before the `BIRT` that follows it). It is 0 on an event
+or attribute built in code or decoded by `decoder.DecodeRecords`, is not
+updated by edits, and is never read by the encoder, so output is unchanged.
+
 ## Source Citations
 
 - Embedded citations (within records)
