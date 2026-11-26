@@ -1619,7 +1619,8 @@ date.EndDate.Calendar  // CalendarJulian
 - B.C. date comparison (100 BC > 200 BC chronologically)
 - Calendar escapes compose with every modifier (`ABT`, `CAL`, `EST`, `BEF`,
   `AFT`, `BET`/`AND`, `FROM`/`TO`, `INT`), per date; a date with no escape
-  inherits the preceding date's calendar, defaulting to Gregorian
+  is Gregorian, so the end of `BET JULIAN 1700 AND 1750` is Gregorian, unless
+  the escape is written ahead of the modifier, when it applies to both dates
 
 ### API
 

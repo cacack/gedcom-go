@@ -458,8 +458,8 @@ BET 1700 AND @#DJULIAN@ 1750    (start is Gregorian, end is Julian)
 FROM @#DJULIAN@ 1700 TO @#DJULIAN@ 1750
 BET JULIAN 1 JAN 1700 AND GREGORIAN 1 JAN 1800    (7.0 keywords)
 ```
-A date with no escape of its own inherits the calendar of the date before it,
-defaulting to Gregorian. Many vendors also write the escape ahead of the
+A date with no escape of its own is Gregorian, as both specifications say: the
+end of `BET @#DJULIAN@ 1700 AND 1750` is Gregorian. Many vendors also write the escape ahead of the
 modifier (`@#DJULIAN@ ABT 15 MAR 44 BC`); gedcom-go accepts that form and treats
 the leading escape as the default for every `<date>` that follows.
 gedcom-go accepts the 7.0 keywords (case-sensitive, as the 7.0 grammar

@@ -237,9 +237,10 @@ var frenchMonthNames = map[string]int{
 //
 // Only the four standard calendars, with their standard months and epochs,
 // are read: an extension calendar, month or epoch ("_MAYAN 5 _KIN 2000") is
-// an error (SI-018). In a range or period, a second date with no calendar of
-// its own takes the first date's, where the specifications make it Gregorian
-// (SI-019).
+// an error (SI-018). In a range or period, a calendar applies only to the
+// date it precedes, so "BET JULIAN 1 JAN 1700 AND 1 JAN 1800" ends on a
+// Gregorian date. An escape written ahead of the modifier ("@#DJULIAN@ BET
+// 1700 AND 1750") is the default for both dates.
 //
 // Every error wraps ErrEmptyDate when s is empty or only whitespace, and
 // ErrInvalidDate otherwise; match them with errors.Is.
@@ -554,9 +555,10 @@ func parseDateRange(s, original string, defaultCal Calendar) (*Date, error) {
 		return nil, fmt.Errorf("invalid start date in range: %w", err)
 	}
 
-	// Parse the second date (inherits calendar from first date)
+	// Parse the second date. A calendar applies only to the date it precedes,
+	// so the first date's does not carry over.
 	date2Str := strings.TrimSpace(s[andIndex+5:]) // Skip " AND "
-	date2 := &Date{Original: "", Calendar: date1.Calendar}
+	date2 := &Date{Original: "", Calendar: defaultCal}
 	if err := parseDateComponents(date2Str, date2); err != nil {
 		return nil, fmt.Errorf("invalid end date in range: %w", err)
 	}
@@ -580,9 +582,10 @@ func parseDatePeriod(s, original string, modifier DateModifier, defaultCal Calen
 			return nil, fmt.Errorf("invalid start date in period: %w", err)
 		}
 
-		// Parse the second date (inherits calendar from first date)
+		// Parse the second date. A calendar applies only to the date it
+		// precedes, so the first date's does not carry over.
 		date2Str := strings.TrimSpace(s[toIndex+4:]) // Skip " TO "
-		date2 := &Date{Original: "", Calendar: date1.Calendar}
+		date2 := &Date{Original: "", Calendar: defaultCal}
 		if err := parseDateComponents(date2Str, date2); err != nil {
 			return nil, fmt.Errorf("invalid end date in period: %w", err)
 		}
