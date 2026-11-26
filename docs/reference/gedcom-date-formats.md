@@ -464,8 +464,12 @@ modifier (`@#DJULIAN@ ABT 15 MAR 44 BC`); gedcom-go accepts that form and treats
 the leading escape as the default for every `<date>` that follows.
 gedcom-go accepts the 7.0 keywords (case-sensitive, as the 7.0 grammar
 specifies) everywhere it accepts an escape, whatever the file's version.
-Extension calendars (`_XXX`) are not recognized and the date is reported as
-invalid, with its raw value preserved.
+A GEDCOM 7.0 extension calendar, month or epoch (`_MAYAN 5 _KIN 2000`,
+`FRENCH_R 2 _JOUR 8`, `1 JAN 2000 _AD`) parses, with each tag kept as written
+in `CalendarTag`, `MonthTag` and `EpochTag`; under an extension calendar every
+month and epoch is a tag. No `SCHMA` is consulted, and the date has no place in
+time: `Bounds` is not ok and `ToGregorian` returns an error (see
+`Date.HasExtension` and [ADR 0014](../decisions/0014-extension-calendar-tags.md)).
 
 **`@#DROMAN@` and `@#DUNKNOWN@`** (5.5.1 escapes, deliberately not mapped):
 5.5.1 lists both in `DATE_CALENDAR_ESCAPE` but defines no date grammar for
@@ -473,7 +477,7 @@ either -- there is no month vocabulary, day range or arithmetic for a reserved
 Roman calendar or for a calendar that is by definition not known -- and 7.0
 drops both. gedcom-go therefore has no `Calendar` constant for them:
 `ParseDate` returns an error, bare or under a modifier
-(`ABT @#DUNKNOWN@ 1700`), exactly as for an extension calendar. Nothing is
+(`ABT @#DUNKNOWN@ 1700`). Nothing is
 lost: the raw value stays on `Event.Date` and in `Record.Tags`, is written
 back unchanged, and the converter keeps it as-is and reports it as Preserved
 when converting to 7.0. Mapping them would mean inventing `Validate`, Julian

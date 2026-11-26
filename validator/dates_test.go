@@ -160,6 +160,10 @@ func TestUnparseableDateReported(t *testing.T) {
 	for _, body := range [][]string{
 		{"1 BIRT", "2 DATE"},
 		{"1 BIRT", "2 DATE", "3 PHRASE spring"},
+		// Extension calendars, months and epochs are dates (ADR 0014)
+		{"1 BIRT", "2 DATE BET FRENCH_R 2 _JOUR 8 AND _CALENDRIER 4 COMP 8"},
+		{"1 DEAT", "2 DATE _CALENDAR 8 _MONTH 190 _EPOCH"},
+		{"1 BIRT", "2 DATE 31 FEB 2000 _AD"},
 	} {
 		if got := invalidDateIssues(t, body...); len(got) != 0 {
 			t.Errorf("%v: INVALID_DATE issues = %v, want none", body, got)

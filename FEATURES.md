@@ -1621,6 +1621,12 @@ date.EndDate.Calendar  // CalendarJulian
   `AFT`, `BET`/`AND`, `FROM`/`TO`, `INT`), per date; a date with no escape
   is Gregorian, so the end of `BET JULIAN 1700 AND 1750` is Gregorian, unless
   the escape is written ahead of the modifier, when it applies to both dates
+- GEDCOM 7.0 extension calendars, months and epochs (`_MAYAN 5 _KIN 2000`,
+  `FRENCH_R 2 _JOUR 8`) kept as written in `CalendarTag`, `MonthTag` and
+  `EpochTag`, with `Calendar` `CalendarExtension` for an extension calendar; no
+  `SCHMA` is consulted, and `Date.HasExtension` reports a date the library
+  cannot place in time (`Bounds` not ok, `ToGregorian` an error, `Compare`
+  sorting it last)
 
 ### API
 

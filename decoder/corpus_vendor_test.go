@@ -378,8 +378,11 @@ func TestCorpusVendorFiles(t *testing.T) {
 			vendor:      gedcom.VendorBrothersKeeper,
 			individuals: 257,
 			families:    206,
-			diags:       map[string]int{CodeInvalidValue: 103, CodeAmbiguousCodePage: 1},
-			strict:      true,
+			// Four placeholder DATEs such as "__ JAN 1717" are not counted:
+			// "__" is a 7.0 extension tag, so they read as an extension
+			// calendar (ADR 0014).
+			diags:  map[string]int{CodeInvalidValue: 99, CodeAmbiguousCodePage: 1},
+			strict: true,
 		},
 		{
 			path:        "../testdata/edge-cases/ancestry-5.5.1-utf8.ged",

@@ -22,6 +22,9 @@ const (
 	CalendarHebrew
 	// CalendarFrenchRepublican is the French Republican calendar
 	CalendarFrenchRepublican
+	// CalendarExtension is a GEDCOM 7.0 extension calendar, whose tag is in
+	// Date.CalendarTag (ADR 0014)
+	CalendarExtension
 )
 
 // String returns the string representation of the calendar.
@@ -35,6 +38,8 @@ func (c Calendar) String() string {
 		return "Hebrew"
 	case CalendarFrenchRepublican:
 		return "French Republican"
+	case CalendarExtension:
+		return "Extension"
 	default:
 		return "Unknown"
 	}
@@ -120,8 +125,25 @@ type Date struct {
 	// EndDate is populated for ranges (BET...AND) and periods (FROM...TO)
 	EndDate *Date `json:",omitempty"`
 
-	// Calendar indicates the calendar system (Gregorian, Julian, Hebrew, French Republican)
+	// Calendar indicates the calendar system (Gregorian, Julian, Hebrew,
+	// French Republican, or an extension calendar named by CalendarTag)
 	Calendar Calendar
+
+	// CalendarTag is the GEDCOM 7.0 extension calendar as written ("_MAYAN"),
+	// set when Calendar is CalendarExtension; ParseDate does not resolve it
+	// through a SCHMA. See HasExtension.
+	CalendarTag string `json:",omitempty"`
+
+	// MonthTag is the month as written when the library cannot number it:
+	// an extension month on any calendar ("_JOUR"), or any month on an
+	// extension calendar ("COMP" in "_CALENDRIER 4 COMP 8"). Month is 0 when
+	// it is set. See HasExtension.
+	MonthTag string `json:",omitempty"`
+
+	// EpochTag is the epoch as written when it is an extension epoch
+	// ("_AD"), or any epoch on an extension calendar ("BCE"); IsBC is false
+	// when it is set. See HasExtension.
+	EpochTag string `json:",omitempty"`
 
 	// IsBC is true for B.C./BCE dates
 	IsBC bool `json:",omitempty"`
@@ -235,9 +257,13 @@ var frenchMonthNames = map[string]int{
 // AND 1850" parse; Validate reports them (SI-017). A day or year too large
 // for an int is an error (SI-021).
 //
-// Only the four standard calendars, with their standard months and epochs,
-// are read: an extension calendar, month or epoch ("_MAYAN 5 _KIN 2000") is
-// an error (SI-018). In a range or period, a calendar applies only to the
+// A GEDCOM 7.0 extension calendar, month or epoch ("_MAYAN 5 _KIN 2000",
+// "FRENCH_R 2 _JOUR 8", "1 JAN 2000 _AD") is kept as written in CalendarTag,
+// MonthTag and EpochTag, with no SCHMA consulted, and the date has no place in
+// time (see HasExtension and ADR 0014). A leading extension tag followed by
+// more of the date is the calendar; every month and epoch of an extension
+// calendar is a tag, BCE included. A day or year of 0 is an error there too
+// (SI-018). In a range or period, a calendar applies only to the
 // date it precedes, so "BET JULIAN 1 JAN 1700 AND 1 JAN 1800" ends on a
 // Gregorian date. An escape written ahead of the modifier ("@#DJULIAN@ BET
 // 1700 AND 1750") is the default for both dates.
@@ -404,9 +430,10 @@ func parseDate(s string) (*Date, error) {
 	// Check for a leading calendar escape sequence. The grammar puts the escape
 	// inside each <date> production, so this only seeds the default calendar for
 	// the components below; parseDateComponents strips a per-component escape of
-	// its own and overrides the seed.
-	calendar, rest, found := parseCalendarEscape(s)
-	if found {
+	// its own and overrides the seed. A seeded calendar is named, so a
+	// leading extension tag after it is a month, not a calendar.
+	calendar, rest, calendarFound := parseCalendarEscape(s)
+	if calendarFound {
 		date.Calendar = calendar
 		s = rest
 	}
@@ -421,18 +448,18 @@ func parseDate(s string) (*Date, error) {
 		switch modifier {
 		case ModifierBetween:
 			// BET date1 AND date2
-			return parseDateRange(s, original, date.Calendar)
+			return parseDateRange(s, original, date.Calendar, calendarFound)
 		case ModifierFrom, ModifierTo, ModifierFromTo:
 			// FROM date, TO date, or FROM date TO date
-			return parseDatePeriod(s, original, modifier, date.Calendar)
+			return parseDatePeriod(s, original, modifier, date.Calendar, calendarFound)
 		case ModifierInterpreted:
 			// INT date (original phrase)
-			return parseInterpretedDate(s, original, date.Calendar)
+			return parseInterpretedDate(s, original, date.Calendar, calendarFound)
 		}
 	}
 
 	// Parse the date components (day, month, year, BC, dual year)
-	if err := parseDateComponents(s, date); err != nil {
+	if err := parseDateComponents(s, date, calendarFound); err != nil {
 		return nil, err
 	}
 
@@ -441,7 +468,7 @@ func parseDate(s string) (*Date, error) {
 
 // gedcom7Calendars maps the GEDCOM 7 calendar keywords to calendars. The 7.0
 // grammar spells them case-sensitively, so lookups use the field as written.
-// Extension calendars (_XXX) are not recognized.
+// Extension calendars (_XXX) are read by parseDateComponents.
 var gedcom7Calendars = map[string]Calendar{
 	"GREGORIAN": CalendarGregorian,
 	"JULIAN":    CalendarJulian,
@@ -540,8 +567,9 @@ func parseModifier(s string) (DateModifier, string, bool) {
 
 // parseDateRange parses a date range in the format "date1 AND date2".
 // defaultCal is the calendar each date starts from; either date may override it
-// with a calendar escape of its own.
-func parseDateRange(s, original string, defaultCal Calendar) (*Date, error) {
+// with a calendar escape of its own. named is whether a calendar was written
+// ahead of the modifier (see parseDateComponents).
+func parseDateRange(s, original string, defaultCal Calendar, named bool) (*Date, error) {
 	// Find the AND keyword (case-insensitive, byte-safe)
 	andIndex := indexFoldASCII(s, " AND ")
 	if andIndex == -1 {
@@ -551,7 +579,7 @@ func parseDateRange(s, original string, defaultCal Calendar) (*Date, error) {
 	// Parse the first date
 	date1Str := strings.TrimSpace(s[:andIndex])
 	date1 := &Date{Original: original, Calendar: defaultCal, Modifier: ModifierBetween}
-	if err := parseDateComponents(date1Str, date1); err != nil {
+	if err := parseDateComponents(date1Str, date1, named); err != nil {
 		return nil, fmt.Errorf("invalid start date in range: %w", err)
 	}
 
@@ -559,7 +587,7 @@ func parseDateRange(s, original string, defaultCal Calendar) (*Date, error) {
 	// so the first date's does not carry over.
 	date2Str := strings.TrimSpace(s[andIndex+5:]) // Skip " AND "
 	date2 := &Date{Original: "", Calendar: defaultCal}
-	if err := parseDateComponents(date2Str, date2); err != nil {
+	if err := parseDateComponents(date2Str, date2, named); err != nil {
 		return nil, fmt.Errorf("invalid end date in range: %w", err)
 	}
 
@@ -569,8 +597,9 @@ func parseDateRange(s, original string, defaultCal Calendar) (*Date, error) {
 
 // parseDatePeriod parses a date period (FROM, TO, or FROM...TO).
 // defaultCal is the calendar each date starts from; either date may override it
-// with a calendar escape of its own.
-func parseDatePeriod(s, original string, modifier DateModifier, defaultCal Calendar) (*Date, error) {
+// with a calendar escape of its own. named is whether a calendar was written
+// ahead of the modifier (see parseDateComponents).
+func parseDatePeriod(s, original string, modifier DateModifier, defaultCal Calendar, named bool) (*Date, error) {
 	// Check if there's a TO keyword for FROM...TO format (case-insensitive, byte-safe)
 	toIndex := indexFoldASCII(s, " TO ")
 
@@ -578,7 +607,7 @@ func parseDatePeriod(s, original string, modifier DateModifier, defaultCal Calen
 		// FROM date1 TO date2
 		date1Str := strings.TrimSpace(s[:toIndex])
 		date1 := &Date{Original: original, Calendar: defaultCal, Modifier: ModifierFromTo}
-		if err := parseDateComponents(date1Str, date1); err != nil {
+		if err := parseDateComponents(date1Str, date1, named); err != nil {
 			return nil, fmt.Errorf("invalid start date in period: %w", err)
 		}
 
@@ -586,7 +615,7 @@ func parseDatePeriod(s, original string, modifier DateModifier, defaultCal Calen
 		// precedes, so the first date's does not carry over.
 		date2Str := strings.TrimSpace(s[toIndex+4:]) // Skip " TO "
 		date2 := &Date{Original: "", Calendar: defaultCal}
-		if err := parseDateComponents(date2Str, date2); err != nil {
+		if err := parseDateComponents(date2Str, date2, named); err != nil {
 			return nil, fmt.Errorf("invalid end date in period: %w", err)
 		}
 
@@ -596,7 +625,7 @@ func parseDatePeriod(s, original string, modifier DateModifier, defaultCal Calen
 
 	// Simple FROM or TO
 	date := &Date{Original: original, Calendar: defaultCal, Modifier: modifier}
-	if err := parseDateComponents(s, date); err != nil {
+	if err := parseDateComponents(s, date, named); err != nil {
 		return nil, err
 	}
 	return date, nil
@@ -610,8 +639,9 @@ func parseDatePeriod(s, original string, modifier DateModifier, defaultCal Calen
 //   - "1850" -> Year=1850, InterpretedFrom="" (no phrase is valid)
 //
 // defaultCal is the calendar the date starts from; the date may override it with
-// a calendar escape of its own.
-func parseInterpretedDate(s, original string, defaultCal Calendar) (*Date, error) {
+// a calendar escape of its own. named is whether a calendar was written ahead
+// of the modifier (see parseDateComponents).
+func parseInterpretedDate(s, original string, defaultCal Calendar, named bool) (*Date, error) {
 	date := &Date{
 		Original:      original,
 		Calendar:      defaultCal,
@@ -623,7 +653,7 @@ func parseInterpretedDate(s, original string, defaultCal Calendar) (*Date, error
 	parenIndex := strings.Index(s, "(")
 	if parenIndex == -1 {
 		// No parenthetical phrase - just parse the date
-		if err := parseDateComponents(s, date); err != nil {
+		if err := parseDateComponents(s, date, named); err != nil {
 			return nil, err
 		}
 		return date, nil
@@ -636,7 +666,7 @@ func parseInterpretedDate(s, original string, defaultCal Calendar) (*Date, error
 	}
 
 	// Parse the date portion
-	if err := parseDateComponents(dateStr, date); err != nil {
+	if err := parseDateComponents(dateStr, date, named); err != nil {
 		return nil, err
 	}
 
@@ -665,8 +695,14 @@ func isBCSuffix(s string) bool {
 // modifier keyword has been consumed (e.g. "ABT @#DJULIAN@ MAR 1066"); it overrides the
 // calendar the caller seeded on date. The strip must precede tokenization because
 // "@#DFRENCH R@" contains a space that strings.Fields would split.
-func parseDateComponents(s string, date *Date) error {
-	if calendar, rest, found := parseCalendarEscape(strings.TrimSpace(s)); found {
+//
+// A 7.0 extension calendar, month or epoch is kept as written (ADR 0014): a
+// leading extension tag followed by more of the date is the calendar, unless
+// named says a calendar was written ahead of the modifier, and a final
+// extension tag is the epoch.
+func parseDateComponents(s string, date *Date, named bool) error {
+	calendar, rest, found := parseCalendarEscape(strings.TrimSpace(s))
+	if found {
 		date.Calendar = calendar
 		s = rest
 	}
@@ -675,23 +711,45 @@ func parseDateComponents(s string, date *Date) error {
 	if len(fields) == 0 {
 		return fmt.Errorf("empty date")
 	}
-
-	// Check for B.C./BCE suffix on last field
-	if isBCSuffix(fields[len(fields)-1]) {
-		date.IsBC = true
-		fields = fields[:len(fields)-1] // Remove BC suffix
-		if len(fields) == 0 {
-			return fmt.Errorf("empty date after BC suffix")
-		}
-		// Only the Gregorian and Julian calendars have an epoch: 7.0
-		// Appendix A, and 5.5.1's DATE_HEBR and DATE_FREN, which have no
-		// B.C.
-		if date.Calendar == CalendarHebrew || date.Calendar == CalendarFrenchRepublican {
-			return fmt.Errorf("the %s calendar has no B.C. epoch", date.Calendar)
-		}
+	if !found && !named && len(fields) > 1 && isExtensionTag(fields[0]) {
+		date.Calendar, date.CalendarTag = CalendarExtension, fields[0]
+		fields = fields[1:]
 	}
 
+	fields, err := cutEpoch(fields, date)
+	if err != nil {
+		return err
+	}
 	return parseDateFields(fields, date)
+}
+
+// cutEpoch sets date's epoch from the last of fields, when it is one, and
+// returns the fields before it: an extension epoch, any epoch of an
+// extension calendar, or a B.C./BCE suffix.
+func cutEpoch(fields []string, date *Date) ([]string, error) {
+	last := fields[len(fields)-1]
+	if len(fields) > 1 && (isExtensionTag(last) || date.Calendar == CalendarExtension && last == "BCE") {
+		date.EpochTag = last
+		return fields[:len(fields)-1], nil
+	}
+	if !isBCSuffix(last) {
+		return fields, nil
+	}
+	if date.Calendar == CalendarExtension {
+		return nil, fmt.Errorf("invalid epoch %s: an extension calendar's epoch is BCE or an extension tag", last)
+	}
+	date.IsBC = true
+	fields = fields[:len(fields)-1] // Remove BC suffix
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("empty date after BC suffix")
+	}
+	// Only the Gregorian and Julian calendars have an epoch: 7.0
+	// Appendix A, and 5.5.1's DATE_HEBR and DATE_FREN, which have no
+	// B.C.
+	if date.Calendar == CalendarHebrew || date.Calendar == CalendarFrenchRepublican {
+		return nil, fmt.Errorf("the %s calendar has no B.C. epoch", date.Calendar)
+	}
+	return fields, nil
 }
 
 // parseDateFields parses date fields after BC suffix has been handled.
@@ -721,15 +779,13 @@ func parseYearOnly(yearStr string, date *Date) error {
 
 // parseMonthYear parses a month-year date (no day).
 func parseMonthYear(fields []string, date *Date) error {
-	month, err := parseMonthForCalendar(fields[0], date.Calendar)
-	if err != nil {
+	if err := parseMonth(fields[0], date); err != nil {
 		return err
 	}
 	year, dualYear, err := parseYearWithDual(fields[1], date.IsBC)
 	if err != nil {
 		return err
 	}
-	date.Month = month
 	date.Year = year
 	date.DualYear = dualYear
 	return nil
@@ -744,8 +800,7 @@ func parseDayMonthYear(fields []string, date *Date) error {
 	if day == 0 {
 		return fmt.Errorf("invalid day: %s (a day of the month is 1-31)", fields[0])
 	}
-	month, err := parseMonthForCalendar(fields[1], date.Calendar)
-	if err != nil {
+	if err := parseMonth(fields[1], date); err != nil {
 		return err
 	}
 	year, dualYear, err := parseYearWithDual(fields[2], date.IsBC)
@@ -753,10 +808,49 @@ func parseDayMonthYear(fields []string, date *Date) error {
 		return err
 	}
 	date.Day = day
-	date.Month = month
 	date.Year = year
 	date.DualYear = dualYear
 	return nil
+}
+
+// parseMonth sets date's Month from the month field s, or its MonthTag when
+// s is an extension month or date is on an extension calendar, whose months
+// the library cannot number (ADR 0014).
+func parseMonth(s string, date *Date) error {
+	if isExtensionTag(s) || date.Calendar == CalendarExtension {
+		if !isTag(s) {
+			return fmt.Errorf("invalid month '%s' for extension calendar %s (a month is a tag)", s, date.CalendarTag)
+		}
+		date.MonthTag = s
+		return nil
+	}
+	month, err := parseMonthForCalendar(s, date.Calendar)
+	if err != nil {
+		return err
+	}
+	date.Month = month
+	return nil
+}
+
+// isTag reports whether s is a GEDCOM 7.0 tag, standard or extension: an
+// upper-case letter or underscore, then upper-case letters, digits and
+// underscores (stdTag / extTag), at least two characters for an extension.
+func isTag(s string) bool {
+	if s == "" || s == "_" || s[0] != '_' && (s[0] < 'A' || s[0] > 'Z') {
+		return false
+	}
+	for i := 1; i < len(s); i++ {
+		if c := s[i]; c != '_' && (c < 'A' || c > 'Z') && (c < '0' || c > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+// isExtensionTag reports whether s is a GEDCOM 7.0 extension tag (extTag):
+// an underscore, then at least one upper-case letter, digit or underscore.
+func isExtensionTag(s string) bool {
+	return strings.HasPrefix(s, "_") && isTag(s)
 }
 
 // parseMonthForCalendar parses a month code for a specific calendar system.
@@ -960,7 +1054,8 @@ func (d *Date) Validate() error {
 }
 
 // validateEndpoint checks a single date (ignoring EndDate): its year range,
-// its dual year, then its day.
+// its dual year, then its day. The day of a date with an extension calendar,
+// month or epoch is not checked, since its month's length is unknown.
 func (d *Date) validateEndpoint() error {
 	if err := d.validateYearRange(); err != nil {
 		return err
@@ -968,7 +1063,53 @@ func (d *Date) validateEndpoint() error {
 	if err := d.validateDualYear(); err != nil {
 		return err
 	}
+	if d.HasExtension() {
+		return nil
+	}
 	return d.validateDay()
+}
+
+// errExtension is the error of a conversion or count that needs to place d,
+// which HasExtension reports, in time.
+func (d *Date) errExtension(operation string) error {
+	return fmt.Errorf("cannot %s: the date has an extension calendar, month or epoch (%s)", operation, d.extensionTags())
+}
+
+// extensionTags lists the extension tags d keeps, as written.
+func (d *Date) extensionTags() string {
+	var tags []string
+	for _, tag := range []string{d.CalendarTag, d.MonthTag, d.EpochTag} {
+		if tag != "" {
+			tags = append(tags, tag)
+		}
+	}
+	if len(tags) == 0 {
+		return "no tag recorded"
+	}
+	return strings.Join(tags, " ")
+}
+
+// extensionError is the error of an operation on two dates when either has an
+// extension calendar, month or epoch, naming which; nil when neither has.
+func extensionError(d1, d2 *Date, operation string) error {
+	if d1.HasExtension() {
+		return fmt.Errorf("first date: %w", d1.errExtension(operation))
+	}
+	if d2.HasExtension() {
+		return fmt.Errorf("second date: %w", d2.errExtension(operation))
+	}
+	return nil
+}
+
+// HasExtension reports whether the date itself, not its EndDate, has a
+// GEDCOM 7.0 extension calendar, month or epoch, kept in CalendarTag,
+// MonthTag and EpochTag (spec-interpretation policy SI-018, ADR 0014). The
+// library does not know such a calendar, month or epoch, so the date has no
+// place in time: Bounds and AgeAt are not ok, ToGregorian, ToTime and
+// YearsBetween return an error, IsBefore and IsAfter are false, Compare sorts
+// it after every date without one, and Validate does not check its day.
+func (d *Date) HasExtension() bool {
+	return d != nil && (d.Calendar == CalendarExtension || d.MonthTag != "" || d.EpochTag != "")
 }
 
 // validateYearRange checks that Year is within maxBoundsYear of the epoch, so
@@ -1141,6 +1282,10 @@ func defaultToOne(val int) int {
 //
 // Compare ignores Modifier, so it gives a sort order, not proof that one date
 // precedes another; see Bounds for that.
+//
+// A date that HasExtension reports cannot be placed in time, so it sorts
+// after every date that can, and two such dates sort in byte order of
+// Original, equal when Original is: a stable order, not a chronological one.
 func (d *Date) Compare(other *Date) int {
 	if d == nil && other == nil {
 		return 0
@@ -1150,6 +1295,9 @@ func (d *Date) Compare(other *Date) int {
 	}
 	if other == nil {
 		return 1
+	}
+	if cmp, ok := compareExtension(d, other); ok {
+		return cmp
 	}
 	d, other = d.inNewStyle(), other.inNewStyle()
 
@@ -1201,6 +1349,21 @@ func (d *Date) Compare(other *Date) int {
 	return compareInts(d1, d2)
 }
 
+// compareExtension is Compare when d or other has an extension calendar,
+// month or epoch, and ok is false when neither has.
+func compareExtension(d, other *Date) (cmp int, ok bool) {
+	dExt, otherExt := d.HasExtension(), other.HasExtension()
+	switch {
+	case dExt && otherExt:
+		return strings.Compare(d.Original, other.Original), true
+	case dExt:
+		return 1, true
+	case otherExt:
+		return -1, true
+	}
+	return 0, false
+}
+
 // Bounds returns the earliest and latest day the date can denote, as Julian
 // Day Numbers (see GregorianToJDN), so bounds from any calendar compare
 // directly. Unlike Compare, which reads a partial date as its first day and
@@ -1221,7 +1384,8 @@ func (d *Date) Compare(other *Date) int {
 //     Validate), or that is not Gregorian or Julian, spans both readings.
 //
 // ok is false when the date or a range's end date has no year, the date is a
-// phrase, its calendar is unknown, it names a month or day the calendar does
+// phrase, its calendar is unknown, either has an extension calendar, month or
+// epoch (see HasExtension), it names a month or day the calendar does
 // not have that year (31 FEB 1850, Adar II in a common Hebrew year), or its
 // year is beyond 1,000,000. earliest and latest are meaningless when ok is
 // false.
@@ -1262,6 +1426,9 @@ func (d *Date) Bounds() (earliest, latest int, ok bool) {
 // endpointBounds bounds a single date, ignoring Modifier and EndDate. A dual
 // date whose New Style year is unknown spans both of its years.
 func (d *Date) endpointBounds() (earliest, latest int, ok bool) {
+	if d.HasExtension() {
+		return 0, 0, false
+	}
 	if d.DualYear == 0 {
 		return d.boundsInYear(d.Year)
 	}
@@ -1357,7 +1524,12 @@ func (d *Date) boundsInYear(year int) (earliest, latest int, ok bool) {
 // Validate; invalid dates are never rolled over into the following month.
 // B.C. dates use astronomical year numbering via AstronomicalYear, so the
 // result's Year() is 0 for 1 BCE and -43 for 44 BCE (proleptic Gregorian).
+// A date with an extension calendar, month or epoch (see HasExtension) is an
+// error.
 func (d *Date) ToTime() (time.Time, error) {
+	if d.HasExtension() {
+		return time.Time{}, d.errExtension("convert date to time")
+	}
 	if d.Calendar != CalendarGregorian {
 		return time.Time{}, fmt.Errorf("ToTime only supports Gregorian calendar, got %s", d.Calendar)
 	}
@@ -1481,6 +1653,10 @@ func calendarToJDN(cal Calendar, year, month, day int) (int, error) {
 // source Bounds spans, and an invalid DualYear no longer fails Validate on
 // it; validate the source to catch that. A Gregorian dual date is returned
 // unchanged.
+//
+// A date, or range end, with an extension calendar, month or epoch (see
+// HasExtension) is an error, even on the Gregorian calendar: the library
+// cannot say what day it names.
 func (d *Date) ToGregorian() (*Date, error) {
 	result, err := d.toGregorianComponents()
 	if err != nil {
@@ -1504,6 +1680,9 @@ func (d *Date) ToGregorian() (*Date, error) {
 // EndDate. ToGregorian handles the endpoint. It reads a dual date through
 // inNewStyle itself, so callers need not.
 func (d *Date) toGregorianComponents() (*Date, error) {
+	if d.HasExtension() {
+		return nil, d.errExtension("convert date to Gregorian")
+	}
 	// If already Gregorian, return a copy
 	if d.Calendar == CalendarGregorian {
 		result := *d
@@ -1572,20 +1751,21 @@ func (d *Date) toGregorianComponents() (*Date, error) {
 }
 
 // IsAfter returns true if d is after other.
-// Returns false if either date is nil.
+// Returns false if either date is nil or has an extension calendar, month or
+// epoch (see HasExtension), which Compare does not place in time.
 func (d *Date) IsAfter(other *Date) bool {
-	if d == nil || other == nil {
+	if d == nil || other == nil || d.HasExtension() || other.HasExtension() {
 		return false
 	}
 	return d.Compare(other) > 0
 }
 
 // IsBefore returns true if d is before other by Compare.
-// Returns false if either date is nil. It reads a partial date as its first
-// day and ignores modifiers; see Bounds to test whether d is provably before
-// other.
+// Returns false if either date is nil or has an extension calendar, month or
+// epoch (see HasExtension). It reads a partial date as its first day and
+// ignores modifiers; see Bounds to test whether d is provably before other.
 func (d *Date) IsBefore(other *Date) bool {
-	if d == nil || other == nil {
+	if d == nil || other == nil || d.HasExtension() || other.HasExtension() {
 		return false
 	}
 	return d.Compare(other) < 0
@@ -1621,12 +1801,13 @@ func (d *Date) IsEqual(other *Date) bool {
 // counts from Year.
 // Returns error if either date has no year (insufficient data), or if the
 // dates are in different calendars and one cannot be converted to Gregorian;
-// that error says which date failed.
+// that error says which date failed. A date with an extension calendar,
+// month or epoch (see HasExtension) is an error too, whatever the other's
+// calendar.
 // Always returns absolute value (no negative years).
 func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
-	// Check both dates exist and have years
-	if d1 == nil || d2 == nil || d1.Year == 0 || d2.Year == 0 {
-		return 0, false, fmt.Errorf("insufficient date information")
+	if err := yearsBetweenInputError(d1, d2); err != nil {
+		return 0, false, err
 	}
 	d1, d2 = d1.inNewStyle(), d2.inNewStyle()
 
@@ -1671,6 +1852,15 @@ func YearsBetween(d1, d2 *Date) (years int, exact bool, err error) {
 		yearDiff = -yearDiff
 	}
 	return yearDiff, false, nil
+}
+
+// yearsBetweenInputError is YearsBetween's error for dates it cannot count
+// at all: a missing date or year, or an extension calendar, month or epoch.
+func yearsBetweenInputError(d1, d2 *Date) error {
+	if d1 == nil || d2 == nil || d1.Year == 0 || d2.Year == 0 {
+		return fmt.Errorf("insufficient date information")
+	}
+	return extensionError(d1, d2, "count years")
 }
 
 // AgeAt returns the age, in completed years, of someone born on birth when
