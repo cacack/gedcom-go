@@ -26,7 +26,8 @@ does not consult a `SCHMA`, and it gives such a date no place in time:
 - **A leading extension tag followed by more of the date is a calendar.** The
   grammar reads `_X 2000` either as calendar `_X` with year 2000 or as a Gregorian
   extension month; ParseDate takes the calendar, which accepts every string the
-  month reading does, since the tail is the same.
+  month reading does, since the tail is the same. After a named calendar,
+  including one written ahead of the modifier (`JULIAN _X 1700`), it is a month.
 - **Tags are read as the grammar spells them.** `_jour` is not an `extTag`, so it
   is an error rather than a month; standard months keep their case-folding
   (SI-003).
@@ -99,6 +100,10 @@ oracle found, so a decoded event's `ParsedDate` was nil and the validator report
   converted.
 - Decoded events that had a nil `ParsedDate` now have one, and the validator no
   longer reports them; a behavior change listed in api-stability.md.
+- `ParseDate` reads every version alike (SI-002), so a 5.5.x placeholder that is
+  an extension tag reads as one: Brother's Keeper's `__ JAN 1717` is calendar
+  `__`, no longer reported as an invalid date, though it still has no place in
+  time.
 
 ## References
 
