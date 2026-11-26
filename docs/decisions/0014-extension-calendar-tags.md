@@ -43,7 +43,7 @@ What the arithmetic returns, for a date that `Date.HasExtension` reports:
 | API | Result |
 |-----|--------|
 | `Bounds`, `AgeAt` | `ok` false, as for a date with no year; a range with such an endpoint too |
-| `Compare` | sorts after every date without one; two such dates in byte order of `Original`, equal when it is equal. A stable order, not a chronological one |
+| `Compare` | sorts after every date without one; two such dates in byte order of `Original`, then by calendar, year, month, day and epoch, so two with no `Original` (a range's end date, a `Date` built in code) are equal only when those are. A stable order, not a chronological one |
 | `IsBefore`, `IsAfter` | false when either date has one |
 | `ToGregorian`, `ToTime`, `YearsBetween` | an error naming the extension |
 | `Validate` | checks the year range and dual year, not the day: a month's length is unknown |

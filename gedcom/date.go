@@ -1284,8 +1284,10 @@ func defaultToOne(val int) int {
 // precedes another; see Bounds for that.
 //
 // A date that HasExtension reports cannot be placed in time, so it sorts
-// after every date that can, and two such dates sort in byte order of
-// Original, equal when Original is: a stable order, not a chronological one.
+// after every date that can. Two such dates sort in byte order of Original,
+// then of their calendar, year, month, day and epoch, so dates with no
+// Original (a range's EndDate, a Date built in code) are equal only when
+// those are: a stable order, not a chronological one.
 func (d *Date) Compare(other *Date) int {
 	if d == nil && other == nil {
 		return 0
@@ -1351,11 +1353,26 @@ func (d *Date) Compare(other *Date) int {
 
 // compareExtension is Compare when d or other has an extension calendar,
 // month or epoch, and ok is false when neither has.
-func compareExtension(d, other *Date) (cmp int, ok bool) {
+func compareExtension(d, other *Date) (order int, ok bool) {
 	dExt, otherExt := d.HasExtension(), other.HasExtension()
 	switch {
 	case dExt && otherExt:
-		return strings.Compare(d.Original, other.Original), true
+		for _, order := range []int{
+			strings.Compare(d.Original, other.Original),
+			strings.Compare(d.CalendarTag, other.CalendarTag),
+			compareInts(int(d.Calendar), int(other.Calendar)),
+			compareInts(d.Year, other.Year),
+			compareInts(d.DualYear, other.DualYear),
+			strings.Compare(d.MonthTag, other.MonthTag),
+			compareInts(d.Month, other.Month),
+			compareInts(d.Day, other.Day),
+			strings.Compare(d.EpochTag, other.EpochTag),
+		} {
+			if order != 0 {
+				return order, true
+			}
+		}
+		return 0, true
 	case dExt:
 		return 1, true
 	case otherExt:
@@ -1771,8 +1788,10 @@ func (d *Date) IsBefore(other *Date) bool {
 	return d.Compare(other) < 0
 }
 
-// IsEqual returns true if d is equal to other.
-// Returns true if both dates are nil, false if only one is nil.
+// IsEqual returns true if d is equal to other by Compare.
+// Returns true if both dates are nil, false if only one is nil. Two dates
+// that HasExtension reports are equal when their Original, calendar, year,
+// month, day and epoch are; neither equals a date without an extension.
 func (d *Date) IsEqual(other *Date) bool {
 	if d == nil && other == nil {
 		return true

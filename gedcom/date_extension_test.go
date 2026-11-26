@@ -163,6 +163,37 @@ func TestDate_ExtensionCompareOrder(t *testing.T) {
 	}
 }
 
+// TestDate_ExtensionCompareWithoutOriginal checks that two extension dates
+// with no Original, a range's end date or a Date built in code, are equal
+// only when their calendar, day, month, year and epoch are.
+func TestDate_ExtensionCompareWithoutOriginal(t *testing.T) {
+	a := mustParseDate("BET 1 JAN 2000 AND _MAYAN 5 _KIN 2000").EndDate
+	b := mustParseDate("BET 1 JAN 2000 AND _AZTEC 1 _XX 1").EndDate
+	if a.IsEqual(b) || a.Compare(b) == 0 || a.Compare(b) != -b.Compare(a) {
+		t.Errorf("end dates _MAYAN 5 _KIN 2000 and _AZTEC 1 _XX 1: IsEqual %v, Compare %d, %d", a.IsEqual(b), a.Compare(b), b.Compare(a))
+	}
+	if !a.IsEqual(mustParseDate("BET 2 JAN 2000 AND _MAYAN 5 _KIN 2000").EndDate) {
+		t.Error("equal extension end dates compare unequal")
+	}
+
+	mayan := &Date{Calendar: CalendarExtension, CalendarTag: "_MAYAN", Year: 2000}
+	tests := []*Date{
+		{Calendar: CalendarExtension, CalendarTag: "_AZTEC", Year: 2000},
+		{Calendar: CalendarExtension, CalendarTag: "_MAYAN", Year: 1},
+		{Calendar: CalendarExtension, CalendarTag: "_MAYAN", Year: 2000, Day: 5, MonthTag: "_KIN"},
+		{Calendar: CalendarExtension, CalendarTag: "_MAYAN", Year: 2000, EpochTag: "_X"},
+		{Calendar: CalendarGregorian, Year: 2000, Month: 3, EpochTag: "_AD"},
+	}
+	for _, other := range tests {
+		if mayan.IsEqual(other) || mayan.Compare(other) != -other.Compare(mayan) {
+			t.Errorf("_MAYAN 2000 vs %+v: IsEqual %v, Compare %d, %d", other, mayan.IsEqual(other), mayan.Compare(other), other.Compare(mayan))
+		}
+	}
+	if !mayan.IsEqual(&Date{Calendar: CalendarExtension, CalendarTag: "_MAYAN", Year: 2000}) {
+		t.Error("identical hand-built extension dates compare unequal")
+	}
+}
+
 // TestDate_ExtensionValidate checks that Validate still checks the year range
 // and dual year of an extension date, but not its day.
 func TestDate_ExtensionValidate(t *testing.T) {
