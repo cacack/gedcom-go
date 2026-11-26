@@ -46,11 +46,13 @@ func (r *Record) FullValue(t *Tag) string {
 // SetFullValue replaces t's value and its CONT and CONC lines with value,
 // split as the encoder splits a typed value for GEDCOM version v: a CONT for
 // each line break (CRLF, LF or CR), and a CONC for each piece of a line longer
-// than encoder.DefaultMaxLineLength bytes, except for GEDCOM 7.0, which has no
-// CONC. Pass the document's doc.Header.Version; an empty or unknown version is
-// split as 5.x is, as the encoder does. The width is always the encoder's
-// default: an encoder.EncodeOptions.MaxLineLength set for the later encode is
-// not applied here, and the encoder writes raw Tags as they are.
+// than encoder.DefaultMaxLineLength bytes, or than the room a 255-byte line
+// leaves after t's level, XRef and tag, except for GEDCOM 7.0, which has no
+// CONC (spec-interpretation policy SI-008). Pass the document's
+// doc.Header.Version; an empty or unknown version is split as 5.x is, as the
+// encoder does. The width is always the encoder's default: an
+// encoder.EncodeOptions.MaxLineLength set for the later encode is not applied
+// here, and the encoder writes raw Tags as they are.
 //
 // t keeps its LineNumber and takes the first piece as its Value. The new
 // continuation lines go directly after t, with no LineNumber, and t's other
@@ -82,7 +84,7 @@ func (r *Record) SetFullValue(t *Tag, value string, v Version) bool {
 	}
 	end := start + len(subtree(r.Tags[start:], t))
 
-	maxLen := concsplit.MaxValueLength
+	maxLen := concsplit.ValueLength(concsplit.MaxValueLength, t.Level, t.XRef, t.Tag, t.Level+1)
 	if v == Version70 {
 		maxLen = 0
 	}
