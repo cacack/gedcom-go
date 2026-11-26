@@ -166,7 +166,11 @@ result (`ValidateAll`, `QualityReport`, `StreamingValidator`). The only code for
 which it can is `DUPLICATE_XREF`: the decoder reports a redefined XRef where it
 reads it, and the validator reports the same record on the same line, because it
 also covers documents built in code or decoded in strict mode. Every other code
-comes from one package only.
+comes from one package only. One finding is reported by both under different
+codes: a `DATE` that `gedcom.ParseDate` cannot read is the decoder's
+`INVALID_VALUE` (or `NONSTANDARD_DATE`, for an English date it read) and the
+validator's `INVALID_DATE`, so a caller that validates without reading the
+diagnostics still sees it.
 
 If you report both lists, pass the issues through `gedcomgo.WithoutDiagnosed`,
 which drops each `DUPLICATE_XREF` issue whose record and line a diagnostic

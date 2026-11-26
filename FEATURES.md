@@ -1544,7 +1544,7 @@ err := date.Validate()
 - Rejects a year more than 1,000,000 either side of the epoch, so arithmetic on a hand-built `Date` cannot overflow
 - BCE dates use the proleptic Gregorian calendar with astronomical years (1 BCE = year 0, so Feb 29 1 BCE is valid and Feb 29 4 BCE is not)
 
-`ParseDate` itself rejects a day or year written as `0` (`0 JAN 1850`, `1 JAN 0`, `0 BC`) — no calendar has one, and `0` is the "absent" value — and a signed day or year (`-1850`, `+1850`, `-5 JAN 1850`); write a B.C. year with a `BC` suffix. The decoder reports such a value as `INVALID_VALUE` and keeps it in the raw tags; the validator's `INVALID_DATE` check does not see it.
+`ParseDate` itself rejects a day or year written as `0` (`0 JAN 1850`, `1 JAN 0`, `0 BC`) — no calendar has one, and `0` is the "absent" value — and a signed day or year (`-1850`, `+1850`, `-5 JAN 1850`); write a B.C. year with a `BC` suffix. The decoder reports such a value as `INVALID_VALUE` and keeps it in the raw tags; the validator reports it as `INVALID_DATE`, as not a GEDCOM date.
 
 `ParseDateLenient` is `ParseDate` plus a fixed list of English spellings, for exporters that pass a date through as typed (Ancestry, MacFamilyTree). It returns the date and the GEDCOM form the value was read as (`""` for a date `ParseDate` accepts); `Date.Original` stays the value as given. Matched case-insensitively:
 
@@ -1804,14 +1804,18 @@ so its leap day passes but `30 FEB 1723/24` is reported. A dual year that is not
 year following the first, such as `1750/53` or `1850/1860`, is reported too, even on a
 partial date. A range or period that ends before it starts, such as
 `BET 1860 AND 1850`, is reported too. A one- or two-digit dual year resolves forward, so
-`1699/00` is 1699 and 1700. A record built in code, with no raw tags, is checked
-through its typed events, attributes and LDS ordinances; those issues carry line 0 and
-a `path` of just `<TYPE>.DATE`. `ValidateAll` and `QualityReport` run this check;
-`ValidateDateLogic` and the streaming validator do not.
+`1699/00` is 1699 and 1700. A non-empty value `gedcom.ParseDate` cannot read at all —
+`FOO BAR`, `0 JAN 1850`, or an English `June 1880` the decoder read leniently — is reported
+as `INVALID_DATE` too, with a message saying it is not a GEDCOM date; an empty `DATE`,
+which 7.0 permits beside a `PHRASE`, is not. A record built in code, with no raw tags, is
+checked through its typed events, attributes and LDS ordinances, reading a nil
+`ParsedDate` from the `Date` string; those issues carry line 0 and a `path` of just
+`<TYPE>.DATE`. `ValidateAll`, `Validate`, `QualityReport` and the streaming validator's
+`ValidateRecord` (on every record type) run this check; `ValidateDateLogic` does not.
 
 | Error Code | Severity | Description |
 |------------|----------|-------------|
-| INVALID_DATE | Warning | Date (or range/period end date) names a day its month does not have, or a dual year that is not the following year, or a range or period ends before it starts |
+| INVALID_DATE | Warning | Date (or range/period end date) names a day its month does not have, or a dual year that is not the following year, or a range or period ends before it starts, or the value is not a GEDCOM date |
 
 **Orphaned Reference Detection:**
 
@@ -2144,7 +2148,7 @@ finalIssues := v.Finalize()  // Orphaned reference detection
 `ValidateRecord` reads the record's typed `Entity`. The streaming parsers yield
 raw lines only, so decode each record with `decoder.DecodeRecord` first (see
 [Typed Records](#typed-records)): a record holding only raw `Tags` is
-registered as declared but nothing in it is checked.
+registered as declared and has its `DATE` lines checked, but nothing else in it is checked.
 
 Set `StreamingOptions.Version` to the document's GEDCOM version: the streaming
 validator never sees the header, and `Finalize` needs it to treat `@VOID@` as
@@ -2152,7 +2156,7 @@ the 7.0 null pointer (never orphaned) or as a 5.5/5.5.1 identifier that must be
 declared. Left empty, `@VOID@` is taken as the null pointer.
 
 **Two-Phase Validation**:
-- **Immediate**: Date logic errors (death before birth), structural issues detected per-record
+- **Immediate**: Date logic errors (death before birth), `INVALID_DATE` on every record type (as `ValidateAll` reports it), structural issues detected per-record
 - **Deferred**: Cross-reference validation (orphaned FAMC, FAMS, HUSB, WIFE, CHIL, SOUR, ASSO, REPO, NOTE) in `Finalize()`. Note pointers are checked on individual, family and source records and on every typed structure below them that carries notes -- names, events, attributes, source citations, LDS ordinances, change and creation dates, FAMC/FAMS links, ASSO, OBJE links, PLAC and REPO links; `Details["field"]` locates each (e.g. `Events[0].PlaceDetail.NoteXRefs[0]`)
 
 **Note**: Parent-child date logic checks (child born before parent) require a complete document and are not supported in streaming mode.
