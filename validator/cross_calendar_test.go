@@ -111,6 +111,29 @@ func TestBirthYearsApart_Unconvertible(t *testing.T) {
 	}
 }
 
+// TestBirthYearsApart_Extension checks that a date with an extension
+// calendar, month or epoch earns no year credit, even against a date with
+// the same Calendar value and year (ADR 0014).
+func TestBirthYearsApart_Extension(t *testing.T) {
+	for _, pair := range [][2]string{
+		{"_MAYAN 2000", "_AZTEC 2000"},
+		{"FRENCH_R 2 _JOUR 8", "FRENCH_R 8"},
+		{"2000 _AD", "2000"},
+	} {
+		d1, err1 := gedcom.ParseDate(pair[0])
+		d2, err2 := gedcom.ParseDate(pair[1])
+		if err1 != nil || err2 != nil {
+			t.Fatalf("ParseDate: %v, %v", err1, err2)
+		}
+		if years, ok := yearsApart(d1, d2); ok {
+			t.Errorf("yearsApart(%q, %q) = %d, true; want ok false", pair[0], pair[1], years)
+		}
+		if sameFullDate(d1, d1) {
+			t.Errorf("sameFullDate(%q, itself) = true, want false", pair[0])
+		}
+	}
+}
+
 func TestBirthYearsApart_Years(t *testing.T) {
 	tests := []struct {
 		name         string
