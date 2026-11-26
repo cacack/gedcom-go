@@ -7,6 +7,7 @@ import (
 
 	"github.com/cacack/gedcom-go/v3/decoder"
 	"github.com/cacack/gedcom-go/v3/gedcom"
+	"github.com/cacack/gedcom-go/v3/internal/tagtree"
 )
 
 // ErrSyncBaseline is returned by SyncTags when the document's raw tags do not
@@ -281,27 +282,29 @@ type tagNode struct {
 }
 
 // tagTree builds the structure tree of a flat tag list. A tag belongs to the
-// nearest preceding tag at a lower level, so a level jump in malformed input
-// still attaches somewhere and every line is kept. Nil tags write nothing and
-// are dropped.
+// nearest preceding tag at a lower level, the rule every package shares
+// (SI-023), so a level jump in malformed input still attaches under that tag
+// and every line is kept. Nil tags write nothing and are dropped.
 func tagTree(tags []*gedcom.Tag) []*tagNode {
+	parents := tagtree.Parents(tags, func(t *gedcom.Tag) (int, bool) {
+		if t == nil {
+			return 0, false
+		}
+		return t.Level, true
+	})
 	var roots []*tagNode
-	var stack []*tagNode
-	for _, tag := range tags {
+	nodes := make([]*tagNode, len(tags))
+	for i, tag := range tags {
 		if tag == nil {
 			continue
 		}
 		node := &tagNode{tag: tag}
-		for len(stack) > 0 && stack[len(stack)-1].tag.Level >= tag.Level {
-			stack = stack[:len(stack)-1]
-		}
-		if len(stack) == 0 {
-			roots = append(roots, node)
+		nodes[i] = node
+		if p := parents[i]; p >= 0 {
+			nodes[p].kids = append(nodes[p].kids, node)
 		} else {
-			parent := stack[len(stack)-1]
-			parent.kids = append(parent.kids, node)
+			roots = append(roots, node)
 		}
-		stack = append(stack, node)
 	}
 	return roots
 }

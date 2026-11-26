@@ -47,7 +47,8 @@ func TestRecordFindAll(t *testing.T) {
 		{"deep path", []string{"BIRT", "PLAC", "MAP", "LATI"}, []string{"N42.36"}},
 		{"after nil entry", []string{"BIRT", "SOUR"}, []string{"@S1@"}},
 		{"wrong parent", []string{"ASSO", "GIVN"}, nil},
-		{"skipped level not matched", []string{"DEAT", "PLAC"}, nil},
+		{"skipped level is its parent's child (SI-023)", []string{"DEAT", "PLAC"}, []string{"skipped level"}},
+		{"skipped level not matched at its own level", []string{"DEAT", "", "PLAC"}, nil},
 		{"no match", []string{"BURI"}, nil},
 		{"case-sensitive", []string{"name"}, nil},
 		{"empty path", nil, nil},
@@ -81,16 +82,19 @@ func TestRecordFind(t *testing.T) {
 	}
 }
 
+// A level-0 tag is the parent of the deeper tags after it (SI-023), so it
+// ends the branch before it and nothing beneath it matches a path.
 func TestFindAll_LevelZeroEndsBranch(t *testing.T) {
 	h := &Header{Tags: []*Tag{
 		{Level: 1, Tag: "SOUR", Value: "App"},
+		{Level: 2, Tag: "VERS", Value: "1.0"},
 		{Level: 0, Tag: "INDI"},
 		{Level: 2, Tag: "VERS", Value: "orphan"},
 		{Level: 1, Tag: "SOUR", Value: "App2"},
 		{Level: 2, Tag: "VERS", Value: "2.0"},
 	}}
-	if got := values(h.FindAll("SOUR", "VERS")); !slices.Equal(got, []string{"2.0"}) {
-		t.Errorf("FindAll(SOUR, VERS) = %q, want [2.0]", got)
+	if got := values(h.FindAll("SOUR", "VERS")); !slices.Equal(got, []string{"1.0"}) {
+		t.Errorf("FindAll(SOUR, VERS) = %q, want [1.0]", got)
 	}
 }
 

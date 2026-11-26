@@ -309,7 +309,11 @@ Both work on the wire form, as `Value` does: an escaped `@@` is not unescaped.
 
 A path starts at level 1 and each element is one level deeper, so
 `Find("NAME")` is a name of the record, never a `NAME` nested under another
-structure. `Find` returns the first match in document order, or nil;
+structure. A tag's parent is the nearest earlier tag at a shallower level, so
+a level jump kept by a strict decode (`1 BIRT` then `3 DATE`) still nests the
+`DATE` under the `BIRT`: `Find("BIRT", "DATE")` finds it, and `Diff`,
+`MoveSubstructure`, `RemoveRecord`'s references and the encoder read it the
+same way. `Find` returns the first match in document order, or nil;
 `FindAll` returns every match. The tags returned are the record's own, so
 editing one edits the record. `Header` has the same three methods:
 `doc.Header.Find("SOUR", "VERS")` is `HEAD.SOUR.VERS`.

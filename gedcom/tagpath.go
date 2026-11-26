@@ -1,5 +1,7 @@
 package gedcom
 
+import "github.com/cacack/gedcom-go/v3/internal/tagtree"
+
 // Find returns the first tag in r.Tags, in document order, at the given path,
 // or nil when none matches, the path is empty, or r is nil. It is the first
 // element of FindAll, whose doc gives the path rules: r.Find("BIRT", "PLAC")
@@ -19,11 +21,13 @@ func (r *Record) Find(path ...string) *Tag {
 // A path names tags from level 1 downward: r.FindAll("BIRT", "PLAC") returns
 // the level-2 PLAC under each level-1 BIRT, and r.FindAll("NAME") returns the
 // record's names but not a NAME nested deeper. A tag's parent is the nearest
-// earlier tag one level shallower, so matching follows the nesting the Level
-// fields describe, not tag names alone. Tag names compare exactly. Nil entries
-// are skipped, a tag below level 1 ends every branch, and a tag whose level
-// skips past its parent's child level (a level 3 directly under a level 1)
-// matches no path.
+// earlier tag at a shallower level, and a tag with none is a top-level
+// structure, so matching follows the nesting the Level fields describe, not
+// tag names alone. A tag whose level skips past its parent's child level (a
+// level 3 directly after a level 1, kept by a strict decode or built in code)
+// is that parent's child: r.FindAll("BIRT", "DATE") finds it. Every package
+// reads Tags with this rule (SI-023). Tag names compare exactly. Nil entries
+// are skipped, and a tag below level 1 matches no path and ends its branch.
 //
 // A tag's Value is one physical line. The decoder keeps CONT and CONC lines as
 // separate child tags, so a continued value's later segments are in Subtree
@@ -87,30 +91,32 @@ func findTag(tags []*Tag, path []string) *Tag {
 	return nil
 }
 
-// findTags walks tags once, tracking how many leading path elements the
-// current chain of ancestors (levels 1..matched) matches. A tag at level L
-// can extend the match only when its parent chain matched L-1 elements.
+// findTags walks tags once, recording for each tag how many leading path
+// elements it and its ancestors match, or 0 when they do not. A tag extends
+// its parent's match by one element.
 func findTags(tags []*Tag, path []string, first bool) []*Tag {
 	if len(path) == 0 {
 		return nil
 	}
+	parents := tagParents(tags)
+	matched := make([]int, len(tags))
 	var found []*Tag
-	matched := 0
-	for _, t := range tags {
-		if t == nil {
+	for i, t := range tags {
+		if t == nil || t.Level < 1 {
 			continue
 		}
-		level := t.Level
-		if level < 1 {
-			matched = 0
+		depth := 1
+		if p := parents[i]; p >= 0 {
+			if matched[p] == 0 {
+				continue
+			}
+			depth = matched[p] + 1
+		}
+		if depth > len(path) || t.Tag != path[depth-1] {
 			continue
 		}
-		matched = min(matched, level-1)
-		if matched != level-1 || level > len(path) || t.Tag != path[level-1] {
-			continue
-		}
-		matched = level
-		if level == len(path) {
+		matched[i] = depth
+		if depth == len(path) {
 			found = append(found, t)
 			if first {
 				return found
@@ -118,6 +124,17 @@ func findTags(tags []*Tag, path []string, first bool) []*Tag {
 		}
 	}
 	return found
+}
+
+// tagParents returns the index of each tag's parent in tags, or -1 for a
+// top-level or nil tag, by the rule every package shares (SI-023).
+func tagParents(tags []*Tag) []int {
+	return tagtree.Parents(tags, func(t *Tag) (int, bool) {
+		if t == nil {
+			return 0, false
+		}
+		return t.Level, true
+	})
 }
 
 func subtree(tags []*Tag, t *Tag) []*Tag {
