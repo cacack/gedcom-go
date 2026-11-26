@@ -2543,7 +2543,7 @@ Configurable via `EncodeOptions`:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `MaxLineLength` | 248 | Maximum value length (bytes) before CONC split; a value is also cut so its whole line, level, XRef and tag included, fits 255 bytes, as the converter cuts it; ignored for 7.0 |
+| `MaxLineLength` | 248 | Maximum value length (bytes) before CONC split; a value is also cut so its whole line, level, XRef and tag included, fits 255 bytes, as the converter cuts it. Applies to the typed fields 5.x continues with CONC (notes, `TEXT`, event and attribute payloads, a source's `TITL`, `AUTH` and `PUBL`, a citation's `PAGE`); `NAME`, `PLAC`, `TYPE` and the like stay on one line; ignored for 7.0 |
 | `DisableLineWrap` | false | Disable automatic CONC splitting; implied for 7.0 |
 
 ### Inline Repository Support

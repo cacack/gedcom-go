@@ -406,9 +406,9 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 	// Data (level 1) - DATA, with the events recorded, agency and notes
 	tags = append(tags, sourceDataToTags(src.Data, opts)...)
 
-	// Title (level 1) - TITL
+	// Title (level 1) - TITL (with CONT/CONC for multiline/long)
 	if src.Title != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "TITL", Value: opts.text(src.Title)})
+		tags = append(tags, textToTags(src.Title, 1, "TITL", opts)...)
 	}
 
 	// Abbreviation (level 1) - ABBR
@@ -416,14 +416,14 @@ func sourceToTags(src *gedcom.Source, opts *EncodeOptions) []*gedcom.Tag {
 		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "ABBR", Value: opts.text(src.Abbreviation)})
 	}
 
-	// Author (level 1) - AUTH
+	// Author (level 1) - AUTH (with CONT/CONC for multiline/long)
 	if src.Author != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "AUTH", Value: opts.text(src.Author)})
+		tags = append(tags, textToTags(src.Author, 1, "AUTH", opts)...)
 	}
 
-	// Publication (level 1) - PUBL
+	// Publication (level 1) - PUBL (with CONT/CONC for multiline/long)
 	if src.Publication != "" {
-		tags = append(tags, &gedcom.Tag{Level: 1, Tag: "PUBL", Value: opts.text(src.Publication)})
+		tags = append(tags, textToTags(src.Publication, 1, "PUBL", opts)...)
 	}
 
 	// Text (level 1) - TEXT (with CONT/CONC for multiline/long)
@@ -1229,7 +1229,7 @@ func sourceCitationToTags(cite *gedcom.SourceCitation, level int, opts *EncodeOp
 
 	// Subordinate tags at level+1
 	if cite.Page != "" {
-		tags = append(tags, &gedcom.Tag{Level: level + 1, Tag: "PAGE", Value: opts.text(cite.Page)})
+		tags = append(tags, textToTags(cite.Page, level+1, "PAGE", opts)...)
 	}
 
 	if cite.Quality != nil {

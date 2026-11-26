@@ -34,6 +34,13 @@ type EncodeOptions struct {
 	// So MaxLineLength can lower the cut but not raise a line past 255 bytes;
 	// DisableLineWrap is the way to write longer lines.
 	//
+	// The cut applies to the typed fields GEDCOM 5.x continues with CONC and
+	// the decoder reads back folded: notes, TEXT, event and attribute
+	// payloads, addresses, a source's TITL, AUTH and PUBL, and a citation's
+	// PAGE. A field 5.x gives no CONC (NAME, PLAC, TYPE, CAUS, ...) is written
+	// on one line however long, since a CONC there would not read back into
+	// the field; 5.x caps those values far below 255 bytes.
+	//
 	// It applies only to GEDCOM 5.5 and 5.5.1 output. GEDCOM 7.0 removed CONC
 	// and has no line-length limit, so 7.0 output (TargetVersion, or the
 	// header's version when no target is set) is never split.
