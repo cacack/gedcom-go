@@ -447,7 +447,7 @@ is what is written. It applies to every record type, not just the header.
 The decoder processes CONT (continuation with newline) and CONC (concatenation without newline) tags and joins the text in the typed model. A decoded record is written back from `Record.Tags`, so its original CONT/CONC split is kept. A record written from its typed entity (hand-built, or with `Tags` cleared) is split afresh:
 
 - Multi-line text is split with CONT tags at newlines
-- Lines exceeding `MaxLineLength` (default 248) are split with CONC tags (never in GEDCOM 7.0 output)
+- Lines exceeding `MaxLineLength` (default 248), or too long to fit 255 bytes with their level, XRef and tag, are split with CONC tags (never in GEDCOM 7.0 output)
 
 Example decode:
 ```
