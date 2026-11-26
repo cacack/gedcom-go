@@ -147,6 +147,7 @@ Key design decisions are documented in `docs/decisions/`:
 | 0011 | Grammar conformance check generated from the vendored spec tables |
 | 0012 | GEDZIP archive model (archive apart from document, strict resolution, bounded reads) |
 | 0013 | GEDCOM 7.0 ABNF as a test oracle for payload parsers |
+| 0014 | Extension calendars, months and epochs kept as tags, with no place in time |
 
 ### Workflow for New Ideas
 
