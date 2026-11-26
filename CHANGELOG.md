@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.17.0](https://github.com/cacack/gedcom-go/compare/v3.16.0...v3.17.0) (2026-11-26)
+
+
+### Features
+
+* **converter:** keep the epoch of an extension-calendar date as written ([c096ab8](https://github.com/cacack/gedcom-go/commit/c096ab87e5682db852c5450993ce3f2ddab94fc8)), closes [#969](https://github.com/cacack/gedcom-go/issues/969)
+* **encoder:** cut a 5.x value so its whole line fits 255 bytes ([b114902](https://github.com/cacack/gedcom-go/commit/b11490271b753e6e499864b857c96702cd53ce3c)), closes [#967](https://github.com/cacack/gedcom-go/issues/967)
+* **encoder:** cut a source's TITL, AUTH and PUBL and a citation's PAGE with CONC ([5e3b9a6](https://github.com/cacack/gedcom-go/commit/5e3b9a6dcaf4b1dcccbdcd48b112b02c7358e598)), closes [#967](https://github.com/cacack/gedcom-go/issues/967)
+* **gedcom:** add SamePersonalName, one rule for when two NAME values match ([21ddcfb](https://github.com/cacack/gedcom-go/commit/21ddcfbe5f787b338b18d6583643ebe5ceef737c)), closes [#962](https://github.com/cacack/gedcom-go/issues/962)
+* **gedcom:** cut a SetFullValue split so the whole line fits 255 bytes ([707b513](https://github.com/cacack/gedcom-go/commit/707b5137485466cf1800ef4dfa7b5d72c2b06b1b)), closes [#967](https://github.com/cacack/gedcom-go/issues/967)
+* **gedcom:** order extension dates with no Original by their fields ([12df6d3](https://github.com/cacack/gedcom-go/commit/12df6d3aa3c5ab6ccc1a5f4998730a9b38309634)), closes [#969](https://github.com/cacack/gedcom-go/issues/969)
+* **gedcom:** parent a level-jumped tag the same way in every reader ([7ebb1df](https://github.com/cacack/gedcom-go/commit/7ebb1dfdd750c3584db6aa62cff86789a5f11526)), closes [#968](https://github.com/cacack/gedcom-go/issues/968)
+* **gedcom:** read a range or period end date with no calendar as Gregorian ([2ec2a37](https://github.com/cacack/gedcom-go/commit/2ec2a375a81e36c157c4962122de3e1ee624c872)), closes [#965](https://github.com/cacack/gedcom-go/issues/965)
+* **gedcom:** read GEDCOM 7.0 extension calendars, months and epochs ([dbce52b](https://github.com/cacack/gedcom-go/commit/dbce52be156ceeaa01d17d82991106671717202f)), closes [#969](https://github.com/cacack/gedcom-go/issues/969)
+* **gedcom:** record the source line of each event and attribute ([7ba7e15](https://github.com/cacack/gedcom-go/commit/7ba7e1537577de94b4cc56f478e43580cd8d941d)), closes [#964](https://github.com/cacack/gedcom-go/issues/964)
+* **gedcom:** reject a B.C. epoch on a Hebrew or French Republican date ([6bebd9d](https://github.com/cacack/gedcom-go/commit/6bebd9dd92dd5f6a837b399d77cd3f7e975f4d07)), closes [#957](https://github.com/cacack/gedcom-go/issues/957)
+* **merge:** add RepeatedNames and FoldRepeatedNames ([78498bc](https://github.com/cacack/gedcom-go/commit/78498bcf13b063a12b40b46ff29b681735ce7c1d)), closes [#962](https://github.com/cacack/gedcom-go/issues/962)
+* **validator:** add a style check for a GIVN or SURN that disagrees with its NAME ([c5aa93e](https://github.com/cacack/gedcom-go/commit/c5aa93e5070be47e9334e6db36c06a3e245e2c14))
+* **validator:** give no year credit to a date with an extension calendar ([5aba210](https://github.com/cacack/gedcom-go/commit/5aba210fab0d32614f593f91ab50b6728a06cf4c)), closes [#969](https://github.com/cacack/gedcom-go/issues/969)
+* **validator:** hold an exact date's day to its month in the grammar check ([c5bd580](https://github.com/cacack/gedcom-go/commit/c5bd5800fc33687ef90cf139d9dfc6d981aadee6)), closes [#957](https://github.com/cacack/gedcom-go/issues/957)
+* **validator:** read NAME surnames in duplicate detection as SplitPersonalName does ([86aa188](https://github.com/cacack/gedcom-go/commit/86aa188653f4f5cd491ba3f045ffe2d200e23873))
+* **validator:** report a DATE that ParseDate cannot read, in every validator ([823aa8d](https://github.com/cacack/gedcom-go/commit/823aa8dbfd54d772feb35e2779fbcd797d631783)), closes [#966](https://github.com/cacack/gedcom-go/issues/966)
+
 ## [3.16.0](https://github.com/cacack/gedcom-go/compare/v3.15.0...v3.16.0) (2026-11-25)
 
 
