@@ -30,3 +30,41 @@ func TestSplitPersonalName(t *testing.T) {
 		})
 	}
 }
+
+// TestSamePersonalName covers what SamePersonalName ignores (case, spacing,
+// punctuation, the slashes) and what it does not (words, their order).
+func TestSamePersonalName(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b string
+		want bool
+	}{
+		{"identical", "John /Smith/", "John /Smith/", true},
+		{"case, spacing, punctuation, slashes", "John /Smith/ Jr.", "john  smith, jr", true},
+		{"slashes moved", "/John/ Smith", "John /Smith/", true},
+		{"no space before slash", "John/Smith/", "John Smith", true},
+		{"tab and surrounding spaces", " John\t/Smith/ ", "John /Smith/", true},
+		{"case folded beyond ASCII", "José /Ñúñez/", "JOSÉ /ÑÚÑEZ/", true},
+		{"different word", "John /Smith/", "Jon /Smith/", false},
+		{"word order", "John Smith", "Smith John", false},
+		{"extra word", "John /Smith/", "John /Smith/ Jr.", false},
+		{"apostrophe splits a word", "O'Brien", "OBrien", false},
+		{"curly and straight apostrophe", "O'Brien", "O’Brien", true},
+		{"accent kept", "José", "Jose", false},
+		{"combining mark is part of a word", "José Smith", "JOSÉ smith", true},
+		{"digits", "Henry 8", "Henry VIII", false},
+		{"both empty", "", "", false},
+		{"only punctuation", "//", "//", false},
+		{"one empty", "John", "", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SamePersonalName(tt.a, tt.b); got != tt.want {
+				t.Errorf("SamePersonalName(%q, %q) = %v, want %v", tt.a, tt.b, got, tt.want)
+			}
+			if got := SamePersonalName(tt.b, tt.a); got != tt.want {
+				t.Errorf("SamePersonalName(%q, %q) = %v, want %v", tt.b, tt.a, got, tt.want)
+			}
+		})
+	}
+}

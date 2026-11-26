@@ -914,3 +914,13 @@ func ExampleSplitPersonalName() {
 	// value: "John" "Smith" "Jr."
 	// GIVN:  "Jon"
 }
+
+// ExampleSamePersonalName shows a pair of NAME values that are the same name
+// and a pair that are not.
+func ExampleSamePersonalName() {
+	fmt.Println(gedcom.SamePersonalName("John /Smith/ Jr.", "john  smith, jr"))
+	fmt.Println(gedcom.SamePersonalName("John /Smith/", "Jon /Smith/"))
+	// Output:
+	// true
+	// false
+}

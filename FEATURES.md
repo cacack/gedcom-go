@@ -1420,6 +1420,10 @@ structure as `[]string` fields named `Phone`, `Email`, `Fax` and `Website`:
   `Suffix` from it and then lets GIVN, SURN and NSFX override them, so
   calling it on `PersonalName.Full` tells what the value says apart from what
   the part lines say (a GIVN that disagrees with the value, say)
+- `gedcom.SamePersonalName(a, b)` reports whether two NAME values are the
+  same name: the same words in the same order, ignoring case, spacing,
+  punctuation and the surname slashes ("John /Smith/ Jr." and
+  "john  smith, jr")
 
 ### Transliterations (TRAN)
 
