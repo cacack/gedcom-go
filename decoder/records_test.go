@@ -47,6 +47,7 @@ func zeroLineNumbers(records []*gedcom.Record) {
 		for _, tag := range r.Tags {
 			tag.LineNumber = 0
 		}
+		clearEntityLineNumbers(r.Entity)
 	}
 }
 

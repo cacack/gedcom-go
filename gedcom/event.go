@@ -264,6 +264,13 @@ type Event struct {
 
 	// Media are references to media objects with optional crop/title
 	Media []*MediaLink `json:",omitempty"`
+
+	// LineNumber is the source line of the event's own tag (its Tag.LineNumber),
+	// or 0 for an event not read from a file. Comparing it with
+	// Attribute.LineNumber gives a record's events and attributes in file
+	// order, which their two slices do not. It is a property of the source
+	// text: edits do not update it and the encoder does not read it.
+	LineNumber int `json:",omitempty"`
 }
 
 // PlaceName returns PlaceDetail.Name, or "" when no place is recorded.
