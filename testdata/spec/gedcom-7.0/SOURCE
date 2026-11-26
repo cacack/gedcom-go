@@ -3,3 +3,5 @@ commit: b2900a15d177e5b7f63e5862bf3dff031eddc520
 describes: main, 17 commits after release v7.0.18
 retrieved: 2026-08-18
 license: Apache-2.0
+grammar.abnf blob: 2ef6d785827f59994b21e89cd9773d74f3b21b61
+grammar.abnf retrieved: 2026-11-25

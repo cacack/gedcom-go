@@ -265,13 +265,25 @@ Follow the official [Go Code Review Comments](https://github.com/golang/go/wiki/
    - Package-level documentation should explain the package's purpose
    - Include usage examples in godoc format where helpful
 
-4. **Error Handling**
+4. **Specification Interpretation**
+   - A new leniency (accepting what a GEDCOM specification forbids), a new
+     choice where a specification is ambiguous or silent, or a form it allows
+     that the library does not support needs a row in
+     [docs/governance/policies/spec-interpretation.md](docs/governance/policies/spec-interpretation.md),
+     added in the same change
+   - Cite the row's ID (e.g. `SI-001`) in the godoc of each package that
+     applies the policy, and name the test that enforces it; the
+     `internal/specinterp` test fails otherwise
+   - Apply an existing row's policy rather than a second reading of the
+     same gap
+
+5. **Error Handling**
    - Return errors, don't panic (except for truly exceptional situations)
    - Provide context in error messages
    - Use custom error types when appropriate
    - Include line numbers for parsing/validation errors
 
-5. **Code Organization**
+6. **Code Organization**
    ```go
    // Good: Clear structure
    package parser

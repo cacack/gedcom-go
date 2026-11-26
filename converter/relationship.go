@@ -217,9 +217,11 @@ func marriedNamesToV7(doc *gedcom.Document, report *gedcom.ConversionReport) {
 
 // marriedNameValue returns the NAME value of the married name: married itself
 // when it holds a slash (a full name), otherwise name with its /surname/
-// replaced by /married/, or /married/ appended when name has no surname. As
-// in the decoder, the last slash pair delimits the surname, so the married
-// name reads back with married as its Surname.
+// replaced by /married/, or /married/ appended when name has no surname. It
+// mirrors gedcom.SplitPersonalName (the last slash pair, or a lone slash and
+// the rest, delimits the surname) but rewrites in place to keep the rest of
+// name as written, so the married name reads back with married as its
+// Surname (spec-interpretation policy SI-009).
 func marriedNameValue(name, married string) string {
 	if strings.Contains(married, "/") {
 		return married

@@ -146,6 +146,7 @@ Key design decisions are documented in `docs/decisions/`:
 | 0010 | GEDCOM 7.0 PHRASE as a sibling `<Value>Phrase` field |
 | 0011 | Grammar conformance check generated from the vendored spec tables |
 | 0012 | GEDZIP archive model (archive apart from document, strict resolution, bounded reads) |
+| 0013 | GEDCOM 7.0 ABNF as a test oracle for payload parsers |
 
 ### Workflow for New Ideas
 

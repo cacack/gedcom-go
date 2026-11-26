@@ -38,7 +38,10 @@ type DecodeOptions struct {
 	//   - A byte that is not valid UTF-8, in input read as UTF-8 (declared
 	//     UTF-8 or ASCII, or no recognized CHAR), fails the decode: the
 	//     error wraps a *charset.InvalidUTF8Error giving its line, column and
-	//     value
+	//     value (spec-interpretation policy SI-014)
+	//   - A level jump (e.g., `1 BIRT` then `4 DATE`) is kept as written and
+	//     is not an error (SI-006)
+	//   - A blank or whitespace-only line is an error (SI-013)
 	//   - The error is returned with a nil document or result
 	//   - Use for files that must be fully valid or rejected
 	//
@@ -47,7 +50,7 @@ type DecodeOptions struct {
 	//   - Malformed lines are skipped; valid lines are preserved
 	//   - Level-jump lines (e.g., `1 BIRT` then `4 DATE`) are clamped to
 	//     prevLevel+1 and preserved as recovery, not skipped; a
-	//     CodeBadLevelJump diagnostic is emitted (SeverityWarning)
+	//     CodeBadLevelJump diagnostic is emitted (SeverityWarning) (SI-006)
 	//   - An XRef containing a space (e.g. `0 @NoTe ref@ NOTE text`) in a
 	//     document whose header does not declare GEDCOM 5.5 or 5.5.1, or a
 	//     level-0 XRef with no closing `@` (e.g. `0 @I1 INDI`), is recovered
@@ -70,11 +73,11 @@ type DecodeOptions struct {
 	//     rather than the rest of the file; a CodeInvalidEncoding diagnostic
 	//     (SeverityError) is emitted per byte, at its line, with its column in
 	//     the message, up to [MaxInvalidEncodingDiagnostics]; one further
-	//     diagnostic counts the bytes past that
+	//     diagnostic counts the bytes past that (SI-014)
 	//   - A blank or whitespace-only line is skipped; a CodeEmptyLine
 	//     diagnostic (SeverityWarning, since nothing is lost) is emitted per
 	//     line up to [MaxEmptyLineDiagnostics]; one further diagnostic counts
-	//     the blank lines past that
+	//     the blank lines past that (SI-013)
 	//   - Diagnostics are collected for all issues encountered, up to
 	//     MaxDiagnostics
 	//   - Use [DecodeWithDiagnostics] to access diagnostics

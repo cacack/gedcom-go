@@ -350,7 +350,7 @@ const (
 // line longer than 5.x allows (see maxValueLength) continues on CONC lines:
 // 5.x limits a line to 255 characters and 7.0 has no such limit (issue #671).
 // The encoder writes raw tags verbatim, so this is the only place a decoded
-// 7.0 value gets split.
+// 7.0 value gets split. Spec-interpretation policy SI-008.
 func expandNewlinesToCONT(doc *gedcom.Document, report *gedcom.ConversionReport) {
 	contCount, concCount := 0, 0
 	addNotes := func(recordType, xref string, notes []expansionNote) {

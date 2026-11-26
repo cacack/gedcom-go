@@ -621,7 +621,8 @@ func splitV5Phrase(value string) (date, phrase string, ok bool) {
 // "INT <value> (<phrase>)" for a single date with no modifier, "(<phrase>)"
 // for an empty value. It reports false when the 5.x grammar has no form for
 // the pair: a range, period or approximation, a value that does not parse,
-// or a phrase that is empty or holds a parenthesis or line break.
+// or a phrase that is empty or holds a parenthesis or line break. A date the
+// decoder read from English does not parse (spec-interpretation policy SI-001).
 func foldV7Phrase(value, phrase string) (string, bool) {
 	if phrase == "" || strings.ContainsAny(phrase, "()\r\n") {
 		return "", false

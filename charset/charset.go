@@ -140,7 +140,7 @@ type ReaderOptions struct {
 	// This applies to the UTF-8 validation every input passes through, so in
 	// practice to input read as UTF-8: declared UTF-8 or ASCII, or undeclared.
 	// It does not change ANSEL decoding, which reports an invalid ANSEL byte
-	// with *InvalidANSELError either way.
+	// with *InvalidANSELError either way. Spec-interpretation policy SI-014.
 	OnInvalidUTF8 func(*InvalidUTF8Error)
 
 	// ANSI is the encoding a header declaring CHAR ANSI is decoded as. ANSI

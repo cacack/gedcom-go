@@ -221,13 +221,25 @@ var frenchMonthNames = map[string]int{
 //   - "(unknown)" -> date phrase
 //
 // Both calendar forms are accepted regardless of the document's GEDCOM version;
-// ParseDate does not check version conformance.
+// ParseDate does not check version conformance (spec-interpretation policy
+// SI-002), and reads the 5.5.x phrase, INT, dual-year and B.C. forms that 7.0
+// removed in every version (SI-015). Month codes, modifiers and calendar names
+// are read in any case, in every version (SI-003), and whitespace around a
+// date or between its words in any amount (SI-016).
 //
 // A day or year is unsigned decimal digits: a sign ("-1850", "+5 JAN 1850")
 // is an error naming the component, as is a day or year written as 0, which
 // no calendar has (0 is the "absent" value of Day and Year). A B.C. year takes
-// a BC suffix. A reversed range such as "BET 1860 AND 1850" parses; Validate
-// reports it.
+// a BC suffix, which only the Gregorian and Julian calendars have. A day past
+// its month's length ("31 FEB 2000") and a reversed range such as "BET 1860
+// AND 1850" parse; Validate reports them (SI-017). A day or year too large
+// for an int is an error (SI-021).
+//
+// Only the four standard calendars, with their standard months and epochs,
+// are read: an extension calendar, month or epoch ("_MAYAN 5 _KIN 2000") is
+// an error (SI-018). In a range or period, a second date with no calendar of
+// its own takes the first date's, where the specifications make it Gregorian
+// (SI-019).
 //
 // Every error wraps ErrEmptyDate when s is empty or only whitespace, and
 // ErrInvalidDate otherwise; match them with errors.Is.
@@ -267,6 +279,9 @@ func ParseDate(s string) (*Date, error) {
 // the Hebrew or French Republican calendar, is left to ParseDate alone.
 //
 // When s is not recovered, the error is the one ParseDate(s) returns.
+//
+// Only the decoder reads dates this way; every other package uses ParseDate
+// (spec-interpretation policy SI-001).
 func ParseDateLenient(s string) (date *Date, readAs string, err error) {
 	date, err = ParseDate(s)
 	if err == nil {
@@ -665,6 +680,12 @@ func parseDateComponents(s string, date *Date) error {
 		if len(fields) == 0 {
 			return fmt.Errorf("empty date after BC suffix")
 		}
+		// Only the Gregorian and Julian calendars have an epoch: 7.0
+		// Appendix A, and 5.5.1's DATE_HEBR and DATE_FREN, which have no
+		// B.C.
+		if date.Calendar == CalendarHebrew || date.Calendar == CalendarFrenchRepublican {
+			return fmt.Errorf("the %s calendar has no B.C. epoch", date.Calendar)
+		}
 	}
 
 	return parseDateFields(fields, date)
@@ -901,6 +922,9 @@ func indexFoldASCII(s, substr string) int {
 // skipped without skipping the other one. When both endpoints pass, a range or
 // period whose start is entirely after its end (BET 1860 AND 1850) is an error;
 // endpoints of differing precision that overlap (BET JAN 1850 AND 1850) are not.
+// It holds a date to its calendar, which ParseDate does not (spec-interpretation
+// policy SI-017).
+//
 // Each endpoint gets three checks, in order: its year range, its dual year,
 // then its day. The year-range check runs on every date: a Year beyond
 // 1,000,000 either side of the epoch is an error. ParseDate rejects a written

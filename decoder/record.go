@@ -27,8 +27,9 @@ import (
 // When StrictMode is false, over-jumped levels are clamped as [Decode] clamps
 // them, on a copy: raw is never modified. When it is true, levels are kept as
 // written, as [Decode] keeps them in strict mode, and no error is returned for
-// them: the errors strict mode adds are syntax errors, which the streaming
-// parsers report before a record reaches DecodeRecord. When Context is done,
+// them (spec-interpretation policy SI-006): the errors strict mode adds are
+// syntax errors, which the streaming parsers report before a record reaches
+// DecodeRecord. When Context is done,
 // its error is returned.
 //
 // A HEAD or TRLR record decodes to a Record of that Type holding its Tags and

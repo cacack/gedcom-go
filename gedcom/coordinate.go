@@ -28,6 +28,7 @@ import (
 // longitudes; Coordinates.AsDecimal enforces this. Returns an error for empty
 // or malformed input, wrapping ErrEmptyCoordinate or ErrInvalidCoordinate
 // respectively; ParseLatitude, ParseLongitude and AsDecimal do the same.
+// Spec-interpretation policy SI-011.
 func ParseCoordinate(s string) (float64, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {

@@ -18,7 +18,8 @@ const atSignReescapeReason = "GEDCOM 5.x doubles every \"@\" in text and GEDCOM 
 // Pointer values are not text and are left alone, under either version's
 // identifier grammar, as are tag names and XRefs. Each rewritten value is
 // reported as a Normalized note and counted in the AT_SIGN_REESCAPED
-// transformation.
+// transformation. A lone "@" in a 5.x value is text, as the decoder reads it
+// (spec-interpretation policy SI-005).
 //
 // It must run once, on values still in source wire form: on an upgrade to 7.0
 // after the CONC/CONT fold (7.0 escapes an "@" after a line break), the date

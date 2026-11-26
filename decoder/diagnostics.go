@@ -140,7 +140,7 @@ const (
 	// is set, the message names the GEDCOM form the value was read as
 	// ("JUN 1880"), and the raw value is preserved and written back unchanged.
 	// Emitted as SeverityWarning. Before v3.12.0 these values were reported as
-	// CodeInvalidValue and left unparsed.
+	// CodeInvalidValue and left unparsed. Spec-interpretation policy SI-001.
 	CodeNonStandardDate = "NONSTANDARD_DATE"
 
 	// CodeMissingRequired indicates a required subordinate tag is missing.

@@ -26,6 +26,7 @@ project's MIT license.
 | `payloads.tsv` | (structure type, payload type) pairs |
 | `enumerations.tsv` | (structure type, enumeration set) pairs |
 | `enumerationsets.tsv` | (enumeration set, enumeration value) pairs |
+| `grammar.abnf` | The ABNF of the line and value grammar: `Line`, `Xref`, `DateValue`, `Time`, `Age`, `PersonalName`, `Latitude` and the rest. `SOURCE` records its git blob hash and retrieval date, as it was added after the TSVs |
 
 The superstructure column in `substructures.tsv` is what makes a coverage
 inventory possible. GEDCOM tag meaning is context-dependent, so support has to
@@ -39,14 +40,17 @@ it.
 from these files, and `internal/cmd/gengrammar` generates the validator's grammar
 tables (`validator/grammar_tables.go`) from them at `go generate` time, as do
 `internal/cmd/genplacement` (the decoder's placement tables) and
-`internal/cmd/genforeign` (the converter's). They are
+`internal/cmd/genforeign` (the converter's). `internal/payloadgrammar` reads
+`grammar.abnf` as a test oracle for the library's payload parsers; see
+[ADR 0013](../../../docs/decisions/0013-payload-grammar-oracle.md). They are
 test data only: no library code reads them at run time, and they add no runtime
 dependency.
 
 ## Updating
 
-Re-download the five TSVs plus `LICENSE` and `NOTICE` from a single upstream
-commit, update `SOURCE`, then regenerate the coverage document and the
+Re-download the five TSVs, `grammar.abnf`, `LICENSE` and `NOTICE` from a
+single upstream commit, update `SOURCE` (including the `grammar.abnf` blob
+hash, `git hash-object grammar.abnf`), then regenerate the coverage document and the
 generated tables:
 
 ```bash
